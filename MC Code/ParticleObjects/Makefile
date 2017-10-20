@@ -5,7 +5,7 @@ MOD = ./../modFiles
 BIN = ./../binFiles 
 FLAGS = -J $(MOD) -c  
 
-all: particle.o
+all: particle_class.o
 
-particle.o:
-	$(FC) $(FLAGS) particle.f03 -o $(OBJ)/particle.o
+particle_class.o:
+	$(FC) $(FLAGS) particle_class.f03 -o $(OBJ)/particle_class.o
