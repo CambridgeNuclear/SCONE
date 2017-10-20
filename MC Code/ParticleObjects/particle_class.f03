@@ -37,7 +37,7 @@ contains
     integer(kind=shortInt), intent(in)  :: G
     self % G = G
     self % isMG = .true.
-
+    khgjgj
   end subroutine makeMG
 
   subroutine buildCE(self,r,dir,E,w,Cell,Mat)
