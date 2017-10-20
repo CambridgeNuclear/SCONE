@@ -2,6 +2,7 @@
 
 all: 
 	make -C ./SharedModules
+	make -C ./ParticleObjects
 
 clean: 
 	rm ./objFiles/*.o
