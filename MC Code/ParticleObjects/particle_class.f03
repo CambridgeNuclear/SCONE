@@ -29,7 +29,7 @@ module particle_class
         procedure            :: setPosition
         procedure            :: setDirection
         procedure            :: setCell
-        procedure            :: setMaterial !
+        procedure            :: setMaterial
         procedure            :: makeMG
         procedure            :: makeCE
         ! Get Data from the particle
@@ -39,8 +39,8 @@ module particle_class
         procedure            :: Direction
         procedure            :: Cell
         procedure            :: Material
-        procedure            :: isMG !
-        procedure            :: isDead !
+        procedure            :: isMG
+        procedure            :: isDead
         !! Private - Implementation specific procedures
         procedure,private    :: buildCE
         procedure,private    :: buildMG
