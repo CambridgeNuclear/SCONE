@@ -35,7 +35,6 @@ module nuclearData_class
     subroutine setReal(self, R)
       import :: nuclearData, &
                 defReal
-
       class(nuclearData), intent(inout) :: self
       real(kind=defReal), intent(in)    :: R
     end subroutine
@@ -69,7 +68,6 @@ module nuclearData_class
       class(RNG),intent(inout)                  :: R
       real(kind=defReal), intent(out)           :: E, miu
     end subroutine
-
 
   end interface
     

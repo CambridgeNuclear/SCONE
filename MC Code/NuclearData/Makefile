@@ -5,7 +5,10 @@ MOD = ./../modFiles
 BIN = ./../binFiles 
 FLAGS = -J $(MOD) -c  
 
-all: nuclearData_class.o
+all: ByIsoNoMT
 
 nuclearData_class.o:
 	$(FC) $(FLAGS) nuclearData_class.f03 -o $(OBJ)/nuclearData_class.o
+
+ByIsoNoMT: nuclearData_class.o
+	make -C ./ByIsoNoMT

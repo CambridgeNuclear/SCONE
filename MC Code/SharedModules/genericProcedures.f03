@@ -39,20 +39,46 @@ module genericProcedures
 
   subroutine fatalError(Where,Why)
     character(len=*), intent(in)    :: Why, Where
-    character(len=100)              :: Line
+    character(len=100)              :: Line, locWhy, locWhere
     character(len=20)               :: format
+    integer(kind=shortInt)           :: i
 
-    Line(1:100) = '*'
-    format = 'A100'
+    Line = repeat('*',100)
+    format = '(A100)'
+    locWhere = adjustR(where)
+    locWhy = adjustR(why)
 
     print format, Line
     print format, 'Fatal Error has occured in:'
-    print format, Where
+    print format, locWhere
+    print *
     print format, 'For the following reason:'
-    print format, Why
+    print format, locWhy
+    print *
     print format, Line
     stop
   end subroutine fatalError
+
+  subroutine openToRead(unitNum,File)
+    integer(kind=shortInt), intent(in)    :: unitNum
+    character(len=*), intent(in)          :: File
+    integer(kind=shortInt)                :: errorStat
+    character(len=99)                     :: errorMsg
+
+        open ( unit   = unitNum,   &
+               file   = File,      &
+               status = "old",     &
+               action = "read",    &
+               iostat = errorStat, &
+               iomsg  = errorMsg)
+
+        !errorMsg=adjustR(errorMsg)
+
+        if (errorStat > 0) call fatalError('openToRead subroutine (genericProcedures.f03)', &
+                                           errorMsg )
+  end subroutine openToRead
+
+
 
 
 end module genericProcedures
