@@ -69,20 +69,26 @@ contains
 
       do j=1,numIso
 
-        read(unit = Input,    &
-             fmt=*,           &
-             iostat=readStat, &
-             iomsg = readMsg) ZZid ,&
-                              numDen
+        read(unit = Input,      &
+             fmt=*,             &
+             iostat = readStat, &
+             iomsg = readMsg)   ZZid ,&
+                                numDen
 
         if (readStat > 0) call fatalError(here, readMsg)
         if (numDen <= 0 ) call fatalError(here,'Numerical Density is -ve')
 
         self % matIsoNames(i,j) = ZZid
         self % matIsoDens(i,j)  = numDen
-
       end do
     end do
+
+    ! Give error if there are more enteries in the input
+    read (unit = Input,    &
+          fmt =*,          &
+          iostat = readStat) ZZid, numDen
+    if (readStat /= endOfFile) call fatalError(here,'End of file was not reached, check the ' // &
+                                                    'number of isotopes in the last material')
 
     close(Input)
 

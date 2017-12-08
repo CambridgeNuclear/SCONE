@@ -1,7 +1,7 @@
 module numPrecision
   implicit none
   private
-
+  ! Variables Kind and Length parameters
   integer, public, parameter :: defReal = 8,     &
                                 shortInt = 4,    &
                                 longInt = 8,     &
@@ -9,6 +9,8 @@ module numPrecision
                                 matNameLen = 20, &
                                 pathLen = 30,    &
                                 zzIdLen = 10
+  ! I/O error codes
+  integer, public, parameter :: endOfFile = -1
 
 contains
     
