@@ -6,6 +6,10 @@ module genericProcedures
     module procedure removeDuplicates_Char
   end interface removeDuplicates
 
+  interface linSearch
+    module procedure linSearch_Char
+  end interface
+
   contains
 
   function binarySearch(Array,Value) result(index)
@@ -113,6 +117,21 @@ module genericProcedures
         ! Select elements from charArray for which unique == .true.
         out = pack(charArray, unique)
     end if
+  end function
+
+
+  function linSearch_Char(charArray,target) result(index)
+    !! Searches linearly for the occurance of target in charArray. Returns index of -1 if target
+    !! is not found. The index assumes that array begins at 1 (i.e. charArray(1:N)). If array begins
+    !! with diffrent index (i.e. A(-5:N))the returned value needs to be approperiatly translated.
+    character(len=*),dimension(:),intent(in) :: charArray
+    character(len=*),intent(in)              :: target
+    integer(kind=shortInt)                   :: index
+
+    do index=1,size(charArray)
+      if( trim(charArray(index)) == trim(target) ) return
+    end do
+    index = -1
   end function
 
 end module genericProcedures

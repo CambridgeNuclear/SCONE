@@ -1,7 +1,7 @@
 module ByIsoNoMT_Data_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead, removeDuplicates
+  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linSearch
 
   implicit none
   private
@@ -24,6 +24,7 @@ module ByIsoNoMT_Data_class
     procedure,private :: createMatArrays
     procedure,private :: readMaterials
     procedure,private :: createIsotopeList
+    procedure,private :: assignIsoIndices
 
   end type byIsoNoMT_Data
 
@@ -37,6 +38,7 @@ contains
 
     call self % readMaterials(matInput)
     call self % createIsotopeList()
+    call self % assignIsoIndices
 
   end subroutine readFrom
 
@@ -110,11 +112,9 @@ contains
   end subroutine readMaterials
 
   subroutine createIsotopeList(self)
-    class(byIsoNoMT_Data),intent(inout) :: self
-
+    class(byIsoNoMT_Data),intent(inout)              :: self
     integer(kind=shortInt)                           :: maxIsoNames
     character(len=zzIdLen),dimension(:),allocatable  :: withRepetition
-    logical(kind=defBool),dimension(:),allocatable   :: mask
     integer(kind=shortInt)                           :: i,j
 
     maxIsoNames=sum(self % matNumIso)
@@ -129,26 +129,22 @@ contains
     end do
 
     self % isoNames = removeDuplicates(withRepetition)
-    print *, self % isoNames
-    !allocate(mask(size(withRepetition)))
-    !mask = .true.
-    !print *, mask
-    !  do i = 1,size(withRepetition)
-    !    search: &
-    !    do j = 1, i-1
-    !      if( trim(withRepetition(i)) == trim(withRepetition(j)) ) then
-    !        mask(i) = .false.
-    !        exit search
-    !      end if
-    !    end do search
-    !  end do
-    !print *, mask
-    !print *, pack(withRepetition, mask)
-
-    deallocate(withRepetition)
   end subroutine
 
+  subroutine assignIsoIndices(self)
+    class(byIsoNoMT_Data),intent(inout)       :: self
+    integer(kind=shortInt)                    :: i,j
 
+    do i = 1,size(self % matNames)
+      do j = 1,self % matNumIso(i)
+        self % matIsoIdx(i,j) = linSearch(self % isoNames, self % matIsoNames(i,j))
+        if (self % matIsoIdx(i,j) == -1 ) then
+          call fatalError('assignIsoIndices (byIsoNoMT_class.f90)', &
+                          'Isotope ' // self % matIsoNames(i,j) //' was not found')
+        end if
+      end do
+    end do
+  end subroutine
 
   subroutine readIsotopes(self,isoLib)
     class(byIsoNoMT_Data),intent(inout) :: self
@@ -236,6 +232,9 @@ contains
     do i=1,size(self % matIsoNames,1)
       print '(9999es15.5)', self % matIsoDens(i,:)
     end do
+
+    print '(a)', 'Isotope Names Array'
+    print '(a)', self % isoNames
 
   end subroutine print
     
