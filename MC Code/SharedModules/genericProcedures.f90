@@ -2,6 +2,10 @@ module genericProcedures
   use numPrecision
   implicit none
 
+  interface removeDuplicates
+    module procedure removeDuplicates_Char
+  end interface removeDuplicates
+
   contains
 
   function binarySearch(Array,Value) result(index)
@@ -74,11 +78,41 @@ module genericProcedures
 
         !errorMsg=adjustR(errorMsg)
 
-        if (errorStat > 0) call fatalError('openToRead subroutine (genericProcedures.f03)', &
+        if (errorStat > 0) call fatalError('openToRead subroutine (genericProcedures.f90)', &
                                            errorMsg )
   end subroutine openToRead
 
+  function removeDuplicates_Char(charArray) result(out)
+    !! Function that removes duplicates from input character array. It returns array of equal or
+    !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
+    !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
+    !! length greater then 100
+    character(len=*),dimension(:),intent(in)       :: charArray
+    character(len=100),dimension(:),allocatable    :: out
+    logical(kind=defBool),dimension(:),allocatable :: unique
+    integer(kind=shortInt)                         :: i,j
 
-
+    if (len(charArray) > len(out)) call fatalError('removeDuplicates_Char (genericProcedures.f90)',&
+                                                   'Maximum length of input character is 100 ')
+    if (size(charArray) == 1) then
+      out = charArray
+    else
+      allocate(unique(size(charArray)))
+      unique = .true.
+      ! For every element search if it matches any previous element. Change uniqe to false if it is
+      ! repeted.
+        do i = 1,size(charArray)
+          search: &
+          do j = 1, i-1
+            if( trim(charArray(i)) == trim(charArray(j)) ) then
+              unique(i) = .false.
+              exit search
+            end if
+          end do search
+        end do
+        ! Select elements from charArray for which unique == .true.
+        out = pack(charArray, unique)
+    end if
+  end function
 
 end module genericProcedures

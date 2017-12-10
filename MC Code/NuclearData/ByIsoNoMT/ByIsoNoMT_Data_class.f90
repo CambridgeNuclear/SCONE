@@ -1,12 +1,12 @@
 module ByIsoNoMT_Data_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead
+  use genericProcedures, only : fatalError, openToRead, removeDuplicates
 
   implicit none
   private
 
-  type, public :: ByIsoNoMT_Data
+  type, public :: byIsoNoMT_Data
     private
     ! Material Data
     character(len=matNameLen),dimension(:),allocatable :: matNames
@@ -15,19 +15,34 @@ module ByIsoNoMT_Data_class
     character(len=ZZidLen),dimension(:,:),allocatable  :: matIsoNames
     real(kind=defReal),dimension(:,:),allocatable      :: matIsoDens
     real(kind=defReal),dimension(:),allocatable        :: matTemp
+    ! Isotope Data
+    character(len=zzIdLen),dimension(:),allocatable    :: isoNames
   contains
     procedure :: readFrom
     procedure :: print
 
     procedure,private :: createMatArrays
+    procedure,private :: readMaterials
+    procedure,private :: createIsotopeList
 
-
-  end type ByIsoNoMT_Data
+  end type byIsoNoMT_Data
 
 contains
 
-  subroutine readFrom(self, InputFile)
-    class(ByIsoNoMT_Data), intent(inout) :: self
+  subroutine readFrom(self,matInput,isotopeLib)
+  !! Reads materials and isotopes from provided material and ACE library input files
+    class(byIsoNoMT_Data), intent(inout) :: self
+    character(len=*), intent(in)         ::  matInput
+    character(len=*), intent(in)         ::  isotopeLib
+
+    call self % readMaterials(matInput)
+    call self % createIsotopeList()
+
+  end subroutine readFrom
+
+
+  subroutine readMaterials(self, inputFile)
+    class(byIsoNoMT_Data), intent(inout) :: self
     character(len=*), intent(in)         :: inputFile
 
     integer(kind=shortInt),parameter     :: input=66
@@ -92,7 +107,60 @@ contains
 
     close(Input)
 
-  end subroutine readFrom
+  end subroutine readMaterials
+
+  subroutine createIsotopeList(self)
+    class(byIsoNoMT_Data),intent(inout) :: self
+
+    integer(kind=shortInt)                           :: maxIsoNames
+    character(len=zzIdLen),dimension(:),allocatable  :: withRepetition
+    logical(kind=defBool),dimension(:),allocatable   :: mask
+    integer(kind=shortInt)                           :: i,j
+
+    maxIsoNames=sum(self % matNumIso)
+
+    ! Crate array of isotope names with repetitions
+    allocate(withRepetition(maxIsoNames))
+    j=1
+    do i = 1,size(self % matNames)
+      ! Load material names for material i
+      withRepetition(j:j+self % matNumIso(i)) = self % matIsoNames(i,1:self % matNumIso(i))
+      j = j + self % matNumIso(i)
+    end do
+
+    self % isoNames = removeDuplicates(withRepetition)
+    print *, self % isoNames
+    !allocate(mask(size(withRepetition)))
+    !mask = .true.
+    !print *, mask
+    !  do i = 1,size(withRepetition)
+    !    search: &
+    !    do j = 1, i-1
+    !      if( trim(withRepetition(i)) == trim(withRepetition(j)) ) then
+    !        mask(i) = .false.
+    !        exit search
+    !      end if
+    !    end do search
+    !  end do
+    !print *, mask
+    !print *, pack(withRepetition, mask)
+
+    deallocate(withRepetition)
+  end subroutine
+
+
+
+  subroutine readIsotopes(self,isoLib)
+    class(byIsoNoMT_Data),intent(inout) :: self
+    character(len=*),intent(in)    :: isoLib
+
+    character(len=zzIdLen),dimension(:),allocatable :: zzIDs
+    integer(kind=shortInt),dimension(:),allocatable  :: startLine
+    character(len=pathLen),dimension(:),allocatable :: isoPath
+
+
+  end subroutine readIsotopes
+
 
   subroutine createMatArrays(self,numMat,maxIso)
     class(ByIsoNoMT_Data), intent(inout)  :: self

@@ -7,12 +7,14 @@ module particle_class
   private
 
   type, public :: particle
+  !! Type that describes a particle. Supports both Continious Energy(CE) and Multi-Group (MG) data
+  !! but crashes if query is made for CE value of energy for MG particle and vice versa.
     private
-    real(kind=defReal),dimension(3) :: r         ! Particle Position
-    real(kind=defReal),dimension(3) :: dir       ! Particle Direction
-    real(kind=defReal)              :: E         ! Particle Energy
-    integer(kind=shortInt)          :: G         ! Particle Energy Group
-    real(kind=defReal)              :: w         ! Particle Weight
+    real(kind=defReal),dimension(3) :: r         !! Particle Position
+    real(kind=defReal),dimension(3) :: dir       !! Particle Direction
+    real(kind=defReal)              :: E         !! Particle Energy
+    integer(kind=shortInt)          :: G         !! Particle Energy Group
+    real(kind=defReal)              :: w         !! Particle Weight
 
     integer(kind=shortInt)          :: CurrentCellIndex
     integer(kind=shortInt)          :: CurrentMaterialIndex
