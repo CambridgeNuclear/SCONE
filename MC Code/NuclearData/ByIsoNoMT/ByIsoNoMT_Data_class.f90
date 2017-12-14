@@ -25,6 +25,7 @@ module ByIsoNoMT_Data_class
     procedure,private :: readMaterials
     procedure,private :: createIsotopeList
     procedure,private :: assignIsoIndices
+    procedure,private :: readIsotopes
 
   end type byIsoNoMT_Data
 
@@ -38,7 +39,8 @@ contains
 
     call self % readMaterials(matInput)
     call self % createIsotopeList()
-    call self % assignIsoIndices
+    call self % assignIsoIndices()
+    call self % readIsotopes(isotopeLib)
 
   end subroutine readFrom
 
@@ -113,7 +115,7 @@ contains
 
   subroutine createIsotopeList(self)
     class(byIsoNoMT_Data),intent(inout)              :: self
-    integer(kind=shortInt)                           :: maxIsoNames
+    integer(shortInt)                           :: maxIsoNames
     character(len=zzIdLen),dimension(:),allocatable  :: withRepetition
     integer(kind=shortInt)                           :: i,j
 
@@ -146,17 +148,50 @@ contains
     end do
   end subroutine
 
-  subroutine readIsotopes(self,isoLib)
-    class(byIsoNoMT_Data),intent(inout) :: self
-    character(len=*),intent(in)    :: isoLib
-
-    character(len=zzIdLen),dimension(:),allocatable :: zzIDs
+  subroutine readIsotopes(self,libraryPath)
+    class(byIsoNoMT_Data), intent(inout)             :: self
+    character(len=*),intent(in)                      :: libraryPath
+    integer(kind=shortInt),parameter                 :: library=78
+    character(len=99)                                :: readMsg
+    character(len=zzIdLen),dimension(:),allocatable  :: zzIDs
     integer(kind=shortInt),dimension(:),allocatable  :: startLine
-    character(len=pathLen),dimension(:),allocatable :: isoPath
+    character(len=pathLen),dimension(:),allocatable  :: isoPath
+    integer(kind=shortInt)                           :: i, j, readStat
+    integer(kind=shortInt)                           :: libLen
 
+    call openToRead(library,libraryPath)
+
+    ! Find length of isotope library
+    libLen=0
+    do while (readStat /= -1)
+      read(unit = library, fmt=*,iostat=readStat,iomsg = readMsg)
+      libLen = libLen + 1
+    end do
+    rewind(library)
+
+    ! Allocate and read library
+    allocate(zzIDs(libLen))
+    allocate(startLine(libLen))
+    allocate(isoPath(libLen))
+
+    do i=1,libLen
+      read(library,"(A10 I12 A100)" ) zzIds(i), startLine(i), isoPath(i)
+    end do
+
+    ! Read Isotope Data
+    do i=1,size(self % isoNames)
+      j = linSearch(zzIds,self % isoNames(i))
+      if (j == -1) then
+        call fatalError('readIsotopes (byIsoNoMT_Data_class.f90)', &
+                        'Isotope ' // self % isoNames(i) //' was not found')
+      end if
+      print *, zzIds(j), startLine(j), isoPath(j) ! Later will call isotopeACE to initialise
+    end do
+
+
+    close(library)
 
   end subroutine readIsotopes
-
 
   subroutine createMatArrays(self,numMat,maxIso)
     class(ByIsoNoMT_Data), intent(inout)  :: self
