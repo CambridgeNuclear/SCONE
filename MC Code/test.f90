@@ -11,16 +11,16 @@ program test
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
   type(ByIsoNoMT_Data)  :: CEdata
   character(len=pathLen)      :: matInput="./testInput"
-  character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
+  character(len=pathLen)      :: isoInput="C:\cygwin64\home\MikolajAdamKowalski\myACE\JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
-  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/92238JF311.ace"
+  character(len=pathLen)    :: acePath = "C:\cygwin64\home\MikolajAdamKowalski\myACE\acedata\92238JF311.ace"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
 
 
-  C=[1,2,3,4,5,6,7,8,9,10]
-  print *, C(3:5)
+  !C=[1,2,3,4,5,6,7,8,9,10]
+  !print *, C(3:5)
 
   call CEdata % readFrom(matInput,isoInput)
   call CEdata % print()

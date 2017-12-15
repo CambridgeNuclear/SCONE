@@ -9,14 +9,14 @@ module ByIsoNoMT_Data_class
   type, public :: byIsoNoMT_Data
     private
     ! Material Data
-    character(len=matNameLen),dimension(:),allocatable :: matNames
-    integer(kind=shortInt),dimension(:),allocatable    :: matNumIso
-    integer(kind=shortInt),dimension(:,:),allocatable  :: matIsoIdx
-    character(len=ZZidLen),dimension(:,:),allocatable  :: matIsoNames
-    real(kind=defReal),dimension(:,:),allocatable      :: matIsoDens
-    real(kind=defReal),dimension(:),allocatable        :: matTemp
+    character(matNameLen),dimension(:),allocatable :: matNames
+    integer(shortInt),dimension(:),allocatable     :: matNumIso
+    integer(shortInt),dimension(:,:),allocatable   :: matIsoIdx
+    character(ZZidLen),dimension(:,:),allocatable  :: matIsoNames
+    real(defReal),dimension(:,:),allocatable       :: matIsoDens
+    real(defReal),dimension(:),allocatable         :: matTemp
     ! Isotope Data
-    character(len=zzIdLen),dimension(:),allocatable    :: isoNames
+    character(zzIdLen),dimension(:),allocatable    :: isoNames
   contains
     procedure :: readFrom
     procedure :: print
@@ -34,8 +34,8 @@ contains
   subroutine readFrom(self,matInput,isotopeLib)
   !! Reads materials and isotopes from provided material and ACE library input files
     class(byIsoNoMT_Data), intent(inout) :: self
-    character(len=*), intent(in)         ::  matInput
-    character(len=*), intent(in)         ::  isotopeLib
+    character(*), intent(in)             ::  matInput
+    character(*), intent(in)             ::  isotopeLib
 
     call self % readMaterials(matInput)
     call self % createIsotopeList()
@@ -47,17 +47,17 @@ contains
 
   subroutine readMaterials(self, inputFile)
     class(byIsoNoMT_Data), intent(inout) :: self
-    character(len=*), intent(in)         :: inputFile
+    character(*), intent(in)         :: inputFile
 
-    integer(kind=shortInt),parameter     :: input=66
-    character(len=99),parameter          :: here='readFrom in ByIsoNoMT_Data_class.f03'
-    character(len=99)                    :: readMsg
+    integer(shortInt),parameter      :: input=66
+    character(99),parameter          :: here='readFrom in ByIsoNoMT_Data_class.f03'
+    character(99)                    :: readMsg
 
-    character(len=matNameLen)            :: matName
-    character(len=ZZidLen)               :: ZZid
-    integer(kind=shortInt)               :: numMat, numIso, maxIso
-    real(kind=defReal)                   :: temp, numDen
-    integer(kind=shortInt)               :: i, j, readStat
+    character(matNameLen)            :: matName
+    character(ZZidLen)               :: ZZid
+    integer(shortInt)                :: numMat, numIso, maxIso
+    real(defReal)                    :: temp, numDen
+    integer(shortInt)                :: i, j, readStat
 
     call openToRead(Input,InputFile)
 
@@ -114,10 +114,10 @@ contains
   end subroutine readMaterials
 
   subroutine createIsotopeList(self)
-    class(byIsoNoMT_Data),intent(inout)              :: self
-    integer(shortInt)                           :: maxIsoNames
-    character(len=zzIdLen),dimension(:),allocatable  :: withRepetition
-    integer(kind=shortInt)                           :: i,j
+    class(byIsoNoMT_Data),intent(inout)           :: self
+    integer(shortInt)                             :: maxIsoNames
+    character(zzIdLen),dimension(:),allocatable   :: withRepetition
+    integer(shortInt)                             :: i,j
 
     maxIsoNames=sum(self % matNumIso)
 
@@ -134,8 +134,8 @@ contains
   end subroutine
 
   subroutine assignIsoIndices(self)
-    class(byIsoNoMT_Data),intent(inout)       :: self
-    integer(kind=shortInt)                    :: i,j
+    class(byIsoNoMT_Data),intent(inout)  :: self
+    integer(shortInt)                    :: i,j
 
     do i = 1,size(self % matNames)
       do j = 1,self % matNumIso(i)
@@ -149,23 +149,24 @@ contains
   end subroutine
 
   subroutine readIsotopes(self,libraryPath)
-    class(byIsoNoMT_Data), intent(inout)             :: self
-    character(len=*),intent(in)                      :: libraryPath
-    integer(kind=shortInt),parameter                 :: library=78
-    character(len=99)                                :: readMsg
-    character(len=zzIdLen),dimension(:),allocatable  :: zzIDs
-    integer(kind=shortInt),dimension(:),allocatable  :: startLine
-    character(len=pathLen),dimension(:),allocatable  :: isoPath
-    integer(kind=shortInt)                           :: i, j, readStat
-    integer(kind=shortInt)                           :: libLen
+    class(byIsoNoMT_Data), intent(inout)         :: self
+    character(*),intent(in)                      :: libraryPath
+    integer(shortInt),parameter                  :: library=78
+    character(99)                                :: readMsg
+    character(zzIdLen),dimension(:),allocatable  :: zzIDs
+    integer(shortInt),dimension(:),allocatable   :: startLine
+    character(pathLen),dimension(:),allocatable  :: isoPath
+    integer(shortInt)                            :: i, j, readStat
+    integer(shortInt)                            :: libLen
 
     call openToRead(library,libraryPath)
 
     ! Find length of isotope library
     libLen=0
+
     do while (readStat /= -1)
       read(unit = library, fmt=*,iostat=readStat,iomsg = readMsg)
-      libLen = libLen + 1
+      if(readStat == 0) libLen = libLen + 1
     end do
     rewind(library)
 
@@ -195,7 +196,7 @@ contains
 
   subroutine createMatArrays(self,numMat,maxIso)
     class(ByIsoNoMT_Data), intent(inout)  :: self
-    integer(kind=shortInt),intent(in)     :: numMat, maxIso
+    integer(shortInt),intent(in)          :: numMat, maxIso
 
     allocate(self % matNames(numMat))
     allocate(self % matNumIso(numMat))
@@ -207,14 +208,13 @@ contains
   end subroutine createMatArrays
 
   subroutine readMaxNumIso(Input,maxIso)
-    !class(ByIsoNoMT_Data), intent(inout)  :: self
-    integer(kind=shortInt),intent(in)     :: Input
-    integer(kind=shortInt),intent(out)    :: maxIso
-    character(len=99),parameter           :: Here='readMaxNumIso in ByIsoNoMT_Data_class.f03'
-    character(len=99)                     :: readMsg
-    integer(kind=shortInt)                :: numMat, numIso, readStat, i, j
-    character(len=3)                      :: dummyChar
-    real(kind=defReal)                    :: dummyReal
+    integer(shortInt),intent(in)      :: Input
+    integer(shortInt),intent(out)     :: maxIso
+    character(99),parameter           :: Here='readMaxNumIso in ByIsoNoMT_Data_class.f03'
+    character(99)                     :: readMsg
+    integer(shortInt)                 :: numMat, numIso, readStat, i, j
+    character(3)                      :: dummyChar
+    real(defReal)                     :: dummyReal
 
     rewind(Input)
 
@@ -241,8 +241,8 @@ contains
 
   subroutine print(self)
     class(byIsoNoMT_Data), intent(in) :: self
-    character(len=99)                 :: format
-    integer(kind=shortInt)            :: i
+    character(99)                     :: format
+    integer(shortInt)                 :: i
 
     print '(a)', 'Material Names:'
     print '(a)', self % matNames
