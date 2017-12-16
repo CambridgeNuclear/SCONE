@@ -10,6 +10,10 @@ module genericProcedures
     module procedure linSearch_Char
   end interface
 
+  interface findDuplicates
+    module procedure findDuplicates_Char
+  end interface
+
   contains
 
   function binarySearch(Array,Value) result(index)
@@ -119,6 +123,39 @@ module genericProcedures
     end if
   end function
 
+  function findDuplicates_Char(charArray) result(out)
+    !! Function that finds duplicates in array of characters. Returns array that contains repeted
+    !! element. Unfortunatly Fortran requires output character to have specified length. Length
+    !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
+    !! length greater then 100
+    character(len=*),dimension(:),intent(in)       :: charArray
+    character(len=100),dimension(:),allocatable    :: out
+    logical(kind=defBool),dimension(:),allocatable :: unique
+    integer(kind=shortInt)                         :: i,j
+
+    if (len(charArray) > len(out)) call fatalError('removeDuplicates_Char (genericProcedures.f90)',&
+                                                   'Maximum length of input character is 100 ')
+    if (size(charArray) == 1) then
+      out = charArray
+    else
+      allocate(unique(size(charArray)))
+      unique = .true.
+      ! For every element search if it matches any previous element. Change uniqe to false if it is
+      ! repeted.
+        do i = 1,size(charArray)
+          search: &
+          do j = 1, i-1
+            if( trim(charArray(i)) == trim(charArray(j)) ) then
+              unique(i) = .false.
+              exit search
+            end if
+          end do search
+        end do
+        ! Select elements from charArray for which unique == .true.
+        out = pack(charArray, .not.unique)
+        out = removeDuplicates(out)
+    end if
+  end function
 
   function linSearch_Char(charArray,target) result(index)
     !! Searches linearly for the occurance of target in charArray. Returns index of -1 if target
@@ -134,4 +171,23 @@ module genericProcedures
     index = -1
   end function
 
+  function arrayConcat(charArray) result(out)
+    !! Concatenate strings from an array into a single long character. Trims elements of char Array
+    !! and ads on blank between them for separation.
+    character(*),dimension(:),intent(in)       :: charArray
+    character(:),allocatable                   :: out
+    integer(shortInt)                          :: trimLen , i
+
+    ! Find total trim length of elements of charArray
+    trimLen=0
+    do i=1,size(charArray)
+      trimLen = trimLen + len(trim(charArray(i)))
+    end do
+
+    allocate(character(trimLen+size(charArray)):: out)
+    out = ''
+    do i=1,size(charArray)
+      out = out // trim(charArray(i)) // ' '
+    end do
+  end function arrayConcat
 end module genericProcedures

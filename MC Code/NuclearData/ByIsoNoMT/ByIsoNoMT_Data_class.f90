@@ -1,7 +1,8 @@
 module ByIsoNoMT_Data_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linSearch
+  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linSearch, &
+                                findDuplicates, arrayConcat
 
   implicit none
   private
@@ -185,6 +186,13 @@ contains
     do i=1,libLen
       read(library,"(A10 I12 A100)" ) zzIds(i), startLine(i), isoPath(i)
     end do
+
+    ! Check library for repeted zzIDs
+    if (size(zzIds) /= size(removeDuplicates(zzIds))) then
+      call fatalError('readIsotopes (byIsoNoMT_Data_class.f90)', &
+                      'Duplicate zzIds found in ACE library file: ' //&
+                      arrayConcat(findDuplicates(zzIds)))
+    end if
 
     ! Read Isotope Data
     do i=1,size(self % isoNames)
