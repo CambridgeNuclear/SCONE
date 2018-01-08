@@ -4,9 +4,9 @@ program test
   use ByIsoNoMT_Data_class, only : byIsoNoMT_Data
   use aceNoMT_class
 
-  use releseLawENDF_class
-  use constantRelese_class, only : constantRelese
-  use polynomialRelese_class, only : polynomialRelese
+  use releaseLawENDF_class
+  use constantRelease_class, only : constantRelease
+  use polynomialRelease_class, only : polynomialRelease
 
   implicit none
   integer(kind=shortInt) :: i
@@ -15,15 +15,15 @@ program test
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
   type(ByIsoNoMT_Data)  :: CEdata
   character(len=pathLen)      :: matInput="./testInput"
-  character(len=pathLen)      :: isoInput="C:\cygwin64\home\MikolajAdamKowalski\myACE\JEF311.aceXS"
+  character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
-  character(len=pathLen)    :: acePath = "C:\cygwin64\home\MikolajAdamKowalski\myACE\acedata\92238JF311.ace"
+  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/92238JF311.ace"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl
 
-  class(releseLawENDF),pointer  :: relese
+  class(releaseLawENDF),pointer  :: release
 
   real, pointer :: p1,p2,p3
 
@@ -36,12 +36,12 @@ program test
 
   call isotope % init(acePath,firstLine)
 
-  relese => constantRelese(3.9_defReal)
-  print *, relese % releseAt(2.0_defReal)
-  deallocate(relese)
-  relese => polynomialRelese([0.0_8,0.0_8,0.0_8,1.0_8])
+  release => constantRelease(3.9_defReal)
+  print *, release % releaseAt(2.0_defReal)
+  deallocate(release)
+  release => polynomialRelease([-4.0_8,0.0_8,0.0_8,1.0_8])
 
-  print *, relese % releseAt(2.0_defReal),relese % releseAt(3.0_defReal),relese % releseAt(4.0_defReal)
+  print *, release % releaseAt(2.0_defReal),release % releaseAt(3.0_defReal),release % releaseAt(4.0_defReal)
 
 
 

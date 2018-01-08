@@ -6,4 +6,4 @@ add_library( NuclearData nuclearData_class.f90
  
 
 # Define dependencies of the library 
-target_link_libraries(NuclearData SharedModules RandomNumbers ParticleObjects LawsENDF)
+target_link_libraries(NuclearData SharedModules RandomNumbers ParticleObjects emissionENDF)
