@@ -7,7 +7,7 @@ module constantRelease_class
   private
 
   interface constantRelease
-   module procedure new_constantrelease
+   module procedure new_constantRelease
   end interface
 
   type, public, extends(releaseLawENDF) :: constantRelease
@@ -21,25 +21,25 @@ module constantRelease_class
 contains
 
   subroutine init(self,release)
-    class(constantrelease), intent(inout) :: self
+    class(constantRelease), intent(inout) :: self
     real(defReal), intent(in)            :: release
 
-    self % secondaryrelease = release
+    self % secondaryRelease = release
 
   end subroutine init
 
   function releaseAt(self,energy) result(release)
-    class(constantrelease), intent(in) :: self
+    class(constantRelease), intent(in) :: self
     real(defReal), intent(in)         :: energy
     real(defReal)                     :: release
 
-    release = self % secondaryrelease
+    release = self % secondaryRelease
 
   end function releaseAt
 
   function new_constantRelease(release) result(newConstantRelease)
     real(defReal), intent(in)           :: release
-    type(constantrelease),pointer        :: newConstantRelease
+    type(constantRelease),pointer        :: newConstantRelease
 
     allocate(newConstantRelease)
     call newConstantRelease % init(release)

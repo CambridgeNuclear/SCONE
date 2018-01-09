@@ -6,23 +6,23 @@ module polynomialrelease_class
   implicit none
   private
 
-  interface polynomialrelease
-    module procedure new_polynomialrelease
+  interface polynomialRelease
+    module procedure new_polynomialRelease
   end interface
 
-  type, public,extends(releaseLawENDF) :: polynomialrelease
+  type, public,extends(releaseLawENDF) :: polynomialRelease
       private
       real(defReal),dimension(:),allocatable :: coefficients  !! Polynomial coefficients [a_0,a_1,...]
     contains
       procedure :: init
       procedure :: releaseAt
-  end type polynomialrelease
+  end type polynomialRelease
 
 contains
 
   subroutine init(self,coefficients)
-    class(polynomialrelease), intent(inout)  :: self
-    real(defReal),dimension(:),intent(in)   :: coefficients
+    class(polynomialRelease), intent(inout)  :: self
+    real(defReal),dimension(:),intent(in)    :: coefficients
 
     if (allocated(self % coefficients)) deallocate(self % coefficients)
 
@@ -30,7 +30,7 @@ contains
   end subroutine
     
   pure function releaseAt(self,energy) result(release)
-    class(polynomialrelease), intent(in)  :: self
+    class(polynomialRelease), intent(in)  :: self
     real(defReal), intent(in)            :: energy
     real(defReal)                        :: release
     real(defReal)                        :: x
@@ -46,14 +46,14 @@ contains
   end function releaseAt
 
 
-  function new_polynomialrelease(coefficients) result (newPolynomialrelease)
+  function new_polynomialRelease(coefficients) result (newPolynomialRelease)
     real(defReal),dimension(:),intent(in)   :: coefficients
-    type(polynomialrelease), pointer         :: newPolynomialrelease
+    type(polynomialRelease), pointer         :: newPolynomialRelease
 
-    allocate(newPolynomialrelease)
-    call newPolynomialrelease % init(coefficients)
+    allocate(newPolynomialRelease)
+    call newPolynomialRelease % init(coefficients)
 
-  end function new_polynomialrelease
+  end function new_polynomialRelease
 
 
-end module polynomialrelease_class
+end module polynomialRelease_class

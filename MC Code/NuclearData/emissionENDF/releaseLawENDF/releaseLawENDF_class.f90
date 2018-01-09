@@ -18,9 +18,9 @@ abstract interface
   function releaseAt(self,energy) result(release)
     import :: defReal,&
               releaseLawENDF
-    class(releaseLawENDF), intent(in)  ::  self
-    real(defReal), intent(in)         :: energy
-    real(defReal)                     :: release
+    class(releaseLawENDF), intent(in)  :: self
+    real(defReal), intent(in)          :: energy
+    real(defReal)                      :: release
   end function releaseAt
 
 end interface

@@ -1,15 +1,18 @@
 program test
 
   use numPrecision
+  use genericProcedures
   use ByIsoNoMT_Data_class, only : byIsoNoMT_Data
   use aceNoMT_class
 
   use releaseLawENDF_class
   use constantRelease_class, only : constantRelease
   use polynomialRelease_class, only : polynomialRelease
+  use tabularRelease_class, only : tabularRelease
 
   implicit none
   integer(kind=shortInt) :: i
+  integer(longInt)       :: longI, longI2, rate
   integer(kind=shortInt),dimension(99),target :: A
   integer(kind=shortInt),dimension(:),pointer :: B
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
@@ -22,6 +25,7 @@ program test
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl
+  real(defReal),dimension(:),allocatable :: R
 
   class(releaseLawENDF),pointer  :: release
 
@@ -36,13 +40,17 @@ program test
 
   call isotope % init(acePath,firstLine)
 
-  release => constantRelease(3.9_defReal)
-  print *, release % releaseAt(2.0_defReal)
-  deallocate(release)
-  release => polynomialRelease([-4.0_8,0.0_8,0.0_8,1.0_8])
+  R= [1.1_8, 2.3_8, 3.6_8, 9.6_8, 11.9_8]
 
-  print *, release % releaseAt(2.0_defReal),release % releaseAt(3.0_defReal),release % releaseAt(4.0_defReal)
+  C = [(2*i,i=1,10)]
 
-
-
+  !print *, linearFloorIdx(C,21)
+!  call system_clock(count_rate=rate)
+!  call system_clock(count=longI)
+!  do i=1,1
+!    kl= interpolate(0.00001_8, 1.0_8, 0.01_8, 10.0_8, 0.5_8)
+!  end do
+!  call system_clock(count=longI2)
+!  print *, 'end', (longI2-longI)/real(rate)
 end program test
+

@@ -1,7 +1,7 @@
 module ByIsoNoMT_Data_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linSearch, &
+  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linFind, &
                                 findDuplicates, arrayConcat
 
   implicit none
@@ -140,7 +140,7 @@ contains
 
     do i = 1,size(self % matNames)
       do j = 1,self % matNumIso(i)
-        self % matIsoIdx(i,j) = linSearch(self % isoNames, self % matIsoNames(i,j))
+        self % matIsoIdx(i,j) = linFind(self % isoNames, self % matIsoNames(i,j))
         if (self % matIsoIdx(i,j) == -1 ) then
           call fatalError('assignIsoIndices (byIsoNoMT_class.f90)', &
                           'Isotope ' // self % matIsoNames(i,j) //' was not found')
@@ -196,7 +196,7 @@ contains
 
     ! Read Isotope Data
     do i=1,size(self % isoNames)
-      j = linSearch(zzIds,self % isoNames(i))
+      j = linFind(zzIds,self % isoNames(i))
       if (j == -1) then
         call fatalError('readIsotopes (byIsoNoMT_Data_class.f90)', &
                         'Isotope ' // self % isoNames(i) //' was not found')

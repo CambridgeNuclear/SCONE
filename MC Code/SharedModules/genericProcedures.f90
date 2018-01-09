@@ -1,59 +1,122 @@
 module genericProcedures
+
   use numPrecision
+  use endfConstants
+
   implicit none
 
   interface removeDuplicates
     module procedure removeDuplicates_Char
   end interface removeDuplicates
 
-  interface linSearch
-    module procedure linSearch_Char
+  interface linFind
+    module procedure linFind_Char
   end interface
 
   interface findDuplicates
     module procedure findDuplicates_Char
   end interface
 
+  interface binaryFloorIdx
+    module procedure binaryFloorIdx_Real
+  end interface
+
+  interface linearFloorIdx
+    module procedure linearFloorIdx_shortInt
+  end interface
+
+  interface endfInterpolate
+    module procedure RealReal_endf_interpolate
+  end interface
+
+  interface interpolate
+    module procedure RealReal_linlin_elemental_interpolate
+  end interface
+
   contains
 
-  function binarySearch(Array,Value) result(index)
-    real(kind=defReal),dimension(:),intent(in) :: Array
-    real(kind=defReal),intent(in)              :: Value
-    integer(kind=shortInt)                     :: index
-    integer(kind=shortInt)                     :: Bottom, Top, i
+  function binaryFloorIdx_Real(array,value) result(idx)
+    !! Performes binary search of an real sorted array and returns index of the largest element
+    !! smaller-or-equal to the requested value. Returns error for elemets smaller and larger then
+    !! the bounds of the array. For the value equal to the smallest element it returns 1 and for
+    !! the value equal to the largest element it returns size(array).
+    real(defReal),dimension(:),intent(in) :: array
+    real(defReal),intent(in)              :: value
+    integer(shortInt)                     :: idx
+    integer(shortInt)                     :: bottom, top, i
+    character(100),parameter              :: Here='binaryFloorIdx_Real (genericProcedures.f90)'
 
     ! Find Top and Bottom Index Array
-    Bottom = 1
-    Top = size(Array)
+    bottom = 1
+    top = size(array)
 
-    ! Perform Search
-    Search: do i=1,10000
-      if(Bottom +1 >= Top) then
-        index = Bottom
+    ! Check if the element is in array bounds
+    if ( value <= array(bottom)) then
+      if (value == array(bottom)) then ! Catch special case where value is equal to lower bound
+        idx = bottom
+        return
+      else
+        call fatalError(Here,'Requested Value is smaller than bottom element of array')
+      end if
+    else if ( value >= array(top)) then
+      if (value == array(top)) then     ! Catch special case where value is equal to upper bound
+        idx = top
+        return
+      else
+        call fatalError(Here,'Requested Value is larger then top element of array')
+      end if
+    end if
+
+    ! Perform search
+
+    do i = 1,70
+      !Calculate mid point
+      idx = (top + bottom)/2
+
+      ! Termination condition
+      if (bottom == idx) return
+
+      if (array(idx) < value ) then
+        bottom = idx
+      else if (array(idx) > value) then
+        top = idx
+      else ! When array(idx) == value
         return
       end if
+    end do
 
-      index = (Bottom + Top)/2;
+    call fatalError(Here, 'Search loop failed to terminate after 70 iterations')
 
-      if ( Array(index) <= Value ) then
-        Bottom = index
-      else
-        Top = index
-      end if
-    end do Search
+  end function binaryFloorIdx_Real
 
-    ! Give Error if search failed to end
-    call fatalError('Binary Search Function (genericProcedures.f03)',&
-                    'Search loop failed to terminate after 10000 iterations')
+  function linearFloorIdx_shortInt(array,value) result(idx)
+    !! Performes linear search of an integer sorted array and returns index of the largest element,
+    !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
+    !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
+    !! for the value equal to the largest element it returns size(array)
+    integer(shortInt),dimension(:),intent(in) :: Array
+    integer(shortInt),intent(in)              :: Value
+    integer(shortInt)                         :: idx
+    character(100),parameter                  :: Here='linearFloorIdx_Int (genericProcedures.f90)'
 
-  end function binarySearch
+    ! Check if the value is above the bounds of an array
+    if ( Value > array(size(array))) call fatalError(Here,'Value is above upper bound of the array')
+
+    do idx=size(array),1,-1
+      if ( array(idx) <= value ) return
+    end do
+
+    call fatalError(Here,'Value is below lower bound of the array')
+
+  end function linearFloorIdx_shortInt
+
 
 
   subroutine fatalError(Where,Why)
-    character(len=*), intent(in)    :: Why, Where
-    character(len=100)              :: Line, locWhy, locWhere
-    character(len=20)               :: format
-    integer(kind=shortInt)           :: i
+    character(*), intent(in)    :: Why, Where
+    character(100)              :: Line, locWhy, locWhere
+    character(20)               :: format
+    integer(shortInt)           :: i
 
     Line = repeat('*',100)
     format = '(A100)'
@@ -157,7 +220,7 @@ module genericProcedures
     end if
   end function
 
-  function linSearch_Char(charArray,target) result(index)
+  function linFind_Char(charArray,target) result(index)
     !! Searches linearly for the occurance of target in charArray. Returns index of -1 if target
     !! is not found. The index assumes that array begins at 1 (i.e. charArray(1:N)). If array begins
     !! with diffrent index (i.e. A(-5:N))the returned value needs to be approperiatly translated.
@@ -190,4 +253,42 @@ module genericProcedures
       out = out // trim(charArray(i)) // ' '
     end do
   end function arrayConcat
+
+  elemental function RealReal_linlin_elemental_interpolate(xMin,xMax,yMin,yMax,x) result(y)
+    real(defReal), intent(in) :: xMin, xMax, yMin, yMax, x
+    real(defReal)             :: y
+    real(defReal)             :: interFactor
+
+    interFactor = (x-xMin)/(xMax-xMin)
+    y = yMax * interFactor + (1-interFactor)*yMin
+  end function RealReal_linlin_elemental_interpolate
+
+  function RealReal_endf_interpolate(xMin,xMax,yMin,yMax,x,endfNum) result(y)
+    real(defReal), intent(in)     :: xMin, xMax, yMin, yMax, x
+    integer(shortInt), intent(in) :: endfNum
+    real(defReal)                 :: y
+    character(100),parameter      :: Here='RealReal_endf_interpolate (genericProcedures.f90)'
+
+    select case (endfNum) ! Naming Convention for ENDF interpolation (inY-inX) i.e. log-lin => logarithmic in y; linear in x
+      case (histogramInterpolation)
+        y = yMin
+      case (linLinInterpolation)
+        y = interpolate(xMin,xMax,yMin,yMax,x)
+      case (linLogInterpolation)
+        y = interpolate(log(xMin),log(xMax),yMin,yMax,log(x))
+      case (logLinInterpolation)
+        y = interpolate(xMin,xMax,log(yMin),log(yMax),x)
+        y = exp(y)
+      case (loglogInterpolation)
+        y = interpolate(log(xMin),log(xMax),log(yMin),log(yMax),log(x))
+        y = exp(y)
+      case (chargedParticleInterpolation)
+        ! Not implemented
+        call fatalError(Here, 'ENDF interpolation law for charged Particles is not implemented')
+      case default
+        call fatalError(Here, 'Unknown ENDF interpolation number')
+    end select
+
+  end function RealReal_endf_interpolate
+
 end module genericProcedures

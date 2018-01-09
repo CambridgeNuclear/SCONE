@@ -1,29 +1,121 @@
-module tabularrelease_class
+module tabularRelease_class
 
   use numPrecision
+  use genericProcedures, only : binaryFloorIdx, linearFloorIdx, endfInterpolate, interpolate
+  use releaseLawENDF_class, only : releaseLawENDF
+
 
   implicit none
   private
 
-  interface tabularrelease
-    module procedure new_tabularrelease
+  interface tabularRelease
+    module procedure newSimple_tabularRelease
+    module procedure newInter_tabularRelease
   end interface
 
 
-  type, public :: tabularrelease
+  type, public,extends(releaseLawENDF) :: tabularRelease
     private
+    real(defReal), dimension(:),allocatable    :: energyPoints  !! Incoming energy grid
+    real(defReal), dimension(:),allocatable    :: releaseValues !! Secondary average release points
+
+    logical(defBool)                           :: interFlag     !! Flag to indicate presence of multiple interpolation regions
+
+    integer(shortInt),dimension(:),allocatable :: interBound    !! Boundaries of ENDF interpolation regions
+    integer(shortInt),dimension(:),allocatable :: interENDF     !! ENDF Interpolation NUmbers
 
   contains
-    procedure :: method_name      
-  end type tabularrelease
+    generic   :: init => initSimple, initInter
+    procedure :: releaseAt
+
+    procedure, private :: initSimple
+    procedure, private :: initInter
+  end type tabularRelease
 
 contains
 
-  function new_tabularrelease(data) result (new)
-    real(defReal), intent(in)        :: data
-    type(tabularrelease),pointer      :: new
+  subroutine initSimple(self, energyPoints, releaseValues)
+    class(tabularRelease), intent(out)    :: self
+    real(defReal),dimension(:),intent(in) :: energyPoints
+    real(defReal),dimension(:),intent(in) :: releaseValues
+
+    if ( allocated(self % energyPoints)) deallocate(self % energyPoints)
+    if ( allocated(self % releaseValues)) deallocate(self % releaseValues)
+
+    self % energyPoints = energyPoints
+    self % releaseValues = releaseValues
+    self % interFlag = .false.
+
+  end subroutine initSimple
+
+  subroutine initInter(self, energyPoints, releaseValues, interBound, interENDF)
+    class(tabularRelease), intent(out)        :: self
+    real(defReal),dimension(:),intent(in)     :: energyPoints
+    real(defReal),dimension(:),intent(in)     :: releaseValues
+    integer(shortInt),dimension(:),intent(in) :: interBound
+    integer(shortInt),dimension(:),intent(in) :: interENDF
 
 
-  end function new_tabularrelease
+    if ( allocated(self % energyPoints)) deallocate(self % energyPoints)
+    if ( allocated(self % releaseValues)) deallocate(self % releaseValues)
+    if ( allocated(self % interBound)) deallocate(self % interBound)
+    if ( allocated(self % interENDF)) deallocate(self % interENDF)
+
+    self % energyPoints = energyPoints
+    self % releaseValues = releaseValues
+
+    self % interFlag = .true.
+    self % interBound = interBound
+    self % interENDF = interENDF
+
+  end subroutine initInter
+
+  function releaseAt(self,energy) result(release)
+    class(tabularRelease), intent(in)  :: self
+    real(defReal), intent(in)          :: energy
+    real(defReal)                      :: release
+    integer(shortInt)                  :: bottomIdx
+    integer(shortInt)                  :: interIdx
+
+    bottomIdx = binaryFloorIdx(self % energyPoints, energy)
+    if (self % interFlag) then
+      interIdx = linearFloorIdx(self % interBound, bottomIdx)
+      release = endfInterpolate(self % energyPoints(bottomIdx)      , &
+                                self % energyPoints(bottomIdx + 1)  , &
+                                self % releaseValues(bottomIdx)     , &
+                                self % releaseValues(bottomIdx + 1) , &
+                                energy                              , &
+                                self % interENDF(interIdx)          )
+    else
+      release = interpolate(self % energyPoints(bottomIdx)      , &
+                            self % energyPoints(bottomIdx + 1)  , &
+                            self % releaseValues(bottomIdx)     , &
+                            self % releaseValues(bottomIdx + 1) , &
+                            energy                              )
+    endif
+  end function releaseAt
+
+  function newSimple_tabularRelease(energyPoints, releaseValues) result (new)
+    real(defReal),dimension(:),intent(in) :: energyPoints
+    real(defReal),dimension(:),intent(in) :: releaseValues
+    type(tabularRelease),pointer          :: new
+
+    allocate(new)
+    call new % init(energyPoints, releaseValues)
+
+  end function newSimple_tabularRelease
     
-end module tabularrelease_class
+   function newInter_tabularRelease(energyPoints, releaseValues, interBound, interENDF) result (new)
+    real(defReal),dimension(:),intent(in)     :: energyPoints
+    real(defReal),dimension(:),intent(in)     :: releaseValues
+    integer(shortInt),dimension(:),intent(in) :: interBound
+    integer(shortInt),dimension(:),intent(in) :: interENDF
+    type(tabularRelease),pointer              :: new
+
+    allocate(new)
+    call new % init(energyPoints, releaseValues, interBound, interENDF)
+
+  end function newInter_tabularRelease
+
+
+end module tabularRelease_class
