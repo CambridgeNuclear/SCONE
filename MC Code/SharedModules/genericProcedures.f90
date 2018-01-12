@@ -17,12 +17,8 @@ module genericProcedures
     module procedure findDuplicates_Char
   end interface
 
-  interface binaryFloorIdx
-    module procedure binaryFloorIdx_Real
-  end interface
-
-  interface linearFloorIdx
-    module procedure linearFloorIdx_shortInt
+  interface binarySearch
+    module procedure binaryFloorIdxClosed_Real
   end interface
 
   interface endfInterpolate
@@ -33,41 +29,33 @@ module genericProcedures
     module procedure RealReal_linlin_elemental_interpolate
   end interface
 
+  integer(shortInt), parameter :: valueOutsideArray = -1,&
+                                 tooManyIter       = -2
+
   contains
 
-  function binaryFloorIdx_Real(array,value) result(idx)
+  pure function binaryFloorIdxClosed_Real(array,value) result(idx)
     !! Performes binary search of an real sorted array and returns index of the largest element
-    !! smaller-or-equal to the requested value. Returns error for elemets smaller and larger then
-    !! the bounds of the array. For the value equal to the smallest element it returns 1 and for
-    !! the value equal to the largest element it returns size(array).
+    !! smaller-or-equal to the requested value. For the value equalt to the largest element
+    !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
+    !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
+    !! paramether. Following errors can happen
+    !!   valueOutsideArray -> larger or smaller then array bounds
+    !!   tooManyIter       -> algorithm did not convarged in required number of iterations
     real(defReal),dimension(:),intent(in) :: array
     real(defReal),intent(in)              :: value
     integer(shortInt)                     :: idx
     integer(shortInt)                     :: bottom, top, i
-    character(100),parameter              :: Here='binaryFloorIdx_Real (genericProcedures.f90)'
 
     ! Find Top and Bottom Index Array
     bottom = 1
     top = size(array)
 
     ! Check if the element is in array bounds
-    if ( value <= array(bottom)) then
-      if (value == array(bottom)) then ! Catch special case where value is equal to lower bound
-        idx = bottom
-        return
-      else
-        call fatalError(Here,'Requested Value is smaller than bottom element of array')
-      end if
-    else if ( value >= array(top)) then
-      if (value == array(top)) then     ! Catch special case where value is equal to upper bound
-        idx = top
-        return
-      else
-        call fatalError(Here,'Requested Value is larger then top element of array')
-      end if
+    if ( value < array(bottom) .or. value >array(top)) then
+      idx = valueOutsideArray
+      return
     end if
-
-    ! Perform search
 
     do i = 1,70
       !Calculate mid point
@@ -76,31 +64,31 @@ module genericProcedures
       ! Termination condition
       if (bottom == idx) return
 
-      if (array(idx) < value ) then
+      ! Binary Step
+      if (array(idx) <= value ) then
         bottom = idx
-      else if (array(idx) > value) then
+      else
         top = idx
-      else ! When array(idx) == value
-        return
       end if
     end do
 
-    call fatalError(Here, 'Search loop failed to terminate after 70 iterations')
+    ! Failed to end in 70 steps
+    idx = tooManyIter
 
-  end function binaryFloorIdx_Real
+  end function binaryFloorIdxClosed_Real
 
-  function linearFloorIdx_shortInt(array,value) result(idx)
+  function linearFloorIdxClosed_shortInt(array,value) result(idx)
     !! Performes linear search of an integer sorted array and returns index of the largest element,
     !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
     !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
-    !! for the value equal to the largest element it returns size(array)
+    !! for the value equal to the largest element it returns an error.
     integer(shortInt),dimension(:),intent(in) :: Array
     integer(shortInt),intent(in)              :: Value
     integer(shortInt)                         :: idx
-    character(100),parameter                  :: Here='linearFloorIdx_Int (genericProcedures.f90)'
+    character(100),parameter                  :: Here='linearFloorIdxClosed_shortInt (genericProcedures.f90)'
 
     ! Check if the value is above the bounds of an array
-    if ( Value > array(size(array))) call fatalError(Here,'Value is above upper bound of the array')
+    if ( Value >= array(size(array))) call fatalError(Here,'Value is above upper bound of the array')
 
     do idx=size(array),1,-1
       if ( array(idx) <= value ) return
@@ -108,9 +96,48 @@ module genericProcedures
 
     call fatalError(Here,'Value is below lower bound of the array')
 
-  end function linearFloorIdx_shortInt
+  end function linearFloorIdxClosed_shortInt
 
+  pure function linearCeilingIdxOpen_shortInt(array,value) result(idx)
+    !! Performes linear search of an integer sorted array and returns index of the smallest element,
+    !! which is greater-or-equal to the requested value. Returns errors for elements larger than
+    !! the upper bound of the array. Returns 1 for values smaller or equal to the lower bound of the
+    !! array. Following errors can happen:
+    !!   valueOutsideArray -> larger then the upper bound of array
+    integer(shortInt),dimension(:),intent(in) :: Array
+    integer(shortInt),intent(in)              :: Value
+    integer(shortInt)                         :: idx
+    character(100),parameter                  :: Here='linearCeilingIdxOpen_shortInt (genericProcedures.f90)'
 
+    do idx=1,size(array)
+      if ( array(idx) >= value ) return
+    end do
+
+    ! Value is larger than the upper bound of the array
+    idx = valueOutsideArray
+
+  end function linearCeilingIdxOpen_shortInt
+
+  subroutine searchError(idx,Here)
+    !! Subroutine that checks whether there was an error during search and returns approperiate
+    !! message.
+    integer(shortInt),intent(in)  :: idx
+    character(*),intent(in)       :: Here
+
+    if (idx < 0) then
+
+      select case (idx)
+        case (valueOutsideArray)
+          call fatalError(Here,'The requested value was outide the array bounds')
+        case (tooManyIter)
+          call fatalError(Here,'Search did not terminate in hardcoded number of iterations')
+        case default
+          call fatalError(Here,'Search returned unknown error flag (negative index)')
+      end select
+
+    end if
+
+  end subroutine
 
   subroutine fatalError(Where,Why)
     character(*), intent(in)    :: Why, Where

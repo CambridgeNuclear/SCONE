@@ -28,6 +28,8 @@ program test
   real(defReal),dimension(:),allocatable :: R
 
   class(releaseLawENDF),pointer  :: release
+  real(defReal), dimension(10) :: energy, second
+  integer(shortInt), dimension(3) :: bounds, ENDF
 
   real, pointer :: p1,p2,p3
 
@@ -42,7 +44,34 @@ program test
 
   R= [1.1_8, 2.3_8, 3.6_8, 9.6_8, 11.9_8]
 
+  !print *, binaryFloorIdxC(R,1.1_8)
+
   C = [(2*i,i=1,10)]
+
+ ! print *, linearCeilIdxO(C,17)
+
+  !energy = [(real(i),i=1,20)]
+  !second = [(i*5.0,i=1,20)]
+  !bounds = [ 5, 10, 15, 20]
+  !ENDF = [2,2,2,2]
+
+  second = [1.0_8,1.5_8,2.0_8,1.5_8,1.7_8,2.5_8,2.3_8,2.0_8,2.1_8,1.5_8]
+  energy = [(real(i),i=1,10)]
+  bounds = [3,7,10]
+  ENDF = [1,2,1]
+  !energy(10)= energy(9)
+  energy(4) = energy(3)
+  energy(6) = energy(5)
+
+  release => tabularRelease(energy,second,bounds,ENDF)
+
+
+  do i=1,1000
+    kl = (9.999-1.0)/1000.0 * i + 1.0
+    print *, kl, release % releaseAt(kl)
+  end do
+
+  !print *, binarySearch(energy,1.0_8)
 
   !print *, linearFloorIdx(C,21)
 !  call system_clock(count_rate=rate)
