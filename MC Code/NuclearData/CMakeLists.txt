@@ -1,4 +1,5 @@
 add_subdirectory(emissionENDF)
+add_subdirectory(NuclearDataStructures) 
 # Define Files to compile 
 add_library( NuclearData nuclearData_class.f90 
                          ./ByIsoNoMT/ByIsoNoMT_Data_class.f90 

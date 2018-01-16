@@ -77,6 +77,31 @@ module genericProcedures
 
   end function binaryFloorIdxClosed_Real
 
+
+  pure function linearFloorIdxClosed_Real(array,value) result (idx)
+    !! Performes linear search of an real sorted array and returns index of the largest
+    !! element smaller-or-equal to the requested value. For the value equal to the largest element
+    !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
+    !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
+    !! paramether. Following errors can happen
+    !!   valueOutsideArray -> larger or smaller then array bounds
+    real(defReal),dimension(:),intent(in) :: array
+    real(defReal),intent(in)              :: value
+    integer(shortInt)                     :: idx
+    integer(shortInt)                     :: i
+
+    if (value > array(size(array)) .or. value < array(1)) then
+      idx = valueOutsideArray
+      return
+    end if
+
+    do idx = size(array)-1,1,-1
+      if( array(idx) <= value) return
+    end do
+
+  end function linearFloorIdxClosed_Real
+
+
   function linearFloorIdxClosed_shortInt(array,value) result(idx)
     !! Performes linear search of an integer sorted array and returns index of the largest element,
     !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
@@ -317,5 +342,7 @@ module genericProcedures
     end select
 
   end function RealReal_endf_interpolate
+
+
 
 end module genericProcedures

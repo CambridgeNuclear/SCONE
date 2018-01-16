@@ -14,9 +14,10 @@ add_subdirectory(NuclearData)
 
 # Add compilers flags
 if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
-  set(CMAKE_Fortran_FLAGS  "-std=f2003")
+  set(CMAKE_Fortran_FLAGS  "-std=f2008")
 endif()
 
 
 add_executable(test.out test.f90)
-target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData)
+target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF angleLawENDF
+                               NuclearDataStructures)

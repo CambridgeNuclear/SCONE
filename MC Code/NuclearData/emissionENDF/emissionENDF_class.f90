@@ -23,7 +23,7 @@ abstract interface
     import :: defReal, &
               emissionENDF, &
               RNG
-    class(emissionENDF), intent(in)  :: self
+    class(emissionENDF), intent(in)   :: self
     real(defReal), intent(inout)      :: angle
     real(defReal), intent(inout)      :: energy
     class(RNG), intent(inout)         :: rand

@@ -1,19 +1,32 @@
 module angleLawENDF_class
+
+  use numPrecision
+  use miuEndfPdf_class, only : miuEndfPdf_ptr
+
   implicit none
   private
 
-  type, public :: angleLawENDF_class
+  type,public :: angleLawENDF
+    !! Class to contain emission angle propabilities for secondary particles
       private
-      integer :: field_name
+      real(defReal),dimension(:),allocatable        :: energyGrid
+      type(miuEndfPdf_ptr),dimension(:),allocatable :: miuEndfPdfs
     contains
-      procedure :: method_name
-      final :: destructor
-  end type angleLawENDF_class
+      procedure :: init
+  end type angleLawENDF
 
 contains
 
-  subroutine method_name(self)
-      class(angleLawENDF_class), intent(in) :: self
+  subroutine init(self,energyGrid,miuEndfPdfs)
+    class(angleLawENDF),intent(inout)             :: self
+    real(defReal),dimension(:), intent(in)        :: energyGrid
+    type(miuEndfPdf_ptr),dimension(:), intent(in) :: miuEndfPdfs
+
+    if(allocated(self % energyGrid))  deallocate(self % energyGrid)
+    if(allocated(self % miuEndfPdfs)) deallocate(self % miuEndfPdfs)
+
+    self % energyGrid  = energyGrid
+    self % miuEndfPdfs = miuEndfPdfs
   end subroutine
     
 end module angleLawENDF_class

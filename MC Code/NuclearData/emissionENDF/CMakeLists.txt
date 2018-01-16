@@ -1,3 +1,4 @@
+add_subdirectory(angleLawENDF)
 # Define Files to compile 
 add_library( emissionENDF emissionENDF_class.f90
                           correlatedEmissionENDF_class.f90 
@@ -10,4 +11,4 @@ add_library( emissionENDF emissionENDF_class.f90
  
 
 # Define dependencies of the library 
-target_link_libraries(emissionENDF RandomNumbers ParticleObjects )
+target_link_libraries(emissionENDF RandomNumbers ParticleObjects NuclearDataStructures)
