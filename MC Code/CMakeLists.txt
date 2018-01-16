@@ -1,14 +1,18 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(directory_test)
 
+# Command to select Intel Fortran Compiler for testing purposes
+
+#set(CMAKE_ForttranCOMPILER /opt/intel/Compiler/11.1/046/bin/intel64/ifort)
+
 enable_language(Fortran) 
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 
 # Add compilers flags
-#if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
+if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   set(CMAKE_Fortran_FLAGS  "-std=f2008 ")
-#endif()
+endif()
 
 # include all directories with libraries 
 add_subdirectory(SharedModules)
