@@ -1,4 +1,5 @@
 add_subdirectory(angleLawENDF)
+add_subdirectory(energyLawENDF)
 # Define Files to compile 
 add_library( emissionENDF emissionENDF_class.f90
                           correlatedEmissionENDF_class.f90 

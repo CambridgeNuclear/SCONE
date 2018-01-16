@@ -1,19 +1,45 @@
-module energyLawENDF_class
+module energyLawEndf_class
+
+  use numPrecision
+  use RNG_class, only : RNG
+
   implicit none
   private
 
-  type, public :: energyLawENDF_class
+  type,abstract, public :: energyLawEndf
       private
-      integer :: field_name
     contains
-      procedure :: method_name
-      final :: destructor
-  end type energyLawENDF_class
+      procedure(sample),deferred        :: sample
+      procedure(probabilityOf),deferred :: probabilityOf
+  end type energyLawEndf
+
+
+  abstract interface
+
+    function sample(self,E_in,rand) result (E_out)
+      import :: energyLawEndf,&
+                defReal,      &
+                RNG
+      class(energyLawEndf), intent(in) :: self
+      real(defReal), intent(in)        :: E_in
+      class(RNG), intent(inout)        :: rand
+      real(defReal)                    :: E_out
+    end function
+
+
+    function probabilityOf(self,E_out,E_in) result (prob)
+      import :: energyLawEndf,&
+                defReal
+      class(energyLawEndf), intent(in) :: self
+      real(defReal), intent(in)        :: E_out,E_in
+    end function
+
+
+  end interface
+
 
 contains
 
-  subroutine method_name(self)
-      class(energyLawENDF_class), intent(in) :: self
-  end subroutine
+
     
-end module energyLawENDF_class
+end module energyLawEndf_class

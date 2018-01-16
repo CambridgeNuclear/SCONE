@@ -18,6 +18,7 @@ program test
   use equiBin32Miu_class, only : equiBin32Miu
   use tabularMiu_class,   only : tabularMiu
   use tabularPdf_class, only : tabularPdf
+  use angleLawENDF_class, only : angleLawENDF
 
 
   implicit none
@@ -49,6 +50,7 @@ program test
 
   type(miuEndfPdf_ptr) :: myPtr, myPtr2
   type(tabularPdf) :: table
+  type(angleLawENDF) :: angle
 
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
@@ -65,12 +67,7 @@ program test
 
   !C = [(2*i,i=1,10)]
 
-  R = [(-1.0+2.0/32*i,i=0,32)]
 
-  R(29)=0.8
-
-  myPtr = equiBin32Miu(R)
-  myPtr2 = myPtr
 
   energy = [(real(i),i=1,20)]
   second = [(i*5.0,i=1,20)]
@@ -99,23 +96,31 @@ program test
 !  end do
 
 
-  !x = [(-1.0+2.0/10*i,i=0,10)]
-  !pdf = abs(x)
+  x = [(-1.0+2.0/10*i,i=0,10)]
+  pdf = abs(x)
 !
-  x = [ -1.0_8, 0.0_8, 1.0_8]
+!  x = [ -1.0_8, 0.0_8, 1.0_8]
 !  pdf = [ 1.0_8/3 ,2.0_8/3, 76876.0_8]
 
   !call table % init(x,pdf,0)
 
+
+  R = [(-1.0+2.0/32*i,i=0,32)]
+
+  myPtr = equiBin32Miu(R)
+  myPtr2 = tabularMiu(x,pdf,1)
+
+  call angle % init([0.0_8, 1.0_8],[myPtr, myPtr2])
+
  ! myPtr = tabularMiu(x,pdf,0)
 
 
- ! do i=0,4000
+  do i=0,2000
     !kl = 2.0/1000 * i - 1.0
      !eps = random % get()
-     !print *, myPtr % sample(random)
-    !print *, kl, myPtr % probabilityOf(kl)
-  !end do
+     print *, angle % sample(1.0_8,random)
+    !print *, kl, angle % probabilityOf(0.25_8,kl)
+  end do
 
 
 

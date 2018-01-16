@@ -68,12 +68,12 @@ contains
     endif
 
     ! Read Header information
-    read(aceFile,'(A10 F12.6 E12.0 1X A10)') self % zzId, &
-                                             self % atomWeight,&
-                                             self % temp, &
-                                             self % date
-    read(aceFile,'(A70 A10)') self % comment, &
-                              self % MATid
+    read(aceFile,'(A10, F12.6, E12.0, 1X, A10)') self % zzId, &
+                                                 self % atomWeight,&
+                                                 self % temp, &
+                                                 self % date
+    read(aceFile,'(A70, A10)') self % comment, &
+                               self % MATid
     ! Skip enteries for IZ(I) and AW(I) tabels -> they are legacy empty entery
     do i=1,4
       read(aceFile,*)

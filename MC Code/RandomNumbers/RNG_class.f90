@@ -18,7 +18,7 @@ contains
     class(RNG), intent(inout)          :: self
     real(kind=defReal)                 :: randomNumber
 
-    randomNumber = rand()
+    call random_number(randomNumber)
 
   end function
     

@@ -54,7 +54,7 @@ contains
 
     binIdx = linSearch(self % boundaries, miu)
     call searchError(binIdx,Here)
-    prob = 2.0 / (self % boundaries(binIdx) + self % boundaries(binIdx+1) )
+    prob = 1.0 / 32.0 / (self % boundaries(binIdx+1) - self % boundaries(binIdx) )
 
   end function probabilityOf
 
@@ -69,7 +69,7 @@ contains
 
     
   function new_equiBin32Miu(boundaries)
-    real(defReal),dimension(32), intent(in) :: boundaries
+    real(defReal),dimension(33), intent(in) :: boundaries
     type(equiBin32Miu),pointer              :: new_equiBin32Miu
 
     allocate(new_equiBin32Miu)

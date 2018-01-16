@@ -184,7 +184,7 @@ contains
     allocate(isoPath(libLen))
 
     do i=1,libLen
-      read(library,"(A10 I12 A100)" ) zzIds(i), startLine(i), isoPath(i)
+      read(library,"(A10, I12, A100)" ) zzIds(i), startLine(i), isoPath(i)
     end do
 
     ! Check library for repeted zzIDs
