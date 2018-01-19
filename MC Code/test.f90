@@ -17,8 +17,9 @@ program test
   use isotropicMiu_class, only : isotropicMiu
   use equiBin32Miu_class, only : equiBin32Miu
   use tabularMiu_class,   only : tabularMiu
-  use tabularPdf_class, only : tabularPdf
-  use angleLawENDF_class, only : angleLawENDF
+  use tabularPdf_class,    only : tabularPdf
+  use angleLawENDF_class,   only : angleLawENDF
+  use tabularAngle_class, only : tabularAngle
 
 
   implicit none
@@ -49,8 +50,8 @@ program test
   real, pointer :: p1,p2,p3
 
   type(miuEndfPdf_ptr) :: myPtr, myPtr2
-  type(tabularPdf) :: table
-  type(angleLawENDF) :: angle
+  type(tabularPdf)   :: table
+  class(angleLawENDF),pointer :: angle
 
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
@@ -110,7 +111,7 @@ program test
   myPtr = equiBin32Miu(R)
   myPtr2 = tabularMiu(x,pdf,1)
 
-  call angle % init([0.0_8, 1.0_8],[myPtr, myPtr2])
+  angle => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
 
  ! myPtr = tabularMiu(x,pdf,0)
 

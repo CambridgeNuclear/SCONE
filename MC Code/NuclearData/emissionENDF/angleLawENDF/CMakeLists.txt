@@ -1,5 +1,6 @@
 # Define Files to compile 
 add_library( angleLawENDF angleLawENDF_class.f90
+                          tabularAngle_class.f90
                           ./miuEndfPdf/miuEndfPdf_class.f90
                           ./miuEndfPdf/isotropicMiu_class.f90
                           ./miuEndfPdf/equiBin32Miu_class.f90

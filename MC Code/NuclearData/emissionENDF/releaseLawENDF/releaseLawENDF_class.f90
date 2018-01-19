@@ -13,17 +13,17 @@ module releaseLawENDF_class
       procedure(releaseAt),deferred :: releaseAt
   end type releaseLawENDF
 
-abstract interface
+  abstract interface
 
-  function releaseAt(self,energy) result(release)
-    import :: defReal,&
-              releaseLawENDF
-    class(releaseLawENDF), intent(in)  :: self
-    real(defReal), intent(in)          :: energy
-    real(defReal)                      :: release
-  end function releaseAt
+    function releaseAt(self,energy) result(release)
+      import :: defReal,&
+                releaseLawENDF
+      class(releaseLawENDF), intent(in)  :: self
+      real(defReal), intent(in)          :: energy
+      real(defReal)                      :: release
+    end function releaseAt
 
-end interface
+  end interface
 
 contains
     
