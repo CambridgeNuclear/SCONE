@@ -21,6 +21,10 @@ program test
   use angleLawENDF_class,   only : angleLawENDF
   use tabularAngle_class, only : tabularAngle
 
+  use tabularEnergy_class, only: tabularEnergy
+  use contTabularEnergy_class, only : contTabularEnergy
+  use energyLawENDF_class,     only : energyLawENDF
+
 
   implicit none
   integer(kind=shortInt) :: i
@@ -37,7 +41,7 @@ program test
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl, eps
-  real(defReal),dimension(:),allocatable :: R, x, pdf
+  real(defReal),dimension(:),allocatable :: R, x, pdf, x2, pdf2
   type(RNG) :: random
 
 
@@ -50,8 +54,11 @@ program test
   real, pointer :: p1,p2,p3
 
   type(miuEndfPdf_ptr) :: myPtr, myPtr2
-  type(tabularPdf)   :: table
+  type(tabularEnergy), pointer :: tabPtr
   class(angleLawENDF),pointer :: angle
+  class(energyLawENDF), pointer :: energyT
+  type(tabularEnergy),dimension(:),allocatable   :: tables
+  type(contTabularEnergy) :: yjfj
 
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
@@ -99,6 +106,9 @@ program test
 
   x = [(-1.0+2.0/10*i,i=0,10)]
   pdf = abs(x)
+
+  x2   = [ -1.0_8, 1.0_8]
+  pdf2 = [ 0.5_8, 0.5_8]
 !
 !  x = [ -1.0_8, 0.0_8, 1.0_8]
 !  pdf = [ 1.0_8/3 ,2.0_8/3, 76876.0_8]
@@ -108,19 +118,27 @@ program test
 
   R = [(-1.0+2.0/32*i,i=0,32)]
 
-  myPtr = equiBin32Miu(R)
+  !myPtr = equiBin32Miu(R)
+  myPtr  = tabularMiu(x2,pdf2,1)
   myPtr2 = tabularMiu(x,pdf,1)
 
-  angle => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
+  allocate(tables(2))
+  call tables(1) % init (x2,pdf2,1)
+  call tables(2) % init (x,pdf,1)
+
+
+  angle  => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
+  energyT => contTabularEnergy([0.0_8, 1.0_8],tables)
+
 
  ! myPtr = tabularMiu(x,pdf,0)
 
-
-  do i=0,2000
-    !kl = 2.0/1000 * i - 1.0
+  do i=0,1000
+    kl = 2.0/1000 * i - 1.0
      !eps = random % get()
-     print *, angle % sample(1.0_8,random)
-    !print *, kl, angle % probabilityOf(0.25_8,kl)
+
+     print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,1.0_8)
+
   end do
 
 

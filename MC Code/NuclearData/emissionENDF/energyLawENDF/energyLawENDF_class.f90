@@ -6,12 +6,12 @@ module energyLawEndf_class
   implicit none
   private
 
-  type,abstract, public :: energyLawEndf
+  type,abstract, public :: energyLawENDF
       private
     contains
       procedure(sample),deferred        :: sample
       procedure(probabilityOf),deferred :: probabilityOf
-  end type energyLawEndf
+  end type energyLawENDF
 
 
   abstract interface
@@ -32,6 +32,7 @@ module energyLawEndf_class
                 defReal
       class(energyLawEndf), intent(in) :: self
       real(defReal), intent(in)        :: E_out,E_in
+      real(defReal)                    :: prob
     end function
 
 

@@ -1,7 +1,7 @@
 module tabularAngle_class
 
   use numPrecision
-  use genericProcedures,  only : binarySearch, searchError, interpolate
+  use genericProcedures,  only : binarySearch, searchError, interpolate, fatalError
   use miuEndfPdf_class,   only : miuEndfPdf_ptr
   use RNG_class,          only : RNG
   use angleLawENDF_class, only : angleLawENDF
@@ -80,6 +80,11 @@ contains
     class(tabularAngle),intent(inout)             :: self
     real(defReal),dimension(:), intent(in)        :: eGrid
     type(miuEndfPdf_ptr),dimension(:), intent(in) :: miuEndfPdfs
+    character(100),parameter                      :: Here='init (tabularAngle_class.f90)'
+
+    if(size(eGrid) /= size(miuEndfPdfs)) call fatalError(Here,&
+                                                         'eGrid and miuEndfPdfs have diffrent size')
+
 
     if(allocated(self % eGrid))  deallocate(self % eGrid)
     if(allocated(self % miuEndfPdfs)) deallocate(self % miuEndfPdfs)

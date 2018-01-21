@@ -10,9 +10,9 @@ enable_language(Fortran)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 
 # Add compilers flags
-if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
+#if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   set(CMAKE_Fortran_FLAGS  "-std=f2008 ")
-endif()
+#endif()
 
 # include all directories with libraries 
 add_subdirectory(SharedModules)
@@ -26,4 +26,4 @@ add_subdirectory(NuclearData)
 
 add_executable(test.out test.f90)
 target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF angleLawENDF
-                               NuclearDataStructures)
+                               NuclearDataStructures )
