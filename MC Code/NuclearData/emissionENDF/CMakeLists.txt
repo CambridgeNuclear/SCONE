@@ -10,7 +10,8 @@ add_library( emissionENDF emissionENDF_class.f90
                           ./releaseLawENDF/tabularRelease_class.f90
                           ./energyLawENDF/energyLawENDF_class.f90
                           ./energyLawENDF/contTabularEnergy_class.f90
-                          ./energyLawENDF/energyEndfPdf/tabularEnergy_class.f90)
+                          ./energyLawENDF/energyEndfPdf/tabularEnergy_class.f90
+                          ./energyLawENDF/noEnergy_class.f90)
 
  
 

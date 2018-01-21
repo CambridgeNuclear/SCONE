@@ -20,10 +20,12 @@ program test
   use tabularPdf_class,    only : tabularPdf
   use angleLawENDF_class,   only : angleLawENDF
   use tabularAngle_class, only : tabularAngle
+  use noAngle_class,       only: noAngle
 
   use tabularEnergy_class, only: tabularEnergy
   use contTabularEnergy_class, only : contTabularEnergy
   use energyLawENDF_class,     only : energyLawENDF
+  use noEnergy_class,          only : noEnergy
 
 
   implicit none
@@ -130,14 +132,17 @@ program test
   angle  => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
   energyT => contTabularEnergy([0.0_8, 1.0_8],tables)
 
+  deallocate(energyT)
 
+  energyT => noEnergy()
+  angle => noAngle()
  ! myPtr = tabularMiu(x,pdf,0)
 
   do i=0,1000
     kl = 2.0/1000 * i - 1.0
      !eps = random % get()
 
-     print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,1.0_8)
+     print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,0.5_8)
 
   end do
 
