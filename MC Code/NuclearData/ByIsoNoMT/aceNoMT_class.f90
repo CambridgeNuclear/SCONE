@@ -20,7 +20,7 @@ module aceNoMT_class
 
     integer(shortInt),dimension(:), allocatable   :: xsMT       !! MT numbers of cross-sections in xs
     real(defReal),dimension(:),allocatable        :: energyGrid !! Energy grid for xs data
-    real(defReal),dimension(:,:),allocatable      :: xs         !! Microscpoic cross-sections table order -> xs(energyPoint,reactionMTnumber)
+    real(defReal),dimension(:,:),allocatable      :: xs         !! Microscpoic cross-sections table order -> xs(reactionMTnumber,energyPoint)
   contains
     procedure :: init
 
@@ -116,7 +116,7 @@ contains
 
     allocate(self % energyGrid (NXS(3)))
     allocate(self % xsMT(reactionNum))
-    allocate(self % xs(NXS(3), reactionNum))
+    allocate(self % xs(reactionNum, NXS(3)))
 
     ! Ensure that all cross-sections are initially 0.0
     self % xs = 0.0
@@ -126,9 +126,9 @@ contains
     ! Load cross-sections from ESZ block of ACE data card.
     ! NOTICE: Elastic scattering is as second entery despite the fact it is 3rd in ESZ
 
-    self % xs(:,1) = [XSS(JXS(1)+NXS(3):JXS(1)+2*NXS(3)-1)]    ! Total XS
-    self % xs(:,2) = [XSS(JXS(1)+3*NXS(3):JXS(1)+4*NXS(3)-1)]  ! Elastic Scattering XS
-    self % xs(:,3) = [XSS(JXS(1)+2*NXS(3):JXS(1)+3*NXS(3)-1)]  ! Total capture XS
+    self % xs(1,:) = [XSS(JXS(1)+NXS(3):JXS(1)+2*NXS(3)-1)]    ! Total XS
+    self % xs(2,:) = [XSS(JXS(1)+3*NXS(3):JXS(1)+4*NXS(3)-1)]  ! Elastic Scattering XS
+    self % xs(3,:) = [XSS(JXS(1)+2*NXS(3):JXS(1)+3*NXS(3)-1)]  ! Total capture XS
 
     ! Assign MT numbers
     self % xsMT(1:3) = [ 1, 2, 101]
@@ -137,7 +137,7 @@ contains
     if (self % isFissile) then
       i=int(XSS(JXS(21)))   ! First index on energy grid for which fission data is present
       j=int(XSS(JXS(21)+1)) ! Number of consecutive eneteries for data
-      self % xs(i:i+j-1,4) = [XSS(JXS(21)+2:JXS(21)+j+1)]
+      self % xs(4,i:i+j-1) = [XSS(JXS(21)+2:JXS(21)+j+1)]
       self % xsMT(4) = 18
     end if
 

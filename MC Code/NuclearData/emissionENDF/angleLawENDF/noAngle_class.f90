@@ -21,22 +21,22 @@ module noAngle_class
 contains
 
 
-  function sample(self,E,rand) result (miu)
+  function sample(self,E,rand) result (mu)
     class(noAngle), intent(in)   :: self
     real(defReal), intent(in)    :: E
     class(RNG), intent(inout)    :: rand
-    real(defReal)                :: miu
+    real(defReal)                :: mu
 
-    miu = 1.0
+    mu = 1.0
 
   end function sample
 
-  function probabilityOf(self,miu,E) result (prob)
+  function probabilityOf(self,mu,E) result (prob)
     class(noAngle), intent(in)  :: self
-    real(defReal), intent(in)   :: E, miu
+    real(defReal), intent(in)   :: E, mu
     real(defReal)               :: prob
 
-    if (miu == 1.0_defReal) then
+    if (mu == 1.0_defReal) then
       prob = 1.0
     else
       prob = 0.0

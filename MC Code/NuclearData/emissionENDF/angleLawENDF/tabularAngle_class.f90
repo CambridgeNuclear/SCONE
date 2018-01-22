@@ -2,7 +2,7 @@ module tabularAngle_class
 
   use numPrecision
   use genericProcedures,  only : binarySearch, searchError, interpolate, fatalError
-  use miuEndfPdf_class,   only : miuEndfPdf_ptr
+  use muEndfPdf_class,    only : muEndfPdf_ptr
   use RNG_class,          only : RNG
   use angleLawENDF_class, only : angleLawENDF
 
@@ -18,7 +18,7 @@ module tabularAngle_class
     !! Class to contain emission angle propabilities for secondary particles
       private
       real(defReal),dimension(:),allocatable        :: eGrid
-      type(miuEndfPdf_ptr),dimension(:),allocatable :: miuEndfPdfs
+      type(muEndfPdf_ptr),dimension(:),allocatable  :: muEndfPdfs
     contains
       procedure :: init
       procedure :: sample
@@ -29,11 +29,11 @@ contains
 
 
 
-  function sample(self,E,rand) result (miu)
+  function sample(self,E,rand) result (mu)
     class(tabularAngle), intent(in)   :: self
     real(defReal), intent(in)         :: E
     class(RNG), intent(inout)         :: rand
-    real(defReal)                     :: miu
+    real(defReal)                     :: mu
     integer(shortInt)                 :: idx
     real(defReal)                     :: r, eps
     character(100),parameter          :: Here='sample (tabularAngle_class.f90)'
@@ -45,17 +45,17 @@ contains
     r = rand % get()
 
     if(r < eps) then
-      miu = self % miuEndfPdfs(idx+1) % sample(rand)
+      mu = self % muEndfPdfs(idx+1) % sample(rand)
     else
-      miu = self % miuEndfPdfs(idx) % sample(rand)
+      mu = self % muEndfPdfs(idx) % sample(rand)
     end if
 
   end function sample
 
 
-  function probabilityOf(self,miu,E) result (prob)
+  function probabilityOf(self,mu,E) result (prob)
     class(tabularAngle), intent(in) :: self
-    real(defReal), intent(in)         :: E, miu
+    real(defReal), intent(in)         :: E, mu
     real(defReal)                     :: prob
     integer(shortInt)                 :: idx
     real(defReal)                     :: prob_1, prob_0, E_1, E_0
@@ -64,8 +64,8 @@ contains
     idx = binarySearch(self % eGrid,E)
     call searchError(idx,Here)
 
-    prob_0 = self % miuEndfPdfs(idx)   % probabilityOf(miu)
-    prob_1 = self % miuEndfPdfs(idx+1) % probabilityOf(miu)
+    prob_0 = self % muEndfPdfs(idx)   % probabilityOf(mu)
+    prob_1 = self % muEndfPdfs(idx+1) % probabilityOf(mu)
 
     E_0 = self % eGrid(idx)
     E_1 = self % eGrid(idx+1)
@@ -76,31 +76,31 @@ contains
   end function probabilityOf
 
 
-  subroutine init(self,eGrid,miuEndfPdfs)
+  subroutine init(self,eGrid,muEndfPdfs)
     class(tabularAngle),intent(inout)             :: self
     real(defReal),dimension(:), intent(in)        :: eGrid
-    type(miuEndfPdf_ptr),dimension(:), intent(in) :: miuEndfPdfs
+    type(muEndfPdf_ptr),dimension(:), intent(in)  :: muEndfPdfs
     character(100),parameter                      :: Here='init (tabularAngle_class.f90)'
 
-    if(size(eGrid) /= size(miuEndfPdfs)) call fatalError(Here,&
-                                                         'eGrid and miuEndfPdfs have diffrent size')
+    if(size(eGrid) /= size(muEndfPdfs)) call fatalError(Here,&
+                                                        'eGrid and muEndfPdfs have diffrent size')
 
 
     if(allocated(self % eGrid))  deallocate(self % eGrid)
-    if(allocated(self % miuEndfPdfs)) deallocate(self % miuEndfPdfs)
+    if(allocated(self % muEndfPdfs)) deallocate(self % muEndfPdfs)
 
     self % eGrid  = eGrid
-    self % miuEndfPdfs = miuEndfPdfs
+    self % muEndfPdfs = muEndfPdfs
 
   end subroutine
 
-  function new_tabularAngle(eGrid,miuEndfPdfs) result(new)
+  function new_tabularAngle(eGrid,muEndfPdfs) result(new)
     real(defReal),dimension(:), intent(in)        :: eGrid
-    type(miuEndfPdf_ptr),dimension(:), intent(in) :: miuEndfPdfs
+    type(muEndfPdf_ptr),dimension(:), intent(in)  :: muEndfPdfs
     type(tabularAngle), pointer                   :: new
 
     allocate(new)
-    call new % init(eGrid,miuEndfPdfs)
+    call new % init(eGrid,muEndfPdfs)
 
   end function
 

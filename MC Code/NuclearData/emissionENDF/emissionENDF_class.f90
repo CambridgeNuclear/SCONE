@@ -9,10 +9,13 @@ module emissionENDF_class
   type,abstract, public :: emissionENDF
     private
     integer(shortInt)  :: MT
+    logical(defBool)   :: cmFrame = .true.
   contains
     procedure(getAngleEnergy),deferred :: getAngleEnergy
     procedure(getNumber),deferred      :: getNumber
     procedure                          :: setMT
+    procedure                          :: setLabFrame
+    procedure                          :: isInCMframe
   end type emissionENDF
 
 abstract interface
@@ -47,5 +50,23 @@ contains
     integer(shortInt),intent(in)       :: MT
       self % MT = MT
   end subroutine setMT
+
+
+  subroutine setLabFrame(self)
+    class(emissionENDF), intent(inout) :: self
+
+    self % cmFrame = .false.
+
+  end subroutine setLabFrame
+
+
+  function isInCMframe(self)
+    class(emissionENDF), intent(in) :: self
+    logical(defBool)                :: isInCMframe
+
+    isInCMframe = self % cmFrame
+  end function isInCMframe
+
+
 
 end module emissionENDF_class

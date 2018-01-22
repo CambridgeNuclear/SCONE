@@ -13,10 +13,10 @@ program test
   use polynomialRelease_class, only : polynomialRelease
   use tabularRelease_class, only : tabularRelease
 
-  use miuEndfPdf_class,   only : miuEndfPdf, miuEndfPdf_ptr
-  use isotropicMiu_class, only : isotropicMiu
-  use equiBin32Miu_class, only : equiBin32Miu
-  use tabularMiu_class,   only : tabularMiu
+  use muEndfPdf_class,   only : muEndfPdf, muEndfPdf_ptr
+  use isotropicmu_class, only : isotropicmu
+  use equiBin32mu_class, only : equiBin32mu
+  use tabularmu_class,   only : tabularmu
   use tabularPdf_class,    only : tabularPdf
   use angleLawENDF_class,   only : angleLawENDF
   use tabularAngle_class, only : tabularAngle
@@ -55,7 +55,7 @@ program test
 
   real, pointer :: p1,p2,p3
 
-  type(miuEndfPdf_ptr) :: myPtr, myPtr2
+  type(muEndfPdf_ptr) :: myPtr, myPtr2
   type(tabularEnergy), pointer :: tabPtr
   class(angleLawENDF),pointer :: angle
   class(energyLawENDF), pointer :: energyT
@@ -120,9 +120,9 @@ program test
 
   R = [(-1.0+2.0/32*i,i=0,32)]
 
-  !myPtr = equiBin32Miu(R)
-  myPtr  = tabularMiu(x2,pdf2,1)
-  myPtr2 = tabularMiu(x,pdf,1)
+  !myPtr = equiBin32mu(R)
+  myPtr  = tabularmu(x2,pdf2,1)
+  myPtr2 = tabularmu(x,pdf,1)
 
   allocate(tables(2))
   call tables(1) % init (x2,pdf2,1)
@@ -136,7 +136,7 @@ program test
 
   energyT => noEnergy()
   angle => noAngle()
- ! myPtr = tabularMiu(x,pdf,0)
+ ! myPtr = tabularmu(x,pdf,0)
 
   do i=0,1000
     kl = 2.0/1000 * i - 1.0
