@@ -38,7 +38,7 @@ contains
   end function releaseAt
 
   function new_constantRelease(release) result(newConstantRelease)
-    real(defReal), intent(in)           :: release
+    real(defReal), intent(in)            :: release
     type(constantRelease),pointer        :: newConstantRelease
 
     allocate(newConstantRelease)

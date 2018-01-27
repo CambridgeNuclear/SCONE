@@ -1,7 +1,7 @@
 module contTabularEnergy_class
 
   use numPrecision
-  use genericProcedures,   only : binarySearch, fatalError, interpolate, searchError
+  use genericProcedures,   only : binarySearch, fatalError, interpolate, searchError, isSorted
   use tabularEnergy_class, only : tabularEnergy
   use RNG_class,           only : RNG
   use energyLawENDF_class, only : energyLawENDF
@@ -80,7 +80,12 @@ contains
     type(tabularEnergy),dimension(:),intent(in) :: ePdfs
     character(100),parameter                    :: Here='init (contTabularEnergy_class.f90)'
 
-    if(size(eGrid) /= size(ePdfs)) call fatalError(Here,'eGrid and ePdfs have diffrent size')
+    ! Check if the provided eGrid and ePdfs match in size and if eGrid is sorted and all its
+    ! elements are +ve.
+    if(size(eGrid) /= size(ePdfs))  call fatalError(Here,'eGrid and ePdfs have diffrent size')
+    if(.not.(isSorted(eGrid)))      call fatalError(Here,'eGrid is not sorted ascending')
+    if ( count( eGrid < 0.0 ) > 0 ) call fatalError(Here,'eGrid contains -ve values')
+
 
     if(allocated(self % eGrid)) deallocate(self % eGrid)
     if(allocated(self % ePdfs)) deallocate(self % ePdfs)

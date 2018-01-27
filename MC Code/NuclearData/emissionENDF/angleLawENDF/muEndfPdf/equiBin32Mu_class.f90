@@ -1,9 +1,9 @@
 module equiBin32Mu_class
 
   use numPrecision
-  use genericProcedures , only : linearFloorIdxClosed_Real, searchError
-  use RNG_class , only : RNG
-  use muEndfPdf_class,   only : muEndfPdf
+  use genericProcedures , only : linearFloorIdxClosed_Real, searchError, fatalError
+  use RNG_class ,         only : RNG
+  use muEndfPdf_class,    only : muEndfPdf
 
   implicit none
   private
@@ -62,6 +62,14 @@ contains
   subroutine init(self,boundaries)
     class(equiBin32Mu), intent(inout)        :: self
     real(defReal), dimension(33), intent(in) :: boundaries
+    character(100),parameter                 :: Here='init (equiBin32Mu_class.f90)'
+
+    ! Check if the first element of the bin corresponds to -1 and last to 1
+    if ( (boundaries(1) /= -1.0_defReal) .or. (boundaries(33) /= 1.0_defReal)) then
+
+       call fatalError(Here, 'Provided bin boundaries do not begin with -1 and end with 1')
+
+    end if
 
     self % boundaries = boundaries
 

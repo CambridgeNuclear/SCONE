@@ -11,6 +11,7 @@ module genericProcedures
 
   interface linFind
     module procedure linFind_Char
+    module procedure linFind_defReal
   end interface
 
   interface findDuplicates
@@ -30,7 +31,8 @@ module genericProcedures
   end interface
 
   integer(shortInt), parameter :: valueOutsideArray = -1,&
-                                 tooManyIter       = -2
+                                  tooManyIter       = -2,&
+                                  targetNotFound    = -3
 
   contains
 
@@ -156,6 +158,8 @@ module genericProcedures
           call fatalError(Here,'The requested value was outide the array bounds')
         case (tooManyIter)
           call fatalError(Here,'Search did not terminate in hardcoded number of iterations')
+        case (targetNotFound)
+          call fatalError(Here,'Search failed to find target in the array')
         case default
           call fatalError(Here,'Search returned unknown error flag (negative index)')
       end select
@@ -272,19 +276,31 @@ module genericProcedures
     end if
   end function
 
-  function linFind_Char(charArray,target) result(index)
-    !! Searches linearly for the occurance of target in charArray. Returns index of -1 if target
-    !! is not found. The index assumes that array begins at 1 (i.e. charArray(1:N)). If array begins
-    !! with diffrent index (i.e. A(-5:N))the returned value needs to be approperiatly translated.
-    character(len=*),dimension(:),intent(in) :: charArray
-    character(len=*),intent(in)              :: target
-    integer(kind=shortInt)                   :: index
+  function linFind_Char(charArray,target) result(idx)
+    !! Searches linearly for the occurance of target in charArray. Following Errors can occur:
+    !! targetNotFound -> target is not present in the array
+    character(*),dimension(:),intent(in) :: charArray
+    character(*),intent(in)              :: target
+    integer(shortInt)                    :: idx
 
-    do index=1,size(charArray)
-      if( trim(charArray(index)) == trim(target) ) return
+    do idx=1,size(charArray)
+      if( trim(charArray(idx)) == trim(target) ) return
     end do
-    index = -1
+    idx = targetNotFound
   end function
+
+  function linFind_defReal(defRealArray,target) result (idx)
+    !! Searches linearly for the occurance of target in defRealArray. Following Errors can occur
+    !! valueOutsideArray -> target is not present in the array
+    real(defReal), dimension(:), intent(in)  :: defRealArray
+    real(defReal), intent(in)                :: target
+    integer(shortInt)                        :: idx
+
+    do idx=1,size(defRealArray)
+      if (defRealArray(idx) == target) return
+    end do
+    idx = targetNotFound
+  end function linFind_defReal
 
   function arrayConcat(charArray) result(out)
     !! Concatenate strings from an array into a single long character. Trims elements of char Array
@@ -344,5 +360,35 @@ module genericProcedures
   end function RealReal_endf_interpolate
 
 
+  elemental function isInteger(float) result (isIt)
+    !! Checks if the provided float is an integer. It may not be rebust and requires further
+    !! testing. It uses the fact that ceiling and floor of an integer are the same.
+
+    real(defReal), intent(in) :: float
+    logical(defBool)          :: isIt
+    integer(longInt)          :: tempI
+    real(defReal)             :: a
+
+    isIt = (floor(float,longInt) == ceiling(float,longInt))
+
+  end function isInteger
+
+
+  function isSorted(array) result (isIt)
+    !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
+    real(defReal),dimension(:),intent(in) :: array
+    logical(defBool)                      :: isIt
+    integer(shortInt)                     :: i
+
+    do i=2,size(array)
+      if (array(i) < array(i-1)) then
+        isIt = .false.
+        return
+      end if
+    end do
+
+    isIt = .true.
+
+  end function
 
 end module genericProcedures

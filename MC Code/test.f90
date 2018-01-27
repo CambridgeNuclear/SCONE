@@ -96,7 +96,7 @@ program test
 !  energy(6) = energy(5)
 !
 
-!  release => tabularRelease(energy,second,bounds,ENDF)!
+  release => tabularRelease(energy,second,bounds,ENDF)!
 !
 !  eTable  => endfTable(energy,second,bounds,ENDF)
 !
@@ -119,8 +119,8 @@ program test
 
 
   R = [(-1.0+2.0/32*i,i=0,32)]
-
-  !myPtr = equiBin32mu(R)
+  R(1) = -1.0
+  myPtr = equiBin32mu(R)
   myPtr  = tabularmu(x2,pdf2,1)
   myPtr2 = tabularmu(x,pdf,1)
 
@@ -142,7 +142,7 @@ program test
     kl = 2.0/1000 * i - 1.0
      !eps = random % get()
 
-     print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,0.5_8)
+  !   print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,0.5_8)
 
   end do
 

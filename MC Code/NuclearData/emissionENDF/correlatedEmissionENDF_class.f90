@@ -27,7 +27,7 @@ contains
   subroutine getAngleEnergy(self,angle,energy,rand )
     !! Subroutine, which returns a sample of angle and energy obtained from law attached to the
     !! object.
-    class(correlatedEmissionENDF), intent(in)  :: self
+    class(correlatedEmissionENDF), intent(in)    :: self
     real(defReal), intent(inout)                 :: angle
     real(defReal), intent(inout)                 :: energy
     class(RNG), intent(inout)                    :: rand
@@ -36,7 +36,7 @@ contains
   subroutine getNumber(self,number)
     !! Subroutine, which returns a number of emitted secondary neutrons according to the attached
     !! neutronReleseENDF object.
-    class(correlatedEmissionENDF), intent(in) :: self
+    class(correlatedEmissionENDF), intent(in)   :: self
     real(defReal), intent(inout)                :: number
   end subroutine
 

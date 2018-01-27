@@ -1,7 +1,8 @@
 module tabularRelease_class
 
   use numPrecision
-  use endfTable_class, only : endfTable
+  use genericProcedures,    only : fatalError
+  use endfTable_class,      only : endfTable
   use releaseLawENDF_class, only : releaseLawENDF
 
 
@@ -43,6 +44,12 @@ contains
     class(tabularRelease), intent(inout)  :: self
     real(defReal),dimension(:),intent(in) :: eGrid         ! Energy Grid
     real(defReal),dimension(:),intent(in) :: releaseValues
+    character(100),parameter              :: Here='initSimple (tabularRelease_class.f90)'
+
+    ! Check if there are any -ve values in energy grid
+    if ( count( eGrid < 0.0 ) > 0 ) then
+      call fatalError(Here,'In the provided energy Grid some values are -ve.')
+    end if
 
     if(associated(self % releaseTable)) deallocate(self % releaseTable)
 
@@ -56,6 +63,12 @@ contains
     real(defReal),dimension(:),intent(in)     :: releaseValues
     integer(shortInt),dimension(:),intent(in) :: bounds
     integer(shortInt),dimension(:),intent(in) :: interENDF
+    character(100),parameter                  :: Here='initInter (tabularRelease_class.f90)'
+
+    ! Check if there are any -ve values in energy grid
+    if ( count( eGrid < 0.0 ) > 0 ) then
+      call fatalError(Here,'In the provided energy Grid some values are -ve.')
+    end if
 
     if(associated(self % releaseTable)) deallocate(self % releaseTable)
 

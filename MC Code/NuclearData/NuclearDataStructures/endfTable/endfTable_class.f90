@@ -3,7 +3,7 @@ module endfTable_class
   use numPrecision
   use genericProcedures, only : binarySearch, endfInterpolate, interpolate,&
                                 linearCeilingIdxOpen_shortInt,  linearFloorIdxClosed_Real, &
-                                searchError, fatalError
+                                searchError, fatalError, isSorted
 
   implicit none
   private
@@ -47,7 +47,9 @@ contains
     real(defReal),dimension(:),intent(in) :: x,y
     character(100),parameter              :: Here='initSimple (endfTable_class.f90)'
 
+    ! Check if x and y match and if x is sorted acending array.
     if (size(x) /= size(y)) call fatalError(Here,'x and y have diffrent size!')
+    if ( .not.(isSorted(x))) call fatalError(Here,'x is not sorted ascending')
 
     if (allocated(self % x)) deallocate(self % x)
     if (allocated(self % y)) deallocate(self % y)

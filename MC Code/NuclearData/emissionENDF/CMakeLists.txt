@@ -4,6 +4,7 @@ add_subdirectory(angleLawENDF)
 add_library( emissionENDF emissionENDF_class.f90
                           correlatedEmissionENDF_class.f90 
                           uncorrelatedEmissionENDF_class.f90
+                          emissionFromACE_func.f90
                           ./releaseLawENDF/releaseLawENDF_class.f90
                           ./releaseLawENDF/polynomialRelease_class.f90
                           ./releaseLawENDF/constantRelease_class.f90

@@ -43,6 +43,7 @@ contains
     type(isotropicMu),pointer :: new_isotropicMu
 
     allocate(new_isotropicMu)
+
   end function new_isotropicMu
 
 

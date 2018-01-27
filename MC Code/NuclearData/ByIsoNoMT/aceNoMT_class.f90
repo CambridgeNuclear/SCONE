@@ -1,7 +1,9 @@
 module aceNoMT_class
 
   use numPrecision
-  use genericProcedures , only : openToRead
+  use genericProcedures ,   only : openToRead
+  use emissionFromACE_func, only : emissionFromACE
+  use emissionENDF_class,   only : emissionENDF
 
   implicit none
   private
@@ -39,10 +41,12 @@ contains
     integer(shortInt), dimension(16)        :: NXS
     integer(shortInt), dimension(32)        :: JXS
     real(defReal),dimension(:), allocatable :: XSS
-
+    class(emissionENDF),pointer  :: dummy
 
     call self % readAceLibrary(filePath, line, NXS, JXS, XSS)
     call self % readXS(NXS,JXS,XSS)
+
+    dummy => emissionFromACE(NXS,JXS,XSS,18) !*** This line is evil and for testing only!!!!!
 
   end subroutine
 
@@ -97,7 +101,7 @@ contains
     class(aceNoMT), intent(inout)                       :: self
     integer(shortInt), dimension(16),intent(in)         :: NXS
     integer(shortInt), dimension(32),intent(in)         :: JXS
-    real(defReal),dimension(:), allocatable,intent(in)  :: XSS
+    real(defReal), dimension(:),intent(in)              :: XSS
 
     integer(shortInt)      :: reactionNum
     integer(shortInt)      :: i,j

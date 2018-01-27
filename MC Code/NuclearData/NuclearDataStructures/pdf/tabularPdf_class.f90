@@ -1,7 +1,8 @@
 module tabularPdf_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate
+  use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
+                                isSorted
 
   implicit none
   private
@@ -110,6 +111,8 @@ contains
 
 
     if( size(x) /= size(pdf)) call fatalError(Here,'PDF and x have diffrent size')
+
+    if( .not.(isSorted(x))) call fatalError(Here,'Provided x grid is not sorted ascending')
 
     if (associated(self % data)) deallocate(self % data)
 

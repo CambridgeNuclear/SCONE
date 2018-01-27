@@ -68,5 +68,4 @@ contains
   end function isInCMframe
 
 
-
 end module emissionENDF_class

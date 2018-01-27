@@ -1,33 +1,44 @@
 module uncorrelatedEmissionENDF_class
 
   use numPrecision
-  use emissionENDF_class, only : emissionENDF
-  use RNG_class, only :RNG
+  use emissionENDF_class,   only : emissionENDF
+  use RNG_class,            only : RNG
+  use energyLawENDF_class,  only : energyLawENDF
+  use angleLawENDF_class,   only : angleLawENDF
+  use releaseLawENDF_class, only : releaseLawENDF
 
   implicit none
   private
 
+  interface uncorrelatedEmissionENDF
+    module procedure new_uncorrelatedEmissionENDF
+  end interface
+
+
   type, public, extends(emissionENDF) :: uncorrelatedEmissionENDF
       private
-      ! Pointer to EnergyENDFLaw
-      ! Pointer to AngleENDFLaw
-      ! Pointer to neutronReleseENDF
+
+      class(angleLawENDF), pointer   :: anglePdf   => null()
+      class(energyLawENDF), pointer  :: energyPdf  => null()
+      class(releaseLawENDF), pointer :: releasePdf => null() !! Not exactly a PDF (its a delta function PDF...)
+
     contains
       procedure :: getAngleEnergy
       procedure :: getNumber
       ! Build procedures
       generic   :: attachENDF   => attachENDF_Angle , &
                                    attachENDF_Energy, &
-                                   attachENDF_Relese
+                                   attachENDF_Release
       ! Private procedures
       procedure,private :: attachENDF_Angle
       procedure,private :: attachENDF_Energy
-      procedure,private :: attachENDF_Relese
+      procedure,private :: attachENDF_Release
 
 
   end type uncorrelatedEmissionENDF
 
 contains
+
 
   subroutine getAngleEnergy(self,angle,energy,rand )
     !! Subroutine, which returns a sample of angle and energy obtained from law attached to the
@@ -38,6 +49,7 @@ contains
     class(RNG), intent(inout)                    :: rand
   end subroutine
 
+
   subroutine getNumber(self,number)
     !! Subroutine, which returns a number of emitted secondary neutrons according to the attached
     !! neutronReleseENDF object.
@@ -45,22 +57,56 @@ contains
     real(defReal), intent(inout)                :: number
   end subroutine
 
-  subroutine attachENDF_Angle(self,A)
+
+  subroutine attachENDF_Angle(self,anglePdf)
     !! Subroutine, which attaches pointer to angular distribution of emmited neutrons
     class(uncorrelatedEmissionENDF), intent(inout) :: self
-    integer :: A
+    class(angleLawENDF),target, intent(in)         :: anglePdf
+
+    if(associated(self % anglePdf)) deallocate(self % anglePdf)
+
+    self % anglePdf => anglePdf
+
   end subroutine attachENDF_Angle
 
-   subroutine attachENDF_Energy(self,E)
+
+  subroutine attachENDF_Energy(self,energyPdf)
     !! Subroutine, which attaches pointer to energy distribution of emmited neutrons
-    class(uncorrelatedEmissionENDF), intent(inout) :: self
-    real :: E
+    class(uncorrelatedEmissionENDF), intent(inout)  :: self
+    class(energyLawENDF),target, intent(in)         :: energyPdf
+
+    if(associated(self % energyPdf)) deallocate(self % energyPdf)
+
+    self % energyPdf => energyPdf
+
   end subroutine attachENDF_Energy
 
-  subroutine attachENDF_Relese(self,B)
+
+  subroutine attachENDF_Release(self,releasePdf)
     !! Subroutine which attaches pointer to distribution of secondary neutrons
     class(uncorrelatedEmissionENDF), intent(inout) :: self
-    logical :: B
-  end subroutine attachENDF_Relese
+    class(releaseLawENDF),target, intent(in)       :: releasePdf
+
+    if(associated(self % releasePdf)) deallocate(self % releasePdf)
+
+    self % releasePdf => releasePdf
+
+  end subroutine attachENDF_Release
+
+
+  function new_uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw) result (new)
+    class(angleLawENDF),pointer, intent(in)       :: angleLaw
+    class(energyLawENDF),pointer,intent(in)       :: energyLaw
+    class(releaseLawENDF),pointer,intent(in)      :: releaseLaw
+    type(uncorrelatedEmissionENDF),pointer        :: new
+
+    allocate(new)
+
+    call new % attachENDF(angleLaw)
+    call new % attachENDF(energyLaw)
+    call new % attachENDF(releaseLaw)
+
+  end function new_uncorrelatedEmissionENDF
+
 
 end module uncorrelatedEmissionENDF_class
