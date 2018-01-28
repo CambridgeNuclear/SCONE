@@ -3,7 +3,7 @@ module endfMtNumbers
   use numPrecision
   implicit none
 
-  integer(shortInt), paramether :: total_MT             = 1  ,&
+  integer(shortInt), parameter  :: total_MT             = 1  ,&
                                    elasticScattering_MT = 2  ,&
                                    n_2n_MT              = 16 ,&
                                    n_3n_MT              = 17 ,&

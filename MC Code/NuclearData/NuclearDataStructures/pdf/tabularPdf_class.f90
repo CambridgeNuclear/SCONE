@@ -3,12 +3,13 @@ module tabularPdf_class
   use numPrecision
   use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
                                 isSorted
+  use endfConstants
 
   implicit none
   private
 
-  integer(shortInt),parameter  :: histogram  = 0, &
-                                  linLin     = 1
+  integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
+                                  linLin     = tabPdfLinLin
   real(defReal),parameter      :: tolerance = 1.0e-23
 
   interface linearSearch
@@ -24,9 +25,12 @@ module tabularPdf_class
     real(defReal),dimension(:),pointer       :: cdf  => null()
     integer(shortInt)                        :: flag            !Interpolation flag
   contains
-    procedure :: init
+    generic   :: init  => initPdf, initCdf
     procedure :: sample
     procedure :: probabilityOf
+
+    procedure, private :: initPdf
+    procedure, private :: initCdf
 
   end type tabularPdf
 contains
@@ -101,7 +105,7 @@ contains
 
 
 
-  subroutine init(self,x,pdf,flag)
+  subroutine initPdf(self,x,pdf,flag)
     class(tabularPdf), intent(inout) :: self
     real(defReal),dimension(:),intent(in)  :: x
     real(defReal),dimension(:),intent(in)  :: pdf
@@ -109,11 +113,13 @@ contains
     integer(shortInt)                      :: i
     character(100),parameter               :: Here='init (tabularPdf_class.f90)'
 
-
+    ! Check Input
     if( size(x) /= size(pdf)) call fatalError(Here,'PDF and x have diffrent size')
 
-    if( .not.(isSorted(x))) call fatalError(Here,'Provided x grid is not sorted ascending')
+    if( .not.(isSorted(x)))       call fatalError(Here,'Provided x grid is not sorted not descending')
+    if ( count( pdf < 0.0 ) > 0 ) call fatalError(Here,'Provided PDF contains -ve values')
 
+    ! Initialise Data
     if (associated(self % data)) deallocate(self % data)
 
     allocate (self % data(size(x),3))
@@ -145,6 +151,9 @@ contains
         end do
 
         if (abs(self % cdf(size(x))-1.0_defReal) > tolerance) then
+          print *, self % x
+          print *, self % pdf
+          print *, self % cdf
           call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance')
         end if
 
@@ -153,6 +162,59 @@ contains
 
     end select
 
-  end subroutine
+  end subroutine initPdf
+
+
+  subroutine initCdf(self,x,pdf,cdf,flag)
+    class(tabularPdf), intent(inout) :: self
+    real(defReal),dimension(:),intent(in)  :: x
+    real(defReal),dimension(:),intent(in)  :: pdf
+    real(defReal),dimension(:),intent(in)  :: cdf
+    integer(shortInt),intent(in)           :: flag ! Interpolation scheme flag
+    integer(shortInt)                      :: i
+    character(100),parameter               :: Here='init (tabularPdf_class.f90)'
+
+    ! Check Input
+    if( size(x) /= size(pdf)) call fatalError(Here,'PDF and x have diffrent size')
+    if( size(x) /= size(cdf)) call fatalError(Here,'CDF and x have diffrent size')
+
+    if( .not.(isSorted(x)))   call fatalError(Here,'Provided x grid is not sorted not decending')
+    if( .not.(isSorted(cdf))) call fatalError(Here,'Provided CDF is not sorted not descending')
+
+    if ( count( pdf < 0.0 ) > 0 ) call fatalError(Here,'Provided PDF contains -ve values')
+    if ( count( cdf < 0.0 ) > 0 ) call fatalError(Here,'Provided CDF contains -ve values')
+
+    if( abs(cdf(1)) > tolerance ) call fatalError(Here,'Provided CDF does not begin with 0')
+
+    if( abs(cdf(size(cdf))-1.0_defReal) > tolerance) then
+      call fatalError(Here,'Provided CDF does not end with 1')
+    end if
+
+    ! Initialise Data
+    if (associated(self % data)) deallocate(self % data)
+
+    allocate (self % data(size(x),3))
+    self % data(:,1) = x
+    self % data(:,2) = pdf
+    self % data(:,3) = cdf
+
+    self % x   => self % data(:,1)
+    self % pdf => self % data(:,2)
+    self % cdf => self % data(:,3)
+
+    select case (flag)
+      case(histogram)
+        self % flag = histogram
+
+      case(linLin)
+        self % flag = linLin
+
+      case default
+        call fatalError(Here, 'Unrecognised interpolation flag')
+
+    end select
+
+  end subroutine initCdf
+
     
 end module tabularPdf_class

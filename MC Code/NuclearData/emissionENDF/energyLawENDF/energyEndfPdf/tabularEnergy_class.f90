@@ -10,6 +10,7 @@ module tabularEnergy_class
 
   interface tabularEnergy
     module procedure new_tabularEnergy
+    module procedure new_tabularEnergy_withCDF
   end interface
 
   type, public:: tabularEnergy
@@ -19,7 +20,9 @@ module tabularEnergy_class
     procedure :: sample
     procedure :: probabilityOf
 
-    procedure :: init
+    generic           :: init => init_withPDF, init_withCDF
+    procedure,private :: init_withPDF
+    procedure,private :: init_withCDF
 
   end type tabularEnergy
 
@@ -47,18 +50,31 @@ contains
   end function probabilityOf
 
 
-  subroutine init(self,E,PDF,interFlag)
+  subroutine init_withPDF(self,E,PDF,interFlag)
     class(tabularEnergy), intent(inout)   :: self
     real(defReal),dimension(:),intent(in) :: E,PDF
     integer(shortInt),intent(in)          :: interFlag
     character(100),parameter              :: Here='init (tabularEnergy_class.f90)'
 
-
-    if(size(E) /= size(PDF)) call fatalError(Here,'E and PDF have diffrent size')
+    if(count( E < 0.0 ) > 0) call fatalError(Here,'E contains -ve values')
 
     call self % pdf % init(E,PDF,interFlag)
 
-  end subroutine init
+  end subroutine init_withPDF
+
+
+  subroutine init_withCDF(self,E,PDF,CDF,interFlag)
+    class(tabularEnergy), intent(inout)   :: self
+    real(defReal),dimension(:),intent(in) :: E, PDF, CDF
+    integer(shortInt),intent(in)          :: interFlag
+    character(100),parameter              :: Here='init (tabularEnergy_class.f90)'
+
+
+    if(count( E < 0.0 ) > 0) call fatalError(Here,'E contains -ve values')
+
+    call self % pdf % init(E,PDF,CDF,interFlag)
+
+  end subroutine init_withCDF
 
 
   function new_tabularEnergy(E,PDF,interFlag) result (new)
@@ -70,5 +86,17 @@ contains
     call new % init(E,PDF,interFlag)
 
   end function new_tabularEnergy
+
+
+  function new_tabularEnergy_withCDF(E,PDF,CDF,interFlag) result (new)
+    real(defReal),dimension(:),intent(in) :: E, PDF, CDF
+    integer(shortInt),intent(in)          :: interFlag
+    type(tabularEnergy),pointer           :: new
+
+    allocate(new)
+    call new % init(E,PDF,CDF,interFlag)
+
+  end function new_tabularEnergy_withCDF
+
 
 end module tabularEnergy_class

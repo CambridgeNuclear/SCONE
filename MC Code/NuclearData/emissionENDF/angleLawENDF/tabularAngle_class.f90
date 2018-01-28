@@ -1,7 +1,7 @@
 module tabularAngle_class
 
   use numPrecision
-  use genericProcedures,  only : binarySearch, searchError, interpolate, fatalError
+  use genericProcedures,  only : binarySearch, searchError, interpolate, fatalError, isSorted
   use muEndfPdf_class,    only : muEndfPdf_ptr
   use RNG_class,          only : RNG
   use angleLawENDF_class, only : angleLawENDF
@@ -85,6 +85,8 @@ contains
     if(size(eGrid) /= size(muEndfPdfs)) call fatalError(Here,&
                                                         'eGrid and muEndfPdfs have diffrent size')
 
+    if(.not.(isSorted(eGrid)))          call fatalError(Here,'eGrid is not sorted ascending')
+    if(count( eGrid < 0.0 ) > 0)        call fatalError(Here,'eGrid contains -ve values')
 
     if(allocated(self % eGrid))  deallocate(self % eGrid)
     if(allocated(self % muEndfPdfs)) deallocate(self % muEndfPdfs)

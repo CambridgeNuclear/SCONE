@@ -71,6 +71,7 @@ program test
 
   call isotope % init(acePath,firstLine)
 
+
   !R= [1.1_8, 2.3_8, 3.6_8, 9.6_8, 11.9_8]
 
   !print *, binaryFloorIdxC(R,1.1_8)
@@ -96,7 +97,7 @@ program test
 !  energy(6) = energy(5)
 !
 
-  release => tabularRelease(energy,second,bounds,ENDF)!
+!  release => tabularRelease(energy,second,bounds,ENDF)!
 !
 !  eTable  => endfTable(energy,second,bounds,ENDF)
 !
@@ -106,11 +107,11 @@ program test
 !  end do
 
 
-  x = [(-1.0+2.0/10*i,i=0,10)]
-  pdf = abs(x)
-
-  x2   = [ -1.0_8, 1.0_8]
-  pdf2 = [ 0.5_8, 0.5_8]
+!  x = [(-1.0+2.0/10*i,i=0,10)]
+!  pdf = abs(x)
+!
+!  x2   = [ -1.0_8, 1.0_8]
+!  pdf2 = [ 0.5_8, 0.5_8]
 !
 !  x = [ -1.0_8, 0.0_8, 1.0_8]
 !  pdf = [ 1.0_8/3 ,2.0_8/3, 76876.0_8]
@@ -118,33 +119,33 @@ program test
   !call table % init(x,pdf,0)
 
 
-  R = [(-1.0+2.0/32*i,i=0,32)]
-  R(1) = -1.0
-  myPtr = equiBin32mu(R)
-  myPtr  = tabularmu(x2,pdf2,1)
-  myPtr2 = tabularmu(x,pdf,1)
-
-  allocate(tables(2))
-  call tables(1) % init (x2,pdf2,1)
-  call tables(2) % init (x,pdf,1)
-
-
-  angle  => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
-  energyT => contTabularEnergy([0.0_8, 1.0_8],tables)
-
-  deallocate(energyT)
-
-  energyT => noEnergy()
-  angle => noAngle()
- ! myPtr = tabularmu(x,pdf,0)
-
-  do i=0,1000
-    kl = 2.0/1000 * i - 1.0
-     !eps = random % get()
-
-  !   print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,0.5_8)
-
-  end do
+!
+!  R(1) = -1.0
+!  myPtr = equiBin32mu(R)
+!  myPtr  = tabularmu(x2,pdf2,1)
+!  myPtr2 = tabularmu(x,pdf,1)
+!
+!  allocate(tables(2))
+!  call tables(1) % init (x2,pdf2,1)
+!  call tables(2) % init (x,pdf,1)
+!
+!
+!  angle  => tabularAngle([0.0_8, 1.0_8],[myPtr, myPtr2])
+!  energyT => contTabularEnergy([0.0_8, 1.0_8],tables)
+!
+!  deallocate(energyT)
+!
+!  energyT => noEnergy()
+!  angle => noAngle()
+! ! myPtr = tabularmu(x,pdf,0)
+!
+!  do i=0,1000
+!    kl = 2.0/1000 * i - 1.0
+!     !eps = random % get()
+!
+!  !   print *, kl, angle % probabilityOf(kl,1.0_8), energyT % probabilityOf(kl,0.5_8)
+!
+!  end do
 
 
 
