@@ -30,6 +30,12 @@ module genericProcedures
     module procedure RealReal_linlin_elemental_interpolate
   end interface
 
+  interface isSorted
+    module procedure isSorted_defReal
+    module procedure isSorted_shortInt
+  end interface
+
+
   integer(shortInt), parameter :: valueOutsideArray = -1,&
                                   tooManyIter       = -2,&
                                   targetNotFound    = -3
@@ -374,7 +380,8 @@ module genericProcedures
   end function isInteger
 
 
-  function isSorted(array) result (isIt)
+
+  function isSorted_defReal(array) result (isIt)
     !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
     real(defReal),dimension(:),intent(in) :: array
     logical(defBool)                      :: isIt
@@ -389,6 +396,26 @@ module genericProcedures
 
     isIt = .true.
 
-  end function
+  end function isSorted_defReal
+
+
+
+  function isSorted_shortInt(array) result (isIt)
+    !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
+    integer(shortInt),dimension(:),intent(in) :: array
+    logical(defBool)                          :: isIt
+    integer(shortInt)                         :: i
+
+    do i=2,size(array)
+      if (array(i) < array(i-1)) then
+        isIt = .false.
+        return
+      end if
+    end do
+
+    isIt = .true.
+
+  end function isSorted_shortInt
+
 
 end module genericProcedures

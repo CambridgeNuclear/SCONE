@@ -8,6 +8,11 @@ module isotropicAngle_class
   implicit none
   private
 
+  interface isotropicAngle
+    module procedure new_isotropicAngle
+  end interface
+
+
   type, public,extends(angleLawENDF) :: isotropicAngle
     private
     type(isotropicMu)   :: muPdf

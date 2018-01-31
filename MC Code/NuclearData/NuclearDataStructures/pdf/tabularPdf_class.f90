@@ -25,12 +25,14 @@ module tabularPdf_class
     real(defReal),dimension(:),pointer       :: cdf  => null()
     integer(shortInt)                        :: flag            !Interpolation flag
   contains
-    generic   :: init  => initPdf, initCdf
+    generic   :: init          => initPdf, initCdf
+    generic   :: assignment(=) => assign_tabularPdf
     procedure :: sample
     procedure :: probabilityOf
 
     procedure, private :: initPdf
     procedure, private :: initCdf
+    procedure, private :: assign_tabularPdf
 
   end type tabularPdf
 contains
@@ -216,5 +218,21 @@ contains
 
   end subroutine initCdf
 
+
+
+  subroutine assign_tabularPdf(LHS,RHS)
+    class(tabularPdf),intent(out) :: LHS
+    type(tabularPdf),intent(in)   :: RHS
     
+    allocate(LHS % data(size(RHS % x),3))
+    LHS % data = RHS % data
+
+    LHS % x   => LHS % data(:,1)
+    LHS % pdf => LHS % data(:,2)
+    LHS % cdf => LHS % data(:,3)
+
+    LHS % flag = RHS % flag
+  end subroutine assign_tabularPdf
+
+
 end module tabularPdf_class

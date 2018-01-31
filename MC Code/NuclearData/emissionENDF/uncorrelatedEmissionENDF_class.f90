@@ -23,8 +23,8 @@ module uncorrelatedEmissionENDF_class
       class(releaseLawENDF), pointer :: releasePdf => null() !! Not exactly a PDF (its a delta function PDF...)
 
     contains
-      procedure :: getAngleEnergy
-      procedure :: getNumber
+      procedure :: sampleAngleEnergy
+      procedure :: releaseAt
       ! Build procedures
       generic   :: attachENDF   => attachENDF_Angle , &
                                    attachENDF_Energy, &
@@ -40,22 +40,31 @@ module uncorrelatedEmissionENDF_class
 contains
 
 
-  subroutine getAngleEnergy(self,angle,energy,rand )
+  subroutine sampleAngleEnergy(self,angle,E_out,E_in,rand )
     !! Subroutine, which returns a sample of angle and energy obtained from law attached to the
     !! object.
     class(uncorrelatedEmissionENDF), intent(in)  :: self
-    real(defReal), intent(inout)                 :: angle
-    real(defReal), intent(inout)                 :: energy
+    real(defReal), intent(out)                   :: angle
+    real(defReal), intent(out)                   :: E_out
+    real(defReal), intent(in)                    :: E_in
     class(RNG), intent(inout)                    :: rand
-  end subroutine
+
+    angle = self % anglePdf  % sample(E_in,rand)
+    E_out = self % energyPdf % sample(E_in,rand)
+
+  end subroutine sampleAngleEnergy
 
 
-  subroutine getNumber(self,number)
+  function releaseAt(self,E_in) result(number)
     !! Subroutine, which returns a number of emitted secondary neutrons according to the attached
     !! neutronReleseENDF object.
     class(uncorrelatedEmissionENDF), intent(in) :: self
-    real(defReal), intent(inout)                :: number
-  end subroutine
+    real(defReal), intent(in)                   :: E_in
+    real(defReal)                               :: number
+
+    number = self % releasePdf % releaseAt(E_in)
+
+  end function releaseAt
 
 
   subroutine attachENDF_Angle(self,anglePdf)

@@ -1,7 +1,7 @@
 module tabularRelease_class
 
   use numPrecision
-  use genericProcedures,    only : fatalError
+  use genericProcedures,    only : fatalError, isSorted
   use endfTable_class,      only : endfTable
   use releaseLawENDF_class, only : releaseLawENDF
 
@@ -51,6 +51,11 @@ contains
       call fatalError(Here,'In the provided energy Grid some values are -ve.')
     end if
 
+    ! Check if there are any -ve values for release
+    if( count(releaseValues < 0.0 ) > 0 ) then
+      call fatalError(Here,'In the provided Nu values some are -ve.')
+    end if
+
     if(associated(self % releaseTable)) deallocate(self % releaseTable)
 
     self % releaseTable => endfTable(eGrid, releaseValues)
@@ -68,6 +73,11 @@ contains
     ! Check if there are any -ve values in energy grid
     if ( count( eGrid < 0.0 ) > 0 ) then
       call fatalError(Here,'In the provided energy Grid some values are -ve.')
+    end if
+
+    ! Check if there are any -ve values for release
+    if( count(releaseValues < 0.0 ) > 0 ) then
+      call fatalError(Here,'In the provided Nu values some are -ve.')
     end if
 
     if(associated(self % releaseTable)) deallocate(self % releaseTable)

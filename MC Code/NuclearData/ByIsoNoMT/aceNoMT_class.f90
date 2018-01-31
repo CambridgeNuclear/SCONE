@@ -2,8 +2,10 @@ module aceNoMT_class
 
   use numPrecision
   use genericProcedures ,   only : openToRead
+  use RNG_class,            only : RNG
   use emissionFromACE_func, only : emissionFromACE
-  use emissionENDF_class,   only : emissionENDF
+  use emissionENDF_class,   only : emissionENDF, emissionENDF_ptr
+
 
   implicit none
   private
@@ -20,9 +22,10 @@ module aceNoMT_class
 
     logical(defBool)   :: isFissile = .false.
 
-    integer(shortInt),dimension(:), allocatable   :: xsMT       !! MT numbers of cross-sections in xs
-    real(defReal),dimension(:),allocatable        :: energyGrid !! Energy grid for xs data
-    real(defReal),dimension(:,:),allocatable      :: xs         !! Microscpoic cross-sections table order -> xs(reactionMTnumber,energyPoint)
+    integer(shortInt),dimension(:), allocatable     :: xsMT         !! MT numbers of cross-sections in xs
+    type(emissionENDF_ptr),dimension(:),allocatable :: emissionData
+    real(defReal),dimension(:),allocatable          :: energyGrid   !! Energy grid for xs data
+    real(defReal),dimension(:,:),allocatable        :: xs           !! Microscpoic cross-sections table order -> xs(reactionMTnumber,energyPoint)
   contains
     procedure :: init
 
@@ -34,19 +37,15 @@ contains
 
   subroutine init(self,filePath,line)
     !! Load reaction cross-section data from ACE file.
-    class(aceNoMT), intent(inout)      :: self
-    character(*), intent(in)           :: filePath  !! Path to file with ACE data card
-    integer(shortInt), intent(in)      :: line      !! Line at which the ACE data card begins in the file
-
+    class(aceNoMT), intent(inout)           :: self
+    character(*), intent(in)                :: filePath  !! Path to file with ACE data card
+    integer(shortInt), intent(in)           :: line      !! Line at which the ACE data card begins in the file
     integer(shortInt), dimension(16)        :: NXS
     integer(shortInt), dimension(32)        :: JXS
     real(defReal),dimension(:), allocatable :: XSS
-    class(emissionENDF),pointer  :: dummy
 
     call self % readAceLibrary(filePath, line, NXS, JXS, XSS)
     call self % readXS(NXS,JXS,XSS)
-
-    dummy => emissionFromACE(NXS,JXS,XSS,18) !*** This line is evil and for testing only!!!!!
 
   end subroutine
 
@@ -57,12 +56,12 @@ contains
     integer(shortInt), dimension(16),intent(out)        :: NXS
     integer(shortInt), dimension(32),intent(out)        :: JXS
     real(defReal),dimension(:), allocatable,intent(out) :: XSS
+    character(pathLen)                                  :: localFilePath
+    integer(shortInt),parameter                         :: aceFile = 66
+    integer(shortInt)                                   :: i
 
-    integer(shortInt),parameter             :: aceFile = 66
-    integer(shortInt)                       :: i
-
-
-    call openToRead(aceFile,filePath)
+    localFilePath = trim(adjustl(filePath))
+    call openToRead(aceFile,localFilePath)
 
     ! Skip lines
     if (line > 1) then
@@ -94,6 +93,8 @@ contains
 
   end subroutine
 
+
+
   subroutine readXS(self,NXS,JXS,XSS)
     !! Read cross-sections into type variables from NXS,JXS and XSS tabels
     !! This implementation ignores reaction other then total,elastic scattering, total capture and
@@ -119,8 +120,10 @@ contains
     end if
 
     allocate(self % energyGrid (NXS(3)))
-    allocate(self % xsMT(reactionNum))
     allocate(self % xs(reactionNum, NXS(3)))
+
+    allocate(self % xsMT(reactionNum))
+    allocate(self % emissionData(2:reactionNum))
 
     ! Ensure that all cross-sections are initially 0.0
     self % xs = 0.0
@@ -144,6 +147,11 @@ contains
       self % xs(4,i:i+j-1) = [XSS(JXS(21)+2:JXS(21)+j+1)]
       self % xsMT(4) = 18
     end if
+
+    ! Read emission data
+    do i=2,size(self % xsMT)
+      self % emissionData(i) = emissionFromACE(NXS,JXS,XSS,self % xsMT(i))
+    end do
 
   end subroutine
 

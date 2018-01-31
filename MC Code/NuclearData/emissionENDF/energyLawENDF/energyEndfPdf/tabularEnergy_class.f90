@@ -20,9 +20,11 @@ module tabularEnergy_class
     procedure :: sample
     procedure :: probabilityOf
 
-    generic           :: init => init_withPDF, init_withCDF
+    generic           :: init          => init_withPDF, init_withCDF
+    generic           :: assignment(=) => assign_tabularEnergy
     procedure,private :: init_withPDF
     procedure,private :: init_withCDF
+    procedure,private :: assign_tabularEnergy
 
   end type tabularEnergy
 
@@ -88,6 +90,7 @@ contains
   end function new_tabularEnergy
 
 
+
   function new_tabularEnergy_withCDF(E,PDF,CDF,interFlag) result (new)
     real(defReal),dimension(:),intent(in) :: E, PDF, CDF
     integer(shortInt),intent(in)          :: interFlag
@@ -98,5 +101,14 @@ contains
 
   end function new_tabularEnergy_withCDF
 
+
+
+  subroutine assign_tabularEnergy(LHS,RHS)
+    class(tabularEnergy),intent(out) :: LHS
+    type(tabularEnergy),intent(in)   :: RHS
+
+    LHS % pdf = RHS % pdf
+
+  end subroutine assign_tabularEnergy
 
 end module tabularEnergy_class

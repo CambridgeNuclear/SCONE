@@ -3,6 +3,7 @@ module ByIsoNoMT_Data_class
   use numPrecision
   use genericProcedures, only : fatalError, openToRead, removeDuplicates, linFind, &
                                 findDuplicates, arrayConcat
+  use aceNoMT_class,     only : aceNoMT
 
   implicit none
   private
@@ -18,6 +19,8 @@ module ByIsoNoMT_Data_class
     real(defReal),dimension(:),allocatable         :: matTemp
     ! Isotope Data
     character(zzIdLen),dimension(:),allocatable    :: isoNames
+    type(aceNoMT),dimension(:), allocatable        :: isoXsData
+
   contains
     procedure :: readFrom
     procedure :: print
@@ -194,15 +197,23 @@ contains
                       arrayConcat(findDuplicates(zzIds)))
     end if
 
+    ! Allocate Memory for isotopic data
+    allocate(self % isoXsData(size(self % isoNames)))
+
     ! Read Isotope Data
     do i=1,size(self % isoNames)
+      ! **** This Search need to be modernised ****!
       j = linFind(zzIds,self % isoNames(i))
       if (j == -1) then
         call fatalError('readIsotopes (byIsoNoMT_Data_class.f90)', &
                         'Isotope ' // self % isoNames(i) //' was not found')
       end if
-      print *, zzIds(j), startLine(j), isoPath(j) ! Later will call isotopeACE to initialise
+
+      print *, "Reading : ", zzIds(j), startLine(j), isoPath(j)
+      call self % isoXsData(i) % init(isoPath(j),startLine(j))
+
     end do
+    print *, size(self % isoXSData)
 
 
     close(library)

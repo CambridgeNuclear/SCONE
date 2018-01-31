@@ -67,11 +67,18 @@ contains
     integer(shortInt),dimension(:),intent(in) :: bounds, interENDF
     character(100),parameter                  :: Here='initInter (endfTable_class.f90)'
 
+    ! Perform Checks
     if (size(x) /= size(y))               call fatalError(Here,'x and y have diffrent size!')
 
     if (size(bounds) /= size (interENDF)) call fatalError(Here, 'bounds and interENDF &
-                                                                 have different size')
+                                                                & have different size')
+    if ( count( bounds <= 0.0 ) > 0 )     call fatalError(Here,'bounds has -ve values')
 
+    if (.not.isSorted(bounds))     call fatalError(Here,'bounds is not sorted')
+
+    if ( maxval(bounds) > size(x)) call fatalError(Here,'bounds contains values larger then size(x)')
+
+    ! Allocate Data
     if (allocated(self % x)) deallocate(self % x)
     if (allocated(self % y)) deallocate(self % y)
 

@@ -1,6 +1,7 @@
 module constantRelease_class
 
   use numPrecision
+  use genericProcedures,    only : fatalError
   use releaseLawENDF_class, only : releaseLawENDF
 
   implicit none
@@ -22,8 +23,10 @@ contains
 
   subroutine init(self,release)
     class(constantRelease), intent(inout) :: self
-    real(defReal), intent(in)            :: release
+    real(defReal), intent(in)             :: release
+    character(100),parameter              :: Here='init (constantRelease_class.f90)'
 
+    if( release < 0) call fatalError(Here,'-ve value of release provided!')
     self % secondaryRelease = release
 
   end subroutine init

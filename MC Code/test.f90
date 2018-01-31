@@ -35,11 +35,11 @@ program test
   integer(kind=shortInt),dimension(:),pointer :: B
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
   type(ByIsoNoMT_Data)  :: CEdata
-  character(len=pathLen)      :: matInput="./testInput"
+  character(len=pathLen)      :: matInput="./testInputLarge"
   character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
-  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/92238JF311.ace"
+  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/1001JEF311.ace"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl, eps
@@ -65,11 +65,12 @@ program test
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
   !print *, B(3:5)
-
+  call isotope % init(acePath,7681)
+  !stop
   call CEdata % readFrom(matInput,isoInput)
   call CEdata % print()
 
-  call isotope % init(acePath,firstLine)
+  !call isotope % init(acePath,firstLine)
 
 
   !R= [1.1_8, 2.3_8, 3.6_8, 9.6_8, 11.9_8]

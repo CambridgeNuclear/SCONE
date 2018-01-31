@@ -84,5 +84,26 @@ module endfConstants
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
 
 
+  ! List of diffrent ENDF energy Laws. See ENDF manual for more details:
+  !
+  ! Trkov, A., M. Herman, and D. A. Brown. “ENDF-6 Formats Manual.”
+  ! Data Formats and Procedures for the Evaluated Nuclear Data Files ENDF/B-VI and ENDF/B-VII,
+  ! National Nuclear Data Center Brookhaven National Laboratory, Upton, NY, 2012, 11973–5000.
+  !
+  integer(shortInt),parameter  :: tabularEquiprobableEnergyBins = 1  ,&
+                                  discretePhotonEnergy          = 2  ,&
+                                  levelScattering               = 3  ,&
+                                  continuousTabularDistribution = 4  ,&
+                                  generalEvaporationSpectrum    = 5  ,&
+                                  simpleMaxwellFissionSpectrum  = 7  ,&
+                                  evaporationSpectrum           = 9  ,&
+                                  energyDependentWattSpectrum   = 11 ,&
+                                  tabularLinearFunctions        = 22 ,&
+                                  ukLaw6                        = 24 ,&
+                                  kalbach87Formalism            = 44 ,&
+                                  endfEnergyLaw61               = 61 ,&
+                                  nBodyPhaseSpaceDistribution   = 66 ,&
+                                  labratoryAngleEnergyLaw       = 67
+
 
 end module endfConstants
