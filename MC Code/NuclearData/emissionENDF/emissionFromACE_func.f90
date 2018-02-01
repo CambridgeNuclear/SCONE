@@ -110,7 +110,13 @@ contains
 
         energyLaw  => noEnergy()
         releaseLaw => constantRelease(1.0_defReal)
-        angleLaw   => readAngleArray(JXS(9))
+        if(int(XSS(JXS(8))) == isotropic) then
+          angleLaw => isotropicAngle()
+
+        else
+          angleLaw => readAngleArray(JXS(9))
+
+        end if
 
         new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 

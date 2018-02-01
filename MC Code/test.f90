@@ -39,7 +39,7 @@ program test
   character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
-  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/1001JEF311.ace"
+  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/33075JEF311.ace"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl, eps
@@ -65,7 +65,7 @@ program test
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
   !print *, B(3:5)
-  call isotope % init(acePath,7681)
+  call isotope % init(acePath,1)
   !stop
   call CEdata % readFrom(matInput,isoInput)
   call CEdata % print()
