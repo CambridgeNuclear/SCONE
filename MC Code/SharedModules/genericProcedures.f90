@@ -282,18 +282,24 @@ module genericProcedures
     end if
   end function
 
+
+
   function linFind_Char(charArray,target) result(idx)
-    !! Searches linearly for the occurance of target in charArray. Following Errors can occur:
+    !! Searches linearly for the occurance of target in charArray. Removes left blanks.
+    !! Following Errors can occur:
     !! targetNotFound -> target is not present in the array
     character(*),dimension(:),intent(in) :: charArray
     character(*),intent(in)              :: target
     integer(shortInt)                    :: idx
 
     do idx=1,size(charArray)
-      if( trim(charArray(idx)) == trim(target) ) return
+     ! if( trim(charArray(idx)) == trim(target) ) return
+      if( adjustl(charArray(idx)) == adjustl(target)) return
     end do
     idx = targetNotFound
   end function
+
+
 
   function linFind_defReal(defRealArray,target) result (idx)
     !! Searches linearly for the occurance of target in defRealArray. Following Errors can occur

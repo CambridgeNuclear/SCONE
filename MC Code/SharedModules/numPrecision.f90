@@ -8,7 +8,9 @@ module numPrecision
                                 defBool = 4,     &
                                 matNameLen = 20, &
                                 pathLen = 100,   &
-                                zzIdLen = 10
+                                zzIdLen = 10,    &
+                                lineLen = 300,   &
+                                nameLen = 30
   ! I/O error codes
   integer, public, parameter :: endOfFile = -1
 

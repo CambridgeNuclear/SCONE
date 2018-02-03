@@ -3,6 +3,9 @@
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="photran.managedbuild.toolchain.gnu.fortran.exe.debug.1120601468">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="photran.managedbuild.toolchain.gnu.fortran.exe.debug.1120601468" moduleId="org.eclipse.cdt.core.settings" name="Debug">
+				<macros>
+					<stringMacro name="FC" type="VALUE_TEXT" value="/opt/intel/Compiler/11.1/046/bin/intel64/ifort"/>
+				</macros>
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>

@@ -27,6 +27,7 @@ program test
   use energyLawENDF_class,     only : energyLawENDF
   use noEnergy_class,          only : noEnergy
 
+  use dictionary_class , only: dictionary, dictContent
 
   implicit none
   integer(kind=shortInt) :: i
@@ -43,7 +44,8 @@ program test
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl, eps
-  real(defReal),dimension(:),allocatable :: R, x, pdf, x2, pdf2
+  real(defReal),dimension(:),allocatable :: x, pdf, x2, pdf2,R
+
   type(RNG) :: random
 
 
@@ -62,9 +64,157 @@ program test
   type(tabularEnergy),dimension(:),allocatable   :: tables
   type(contTabularEnergy) :: yjfj
 
+  class(*),pointer   :: GP(:), GP2(:)
+  real,pointer       :: a1(:),a2(:)
+  real,pointer       :: rp1(:),rp2(:)
+  character(:),pointer :: char_ptr
+
+  type(dictionary) :: testDict
+  type(dictionary) :: testDict2
+  type(dictionary) :: testDict3
+
+  character(nameLen) :: abc = "aaa"
+  character(20),dimension(:),allocatable  :: charT
+  character(20),dimension(:),pointer      :: cA_ptr
+  class(*),dimension(:),pointer           :: Uptr
+  class(*),dimension(:),pointer           :: Uptr2
+  character(20),dimension(:),pointer      :: cA_ptr2
+  character(20),dimension(:),pointer      :: cA_ptr3
+  character(20),dimension(:),pointer      :: cA_ptr4
+  character(20),dimension(:),pointer      :: localPointer
+  character(20),dimension(:), pointer     :: newMemory
+
+  character(20),dimension(:),allocatable :: cA_alloc1
+  character(20),dimension(:),allocatable :: cA_alloc2
+  type(dictContent)     :: dictNode
+
+  charT = ['jgfjfjfj' ,&
+           'kjgkgk  ' ,&
+           '  ugkkik' ,&
+           '  jgkj  ']
+
+!  allocate(cA_ptr(size(charT)))
+!  cA_ptr = charT
+!
+!  Uptr => cA_ptr
+!
+!  cA_ptr => null()
+!
+!  select type(Uptr)
+!   type is (character(*))
+!
+!     localPointer(1:size(Uptr)) => Uptr(1:size(Uptr))
+!     cA_alloc2 = localPointer
+!     print *, cA_alloc2
+!
+!     allocate(newMemory(size(Uptr)) )
+!     newMemory(1:size(Uptr)) =''
+!
+!     newMemory = localPointer
+!     print *, localPointer
+!     print *, newMemory
+!
+!  end select
+!     Uptr2 => newMemory
+!
+!  select type(Uptr)
+!    type is (character(*))
+!      print *, size(Uptr)
+!      cA_ptr2(1:size(Uptr)) => Uptr(1:size(Uptr))
+!  end select
+!
+!  select type(Uptr2)
+!    type is (character(*))
+!        print *, size(Uptr2)
+!      cA_ptr3(1:size(Uptr2)) => Uptr2(1:size(Uptr2))
+!        print *, cA_ptr3
+!  end select
+!
+!  newMemory(3) = 'HaHA'
+!
+!
+!  print *, cA_ptr2
+!  print *, cA_ptr3
+!
+!
+!  stop
+  call testDict % init(40,2)
+  call testDict % store("aaa",68.9_8)
+  call testDict % store("bbbb",76.8_8)
+  call testDict % store("ccc",8.9_8)
+  call testDict % store("ddd",8.6_8)
+  call testDict % store("eee",1.2_8)
+  call testDict % store("fff",[2, 4,5,6,7,8,9,1,2,3,4,5,6])
+  call testDict % store("gggg",3.2_8)
+  call testDict % store("hh",4.2_8)
+  call testDict % store("i","jklJKL" )
+  call testDict % store("jKL",charT)
+  call testDict % store("OPR",7)
+  call testDict % store("KLM",[3.4_8,4.5_8,1.2_8,4.3_8])
+
+
+  call testDict2 % init(20)
+  call testDict2 % store("aaa",testDict)
+
+  call testDict % kill()
+
+  testDict3 = testDict2 % getDict("aaa")
+
+  print *, testDict3 % getReal("ddd")
+
+
+
+  !call deepCopy(dictNode,testDict%entries(1))
+!  call dictNode % deepCopy(testDict % entries(10))
+!  call testDict % kill()
+!  call testDict % init(40,2)
+!  testDict % keywords(1) = 'a'
+!  testDict % entries(1) = dictNode
+!  call testDict%entries(2) % shallowCopy(dictNode)
+!  !call shallowCopy(testDict%entries(2),dictNode)
+!
+!  print *, testDict % getCharArray('a')
+
+  !print *, testDict % getCharArray('jKL')
+
+!  allocate(a1(2))
+!  allocate(a2(2))
+!
+!  a1 = [6.0 , 7.9]
+!
+!  GP => a1
+!  GP2 => GP
+!  rp1 => a1
+!  a1 => null()
+!  select type (GP2)
+!    type is(real)
+!
+!      rp1 => GP2
+!    type is(integer)
+!     print *, 'kekekekekekekekeke'
+!  end select
+!
+!  !deallocate(GP)
+!
+!  print*, rp1
+!  i =10
+!  allocate(character(i) :: char_ptr)
+!
+!  char_ptr = '12345678910'
+!
+!  print *, char_ptr
+!
+!  a1 => null()
+!  rp1 => null()
+!
+!  print *, associated(rp1)
+
+
   !C=[1,2,3,4,5,6,7,8,9,10]
   !B => C(1:8)
   !print *, B(3:5)
+  stop
+
   call isotope % init(acePath,1)
   !stop
   call CEdata % readFrom(matInput,isoInput)
