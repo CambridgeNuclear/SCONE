@@ -31,7 +31,8 @@ add_subdirectory(NuclearData)
 
 ### TEMP commands to complie the dictionary 
 # Define Files to compile 
-add_library(DataStructures ./DataStructures/dictionary_class.f90)
+add_library(DataStructures ./DataStructures/dictionary_class.f90
+                           ./DataStructures/IOdictionary_class.f90)
 
 # Define dependencies of the library 
 target_link_libraries(DataStructures SharedModules)

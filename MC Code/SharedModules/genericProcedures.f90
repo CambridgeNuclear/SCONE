@@ -314,25 +314,175 @@ module genericProcedures
     idx = targetNotFound
   end function linFind_defReal
 
+!  function arrayConcat(charArray) result(out)
+!    !! Concatenate strings from an array into a single long character. Trims elements of char Array
+!    !! and ads on blank between them for separation.
+!    character(*),dimension(:),intent(in)       :: charArray
+!    character(:),allocatable                   :: out
+!    integer(shortInt)                          :: trimLen , i
+!
+!    ! Find total trim length of elements of charArray
+!    trimLen=0
+!    do i=1,size(charArray)
+!      trimLen = trimLen + len(trim(charArray(i)))
+!    end do
+!
+!    i = trimLen + size(charArray)
+!    allocate(character(i) :: out)
+!
+!    out = ''
+!
+!    do i=1,size(charArray)
+!      out = out // trim(charArray(i)) // ' '
+!    end do
+!
+!  end function arrayConcat
+
+
+
   function arrayConcat(charArray) result(out)
-    !! Concatenate strings from an array into a single long character. Trims elements of char Array
-    !! and ads on blank between them for separation.
+    !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
+    !! elements of char Array. Adds a blank at the end of a line
     character(*),dimension(:),intent(in)       :: charArray
     character(:),allocatable                   :: out
-    integer(shortInt)                          :: trimLen , i
+    integer(shortInt)                          :: elementLen, trimLen , i
 
-    ! Find total trim length of elements of charArray
+    ! Find total length of elements of charArray after adjusting left and trimming
     trimLen=0
     do i=1,size(charArray)
-      trimLen = trimLen + len(trim(charArray(i)))
+      elementLen =  len( trim( adjustl( charArray(i))))
+      trimLen = trimLen + elementLen
     end do
 
-    allocate(character(trimLen+size(charArray)):: out)
+    ! Allocate output array
+    i = trimLen+size(charArray)
+    allocate(character(i) :: out)
+
+    ! Make shure output tape is empty
     out = ''
+
+    ! Write elements of the array to output tape
     do i=1,size(charArray)
-      out = out // trim(charArray(i)) // ' '
+      out = out // trim( adjustl(charArray(i))) // ' '
     end do
+
   end function arrayConcat
+
+
+
+  function countSymbol(string,symbol) result(num)
+    ! Function that searches counts all occurences of a "symbol" in a "string"
+    character(*),intent(in)  :: string
+    character(1),intent(in)  :: symbol
+    integer(shortInt)        :: num
+    integer(shortInt)        :: start, end, pos
+
+    start = 1
+    end   = len(string)
+    num   = 0
+
+    do
+      pos = index(string(start:end),symbol)
+      if (pos == 0) return ! No more occurences of symbol in "string"
+      num = num + 1
+      start = start + pos ! pos is returned relative to start
+    end do
+
+  end function countSymbol
+
+
+  function symbolBalance(str,leftS,rightS) result (balance)
+    !! Goes through the string and adds +1 to balance for each leftS and -1 for each rightS. It
+    !! terminates and returns -1 when balance becomes -ve.
+    character(*),intent(in)       :: str
+    character(1),intent(in)       :: leftS
+    character(1),intent(in)       :: rightS
+    integer(shortInt)             :: balance
+    integer(shortInt)             :: i
+
+    balance = 0
+    do i=1,len(str)
+
+      if(str(i:i) == leftS) then
+        balance = balance + 1
+
+      elseif(str(i:i) == rightS) then
+        balance = balance -1
+
+      end if
+
+      if (balance < 0) return
+
+    end do
+
+  end function symbolBalance
+
+
+
+  function indexOfNext(signs,string) result (idx)
+    character(1),dimension(:),intent(in)     :: signs
+    character(*), intent(in)                 :: string
+    integer(shortInt)                        :: idx
+    integer(shortInt)                        :: i
+    integer(shortInt),dimension(size(signs)) :: temp_idx
+    character(100),parameter                 :: here='indexOf (genericProcedures.f90)'
+
+    temp_idx = index(string,signs)
+
+
+    idx = minval(temp_idx,temp_idx > 0)
+
+    if (idx == huge(temp_idx)) idx = 0
+
+  end function indexOfNext
+
+
+  subroutine compressBlanks(string)
+    character(*), intent(inout)     :: string
+    character(len(string))          :: stringCopy
+    integer(shortInt)               :: i, j
+    logical(defBool)                :: lastBlank
+
+
+    lastBlank = .false.
+    stringCopy = ''
+    j = 1
+
+    do i=1,len(string)
+      if (lastBlank) then
+        if (string(i:i) /= " ") then
+          lastBlank = .false.
+          stringCopy(j:j) = string(i:i)
+          j=j+1
+        end if
+
+      else
+        stringCopy(j:j) = string(i:i)
+        j=j+1
+        if (string(i:i) == " ") then
+          lastBlank = .true.
+        endif
+
+      end if
+    end do
+    string = stringCopy
+
+  end subroutine compressBlanks
+
+
+  subroutine replaceChar(string,oldS,newS)
+    character(*), intent(inout) :: string
+    character(1), intent(in)    :: oldS
+    character(1), intent(in)    :: newS
+    integer(shortInt)           :: i
+
+    do i=1,len(string)
+      if(string(i:i) == oldS) string(i:i) = newS
+    end do
+
+  end subroutine replaceChar
+
+
 
   elemental function RealReal_linlin_elemental_interpolate(xMin,xMax,yMin,yMax,x) result(y)
     real(defReal), intent(in) :: xMin, xMax, yMin, yMax, x
@@ -342,6 +492,8 @@ module genericProcedures
     interFactor = (x-xMin)/(xMax-xMin)
     y = yMax * interFactor + (1-interFactor)*yMin
   end function RealReal_linlin_elemental_interpolate
+
+
 
   function RealReal_endf_interpolate(xMin,xMax,yMin,yMax,x,endfNum) result(y)
     real(defReal), intent(in)     :: xMin, xMax, yMin, yMax, x
@@ -370,6 +522,7 @@ module genericProcedures
     end select
 
   end function RealReal_endf_interpolate
+
 
 
   elemental function isInteger(float) result (isIt)

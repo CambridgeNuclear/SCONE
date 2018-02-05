@@ -35,7 +35,7 @@ module dictionary_class
   ! dictContent and a function to retrive it. Then integer values for all enteries could be pulled
   ! and use to mask keywords.
   !
-  integer(shortInt),parameter :: charLen = nameLen
+  integer(shortInt),parameter,public :: charLen = nameLen
 
   type,public :: dictContent
     private
@@ -618,6 +618,7 @@ contains
     real(defReal),pointer            :: real_ptr
     integer(shortInt),pointer        :: int_ptr
     character(charLen),pointer       :: char_ptr
+    type(dictionary),pointer         :: dict_ptr
 
     real(defReal),dimension(:),pointer :: realArray_ptr
     integer(shortInt),dimension(:),pointer :: intArray_ptr
@@ -644,6 +645,10 @@ contains
           char_ptr = rank0
           LHS % rank0_ptr => char_ptr
 
+        type is( dictionary)
+          allocate(dict_ptr)
+          call dict_ptr % deepCopy(rank0)
+          LHS % rank0_ptr => dict_ptr
         ! Extra entry for a dictionary
 
       end select
@@ -840,7 +845,6 @@ contains
     !inputLen = len(input)
 
     allocate(newMemory(inputSize) )
-
 
     newMemory = input
 

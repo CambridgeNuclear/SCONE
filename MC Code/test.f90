@@ -28,6 +28,8 @@ program test
   use noEnergy_class,          only : noEnergy
 
   use dictionary_class , only: dictionary, dictContent
+  use IOdictionary_class, only : IOdictionary
+
 
   implicit none
   integer(kind=shortInt) :: i
@@ -41,6 +43,7 @@ program test
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
   character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/33075JEF311.ace"
+  character(pathLen)       :: testDictFile = "./testDictInput"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
   real(defReal) :: kl, eps
@@ -73,7 +76,7 @@ program test
   type(dictionary) :: testDict2
   type(dictionary) :: testDict3
 
-  character(nameLen) :: abc = "aaa"
+  character(nameLen) :: abc = "aaa", bc
   character(20),dimension(:),allocatable  :: charT
   character(20),dimension(:),pointer      :: cA_ptr
   class(*),dimension(:),pointer           :: Uptr
@@ -87,12 +90,61 @@ program test
   character(20),dimension(:),allocatable :: cA_alloc1
   character(20),dimension(:),allocatable :: cA_alloc2
   type(dictContent)     :: dictNode
+  type(IOdictionary)    :: IOdictTest
+  integer(shortInt) :: err
+  character(100) :: msg
+
 
   charT = ['jgfjfjfj' ,&
            'kjgkgk  ' ,&
            '  ugkkik' ,&
            '  jgkj  ']
 
+
+
+!  bc= charT(2)
+!  print *, bc
+!  stop
+ !print *, index(trim(abc)," ")
+!  !abc = 'jmgmfj'
+!  read (unit=abc,fmt="(ES30.30)",iostat=err,iomsg=msg) kl
+!  print *, kl
+!  print *, err
+!  print *, msg
+!  stop
+
+
+
+  call IOdictTest % initFrom(testDictFile)
+
+  print *, "TOP DICTIONARY"
+  print *, IOdictTest % getRealArray('list1')
+  print *, IOdictTest % getReal('keyword1')
+  print *, IOdictTest % getInt('keyword2')
+  print *, IOdictTest % getChar('keyword3')
+  print *, IOdictTest % getInt('keyword4')
+  print *, IOdictTest % getInt('keyword7')
+
+  testDict = IOdictTest % getDict('dictionary1')
+
+  print *, "NESTED DICTIONARY "
+  print *, testDict % getInt('keyword')
+  print *, testDict % getReal('keyword2')
+  print *, testDict % getChar('keyword3')
+
+  testDict2 = testDict % getDict('dictionary3')
+
+  print *, "NESTED DICTIONARY2 "
+  print *, testDict2 % getInt('key')
+  print *, testDict2 % getInt('key2')
+
+  testDict3 = testDict2 % getDict('dictionary4')
+
+  print *, "NESTED DICTIONARY3"
+  print *, testDict3 % getInt('key')
+  print *, testDict3 % getReal('key2')
+
+  stop
 !  allocate(cA_ptr(size(charT)))
 !  cA_ptr = charT
 !
