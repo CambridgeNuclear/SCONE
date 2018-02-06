@@ -75,6 +75,7 @@ program test
   type(dictionary) :: testDict
   type(dictionary) :: testDict2
   type(dictionary) :: testDict3
+  type(dictionary) :: testDict4
 
   character(nameLen) :: abc = "aaa", bc
   character(20),dimension(:),allocatable  :: charT
@@ -106,7 +107,7 @@ program test
 !  print *, bc
 !  stop
  !print *, index(trim(abc)," ")
-!  !abc = 'jmgmfj'
+!  abc = '7'
 !  read (unit=abc,fmt="(ES30.30)",iostat=err,iomsg=msg) kl
 !  print *, kl
 !  print *, err
@@ -143,6 +144,13 @@ program test
   print *, "NESTED DICTIONARY3"
   print *, testDict3 % getInt('key')
   print *, testDict3 % getReal('key2')
+
+  testDict4 = testDict2 % getDict('dictionary5')
+
+  print *, "NESTED DICTONARY 3.1"
+  print *, testDict4 % getReal('key')
+  print *, testDict4 % getInt('key2')
+
 
   stop
 !  allocate(cA_ptr(size(charT)))
