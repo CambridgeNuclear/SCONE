@@ -378,7 +378,7 @@ contains
 
     ! Load list depending on the type
     if (isCharacter) then
-      call dict % store(keyword,tempData)
+      call dict % store(keyword,listEntries)
 
     elseif(isInteger) then
       call readIntArray()   ! Internal subroutine

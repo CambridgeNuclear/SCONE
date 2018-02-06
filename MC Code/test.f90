@@ -119,9 +119,9 @@ program test
   call IOdictTest % initFrom(testDictFile)
 
   print *, "TOP DICTIONARY"
-  print *, IOdictTest % getRealArray('list1')
+ ! print *, IOdictTest % getRealArray('list1')
   print *, IOdictTest % getReal('keyword1')
-  print *, IOdictTest % getInt('keyword2')
+  print *, IOdictTest % getReal('keyword2')
   print *, IOdictTest % getChar('keyword3')
   print *, IOdictTest % getInt('keyword4')
   print *, IOdictTest % getInt('keyword7')
@@ -151,6 +151,16 @@ program test
   print *, testDict4 % getReal('key')
   print *, testDict4 % getInt('key2')
 
+
+ print *, IOdictTest % keysReal()
+ print *, IOdictTest % keysInt()
+ print *, IOdictTest % keysChar()
+ print *, IOdictTest % keysRealArray()
+ print *, IOdictTest % keysIntArray()
+ print *, IOdictTest % keysCharArray()
+ print *, IOdictTest % keysDict()
+
+ print *, IOdictTest % getCharArray('list3')
 
   stop
 !  allocate(cA_ptr(size(charT)))

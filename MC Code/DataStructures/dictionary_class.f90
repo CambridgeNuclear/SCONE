@@ -11,6 +11,17 @@ module dictionary_class
   ! It is necessary to predefine size of stored char. Gfortran 4.8 does not support allocatable
   ! character with deffered length.
   !
+  ! WARNING: ***************************************************************************************
+  ! Becouse the current default assigment(=) for dictionary is deep copy using
+  ! dictionary valued functions will result in memory leaks. Following statment needs to be avoided
+  !
+  !  <dictionary variable> = functionDict()
+  !
+  !  function functionDict()
+  !     type(dictionary), intent(out)  :: functionDict
+  !                ....
+  ! END OF WARNING**********************************************************************************
+  !
   ! For now the dictionary is limited to following enteries:
   ! ->   scalar defReal                                       - real(defReal)      :: a
   ! ->   1D array of defReal                                  - real(defReal)      :: a(:)
@@ -35,12 +46,22 @@ module dictionary_class
   ! dictContent and a function to retrive it. Then integer values for all enteries could be pulled
   ! and use to mask keywords.
   !
-  integer(shortInt),parameter,public :: charLen = nameLen
+
+  integer(shortInt),parameter,public :: charLen  = nameLen
+  integer(shortInt),parameter        :: empty    = 0
+  integer(shortInt),parameter        :: numInt   = 1
+  integer(shortInt),parameter        :: numReal  = 2
+  integer(shortInt),parameter        :: word     = 3
+  integer(shortInt),parameter        :: nestDict = 4
+  integer(shortInt),parameter        :: arrInt   = 5
+  integer(shortInt),parameter        :: arrReal  = 6
+  integer(shortInt),parameter        :: arrWord  = 7
 
   type,public :: dictContent
     private
     class(*),pointer               :: rank0_ptr => null()
     class(*),dimension(:),pointer  :: rank1_ptr => null()
+    integer(shortInt)              :: type      = empty
   contains
     generic   :: put  => put_real      ,&
                          put_realArray ,&
@@ -54,8 +75,9 @@ module dictionary_class
     procedure :: kill => kill_dictCont
 
     generic   :: assignment(=) => shallowCopy
-    procedure :: deepCopy    => deepCopy_dictCont
-    procedure :: shallowCopy => shallowCopy_dictCont
+    procedure :: deepCopy      => deepCopy_dictCont
+    procedure :: shallowCopy   => shallowCopy_dictCont
+    procedure :: getType       => getType_dictContent
 
     procedure,private :: put_real
     procedure,private :: put_int
@@ -92,6 +114,14 @@ module dictionary_class
     procedure  :: getChar
     procedure  :: getCharArray
     procedure  :: getDict
+
+    procedure  :: keysReal
+    procedure  :: keysRealArray
+    procedure  :: keysInt
+    procedure  :: keysIntArray
+    procedure  :: keysChar
+    procedure  :: keysCharArray
+    procedure  :: keysDict
 
     generic    :: assignment(=) => deepCopy
     procedure  :: extendBy
@@ -473,6 +503,117 @@ contains
   end function getDict
 
 
+  function keysReal(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == numReal)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysReal
+
+
+  function keysRealArray(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == arrReal)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysRealArray
+
+
+  function keysInt(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == numInt)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysInt
+
+
+  function keysIntArray(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == arrInt)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysIntArray
+
+
+  function keysChar(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == word)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysChar
+
+
+  function keysCharArray(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == arrWord)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysCharArray
+
+
+  function keysDict(self) result(keys)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    logical(defBool),dimension(:),allocatable    :: mask
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == nestDict)
+
+    keys = pack(self % keywords(1:L), mask)
+
+  end function keysDict
+
 
 
   subroutine store_real(self,keywordArgument,entry)
@@ -754,6 +895,7 @@ contains
     newMemory = input
 
     self % rank0_ptr => newMemory
+    self % type  =  numReal
 
   end subroutine put_real
 
@@ -773,6 +915,7 @@ contains
     newMemory = input
 
     self % rank1_ptr => newMemory
+    self % type  =  arrReal
 
   end subroutine put_realArray
 
@@ -790,6 +933,7 @@ contains
     newMemory = input
 
     self % rank0_ptr => newMemory
+    self % type = numInt
 
   end subroutine put_int
 
@@ -809,6 +953,7 @@ contains
     newMemory = input
 
     self % rank1_ptr => newMemory
+    self % type = arrInt
 
   end subroutine put_intArray
 
@@ -828,6 +973,7 @@ contains
     newMemory = input
 
     self % rank0_ptr => newMemory
+    self % type = word
 
   end subroutine put_char
 
@@ -849,8 +995,10 @@ contains
     newMemory = input
 
     self % rank1_ptr => newMemory
+    self % type = arrWord
 
   end subroutine put_charArray
+
 
 
   subroutine put_dict(self,input)
@@ -865,7 +1013,17 @@ contains
     newMemory = input     ! Hard Copy the dictionary
 
     self % rank0_ptr => newMemory
+    self % type = nestDict
 
   end subroutine put_dict
+
+
+  elemental function getType_dictContent(self) result(type)
+    class(dictContent), intent(in)     :: self
+    integer(shortInt)                  :: type
+
+    type = self % type
+
+  end function getType_dictContent
 
 end module dictionary_class
