@@ -32,20 +32,18 @@ module dictionary_class
   ! ->   another dictionary                                   - type(dictionary)   :: dict
   !
   ! To add additional structure <type> to store it is necessary to :
+  ! 0) Define new type parameter for <type>
   ! 1) Add put_<type>   subroutine to dictDontent class
   ! 2) Add another entery for <type> to select type in deepCopy_dictCont subroutine
   ! 3) Add store_<type> subroutine to dictionary class
   ! 4) Add get<type> function to dictionary class
+  ! 5) Add keys<type> function
   !
   ! To increase maximum rank would be messy. Don't do it! If you are determined you can probably
   ! hack existing code by storing higher rank arrays in rank1 array. Their structure should then
   ! be stored seperatly in integers in dictContent class.
   !
-  ! At the moment there are no functions to return all keywords associated with a given type inside .
-  ! the dictionary. It can be easly implemented if needed by adding an integer variable to
-  ! dictContent and a function to retrive it. Then integer values for all enteries could be pulled
-  ! and use to mask keywords.
-  !
+
 
   integer(shortInt),parameter,public :: charLen  = nameLen
   integer(shortInt),parameter        :: empty    = 0
