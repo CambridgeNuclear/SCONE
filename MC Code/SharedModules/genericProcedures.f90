@@ -491,6 +491,7 @@ module genericProcedures
 
     interFactor = (x-xMin)/(xMax-xMin)
     y = yMax * interFactor + (1-interFactor)*yMin
+
   end function RealReal_linlin_elemental_interpolate
 
 
@@ -504,19 +505,25 @@ module genericProcedures
     select case (endfNum) ! Naming Convention for ENDF interpolation (inY-inX) i.e. log-lin => logarithmic in y; linear in x
       case (histogramInterpolation)
         y = yMin
+
       case (linLinInterpolation)
         y = interpolate(xMin,xMax,yMin,yMax,x)
+
       case (linLogInterpolation)
         y = interpolate(log(xMin),log(xMax),yMin,yMax,log(x))
+
       case (logLinInterpolation)
         y = interpolate(xMin,xMax,log(yMin),log(yMax),x)
         y = exp(y)
+
       case (loglogInterpolation)
         y = interpolate(log(xMin),log(xMax),log(yMin),log(yMax),log(x))
         y = exp(y)
+
       case (chargedParticleInterpolation)
         ! Not implemented
         call fatalError(Here, 'ENDF interpolation law for charged Particles is not implemented')
+
       case default
         call fatalError(Here, 'Unknown ENDF interpolation number')
     end select

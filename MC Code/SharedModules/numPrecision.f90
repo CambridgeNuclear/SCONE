@@ -14,6 +14,9 @@ module numPrecision
   ! I/O error codes
   integer, public, parameter :: endOfFile = -1
 
+  ! Usefull constants
+  real(defReal), public, parameter :: PI = 4.0 * atan(1.0_defReal)
+
 contains
     
 end module numPrecision

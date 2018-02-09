@@ -105,6 +105,6 @@ contains
     allocate(new)
     call new % init(eGrid,ePdfs)
 
-  end function
+  end function new_contTabularEnergy
 
 end module contTabularEnergy_class

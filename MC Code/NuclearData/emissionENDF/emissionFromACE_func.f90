@@ -36,6 +36,7 @@ module emissionFromACE_func
   use energyLawENDF_class,            only : energyLawENDF
   use noEnergy_class,                 only : noEnergy
   use contTabularEnergy_class,        only : contTabularEnergy
+  use maxwellSpectrum_class,          only : maxwellSpectrum
 
   ! Import Energy Probability Density Functions (PDF)
   use tabularEnergy_class,            only : tabularEnergy
@@ -61,7 +62,39 @@ module emissionFromACE_func
                                   polynomial = 1  ,&
                                   tabular    = 2
 
+  interface real2Int
+    module procedure real2Int_scalar
+    module procedure real2Int_array
+  end interface
+
 contains
+
+  function real2Int_scalar(r,Where) result (i)
+    real(defReal), intent(in)  :: r
+    character(*), intent(in)   :: Where
+    integer(shortInt)          :: i
+
+    if ( isInteger(r) ) then
+      i = r
+    else
+      call fatalError(Where,' Tried to read real into integer variable')
+    end if
+
+  end function real2Int_scalar
+
+  function real2Int_array(r,Where) result(i)
+    real(defReal), dimension(:), intent(in) :: r
+    character(*), intent(in)                :: Where
+    integer(shortInt),dimension(size(r))    :: i
+
+    if (all(isInteger(r))) then
+      i = r
+    else
+      call fatalError(Where,'Tried to read reals into integer array')
+    end if
+
+  end function real2Int_array
+
 
   function emissionFromACE(NXS,JXS,XSS,MT) result(new)
     !! Function that for a given ACE libraries and MT number build and returns pointer to a
@@ -364,9 +397,14 @@ contains
         select case (lawType)
           case (continuousTabularDistribution)
             energyLaw => readEnergyLaw_contTabularEnergy(addr)
+
+          case (simpleMaxwellFissionSpectrum)
+            energyLaw => readEnergyLaw_maxwellSpectrum(addr)
+
           case default
             print *, 'Energy Law Type :', lawType
             call fatalError(Here,'Energy Law Type is not recognised')
+
         end select
 
       end function readSingleEnergyLaw
@@ -428,6 +466,7 @@ contains
         real(defReal),dimension(:),allocatable :: eGrid, PDF, CDF
         character(100),parameter               :: Here ='readSingleEnergyTabularPdf &
                                                         & (emissionFromACE_func.f90)'
+
         ! Read and check number of points and interpolation type
         interType_r = XSS(addr)
         nPoints_r   = XSS(addr+1)
@@ -447,6 +486,64 @@ contains
         call tabularEnergyPdf % init(eGrid,PDF,CDF,interType)
 
       end function readSingleEnergyTabularPdf
+
+
+
+      function readEnergyLaw_maxwellSpectrum(addr) result (energyLaw)
+        !! Reads energy Law given as maxwellian energy spectrum.
+        !! In the future this subroutine should be moved to object definition
+        !! Argument addr should point to LDAT(1) -> NR -> Number of interpolation regions
+        integer(shortInt), intent(in)                :: addr
+        class(energyLawENDF),pointer                 :: energyLaw
+        integer(shortInt)                            :: NR  , numE
+        real(defReal)                                :: NR_r, numE_r
+        real(defReal),dimension(:),allocatable       :: eGrid
+        real(defReal),dimension(:),allocatable       :: T
+        integer(shortInt),dimension(:),allocatable   :: bounds, interENDF
+        real(defReal)                                :: U
+        character(100),parameter                     :: Here ='readEnergyLaw_maxwellSpectrum &
+                                                             & (emissionFromACE_func.f90)'
+
+        ! Read and check number of interpolation paramethers
+        NR_r = XSS(addr)
+        if(.not.isInteger(NR_r)) then
+          call fatalError(Here,'Number of interpolation regions is not an integer')
+        end if
+
+        NR = NR_r
+
+        if(NR /= 0) then
+          ! Read interpolation parameters
+          allocate(bounds(NR))
+          allocate(interENDF(NR))
+
+          bounds    = real2Int( XSS(addr+1    : addr+1+NR-1   ), Here )
+          interEndf = real2Int( XSS(addr+1+NR : addr +1+2*NR-1), Here )
+
+        end if
+
+        ! Read and check number of energy points
+        numE_r = XSS(addr+2*NR+1)
+        if(.not.isInteger(numE_r)) call fatalError(Here,'Number of energy points is not an integer')
+        if(numE_r < 0 )            call fatalError(Here,'-ve number of energy points')
+        numE = numE_r
+
+        ! Read energy grid and neutron temperature (T) values
+        eGrid   = XSS(addr+2*NR+2      : addr+2*NR+2+numE-1   )
+        T       = XSS(addr+2*NR+2+numE : addr+2*NR+2+2*numE-1 )
+        U       = XSS(addr+2*NR+2+2*numE )
+
+        ! Create maxwellSpectrum object
+        if (NR == 0 ) then
+          energyLaw => maxwellSpectrum(eGrid,T,U)
+
+        else
+          energyLaw => maxwellSpectrum(eGrid,T,U,bounds,interENDF)
+
+        end if
+
+      end function readEnergyLaw_maxwellSpectrum
+
 
 
       function readNuArray() result (nuDat)
@@ -484,6 +581,7 @@ contains
 
         else if(nuType == tabular) then
           nuDat => readTabularNu(addr+1)
+
         else
           call fatalError(Here,'Unrecognised type of Nu data')
         end if

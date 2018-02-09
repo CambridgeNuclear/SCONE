@@ -30,6 +30,8 @@ program test
   use dictionary_class , only: dictionary, dictContent
   use IOdictionary_class, only : IOdictionary
 
+  use maxwellEnergyPdf_class, only: maxwellEnergyPdf
+  use maxwellSpectrum_class,  only: maxwellSpectrum
 
   implicit none
   integer(kind=shortInt) :: i
@@ -38,7 +40,7 @@ program test
   integer(kind=shortInt),dimension(:),pointer :: B
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
   type(ByIsoNoMT_Data)  :: CEdata
-  character(len=pathLen)      :: matInput="./testInputLarge"
+  character(len=pathLen)      :: matInput="./testInput"
   character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
@@ -94,202 +96,70 @@ program test
   type(IOdictionary)    :: IOdictTest
   integer(shortInt) :: err
   character(100) :: msg
+  type(maxwellEnergyPdf) :: maxwell
+  type(maxwellSpectrum), pointer :: maxSpec
 
-
-  charT = ['jgfjfjfj' ,&
-           'kjgkgk  ' ,&
-           '  ugkkik' ,&
-           '  jgkj  ']
-
-
-
-!  bc= charT(2)
-!  print *, bc
-!  stop
- !print *, index(trim(abc)," ")
-!  abc = '7'
-!  read (unit=abc,fmt="(ES30.30)",iostat=err,iomsg=msg) kl
-!  print *, kl
-!  print *, err
-!  print *, msg
-!  stop
-
-
-
-  call IOdictTest % initFrom(testDictFile)
-
-  print *, "TOP DICTIONARY"
- ! print *, IOdictTest % getRealArray('list1')
-  print *, IOdictTest % getReal('keyword1')
-  print *, IOdictTest % getReal('keyword2')
-  print *, IOdictTest % getChar('keyword3')
-  print *, IOdictTest % getInt('keyword4')
-  print *, IOdictTest % getInt('keyword7')
-
-  testDict = IOdictTest % getDict('dictionary1')
-
-  print *, "NESTED DICTIONARY "
-  print *, testDict % getInt('keyword')
-  print *, testDict % getReal('keyword2')
-  print *, testDict % getChar('keyword3')
-
-  testDict2 = testDict % getDict('dictionary3')
-
-  print *, "NESTED DICTIONARY2 "
-  print *, testDict2 % getInt('key')
-  print *, testDict2 % getInt('key2')
-
-  testDict3 = testDict2 % getDict('dictionary4')
-
-  print *, "NESTED DICTIONARY3"
-  print *, testDict3 % getInt('key')
-  print *, testDict3 % getReal('key2')
-
-  testDict4 = testDict2 % getDict('dictionary5')
-
-  print *, "NESTED DICTONARY 3.1"
-  print *, testDict4 % getReal('key')
-  print *, testDict4 % getInt('key2')
-
-
- print *, IOdictTest % keysReal()
- print *, IOdictTest % keysInt()
- print *, IOdictTest % keysChar()
- print *, IOdictTest % keysRealArray()
- print *, IOdictTest % keysIntArray()
- print *, IOdictTest % keysCharArray()
- print *, IOdictTest % keysDict()
-
- print *, IOdictTest % getCharArray('list3')
-
-  stop
-!  allocate(cA_ptr(size(charT)))
-!  cA_ptr = charT
+!  call IOdictTest % initFrom(testDictFile)
 !
-!  Uptr => cA_ptr
+!  print *, "TOP DICTIONARY"
+! ! print *, IOdictTest % getRealArray('list1')
+!  print *, IOdictTest % getReal('keyword1')
+!  print *, IOdictTest % getReal('keyword2')
+!  print *, IOdictTest % getChar('keyword3')
+!  print *, IOdictTest % getInt('keyword4')
+!  print *, IOdictTest % getInt('keyword7')
 !
-!  cA_ptr => null()
+!  testDict = IOdictTest % getDict('dictionary1')
 !
-!  select type(Uptr)
-!   type is (character(*))
+!  print *, "NESTED DICTIONARY "
+!  print *, testDict % getInt('keyword')
+!  print *, testDict % getReal('keyword2')
+!  print *, testDict % getChar('keyword3')
 !
-!     localPointer(1:size(Uptr)) => Uptr(1:size(Uptr))
-!     cA_alloc2 = localPointer
-!     print *, cA_alloc2
+!  testDict2 = testDict % getDict('dictionary3')
 !
-!     allocate(newMemory(size(Uptr)) )
-!     newMemory(1:size(Uptr)) =''
+!  print *, "NESTED DICTIONARY2 "
+!  print *, testDict2 % getInt('key')
+!  print *, testDict2 % getInt('key2')
 !
-!     newMemory = localPointer
-!     print *, localPointer
-!     print *, newMemory
+!  testDict3 = testDict2 % getDict('dictionary4')
 !
-!  end select
-!     Uptr2 => newMemory
+!  print *, "NESTED DICTIONARY3"
+!  print *, testDict3 % getInt('key')
+!  print *, testDict3 % getReal('key2')
 !
-!  select type(Uptr)
-!    type is (character(*))
-!      print *, size(Uptr)
-!      cA_ptr2(1:size(Uptr)) => Uptr(1:size(Uptr))
-!  end select
+!  testDict4 = testDict2 % getDict('dictionary5')
 !
-!  select type(Uptr2)
-!    type is (character(*))
-!        print *, size(Uptr2)
-!      cA_ptr3(1:size(Uptr2)) => Uptr2(1:size(Uptr2))
-!        print *, cA_ptr3
-!  end select
-!
-!  newMemory(3) = 'HaHA'
+!  print *, "NESTED DICTONARY 3.1"
+!  print *, testDict4 % getReal('key')
+!  print *, testDict4 % getInt('key2')
 !
 !
-!  print *, cA_ptr2
-!  print *, cA_ptr3
+! print *, IOdictTest % keysReal()
+! print *, IOdictTest % keysInt()
+! print *, IOdictTest % keysChar()
+! print *, IOdictTest % keysRealArray()
+! print *, IOdictTest % keysIntArray()
+! print *, IOdictTest % keysCharArray()
+! print *, IOdictTest % keysDict()
+!
+! print *, IOdictTest % getCharArray('list3')
+
+!  maxSpec => maxwellSpectrum( [1.0E-11_8, 20.0_8], [1.33974_8, 1.33974_8], -20.0_8)
 !
 !
-!  stop
-  call testDict % init(40,2)
-  call testDict % store("aaa",68.9_8)
-  call testDict % store("bbbb",76.8_8)
-  call testDict % store("ccc",8.9_8)
-  call testDict % store("ddd",8.6_8)
-  call testDict % store("eee",1.2_8)
-  call testDict % store("fff",[2, 4,5,6,7,8,9,1,2,3,4,5,6])
-  call testDict % store("gggg",3.2_8)
-  call testDict % store("hh",4.2_8)
-  call testDict % store("i","jklJKL" )
-  call testDict % store("jKL",charT)
-  call testDict % store("OPR",7)
-  call testDict % store("KLM",[3.4_8,4.5_8,1.2_8,4.3_8])
-
-
-  call testDict2 % init(20)
-  call testDict2 % store("aaa",testDict)
-
-  call testDict % kill()
-
-  testDict3 = testDict2 % getDict("aaa")
-
-  print *, testDict3 % getReal("ddd")
-
-
-
-  !call deepCopy(dictNode,testDict%entries(1))
-!  call dictNode % deepCopy(testDict % entries(10))
-!  call testDict % kill()
-!  call testDict % init(40,2)
-!  testDict % keywords(1) = 'a'
-!  testDict % entries(1) = dictNode
-!  call testDict%entries(2) % shallowCopy(dictNode)
-!  !call shallowCopy(testDict%entries(2),dictNode)
+!  do i =1,80000
+!   ! kl = 20.0/80000 * (i-1)
+!    print *, maxSpec % sample(1.0_8,random)
+!  end do
 !
-!  print *, testDict % getCharArray('a')
+!stop
 
-  !print *, testDict % getCharArray('jKL')
-
-!  allocate(a1(2))
-!  allocate(a2(2))
-!
-!  a1 = [6.0 , 7.9]
-!
-!  GP => a1
-!  GP2 => GP
-!  rp1 => a1
-!  a1 => null()
-!  select type (GP2)
-!    type is(real)
-!
-!      rp1 => GP2
-!    type is(integer)
-!     print *, 'kekekekekekekekeke'
-!  end select
-!
-!  !deallocate(GP)
-!
-!  print*, rp1
-!  i =10
-!  allocate(character(i) :: char_ptr)
-!
-!  char_ptr = '12345678910'
-!
-!  print *, char_ptr
-!
-!  a1 => null()
-!  rp1 => null()
-!
-!  print *, associated(rp1)
-
-
-  !C=[1,2,3,4,5,6,7,8,9,10]
-  !B => C(1:8)
-  !print *, B(3:5)
-  stop
-
-  call isotope % init(acePath,1)
-  !stop
+!  call isotope % init(acePath,1)
   call CEdata % readFrom(matInput,isoInput)
   call CEdata % print()
 
+  stop
   !call isotope % init(acePath,firstLine)
 
 
