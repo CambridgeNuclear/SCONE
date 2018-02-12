@@ -11,15 +11,15 @@ module ByIsoNoMT_Data_class
   type, public :: byIsoNoMT_Data
     private
     ! Material Data
-    character(matNameLen),dimension(:),allocatable :: matNames
-    integer(shortInt),dimension(:),allocatable     :: matNumIso
-    integer(shortInt),dimension(:,:),allocatable   :: matIsoIdx
-    character(ZZidLen),dimension(:,:),allocatable  :: matIsoNames
-    real(defReal),dimension(:,:),allocatable       :: matIsoDens
-    real(defReal),dimension(:),allocatable         :: matTemp
+    character(matNameLen),dimension(:),pointer :: matNames    => null()
+    integer(shortInt),dimension(:),pointer     :: matNumIso   => null()
+    integer(shortInt),dimension(:,:),pointer   :: matIsoIdx   => null()
+    character(ZZidLen),dimension(:,:),pointer  :: matIsoNames => null()
+    real(defReal),dimension(:,:),pointer       :: matIsoDens  => null()
+    real(defReal),dimension(:),pointer         :: matTemp     => null()
     ! Isotope Data
-    character(zzIdLen),dimension(:),allocatable    :: isoNames
-    type(aceNoMT),dimension(:), allocatable        :: isoXsData
+    character(zzIdLen),dimension(:),pointer    :: isoNames    => null()
+    type(aceNoMT),dimension(:), pointer        :: isoXsData   => null()
 
   contains
     procedure :: readFrom
@@ -42,7 +42,9 @@ contains
     character(*), intent(in)             ::  isotopeLib
 
     call self % readMaterials(matInput)
+
     call self % createIsotopeList()
+
     call self % assignIsoIndices()
     call self % readIsotopes(isotopeLib)
 
@@ -121,6 +123,7 @@ contains
     class(byIsoNoMT_Data),intent(inout)           :: self
     integer(shortInt)                             :: maxIsoNames
     character(zzIdLen),dimension(:),allocatable   :: withRepetition
+    character(zzIdLen),dimension(:),allocatable   :: noRepetition
     integer(shortInt)                             :: i,j
 
     maxIsoNames=sum(self % matNumIso)
@@ -134,7 +137,10 @@ contains
       j = j + self % matNumIso(i)
     end do
 
-    self % isoNames = removeDuplicates(withRepetition)
+    noRepetition = removeDuplicates(withRepetition)
+    allocate(self % isoNames( size(noRepetition) ))
+    self % isoNames = noRepetition
+
   end subroutine
 
   subroutine assignIsoIndices(self)

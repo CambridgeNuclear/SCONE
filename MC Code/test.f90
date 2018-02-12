@@ -33,7 +33,19 @@ program test
   use maxwellEnergyPdf_class, only: maxwellEnergyPdf
   use maxwellSpectrum_class,  only: maxwellSpectrum
 
+  use xsCDF_class,     only : xsCDF
+  use xsMainCDF_class, only : xsMainCDF
+
+
   implicit none
+
+  type myType
+    real(defReal) :: c
+    real(defReal) :: a
+    real(defReal) :: b
+  end type myType
+
+
   integer(kind=shortInt) :: i
   integer(longInt)       :: longI, longI2, rate
   integer(kind=shortInt),dimension(99),target :: A
@@ -99,6 +111,31 @@ program test
   type(maxwellEnergyPdf) :: maxwell
   type(maxwellSpectrum), pointer :: maxSpec
 
+  type(myType),target   :: testType
+  real(defReal),pointer :: tt
+
+  type(xsMainCDF) :: myCDF
+!**********************************************************************!
+
+
+  call myCDF % init (1.0_8,2.0_8,0.1_8)
+
+  print *, myCDF % cdf
+  print *, myCDF % invert(0.0_8)
+  stop
+!
+!  testType % a = 9.9
+!  testType % b = 1.1
+!
+!  tt => testType % a
+!
+!  print *, tt
+!  !deallocate(tt)
+!
+!  print *, testType % b
+
+
+  stop
 !  call IOdictTest % initFrom(testDictFile)
 !
 !  print *, "TOP DICTIONARY"
@@ -156,6 +193,7 @@ program test
 !stop
 
 !  call isotope % init(acePath,1)
+
   call CEdata % readFrom(matInput,isoInput)
   call CEdata % print()
 

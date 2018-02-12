@@ -4,4 +4,4 @@ add_library( NuclearDataStructures ./endfTable/endfTable_class.f90
                                    ./pdf/maxwellEnergyPdf_class.f90)
 
 # Define dependencies of the library 
-target_link_libraries(NuclearDataStructures SharedModules )
+target_link_libraries(NuclearDataStructures RandomNumbers SharedModules )

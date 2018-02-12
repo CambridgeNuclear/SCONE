@@ -12,6 +12,7 @@ module genericProcedures
   interface linFind
     module procedure linFind_Char
     module procedure linFind_defReal
+    module procedure linFind_shortInt
   end interface
 
   interface findDuplicates
@@ -313,6 +314,20 @@ module genericProcedures
     end do
     idx = targetNotFound
   end function linFind_defReal
+
+
+  function linFind_shortInt(shortIntArray,target) result (idx)
+    !! Searches linearly for the occurance of target in shortIntArray. Following Errors can occur
+    !! valueOutsideArray -> target is not present in the array
+    integer(shortInt), dimension(:), intent(in)  :: shortIntArray
+    integer(shortInt), intent(in)                :: target
+    integer(shortInt)                            :: idx
+
+    do idx=1,size(shortIntArray)
+      if (shortIntArray(idx) == target) return
+    end do
+    idx = targetNotFound
+  end function linFind_shortInt
 
 !  function arrayConcat(charArray) result(out)
 !    !! Concatenate strings from an array into a single long character. Trims elements of char Array

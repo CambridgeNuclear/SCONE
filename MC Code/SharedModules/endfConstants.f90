@@ -79,6 +79,10 @@ module endfConstants
                                   N_pt          = 116 ,&
                                   N_da          = 117
 
+  integer(shortInt),parameter  :: anyScatter = -102, &
+                                  anyCapture = -201, &
+                                  anyFission = -118
+
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]

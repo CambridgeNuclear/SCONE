@@ -1,7 +1,7 @@
 module aceNoMT_class
 
   use numPrecision
-  use genericProcedures ,   only : openToRead
+  use genericProcedures ,   only : openToRead, binarySearch, interpolate
   use RNG_class,            only : RNG
   use emissionFromACE_func, only : emissionFromACE
   use emissionENDF_class,   only : emissionENDF, emissionENDF_ptr
@@ -12,31 +12,83 @@ module aceNoMT_class
 
   type, public :: aceNoMT
     !! Class that stores isotopic reaction cross-sections read from ACE data card.
-    private
-    real(defReal)      :: atomWeight    !! Atomic weight ratio A/m_neutron
-    real(defReal)      :: temp          !! Temperature of nucleide [MeV]
-    character(zzIdLen) :: zzId          !! Isotope ZZid ie. ZZZAAA.nnC
-    character(10)      :: date          !! Date the data were processed
-    character(70)      :: comment       !! Quick! Guess what is it!
-    character(10)      :: MATid         !! MAT indentifier (see p. F-9 Appendic F MCNP 4 manual)
+
+    real(defReal),public      :: atomWeight    !! Atomic weight ratio A/m_neutron
+    real(defReal),public      :: temp          !! Temperature of nucleide [MeV]
+    character(zzIdLen),public :: zzId          !! Isotope ZZid ie. ZZZAAA.nnC
+    character(10)             :: date          !! Date the data were processed
+    character(70)             :: comment       !! Quick! Guess what is it!
+    character(10)             :: MATid         !! MAT indentifier (see p. F-9 Appendic F MCNP 4 manual)
+    integer(shortInt),public  :: nReact        !! number of reaction channels
+
 
     logical(defBool)   :: isFissile = .false.
 
-    integer(shortInt),dimension(:), allocatable     :: xsMT         !! MT numbers of cross-sections in xs
+    integer(shortInt),dimension(:), pointer         :: xsMT  => null()    !! MT numbers of cross-sections in xs
     type(emissionENDF_ptr),dimension(:),allocatable :: emissionData
-    real(defReal),dimension(:),allocatable          :: energyGrid   !! Energy grid for xs data
-    real(defReal),dimension(:,:),allocatable        :: xs           !! Microscpoic cross-sections table order -> xs(reactionMTnumber,energyPoint)
+    real(defReal),dimension(:),allocatable          :: energyGrid         !! Energy grid for xs data
+    real(defReal),dimension(:,:),allocatable        :: xs                 !! Microscpoic cross-sections table order -> xs(reactionMTnumber,energyPoint)
+
   contains
     procedure :: init
+    procedure :: searchFor
+    procedure :: interFrom
+    procedure :: searchAndInter
 
     procedure,private :: readAceLibrary
     procedure,private :: readXS
+
   end type aceNoMT
 
 contains
 
+  !!
+  !! Subroutine to search energy grid of the isotope and return "bottoming" index
+  !!
+  function searchFor(self,E) result (idx)
+    class(aceNoMT), intent(in) :: self
+    real(defReal), intent(in)  :: E
+    integer(shortInt)          :: idx
+
+    idx = binarySearch(self % energyGrid,E)
+
+  end function searchFor
+
+  !!
+  !! Subroutine to interpolate xs given a "bottoming index"
+  !!
+  subroutine interFrom(self,idx,E,xs)
+    class(aceNoMT), intent(in)                :: self
+    integer(shortInt), intent(in)             :: idx   !! Bottoming Index
+    real(defReal), intent(in)                 :: E     !! Energy Value
+    real(defReal),dimension(:),intent(inout)  :: xs    !! Reference to xs storage space
+    real(defReal)                             :: E_low, E_top
+
+    E_low = self % energyGrid(idx)
+    E_top = self % energyGrid(idx+1)
+
+    xs = interpolate(E_low, E_top, self % xs(:,idx), self % xs(:,idx+1), E)
+
+  end subroutine interFrom
+
+  !!
+  !! Subroutine to search energy grid of the isotope, interpolate xss and return index and xss
+  !!
+  subroutine searchAndInter(self,E,idx,xs)
+    class(aceNoMT), intent(in)                :: self
+    real(defReal), intent(in)                 :: E
+    integer(shortInt),intent(inout)           :: idx
+    real(defReal),dimension(:), intent(inout) :: xs
+
+    idx = self % searchFor(E)
+    call self % interFrom(idx, E, xs)
+
+  end subroutine searchAndInter
+
+  !!
+  !! Load reaction cross-section data from ACE file.
+  !!
   subroutine init(self,filePath,line)
-    !! Load reaction cross-section data from ACE file.
     class(aceNoMT), intent(inout)           :: self
     character(*), intent(in)                :: filePath  !! Path to file with ACE data card
     integer(shortInt), intent(in)           :: line      !! Line at which the ACE data card begins in the file
@@ -108,7 +160,7 @@ contains
     integer(shortInt)      :: i,j
 
     if (allocated(self % energyGrid)) deallocate(self % energyGrid)
-    if (allocated(self % xsMT)) deallocate(self % xsMT)
+    if (associated(self % xsMT)) deallocate(self % xsMT)
     if (allocated(self % xs)) deallocate(self % xs)
 
     ! Check if isotope is fissile (or fissonable) -> has fission cross-sections in ACE
@@ -152,6 +204,9 @@ contains
     do i=2,size(self % xsMT)
       self % emissionData(i) = emissionFromACE(NXS,JXS,XSS,self % xsMT(i))
     end do
+
+    ! Set number of reaction channels
+    self % nReact = reactionNum
 
   end subroutine
 
