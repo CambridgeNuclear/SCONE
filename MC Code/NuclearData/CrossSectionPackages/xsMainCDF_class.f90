@@ -25,7 +25,7 @@ contains
   !!
   !! Build the CDF for sampling main reaction channel from individual cross-sections
   !!
-  subroutine init(self,scatter,capture,fission)
+  elemental subroutine init(self,scatter,capture,fission)
     class(xsMainCDF), intent(inout)   :: self
     real(defReal),intent(in)          :: scatter
     real(defReal),intent(in)          :: capture

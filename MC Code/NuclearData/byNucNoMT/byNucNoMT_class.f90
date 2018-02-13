@@ -1,7 +1,7 @@
-module ByIsoNoMT_class_module
+module byNucNoMT_class
 
   use numPrecision
-  use ByIsoNoMT_Data_class , only : ByIsoNoMT_Data
+  use byNucNoMT_Data_class , only : byNucNoMT_Data
   use aceNoMT_class,         only : aceNoMT
 
   implicit none
@@ -22,7 +22,7 @@ module ByIsoNoMT_class_module
   !  real(defReal),dimension(maxMT),target      :: xsSpace = -1.0
   !  integer(shortInt),dimension(maxMT),target  :: MTSpce  = -1
     type(aceNoMT),pointer                      :: dataPtr => null()
-  contains
+ ! contains
   !  procedure :: attach  => attach_isoMemory
   !  procedure :: xsTot   => xsTot_isoMemory
   !  procedure :: xss     => xss_isoMemory
@@ -43,7 +43,7 @@ module ByIsoNoMT_class_module
 
 
 
-  type, public :: ByIsoNoMT_class
+  type, public :: byNucNoMT
     private
     ! Material Data Handle State Variabels
     real(defReal)            ::  E
@@ -55,9 +55,9 @@ module ByIsoNoMT_class_module
     type(isotopeMemory), dimension(:), allocatable    :: isoShelf
    ! type(materialMemory),dimension(:), allocatable    :: matShelf
     real(defReal)                                     :: majorant
-    type(ByIsoNoMT_Data),pointer                      :: dataBlock => null()
+    type(byNucNoMT_Data),pointer                      :: dataBlock => null()
 
-  contains
+ ! contains
   !  procedure :: initDebug
   !  procedure :: init
     ! Get majorant XS
@@ -66,7 +66,7 @@ module ByIsoNoMT_class_module
     ! Get pointer to isotope's micro xs and MT map
     ! Get neutron emission given nuclide index and MT
     ! Sample deflection mu and secondary energy with CF flag given random number generator
-  end type ByIsoNoMT_class
+  end type byNucNoMT
 
 contains
 
@@ -101,8 +101,8 @@ contains
 
 
 !  subroutine initDebug(self,dataBlock)
-!    class(ByIsoNoMT), intent(inout)           ::  self
-!    type(ByIsoNoMT_Data), pointer, intent(in) :: dataBlock
+!    class(byNucNoMT), intent(inout)           ::  self
+!    type(byNucNoMT_Data), pointer, intent(in) :: dataBlock
 !
 ! !   self % dataBlock => dataBlock
 !    call self % init()
@@ -110,11 +110,11 @@ contains
 
 
 !  subroutine init(self)
-!    class(ByIsoNoMT), intent(inout) :: self
+!    class(byNucNoMT), intent(inout) :: self
 !    ! Create
 !    ! Here will be
 !
 !
 !  end subroutine
 
-end module ByIsoNoMT_class_module
+end module byNucNoMT_class

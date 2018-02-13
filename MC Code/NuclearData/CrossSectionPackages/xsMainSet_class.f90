@@ -2,7 +2,8 @@ module xsMainSet_class
 
   use numPrecision
   use endfConstants
-  use xsSet_class, only : xsSet
+  use genericProcedures, only : fatalError
+  use xsSet_class,       only : xsSet
 
   implicit none
   private
@@ -93,14 +94,14 @@ contains
     ! Interpolate xss
     self % total   = f2 * low % total   + f * top % total
 
-  subroutine interpolateTotal
+  end subroutine interpolateTotal
 
   !!
   !! Perform linear interpolation of ALL XS EXCEPT TOTAL between 2 xsMainSets (low and top) using
   !! the given interpolation factor (x-x_0)/(x_1-x_0) where 1- top value; 0- low value.
   !! Does not check sensibility of the output! May result in -ve xs!
   !!
-  subroutine interpolateTotal(self,low,top,f)
+  subroutine interpolateTail(self,low,top,f)
     class(xsMainSet), intent(inout)  :: self
     type(xsMainSet), intent(in)      :: low
     type(xsMainSet), intent(in)      :: top
@@ -115,7 +116,7 @@ contains
     self % capture = f2 * low % capture + f * top % capture
     self % fission = f2 * low % fission + f * top % fission
 
-  subroutine interpolateTotal
+  end subroutine interpolateTail
 
 
 end module xsMainSet_class

@@ -3,7 +3,7 @@ program test
   use numPrecision
   use RNG_class
   use genericProcedures
-  use ByIsoNoMT_Data_class, only : byIsoNoMT_Data
+  use byNucNoMT_Data_class, only : byNucNoMT_Data
   use aceNoMT_class
 
   use endfTable_class, only : endfTable
@@ -35,7 +35,9 @@ program test
 
   use xsCDF_class,     only : xsCDF
   use xsMainCDF_class, only : xsMainCDF
+  use xsMainSet_class, only : xsMainSet
 
+  use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
 
   implicit none
 
@@ -51,12 +53,12 @@ program test
   integer(kind=shortInt),dimension(99),target :: A
   integer(kind=shortInt),dimension(:),pointer :: B
   INTEGER(SHORTiNT),DIMENSION(:), allocatable :: C
-  type(ByIsoNoMT_Data)  :: CEdata
+  type(ByNucNoMT_Data)  :: CEdata
   character(len=pathLen)      :: matInput="./testInput"
   character(len=pathLen)      :: isoInput="/home/mak60/myACE/JEF311.aceXS"
   character(len=99)      :: format
   character(len=99),dimension(2) :: Ach
-  character(len=pathLen)    :: acePath = "/home/mak60/myACE/acedata/33075JEF311.ace"
+  character(len=pathLen)    :: acePath = " /home/mak60/myACE/acedata/92235JEF311.ace "
   character(pathLen)       :: testDictFile = "./testDictInput"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
@@ -115,13 +117,70 @@ program test
   real(defReal),pointer :: tt
 
   type(xsMainCDF) :: myCDF
+  type(xsMainCDF) :: uCDF
+  type(xsMainCDF) :: bCDF
+
+
+  type(xsMainSet) :: mySet
+  type(xsMainSet) :: bSet
+  type(xsMainSet) :: uSet
+  type(xsEnergyPointNoMT) :: Epoint
+  type(xsEnergyPointNoMT) :: Bpoint
+  type(xsEnergyPointNoMT) :: Upoint
+
+
 !**********************************************************************!
 
+!  bSet % total    = 4.0
+!  bSet % scatter  = 3.0
+!  bSet % capture  = 1.5
+!  bSet % fission  = 0.5
+!
+!  uSet % total   = 6.0
+!  uSet % scatter = 3.5
+!  uSet % capture = 1.5
+!  uSet % fission = 1.0
+!
+!  call uCDF % init(uSet % scatter, uSet % capture, uSet % fission)
+!  call bCDF % init(bSet % scatter, bSet % capture, bSet % fission)
+!
+! ! print *, uCDF % cdf
+! ! call myCDF % interpolate( bCDF,uCDF, 0.5_8)
+! ! print *, myCDF % cdf
+! ! print *, bCDF % cdf
+!
+!  call mySet % interpolate(bSet,uSet,1.0_8)
+!
+!  print *, bSet % total, bSet % scatter, bSet % capture, bSet % fission
+!  print *, mySet % total, mySet % scatter, mySet % capture, mySet % fission
+!  print *, uSet % total, uSet % scatter, uSet % capture, uSet % fission
 
-  call myCDF % init (1.0_8,2.0_8,0.1_8)
+!  call myCDF % init (1.0_8,2.0_8,0.1_8)
 
-  print *, myCDF % cdf
-  print *, myCDF % invert(0.0_8)
+ ! print *, myCDF % cdf
+ ! print *, myCDF % invert(0.0_8)
+
+!  call bPoint % init(2.0_8,1.0_8)
+!  call uPoint % init(3.0_8,1.0_8,9.9_8)
+!
+!  call ePoint % interpolate (bPoint,uPoint,-1.0_8)
+!
+!  print*,  bPoint % xs % total,bPoint % xs % scatter, bPoint % xs % capture, bPoint % xs % fission
+!  print*,  ePoint % xs % total,ePoint % xs % scatter, ePoint % xs % capture, ePoint % xs % fission
+!  print*,  uPoint % xs % total,uPoint % xs % scatter, uPoint % xs % capture, uPoint % xs % fission
+
+!  call isotope % init(acePath,243050)
+!
+!  do i = 1,size(isotope % energyGrid)
+!    print *,isotope % energyGrid(i) ,isotope % xsData(i) % xs % total,isotope % xsData(i) % xs % scatter, &
+!            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
+!  end do
+
+  call CEdata % readFrom(matInput,isoInput)
+  call CEdata % print()
+
+
+
   stop
 !
 !  testType % a = 9.9
