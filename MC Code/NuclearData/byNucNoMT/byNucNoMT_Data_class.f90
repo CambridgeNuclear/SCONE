@@ -195,7 +195,7 @@ contains
     ! Thus if code that runs porperly on linux is reused on windows last line is read twice!. Explicit
     ! check whether that happens is required to obtain correct behaviour on both systems.
     libLen=0
-    do while (readStat /= -1)
+    do
       read(unit = library, fmt=*,iostat=readStat,iomsg = readMsg) currentZZId
       if(readStat == -1 .and. trim(currentZZId)==trim(pastZZId)) exit ! See character equality to indicate double read of last line
       libLen = libLen + 1

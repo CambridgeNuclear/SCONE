@@ -16,9 +16,8 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Add compilers flags
 #if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
-  set(CMAKE_Fortran_FLAGS  "-std=f2008 -Wall")
+  set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 ") 
 #endif()
-
 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
 

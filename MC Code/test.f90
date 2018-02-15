@@ -183,18 +183,16 @@ program test
 !  end do
 
 
+ call ce % readFrom(matInput,isoInput)
 
-
-  call ce % readFrom(matInput,isoInput)
-
-
+stop
 !****************************************************************************
 ! ***** Test play code to interpolate XSs
 
 !      ! Set energy points for interpolation
 !      ! min exponent -7
 !      ! max exponent 1.30
-!      N = 1
+!      N = 100000
 !      allocate (energy(N))
 !      energy = [((1.30+7.0)/N * i - 7.0, i=1,N)]
 !      energy = 10**energy
@@ -210,7 +208,7 @@ program test
 
 
 
-  stop
+!  stop
 !
 !  testType % a = 9.9
 !  testType % b = 1.1
@@ -223,11 +221,12 @@ program test
 !  print *, testType % b
 
 
-  stop
+ ! stop
 !  call IOdictTest % initFrom(testDictFile)
 !
 !  print *, "TOP DICTIONARY"
-! ! print *, IOdictTest % getRealArray('list1')
+!  print *, IOdictTest % getRealArray('list1')
+!  print *, IOdictTest % getCharArray('list3')
 !  print *, IOdictTest % getReal('keyword1')
 !  print *, IOdictTest % getReal('keyword2')
 !  print *, IOdictTest % getChar('keyword3')
@@ -240,6 +239,7 @@ program test
 !  print *, testDict % getInt('keyword')
 !  print *, testDict % getReal('keyword2')
 !  print *, testDict % getChar('keyword3')
+!  print *, testDict % getIntArray('list2')
 !
 !  testDict2 = testDict % getDict('dictionary3')
 !
@@ -268,7 +268,9 @@ program test
 ! print *, IOdictTest % keysCharArray()
 ! print *, IOdictTest % keysDict()
 !
-! print *, IOdictTest % getCharArray('list3')
+!! print *, IOdictTest % getCharArray('list3')
+!
+! stop
 
 !  maxSpec => maxwellSpectrum( [1.0E-11_8, 20.0_8], [1.33974_8, 1.33974_8], -20.0_8)
 !

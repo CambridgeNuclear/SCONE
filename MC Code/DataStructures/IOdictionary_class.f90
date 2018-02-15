@@ -600,7 +600,7 @@ contains
 
     ! Find number of lines in the input file
     fileLen=0
-    do while (readStat /= -1)
+    do
       write(format,"(A1,I10.1,A2)") "(",maxColumn,"A)"
 
       read(unit = fileUnit, fmt=format,iostat=readStat) line

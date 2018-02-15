@@ -72,6 +72,7 @@ contains
     do i=1,numNuclide
       nucPtr => self % dataBlock % nucXsData(i)
       call self % nucShelf(i) % init(i,nucPtr)
+
     end do
 
   end subroutine readFrom
