@@ -9,7 +9,7 @@ module byNucNoMT_Data_class
   private
 
   type, public :: byNucNoMT_Data
-    private
+    !private
     ! Material Data
     character(matNameLen),dimension(:),pointer :: matNames    => null()
     integer(shortInt),dimension(:),pointer     :: matNumNuc   => null()

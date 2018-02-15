@@ -2,7 +2,7 @@ module aceNoMT_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures ,      only : openToRead, binarySearch, interpolate
+  use genericProcedures ,      only : openToRead, binarySearch, interpolate, searchError
   use RNG_class,               only : RNG
   use emissionFromACE_func,    only : emissionFromACE
   use emissionENDF_class,      only : emissionENDF, emissionENDF_ptr
@@ -38,7 +38,7 @@ module aceNoMT_class
 
   contains
     procedure :: init
-
+    procedure :: energyIdxFor
 
     procedure,private :: readAceLibrary
     procedure,private :: readXS
@@ -46,6 +46,20 @@ module aceNoMT_class
   end type aceNoMT
 
 contains
+
+  !!
+  !! Searches for the given energy and returns index of the bottom of the interval
+  !!
+  function energyIdxFor(self,E) result(idx)
+    class(aceNoMT), intent(in)  :: self
+    real(defReal), intent(in)   :: E
+    integer(shortInt)           :: idx
+    character(100), parameter   :: Here = 'searchFor (aceNoMT_class.f90)'
+
+    idx = binarySearch(self % energyGrid,E)
+    call searchError(idx,Here)
+
+  end function energyIdxFor
 
   !!
   !! Load reaction cross-section data from ACE file.

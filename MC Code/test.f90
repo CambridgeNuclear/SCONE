@@ -4,6 +4,7 @@ program test
   use RNG_class
   use genericProcedures
   use byNucNoMT_Data_class, only : byNucNoMT_Data
+  use byNucNoMT_class,      only : byNucNoMT
   use aceNoMT_class
 
   use endfTable_class, only : endfTable
@@ -39,6 +40,9 @@ program test
 
   use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
 
+
+
+
   implicit none
 
   type myType
@@ -71,7 +75,7 @@ program test
   class(releaseLawENDF),pointer  :: release
   class(endfTable),pointer       :: eTable
 
-  real(defReal), dimension(20) :: energy, second
+  real(defReal), dimension(20) ::  second
   integer(shortInt), dimension(4) :: bounds, ENDF
 
   real, pointer :: p1,p2,p3
@@ -121,14 +125,16 @@ program test
   type(xsMainCDF) :: bCDF
 
 
-  type(xsMainSet) :: mySet
+  class(xsMainSet), pointer :: mySet
   type(xsMainSet) :: bSet
   type(xsMainSet) :: uSet
   type(xsEnergyPointNoMT) :: Epoint
   type(xsEnergyPointNoMT) :: Bpoint
   type(xsEnergyPointNoMT) :: Upoint
 
-
+  type(byNucNoMT) :: ce
+  real(defReal),dimension(:),allocatable :: energy
+  integer(shortInt)                       :: N
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -176,8 +182,31 @@ program test
 !            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
 !  end do
 
-  call CEdata % readFrom(matInput,isoInput)
-  call CEdata % print()
+
+
+
+  call ce % readFrom(matInput,isoInput)
+
+
+!****************************************************************************
+! ***** Test play code to interpolate XSs
+
+!      ! Set energy points for interpolation
+!      ! min exponent -7
+!      ! max exponent 1.30
+!      N = 1
+!      allocate (energy(N))
+!      energy = [((1.30+7.0)/N * i - 7.0, i=1,N)]
+!      energy = 10**energy
+!      do i=1,N
+!         !print *, energy(i)
+!         call ce % getMainXS(mySet,energy(i),4)
+!         print *, energy(i), mySet % total, mySet % scatter, mySet % capture, mySet % fission
+!      end do
+!*********************************
+
+  !call CEdata % readFrom(matInput,isoInput)
+  !call CEdata % print()
 
 
 

@@ -20,14 +20,15 @@ module nuclideMemoryNoMT_class
     integer(shortInt), public        :: nucIdx       = -17     !! Nuclide index id
     real(defReal)                    :: E            = -1.0    !! Current energy of xs and pointers
     real(defReal)                    :: f            = 0.0     !! Interpolation factor for energy
-    logical(defBool)                 :: updatedTail  = .false. !! Are XS other then total up-to-date with energy
+    logical(defBool)                 :: isInter      = .false. !! Are XS other then total up-to-date with energy
     type(xsEnergyPointNoMT), pointer :: low          => null() !! Pointer to low energy point
     type(xsEnergyPointNoMT), pointer :: top          => null() !! Pointer to top energy point
     type(aceNoMT), pointer           :: data         => null() !! Pointer to nuclide data
   contains
     procedure :: init
 
-   ! procedure :: getTotal
+    procedure :: getTotal
+    procedure :: setEnergy
    ! procedure :: getMainCDF
    ! procedure :: getMainXS
    procedure, private :: setTo
@@ -55,23 +56,34 @@ contains
   end subroutine init
     
   !!
-  !! Change energy to new value, calculate interpolation factor and interpolate total xs
+  !! Change energy to new value, calculate interpolation factor
   !!
   subroutine setTo(self,E)
     class(nuclideMemoryNoMT), intent(inout)  :: self
     real(defReal), intent(in)                :: E
+    integer(shortInt)                        :: idx
+    real(defReal)                            :: E_top, E_low
 
     ! Find index on nuclide energy grid
+    idx = self % data % energyIdxFor(E)
+
+    ! Calculate interpolation factor
+    E_low = self % data % energyGrid(idx)
+    E_top = self % data % energyGrid(idx+1)
+
+    self % f = (E - E_low)/(E_top - E_low)
+
     ! Set pointers to the boundary energy points
+    self % low => self % data % xsData(idx)
+    self % top => self % data % xSData(idx+1)
+
     ! Set tail status flag to false
-    ! Interpolate total xs
-  end subroutine
+    self % isInter = .false.
 
-
-
+  end subroutine setTo
 
   !!
-  !! For a given energy value return total xs
+  !! For a given energy value return total xs. Goes not interpolate the tail
   !!
   function getTotal(self,E) result (total)
     class(nuclideMemoryNoMT), intent(inout)  :: self
@@ -81,10 +93,37 @@ contains
     ! Check if the energy has changed
     if (self % E /= E ) then
       call self % setTo(E)
+      call self % interpolateTotal(self % low, self % top, self % f)
     end if
 
     total = self % xs % total
 
   end function getTotal
+
+  !!
+  !! Interpolate all xs and cdfs in nuclide Memory to energy E
+  !!
+  subroutine setEnergy(self,E)
+    class(nuclideMemoryNoMT), intent(inout) :: self
+    real(defReal), intent(in)               :: E
+    logical(defBool)                        :: tailIsNotInter
+    logical(defBool)                        :: sameEnergy
+
+    tailIsNotInter = .not.( self % isInter)
+    sameEnergy     = (self % E == E)
+
+    if (sameEnergy .and. tailIsNotInter) then
+      call self % interpolateTail(self % low, self % top, self % f)
+
+    elseif (.not. sameEnergy) then
+      call self % setTo(E)
+      call self % interpolate(self % low, self % top, self % f)
+
+    end if
+    ! If it is at sameEnergy with interpolated tail do nothing
+    ! xs and cdf are alrady at approperiate state
+
+  end subroutine setEnergy
+
 
 end module nuclideMemoryNoMT_class
