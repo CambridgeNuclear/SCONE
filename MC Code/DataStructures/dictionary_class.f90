@@ -447,7 +447,7 @@ contains
     class(dictionary), intent(in)               :: self
     character(*),intent(in)                     :: keyword
     character(charLen),dimension(:),allocatable :: value
-    character(charLen),dimension(:),pointer     :: localPointer
+    character(charLen),dimension(:),pointer     :: localPointer => null()
     class(*),dimension(:),pointer               :: temp_ptr
     integer(shortInt)                           :: idx
     character(100),parameter                    :: Here='getCharArray (dictionary_class.f90)'

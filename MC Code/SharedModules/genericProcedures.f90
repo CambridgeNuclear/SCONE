@@ -181,7 +181,7 @@ module genericProcedures
     character(20)               :: format
     integer(shortInt)           :: i
 
-    Line = repeat('*',100)
+    Line = repeat('<>',50)
     format = '(A100)'
     locWhere = adjustR(where)
     locWhy = adjustR(why)

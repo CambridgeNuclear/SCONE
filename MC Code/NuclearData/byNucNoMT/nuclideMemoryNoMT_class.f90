@@ -29,8 +29,8 @@ module nuclideMemoryNoMT_class
 
     procedure :: getTotal
     procedure :: setEnergy
-   ! procedure :: getMainCDF
-   ! procedure :: getMainXS
+    procedure :: getZZid
+
    procedure, private :: setTo
 
   end type nuclideMemoryNoMT
@@ -125,5 +125,16 @@ contains
 
   end subroutine setEnergy
 
+
+  !!
+  !! Return ZZid of the stored nuclide
+  !!
+  function getZZId(self) result(zzId)
+    class(nuclideMemoryNoMT), intent(in) :: self
+    character(zzIdLen)                   :: zzId
+
+    ZZid = self % data % zzId
+
+  end function getZZId
 
 end module nuclideMemoryNoMT_class

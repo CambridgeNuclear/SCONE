@@ -1,22 +1,24 @@
 module byNucNoMT_Data_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead, removeDuplicates, linFind, &
-                                findDuplicates, arrayConcat
-  use aceNoMT_class,     only : aceNoMT
+  use genericProcedures,      only : fatalError, openToRead, removeDuplicates, linFind, &
+                                     findDuplicates, arrayConcat
+  use aceNoMT_class,          only : aceNoMT
+  use materialDataNoMT_class, only : materialDataNoMT
 
   implicit none
   private
 
+  !!
+  !! "Fat" data block for XS data. All data of large size is collected here.
+  !! In parallel calculations it is supposed to be shared between diffrent threads
+  !! so it needs to be strictly read only.
+  !!
   type, public :: byNucNoMT_Data
     !private
     ! Material Data
-    character(matNameLen),dimension(:),pointer :: matNames    => null()
-    integer(shortInt),dimension(:),pointer     :: matNumNuc   => null()
-    integer(shortInt),dimension(:,:),pointer   :: matNucIdx   => null()
-    character(ZZidLen),dimension(:,:),pointer  :: matNucNames => null()
-    real(defReal),dimension(:,:),pointer       :: matNucDens  => null()
-    real(defReal),dimension(:),pointer         :: matTemp     => null()
+    type(materialDataNoMT),dimension(:),pointer :: matData     => null()
+
     ! Isotope Data
     character(zzIdLen),dimension(:),pointer    :: nucNames    => null()
     type(aceNoMT),dimension(:), pointer        :: nucXsData   => null()
@@ -25,7 +27,6 @@ module byNucNoMT_Data_class
     procedure :: readFrom
     procedure :: print
 
-    procedure,private :: createMatArrays
     procedure,private :: readMaterials
     procedure,private :: createNuclideList
     procedure,private :: assignNucIndices
@@ -77,7 +78,7 @@ contains
     read(unit = Input, fmt=* , iostat = readStat, iomsg = readMsg) numMat
     if (readStat > 0) call fatalError(Here, readMsg)
 
-    call self % createMatArrays(numMat,maxNuc)
+    allocate (self % matData(numMat) )
 
     ! Read Materials
     do i=1,numMat
@@ -92,9 +93,9 @@ contains
       if (readStat > 0) call fatalError(here, readMsg)
       if (numNuc <= 0)  call fatalError(here,'Number of Material Isotopes is 0 or -ve')
 
-      self % matNames(i)  = matName
-      self % matTemp(i)   = temp
-      self % matNumNuc(i) = numNuc
+      self % matData(i) % name   = matName
+      self % matData(i) % temp   = temp
+      call self % matData(i) % setNumberOfNuc(numNuc)
 
       do j=1,numNuc
 
@@ -107,8 +108,9 @@ contains
         if (readStat > 0) call fatalError(here, readMsg)
         if (numDen <= 0 ) call fatalError(here,'Numerical Density is -ve')
 
-        self % matNucNames(i,j) = ZZid
-        self % matNucDens(i,j)  = numDen
+        self % matData(i) % nucNames(j) = ZZid
+        self % matData(i) % nucDens(j)  = numDen
+
       end do
     end do
 
@@ -135,15 +137,15 @@ contains
     character(zzIdLen),dimension(:),allocatable   :: noRepetition
     integer(shortInt)                             :: i,j
 
-    maxNucNames=sum(self % matNumNuc)
+    maxNucNames=sum(self % matData(:) % numNuc)
 
     ! Crate array of isotope names with repetitions
     allocate(withRepetition(maxNucNames))
     j=1
-    do i = 1,size(self % matNames)
+    do i = 1,size(self % matData)
       ! Load material names for material i
-      withRepetition(j:j+self % matNumNuc(i)) = self % matNucNames(i,1:self % matNumNuc(i))
-      j = j + self % matNumNuc(i)
+      withRepetition(j:j+self % matData(i) % numNuc) = self % matData(i) % nucNames
+      j = j + self % matData(i) % numNuc
     end do
 
     noRepetition = removeDuplicates(withRepetition)
@@ -160,12 +162,12 @@ contains
     class(byNucNoMT_Data),intent(inout)  :: self
     integer(shortInt)                    :: i,j
 
-    do i = 1,size(self % matNames)
-      do j = 1,self % matNumNuc(i)
-        self % matNucIdx(i,j) = linFind(self % nucNames, self % matNucNames(i,j))
-        if (self % matNucIdx(i,j) == -1 ) then
+    do i = 1,size(self % matData)
+      do j = 1,self % matData(i) % numNuc
+        self % matData(i) % nucIdx(j) = linFind(self % nucNames, self % matData(i) % nucNames(j))
+        if (self % matData(i) % nucIdx(j) == -1 ) then
           call fatalError('assignIsoIndices (byNucNoMT_class.f90)', &
-                          'Isotope ' // self % matNucNames(i,j) //' was not found')
+                          'Isotope ' // self % matData(i) % nucNames(j) //' was not found')
         end if
       end do
     end do
@@ -242,22 +244,6 @@ contains
 
   end subroutine readNuclides
 
-  !!
-  !! Allocate space for all arrays that contain data about materials
-  !!
-  subroutine createMatArrays(self,numMat,maxNuc)
-    class(byNucNoMT_Data), intent(inout)  :: self
-    integer(shortInt),intent(in)          :: numMat, maxNuc
-
-    allocate(self % matNames(numMat))
-    allocate(self % matNumNuc(numMat))
-    allocate(self % matNucIdx(numMat,maxNuc))
-    allocate(self % matNucNames(numMat,maxNuc))
-    allocate(self % matNucDens(numMat,maxNuc))
-    allocate(self % matTemp(numMat))
-
-  end subroutine createMatArrays
-
 
   !!
   !! Read input file and indentify maximum number of nuclides in the problem
@@ -284,10 +270,12 @@ contains
       if (readStat > 0) call fatalError(Here, readMsg)
       if (numNuc <= 0)  call fatalError(Here,'Number of Material Nuclides is 0 or -ve')
       maxNuc=max(maxNuc,numNuc)
+
       ! Skip lines to get to next material header
       do j=1,numNuc
         read(Input,*) dummyChar, dummyReal
       end do
+
     end do
 
     rewind(Input)
@@ -300,35 +288,11 @@ contains
   !!
   subroutine print(self)
     class(byNucNoMT_Data), intent(in) :: self
-    character(99)                     :: format
     integer(shortInt)                 :: i
 
-    print '(a)', 'Material Names:'
-    print '(a)', self % matNames
-
-    print '(a)', 'Nuclide Numbers:'
-    print '(i5)', self % matNumNuc
-
-    print '(a)', 'Materials Temperatures:'
-    print '(f10.3)', self % matTemp
-
-    print '(a)', 'Nuclide Names:'
-    do i=1,size(self % matNucNames,1)
-      print '(9999a)', self % matNucNames(i,:)
+    do i =1,size(self % matData)
+      call self % matData(i) % print()
     end do
-
-    print '(a)', 'Nuclide Indexes:'
-    do i=1,size(self % matNucNames,1)
-      print '(9999I5)', self % matNucIdx(i,:)
-    end do
-
-    print '(a)', 'Nuclide Densities:'
-    do i=1,size(self % matNucNames,1)
-      print '(9999es15.5)', self % matNucDens(i,:)
-    end do
-
-    print '(a)', 'Nuclide Names Array'
-    print '(a)', self % nucNames
 
   end subroutine print
     

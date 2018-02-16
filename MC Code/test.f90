@@ -40,7 +40,7 @@ program test
 
   use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
 
-
+  use matNucCDF_class, only : matNucCDF
 
 
   implicit none
@@ -135,6 +135,8 @@ program test
   type(byNucNoMT) :: ce
   real(defReal),dimension(:),allocatable :: energy
   integer(shortInt)                       :: N
+
+  type(matNucCDF)  :: nuclideInvert
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -183,8 +185,9 @@ program test
 !  end do
 
 
- call ce % readFrom(matInput,isoInput)
 
+ call ce % readFrom(matInput,isoInput)
+ call ce % dataBlock % print()
 stop
 !****************************************************************************
 ! ***** Test play code to interpolate XSs

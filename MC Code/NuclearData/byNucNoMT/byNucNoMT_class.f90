@@ -1,18 +1,20 @@
 module byNucNoMT_class
 
   use numPrecision
-  use genericProcedures,       only : fatalError
-  use byNucNoMT_Data_class ,   only : byNucNoMT_Data
-  use nuclideMemoryNoMT_class, only : nuclideMemoryNoMT
-  use aceNoMT_class,           only : aceNoMT
+  use genericProcedures,        only : fatalError
+  use byNucNoMT_Data_class ,    only : byNucNoMT_Data
+  use nuclideMemoryNoMT_class,  only : nuclideMemoryNoMT
+  use materialMemoryNoMT_class, only : materialMemoryNoMT
+  use materialDataNoMT_class,   only : materialDataNoMT
+  use aceNoMT_class,            only : aceNoMT
 
-  use xsMainCDF_class,         only : xsMainCDF
-  use xsMainSet_class,         only : xsMainSet
+  use xsMainCDF_class,          only : xsMainCDF
+  use xsMainSet_class,          only : xsMainSet
   implicit none
   private
 
   type, public :: byNucNoMT
-    private
+    !private
     ! Material Data Handle State Variabels
     real(defReal)            ::  E
     integer(shortInt)        ::  material
@@ -21,6 +23,7 @@ module byNucNoMT_class
 
     ! Material Data Handle storage
     type(nuclideMemoryNoMT), dimension(:), pointer        :: nucShelf  => null()
+    type(materialMemoryNoMT), dimension(:),pointer        :: matShelf  => null()
     real(defReal)                                         :: majorant
     type(byNucNoMT_Data),pointer                          :: dataBlock => null()
 
@@ -28,6 +31,7 @@ module byNucNoMT_class
     procedure :: readFrom
     procedure :: getMainCDF
     procedure :: getMainXS
+    procedure :: getTotalXS
   !  procedure :: initDebug
   !  procedure :: init
     ! Get majorant XS
@@ -47,6 +51,7 @@ contains
     character(*), intent(in)             :: matInput
     character(*), intent(in)             :: nuclideLib
     type(aceNoMT),pointer                :: nucPtr
+    type(materialDataNoMt),pointer       :: matPtr
     integer(shortInt)                    :: numNuclide, numMaterials
     integer(shortInt)                    :: i
     character(100), parameter            :: Here = 'readFrom (byNUcNoMT_class.f90)'
@@ -61,12 +66,10 @@ contains
 
     ! Allocate space for nuclide and material shelfs
     numNuclide   = size(self % dataBlock % nucXsData)
-    numMaterials = size(self % dataBlock % matNames)
+    numMaterials = size(self % dataBlock % matData  )
 
-    allocate (self % nucShelf (numNuclide))
-    ! *** Allocate material shelf *** !
-
-
+    allocate (self % nucShelf (numNuclide  ))
+    allocate (self % matShelf (numMaterials))
 
     ! Attach nuclides to the shelf
     do i=1,numNuclide
@@ -74,6 +77,13 @@ contains
       call self % nucShelf(i) % init(i,nucPtr)
 
     end do
+
+    ! Attach materials to the shel
+    do i=1,numMaterials
+      matPtr => self % dataBlock % matData(i)
+      call self % matShelf(i) % init(matPtr,self % nucShelf)
+    end do
+
 
   end subroutine readFrom
 
@@ -110,6 +120,24 @@ contains
     xsPtr => self % nucShelf(nucIdx) % xs
 
   end subroutine getMainXS
+
+
+  !!
+  !! Function to obtain total XS for material identified by its index
+  !!
+  function getTotalXS(self,E,matIdx) result (xs)
+    class(byNucNoMT), intent(inout)  :: self
+    real(defReal),intent(in)         :: E
+    integer(shortInt), intent(in)    :: matIdx
+    real(defReal)                    :: xs
+!
+!    if( self % matShelf(matIdx) % E =/ E ) then
+!      call self % setTotalXS( self % matShelf(matIdx), self % dataBlock % matData(matIdx) )
+!
+!    end if
+!    xs = self % matShelf(matIdx) % XS % totalXS
+
+  end function getTotalXS
 
 
 end module byNucNoMT_class

@@ -7,6 +7,7 @@ module aceNoMT_class
   use emissionFromACE_func,    only : emissionFromACE
   use emissionENDF_class,      only : emissionENDF, emissionENDF_ptr
   use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
+  use materialDataNoMT_class,  only : materialDataNoMT
 
 
   implicit none
@@ -108,6 +109,7 @@ contains
                                                  self % date
     read(aceFile,'(A70, A10)') self % comment, &
                                self % MATid
+
     ! Skip enteries for IZ(I) and AW(I) tabels -> they are legacy empty entery
     do i=1,4
       read(aceFile,*)
@@ -182,7 +184,7 @@ contains
 
     end if
 
-    ! Move cross section data itto xsEnergyPointType
+    ! Move cross section data into xsEnergyPointType
     call self % xsData % load (xsEScatter,xsCapture,xsFission)
 
     ! Read emission data
@@ -191,8 +193,11 @@ contains
 
     if (self % isFissile) then
       self % emissionData(fissionIdx) = emissionFromACE(NXS,JXS,XSS,N_fission)
+
     else
+      ! Put placeholder emission type equivalent to capture for non=present fission
       self % emissionData(fissionIdx) = emissionFromACE(NXS,JXS,XSS,N_gamma)
+
     end if
 
   end subroutine readXS
