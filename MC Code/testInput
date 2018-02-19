@@ -1,12 +1,9 @@
-3
-myFirstMaterial 273 3 
-92238.03c  2 
-92235.03c  0.5 
-16032.03c  5 
-mySecondMat 876 2 
-1001.03c  2
-16032.03c 1
-myThirdMat 86756 3 
-92237.03c 8.32
-92235.03c 9.43 
-1001.03c 2.34 
+4
+myFirstMaterial 273 1 
+92238.03c  1.0 
+mySecondMat 876 1 
+35081.03c  1.0
+myThirdMat 273 1 
+5010.03c   1.0 
+myFourthMat 273 1
+1001.03c   1.0

@@ -2,7 +2,7 @@ module aceNoMT_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures ,      only : openToRead, binarySearch, interpolate, searchError
+  use genericProcedures ,      only : openToRead, binarySearch, interpolate, searchError, fatalError
   use RNG_class,               only : RNG
   use emissionFromACE_func,    only : emissionFromACE
   use emissionENDF_class,      only : emissionENDF, emissionENDF_ptr
@@ -40,6 +40,9 @@ module aceNoMT_class
   contains
     procedure :: init
     procedure :: energyIdxFor
+    procedure :: sampleMuEout
+    procedure :: releaseAt
+    procedure :: isInCMframe
 
     procedure,private :: readAceLibrary
     procedure,private :: readXS
@@ -61,6 +64,95 @@ contains
     call searchError(idx,Here)
 
   end function energyIdxFor
+
+
+  !!
+  !! Sample deflection angle and emission energy for a given MT number
+  !!
+  subroutine sampleMuEout(self,mu,E_out,E_in,rand,MT)
+    class(aceNoMT), intent(in)    :: self
+    real(defReal), intent(out)    :: mu
+    real(defReal), intent(out)    :: E_out
+    real(defReal), intent(in)     :: E_in
+    class(RNG), intent(inout)     :: rand
+    integer(shortInt), intent(in) :: MT
+    character(100), parameter     :: Here = 'sampleMuEout (aceNoMT_class.f90)'
+
+    select case(MT)
+      case (anyScatter, N_N_elastic)
+        call self % emissionData(escatterIdx) % sampleAngleEnergy(mu,E_out,E_in,rand)
+
+      case (anyCapture, N_disap:) ! Any capture and all MT >= 101
+        call self % emissionData(captureIdx)  % sampleAngleEnergy(mu,E_out,E_in,rand)
+
+      case (anyFission, N_fission)
+        call self % emissionData(fissionIdx)  % sampleAngleEnergy(mu,E_out,E_in,rand)
+
+      case default
+        call fatalError(Here,'Unknown MT number')
+
+    end select
+
+  end subroutine sampleMuEout
+
+  !!
+  !! Function that returns .true. if emission data for a given MT is stored in Center-Of-Mass frame
+  !!
+  function isInCMframe(self,MT) result (isIt)
+    class(aceNoMT), intent(in)    :: self
+    integer(shortInt), intent(in) :: MT
+    logical(defBool)              :: isIt
+    character(100), parameter     :: Here = 'isInCMframe (aceNoMT_class.f90)'
+
+    select case(MT)
+      case (anyScatter, N_N_elastic)
+        isIt = self % emissionData(escatterIdx) % isInCMframe()
+
+      case (anyCapture, N_disap:) ! Any capture and all MT >= 101
+        isIt = self % emissionData(captureIdx)  % isInCMframe()
+
+      case (anyFission, N_fission)
+        isIt = self % emissionData(fissionIdx)  % isInCMframe()
+
+      case default
+        call fatalError(Here,'Unknown MT number')
+
+    end select
+
+
+  end function isInCMframe
+
+
+  !!
+  !! Sample give value of average neutron emission for given energy and MT number
+  !!
+  function releaseAt(self,E_in,MT) result (nu)
+    class(aceNoMT), intent(in)    :: self
+    real(defReal), intent(in)     :: E_in
+    integer(shortInt), intent(in) :: MT
+    real(defReal)                 :: nu
+    character(100), parameter     :: Here = 'releaseAt (aceNoMT_class.f90)'
+
+    select case(MT)
+      case (anyScatter, N_N_elastic)
+        nu = self % emissionData(escatterIdx) % releaseAt(E_in)
+
+      case (anyCapture, N_disap:) ! Any capture and all MT >= 101
+        nu = self % emissionData(captureIdx)  % releaseAt(E_in)
+
+      case (anyFission, N_fission)
+        nu = self % emissionData(fissionIdx)  % releaseAt(E_in)
+
+      case default
+        call fatalError(Here,'Unknown MT number')
+
+    end select
+
+  end function releaseAt
+
+
+
+
 
   !!
   !! Load reaction cross-section data from ACE file.

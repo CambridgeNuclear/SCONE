@@ -40,8 +40,8 @@ program test
 
   use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
 
-  use matNucCDF_class, only : matNucCDF
-
+  use matNucCDF_class,  only : matNucCDF
+  use xsMacroSet_class, only : xsMacroSet
 
   implicit none
 
@@ -66,7 +66,7 @@ program test
   character(pathLen)       :: testDictFile = "./testDictInput"
   integer(shortInt)         :: firstLine = 1170286
   type(aceNoMT)             :: isotope
-  real(defReal) :: kl, eps
+  real(defReal) :: kl, eps, km, kn
   real(defReal),dimension(:),allocatable :: x, pdf, x2, pdf2,R
 
   type(RNG) :: random
@@ -136,7 +136,8 @@ program test
   real(defReal),dimension(:),allocatable :: energy
   integer(shortInt)                       :: N
 
-  type(matNucCDF)  :: nuclideInvert
+  type(matNucCDF),pointer  :: nuclideInvert
+  type(xsMacroSet),pointer :: MacroXS
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -187,11 +188,11 @@ program test
 
 
  call ce % readFrom(matInput,isoInput)
- call ce % dataBlock % print()
-stop
+ !call ce % dataBlock % print()
+!stop
 !****************************************************************************
 ! ***** Test play code to interpolate XSs
-
+!
 !      ! Set energy points for interpolation
 !      ! min exponent -7
 !      ! max exponent 1.30
@@ -199,11 +200,28 @@ stop
 !      allocate (energy(N))
 !      energy = [((1.30+7.0)/N * i - 7.0, i=1,N)]
 !      energy = 10**energy
+!      !energy = [(20.0/N * i, i=1,N)]
+!
+!
+!      print *, ce % isInCMframe(18,2)
+!
 !      do i=1,N
+!         !kl = ce % matShelf(1) % getTotal(energy(i))
+!         !nuclideInvert => ce % matShelf(1) % nucCdf
+!
+!         print *, energy(i), ce % getMajorantXS(energy(i)),ce % getTotalMatXS(energy(i),1), &
+!                  ce % getTotalMatXS(energy(i),2),ce % getTotalMatXS(energy(i),3),ce % getTotalMatXS(energy(i),4)
+!
+!
 !         !print *, energy(i)
-!         call ce % getMainXS(mySet,energy(i),4)
-!         print *, energy(i), mySet % total, mySet % scatter, mySet % capture, mySet % fission
+!         !call ce % matShelf(1) % setEnergy(energy(i))
+!         !MacroXS => ce % matShelf(1) % XS
+!         !print *, energy(i), MacroXS % totalXS, MacroXS % scatterXS, MacroXS % captureXS, MacroXS % fissionXS
+!         !print *, energy(i), ce % matShelf(1) % getTotal(energy(i))
+!         !call ce % getMainXS(mySet,energy(i),4)
+!         !rint *, energy(i), mySet % total, mySet % scatter, mySet % capture, mySet % fission
 !      end do
+!      stop
 !*********************************
 
   !call CEdata % readFrom(matInput,isoInput)

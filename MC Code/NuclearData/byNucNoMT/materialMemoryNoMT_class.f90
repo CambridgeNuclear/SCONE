@@ -28,7 +28,7 @@ module materialMemoryNoMT_class
   type, public :: materialMemoryNoMT
     private
     real(defReal)                  :: E       = -1.0    !! Current Energy of XS
-    logical(defBool)               :: isCalc = .false.  !! TRUE if XSs other then TOTAL are calculated
+    logical(defBool)               :: isCalc  = .false. !! TRUE if XSs other then TOTAL are calculated
     type(xsMacroSet),public        :: XS                !! Package of macroscopic XS
     type(matNucCDF),public         :: nucCDF            !! CDF to select collision nuclide
     type(materialDataNoMT),pointer :: data    => null() !! Pointer to data for this material
@@ -38,6 +38,7 @@ module materialMemoryNoMT_class
   contains
     procedure :: init
     procedure :: getTotal
+    procedure :: setTotalToEnergy
     procedure :: setEnergy
     procedure :: checkZZIds
 
@@ -49,6 +50,10 @@ module materialMemoryNoMT_class
 
 contains
 
+  !!
+  !! Initialise material memory by providing it with a pointer to nuclide shelf and
+  !! pointer to corresponding material in the data block.
+  !!
   subroutine init(self,dataPtr,nucPtr)
     class(materialMemoryNoMT), intent(inout)                :: self
     type(materialDataNoMT), pointer, intent(in)             :: dataPtr
@@ -78,6 +83,27 @@ contains
     real(defReal), intent(in)                :: E
     real(defReal)                            :: totalXS
 
+!    if ( self % E /= E ) then
+!      call self % calculateTotal(E)
+!      self % E = E
+!      self % isCalc = .false.
+!
+!    end if
+    call self % setTotalToEnergy(E)
+
+    totalXS = self % XS % totalXS
+
+  end function getTotal
+
+
+  !!
+  !! Calculate total macroscopic cross sections for energy E
+  !! Do nothing if E is the same as privious value
+  !! Change state flags.
+  !!
+  subroutine setTotalToEnergy(self,E)
+    class(materialMemoryNoMT), intent(inout) :: self
+    real(defReal), intent(in)                :: E
 
     if ( self % E /= E ) then
       call self % calculateTotal(E)
@@ -85,10 +111,9 @@ contains
       self % isCalc = .false.
 
     end if
+  end subroutine setTotalToEnergy
 
-    totalXS = self % XS % totalXS
 
-  end function getTotal
 
   !!
   !! Calculate all macroscopic XS for energy E
@@ -113,7 +138,6 @@ contains
     ! DO NOTHING
 
   end subroutine setEnergy
-
 
   !!
   !! Calculate and store total XS for energy E
