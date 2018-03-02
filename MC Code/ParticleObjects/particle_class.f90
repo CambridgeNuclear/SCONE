@@ -1,228 +1,114 @@
 module particle_class
 
   use numPrecision
-  use genericProcedures, only : fatalError
+ ! use universalVariables
+  use genericProcedures
+  !use cell_class
+  !use surface_class
+  use coord_class,    only : coord, coordList
+  use RNG_class,      only : RNG
+
 
   implicit none
   private
 
   type, public :: particle
-  !! Type that describes a particle. Supports both Continious Energy(CE) and Multi-Group (MG) data
-  !! but crashes if query is made for CE value of energy for MG particle and vice versa.
-    private
-    real(kind=defReal),dimension(3) :: r         !! Particle Position
-    real(kind=defReal),dimension(3) :: dir       !! Particle Direction
-    real(kind=defReal)              :: E         !! Particle Energy
-    integer(kind=shortInt)          :: G         !! Particle Energy Group
-    real(kind=defReal)              :: w         !! Particle Weight
+    type(coordList)            :: coords
+    real(defReal)              :: E         ! Particle Energy
+    integer(shortInt)          :: G         ! Particle Energy Group
+    real(defReal)              :: w         ! Particle Weight
 
-    integer(kind=shortInt)          :: CurrentCellIndex
-    integer(kind=shortInt)          :: CurrentMaterialIndex
+   ! type(cell_ptr)             :: currentCell               ! The current cell which the particle occupies
+   ! class(surface), pointer    :: currentSurface => null()  ! The current surface on which the particle is sat
+    integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
 
-    logical(kind=defBool)           :: isDeadFlag
-    logical(kind=defBool)           :: isMGFlag
+    class(RNG), pointer        :: pRNG     ! Pointer to RNG associated with the particle
+
+    logical(defBool)           :: isDead
+    logical(defBool)           :: isMG
   contains
-        !! Public Interface
-        ! Constructor
-        generic              :: build => buildCE, buildMG
-        ! Change Particle State
-        generic              :: setEnergy => setEnergyMG, setEnergyCE
-        procedure            :: setWeight
-        procedure            :: setPosition
-        procedure            :: setDirection
-        procedure            :: setCell
-        procedure            :: setMaterial
-        procedure            :: makeMG
-        procedure            :: makeCE
-        ! Get Data from the particle
-        generic              :: Energy => EnergyMG, EnergyCE
-        procedure            :: Weight
-        procedure            :: Position
-        procedure            :: Direction
-        procedure            :: Cell
-        procedure            :: Material
-        procedure            :: isMG
-        procedure            :: isDead
-        !! Private - Implementation specific procedures
-        procedure,private    :: buildCE
-        procedure,private    :: buildMG
-        procedure,private    :: setEnergyCE
-        procedure,private    :: setEnergyMG
-        procedure,private    :: EnergyCE
-        procedure,private    :: EnergyMG
+    !! Public Interface
+   ! generic              :: build => buildCE, buildMG
+    procedure            :: makeMG
+    !procedure            :: turnGlobal
+   ! procedure            :: moveGlobal
+   ! procedure            :: moveLocal
+    !! Private - Implementation specific procedures
+   ! procedure,private    :: buildCE
+   ! procedure,private    :: buildMG
   end type particle
-
 
 contains
 
-  function isDead(self) result (isIt)
-    class(particle), intent(inout)     :: self
-    logical(kind=defBool)              :: isIt
-    isIt = self % isDeadFlag
-  end function isDead
-
-  function isMG(self) result (isIt)
-    class(particle), intent(inout)     :: self
-    logical(kind=defBool)              :: isIt
-    isIt = self % isMGFlag
-  end function isMG
-
-  subroutine Material(self, mat)
-    class(particle), intent(inout)       :: self
-    integer(kind=shortInt),intent(out)   :: mat
-    mat = self % CurrentMaterialIndex
-  end subroutine Material
-
-  subroutine Cell(self, cellIndex)
-    class(particle), intent(inout)       :: self
-    integer(kind=shortInt),intent(out)   :: cellIndex
-    cellIndex = self % CurrentCellIndex
-  end subroutine Cell
-
-  subroutine Direction(self, dir)
-    class(particle), intent(inout)                  :: self
-    real(kind=defReal), dimension(3),intent(out)    :: dir
-    dir = self % dir
-  end subroutine Direction
-
-  subroutine Position(self, r)
-    class(particle), intent(inout)                 :: self
-    real(kind=defReal), dimension(3),intent(out)   :: r
-    r = self % r
-  end subroutine Position
-
-  subroutine Weight(self, W)
-    class(particle), intent(inout)     :: self
-    real(kind=defReal),intent(out)     :: W
-    W = self % w
-  end subroutine Weight
-
-  subroutine EnergyMG(self, G)
-    class(particle), intent(inout)      :: self
-    integer(kind=shortInt),intent(out)  :: G
-
-    if (self%isMGFlag) then
-      G = self % G
-    else
-      call fatalError('Energy method of particle (particle_class.f03)', &
-                      'Requested group number of CE particle ')
-    end if
-  end subroutine EnergyMG
-
-  subroutine EnergyCE(self, E)
-    class(particle),intent(inout)     :: self
-    real(kind=defReal),intent(out)    :: E
-
-    if (self%isMGFlag) then
-      call fatalError('Energy method of particle (particle_class.f03)', &
-                      'Requested CE energy of MG particle ')
-    else
-      E = self % E
-    end if
-  end subroutine EnergyCE
-
-
-  subroutine setMaterial(self,mat)
-    class(particle), intent(inout)     :: self
-    integer(kind=shortInt),intent(in)  :: mat
-    self % CurrentMaterialIndex = mat
-  end subroutine setMaterial
-
-  subroutine setCell(self,cell)
-    class(particle), intent(inout)     :: self
-    integer(kind=shortInt),intent(in)  :: cell
-    self % CurrentCellIndex = cell
-  end subroutine setCell
-
-  subroutine setDirection(self,dir)
-    class(particle), intent(inout)                   :: self
-    real(kind=defReal),dimension(3) ,intent(in)      :: dir
-    self % dir = dir
-  end subroutine setDirection
-
-  subroutine setPosition(self,r)
-    class(particle), intent(inout)                   :: self
-    real(kind=defReal),dimension(3) ,intent(in)      :: r
-    self % r = r
-  end subroutine setPosition
-
-  subroutine setWeight(self,w)
-    class(particle), intent(inout)      :: self
-    real(kind=defReal), intent(in)      :: w
-    self % w = w
-  end subroutine setWeight
-
   subroutine makeMG(self,G)
     class(particle), intent(inout)      :: self
-    integer(kind=shortInt), intent(in)  :: G
+    integer(shortInt), intent(in)  :: G
     self % G = G
-    self % isMGFlag = .true.
+    self % isMG = .true.
+
   end subroutine makeMG
+!
+!  subroutine buildCE(self,r,dir,E,w)
+!    class(particle), intent(out)            :: self
+!    real(defReal),dimension(3),intent(in)   :: r, dir
+!    real(defReal),intent(in)                :: E, w
+!
+!    call self % coords % init(r, dir)
+!    self % E = E
+!    self % w = w
+!
+!    self % isDead = .false.
+!    self % isMG = .false.
+!  end subroutine
+!
+!  subroutine buildMG(self,r,dir,G,w)
+!    class(particle), intent(out)            :: self
+!    real(defReal),dimension(3),intent(in)   :: r, dir
+!    real(defReal),intent(in)                :: w
+!    integer(shortInt),intent(in)            :: G
+!
+!    call self % coords % init(r, dir)
+!    self % G = G
+!    self % w = w
+!
+!    self % isDead = .false.
+!    self % isMG = .true.
+!  end subroutine
 
-  subroutine makeCE(self,E)
-    class(particle), intent(inout)      :: self
-    real(kind=defReal),intent(in)       :: E
-    self % E = E
-    self % isMGFlag = .false.
-  end subroutine
+  !!
+  !! Change the direction of a particle by provided cosines of polar and azimuthal deflection angle
+  !!
+  !subroutine turnGlobal(self
 
-  subroutine setEnergyMG(self,G)
-    class(particle), intent(inout)     :: self
-    integer(kind=shortInt), intent(in) :: G
 
-    if (self%isMGFLag) then
-      self % G = G
-    else
-      call fatalError('setEnergy method of particle (particle_class.f03)', &
-                      'An energy of CE particle was set with MG value')
-    end if
-  end subroutine setEnergyMG
+  !!
+  !! Move the particle in global co-ordinates only, resetting its nesting
+  !!
+!  subroutine moveGlobal(self,distance)
+!    implicit none
+!    class(particle), intent(inout) :: self
+!    real(defReal), intent(in) :: distance
+!
+!    call self % coords % resetNesting()
+!    self % coords % lvl(1) % r = self % coords % lvl(1) % r + &
+!                                 self % coords % lvl(1) % dir * distance
+!  end subroutine moveGlobal
 
-  subroutine setEnergyCE(self,E)
-    class(particle), intent(inout)     :: self
-    real(kind=defReal), intent(in)     :: E
-
-    if (self%isMGFlag) then
-      call fatalError('setEnergy method of particle (particle_class.f03)', &
-                      'An energy of MG particle was set with CE value')
-    else
-      self % E = E
-    end if
-  end subroutine setEnergyCE
-
-  subroutine buildCE(self,r,dir,E,w,Cell,Mat)
-    class(particle), intent(out)                 :: self
-    real(kind=defReal),dimension(3),intent(in)   :: r, dir
-    real(kind=defReal),intent(in)                :: E, w
-    integer(kind=shortInt),intent(in)            :: Cell, Mat
-
-    self % r =r
-    self % dir = dir
-    self % E = E
-    self % w = w
-    self % CurrentCellIndex = Cell
-    self % CurrentMaterialIndex = Mat
-
-    self % isDeadFlag = .false.
-    self % isMGFlag = .false.
-  end subroutine
-    
-  subroutine buildMG(self,r,dir,G,w,Cell,Mat)
-    class(particle), intent(out)                 :: self
-    real(kind=defReal),dimension(3),intent(in)   :: r, dir
-    real(kind=defReal),intent(in)                :: w
-    integer(kind=shortInt),intent(in)            :: G
-    integer(kind=shortInt),intent(in)            :: Cell, Mat
-
-    self % r =r
-    self % dir = dir
-    self % G = G
-    self % w = w
-    self % CurrentCellIndex = Cell
-    self % CurrentMaterialIndex = Mat
-
-    self % isDeadFlag = .false.
-    self % isMGFlag = .true.
-  end subroutine
+  !!
+  !! Move particle in local co-ordinates down to nesting level n
+  !!
+!  subroutine moveLocal(self,distance,n)
+!    implicit none
+!    class(particle), intent(inout) :: self
+!    real(defReal), intent(in) :: distance
+!    integer(shortInt), intent(in) :: n
+!    integer(shortInt) :: i
+!
+!    call self % coords % resetNesting(n)
+!    do i = 1,n
+!      self % coords % lvl(i) % r = self % coords % lvl(i) % r + &
+!                                 self % coords % lvl(i) % dir * distance
+!    end do
+!  end subroutine moveLocal
 
 end module particle_class

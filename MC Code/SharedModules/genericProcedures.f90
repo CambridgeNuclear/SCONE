@@ -599,4 +599,49 @@ module genericProcedures
   end function isSorted_shortInt
 
 
+  !!
+  !! Subroutine takes a normilised direction vector dir and rotates it by cosine of a polar angle
+  !! mu and azimuthal angle phi (in radians).
+  !! Procedure will produce incorrect results without error message if dir is not normalised
+  !!
+  subroutine rotateVector(dir,mu,phi)
+    real(defReal), dimension(3), intent(inout) :: dir
+    real(defReal), intent(in)                  :: mu
+    real(defReal), intent(in)                  :: phi
+    real(defReal)                              :: u,v,w
+    real(defReal)                              :: sinPol, cosPol, A, B
+
+    ! Precalculate cosine and sine of polar angle
+    sinPol = sin(phi)
+    cosPol = cos(phi)
+
+    ! Load Cartesian components of direction.
+    u = dir(1)
+    v = dir(2)
+    w = dir(3)
+
+    ! Perform standard roatation. Note that indexes are parametrised
+    A = sqrt(max(0.0_defReal, 1.0_defReal - mu*mu))
+    B = sqrt(max(0.0_defReal, 1.0_defReal - w*w  ))
+
+
+    if ( B > 1E-8) then
+      dir(1) = mu * u + A * (u*w*cosPol - v * sinPol) / B
+      dir(2) = mu * v + A * (v*w*cosPol + u * sinPol) / B
+      dir(3) = mu * w - A * B * cosPol
+
+    else
+      B = sqrt(max(0.0_defReal, 1.0_defReal - v*v))
+      dir(1) = mu * u + A *(u*v*cosPol + w * sinPol) / B
+      dir(2) = mu * v - A * B * cosPol
+      dir(3) = mu * w + A* (v*w*cosPol - u * sinPol) /B
+
+    end if
+    dir = dir / sum(dir * dir)
+
+  end subroutine rotateVector
+
+
+
+
 end module genericProcedures

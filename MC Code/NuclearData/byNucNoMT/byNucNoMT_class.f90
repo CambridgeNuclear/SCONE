@@ -107,7 +107,7 @@ contains
   !!
   subroutine getMainNucCDF(self,cdfPtr,E,nucIdx)
     class(byNucNoMT), intent(inout)         :: self
-    class(xsMainCDF),pointer,intent(inout)  :: cdfPtr
+    type(xsMainCDF),pointer,intent(inout)   :: cdfPtr
     real(defReal)                           :: E
     integer(shortInt)                       :: nucIdx
 
@@ -124,7 +124,7 @@ contains
   !!
   subroutine getMainNucXS(self,xsPtr,E,nucIdx)
     class(byNucNoMT), intent(inout)         :: self
-    class(xsMainSet),pointer,intent(inout)  :: xsPtr
+    type(xsMainSet),pointer,intent(inout)   :: xsPtr
     real(defReal)                           :: E
     integer(shortInt)                       :: nucIdx
 

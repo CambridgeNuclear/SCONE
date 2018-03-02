@@ -1,7 +1,7 @@
 module dictionary_class
 
   use numPrecision
-  use genericProcedures, only: linFind, searchError, fatalError
+  use genericProcedures, only: linFind, searchError, fatalError, targetNotFound
 
   implicit none
   private
@@ -105,6 +105,7 @@ module dictionary_class
                            store_char      ,&
                            store_charArray ,&
                            store_dict
+    procedure  :: isPresent
     procedure  :: getReal
     procedure  :: getRealArray
     procedure  :: getInt
@@ -310,6 +311,18 @@ contains
     LHS % stride  = RHS % stride
 
   end subroutine deepCopy_dictionary
+
+
+  function isPresent(self,keyword) result(isIt)
+    class(dictionary), intent(in) :: self
+    character(*), intent(in)      :: keyword
+    logical(defBool)              :: isIt
+    integer(shortInt)             :: idx
+
+    idx  = linFind(self % keywords, keyword)
+    isIt = .not.(idx == targetNotFound)
+
+  end function isPresent
 
 
   function getReal(self,keyword) result(value)

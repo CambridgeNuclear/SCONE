@@ -26,7 +26,8 @@ add_subdirectory(SharedModules)
 add_subdirectory(RandomNumbers)
 add_subdirectory(ParticleObjects)
 add_subdirectory(NuclearData)
-
+add_subdirectory(geometryObjects)
+add_subdirectory(CollisionOperator)
 
 ### TEMP commands to complie the dictionary 
 # Define Files to compile 
@@ -38,5 +39,5 @@ target_link_libraries(DataStructures SharedModules)
 ####
 
 add_executable(test.out test.f90)
-target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF angleLawENDF
-                               NuclearDataStructures DataStructures)
+target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF 
+                               angleLawENDF NuclearDataStructures DataStructures CollisionOperator )

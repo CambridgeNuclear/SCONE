@@ -43,6 +43,11 @@ program test
   use matNucCDF_class,  only : matNucCDF
   use xsMacroSet_class, only : xsMacroSet
 
+  use collisionOperator_class, only : collisionOperator
+  use particle_class,          only : particle
+
+  use scatteringKernels_func,  only : targetVelocity_constXS
+
   implicit none
 
   type myType
@@ -132,12 +137,17 @@ program test
   type(xsEnergyPointNoMT) :: Bpoint
   type(xsEnergyPointNoMT) :: Upoint
 
-  type(byNucNoMT) :: ce
+  type(byNucNoMT),pointer :: ce
   real(defReal),dimension(:),allocatable :: energy
   integer(shortInt)                       :: N
 
   type(matNucCDF),pointer  :: nuclideInvert
   type(xsMacroSet),pointer :: MacroXS
+
+  type(particle)          :: neutron
+  type(collisionOperator) :: collisionPhysics
+  class(RNG), pointer     :: RNGptr
+  real(defReal),dimension(3) :: V_ter
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -184,12 +194,43 @@ program test
 !    print *,isotope % energyGrid(i) ,isotope % xsData(i) % xs % total,isotope % xsData(i) % xs % scatter, &
 !            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
 !  end do
+ call IOdictTest % initFrom(testDictFile)
+ print *, IOdictTest % isPresent('keyword41')
+ stop
+
+ allocate(ce)
+ !call ce % readFrom(matInput,isoInput)
+
+ allocate(RNGptr)
+
+ !call collisionPhysics % attachXsData(ce)
+
+ neutron % pRNG => RNGptr
+ neutron % E = 7.0
+ neutron % matIdx = 1
+
+ call RNGptr % init(75785746574_longInt)
+
+print *,"S=["
+do i=1,5000000
+  V_ter = targetVelocity_constXS(0.001E-6_8, [1.0_8,0.0_8,0.0_8] ,2.585199E-8_8, 300.0_8, RNGptr)
+ !print *, sqrt(sum(V_ter *V_ter))
+ print '(E100.90)', sqrt(V_ter(1)**2+V_ter(2)**2+V_ter(3)**2)
+
+end do
+print *,"];"
+
+
+! do i=1,100
+!
+!   call collisionPhysics % collide(neutron)
+!
+! end do
 
 
 
- call ce % readFrom(matInput,isoInput)
  !call ce % dataBlock % print()
-!stop
+stop
 !****************************************************************************
 ! ***** Test play code to interpolate XSs
 !
