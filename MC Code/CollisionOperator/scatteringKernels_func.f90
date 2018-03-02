@@ -3,6 +3,7 @@ module scatteringKernels_func
   use numPrecision
   use genericProcedures, only : rotateVector
   use RNG_class,         only : RNG
+  use particle_class,    only : particle
 
   implicit none
   private
@@ -18,7 +19,7 @@ contains
 
 
   !!
-  !! Subroutine to perform scattering from a stationary target nucleus.
+  !! Subroutine to perform ELASTIC SCATTERING from a stationary target nucleus.
   !! Changes direction and energy in LAB system
   !! Takes mu in CM system, returns it in LAB system
   !!
@@ -27,8 +28,7 @@ contains
   !!
   !! Based on MCNP manual chapter 2.
   !!
-  subroutine asymptoticScatter(dir,E,mu,A)
-    real(defReal), dimension(3), intent(inout) :: dir  !! Normalised direction vector
+  subroutine asymptoticScatter(E,mu,A)
     real(defReal), intent(inout)               :: E    !! Pre-collision energy in LAB
     real(defReal), intent(inout)               :: mu   !! Cosine of delection angle
     real(defReal), intent(in)                  :: A    !! Target mass [neutrons]
@@ -56,11 +56,11 @@ contains
   !! (note that it is not a kinetic energy of the target).
   !!
   !!
-  function targetVelocity_constXS(E,dir,kT,A,rand) result (V_t)
+  function targetVelocity_constXS(E,dir,A,kT,rand) result (V_t)
     real(defReal), intent(in)               :: E
     real(defReal), dimension(3), intent(in) :: dir
-    real(defReal), intent(in)               :: kT
     real(defReal), intent(in)               :: A
+    real(defReal), intent(in)               :: kT
     class(RNG), intent(inout)               :: rand
     real(defReal),dimension(3)              :: V_t
     real(defReal)                           :: V_n
@@ -107,8 +107,7 @@ contains
     r4 = rand % get()
     phi = 2.0 *PI * r4
 
-    V_t = dir
-    call rotateVector(V_t, mu, phi)
+    V_t = rotateVector(dir, mu, phi)
 
     ! Scale target direction by magnitude of velocity
     V_t = V_t * (X * sqrt(kT/A))

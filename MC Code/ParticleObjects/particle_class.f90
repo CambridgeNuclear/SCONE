@@ -2,7 +2,7 @@ module particle_class
 
   use numPrecision
  ! use universalVariables
-  use genericProcedures
+  use genericProcedures, only : rotateVector
   !use cell_class
   !use surface_class
   use coord_class,    only : coord, coordList
@@ -17,6 +17,7 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
+    real(defReal),dimension(3) :: dir       ! *** Debug dummy direction
 
    ! type(cell_ptr)             :: currentCell               ! The current cell which the particle occupies
    ! class(surface), pointer    :: currentSurface => null()  ! The current surface on which the particle is sat
@@ -29,7 +30,10 @@ module particle_class
   contains
     !! Public Interface
    ! generic              :: build => buildCE, buildMG
-    procedure            :: makeMG
+    procedure             :: makeMG
+    procedure             :: rotate
+    procedure             :: getDirection
+    procedure             :: point
     !procedure            :: turnGlobal
    ! procedure            :: moveGlobal
    ! procedure            :: moveLocal
@@ -39,6 +43,32 @@ module particle_class
   end type particle
 
 contains
+
+  function getDirection(self) result(dir)
+    class(particle), intent(in)  :: self
+    real(defReal), dimension(3)  :: dir
+
+    dir = self % dir
+
+  end function getDirection
+
+  subroutine rotate(self,mu,phi)
+    class(particle), intent(inout) :: self
+    real(defReal), intent(in)      :: mu
+    real(defReal), intent(in)      :: phi
+
+    self % dir = rotateVector(self % dir,mu,phi)
+
+  end subroutine rotate
+
+  subroutine point(self,dir)
+    class(particle), intent(inout)        :: self
+    real(defReal),dimension(3),intent(in) :: dir
+    self % dir = dir
+
+  end subroutine point
+
+
 
   subroutine makeMG(self,G)
     class(particle), intent(inout)      :: self

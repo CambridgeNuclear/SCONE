@@ -604,10 +604,11 @@ module genericProcedures
   !! mu and azimuthal angle phi (in radians).
   !! Procedure will produce incorrect results without error message if dir is not normalised
   !!
-  subroutine rotateVector(dir,mu,phi)
-    real(defReal), dimension(3), intent(inout) :: dir
+  function rotateVector(dir,mu,phi) result(newDir)
+    real(defReal), dimension(3), intent(in)    :: dir
     real(defReal), intent(in)                  :: mu
     real(defReal), intent(in)                  :: phi
+    real(defReal), dimension(3)                :: newDir
     real(defReal)                              :: u,v,w
     real(defReal)                              :: sinPol, cosPol, A, B
 
@@ -626,20 +627,21 @@ module genericProcedures
 
 
     if ( B > 1E-8) then
-      dir(1) = mu * u + A * (u*w*cosPol - v * sinPol) / B
-      dir(2) = mu * v + A * (v*w*cosPol + u * sinPol) / B
-      dir(3) = mu * w - A * B * cosPol
+      newDir(1) = mu * u + A * (u*w*cosPol - v * sinPol) / B
+      newDir(2) = mu * v + A * (v*w*cosPol + u * sinPol) / B
+      newDir(3) = mu * w - A * B * cosPol
 
     else
       B = sqrt(max(0.0_defReal, 1.0_defReal - v*v))
-      dir(1) = mu * u + A *(u*v*cosPol + w * sinPol) / B
-      dir(2) = mu * v - A * B * cosPol
-      dir(3) = mu * w + A* (v*w*cosPol - u * sinPol) /B
+      newDir(1) = mu * u + A *(u*v*cosPol + w * sinPol) / B
+      newDir(2) = mu * v - A * B * cosPol
+      newDir(3) = mu * w + A* (v*w*cosPol - u * sinPol) /B
 
     end if
-    dir = dir / sum(dir * dir)
 
-  end subroutine rotateVector
+    !newDir = newDir / sum(newDir * newDir)
+
+  end function rotateVector
 
 
 

@@ -42,8 +42,12 @@ module byNucNoMT_class
     procedure :: getMainNucCDF
     procedure :: getMainNucXS
     procedure :: sampleMuEout
+    procedure :: sampleMu
     procedure :: releaseAt
     procedure :: isInCMframe
+    procedure :: getWeight
+    procedure :: getkT
+
 
     ! Procedures to access material data (Macroscopic XSs)
     procedure :: getTotalMatXS
@@ -103,6 +107,32 @@ contains
   end subroutine readFrom
 
   !!
+  !! Function that returns temperature of the nuclide; kT in [MeV]
+  !!
+  function getkT(self,nucIdx) result(kT)
+    class(byNucNoMT),intent(in)  :: self
+    integer(shortInt),intent(in) :: nucIdx
+    real(defReal)                :: kT
+
+    kT = self % dataBlock % nucXsData(nucIdx) % temp
+
+  end function getkT
+
+  !!
+  !! Function that returns Mass of the nuclide; A in [Mn - neutron mass ]
+  !!
+  function getWeight(self,nucIdx) result(A)
+    class(byNucNoMT),intent(in)  :: self
+    integer(shortInt),intent(in) :: nucIdx
+    real(defReal)                :: A
+
+    A = self % dataBlock % nucXsData(nucIdx) % atomWeight
+
+  end function getWeight
+
+
+
+  !!
   !! Subroutine to attach pointer to CDF for the main reaction channel
   !!
   subroutine getMainNucCDF(self,cdfPtr,E,nucIdx)
@@ -151,6 +181,24 @@ contains
     call self % dataBlock % nucXsData(nucIdx) % sampleMuEout( mu, E_out, E_in, rand, MT )
 
   end subroutine sampleMuEout
+
+  !!
+  !! Subroutine to sample mu when it is known that reaction is elastic
+  !! For now there should be no performance benefit but better implementation may arrive
+  !!
+  subroutine sampleMu(self,mu,E_in,rand,MT,nucIdx)
+    class(byNucNoMT), intent(in)  :: self
+    real(defReal), intent(out)    :: mu
+    real(defReal), intent(in)     :: E_in
+    class(RNG), intent(inout)     :: rand
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt), intent(in) :: nucIdx
+    real(defReal)                 :: dummyE
+
+    call self % dataBlock % nucXSData(nucIdx) % sampleMuEout( mu, dummyE, E_in, rand, MT)
+
+
+  end subroutine sampleMu
 
   !!
   !! Function which returns average neutron emission at a given energy
