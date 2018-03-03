@@ -639,7 +639,7 @@ module genericProcedures
 
     end if
 
-    !newDir = newDir / sum(newDir * newDir)
+    newDir = newDir / norm2(newDir)
 
   end function rotateVector
 

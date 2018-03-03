@@ -46,7 +46,7 @@ program test
   use collisionOperator_class, only : collisionOperator
   use particle_class,          only : particle
 
-  use scatteringKernels_func,  only : targetVelocity_constXS
+  use scatteringKernels_func,  only : targetVelocity_constXS,asymptoticScatter
 
   implicit none
 
@@ -148,6 +148,7 @@ program test
   type(collisionOperator) :: collisionPhysics
   class(RNG), pointer     :: RNGptr
   real(defReal),dimension(3) :: V_ter
+  real(defReal) :: mu, E_as, E_fg
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -194,28 +195,45 @@ program test
 !    print *,isotope % energyGrid(i) ,isotope % xsData(i) % xs % total,isotope % xsData(i) % xs % scatter, &
 !            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
 !  end do
- call IOdictTest % initFrom(testDictFile)
- print *, IOdictTest % isPresent('keyword41')
- stop
+
 
  allocate(ce)
- !call ce % readFrom(matInput,isoInput)
+ call ce % readFrom(matInput,isoInput)
 
  allocate(RNGptr)
-
- !call collisionPhysics % attachXsData(ce)
+ call RNGptr % init(5875757_8)
 
  neutron % pRNG => RNGptr
  neutron % E = 7.0
+ neutron % dir = [1.0, 0.0 , 0.0]
  neutron % matIdx = 1
+
+
+ call collisionPhysics % attachXsData(ce)
+ collisionPhysics % locRNG => neutron % pRNG
+
+
+
 
  call RNGptr % init(75785746574_longInt)
 
 print *,"S=["
 do i=1,5000000
-  V_ter = targetVelocity_constXS(0.001E-6_8, [1.0_8,0.0_8,0.0_8] ,2.585199E-8_8, 300.0_8, RNGptr)
+  neutron % E = 0.06e-6_8
+
+  call collisionPhysics % scatterFromFixed(mu,neutron, neutron % E ,0.999170_8,2,1)
+ !mu = 2.0* RNGptr % get() - 1.0
+  E_as = neutron % E
+  !call asymptoticScatter(E_as,mu,236.005800_8)
+  neutron % E = 0.06e-6_8
+
+  call collisionPhysics % scatterFromMoving(mu,neutron, neutron % E ,0.999170_8,7.755597306E-8_8,2,1)
+  E_fg = neutron % E
+  print *, E_as, E_fg
+
+ ! V_ter = targetVelocity_constXS(0.001E-6_8, [1.0_8,0.0_8,0.0_8] ,2.585199E-8_8, 300.0_8, RNGptr)
  !print *, sqrt(sum(V_ter *V_ter))
- print '(E100.90)', sqrt(V_ter(1)**2+V_ter(2)**2+V_ter(3)**2)
+! print '(E100.90)', sqrt(V_ter(1)**2+V_ter(2)**2+V_ter(3)**2)
 
 end do
 print *,"];"

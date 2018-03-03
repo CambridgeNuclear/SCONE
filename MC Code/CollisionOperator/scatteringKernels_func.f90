@@ -40,7 +40,7 @@ contains
     inv_Ap1 = 1.0/ (A + 1.0)
 
     ! Find post-collision energy
-    E  = (1.0 + A*A + 2 *mu) *E_in * inv_Ap1 * inv_Ap1
+    E  = (1.0 + A*A + 2 *A*mu) *E_in * inv_Ap1 * inv_Ap1
 
     ! Find deflection angle in LAB
     mu = mu + sqrt(E_in/E)* inv_Ap1

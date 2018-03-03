@@ -17,7 +17,7 @@ module collisionOperator_class
   private
 
   type, public :: collisionOperator
-    private
+   !* private ** DEBUG
     class(byNucNoMT), pointer :: xsData => null()
     class(RNG), pointer       :: locRNG => null()
   contains
@@ -185,7 +185,7 @@ contains
     V_t = targetVelocity_constXS(E, dir_pre, A, kT, self % locRNG)
 
     ! Calculate Centre-of-Mass velocity
-    V_cm = V_n + V_t *A/(A+1)
+    V_cm = (V_n + V_t *A)/(A+1)
 
     ! Move Neutron velocity to CM frame, store speed and calculate new normalised direction
     V_n = V_n - V_cm

@@ -48,6 +48,7 @@ contains
       mu = self % muEndfPdfs(idx+1) % sample(rand)
     else
       mu = self % muEndfPdfs(idx) % sample(rand)
+
     end if
 
   end function sample
