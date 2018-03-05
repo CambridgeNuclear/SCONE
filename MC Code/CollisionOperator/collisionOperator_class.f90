@@ -16,6 +16,15 @@ module collisionOperator_class
   implicit none
   private
 
+  !!
+  !! ***** Eventual improvement
+  !! *** Define a common-block like type to contain all important data for collision procesing
+  !! ** Move all physic subroutines to "a library" in external module. Use the type to interface
+  !! * with it. Thus collision operators will become more higher level. Tell what you want to do
+  !! Do not tell how to do it!
+  !!
+  real(defReal), parameter :: energyCutoff = 2.0E-11
+
   type, public :: collisionOperator
    !* private ** DEBUG
     class(byNucNoMT), pointer :: xsData => null()
@@ -26,8 +35,11 @@ module collisionOperator_class
 
 
     procedure :: performScattering
+    procedure :: performCapture
+    procedure :: performFission
     procedure :: scatterFromFixed
     procedure :: scatterFromMoving
+    procedure :: scatterInLAB
 
   end type collisionOperator
 
@@ -85,39 +97,83 @@ contains
     ! Call procedure to do reaction processing
     select case (MT)
       case(anyScatter)
-     !   call self % performScattering(p,nucIdx)
+        call self % performScattering(p,nucIdx)
 
       case(anyCapture)
-     !   call self % performCapture(p,nucIdx)
+        call self % performCapture(p,nucIdx)
 
       case(anyFission)
-     !   call self % performFission(p,nucIdx)
+        call self % performFission(p,nucIdx)
 
     end select
+
+    if (p % E < energyCutoff ) p % isDead = .true.
 
   end subroutine collide
 
   !!
   !! Change particle state in scattering reaction
+  !! Critarion for Free-Gas vs Fixed Target scattering is taken directly from MCNP manual chapter 2
   !!
   subroutine performScattering(self,p,nucIdx)
     class(collisionOperator), intent(inout) :: self
     type(particle), intent(inout)           :: p
     integer(shortInt),intent(in)            :: nucIdx
+    integer(shortInt)                       :: MT
+    real(defReal)                           :: E          ! Pre-collision energy
+    real(defReal)                           :: kT, A      ! Target temperature[MeV] and mass [Mn]
+    real(defReal)                           :: muL        ! Cosine of scattering in LAB frame
 
-    ! check if data is in lab or CM frame
+    ! Assign MT number -> only elastic scattering at this moment
+    MT = N_N_elastic
 
-    ! Select if target is stationary or not
-   !   if ((E > kT*400.0) .and. (A>1.0)) then
-
-     ! Call prodecure for stationary treatment
-
-     ! Call procedure fo moving treatment
+    E = p % E
 
 
+    if (self % xsData % isInCMFrame(MT, nucIdx)) then
+      A =  self % xsData % getWeight(nucIdx)
+      kT = self % xsData % getkT(nucIdx)
+
+      ! Apply criterion for Free-Gas vs Fixed Target scattering
+      if ((E > kT*400.0) .and. (A>1.0)) then
+        call self % scatterFromFixed(muL,p,E,A,MT,nucIdx)
+
+      else
+        call self % scatterFromMoving(muL,p,E,A,kT,MT,nucIdx)
+
+      end if
+
+    else
+      call self % scatterInLAB(muL,p,E,MT,nucIdx)
+
+    end if
 
   end subroutine performScattering
 
+
+  !!
+  !! Subroutine to perform scattering in LAB frame
+  !! Returns mu -> cos of deflection angle in LAB frame
+  !!
+  subroutine scatterInLAB(self,mu,p,E,MT,nucIdx)
+    class(collisionOperator), intent(inout) :: self
+    real(defReal), intent(out)              :: mu    ! Returned deflection angle cos in LAB
+    type(particle), intent(inout)           :: p
+    real(defReal), intent(in)               :: E      ! Neutron energy
+    integer(shortInt),intent(in)            :: MT     ! Reaction MT number
+    integer(shortInt),intent(in)            :: nucIdx ! Target nuclide index
+    real(defReal)                           :: phi    ! Azimuthal scatter angle
+    real(defReal)                           :: E_out
+
+    ! Sample scattering angles and post-collision energy
+    call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, MT, nucIdx)
+    phi = 2*PI* self % locRNG % get()
+
+    ! Update neutron state
+    p % E = E_out
+    call p % rotate(mu,phi)
+
+  end subroutine scatterInLAB
 
   !!
   !! Subroutine to perform scattering from stationary target.
@@ -125,7 +181,7 @@ contains
   !!
   subroutine scatterFromFixed(self,mu,p,E,A,MT,nucIdx)
     class(collisionOperator), intent(inout) :: self
-    real(defReal), intent(out)              :: mu          ! Returns deflection angle cos in LAB
+    real(defReal), intent(out)              :: mu          ! Returned deflection angle cos in LAB
     type(particle), intent(inout)           :: p
     real(defReal), intent(in)               :: E           ! Neutron energy
     real(defReal), intent(in)               :: A           ! Target weight
@@ -136,7 +192,7 @@ contains
     character(100),parameter       :: Here = 'scatterFromStationary (collisionOperator_class.f90)'
 
     ! Sample mu and outgoing energy
-    call self % xsData % sampleMuEout(mu, E_out, E, self%locRNG, MT, nucIdx)
+    call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, MT, nucIdx)
 
     select case(MT)
       case(N_N_elastic)
