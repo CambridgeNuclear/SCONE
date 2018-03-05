@@ -234,7 +234,7 @@ contains
     real(defReal)                           :: phi
 
     ! Get neutron direction and velocity
-    dir_pre = p % getDirection()
+    dir_pre = p % globalDir()
     V_n     = dir_pre * sqrt(E)
 
     ! Sample velocity of target

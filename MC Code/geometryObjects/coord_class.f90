@@ -1,25 +1,21 @@
 module coord_class
 
   use numPrecision
-!  use universalVariables
+  !use universalVariables
   use genericProcedures
-
- ! use cell_class
- ! use universe_class
- ! use lattice_class
 
   implicit none
   private
 
-  integer(shortInt), parameter :: max_nest = 5
+  !*** My version PARAMETER
+  integer(shortInt), parameter :: max_nest = 3
 
   type, public :: coord
     real(defReal), dimension(3) :: r              ! position
     real(defReal), dimension(3) :: dir            ! direction
-  !  type(cell_ptr) :: cell                        ! point to the cell occupied
-  !  type(universe_ptr) :: universe                ! point to the universe occupied
-  !  type(lattice_ptr) :: lattice                  ! point to the lattice occupied
-  !  logical(defBool) :: inLattice                 ! whether point is inside a lattice cell
+    integer(shortInt) :: uniInd = 0               ! index of the universe occupied
+    integer(shortInt) :: latInd = 0               ! index of the lattice occupied
+    !integer(shortInt) :: cellInd = 0              ! point to the cell occupied
   end type coord
 
   type, public :: coordList
@@ -27,9 +23,13 @@ module coord_class
     type(coord), dimension(max_nest) :: lvl    ! array of coords nested successively deeper
   contains
     procedure :: init
-   ! procedure :: addLevelUniverse
-    !procedure :: addLevelLattice
-    !procedure :: resetNesting
+    procedure :: addLevel
+    procedure :: resetNesting
+    procedure :: moveGlobal
+    procedure :: moveLocal
+    procedure :: rotate
+    procedure :: assignPosition
+    procedure :: assignDirection
   end type coordList
 
 contains
@@ -38,7 +38,6 @@ contains
   ! Initialise co-ordinates with a global position
   !
   subroutine init(self,r,dir)
-    implicit none
     class(coordList), intent(inout) :: self
     real(defReal), dimension(3), intent(in) :: r, dir
     self % lvl(1) % r = r
@@ -47,65 +46,128 @@ contains
   end subroutine init
 
   !
-  ! Add another level of co-ordinates offset on entering a universe
+  ! Add another level of co-ordinates
   !
-!  subroutine addLevelUniverse(self, uni)
-!    implicit none
-!    class(coordList), intent(inout) :: self
-!    class(universe_ptr), intent(in) :: uni
-!    integer(shortInt) :: n
-!    n = self % nesting + 1
-!    self % lvl(n) % r = self % lvl(n-1) % r - uni % offset()
-!    self % lvl(n) % dir = self % lvl(n-1) % dir
-!    self % lvl(n) % universe = uni
-!    self % nesting = n
-!  end subroutine addLevelUniverse
+  subroutine addLevel(self, offset, uniInd, latInd)
+    class(coordList), intent(inout)         :: self
+    real(defReal), dimension(3), intent(in) :: offset
+    integer(shortInt), intent(in)           :: uniInd
+    integer(shortInt), intent(in),optional  :: latInd
+    integer(shortInt)                       :: n
+    n = self % nesting + 1
+    self % lvl(n) % r = self % lvl(n-1) % r - offset
+    self % lvl(n) % dir = self % lvl(n-1) % dir
+    self % lvl(n) % uniInd = uniInd
+    self % nesting = n
+    if(present(latInd)) self % lvl(n) % latInd = latInd
+  end subroutine addLevel
 
   !
   ! Add another level of co-ordinates on entering a lattice universe
   !
-!  subroutine addLevelLattice(self, lat)
-!    implicit none
-!    class(coordList), intent(inout) :: self
-!    class(lattice_ptr), intent(in) :: lat
-!    real(defReal), dimension(3) :: r, u
-!    integer(shortInt) :: n
-!    integer(shortInt), dimension(3) :: ijkLat
-!    n = self % nesting + 1
-!    self % lvl(n) % lattice = lat
-!    r = self % lvl(n-1) % r - lat % offset()
-!    u = self % lvl(n-1) % dir
-!    ijkLat = lat % findUniverse(r,u)
-!    self % lvl(n) % universe = lat % universes(ijkLat)
-!    self % lvl(n) % r = r - lat % localCoords(ijkLat) - self % lvl(n) % universe % offset()
-!    self % lvl(n) % dir = u
-!    self % lvl(n) % inLattice = .true.
-!    self % nesting = n
-!  end subroutine addLevelLattice
+  !subroutine addLevelLattice(self, lat)
+  !  class(coordList), intent(inout) :: self
+  !  class(lattice_ptr), intent(in) :: lat
+  !  real(defReal), dimension(3) :: r, u
+  !  integer(shortInt) :: n
+  !  integer(shortInt), dimension(3) :: ijkLat
+  !  n = self % nesting + 1
+  !  self % lvl(n) % lattice = lat
+  !  r = self % lvl(n-1) % r
+  !  u = self % lvl(n-1) % dir
+  !  ijkLat = lat % findUniverse(r,u)
+  !  self % lvl(n) % universe = lat % universes(ijkLat)
+  !  self % lvl(n) % r = r - lat % localCoords(ijkLat) - self % lvl(n) % universe % offset()
+  !  self % lvl(n) % dir = u
+  !  self % nesting = n
+  !end subroutine addLevelLattice
 
   !
   ! Return the co-ordinates to the chosen level - if not specified, return to global
   !
-!  subroutine resetNesting(self,n)
-!    implicit none
-!    class(coordList), intent(inout) :: self
-!    integer(shortInt), intent(in), optional :: n
-!    integer(shortInt) :: nMin,nMax, i
-!
-!    if(present(n)) then
-!      nMin = n
-!    else
-!      nMin = 1
-!    end if
-!
-!    nMax = self % nesting
-!    do i = nMin+1,nMax
-!      call self % lvl(i) % cell % nullify()
-!      call self % lvl(i) % universe % nullify()
-!      call self % lvl(i) % lattice % nullify()
-!      self % lvl(i) % inLattice = .false.
-!    end do
-!    self % nesting = nMin
-!  end subroutine resetNesting
+  subroutine resetNesting(self,n)
+    class(coordList), intent(inout) :: self
+    integer(shortInt), intent(in), optional :: n
+    integer(shortInt) :: nMin,nMax, i
+
+    if(present(n)) then
+      nMin = n
+    else
+      nMin = 1
+    end if
+    nMax = self % nesting
+    do i = nMin+1,nMax
+      self % lvl(i) % uniInd = 0
+      self % lvl(i) % latInd = 0
+    end do
+    self % nesting = nMin
+  end subroutine resetNesting
+
+  !!
+  !! Move a point in global co-ordinates
+  !!
+  subroutine moveGlobal(self, distance)
+    class(coordList), intent(inout) :: self
+    real(defReal), intent(in) :: distance
+
+    call self % resetNesting()
+    self % lvl(1) % r = self % lvl(1) % r + distance * self % lvl(1) % dir
+  end subroutine moveGlobal
+
+  !!
+  !! Move a point in local co-ordinates down to nesting level n
+  !!
+  subroutine moveLocal(self, distance, n)
+    class(coordList), intent(inout) :: self
+    real(defReal), intent(in) :: distance
+    integer(shortInt), intent(in) :: n
+    integer(shortInt) :: i
+
+    call self % resetNesting(n)
+    do i=1,n
+      self % lvl(i) % r = self % lvl(i) % r + distance * self % lvl(i) % dir
+    end do
+  end subroutine moveLocal
+
+  !!
+  !! Rotate neutron direction
+  !! Inefficient implementation, which does not account for not-rotated nesting levels
+  !!
+  subroutine rotate(self,mu,phi)
+    class(coordList), intent(inout) :: self
+    real(defReal), intent(in)       :: mu
+    real(defReal), intent(in)       :: phi
+    integer(shortInt)               :: i
+
+    ! Rotate directions in all nesting levels
+    do i =1,self % nesting
+      self % lvl(i) % dir = rotateVector(self % lvl(i) % dir, mu, phi)
+
+    end do
+
+  end subroutine rotate
+
+
+  !!
+  !! Assign the global position to an arbitrary value
+  !!
+  subroutine assignPosition(self, r)
+    class(coordList), intent(inout) :: self
+    real(defReal), dimension(3), intent(in) :: r
+    call self % resetNesting()
+    self % lvl(1) % r = r
+  end subroutine assignPosition
+
+  !!
+  !! Assign the global direction to an arbitrary value
+  !!
+  subroutine assignDirection(self, dir)
+    class(coordList), intent(inout) :: self
+    real(defReal), dimension(3), intent(in) :: dir
+
+    call self % resetNesting()
+    self % lvl(1) % dir = dir
+
+  end subroutine assignDirection
 
 end module coord_class

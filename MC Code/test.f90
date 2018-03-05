@@ -208,7 +208,7 @@ program test
 
  neutron % pRNG => RNGptr
  neutron % E = 7.0
- neutron % dir = [1.0, 0.0 , 0.0]
+ !neutron % dir = [1.0, 0.0 , 0.0]
  neutron % matIdx = 4
  neutron % isDead = .false.
 
@@ -233,7 +233,7 @@ program test
 
 do i=1,N
    neutron % E      = 10.0
-   neutron % dir    = [1.0, 0.0, 0.0]
+   call neutron % point([1.0_8, 0.0_8, 0.0_8])
    neutron % matIdx = 4
    neutron % isDead = .false.
 

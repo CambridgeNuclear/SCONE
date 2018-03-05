@@ -40,4 +40,4 @@ target_link_libraries(DataStructures SharedModules)
 
 add_executable(test.out test.f90)
 target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF 
-                               angleLawENDF NuclearDataStructures DataStructures CollisionOperator )
+                               angleLawENDF NuclearDataStructures DataStructures CollisionOperator Geometry)
