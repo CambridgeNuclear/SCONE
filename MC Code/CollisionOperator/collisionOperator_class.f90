@@ -2,14 +2,16 @@ module collisionOperator_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures, only : fatalError, rotateVector
-  use RNG_class,         only : RNG
-  use particle_class,    only : particle
-  use byNucNoMT_class,   only : byNucNoMT
+  use genericProcedures,      only : fatalError, rotateVector
+  use RNG_class,              only : RNG
+  use particle_class,         only : particle
+  use particleDungeon_class,  only : particleDungeon
+  use byNucNoMT_class,        only : byNucNoMT
 
   ! Cross-section packages to interface with nuclear data
-  use matNucCDF_class,   only : matNucCDF
-  use xsMainCDF_class,   only : xsMainCDF
+  use matNucCDF_class,        only : matNucCDF
+  use xsMainCDF_class,        only : xsMainCDF
+  use xsMainSet_class,        only : xsMainSet
 
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
 
@@ -23,7 +25,7 @@ module collisionOperator_class
   !! * with it. Thus collision operators will become more higher level. Tell what you want to do
   !! Do not tell how to do it!
   !!
-  real(defReal), parameter :: energyCutoff = 2.0E-11
+  real(defReal), parameter :: energyCutoff = 2.0E-11, energyMaximum = 20.0
 
   type, public :: collisionOperator
    !* private ** DEBUG
@@ -33,13 +35,14 @@ module collisionOperator_class
     procedure :: attachXsData
     procedure :: collide
 
-
+    ! Private procedures
     procedure :: performScattering
     procedure :: performCapture
     procedure :: performFission
     procedure :: scatterFromFixed
     procedure :: scatterFromMoving
     procedure :: scatterInLAB
+    procedure :: createFissionSites
 
   end type collisionOperator
 
@@ -64,9 +67,11 @@ contains
   !! Subroutine to collide a neutron. Chooses collision nuclide and main reaction channel.
   !! Calls approperiate procedure to change neutron state
   !!
-  subroutine collide(self,p)
+  subroutine collide(self,p,thisCycle,nextCycle)
     class(collisionOperator), intent(inout) :: self
     type(particle), intent(inout)           :: p
+    type(particleDungeon),intent(inout)     :: thisCycle
+    type(particleDungeon),intent(inout)     :: nextCycle
     real(defReal)                           :: E
     integer(shortInt)                       :: matIdx
     integer(shortInt)                       :: nucIdx
@@ -93,6 +98,13 @@ contains
 
     r = self % locRNG % get()
     MT = reactionCDF % invert(r)
+
+    ! Generate fission sites if nuclide is fissile
+
+    if ( self % xsData % isFissile(nucIdx)) then
+      call self % createFissionSites(nextCycle,p,nucIdx)
+
+    end if
 
     ! Call procedure to do reaction processing
     select case (MT)
@@ -295,6 +307,54 @@ contains
     p % isDead =.true.
 
   end subroutine performFission
+
+  !!
+  !!
+  !!
+  subroutine createFissionSites(self,nextCycle,p,nucIdx)
+    class(collisionOperator), intent(inout)  :: self
+    type(particleDungeon), intent(inout)     :: nextCycle
+    type(particle), intent(in)               :: p
+    integer(shortInt), intent(in)            :: nucIdx
+    type(xsMainSet),pointer                  :: nuclideXss
+    type(particle)                           :: pTemp
+    real(defReal),dimension(3)               :: r, dir
+    integer(shortInt)                        :: n, i
+    real(defReal)                            :: E, nu, wgt, r1, E_out, mu, phi
+    real(defReal)                            :: sig_fiss, sig_tot, k_eff
+
+    ! Obtain required data
+    E     = p % E
+    wgt   = p % w
+    nu    = self % xsData % releaseAt(E, N_fission, nucIdx)
+    k_eff = nextCycle % k_eff
+    r1    = self % locRNG % get()
+    call self % xsData % getMainNucXS(nuclideXss,E,nucIdx)
+
+    sig_fiss = nuclideXss % fission
+    sig_tot  = nuclideXss % total
+
+    r   = p % rGlobal()
+    dir = p % globalDir()
+
+    ! Sample number of fission sites generated
+    n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)
+
+    ! Throw new sites to the next cycle dungeon
+    wgt = 1.0
+    do i=1,n
+      call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, N_fission, nucIdx)
+      phi = 2*PI * self % locRNG % get()
+      dir = rotateVector(dir,mu,phi)
+
+      if (E_out > energyMaximum) E_out = energyMaximum
+
+      call pTemp % build(r,dir,E_out,wgt)
+      call nextCycle % throw(pTemp)
+    end do
+
+
+  end subroutine createFissionSites
 
 
 

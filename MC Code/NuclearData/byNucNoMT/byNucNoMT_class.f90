@@ -45,6 +45,7 @@ module byNucNoMT_class
     procedure :: sampleMu
     procedure :: releaseAt
     procedure :: isInCMframe
+    procedure :: isFissile
     procedure :: getWeight
     procedure :: getkT
 
@@ -227,6 +228,18 @@ contains
     isIt = self % dataBlock % nucXSData(nucIdx) % isInCMframe(MT)
 
   end function isInCMframe
+
+  !!
+  !! Returns .true. if nuclide under nucIdx is fissile
+  !!
+  function isFissile(self,nucIdx) result(isIt)
+    class(byNucNoMT), intent(in)  :: self
+    integer(shortInt), intent(in) :: nucIdx
+    logical(defBool)              :: isIt
+
+    isIt = self % dataBlock % nucXSData(nucIdx) % isFissile
+
+  end function isFissile
 
   !!
   !! Function to obtain total XS for material identified by its index

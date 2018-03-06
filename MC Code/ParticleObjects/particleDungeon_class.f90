@@ -1,8 +1,9 @@
 module particleDungeon_class
 
   use numPrecision
-  use particle_class, only : particle
-  use RNG_class,      only : RNG
+  use genericProcedures,     only : fatalError
+  use particle_class,        only : particle
+  use RNG_class,             only : RNG
 
   implicit none
   private
@@ -44,8 +45,8 @@ module particleDungeon_class
   !! normSize(N)       -> normalise dungeon population so it contains N particles
   type, public :: particleDungeon
     private
-    real(defReal),public          :: k_eff    ! k-eff for fission site generation rate normalisation
-    integer(shortInt)             :: pop      ! Current population size of the dungeon
+    real(defReal),public          :: k_eff = 1.0 ! k-eff for fission site generation rate normalisation
+    integer(shortInt)             :: pop         ! Current population size of the dungeon
     type(phaseCoord), dimension(:), allocatable :: prisoners  ! Data for the stored particles
 
   contains
@@ -122,7 +123,7 @@ contains
     p % E    = self % prisoners(pop) % E
     p % G    = self % prisoners(pop) % G
     p % isMg = self % prisoners(pop) % isMG
-
+    p % isDead = .false.
     ! Decrease population
     self % pop = self % pop - 1
 

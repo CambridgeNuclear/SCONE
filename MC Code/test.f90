@@ -47,6 +47,7 @@ program test
   use particle_class,          only : particle
 
   use scatteringKernels_func,  only : targetVelocity_constXS,asymptoticScatter
+  use particleDungeon_class,   only : particleDungeon
 
   implicit none
 
@@ -152,6 +153,7 @@ program test
   real(defReal) :: Emax,Emin,Umax,Umin
   integer(shortInt) :: nBins, idx
   integer(longInt), dimension(:),allocatable :: tally
+  type(particleDungeon) :: cycle1
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -228,14 +230,24 @@ program test
  allocate(tally(nBins))
  tally = 0
 
+ call cycle1 % init(int(1.2*N))
 
-
-
-do i=1,N
-   neutron % E      = 10.0
+ do i=1,N
+   neutron % E      = 0.5
+   call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
    call neutron % point([1.0_8, 0.0_8, 0.0_8])
-   neutron % matIdx = 4
+   neutron % w      = 1.0
    neutron % isDead = .false.
+   call cycle1 % throw(neutron)
+ end do
+
+do
+!   neutron % E      = 10.0
+!   call neutron % point([1.0_8, 0.0_8, 0.0_8])
+!   neutron % matIdx = 4
+!   neutron % isDead = .false.
+   call cycle1 % release(neutron)
+   neutron % matIdx = 4
 
 
    History: do
@@ -243,10 +255,11 @@ do i=1,N
      idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
      tally(idx) = tally(idx) + 1
 
-     call collisionPhysics % collide(neutron)
+     call collisionPhysics % collide(neutron,cycle1,cycle1)
      if(neutron % isDead) exit History
    end do History
 
+   if(cycle1 % isEmpty() ) exit
 end do
 
 print *, 'S = ['

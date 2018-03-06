@@ -18,7 +18,7 @@ module tabularPdf_class
 
 
   type, public :: tabularPdf
-    private
+    !private
     real(defReal),dimension(:,:),pointer     :: data => null()
     real(defReal),dimension(:),pointer       :: x    => null()
     real(defReal),dimension(:),pointer       :: pdf  => null()
