@@ -14,7 +14,7 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
-    class(RNG), pointer        :: pRNG     ! Pointer to RNG associated with the particle
+    class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
 
                                !*** Changed from currentMaterialIndex
     integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
