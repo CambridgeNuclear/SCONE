@@ -80,6 +80,7 @@ contains
     type(xsMainCDF),pointer                 :: reactionCDF
     real(defReal)                           :: r
 
+    if (p % E == 0.0 ) print *, "Neutron Enters with E=0.0"
     ! Retrive Pointer to the random number generator
     self % locRNG => p % pRNG
 
@@ -351,6 +352,7 @@ contains
 
       call pTemp % build(r,dir,E_out,wgt)
       call nextCycle % throw(pTemp)
+
     end do
 
 

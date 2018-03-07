@@ -153,7 +153,9 @@ program test
   real(defReal) :: Emax,Emin,Umax,Umin
   integer(shortInt) :: nBins, idx
   integer(longInt), dimension(:),allocatable :: tally
-  type(particleDungeon) :: cycle1
+  type(particleDungeon),pointer :: cycle1, cycle2, cycleTemp
+  integer(shortInt)     :: nInactive, nActive, startPop, endPop
+  real(defReal)         :: k_old, k_new, ksum, ksum2, varK
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -226,12 +228,20 @@ program test
 
  nBins = 300
  !N = 1000000
-  N = 1000000
+  N = 5000
  allocate(tally(nBins))
  tally = 0
 
- call cycle1 % init(int(1.2*N))
+ allocate(cycle1)
+ allocate(cycle2)
 
+ call cycle1 % init(int(2.0*N))
+ call cycle2 % init(int(2.0*N))
+ cycleTemp => null()
+ nInactive = 300
+ nActive   = 2000
+
+! ##### Population initialisation
  do i=1,N
    neutron % E      = 0.5
    call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
@@ -241,26 +251,131 @@ program test
    call cycle1 % throw(neutron)
  end do
 
-do
-!   neutron % E      = 10.0
-!   call neutron % point([1.0_8, 0.0_8, 0.0_8])
+!##### Fixed Source Calculation
+!###########################################################
+!do
+!!   neutron % E      = 10.0
+!!   call neutron % point([1.0_8, 0.0_8, 0.0_8])
+!!   neutron % matIdx = 4
+!!   neutron % isDead = .false.
+!   call cycle1 % release(neutron)
 !   neutron % matIdx = 4
-!   neutron % isDead = .false.
-   call cycle1 % release(neutron)
-   neutron % matIdx = 4
+!
+!
+!   History: do
+!     ! Tally energy
+!     idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
+!     tally(idx) = tally(idx) + 1
+!
+!     call collisionPhysics % collide(neutron,cycle1,cycle1)
+!     if(neutron % isDead) exit History
+!   end do History
+!
+!   if(cycle1 % isEmpty() ) exit
+!end do
 
 
-   History: do
-     ! Tally energy
-     idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
-     tally(idx) = tally(idx) + 1
+!##### Eigenvalue calculation
+!####################################################
 
-     call collisionPhysics % collide(neutron,cycle1,cycle1)
-     if(neutron % isDead) exit History
-   end do History
+!  *** Inactive cycles
 
-   if(cycle1 % isEmpty() ) exit
-end do
+  do i=1,nInactive
+    startPop = cycle1 % popSize()
+    generation: do
+
+      call cycle1 % release(neutron)
+      neutron % matIdx = 4
+
+      History: do
+        ! Tally energy
+        !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
+        !tally(idx) = tally(idx) + 1
+        call collisionPhysics % collide(neutron,cycle1,cycle2)
+        if(neutron % isDead) exit History
+
+      end do History
+
+     if(cycle1 % isEmpty() ) exit generation
+
+    end do generation
+
+   ! Calculate new k
+    endPop = cycle2 % popSize()
+    k_old  = cycle2 % k_eff
+    k_new  = 1.0*endPop/startPop * k_old
+   ! Normalise population
+    call cycle2 % normSize(N, neutron % pRNG)
+
+   ! Flip cycle dungeons
+    cycleTemp => cycle2
+    cycle2 => cycle1
+    cycle1 => cycleTemp
+
+   ! Load new k for normalisation
+    cycle2 % k_eff = k_new
+
+    print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
+  end do
+
+! ************************************
+! ****** Active cycles
+
+  ksum  = 0.0
+  ksum2 = 0.0
+  varK = 0.0
+
+  do i=1,nActive
+    startPop = cycle1 % popSize()
+    generationA: do
+
+      call cycle1 % release(neutron)
+      neutron % matIdx = 4
+
+      HistoryA: do
+        ! Tally energy
+        idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
+        tally(idx) = tally(idx) + 1
+        call collisionPhysics % collide(neutron,cycle1,cycle2)
+        if(neutron % isDead) exit HistoryA
+
+      end do HistoryA
+
+     if(cycle1 % isEmpty() ) exit generationA
+
+    end do generationA
+
+   ! Calculate new k
+    endPop = cycle2 % popSize()
+    k_old  = cycle2 % k_eff
+    k_new  = 1.0*endPop/startPop * k_old
+
+   ksum  = ksum  + k_new
+   ksum2 = ksum2 + k_new * k_new
+
+   k_new = ksum / i
+
+   ! Normalise population
+    call cycle2 % normSize(N, neutron % pRNG)
+
+   ! Flip cycle dungeons
+    cycleTemp => cycle2
+    cycle2 => cycle1
+    cycle1 => cycleTemp
+
+   ! Load new k for normalisation
+    cycle2 % k_eff = k_new
+
+    if (i > 1 ) then
+      varK = sqrt (1.0/(i*(i-1)) * (ksum2 - ksum*ksum/i))
+    end if
+
+    print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
+  end do
+
+
+
+
 
 print *, 'S = ['
 do i =1,size(tally)

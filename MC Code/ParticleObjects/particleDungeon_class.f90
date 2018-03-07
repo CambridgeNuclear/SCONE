@@ -56,6 +56,7 @@ module particleDungeon_class
     procedure  :: release
     procedure  :: normWeight
     procedure  :: normSize
+    procedure  :: popSize
 
   end type particleDungeon
 
@@ -187,9 +188,8 @@ contains
 
     else if (excessP < 0) then ! Clone randomly selected particles
       do i = self % pop, N
-        idx = int(self % pop * rand % get())
+        idx = int(self % pop * rand % get()) + 1
         self % prisoners(i) = self % prisoners(idx)
-
       end do
       self % pop = N
 
@@ -197,5 +197,16 @@ contains
 
   end subroutine normSize
 
+
+  !!
+  !! Returns number of neutrons in the dungeon
+  !!
+  function popSize(self) result(pop)
+    class(particleDungeon), intent(in) :: self
+    integer(shortInt)                  :: pop
+
+    pop = self % pop
+
+  end function popSize
 
 end module particleDungeon_class
