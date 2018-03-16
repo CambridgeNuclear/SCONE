@@ -46,7 +46,8 @@ contains
 
     ! Read required data
     self % name = name
-   ! self % temp = dict % getReal(
+    self % temp = dict % getReal('temp')
+
 
   end subroutine init
 

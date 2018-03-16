@@ -128,6 +128,7 @@ module dictionary_class
     procedure  :: keysChar
     procedure  :: keysCharArray
     procedure  :: keysDict
+    procedure  :: keys
 
     generic    :: assignment(=) => deepCopy
     procedure  :: extendBy
@@ -637,6 +638,16 @@ contains
     keys = pack(self % keywords(1:L), mask)
 
   end function keysDict
+
+  function keys(self)
+    class(dictionary), intent(in)                :: self
+    character(nameLen),dimension(:), allocatable :: keys
+    integer(shortInt)                            :: L
+
+    L = self % dictLen
+    keys = self % keywords(1:L)
+
+  end function keys
 
 
 
