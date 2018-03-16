@@ -3,8 +3,11 @@ module byNucNoMT_Data_class
   use numPrecision
   use genericProcedures,      only : fatalError, openToRead, removeDuplicates, linFind, &
                                      findDuplicates, arrayConcat
+  use dictionary_class,       only : dictionary
+
   use aceNoMT_class,          only : aceNoMT
   use materialDataNoMT_class, only : materialDataNoMT
+
 
   implicit none
   private
@@ -25,6 +28,7 @@ module byNucNoMT_Data_class
 
   contains
     procedure :: readFrom
+    procedure :: init
     procedure :: print
 
     procedure,private :: readMaterials
@@ -35,6 +39,23 @@ module byNucNoMT_Data_class
   end type byNucNoMT_Data
 
 contains
+
+
+  !!
+  !! Subroutine to build byNucNoMT_Data from dictionary
+  !!
+  subroutine init(self,matDict)
+    class(byNucNoMT_Data), intent(inout) :: self
+    class(dictionary), intent(in)        :: matDict
+
+    ! Find number of materials
+    ! Allocate space for materials
+    ! Read Individual material entries
+
+
+
+  end subroutine init
+
 
   !!
   !! Reads materials and isotopes from provided material and ACE library input files

@@ -18,6 +18,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 #if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -Wall") 
 #endif()
+# -flto = inlining at link time for now causes an error 
 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
 
@@ -35,9 +36,17 @@ add_library(DataStructures ./DataStructures/dictionary_class.f90
                            ./DataStructures/IOdictionary_class.f90)
 
 # Define dependencies of the library 
-target_link_libraries(DataStructures SharedModules)
+target_link_libraries(DataStructures SharedModules ParticleObjects RandomNumbers)
 ####
 
 add_executable(test.out test.f90)
-target_link_libraries(test.out SharedModules RandomNumbers ParticleObjects NuclearData emissionENDF 
-                               angleLawENDF NuclearDataStructures DataStructures CollisionOperator Geometry)
+target_link_libraries(test.out SharedModules
+                               RandomNumbers 
+                               ParticleObjects 
+                               NuclearDataStructures 
+                               NuclearData 
+                               emissionENDF 
+                               angleLawENDF      
+                               DataStructures 
+                               CollisionOperator 
+                               Geometry)

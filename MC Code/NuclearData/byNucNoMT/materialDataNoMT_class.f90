@@ -1,6 +1,8 @@
 module materialDataNoMT_class
 
   use numPrecision
+  use genericProcedures, only : fatalError
+  use dictionary_class,  only : dictionary
 
   implicit none
   private
@@ -18,11 +20,35 @@ module materialDataNoMT_class
     real(defReal),dimension(:),allocatable      :: nucDens  !! Nuclide densities 1/barn*cm
     character(ZZidLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
   contains
+    procedure :: init
     procedure :: setNumberOfNuc
     procedure :: print
   end type materialDataNoMT
 
 contains
+
+  !!
+  !! Initialise from dictionary. Does not read nuclide indexes (they are unavalible)
+  !!
+  subroutine init(self,dict,name)
+    class(materialDataNoMT), intent(inout) :: self
+    class(dictionary), intent(in)          :: dict
+    character(*),intent(in)                :: name
+    logical(defBool)                       :: isNotMaterial
+    character(100), parameter              :: Here ='init (materialDataNoMT_class.f90)'
+
+    ! Verify that provided dictionary contains material
+    isNotMaterial = ('material' == adjustl(dict % getChar('type') ))
+    if (isNotMaterial) then
+      call fatalError(Here,'Provided Dictionery is not a "material" it is:' // dict % getChar('type') )
+
+    end if
+
+    ! Read required data
+    self % name = name
+   ! self % temp = dict % getReal(
+
+  end subroutine init
 
 
   !!

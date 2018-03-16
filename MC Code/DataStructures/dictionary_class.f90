@@ -43,7 +43,14 @@ module dictionary_class
   ! hack existing code by storing higher rank arrays in rank1 array. Their structure should then
   ! be stored seperatly in integers in dictContent class.
   !
-
+  ! When using getReal or getRealArray it is possible to provide keyword associated with an integer
+  ! to atutomaticly conver integer to real e.g:
+  ! For following dictionary dict:
+  ! integerKey 3;
+  ! realKey    3.1;
+  !
+  ! Function: dict % getReal('integerKey') will return 3.0;
+  !
 
   integer(shortInt),parameter,public :: charLen  = nameLen
   integer(shortInt),parameter        :: empty    = 0
@@ -342,6 +349,9 @@ contains
       type is (real(defReal))
         value = temp_ptr
 
+      type is (integer(shortInt))
+        value = real(temp_ptr,defReal)
+
       class default
         call fatalError(Here,'Value under keyword ' // keyword // ' is not a real')
 
@@ -367,6 +377,9 @@ contains
     select type(temp_ptr)
       type is (real(defReal))
         value = temp_ptr
+
+      type is (integer(shortInt))
+        value = real(temp_ptr,defReal)
 
       class default
         call fatalError(Here,'Value under keyword ' // keyword // ' is not a real')
@@ -757,6 +770,9 @@ contains
     class(dictContent), intent(out)  :: LHS
     type(dictContent), intent(in)    :: RHS
 
+    ! Copy dictContent type
+    LHS % type = RHS % type
+
     LHS % rank0_ptr => RHS % rank0_ptr
     LHS % rank1_ptr => RHS % rank1_ptr
 
@@ -776,6 +792,9 @@ contains
     integer(shortInt),dimension(:),pointer :: intArray_ptr
     character(charLen),dimension(:),pointer :: charArray_ptr
     character(charLen),dimension(:),allocatable :: charArray_alloc
+
+    ! Copy dictContent type
+    LHS % type = RHS % type
 
     ! Copy rank 0 class(*) polymorphic pointer
     if(associated(RHS % rank0_ptr)) then

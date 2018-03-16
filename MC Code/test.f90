@@ -203,6 +203,18 @@ program test
 !            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
 !  end do
 
+!!
+call IOdictTest % initFrom('./materialInput')
+
+print *, IOdictTest % keysDict()
+testDict = IOdictTest % getDict('myFourthMat')
+print *, testDict % getChar('type')
+print *, testDict % keysReal()
+print *, testDict % getReal('temp')
+stop
+!!
+
+
 
  allocate(ce)
  call ce % readFrom(matInput,isoInput)

@@ -25,6 +25,9 @@ module collisionOperator_class
   !! * with it. Thus collision operators will become more higher level. Tell what you want to do
   !! Do not tell how to do it!
   !!
+  !! Make xs  packages safe to use by introduction of safe_acces pointer wrapper to prohibit
+  !! deallocation an overriding the data
+  !!
   real(defReal), parameter :: energyCutoff = 2.0E-11, energyMaximum = 20.0
 
   type, public :: collisionOperator
@@ -66,6 +69,7 @@ contains
   !!
   !! Subroutine to collide a neutron. Chooses collision nuclide and main reaction channel.
   !! Calls approperiate procedure to change neutron state
+  !! Takes as an input two particleDungeons to ba able to add new particles for this or next Cycle
   !!
   subroutine collide(self,p,thisCycle,nextCycle)
     class(collisionOperator), intent(inout) :: self
@@ -80,7 +84,6 @@ contains
     type(xsMainCDF),pointer                 :: reactionCDF
     real(defReal)                           :: r
 
-    if (p % E == 0.0 ) print *, "Neutron Enters with E=0.0"
     ! Retrive Pointer to the random number generator
     self % locRNG => p % pRNG
 
@@ -101,7 +104,6 @@ contains
     MT = reactionCDF % invert(r)
 
     ! Generate fission sites if nuclide is fissile
-
     if ( self % xsData % isFissile(nucIdx)) then
       call self % createFissionSites(nextCycle,p,nucIdx)
 
@@ -141,7 +143,6 @@ contains
     MT = N_N_elastic
 
     E = p % E
-
 
     if (self % xsData % isInCMFrame(MT, nucIdx)) then
       A =  self % xsData % getWeight(nucIdx)

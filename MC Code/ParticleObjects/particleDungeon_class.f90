@@ -43,6 +43,7 @@ module particleDungeon_class
   !! init(maxSize)     -> allocate space to store maximum of maxSize particles
   !! normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
   !! normSize(N)       -> normalise dungeon population so it contains N particles
+  !!
   type, public :: particleDungeon
     private
     real(defReal),public          :: k_eff = 1.0 ! k-eff for fission site generation rate normalisation
@@ -103,6 +104,7 @@ contains
   function isEmpty(self) result(isIt)
     class(particleDungeon), intent(in) :: self
     logical(defBool)                   :: isIt
+
     isIt = (self % pop == 0)
 
   end function isEmpty
@@ -125,26 +127,11 @@ contains
     p % G    = self % prisoners(pop) % G
     p % isMg = self % prisoners(pop) % isMG
     p % isDead = .false.
+
     ! Decrease population
     self % pop = self % pop - 1
 
   end subroutine release
-
-  !!
-  !! Copy particle into phase coordinates
-  !!
-  subroutine phaseCoord_fromParticle(LHS,RHS)
-    class(phaseCoord), intent(out)  :: LHS
-    type(particle), intent(in)      :: RHS
-
-    LHS % wgt  = RHS % w
-    LHS % r    = RHS % rGlobal()
-    LHS % dir  = RHS % globalDir()
-    LHS % E    = RHS % E
-    LHS % G    = RHS % G
-    LHS % isMG = RHS % isMG
-
-  end subroutine phaseCoord_fromParticle
 
   !!
   !! Normalise total weight of the particles in the dungeon to match provided value
@@ -178,7 +165,7 @@ contains
 
     if (excessP > 0 ) then ! Reduce population with reservoir sampling
       do i=N,self % pop
-        ! Select new index. Copy data if it is in safe zone.
+        ! Select new index. Copy data if it is in the safe zone (<= N).
         idx = int(i * rand % get())+1
         if (idx <= N) then
           self % prisoners(idx) = self % prisoners(i)
@@ -197,7 +184,6 @@ contains
 
   end subroutine normSize
 
-
   !!
   !! Returns number of neutrons in the dungeon
   !!
@@ -208,5 +194,24 @@ contains
     pop = self % pop
 
   end function popSize
+
+  !!
+  !! Copy particle into phase coordinates
+  !!
+  subroutine phaseCoord_fromParticle(LHS,RHS)
+    class(phaseCoord), intent(out)  :: LHS
+    type(particle), intent(in)      :: RHS
+
+    LHS % wgt  = RHS % w
+    LHS % r    = RHS % rGlobal()
+    LHS % dir  = RHS % globalDir()
+    LHS % E    = RHS % E
+    LHS % G    = RHS % G
+    LHS % isMG = RHS % isMG
+
+  end subroutine phaseCoord_fromParticle
+
+
+
 
 end module particleDungeon_class
