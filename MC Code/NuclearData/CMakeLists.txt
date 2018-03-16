@@ -17,4 +17,4 @@ add_library( NuclearData nuclearData_class.f90
                          ./CrossSectionPackages/matNucCDF_class.f90                         
                          ./CrossSectionPackages/xsMacroSet_class.f90)
 # Define dependencies of the library 
-target_link_libraries(NuclearData SharedModules RandomNumbers ParticleObjects emissionENDF)
+target_link_libraries(NuclearData SharedModules RandomNumbers ParticleObjects emissionENDF DataStructures)

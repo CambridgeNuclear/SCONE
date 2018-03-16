@@ -22,6 +22,30 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
 
+##########################################################################
+macro (add_sources)
+    file (RELATIVE_PATH _relPath "${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+    foreach (_src ${ARGN})
+        if (_relPath)
+            list (APPEND SRCS "${_relPath}/${_src}")
+        else()
+            list (APPEND SRCS "${_src}")
+        endif()
+    endforeach()
+    if (_relPath)
+        # propagate SRCS to parent directory
+        set (SRCS ${SRCS} PARENT_SCOPE)
+    endif()
+endmacro()
+########################################################################
+
+SET (SRCS test.f90) 
+
+
+add_library(DataStructures ./DataStructures/dictionary_class.f90
+                           ./DataStructures/IOdictionary_class.f90)
+target_link_libraries(DataStructures SharedModules ParticleObjects RandomNumbers)
+
 # include all directories with libraries 
 add_subdirectory(SharedModules)
 add_subdirectory(RandomNumbers)
@@ -32,11 +56,10 @@ add_subdirectory(CollisionOperator)
 
 ### TEMP commands to complie the dictionary 
 # Define Files to compile 
-add_library(DataStructures ./DataStructures/dictionary_class.f90
-                           ./DataStructures/IOdictionary_class.f90)
+
 
 # Define dependencies of the library 
-target_link_libraries(DataStructures SharedModules ParticleObjects RandomNumbers)
+
 ####
 
 add_executable(test.out test.f90)

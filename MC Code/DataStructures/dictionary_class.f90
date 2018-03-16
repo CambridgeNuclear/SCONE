@@ -650,7 +650,6 @@ contains
   end function keys
 
 
-
   subroutine store_real(self,keywordArgument,entry)
     class(dictionary), intent(inout)  :: self
     character(*), intent(in)          :: keywordArgument

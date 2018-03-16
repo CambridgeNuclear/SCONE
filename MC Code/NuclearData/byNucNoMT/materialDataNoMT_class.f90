@@ -31,11 +31,14 @@ contains
   !! Initialise from dictionary. Does not read nuclide indexes (they are unavalible)
   !!
   subroutine init(self,dict,name)
-    class(materialDataNoMT), intent(inout) :: self
-    class(dictionary), intent(in)          :: dict
-    character(*),intent(in)                :: name
-    logical(defBool)                       :: isNotMaterial
-    character(100), parameter              :: Here ='init (materialDataNoMT_class.f90)'
+    class(materialDataNoMT), intent(inout)      :: self
+    class(dictionary), intent(in)               :: dict
+    character(*),intent(in)                     :: name
+    logical(defBool)                            :: isNotMaterial
+    integer(shortInt)                           :: i
+    real(defReal)                               :: temp
+    character(nameLen),dimension(:),allocatable :: nucKeys
+    character(100), parameter                   :: Here ='init (materialDataNoMT_class.f90)'
 
     ! Verify that provided dictionary contains material
     isNotMaterial = ('material' == adjustl(dict % getChar('type') ))
@@ -48,6 +51,81 @@ contains
     self % name = name
     self % temp = dict % getReal('temp')
 
+    ! Load nuclides Keys
+    !nucKeys = dict % keys()
+    print *, dict % keysReal()
+
+!    call filterNotNuclides(nucKeys)
+!
+!    call self % setNumberOfNuc(size(nucKeys))
+!    self % nucNames = nucKeys
+!
+!    ! Load nuclide densities
+!    do i=1,size(nucKeys)
+!      temp = dict % getReal(nucKeys(i))
+!      if (temp < 0) call fatalError(Here,'Density of nuclide: '// nucKeys(i) //' is negative')
+!      self % nucDens(i) = temp
+!
+!    end do
+
+
+    contains
+
+      !!
+      !! Remove all keywords that are not a valid ZZid from keys
+      !!
+      subroutine filterNotNuclides(keys)
+        character(*),dimension(:),allocatable, intent(inout) :: keys
+        character(len(keys)), dimension(:), allocatable      :: tempKeys
+        logical(defBool),dimension(:),allocatable            :: mask
+
+        ! Create mask array
+       ! mask     = isZZid(keys)
+       ! tempKeys = pack(keys,mask)
+
+        ! Switch allocation
+       ! deallocate(keys)
+       ! call move_alloc(tempKeys,keys)
+
+      end subroutine filterNotNuclides
+
+      !!
+      !! Check is a character is a valid ZZId
+      !!
+      elemental function isZZid(key) result(isValidZZid)
+        character(*), intent(in)   :: key
+        character(:),allocatable   :: keyTemp
+        integer(shortInt)          :: L, dot_idx, idx
+        logical(defBool)           :: isValidZZid
+
+        ! Load into temporary variable with no leading or trailing blanks
+        keyTemp = trim(adjustl(key))
+
+        ! Check that length of character is approperiate
+        L = len_trim(keyTemp)
+        isValidZZid = (L == 8) .or. (L == 9)
+        if (.not.isValidZZid) return
+
+        ! Check that position of a dot is approperiate
+        dot_idx = index(keyTemp,'.')
+        isValidZZid = (dot_idx == 5) .or. (dot_idx == 6)
+        if (.not.isValidZZid) return
+
+        ! Check that there are no charcters left of the dot
+        idx = verify(keyTemp(1:dot_idx),'0123456789')
+        isValidZZid = (idx == 0)
+        if (.not.isValidZZid) return
+
+        ! Check that dot is followed by 2 numbers
+        idx = verify(keyTemp(dot_idx+1:dot_idx+3),'0123456789')
+        isValidZZid = (idx == 0)
+        if (.not.isValidZZid) return
+
+        ! Check that charcter does not end with number
+
+        isValidZZid = (idx == 0 )
+
+      end function isZZid
 
   end subroutine init
 

@@ -211,6 +211,9 @@ testDict = IOdictTest % getDict('myFourthMat')
 print *, testDict % getChar('type')
 print *, testDict % keysReal()
 print *, testDict % getReal('temp')
+
+charT = testDict % keysReal()
+print *, charT
 stop
 !!
 
