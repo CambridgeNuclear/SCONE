@@ -925,7 +925,7 @@ contains
   subroutine put_real(self,input)
     class(dictContent), intent(inout) :: self
     real(defReal), intent(in)         :: input
-    real(defReal), pointer            :: newMemory
+    real(defReal), pointer            :: newMemory => null()
 !    character(100),parameter          :: Here='put_real (dictionary_class.f90)'
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
@@ -944,7 +944,7 @@ contains
   subroutine put_realArray(self,input)
     class(dictContent), intent(inout)      :: self
     real(defReal),dimension(:), intent(in) :: input
-    real(defReal),dimension(:),pointer     :: newMemory
+    real(defReal),dimension(:),pointer     :: newMemory => null()
     integer(shortInt)                      :: inputSize
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
@@ -964,7 +964,7 @@ contains
   subroutine put_int(self,input)
     class(dictContent), intent(inout) :: self
     integer(shortInt), intent(in)     :: input
-    integer(shortInt), pointer        :: newMemory
+    integer(shortInt), pointer        :: newMemory => null()
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
     if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
@@ -982,7 +982,7 @@ contains
   subroutine put_intArray(self,input)
     class(dictContent), intent(inout)          :: self
     integer(shortInt),dimension(:), intent(in) :: input
-    integer(shortInt),dimension(:),pointer     :: newMemory
+    integer(shortInt),dimension(:),pointer     :: newMemory => null()
     integer(shortInt)                          :: inputSize
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
@@ -1001,7 +1001,7 @@ contains
   subroutine put_char(self,input)
     class(dictContent), intent(inout) :: self
     character(*), intent(in)          :: input
-    character(charLen), pointer       :: newMemory
+    character(charLen), pointer       :: newMemory => null()
     !integer(shortInt)                 :: inputLen
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
@@ -1020,7 +1020,7 @@ contains
   subroutine put_charArray(self,input)
     class(dictContent), intent(inout)        :: self
     character(*), dimension(:),intent(in)    :: input
-    character(charLen),dimension(:), pointer :: newMemory
+    character(charLen),dimension(:), pointer :: newMemory => null()
     integer(shortInt)                        :: inputSize
     integer(shortInt)                        :: inputLen
 
@@ -1044,7 +1044,7 @@ contains
   subroutine put_dict(self,input)
     class(dictContent), intent(inout)    :: self
     type(dictionary), intent(in)         :: input
-    type(dictionary), pointer            :: newMemory
+    type(dictionary), pointer            :: newMemory => null()
 
     if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
     if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
