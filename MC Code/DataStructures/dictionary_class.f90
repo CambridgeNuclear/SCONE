@@ -337,7 +337,7 @@ contains
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     real(defReal)                  :: value
-    class(*),pointer               :: temp_ptr
+    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getReal (dictionary_class.f90)'
 
@@ -366,7 +366,7 @@ contains
     class(dictionary), intent(in)          :: self
     character(*),intent(in)                :: keyword
     real(defReal),dimension(:),allocatable :: value
-    class(*),dimension(:),pointer          :: temp_ptr
+    class(*),dimension(:),pointer          :: temp_ptr => null()
     integer(shortInt)                      :: idx
     character(100),parameter               :: Here='getRealArray (dictionary_class.f90)'
 
@@ -395,7 +395,7 @@ contains
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     integer(shortInt)              :: value
-    class(*),pointer               :: temp_ptr
+    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getInt (dictionary_class.f90)'
 
@@ -421,7 +421,7 @@ contains
     class(dictionary), intent(in)              :: self
     character(*),intent(in)                    :: keyword
     integer(shortInt),dimension(:),allocatable :: value
-    class(*),dimension(:),pointer              :: temp_ptr
+    class(*),dimension(:),pointer              :: temp_ptr => null()
     integer(shortInt)                          :: idx
     character(100),parameter                   :: Here='getIntArray (dictionary_class.f90)'
 
@@ -447,7 +447,7 @@ contains
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     character(charLen)             :: value
-    class(*),pointer               :: temp_ptr
+    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getChar (dictionary_class.f90)'
 
@@ -507,7 +507,7 @@ contains
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     type(dictionary)               :: value
-    class(*),pointer               :: temp_ptr
+    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getChar (dictionary_class.f90)'
 

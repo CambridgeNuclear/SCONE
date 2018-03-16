@@ -51,6 +51,7 @@ contains
     ! Find number of materials
     ! Allocate space for materials
     ! Read Individual material entries
+    print *, matDict % keys()
 
 
 
