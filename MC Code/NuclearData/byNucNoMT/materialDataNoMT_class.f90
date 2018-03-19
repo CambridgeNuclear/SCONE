@@ -22,7 +22,7 @@ module materialDataNoMT_class
   contains
     procedure :: init
     procedure :: setNumberOfNuc
-    procedure :: print
+    procedure :: printMe
   end type materialDataNoMT
 
 contains
@@ -32,7 +32,7 @@ contains
   !!
   subroutine init(self,dict,name)
     class(materialDataNoMT), intent(inout)      :: self
-    class(dictionary), intent(in)               :: dict
+    type(dictionary), intent(in)                :: dict
     character(*),intent(in)                     :: name
     logical(defBool)                            :: isNotMaterial
     integer(shortInt)                           :: i
@@ -41,32 +41,31 @@ contains
     character(100), parameter                   :: Here ='init (materialDataNoMT_class.f90)'
 
     ! Verify that provided dictionary contains material
-    isNotMaterial = ('material' == adjustl(dict % getChar('type') ))
-    if (isNotMaterial) then
-      call fatalError(Here,'Provided Dictionery is not a "material" it is:' // dict % getChar('type') )
-
-    end if
+    ! isNotMaterial = ('material' /= adjustl(dict % getChar('type') ))
+    ! if (isNotMaterial) then
+    !  call fatalError(Here,'Provided Dictionery is not a "material" it is: ' // dict % getChar('type') )
+    !
+    !end if
 
     ! Read required data
     self % name = name
     self % temp = dict % getReal('temp')
 
     ! Load nuclides Keys
-    !nucKeys = dict % keys()
-    !print *, dict % keysReal()
+    nucKeys = dict % keys()
 
-!    call filterNotNuclides(nucKeys)
-!
-!    call self % setNumberOfNuc(size(nucKeys))
-!    self % nucNames = nucKeys
-!
-!    ! Load nuclide densities
-!    do i=1,size(nucKeys)
-!      temp = dict % getReal(nucKeys(i))
-!      if (temp < 0) call fatalError(Here,'Density of nuclide: '// nucKeys(i) //' is negative')
-!      self % nucDens(i) = temp
-!
-!    end do
+    call filterNotNuclides(nucKeys)
+
+    call self % setNumberOfNuc(size(nucKeys))
+    self % nucNames = nucKeys
+
+    ! Load nuclide densities
+    do i=1,size(nucKeys)
+      temp = dict % getReal(nucKeys(i))
+      if (temp < 0) call fatalError(Here,'Density of nuclide: '// nucKeys(i) //' is negative')
+      self % nucDens(i) = temp
+
+    end do
 
 
     contains
@@ -78,14 +77,16 @@ contains
         character(*),dimension(:),allocatable, intent(inout) :: keys
         character(len(keys)), dimension(:), allocatable      :: tempKeys
         logical(defBool),dimension(:),allocatable            :: mask
+        integer(shortInt) :: i
 
         ! Create mask array
-       ! mask     = isZZid(keys)
-       ! tempKeys = pack(keys,mask)
+        mask = isZZid(keys)
+
+        tempKeys = pack(keys,mask)
 
         ! Switch allocation
-       ! deallocate(keys)
-       ! call move_alloc(tempKeys,keys)
+        deallocate(keys)
+        call move_alloc(tempKeys,keys)
 
       end subroutine filterNotNuclides
 
@@ -112,18 +113,18 @@ contains
         if (.not.isValidZZid) return
 
         ! Check that there are no charcters left of the dot
-        idx = verify(keyTemp(1:dot_idx),'0123456789')
+        idx = verify(keyTemp(1:dot_idx-1),'0123456789')
         isValidZZid = (idx == 0)
         if (.not.isValidZZid) return
 
         ! Check that dot is followed by 2 numbers
-        idx = verify(keyTemp(dot_idx+1:dot_idx+3),'0123456789')
+        idx = verify(keyTemp(dot_idx+1:dot_idx+2),'0123456789')
         isValidZZid = (idx == 0)
         if (.not.isValidZZid) return
 
         ! Check that charcter does not end with number
-
-        isValidZZid = (idx == 0 )
+        idx = verify(keyTemp(L:L),'0123456789')
+        isValidZZid = (idx /= 0 )
 
       end function isZZid
 
@@ -155,7 +156,7 @@ contains
 
   end subroutine setNumberOfNuc
 
-  subroutine print(self)
+  subroutine printMe(self)
     class(materialDataNoMT), intent(in) :: self
     character(100)                      :: format1, format2, line
 
@@ -175,6 +176,6 @@ contains
 
     print format2, line
 
-  end subroutine print
+  end subroutine printMe
 
 end module materialDataNoMT_class

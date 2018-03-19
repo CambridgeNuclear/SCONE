@@ -4,6 +4,7 @@ module byNucNoMT_class
   use numPrecision
   use genericProcedures,        only : fatalError
   use RNG_class,                only : RNG
+  use dictionary_class,         only : dictionary
 
   ! Modules specific to byNucNoMT type of XS data storage
   use byNucNoMT_Data_class ,    only : byNucNoMT_Data
@@ -37,6 +38,7 @@ module byNucNoMT_class
     real(defReal)                                :: majorantXS = -1.0 !! Current majorant
 
   contains
+    procedure :: init
     procedure :: readFrom
     ! Procedures to access nuclide data (microscopic xss)
     procedure :: getMainNucCDF
@@ -59,6 +61,14 @@ module byNucNoMT_class
   end type byNucNoMT
 
 contains
+  subroutine init(self,dict)
+    class(byNucNoMT), intent(in)   :: self
+    type(dictionary), intent(inout)   :: dict
+
+    print *, dict % keys()
+
+  end subroutine init
+
 
   !!
   !! Read material and nuclide data using input files at the provided paths

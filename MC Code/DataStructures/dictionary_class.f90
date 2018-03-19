@@ -51,6 +51,9 @@ module dictionary_class
   !
   ! Function: dict % getReal('integerKey') will return 3.0;
   !
+  ! Output of getDict is a shallow copy of the dictionary. Therefore it is possible to provide it
+  ! as an argument to a subroutine without worring about a memory leak
+  !
 
   integer(shortInt),parameter,public :: charLen  = nameLen
   integer(shortInt),parameter        :: empty    = 0
@@ -128,12 +131,14 @@ module dictionary_class
     procedure  :: keysChar
     procedure  :: keysCharArray
     procedure  :: keysDict
+    procedure  :: keysDict_type
     procedure  :: keys
 
     generic    :: assignment(=) => deepCopy
     procedure  :: extendBy
     procedure  :: getEmptyIdx
-    procedure  :: deepCopy => deepCopy_dictionary
+    procedure  :: deepCopy    => deepCopy_dictionary
+    procedure  :: shallowCopy => shallowCopy_dictionary
     procedure  :: init
     procedure  :: kill => kill_dictionary
 
@@ -297,9 +302,9 @@ contains
 
   subroutine deepCopy_dictionary(LHS,RHS)
     class(dictionary), intent(inout) :: LHS
-    class(dictionary), intent(in)  :: RHS
-    integer(shortInt)              :: rhsSize, stride
-    integer(shortInt)              :: i
+    class(dictionary), intent(in)    :: RHS
+    integer(shortInt)                :: rhsSize, stride
+    integer(shortInt)                :: i
 
     call LHS % kill()
 
@@ -319,6 +324,34 @@ contains
     LHS % stride  = RHS % stride
 
   end subroutine deepCopy_dictionary
+
+
+
+  subroutine shallowCopy_dictionary(LHS,RHS)
+    class(dictionary), intent(inout) :: LHS
+    class(dictionary), intent(in)    :: RHS
+    integer(shortInt)                :: rhsSize, stride
+    integer(shortInt)                :: i
+
+    call LHS % kill()
+
+    rhsSize = size( RHS % keywords)
+    stride = RHS % stride
+
+    call LHS % init(rhsSize,stride)
+
+    LHS % keywords = RHS % keywords
+
+    do i=1,RHS % dictLen
+      call LHS % entries(i) % shallowCopy( RHS % entries(i))
+    end do
+
+    LHS % dictLen = RHS % dictLen
+    LHS % maxSize = RHS % maxSize
+    LHS % stride  = RHS % stride
+
+  end subroutine shallowCopy_dictionary
+
 
 
   function isPresent(self,keyword) result(isIt)
@@ -518,7 +551,7 @@ contains
 
     select type(temp_ptr)
       type is (dictionary)
-        value = temp_ptr
+        call value % shallowCopy(temp_ptr)
 
       class default
         call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
@@ -638,6 +671,50 @@ contains
     keys = pack(self % keywords(1:L), mask)
 
   end function keysDict
+
+
+  function keysDict_type(self,dictType) result(keys)
+    class(dictionary), intent(in)               :: self
+    character(*), intent(in)                    :: dictType
+    character(nameLen),dimension(:),allocatable :: keys
+    character(nameLen),dimension(:),allocatable :: allDict
+    logical(defBool), dimension(:), allocatable :: mask
+    integer(shortInt)                           :: L,i
+    character(charLen)                          :: typeTemp
+    type(dictionary)                            :: tempDict
+
+
+    ! Due to compiler bugs copy keysDict_all
+    L = self % dictLen
+    allocate( mask(L) )
+
+    mask = (self % entries(1:L) % getType() == nestDict)
+
+    allDict = pack(self % keywords(1:L), mask)
+    deallocate(mask)
+
+    ! Find all indexes in keys that match requested type
+    L = size(allDict)
+    allocate(mask(L))
+
+    do i=1,L
+      tempDict = self % getDict(allDict(i))
+
+      if (tempDict % isPresent('type')) then
+        typeTemp = tempDict % getChar('type')
+        mask(i) = (trim(adjustl(dictType)) == trim(adjustl(typeTemp)))
+
+      else
+        mask(i) = .false.
+
+      end if
+    end do
+
+    keys = pack(allDict,mask)
+
+  end function keysDict_type
+
+
 
   function keys(self)
     class(dictionary), intent(in)                :: self

@@ -204,16 +204,25 @@ program test
 !  end do
 
 !!
+
+
 call IOdictTest % initFrom('./materialInput')
 
-print *, IOdictTest % keysDict()
-testDict = IOdictTest % getDict('myFourthMat')
-print *, testDict % getChar('type')
-print *, testDict % keysReal()
-print *, testDict % getReal('temp')
+!print *, IOdictTest % keysDict()
+testDict = IOdictTest !% getDict('myFourthMat')
+!print *, testDict % getChar('type')
+!print *, testDict % keysReal()
+!print *, testDict % getReal('temp')
 
-charT = testDict % keysReal()
-print *, charT
+!charT = testDict % keysReal()
+!print *, charT
+
+!print *, IOdictTest % keysDict_type('material')
+
+allocate(ce)
+allocate(ce % dataBlock)
+call ce % dataBlock % init(testDict)
+call ce % dataBlock % printMe()
 stop
 !!
 
@@ -554,7 +563,7 @@ stop
 !  call isotope % init(acePath,1)
 
   call CEdata % readFrom(matInput,isoInput)
-  call CEdata % print()
+  call CEdata % printMe()
 
   stop
   !call isotope % init(acePath,firstLine)

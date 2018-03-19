@@ -73,9 +73,9 @@ contains
   !!
   subroutine collide(self,p,thisCycle,nextCycle)
     class(collisionOperator), intent(inout) :: self
-    type(particle), intent(inout)           :: p
-    type(particleDungeon),intent(inout)     :: thisCycle
-    type(particleDungeon),intent(inout)     :: nextCycle
+    class(particle), intent(inout)           :: p
+    class(particleDungeon),intent(inout)     :: thisCycle
+    class(particleDungeon),intent(inout)     :: nextCycle
     real(defReal)                           :: E
     integer(shortInt)                       :: matIdx
     integer(shortInt)                       :: nucIdx
@@ -132,7 +132,7 @@ contains
   !!
   subroutine performScattering(self,p,nucIdx)
     class(collisionOperator), intent(inout) :: self
-    type(particle), intent(inout)           :: p
+    class(particle), intent(inout)           :: p
     integer(shortInt),intent(in)            :: nucIdx
     integer(shortInt)                       :: MT
     real(defReal)                           :: E          ! Pre-collision energy
@@ -172,7 +172,7 @@ contains
   subroutine scatterInLAB(self,mu,p,E,MT,nucIdx)
     class(collisionOperator), intent(inout) :: self
     real(defReal), intent(out)              :: mu    ! Returned deflection angle cos in LAB
-    type(particle), intent(inout)           :: p
+    class(particle), intent(inout)           :: p
     real(defReal), intent(in)               :: E      ! Neutron energy
     integer(shortInt),intent(in)            :: MT     ! Reaction MT number
     integer(shortInt),intent(in)            :: nucIdx ! Target nuclide index
@@ -196,7 +196,7 @@ contains
   subroutine scatterFromFixed(self,mu,p,E,A,MT,nucIdx)
     class(collisionOperator), intent(inout) :: self
     real(defReal), intent(out)              :: mu          ! Returned deflection angle cos in LAB
-    type(particle), intent(inout)           :: p
+    class(particle), intent(inout)           :: p
     real(defReal), intent(in)               :: E           ! Neutron energy
     real(defReal), intent(in)               :: A           ! Target weight
     integer(shortInt),intent(in)            :: MT          ! Reaction MT number
@@ -234,7 +234,7 @@ contains
   subroutine scatterFromMoving(self,mu,p,E,A,kT,MT,nucIdx)
     class(collisionOperator), intent(inout) :: self
     real(defReal), intent(out)              :: mu
-    type(particle), intent(inout)           :: p
+    class(particle), intent(inout)          :: p
     real(defReal), intent(in)               :: E            ! Neutron energy
     real(defReal), intent(in)               :: A
     real(defReal),intent(in)                :: kT           ! Target temperature

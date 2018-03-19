@@ -497,6 +497,18 @@ module genericProcedures
 
   end subroutine replaceChar
 
+  !!
+  !! Compares strings for equality. Ignores leading blanks.
+  !!
+  elemental function charCmp(char1, char2) result(areEqual)
+    character(*), intent(in)  :: char1
+    character(*), intent(in)  :: char2
+    logical(defBool)          :: areEqual
+
+    areEqual = (trim(adjustl(char1)) == trim(adjustl(char2)))
+
+  end function charCmp
+
 
 
   elemental function RealReal_linlin_elemental_interpolate(xMin,xMax,yMin,yMax,x) result(y)

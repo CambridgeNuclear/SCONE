@@ -29,9 +29,10 @@ module byNucNoMT_Data_class
   contains
     procedure :: readFrom
     procedure :: init
-    procedure :: print
+    procedure :: printMe
 
     procedure,private :: readMaterials
+    procedure,private :: readMaterials_OLD
     procedure,private :: createNuclideList
     procedure,private :: assignNucIndices
     procedure,private :: readNuclides
@@ -45,17 +46,66 @@ contains
   !! Subroutine to build byNucNoMT_Data from dictionary
   !!
   subroutine init(self,matDict)
-    class(byNucNoMT_Data), intent(inout) :: self
-    class(dictionary), intent(in)        :: matDict
+    class(byNucNoMT_Data), intent(inout)        :: self
+    type(dictionary), intent(in)                :: matDict
+    integer(shortInt)                           :: nMat
+    character(nameLen),dimension(:),allocatable :: matNames
+    character(pathLen)                          :: nuclideLib
 
-    ! Find number of materials
-    ! Allocate space for materials
-    ! Read Individual material entries
-    print *, matDict % keys()
+    call self % readMaterials(matDict)
 
+    call self % createNuclideList()
 
+    call self % assignNucIndices()
+
+    nuclideLib = matDict % getChar('aceLibrary')
+    call self % readNuclides(nuclideLib)
+    !allocate (self % matData(1))
+    !call self % matData(1) % init(matDict % getDict('myFourthMat'),'myFourthMat')
+
+    !call self % matData(1) % printMe()
 
   end subroutine init
+
+  !!
+  !! Reads materials data from dictionary.
+  !! All data except nuclide indexes is assigned.
+  !!
+  subroutine readMaterials(self,matDict)
+    class(byNucNoMT_Data), intent(inout)        :: self
+    type(dictionary), intent(in)                :: matDict
+    integer(shortInt)                           :: nMat, i
+    character(nameLen),dimension(:),allocatable :: matNames
+    character(nameLen)                          :: matName
+    ! Find number of materials in a problem
+    nMat = size(matDict % keysDict() )
+
+    ! Allocate memory for material data
+    allocate(self % matData(nMat ))
+
+    ! Load material names
+    matNames = matDict % keysDict()
+
+    ! Load individual material data
+    do i=1,nMat
+      matName = matNames(i)
+      call self % matData(i) % init(matDict % getDict(matName ), matName)
+
+    end do
+
+  end subroutine readMaterials
+
+
+  !!
+  !! Check if the dictionary has type 'material'
+  !!
+  function isItMaterial(dict) result(isIt)
+    type(dictionary), intent(in)    :: dict
+    logical(defBool)                :: isIt
+
+    isIt = ('material' == adjustl(dict % getChar('type') ))
+
+  end function isItMaterial
 
 
   !!
@@ -66,7 +116,7 @@ contains
     character(*), intent(in)             :: matInput
     character(*), intent(in)             :: nuclideLib
 
-    call self % readMaterials(matInput)
+    call self % readMaterials_OLD(matInput)
 
     call self % createNuclideList()
 
@@ -78,7 +128,7 @@ contains
   !!
   !! Read material data from the  input file
   !!
-  subroutine readMaterials(self, inputFile)
+  subroutine readMaterials_OLD(self, inputFile)
     class(byNucNoMT_Data), intent(inout) :: self
     character(*), intent(in)         :: inputFile
 
@@ -145,7 +195,7 @@ contains
 
     close(Input)
 
-  end subroutine readMaterials
+  end subroutine readMaterials_OLD
 
 
   !!
@@ -308,14 +358,14 @@ contains
   !!
   !! Print data about all materials to the console
   !!
-  subroutine print(self)
+  subroutine printMe(self)
     class(byNucNoMT_Data), intent(in) :: self
     integer(shortInt)                 :: i
 
     do i =1,size(self % matData)
-      call self % matData(i) % print()
+      call self % matData(i) % printMe()
     end do
 
-  end subroutine print
+  end subroutine printMe
     
 end module byNucNoMT_Data_class

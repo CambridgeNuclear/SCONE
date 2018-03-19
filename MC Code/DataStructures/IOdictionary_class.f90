@@ -70,6 +70,7 @@ contains
     character(*),intent(in)                        :: filename
     character(maxColumn),dimension(:),allocatable  :: file
     character(:),allocatable                       :: tape
+    character(1)                                   :: tab
     integer(shortInt)                              :: i
     character(100),parameter                       :: Here='initFrom (IOdictionary_class.f90)'
 
@@ -79,6 +80,11 @@ contains
     ! Crate a single long character (tape) from a file
     tape = arrayConcat(file)
     deallocate(file)
+
+    ! Create tab character and replace any tabs with blanks
+    !*** WORKS ON LINUX. BEWERE DIFFRENT TABS ON DIFFRENT OS
+    tab = char(9)
+    call replaceChar(tape,tab,' ')
 
     call compressBlanks(tape)
 
