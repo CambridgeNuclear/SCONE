@@ -2,7 +2,7 @@ module byNucNoMT_Data_class
 
   use numPrecision
   use genericProcedures,      only : fatalError, openToRead, removeDuplicates, linFind, &
-                                     findDuplicates, arrayConcat
+                                     findDuplicates, arrayConcat, targetNotFound
   use dictionary_class,       only : dictionary
 
   use aceNoMT_class,          only : aceNoMT
@@ -58,12 +58,9 @@ contains
 
     call self % assignNucIndices()
 
+    ! Read
     nuclideLib = matDict % getChar('aceLibrary')
     call self % readNuclides(nuclideLib)
-    !allocate (self % matData(1))
-    !call self % matData(1) % init(matDict % getDict('myFourthMat'),'myFourthMat')
-
-    !call self % matData(1) % printMe()
 
   end subroutine init
 
@@ -300,7 +297,7 @@ contains
     do i=1,size(self % nucNames)
       ! **** This Search need to be modernised ****!
       j = linFind(zzIds,self % nucNames(i))
-      if (j == -1) then
+      if (j == targetNotFound) then
         call fatalError('readIsotopes (byNucNoMT_Data_class.f90)', &
                         'Isotope ' // self % nucNames(i) //' was not found')
       end if

@@ -55,7 +55,7 @@ module dictionary_class
   ! as an argument to a subroutine without worring about a memory leak
   !
 
-  integer(shortInt),parameter,public :: charLen  = nameLen
+  integer(shortInt),parameter,public :: charLen  = max(nameLen,pathLen)
   integer(shortInt),parameter        :: empty    = 0
   integer(shortInt),parameter        :: numInt   = 1
   integer(shortInt),parameter        :: numReal  = 2

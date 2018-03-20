@@ -48,7 +48,7 @@ module byNucNoMT_class
     procedure :: releaseAt
     procedure :: isInCMframe
     procedure :: isFissile
-    procedure :: getWeight
+    procedure :: getWeight   !*** Change to getMass
     procedure :: getkT
 
 

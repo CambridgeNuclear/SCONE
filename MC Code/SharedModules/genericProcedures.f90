@@ -163,12 +163,16 @@ module genericProcedures
       select case (idx)
         case (valueOutsideArray)
           call fatalError(Here,'The requested value was outide the array bounds')
+
         case (tooManyIter)
           call fatalError(Here,'Search did not terminate in hardcoded number of iterations')
+
         case (targetNotFound)
           call fatalError(Here,'Search failed to find target in the array')
+
         case default
           call fatalError(Here,'Search returned unknown error flag (negative index)')
+
       end select
 
     end if
@@ -298,6 +302,7 @@ module genericProcedures
       if( adjustl(charArray(idx)) == adjustl(target)) return
     end do
     idx = targetNotFound
+
   end function
 
 
