@@ -42,7 +42,7 @@ module perMaterialMgXs_inter
                 defReal, &
                 shortInt
       class(perMaterialMgXS), intent(inout)        :: self
-      type(xsMacroSet),pointer,intent(inout)       :: macroXS
+      type(xsMacroSet),pointer,intent(inout)        :: macroXS
       real(defReal),intent(in)                     :: E
       integer(shortInt),intent(in)                 :: matIdx
     end subroutine getMatMacroXS

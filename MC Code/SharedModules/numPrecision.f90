@@ -17,6 +17,8 @@ module numPrecision
   ! Usefull constants
   real(defReal), public, parameter :: PI = 4.0 * atan(1.0_defReal)
 
+  !real(defReal), public, parmater  :: floatTol = 1.0e-23
+
 contains
     
 end module numPrecision

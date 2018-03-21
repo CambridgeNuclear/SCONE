@@ -17,6 +17,7 @@ module xsMainSet_class
 
   contains
     procedure :: xsOf
+    procedure :: invert
     procedure :: interpolate
     procedure :: interpolateTotal
     procedure :: interpolateTail
@@ -51,6 +52,63 @@ contains
     end select
     
   end function xsOf
+
+  !!
+  !! Sample reaction using the xs in the set
+  !!
+  function invert(self,r) result(MT)
+    class(xsMainSet), intent(in) :: self
+    real(defReal), intent(in)    :: r
+    integer(shortInt)            :: MT
+    real(defReal)                :: r_scaled
+    integer(shortInt)            :: i
+    character(100),parameter     :: Here ='invert (xsMainSet_class.f90)'
+
+    ! Scale r to total reaction cross-section
+    r_scaled = r * self % total
+    i=0
+
+    ! Protect against -ve r
+    if(R_scaled >= 0) i=i+1
+
+    ! Decrement through all reactions
+    r_scaled = r_scaled - self % scatter
+    if(r_scaled > 0) i=i+1
+
+    r_scaled = r_scaled - self % capture
+    if(r_scaled > 0) i=i+1
+
+    r_scaled = r_scaled - self % fission
+    if(r_scaled > 0) i=i+1
+
+    ! Assign MT
+    select case(i)
+      case(1)
+        ! Scattering
+        MT = anyScatter
+      case(2)
+        ! Capture
+        MT = anyCapture
+      case(3)
+        ! Fission
+        MT = anyFission
+      case(0)
+        ! r < 0
+        call fatalError(Here, 'Provided number to invert is -ve')
+
+      case default
+        ! r > 1 or wrong total xs
+        if (r > 1.0_defReal) then
+          call fatalError(Here,'Provided number to invert is greater then 1')
+
+        else
+          call fatalError(Here,'Total cross section must be too large')
+
+        end if
+    end select
+
+  end function invert
+
 
 
   !!

@@ -121,6 +121,9 @@ contains
         print *, localTape
         call fatalError(here,'Repeated delimiters or delim. at the beginning of a file  : ' // &
                               localTape(pos:len(localTape)))
+      else if (pos == 0) then
+        print *,localTape
+        call fatalError(here,'There are no ";" delimiters at the end of entries in this dictionary')
 
       else if (localTape(pos:pos) == endOfEnt)  then
         ! Found KEYWORD PAIR
@@ -142,6 +145,7 @@ contains
         start = dictEnd +1
 
       else
+        print *, localTape, pos
         call fatalError(here,'Impossible error. Tape reading stoped at undefined delimiter')
 
       end if

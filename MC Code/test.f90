@@ -48,6 +48,9 @@ program test
 
   use scatteringKernels_func,  only : targetVelocity_constXS,asymptoticScatter
   use particleDungeon_class,   only : particleDungeon
+  use outscatterCDF_class,     only : outscatterCDF
+
+  use isotropicMG_class,       only : isotropicMG
 
   implicit none
 
@@ -132,7 +135,7 @@ program test
 
 
   class(xsMainSet), pointer :: mySet
-  type(xsMainSet) :: bSet
+  type(xsMacroSet) :: bSet
   type(xsMainSet) :: uSet
   type(xsEnergyPointNoMT) :: Epoint
   type(xsEnergyPointNoMT) :: Bpoint
@@ -156,6 +159,10 @@ program test
   type(particleDungeon),pointer :: cycle1, cycle2, cycleTemp
   integer(shortInt)     :: nInactive, nActive, startPop, endPop
   real(defReal)         :: k_old, k_new, ksum, ksum2, varK
+
+  type(outscatterCDF) :: outCDF
+  integer(shortInt), dimension(:,:), allocatable :: ReSh
+  type(isotropicMG) :: MGData
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -204,7 +211,32 @@ program test
 !  end do
 
 !!
+call IOdictTest % initFrom('./RootMG')
+testDict = IOdictTest
+call MGData % init(testDict)
 
+
+stop
+
+bSet % scatterXS = 2.0
+bSet % captureXS = 1.0
+bSet % fissionXS = 0.5
+
+bSet % totalXS = bSet % scatterXS + bSet % captureXS + bSet % fissionXS
+
+!print *, bSet % invert(0.9_8)
+
+!print *, binarySearch([1.0_8],1.1_8)
+
+call outCDF % init([2.0_8,1.0_8,0.5_8])
+
+print *, outCDF % invert(0.85_8)
+
+ReSh = reshape([1, 2, 3, 4, 5, 6,7,8,9],[3,3])
+
+print *, ReSh(:,2)
+print *, sum(ReSh,1)
+stop
 
 call IOdictTest % initFrom('./materialInput')
 

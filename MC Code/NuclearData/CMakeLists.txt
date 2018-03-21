@@ -16,6 +16,9 @@ add_library( NuclearData nuclearData_class.f90
                          ./CrossSectionPackages/xsMainSet_class.f90
                          ./CrossSectionPackages/matNucCDF_class.f90                         
                          ./CrossSectionPackages/xsMacroSet_class.f90
-                         ./MGnuclearData/perMaterialMgXs_inter.f90)
+                         ./MGnuclearData/perMaterialMgXs_inter.f90
+                         ./MGnuclearData/Shared/outscatterCDF_class.f90
+                         ./MGnuclearData/Shared/releaseMatrixMG_class.f90
+                         ./MGnuclearData/isotropicMG/isotropicMG_class.f90)
 # Define dependencies of the library 
 target_link_libraries(NuclearData SharedModules RandomNumbers ParticleObjects emissionENDF DataStructures)

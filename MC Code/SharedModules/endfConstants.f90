@@ -79,13 +79,25 @@ module endfConstants
                                   N_pt          = 116 ,&
                                   N_da          = 117
 
+  integer(shortInt),private    :: i  ! Local, private integer to use array constructor
+  integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
+
+  ! Microscopic lumped reaction channels special MT numbers
   integer(shortInt),parameter  :: anyScatter = -102, &
                                   anyCapture = -201, &
                                   anyFission = -118
 
+  ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
+  integer(shortInt),parameter  :: macroTotal    = -1 ,&
+                                  macroCapture  = -2 ,&
+                                  macroEscatter = -3 ,&
+                                  macroFission  = -6
+  ! List of Maje MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
+  integer(shortInt), parameter :: macroAllScatter = -20
 
-  integer(shortInt),private    :: i  ! Local, private integer to use array constructor
-  integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
+
+
+
 
 
   ! List of diffrent ENDF energy Laws. See ENDF manual for more details:
