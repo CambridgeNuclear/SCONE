@@ -22,7 +22,7 @@ module isotropicMG_class
   end type materialData
 
   type, public :: isotropicMG
-    private
+   ! private
     integer(shortInt)   :: nG
     integer(shortInt)   :: nMat
 
@@ -113,17 +113,19 @@ contains
     real(defReal),dimension(nG,nG)    :: tempXSmatrix
     type(IOdictionary)                :: xsDict
     integer(shortInt)                 :: i
+    logical(defBool)                  :: isFissile
     character(100), parameter         :: Here='readMaterial (isotropicMG_class.f90)'
 
     ! Obtain path from dict and read into xsDict
     call xsDict % initFrom( dict % getChar('xsFile'))
 
+    ! Check if material is fissile
+    isFissile = xsDict % isPresent('fission')
+    self % matData(idx) % isFissile = isFissile
+
     ! Verify size of stored data
     if (size(xsDict % getRealArray('capture')) /= nG) then
       call fatalError(Here,'capture xs are inconsistant with number of energy groups')
-
-    else if (size(xsDict % getRealArray('fission')) /= nG) then
-      call fatalError(Here,'fission xs are inconsistant with number of energy groups')
 
     elseif (size(xsDict % getRealArray('scattering_P0')) /= nG*nG) then
       call fatalError(Here,'scatter xs are inconsistant with number of energy groups')
@@ -131,12 +133,19 @@ contains
     else if (size(xsDict % getRealArray('scatteringMultiplicity')) /= nG*nG) then
       call fatalError(Here,'scattering production data is inconsistant with number of energy groups')
 
-    else if (size(xsDict % getRealArray('chi')) /= nG) then
-      call fatalError(Here,'chi data is inconsistant with number of energy groups')
+    end if
 
-    else if (size(xsDict % getRealArray('nu')) /= nG) then
-      call fatalError(Here,'nu data is inconsistant with number of energy groups')
+    if (isFissile) then
+      if (size(xsDict % getRealArray('fission')) /= nG) then
+        call fatalError(Here,'fission xs are inconsistant with number of energy groups')
 
+      else if (size(xsDict % getRealArray('chi')) /= nG) then
+        call fatalError(Here,'chi data is inconsistant with number of energy groups')
+
+      else if (size(xsDict % getRealArray('nu')) /= nG) then
+        call fatalError(Here,'nu data is inconsistant with number of energy groups')
+
+      end if
     end if
 
     ! Load and store capture XSs
@@ -145,12 +154,21 @@ contains
     self % XSs(:,idx) % captureXS = tempXS
 
     ! Load and store fission XSs
-    tempXS = xsDict % getRealArray('fission')
+    if (isFissile) then
+      tempXS = xsDict % getRealArray('fission')
+    else
+      tempXS = 0.0
+    end if
     if (any( tempXS < 0.0)) call fatalError(Here,'fission xss are -ve')
     self % XSs(:,idx) % fissionXS = tempXS
 
     ! Load and store chi values
-    tempXS = xsDict % getRealArray('chi')
+    if (isFissile) then
+      tempXS = xsDict % getRealArray('chi')
+    else
+      tempXS = 0.0
+      tempXS(1) = 1.0 ! Avoid Floating point exception
+    end if
     if (any( tempXS < 0.0)) call fatalError(Here,'chi is -ve')
     call self % chiValues(idx) % init(tempXS)
 
@@ -168,7 +186,11 @@ contains
     if (any( tempXSmatrix_rank1 < 0.0)) call fatalError(Here,'scateringMultiplicity in -ve')
     tempXSmatrix = reshape(tempXSmatrix_rank1,[nG, nG])
 
-    tempXS = xsDict % getRealArray('nu')
+    if (isFissile) then
+      tempXS = xsDict % getRealArray('nu')
+    else
+      tempXS = 0.0
+    end if
 
     call self % releaseData(idx) % init(tempXS, tempXSmatrix)
 
@@ -176,9 +198,6 @@ contains
     self % XSs(:,idx) % totalXS = self % XSs(:,idx) % scatterXS + &
                                   self % XSs(:,idx) % captureXS + &
                                   self % XSs(:,idx) % fissionXS
-
-
-
 
   end subroutine readMaterial
     

@@ -10,7 +10,7 @@ module outscatterCDF_class
   !! Container for histogram probability of group to group scatter
   !!
   type, public :: outscatterCDF
-    private
+   ! private
     real(defReal),dimension(:),allocatable :: cdf
   contains
     procedure :: init

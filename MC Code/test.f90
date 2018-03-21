@@ -215,6 +215,8 @@ call IOdictTest % initFrom('./RootMG')
 testDict = IOdictTest
 call MGData % init(testDict)
 
+print *, MGData % releaseData(1) % fissionRelease
+
 
 stop
 

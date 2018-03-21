@@ -13,7 +13,7 @@ module releaseMatrixMG_class
   !! Memory inefficient implementation
   !!
   type, public :: releaseMatrixMG
-    private
+    !private
     real(defReal), dimension(:,:),allocatable :: scatterRelease
     real(defReal), dimension(:),allocatable   :: fissionRelease
   contains
