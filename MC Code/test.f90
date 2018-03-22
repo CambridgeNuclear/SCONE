@@ -50,6 +50,7 @@ program test
   use particleDungeon_class,   only : particleDungeon
   use outscatterCDF_class,     only : outscatterCDF
 
+  use perMaterialMgXs_inter, only : perMaterialMgXs
   use isotropicMG_class,       only : isotropicMG
 
   implicit none
@@ -162,7 +163,7 @@ program test
 
   type(outscatterCDF) :: outCDF
   integer(shortInt), dimension(:,:), allocatable :: ReSh
-  type(isotropicMG) :: MGData
+  class(perMaterialMgXS),allocatable :: MGData
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -213,9 +214,12 @@ program test
 !!
 call IOdictTest % initFrom('./RootMG')
 testDict = IOdictTest
+
+allocate( isotropicMG :: MGData)
+
 call MGData % init(testDict)
 
-print *, MGData % releaseData(1) % fissionRelease
+!print *, MGData % matData
 
 
 stop

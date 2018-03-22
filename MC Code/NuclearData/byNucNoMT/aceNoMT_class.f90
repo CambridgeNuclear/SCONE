@@ -28,7 +28,6 @@ module aceNoMT_class
     character(10)             :: MATid         !! MAT indentifier (see p. F-9 Appendic F MCNP 4 manual)
 !    integer(shortInt),public  :: nReact        !! number of reaction channels
 
-
     logical(defBool)   :: isFissile = .false.
 
 !    integer(shortInt),dimension(:), pointer         :: xsMT  => null()  !! MT numbers of cross-sections in xs

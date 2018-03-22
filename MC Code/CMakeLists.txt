@@ -16,9 +16,10 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Add compilers flags
 #if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
-  set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -Wall") 
+  set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall ") 
 #endif()
-# -flto = inlining at link time for now causes an error 
+# -flto = inlining at link time for now causes an error (becouse of the static libraries most likley 
+#         This flag is SUPER important.
 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
 

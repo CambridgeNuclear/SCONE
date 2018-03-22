@@ -13,6 +13,9 @@ module perMaterialMgXs_inter
   type, public, abstract :: perMaterialMgXs
     private
   contains
+    ! Initialisation
+    procedure(init), deferred            :: init
+
     ! Procedures to obtain XSs
     procedure(getMatMacroXS), deferred   :: getMatMacroXS
     procedure(getTransXS), deferred      :: getTransXS
@@ -28,22 +31,34 @@ module perMaterialMgXs_inter
     procedure(getMatName), deferred      :: getMatName
     procedure(isFissileMat), deferred    :: isFissileMat
 
+
+
   end type perMaterialMgXs
 
 
   abstract interface
 
     !!
+    !! Initialise from dictionary
+    !!
+    subroutine init(self,dict)
+      import :: perMaterialMgXS, &
+                dictionary
+      class(perMaterialMgXS), intent(inout) :: self
+      type(dictionary), intent(in)          :: dict
+    end subroutine init
+
+    !!
     !! Interface to obtain main XS of the material
     !!
-    subroutine getMatMacroXS(self,macroXS,E,matIdx)
+    subroutine getMatMacroXS(self,macroXS,G,matIdx)
       import :: perMaterialMgXS,&
                 xsMacroSet, &
                 defReal, &
                 shortInt
       class(perMaterialMgXS), intent(inout)        :: self
-      type(xsMacroSet),pointer,intent(inout)        :: macroXS
-      real(defReal),intent(in)                     :: E
+      type(xsMacroSet),pointer,intent(inout)       :: macroXS
+      integer(shortInt),intent(in)                 :: G
       integer(shortInt),intent(in)                 :: matIdx
     end subroutine getMatMacroXS
 
@@ -89,15 +104,16 @@ module perMaterialMgXs_inter
     !!
     !! Obtain average emission for reaction MT
     !!
-    function releaseAt(self,G_in,MT,matIdx) result(nu)
+    function releaseAt(self,G_in,G_out,MT,matIdx) result(nu)
       import :: perMaterialMgXS,&
                 defReal, &
                 shortInt
-      class(perMaterialMgXS), intent(in) :: self
-      integer(shortInt), intent(in)      :: G_in
-      integer(shortInt), intent(in)      :: MT
-      integer(shortInt), intent(in)      :: matIdx
-      real(defReal)                      :: nu
+      class(perMaterialMgXS), intent(inout) :: self
+      integer(shortInt), intent(in)         :: G_in
+      integer(shortInt), intent(in)         :: G_out
+      integer(shortInt), intent(in)         :: MT
+      integer(shortInt), intent(in)         :: matIdx
+      real(defReal)                         :: nu
     end function releaseAt
 
     !!
@@ -108,13 +124,14 @@ module perMaterialMgXs_inter
                 RNG,&
                 defReal, &
                 shortInt
-      class(perMaterialMgXS), intent(in)  :: self
-      real(defReal), intent(out)          :: mu
-      integer(shortInt), intent(out)      :: G_out
-      integer(shortInt), intent(in)       :: G_in
-      class(RNG), intent(inout)           :: rand
-      integer(shortInt), intent(in)       :: MT
-      integer(shortInt), intent(in)       :: matIdx
+      class(perMaterialMgXS), intent(inout) :: self
+      real(defReal), intent(out)            :: mu
+      integer(shortInt), intent(out)        :: G_out
+      integer(shortInt), intent(in)         :: G_in
+      class(RNG), intent(inout)             :: rand
+      integer(shortInt), intent(in)         :: MT
+      integer(shortInt), intent(in)         :: matIdx
+
     end subroutine sampleMuGout
 
     !!

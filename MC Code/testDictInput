@@ -1,0 +1,33 @@
+
+
+
+
+
+     keyword1 17.1;
+list1 ( 1 2 7 1 1 1.1 1 1 1 1 1 1 1);
+list3 ( Aa B C D E F G H I J K L M N O P R S T U W X Y Z );
+                  keyword2 69987.2; 
+keyword3 noURES; 
+
+// this is !another comment
+! This is //Fortran style comment 
+keyword4 5; // this is a comment 
+
+
+
+dictionary1 { 
+
+keyword  5;  keyword2 67.9; 
+keyword3 N376; list2 ( 1 2 3 4 5);
+
+dictionary3 { 
+    key 1; 
+    key2 4;
+    dictionary4 { key 5; key2 7.4;}
+    dictionary5 { key 7.8; key2 7;} 
+
+    }
+
+}  
+
+keyword7 98;

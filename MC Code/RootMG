@@ -1,0 +1,12 @@
+ 
+numberOfGroups 3; 
+
+material1 { 
+
+xsFile ./TestMatData;
+
+} 
+
+material2 { 
+xsFile ./TestMatData2;
+} 
