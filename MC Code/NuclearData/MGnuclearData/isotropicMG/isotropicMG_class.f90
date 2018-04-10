@@ -239,6 +239,10 @@ contains
     integer(shortInt),intent(in)                 :: matIdx
 
     macroXS => self % XSs(G,matIdx)
+    ! The weirdest error
+    ! It seems that same call to a procedure is necessary to avoid "undefined reference error"
+    ! in collision operator
+    call macroXS % dummy()
 
   end subroutine getMatMacroXS
 
@@ -330,7 +334,7 @@ contains
         G_out = self % transferMatrix(G_in, matIdx) % invert(r1)
 
       case(macroFission)
-        G_out = self % transferMatrix(G_in, matIdx) % invert(r1)
+        G_out = self % chiValues(matIdx) % invert(r1)
 
       case default
         call fatalError(Here,'Unrecoginsed MT number')

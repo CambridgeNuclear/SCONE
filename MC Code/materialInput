@@ -3,8 +3,7 @@ aceLibrary /home/mak60/myACE/JEF311.aceXS;
 myFirstMaterial { 
   temp         273; 
   92238.03c    1.0; 
-  1001.09c     2.0; 
-  6072.09c	4.0;     
+  1001.09c     2.0;     
 }
 
 mySecondMat { 

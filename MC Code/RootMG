@@ -1,12 +1,13 @@
  
-numberOfGroups 3; 
+numberOfGroups 2; 
 
 material1 { 
 
-xsFile ./TestMatData;
-
+xsFile ./SerpentMatData;
+//xsFile ./PU-2-IN;
+//  xsFile ./URR-2-IN; 
 } 
 
-material2 { 
-xsFile ./TestMatData2;
-} 
+//material2 { 
+//xsFile ./TestMatData2;
+//} 

@@ -26,7 +26,7 @@ module materialMemoryNoMT_class
   !! with setTo(E) subroutine!
   !!
   type, public :: materialMemoryNoMT
-    private
+    !private
     real(defReal)                  :: E       = -1.0    !! Current Energy of XS
     logical(defBool)               :: isCalc  = .false. !! TRUE if XSs other then TOTAL are calculated
     type(xsMacroSet),public        :: XS                !! Package of macroscopic XS

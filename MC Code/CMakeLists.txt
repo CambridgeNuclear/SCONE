@@ -74,3 +74,29 @@ target_link_libraries(test.out SharedModules
                                DataStructures 
                                CollisionOperator 
                                Geometry)
+                               
+add_executable(eigenCE.out eigenCE.f90) 
+target_link_libraries(eigenCE.out SharedModules
+                               RandomNumbers 
+                               ParticleObjects 
+                               NuclearDataStructures 
+                               NuclearData 
+                               emissionENDF 
+                               angleLawENDF      
+                               DataStructures 
+                               CollisionOperator 
+                               Geometry)
+
+                               
+add_executable(eigenMG.out eigenMG.f90) 
+target_link_libraries(eigenMG.out SharedModules
+                               RandomNumbers 
+                               ParticleObjects 
+                               NuclearDataStructures 
+                               NuclearData 
+                               emissionENDF 
+                               angleLawENDF      
+                               DataStructures 
+                               CollisionOperator 
+                               Geometry)
+                               

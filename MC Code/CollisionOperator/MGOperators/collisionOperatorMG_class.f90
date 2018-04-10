@@ -19,6 +19,7 @@ module collisionOperatorMG_class
    !* private ** DEBUG
     class(perMaterialMgXS), pointer :: xsData => null()
     class(RNG), pointer             :: locRNG => null()
+    type(xsMacroSet), pointer       :: matXS  => null()
 
   contains
     procedure :: attachXSData
@@ -64,7 +65,8 @@ contains
     integer(shortInt)                         :: matIdx
     integer(shortInt)                         :: MT
     real(defReal)                             :: r
-    class(xsMacroSet), pointer                :: materialXS => null()
+    type(xsMacroSet), pointer                 :: materialXS
+    character(100), parameter                 :: Here = 'collide (collisionOperatorMG.f90)'
 
     ! Retrive Pointer to the random number generator
     self % locRNG => p % pRNG
@@ -77,6 +79,7 @@ contains
     call self % xsData % getMatMacroXS(materialXS,G,matIdx)
 
     r = self % locRNG % get()
+
     MT = materialXS % invert(r)
 
     ! Generate fission sites if nuclide is fissile
@@ -88,13 +91,16 @@ contains
     ! Call procedure to do reaction processing
     select case (MT)
       case(macroAllScatter)
-       ! call self % performScattering(p,matIdx)
+        call self % performScattering(p,matIdx)
 
       case(macroCapture)
         call self % performCapture(p,matIdx)
 
       case(macroFission)
         call self % performFission(p,matIdx)
+
+      case default
+        call fatalError(Here,'Unknown MT number')
 
     end select
 
@@ -162,7 +168,7 @@ contains
   end subroutine performFission
 
   !!
-  !!
+  !! Internal subroutine to generate fission sites
   !!
   subroutine createFissionSites(self,nextCycle,p,matIdx,Xss)
     class(collisionOperatorMG), intent(inout)  :: self
@@ -200,6 +206,7 @@ contains
       dir = rotateVector(dir,mu,phi)
 
       call pTemp % build(r,dir,G_out,wgt)
+
       call nextCycle % throw(pTemp)
 
     end do

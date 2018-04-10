@@ -62,10 +62,46 @@ module byNucNoMT_class
 
 contains
   subroutine init(self,dict)
-    class(byNucNoMT), intent(in)   :: self
+    class(byNucNoMT), intent(inout)   :: self
     type(dictionary), intent(inout)   :: dict
+    type(aceNoMT),pointer                :: nucPtr
+    type(materialDataNoMt),pointer       :: matPtr
+    integer(shortInt)                    :: numNuclide, numMaterials
+    integer(shortInt)                    :: i
+    character(100), parameter            :: Here = 'init (byNUcNoMT_class.f90)'
 
-    print *, dict % keys()
+    ! Check if material data was alrady read. If it was return error becouse prodecures
+    ! for cleaning memory from material and xs data are not implemented
+    if(associated(self % dataBlock)) call fatalError(Here,'It is forbidden to reinitialise XS data')
+
+    ! Read Material data into a shared "fat" object
+    allocate(self % dataBlock)
+    call self % dataBlock % init(dict)
+
+    ! Allocate space for nuclide and material shelfs
+    numNuclide   = size(self % dataBlock % nucXsData)
+    numMaterials = size(self % dataBlock % matData  )
+
+    allocate (self % nucShelf (numNuclide  ))
+    allocate (self % matShelf (numMaterials))
+
+    ! Attach nuclides to the shelf
+    do i=1,numNuclide
+      nucPtr => self % dataBlock % nucXsData(i)
+      call self % nucShelf(i) % init(i,nucPtr)
+
+    end do
+
+    ! Attach materials to the shelf
+    do i=1,numMaterials
+      matPtr => self % dataBlock % matData(i)
+      call self % matShelf(i) % init(matPtr,self % nucShelf)
+    end do
+
+    ! At this point assume all defined materials are present in the geometry
+    ! Include all material indexes
+    self % activeMaterials = [(i , i=1,numMaterials)]
+
 
   end subroutine init
 

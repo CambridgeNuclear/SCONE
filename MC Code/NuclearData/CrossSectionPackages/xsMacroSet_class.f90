@@ -17,15 +17,21 @@ module xsMacroSet_class
     real(defReal) :: fissionXS = 0.0
   contains
     procedure :: invert
+    procedure :: dummy
 
   end type xsMacroSet
 
 contains
 
+  subroutine dummy(self)
+    class(xsMacroSet), intent(inout) :: self
+  end subroutine dummy
+
   !!
   !! Sample reaction using the xs in the set
   !!
   function invert(self,r) result(MT)
+ ! subroutine invert(self,MT,r)
     class(xsMacroSet), intent(in) :: self
     real(defReal), intent(in)     :: r
     integer(shortInt)             :: MT
@@ -74,8 +80,9 @@ contains
           call fatalError(Here,'Total cross section must be too large')
 
         end if
-    end select
 
+    end select
+  !end subroutine invert
   end function invert
 
 

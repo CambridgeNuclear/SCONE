@@ -52,6 +52,7 @@ program test
 
   use perMaterialMgXs_inter, only : perMaterialMgXs
   use isotropicMG_class,       only : isotropicMG
+  use collisionOperatorMG_class, only : collisionOperatorMG
 
   implicit none
 
@@ -151,6 +152,7 @@ program test
 
   type(particle)          :: neutron
   type(collisionOperator) :: collisionPhysics
+  type(collisionOperatorMG) :: MGcoll
   class(RNG), pointer     :: RNGptr
   real(defReal),dimension(3) :: V_ter
   real(defReal) :: mu, E_as, E_fg
@@ -218,6 +220,7 @@ testDict = IOdictTest
 allocate( isotropicMG :: MGData)
 
 call MGData % init(testDict)
+
 
 !print *, MGData % matData
 
