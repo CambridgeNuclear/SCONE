@@ -1,5 +1,2 @@
-# Define Files to compile 
-add_library(RandomNumbers RNG_class.f90)
-
-# Define dependencies of the library 
-target_link_libraries(RandomNumbers SharedModules)
+# Add Source Files to the global list 
+add_sources( RNG_class.f90)

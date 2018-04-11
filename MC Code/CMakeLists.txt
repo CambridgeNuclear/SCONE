@@ -1,102 +1,76 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 2.8.11)
 project(directory_test)
 
-# Command to select Intel Fortran Compiler for testing purposes
-
-#set(CMAKE_Fortran_COMPILER /opt/intel/Compiler/11.1/046/bin/intel64/ifort)
+###############################################################################
+# CONFIGURE ENVIROMENT 
 
 set(CMAKE_Fortran_COMPILER /home/mak60/gcc-5.2.0/bin/gfortran)
-
-#set(CMAKE_CXX_COMPILE_ID "Intel")
-
 enable_language(Fortran) 
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Add compilers flags
-#if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
-  set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall ") 
-#endif()
-# -flto = inlining at link time for now causes an error (becouse of the static libraries most likley 
-#         This flag is SUPER important.
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -flto") 
 
+# -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
 
-##########################################################################
-macro (add_sources)
-    file (RELATIVE_PATH _relPath "${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
-    foreach (_src ${ARGN})
-        if (_relPath)
-            list (APPEND SRCS "${_relPath}/${_src}")
-        else()
-            list (APPEND SRCS "${_src}")
-        endif()
-    endforeach()
-    if (_relPath)
-        # propagate SRCS to parent directory
-        set (SRCS ${SRCS} PARENT_SCOPE)
+###############################################################################
+# DEFINE FUNCTION TO COLLECT ALL SOURCE FILES
+function(add_sources)
+  get_property(is_defined GLOBAL PROPERTY SRCS_LIST DEFINED)
+  if(NOT is_defined)
+    define_property(GLOBAL PROPERTY SRCS_LIST
+      BRIEF_DOCS "List of source files"
+      FULL_DOCS "List of source files to be compiled in one library")
+  endif()
+  # make absolute paths
+  set(SRCS)
+  foreach(s IN LISTS ARGN)
+    if(NOT IS_ABSOLUTE "${s}")
+      get_filename_component(s "${s}" ABSOLUTE)
     endif()
-endmacro()
-########################################################################
+    list(APPEND SRCS "${s}")
+    MESSAGE(STATUS ${SRCS})
+  endforeach()
+  # append to global list
+  set_property(GLOBAL APPEND PROPERTY SRCS_LIST "${SRCS}")  
+endfunction(add_sources)
+###############################################################################
+# COLLECT ALL SOURCE FILES 
 
-SET (SRCS test.f90) 
+add_sources( ./DataStructures/dictionary_class.f90
+             ./DataStructures/IOdictionary_class.f90)
 
-
-add_library(DataStructures ./DataStructures/dictionary_class.f90
-                           ./DataStructures/IOdictionary_class.f90)
-target_link_libraries(DataStructures SharedModules ParticleObjects RandomNumbers)
-
-# include all directories with libraries 
-add_subdirectory(SharedModules)
-add_subdirectory(RandomNumbers)
-add_subdirectory(ParticleObjects)
-add_subdirectory(NuclearData)
-add_subdirectory(geometryObjects)
+# Include Nested Directories  
+add_subdirectory(SharedModules)    
+add_subdirectory(RandomNumbers)    
+add_subdirectory(ParticleObjects)  
+add_subdirectory(NuclearData)      
+add_subdirectory(geometryObjects)  
 add_subdirectory(CollisionOperator)
 
-### TEMP commands to complie the dictionary 
-# Define Files to compile 
 
+###############################################################################
+# PREPROCESS COLLECTED SOURCES FROM GLOBAL PROPERTY INTO VARIABLE
+set(PREP_SRCS)
+get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
-# Define dependencies of the library 
-
-####
-
-add_executable(test.out test.f90)
-target_link_libraries(test.out SharedModules
-                               RandomNumbers 
-                               ParticleObjects 
-                               NuclearDataStructures 
-                               NuclearData 
-                               emissionENDF 
-                               angleLawENDF      
-                               DataStructures 
-                               CollisionOperator 
-                               Geometry)
-                               
-add_executable(eigenCE.out eigenCE.f90) 
-target_link_libraries(eigenCE.out SharedModules
-                               RandomNumbers 
-                               ParticleObjects 
-                               NuclearDataStructures 
-                               NuclearData 
-                               emissionENDF 
-                               angleLawENDF      
-                               DataStructures 
-                               CollisionOperator 
-                               Geometry)
-
-                               
-add_executable(eigenMG.out eigenMG.f90) 
-target_link_libraries(eigenMG.out SharedModules
-                               RandomNumbers 
-                               ParticleObjects 
-                               NuclearDataStructures 
-                               NuclearData 
-                               emissionENDF 
-                               angleLawENDF      
-                               DataStructures 
-                               CollisionOperator 
-                               Geometry)
-                               
+foreach(s IN LISTS SRCS)
+  file(RELATIVE_PATH rs "${CMAKE_CURRENT_SOURCE_DIR}" "${s}")
+  string(REGEX REPLACE "r$" "" o "${CMAKE_CURRENT_BINARY_DIR}/${rs}")
+  add_custom_command(
+    OUTPUT "${o}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${s}" "${o}"
+    DEPENDS "${s}"
+    COMMENT "Creating ${o}"
+    VERBATIM
+    )
+  list(APPEND PREP_SRCS ${o})
+endforeach()
+###############################################################################
+# COMPILE SOLVERS 
+add_executable(test.out    test.f90    ${PREP_SRCS})
+add_executable(eigenCE.out eigenCE.f90 ${PREP_SRCS}) 
+add_executable(eigenMG.out eigenMG.f90 ${PREP_SRCS}) 

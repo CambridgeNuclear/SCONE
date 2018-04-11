@@ -1,5 +1,2 @@
-# Define Files to compile 
-add_library ( Geometry coord_class.f90) 
-
-# Define dependencies of the library 
-add_dependencies(Geometry SharedModules )
+# Add Source Files to the global list 
+add_sources( coord_class.f90) 

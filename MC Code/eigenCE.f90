@@ -69,7 +69,7 @@ program eigenCE
   call cycle2 % init(int(2.0*N))
   cycleTemp => null()
   nInactive = 300
-  nActive   = 2000
+  nActive   = 500
 
 ! ##### Population initialisation
   neutron % pRNG => RNGptr

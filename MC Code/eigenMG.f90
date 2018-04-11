@@ -54,7 +54,7 @@ program eigenMG
 
   cycleTemp => null()
   nInactive = 300
-  nActive   = 20000
+  nActive   = 500
   N = 5000
 
   allocate(cycle1)
