@@ -131,7 +131,7 @@ module dictionary_class
     procedure  :: keysChar
     procedure  :: keysCharArray
     procedure  :: keysDict
-    procedure  :: keysDict_type
+    !procedure  :: keysDict_type
     procedure  :: keys
 
     generic    :: assignment(=) => deepCopy

@@ -54,6 +54,8 @@ program test
   use isotropicMG_class,       only : isotropicMG
   use collisionOperatorMG_class, only : collisionOperatorMG
 
+  use datalessMaterials_class,     only : datalessMaterials
+
   implicit none
 
   type myType
@@ -166,6 +168,20 @@ program test
   type(outscatterCDF) :: outCDF
   integer(shortInt), dimension(:,:), allocatable :: ReSh
   class(perMaterialMgXS),allocatable :: MGData
+  type(datalessMaterials)  :: matNoDat
+
+
+  call IOdictTest % initFrom('./materialInput')
+  testDict = IOdictTest
+
+  call matNoDat % init(testDict)
+  print *, matNoDat % materials
+
+  print *, matNoDat % getName(4)
+
+
+
+  stop
 !**********************************************************************!
 
 !  bSet % total    = 4.0

@@ -18,12 +18,12 @@ module datalessMaterials_class
     character(nameLen), dimension(:), allocatable :: materials ! the names of each material
 
   contains
-    generic :: init => init_fromArray !init_fromDict, init_fromArray
+    generic :: init => init_fromArray, init_fromDict
     procedure :: getIdx
     procedure :: getName
 
     procedure, private :: init_fromArray
-   ! procedure, private :: init_fromDict
+    procedure, private :: init_fromDict
 
   end type datalessMaterials
 
@@ -41,6 +41,18 @@ contains
 
   end subroutine init_fromArray
     
+  !!
+  !! Initialisation from a dictionary
+  !!
+  subroutine init_fromDict(self,dict)
+    class(datalessMaterials), intent(inout) :: self
+    type(dictionary), intent(in)            :: dict
+
+    if(allocated(self % materials)) deallocate(self % materials)
+
+    self % materials = dict % keysDict()
+
+  end subroutine init_fromDict
 
   !!
   !! Returns material index for given material name
@@ -67,7 +79,7 @@ contains
     character(nameLen)                      :: matName
     character(100), parameter               :: Here='getName (datalessMaterials_class.f90)'
 
-    if ( (matIdx < 0) .and. (matIdx > size(self % materials)) ) then
+    if ( (matIdx < 1) .or. (matIdx > size(self % materials)) ) then
       call fatalError(Here,'Provided matIdx is invalid')
 
     end if
