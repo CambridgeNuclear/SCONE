@@ -3,7 +3,7 @@ add_subdirectory(emissionENDF)
 add_subdirectory(NuclearDataStructures) 
 
 # Add Source Files to the global list 
-add_sources( ./nuclearData_class.f90      
+add_sources( ./nuclearData_inter.f90
              ./byNucNoMT/byNucNoMT_Data_class.f90 
              ./byNucNoMT/aceNoMT_class.f90
              ./byNucNoMT/byNucNoMT_class.f90

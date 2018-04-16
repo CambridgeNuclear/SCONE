@@ -1,0 +1,31 @@
+module universalVariables
+  use numPrecision
+  implicit none
+
+  ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
+  ! Problematic for separating modules!
+  integer(shortInt), parameter, public :: hardcoded_max_nest = 5
+
+  ! Define variables which are important for tracking neutrons in the geometry
+  real(defReal), parameter, public :: INFINITY    = 2.0_defReal**63, &
+                                      surface_tol = 1.0e-14_defReal, & ! Tol. on closeness to surface
+                                      NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
+
+  ! Create definitions for readability when dealing with positions relative to surfaces
+  logical(defBool), parameter, public :: behind = .FALSE., &
+                                         infront = .TRUE., &
+                                         outside = .FALSE., &
+                                         inside = .TRUE.
+
+  ! Define integers for each fill type that a cell may have
+  integer(shortInt), parameter :: outsideFill = 0,  &
+                                  materialFill = 1, &
+                                  universeFill = 2, &
+                                  latticeFill  = 3
+
+  ! Define integers for boundary condition types
+  integer(shortInt), parameter :: vacuum = 0, &
+                                  reflective = 1, &
+                                  periodic = 2
+
+end module universalVariables

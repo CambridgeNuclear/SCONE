@@ -11,7 +11,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Add compilers flags
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -flto") 
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall ") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)

@@ -1,8 +1,20 @@
-module RNG_class
-
-  use numPrecision
-
- implicit none
+!
+! Linear congruential random number generator
+!
+! Requires a starting seed, xi0, the multiplier, g, the adder, c, and a modulo number, M
+! Follows the formula: xi(i+1) = (g*xi(i) + c) mod M
+!
+! OpenMC uses g = 2806191050678079, c = 1, M = 2**63
+! M chosen purposely as a power of 2 - simplifies mod M calculation
+!                                    - simplifies division by M
+! g and c chosen to maximise period  - large g best to reduce serial correlation
+!
+! Copied here from Forrest Brown's lectures
+!
+module rng_class
+    use numPrecision
+    implicit none
+    private
 
     type, public :: rng
         private

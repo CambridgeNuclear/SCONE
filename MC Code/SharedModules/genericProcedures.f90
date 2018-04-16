@@ -660,6 +660,29 @@ module genericProcedures
 
   end function rotateVector
 
+  !!
+  !! Dot product for 3D vector
+  !!
+  function dotProduct(a,b) result(x)
+    real(defReal),dimension(3), intent(in) :: a,b
+    real(defReal)                          :: x
+
+    x = a(1)*b(1) + a(2)*b(2) + a(3)*b(3)
+
+  end function dotProduct
+
+  !!
+  !! Cross product for 3D vectors
+  !!
+  function crossProduct(a,b) result(c)
+    real(defReal),dimension(3),intent(in) :: a,b
+    real(defReal),dimension(3)            :: c
+
+    c = [a(3)*b(2) - a(2)*b(3), &
+         a(1)*b(3) - a(3)*b(1), &
+         a(2)*b(1) - a(1)*b(2) ]
+
+  end function crossProduct
 
 
 
