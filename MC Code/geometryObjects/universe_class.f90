@@ -29,7 +29,7 @@ module universe_class
   end type universe
 
   type, public :: universe_ptr
-    class(universe), pointer :: ptr
+    class(universe), pointer :: ptr => null()
   contains
     procedure :: init => init_ptr
     procedure :: whichCell => whichCell_ptr
@@ -163,7 +163,9 @@ contains
   function geometryInd_ptr(self)result(ind)
     class(universe_ptr), intent(in) :: self
     integer(shortInt) :: ind
+
     ind = self % ptr % geometryInd
+
   end function geometryInd_ptr
 
   !!

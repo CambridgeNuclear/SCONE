@@ -39,7 +39,7 @@ module nuclearData_inter
     end function getIdx
 
     !!
-    !! Retunrs material name for given material index
+    !! Returns material name for given material index
     !! Throws error if material index does not correspond to valid material
     !!
     function getName(self,matIdx) result(matName)

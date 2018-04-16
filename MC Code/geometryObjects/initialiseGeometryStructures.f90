@@ -216,8 +216,10 @@ contains
 
     ! Calculate maximum nesting
     print *,'Calculating maximum geometry nesting'
-    max_nest = 0
-    call calcMaxNesting(max_nest,universes,lattices, rootInd)
+    max_nest = hardcoded_max_nest
+
+    ! *** CalcMaxNesting is pending debbuging. May appear at some point
+    !call calcMaxNesting(max_nest,universes,lattices, rootInd)
     print *,'Geometry contains ',max_nest,' nesting levels'
 
   end subroutine initGeomArraysDict
@@ -686,56 +688,64 @@ contains
 
   !!
   !! Find the nesting of the geometry for using co-ord lists
+  !! **** PENDING DEBBUGING, SEGMENTATION AT THE MOMENT ***
   !!
-  recursive subroutine calcMaxNesting(max_nest, universes, lattices, uniInd)
-    class(universe), dimension(:), intent(in) :: universes
-    class(lattice), dimension(:), intent(in) :: lattices
-    integer(shortInt), intent(inout) :: max_nest
-    integer(shortInt), intent(in) :: uniInd
-    type(universe_ptr) :: uni
-    type(cell_ptr) :: c
-    integer(shortInt), dimension(3) :: ijk
-    integer(shortInt) :: cInd, newInd, latInd, test_nest, max_nest0, fillType, i, j, k
-
-    ! Include a simple protection against infinite nesting
-    if (max_nest > 10) call fatalError('calcMaxNesting','Geometry is more deeply nested than anticipated!')
-    uni = universes(uniInd)
-    max_nest = max_nest + 1
-    max_nest0 = max_nest
-    test_nest = max_nest
-    do cInd = 1,uni%numCells()
-      c = uni % cells(cInd)
-      if (c % fillType() == universeFill) then
-        newInd = c % uniInd()
-        call calcMaxNesting(test_nest, universes, lattices, newInd)
-        max_nest = max(max_nest, test_nest)
-        test_nest = max_nest0
-      else if (c % fillType() == latticeFill) then
-        latInd = c % latInd()
-        ijk = lattices(latInd) % extent
-        do i=1,ijk(1)
-          do j=1,ijk(2)
-            do k=1,ijk(3)
-              newInd = lattices(latInd) % universes(i,j,k) % geometryInd()
-              call calcMaxNesting(test_nest, universes, lattices, newInd)
-              max_nest = max(max_nest, test_nest)
-              test_nest = max_nest0
-            end do
-          end do
-        end do
-      else if (c % fillType() == materialFill) then
-        cycle
-      else if (c % fillType() == outsideFill) then
-        cycle
-      else
-        call fatalError('calcMaxNesting, intialiseGeometryStructures',&
-                        'Could not identify cell fill type')
-      end if
-    end do
-    call uni % kill()
-    call c % kill()
-
-  end subroutine calcMaxNesting
+!  recursive subroutine calcMaxNesting(max_nest, universes, lattices, uniInd)
+!    class(universe), dimension(:), intent(in) :: universes
+!    class(lattice), dimension(:), intent(in) :: lattices
+!    integer(shortInt), intent(inout) :: max_nest
+!    integer(shortInt), intent(in) :: uniInd
+!    type(universe_ptr) :: uni
+!    type(cell_ptr) :: c
+!    integer(shortInt), dimension(3) :: ijk
+!    integer(shortInt) :: cInd, newInd, latInd, test_nest, max_nest0, fillType, i, j, k
+!
+!    ! Include a simple protection against infinite nesting
+!    if (max_nest > 10) call fatalError('calcMaxNesting','Geometry is more deeply nested than anticipated!')
+!    print *,'Error here', max_nest
+!
+!    uni = universes(uniInd)
+!    max_nest = max_nest + 1
+!    max_nest0 = max_nest
+!    test_nest = max_nest
+!    print *,'uni numcells =',uni%numCells()
+!    do cInd = 1,uni%numCells()
+!      print *, cInd
+!      c = uni % cells(cInd)
+!      print *, associated(c % ptr), c % fillType()
+!      print *,c % name()
+!      if (c % fillType() == universeFill) then
+!        newInd = c % uniInd()
+!        call calcMaxNesting(test_nest, universes, lattices, newInd)
+!        max_nest = max(max_nest, test_nest)
+!        test_nest = max_nest0
+!      else if (c % fillType() == latticeFill) then
+!        latInd = c % latInd()
+!        ijk = lattices(latInd) % extent
+!        do i=1,ijk(1)
+!          do j=1,ijk(2)
+!            do k=1,ijk(3)
+!              newInd = lattices(latInd) % universes(i,j,k) % geometryInd()
+!              call calcMaxNesting(test_nest, universes, lattices, newInd)
+!              max_nest = max(max_nest, test_nest)
+!              test_nest = max_nest0
+!            end do
+!          end do
+!        end do
+!      else if (c % fillType() == materialFill) then
+!        print *,'next'
+!        cycle
+!      else if (c % fillType() == outsideFill) then
+!        cycle
+!      else
+!        call fatalError('calcMaxNesting, intialiseGeometryStructures',&
+!                        'Could not identify cell fill type')
+!      end if
+!    end do
+!    call uni % kill()
+!    call c % kill()
+!
+!  end subroutine calcMaxNesting
 
 
 end module initialiseGeometryStructures

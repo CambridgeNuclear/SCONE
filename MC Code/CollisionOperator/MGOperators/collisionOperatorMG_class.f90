@@ -193,7 +193,7 @@ contains
     sig_tot  = Xss % totalXS
 
     r   = p % rGlobal()
-    dir = p % globalDir()
+    dir = p % dirGlobal()
 
     ! Sample number of fission sites generated
     n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)

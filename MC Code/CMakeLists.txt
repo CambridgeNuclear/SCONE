@@ -47,9 +47,14 @@ add_sources( ./DataStructures/dictionary_class.f90
 add_subdirectory(SharedModules)    
 add_subdirectory(RandomNumbers)    
 add_subdirectory(ParticleObjects)  
+
 add_subdirectory(NuclearData)      
 add_subdirectory(geometryObjects)  
+
 add_subdirectory(CollisionOperator)
+add_subdirectory(transportOperator)
+
+add_subdirectory(MOCObjects) 
 
 
 ###############################################################################
@@ -71,6 +76,7 @@ foreach(s IN LISTS SRCS)
 endforeach()
 ###############################################################################
 # COMPILE SOLVERS 
-add_executable(test.out    test.f90    ${PREP_SRCS})
-add_executable(eigenCE.out eigenCE.f90 ${PREP_SRCS}) 
-add_executable(eigenMG.out eigenMG.f90 ${PREP_SRCS}) 
+add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
+add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS}) 
+add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
+add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 

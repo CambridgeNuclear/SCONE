@@ -204,7 +204,7 @@ contains
 
     LHS % wgt  = RHS % w
     LHS % r    = RHS % rGlobal()
-    LHS % dir  = RHS % globalDir()
+    LHS % dir  = RHS % dirGlobal()
     LHS % E    = RHS % E
     LHS % G    = RHS % G
     LHS % isMG = RHS % isMG

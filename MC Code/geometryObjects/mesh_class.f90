@@ -32,6 +32,8 @@ contains
     character(*), intent(in), optional :: name
     logical(defBool), intent(in) :: is3D
 
+    !*** Ad error for 0.0 pitch ***!
+
     self % pitch = pitch
     self % extent = sz
     self % corner = corner
@@ -62,6 +64,7 @@ contains
 
     ijk(1) = ceiling((r(1) - corner(1))/pitch(1))
     ijk(2) = ceiling((r(2) - corner(2))/pitch(2))
+
     if (self % is3D) then
       ijk(3) = ceiling((r(3) - corner(3))/pitch(3))
     else
@@ -76,6 +79,7 @@ contains
     logical(defBool) :: inMesh
 
     ijk = self % whichMeshCell(r,u)
+
     inMesh = all((ijk>0).and.(ijk<=self%extent))
     if(inMesh) self % density(ijk(1),ijk(2),ijk(3)) = self % density(ijk(1),ijk(2),ijk(3)) + 1
   end subroutine score

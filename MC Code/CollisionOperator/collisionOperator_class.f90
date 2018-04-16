@@ -248,7 +248,7 @@ contains
     real(defReal)                           :: phi
 
     ! Get neutron direction and velocity
-    dir_pre = p % globalDir()
+    dir_pre = p % dirGlobal()
     V_n     = dir_pre * sqrt(E)
 
     ! Sample velocity of target
@@ -337,7 +337,7 @@ contains
     sig_tot  = nuclideXss % total
 
     r   = p % rGlobal()
-    dir = p % globalDir()
+    dir = p % dirGlobal()
 
     ! Sample number of fission sites generated
     n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)

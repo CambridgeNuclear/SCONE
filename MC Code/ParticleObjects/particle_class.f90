@@ -1,7 +1,7 @@
 module particle_class
 
   use numPrecision
- ! use universalVariables
+  use universalVariables
   use genericProcedures
   use coord_class,    only : coordList
   use RNG_class,      only : RNG
@@ -32,8 +32,8 @@ module particle_class
     procedure            :: point
     procedure            :: rLocal
     procedure            :: rGlobal
-    procedure            :: localDir
-    procedure            :: globalDir
+    procedure            :: dirLocal
+    procedure            :: dirGlobal
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
@@ -80,11 +80,10 @@ contains
   !! Return the position either at the deepest nested level or a specified level
   !!
   function rLocal(self,n)result(r)
-    class(particle), intent(in)             :: self
+    class(particle), intent(in) :: self
     integer(shortInt), intent(in), optional :: n
-    real(defReal), dimension(3)             :: r
-    integer(shortInt)                       :: nMax
-
+    real(defReal), dimension(3) :: r
+    integer(shortInt) :: nMax
     if (present(n)) then
       r = self % coords % lvl(n) % r
     else
@@ -105,7 +104,7 @@ contains
   !!
   !! Return the direction either at the deepest nested level or a specified level
   !!
-  function localDir(self,n)result(dir)
+  function dirLocal(self,n)result(dir)
     class(particle), intent(in) :: self
     integer(shortInt), optional :: n
     real(defReal), dimension(3) :: dir
@@ -116,16 +115,16 @@ contains
       nMax = self % coords % nesting
       dir = self % coords % lvl(nMax) % dir
     end if
-  end function localDir
+  end function dirLocal
 
   !!
   !! Return the direction at the global level
   !!
-  function globalDir(self)result(dir)
+  function dirGlobal(self)result(dir)
     class(particle), intent(in) :: self
     real(defReal), dimension(3) :: dir
     dir = self % coords % lvl(1) % dir
-  end function globalDir
+  end function dirGlobal
 
   !!
   !! Move the particle in global co-ordinates only, resetting its nesting
@@ -147,6 +146,24 @@ contains
   end subroutine moveLocal
 
   !!
+  !! Place particle at an arbitrary point in the geometry in global co-ordinates
+  !!
+  subroutine teleport(self, r)
+    class(particle), intent(inout) :: self
+    real(defReal), dimension(3), intent(in) :: r
+    call self % coords % assignPosition(r)
+  end subroutine teleport
+
+  !!
+  !! Point particle in an arbitrary direction in global co-ordinates
+  !!
+  subroutine point(self, dir)
+    class(particle), intent(inout) :: self
+    real(defReal), dimension(3), intent(in) :: dir
+    call self % coords % assignDirection(dir)
+  end subroutine point
+
+  !!
   !! Rotate particle by an angle
   !!
   subroutine rotate(self,mu,phi)
@@ -159,24 +176,5 @@ contains
   end subroutine rotate
 
 
-  !!
-  !! Place particle at an arbitrary point in the geometry in global co-ordinates
-  !!
-  subroutine teleport(self, r)
-    class(particle), intent(inout)         :: self
-    real(defReal),dimension(3), intent(in) :: r
-    call self % coords % assignPosition(r)
-  end subroutine teleport
-
-  !!
-  !! Point particle in an arbitrary direction in global co-ordinates
-  !!
-  subroutine point(self, dir)
-    class(particle), intent(inout)         :: self
-    real(defReal), dimension(3),intent(in) :: dir
-
-    call self % coords % assignDirection(dir)
-
-  end subroutine point
 
 end module particle_class
