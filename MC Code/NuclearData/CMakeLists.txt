@@ -1,6 +1,7 @@
 # Add Nested Directories 
 add_subdirectory(emissionENDF)
 add_subdirectory(NuclearDataStructures) 
+add_subdirectory(transportNuclearData) 
 
 # Add Source Files to the global list 
 add_sources( ./nuclearData_inter.f90

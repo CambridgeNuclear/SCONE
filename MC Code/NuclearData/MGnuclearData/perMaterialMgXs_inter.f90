@@ -1,8 +1,9 @@
 module perMaterialMgXs_inter
 
   use numPrecision
-  use RNG_class,        only : RNG
-  use dictionary_class, only : dictionary
+  use RNG_class,         only : RNG
+  use dictionary_class,  only : dictionary
+  use nuclearData_inter, only : nuclearData
 
   ! CrossSectionPackages
   use xsMacroSet_class, only : xsMacroSet
@@ -10,7 +11,7 @@ module perMaterialMgXs_inter
   implicit none
   private
 
-  type, public, abstract :: perMaterialMgXs
+  type, public,extends(nuclearData), abstract :: perMaterialMgXs
     private
   contains
     ! Initialisation
@@ -27,8 +28,8 @@ module perMaterialMgXs_inter
     procedure(sampleMuGout), deferred    :: sampleMuGout
 
     ! Procedures to access material information
-    procedure(getMatIdx), deferred       :: getMatIdx
-    procedure(getMatName), deferred      :: getMatName
+   ! procedure(getMatIdx), deferred       :: getMatIdx
+   ! procedure(getMatName), deferred      :: getMatName
     procedure(isFissileMat), deferred    :: isFissileMat
 
 

@@ -53,8 +53,8 @@ module isotropicMG_class
     procedure  :: sampleMuGout
 
     ! Procedures to access material information
-    procedure  :: getMatIdx
-    procedure  :: getMatName
+    procedure  :: getIdx
+    procedure  :: getName
     procedure  :: isFissileMat
 
     !* TYPE PROCEDURES *!
@@ -347,7 +347,7 @@ contains
   !!
   !! Return matIdx of material with matName
   !!
-  function getMatIdx(self,matName) result(matIdx)
+  function getIdx(self,matName) result(matIdx)
     class(isotropicMG), intent(in)      :: self
     character(*), intent(in)            :: matName
     integer(shortInt)                   :: matIdx
@@ -356,19 +356,19 @@ contains
     matIdx = linFind(self % matData % matName, matName)
     call searchError(matIdx,Here)
 
-  end function getMatIdx
+  end function getIdx
 
   !!
   !! Returns matName of material with matIdx
   !!
-  function getMatName(self,matIdx) result(matName)
+  function getName(self,matIdx) result(matName)
     class(isotropicMG), intent(in)      :: self
     integer(shortInt), intent(in)       :: matIdx
     character(nameLen)                  :: matName
 
     matName = self % matData(matIdx) % matName
 
-  end function getMatName
+  end function getName
 
   !!
   !! Returns .true. if material is fissile
