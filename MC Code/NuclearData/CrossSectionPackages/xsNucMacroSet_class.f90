@@ -7,9 +7,7 @@ module xsNucMacroSet_class
   private
 
   !!
-  !! Object to store and transfer CDF of collision with a given nuclide in a material.
-  !! It is cheating becouse it really stores just individual and total reaction cross sections.
-  !! It is not fully safe becouse each cross-section needs to be loaded manually
+  !! Stores and transfers macroscopic nuclide total XSs in a material.
   !!
   type, public :: xsNucMacroSet
     integer(shortInt), dimension(:), allocatable, private :: nucIndices
@@ -19,6 +17,19 @@ module xsNucMacroSet_class
     procedure :: invert
     procedure :: init
   end type xsNucMacroSet
+
+  !!
+  !! Pointer wrapper to allow safe access through the interface
+  !!
+  type, public :: xsNucMacroSet_ptr
+    private
+    type(xsNucMacroSet), pointer :: ptr => null()
+  contains
+    generic :: assignment(=) => shallowCopy, shallowCopy_pointer
+    procedure :: shallowCopy
+    procedure :: shallowCopy_pointer
+    procedure :: invert => invert_ptr
+  end type xsNucMacroSet_ptr
 
 contains
 
@@ -70,5 +81,44 @@ contains
     NucIdx = 0
 
   end function invert
+
+!!**************************************************************************************************
+!! Pointer Wrapper Procedures
+!!
+!!**************************************************************************************************
+
+  !!
+  !! Assignment Pointer Wrapper to Pointer Wrapper
+  !!
+  subroutine shallowCopy(LHS,RHS)
+    class(xsNucMacroSet_ptr), intent(inout) :: LHS
+    type(xsNucMacroSet_ptr), intent(in)     :: RHS
+
+    LHS % ptr => RHS % ptr
     
+  end subroutine shallowCopy
+
+  !!
+  !! Assignment Pointer to Pointer Wrapper
+  !!
+  subroutine shallowCopy_pointer(LHS,RHS)
+    class(xsNucMacroSet_ptr), intent(inout) :: LHS
+    type(xsNucMacroSet),pointer, intent(in) :: RHS
+
+    ! (Will kill for templates at this point... MAK)
+    LHS % ptr => RHS
+
+  end subroutine shallowCopy_pointer
+
+  !!
+  !! Access invert procedure
+  !!
+  function invert_ptr(self,r) result(nucIdx)
+    class(xsNucMacroSet_ptr), intent(in) :: self
+    real(defReal), intent(in)            :: r
+    integer(shortInt)                    :: nucIdx
+
+    nucIdx = self % ptr % invert(r)
+
+  end function invert_ptr
 end module xsNucMacroSet_class

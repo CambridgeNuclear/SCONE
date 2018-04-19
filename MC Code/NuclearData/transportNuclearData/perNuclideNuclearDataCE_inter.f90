@@ -9,7 +9,7 @@ module perNuclideNuclearDataCE_inter
   ! XS packages
   use xsMacroSet_class,         only : xsMacroSet_ptr
   use xsMainSet_class,          only : xsMainSet_ptr
-  ! Extended set will be here as well
+  use xsNucMacroSet_class,      only : xsNucMacroSet_ptr
 
   implicit none
   private
@@ -44,7 +44,7 @@ module perNuclideNuclearDataCE_inter
     procedure(getMass),deferred           :: getMass
     procedure(getkT),deferred             :: getkT
 
-    !procedure(getMatNucXS),deferred       :: getNucMacroXS
+    procedure(getNucMacroXS),deferred     :: getNucMacroXS
     procedure(getMatMacroXS), deferred    :: getMatMacroXS
 
   end type perNuclideNuclearDataCE
@@ -227,6 +227,21 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt),intent(in) :: nucIdx
       real(defReal)                :: kT
     end function getKT
+
+    !!
+    !! Get set of material nuclide macroscopic cross-sections
+    !!
+    subroutine getNucMacroXS(self,nucMacroXS,E,matIdx)
+      import :: xsNucMacroSet_ptr, &
+                defReal, &
+                shortInt, &
+                perNuclideNuclearDataCE
+      class(perNuclideNuclearDataCE), intent(in)  :: self
+      type(xsNucMacroSet_ptr),intent(inout)       :: nucMacroXS
+      real(defReal),intent(in)                    :: E
+      integer(shortInt),intent(in)                :: matIdx
+    end subroutine getNucMacroXS
+
 
     !!
     !! Get set of material macroscopic xross-sections
