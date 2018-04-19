@@ -60,10 +60,10 @@ module perNuclideNuclearDataCE_inter
       import :: shortInt ,&
                 defReal  ,&
                 perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(in) :: self
-      real(defReal),intent(in)                   :: E
-      integer(shortInt), intent(in)              :: matIdx
-      real(defReal)                              :: xs
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      real(defReal),intent(in)                      :: E
+      integer(shortInt), intent(in)                 :: matIdx
+      real(defReal)                                 :: xs
     end function getTransXS_E
 
     !!
@@ -72,9 +72,9 @@ module perNuclideNuclearDataCE_inter
     function getMajorantXS_E(self,E) result(xs)
       import :: defReal  ,&
                 perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(in) :: self
-      real(defReal),intent(in)                   :: E
-      real(defReal)                              :: xs
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      real(defReal),intent(in)                      :: E
+      real(defReal)                                 :: xs
     end function getMajorantXS_E
 
     !!
@@ -84,10 +84,10 @@ module perNuclideNuclearDataCE_inter
       import :: shortInt ,&
                 defReal  ,&
                 perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(in) :: self
-      real(defReal),intent(in)                   :: E
-      integer(shortInt), intent(in)              :: matIdx
-      real(defReal)                              :: xs
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      real(defReal),intent(in)                      :: E
+      integer(shortInt), intent(in)                 :: matIdx
+      real(defReal)                                 :: xs
     end function getTotalMatXS_E
 
     !!
@@ -114,6 +114,7 @@ module perNuclideNuclearDataCE_inter
       class(perNuclideNuclearDataCE), intent(inout) :: self
       real(defReal),intent(in)                      :: E
       integer(shortInt),intent(in)                  :: nucIdx
+      integer(shortInt),intent(in)                  :: MT
       real(defReal)                                 :: xs
     end function xsOf
 
@@ -236,10 +237,10 @@ module perNuclideNuclearDataCE_inter
                 defReal, &
                 shortInt, &
                 perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(in)  :: self
-      type(xsNucMacroSet_ptr),intent(inout)       :: nucMacroXS
-      real(defReal),intent(in)                    :: E
-      integer(shortInt),intent(in)                :: matIdx
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      type(xsNucMacroSet_ptr),intent(inout)         :: nucMacroXS
+      real(defReal),intent(in)                      :: E
+      integer(shortInt),intent(in)                  :: matIdx
     end subroutine getNucMacroXS
 
 
@@ -251,10 +252,10 @@ module perNuclideNuclearDataCE_inter
                 defReal, &
                 shortInt, &
                 perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(in)  :: self
-      type(xsMacroSet_ptr),intent(inout)          :: macroXS
-      real(defReal),intent(in)                    :: E
-      integer(shortInt),intent(in)                :: matIdx
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      type(xsMacroSet_ptr),intent(inout)            :: macroXS
+      real(defReal),intent(in)                      :: E
+      integer(shortInt),intent(in)                  :: matIdx
     end subroutine getMatMacroXS
 
 
@@ -267,10 +268,10 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getTransXS_p(self,p,matIdx) result (xs)
-    class(perNuclideNuclearDataCE), intent(in) :: self
-    class(particle), intent(in)                :: p
-    integer(shortInt), intent(in)              :: matIdx
-    real(defReal)                              :: xs
+    class(perNuclideNuclearDataCE), intent(inout) :: self
+    class(particle), intent(in)                   :: p
+    integer(shortInt), intent(in)                 :: matIdx
+    real(defReal)                                 :: xs
     character(100), parameter            :: Here='getTransXS_p (perNuclideNuclearDataCE_inter.f90)'
 
     if (p % isMG) then
@@ -286,9 +287,9 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getMajorantXS_p(self,p) result (xs)
-    class(perNuclideNuclearDataCE), intent(in) :: self
-    class(particle), intent(in)                :: p
-    real(defReal)                              :: xs
+    class(perNuclideNuclearDataCE), intent(inout) :: self
+    class(particle), intent(in)                   :: p
+    real(defReal)                                 :: xs
     character(100), parameter         :: Here='getMajorantXS_p (perNuclideNuclearDataCE_inter.f90)'
 
     if (p % isMG) then
@@ -304,10 +305,10 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getTotalMatXS_p(self,p,matIdx) result (xs)
-    class(perNuclideNuclearDataCE), intent(in) :: self
-    class(particle), intent(in)                :: p
-    integer(shortInt), intent(in)              :: matIdx
-    real(defReal)                              :: xs
+    class(perNuclideNuclearDataCE), intent(inout) :: self
+    class(particle), intent(in)                   :: p
+    integer(shortInt), intent(in)                 :: matIdx
+    real(defReal)                                 :: xs
     character(100), parameter         :: Here='getTotalMatXS_p (perNuclideNuclearDataCE_inter.f90)'
 
     if (p % isMG) then

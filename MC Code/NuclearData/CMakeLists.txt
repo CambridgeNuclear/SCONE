@@ -5,14 +5,7 @@ add_subdirectory(transportNuclearData)
 
 # Add Source Files to the global list 
 add_sources( ./nuclearData_inter.f90
-             ./datalessMaterials_class.f90
-             ./byNucNoMT/byNucNoMT_Data_class.f90 
-             ./byNucNoMT/aceNoMT_class.f90
-             ./byNucNoMT/byNucNoMT_class.f90
-             ./byNucNoMT/xsEnergyPointNoMT_class.f90
-             ./byNucNoMT/nuclideMemoryNoMT_class.f90   
-             ./byNucNoMT/materialDataNoMT_class.f90  
-             ./byNucNoMT/materialMemoryNoMT_class.f90                         
+             ./datalessMaterials_class.f90                     
              ./CrossSectionPackages/xsCDF_class.f90
              ./CrossSectionPackages/xsMainCDF_class.f90 
              ./CrossSectionPackages/xsAnyCDF_class.f90

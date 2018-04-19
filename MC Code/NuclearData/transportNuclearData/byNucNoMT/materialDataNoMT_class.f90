@@ -16,6 +16,7 @@ module materialDataNoMT_class
     character(matNameLen)                       :: name     !! Material name
     real(defReal)                               :: temp     !! Material temperature [K]
     integer(shortInt)                           :: numNuc   !! Number of nuclides in material
+    logical(defBool)                            :: isFissile =.false. !! True is contains fissile nuclides
     integer(shortInt),dimension(:),allocatable  :: nucIdx   !! Index Ids of Nuclides
     real(defReal),dimension(:),allocatable      :: nucDens  !! Nuclide densities 1/barn*cm
     character(ZZidLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
@@ -168,7 +169,7 @@ contains
 
     print format2, line
     print format1, self % name, "Temp: ", self % temp, "Contains ", self % numNuc, " nuclides"
-
+    print format1, "isFissile is:", self % isFissile
     print format1, "Nuclide Indexes   :", self % nucIdx
     print format1, "Nuclide Names     :", self % nucNames
     print format1, "Nuclide Densities :", self % nucDens

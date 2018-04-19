@@ -48,10 +48,10 @@ module perMaterialNuclearDataMG_inter
       import :: shortInt ,&
                 defReal  ,&
                 perMaterialNuclearDataMG
-      class(perMaterialNuclearDataMG), intent(in) :: self
-      integer(shortInt), intent(in)               :: G
-      integer(shortInt), intent(in)               :: matIdx
-      real(defReal)                               :: xs
+      class(perMaterialNuclearDataMG), intent(inout) :: self
+      integer(shortInt), intent(in)                  :: G
+      integer(shortInt), intent(in)                  :: matIdx
+      real(defReal)                                  :: xs
     end function getTransXS_G
 
     !!
@@ -61,9 +61,9 @@ module perMaterialNuclearDataMG_inter
       import :: defReal  ,&
                 shortInt ,&
                 perMaterialNuclearDataMG
-      class(perMaterialNuclearDataMG), intent(in) :: self
-      integer(shortInt), intent(in)               :: G
-      real(defReal)                               :: xs
+      class(perMaterialNuclearDataMG), intent(inout) :: self
+      integer(shortInt), intent(in)                  :: G
+      real(defReal)                                  :: xs
     end function getMajorantXS_G
 
     !!
@@ -73,10 +73,10 @@ module perMaterialNuclearDataMG_inter
       import :: shortInt ,&
                 defReal  ,&
                 perMaterialNuclearDataMG
-      class(perMaterialNuclearDataMG), intent(in) :: self
-      integer(shortInt), intent(in)               :: G
-      integer(shortInt), intent(in)               :: matIdx
-      real(defReal)                               :: xs
+      class(perMaterialNuclearDataMG), intent(inout) :: self
+      integer(shortInt), intent(in)                  :: G
+      integer(shortInt), intent(in)                  :: matIdx
+      real(defReal)                                  :: xs
     end function getTotalMatXS_G
 
 
@@ -138,10 +138,10 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getTransXS_p(self,p,matIdx) result (xs)
-    class(perMaterialNuclearDataMG), intent(in) :: self
-    class(particle), intent(in)                 :: p
-    integer(shortInt), intent(in)               :: matIdx
-    real(defReal)                               :: xs
+    class(perMaterialNuclearDataMG), intent(inout) :: self
+    class(particle), intent(in)                    :: p
+    integer(shortInt), intent(in)                  :: matIdx
+    real(defReal)                                  :: xs
     character(100), parameter            :: Here='getTransXS_p (perMaterialNuclearDataMG_inter.f90)'
 
     if (.not.p % isMG) then
@@ -157,9 +157,9 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getMajorantXS_p(self,p) result (xs)
-    class(perMaterialNuclearDataMG), intent(in) :: self
-    class(particle), intent(in)                 :: p
-    real(defReal)                               :: xs
+    class(perMaterialNuclearDataMG), intent(inout) :: self
+    class(particle), intent(in)                    :: p
+    real(defReal)                                  :: xs
     character(100), parameter         :: Here='getMajorantXS_p (perMaterialNuclearDataMG_inter.f90)'
 
     if (.not.p % isMG) then
@@ -175,10 +175,10 @@ contains
   !! Returns error if multigroup neutron is provided
   !!
   function getTotalMatXS_p(self,p,matIdx) result (xs)
-    class(perMaterialNuclearDataMG), intent(in) :: self
-    class(particle), intent(in)                 :: p
-    integer(shortInt), intent(in)               :: matIdx
-    real(defReal)                               :: xs
+    class(perMaterialNuclearDataMG), intent(inout) :: self
+    class(particle), intent(in)                    :: p
+    integer(shortInt), intent(in)                  :: matIdx
+    real(defReal)                                  :: xs
     character(100), parameter         :: Here='getTotalMatXS_p (perMaterialNuclearDataMG_inter.f90)'
 
     if (.not.p % isMG) then

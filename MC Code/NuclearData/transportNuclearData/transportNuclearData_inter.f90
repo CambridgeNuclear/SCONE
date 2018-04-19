@@ -43,10 +43,10 @@ module transportNuclearData_inter
                 defReal  ,&
                 particle ,&
                 transportNuclearData
-      class(transportNuclearData), intent(in) :: self
-      class(particle), intent(in)             :: p
-      integer(shortInt), intent(in)           :: matIdx
-      real(defReal)                           :: xs
+      class(transportNuclearData), intent(inout) :: self
+      class(particle), intent(in)                :: p
+      integer(shortInt), intent(in)              :: matIdx
+      real(defReal)                              :: xs
     end function getTransXS_p
 
     !!
@@ -56,9 +56,9 @@ module transportNuclearData_inter
       import :: defReal  ,&
                 particle ,&
                 transportNuclearData
-      class(transportNuclearData), intent(in) :: self
-      class(particle), intent(in)             :: p
-      real(defReal)                           :: xs
+      class(transportNuclearData), intent(inout) :: self
+      class(particle), intent(in)                :: p
+      real(defReal)                              :: xs
     end function getMajorantXS_p
 
     !!
@@ -69,10 +69,10 @@ module transportNuclearData_inter
                 defReal  ,&
                 particle ,&
                 transportNuclearData
-      class(transportNuclearData), intent(in) :: self
-      class(particle), intent(in)             :: p
-      integer(shortInt), intent(in)           :: matIdx
-      real(defReal)                           :: xs
+      class(transportNuclearData), intent(inout) :: self
+      class(particle), intent(in)                :: p
+      integer(shortInt), intent(in)              :: matIdx
+      real(defReal)                              :: xs
     end function getTotalMatXS_p
 
     !!
@@ -128,7 +128,7 @@ module transportNuclearData_inter
       import :: transportNuclearData, &
                 shortInt
       class(transportNuclearData), intent(inout) :: self
-      integer(shortInt), intent(in)              :: matIdxList
+      integer(shortInt),dimension(:), intent(in) :: matIdxList
 
     end subroutine
 

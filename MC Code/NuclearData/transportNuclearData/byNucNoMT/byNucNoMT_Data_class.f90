@@ -36,6 +36,7 @@ module byNucNoMT_Data_class
     procedure,private :: createNuclideList
     procedure,private :: assignNucIndices
     procedure,private :: readNuclides
+    procedure,private :: setFissileMaterials
 
   end type byNucNoMT_Data
 
@@ -61,6 +62,8 @@ contains
     ! Read
     nuclideLib = matDict % getChar('aceLibrary')
     call self % readNuclides(nuclideLib)
+
+    call self % setFissileMaterials
 
   end subroutine init
 
@@ -350,6 +353,25 @@ contains
     rewind(Input)
 
   end subroutine readMaxNumNuc
+
+  !!
+  !! Set isFissile flag in materials containing fissile nuclides to .true.
+  !!
+  subroutine setFissileMaterials(self)
+    class(byNucNoMT_Data), intent(inout) :: self
+    integer(shortInt)                    :: i,j,nucIdx
+
+    do i=1,size(self % matData)
+      self % matData(i) % isFissile =.false.
+      do j=1,size(self % matData(i) % nucIdx)
+        nucIdx = self % matData(i) % nucIdx(j)
+        self % matData(i) % isFissile = self % matData(i) % isFissile .or. self % nucXSData(nucIdx) % isFissile
+
+      end do
+    end do
+
+  end subroutine setFissileMaterials
+
 
 
   !!
