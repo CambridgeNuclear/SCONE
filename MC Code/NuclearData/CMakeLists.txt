@@ -16,7 +16,6 @@ add_sources( ./nuclearData_inter.f90
              ./CrossSectionPackages/xsCDF_class.f90
              ./CrossSectionPackages/xsMainCDF_class.f90 
              ./CrossSectionPackages/xsAnyCDF_class.f90
-             ./CrossSectionPackages/xsSet_class.f90
              ./CrossSectionPackages/xsMainSet_class.f90
              ./CrossSectionPackages/matNucCDF_class.f90                         
              ./CrossSectionPackages/xsMacroSet_class.f90

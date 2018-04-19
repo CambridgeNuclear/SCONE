@@ -16,9 +16,15 @@ module transportNuclearData_inter
   type, public,extends(nuclearData) ,abstract :: transportNuclearData
     private
   contains
-    procedure(getTransXS), deferred         :: getTransXS
-    procedure(getMajorantXS), deferred      :: getMajorantXS
-    procedure(getTotalMatXS), deferred      :: getTotalMatXS
+    ! Generic
+    generic :: getTransXS      => getTransXS_p
+    generic :: getMajorantXS   => getMajorantXS_p
+    generic :: getTotalMatXS   => getTotalMatXS_p
+    ! XS Access
+    procedure(getTransXS_p), deferred       :: getTransXS_p
+    procedure(getMajorantXS_p), deferred    :: getMajorantXS_p
+    procedure(getTotalMatXS_p), deferred    :: getTotalMatXS_p
+    ! ***WILL BE HERE*** Procedure to get main material macroscopicXSs
     procedure(isFissileMat), deferred       :: isFissileMat
     procedure(initFissionSite), deferred    :: initFissionSite
     procedure(setActiveMaterials), deferred :: setActiveMaterials
@@ -32,7 +38,7 @@ module transportNuclearData_inter
     !! MG calculations it can be diffrent from material total XS. Usually is equal to material
     !! total XS.
     !!
-    function getTransXS(self,p,matIdx) result (xs)
+    function getTransXS_p(self,p,matIdx) result (xs)
       import :: shortInt ,&
                 defReal  ,&
                 particle ,&
@@ -41,24 +47,24 @@ module transportNuclearData_inter
       class(particle), intent(in)             :: p
       integer(shortInt), intent(in)           :: matIdx
       real(defReal)                           :: xs
-    end function getTransXS
+    end function getTransXS_p
 
     !!
     !! Return majorant XS for all active materials
     !!
-    function getMajorantXS(self,p) result(xs)
+    function getMajorantXS_p(self,p) result(xs)
       import :: defReal  ,&
                 particle ,&
                 transportNuclearData
       class(transportNuclearData), intent(in) :: self
       class(particle), intent(in)             :: p
       real(defReal)                           :: xs
-    end function getMajorantXS
+    end function getMajorantXS_p
 
     !!
     !! Get total XS of a given material
     !!
-    function getTotalMatXS(self,p,matIdx) result (xs)
+    function getTotalMatXS_p(self,p,matIdx) result (xs)
       import :: shortInt ,&
                 defReal  ,&
                 particle ,&
@@ -67,7 +73,7 @@ module transportNuclearData_inter
       class(particle), intent(in)             :: p
       integer(shortInt), intent(in)           :: matIdx
       real(defReal)                           :: xs
-    end function getTotalMatXS
+    end function getTotalMatXS_p
 
     !!
     !! Returns .true. if material is fissile.

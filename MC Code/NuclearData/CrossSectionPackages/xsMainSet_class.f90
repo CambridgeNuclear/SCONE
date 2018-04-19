@@ -3,12 +3,12 @@ module xsMainSet_class
   use numPrecision
   use endfConstants
   use genericProcedures, only : fatalError
-  use xsSet_class,       only : xsSet
+
 
   implicit none
   private
 
-  type, public,extends(xsSet) :: xsMainSet
+  type, public :: xsMainSet
     ! xss of main(lumped) reaction channels
     real(defReal)   :: total   = 0.0  ! Total xs
     real(defReal)   :: scatter = 0.0  ! anyScatter
@@ -22,6 +22,28 @@ module xsMainSet_class
     procedure :: interpolateTotal
     procedure :: interpolateTail
   end type xsMainSet
+
+  !!
+  !! Pointer wrapper for a set to allow safe access through nuclearData interface
+  !!
+  type,public :: xsMainSet_ptr
+    private
+    type(xsMainSet), pointer :: ptr => null()
+  contains
+    !
+    generic   :: assignment(=) => shallowCopy, shallowCopy_pointer
+    procedure :: shallowCopy
+    procedure :: shallowCopy_pointer
+    ! Data Access procedures
+    procedure :: total   => total_ptr
+    procedure :: scatter => scatter_ptr
+    procedure :: capture => capture_ptr
+    procedure :: fission => fission_ptr
+
+  end type xsMainSet_ptr
+
+
+
 
 contains
   !!
@@ -176,5 +198,74 @@ contains
 
   end subroutine interpolateTail
 
+
+  !! *********************************************************************************************!!
+  !! Pointer Wrapper Procedures
+
+  !!
+  !! Pointer Wrapper to Pointer Wrapper Assignment
+  !!
+  subroutine shallowCopy(LHS,RHS)
+    class(xsMainSet_ptr), intent(inout)  :: LHS
+    type(xsMainSet_ptr), intent(in)      :: RHS
+
+    LHS % ptr => RHS % ptr
+
+  end subroutine shallowCopy
+
+  !!
+  !! Pointer to Pointer Wrapper Assigmnet
+  !!
+  subroutine shallowCopy_pointer(LHS,RHS)
+    class(xsMainSet_ptr), intent(inout)  :: LHS
+    type(xsMainSet), pointer, intent(in) :: RHS
+
+    LHS % ptr => RHS
+
+  end subroutine shallowCopy_pointer
+
+  !!
+  !! Access total xs
+  !!
+  function total_ptr(self) result(xs)
+    class(xsMainSet_ptr), intent(in) :: self
+    real(defReal)                    :: xs
+
+    xs = self % ptr % total
+
+  end function total_ptr
+
+  !!
+  !! Access scattering xs
+  !!
+  function scatter_ptr(self) result(xs)
+    class(xsMainSet_ptr), intent(in) :: self
+    real(defReal)                    :: xs
+
+    xs = self % ptr % scatter
+
+  end function scatter_ptr
+
+  !!
+  !! Access capture xs
+  !!
+  function capture_ptr(self) result(xs)
+    class(xsMainSet_ptr), intent(in) :: self
+    real(defReal)                    :: xs
+
+    xs = self % ptr % capture
+
+  end function capture_ptr
+
+  !!
+  !! Access fission xs
+  !!
+  function fission_ptr(self) result(xs)
+    class(xsMainSet_ptr), intent(in) :: self
+    real(defReal)                    :: xs
+
+    xs = self % ptr % fission
+
+  end function fission_ptr
 
 end module xsMainSet_class
