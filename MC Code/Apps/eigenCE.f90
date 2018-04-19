@@ -189,7 +189,7 @@ end do
 
 print *, '];'
 
-
+print *,"SAMPLES COUNT: ", neutron % pRNG % getCount
 
 
 end program eigenCE

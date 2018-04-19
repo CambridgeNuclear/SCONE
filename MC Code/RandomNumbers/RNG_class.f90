@@ -33,7 +33,11 @@ module rng_class
         procedure :: init
         procedure :: get
         procedure :: skip
+        procedure :: getCount
     end type rng
+
+
+
 
 contains
 
@@ -102,5 +106,15 @@ contains
     self%rngCount = self%rngCount + 1
     return
   end function get
+
+  function getCount(self) result (c)
+    class(rng),intent(in) :: self
+    integer(longInt)      :: c
+
+    c = self % rngCount
+
+  end function getCount
+
+
 
 end module rng_class
