@@ -5,7 +5,7 @@ module materialMemoryNoMT_class
   use xsMacroSet_class,        only : xsMacroSet
   use materialDataNoMT_class,  only : materialDataNoMT
   use nuclideMemoryNoMT_class, only : nuclideMemoryNoMT
-  use matNucCDF_class,         only : matNucCDF
+  use xsNucMacroSet_class,     only : xsNucMacroSet
 
 
   implicit none
@@ -30,7 +30,7 @@ module materialMemoryNoMT_class
     real(defReal)                  :: E       = -1.0    !! Current Energy of XS
     logical(defBool)               :: isCalc  = .false. !! TRUE if XSs other then TOTAL are calculated
     type(xsMacroSet),public        :: XS                !! Package of macroscopic XS
-    type(matNucCDF),public         :: nucCDF            !! CDF to select collision nuclide
+    type(xsNucMacroSet),public     :: nucCDF            !! CDF to select collision nuclide
     type(materialDataNoMT),pointer :: data    => null() !! Pointer to data for this material
 
     type(nuclideMemoryNoMT),dimension(:),pointer :: nucShelf => null()  !! Pointer to microscopic xss for all nuclides

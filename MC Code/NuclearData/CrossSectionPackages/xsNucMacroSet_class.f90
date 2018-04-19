@@ -1,4 +1,4 @@
-module matNucCDF_class
+module xsNucMacroSet_class
 
   use numPrecision
   use genericProcedures, only : fatalError
@@ -11,14 +11,14 @@ module matNucCDF_class
   !! It is cheating becouse it really stores just individual and total reaction cross sections.
   !! It is not fully safe becouse each cross-section needs to be loaded manually
   !!
-  type, public :: matNucCDF
+  type, public :: xsNucMacroSet
     integer(shortInt), dimension(:), allocatable, private :: nucIndices
     real(defReal), dimension(:), allocatable              :: nucTotalXS
     real(defReal)                                         :: matTotalXS
   contains
     procedure :: invert
     procedure :: init
-  end type matNucCDF
+  end type xsNucMacroSet
 
 contains
 
@@ -26,7 +26,7 @@ contains
   !! Allocate space and load nuclide indices
   !!
   subroutine init(self,nucIndices)
-    class(matNucCDF), intent(inout)            :: self
+    class(xsNucMacroSet), intent(inout)            :: self
     integer(shortInt),dimension(:),intent(in)  :: nucIndices
 
     if(allocated(self % nucIndices)) deallocate (self % nucIndices)
@@ -41,12 +41,12 @@ contains
   !! Invert probability distribution
   !!
   function invert(self,r) result(nucIdx)
-    class(matNucCDF), intent(in) :: self
-    real(defReal), intent(in)    :: r
-    integer(shortInt)            :: nucIdx
-    real(defReal)                :: r_scaled
-    character(100),parameter     :: Here = 'invert (matNucCDF_class.f90)'
-    integer(shortInt)            :: i
+    class(xsNucMacroSet), intent(in) :: self
+    real(defReal), intent(in)        :: r
+    integer(shortInt)                :: nucIdx
+    real(defReal)                    :: r_scaled
+    character(100),parameter         :: Here = 'invert (xsNucMacroSet_class.f90)'
+    integer(shortInt)                :: i
 
     ! Scale r to total reaction cross-section
     r_scaled = r * self % matTotalXS
@@ -71,4 +71,4 @@ contains
 
   end function invert
     
-end module matNucCDF_class
+end module xsNucMacroSet_class

@@ -9,7 +9,7 @@ module collisionOperator_class
   use byNucNoMT_class,        only : byNucNoMT
 
   ! Cross-section packages to interface with nuclear data
-  use matNucCDF_class,        only : matNucCDF
+  use xsNucMacroSet_class,    only : xsNucMacroSet
   use xsMainCDF_class,        only : xsMainCDF
   use xsMainSet_class,        only : xsMainSet
 
@@ -80,7 +80,7 @@ contains
     integer(shortInt)                       :: matIdx
     integer(shortInt)                       :: nucIdx
     integer(shortInt)                       :: MT
-    type(matNucCDF),pointer                 :: nuclideCDF
+    type(xsNucMacroSet),pointer             :: nuclideCDF
     type(xsMainCDF),pointer                 :: reactionCDF
     real(defReal)                           :: r
 

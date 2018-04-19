@@ -40,7 +40,7 @@ program test
 
   use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
 
-  use matNucCDF_class,  only : matNucCDF
+  use xsNucMacroSet_class,     only : xsNucMacroSet
   use xsMacroSet_class, only : xsMacroSet
 
   use collisionOperator_class, only : collisionOperator
@@ -149,7 +149,7 @@ program test
   real(defReal),dimension(:),allocatable :: energy
   integer(shortInt)                       :: N
 
-  type(matNucCDF),pointer  :: nuclideInvert
+  type(xsNucMacroSet),pointer  :: nuclideInvert
   type(xsMacroSet),pointer :: MacroXS
 
   type(particle)          :: neutron

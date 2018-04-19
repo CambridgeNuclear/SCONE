@@ -16,7 +16,7 @@ module byNucNoMT_class
   ! Cross-section packages to interface with Collision Operator
   use xsMainCDF_class,          only : xsMainCDF
   use xsMainSet_class,          only : xsMainSet
-  use matNucCDF_class,          only : matNucCDF
+  use xsNucMacroSet_class,      only : xsNucMacroSet
   use xsMacroSet_class,         only : xsMacroSet
 
   implicit none
@@ -330,10 +330,10 @@ contains
   !! Subroutine to attach pointer to a material's cdf to choose collision nuclide
   !!
   subroutine getMatNucCDF(self,nucCDF,E,matIdx)
-    class(byNucNoMT),intent(inout)        :: self
-    type(matNucCDF),pointer,intent(inout) :: nucCDF
-    real(defReal),intent(in)              :: E
-    integer(shortInt),intent(in)          :: matIdx
+    class(byNucNoMT),intent(inout)            :: self
+    type(xsNucMacroSet),pointer,intent(inout) :: nucCDF
+    real(defReal),intent(in)                  :: E
+    integer(shortInt),intent(in)              :: matIdx
 
     call self % matShelf(matIdx) % setTotalToEnergy(E)
     nucCDF => self % matShelf(matIdx) % nucCDF
