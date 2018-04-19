@@ -24,7 +24,7 @@ module transportNuclearData_inter
     procedure(getTransXS_p), deferred       :: getTransXS_p
     procedure(getMajorantXS_p), deferred    :: getMajorantXS_p
     procedure(getTotalMatXS_p), deferred    :: getTotalMatXS_p
-    ! ***WILL BE HERE*** Procedure to get main material macroscopicXSs
+
     procedure(isFissileMat), deferred       :: isFissileMat
     procedure(initFissionSite), deferred    :: initFissionSite
     procedure(setActiveMaterials), deferred :: setActiveMaterials
