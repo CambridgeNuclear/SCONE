@@ -6,7 +6,7 @@ module perMaterialNuclearDataMG_inter
   use transportNuclearData_inter, only : transportNuclearData
   use particle_class,             only : particle
 
-  use xsMacroSet_class,           only : xsMacroSet
+  use xsMacroSet_class,           only : xsMacroSet_ptr
 
   implicit none
   private
@@ -84,12 +84,12 @@ module perMaterialNuclearDataMG_inter
     !! Get set of material macroscopic xross-sections
     !!
     subroutine getMatMacroXS(self,macroXS,G,matIdx)
-      import :: xsMacroSet, &
+      import :: xsMacroSet_ptr, &
                 defReal, &
                 shortInt, &
                 perMaterialNuclearDataMG
       class(perMaterialNuclearDataMG), intent(in) :: self
-      type(xsMacroSet),pointer,intent(inout)      :: macroXS
+      type(xsMacroSet_ptr),intent(inout)          :: macroXS
       integer(shortInt),intent(in)                :: G
       integer(shortInt),intent(in)                :: matIdx
     end subroutine getMatMacroXS

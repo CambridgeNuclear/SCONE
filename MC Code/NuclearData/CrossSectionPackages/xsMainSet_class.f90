@@ -39,6 +39,7 @@ module xsMainSet_class
     procedure :: scatter => scatter_ptr
     procedure :: capture => capture_ptr
     procedure :: fission => fission_ptr
+    procedure :: invert => invert_ptr
 
   end type xsMainSet_ptr
 
@@ -199,8 +200,10 @@ contains
   end subroutine interpolateTail
 
 
-  !! *********************************************************************************************!!
+  !! ***********************************************************************************************
   !! Pointer Wrapper Procedures
+  !!
+  !! ***********************************************************************************************
 
   !!
   !! Pointer Wrapper to Pointer Wrapper Assignment
@@ -267,5 +270,17 @@ contains
     xs = self % ptr % fission
 
   end function fission_ptr
+
+  !!
+  !! Acces invert procedure through pointer wrapper
+  !!
+  function invert_ptr(self,r) result(MT)
+    class(xsMainSet_ptr), intent(in) :: self
+    real(defReal), intent(in)        :: r
+    integer(shortInt)                :: MT
+
+    MT = self % ptr % invert(r)
+
+  end function invert_ptr
 
 end module xsMainSet_class

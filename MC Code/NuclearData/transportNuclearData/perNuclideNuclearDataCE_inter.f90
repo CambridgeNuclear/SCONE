@@ -7,8 +7,8 @@ module perNuclideNuclearDataCE_inter
   use RNG_class,                  only : RNG
 
   ! XS packages
-  use xsMacroSet_class,         only : xsMacroSet
-  use xsMainSet_class,          only : xsMainSet, xsMainSet_ptr
+  use xsMacroSet_class,         only : xsMacroSet_ptr
+  use xsMainSet_class,          only : xsMainSet_ptr
   ! Extended set will be here as well
 
   implicit none
@@ -45,6 +45,7 @@ module perNuclideNuclearDataCE_inter
     procedure(getkT),deferred             :: getkT
 
     !procedure(getMatNucXS),deferred       :: getNucMacroXS
+    procedure(getMatMacroXS), deferred    :: getMatMacroXS
 
   end type perNuclideNuclearDataCE
 
@@ -226,6 +227,21 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt),intent(in) :: nucIdx
       real(defReal)                :: kT
     end function getKT
+
+    !!
+    !! Get set of material macroscopic xross-sections
+    !!
+    subroutine getMatMacroXS(self,macroXS,E,matIdx)
+      import :: xsMacroSet_ptr, &
+                defReal, &
+                shortInt, &
+                perNuclideNuclearDataCE
+      class(perNuclideNuclearDataCE), intent(in)  :: self
+      type(xsMacroSet_ptr),intent(inout)          :: macroXS
+      real(defReal),intent(in)                    :: E
+      integer(shortInt),intent(in)                :: matIdx
+    end subroutine getMatMacroXS
+
 
   end interface
 
