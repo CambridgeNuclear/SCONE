@@ -9,9 +9,9 @@ module collisionOperator_class
   use byNucNoMT_class,        only : byNucNoMT
 
   ! Cross-section packages to interface with nuclear data
-  use xsNucMacroSet_class,    only : xsNucMacroSet
-  use xsMainCDF_class,        only : xsMainCDF
-  use xsMainSet_class,        only : xsMainSet
+  use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
+ ! use xsMainCDF_class,        only : xsMainCDF
+  use xsMainSet_class,        only : xsMainSet_ptr
 
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
 
@@ -80,8 +80,8 @@ contains
     integer(shortInt)                       :: matIdx
     integer(shortInt)                       :: nucIdx
     integer(shortInt)                       :: MT
-    type(xsNucMacroSet),pointer             :: nuclideCDF
-    type(xsMainCDF),pointer                 :: reactionCDF
+    type(xsNucMacroSet_ptr)                 :: nucXSs
+    type(xsMainSet_ptr)                     :: microXss
     real(defReal)                           :: r
 
     ! Retrive Pointer to the random number generator
@@ -92,19 +92,19 @@ contains
     matIdx = p % matIdx
 
     ! Select collision nuclide
-    call self % xsData % getMatNucCDF(nuclideCDF, E, matIdx)
+    call self % xsData % getNucMacroXs(nucXSs, E, matIdx)
 
     r = self % locRNG % get()
-    nucIdx = nuclideCDF % invert(r)
+    nucIdx = nucXSs % invert(r)
 
     ! Select Main reaction channel
-    call self % xsData % getMainNucCdf(reactionCDF, E, nucIdx)
+    call self % xsData % getMainNucXs(microXss, E, nucIdx)
 
     r = self % locRNG % get()
-    MT = reactionCDF % invert(r)
+    MT = microXss % invert(r)
 
     ! Generate fission sites if nuclide is fissile
-    if ( self % xsData % isFissile(nucIdx)) then
+    if ( self % xsData % isFissileNuc(nucIdx)) then
       call self % createFissionSites(nextCycle,p,nucIdx)
 
     end if
@@ -145,7 +145,7 @@ contains
     E = p % E
 
     if (self % xsData % isInCMFrame(MT, nucIdx)) then
-      A =  self % xsData % getWeight(nucIdx)
+      A =  self % xsData % getMass(nucIdx)
       kT = self % xsData % getkT(nucIdx)
 
       ! Apply criterion for Free-Gas vs Fixed Target scattering
@@ -318,7 +318,7 @@ contains
     type(particleDungeon), intent(inout)     :: nextCycle
     type(particle), intent(in)               :: p
     integer(shortInt), intent(in)            :: nucIdx
-    type(xsMainSet),pointer                  :: nuclideXss
+    type(xsMainSet_ptr)                      :: nuclideXss
     type(particle)                           :: pTemp
     real(defReal),dimension(3)               :: r, dir
     integer(shortInt)                        :: n, i
@@ -333,8 +333,8 @@ contains
     r1    = self % locRNG % get()
     call self % xsData % getMainNucXS(nuclideXss,E,nucIdx)
 
-    sig_fiss = nuclideXss % fission
-    sig_tot  = nuclideXss % total
+    sig_fiss = nuclideXss % fission()
+    sig_tot  = nuclideXss % total()
 
     r   = p % rGlobal()
     dir = p % dirGlobal()
