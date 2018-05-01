@@ -4,10 +4,15 @@
 
 
      keyword1 17.1;
-list1 ( 1 2 7 1 1 1.1 1 1 1 1 1 1 1);
-list3 ( Aa B C D E F G H I J K L M N O P R S T U W X Y Z );
+list1 ( 1.1 1.2 );
+listint ( 1 2 3); 
+
+list3 ( Aa B C );
                   keyword2 69987.2; 
 keyword3 noURES; 
+longKey  A123456789012345678901234567890; // Content over 30 charcters 
+longList (A123456789012345678901234567890); 
+
 
 // this is !another comment
 ! This is //Fortran style comment 

@@ -5,23 +5,24 @@ module dictionary_class
 
   implicit none
   private
-  ! *** Below is not up to date !
-  ! Due to bug in verision 4.8 of gfortran it is necessary to compile this code with newer compiler.
-  ! This code was tested after compilation with gfortran 5.2
+  ! Implementation of the dictionary uses finalisation procedures that are implemented into gfortran
+  ! version 4.9 and higher. There is a bug in gfortran untill version 7.0 which causes false warning
+  ! from -Wsurprising to appear with final procedure. This warning mey be suppressed with
+  ! -Wno-surprising flag.
   !
-  ! It is necessary to predefine size of stored char. Gfortran 4.8 does not support allocatable
-  ! character with deffered length.
+  ! Becouse of the finalisation local dictionary defined inside procedure will be properly
+  ! deallocated. Thus:
   !
-  ! WARNING: ***************************************************************************************
-  ! Becouse the current default assigment(=) for dictionary is deep copy using
-  ! dictionary valued functions will result in memory leaks. Following statment needs to be avoided
+  !   subroutine memLeak(dictIn)
+  !     class(dictionary),intent(in) :: dictIN
+  !     type(dictionary)             :: locDict
+  !     locDict = dictIN
+  !   end subroutine
   !
-  !  <dictionary variable> = functionDict()
+  ! will not cause a memory leak despite lack of "call locDict % kill()" before "end subroutine"
   !
-  !  function functionDict()
-  !     type(dictionary), intent(out)  :: functionDict
-  !                ....
-  ! END OF WARNING**********************************************************************************
+  ! Size of the stored char is predefined to be maximum of nameLen and patchLen.
+  ! Maximum size of keyword is equal to nameLen
   !
   ! For now the dictionary is limited to following enteries:
   ! ->   scalar defReal                                       - real(defReal)      :: a
@@ -33,29 +34,43 @@ module dictionary_class
   ! ->   another dictionary                                   - type(dictionary)   :: dict
   !
   ! To add additional structure <type> to store it is necessary to :
-  ! 0) Define new type parameter for <type>
-  ! 1) Add put_<type>   subroutine to dictDontent class
-  ! 2) Add another entery for <type> to select type in deepCopy_dictCont subroutine
-  ! 3) Add store_<type> subroutine to dictionary class
-  ! 4) Add get<type> function to dictionary class
-  ! 5) Add keys<type> function
+  ! 0) Define new type parameter for <type> type
+  ! 1) Add additional allocatable space for the <type> in dictContent
+  ! 3) Add another entery for <type> to copy_dictContent
+  ! 4) Add another entery for <type> to kill_dictContent
+  ! 5) Add store_<type> subroutine to dictionary class. Add it to generic store
+  ! 6) Add get<type> subroutine to dictionary class. Add it to generic store
+  ! 7) Add get<type>orDefault subroutine to dictionary class. Ad it to generic storeOrDefault
+  ! 8) Add keys<type> function
   !
-  ! To increase maximum rank would be messy. Don't do it! If you are determined you can probably
-  ! hack existing code by storing higher rank arrays in rank1 array. Their structure should then
-  ! be stored seperatly in integers in dictContent class.
+  ! There are two generic subroutines to extract data from a dictionary.
+  ! 1) get(<type>,keyword) subroutine
+  !    - error is returned if keyword is not present in dictionary
+  !    - error is returned if <type> does not match type of content under keyword
+  !    - exception to above is for <type>=real which can read integer content
+  !    - hard copy of the content is made including subdictionaries
+  !    - if <type> is array it needs to be allocatable or pointer. It will be deallocated and
+  !      reallocated inside the subroutine
+  !    - if <type> is scalar character and its length is too short to fit the trimed content under
+  !      keyword error is returned
+  !    - if <type> is array character and its length is too short to fit the trimmed content inder
+  !      keyword error is returned
   !
-  ! When using getReal or getRealArray it is possible to provide keyword associated with an integer
-  ! to atutomaticly conver integer to real e.g:
+  ! 2) getOrDefault(<type>,keyword,default)
+  !    - getOrDefault does not support <type> = dictionary
+  !    - default needs to be same type and rank as <type>
+  !    - if keyword is not find in dictionary default is returned
+  !    - if <type> is scalar or array character error is returned if len(<type>) < len(default)
+  !      or if <type> is too short to fit trimmed content under keyword
+  !
+  !
+  ! When retreaving real or real Array it is possible to provide keyword associated with an integer
   ! For following dictionary dict:
   ! integerKey 3;
   ! realKey    3.1;
   !
-  ! Function: dict % getReal('integerKey') will return 3.0;
+  ! Subroutine: dict % getReal(r,'integerKey') will put 3.0 into r
   !
-  ! Output of getDict is a shallow copy of the dictionary. Therefore it is possible to provide it
-  ! as an argument to a subroutine without worring about a memory leak
-  !
-
   integer(shortInt),parameter,public :: charLen  = max(nameLen,pathLen)
   integer(shortInt),parameter        :: empty    = 0
   integer(shortInt),parameter        :: numInt   = 1
@@ -80,8 +95,8 @@ module dictionary_class
     real(defReal),dimension(:),allocatable      :: real1_alloc
     character(charLen)                          :: char0_alloc
     character(charLen),dimension(:),allocatable :: char1_alloc
-    ! *** Note that dictionary is defined as ponter not allocatable
-    ! *** This is becouse gfortran > 7.0 supports circular derived types with
+    ! *** Note that dictionary is defined as pointer not allocatable
+    ! *** This is becouse gfortran < 7.0 does not supports circular derived types with
     ! *** allocatable keyword. This line may change in a future
     class(dictionary), pointer                  :: dict0_alloc => null()
 
@@ -116,13 +131,57 @@ module dictionary_class
                            store_charArray ,&
                            store_dict
     procedure  :: isPresent
-    procedure  :: getReal
-    procedure  :: getRealArray
-    procedure  :: getInt
-    procedure  :: getIntArray
-    procedure  :: getChar
-    procedure  :: getCharArray
-    procedure  :: getDict
+    !*** Obsolete functional access interface will be removed
+    procedure  :: getReal      => getReal_old
+    procedure  :: getRealArray => getRealArray_old
+    procedure  :: getInt       => getInt_old
+    procedure  :: getIntArray  => getIntArray_old
+    procedure  :: getChar      => getChar_old
+    procedure  :: getCharArray => getCharArray_old
+    procedure  :: getDict      => getDict_old
+    !***********************
+
+    generic    :: get => getReal_new,&
+                         getRealArray_alloc_new,&
+                         getRealArray_ptr_new,&
+                         getInt_new,&
+                         getIntArray_alloc_new,&
+                         getIntArray_ptr_new,&
+                         getChar_new,&
+                         getCharArray_alloc_new,&
+                         getCharArray_ptr_new,&
+                         getDict_new
+
+    procedure,private :: getReal_new
+    procedure,private :: getRealArray_alloc_new
+    procedure,private :: getRealArray_ptr_new
+    procedure,private :: getInt_new
+    procedure,private :: getIntArray_alloc_new
+    procedure,private :: getIntArray_ptr_new
+    procedure,private :: getChar_new
+    procedure,private :: getCharArray_alloc_new
+    procedure,private :: getCharArray_ptr_new
+    procedure,private :: getDict_new
+
+    generic :: getOrDefault => getOrDefault_real ,&
+                               getOrDefault_realArray_alloc ,&
+                               getOrDefault_realArray_ptr ,&
+                               getOrDefault_int ,&
+                               getOrDefault_intArray_alloc ,&
+                               getOrDefault_intArray_ptr ,&
+                               getOrDefault_char ,&
+                               getOrDefault_charArray_alloc ,&
+                               getOrDefault_charArray_ptr
+
+    procedure,private :: getOrDefault_real
+    procedure,private :: getOrDefault_realArray_alloc
+    procedure,private :: getOrDefault_realArray_ptr
+    procedure,private :: getOrDefault_int
+    procedure,private :: getOrDefault_intArray_alloc
+    procedure,private :: getOrDefault_intArray_ptr
+    procedure,private :: getOrDefault_char
+    procedure,private :: getOrDefault_charArray_alloc
+    procedure,private :: getOrDefault_charArray_ptr
 
     procedure  :: keysReal
     procedure  :: keysRealArray
@@ -349,10 +408,653 @@ contains
   end function isPresent
 
   !!
+  !! Loads a real rank 0 from a dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !!
+  subroutine getReal_new(self,value,keyword)
+    class(dictionary), intent(in)  :: self
+    real(defReal),intent(inout)    :: value
+    character(*),intent(in)        :: keyword
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getReal (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    select case (self % entries(idx) % getType())
+      case(numReal)
+        value = self % entries(idx) % real0_alloc
+
+      case(numInt)
+        value = real(self % entries(idx) % int0_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
+
+    end select
+
+  end subroutine getReal_new
+
+  !!
+  !! Loads a real rank 1 from dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getRealArray_alloc_new(self,value,keyword)
+    class(dictionary), intent(in)                        :: self
+    real(defReal),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                              :: keyword
+    integer(shortInt)                                    :: idx
+    character(100),parameter                             :: Here='getRealArray_alloc (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(allocated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrReal)
+        value = self % entries(idx) % real1_alloc
+
+      case(arrInt)
+        value = real(self % entries(idx) % int1_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+
+    end select
+
+  end subroutine getRealArray_alloc_new
+
+  !!
+  !! Loads a real rank 1 from dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getRealArray_ptr_new(self,value,keyword)
+    class(dictionary), intent(in)                      :: self
+    real(defReal),dimension(:),pointer,intent(inout)   :: value
+    character(*),intent(in)                            :: keyword
+    integer(shortInt)                                  :: idx, N
+    character(100),parameter                           :: Here='getRealArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(associated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrReal)
+        N = size (self % entries(idx) % real1_alloc)
+        allocate(value(N))
+        value = self % entries(idx) % real1_alloc
+
+      case(arrInt)
+        value = real(self % entries(idx) % int1_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+
+    end select
+
+  end subroutine getRealArray_ptr_new
+
+  !!
+  !! Loads a integer rank 0 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !!
+  subroutine getInt_new(self,value,keyword)
+    class(dictionary), intent(in)  :: self
+    integer(shortInt),intent(inout):: value
+    character(*),intent(in)        :: keyword
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getInt (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    select case (self % entries(idx) % getType())
+      case(numInt)
+        value = self % entries(idx) % int0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
+
+    end select
+
+  end subroutine getInt_new
+
+  !!
+  !! Loads a integer rank 1 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getIntArray_alloc_new(self,value,keyword)
+    class(dictionary), intent(in)                            :: self
+    integer(shortInt),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                                  :: keyword
+    integer(shortInt)                                        :: idx
+    character(100),parameter                   :: Here='getIntArray_alloc (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(allocated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        value = self % entries(idx) % int1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+
+    end select
+
+  end subroutine getIntArray_alloc_new
+
+
+  !!
+  !! Loads a integer rank 1 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getIntArray_ptr_new(self,value,keyword)
+    class(dictionary), intent(in)                            :: self
+    integer(shortInt),dimension(:),pointer,intent(inout)     :: value
+    character(*),intent(in)                                  :: keyword
+    integer(shortInt)                                        :: idx,N
+    character(100),parameter                   :: Here='getIntArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(associated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        N = size(self % entries(idx) % int1_alloc)
+        allocate(value(N))
+        value = self % entries(idx) % int1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+
+    end select
+
+  end subroutine getIntArray_ptr_new
+
+  !!
+  !! Reads a character rank 0 from a dictionary
+  !!
+  subroutine getChar_new(self,value,keyword)
+    class(dictionary), intent(in)  :: self
+    character(*),intent(inout)     :: value
+    character(*),intent(in)        :: keyword
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getChar (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    select case (self % entries(idx) % getType())
+      case(word)
+        ! Check if the content character fits into value
+        if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        value = self % entries(idx) % char0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
+
+    end select
+
+  end subroutine getChar_new
+
+  !!
+  !! Reads a character rank 1 from a dictionary
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getCharArray_alloc_new(self,value,keyword)
+    class(dictionary), intent(in)                             :: self
+    character(*),dimension(:),allocatable,intent(inout)       :: value
+    character(*),intent(in)                                   :: keyword
+    integer(shortInt)                                         :: idx
+    character(100),parameter                    :: Here='getCharArray_alloc (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(allocated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrWord)
+        ! Check if the content character fits into value. Any is required becouse len_trim returns
+        ! an array
+        if( any(len(value) < len_trim(self % entries(idx) % char1_alloc))) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        value = self % entries(idx) % char1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+
+    end select
+
+  end subroutine getCharArray_alloc_new
+
+  !!
+  !! Reads a character rank 1 from a dictionary
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getCharArray_ptr_new(self,value,keyword)
+    class(dictionary), intent(in)                             :: self
+    character(*),dimension(:),pointer,intent(inout)           :: value
+    character(*),intent(in)                                   :: keyword
+    integer(shortInt)                                         :: idx,N
+    character(100),parameter                       :: Here='getCharArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    if(associated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrWord)
+        ! Check if the content character fits into value. Any is required becouse len_trim returns
+        ! an array
+        if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        ! Use mold to approperiatly allocate the pointer
+        allocate(value, mold=self % entries(idx) % char1_alloc)
+        value = self % entries(idx) % char1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+
+    end select
+
+  end subroutine getCharArray_ptr_new
+
+  !!
+  !! Reads a dictionary rank 0 from a dictionary
+  !!
+  subroutine getDict_new(self,value,keyword)
+    class(dictionary), intent(in)   :: self
+    class(dictionary),intent(inout) :: value
+    character(*),intent(in)         :: keyword
+    integer(shortInt)               :: idx
+    character(100),parameter        :: Here='getDict (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    select case (self % entries(idx) % getType())
+      case(nestDict)
+        value = self % entries(idx) % dict0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
+
+    end select
+
+  end subroutine getDict_new
+
+  !!
+  !! Loads a real rank 0 from a dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !!
+  subroutine getOrDefault_real(self,value,keyword,default)
+    class(dictionary), intent(in)  :: self
+    real(defReal),intent(inout)    :: value
+    character(*),intent(in)        :: keyword
+    real(defReal),intent(in)       :: default
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getOrDefault_real (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if (idx == targetNotFound) then
+      value = default
+      return
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(numReal)
+        value = self % entries(idx) % real0_alloc
+
+      case(numInt)
+        value = real(self % entries(idx) % int0_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
+
+    end select
+
+  end subroutine getOrDefault_real
+
+  !!
+  !! Loads a real rank 1 from dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_realArray_alloc(self,value,keyword,default)
+    class(dictionary), intent(in)                        :: self
+    real(defReal),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                              :: keyword
+    real(defReal),dimension(:),intent(in)                :: default
+    integer(shortInt)                                    :: idx
+    character(100),parameter         :: Here='getOrDefault_realArray_allocc (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    if(allocated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      value = default
+      return
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(arrReal)
+        value = self % entries(idx) % real1_alloc
+
+      case(arrInt)
+        value = real(self % entries(idx) % int1_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+
+    end select
+
+  end subroutine getOrDefault_realArray_alloc
+
+  !!
+  !! Loads a real rank 1 from dictionary into provided variable
+  !! If keyword is associated with an integer it converts it to real
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_realArray_ptr(self,value,keyword,default)
+    class(dictionary), intent(in)                      :: self
+    real(defReal),dimension(:),pointer,intent(inout)   :: value
+    character(*),intent(in)                            :: keyword
+    real(defReal),dimension(:),intent(in)              :: default
+    integer(shortInt)                                  :: idx, N
+    character(100),parameter            :: Here='getOrDefault_realArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if(associated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      allocate(value, mold=default)
+      value = default
+      return
+
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(arrReal)
+        N = size (self % entries(idx) % real1_alloc)
+        allocate(value(N))
+        value = self % entries(idx) % real1_alloc
+
+      case(arrInt)
+        value = real(self % entries(idx) % int1_alloc, defReal)
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+
+    end select
+
+  end subroutine getOrDefault_realArray_ptr
+
+  !!
+  !! Loads a integer rank 0 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !!
+  subroutine getOrDefault_int(self,value,keyword,default)
+    class(dictionary), intent(in)  :: self
+    integer(shortInt),intent(inout):: value
+    character(*),intent(in)        :: keyword
+    integer(shortInt), intent(in)  :: default
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getOrDefault_int (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if (idx == targetNotFound) then
+      value = default
+      return
+
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(numInt)
+        value = self % entries(idx) % int0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
+
+    end select
+
+  end subroutine getOrDefault_int
+
+  !!
+  !! Loads a integer rank 1 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_intArray_alloc(self,value,keyword,default)
+    class(dictionary), intent(in)                            :: self
+    integer(shortInt),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                                  :: keyword
+    integer(shortInt),dimension(:),intent(in)                :: default
+    integer(shortInt)                                        :: idx
+    character(100),parameter           :: Here='getOrDefault_intArray_alloc (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if(allocated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      value = default
+      return
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        value = self % entries(idx) % int1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+
+    end select
+
+  end subroutine getOrDefault_intArray_alloc
+
+
+  !!
+  !! Loads a integer rank 1 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_intArray_ptr(self,value,keyword,default)
+    class(dictionary), intent(in)                            :: self
+    integer(shortInt),dimension(:),pointer,intent(inout)     :: value
+    character(*),intent(in)                                  :: keyword
+    integer(shortInt),dimension(:),intent(in)                :: default
+    integer(shortInt)                                        :: idx,N
+    character(100),parameter             :: Here='getOrDefault_intArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if(associated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      allocate(value, mold=default)
+      value = default
+      return
+
+    end if
+
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        N = size(self % entries(idx) % int1_alloc)
+        allocate(value(N))
+        value = self % entries(idx) % int1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+
+    end select
+
+  end subroutine getOrDefault_intArray_ptr
+
+  !!
+  !! Reads a character rank 0 from a dictionary
+  !!
+  subroutine getOrDefault_char(self,value,keyword,default)
+    class(dictionary), intent(in)  :: self
+    character(*),intent(inout)     :: value
+    character(*),intent(in)        :: keyword
+    character(*),intent(in)        :: default
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getOrDefault_char (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    ! Check if default exceeds length of a value charcter
+    if (len(default) > len(value) ) then
+      call fatalError(Here,'Default character does not fit into value')
+    end if
+
+    if (idx == targetNotFound) then
+      value = default
+      return
+
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(word)
+        ! Check if the content character fits into value
+        if( len(value) < len(self % entries(idx) % char0_alloc)) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        value = self % entries(idx) % char0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
+
+    end select
+
+  end subroutine getOrDefault_char
+
+  !!
+  !! Reads a character rank 1 from a dictionary
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_charArray_alloc(self,value,keyword,default)
+    class(dictionary), intent(in)                             :: self
+    character(*),dimension(:),allocatable,intent(inout)       :: value
+    character(*),intent(in)                                   :: keyword
+    character(*),dimension(:),intent(in)                      :: default
+    character(charLen),dimension(size(default))               :: loc_Char
+    integer(shortInt)                                         :: idx
+    character(100),parameter           :: Here='getOrDefault_charArray_alloc(dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if(allocated(value)) deallocate(value)
+
+    ! Check if provided default character array exceeeds maximum character length
+    if (len(default) > len(value) ) then
+      call fatalError(Here,'Default character does not fit into value')
+    end if
+
+    if (idx == targetNotFound) then
+      loc_Char = default
+      value = loc_Char
+      return
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(arrWord)
+        ! Check if the content character fits into value. Any is required becouse len_trim returns
+        ! an array
+        if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        value = self % entries(idx) % char1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+
+    end select
+
+  end subroutine getOrDefault_charArray_alloc
+
+  !!
+  !! Reads a character rank 1 from a dictionary
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_charArray_ptr(self,value,keyword,default)
+    class(dictionary), intent(in)                             :: self
+    character(*),dimension(:),pointer,intent(inout)           :: value
+    character(*),intent(in)                                   :: keyword
+    character(*),dimension(:),intent(in)                      :: default
+    character(charLen),dimension(size(default))               :: loc_Char
+    integer(shortInt)                                         :: idx,N
+    character(100),parameter            :: Here='getOrDefault_charArray_ptr (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+
+    if(associated(value)) deallocate(value)
+
+    ! Check if provided default character array exceeeds maximum character length
+    if (len(default) > len(value) ) then
+      call fatalError(Here,'Default character does not fit into value')
+    end if
+
+    if (idx == targetNotFound) then
+      loc_char = default
+      allocate(value, mold=loc_char)
+      value = default
+      return
+
+    end if
+
+    select case (self % entries(idx) % getType())
+      case(arrWord)
+        ! Check if the content character fits into value. Any is required becouse len_trim returns
+        ! an array
+        if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
+          call fatalError(Here,'value character is to short to store content. Increase its length')
+        end if
+
+        ! Use mold to approperiatly allocate the pointer
+        allocate(value, mold=self % entries(idx) % char1_alloc)
+        value = self % entries(idx) % char1_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+
+    end select
+
+  end subroutine getOrDefault_charArray_ptr
+
+
+  !!
   !! Reads a real rank 0 entery from a dictionary
   !! If keyword is associated with an integer it converts it to real
   !!
-  function getReal(self,keyword) result(value)
+  function getReal_old(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     real(defReal)                  :: value
@@ -374,13 +1076,13 @@ contains
 
     end select
 
-  end function getReal
+  end function getReal_old
 
   !!
   !! Reads a real rank 1 from a dictionary
   !! If keyword is associated with an integer it converts it to real
   !!
-  function getRealArray(self,keyword) result(value)
+  function getRealArray_old(self,keyword) result(value)
     class(dictionary), intent(in)          :: self
     character(*),intent(in)                :: keyword
     real(defReal),dimension(:),allocatable :: value
@@ -402,13 +1104,13 @@ contains
 
     end select
 
-  end function getRealArray
+  end function getRealArray_old
 
   !!
   !! Reads a integer rank 0 from a dictionary
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !!
-  function getInt(self,keyword) result(value)
+  function getInt_old(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     integer(shortInt)              :: value
@@ -427,13 +1129,13 @@ contains
 
     end select
 
-  end function getInt
+  end function getInt_old
 
   !!
   !! Reads a integer rank 1 from a dictionary
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !!
-  function getIntArray(self,keyword) result(value)
+  function getIntArray_old(self,keyword) result(value)
     class(dictionary), intent(in)              :: self
     character(*),intent(in)                    :: keyword
     integer(shortInt),dimension(:),allocatable :: value
@@ -452,12 +1154,12 @@ contains
 
     end select
 
-  end function getIntArray
+  end function getIntArray_old
 
   !!
   !! Reads a character rank 0 from a dictionary
   !!
-  function getChar(self,keyword) result(value)
+  function getChar_old(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     character(charLen)             :: value
@@ -477,12 +1179,12 @@ contains
     end select
 
 
-  end function getChar
+  end function getChar_old
 
   !!
   !! Reads a character rank 1 from a dictionary
   !!
-  function getCharArray(self,keyword) result(value)
+  function getCharArray_old(self,keyword) result(value)
     class(dictionary), intent(in)               :: self
     character(*),intent(in)                     :: keyword
     character(charLen),dimension(:),allocatable :: value
@@ -501,12 +1203,12 @@ contains
 
     end select
 
-  end function getCharArray
+  end function getCharArray_old
 
   !!
   !! Reads a dictionary rank 0 from a dictionary
   !!
-  function getDict(self,keyword) result(value)
+  function getDict_old(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     type(dictionary)               :: value
@@ -515,6 +1217,7 @@ contains
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
+
 
     select case (self % entries(idx) % getType())
       case(nestDict)
@@ -525,7 +1228,7 @@ contains
 
     end select
 
-  end function getDict
+  end function getDict_old
 
   !!
   !! Returns an array of all keywords associated with a real rank 0

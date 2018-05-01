@@ -488,7 +488,7 @@ program test
 !  print *, testDict % getInt('keyword')
 !  print *, testDict % getReal('keyword2')
 !  print *, testDict % getChar('keyword3')
-!  print *, testDict % getIntArray('list2')
+  print *, testDict % getIntArray('list2')
 !
 !  testDict2 = testDict % getDict('dictionary3')
 !
@@ -519,10 +519,10 @@ program test
 
 ! print *, IOdictTest % getCharArray('list3')
 
- do i=1,1
+ do i=1,100000
    !print *, i
    call testDict % kill()
-   testDict = IOdictTest
+   call IOdictTest % get(testDict,'dictionary1')
  end do
 
  stop

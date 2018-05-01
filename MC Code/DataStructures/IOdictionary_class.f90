@@ -61,6 +61,7 @@ module IOdictionary_class
 
   contains
     procedure :: initFrom
+    final     :: final_IOdictionary
   end type IOdictionary
 
 contains
@@ -244,7 +245,7 @@ contains
     if (index(trim(tempData)," ") /= 0) then
        call fatalError(Here,'There are multiple data entries in : ' // entry)
 
-    else if (len(trim(tempData)) > nameLen) then
+    else if (len(trim(tempData)) > charLen) then
       call fatalError(Here,'The entery is longer than allowed {nameLen-parameter}: ' // entry)
 
     else if (len(trim(tempKeyword)) > nameLen) then
@@ -368,7 +369,7 @@ contains
       blankPos = index(tempData(startPos:)," ")
 
       if (blankPos -1 > charLen) then
-        call fatalError(Here,'The list entery is longer than allowed {nameLen-parameter}: ' // list)
+        call fatalError(Here,'The list entery is longer than allowed {charLen-parameter}: ' // list)
 
       end if
 
@@ -634,6 +635,15 @@ contains
 
   end function readFile
 
+  !!
+  !! Finalisation subroutine for IOdictionary
+  !!
+  subroutine final_IOdictionary(self)
+    type(IOdictionary), intent(inout) :: self
+
+    call self % kill()
+
+  end subroutine
 
     
 end module IOdictionary_class
