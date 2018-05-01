@@ -38,13 +38,11 @@ contains
   end subroutine initInf
 
   !!
-  !! Check which halfspace a point occupies - returns -1, 0, or 1
   !! Always return inside for an infinite surface
   !!
   function evaluateInf(self, r) result(res)
     class(infSurf), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3)             :: diff
     real(defReal)                           :: res
     res = -ONE
   end function evaluateInf

@@ -9,6 +9,7 @@
 module surface_class
   use numPrecision
   use universalVariables
+  use genericProcedures, only : dotProduct
 
   implicit none
   private
@@ -17,6 +18,7 @@ module surface_class
     logical(defBool)            :: isReflective = .FALSE.
     logical(defBool)            :: isPeriodic   = .FALSE.
     logical(defBool)            :: isVacuum     = .FALSE.
+    logical(defBool)            :: isCompound   = .FALSE.
     real(defReal), dimension(3) :: periodicTranslation
     character(100)              :: name =""
     integer(shortInt)           :: id = 0

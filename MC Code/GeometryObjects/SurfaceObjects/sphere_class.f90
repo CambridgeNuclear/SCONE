@@ -1,7 +1,7 @@
 module sphere_class      
 
   use numPrecision
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, dotProduct
   use universalVariables
 
   use surface_class
@@ -50,8 +50,6 @@ contains
 
   end subroutine initSphere
 
-  !!
-  !! Check which sphere halfspace a point occupies - returns -1, 0, or 1
   !!
   !! Calculate squared difference between point and origin of sphere
   !! Insert values into sphere equation

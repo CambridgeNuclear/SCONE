@@ -3,6 +3,7 @@
 !!
 module mesh_class
   use numPrecision
+  use universalVariables, only : surface_tol
   use genericProcedures, only : fatalError
 
   implicit none
@@ -38,7 +39,7 @@ contains
     self % is3D = is3D
     self % id = id
     if(is3D) then
-      if (any(pitch) < surface_tol) &
+      if (any(pitch < surface_tol)) &
       call fatalError('init, mesh','For a 3D mesh all widths must be greater than surface tolerance')
       allocate(self % density(sz(1),sz(2),sz(3)))
     else

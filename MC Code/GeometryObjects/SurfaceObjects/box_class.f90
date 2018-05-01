@@ -47,7 +47,7 @@ contains
     self % isCompound = .true.
     self % origin = origin
     self % a = a
-    if(any(a) < surface_tol) &
+    if(any(a < surface_tol)) &
     call fatalError('initBox, box','Box dimensions must be greater than surface tolerance')
     if(present(id)) self % id = id
     if (present(name)) self % name = name

@@ -3,7 +3,7 @@
 !
 module plane_class
   use numPrecision
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, dotProduct
   use universalVariables
 
   use surface_class

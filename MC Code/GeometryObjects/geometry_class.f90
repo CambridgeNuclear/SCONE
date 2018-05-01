@@ -34,16 +34,16 @@ module geometry_class
   private
 
   type, public :: geometry
-    type(surface_ptr), dimension(:), allocatable :: surfaces    ! pointer to all surfaces
-    type(universe), dimension(:), allocatable :: universes      ! array of all universes
-    type(cell), dimension(:), allocatable:: cells               ! array of all cells
-    type(lattice), dimension(:), allocatable :: lattices        ! array of all lattices
-    type(box) :: boundingBox                                    ! bounding box for volume calculations
-    type(universe_ptr) :: rootUniverse
-    integer(shortInt) :: numSurfaces = 0
-    integer(shortInt) :: numCells = 0
-    integer(shortInt) :: numUniverses = 0
-    integer(shortInt) :: numLattices = 0
+    type(surface_ptr), dimension(:), allocatable :: surfaces        ! pointers to all surfaces
+    type(universe), dimension(:), allocatable    :: universes       ! array of all universes
+    type(cell), dimension(:), allocatable        :: cells           ! array of all cells
+    type(lattice), dimension(:), allocatable     :: lattices        ! array of all lattices
+    type(box)                                    :: boundingBox     ! bounding box for volume calculations
+    type(universe_ptr)                           :: rootUniverse
+    integer(shortInt)                            :: numSurfaces = 0
+    integer(shortInt)                            :: numCells = 0
+    integer(shortInt)                            :: numUniverses = 0
+    integer(shortInt)                            :: numLattices = 0
   contains
     procedure :: init                    ! initialise geometry
     procedure :: whichCell               ! find which cell a neutron occupies
@@ -54,13 +54,13 @@ module geometry_class
 
 contains
 
-  subroutine init(self, surfPointers, cellArray, universeArray, rootInd, latticeArray)
-    class(geometry), intent(inout) :: self
-    type(surface_ptr), dimension(:) :: surfPointers
-    class(cell),intent(in), dimension(:) :: cellArray
-    class(universe), intent(in), dimension(:) :: universeArray
+  subroutine init(self, surfPointers, cellArray, universeArray, rootIdx, latticeArray)
+    class(geometry), intent(inout)                     :: self
+    type(surface_ptr), dimension(:)                    :: surfPointers
+    class(cell),intent(in), dimension(:)               :: cellArray
+    class(universe), intent(in), dimension(:)          :: universeArray
     class(lattice), intent(in), dimension(:), optional :: latticeArray
-    integer(shortInt), intent(in) :: rootInd
+    integer(shortInt), intent(in)                      :: rootIdx
 
     allocate(self % surfaces (size(surfPointers)))
     allocate(self % cells (size(cellArray)))
@@ -72,7 +72,7 @@ contains
     self % numSurfaces = size(surfPointers)
     self % numCells = size(cellArray)
     self % numUniverses = size(universeArray)
-    self % rootUniverse = self % universes(rootInd)
+    self % rootUniverse = self % universes(rootIdx)
 
     if(present(latticeArray))then
       allocate(self % lattices (size(latticeArray)))
@@ -85,27 +85,27 @@ contains
   !!
   !! Search universes until a base cell filled with material is located
   !!
-  function whichCell(self, coords, n0)result(c)
-    class(geometry), intent(in) :: self
-    class(coordList), intent(inout) :: coords
+  function whichCell(self, coords, n0) result(c)
+    class(geometry), intent(in)             :: self
+    class(coordList), intent(inout)         :: coords
     integer(shortInt), intent(in), optional :: n0
-    real(defReal), dimension(3) :: r, u, offset
-    integer(shortInt), dimension(3) :: ijkLat
-    integer(shortInt) :: uniInd, latInd, n
-    integer(shortInt), dimension(3) :: ijkUni
-    type(cell_ptr) :: c
-    type(universe_ptr) :: uni
-    type(lattice_ptr) :: lat
+    real(defReal), dimension(3)             :: r, u, offset
+    integer(shortInt), dimension(3)         :: ijkLat
+    integer(shortInt)                       :: uniIdx, latIdx, n
+    integer(shortInt), dimension(3)         :: ijkUni
+    type(cell_ptr)                          :: c
+    type(universe_ptr)                      :: uni
+    type(lattice_ptr)                       :: lat
 
     ! If a nesting level is not specified, begin from the root universe
     if(present(n0)) then
       n = n0
-      uni = self % universes(coords % lvl(n) % uniInd)
+      uni = self % universes(coords % lvl(n) % uniIdx)
     else
       n = 1
       uni = self % rootUniverse
       call coords % resetNesting()
-      coords % lvl(1) % uniInd = uni % geometryInd()
+      coords % lvl(1) % uniIdx = uni % geometryIdx()
     end if
 
     ! Search through nested universe structures until a base cell is found
@@ -114,7 +114,7 @@ contains
       r = coords % lvl(n) % r
       u = coords % lvl(n) % dir
       c = uni % whichCell(r, u)
-      coords % lvl(n) % cellInd = c % geometryInd()
+      coords % lvl(n) % cellIdx = c % geometryIdx()
 
       ! If c is a null pointer then the point is not in the universe in which it was
       ! presumed to exist - this probably shouldn't happen!
@@ -129,23 +129,23 @@ contains
 
       ! The cell is filled with a universe - update the universe and continue search
       else if (c % fillType() == universeFill) then
-        uniInd = c % uniInd()
-        uni = self % universes(uniInd)
+        uniIdx = c % uniIdx()
+        uni = self % universes(uniIdx)
         offset = uni % offset()
-        call coords % addLevel(offset, uniInd)
+        call coords % addLevel(offset, uniIdx)
         n = n + 1
         cycle
 
       ! The cell is filled with a lattice - identify the lattice, move to the lattice co-ordinate
       ! system, then move to the lattice cell co-ordinate system
       else if (c % fillType() == latticeFill) then
-        latInd = c % latInd()
-        lat = self % lattices(latInd)
+        latIdx = c % latIdx()
+        lat = self % lattices(latIdx)
         ijkLat = lat % findUniverse(r,u)
         uni = lat % universes(ijkLat)
-        uniInd = uni % geometryInd()
+        uniIdx = uni % geometryIdx()
         offset = uni % offset() + lat % localCoords(ijkLat)
-        call coords % addLevel(offset, uniInd, latInd)
+        call coords % addLevel(offset, uniIdx, latIdx)
         n = n + 1
         cycle
 
@@ -158,10 +158,10 @@ contains
       ! Something has gone wrong...
       else
         print *, c % name()
-        print *, c % materialInd()
-        print *, c % latInd()
-        print *, c % uniInd()
-        print *, c % geometryInd()
+        print *, c % materialIdx()
+        print *, c % latIdx()
+        print *, c % uniIdx()
+        print *, c % geometryIdx()
         print *, c % fillType()
         call fatalError('whichCell, geometry','Could not find the cell')
       end if
@@ -174,7 +174,7 @@ contains
   !! Details of boundary box provided by user
   !!
   subroutine constructBoundingBox(self, orig, a)
-    class(geometry), intent(inout) :: self
+    class(geometry), intent(inout)          :: self
     real(defReal), intent(in), dimension(3) :: orig
     real(defReal), intent(in), dimension(3) :: a
     call self % boundingBox % init(orig, a)
@@ -187,23 +187,23 @@ contains
   !! Will eventually require parallelisation
   !!
   subroutine calculateVolumes(self, numPoints, seed)
-    class(geometry), intent(inout) :: self
-    integer(shortInt), intent(in) :: numPoints
-    integer(longInt), intent(in), optional :: seed
-    integer(longInt) :: s
-    real(defReal), dimension(3) :: minPoint, width, testPoint, dummyU
+    class(geometry), intent(inout)           :: self
+    integer(shortInt), intent(in)            :: numPoints
+    integer(longInt), intent(in), optional   :: seed
+    integer(longInt)                         :: s
+    real(defReal), dimension(3)              :: minPoint, width, testPoint, dummyU
     real(defReal), dimension(:), allocatable :: cellVols
-    integer(shortInt) :: i, cellInd
-    type(rng) :: rand
-    type(box) :: bb
-    type(cell_ptr) :: c
-    type(coordList) :: coords
+    integer(shortInt)                        :: i, cellIdx
+    type(rng)                                :: rand
+    type(box)                                :: bb
+    type(cell_ptr)                           :: c
+    type(coordList)                          :: coords
 
     allocate(cellVols(self % numCells))
     cellVols(:) = 0
 
     ! Cell searching requires a direction
-    dummyU = [1.0, 0.0, 0.0]
+    dummyU = [ONE, ZERO, ZERO]
 
     ! Replace by taking from clock?
     if(.not.present(seed)) then
@@ -215,7 +215,7 @@ contains
 
     bb = self % boundingBox
     minPoint = bb % origin - bb % a
-    width = 2.0 * bb % a
+    width = TWO * bb % a
 
     ! Volume calculation by point sampling
     do i = 1,numPoints
@@ -226,15 +226,15 @@ contains
       call coords % init(testPoint, dummyU)
 
       c = self % whichCell(coords)
-      cellInd = c % geometryInd()
+      cellIdx = c % geometryIdx()
 
       if (c % insideGeom()) then
-        cellVols(cellInd) = cellVols(cellInd) + 1
+        cellVols(cellIdx) = cellVols(cellIdx) + 1
       end if
     end do
     call c % kill()
 
-    cellVols(:) = 1.0*cellVols(:) * width(1) * width(2) * width(3) / numPoints
+    cellVols(:) = ONE*cellVols(:) * width(1) * width(2) * width(3) / numPoints
     print *,cellVols(:)
     ! Assign volumes to cells, dividing by the number of instances
     ! Only assign to base cells
@@ -258,21 +258,22 @@ contains
   !! the index of the perpendicular direction (optional - otherwise slice is XY)
   !!
   function slicePlot(self,pixels,centre,width,perpDirection)result(colourMatrix)
-    class(geometry), intent(in) :: self
-    integer(shortInt), dimension(2), intent(in) :: pixels
-    real(defReal), dimension(3), intent(in) :: centre
-    real(defReal), dimension(2), intent(in) :: width
+    class(geometry), intent(in)                    :: self
+    integer(shortInt), dimension(2), intent(in)    :: pixels
+    real(defReal), dimension(3), intent(in)        :: centre
+    real(defReal), dimension(2), intent(in)        :: width
     integer(shortInt), dimension(:,:), allocatable :: colourMatrix
-    integer(shortInt), optional, intent(in) :: perpDirection
-    integer(shortInt) :: perpD
-    integer(shortInt) :: i,j
-    real(defReal), dimension(3) :: x0, point, u
-    type(cell_ptr) :: c
-    real(defReal), dimension(2) :: step
-    type(coordList) :: coords
+    integer(shortInt), optional, intent(in)        :: perpDirection
+    integer(shortInt)                              :: perpD
+    integer(shortInt)                              :: i,j
+    real(defReal), dimension(3)                    :: x0, point, u
+    type(cell_ptr)                                 :: c
+    real(defReal), dimension(2)                    :: step
+    type(coordList)                                :: coords
 
     allocate(colourMatrix(pixels(1),pixels(2)))
 
+    ! Plot an x-y slice by default
     if(present(perpDirection)) then
       perpD = perpDirection
     else
@@ -285,14 +286,14 @@ contains
     ! Set a travel direction in case of surface intersections
     ! Also set the corner point x0
     if(perpD==1)then
-      u = [0.0_8, 0.70710678118_8, 0.70710678118_8]
-      x0 = [centre(1), centre(2) - width(1)/2.0 + step(1)/2.0, centre(3) - width(2)/2.0 + step(2)/2.0]
+      u = [ZERO, SQRT2_2, SQRT2_2]
+      x0 = [centre(1), centre(2) - width(1)/TWO + step(1)/TWO, centre(3) - width(2)/TWO + step(2)/TWO]
     else if(perpD==2)then
-      u = [0.70710678118_8, 0.0_8, 0.70710678118_8]
-      x0 = [centre(1) - width(1)/2.0 + step(1)/2.0, centre(2), centre(3) - width(2)/2.0 + step(2)/2.0]
+      u = [SQRT2_2, ZERO, SQRT2_2]
+      x0 = [centre(1) - width(1)/TWO + step(1)/TWO, centre(2), centre(3) - width(2)/TWO + step(2)/TWO]
     else if(perpD==3)then
-      u = [0.70710678118_8, 0.70710678118_8, 0.0_8]
-      x0 = [centre(1) - width(1)/2.0 + step(1)/2.0, centre(2) - width(2)/2.0 + step(2)/2.0, centre(3)]
+      u = [SQRT2_2, SQRT2_2, ZERO]
+      x0 = [centre(1) - width(1)/TWO + step(1)/TWO, centre(2) - width(2)/TWO + step(2)/TWO, centre(3)]
     else
       call fatalError('slicePlot, geometry','Incorrect plane direction supplied: must be between 1 and 3')
     end if
@@ -314,7 +315,7 @@ contains
         if (.not. c % insideGeom()) then
           colourMatrix(i,j) = 0
         else
-          colourMatrix(i,j) = c % materialInd()
+          colourMatrix(i,j) = c % materialIdx()
         end if
       end do
     end do
