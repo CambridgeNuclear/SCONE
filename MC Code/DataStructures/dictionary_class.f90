@@ -670,7 +670,7 @@ contains
         end if
 
         ! Use mold to approperiatly allocate the pointer
-        allocate(value, mold=self % entries(idx) % char1_alloc)
+        allocate(value ( size(self % entries(idx) % char1_alloc) ))
         value = self % entries(idx) % char1_alloc
 
       case default
@@ -790,7 +790,7 @@ contains
     if(associated(value)) deallocate(value)
 
     if (idx == targetNotFound) then
-      allocate(value, mold=default)
+      allocate(value( size(default) ))
       value = default
       return
 
@@ -895,7 +895,7 @@ contains
     if(associated(value)) deallocate(value)
 
     if (idx == targetNotFound) then
-      allocate(value, mold=default)
+      allocate(value( size(default) ))
       value = default
       return
 
@@ -1023,8 +1023,8 @@ contains
     end if
 
     if (idx == targetNotFound) then
-      loc_char = default
-      allocate(value, mold=loc_char)
+      !loc_char = default
+      allocate(value(size(default)))
       value = default
       return
 
@@ -1039,7 +1039,7 @@ contains
         end if
 
         ! Use mold to approperiatly allocate the pointer
-        allocate(value, mold=self % entries(idx) % char1_alloc)
+        allocate(value ( size(self % entries(idx) % char1_alloc) ))
         value = self % entries(idx) % char1_alloc
 
       case default
