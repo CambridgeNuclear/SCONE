@@ -5,14 +5,19 @@ project(directory_test)
 ###############################################################################
 # CONFIGURE ENVIROMENT 
 
-set(CMAKE_Fortran_COMPILER /home/mak60/gcc-5.2.0/bin/gfortran)
+set(CMAKE_Fortran_COMPILER /home/mak60/gcc-6.3.0/bin/gfortran)
 enable_language(Fortran) 
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Add compilers flags
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall ") # -flto  
+#
+# -Wno-surprising flag is enabled to suppress a buggy warning about final subroutine 
+# It should be periodicly removed to see if other surprising warining are not raised 
+# This buggy warning should be repaired in GCC 7.0 
+#
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)

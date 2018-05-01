@@ -5,6 +5,7 @@ module dictionary_class
 
   implicit none
   private
+  ! *** Below is not up to date !
   ! Due to bug in verision 4.8 of gfortran it is necessary to compile this code with newer compiler.
   ! This code was tested after compilation with gfortran 5.2
   !
@@ -65,47 +66,46 @@ module dictionary_class
   integer(shortInt),parameter        :: arrReal  = 6
   integer(shortInt),parameter        :: arrWord  = 7
 
+  integer(shortInt),parameter        :: defStride = 20
+
+  !!
+  !! Type to store a single entery in a dictionary
+  !! Uses a single allocatable variable for diffrent type of contant
+  !!
   type,public :: dictContent
-    private
-    class(*),pointer               :: rank0_ptr => null()
-    class(*),dimension(:),pointer  :: rank1_ptr => null()
-    integer(shortInt)              :: type      = empty
+    ! Allocatable space for all content types
+    integer(shortInt)                           :: int0_alloc
+    integer(shortInt),dimension(:),allocatable  :: int1_alloc
+    real(defReal)                               :: real0_alloc
+    real(defReal),dimension(:),allocatable      :: real1_alloc
+    character(charLen)                          :: char0_alloc
+    character(charLen),dimension(:),allocatable :: char1_alloc
+    ! *** Note that dictionary is defined as ponter not allocatable
+    ! *** This is becouse gfortran > 7.0 supports circular derived types with
+    ! *** allocatable keyword. This line may change in a future
+    class(dictionary), pointer                  :: dict0_alloc => null()
+
+    ! dictContent type ID
+    integer(shortInt)                           :: type = empty
   contains
-    generic   :: put  => put_real      ,&
-                         put_realArray ,&
-                         put_int       ,&
-                         put_intArray  ,&
-                         put_char      ,&
-                         put_charArray ,&
-                         put_dict
-    procedure :: pull_rank0
-    procedure :: pull_rank1
-    procedure :: kill => kill_dictCont
-
-    generic   :: assignment(=) => shallowCopy
-    procedure :: deepCopy      => deepCopy_dictCont
-    procedure :: shallowCopy   => shallowCopy_dictCont
+    procedure :: kill          => kill_dictCont
+    procedure :: copy          => copy_dictCont
     procedure :: getType       => getType_dictContent
-
-    procedure,private :: put_real
-    procedure,private :: put_int
-    procedure,private :: put_char
-    procedure,private :: put_realArray
-    procedure,private :: put_intArray
-    procedure,private :: put_charArray
-    procedure,private :: put_dict
 
   end type dictContent
 
-
-
+  !!
+  !! Dictionary type
+  !!
   type, public :: dictionary
     private
+    ! Dictionary storage array
     character(nameLen),dimension(:),allocatable  :: keywords
     type(dictContent),dimension(:), allocatable  :: entries
-    integer(shortInt)                            :: maxSize = 0
-    integer(shortInt)                            :: dictLen = 0
-    integer(shortInt)                            :: stride  = 20
+    ! Dictionary state information
+    integer(shortInt)                            :: maxSize = 0         ! Maximum size of a dictionary
+    integer(shortInt)                            :: dictLen = 0         ! Current size of the dictionary
+    integer(shortInt)                            :: stride  = defStride ! Extension size when reached maxSize
   contains
 
     generic    :: store => store_real      ,&
@@ -134,13 +134,15 @@ module dictionary_class
     !procedure  :: keysDict_type
     procedure  :: keys
 
-    generic    :: assignment(=) => deepCopy
-    procedure  :: extendBy
-    procedure  :: getEmptyIdx
-    procedure  :: deepCopy    => deepCopy_dictionary
-    procedure  :: shallowCopy => shallowCopy_dictionary
+    generic    :: assignment(=) => copy
+
+    procedure  :: copy    => copy_dictionary
     procedure  :: init
     procedure  :: kill => kill_dictionary
+    final      :: final_dictionary
+
+    procedure, private :: extendBy
+    procedure, private :: getEmptyIdx
 
     procedure, private :: store_real
     procedure, private :: store_realArray
@@ -154,6 +156,10 @@ module dictionary_class
 
 contains
 
+  !!
+  !! Helper function to get next empty index in a dictionary storage array
+  !! If storage arrays are full it extends dictionary by stride
+  !!
   function getEmptyIdx(self,keyword) result (idx)
     class(dictionary), intent(inout)   :: self
     character(nameLen), intent(in)     :: keyword
@@ -183,8 +189,9 @@ contains
 
   end function getEmptyIdx
 
-
-
+  !!
+  !! Extends size of dictionary storage arrays by variable stride
+  !!
   subroutine extendBy(self,stride)
     class(dictionary), intent(inout)             :: self
     integer(shortInt)                            :: stride
@@ -208,7 +215,7 @@ contains
 
     do i=1,oldSize
      entries(i) = self % entries(i)
-     ! call shallowCopy(entries(i), self % entries(i))
+
     end do
 
     deallocate( self % keywords)
@@ -219,31 +226,13 @@ contains
 
     self % maxSize = newSize
 
-    !*** Debug ***!
-   ! print *, ' Extending'
-    ! ******************* !
   end subroutine extendBy
 
 
-
-!  subroutine deepCopy_dict(LHS,RHS)
-!    class(dictionary),intent(out) :: LHS
-!    type(dictionary), intent(in)  :: RHS
-!    integer(shortInt)             :: i
-!    character(nameLen)            :: locKeyword
-!    class(*),pointer              :: temp_rank0
-!    class(*),pointer              :: temp_rank1
-!
-!    LHS % init(RHS % maxSize, RHS % stride)
-!
-!    do i=1,size(RHS % keywords)
-!      locKeyword = RHS % keywords(i)
-!
-!    end do
-!
-!
-!  end subroutine deepCopy_dict
-
+  !!
+  !! Initialise a dictionary
+  !! Choose size of storage array and allocate them
+  !!
   subroutine init(self,maxSize,stride)
     class(dictionary), intent(inout)         :: self
     integer(shortInt), intent(in)            :: maxSize
@@ -259,15 +248,18 @@ contains
     allocate(self % keywords(maxSize))
     allocate(self % entries(maxSize))
 
-    ! Keywords can allocate with some garbage inside. Make shure all enteries are blank.
-    self % keywords = ''
 
-    print *, self % keywords
+    ! Keywords can (perhaps?) allocate with some garbage inside. Make shure all enteries are blank.
+    self % keywords = ''
 
     if (present(stride)) self % stride = stride
 
   end subroutine init
 
+  !!
+  !! Dealloacte storage space
+  !! Returns dictionary to uninitialised state (including stride)
+  !!
   subroutine kill_dictionary(self)
     class(dictionary), intent(inout) :: self
     integer(shortInt)                :: i
@@ -283,77 +275,68 @@ contains
 
     elseif (keysAllocated .and. entAllocated) then
 
-      ! Loop below could extend only to self % dictLen but lets make double shure we kill all data.
-      ! There is no need to optimise this and it is more robust this way
-      do i=1,size(self % keywords)
+      ! Expression below could extend only to self % dictLen but lets make double shure we
+      ! kill all data. There is no need to optimise this and it is more robust this way.
+      do i=1,self % maxSize
         call self % entries(i) % kill()
       end do
-
       deallocate(self % keywords)
       deallocate(self % entries)
 
       self % maxSize = 0
       self % dictLen = 0
+      self % stride = defStride
+
     end if
 
   end subroutine kill_dictionary
 
+  !!
+  !! Finalisation Subroutine
+  !!
+  subroutine final_dictionary(self)
+    type(dictionary),intent(inout) :: self
+
+    call self % kill()
+  end subroutine
 
 
-  subroutine deepCopy_dictionary(LHS,RHS)
+  !!
+  !! Copy one dictionary to another
+  !! Overwrites LHS
+  !!
+  subroutine copy_dictionary(LHS,RHS)
     class(dictionary), intent(inout) :: LHS
     class(dictionary), intent(in)    :: RHS
     integer(shortInt)                :: rhsSize, stride
     integer(shortInt)                :: i
 
+    ! Clean LHS dictionary
     call LHS % kill()
 
+    ! Reainitialise LHS dictionary
     rhsSize = size( RHS % keywords)
     stride = RHS % stride
 
     call LHS % init(rhsSize,stride)
 
+    ! Copy Keywords and entries
     LHS % keywords = RHS % keywords
 
-    do i=1,RHS % dictLen
-      call LHS % entries(i) % deepCopy( RHS % entries(i))
-    end do
+    do i=1,RHS % maxSize
+      call LHS % entries(i) % copy(RHS % entries(i) )
 
+    end do
+    ! Copy state settings
     LHS % dictLen = RHS % dictLen
     LHS % maxSize = RHS % maxSize
     LHS % stride  = RHS % stride
 
-  end subroutine deepCopy_dictionary
+  end subroutine copy_dictionary
 
-
-
-  subroutine shallowCopy_dictionary(LHS,RHS)
-    class(dictionary), intent(inout) :: LHS
-    class(dictionary), intent(in)    :: RHS
-    integer(shortInt)                :: rhsSize, stride
-    integer(shortInt)                :: i
-
-    call LHS % kill()
-
-    rhsSize = size( RHS % keywords)
-    stride = RHS % stride
-
-    call LHS % init(rhsSize,stride)
-
-    LHS % keywords = RHS % keywords
-
-    do i=1,RHS % dictLen
-      call LHS % entries(i) % shallowCopy( RHS % entries(i))
-    end do
-
-    LHS % dictLen = RHS % dictLen
-    LHS % maxSize = RHS % maxSize
-    LHS % stride  = RHS % stride
-
-  end subroutine shallowCopy_dictionary
-
-
-
+  !!
+  !! Checks if given keyword is present in a dictionary
+  !!
   function isPresent(self,keyword) result(isIt)
     class(dictionary), intent(in) :: self
     character(*), intent(in)      :: keyword
@@ -365,202 +348,188 @@ contains
 
   end function isPresent
 
-
+  !!
+  !! Reads a real rank 0 entery from a dictionary
+  !! If keyword is associated with an integer it converts it to real
+  !!
   function getReal(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     real(defReal)                  :: value
-    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getReal (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank0(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(numReal)
+        value = self % entries(idx) % real0_alloc
 
-    select type(temp_ptr)
-      type is (real(defReal))
-        value = temp_ptr
+      case(numInt)
+        value = real(self % entries(idx) % int0_alloc, defReal)
 
-      type is (integer(shortInt))
-        value = real(temp_ptr,defReal)
-
-      class default
-        call fatalError(Here,'Value under keyword ' // keyword // ' is not a real')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
 
     end select
 
   end function getReal
 
-
-
+  !!
+  !! Reads a real rank 1 from a dictionary
+  !! If keyword is associated with an integer it converts it to real
+  !!
   function getRealArray(self,keyword) result(value)
     class(dictionary), intent(in)          :: self
     character(*),intent(in)                :: keyword
     real(defReal),dimension(:),allocatable :: value
-    class(*),dimension(:),pointer          :: temp_ptr => null()
     integer(shortInt)                      :: idx
     character(100),parameter               :: Here='getRealArray (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank1(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(arrReal)
+        value = self % entries(idx) % real1_alloc
 
-    select type(temp_ptr)
-      type is (real(defReal))
-        value = temp_ptr
+      case(arrInt)
+        value = real(self % entries(idx) % int1_alloc, defReal)
 
-      type is (integer(shortInt))
-        value = real(temp_ptr,defReal)
-
-      class default
-        call fatalError(Here,'Value under keyword ' // keyword // ' is not a real')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
 
     end select
 
   end function getRealArray
 
-
-
+  !!
+  !! Reads a integer rank 0 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !!
   function getInt(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     integer(shortInt)              :: value
-    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getInt (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank0(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(numInt)
+        value = self % entries(idx) % int0_alloc
 
-    select type(temp_ptr)
-      type is (integer(shortInt))
-        value = temp_ptr
-
-      class default
-        call fatalError(Here,'Value under keyword ' // keyword // ' is not an integer')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
 
     end select
 
   end function getInt
 
-
-
+  !!
+  !! Reads a integer rank 1 from a dictionary
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !!
   function getIntArray(self,keyword) result(value)
     class(dictionary), intent(in)              :: self
     character(*),intent(in)                    :: keyword
     integer(shortInt),dimension(:),allocatable :: value
-    class(*),dimension(:),pointer              :: temp_ptr => null()
     integer(shortInt)                          :: idx
     character(100),parameter                   :: Here='getIntArray (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank1(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        value = self % entries(idx) % int1_alloc
 
-    select type(temp_ptr)
-      type is (integer(shortInt))
-        value = temp_ptr
-
-      class default
-        call fatalError(Here,'Value under keyword ' // keyword // ' is not an integer')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
 
     end select
 
   end function getIntArray
 
-
-
+  !!
+  !! Reads a character rank 0 from a dictionary
+  !!
   function getChar(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     character(charLen)             :: value
-    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getChar (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank0(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(word)
+        value = self % entries(idx) % char0_alloc
 
-    select type(temp_ptr)
-      type is (character(*))
-        value = temp_ptr
-
-      class default
-        call fatalError(Here,'Value under keyword ' // keyword // ' is not a character')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
 
     end select
 
 
   end function getChar
 
-
-
+  !!
+  !! Reads a character rank 1 from a dictionary
+  !!
   function getCharArray(self,keyword) result(value)
     class(dictionary), intent(in)               :: self
     character(*),intent(in)                     :: keyword
     character(charLen),dimension(:),allocatable :: value
-    character(charLen),dimension(:),pointer     :: localPointer => null()
-    class(*),dimension(:),pointer               :: temp_ptr
     integer(shortInt)                           :: idx
     character(100),parameter                    :: Here='getCharArray (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank1(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(arrWord)
+        value = self % entries(idx) % char1_alloc
 
-    select type(temp_ptr)
-      type is (character(*))
-        !**** Warning ****
-        ! For some reason "localPointer" and this syntax is required to associate local pointer
-        ! with class(*) pointer from container. It seems as if pointer to character array was
-        ! like an array of pointers.
-        ! Rank Remapping plays a role here -> investigate further
-        localPointer(1:size(temp_ptr)) => temp_ptr(1:size(temp_ptr))
-
-      class default
-        call fatalError(Here,'Array under keyword ' // keyword // ' is not a character array')
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
 
     end select
 
-    value = localPointer
-
   end function getCharArray
 
-
+  !!
+  !! Reads a dictionary rank 0 from a dictionary
+  !!
   function getDict(self,keyword) result(value)
     class(dictionary), intent(in)  :: self
     character(*),intent(in)        :: keyword
     type(dictionary)               :: value
-    class(*),pointer               :: temp_ptr => null()
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getChar (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)
 
-    call self % entries(idx) % pull_rank0(temp_ptr)
+    select case (self % entries(idx) % getType())
+      case(nestDict)
+        value = self % entries(idx) % dict0_alloc
 
-    select type(temp_ptr)
-      type is (dictionary)
-        call value % shallowCopy(temp_ptr)
-
-      class default
+      case default
         call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
 
     end select
 
   end function getDict
 
-
+  !!
+  !! Returns an array of all keywords associated with a real rank 0
+  !!
   function keysReal(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -576,7 +545,9 @@ contains
 
   end function keysReal
 
-
+  !!
+  !! Returns an array of all keywords associated with a real rank 1
+  !!
   function keysRealArray(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -592,7 +563,9 @@ contains
 
   end function keysRealArray
 
-
+  !!
+  !! Returns an array of all keywords associated with an integer rank 0
+  !!
   function keysInt(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -608,7 +581,9 @@ contains
 
   end function keysInt
 
-
+  !!
+  !! Returns an array of all keywords associated with an integer rank 0
+  !!
   function keysIntArray(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -624,7 +599,9 @@ contains
 
   end function keysIntArray
 
-
+  !!
+  !! Returns an array of all keywords associated with an character rank 0
+  !!
   function keysChar(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -640,7 +617,9 @@ contains
 
   end function keysChar
 
-
+  !!
+  !! Returns an array of all keywords associated with an character rank 1
+  !!
   function keysCharArray(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -656,7 +635,9 @@ contains
 
   end function keysCharArray
 
-
+  !!
+  !! Returns an array of all keywords associated with a dictionary rank 0
+  !!
   function keysDict(self) result(keys)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
@@ -672,61 +653,67 @@ contains
 
   end function keysDict
 
+!  !!
+!  !! Return all dictionarys with a specific type keword
+!  !!
+!  function keysDict_type(self,dictType) result(keys)
+!    class(dictionary), intent(in)               :: self
+!    character(*), intent(in)                    :: dictType
+!    character(nameLen),dimension(:),allocatable :: keys
+!    character(nameLen),dimension(:),allocatable :: allDict
+!    logical(defBool), dimension(:), allocatable :: mask
+!    integer(shortInt)                           :: L,i
+!    character(charLen)                          :: typeTemp
+!    type(dictionary)                            :: tempDict
+!
+!
+!    ! Due to compiler bugs copy keysDict_all
+!    L = self % dictLen
+!    allocate( mask(L) )
+!
+!    mask = (self % entries(1:L) % getType() == nestDict)
+!
+!    allDict = pack(self % keywords(1:L), mask)
+!    deallocate(mask)
+!
+!    ! Find all indexes in keys that match requested type
+!    L = size(allDict)
+!    allocate(mask(L))
+!
+!    do i=1,L
+!      tempDict = self % getDict(allDict(i))
+!
+!      if (tempDict % isPresent('type')) then
+!        typeTemp = tempDict % getChar('type')
+!        mask(i) = (trim(adjustl(dictType)) == trim(adjustl(typeTemp)))
+!
+!      else
+!        mask(i) = .false.
+!
+!      end if
+!    end do
+!
+!    keys = pack(allDict,mask)
+!
+!  end function keysDict_type
 
-  function keysDict_type(self,dictType) result(keys)
-    class(dictionary), intent(in)               :: self
-    character(*), intent(in)                    :: dictType
-    character(nameLen),dimension(:),allocatable :: keys
-    character(nameLen),dimension(:),allocatable :: allDict
-    logical(defBool), dimension(:), allocatable :: mask
-    integer(shortInt)                           :: L,i
-    character(charLen)                          :: typeTemp
-    type(dictionary)                            :: tempDict
 
-
-    ! Due to compiler bugs copy keysDict_all
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == nestDict)
-
-    allDict = pack(self % keywords(1:L), mask)
-    deallocate(mask)
-
-    ! Find all indexes in keys that match requested type
-    L = size(allDict)
-    allocate(mask(L))
-
-    do i=1,L
-      tempDict = self % getDict(allDict(i))
-
-      if (tempDict % isPresent('type')) then
-        typeTemp = tempDict % getChar('type')
-        mask(i) = (trim(adjustl(dictType)) == trim(adjustl(typeTemp)))
-
-      else
-        mask(i) = .false.
-
-      end if
-    end do
-
-    keys = pack(allDict,mask)
-
-  end function keysDict_type
-
-
-
+  !!
+  !! Returns an array of all keywords
+  !!
   function keys(self)
     class(dictionary), intent(in)                :: self
     character(nameLen),dimension(:), allocatable :: keys
     integer(shortInt)                            :: L
 
-    L = self % dictLen
+    L    = self % dictLen
     keys = self % keywords(1:L)
 
   end function keys
 
-
+  !!
+  !! Stores a real rank 0 in dictionary
+  !!
   subroutine store_real(self,keywordArgument,entry)
     class(dictionary), intent(inout)  :: self
     character(*), intent(in)          :: keywordArgument
@@ -739,12 +726,15 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % real0_alloc = entry
+    self % entries(idx) % type = numReal
 
   end subroutine store_real
 
-
-
+  !!
+  !! Stores a real rank 1 in dictionary
+  !!
   subroutine store_realArray(self,keywordArgument,entry)
     class(dictionary), intent(inout)        :: self
     character(*), intent(in)                :: keywordArgument
@@ -757,12 +747,15 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % real1_alloc = entry
+    self % entries(idx) % type = arrReal
 
   end subroutine store_realArray
 
-
-
+  !!
+  !! Stores a integer rank 0 in dictionary
+  !!
   subroutine store_int(self,keywordArgument,entry)
     class(dictionary), intent(inout)  :: self
     character(*), intent(in)          :: keywordArgument
@@ -775,12 +768,15 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % int0_alloc = entry
+    self % entries(idx) % type = numInt
 
   end subroutine store_int
 
-
-
+  !!
+  !! Stores a integer rank 1 in dictionary
+  !!
   subroutine store_intArray(self,keywordArgument,entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
@@ -793,12 +789,15 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % int1_alloc = entry
+    self % entries(idx) % type = arrInt
 
   end subroutine store_intArray
 
-
-
+  !!
+  !! Stores a character rank 0 in dictionary
+  !!
   subroutine store_char(self,keywordArgument,entry)
     class(dictionary), intent(inout)  :: self
     character(*), intent(in)          :: keywordArgument
@@ -811,12 +810,15 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % char0_alloc = entry
+    self % entries(idx) % type = word
 
   end subroutine store_char
 
-
-
+  !!
+  !! Stores a character rank 1 in dictionary
+  !!
   subroutine store_charArray(self,keywordArgument,entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
@@ -829,12 +831,16 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+    ! Load into dictionary content
+    self % entries(idx) % char1_alloc = entry
+    self % entries(idx) % type = arrWord
 
   end subroutine store_charArray
 
 
-
+  !!
+  !! Stores a dictionary rank 0 in dictionary
+  !!
   subroutine store_dict(self,keywordArgument,entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
@@ -847,294 +853,75 @@ contains
     idx = self % getEmptyIdx(keyword)
 
     self % keywords(idx)  = keyword
-    call self % entries(idx) % put(entry)
+
+    ! Load into dictionary content
+    allocate(self % entries(idx) % dict0_alloc)
+
+    self % entries(idx) % dict0_alloc = entry
+    self % entries(idx) % type = nestDict
 
   end subroutine store_dict
 
+  !!
+  !! Copies dictContent
+  !!
+  subroutine copy_dictCont(LHS,RHS)
+    class(dictContent), intent(inout) :: LHS
+    type(dictContent), intent(in)     :: RHS
 
-
-  subroutine shallowCopy_dictCont(LHS,RHS)
-    class(dictContent), intent(out)  :: LHS
-    type(dictContent), intent(in)    :: RHS
-
-    ! Copy dictContent type
-    LHS % type = RHS % type
-
-    LHS % rank0_ptr => RHS % rank0_ptr
-    LHS % rank1_ptr => RHS % rank1_ptr
-
-  end subroutine shallowCopy_dictCont
-
-  subroutine deepCopy_dictCont(LHS,RHS)
-    class(dictContent), intent(out)  :: LHS
-    type(dictContent), intent(in)    :: RHS
-    class(*), pointer                :: rank0         ! Local pointer to rank0 object
-    class(*), dimension(:),pointer   :: rank1         ! Local pointer to rank1 object
-    real(defReal),pointer            :: real_ptr
-    integer(shortInt),pointer        :: int_ptr
-    character(charLen),pointer       :: char_ptr
-    type(dictionary),pointer         :: dict_ptr
-
-    real(defReal),dimension(:),pointer :: realArray_ptr
-    integer(shortInt),dimension(:),pointer :: intArray_ptr
-    character(charLen),dimension(:),pointer :: charArray_ptr
-    character(charLen),dimension(:),allocatable :: charArray_alloc
+    ! Remove contents of a target
+    call LHS % kill()
 
     ! Copy dictContent type
     LHS % type = RHS % type
 
-    ! Copy rank 0 class(*) polymorphic pointer
-    if(associated(RHS % rank0_ptr)) then
-      rank0 => RHS % rank0_ptr
+    ! Copy individual enteries
+    LHS % int0_alloc = RHS % int0_alloc
+    if (allocated( RHS % int1_alloc)) LHS % int1_alloc = RHS % int1_alloc
 
-      select type (rank0)
-        type is( real(defReal))
-          allocate(real_ptr)
-          real_ptr = rank0
-          LHS % rank0_ptr => real_ptr
 
-        type is( integer(shortInt))
-          allocate(int_ptr)
-          int_ptr = rank0
-          LHS % rank0_ptr => int_ptr
+    LHS % real0_alloc = RHS % real0_alloc
+    if (allocated( RHS % real1_alloc)) LHS % real1_alloc = RHS % real1_alloc
 
-        type is( character(*))
-          allocate(char_ptr)
-          char_ptr = rank0
-          LHS % rank0_ptr => char_ptr
 
-        type is( dictionary)
-          allocate(dict_ptr)
-          call dict_ptr % deepCopy(rank0)
-          LHS % rank0_ptr => dict_ptr
-        ! Extra entry for a dictionary
+    LHS % char0_alloc = RHS % char0_alloc
+    if (allocated( RHS % char1_alloc)) LHS % char1_alloc = RHS % char1_alloc
 
-      end select
-
+    if (associated( RHS % dict0_alloc)) then
+      allocate(LHS % dict0_alloc)
+      LHS % dict0_alloc = RHS % dict0_alloc
     end if
 
-    ! Copy rank 1 class(*) polymorphic pointer
-    if(associated(RHS % rank1_ptr)) then
-      rank1 => RHS % rank1_ptr
-
-      select type (rank1)
-        type is( real(defReal))
-          allocate( realArray_ptr(size(rank1)) )
-          realArray_ptr = rank1
-          LHS % rank1_ptr => realArray_ptr
-
-        type is( integer(shortInt))
-          allocate( intArray_ptr(size(rank1)) )
-          intArray_ptr = rank1
-          LHS % rank1_ptr => intArray_ptr
-
-        type is( character(*))
-          ! Again slightly weird code. I am using allocatable character array to temporary
-          ! store the data. I am quite confused about how character arrays (effectivly array of
-          ! arrays in Fortran! [I think...]) interact with pointers. The code below works OK
-          ! nevertheless.
-
-          charArray_ptr(1:size(rank1)) => rank1(1:size(rank1)) ! Obtain ptr to character array
-          charArray_alloc = charArray_ptr                      ! Store character array in local copy
-
-          allocate( charArray_ptr(size(rank1)))      ! Allocate new space under the ptr
-          charArray_ptr = charArray_alloc            ! Copy values from local copy to final memory
-          LHS % rank1_ptr => charArray_ptr           ! Attach pointer to the new memory
-
-      end select
-    end if
-
-  end subroutine deepCopy_dictCont
+  end subroutine copy_dictCont
 
 
-
+  !!
+  !! Deallocates dictContent
+  !!
   subroutine kill_dictCont(self)
     class(dictContent), intent(inout) :: self
 
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
+    ! Deallocate allocatable components
+    if(allocated(self % int1_alloc)) deallocate (self % int1_alloc)
+
+    if(allocated(self % real1_alloc)) deallocate (self % real1_alloc)
+
+    if(allocated(self % char1_alloc)) deallocate (self % char1_alloc)
+
+    ! Clean nested dictionaries. Kill before deallocation to avoid memory leaks
+    if(associated(self % dict0_alloc)) then
+      call self % dict0_alloc % kill()
+      deallocate (self % dict0_alloc)
+    end if
+
+    ! Change type of content to empty
+    self % type = empty
 
   end subroutine kill_dictCont
 
-
-
-  subroutine pull_rank0(self,polymorph_ptr)
-    class(dictContent), intent(in)   :: self
-    class(*),pointer, intent(inout)  :: polymorph_ptr
-    character(100),parameter         :: Here='pull_rank0 (dictionary_class.f90)'
-
-    if (associated(self % rank0_ptr)) then
-      polymorph_ptr => self % rank0_ptr
-
-    elseif (associated(self % rank1_ptr)) then
-      call fatalError(Here,'Content under requested keyword is of rank 1')
-
-    else
-      call fatalError(Here,'Attempting to retrive data from empty dictContent')
-
-    end if
-
-  end subroutine pull_rank0
-
-
-
-  subroutine pull_rank1(self,polymorph_ptr)
-    class(dictContent), intent(in)                 :: self
-    class(*),pointer, dimension(:), intent(inout)  :: polymorph_ptr
-    character(100),parameter                       :: Here='pull_rank1 (dictionary_class.f90)'
-
-    if (associated(self % rank0_ptr)) then
-      call fatalError(Here,'Content under requested keyword is of rank 0')
-
-    elseif (associated(self % rank1_ptr)) then
-      polymorph_ptr => self % rank1_ptr
-
-    else
-      call fatalError(Here,'Attempting to retrive data from empty dictContent')
-
-    end if
-
-
-  end subroutine pull_rank1
-
-
-
-  subroutine put_real(self,input)
-    class(dictContent), intent(inout) :: self
-    real(defReal), intent(in)         :: input
-    real(defReal), pointer            :: newMemory => null()
-!    character(100),parameter          :: Here='put_real (dictionary_class.f90)'
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    allocate(newMemory)
-    newMemory = input
-
-    self % rank0_ptr => newMemory
-    self % type  =  numReal
-
-  end subroutine put_real
-
-
-
-  subroutine put_realArray(self,input)
-    class(dictContent), intent(inout)      :: self
-    real(defReal),dimension(:), intent(in) :: input
-    real(defReal),dimension(:),pointer     :: newMemory => null()
-    integer(shortInt)                      :: inputSize
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    inputSize = size(input)
-    allocate( newMemory(inputSize) )
-    newMemory = input
-
-    self % rank1_ptr => newMemory
-    self % type  =  arrReal
-
-  end subroutine put_realArray
-
-
-
-  subroutine put_int(self,input)
-    class(dictContent), intent(inout) :: self
-    integer(shortInt), intent(in)     :: input
-    integer(shortInt), pointer        :: newMemory => null()
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    allocate(newMemory)
-    newMemory = input
-
-    self % rank0_ptr => newMemory
-    self % type = numInt
-
-  end subroutine put_int
-
-
-
-  subroutine put_intArray(self,input)
-    class(dictContent), intent(inout)          :: self
-    integer(shortInt),dimension(:), intent(in) :: input
-    integer(shortInt),dimension(:),pointer     :: newMemory => null()
-    integer(shortInt)                          :: inputSize
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    inputSize = size(input)
-    allocate( newMemory(inputSize) )
-    newMemory = input
-
-    self % rank1_ptr => newMemory
-    self % type = arrInt
-
-  end subroutine put_intArray
-
-
-  subroutine put_char(self,input)
-    class(dictContent), intent(inout) :: self
-    character(*), intent(in)          :: input
-    character(charLen), pointer       :: newMemory => null()
-    !integer(shortInt)                 :: inputLen
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    !inputLen  = len(input)
-
-    allocate(newMemory)
-    newMemory = input
-
-    self % rank0_ptr => newMemory
-    self % type = word
-
-  end subroutine put_char
-
-  subroutine put_charArray(self,input)
-    class(dictContent), intent(inout)        :: self
-    character(*), dimension(:),intent(in)    :: input
-    character(charLen),dimension(:), pointer :: newMemory => null()
-    integer(shortInt)                        :: inputSize
-    integer(shortInt)                        :: inputLen
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    inputSize = size(input)
-    !inputLen = len(input)
-
-    allocate(newMemory(inputSize) )
-
-    newMemory = input
-
-    self % rank1_ptr => newMemory
-    self % type = arrWord
-
-  end subroutine put_charArray
-
-
-
-  subroutine put_dict(self,input)
-    class(dictContent), intent(inout)    :: self
-    type(dictionary), intent(in)         :: input
-    type(dictionary), pointer            :: newMemory => null()
-
-    if(associated(self % rank0_ptr)) deallocate (self % rank0_ptr)
-    if(associated(self % rank1_ptr)) deallocate (self % rank1_ptr)
-
-    allocate(newMemory)
-    newMemory = input     ! Hard Copy the dictionary
-
-    self % rank0_ptr => newMemory
-    self % type = nestDict
-
-  end subroutine put_dict
-
-
+  !!
+  !! Returns type of a given dictContent
+  !!
   elemental function getType_dictContent(self) result(type)
     class(dictContent), intent(in)     :: self
     integer(shortInt)                  :: type

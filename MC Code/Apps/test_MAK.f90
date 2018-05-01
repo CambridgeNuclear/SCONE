@@ -171,17 +171,19 @@ program test
   type(datalessMaterials)  :: matNoDat
 
 
-  call IOdictTest % initFrom('./materialInput')
-  testDict = IOdictTest
-
-  call matNoDat % init(testDict)
-  print *, matNoDat % materials
-
-  print *, matNoDat % getName(4)
-
-
-
-  stop
+!  call IOdictTest % initFrom('./materialInput')
+!
+!  testDict = IOdictTest
+!
+!
+!  call matNoDat % init(testDict)
+!  print *, matNoDat % materials
+!
+!  print *, matNoDat % getName(4)
+!
+!
+!
+!  stop
 !**********************************************************************!
 
 !  bSet % total    = 4.0
@@ -207,12 +209,9 @@ program test
 !  print *, bSet % total, bSet % scatter, bSet % capture, bSet % fission
 !  print *, mySet % total, mySet % scatter, mySet % capture, mySet % fission
 !  print *, uSet % total, uSet % scatter, uSet % capture, uSet % fission
-
 !  call myCDF % init (1.0_8,2.0_8,0.1_8)
-
- ! print *, myCDF % cdf
- ! print *, myCDF % invert(0.0_8)
-
+!! print *, myCDF % cdf
+!! print *, myCDF % invert(0.0_8)
 !  call bPoint % init(2.0_8,1.0_8)
 !  call uPoint % init(3.0_8,1.0_8,9.9_8)
 !
@@ -221,117 +220,85 @@ program test
 !  print*,  bPoint % xs % total,bPoint % xs % scatter, bPoint % xs % capture, bPoint % xs % fission
 !  print*,  ePoint % xs % total,ePoint % xs % scatter, ePoint % xs % capture, ePoint % xs % fission
 !  print*,  uPoint % xs % total,uPoint % xs % scatter, uPoint % xs % capture, uPoint % xs % fission
-
 !  call isotope % init(acePath,243050)
 !
 !  do i = 1,size(isotope % energyGrid)
 !    print *,isotope % energyGrid(i) ,isotope % xsData(i) % xs % total,isotope % xsData(i) % xs % scatter, &
 !            isotope % xsData(i) % xs % capture, isotope % xsData(i) % xs % fission
 !  end do
-
 !!
-call IOdictTest % initFrom('./RootMG')
-testDict = IOdictTest
-
-allocate( isotropicMG :: MGData)
-
-call MGData % init(testDict)
-
-
+!call IOdictTest % initFrom('./RootMG')
+!testDict = IOdictTest
+!
+!allocate( isotropicMG :: MGData)
+!
+!call MGData % init(testDict)
 !print *, MGData % matData
-
-
-stop
-
-bSet % scatterXS = 2.0
-bSet % captureXS = 1.0
-bSet % fissionXS = 0.5
-
-bSet % totalXS = bSet % scatterXS + bSet % captureXS + bSet % fissionXS
-
+!stop
+!Set % scatterXS = 2.0
+!Set % captureXS = 1.0
+!Set % fissionXS = 0.5
+!Set % totalXS = bSet % scatterXS + bSet % captureXS + bSet % fissionXS
 !print *, bSet % invert(0.9_8)
-
 !print *, binarySearch([1.0_8],1.1_8)
-
-call outCDF % init([2.0_8,1.0_8,0.5_8])
-
-print *, outCDF % invert(0.85_8)
-
-ReSh = reshape([1, 2, 3, 4, 5, 6,7,8,9],[3,3])
-
-print *, ReSh(:,2)
-print *, sum(ReSh,1)
-stop
-
-call IOdictTest % initFrom('./materialInput')
-
+!all outCDF % init([2.0_8,1.0_8,0.5_8])
+!rint *, outCDF % invert(0.85_8)
+!eSh = reshape([1, 2, 3, 4, 5, 6,7,8,9],[3,3])
+!rint *, ReSh(:,2)
+!rint *, sum(ReSh,1)
+!top
+!all IOdictTest % initFrom('./materialInput')
 !print *, IOdictTest % keysDict()
-testDict = IOdictTest !% getDict('myFourthMat')
+!estDict = IOdictTest !% getDict('myFourthMat')
 !print *, testDict % getChar('type')
 !print *, testDict % keysReal()
 !print *, testDict % getReal('temp')
-
 !charT = testDict % keysReal()
 !print *, charT
-
 !print *, IOdictTest % keysDict_type('material')
-
-allocate(ce)
-allocate(ce % dataBlock)
-call ce % dataBlock % init(testDict)
-call ce % dataBlock % printMe()
-stop
+!llocate(ce)
+!llocate(ce % dataBlock)
+!all ce % dataBlock % init(testDict)
+!all ce % dataBlock % printMe()
+!top
 !!
-
-
-
- allocate(ce)
- call ce % readFrom(matInput,isoInput)
-
- allocate(RNGptr)
- call RNGptr % init(5875757_8)
-
- neutron % pRNG => RNGptr
- neutron % E = 7.0
- !neutron % dir = [1.0, 0.0 , 0.0]
- neutron % matIdx = 4
- neutron % isDead = .false.
-
- call collisionPhysics % attachXsData(ce)
- collisionPhysics % locRNG => neutron % pRNG
-
- call RNGptr % init(75785746574_longInt)
-
- Emax = 20.0
- Emin = 1.0E-11
- Umax = log(Emax)
- Umin = log(Emin)
-
- nBins = 300
- !N = 1000000
-  N = 5000
- allocate(tally(nBins))
- tally = 0
-
- allocate(cycle1)
- allocate(cycle2)
-
- call cycle1 % init(int(2.0*N))
- call cycle2 % init(int(2.0*N))
- cycleTemp => null()
- nInactive = 300
- nActive   = 2000
-
+!allocate(ce)
+!call ce % readFrom(matInput,isoInput)
+!allocate(RNGptr)
+!call RNGptr % init(5875757_8)
+!neutron % pRNG => RNGptr
+!neutron % E = 7.0
+!!neutron % dir = [1.0, 0.0 , 0.0]
+!neutron % matIdx = 4
+!neutron % isDead = .false.
+!call collisionPhysics % attachXsData(ce)
+!collisionPhysics % locRNG => neutron % pRNG
+!call RNGptr % init(75785746574_longInt)
+!Emax = 20.0
+!Emin = 1.0E-11
+!Umax = log(Emax)
+!Umin = log(Emin)
+!nBins = 300
+!!N = 1000000
+! N = 5000
+!allocate(tally(nBins))
+!tally = 0
+!allocate(cycle1)
+!allocate(cycle2)
+!call cycle1 % init(int(2.0*N))
+!call cycle2 % init(int(2.0*N))
+!cycleTemp => null()
+!nInactive = 300
+!nActive   = 2000
 ! ##### Population initialisation
- do i=1,N
-   neutron % E      = 0.5
-   call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
-   call neutron % point([1.0_8, 0.0_8, 0.0_8])
-   neutron % w      = 1.0
-   neutron % isDead = .false.
-   call cycle1 % throw(neutron)
- end do
-
+!do i=1,N
+!  neutron % E      = 0.5
+!  call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
+!  call neutron % point([1.0_8, 0.0_8, 0.0_8])
+!  neutron % w      = 1.0
+!  neutron % isDead = .false.
+!  call cycle1 % throw(neutron)
+!end do
 !##### Fixed Source Calculation
 !###########################################################
 !do
@@ -354,124 +321,82 @@ stop
 !
 !   if(cycle1 % isEmpty() ) exit
 !end do
-
-
 !##### Eigenvalue calculation
 !####################################################
-
 !  *** Inactive cycles
-
-  do i=1,nInactive
-    startPop = cycle1 % popSize()
-    generation: do
-
-      call cycle1 % release(neutron)
-      neutron % matIdx = 4
-
-      History: do
-        ! Tally energy
-        !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
-        !tally(idx) = tally(idx) + 1
-        call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit History
-
-      end do History
-
-     if(cycle1 % isEmpty() ) exit generation
-
-    end do generation
-
-   ! Calculate new k
-    endPop = cycle2 % popSize()
-    k_old  = cycle2 % k_eff
-    k_new  = 1.0*endPop/startPop * k_old
-   ! Normalise population
-    call cycle2 % normSize(N, neutron % pRNG)
-
-   ! Flip cycle dungeons
-    cycleTemp => cycle2
-    cycle2 => cycle1
-    cycle1 => cycleTemp
-
-   ! Load new k for normalisation
-    cycle2 % k_eff = k_new
-
-    print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
-  end do
-
+! do i=1,nInactive
+!   startPop = cycle1 % popSize()
+!   generation: do
+!     call cycle1 % release(neutron)
+!     neutron % matIdx = 4
+!     History: do
+!       ! Tally energy
+!       !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
+!       !tally(idx) = tally(idx) + 1
+!       call collisionPhysics % collide(neutron,cycle1,cycle2)
+!       if(neutron % isDead) exit History
+!     end do History
+!    if(cycle1 % isEmpty() ) exit generation
+!   end do generation
+!  ! Calculate new k
+!   endPop = cycle2 % popSize()
+!   k_old  = cycle2 % k_eff
+!   k_new  = 1.0*endPop/startPop * k_old
+!  ! Normalise population
+!   call cycle2 % normSize(N, neutron % pRNG)
+!  ! Flip cycle dungeons
+!   cycleTemp => cycle2
+!   cycle2 => cycle1
+!   cycle1 => cycleTemp
+!  ! Load new k for normalisation
+!   cycle2 % k_eff = k_new
+!   print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
+! end do
 ! ************************************
 ! ****** Active cycles
-
-  ksum  = 0.0
-  ksum2 = 0.0
-  varK = 0.0
-
-  do i=1,nActive
-    startPop = cycle1 % popSize()
-    generationA: do
-
-      call cycle1 % release(neutron)
-      neutron % matIdx = 4
-
-      HistoryA: do
-        ! Tally energy
-        idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
-        tally(idx) = tally(idx) + 1
-        call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit HistoryA
-
-      end do HistoryA
-
-     if(cycle1 % isEmpty() ) exit generationA
-
-    end do generationA
-
-   ! Calculate new k
-    endPop = cycle2 % popSize()
-    k_old  = cycle2 % k_eff
-    k_new  = 1.0*endPop/startPop * k_old
-
-   ksum  = ksum  + k_new
-   ksum2 = ksum2 + k_new * k_new
-
-   k_new = ksum / i
-
-   ! Normalise population
-    call cycle2 % normSize(N, neutron % pRNG)
-
-   ! Flip cycle dungeons
-    cycleTemp => cycle2
-    cycle2 => cycle1
-    cycle1 => cycleTemp
-
-   ! Load new k for normalisation
-    cycle2 % k_eff = k_new
-
-    if (i > 1 ) then
-      varK = sqrt (1.0/(i*(i-1)) * (ksum2 - ksum*ksum/i))
-    end if
-
-    print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
-  end do
-
-
-
-
-
-print *, 'S = ['
-do i =1,size(tally)
-  print *, tally(i)
-end do
-
-print *, '];'
-
-
- stop
-
-
-
-
-
+! ksum  = 0.0
+! ksum2 = 0.0
+! varK = 0.0
+! do i=1,nActive
+!   startPop = cycle1 % popSize()
+!   generationA: do
+!     call cycle1 % release(neutron)
+!     neutron % matIdx = 4
+!     HistoryA: do
+!       ! Tally energy
+!       idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
+!       tally(idx) = tally(idx) + 1
+!       call collisionPhysics % collide(neutron,cycle1,cycle2)
+!       if(neutron % isDead) exit HistoryA
+!     end do HistoryA
+!    if(cycle1 % isEmpty() ) exit generationA
+!   end do generationA
+!  ! Calculate new k
+!   endPop = cycle2 % popSize()
+!   k_old  = cycle2 % k_eff
+!   k_new  = 1.0*endPop/startPop * k_old
+!  ksum  = ksum  + k_new
+!  ksum2 = ksum2 + k_new * k_new
+!  k_new = ksum / i
+!  ! Normalise population
+!   call cycle2 % normSize(N, neutron % pRNG)
+!  ! Flip cycle dungeons
+!   cycleTemp => cycle2
+!   cycle2 => cycle1
+!   cycle1 => cycleTemp
+!  ! Load new k for normalisation
+!   cycle2 % k_eff = k_new
+!   if (i > 1 ) then
+!     varK = sqrt (1.0/(i*(i-1)) * (ksum2 - ksum*ksum/i))
+!   end if
+!   print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
+! end do
+!rint *, 'S = ['
+!o i =1,size(tally)
+! print *, tally(i)
+!nd do
+!rint *, '];'
+!stop
 !print *,"S=["
 !do i=1,5000000
 !  neutron % E = 0.06e-6_8
@@ -492,18 +417,13 @@ print *, '];'
 !
 !end do
 !print *,"];"
-
-
 ! do i=1,100
 !
 !   call collisionPhysics % collide(neutron)
 !
 ! end do
-
-
-
- !call ce % dataBlock % print()
-stop
+!!call ce % dataBlock % print()
+!top
 !****************************************************************************
 ! ***** Test play code to interpolate XSs
 !
@@ -537,12 +457,8 @@ stop
 !      end do
 !      stop
 !*********************************
-
-  !call CEdata % readFrom(matInput,isoInput)
-  !call CEdata % print()
-
-
-
+! !call CEdata % readFrom(matInput,isoInput)
+! !call CEdata % print()
 !  stop
 !
 !  testType % a = 9.9
@@ -554,11 +470,9 @@ stop
 !  !deallocate(tt)
 !
 !  print *, testType % b
+!! stop
+  call IOdictTest % initFrom(testDictFile)
 
-
- ! stop
-!  call IOdictTest % initFrom(testDictFile)
-!
 !  print *, "TOP DICTIONARY"
 !  print *, IOdictTest % getRealArray('list1')
 !  print *, IOdictTest % getCharArray('list3')
@@ -593,19 +507,25 @@ stop
 !  print *, "NESTED DICTONARY 3.1"
 !  print *, testDict4 % getReal('key')
 !  print *, testDict4 % getInt('key2')
-!
-!
-! print *, IOdictTest % keysReal()
-! print *, IOdictTest % keysInt()
-! print *, IOdictTest % keysChar()
-! print *, IOdictTest % keysRealArray()
-! print *, IOdictTest % keysIntArray()
-! print *, IOdictTest % keysCharArray()
-! print *, IOdictTest % keysDict()
-!
-!! print *, IOdictTest % getCharArray('list3')
-!
-! stop
+
+
+ print *, IOdictTest % keysReal()
+ print *, IOdictTest % keysInt()
+ print *, IOdictTest % keysChar()
+ print *, IOdictTest % keysRealArray()
+ print *, IOdictTest % keysIntArray()
+ print *, IOdictTest % keysCharArray()
+ print *, IOdictTest % keysDict()
+
+! print *, IOdictTest % getCharArray('list3')
+
+ do i=1,1
+   !print *, i
+   call testDict % kill()
+   testDict = IOdictTest
+ end do
+
+ stop
 
 !  maxSpec => maxwellSpectrum( [1.0E-11_8, 20.0_8], [1.33974_8, 1.33974_8], -20.0_8)
 !
