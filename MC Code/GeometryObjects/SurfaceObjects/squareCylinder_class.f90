@@ -3,7 +3,7 @@
 !
 module squareCylinder_class
   use numPrecision
-  use genericProcedures
+  use genericProcedures, only : fatalError
   use universalVariables
 
   use surface_class
@@ -16,8 +16,8 @@ module squareCylinder_class
     private
     type(yPlane), dimension(:), pointer :: yPlanes => null()
     type(zPlane), dimension(:), pointer :: zPlanes => null()
-    real(defReal), dimension(3) :: a                        ! the half-width in each direction of the cylinder (0 in x)
-    real(defReal), dimension(3) :: origin = [0.0, 0.0, 0.0]
+    real(defReal), dimension(3)         :: a                ! the half-width in each direction of the cylinder (0 in x)
+    real(defReal), dimension(3)         :: origin = [ZERO, ZERO, ZERO]
   contains
     procedure :: init => initXSquCyl
     procedure :: evaluate => evaluateXSquCyl
@@ -32,8 +32,8 @@ module squareCylinder_class
     private
     type(xPlane), dimension(:), pointer :: xPlanes => null()
     type(zPlane), dimension(:), pointer :: zPlanes => null()
-    real(defReal), dimension(3) :: a                        ! the half-width in each direction of the cylinder (0 in y)
-    real(defReal), dimension(3) :: origin = [0.0, 0.0, 0.0]
+    real(defReal), dimension(3)         :: a                ! the half-width in each direction of the cylinder (0 in y)
+    real(defReal), dimension(3)         :: origin = [ZERO, ZERO, ZERO]
   contains
     procedure :: init => initYSquCyl
     procedure :: evaluate => evaluateYSquCyl
@@ -48,8 +48,8 @@ module squareCylinder_class
     private
     type(xPlane), dimension(:), pointer :: xPlanes => null()
     type(yPlane), dimension(:), pointer :: yPlanes => null()
-    real(defReal), dimension(3) :: a                        ! the half-width in each direction of the cylinder (0 in z)
-    real(defReal), dimension(3) :: origin = [0.0, 0.0, 0.0]
+    real(defReal), dimension(3)         :: a                 ! the half-width in each direction of the cylinder (0 in z)
+    real(defReal), dimension(3)         :: origin = [ZERO, ZERO, ZERO]
   contains
     procedure :: init => initZSquCyl
     procedure :: evaluate => evaluateZSquCyl
@@ -62,24 +62,25 @@ module squareCylinder_class
 
 contains
 
-!
-! X-Square cylinder procedures
-!
-  !
-  ! Initialise the box as six plane surfaces
-  !
+!!
+!! X-Square cylinder procedures
+!!
+  !!
+  !! Initialise the box as six plane surfaces
+  !!
   subroutine initXSquCyl(self, origin, a, id, name)
-    implicit none
-    class(xSquareCylinder), intent(inout) :: self
+    class(xSquareCylinder), intent(inout)   :: self
     real(defReal), dimension(3), intent(in) :: a
     real(defReal), dimension(3), intent(in) :: origin
     integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in) :: name
-    integer(shortInt) :: i
-    real(defReal) :: neg
+    character(*), optional, intent(in)      :: name
+    integer(shortInt)                       :: i
+    real(defReal)                           :: neg
 
     self % isCompound = .true.
     self % a = a
+    if((a(2) < surface_tol) .OR. (a(3) < surface_tol)) &
+    call fatalError('init, xSquareCylinder','Widths must be greater than surface tolerance')
     self % origin = origin
 
     if(present(id)) self % id = id
@@ -92,27 +93,26 @@ contains
     allocate(self%zPlanes(2))
 
     ! Initialise each plane in each cardinal direction
-    neg = +1.0
+    neg = +ONE
     do i = 1, 2
       call self%yPlanes(i)%init(origin(2) + neg*a(2))
       call self%zPlanes(i)%init(origin(3) + neg*a(3))
-      neg = -1.0
+      neg = -ONE
     end do
 
   end subroutine initXSquCyl
 
-  !
-  ! Evaluate the surface function of the square cylinder
-  !
+  !!
+  !! Evaluate the surface function of the square cylinder
+  !!
   function evaluateXSquCyl(self, r) result(res)
-    implicit none
-    class(xSquareCylinder), intent(in) :: self
+    class(xSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal) :: res
-    real(defReal), dimension(2) :: resY  ! Results from yPlanes
-    real(defReal), dimension(2) :: resZ  ! Results from zPlanes
-    real(defReal) :: absMinRes           ! Identify if particle sits on a surface
-    real(defReal) :: testRes             ! The most positive residual
+    real(defReal)                           :: res
+    real(defReal), dimension(2)             :: resY      ! Results from yPlanes
+    real(defReal), dimension(2)             :: resZ      ! Results from zPlanes
+    real(defReal)                           :: absMinRes ! Identify if particle sits on a surface
+    real(defReal)                           :: testRes   ! The most positive residual
 
     ! Evaluate the front planes' surface functions
     resY(1) = self % yPlanes(1) % evaluate(r)
@@ -157,18 +157,17 @@ contains
 
   end function evaluateXSquCyl
 
-  !
-  ! Calculate the distance to the nearest surface of the box
-  ! Requires checking that only real surfaces are intercepted,
-  ! i.e., not the extensions of the box plane surfaces
-  !
-  function distanceToXSquCyl(self, r, u)result(distance)
-    implicit none
-    class(xSquareCylinder), intent(in) :: self
+  !!
+  !! Calculate the distance to the nearest surface of the box
+  !! Requires checking that only real surfaces are intercepted,
+  !! i.e., not the extensions of the box plane surfaces
+  !!
+  function distanceToXSquCyl(self, r, u) result(distance)
+    class(xSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal), dimension(3) :: posBound, negBound, testPoint
-    real(defReal) :: distance
-    real(defReal) :: testDistance
+    real(defReal), dimension(3)             :: posBound, negBound, testPoint
+    real(defReal)                           :: distance
+    real(defReal)                           :: testDistance
 
     distance = INFINITY
     ! Find the positive and negative bounds which the particle
@@ -202,17 +201,16 @@ contains
 
   end function distanceToXSquCyl
 
-  !
-  ! Apply a reflective transformation to a particle during delta tracking
-  ! Do so by determining which plane the particle intersects and applying the plane reflection
-  !
-  ! This routine should be obviated due to how the transpor toperator and cell are structured
-  !
+  !!
+  !! Apply a reflective transformation to a particle during delta tracking
+  !! Do so by determining which plane the particle intersects and applying the plane reflection
+  !!
+  !! This routine should be obviated due to how the transpor toperator and cell are structured
+  !!
   subroutine reflectiveTransformXSquCyl(self, r, u)
-    implicit none
-    class(xSquareCylinder), intent(in) :: self
+    class(xSquareCylinder), intent(in)         :: self
     real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer :: surfPointer
+    class(surface), pointer                    :: surfPointer
 
     call fatalError('reflectiveTransformXSquCyl','This routine should not be called')
     surfPointer => self % whichSurface(r, u)
@@ -220,15 +218,14 @@ contains
 
   end subroutine reflectiveTransformXSquCyl
 
-  !
-  ! Determine on which surface the particle is located and obtain
-  ! its normal vector
-  !
+  !!
+  !! Determine on which surface the particle is located and obtain
+  !! its normal vector
+  !!
   function normalXSquCyl(self, r)result(normal)
-    implicit none
-    class(xSquareCylinder), intent(in) :: self
+    class(xSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3) :: normal, posBound, negBound
+    real(defReal), dimension(3)             :: normal, posBound, negBound
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -252,19 +249,18 @@ contains
 
   end function normalXSquCyl
 
-  !
-  ! Helper routine: find the plane which a particle will have crossed
-  ! This is done by calculating the distance to each surface
-  ! Include inside or outside to allow generality (need to change
-  ! particle direction otherwise)
-  !
+  !!
+  !! Helper routine: find the plane which a particle will have crossed
+  !! This is done by calculating the distance to each surface
+  !! Include inside or outside to allow generality (need to change
+  !! particle direction otherwise)
+  !!
   function whichPlaneXSquCyl(self, r, u) result(surfPointer)
-    implicit none
-    class(xSquareCylinder), intent(in) :: self
+    class(xSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer :: surfPointer
-    real(defReal), dimension(3) :: testPoint, posBound, negBound
-    real(defReal) :: testDistance, distance
+    class(surface), pointer                 :: surfPointer
+    real(defReal), dimension(3)             :: testPoint, posBound, negBound
+    real(defReal)                           :: testDistance, distance
 
     distance = INFINITY
     posBound = self % origin + self % a + surface_tol
@@ -314,7 +310,7 @@ contains
   !! Set boundary conditions for an xSquareCylinder: may only be vacuum
   !!
   subroutine setBoundaryConditionsXSquareCylinder(self, BC)
-    class(xSquareCylinder), intent(inout) :: self
+    class(xSquareCylinder), intent(inout)       :: self
     integer(shortInt), dimension(6), intent(in) :: BC
 
     ! Positive y boundary
@@ -328,7 +324,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(1) % isPeriodic = .TRUE.
-        self % yPlanes(1) % periodicTranslation = [ZERO, -2.*self % a(2), ZERO]
+        self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
@@ -345,7 +341,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(2) % isPeriodic = .TRUE.
-        self % yPlanes(2) % periodicTranslation = [ZERO, 2.*self % a(2), ZERO]
+        self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
@@ -386,24 +382,25 @@ contains
     end if
   end subroutine setBoundaryConditionsXSquareCylinder
 
-!
-! Y-Square cylinder procedures
-!
-  !
-  ! Initialise the cylinder as four plane surfaces
-  !
+!!
+!! Y-Square cylinder procedures
+!!
+  !!
+  !! Initialise the cylinder as four plane surfaces
+  !!
   subroutine initYSquCyl(self, origin, a, id, name)
-    implicit none
-    class(ySquareCylinder), intent(inout) :: self
+    class(ySquareCylinder), intent(inout)   :: self
     real(defReal), dimension(3), intent(in) :: a
     real(defReal), dimension(3), intent(in) :: origin
     integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in) :: name
-    integer(shortInt) :: i
-    real(defReal) :: neg
+    character(*), optional, intent(in)      :: name
+    integer(shortInt)                       :: i
+    real(defReal)                           :: neg
 
     self % isCompound = .true.
     self % a = a
+    if((a(1) < surface_tol) .OR. (a(3) < surface_tol)) &
+    call fatalError('init, ySquareCylinder','Widths must be greater than surface tolerance')
     self % origin = origin
 
     if(present(id)) self % id = id
@@ -416,27 +413,26 @@ contains
     allocate(self%zPlanes(2))
 
     ! Initialise each plane in each cardinal direction
-    neg = +1.0
+    neg = +ONE
     do i = 1, 2
       call self%xPlanes(i)%init(origin(1) + neg*a(1))
       call self%zPlanes(i)%init(origin(3) + neg*a(3))
-      neg = -1.0
+      neg = -ONE
     end do
 
   end subroutine initYSquCyl
 
-  !
-  ! Evaluate the surface function of the square cylinder
-  !
+  !!
+  !! Evaluate the surface function of the square cylinder
+  !!
   function evaluateYSquCyl(self, r) result(res)
-    implicit none
-    class(ySquareCylinder), intent(in) :: self
+    class(ySquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal) :: res
-    real(defReal), dimension(2) :: resX  ! Results from yPlanes
-    real(defReal), dimension(2) :: resZ  ! Results from zPlanes
-    real(defReal) :: absMinRes           ! Identify if particle sits on a surface
-    real(defReal) :: testRes             ! The most positive residual
+    real(defReal)                           :: res
+    real(defReal), dimension(2)             :: resX      ! Results from yPlanes
+    real(defReal), dimension(2)             :: resZ      ! Results from zPlanes
+    real(defReal)                           :: absMinRes ! Identify if particle sits on a surface
+    real(defReal)                           :: testRes   ! The most positive residual
 
     ! Evaluate the front planes' surface functions
     resX(1) = self % xPlanes(1) % evaluate(r)
@@ -481,18 +477,17 @@ contains
 
   end function evaluateYSquCyl
 
-  !
-  ! Calculate the distance to the nearest surface of the cylinder
-  ! Requires checking that only real surfaces are intercepted,
-  ! i.e., not the extensions of the plane surfaces
-  !
-  function distanceToYSquCyl(self, r, u)result(distance)
-    implicit none
-    class(ySquareCylinder), intent(in) :: self
+  !!
+  !! Calculate the distance to the nearest surface of the cylinder
+  !! Requires checking that only real surfaces are intercepted,
+  !! i.e., not the extensions of the plane surfaces
+  !!
+  function distanceToYSquCyl(self, r, u) result(distance)
+    class(ySquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal), dimension(3) :: posBound, negBound, testPoint
-    real(defReal) :: distance
-    real(defReal) :: testDistance
+    real(defReal), dimension(3)             :: posBound, negBound, testPoint
+    real(defReal)                           :: distance
+    real(defReal)                           :: testDistance
 
     distance = INFINITY
     ! Find the positive and negative bounds which the particle
@@ -526,18 +521,17 @@ contains
 
   end function distanceToYSquCyl
 
-  !
-  ! Apply a reflective transformation to a particle during delta tracking
-  ! Do so by determining which plane the particle intersects and applying the plane reflection
-  !
-  ! This routine has been obviated due to BC implementation in the transport operator and surface
-  ! search in the cell
-  !
+  !!
+  !! Apply a reflective transformation to a particle during delta tracking
+  !! Do so by determining which plane the particle intersects and applying the plane reflection
+  !!
+  !! This routine has been obviated due to BC implementation in the transport operator and surface
+  !! search in the cell
+  !!
   subroutine reflectiveTransformYSquCyl(self, r, u)
-    implicit none
-    class(ySquareCylinder), intent(in) :: self
+    class(ySquareCylinder), intent(in)         :: self
     real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer :: surfPointer
+    class(surface), pointer                    :: surfPointer
 
     call fatalError('reflectiveTransformYSquCyl','This routine should not be called')
     surfPointer => self % whichSurface(r, u)
@@ -545,15 +539,14 @@ contains
 
   end subroutine reflectiveTransformYSquCyl
 
-  !
-  ! Determine on which surface the particle is located and obtain
-  ! its normal vector
-  !
-  function normalYSquCyl(self, r)result(normal)
-    implicit none
-    class(ySquareCylinder), intent(in) :: self
+  !!
+  !! Determine on which surface the particle is located and obtain
+  !! its normal vector
+  !!
+  function normalYSquCyl(self, r) result(normal)
+    class(ySquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3) :: normal, posBound, negBound
+    real(defReal), dimension(3)             :: normal, posBound, negBound
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -577,19 +570,18 @@ contains
 
   end function normalYSquCyl
 
-  !
-  ! Helper routine: find the plane which a particle will have crossed
-  ! This is done by calculating the distance to each surface
-  ! Include inside or outside to allow generality (need to change
-  ! particle direction otherwise)
-  !
+  !!
+  !! Helper routine: find the plane which a particle will have crossed
+  !! This is done by calculating the distance to each surface
+  !! Include inside or outside to allow generality (need to change
+  !! particle direction otherwise)
+  !!
   function whichPlaneYSquCyl(self, r, u) result(surfPointer)
-    implicit none
-    class(ySquareCylinder), intent(in) :: self
+    class(ySquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer :: surfPointer
-    real(defReal), dimension(3) :: testPoint, posBound, negBound
-    real(defReal) :: testDistance, distance
+    class(surface), pointer                 :: surfPointer
+    real(defReal), dimension(3)             :: testPoint, posBound, negBound
+    real(defReal)                           :: testDistance, distance
 
     distance = INFINITY
     posBound = self % origin + self % a + surface_tol
@@ -639,7 +631,7 @@ contains
   !! Apply generic boundary conditions to a ySquareCylinder
   !!
   subroutine setBoundaryConditionsYSquareCylinder(self, BC)
-    class(ySquareCylinder), intent(inout) :: self
+    class(ySquareCylinder), intent(inout)       :: self
     integer(shortInt), dimension(6), intent(in) :: BC
 
     ! Positive x boundary
@@ -653,7 +645,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(1) % isPeriodic = .TRUE.
-        self % xPlanes(1) % periodicTranslation = [-2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(1) % periodicTranslation = [-TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsYSquareCylinder','Invalid boundary condition provided')
@@ -670,7 +662,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(2) % isPeriodic = .TRUE.
-        self % xPlanes(2) % periodicTranslation = [2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(2) % periodicTranslation = [TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsYSquareCylinder','Invalid boundary condition provided')
@@ -687,7 +679,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(1) % isPeriodic = .TRUE.
-        self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -2.*self % a(3)]
+        self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -TWO*self % a(3)]
       end if
     else
       call fatalError('setBoundaryConditionsYSquareCylinder','Invalid boundary condition provided')
@@ -704,7 +696,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(2) % isPeriodic = .TRUE.
-        self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, 2.*self % a(3)]
+        self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, TWO*self % a(3)]
       end if
     else
       call fatalError('setBoundaryConditionsYSquareCylinder','Invalid boundary condition provided')
@@ -712,24 +704,25 @@ contains
 
   end subroutine setBoundaryConditionsYSquareCylinder
 
-!
-! Z-Square cylinder procedures
-!
-  !
-  ! Initialise the cylinder as four plane surfaces
-  !
+!!
+!! Z-Square cylinder procedures
+!!
+  !!
+  !! Initialise the cylinder as four plane surfaces
+  !!
   subroutine initZSquCyl(self, origin, a, id, name)
-    implicit none
-    class(zSquareCylinder), intent(inout) :: self
+    class(zSquareCylinder), intent(inout)   :: self
     real(defReal), dimension(3), intent(in) :: a
     real(defReal), dimension(3), intent(in) :: origin
     integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in) :: name
-    integer(shortInt) :: i
-    real(defReal) :: neg
+    character(*), optional, intent(in)      :: name
+    integer(shortInt)                       :: i
+    real(defReal)                           :: neg
 
     self % isCompound = .true.
     self % a = a
+    if((a(1) < surface_tol) .OR. (a(2) < surface_tol)) &
+    call fatalError('init, zSquareCylinder','Widths must be greater than surface tolerance')
     self % origin = origin
 
     if(present(id)) self % id = id
@@ -742,27 +735,26 @@ contains
     allocate(self%yPlanes(2))
 
     ! Initialise each plane in each cardinal direction
-    neg = +1.0
+    neg = +ONE
     do i = 1, 2
       call self%xPlanes(i)%init(origin(1) + neg*a(1))
       call self%yPlanes(i)%init(origin(2) + neg*a(2))
-      neg = -1.0
+      neg = -ONE
     end do
 
   end subroutine initZSquCyl
 
-  !
-  ! Evaluate the surface function of the square cylinder
-  !
+  !!
+  !! Evaluate the surface function of the square cylinder
+  !!
   function evaluateZSquCyl(self, r) result(res)
-    implicit none
-    class(zSquareCylinder), intent(in) :: self
+    class(zSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal) :: res
-    real(defReal), dimension(2) :: resX  ! Results from yPlanes
-    real(defReal), dimension(2) :: resY  ! Results from zPlanes
-    real(defReal) :: absMinRes           ! Identify if particle sits on a surface
-    real(defReal) :: testRes             ! The most positive residual
+    real(defReal)                           :: res
+    real(defReal), dimension(2)             :: resX      ! Results from yPlanes
+    real(defReal), dimension(2)             :: resY      ! Results from zPlanes
+    real(defReal)                           :: absMinRes ! Identify if particle sits on a surface
+    real(defReal)                           :: testRes   ! The most positive residual
 
     ! Evaluate the front planes' surface functions
     resX(1) = self % xPlanes(1) % evaluate(r)
@@ -807,18 +799,17 @@ contains
 
   end function evaluateZSquCyl
 
-  !
-  ! Calculate the distance to the nearest surface of the cylinder
-  ! Requires checking that only real surfaces are intercepted,
-  ! i.e., not the extensions of the plane surfaces
-  !
+  !!
+  !! Calculate the distance to the nearest surface of the cylinder
+  !! Requires checking that only real surfaces are intercepted,
+  !! i.e., not the extensions of the plane surfaces
+  !!
   function distanceToZSquCyl(self, r, u)result(distance)
-    implicit none
-    class(zSquareCylinder), intent(in) :: self
+    class(zSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal), dimension(3) :: posBound, negBound, testPoint
-    real(defReal) :: distance
-    real(defReal) :: testDistance
+    real(defReal), dimension(3)             :: posBound, negBound, testPoint
+    real(defReal)                           :: distance
+    real(defReal)                           :: testDistance
 
     distance = INFINITY
     ! Find the positive and negative bounds which the particle
@@ -852,17 +843,16 @@ contains
 
   end function distanceToZSquCyl
 
-  !
-  ! Apply a reflective transformation to a particle during delta tracking
-  ! Do so by determining which plane the particle intersects and applying the plane reflection
-  !
-  ! This routine should be obviated due to the structure of the transport operator and cell
-  !
+  !!
+  !! Apply a reflective transformation to a particle during delta tracking
+  !! Do so by determining which plane the particle intersects and applying the plane reflection
+  !!
+  !! This routine should be obviated due to the structure of the transport operator and cell
+  !!
   subroutine reflectiveTransformZSquCyl(self, r, u)
-    implicit none
-    class(zSquareCylinder), intent(in) :: self
+    class(zSquareCylinder), intent(in)         :: self
     real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer :: surfPointer
+    class(surface), pointer                    :: surfPointer
 
     call fatalError('reflectiveTransformZSquCyl','This routine should not be called')
     surfPointer => self % whichSurface(r, u)
@@ -870,15 +860,14 @@ contains
 
   end subroutine reflectiveTransformZSquCyl
 
-  !
-  ! Determine on which surface the particle is located and obtain
-  ! its normal vector
-  !
-  function normalZSquCyl(self, r)result(normal)
-    implicit none
-    class(zSquareCylinder), intent(in) :: self
+  !!
+  !! Determine on which surface the particle is located and obtain
+  !! its normal vector
+  !!
+  function normalZSquCyl(self, r) result(normal)
+    class(zSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3) :: normal, posBound, negBound
+    real(defReal), dimension(3)             :: normal, posBound, negBound
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -902,19 +891,18 @@ contains
 
   end function normalZSquCyl
 
-  !
-  ! Helper routine: find the plane which a particle will have crossed
-  ! This is done by calculating the distance to each surface
-  ! Include inside or outside to allow generality (need to change
-  ! particle direction otherwise)
-  !
+  !!
+  !! Helper routine: find the plane which a particle will have crossed
+  !! This is done by calculating the distance to each surface
+  !! Include inside or outside to allow generality (need to change
+  !! particle direction otherwise)
+  !!
   function whichPlaneZSquCyl(self, r, u) result(surfPointer)
-    implicit none
-    class(zSquareCylinder), intent(in) :: self
+    class(zSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer :: surfPointer
-    real(defReal), dimension(3) :: testPoint, posBound, negBound
-    real(defReal) :: testDistance, distance
+    class(surface), pointer                 :: surfPointer
+    real(defReal), dimension(3)             :: testPoint, posBound, negBound
+    real(defReal)                           :: testDistance, distance
 
     distance = INFINITY
     posBound = self % origin + self % a + surface_tol
@@ -964,7 +952,7 @@ contains
   !! Apply generic boundary conditions to a zSquareCylinder
   !!
   subroutine setBoundaryConditionsZSquareCylinder(self, BC)
-    class(zSquareCylinder), intent(inout) :: self
+    class(zSquareCylinder), intent(inout)       :: self
     integer(shortInt), dimension(6), intent(in) :: BC
 
      ! Positive x boundary
@@ -978,7 +966,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(1) % isPeriodic = .TRUE.
-        self % xPlanes(1) % periodicTranslation = [-2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(1) % periodicTranslation = [-TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsZSquareCylinder','Invalid boundary condition provided')
@@ -995,7 +983,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(2) % isPeriodic = .TRUE.
-        self % xPlanes(2) % periodicTranslation = [2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(2) % periodicTranslation = [TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsZSquareCylinder','Invalid boundary condition provided')
@@ -1012,7 +1000,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(1) % isPeriodic = .TRUE.
-        self % yPlanes(1) % periodicTranslation = [ZERO, -2.*self % a(2), ZERO]
+        self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsZSquareCylinder','Invalid boundary condition provided')
@@ -1029,7 +1017,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(2) % isPeriodic = .TRUE.
-        self % yPlanes(2) % periodicTranslation = [ZERO, 2.*self % a(2), ZERO]
+        self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsZSquareCylinder','Invalid boundary condition provided')
