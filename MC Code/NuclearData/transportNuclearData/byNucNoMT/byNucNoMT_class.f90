@@ -2,6 +2,7 @@ module byNucNoMT_class
 
   ! Global modules
   use numPrecision
+  use endfConstants
   use genericProcedures,             only : fatalError, linFind, searchError
   use RNG_class,                     only : RNG
   use dictionary_class,              only : dictionary
@@ -54,7 +55,7 @@ module byNucNoMT_class
     procedure :: getMajorantXS_E
     procedure :: getTotalMatXS_E
     procedure :: isFissileMat
-    procedure :: initFissionSite
+    procedure :: initFissionSite_E
     procedure :: setActiveMaterials
 
     ! perNuclideNuclearDataCE procedures
@@ -178,6 +179,7 @@ contains
     character(*), intent(in)     :: matName
     integer(shortInt)            :: matIdx
     character(100), parameter    :: Here = 'getIdx (byNucNoMt_class.f90)'
+
     matIdx = linFind(self % dataBlock % matData(:) % name, matName)
     call searchError(matIdx,Here)
 
@@ -271,12 +273,56 @@ contains
   !!
   !! Function to generate a fission site from a fissile material.
   !! Necassary in initialisation of an eigenvalue calculation:
+  !! Remember that fissile material and CE neutron is assured by the adapter interface
   !!
-  subroutine initFissionSite(self,p)
+  subroutine initFissionSite_E(self,p)
     class(byNucNoMT), intent(in)   :: self
     class(particle), intent(inout) :: p
+    integer(shortInt)              :: matIdx, nucIdx, nucIdx_temp, i
+    real(defReal)                  :: E_out, mu, phi, maxDens
+    real(defReal)                  :: r1
+    real(defReal), parameter       :: E_in = 1.0E-6_defReal
+    character(100), parameter      :: Here=' initFissionSite_E ( byNucNoMT_class.f90)'
 
-  end subroutine initFissionSite
+    ! Obtain random numbers
+    r1 = p % pRNG % get()
+
+    ! Choose fission Nuclide -> fissile nuclide with the largest numerical density
+    associate (materialDat => self % dataBlock % matData(matIdx))
+      ! Loop over all nuclides
+      nucIdx  = 0
+      maxDens = ZERO
+
+      do i=1, size(materialDat % nucIdx)
+        nucIdx_temp = materialDat % nucIdx(i)
+
+        ! Determine if nuclide is fissile
+        if ( self % isFissileNuc(nucIdx_temp)) then
+
+          ! Compare with privious largest density
+          if( maxDens < materialDat % nucDens(i)) then
+            maxDens = materialDat % nucDens(i)
+            nucIdx = nucIdx_temp
+
+          end if
+        end if
+
+      end do
+
+      ! Check if something went wrong an nucIdx=0
+      if (nucIdx == 0) call fatalError(Here,'nucIdx=0. No fissile nuclides in material. Impossible error')
+
+    end associate
+
+    ! Sample fission Neutron energy, mu and phi
+    call self % sampleMuEout(mu, E_out,E_in ,p % pRNG ,N_fission,nucIdx)
+    phi = 2*PI*r1
+
+    ! Update particle state
+    call p % rotate(mu,phi)
+    p % E = E_out
+
+  end subroutine initFissionSite_E
 
 
   !!
@@ -327,19 +373,51 @@ contains
     class(byNucNoMT), intent(inout) :: self
     real(defReal),intent(in)        :: E
     integer(shortInt),intent(in)    :: nucIdx
-     integer(shortInt),intent(in)   :: MT
+    integer(shortInt),intent(in)    :: MT
     real(defReal)                   :: xs
+    character(100),parameter        :: Here='xsOf (byNucNoMT_class.f90)'
+
+    ! Set approperiate nuclide shelf to energy
+    call self % nucShelf(nucIdx) % setEnergy(E)
+
+    ! Choose approperiate cross-section
+    select case(MT)
+      case(N_total)
+        xs = self % nucShelf(nucIdx) % xs % total
+
+      case(N_N_elastic,anyScatter)
+        xs = self % nucShelf(nucIdx) % xs % scatter
+
+      case(anyCapture)
+        xs = self % nucShelf(nucIdx) % xs % capture
+
+      case(N_fission,anyFission)
+        xs = self % nucShelf(nucIdx) % xs % fission
+
+      case default
+        call fatalError(Here,'Cross section for a given MT for '//           &
+                              self % dataBlock % nucXSData(nucIdx) % zzId // &
+                              ' is not avalible'                          )
+        xs = ZERO
+    end select
+
   end function xsOf
 
   !!
-  !! Invert scattering - for given random number sample MT number of a scattering reaction
-  !! All reactions that produce secondary neutrons should be considered
+  !! Invert scattering - for given random number, sample MT number of a scattering reaction
+  !! In the cace of byNucNoMT only Elastic Stattering can happen
   !!
   function invertScattering(self,E,r) result(MT)
     class(byNucNoMT), intent(inout) :: self
     real(defReal), intent(in)       :: E
     real(defReal), intent(in)       :: r
     integer(shortInt)               :: MT
+
+    MT = N_N_elastic
+    return
+    ! Avoid compiler warnings include dead code that uses dummy variables
+    MT = MT+ 0 * int(E*r)
+
   end function invertScattering
 
   !!

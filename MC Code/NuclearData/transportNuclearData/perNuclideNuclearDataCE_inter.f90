@@ -26,11 +26,13 @@ module perNuclideNuclearDataCE_inter
     procedure :: getTransXS_p
     procedure :: getMajorantXS_p
     procedure :: getTotalMatXS_p
+    procedure :: initFissionSite
 
     ! Per energy access to transport xs data by Energy
-    procedure(getTransXS_E),deferred    :: getTransXS_E
-    procedure(getMajorantXS_E),deferred :: getMajorantXS_E
-    procedure(getTotalMatXS_E),deferred :: getTotalMatXS_E
+    procedure(getTransXS_E),deferred     :: getTransXS_E
+    procedure(getMajorantXS_E),deferred  :: getMajorantXS_E
+    procedure(getTotalMatXS_E),deferred  :: getTotalMatXS_E
+    procedure(initFissionSite_E),deferred:: initFissionSite_E
 
     ! Procedures to obtain nuclide data
     procedure(getMainNucXS),deferred      :: getMainNucXS
@@ -89,6 +91,17 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt), intent(in)                 :: matIdx
       real(defReal)                                 :: xs
     end function getTotalMatXS_E
+
+    !!
+    !! Sample fission site knowing that particle is in fissile material and is CE
+    !!
+    subroutine initFissionSite_E(self,p)
+      import :: perNuclideNuclearDataCE, &
+                particle
+      class(perNuclideNuclearDataCE), intent(in) :: self
+      class(particle), intent(inout)             :: p
+
+    end subroutine initFissionSite_E
 
     !!
     !! Subroutine which attaches a pointer to Main xs set for a given nuclide
@@ -318,5 +331,35 @@ contains
     xs = self % getTotalMatXS_E(p % E, matIdx)
 
   end function getTotalMatXS_p
+
+  !!
+  !! Function to generate a fission site from a fissile material.
+  !! Necassary in initialisation of an eigenvalue calculation:
+  !! Is it to avoid reapeting code to determine if material is fissile and CE
+  !!
+  subroutine initFissionSite(self,p)
+    class(perNuclideNuclearDataCE), intent(in)   :: self
+    class(particle), intent(inout)               :: p
+    integer(shortInt)                            :: matIdx
+    character(100), parameter      :: Here = 'initFissionSite (perNuclideNuclearDataCE_inter.f90)'
+
+    matIdx = p % matIdx
+
+    ! Determine if material is fissile
+    if ( .not.self % isFissileMat(matIdx) ) then
+      p % isDead = .true.
+      return
+    end if
+
+    ! Determine if particle is CE and throw error if it is MG
+    if ( p % isMG ) then
+      call fatalError(Here,'Trying to create fission site for MG particle with CE data')
+    end if
+
+    ! Call specific instance implementation of sampling
+    call self % initFissionSite_E(p)
+
+  end subroutine initFissionSite
+
 
 end module perNuclideNuclearDataCE_inter
