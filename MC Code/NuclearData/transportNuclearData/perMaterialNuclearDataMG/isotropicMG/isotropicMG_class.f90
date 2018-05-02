@@ -2,15 +2,16 @@ module isotropicMG_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures,     only : fatalError, linFind, searchError
-  use dictionary_class,      only : dictionary
-  use IOdictionary_class,    only : IOdictionary
-  use RNG_class,             only : RNG
+  use genericProcedures,              only : fatalError, linFind, searchError
+  use dictionary_class,               only : dictionary
+  use IOdictionary_class,             only : IOdictionary
+  use RNG_class,                      only : RNG
+  use particle_class,                 only : particle
 
-  use perMaterialMgXs_inter, only : perMaterialMgXs
-  use outscatterCDF_class,   only : outscatterCDF
-  use xsMacroSet_class,      only : xsMacroSet
-  use releaseMatrixMG_class, only : releaseMatrixMG
+  use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
+  use outscatterCDF_class,            only : outscatterCDF
+  use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
+  use releaseMatrixMG_class,          only : releaseMatrixMG
 
   implicit none
   private
@@ -24,7 +25,7 @@ module isotropicMG_class
     logical(defBool)   :: isActive  = .true.
   end type materialData
 
-  type, public, extends(perMaterialMgXs) :: isotropicMG
+  type, public, extends(perMaterialNuclearDataMG) :: isotropicMG
     private
     integer(shortInt)   :: nG
     integer(shortInt)   :: nMat
@@ -37,25 +38,24 @@ module isotropicMG_class
     real(defReal), dimension(:), allocatable           :: majorantXS     ! (energyGroup)
 
   contains
-
-    !* INTERFACE PROCEDURES *!
-    ! Initialisation procdures
     procedure :: init
 
-    ! Procedures to obtain XSs
-    procedure  :: getMatMacroXS
-    procedure  :: getTransXS
-    procedure  :: getMajorantXS
-    procedure  :: getTotalMatXS
+    ! Nuclear Data Interface Procedures
+    procedure :: getIdx
+    procedure :: getName
 
-    ! Procedures to obtain emission data
-    procedure  :: releaseAt
-    procedure  :: sampleMuGout
+    ! transportNuclearData Interface Procedures
+    procedure :: getTransXS_G
+    procedure :: getMajorantXS_G
+    procedure :: getTotalMatXS_G
+    procedure :: isFissileMat
+    procedure :: initFissionSite
+    procedure :: setActiveMaterials     !*
 
-    ! Procedures to access material information
-    procedure  :: getIdx
-    procedure  :: getName
-    procedure  :: isFissileMat
+    ! perMaterialNuclearDataMG InterfaceProcedures
+    procedure :: getMatMacroXS
+    procedure :: releaseAt
+    procedure :: sampleMuGout
 
     !* TYPE PROCEDURES *!
     procedure, private :: readMaterial
@@ -106,6 +106,182 @@ contains
     call self % calculateMajorant()
 
   end subroutine init
+
+  !!
+  !! Return matIdx of material with matName
+  !!
+  function getIdx(self,matName) result(matIdx)
+    class(isotropicMG), intent(in)      :: self
+    character(*), intent(in)            :: matName
+    integer(shortInt)                   :: matIdx
+    character(100), parameter           :: Here ='getMatIdx (isotropicMG_class.f90)'
+
+    matIdx = linFind(self % matData % matName, matName)
+    call searchError(matIdx,Here)
+
+  end function getIdx
+
+  !!
+  !! Returns matName of material with matIdx
+  !!
+  function getName(self,matIdx) result(matName)
+    class(isotropicMG), intent(in)      :: self
+    integer(shortInt), intent(in)       :: matIdx
+    character(nameLen)                  :: matName
+
+    matName = self % matData(matIdx) % matName
+
+  end function getName
+
+  !!
+  !! Return transport XS (in general diffrent from total XS)
+  !!
+  function getTransXS_G(self,G,matIdx) result(xs)
+    class(isotropicMG), intent(inout)  :: self
+    integer(shortInt), intent(in)      :: G
+    integer(shortInt), intent(in)      :: matIdx
+    real(defReal)                      :: xs
+
+    xs = self % XSs(G,matIdx) % totalXS
+
+  end function getTransXS_G
+
+  !!
+  !! Return majorant XS (in general should be largest of TRANSPORT XSs)
+  !!
+  function getMajorantXS_G(self,G) result (xs)
+    class(isotropicMG), intent(inout)  :: self
+    integer(shortInt), intent(in)      :: G
+    real(defReal)                      :: xs
+
+    xs = self % majorantXS(G)
+
+  end function getMajorantXS_G
+
+  !!
+  !! Return total XS of material
+  !!
+  function getTotalMatXS_G(self,G,matIdx) result (xs)
+    class(isotropicMG), intent(inout)  :: self
+    integer(shortInt), intent(in)      :: G
+    integer(shortInt), intent(in)      :: matIdx
+    real(defReal)                      :: xs
+
+    xs = self % XSs(G,matIdx) % totalXS
+
+  end function getTotalMatXS_G
+
+  !!
+  !! Returns .true. if material is fissile
+  !!
+  function isFissileMat(self,matIdx) result(isIt)
+    class(isotropicMG), intent(in)  :: self
+    integer(shortInt), intent(in)   :: matIdx
+    logical(defBool)                :: isIt
+
+    isIt = self % matData(matIdx) % isFissile
+
+  end function isFissileMat
+
+  !!
+  !! Procedure to generate a fission site from a fissile material.
+  !! Necassary in initialisation of an eigenvalue calculation:
+  !! Remember that fissile material and MG neutron is assured by the adapter interface
+  !!
+  subroutine initFissionSite(self,p)
+    class(isotropicMG), intent(in)    :: self
+    class(particle), intent(inout)    :: p
+
+  end subroutine initFissionSite
+
+  !!
+  !! Set all materials that are present in geometry
+  !! Active materials will be included in evaluation of majorant XS
+  !!
+  !! Provide an array of all active material indexes
+  !! Order is not significant (assume there is none)
+  !!
+  subroutine setActiveMaterials(self,matIdxList)
+    class(isotropicMG), intent(inout)          :: self
+    integer(shortInt),dimension(:), intent(in) :: matIdxList
+
+  end subroutine
+
+  !!
+  !! Attach pointer to approperiate XS data
+  !!
+  subroutine getMatMacroXS(self,macroXS,G,matIdx)
+    class(isotropicMG), intent(in)               :: self
+    type(xsMacroSet_ptr),intent(inout)           :: macroXS
+    integer(shortInt),intent(in)                 :: G
+    integer(shortInt),intent(in)                 :: matIdx
+
+    macroXS = self % XSs(G,matIdx)
+    ! The weirdest error
+    ! It seems that same call to a procedure is necessary to avoid "undefined reference error"
+    ! in collision operator
+    !call macroXS % dummy()
+
+  end subroutine getMatMacroXS
+
+  !!
+  !! Returns neutron release at G_in for material matIdx and reaction MT
+  !!
+  function releaseAt(self,G_in,G_out,MT,matIdx) result(nu)
+    class(isotropicMG), intent(in)      :: self
+    integer(shortInt), intent(in)       :: G_in
+    integer(shortInt), intent(in)       :: G_out
+    integer(shortInt), intent(in)       :: MT
+    integer(shortInt), intent(in)       :: matIdx
+    real(defReal)                       :: nu
+    character(100), parameter           :: Here = 'releaseAt (isotropicMG_class.f90)'
+
+    select case(MT)
+      case(macroAllScatter)
+        nu = self % releaseData(matIdx) % scatterRelease(G_in,G_out)
+
+      case(macroFission)
+        nu = self % releaseData(matIdx) % fissionRelease(G_in)
+
+      case default
+        call fatalError(Here,'Unrecoginsed MT number')
+
+    end select
+
+  end function releaseAt
+
+  !!
+  !! Samples deflection angle in LAB frame and post-colission energy group
+  !! This implementation is CRAP. SHOULD BE BRANCHLESS. IMPROVE IT! **##~~##**
+  !!
+  subroutine sampleMuGout(self,mu,G_out,G_in,rand,MT,matIdx)
+    class(isotropicMG), intent(in)     :: self
+    real(defReal), intent(out)         :: mu
+    integer(shortInt), intent(out)     :: G_out
+    integer(shortInt), intent(in)      :: G_in
+    class(RNG), intent(inout)          :: rand
+    integer(shortInt), intent(in)      :: MT
+    integer(shortInt), intent(in)      :: matIdx
+    real(defReal)                      :: r1
+    character(100), parameter          :: Here ='sampleMuGout (isotropicMG_class.f90)'
+
+    mu = TWO * rand % get() - ONE
+
+    r1 = rand % get()
+
+    select case(MT)
+      case(macroAllScatter)
+        G_out = self % transferMatrix(G_in, matIdx) % invert(r1)
+
+      case(macroFission)
+        G_out = self % chiValues(matIdx) % invert(r1)
+
+      case default
+        call fatalError(Here,'Unrecoginsed MT number')
+
+    end select
+
+  end subroutine sampleMuGout
 
   !!
   !! Read material under index "idx" from dictionary "dict"
@@ -228,159 +404,6 @@ contains
     self % majorantXS = maxval( self % XSs(:,activeIdx) % totalXS, 2 )
 
   end subroutine calculateMajorant
-
-  !!
-  !! Attach pointer to approperiate XS data
-  !!
-  subroutine getMatMacroXS(self,macroXS,G,matIdx)
-    class(isotropicMG), intent(inout)            :: self
-    type(xsMacroSet),pointer,intent(inout)       :: macroXS
-    integer(shortInt),intent(in)                 :: G
-    integer(shortInt),intent(in)                 :: matIdx
-
-    macroXS => self % XSs(G,matIdx)
-    ! The weirdest error
-    ! It seems that same call to a procedure is necessary to avoid "undefined reference error"
-    ! in collision operator
-    call macroXS % dummy()
-
-  end subroutine getMatMacroXS
-
-  !!
-  !! Return transport XS (in general diffrent from total XS)
-  !!
-  function getTransXS(self,G,matIdx) result(xs)
-    class(isotropicMG), intent(inout)  :: self
-    integer(shortInt), intent(in)      :: G
-    integer(shortInt), intent(in)      :: matIdx
-    real(defReal)                      :: xs
-
-    xs = self % XSs(G,matIdx) % totalXS
-
-  end function getTransXS
-
-  !!
-  !! Return majorant XS (in general should be largest of TRANSPORT XSs)
-  !!
-  function getMajorantXS(self,G) result (xs)
-    class(isotropicMG), intent(inout)  :: self
-    integer(shortInt), intent(in)      :: G
-    real(defReal)                      :: xs
-
-    xs = self % majorantXS(G)
-
-  end function getMajorantXS
-
-  !!
-  !! Return total XS of material
-  !!
-  function getTotalMatXS(self,G,matIdx) result (xs)
-    class(isotropicMG), intent(inout)  :: self
-    integer(shortInt), intent(in)      :: G
-    integer(shortInt), intent(in)      :: matIdx
-    real(defReal)                      :: xs
-
-    xs = self % XSs(G,matIdx) % totalXS
-
-  end function getTotalMatXS
-
-  !!
-  !! Returns neutron release at G_in for material matIdx and reaction MT
-  !!
-  function releaseAt(self,G_in,G_out,MT,matIdx) result(nu)
-    class(isotropicMG), intent(inout)   :: self
-    integer(shortInt), intent(in)       :: G_in
-    integer(shortInt), intent(in)       :: G_out
-    integer(shortInt), intent(in)       :: MT
-    integer(shortInt), intent(in)       :: matIdx
-    real(defReal)                       :: nu
-    character(100), parameter           :: Here = 'releaseAt (isotropicMG_class.f90)'
-
-    select case(MT)
-      case(macroAllScatter)
-        nu = self % releaseData(matIdx) % scatterRelease(G_in,G_out)
-
-      case(macroFission)
-        nu = self % releaseData(matIdx) % fissionRelease(G_in)
-
-      case default
-        call fatalError(Here,'Unrecoginsed MT number')
-
-    end select
-
-  end function releaseAt
-
-  !!
-  !! Samples deflection angle in LAB frame and post-colission energy group
-  !! This implementation is CRAP. SHOULD BE BRANCHLESS. IMPROVE IT! **##~~##**
-  !!
-  subroutine sampleMuGout(self,mu,G_out,G_in,rand,MT,matIdx)
-    class(isotropicMG), intent(inout)  :: self
-    real(defReal), intent(out)         :: mu
-    integer(shortInt), intent(out)     :: G_out
-    integer(shortInt), intent(in)      :: G_in
-    class(RNG), intent(inout)          :: rand
-    integer(shortInt), intent(in)      :: MT
-    integer(shortInt), intent(in)      :: matIdx
-    real(defReal)                      :: r1
-    character(100), parameter          :: Here ='sampleMuGout (isotropicMG_class.f90)'
-
-    mu = TWO * rand % get() - ONE
-
-    r1 = rand % get()
-
-    select case(MT)
-      case(macroAllScatter)
-        G_out = self % transferMatrix(G_in, matIdx) % invert(r1)
-
-      case(macroFission)
-        G_out = self % chiValues(matIdx) % invert(r1)
-
-      case default
-        call fatalError(Here,'Unrecoginsed MT number')
-
-    end select
-
-  end subroutine sampleMuGout
-
-
-  !!
-  !! Return matIdx of material with matName
-  !!
-  function getIdx(self,matName) result(matIdx)
-    class(isotropicMG), intent(in)      :: self
-    character(*), intent(in)            :: matName
-    integer(shortInt)                   :: matIdx
-    character(100), parameter           :: Here ='getMatIdx (isotropicMG_class.f90)'
-
-    matIdx = linFind(self % matData % matName, matName)
-    call searchError(matIdx,Here)
-
-  end function getIdx
-
-  !!
-  !! Returns matName of material with matIdx
-  !!
-  function getName(self,matIdx) result(matName)
-    class(isotropicMG), intent(in)      :: self
-    integer(shortInt), intent(in)       :: matIdx
-    character(nameLen)                  :: matName
-
-    matName = self % matData(matIdx) % matName
-
-  end function getName
-
-  !!
-  !! Returns .true. if material is fissile
-  !!
-  function isFissileMat(self,matIdx) result(isIt)
-    class(isotropicMG), intent(in)  :: self
-    integer(shortInt), intent(in)   :: matIdx
-    logical(defBool)                :: isIt
-
-    isIt = self % matData(matIdx) % isFissile
-
-  end function isFissileMat
 
 
 end module isotropicMG_class

@@ -3,23 +3,23 @@ module collisionOperatorMG_class
   use numPrecision
   use endfConstants
 
-  use genericProcedures,      only : fatalError, rotateVector
-  use RNG_class,              only : RNG
-  use particle_class,         only : particle
-  use particleDungeon_class,  only : particleDungeon
-  use perMaterialMgXS_inter,  only : perMaterialMgXS
+  use genericProcedures,              only : fatalError, rotateVector
+  use RNG_class,                      only : RNG
+  use particle_class,                 only : particle
+  use particleDungeon_class,          only : particleDungeon
+  use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Cross-section packages to interface with nuclear data
-  use xsMacroSet_class,       only : xsMacroSet
+  use xsMacroSet_class,       only : xsMacroSet, xsMacroSet_ptr
 
   implicit none
   private
 
   type, public :: collisionOperatorMG
    !* private ** DEBUG
-    class(perMaterialMgXS), pointer :: xsData => null()
-    class(RNG), pointer             :: locRNG => null()
-    type(xsMacroSet), pointer       :: matXS  => null()
+    class(perMaterialNuclearDataMG), pointer :: xsData => null()
+    class(RNG), pointer                      :: locRNG => null()
+    type(xsMacroSet_ptr)                     :: matXS
 
   contains
     procedure :: attachXSData
@@ -40,9 +40,9 @@ contains
   !! Initialise XS operator by providing pointer to XS data block
   !!
   subroutine attachXsData(self,xsData)
-    class(collisionOperatorMG), intent(inout)   :: self
-    class(perMaterialMgXS),pointer, intent(in)  :: xsData
-    character(100), parameter               :: Here =' attachXsData (collisionOperatorMG_class.f90)'
+    class(collisionOperatorMG), intent(inout)            :: self
+    class(perMaterialNuclearDataMG),pointer, intent(in)  :: xsData
+    character(100), parameter              :: Here =' attachXsData (collisionOperatorMG_class.f90)'
 
     if(.not.associated(xsData)) call fatalError(Here,'Allocated xs data must be provided')
 
@@ -65,7 +65,7 @@ contains
     integer(shortInt)                         :: matIdx
     integer(shortInt)                         :: MT
     real(defReal)                             :: r
-    type(xsMacroSet), pointer                 :: materialXS
+    type(xsMacroSet_ptr)                      :: materialXS
     character(100), parameter                 :: Here = 'collide (collisionOperatorMG.f90)'
 
     ! Retrive Pointer to the random number generator
@@ -175,7 +175,7 @@ contains
     type(particleDungeon), intent(inout)       :: nextCycle
     type(particle), intent(in)                 :: p
     integer(shortInt), intent(in)              :: matIdx
-    type(xsMacroSet),pointer, intent(in)       :: Xss
+    type(xsMacroSet_ptr), intent(in)           :: Xss
     type(particle)                             :: pTemp
     real(defReal),dimension(3)                 :: r, dir
     integer(shortInt)                          :: G, G_out, n, i
@@ -189,8 +189,8 @@ contains
     k_eff = nextCycle % k_eff
     r1    = self % locRNG % get()
 
-    sig_fiss = Xss % fissionXS
-    sig_tot  = Xss % totalXS
+    sig_fiss = Xss % fissionXS()
+    sig_tot  = Xss % totalXS()
 
     r   = p % rGlobal()
     dir = p % dirGlobal()
