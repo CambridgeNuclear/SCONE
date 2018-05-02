@@ -272,7 +272,6 @@ contains
     else if (surfType == 'xSquareCylinder') then
       allocate(xSquCylObj)
       halfwidth = dict % getRealArray('halfwidth')
-      call fatalError('surfaceFromDict, initialiseGeometryStructures','Invalid half-width provided')
       origin = dict % getRealArray('origin')
       call xSquCylObj % init(origin, halfwidth, id, name)
       surf = xSquCylObj
@@ -281,7 +280,6 @@ contains
     else if (surfType == 'ySquareCylinder') then
       allocate(ySquCylObj)
       halfwidth = dict % getRealArray('halfwidth')
-      call fatalError('surfaceFromDict, initialiseGeometryStructures','Invalid half-width provided')
       origin = dict % getRealArray('origin')
       call ySquCylObj % init(origin, halfwidth, id, name)
       surf = ySquCylObj
@@ -290,7 +288,6 @@ contains
     else if (surfType == 'zSquareCylinder') then
       allocate(zSquCylObj)
       halfwidth = dict % getRealArray('halfwidth')
-      call fatalError('surfaceFromDict, initialiseGeometryStructures','Invalid half-width provided')
       origin = dict % getRealArray('origin')
       call zSquCylObj % init(origin, halfwidth, id, name)
       surf = zSquCylObj

@@ -13,7 +13,9 @@ program test_init_geom
   use datalessMaterials_class, only : datalessMaterials
   use particle_class
   use rng_class
-  use transportOperator_class
+  use transportOperator_inter
+  use transportOperatorDT_class
+  use transportOperatorST_class
   use mesh_class
 
   implicit none
@@ -31,11 +33,12 @@ program test_init_geom
   integer(shortInt) :: pixels = 1000
   integer(shortInt) :: i,j
   integer(shortInt), dimension(:,:), allocatable :: colourMatrix
-  character(100) :: path = './geomInput'
+  character(100) :: path = './lattice.txt'
   type(particle) :: p
   type(rng) :: rand
   type(cell_ptr) :: c
-  type(transportOperator) :: TO
+  type(transportOperatorDT) :: DTOperator
+  type(transportOperatorST) :: STOperator
   type(mesh) :: m
   real(defReal) :: angle
 
@@ -63,7 +66,8 @@ program test_init_geom
   c = geom % whichCell(p % coords)
   !print *,'found which cell'
   call rand % init(500_8)
-  call TO % initMG(rand,geom)
+  call DTOperator % init(rand,geom)
+  call STOperator % init(rand,geom)
 
   ! Initialise mesh to score points
   call m % init([0.02_8,0.02_8,1._8], lattices(1) % corner, [200,200,1], 1, .FALSE.,'m1')
@@ -76,7 +80,7 @@ program test_init_geom
     c = geom % whichCell(p % coords)
     !print *,c%name()
     do while (.not. p % isDead)
-      call TO % surfaceTracking(p)
+      call DTOperator % transport(p)
       call m % score(p % rGlobal(), p % dirGlobal())
       if (rand % get() > 0.95) then
         p % isDead = .TRUE.

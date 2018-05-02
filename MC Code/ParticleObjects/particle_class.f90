@@ -34,6 +34,11 @@ module particle_class
     procedure            :: rGlobal
     procedure            :: dirLocal
     procedure            :: dirGlobal
+    procedure            :: nesting
+    procedure            :: resetNesting
+    procedure            :: getCellIdx
+    procedure            :: getLatIdx
+    procedure            :: getUniIdx
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
@@ -125,6 +130,53 @@ contains
     real(defReal), dimension(3) :: dir
     dir = self % coords % lvl(1) % dir
   end function dirGlobal
+
+  !!
+  !! Return the nestedness of the particle
+  !!
+  function nesting(self) result(n)
+    class(particle), intent(in) :: self
+    integer(shortInt)           :: n
+    n = self % coords % nesting
+  end function nesting
+
+  !!
+  !! Resets the particle's nesting level
+  !!
+  subroutine resetNesting(self)
+    class(particle), intent(inout) :: self
+    call self % coords % resetNesting()
+  end subroutine resetNesting
+
+  !!
+  !! Get cell index for a given nested level
+  !!
+  function getCellIdx(self,i) result(idx)
+    class(particle), intent(in)    :: self
+    integer(shortInt), intent(in)  :: i
+    integer(shortInt)              :: idx
+    idx = self % coords % lvl(i) % cellIdx
+  end function getCellIdx
+
+  !!
+  !! Get lattice index for a given nested level
+  !!
+  function getLatIdx(self,i) result(idx)
+    class(particle), intent(in)    :: self
+    integer(shortInt), intent(in)  :: i
+    integer(shortInt)              :: idx
+    idx = self % coords % lvl(i) % latIdx
+  end function getLatIdx
+
+  !!
+  !! Get universe index for a given nested level
+  !!
+  function getUniIdx(self,i) result(idx)
+    class(particle), intent(in)    :: self
+    integer(shortInt), intent(in)  :: i
+    integer(shortInt)              :: idx
+    idx = self % coords % lvl(i) % uniIdx
+  end function getUniIdx
 
   !!
   !! Move the particle in global co-ordinates only, resetting its nesting

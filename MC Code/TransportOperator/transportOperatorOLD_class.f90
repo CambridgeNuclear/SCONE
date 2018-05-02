@@ -182,7 +182,7 @@ contains
       else if (currentSurface % isReflective()) then
 
         ! Return particle to global coordinates and apply the reflective transform
-        call p % coords % resetNesting()
+        call p % resetNesting()
         call currentSurface % reflectiveTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir)
 
         ! Identify which cell the particle now occupies
@@ -191,8 +191,7 @@ contains
       else if (currentSurface % isPeriodic()) then
 
         ! Return particle to gloabl coordinates and apply the periodic translation associated with the surface
-        call p % coords % resetNesting()
-        p % coords % lvl(1) % r = p % rGlobal() + currentSurface % periodicTranslation()
+        call p % teleport(p % rGlobal() + currentSurface % periodicTranslation())
 
         ! Identify which cell the particle now occupies
         currentCell = self % geom % whichCell(p%coords)
@@ -228,16 +227,16 @@ contains
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
-      n = p % coords % nesting
+      n = p % nesting()
       nMin = 1
       boundaryDistance = INFINITY
       latDistance = INFINITY
       do i = 1,n
-        c = self % geom % cells(p % coords % lvl(i) % cellIdx)
+        c = self % geom % cells(p % getCellIdx(i))
         testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
 
         ! Check if the particle is in a lattice cell
-        latIdx = p % coords % lvl(i) % latIdx
+        latIdx = p % getLatIdx(i)
         if (latIdx > 0) then
           lat = self % geom % lattices(latIdx)
           lDist = lat % getDistance(p%rLocal(i), p%dirLocal(i))
@@ -272,7 +271,7 @@ contains
         call p % moveLocal(boundaryDistance + NUDGE, n)
 
         ! Find the new base cell which the particle occupies
-        currentCell = self % geom % whichCell(p%coords,n)
+        currentCell = self % geom % whichCell(p%coords, n)
 
         ! If the particle is outside the geometry, apply boundary conditions
         do while (.not. currentCell % insideGeom())
@@ -309,7 +308,7 @@ contains
     type(surface_ptr)                    :: currentSurface
 
     ! Return to global coordinates - this may be a superfluous call!!
-    call p % coords % resetNesting()
+    call p % resetNesting()
 
     ! Identify which surface the particle crossed at the highest geometry level
     currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
@@ -341,8 +340,8 @@ contains
     else if (currentSurface % isPeriodic()) then
 
       ! Apply the periodic translation associated with the surface
-      p%coords%lvl(1)%r = p%rGlobal() + currentSurface % periodicTranslation() &
-                          + NUDGE * p%dirGlobal()
+      call p % teleport(p%rGlobal() + currentSurface % periodicTranslation() &
+                        + NUDGE * p%dirGlobal())
 
       ! Identify which cell the particle now occupies
       currentCell = self % geom % whichCell(p%coords)
@@ -373,16 +372,16 @@ contains
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
-      n = p % coords % nesting
+      n = p % nesting()
       nMin = 1
       boundaryDistance = INFINITY
       latDistance = INFINITY
       do i = 1,n
-        c = self % geom % cells(p % coords % lvl(i) % cellIdx)
+        c = self % geom % cells(p % getCellIdx(i))
         testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
 
         ! Check if the particle is in a lattice cell
-        latIdx = p % coords % lvl(i) % latIdx
+        latIdx = p % getLatIdx(i)
         if (latIdx > 0) then
           lat = self % geom % lattices(latIdx)
           lDist = lat % getDistance(p%rLocal(i), p%dirLocal(i))
