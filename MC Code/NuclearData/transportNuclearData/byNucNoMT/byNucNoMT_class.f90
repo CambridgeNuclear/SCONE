@@ -321,6 +321,7 @@ contains
     ! Update particle state
     call p % rotate(mu,phi)
     p % E = E_out
+    p % isDead = .false.
 
   end subroutine initFissionSite_E
 

@@ -49,7 +49,7 @@ module isotropicMG_class
     procedure :: getMajorantXS_G
     procedure :: getTotalMatXS_G
     procedure :: isFissileMat
-    procedure :: initFissionSite
+    procedure :: initFissionSite        !*
     procedure :: setActiveMaterials     !*
 
     ! perMaterialNuclearDataMG InterfaceProcedures
@@ -191,6 +191,22 @@ contains
   subroutine initFissionSite(self,p)
     class(isotropicMG), intent(in)    :: self
     class(particle), intent(inout)    :: p
+    integer(shortInt)                 :: G_out
+    real(defReal)                     :: mu, phi, r1
+    integer(shortInt),parameter       :: G_in = 1
+
+    ! Generate random numbers
+    r1 = p % pRNG % get()
+
+    ! Sample outgoing data
+    call self % sampleMuGout(mu, G_out, G_in, p % pRNG, macroFission ,p % matIdx )
+    phi = 2*PI * r1
+
+    ! Update particle state
+    call p % rotate(mu,phi)
+    p % G = G_out
+    p % isDead = .false.
+
 
   end subroutine initFissionSite
 
@@ -204,8 +220,20 @@ contains
   subroutine setActiveMaterials(self,matIdxList)
     class(isotropicMG), intent(inout)          :: self
     integer(shortInt),dimension(:), intent(in) :: matIdxList
+    integer(shortInt)                          :: i
 
-  end subroutine
+    ! Switch all materials to inactive
+    self % matData % isActive = .false.
+
+    ! Loop through matIdxList and set flags back to active
+    do i=1,size(matIdxList)
+      self % matData( matIdxList(i) ) % isActive = .true.
+    end do
+
+    ! Recalculate Majorant
+    call self % calculateMajorant()
+
+  end subroutine setActiveMaterials
 
   !!
   !! Attach pointer to approperiate XS data
