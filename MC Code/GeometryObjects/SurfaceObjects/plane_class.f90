@@ -21,6 +21,7 @@ module plane_class
     procedure :: normalVector => normalVectorXPlane
     procedure :: whichSurface => whichXPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsXPlane
+    procedure :: boundaryTransform => boundaryTransformXPlane
   end type xPlane
 
   type, public, extends(surface) :: yPlane
@@ -33,6 +34,7 @@ module plane_class
     procedure :: normalVector => normalVectorYPlane
     procedure :: whichSurface => whichYPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsYPlane
+    procedure :: boundaryTransform => boundaryTransformYPlane
   end type yPlane
 
   type, public, extends(surface) :: zPlane
@@ -45,6 +47,7 @@ module plane_class
     procedure :: normalVector => normalVectorZPlane
     procedure :: whichSurface => whichZPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsZPlane
+    procedure :: boundaryTransform => boundaryTransformZPlane
   end type zPlane
 
   type, public, extends(surface) :: plane
@@ -57,6 +60,7 @@ module plane_class
     procedure :: normalVector => normalVectorPlane
     procedure :: whichSurface => whichPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsPlane
+    procedure :: boundaryTransform => boundaryTransformPlane
   end type plane
 
 contains
@@ -148,6 +152,27 @@ contains
     call fatalError('setBoundaryConditionsXPlane','Boundary conditions may not be set for a plane surface')
   end subroutine setBoundaryConditionsXPlane
 
+  !!
+  !! Apply boundary transformations
+  !!
+  subroutine boundaryTransformXPlane(self, r, u, isVacuum)
+    class(xPlane), intent(in)                  :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else if (self % isPeriodic) then
+      r = r + self % periodicTranslation
+    else if (self % isReflective) then
+      call self % reflectiveTransform(r,u)
+    else
+      call fatalError('boundaryTransform, xPlane','No boundary condition applied to surface')
+    end if
+
+  end subroutine boundaryTransformXPlane
+
 !!
 !! Y-Plane procedures
 !!
@@ -235,6 +260,27 @@ contains
     call fatalError('setBoundaryConditionsYPlane','Boundary conditions may not be set for a plane surface')
   end subroutine setBoundaryConditionsYPlane
 
+  !!
+  !! Apply boundary transformations
+  !!
+  subroutine boundaryTransformYPlane(self, r, u, isVacuum)
+    class(yPlane), intent(in)                  :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else if (self % isPeriodic) then
+      r = r + self % periodicTranslation
+    else if (self % isReflective) then
+      call self % reflectiveTransform(r,u)
+    else
+      call fatalError('boundaryTransform, yPlane','No boundary condition applied to surface')
+    end if
+
+  end subroutine boundaryTransformYPlane
+
 !!
 !! Z-Plane procedures
 !!
@@ -321,6 +367,27 @@ contains
     integer(shortInt), dimension(6), intent(in) :: BC
     call fatalError('setBoundaryConditionsZPlane','Boundary conditions may not be set for a plane surface')
   end subroutine setBoundaryConditionsZPlane
+
+  !!
+  !! Apply boundary transformations
+  !!
+  subroutine boundaryTransformZPlane(self, r, u, isVacuum)
+    class(zPlane), intent(in)                  :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else if (self % isPeriodic) then
+      r = r + self % periodicTranslation
+    else if (self % isReflective) then
+      call self % reflectiveTransform(r,u)
+    else
+      call fatalError('boundaryTransform, zPlane','No boundary condition applied to surface')
+    end if
+
+  end subroutine boundaryTransformZPlane
 
 !!
 !! General Plane procedures
@@ -414,5 +481,18 @@ contains
     integer(shortInt), dimension(6), intent(in) :: BC
     call fatalError('setBoundaryConditionsPlane','Boundary conditions may not be set for a plane surface')
   end subroutine setBoundaryConditionsPlane
+
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformPlane(self, r, u, isVacuum)
+    class(plane), intent(in)                   :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    call fatalError('boundaryTransform, plane','This surface does not support boundary conditions')
+
+  end subroutine boundaryTransformPlane
 
 end module plane_class

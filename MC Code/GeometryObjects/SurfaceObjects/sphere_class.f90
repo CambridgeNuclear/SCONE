@@ -26,6 +26,7 @@ module sphere_class
     procedure :: normalVector => normalVectorSphere
     procedure :: whichSurface
     procedure :: setBoundaryConditions => setBoundaryConditionsSphere
+    procedure :: boundaryTransform => boundaryTransformSphere
   end type sphere
 
 contains
@@ -210,5 +211,23 @@ contains
       self % isVacuum = .TRUE.
     end if
   end subroutine setBoundaryConditionsSphere
+
+  !!
+  !! Apply boundary conditions
+  !!
+  subroutine boundaryTransformSphere(self, r, u, isVacuum)
+    class(sphere), intent(in)                  :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else
+      call fatalError('boundaryTransform, sphere',&
+      'This routine should only be called if there sphere has vacuum boundaries')
+    end if
+
+  end subroutine boundaryTransformSphere
 
 end module sphere_class

@@ -47,9 +47,7 @@ program test_init_geom
   call materials % init(['uo2','mod','big'])
   print *, materials % materials
 
-  call initGeomArraysDict(surfaces, cells, universes, lattices, max_nest, rootInd, geomDict, materials)
-
-  call geom % init(surfaces, cells, universes, rootInd, lattices)
+  call initGeometryFromDict(geom, surfaces, cells, universes, lattices, max_nest, rootInd, geomDict, materials)
 
   print *,'Plotting geometry'
   allocate(colourMatrix(pixels,pixels))

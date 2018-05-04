@@ -89,61 +89,61 @@ contains
 
   end subroutine deltaTracking
 
-  !!
-  !! Apply boundary conditions when using delta tracking
-  !!
-  subroutine applyBC(self, p, currentCell)
-    class(transportOperatorDT), intent(in) :: self
-    class(particle), intent(inout)         :: p
-    class(cell_ptr), intent(inout)         :: currentCell
-    type(surface_ptr)                      :: currentSurface
-
-    ! Iterate until particle is either inside the geometry or dead
-    do while (.NOT. currentCell % insideGeom())
-      ! Identify which surface the particle crossed at the highest geometry level
-      currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
-
-      ! Check the boundary conditions on the surface
-      ! If vacuum, kill the particle
-      if (currentSurface % isVacuum()) then
-        p % isDead = .TRUE.
-
-      ! If reflective or periodic, must ensure that the surface is a plane!
-      else if (currentSurface % isReflective()) then
-
-        ! Return particle to global coordinates and apply the reflective transform
-        call p % resetNesting()
-        call currentSurface % reflectiveTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir)
-
-        ! Identify which cell the particle now occupies
-        currentCell = self % geom % whichCell(p%coords)
-
-      else if (currentSurface % isPeriodic()) then
-
-        ! Apply the periodic translation associated with the surface to global co-ordinates
-        call p % teleport(p % rGlobal() + currentSurface % periodicTranslation())
-
-        ! Identify which cell the particle now occupies
-        currentCell = self % geom % whichCell(p%coords)
-
-      else
-        call fatalError('applyBC, transportOperatorDT',&
-        'Could not identify correct boundary conditions')
-      end if
-
-    end do
-
-    ! The particle should no longer be sat on a surface
-    call currentSurface % kill()
-
-  end subroutine applyBC
+!  !!
+!  !! Apply boundary conditions when using delta tracking
+!  !!
+!  subroutine applyBC(self, p, currentCell)
+!    class(transportOperatorDT), intent(in) :: self
+!    class(particle), intent(inout)         :: p
+!    class(cell_ptr), intent(inout)         :: currentCell
+!    type(surface_ptr)                      :: currentSurface
+!
+!    ! Iterate until particle is either inside the geometry or dead
+!    do while (.NOT. currentCell % insideGeom())
+!      ! Identify which surface the particle crossed at the highest geometry level
+!      currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
+!
+!      ! Check the boundary conditions on the surface
+!      ! If vacuum, kill the particle
+!      if (currentSurface % isVacuum()) then
+!        p % isDead = .TRUE.
+!
+!      ! If reflective or periodic, must ensure that the surface is a plane!
+!      else if (currentSurface % isReflective()) then
+!
+!        ! Return particle to global coordinates and apply the reflective transform
+!        call p % resetNesting()
+!        call currentSurface % reflectiveTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir)
+!
+!        ! Identify which cell the particle now occupies
+!        currentCell = self % geom % whichCell(p%coords)
+!
+!      else if (currentSurface % isPeriodic()) then
+!
+!        ! Apply the periodic translation associated with the surface to global co-ordinates
+!        call p % teleport(p % rGlobal() + currentSurface % periodicTranslation())
+!
+!        ! Identify which cell the particle now occupies
+!        currentCell = self % geom % whichCell(p%coords)
+!
+!      else
+!        call fatalError('applyBC, transportOperatorDT',&
+!        'Could not identify correct boundary conditions')
+!      end if
+!
+!    end do
+!
+!    ! The particle should no longer be sat on a surface
+!    call currentSurface % kill()
+!
+!  end subroutine applyBC
 
   !!
   !! Apply boundary conditions when using delta tracking
   !! Given location in a particular halfspace, surface should
   !! communicate the necessary transformations required
   !!
-  subroutine applyBCTransformation(self, p, currentCell)
+  subroutine applyBC(self, p, currentCell)
     class(transportOperatorDT), intent(in) :: self
     class(particle), intent(inout)         :: p
     class(cell_ptr), intent(inout)         :: currentCell
@@ -153,38 +153,25 @@ contains
     killParticle = .FALSE.
 
     ! Iterate until particle is either inside the geometry or dead
-    do while (.NOT. (currentCell % insideGeom() .AND. p % isDead))
-      ! Identify which surface the particle crossed at the highest geometry level
-      currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
+    do while (.NOT. (currentCell % insideGeom() .OR. p % isDead))
 
-      ! Check the boundary conditions on the surface
-      ! If vacuum, kill the particle
-      if (currentSurface % isVacuum()) then
+      ! Find the bounding surface
+      currentSurface = self % geom % boundarySurface
+
+      ! Reset nesting and apply appropriate transformations to the particle
+      call p % resetNesting()
+      call currentSurface % boundaryTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir, killParticle)
+
+      ! Kill particle if it crossed a vacuum boundary
+      if(killParticle) then
         p % isDead = .TRUE.
-        exit
-
-      ! For compound surfaces, apply the transformation corresponding
-      ! to the particle's location in halfspace
-      else if (currentSurface % isCompound) then
-
-        call p % resetNesting()
-        call currentSurface % applyTransformation()
-
-        if(killParticle) then
-          p % isDead = .TRUE.
-        else
-          ! Identify which cell the particle now occupies
-          currentCell = self % geom % whichCell(p%coords)
-        end if
-
       else
-        call fatalError('applyBC, transportOperatorDT',&
-        'Could not identify boundary conditions to apply')
-
+        ! Identify which cell the particle now occupies
+        currentCell = self % geom % whichCell(p%coords)
       end if
 
     end do
 
-  end subroutine applyBCTransformation
+  end subroutine applyBC
 
 end module transportOperatorDT_class

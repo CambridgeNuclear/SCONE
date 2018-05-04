@@ -26,6 +26,7 @@ module box_class
     procedure :: normalVector => normalVectorBox
     procedure :: whichSurface => whichPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsBox
+    procedure :: boundaryTransform => boundaryTransformBox
   end type box
 
 contains
@@ -438,5 +439,151 @@ contains
     end if
 
   end subroutine setBoundaryConditionsBox
+
+  !!
+  !! Check halfspaces to identify which combination of
+  !! boundary conditions to apply to a point
+  !!
+  subroutine boundaryTransformBox(self, r, u, isVacuum)
+    class(box), intent(in)                     :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: front, back, left, right, above, below
+
+    ! Point can be within one of 27 regions
+    ! Locate which region and then apply BCs as appropriate
+    front = self % xPlanes(1) % halfspace(r, u)
+    back = .NOT. self % xPlanes(2) % halfspace(r, u)
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    above = self % zPlanes(1) % halfspace(r, u)
+    below = .NOT. self % zPlanes(2) % halfspace(r, u)
+
+    ! Point is in the upper front left corner
+    if (front .AND. left .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper back left corner
+    else if (back .AND. left .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and to the left
+    else if (left .AND. above) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper front right corner
+    else if (front .AND. right .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper back right corner
+    else if (back .AND. right .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and to the right
+    else if (right .AND. above) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above
+    else if (above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and in front
+    else if (front .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and behind
+    else if (back .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower front left
+    else if (front .AND. left .AND. below) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower back left
+    else if (back .AND. left .AND. below) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower left
+    else if (left .AND. below) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower front right
+    else if (front .AND. right .AND. below) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower back right
+    else if (back .AND. right .AND. below) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower right
+    else if (right .AND. below) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is below
+    else if (below) then
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the front left
+    else if (front .AND. left) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the back left
+    else if (back .AND. left) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the left
+    else if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the front right
+    else if (front .AND. right) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the back right
+    else if (back .AND. right) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the front
+    else if (front) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the back
+    else if (back) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the box
+    else
+      call fatalError('boundaryTransformation, box',&
+      'Cannot apply boundary transformation: point is already within the boundary')
+    end if
+
+  end subroutine boundaryTransformBox
 
 end module box_class

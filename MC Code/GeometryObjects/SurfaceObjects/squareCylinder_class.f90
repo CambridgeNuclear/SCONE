@@ -26,6 +26,7 @@ module squareCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformXSquCyl
     procedure :: whichSurface => whichPlaneXSquCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsXSquareCylinder
+    procedure :: boundaryTransform => boundaryTransformXSquareCylinder
   end type xSquareCylinder
 
   type, public, extends(surface) :: ySquareCylinder
@@ -42,6 +43,7 @@ module squareCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformYSquCyl
     procedure :: whichSurface => whichPlaneYSquCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsYSquareCylinder
+    procedure :: boundaryTransform => boundaryTransformYSquareCylinder
   end type ySquareCylinder
 
   type, public, extends(surface) :: zSquareCylinder
@@ -58,6 +60,7 @@ module squareCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformZSquCyl
     procedure :: whichSurface => whichPlaneZSquCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsZSquareCylinder
+    procedure :: boundaryTransform => boundaryTransformZSquareCylinder
   end type zSquareCylinder
 
 contains
@@ -382,6 +385,50 @@ contains
     end if
   end subroutine setBoundaryConditionsXSquareCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformXSquareCylinder(self, r, u, isVacuum)
+    class(xSquareCylinder), intent(in)         :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: left, right, above, below
+
+    ! Point can be within one of 9 regions
+    ! Locate which region and then apply BCs as appropriate
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    above = self % zPlanes(1) % halfspace(r, u)
+    below = .NOT. self % zPlanes(2) % halfspace(r, u)
+
+    if (left .AND. above) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right .AND. above) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (left .AND. below) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (right .AND. below) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (below) then
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, xSquareCylinder',&
+      'Cannot apply boundary condition: point is inside surface')
+    end if
+
+  end subroutine boundaryTransformXSquareCylinder
+
 !!
 !! Y-Square cylinder procedures
 !!
@@ -704,6 +751,50 @@ contains
 
   end subroutine setBoundaryConditionsYSquareCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformYSquareCylinder(self, r, u, isVacuum)
+    class(ySquareCylinder), intent(in)         :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: front, back, above, below
+
+    ! Point can be within one of 9 regions
+    ! Locate which region and then apply BCs as appropriate
+    front = self % xPlanes(1) % halfspace(r, u)
+    back = .NOT. self % xPlanes(2) % halfspace(r, u)
+    above = self % zPlanes(1) % halfspace(r, u)
+    below = .NOT. self % zPlanes(2) % halfspace(r, u)
+
+    if (front .AND. above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (back .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (front .AND. below) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (back .AND. below) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (below) then
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (front) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (back) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, ySquareCylinder',&
+      'Cannot apply boundary condition: point is inside surface')
+    end if
+
+  end subroutine boundaryTransformYSquareCylinder
+
 !!
 !! Z-Square cylinder procedures
 !!
@@ -1024,5 +1115,49 @@ contains
     end if
 
   end subroutine setBoundaryConditionsZSquareCylinder
+
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformZSquareCylinder(self, r, u, isVacuum)
+    class(zSquareCylinder), intent(in)         :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: left, right, front, back
+
+    ! Point can be within one of 9 regions
+    ! Locate which region and then apply BCs as appropriate
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    front = self % xPlanes(1) % halfspace(r, u)
+    back = .NOT. self % xPlanes(2) % halfspace(r, u)
+
+    if (left .AND. front) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right .AND. front) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (front) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (left .AND. back) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (right .AND. back) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (back) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, zSquareCylinder',&
+      'Cannot apply boundary condition: point is inside surface')
+    end if
+
+  end subroutine boundaryTransformZSquareCylinder
 
 end module squareCylinder_class

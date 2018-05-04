@@ -22,6 +22,7 @@ module infSurf_class
     procedure :: normalVector => normalVectorInf
     procedure :: whichSurface
     procedure :: setBoundaryConditions => setBoundaryConditionsInf
+    procedure :: boundaryTransform => boundaryTransformInf
   end type infSurf
 
 contains
@@ -101,5 +102,19 @@ contains
       self % isVacuum = .TRUE.
     end if
   end subroutine setBoundaryConditionsInf
+
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformInf(self, r, u, isVacuum)
+    class(infSurf), intent(in)                 :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    call fatalError('boundaryTransform, infSurf',&
+    'Infinite surfaces should not have associated boundary conditions')
+
+  end subroutine boundaryTransformInf
 
 end module infSurf_class

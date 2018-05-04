@@ -38,6 +38,7 @@ module geometry_class
     type(universe), dimension(:), allocatable    :: universes       ! array of all universes
     type(cell), dimension(:), allocatable        :: cells           ! array of all cells
     type(lattice), dimension(:), allocatable     :: lattices        ! array of all lattices
+    type(surface_ptr)                            :: boundarySurface ! pointer to the boundary surface
     type(box)                                    :: boundingBox     ! bounding box for volume calculations
     type(universe_ptr)                           :: rootUniverse
     integer(shortInt)                            :: numSurfaces = 0
@@ -54,13 +55,14 @@ module geometry_class
 
 contains
 
-  subroutine init(self, surfPointers, cellArray, universeArray, rootIdx, latticeArray)
+  subroutine init(self, surfPointers, cellArray, universeArray, rootIdx, boundarySurface, latticeArray)
     class(geometry), intent(inout)                     :: self
     type(surface_ptr), dimension(:)                    :: surfPointers
     class(cell),intent(in), dimension(:)               :: cellArray
     class(universe), intent(in), dimension(:)          :: universeArray
     class(lattice), intent(in), dimension(:), optional :: latticeArray
     integer(shortInt), intent(in)                      :: rootIdx
+    class(surface_ptr)                                 :: boundarySurface
 
     allocate(self % surfaces (size(surfPointers)))
     allocate(self % cells (size(cellArray)))
@@ -73,6 +75,7 @@ contains
     self % numCells = size(cellArray)
     self % numUniverses = size(universeArray)
     self % rootUniverse = self % universes(rootIdx)
+    self % boundarySurface = boundarySurface
 
     if(present(latticeArray))then
       allocate(self % lattices (size(latticeArray)))

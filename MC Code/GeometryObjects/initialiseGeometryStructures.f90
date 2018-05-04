@@ -18,6 +18,8 @@ module initialiseGeometryStructures
   use universe_class
   use lattice_class
 
+  use geometry_class
+
   use nuclearData_inter, only : nuclearData
 
   use dictionary_class
@@ -25,14 +27,15 @@ module initialiseGeometryStructures
   implicit none
   private
 
-  public :: initGeomArraysDict
+  public :: initGeometryFromDict
 
 contains
 
   !!
   !! Initialise the geometry on provision of a dictionary
   !!
-  subroutine initGeomArraysDict(surfaces, cells, universes, lattices, max_nest, rootIdx, dict, materials)
+  subroutine initGeometryFromDict(geom, surfaces, cells, universes, lattices, max_nest, rootIdx, dict, materials)
+    class(geometry), intent(inout)                             :: geom
     class(dictionary), intent(inout)                           :: dict
     type(dictionary)                                           :: surfDict, cellDict, uniDict,&
                                                                   latDict, bcDict, uniDaughterDict
@@ -40,7 +43,7 @@ contains
     integer(shortInt)                                          :: i,j, id, testID, &
                                                                   outsideDefined, numSurfaces, &
                                                                   numCells, numUniverses, &
-                                                                  numLattices, fillType
+                                                                  numLattices, fillType, outsideIdx
     logical(defBool)                                           :: foundRoot
     class(surface_ptr), dimension(:), allocatable, intent(out) :: surfaces
     class(cell), dimension(:), allocatable, intent(out)        :: cells
@@ -209,6 +212,7 @@ contains
         ! Read and apply boundary conditions
         print *,'Applying boundary conditions'
         call setBoundaryConditions(cells(i), dict)
+        outsideIdx = i
         cycle
       else
         call fatalError('fillCell, initialiseGeometryStructures','Cell has an incorrect fill type')
@@ -226,7 +230,9 @@ contains
     !call calcMaxNesting(max_nest,universes,lattices, rootInd)
     print *,'Geometry contains ',max_nest,' nesting levels'
 
-  end subroutine initGeomArraysDict
+    call geom % init(surfaces, cells, universes, rootIdx, cells(outsideIdx) % surfaces(1), lattices)
+
+  end subroutine initGeometryFromDict
 
   !!
   !! Given a dictionary describing a surface, construct a surface for the surrface array

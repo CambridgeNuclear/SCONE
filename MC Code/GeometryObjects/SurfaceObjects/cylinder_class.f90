@@ -24,6 +24,7 @@ module cylinder_class
     procedure :: normalVector => normalVectorXCyl
     procedure :: whichSurface => whichXCylinder
     procedure :: setBoundaryConditions => setBoundaryConditionsXCylinder
+    procedure :: boundaryTransform => boundaryTransformXCylinder
   end type xCylinder
 
   ! Y-cylinder definition
@@ -39,6 +40,7 @@ module cylinder_class
     procedure :: normalVector => normalVectorYCyl
     procedure :: whichSurface => whichYCylinder
     procedure :: setBoundaryConditions => setBoundaryConditionsYCylinder
+    procedure :: boundaryTransform => boundaryTransformYCylinder
   end type yCylinder
 
   ! Z-cylinder definition
@@ -54,6 +56,7 @@ module cylinder_class
     procedure :: normalVector => normalVectorZCyl
     procedure :: whichSurface => whichZCylinder
     procedure :: setBoundaryConditions => setBoundaryConditionsZCylinder
+    procedure :: boundaryTransform => boundaryTransformZCylinder
   end type zCylinder
 
 contains
@@ -227,6 +230,24 @@ contains
     end if
   end subroutine setBoundaryConditionsXCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformXCylinder(self, r, u, isVacuum)
+    class(xCylinder), intent(in) :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else
+      call fatalError('boundaryTransform, xCylinder',&
+      'This should only be called for a cylinder with vacuum boundaries')
+    end if
+
+  end subroutine boundaryTransformXCylinder
+
 !
 ! Y-cylinder procedures
 !
@@ -396,6 +417,24 @@ contains
     end if
   end subroutine setBoundaryConditionsYCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformYCylinder(self, r, u, isVacuum)
+    class(yCylinder), intent(in) :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else
+      call fatalError('boundaryTransform, yCylinder',&
+      'This should only be called for a cylinder with vacuum boundaries')
+    end if
+
+  end subroutine boundaryTransformYCylinder
+
 !
 ! Z-cylinder procedures
 !
@@ -564,5 +603,23 @@ contains
       self % isVacuum = .TRUE.
     end if
   end subroutine setBoundaryConditionsZCylinder
+
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformZCylinder(self, r, u, isVacuum)
+    class(zCylinder), intent(in) :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+
+    if (self % isVacuum) then
+      isVacuum = .TRUE.
+    else
+      call fatalError('boundaryTransform, xCylinder',&
+      'This should only be called for a cylinder with vacuum boundaries')
+    end if
+
+  end subroutine boundaryTransformZCylinder
 
 end module cylinder_class

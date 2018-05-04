@@ -13,7 +13,7 @@ module truncatedCylinder_class
   type, public, extends(surface) :: xTruncatedCylinder
     private
     type(xPlane), dimension(:), pointer   :: xPlanes => null()
-    type(xCylinder),dimension(:), pointer :: cyl => null()  ! substituent cylinder
+    type(xCylinder), pointer              :: cyl => null()  ! substituent cylinder
     real(defReal)                         :: a              ! the half-width separation of the planes
     real(defReal), dimension(3)           :: origin = [ZERO, ZERO, ZERO]
   contains
@@ -24,12 +24,13 @@ module truncatedCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformXTruncCyl
     procedure :: whichSurface => whichSurfaceXTruncCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsXTruncCylinder
+    procedure :: boundaryTransform => boundaryTransformXTruncCylinder
   end type xTruncatedCylinder
 
   type, public, extends(surface) :: yTruncatedCylinder
     private
     type(yPlane), dimension(:), pointer   :: yPlanes => null()
-    type(yCylinder),dimension(:), pointer :: cyl => null()  ! substituent cylinder
+    type(yCylinder), pointer              :: cyl => null()  ! substituent cylinder
     real(defReal)                         :: a              ! the half-width separation of the planes
     real(defReal), dimension(3)           :: origin = [ZERO, ZERO, ZERO]
   contains
@@ -40,12 +41,13 @@ module truncatedCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformYTruncCyl
     procedure :: whichSurface => whichSurfaceYTruncCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsYTruncCylinder
+    procedure :: boundaryTransform => boundaryTransformYTruncCylinder
   end type yTruncatedCylinder
 
   type, public, extends(surface) :: zTruncatedCylinder
     private
     type(zPlane), dimension(:), pointer   :: zPlanes => null()
-    type(zCylinder),dimension(:), pointer :: cyl => null()  ! substituent cylinder
+    type(zCylinder), pointer              :: cyl => null()  ! substituent cylinder
     real(defReal)                         :: a              ! the half-width separation of the planes
     real(defReal), dimension(3)           :: origin = [ZERO, ZERO, ZERO]
   contains
@@ -56,6 +58,7 @@ module truncatedCylinder_class
     procedure :: reflectiveTransform => reflectiveTransformZTruncCyl
     procedure :: whichSurface => whichSurfaceZTruncCyl
     procedure :: setBoundaryConditions => setBoundaryConditionsZTruncCylinder
+    procedure :: boundaryTransform => boundaryTransformZTruncCylinder
   end type zTruncatedCylinder
 
 contains
@@ -84,15 +87,13 @@ contains
     if(present(id)) self % id = id
     if(present(name)) self % name = name
 
-    if(associated(self % cyl)) deallocate (self % cyl)
     if(associated(self % xPlanes)) deallocate (self % xPlanes)
 
-    allocate(self%cyl(1))
     allocate(self%xPlanes(2))
 
     call self % xPlanes(1) % init(origin(1) + a)
     call self % xPlanes(2) % init(origin(1) - a)
-    call self % cyl(1) % init(radius, origin)
+    call self % cyl % init(radius, origin)
 
   end subroutine initXTruncCyl
 
@@ -130,7 +131,7 @@ contains
     end if
 
     ! Evaluate the cylinder's surface function
-    resCyl = self % cyl(1) % evaluate(r)
+    resCyl = self % cyl % evaluate(r)
     absMinRes = min(absMinRes,abs(resCyl))
     testRes = max(testRes, resCyl)
 
@@ -178,7 +179,7 @@ contains
 
     testDistance = self%xPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     ! Ensure point is within the radius of the cylinder
     if (testCyl < surface_tol)  then
@@ -187,13 +188,13 @@ contains
 
     testDistance = self%xPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) distance = testDistance
     end if
 
-    testDistance = self% cyl(1) %distanceToSurface(r,u)
+    testDistance = self% cyl %distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(1) < posBound) .and. (testPoint(1) > negBound)) then
       if (testDistance < distance) distance = testDistance
@@ -238,8 +239,8 @@ contains
     else if (abs(negBound - r(1)) < surface_tol) then
       normal = self % xPlanes(2) % normalVector(r)
       return
-    else if (abs(self % cyl(1) % evaluate(r)) < surface_tol) then
-      normal = self % cyl(1) % normalVector(r)
+    else if (abs(self % cyl % evaluate(r)) < surface_tol) then
+      normal = self % cyl % normalVector(r)
       return
     else
       call fatalError('normalVector, xTruncatedCylinder','Point is not on a surface')
@@ -270,7 +271,7 @@ contains
     ! with the minimum real distance
     testDistance = self%xPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -281,7 +282,7 @@ contains
 
     testDistance = self%xPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -290,12 +291,12 @@ contains
       end if
     end if
 
-    testDistance = self % cyl(1) % distanceToSurface(r,u)
+    testDistance = self % cyl % distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(1) < posBound).and.(testPoint(1) > negBound))  then
       if (testDistance < distance) then
         distance = testDistance
-        surfPointer => self % cyl(1)
+        surfPointer => self % cyl
       end if
     end if
 
@@ -349,6 +350,35 @@ contains
     end if
   end subroutine setBoundaryConditionsXTruncCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformXTruncCylinder(self, r, u, isVacuum)
+    class(xTruncatedCylinder), intent(in)      :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: front, back, outsideCyl
+
+    outsideCyl = self % cyl % halfspace(r, u)
+    if (outsideCyl) then
+      call self % cyl % boundaryTransform(r, u, isVacuum)
+      return
+    end if
+
+    front = self % xPlanes(1) % halfspace(r, u)
+    back = .NOT. self % xPlanes(2) % halfspace(r, u)
+    if (front) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (back) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, xTruncatedCylinder',&
+      'Cannot apply boundary condition: point is inside the surface')
+    end if
+
+  end subroutine boundaryTransformXTruncCylinder
+
 !!
 !! Y-truncated cylinder procedures
 !!
@@ -373,15 +403,12 @@ contains
     if(present(id)) self % id = id
     if(present(name)) self % name = name
 
-    if(associated(self % cyl)) deallocate (self % cyl)
     if(associated(self % yPlanes)) deallocate (self % yPlanes)
-
-    allocate(self%cyl(1))
     allocate(self%yPlanes(2))
 
     call self % yPlanes(1) % init(origin(2) + a)
     call self % yPlanes(2) % init(origin(2) - a)
-    call self % cyl(1) % init(radius, origin)
+    call self % cyl % init(radius, origin)
 
   end subroutine initYTruncCyl
 
@@ -419,7 +446,7 @@ contains
     end if
 
     ! Evaluate the cylinder's surface function
-    resCyl = self % cyl(1) % evaluate(r)
+    resCyl = self % cyl % evaluate(r)
     absMinRes = min(absMinRes,abs(resCyl))
     testRes = max(testRes, resCyl)
 
@@ -467,7 +494,7 @@ contains
 
     testDistance = self%yPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     ! Ensure point is within the radius of the cylinder
     if (testCyl < surface_tol)  then
@@ -476,13 +503,13 @@ contains
 
     testDistance = self%yPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) distance = testDistance
     end if
 
-    testDistance = self% cyl(1) %distanceToSurface(r,u)
+    testDistance = self% cyl %distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(2) < posBound) .and. (testPoint(2) > negBound)) then
       if (testDistance < distance) distance = testDistance
@@ -527,8 +554,8 @@ contains
     else if (abs(negBound - r(2)) < surface_tol) then
       normal = self % yPlanes(2) % normalVector(r)
       return
-    else if (abs(self % cyl(1) % evaluate(r)) < surface_tol) then
-      normal = self % cyl(1) % normalVector(r)
+    else if (abs(self % cyl % evaluate(r)) < surface_tol) then
+      normal = self % cyl % normalVector(r)
       return
     else
       call fatalError('normalVector, yTruncatedCylinder','Point is not on a surface')
@@ -559,7 +586,7 @@ contains
     ! with the minimum real distance
     testDistance = self%yPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -570,7 +597,7 @@ contains
 
     testDistance = self%yPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -579,12 +606,12 @@ contains
       end if
     end if
 
-    testDistance = self % cyl(1) % distanceToSurface(r,u)
+    testDistance = self % cyl % distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(2) < posBound).and.(testPoint(2) > negBound))  then
       if (testDistance < distance) then
         distance = testDistance
-        surfPointer => self % cyl(1)
+        surfPointer => self % cyl
       end if
     end if
 
@@ -638,6 +665,35 @@ contains
     end if
   end subroutine setBoundaryConditionsYTruncCylinder
 
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformYTruncCylinder(self, r, u, isVacuum)
+    class(yTruncatedCylinder), intent(in)      :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: left, right, outsideCyl
+
+    outsideCyl = self % cyl % halfspace(r, u)
+    if (outsideCyl) then
+      call self % cyl % boundaryTransform(r, u, isVacuum)
+      return
+    end if
+
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, yTruncatedCylinder',&
+      'Cannot apply boundary condition: point is inside the surface')
+    end if
+
+  end subroutine boundaryTransformYTruncCylinder
+
 !!
 !! Z-truncated cylinder procedures
 !!
@@ -662,15 +718,13 @@ contains
     if (present(id)) self % id = id
     if (present(name)) self % name = name
 
-    if(associated(self % cyl)) deallocate (self % cyl)
     if(associated(self % zPlanes)) deallocate (self % zPlanes)
 
-    allocate(self%cyl(1))
     allocate(self%zPlanes(2))
 
     call self % zPlanes(1) % init(origin(3) + a)
     call self % zPlanes(2) % init(origin(3) - a)
-    call self % cyl(1) % init(radius, origin)
+    call self % cyl % init(radius, origin)
 
   end subroutine initZTruncCyl
 
@@ -708,7 +762,7 @@ contains
     end if
 
     ! Evaluate the cylinder's surface function
-    resCyl = self % cyl(1) % evaluate(r)
+    resCyl = self % cyl % evaluate(r)
     absMinRes = min(absMinRes,abs(resCyl))
     testRes = max(testRes, resCyl)
 
@@ -756,7 +810,7 @@ contains
 
     testDistance = self%zPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     ! Ensure point is within the radius of the cylinder
     if (testCyl < surface_tol)  then
@@ -765,13 +819,13 @@ contains
 
     testDistance = self%zPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) distance = testDistance
     end if
 
-    testDistance = self% cyl(1) %distanceToSurface(r,u)
+    testDistance = self% cyl %distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(3) < posBound) .and. (testPoint(3) > negBound)) then
       if (testDistance < distance) distance = testDistance
@@ -816,8 +870,8 @@ contains
     else if (abs(negBound - r(3)) < surface_tol) then
       normal = self % zPlanes(2) % normalVector(r)
       return
-    else if (abs(self % cyl(1) % evaluate(r)) < surface_tol) then
-      normal = self % cyl(1) % normalVector(r)
+    else if (abs(self % cyl % evaluate(r)) < surface_tol) then
+      normal = self % cyl % normalVector(r)
       return
     else
       call fatalError('normalVector, zTruncatedCylinder','Point is not on a surface')
@@ -848,7 +902,7 @@ contains
     ! with the minimum real distance
     testDistance = self%zPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -859,7 +913,7 @@ contains
 
     testDistance = self%zPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    testCyl = self % cyl(1) % evaluate(testPoint)
+    testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
@@ -868,12 +922,12 @@ contains
       end if
     end if
 
-    testDistance = self % cyl(1) % distanceToSurface(r,u)
+    testDistance = self % cyl % distanceToSurface(r,u)
     testPoint = r + u*testDistance
     if ((testPoint(3) < posBound).and.(testPoint(3) > negBound))  then
       if (testDistance < distance) then
         distance = testDistance
-        surfPointer => self % cyl(1)
+        surfPointer => self % cyl
       end if
     end if
 
@@ -926,5 +980,34 @@ contains
       self % cyl % isVacuum = .TRUE.
     end if
   end subroutine setBoundaryConditionsZTruncCylinder
+
+  !!
+  !! Apply boundary transformation
+  !!
+  subroutine boundaryTransformZTruncCylinder(self, r, u, isVacuum)
+    class(zTruncatedCylinder), intent(in)      :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: above, below, outsideCyl
+
+    outsideCyl = self % cyl % halfspace(r, u)
+    if (outsideCyl) then
+      call self % cyl % boundaryTransform(r, u, isVacuum)
+      return
+    end if
+
+    above = self % zPlanes(1) % halfspace(r, u)
+    below = .NOT. self % zPlanes(2) % halfspace(r, u)
+    if (above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (below) then
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+    else
+      call fatalError('boundaryTransform, zTruncatedCylinder',&
+      'Cannot apply boundary condition: point is inside the surface')
+    end if
+
+  end subroutine boundaryTransformZTruncCylinder
 
 end module truncatedCylinder_class

@@ -23,14 +23,15 @@ module surface_class
     character(100)              :: name =""
     integer(shortInt)           :: id = 0
   contains
-    procedure                                  :: halfspace
-    procedure                                  :: reflect
-    procedure(evaluate), deferred              :: evaluate
-    procedure(reflectiveTransform), deferred   :: reflectiveTransform
-    procedure(distanceToSurface), deferred     :: distanceToSurface
-    procedure(normalVector), deferred          :: normalVector
-    procedure(whichSurface), deferred          :: whichSurface
-    procedure(setBoundaryConditions), deferred :: setBoundaryConditions
+    procedure                                    :: halfspace
+    procedure                                    :: reflect
+    procedure(evaluate), deferred                :: evaluate
+    procedure(reflectiveTransform), deferred     :: reflectiveTransform
+    procedure(distanceToSurface), deferred       :: distanceToSurface
+    procedure(normalVector), deferred            :: normalVector
+    procedure(whichSurface), deferred            :: whichSurface
+    procedure(setBoundaryConditions), deferred   :: setBoundaryConditions
+    procedure(boundaryTransform), deferred :: boundaryTransform
   end type surface
 
   type, public :: surface_ptr
@@ -48,6 +49,7 @@ module surface_class
     procedure :: isPeriodic => isPeriodic_ptr
     procedure :: periodicTranslation => periodicTranslation_ptr
     procedure :: setBoundaryConditions => setBoundaryConditions_ptr
+    procedure :: boundaryTransform => boundaryTransform_ptr
     procedure :: name => name_ptr
     procedure :: id
     procedure :: kill
@@ -62,7 +64,7 @@ module surface_class
 
     function evaluate(self, r) result(res)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
@@ -71,7 +73,7 @@ module surface_class
 
     subroutine reflectiveTransform(self, r, u)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
       class(surface), intent(in)                 :: self
       real(defReal), dimension(3), intent(inout) :: r, u
@@ -79,7 +81,7 @@ module surface_class
 
     function distanceToSurface(self, r, u) result(distance)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
@@ -88,7 +90,7 @@ module surface_class
 
     function normalVector(self, r) result(normal)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
@@ -98,7 +100,7 @@ module surface_class
     function whichSurface(self, r, u) result(surfPointer)
       use numPrecision
       use genericProcedures
-      import surface
+      import :: surface
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
       class(surface), pointer                 :: surfPointer
@@ -107,10 +109,20 @@ module surface_class
     subroutine setBoundaryConditions(self, BC)
       use numPrecision
       use genericProcedures
-      import surface
+      import :: surface
       class(surface), intent(inout)               :: self
       integer(shortInt), dimension(6), intent(in) :: BC
     end subroutine setBoundaryConditions
+
+    subroutine boundaryTransform(self, r, u, isVacuum)
+      use numPrecision
+      use genericProcedures
+      import :: surface
+      class(surface), intent(in)                 :: self
+      real(defReal), intent(inout), dimension(3) :: r
+      real(defReal), intent(inout), dimension(3) :: u
+      logical(defBool), intent(inout)            :: isVacuum
+    end subroutine boundaryTransform
 
   end interface
 
@@ -135,7 +147,7 @@ contains
     ! Point is close to the surface - check direction to determine whether it will be in the
     ! positive or negative halfspace
     if(abs(res) < surface_tol) then
-      position = (dotProduct(u,self%normalVector(r))>0.0)
+      position = (dotProduct(u, self % normalVector(r)) > ZERO)
       return
     else if (res > ZERO) then
       position = infront
@@ -252,6 +264,14 @@ contains
     integer(shortInt), dimension(6), intent(in) :: BC
     call self % ptr % setBoundaryConditions(BC)
   end subroutine setBoundaryConditions_ptr
+
+  subroutine boundaryTransform_ptr(self,r,u,isVacuum)
+    class(surface_ptr), intent(in)             :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    call self % ptr % boundaryTransform(r,u,isVacuum)
+  end subroutine boundaryTransform_ptr
 
   function name_ptr(self) result(name)
     class(surface_ptr), intent(in) :: self
