@@ -116,6 +116,7 @@ contains
 
         ! If the particle is outside the geometry, apply boundary conditions
         do while (.not. currentCell % insideGeom())
+          print *,'boundary'
           call self % applyBC(p, currentCell)
           ! End transport if the particle is killed
           if (p % isDead) then

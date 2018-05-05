@@ -230,6 +230,9 @@ contains
     !call calcMaxNesting(max_nest,universes,lattices, rootInd)
     print *,'Geometry contains ',max_nest,' nesting levels'
 
+    ! Identify all unique base cell instances
+    ! Required for regional tallies, MOC flux regions, and eventual burn-up
+
     call geom % init(surfaces, cells, universes, rootIdx, cells(outsideIdx) % surfaces(1), lattices)
 
   end subroutine initGeometryFromDict

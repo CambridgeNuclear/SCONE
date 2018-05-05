@@ -74,11 +74,12 @@ program test_init_geom
   do i=1,1000000
     !f (modulo(i,1000) == 0) print *, i
     angle=2*PI*rand % get()
-    call p % build([0.0_8,0.21_8,ZERO],[cos(2.2*PI/4),sin(2.2*PI/4),ZERO],1,1._8)
+    call p % build([0.0_8,0.0_8,ZERO],[cos(3.0*PI/4),sin(3.0*PI/4),ZERO],1,1._8)
     c = geom % whichCell(p % coords)
     !print *,c%name()
     do while (.not. p % isDead)
-      call DTOperator % transport(p)
+      print *,i
+      call STOperator % transport(p)
       call m % score(p % rGlobal(), p % dirGlobal())
       if (rand % get() > 0.95) then
         p % isDead = .TRUE.
