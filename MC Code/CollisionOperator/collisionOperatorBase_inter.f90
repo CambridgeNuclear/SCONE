@@ -24,8 +24,9 @@ module collisionOperatorBase_inter
   !! scatter  -> needs to choose whether to call elastic, inelastic, or N_XN
   !!
   type, public,abstract :: collisionOperatorBase
-    private
-    ! Colision Operator Local variables. Used by all collision operators
+    !* Colision Operator Local variables. Used by all collision operators
+    !* Should be protected (C++ terminology), but it cannot be implemented with Fortran.
+    !* Components are public but are not part of the interface (DO NOT ACCESS THEM DIRECTLY)
     class(RNG), pointer :: pRNG   => null()  !! Pointer to random number generator
     integer(shortInt)   :: nucIdx = 0        !! Collision nuclide index
     integer(shortInt)   :: matIdx = 0        !! Current material index

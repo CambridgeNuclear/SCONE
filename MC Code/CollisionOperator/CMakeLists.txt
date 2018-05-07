@@ -2,4 +2,5 @@
 add_sources( ./collisionOperator_class.f90 
              ./scatteringKernels_func.f90
              ./MGOperators/collisionOperatorMG_class.f90
-             ./collisionOperatorBase_inter.f90)
+             ./collisionOperatorBase_inter.f90
+             ./perNuclideCollisionOpCE_class.f90)

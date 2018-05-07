@@ -59,8 +59,10 @@ module endfConstants
                                   N_3Np         = 42  ,&
                                   N_N2p         = 44  ,&
                                   N_Npa         = 45  ,&
+                                  N_Nl1         = 51  ,&
                                  !N_Nl(:) 51-90
                                  !Inelastic scattering from levels 1-40 is defined at the end
+                                  N_Nl40        = 90  ,&
                                   N_Ncont       = 91  ,&
                                   N_disap       = 101 ,&
                                   N_gamma       = 102 ,&
