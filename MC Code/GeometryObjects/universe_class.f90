@@ -16,13 +16,13 @@ module universe_class
   private
 
   type, public :: universe
-    type(cell_ptr), dimension(:), allocatable :: cells     ! cells contained in universe
-    integer(shortInt) :: numCells                          ! the number of constituent cells
-    real(defReal), dimension(3) :: offset                  ! x,y,z offset from parent universe
-    integer(shortInt) :: id                                ! unique universe ID
-    integer(shortInt) :: geometryInd
-    logical(defBool) :: rootUni = .false.                  ! Is the universe the root universe?
-    character(100) :: name = ""
+    type(cell_ptr), dimension(:), allocatable :: cells             ! cells contained in universe
+    integer(shortInt)                         :: numCells          ! the number of constituent cells
+    real(defReal), dimension(3)               :: offset            ! x,y,z offset from parent universe
+    integer(shortInt)                         :: id                ! unique universe ID
+    integer(shortInt)                         :: geometryIdx
+    logical(defBool)                          :: rootUni = .false. ! Is the universe the root universe?
+    character(100)                            :: name = ""
   contains
     procedure :: init                                      ! initialise universe
     procedure :: whichCell                                 ! Identify which cell a particle occupies
@@ -36,7 +36,7 @@ module universe_class
     procedure :: cells => cells_ptr
     procedure :: offset => offset_ptr
     procedure :: name => name_ptr
-    procedure :: geometryInd => geometryInd_ptr
+    procedure :: geometryIdx => geometryIdx_ptr
     procedure :: numCells => numCells_ptr
     procedure :: associated => associated_ptr
     procedure :: kill
@@ -50,21 +50,22 @@ contains
   !!
   !! Initialise the universe
   !!
-  subroutine init(self, offset, cells, id, geometryInd, isRoot, name)
-    class(universe), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: offset
+  subroutine init(self, offset, cells, id, geometryIdx, isRoot, name)
+    class(universe), intent(inout)            :: self
+    real(defReal), dimension(3), intent(in)   :: offset
     class(cell_ptr), dimension(:), intent(in) :: cells
-    logical(defBool), optional, intent(in) :: isRoot
-    integer(shortInt), intent(in) :: id
-    integer(shortInt), intent(in) :: geometryInd
-    character(*), optional, intent(in) :: name
+    logical(defBool), optional, intent(in)    :: isRoot
+    integer(shortInt), intent(in)             :: id
+    integer(shortInt), intent(in)             :: geometryIdx
+    character(*), optional, intent(in)        :: name
 
     self % numCells = size(cells)
+    if(size(cells)<1) call fatalError('init, universe','Universe must contain one or more cells')
     allocate(self % cells(self % numCells))
     self % offset = offset
     self % cells = cells
     self % id = id
-    self % geometryInd = geometryInd
+    self % geometryIdx = geometryIdx
     if(present(isRoot)) then
       self % rootUni = isRoot
     else
@@ -78,11 +79,11 @@ contains
   !! Returns the index of the cell in the cells array
   !!
   function whichCell(self, r, u) result(c)
-    class(universe), intent(in) :: self
+    class(universe), intent(in)             :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    type(cell_ptr) :: c
-    integer(shortInt) :: i
-    logical(defBool) :: isInside
+    type(cell_ptr)                          :: c
+    integer(shortInt)                       :: i
+    logical(defBool)                        :: isInside
 
     ! Loop through each cell within the universe, terminate the search if found
     do i=1, self % numCells
@@ -98,23 +99,23 @@ contains
     c = self % cells(1)
   end function whichCell
 
-!
-! Pointer wrapper functions
-!
-!
+!!
+!! Pointer wrapper functions
+!!
+
 
   !!
   !! Initialise the root universe
   !!
-  subroutine init_ptr(self, offset, cells, id, geometryInd, isRoot, name)
-    class(universe_ptr), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: offset
+  subroutine init_ptr(self, offset, cells, id, geometryIdx, isRoot, name)
+    class(universe_ptr), intent(inout)        :: self
+    real(defReal), dimension(3), intent(in)   :: offset
     class(cell_ptr), dimension(:), intent(in) :: cells
-    integer(shortInt), intent(in) :: id
-    integer(shortInt), intent(in) :: geometryInd
-    logical(defBool), optional, intent(in) :: isRoot
-    character(*), optional, intent(in) :: name
-    call self % ptr % init(offset, cells, id, geometryInd, isRoot, name)
+    integer(shortInt), intent(in)             :: id
+    integer(shortInt), intent(in)             :: geometryIdx
+    logical(defBool), optional, intent(in)    :: isRoot
+    character(*), optional, intent(in)        :: name
+    call self % ptr % init(offset, cells, id, geometryIdx, isRoot, name)
   end subroutine init_ptr
 
 
@@ -123,9 +124,9 @@ contains
   !! Returns the index of the cell in the cells array
   !!
   function whichCell_ptr(self, r, u) result(c)
-    class(universe_ptr), intent(in) :: self
+    class(universe_ptr), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    type(cell_ptr) :: c
+    type(cell_ptr)                          :: c
     c = self % ptr % whichCell(r,u)
   end function whichCell_ptr
 
@@ -134,8 +135,8 @@ contains
   !!
   function cells_ptr(self,i)result(c)
     class(universe_ptr), intent(in) :: self
-    integer(shortInt), intent(in) :: i
-    type(cell_ptr) :: c
+    integer(shortInt), intent(in)   :: i
+    type(cell_ptr)                  :: c
     c = self % ptr % cells(i)
   end function cells_ptr
 
@@ -144,7 +145,7 @@ contains
   !!
   function offset_ptr(self)result(offset)
     class(universe_ptr), intent(in) :: self
-    real(defReal),dimension(3) :: offset
+    real(defReal),dimension(3)      :: offset
     offset = self % ptr % offset
   end function offset_ptr
 
@@ -153,27 +154,25 @@ contains
   !!
   function name_ptr(self)result(name)
     class(universe_ptr), intent(in) :: self
-    character(100) :: name
+    character(100)                  :: name
     name = self % ptr % name
   end function name_ptr
 
   !!
   !! Returns the geometry index of the universe pointed to
   !!
-  function geometryInd_ptr(self)result(ind)
+  function geometryIdx_ptr(self)result(idx)
     class(universe_ptr), intent(in) :: self
-    integer(shortInt) :: ind
-
-    ind = self % ptr % geometryInd
-
-  end function geometryInd_ptr
+    integer(shortInt)               :: idx
+    idx = self % ptr % geometryIdx
+  end function geometryIdx_ptr
 
   !!
   !! Returns the number of cells within the universe
   !!
   function numCells_ptr(self)result(num)
     class(universe_ptr), intent(in) :: self
-    integer(shortInt) :: num
+    integer(shortInt)               :: num
     num = self % ptr % numCells
   end function numCells_ptr
 
@@ -193,12 +192,12 @@ contains
     LHS % ptr => RHS
   end subroutine universe_ptr_assignment_target
 
-  !
-  ! Check whether the pointer wrapper is associated to a universe
-  !
+  !!
+  !! Check whether the pointer wrapper is associated to a universe
+  !!
   function associated_ptr(self)result(assoc)
     class(universe_ptr), intent(in) :: self
-    logical(defBool) :: assoc
+    logical(defBool)                :: assoc
     assoc = associated(self % ptr)
   end function associated_ptr
 

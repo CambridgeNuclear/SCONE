@@ -8,29 +8,30 @@
 !
 module surface_class
   use numPrecision
-  use genericProcedures
   use universalVariables
+  use genericProcedures, only : dotProduct
 
   implicit none
   private
     
   type, abstract, public :: surface
-    logical(defBool) :: isReflective = .FALSE.
-    logical(defBool) :: isPeriodic   = .FALSE.
-    logical(defBool) :: isVacuum     = .FALSE.
-    logical(defBool) :: isCompound   = .FALSE.
+    logical(defBool)            :: isReflective = .FALSE.
+    logical(defBool)            :: isPeriodic   = .FALSE.
+    logical(defBool)            :: isVacuum     = .FALSE.
+    logical(defBool)            :: isCompound   = .FALSE.
     real(defReal), dimension(3) :: periodicTranslation
-    character(100) :: name =""
-    integer(shortInt) :: id = 0
+    character(100)              :: name =""
+    integer(shortInt)           :: id = 0
   contains
-    procedure :: halfspace
-    procedure :: reflect
-    procedure(evaluate), deferred :: evaluate
-    procedure(reflectiveTransform), deferred :: reflectiveTransform
-    procedure(distanceToSurface), deferred :: distanceToSurface
-    procedure(normalVector), deferred :: normalVector
-    procedure(whichSurface), deferred :: whichSurface
-    procedure(setBoundaryConditions), deferred :: setBoundaryConditions
+    procedure                                    :: halfspace
+    procedure                                    :: reflect
+    procedure(evaluate), deferred                :: evaluate
+    procedure(reflectiveTransform), deferred     :: reflectiveTransform
+    procedure(distanceToSurface), deferred       :: distanceToSurface
+    procedure(normalVector), deferred            :: normalVector
+    procedure(whichSurface), deferred            :: whichSurface
+    procedure(setBoundaryConditions), deferred   :: setBoundaryConditions
+    procedure(boundaryTransform), deferred :: boundaryTransform
   end type surface
 
   type, public :: surface_ptr
@@ -48,6 +49,7 @@ module surface_class
     procedure :: isPeriodic => isPeriodic_ptr
     procedure :: periodicTranslation => periodicTranslation_ptr
     procedure :: setBoundaryConditions => setBoundaryConditions_ptr
+    procedure :: boundaryTransform => boundaryTransform_ptr
     procedure :: name => name_ptr
     procedure :: id
     procedure :: kill
@@ -62,88 +64,92 @@ module surface_class
 
     function evaluate(self, r) result(res)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
-      class(surface), intent(in) :: self
+      class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
-      real(defReal) :: res
+      real(defReal)                           :: res
     end function
 
     subroutine reflectiveTransform(self, r, u)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
-      class(surface), intent(in) :: self
+      class(surface), intent(in)                 :: self
       real(defReal), dimension(3), intent(inout) :: r, u
     end subroutine
 
-!   subroutine periodic(self, p)
-!     class(surface), intent(in) :: self
-!     class(particle), intent(inout) :: p
-!   end subroutine
-
     function distanceToSurface(self, r, u) result(distance)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
-      class(surface), intent(in) :: self
+      class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
-      real(defReal) :: distance
+      real(defReal)                           :: distance
     end function
 
     function normalVector(self, r) result(normal)
       use numPrecision
-      import surface
+      import :: surface
       implicit none
-      class(surface), intent(in) :: self
+      class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
-      real(defReal), dimension(3) :: normal
+      real(defReal), dimension(3)             :: normal
     end function
 
     function whichSurface(self, r, u) result(surfPointer)
       use numPrecision
       use genericProcedures
-      import surface
-      class(surface), intent(in) :: self
+      import :: surface
+      class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
-      class(surface), pointer :: surfPointer
+      class(surface), pointer                 :: surfPointer
     end function
 
     subroutine setBoundaryConditions(self, BC)
       use numPrecision
       use genericProcedures
-      import surface
-      class(surface), intent(inout) :: self
+      import :: surface
+      class(surface), intent(inout)               :: self
       integer(shortInt), dimension(6), intent(in) :: BC
     end subroutine setBoundaryConditions
+
+    subroutine boundaryTransform(self, r, u, isVacuum)
+      use numPrecision
+      use genericProcedures
+      import :: surface
+      class(surface), intent(in)                 :: self
+      real(defReal), intent(inout), dimension(3) :: r
+      real(defReal), intent(inout), dimension(3) :: u
+      logical(defBool), intent(inout)            :: isVacuum
+    end subroutine boundaryTransform
 
   end interface
 
 contains
 
-!
-! Base surface class procedures
-!
-  !
-  ! Determine whether a point occupies the positive or negative halfspace of a surface
-  ! Point can also be located on a surface - must include direction to determine halfspace
-  !
+!!
+!! Base surface class procedures
+!!
+  !!
+  !! Determine whether a point occupies the positive or negative halfspace of a surface
+  !! Point can also be located on a surface - must include direction to determine halfspace
+  !!
   function halfspace(self,r,u) result(position)
-    implicit none
-    class(surface), intent(in) :: self
+    class(surface), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r, &  ! position relative to the surface
                                                u     ! direction of travel (for coincidence cases)
-    real(defReal) :: res
-    logical(defBool) :: position
+    real(defReal)                           :: res
+    logical(defBool)                        :: position
 
     res = self % evaluate(r)
 
     ! Point is close to the surface - check direction to determine whether it will be in the
     ! positive or negative halfspace
     if(abs(res) < surface_tol) then
-      position = (dotProduct(u,self%normalVector(r))>0.0)
+      position = (dotProduct(u, self % normalVector(r)) > ZERO)
       return
-    else if (res > 0.0) then
+    else if (res > ZERO) then
       position = infront
       return
     else
@@ -153,132 +159,123 @@ contains
 
   end function halfspace
 
-  !
-  ! Reflect a particle incident on a surface and nudge it away from the surface
-  !
+  !!
+  !! Reflect a particle incident on a surface and nudge it away from the surface
+  !!
   subroutine reflect(self, r, u)
-    implicit none
-    class(surface), intent(in) :: self
+    class(surface), intent(in)                 :: self
     real(defReal), dimension(3), intent(inout) :: r, &
                                                   u
-    real(defReal), dimension(3) :: normal
-    real(defReal) :: magSquared
+    real(defReal), dimension(3)                :: normal
+    real(defReal)                              :: magSquared
 
     normal = self%normalVector(r)
     magSquared = dotProduct(normal,normal)
 
-    u = u - 2.0*dotProduct(u,normal)*normal/magSquared
+    u = u - TWO*dotProduct(u,normal)*normal/magSquared
     r = r + NUDGE * u
 
   end subroutine reflect
 
-!
-! Surface pointer procedures
-!
-!
+!!
+!! Surface pointer procedures
+!!
+
   function evaluate_ptr(self, r) result(res)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal) :: res
+    real(defReal)                           :: res
     res=self%ptr%evaluate(r)
   end function evaluate_ptr
 
   subroutine reflect_ptr(self, r, u)
-   implicit none
-   class(surface_ptr), intent(in) :: self
+   class(surface_ptr), intent(in)             :: self
    real(defReal), dimension(3), intent(inout) :: r, u
    call self%ptr%reflect(r,u)
   end subroutine reflect_ptr
 
   subroutine reflectiveTransform_ptr(self, r, u)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)             :: self
     real(defReal), dimension(3), intent(inout) :: r, u
     call self%ptr%reflectiveTransform(r,u)
   end subroutine reflectiveTransform_ptr
 
-!   subroutine periodic(self, p)
-!     class(surface), intent(in) :: self
-!     class(particle), intent(inout) :: p
-!   end subroutine
-
   function distanceToSurface_ptr(self, r, u) result(distance)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal) :: distance
+    real(defReal)                           :: distance
     distance = self%ptr%distanceToSurface(r,u)
   end function distanceToSurface_ptr
 
   function normalVector_ptr(self, r) result(normal)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3) :: normal
+    real(defReal), dimension(3)             :: normal
     normal = self%ptr%normalVector(r)
   end function normalVector_ptr
 
   function halfspace_ptr(self,r,u) result(position)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r, &  ! position relative to the surface
                                                u     ! direction of travel (for coincidence cases)
-    logical(defBool) :: position
+    logical(defBool)                        :: position
     position = self%ptr%halfspace(r,u)
   end function halfspace_ptr
 
   function whichSurface_ptr(self, r, u) result(surfPointer)
-    implicit none
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer :: surfPointer
+    class(surface), pointer                 :: surfPointer
     surfPointer => self%ptr%whichSurface(r, u)
   end function
 
-  function isReflective_ptr(self)result(isReflective)
-    implicit none
+  function isReflective_ptr(self) result(isReflective)
     class(surface_ptr), intent(in) :: self
-    logical(defBool) :: isReflective
+    logical(defBool)               :: isReflective
     isReflective = self % ptr % isReflective
   end function isReflective_ptr
 
-  function isVacuum_ptr(self)result(isVacuum)
-    implicit none
+  function isVacuum_ptr(self) result(isVacuum)
     class(surface_ptr), intent(in) :: self
-    logical(defBool) :: isVacuum
+    logical(defBool)               :: isVacuum
     isVacuum = self % ptr % isVacuum
   end function isVacuum_ptr
 
-  function isPeriodic_ptr(self)result(isPeriodic)
-    implicit none
+  function isPeriodic_ptr(self) result(isPeriodic)
     class(surface_ptr), intent(in) :: self
-    logical(defBool) :: isPeriodic
+    logical(defBool)               :: isPeriodic
     isPeriodic = self % ptr % isPeriodic
   end function isPeriodic_ptr
 
-  function id(self)result(ind)
-    implicit none
+  function id(self) result(ind)
     class(surface_ptr), intent(in) :: self
-    integer(shortInt) :: ind
+    integer(shortInt)              :: ind
     ind = self % ptr % id
   end function id
 
-  function periodicTranslation_ptr(self)result(periodicTranslation)
+  function periodicTranslation_ptr(self) result(periodicTranslation)
     class(surface_ptr), intent(in) :: self
-    real(defReal), dimension(3) :: periodicTranslation
+    real(defReal), dimension(3)    :: periodicTranslation
     periodicTranslation = self % ptr % periodicTranslation
   end function periodicTranslation_ptr
 
   subroutine setBoundaryConditions_ptr(self,BC)
-    class(surface_ptr), intent(in) :: self
+    class(surface_ptr), intent(in)              :: self
     integer(shortInt), dimension(6), intent(in) :: BC
     call self % ptr % setBoundaryConditions(BC)
   end subroutine setBoundaryConditions_ptr
 
-  function name_ptr(self)result(name)
+  subroutine boundaryTransform_ptr(self,r,u,isVacuum)
+    class(surface_ptr), intent(in)             :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    call self % ptr % boundaryTransform(r,u,isVacuum)
+  end subroutine boundaryTransform_ptr
+
+  function name_ptr(self) result(name)
     class(surface_ptr), intent(in) :: self
-    character(100) :: name
+    character(100)                 :: name
     name = self % ptr % name
   end function name_ptr
 
@@ -297,7 +294,7 @@ contains
 
   subroutine surface_ptr_assignment_target(LHS,RHS)
     class(surface_ptr), intent(out)        :: LHS
-    class(surface), pointer, intent(in)     :: RHS
+    class(surface), pointer, intent(in)    :: RHS
 
     if(associated(LHS % ptr)) deallocate(LHS % ptr)
     LHS % ptr => RHS

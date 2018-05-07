@@ -3,7 +3,7 @@
 !
 module box_class
   use numPrecision
-  use genericProcedures
+  use genericProcedures, only : fatalError
   use universalVariables
 
   use surface_class
@@ -16,8 +16,8 @@ module box_class
     type(xPlane), dimension(:), pointer :: xPlanes => null()
     type(yPlane), dimension(:), pointer :: yPlanes => null()
     type(zPlane), dimension(:), pointer :: zPlanes => null()
-    real(defReal), dimension(3) :: a                        ! the half-width in each direction of the cubic box
-    real(defReal), dimension(3) :: origin = [0.0, 0.0, 0.0]
+    real(defReal), dimension(3)         :: a    ! the half-width in each direction of the cubic box
+    real(defReal), dimension(3)         :: origin = [ZERO, ZERO, ZERO]
   contains
     procedure :: init => initBox
     procedure :: evaluate => evaluateBox
@@ -26,6 +26,7 @@ module box_class
     procedure :: normalVector => normalVectorBox
     procedure :: whichSurface => whichPlane
     procedure :: setBoundaryConditions => setBoundaryConditionsBox
+    procedure :: boundaryTransform => boundaryTransformBox
   end type box
 
 contains
@@ -36,18 +37,19 @@ contains
   ! is in front of the origin, the second behind
   !
   subroutine initBox(self, origin, a, id, name)
-    implicit none
-    class(box), intent(inout) :: self
+    class(box), intent(inout)               :: self
     real(defReal), dimension(3), intent(in) :: a, &
                                               origin
     integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in) :: name
-    integer(shortInt) :: i
-    real(defReal) :: neg
+    character(*), optional, intent(in)      :: name
+    integer(shortInt)                       :: i
+    real(defReal)                           :: neg
 
     self % isCompound = .true.
     self % origin = origin
     self % a = a
+    if(any(a < surface_tol)) &
+    call fatalError('initBox, box','Box dimensions must be greater than surface tolerance')
     if(present(id)) self % id = id
     if (present(name)) self % name = name
 
@@ -60,12 +62,12 @@ contains
     allocate(self % zPlanes(2))
 
     ! Initialise each plane in each cardinal direction
-    neg = +1.0
+    neg = +ONE
     do i = 1, 2
       call self % xPlanes(i) % init(origin(1) + neg*a(1))
       call self % yPlanes(i) % init(origin(2) + neg*a(2))
       call self % zPlanes(i) % init(origin(3) + neg*a(3))
-      neg = -1.0
+      neg = -ONE
     end do
 
   end subroutine initBox
@@ -74,15 +76,14 @@ contains
   ! Evaluate the surface function of the box
   !
   function evaluateBox(self, r) result(res)
-    implicit none
-    class(box), intent(in) :: self
+    class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal) :: res
-    real(defReal), dimension(2) :: resX  ! Results from xPlanes
-    real(defReal), dimension(2) :: resY  ! Results from yPlanes
-    real(defReal), dimension(2) :: resZ  ! Results from zPlanes
-    real(defReal) :: absMinRes           ! Identify if particle sits on a surface
-    real(defReal) :: testRes             ! The most positive residual
+    real(defReal)                           :: res
+    real(defReal), dimension(2)             :: resX      ! Results from xPlanes
+    real(defReal), dimension(2)             :: resY      ! Results from yPlanes
+    real(defReal), dimension(2)             :: resZ      ! Results from zPlanes
+    real(defReal)                           :: absMinRes ! Identify if particle sits on a surface
+    real(defReal)                           :: testRes   ! The most positive residual
 
     ! Evaluate the front planes' surface functions
     resX(1) = self % xPlanes(1) % evaluate(r)
@@ -134,13 +135,12 @@ contains
   ! Requires checking that only real surfaces are intercepted,
   ! i.e., not the extensions of the box plane surfaces
   !
-  function distanceToBox(self, r, u)result(distance)
-    implicit none
-    class(box), intent(in) :: self
+  function distanceToBox(self, r, u) result(distance)
+    class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal), dimension(3) :: posBound, negBound, testPoint
-    real(defReal) :: distance
-    real(defReal) :: testDistance
+    real(defReal), dimension(3)             :: posBound, negBound, testPoint
+    real(defReal)                           :: distance
+    real(defReal)                           :: testDistance
 
     distance = INFINITY
     ! Find the positive and negative bounds which the particle
@@ -201,10 +201,9 @@ contains
   ! search in the cell
   !
   subroutine reflectiveTransformBox(self, r, u)
-    implicit none
-    class(box), intent(in) :: self
+    class(box), intent(in)                     :: self
     real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer :: surfPointer
+    class(surface), pointer                    :: surfPointer
 
     surfPointer => self % whichSurface(r, u)
     call surfPointer % reflectiveTransform(r,u)
@@ -215,12 +214,11 @@ contains
   ! Determine on which surface the particle is located and obtain
   ! its normal vector
   !
-  function normalVectorBox(self, r)result(normal)
-    implicit none
-    class(box), intent(in) :: self
+  function normalVectorBox(self, r) result(normal)
+    class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3) :: normal
-    real(defReal), dimension(3) :: posBound, negBound
+    real(defReal), dimension(3)             :: normal
+    real(defReal), dimension(3)             :: posBound, negBound
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -257,12 +255,11 @@ contains
   ! particle direction otherwise)
   !
   function whichPlane(self, r, u) result(surfPointer)
-    implicit none
-    class(box), intent(in) :: self
+    class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer :: surfPointer
-    real(defReal), dimension(3) :: testPoint, posBound, negBound
-    real(defReal) :: testDistance, distance
+    class(surface), pointer                 :: surfPointer
+    real(defReal), dimension(3)             :: testPoint, posBound, negBound
+    real(defReal)                           :: testDistance, distance
 
     distance = INFINITY
     posBound = self % origin + self % a + surface_tol
@@ -336,7 +333,7 @@ contains
   !! Apply generic boundary conditions to the box
   !!
   subroutine setBoundaryConditionsBox(self, BC)
-    class(box), intent(inout) :: self
+    class(box), intent(inout)                   :: self
     integer(shortInt), dimension(6), intent(in) :: BC
 
     ! Positive x boundary
@@ -350,7 +347,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(1) % isPeriodic = .TRUE.
-        self % xPlanes(1) % periodicTranslation = [-2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(1) % periodicTranslation = [-TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
@@ -367,7 +364,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(2) % isPeriodic = .TRUE.
-        self % xPlanes(2) % periodicTranslation = [2.*self % a(1), ZERO, ZERO]
+        self % xPlanes(2) % periodicTranslation = [TWO*self % a(1), ZERO, ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
@@ -384,7 +381,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(1) % isPeriodic = .TRUE.
-        self % yPlanes(1) % periodicTranslation = [ZERO, -2.*self % a(2), ZERO]
+        self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
@@ -401,7 +398,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(2) % isPeriodic = .TRUE.
-        self % yPlanes(2) % periodicTranslation = [ZERO, 2.*self % a(2), ZERO]
+        self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
@@ -418,7 +415,7 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(1) % isPeriodic = .TRUE.
-        self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -2.*self % a(3)]
+        self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -TWO*self % a(3)]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
@@ -435,12 +432,158 @@ contains
         'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(2) % isPeriodic = .TRUE.
-        self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, 2.*self % a(3)]
+        self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, TWO*self % a(3)]
       end if
     else
       call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
     end if
 
   end subroutine setBoundaryConditionsBox
+
+  !!
+  !! Check halfspaces to identify which combination of
+  !! boundary conditions to apply to a point
+  !!
+  subroutine boundaryTransformBox(self, r, u, isVacuum)
+    class(box), intent(in)                     :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(inout)            :: isVacuum
+    logical(defBool)                           :: front, back, left, right, above, below
+
+    ! Point can be within one of 27 regions
+    ! Locate which region and then apply BCs as appropriate
+    front = self % xPlanes(1) % halfspace(r, u)
+    back = .NOT. self % xPlanes(2) % halfspace(r, u)
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    above = self % zPlanes(1) % halfspace(r, u)
+    below = .NOT. self % zPlanes(2) % halfspace(r, u)
+
+    ! Point is in the upper front left corner
+    if (front .AND. left .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper back left corner
+    else if (back .AND. left .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and to the left
+    else if (left .AND. above) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper front right corner
+    else if (front .AND. right .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the upper back right corner
+    else if (back .AND. right .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and to the right
+    else if (right .AND. above) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above
+    else if (above) then
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and in front
+    else if (front .AND. above) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is above and behind
+    else if (back .AND. above) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower front left
+    else if (front .AND. left .AND. below) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower back left
+    else if (back .AND. left .AND. below) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower left
+    else if (left .AND. below) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower front right
+    else if (front .AND. right .AND. below) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower back right
+    else if (back .AND. right .AND. below) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the lower right
+    else if (right .AND. below) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is below
+    else if (below) then
+      call self % zPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the front left
+    else if (front .AND. left) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the back left
+    else if (back .AND. left) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the left
+    else if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the front right
+    else if (front .AND. right) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the back right
+    else if (back .AND. right) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the front
+    else if (front) then
+      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is on the back
+    else if (back) then
+      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+
+    ! Point is in the box
+    else
+      call fatalError('boundaryTransformation, box',&
+      'Cannot apply boundary transformation: point is already within the boundary')
+    end if
+
+  end subroutine boundaryTransformBox
 
 end module box_class

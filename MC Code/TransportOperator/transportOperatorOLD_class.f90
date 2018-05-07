@@ -28,11 +28,11 @@ module transportOperator_class
 
   type, public :: transportOperator
     private
-    class(rng), pointer :: random => null()              ! RNG - should this be associated to particle?
+    class(rng), pointer      :: random => null()         ! RNG - should this be associated to particle?
     !class(Nuclear_data_MG), pointer :: MGData => null()  ! multi-group data
     !class(Nuclear_data_CE), pointer :: CEData => null()  ! continuous energy data
     class(geometry), pointer :: geom => null()           ! references the geometry for cell searching
-    logical :: isDT = .true.                             ! perform delta tracking?
+    logical                  :: isDT = .true.            ! perform delta tracking?
   contains
     procedure :: initMG
     procedure :: performTransport
@@ -53,11 +53,13 @@ contains
   subroutine initMG(self, random, geom) !return nuclearData at some point!
     class(transportOperator), intent(inout) :: self
     !class(Nuclear_data_MG), target :: nuclearData
-    class(rng), target :: random
-    class(geometry), target :: geom
+    class(rng), target                      :: random
+    class(geometry), target                 :: geom
+
     self%random => random
     !self%MGData => nuclearData
     self%geom => geom
+
   end subroutine initMG
 
   !!
@@ -65,8 +67,8 @@ contains
   !!
   function getSigmaT(self,p)result(sigmaT)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(in) :: p
-    real(defReal) :: sigmaT
+    class(particle), intent(in)          :: p
+    real(defReal)                        :: sigmaT
 
     if (p % isMG) then
       !sigmaT = self % MGData % giveTotalXS(p)
@@ -85,8 +87,8 @@ contains
   !!
   function getMajorant(self,p)result(majorant)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(in) :: p
-    real(defReal) :: majorant
+    class(particle), intent(in)          :: p
+    real(defReal)                        :: majorant
 
     if (p % isMG) then
       !majorant = self % MGData % giveMajorantXS(p)
@@ -105,7 +107,7 @@ contains
   !!
   subroutine performTransport(self,p)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
+    class(particle), intent(inout)       :: p
 
     if (self % isDT) then
       call self % deltaTracking(p)
@@ -120,9 +122,9 @@ contains
   !!
   subroutine deltaTracking(self,p)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
-    real(defReal) :: majorant, sigmaT, distance
-    type(cell_ptr) :: currentCell
+    class(particle), intent(inout)       :: p
+    real(defReal)                        :: majorant, sigmaT, distance
+    type(cell_ptr)                       :: currentCell
 
     majorant = self % getMajorant(p)
     DTLoop:do
@@ -162,12 +164,12 @@ contains
   !!
   subroutine applyBCsDT(self, p, currentCell)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
-    class(cell_ptr), intent(inout) :: currentCell
-    type(surface_ptr) :: currentSurface
+    class(particle), intent(inout)       :: p
+    class(cell_ptr), intent(inout)       :: currentCell
+    type(surface_ptr)                    :: currentSurface
 
     ! Iterate until particle is either inside the geometry or dead
-    do while (.not. currentCell % insideGeom())
+    do while (.NOT. currentCell % insideGeom())
       ! Identify which surface the particle crossed at the highest geometry level
       currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
 
@@ -180,7 +182,7 @@ contains
       else if (currentSurface % isReflective()) then
 
         ! Return particle to global coordinates and apply the reflective transform
-        call p % coords % resetNesting()
+        call p % resetNesting()
         call currentSurface % reflectiveTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir)
 
         ! Identify which cell the particle now occupies
@@ -189,8 +191,7 @@ contains
       else if (currentSurface % isPeriodic()) then
 
         ! Return particle to gloabl coordinates and apply the periodic translation associated with the surface
-        call p % coords % resetNesting()
-        p % coords % lvl(1) % r = p % rGlobal() + currentSurface % periodicTranslation()
+        call p % teleport(p % rGlobal() + currentSurface % periodicTranslation())
 
         ! Identify which cell the particle now occupies
         currentCell = self % geom % whichCell(p%coords)
@@ -212,12 +213,13 @@ contains
   !!
   subroutine surfaceTracking(self,p)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
-    real(defReal) :: sigmaT, distance, boundaryDistance, testDistance, latDistance, lDist
-    integer(shortInt) :: i, n, nMin, latIdx, iLat
-    type(cell_ptr) :: c, currentCell
-    type(lattice_ptr) :: lat
-    logical(defBool) :: moveUp
+    class(particle), intent(inout)       :: p
+    real(defReal)                        :: sigmaT, distance, boundaryDistance, &
+                                            testDistance, latDistance, lDist
+    integer(shortInt)                    :: i, n, nMin, latIdx, iLat
+    type(cell_ptr)                       :: c, currentCell
+    type(lattice_ptr)                    :: lat
+    logical(defBool)                     :: moveUp
 
     STLoop: do
       ! Obtain the local cross-section
@@ -225,16 +227,16 @@ contains
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
-      n = p % coords % nesting
+      n = p % nesting()
       nMin = 1
       boundaryDistance = INFINITY
       latDistance = INFINITY
       do i = 1,n
-        c = self % geom % cells(p % coords % lvl(i) % cellInd)
+        c = self % geom % cells(p % getCellIdx(i))
         testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
 
         ! Check if the particle is in a lattice cell
-        latIdx = p % coords % lvl(i) % latInd
+        latIdx = p % getLatIdx(i)
         if (latIdx > 0) then
           lat = self % geom % lattices(latIdx)
           lDist = lat % getDistance(p%rLocal(i), p%dirLocal(i))
@@ -269,7 +271,7 @@ contains
         call p % moveLocal(boundaryDistance + NUDGE, n)
 
         ! Find the new base cell which the particle occupies
-        currentCell = self % geom % whichCell(p%coords,n)
+        currentCell = self % geom % whichCell(p%coords, n)
 
         ! If the particle is outside the geometry, apply boundary conditions
         do while (.not. currentCell % insideGeom())
@@ -301,12 +303,12 @@ contains
   !!
   subroutine applyBCsST(self, p, currentCell)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
-    class(cell_ptr), intent(inout) :: currentCell
-    type(surface_ptr) :: currentSurface
+    class(particle), intent(inout)       :: p
+    class(cell_ptr), intent(inout)       :: currentCell
+    type(surface_ptr)                    :: currentSurface
 
     ! Return to global coordinates - this may be a superfluous call!!
-    call p % coords % resetNesting()
+    call p % resetNesting()
 
     ! Identify which surface the particle crossed at the highest geometry level
     currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
@@ -314,7 +316,7 @@ contains
     ! Check the boundary conditions on the surface
     ! If vacuum, kill the particle
     if (currentSurface % isVacuum()) then
-      p % isDead = .true.
+      p % isDead = .TRUE.
       call currentSurface % kill()
 
     ! If reflective or periodic, must ensure that the surface is a plane!
@@ -338,8 +340,8 @@ contains
     else if (currentSurface % isPeriodic()) then
 
       ! Apply the periodic translation associated with the surface
-      p%coords%lvl(1)%r = p%rGlobal() + currentSurface % periodicTranslation() &
-                          + NUDGE * p%dirGlobal()
+      call p % teleport(p%rGlobal() + currentSurface % periodicTranslation() &
+                        + NUDGE * p%dirGlobal())
 
       ! Identify which cell the particle now occupies
       currentCell = self % geom % whichCell(p%coords)
@@ -359,27 +361,27 @@ contains
   !!
   subroutine walk(self,p,steps)
     class(transportOperator), intent(in) :: self
-    class(particle), intent(inout) :: p
-    integer(shortInt), intent(in) :: steps
-    real(defReal) :: boundaryDistance, testDistance, latDistance, lDist
-    integer(shortInt) :: i, n, nMin, step, latIdx, iLat
-    type(cell_ptr) :: c, currentCell
-    type(lattice_ptr) :: lat
+    class(particle), intent(inout)       :: p
+    integer(shortInt), intent(in)        :: steps
+    real(defReal)                        :: boundaryDistance, testDistance, latDistance, lDist
+    integer(shortInt)                    :: i, n, nMin, step, latIdx, iLat
+    type(cell_ptr)                       :: c, currentCell
+    type(lattice_ptr)                    :: lat
 
     STLoop: do step =1,steps
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
-      n = p % coords % nesting
+      n = p % nesting()
       nMin = 1
       boundaryDistance = INFINITY
       latDistance = INFINITY
       do i = 1,n
-        c = self % geom % cells(p % coords % lvl(i) % cellInd)
+        c = self % geom % cells(p % getCellIdx(i))
         testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
 
         ! Check if the particle is in a lattice cell
-        latIdx = p % coords % lvl(i) % latInd
+        latIdx = p % getLatIdx(i)
         if (latIdx > 0) then
           lat = self % geom % lattices(latIdx)
           lDist = lat % getDistance(p%rLocal(i), p%dirLocal(i))

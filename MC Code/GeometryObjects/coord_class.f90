@@ -9,14 +9,14 @@ module coord_class
   type, public :: coord
     real(defReal), dimension(3) :: r              ! position
     real(defReal), dimension(3) :: dir            ! direction
-    integer(shortInt) :: uniInd = 0               ! index of the universe occupied
-    integer(shortInt) :: latInd = 0               ! index of the lattice occupied
-    integer(shortInt) :: cellInd = 0              ! point to the cell occupied
+    integer(shortInt)           :: uniIdx = 0     ! index of the universe occupied
+    integer(shortInt)           :: latIdx = 0     ! index of the lattice occupied
+    integer(shortInt)           :: cellIdx = 0    ! point to the cell occupied
   end type coord
 
   type, public :: coordList
-    integer(shortInt) :: nesting               ! depth of co-ordinate nesting
-    type(coord), dimension(hardcoded_max_nest) :: lvl    ! array of coords nested successively deeper
+    integer(shortInt)                          :: nesting ! depth of co-ordinate nesting
+    type(coord), dimension(hardcoded_max_nest) :: lvl     ! array of coords nested successively deeper
   contains
     procedure :: init
     procedure :: addLevel
@@ -35,7 +35,7 @@ contains
   !! Initialise co-ordinates with a global position
   !!
   subroutine init(self,r,dir)
-    class(coordList), intent(inout) :: self
+    class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: r, dir
     self % lvl(1) % r = r
     self % lvl(1) % dir = dir
@@ -45,27 +45,29 @@ contains
   !!
   !! Add another level of co-ordinates
   !!
-  subroutine addLevel(self, offset, uniInd, latInd)
-    class(coordList), intent(inout) :: self
+  subroutine addLevel(self, offset, uniIdx, latIdx)
+    class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: offset
-    integer(shortInt), intent(in) :: uniInd
-    integer(shortInt), intent(in), optional :: latInd
-    integer(shortInt) :: n
+    integer(shortInt), intent(in)           :: uniIdx
+    integer(shortInt), intent(in), optional :: latIdx
+    integer(shortInt)                       :: n
+
     n = self % nesting + 1
     self % lvl(n) % r = self % lvl(n-1) % r - offset
     self % lvl(n) % dir = self % lvl(n-1) % dir
-    self % lvl(n) % uniInd = uniInd
+    self % lvl(n) % uniIdx = uniIdx
     self % nesting = n
-    if(present(latInd)) self % lvl(n) % latInd = latInd
+    if(present(latIdx)) self % lvl(n) % latIdx = latIdx
+
   end subroutine addLevel
 
   !!
   !! Return the co-ordinates to the chosen level - if not specified, return to global
   !!
   subroutine resetNesting(self,n)
-    class(coordList), intent(inout) :: self
+    class(coordList), intent(inout)         :: self
     integer(shortInt), intent(in), optional :: n
-    integer(shortInt) :: nMin,nMax, i
+    integer(shortInt)                       :: nMin,nMax, i
     if(present(n)) then
       nMin = n
     else
@@ -73,9 +75,9 @@ contains
     end if
     nMax = self % nesting
     do i = nMin+1,nMax
-      self % lvl(i) % uniInd  = 0
-      self % lvl(i) % latInd  = 0
-      self % lvl(i) % cellInd = 0
+      self % lvl(i) % uniIdx  = 0
+      self % lvl(i) % latIdx  = 0
+      self % lvl(i) % cellIdx = 0
     end do
     self % nesting = nMin
   end subroutine resetNesting
@@ -85,7 +87,7 @@ contains
   !!
   subroutine moveGlobal(self, distance)
     class(coordList), intent(inout) :: self
-    real(defReal), intent(in) :: distance
+    real(defReal), intent(in)       :: distance
     call self % resetNesting()
     self % lvl(1) % r = self % lvl(1) % r + distance * self % lvl(1) % dir
   end subroutine moveGlobal
@@ -95,9 +97,9 @@ contains
   !!
   subroutine moveLocal(self, distance, n)
     class(coordList), intent(inout) :: self
-    real(defReal), intent(in) :: distance
-    integer(shortInt), intent(in) :: n
-    integer(shortInt) :: i
+    real(defReal), intent(in)       :: distance
+    integer(shortInt), intent(in)   :: n
+    integer(shortInt)               :: i
     call self % resetNesting(n)
     do i=1,n
       self % lvl(i) % r = self % lvl(i) % r + distance * self % lvl(i) % dir
@@ -125,17 +127,17 @@ contains
   !!
   !! Returns the index of the cell occupied at the lowest level
   !!
-  function cell(self)result(cellInd)
+  function cell(self)result(cellIdx)
     class(coordList), intent(in) :: self
-    integer(shortInt) :: cellInd
-    cellInd = self % lvl(self % nesting) % cellInd
+    integer(shortInt)            :: cellIdx
+    cellIdx = self % lvl(self % nesting) % cellIdx
   end function cell
 
   !!
   !! Assign the global position to an arbitrary value
   !!
   subroutine assignPosition(self, r)
-    class(coordList), intent(inout) :: self
+    class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: r
     call self % resetNesting()
     self % lvl(1) % r = r
@@ -145,7 +147,7 @@ contains
   !! Assign the global direction to an arbitrary value
   !!
   subroutine assignDirection(self, dir)
-    class(coordList), intent(inout) :: self
+    class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: dir
     call self % resetNesting()
     self % lvl(1) % dir = dir

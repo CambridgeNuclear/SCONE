@@ -21,7 +21,7 @@ module lattice_class
     integer(shortInt), dimension(3) :: extent                        ! number of cells in each direction
     integer(shortInt) :: id                                          ! unique ID identifying the lattice
     logical(defBool) :: is3D                                         ! simplifies lattice procedures if it is not 3D
-    integer(shortInt) :: outsideMatInd = 0                               ! material contained in any index outside the lattice
+    integer(shortInt) :: outsideMatIdx = 0                           ! material contained in any index outside the lattice
     character(100), public :: name = ""
   contains
     procedure :: init
@@ -58,14 +58,14 @@ contains
   !! These universes are then assigned this cell as their parent cell
   !!
   subroutine init(self, pitch, corner, universes, id, is3D, name)
-    class(lattice), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: pitch
-    real(defReal), dimension(3), intent(in) :: corner
+    class(lattice), intent(inout)                     :: self
+    real(defReal), dimension(3), intent(in)           :: pitch
+    real(defReal), dimension(3), intent(in)           :: corner
     class(universe_ptr), dimension(:,:,:), intent(in) :: universes
-    integer(shortInt), intent(in) :: id
-    character(*), intent(in), optional :: name
-    logical(defBool), intent(in) :: is3D
-    integer(shortInt), dimension(3) :: sz
+    integer(shortInt), intent(in)                     :: id
+    character(*), intent(in), optional                :: name
+    logical(defBool), intent(in)                      :: is3D
+    integer(shortInt), dimension(3)                   :: sz
 
     sz(1) = size(universes,1)
     sz(2) = size(universes,2)
@@ -76,8 +76,12 @@ contains
     self % is3D = is3D
     self % id = id
     if(is3D) then
+      if(any(pitch < surface_tol)) &
+      call fatalError('init, lattice','3D lattice pitches must be greater than surface tolerance')
       allocate(self % universes(sz(1),sz(2),sz(3)))
     else
+      if((pitch(1) < surface_tol) .OR. (pitch(2) < surface_tol)) &
+      call fatalError('init, lattice','x and y lattice pitches must be greater than surface tolerance')
       allocate(self % universes(sz(1),sz(2),1))
       self % universes = universes(:,:,1:1)
     end if
@@ -87,12 +91,12 @@ contains
   !!
   !! Assuming coords are in the lattice system, find the indices of the unvierse the point occupies
   !!
-  function findUniverse(self,r,u)result(ijk)
-    class(lattice), intent(in) :: self
+  function findUniverse(self,r,u) result(ijk)
+    class(lattice), intent(in)              :: self
     real(defReal), intent(in), dimension(3) :: r
     real(defReal), intent(in), dimension(3) :: u
-    real(defReal), dimension(3) :: corner, pitch
-    integer(shortInt), dimension(3) :: ijk
+    real(defReal), dimension(3)             :: corner, pitch
+    integer(shortInt), dimension(3)         :: ijk
 
     corner = self % corner
     pitch = self % pitch
@@ -110,38 +114,40 @@ contains
   !!
   !! Returns the co-ordinate offset for a particular universe in the lattice
   !!
-  function localCoords(self, ijk)result(shift)
-    class(lattice), intent(in) :: self
+  function localCoords(self, ijk) result(shift)
+    class(lattice), intent(in)                  :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
-    real(defReal), dimension(3) :: shift
-    shift(1) = self % corner(1) + (ijk(1) - 0.5_8)*self % pitch(1)
-    shift(2) = self % corner(2) + (ijk(2) - 0.5_8)*self % pitch(2)
+    real(defReal), dimension(3)                 :: shift
+
+    shift(1) = self % corner(1) + (ijk(1) - HALF)*self % pitch(1)
+    shift(2) = self % corner(2) + (ijk(2) - HALF)*self % pitch(2)
     if (self % is3D) then
-      shift(3) = self % corner(3) + (ijk(3) - 0.5_8)*self % pitch(3)
+      shift(3) = self % corner(3) + (ijk(3) - HALF)*self % pitch(3)
     else
-      shift(3) = 0._8
+      shift(3) = ZERO
     end if
+
   end function localCoords
 
   !!
   !! Returns the distance that a particle must travel to the boundary of a lattice cell
   !! Assumes the particle is in local co-ordinates
   !!
-  function getDistance(self, r, u)result(distance)
-    class(lattice), intent(in) :: self
+  function getDistance(self, r, u) result(distance)
+    class(lattice), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
-    real(defReal), dimension(3) :: bound
-    real(defReal) :: distance
-    real(defReal) :: testDistance
-    integer(shortInt) :: i, maxDim
+    real(defReal), dimension(3)             :: bound
+    real(defReal)                           :: distance
+    real(defReal)                           :: testDistance
+    integer(shortInt)                       :: i, maxDim
 
     distance = INFINITY
     ! Find the bounds in each direction which the particle must intersect
-    bound(1) = sign(self % pitch(1)*0.5, u(1))
-    bound(2) = sign(self % pitch(2)*0.5, u(2))
+    bound(1) = sign(self % pitch(1)*HALF, u(1))
+    bound(2) = sign(self % pitch(2)*HALF, u(2))
     if (self % is3D) then
-      bound(3) = sign(self % pitch(3)*0.5, u(3))
+      bound(3) = sign(self % pitch(3)*HALF, u(3))
       maxDim = 3
     else
       maxDim = 2
@@ -163,16 +169,16 @@ contains
   !!
   !! Ensures that the index provided is actually inside the lattice
   !!
-  function insideLattice(self,ijk)result(isInside)
+  function insideLattice(self,ijk) result(isInside)
     class(lattice), intent(in) :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
     logical(defBool) :: isInside
-    isInside = all((ijk>0).and.(ijk<=self%extent))
+    isInside = all((ijk>0).AND.(ijk<=self%extent))
   end function insideLattice
 
-!
-! Pointer wrapper procedures
-!
+!!
+!! Pointer wrapper procedures
+!!
 
   !!
   !! Initialise the lattice by giving its dimensions and the
@@ -182,13 +188,13 @@ contains
   !! These universes are then assigned this cell as their parent cell
   !!
   subroutine init_ptr(self, pitch, corner, universes, id, is3D, name)
-    class(lattice_ptr), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: pitch
-    real(defReal), dimension(3), intent(in) :: corner
+    class(lattice_ptr), intent(inout)                 :: self
+    real(defReal), dimension(3), intent(in)           :: pitch
+    real(defReal), dimension(3), intent(in)           :: corner
     class(universe_ptr), dimension(:,:,:), intent(in) :: universes
-    integer(shortInt), intent(in) :: id
-    logical(defBool), intent(in) :: is3D
-    character(*), intent(in) :: name
+    integer(shortInt), intent(in)                     :: id
+    logical(defBool), intent(in)                      :: is3D
+    character(*), intent(in)                          :: name
     call self % ptr % init(pitch, corner, universes, id, is3D, name)
   end subroutine init_ptr
 
@@ -196,10 +202,10 @@ contains
   !! Assuming coords are in the lattice system, find the indices of the unvierse the point occupies
   !!
   function findUniverse_ptr(self,r,u)result(ijk)
-    class(lattice_ptr), intent(in) :: self
+    class(lattice_ptr), intent(in)          :: self
     real(defReal), intent(in), dimension(3) :: r
     real(defReal), intent(in), dimension(3) :: u
-    integer(shortInt), dimension(3) :: ijk
+    integer(shortInt), dimension(3)         :: ijk
     ijk = self % ptr % findUniverse(r,u)
   end function findUniverse_ptr
 
@@ -207,9 +213,9 @@ contains
   !! Returns the co-ordinate offset for a particular universe in the lattice
   !!
   function localCoords_ptr(self, ijk)result(shift)
-    class(lattice_ptr), intent(in) :: self
+    class(lattice_ptr), intent(in)              :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
-    real(defReal), dimension(3) :: shift
+    real(defReal), dimension(3)                 :: shift
     shift = self % ptr % localCoords(ijk)
   end function localCoords_ptr
 
@@ -218,10 +224,10 @@ contains
   !! Assumes the particle is in local co-ordinates
   !!
   function getDistance_ptr(self, r, u)result(distance)
-    class(lattice_ptr), intent(in) :: self
+    class(lattice_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
-    real(defReal) :: distance
+    real(defReal)                           :: distance
     distance = self % ptr % getDistance(r,u)
   end function getDistance_ptr
 
@@ -229,9 +235,9 @@ contains
   !! Ensures that the index of the universe provided is within the lattice
   !!
   function insideLattice_ptr(self,ijk)result(isInside)
-    class(lattice_ptr), intent(in) :: self
+    class(lattice_ptr), intent(in)              :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
-    logical(defBool) :: isInside
+    logical(defBool)                            :: isInside
     isInside = self % ptr % insideLattice(ijk)
   end function insideLattice_ptr
 
@@ -239,9 +245,9 @@ contains
   !! Returns the universe given a specific lattice index
   !!
   function universes_ptr(self,ijk)result(uni)
-    class(lattice_ptr), intent(in) :: self
+    class(lattice_ptr), intent(in)              :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
-    type(universe_ptr) :: uni
+    type(universe_ptr)                          :: uni
     uni = self % ptr % universes(ijk(1),ijk(2),ijk(3))
   end function universes_ptr
 
@@ -250,7 +256,7 @@ contains
   !!
   function name_ptr(self)result(name)
     class(lattice_ptr), intent(in) :: self
-    character(100) :: name
+    character(100)                 :: name
     name = self % ptr % name
   end function name_ptr
 

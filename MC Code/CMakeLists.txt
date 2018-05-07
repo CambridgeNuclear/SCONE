@@ -55,10 +55,10 @@ add_subdirectory(RandomNumbers)
 add_subdirectory(ParticleObjects)  
 
 add_subdirectory(NuclearData)      
-add_subdirectory(geometryObjects)  
+add_subdirectory(GeometryObjects)  
 
 add_subdirectory(CollisionOperator)
-add_subdirectory(transportOperator)
+add_subdirectory(TransportOperator)
 
 add_subdirectory(MOCObjects) 
 
