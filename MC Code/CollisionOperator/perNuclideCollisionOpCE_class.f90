@@ -130,10 +130,12 @@ contains
     class(particle), intent(inout)                :: p
     class(particleDungeon),intent(inout)          :: thisCycle
     class(particleDungeon),intent(inout)          :: nextCycle
+    real(defReal)                                 :: r
     character(100), parameter     :: Here ='scatter (perNuclideCollisionOp_class.f90)'
 
-    !* DO not sample number yet to preserve the sequence
-    self % MT = self % xsData % invertScattering(self %E, 0.5_defReal)
+    !Sample MT of scattering reaction
+    r = self % pRNG % get()
+    self % MT = self % xsData % invertScattering(self %E, r)
 
     select case(self % MT)
       case(N_N_elastic)
