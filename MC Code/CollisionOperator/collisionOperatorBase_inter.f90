@@ -47,6 +47,7 @@ module collisionOperatorBase_inter
     procedure(collisionMacro),deferred  :: N_XN             !! (n,Xn) colission processing
     procedure(collisionMacro),deferred  :: capture          !! Capture reaction processing
     procedure(collisionMacro),deferred  :: fission          !! Fission reaction processing
+    procedure(collisionMacro),deferred  :: cutoffs          !! Apply energy and weight cutoffs
 
   end type collisionOperatorBase
 
@@ -106,6 +107,8 @@ module collisionOperatorBase_inter
           call fatalError(Here, 'Unsupported MT number')
 
       end select
+
+      call self % cutoffs(p,thisCycle,nextCycle)
 
     end subroutine collide
 

@@ -1,11 +1,13 @@
 program eigenCE
 
   use numPrecision
-  use RNG_class,               only : RNG
-  use byNucNoMT_class,         only : byNucNoMT
-  use collisionOperator_class, only : collisionOperator
-  use particle_class,          only : particle
-  use particleDungeon_class,   only : particleDungeon
+  use RNG_class,                     only : RNG
+  use byNucNoMT_class,               only : byNucNoMT
+  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
+  use collisionOperator_class,       only : collisionOperator
+  use perNuclideCollisionOpCE_class, only : perNuclideCollisionOpCE
+  use particle_class,                only : particle
+  use particleDungeon_class,         only : particleDungeon
 
   use dictionary_class ,       only : dictionary
   use IOdictionary_class,      only : IOdictionary
@@ -13,9 +15,13 @@ program eigenCE
   implicit none
 
   type(particle)          :: neutron
-  type(collisionOperator) :: collisionPhysics
+  type(collisionOperator) :: collisionPhysics_implement
   class(RNG), pointer     :: RNGptr
-  type(byNucNoMT),pointer :: ce
+  class(byNucNoMT),pointer :: ce_implement
+
+  type(perNuclideCollisionOpCE) :: collisionPhysics
+  class(perNuclideNuclearDataCE),pointer :: ce
+
 
   integer(shortInt)          :: N, i
   real(defReal)              :: Emax,Emin,Umax,Umin
@@ -38,8 +44,8 @@ program eigenCE
 
   testDict = IOdictTest
 
-  allocate(ce)
-  call ce % init(testDict)
+  allocate(ce_implement)
+  call ce_implement % init(testDict)
 
   allocate(RNGptr)
   call RNGptr % init(75785746574_longInt)
@@ -47,9 +53,14 @@ program eigenCE
 
 
  ! allocate(collisionPhysics)
-  call collisionPhysics % attachXsData(ce)
+ ! call collisionPhysics_implement % attachXsData(ce_implement)
+
+  ce => ce_implement
 
 
+  collisionPhysics % xsData => ce
+
+   print *, 'Here'
 
   Emax = 20.0
   Emin = 1.0E-11

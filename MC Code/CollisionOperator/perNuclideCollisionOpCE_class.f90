@@ -26,7 +26,7 @@ module perNuclideCollisionOpCE_class
 
 
   type, public,extends(collisionOperatorBase)  :: perNuclideCollisionOpCE
-    private
+   !*DEBUG private
     real(defReal)                           :: E      !! Particle energy
     class(perNuclideNuclearDataCE), pointer :: xsData !! Nuclear Data block pointer
   contains
@@ -38,6 +38,7 @@ module perNuclideCollisionOpCE_class
     procedure :: N_XN
     procedure :: capture
     procedure :: fission
+    procedure :: cutoffs
 
     ! * Private Procedures
     procedure,private :: scatterFromFixed
@@ -56,7 +57,6 @@ contains
     type(xsNucMacroSet_ptr)                       :: nucXSs
     type(xsMainSet_ptr)                           :: microXss
     real(defReal)                                 :: r
-
 
     ! Load collision energy
     self % E = p % E
@@ -231,8 +231,17 @@ contains
 
   end subroutine fission
 
+  subroutine cutoffs(self,p,thisCycle,nextCycle)
+    class(perNuclideCollisionOpCE), intent(inout) :: self
+    class(particle), intent(inout)                :: p
+    class(particleDungeon),intent(inout)          :: thisCycle
+    class(particleDungeon),intent(inout)          :: nextCycle
 
- !!
+    if (p % E < energyCutoff ) p % isDead = .true.
+
+  end subroutine cutoffs
+
+  !!
   !! Subroutine to perform scattering in LAB frame
   !! Returns mu -> cos of deflection angle in LAB frame
   !!
