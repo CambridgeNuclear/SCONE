@@ -43,7 +43,7 @@ program test
   use xsNucMacroSet_class,     only : xsNucMacroSet
   use xsMacroSet_class, only : xsMacroSet
 
-  use collisionOperator_class, only : collisionOperator
+!  use collisionOperator_class, only : collisionOperator
   use particle_class,          only : particle
 
   use scatteringKernels_func,  only : targetVelocity_constXS,asymptoticScatter
@@ -52,7 +52,7 @@ program test
 
   use perMaterialMgXs_inter, only : perMaterialMgXs
   use isotropicMG_class,       only : isotropicMG
-  use collisionOperatorMG_class, only : collisionOperatorMG
+ ! use collisionOperatorMG_class, only : collisionOperatorMG
 
   use datalessMaterials_class,     only : datalessMaterials
 
@@ -153,8 +153,8 @@ program test
   type(xsMacroSet),pointer :: MacroXS
 
   type(particle)          :: neutron
-  type(collisionOperator) :: collisionPhysics
-  type(collisionOperatorMG) :: MGcoll
+!  type(collisionOperator) :: collisionPhysics
+!  type(collisionOperatorMG) :: MGcoll
   class(RNG), pointer     :: RNGptr
   real(defReal),dimension(3) :: V_ter
   real(defReal) :: mu, E_as, E_fg

@@ -7,7 +7,7 @@ program eigenMG
   use particleDungeon_class,     only : particleDungeon
 
   use isotropicMG_class,         only : isotropicMG
-  use collisionOperatorMG_class, only : collisionOperatorMG
+  !use collisionOperatorMG_class, only : collisionOperatorMG
   use perMaterialCollisionOpMG_class, only : perMaterialCollisionOpMG
 
   use dictionary_class ,         only : dictionary
