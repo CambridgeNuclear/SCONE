@@ -90,6 +90,8 @@ contains
 
     ! Check for population overflow
     if (self % pop > size(self % prisoners)) then
+      print *, self % pop
+      print *, size(self % prisoners)
       call fatalError(Here,'Run out of space for particles')
     end if
 

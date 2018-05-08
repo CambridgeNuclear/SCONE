@@ -17,6 +17,7 @@ module perNuclideImplicitCaptureCE_class
   implicit none
   private
 
+
   type, public,extends(perNuclideCollisionOpCE) :: perNuclideImplicitCaptureCE
   contains
     ! Overwride procedures to sample colision, perform implicit reaction treatment and
@@ -73,12 +74,12 @@ contains
     call implicit_base(self,p,thisCycle,nextCycle)
 
     ! Perform implicit capture
-    call self % xsData % getMainNucXs(nuclideXss, self % E, self % matIdx)
+    call self % xsData % getMainNucXs(nuclideXss, self % E, self % nucIdx)
 
-    sig_abs = nuclideXss % fission() + nuclideXss % capture ()
+    sig_abs = nuclideXss % capture()+ nuclideXss % fission()
     sig_tot = nuclideXss % total()
 
-    p % w = p % w * (ONE - (sig_abs)/sig_tot )
+    p % w = p % w * (ONE - (sig_abs/sig_tot) )
 
   end subroutine implicit
 
@@ -113,6 +114,5 @@ contains
     end if
 
   end subroutine cutoffs
-
 
 end module perNuclideImplicitCaptureCE_class

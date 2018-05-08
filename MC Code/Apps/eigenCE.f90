@@ -1,13 +1,14 @@
 program eigenCE
 
   use numPrecision
-  use RNG_class,                     only : RNG
-  use byNucNoMT_class,               only : byNucNoMT
-  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
-  use collisionOperator_class,       only : collisionOperator
-  use perNuclideCollisionOpCE_class, only : perNuclideCollisionOpCE
-  use particle_class,                only : particle
-  use particleDungeon_class,         only : particleDungeon
+  use RNG_class,                         only : RNG
+  use byNucNoMT_class,                   only : byNucNoMT
+  use perNuclideNuclearDataCE_inter,     only : perNuclideNuclearDataCE
+  use collisionOperator_class,           only : collisionOperator
+  use perNuclideCollisionOpCE_class,     only : perNuclideCollisionOpCE
+  use perNuclideImplicitCaptureCE_class, only : perNuclideImplicitCaptureCE
+  use particle_class,                    only : particle
+  use particleDungeon_class,             only : particleDungeon
 
   use dictionary_class ,       only : dictionary
   use IOdictionary_class,      only : IOdictionary
@@ -19,7 +20,8 @@ program eigenCE
   class(RNG), pointer     :: RNGptr
   class(byNucNoMT),pointer :: ce_implement
 
-  type(perNuclideCollisionOpCE) :: collisionPhysics
+  type(perNuclideImplicitCaptureCE) :: collisionPhysics
+  !type(perNuclideCollisionOpCE) :: collisionPhysics
   class(perNuclideNuclearDataCE),pointer :: ce
 
 
@@ -76,8 +78,8 @@ program eigenCE
   allocate(cycle1)
   allocate(cycle2)
 
-  call cycle1 % init(int(2.0*N))
-  call cycle2 % init(int(2.0*N))
+  call cycle1 % init(int(100.0*N))
+  call cycle2 % init(int(100.0*N))
   cycleTemp => null()
   nInactive = 300
   nActive   = 500
@@ -130,7 +132,6 @@ program eigenCE
 
    ! Load new k for normalisation
     cycle2 % k_eff = k_new
-
     print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
   end do
 
