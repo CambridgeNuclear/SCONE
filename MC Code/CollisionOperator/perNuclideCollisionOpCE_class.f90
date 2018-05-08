@@ -2,16 +2,12 @@ module perNuclideCollisionOpCE_class
 
   use numPrecision
   use endfConstants
-
-  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
-
-  use numPrecision
-  use endfConstants
-  use genericProcedures,     only : fatalError, rotateVector
-  use RNG_class,             only : RNG
-  use particle_class,        only : particle
-  use particleDungeon_class, only : particleDungeon
+  use genericProcedures,             only : fatalError, rotateVector
+  use RNG_class,                     only : RNG
+  use particle_class,                only : particle
+  use particleDungeon_class,         only : particleDungeon
   use collisionOperatorBase_inter,   only : collisionOperatorBase
+  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
 
   ! Cross-section packages to interface with nuclear data
   use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
@@ -20,10 +16,9 @@ module perNuclideCollisionOpCE_class
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
 
   implicit none
-  private
+  !private
 
   real(defReal), parameter :: energyCutoff = 2.0E-11, energyMaximum = 20.0
-
 
   !!
   !! Collision operator that works with perNuclideNuclearDataCE interface
