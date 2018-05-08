@@ -7,11 +7,13 @@ module coord_class
   private
 
   type, public :: coord
-    real(defReal), dimension(3) :: r              ! position
-    real(defReal), dimension(3) :: dir            ! direction
-    integer(shortInt)           :: uniIdx = 0     ! index of the universe occupied
-    integer(shortInt)           :: latIdx = 0     ! index of the lattice occupied
-    integer(shortInt)           :: cellIdx = 0    ! point to the cell occupied
+    real(defReal), dimension(3) :: r                   ! position
+    real(defReal), dimension(3) :: dir                 ! direction
+    logical(defBool)            :: isRotated = .FALSE. ! is the co-ordinate in a rotated reference frame?
+    integer(shortInt)           :: uniIdx = 0          ! index of the universe occupied
+    integer(shortInt)           :: latIdx = 0          ! index of the lattice occupied
+    integer(shortInt)           :: ijkIdx = 0          ! index of the lattice cell occupied (reduced to single digit)
+    integer(shortInt)           :: cellIdx = 0         ! point to the cell occupied
   end type coord
 
   type, public :: coordList
@@ -45,11 +47,12 @@ contains
   !!
   !! Add another level of co-ordinates
   !!
-  subroutine addLevel(self, offset, uniIdx, latIdx)
+  subroutine addLevel(self, offset, uniIdx, latIdx, ijkIdx)
     class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: offset
     integer(shortInt), intent(in)           :: uniIdx
     integer(shortInt), intent(in), optional :: latIdx
+    integer(shortInt), intent(in), optional :: ijkIdx
     integer(shortInt)                       :: n
 
     n = self % nesting + 1
@@ -57,7 +60,10 @@ contains
     self % lvl(n) % dir = self % lvl(n-1) % dir
     self % lvl(n) % uniIdx = uniIdx
     self % nesting = n
-    if(present(latIdx)) self % lvl(n) % latIdx = latIdx
+    if(present(latIdx)) then
+      self % lvl(n) % latIdx = latIdx
+      self % lvl(n) % ijkIdx = ijkIdx
+    end if
 
   end subroutine addLevel
 
@@ -78,6 +84,8 @@ contains
       self % lvl(i) % uniIdx  = 0
       self % lvl(i) % latIdx  = 0
       self % lvl(i) % cellIdx = 0
+      self % lvl(i) % ijkIdx = 0
+      self % lvl(i) % isRotated = .FALSE.
     end do
     self % nesting = nMin
   end subroutine resetNesting
@@ -108,7 +116,8 @@ contains
 
   !!
   !! Rotate neutron direction
-  !! Inefficient implementation, which does not account for not-rotated nesting levels
+  !! Applies rotation vector to lower levels only if they are in a rotated geometry
+  !! Otherwise, copies direction from the level above
   !!
   subroutine rotate(self,mu,phi)
     class(coordList), intent(inout) :: self
@@ -117,10 +126,16 @@ contains
     integer(shortInt)               :: i
 
     ! Rotate directions in all nesting levels
-    do i =1,self % nesting
-      self % lvl(i) % dir = rotateVector(self % lvl(i) % dir, mu, phi)
-
-    end do
+    self % lvl(1) % dir = rotateVector(self % lvl(1) % dir, mu, phi)
+    if (self % nesting > 1) then
+      do i = 2,self % nesting
+        if (self % lvl(i) % isRotated) then
+          self % lvl(i) % dir = rotateVector(self % lvl(i) % dir, mu, phi)
+        else
+          self % lvl(i) % dir = self % lvl(i-1) % dir
+        end if
+      end do
+    end if
 
   end subroutine rotate
 

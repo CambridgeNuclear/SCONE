@@ -563,7 +563,8 @@ contains
             end if
           end do
           if (.NOT.foundUni) call &
-          fatalError('latFromDict, initialiseGeometryStructures', 'Could not find a universe in the lattice')
+          fatalError('latFromDict, initialiseGeometryStructures',&
+          'Could not find a universe in the lattice')
         end do
       end do
     end do

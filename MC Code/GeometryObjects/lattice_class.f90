@@ -15,20 +15,22 @@ module lattice_class
   private
 
   type, public :: lattice
-    type(universe_ptr), dimension(:,:,:), allocatable :: universes   ! universes contained by lattice in 3D
-    real(defReal), dimension(3) :: pitch                             ! pitch of universes in each dimension
-    real(defReal), dimension(3) :: corner                            ! bottom left corner of the lattice in the parent cell's universe
-    integer(shortInt), dimension(3) :: extent                        ! number of cells in each direction
-    integer(shortInt) :: id                                          ! unique ID identifying the lattice
-    logical(defBool) :: is3D                                         ! simplifies lattice procedures if it is not 3D
-    integer(shortInt) :: outsideMatIdx = 0                           ! material contained in any index outside the lattice
-    character(100), public :: name = ""
+    type(universe_ptr), dimension(:,:,:), allocatable :: universes         ! universes contained by lattice in 3D
+    real(defReal), dimension(3)                       :: pitch             ! pitch of universes in each dimension
+    real(defReal), dimension(3)                       :: corner            ! bottom left corner of the lattice in the parent cell's universe
+    integer(shortInt), dimension(3)                   :: extent            ! number of cells in each direction
+    integer(shortInt)                                 :: totalCells        ! total number of cells in the lattice
+    integer(shortInt)                                 :: id                ! unique ID identifying the lattice
+    logical(defBool)                                  :: is3D              ! simplifies lattice procedures if it is not 3D
+    integer(shortInt)                                 :: outsideMatIdx = 0 ! material contained in any index outside the lattice
+    character(100), public                            :: name = ""
   contains
     procedure :: init
     procedure :: findUniverse  ! return the indices of the daughter universe given a point
     procedure :: localCoords   ! return the local co-ordinates of a given universe
     procedure :: getDistance   ! assuming a point is within a lattice cell, find the distance to the boundary
     procedure :: insideLattice ! checks that an index is within the lattice
+    procedure :: getijkIdx     ! given a lattice array position, calculate a unique index given lattice dimensions
   end type lattice
 
   type, public :: lattice_ptr
@@ -39,6 +41,7 @@ module lattice_class
     procedure :: localCoords => localCoords_ptr     ! return the local co-ordinates of a given universe
     procedure :: getDistance => getDistance_ptr     ! assuming a point is within a lattice cell, find the distance to the boundary
     procedure :: insideLattice => insideLattice_ptr ! ensures that a given index is within the lattice
+    procedure :: getijkIdx => getijkIdx_ptr         ! get unique ijkIdx given lattice array position
     procedure :: universes => universes_ptr         ! returns a universe of the lattice which is pointed to if given an index
     procedure :: name => name_ptr
     !procedure :: outsideMatInd => outsideMatInd_ptr ! returns the material index of a region outside the lattice
@@ -79,12 +82,15 @@ contains
       if(any(pitch < surface_tol)) &
       call fatalError('init, lattice','3D lattice pitches must be greater than surface tolerance')
       allocate(self % universes(sz(1),sz(2),sz(3)))
+      self % totalCells = sz(1) * sz(2) * sz(3)
     else
       if((pitch(1) < surface_tol) .OR. (pitch(2) < surface_tol)) &
       call fatalError('init, lattice','x and y lattice pitches must be greater than surface tolerance')
       allocate(self % universes(sz(1),sz(2),1))
       self % universes = universes(:,:,1:1)
+      self % totalCells = sz(1) * sz(2)
     end if
+
     if(present(name)) self % name = name
   end subroutine init
 
@@ -170,11 +176,23 @@ contains
   !! Ensures that the index provided is actually inside the lattice
   !!
   function insideLattice(self,ijk) result(isInside)
-    class(lattice), intent(in) :: self
+    class(lattice), intent(in)                  :: self
     integer(shortInt), dimension(3), intent(in) :: ijk
-    logical(defBool) :: isInside
+    logical(defBool)                            :: isInside
     isInside = all((ijk>0).AND.(ijk<=self%extent))
   end function insideLattice
+
+  !!
+  !! Return a single digit identifier for a lattice position given its 3D index
+  !!
+  function getijkIdx(self,ijk) result(ijkIdx)
+    class(lattice), intent(in)                  :: self
+    integer(shortInt), dimension(3), intent(in) :: ijk
+    integer(shortInt)                           :: ijkIdx
+
+    ijkIdx = ijk(1) + self % extent(1) * (ijk(2) - 1 + self % extent(2) * (ijk(3) - 1))
+
+  end function getijkIdx
 
 !!
 !! Pointer wrapper procedures

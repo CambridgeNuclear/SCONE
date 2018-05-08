@@ -1,13 +1,16 @@
 !
-! The cell class is the basic geometrical structure: it contains either universes/lattices or materials
+! The cell class is the basic geometrical structure: it contains either universes, lattices or materials
 ! This class will contains bounding surfaces and their halfspace and can be searched to identify
 ! whether a particle is inside the cell.
+! There will be many repeated instances of cells with identical geometries but different locations
+! and contents. These must be uniquely identified
 !
 module cell_class
   use numPrecision
   use genericProcedures, only : fatalError
   use universalVariables
   use surface_class
+  use coord_class
 
   implicit none
   private
@@ -17,22 +20,25 @@ module cell_class
     logical(defBool), dimension(:), allocatable  :: halfspaces          ! The halfspace of each surface corresponding to inside the cell
     integer(shortInt)                            :: numSurfaces         ! the number of surfaces which define the cell
     integer(shortInt)                            :: fillType = 0        ! determines if cell contains a material, universe, or lattice (1,2,3)
-    integer(shortInt)                            :: uniIdx = 0          ! index of the universe filling the cell
-    integer(shortInt)                            :: latIdx = 0          ! index of the lattice filling the cell
-    integer(shortInt)                            :: materialIdx = 0     ! index of the material contained in cel
+    integer(shortInt)                            :: latIdx = 0          ! index of the cell's lattice contents
+    integer(shortInt)                            :: uniIdx = 0          ! index of the cell's universe contents
+    integer(shortInt), dimension(:), allocatable :: matIdx = 0          ! index of the cell's material contents
+    integer(longInt), dimension(:), allocatable  :: uniqueID            ! identifies unique instance of a cell
+    real(defReal), dimension(:), allocatable     :: volume              ! the volume of the cell
+    type(coordList), dimension(:), allocatable   :: location            ! co-ord locations of each cell
     integer(shortInt)                            :: id                  ! unique user-defined ID
-    integer(shortInt)                            :: parentUni = 0       ! index of the parent universe of the cell
     logical(defBool)                             :: insideGeom = .true. ! is cell within geometry? Used to invoke BCs
     integer(shortInt)                            :: instances = 1       ! the number of instances of a given cell
-    integer(shortInt)                            :: geometryIdx = 0     ! the index of the cell in the full geometry array
-    real(defReal)                                :: volume              ! the volume of the cell
+    integer(longInt)                             :: geometryIndex       ! index of the cell in the cell array
     character(100), public :: name = ""
   contains
     procedure :: init
+    procedure :: setInstances
     procedure :: fill
     procedure :: insideCell
     procedure :: getDistance
     procedure :: whichSurface
+    procedure :: coordCompare
   end type cell
 
   ! Wrapper type for cell pointers
@@ -40,15 +46,17 @@ module cell_class
     class(cell), pointer :: ptr
   contains
     procedure :: init => init_ptr
+    procedure :: setInstance => setInstances_ptr
     procedure :: fill => fill_ptr
     procedure :: insideCell => insideCell_ptr
     procedure :: getDistance => getDistance_ptr
     procedure :: whichSurface => whichSurface_ptr
+    procedure :: coordCompare => coordCompare_ptr
     procedure :: insideGeom => insideGeom_ptr
     procedure :: fillType => fillType_ptr
     procedure :: uniIdx => uniIdx_ptr
     procedure :: latIdx => latIdx_ptr
-    procedure :: materialIdx => materialIdx_ptr
+    procedure :: matIdx => matIdx_ptr
     procedure :: geometryIdx => geometryIdx_ptr
     procedure :: associated => associated_ptr
     procedure :: name => name_ptr
@@ -81,7 +89,6 @@ contains
     self % id = id
     self % fillType = fillType
     self % geometryIdx = geometryIdx
-    ! If outside of the geometry, parentUni will be meaningless
     if (fillType == outsideFill) then
       self % insideGeom = .FALSE.
     end if
@@ -90,21 +97,60 @@ contains
   end subroutine init
 
   !!
-  !! Fills the cell with a material, universe or lattice
+  !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
   !!
-  subroutine fill(self, fillIdx)
-    class(cell), intent(inout)    :: self
-    integer(shortInt), intent(in) :: fillIdx
+  subroutine setInstances(self, ID, location)
+    class(cell), intent(inout)                 :: self
+    integer(longInt), intent(in), dimension(:) :: ID
+    type(coordList), intent(in), dimension(:)  :: location
 
-    ! Fill cell depending on given fill type
-    if (self % fillType == materialFill) then
-      self % materialIdx = fillIdx
-    else if (self % fillType == universeFill) then
-      self % uniIdx = fillIdx
-    else if (self % fillType == latticeFill) then
-      self % latIdx = fillIdx
-    else if (self % fillType /= outsideFill) then
-      call fatalError('fill, cell', 'Cell filled with an incorrect fill index')
+    self % instances = size(ID)
+    if (self % fillType .NEQV. materialFill) then
+      if (size(ID) > 1) then
+        call fatalError('setInstances, cell',&
+        'Only cells containing a material fill may have multiple instances')
+      end if
+    else
+      allocate(self % matIdx(self % instances))
+    end if
+
+    allocate(self % uniqueID(self % instances))
+    allocate(self % volume(self % instances))
+    allocate(self % location(self % instances))
+    self % uniqueID = ID
+    self % location = location
+
+  end subroutine setInstances
+
+  !!
+  !! Fills the cell with a material, universe or lattice
+  !! If instance is not included, fills only the first instance
+  !! If instance is present, must be filling a material
+  !!
+  subroutine fill(self, fillIdx, instance)
+    class(cell), intent(inout)              :: self
+    integer(shortInt), intent(in)           :: fillIdx
+    integer(shortInt), intent(in), optional :: instance
+
+    ! Instance only applies when filling with a material
+    if (present(instance)) then
+      if (self % fillType == materialFill) then
+        self % materialIdx(instance) = fillIdx
+      else
+        call fatalError('fill, cell',&
+        'When filling a cell, must only provide instances when filling material IDs')
+      end if
+    else
+      ! Fill cell depending on given fill type
+      if (self % fillType == materialFill) then
+        self % materialIdx(1) = fillIdx
+      else if (self % fillType == universeFill) then
+        self % uniIdx = fillIdx
+      else if (self % fillType == latticeFill) then
+        self % latIdx = fillIdx
+      else if (self % fillType /= outsideFill) then
+        call fatalError('fill, cell', 'Cell filled with an incorrect fill index')
+      end if
     end if
   end subroutine fill
 
@@ -189,6 +235,41 @@ contains
 
   end function whichSurface
 
+  !!
+  !! Given a co-ordinate list, compare with instances of a cell's location to find
+  !! the instance index
+  !! If the cell has only one instance then the index will be returned instantly as 1
+  !!
+  function coordCompare(self, location) result(idx)
+    class(cell), intent(in) :: self
+    type(coordList), intent(in) :: location
+    integer(shortInt) :: idx
+    integer(shortInt) :: i
+    logical(defBool)  :: found
+
+    if (self % instance == 1) then
+      idx = 1
+      return
+    else
+      ! Efficiently compare co-ordinates
+      ! Presume all cell locations are unique!
+      ! Branchless search - thanks for the good shout, Mikolaj!
+      do i = 1, self % instances
+        found = .TRUE.
+        do n = 1, location % nesting
+          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % uniIdx)
+          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % latIdx)
+          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % ijkIdx)
+          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % cellIdx)
+        end do
+        if (found) return i
+      end do
+    end if
+
+    call fatalError('coordCompare, cell','Could not find cell instance from the location provided')
+
+  end function coordCompare
+
 !!
 !! Pointer wrapper functions
 !!
@@ -207,11 +288,22 @@ contains
     call self % ptr % init(surfaces, halfspaces, id, fillType, geometryIdx, name)
   end subroutine init_ptr
 
-  subroutine fill_ptr(self, fillIdx)
-    class(cell_ptr), intent(inout) :: self
-    integer(shortInt), intent(in)  :: fillIdx
-    call self % ptr % fill(fillIdx)
+  subroutine fill_ptr(self, fillIdx, instance)
+    class(cell_ptr), intent(inout)          :: self
+    integer(shortInt), intent(in)           :: fillIdx
+    integer(shortInt), intent(in), optional :: instance
+    call self % ptr % fill(fillIdx, instance)
   end subroutine fill_ptr
+
+  !!
+  !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
+  !!
+  subroutine setInstances_ptr(self, ID, location)
+    class(cell), intent(inout)                 :: self
+    integer(longInt), intent(in), dimension(:) :: ID
+    type(coordList), intent(in), dimension(:)  :: location
+    call self % ptr % setInstances(ID, location)
+  end subroutine setInstances_ptr
 
   !!
   !! Checks whether a point occupies a cell by examining each surface in turn
@@ -244,6 +336,18 @@ contains
   end function insideGeom_ptr
 
   !!
+  !! Given a co-ordinate list, compare with instances of a cell's location to find
+  !! the instance index
+  !! If the cell has only one instance then the index will be returned instantly as 1
+  !!
+  function coordCompare_ptr(self, location) result(idx)
+    class(cell), intent(in) :: self
+    type(coordList), intent(in) :: location
+    integer(shortInt) :: idx
+    idx = self % ptr % coordCompare(location)
+  end function coordCompare_ptr
+
+  !!
   !! Returns the fill type of the cell pointed to by cell_ptr
   !!
   function fillType_ptr(self) result(fillType)
@@ -272,12 +376,14 @@ contains
 
   !!
   !! Returns the material index of the cell pointed to by cell_ptr
+  !! Must provide an index for multiple cells
   !!
-  function materialIdx_ptr(self) result(materialIdx)
-    class(cell_ptr), intent(in) :: self
-    integer(shortInt)           :: materialIdx
-    materialIdx = self % ptr % materialIdx
-  end function materialIdx_ptr
+  function matIdx_ptr(self, i) result(matIdx)
+    class(cell_ptr), intent(in)   :: self
+    integer(shortInt), intent(in) :: i
+    integer(shortInt)             :: materialIdx
+    matIdx = self % ptr % matIdx(i)
+  end function matIdx_ptr
 
   !!
   !! Returns the geometry index of the cell pointed to by cell_ptr

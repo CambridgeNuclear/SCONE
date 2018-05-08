@@ -121,11 +121,11 @@ contains
 
       ! If c is a null pointer then the point is not in the universe in which it was
       ! presumed to exist - this probably shouldn't happen!
-      if (.not.c % associated()) then
+      if (.NOT.c % associated()) then
         call fatalError('whichCell, geometry','The point could not be found')
 
       ! The cell is outside the geometry
-      else if (.not. c % insideGeom()) then
+      else if (.NOT. c % insideGeom()) then
         call uni % kill()
         call lat % kill()
         return
@@ -148,7 +148,8 @@ contains
         uni = lat % universes(ijkLat)
         uniIdx = uni % geometryIdx()
         offset = uni % offset() + lat % localCoords(ijkLat)
-        call coords % addLevel(offset, uniIdx, latIdx)
+        ijkIdx = lat % getijkIdx(ijkLat)
+        call coords % addLevel(offset, uniIdx, latIdx, ijkIdx)
         n = n + 1
         cycle
 

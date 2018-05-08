@@ -20,7 +20,7 @@ module universe_class
     integer(shortInt)                         :: numCells          ! the number of constituent cells
     real(defReal), dimension(3)               :: offset            ! x,y,z offset from parent universe
     integer(shortInt)                         :: id                ! unique universe ID
-    integer(shortInt)                         :: geometryIdx
+    integer(longInt)                          :: geometryIdx
     logical(defBool)                          :: rootUni = .false. ! Is the universe the root universe?
     character(100)                            :: name = ""
   contains
