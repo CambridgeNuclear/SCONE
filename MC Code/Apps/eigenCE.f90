@@ -20,8 +20,8 @@ program eigenCE
   class(RNG), pointer     :: RNGptr
   class(byNucNoMT),pointer :: ce_implement
 
-  type(perNuclideImplicitCaptureCE) :: collisionPhysics
-  !type(perNuclideCollisionOpCE) :: collisionPhysics
+  !type(perNuclideImplicitCaptureCE) :: collisionPhysics
+  type(perNuclideCollisionOpCE) :: collisionPhysics
   class(perNuclideNuclearDataCE),pointer :: ce
 
 
@@ -202,6 +202,6 @@ end do
 print *, '];'
 
 print *,"SAMPLES COUNT: ", neutron % pRNG % getCount()
-
+print *,"Number of Collisions: ", collisionPhysics % collCount
 
 end program eigenCE

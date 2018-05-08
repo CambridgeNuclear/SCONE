@@ -32,6 +32,7 @@ module collisionOperatorBase_inter
     integer(shortInt)   :: matIdx = 0        !! Current material index
     integer(shortInt)   :: MT     = 0        !! Collision reaction channel
     real(defReal)       :: muL    = 0.0      !! Deflectio angle in current collision
+    integer(longInt)    :: collCount = 0
 
 
   contains
@@ -84,6 +85,7 @@ module collisionOperatorBase_inter
       character(100),parameter                    :: Here = ' collide (collisionOperatorBase.f90)'
 
       ! Load particle data
+      self % collCount = self % collCount + 1
       self % matIdx = p % matIdx
       self % pRNG => p % pRNG
       self % nucIdx = 0
