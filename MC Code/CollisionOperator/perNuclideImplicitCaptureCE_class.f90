@@ -2,7 +2,7 @@ module perNuclideImplicitCaptureCE_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures,             only : rotateVector
+  use genericProcedures,             only : fatalError, rotateVector
   use particle_class,                only : particle
   use particleDungeon_class,         only : particleDungeon
   use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
@@ -41,6 +41,12 @@ contains
     class(particleDungeon),intent(inout)          :: nextCycle
     type(xsNucMacroSet_ptr)                       :: nucXSs
     real(defReal)                                 :: r
+    character(100),parameter :: Here =' sampleCollision (perNuclideImplicitCaptureCE_class.f90)'
+
+    ! Check if particle is multigroup
+    if( p % isMG ) then
+      call fatalError(Here,'MG neutron given to CE operator')
+    end if
 
     ! Load collision energy
     self % E = p % E

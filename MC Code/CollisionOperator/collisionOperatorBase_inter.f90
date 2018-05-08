@@ -43,9 +43,9 @@ module collisionOperatorBase_inter
     procedure(collisionMacro),deferred  :: sampleCollision  !! Samples lumped reaction channel i.e. anyScatter
     procedure(collisionMacro),deferred  :: implicit         !! Performs implicit treatment of reactions i.e. generate fission sites
     procedure(collisionMacro),deferred  :: scatter          !! Translates between anyScatter and elastic, inelastic, N_XN
-    procedure(collisionMacro),deferred  :: elastic          !! Elastic collision processing
-    procedure(collisionMacro),deferred  :: inelastic        !! Inelastic collision processing
-    procedure(collisionMacro),deferred  :: N_XN             !! (n,Xn) colission processing
+!    procedure(collisionMacro),deferred  :: elastic          !! Elastic collision processing
+!    procedure(collisionMacro),deferred  :: inelastic        !! Inelastic collision processing
+!    procedure(collisionMacro),deferred  :: N_XN             !! (n,Xn) colission processing
     procedure(collisionMacro),deferred  :: capture          !! Capture reaction processing
     procedure(collisionMacro),deferred  :: fission          !! Fission reaction processing
     procedure(collisionMacro),deferred  :: cutoffs          !! Apply energy and weight cutoffs
@@ -96,13 +96,13 @@ module collisionOperatorBase_inter
 
       ! Select physics to be processed based on MT number
       select case(self % MT)
-        case(anyScatter)
+        case(anyScatter, macroAllScatter)
           call self % scatter(p,thisCycle,nextCycle)
 
-        case(anyCapture)
+        case(anyCapture, macroCapture)
           call self % capture(p,thisCycle,nextCycle)
 
-        case(anyFission)
+        case(anyFission, macroFission)
           call self % fission(p,thisCycle,nextCycle)
 
         case default

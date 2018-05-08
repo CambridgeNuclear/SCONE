@@ -8,6 +8,7 @@ program eigenMG
 
   use isotropicMG_class,         only : isotropicMG
   use collisionOperatorMG_class, only : collisionOperatorMG
+  use perMaterialCollisionOpMG_class, only : perMaterialCollisionOpMG
 
   use dictionary_class ,         only : dictionary
   use IOdictionary_class,        only : IOdictionary
@@ -16,7 +17,9 @@ program eigenMG
   ! ### Declaration Begin Here ### !
 
   type(particle)            :: neutron
-  type(collisionOperatorMG) :: collisionPhysics
+  !type(collisionOperatorMG) :: collisionPhysics
+  type(perMaterialCollisionOpMG) :: collisionPhysics
+
   class(RNG), pointer       :: RNGptr
   type(isotropicMG),pointer :: mg
 
@@ -45,7 +48,8 @@ program eigenMG
   allocate(RNGptr)
   call RNGptr % init(75785746574_longInt)
 
-  call collisionPhysics % attachXsData(mg)
+  !call collisionPhysics % attachXsData(mg)
+  collisionPhysics % xsData => mg
 
   nBins = 3
   allocate(tally(nBins))

@@ -32,17 +32,20 @@ module perNuclideCollisionOpCE_class
     real(defReal)                           :: E      !! Particle energy
     class(perNuclideNuclearDataCE), pointer :: xsData !! Nuclear Data block pointer
   contains
+    ! collisionOperatorBase interface
     procedure :: sampleCollision
     procedure :: implicit
     procedure :: scatter
-    procedure :: elastic
-    procedure :: inelastic
-    procedure :: N_XN
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
 
-    ! * Private Procedures
+    ! Scattering processing
+    procedure :: elastic
+    procedure :: inelastic
+    procedure :: N_XN
+
+    ! Private Procedures
     procedure,private :: scatterFromFixed
     procedure,private :: scatterFromMoving
     procedure,private :: scatterInLAB
@@ -63,6 +66,12 @@ contains
     type(xsNucMacroSet_ptr)                       :: nucXSs
     type(xsMainSet_ptr)                           :: microXss
     real(defReal)                                 :: r
+    character(100),parameter :: Here =' sampleCollision (perNuclideCollisionOpCE_class.f90)'
+
+    ! Check if particle is multigroup
+    if( p % isMG ) then
+      call fatalError(Here,'MG neutron given to CE operator')
+    end if
 
     ! Load collision energy
     self % E = p % E
@@ -171,7 +180,6 @@ contains
   end subroutine scatter
 
   !!
-  !! Implementation of the interface procedure
   !! Performs elastic scattering
   !!
   subroutine elastic(self,p,thisCycle,nextCycle)
@@ -212,7 +220,6 @@ contains
   end subroutine elastic
 
   !!
-  !! Implementation of the interface procedure
   !! Performs inelastic scattering
   !!
   subroutine inelastic(self,p,thisCycle,nextCycle)
@@ -227,7 +234,6 @@ contains
   end subroutine inelastic
 
   !!
-  !! Implementation of the interface procedure
   !! Performs (n,Xn) scattering
   !!
   subroutine N_XN(self,p,thisCycle,nextCycle)
