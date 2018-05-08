@@ -25,6 +25,13 @@ module perNuclideCollisionOpCE_class
   real(defReal), parameter :: energyCutoff = 2.0E-11, energyMaximum = 20.0
 
 
+  !!
+  !! Collision operator that works with perNuclideNuclearDataCE interface
+  !! All scattering reactions are assumed elastic
+  !! Capture is analog
+  !! Fully implicit treatment of fission
+  !! Cutoffs based on energy specified in parameters "energyCutoff" & "energyMaqximum"
+  !!
   type, public,extends(collisionOperatorBase)  :: perNuclideCollisionOpCE
    !*DEBUG private
     real(defReal)                           :: E      !! Particle energy
@@ -49,6 +56,10 @@ module perNuclideCollisionOpCE_class
 
 contains
 
+  !!
+  !! Implementation of the interface procedure.
+  !! Samples collision nuclide and a reaction channel
+  !!
   subroutine sampleCollision(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -74,7 +85,12 @@ contains
     self % MT = microXss % invert(r)
 
   end subroutine sampleCollision
-    
+
+  !!
+  !! Implementation of the interface procedure.
+  !! Is executed just after sampleCollision
+  !! Performs implicit reaction tretment (i.e. generation of fission sites or implicit capture)
+  !!
   subroutine implicit(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -122,9 +138,14 @@ contains
       end do
     end if
 
-
   end subroutine implicit
 
+  !!
+  !! Implementation of the interface procedure
+  !! Governes scattering physics
+  !! Is executed if lumped scattering channel was sampled in sampleCollision
+  !! Can call specific subroutine for a given scattering type
+  !!
   subroutine scatter(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -154,6 +175,10 @@ contains
 
   end subroutine scatter
 
+  !!
+  !! Implementation of the interface procedure
+  !! Performs elastic scattering
+  !!
   subroutine elastic(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -191,6 +216,10 @@ contains
 
   end subroutine elastic
 
+  !!
+  !! Implementation of the interface procedure
+  !! Performs inelastic scattering
+  !!
   subroutine inelastic(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -202,6 +231,10 @@ contains
 
   end subroutine inelastic
 
+  !!
+  !! Implementation of the interface procedure
+  !! Performs (n,Xn) scattering
+  !!
   subroutine N_XN(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -213,6 +246,10 @@ contains
 
   end subroutine N_XN
 
+  !!
+  !! Implementation of the interface procedure
+  !! Performs analog capture
+  !!
   subroutine capture(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -223,6 +260,10 @@ contains
 
   end subroutine capture
 
+  !!
+  !! Implementation of the interface procedure
+  !! Performs analog fission
+  !!
   subroutine fission(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -233,6 +274,11 @@ contains
 
   end subroutine fission
 
+  !!
+  !! Implementation of the interface procedure
+  !! Is called at the end
+  !! Can perform variance reduction or kill particles outside energy bounds
+  !!
   subroutine cutoffs(self,p,thisCycle,nextCycle)
     class(perNuclideCollisionOpCE), intent(inout) :: self
     class(particle), intent(inout)                :: p
@@ -360,8 +406,5 @@ contains
     mu = dot_product(dir_pre,dir_post)
 
   end subroutine scatterFromMoving
-
-
-
 
 end module perNuclideCollisionOpCE_class
