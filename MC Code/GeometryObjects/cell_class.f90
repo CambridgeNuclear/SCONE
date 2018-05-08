@@ -27,7 +27,7 @@ module cell_class
     real(defReal), dimension(:), allocatable     :: volume              ! the volume of the cell
     type(coordList), dimension(:), allocatable   :: location            ! co-ord locations of each cell
     integer(shortInt)                            :: id                  ! unique user-defined ID
-    logical(defBool)                             :: insideGeom = .true. ! is cell within geometry? Used to invoke BCs
+    logical(defBool)                             :: insideGeom = .TRUE. ! is cell within geometry? Used to invoke BCs
     integer(shortInt)                            :: instances = 1       ! the number of instances of a given cell
     integer(longInt)                             :: geometryIndex       ! index of the cell in the cell array
     character(100), public :: name = ""

@@ -94,7 +94,7 @@ contains
     integer(shortInt), intent(in), optional :: n0
     real(defReal), dimension(3)             :: r, u, offset
     integer(shortInt), dimension(3)         :: ijkLat
-    integer(shortInt)                       :: uniIdx, latIdx, n
+    integer(shortInt)                       :: uniIdx, latIdx, n, instance
     integer(shortInt), dimension(3)         :: ijkUni
     type(cell_ptr)                          :: c
     type(universe_ptr)                      :: uni
@@ -155,6 +155,8 @@ contains
 
       ! The cell is filled with a material - terminate the search successfully
       else if (c % fillType() == materialFill) then
+        instance = c % coordCompare(coords)
+        coords % matIdx = c % matIdx(instance)
         call uni % kill()
         call lat % kill()
         return
