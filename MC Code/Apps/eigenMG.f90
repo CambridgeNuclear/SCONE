@@ -77,7 +77,7 @@ program eigenMG
     neutron % w      = 1.0
     neutron % isDead = .false.
     neutron % isMG   = .true.
-    call cycle1 % throw(neutron)
+    call cycle1 % detain(neutron)
   end do
 
 ! ##### Inactive cycles

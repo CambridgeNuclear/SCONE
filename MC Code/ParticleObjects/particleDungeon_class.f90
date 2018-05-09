@@ -37,12 +37,15 @@ module particleDungeon_class
   contains
     procedure  :: init
     procedure  :: isEmpty
-    procedure  :: throw
+    generic    :: detain  => detain_particle, detain_phaseCoord
     procedure  :: release
     procedure  :: normWeight
     procedure  :: normSize
     procedure  :: popSize
 
+    ! Private procedures
+    procedure, private :: detain_particle
+    procedure, private :: detain_phaseCoord
   end type particleDungeon
 
 
@@ -62,12 +65,12 @@ contains
   end subroutine init
 
   !!
-  !! Throw particle into the dungeon (store it)
+  !! Store particle in the dungeon
   !!
-  subroutine throw(self,p)
+  subroutine detain_particle(self,p)
     class(particleDungeon), intent(inout) :: self
     type(particle), intent(in)            :: p
-    character(100),parameter              :: Here = 'throw (particleDungeon_class.f90)'
+    character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
     ! Increase population
     self % pop = self % pop +1
@@ -82,7 +85,30 @@ contains
     ! Load new particle
     self % prisoners(self % pop) = p
 
-  end subroutine throw
+  end subroutine detain_particle
+
+  !!
+  !! Store phaseCoord in the dungeon
+  !!
+  subroutine detain_phaseCoord(self,p_phase)
+    class(particleDungeon), intent(inout) :: self
+    type(phaseCoord), intent(in)          :: p_phase
+    character(100), parameter             :: Here = 'detain_phaseCoord (particleDungeon_class.f90)'
+
+    ! Increase population
+    self % pop = self % pop +1
+
+    ! Check for population overflow
+    if (self % pop > size(self % prisoners)) then
+      print *, self % pop
+      print *, size(self % prisoners)
+      call fatalError(Here,'Run out of space for particles')
+    end if
+
+    ! Load new particle
+    self % prisoners(self % pop) = p_phase
+
+  end subroutine detain_phaseCoord
 
   !!
   !! Returns .true. if dungeon is empty

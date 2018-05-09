@@ -92,7 +92,7 @@ program eigenCE
     call neutron % point([1.0_8, 0.0_8, 0.0_8])
     neutron % w      = 1.0
     neutron % isDead = .false.
-    call cycle1 % throw(neutron)
+    call cycle1 % detain(neutron)
   end do
 
 
