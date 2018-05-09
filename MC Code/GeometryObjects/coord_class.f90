@@ -19,7 +19,7 @@ module coord_class
   type, public :: coordList
     integer(shortInt)                          :: nesting          ! depth of co-ordinate nesting
     type(coord), dimension(hardcoded_max_nest) :: lvl              ! array of coords nested successively deeper
-    integer(shortInt)                          :: uniqueCellID = 0 ! unique ID of the cell occupied
+    integer(shortInt)                          :: regionID = 0     ! unique ID of the cell occupied
     integer(shortInt)                          :: matIdx = 0       ! index of the material occupied
   contains
     procedure :: init

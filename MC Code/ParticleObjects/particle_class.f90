@@ -19,7 +19,7 @@ module particle_class
                                !*** Changed from currentMaterialIndex
     integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
 
-    integer(shortInt)          :: cellID
+    integer(shortInt)          :: regionID
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
   contains
@@ -181,12 +181,12 @@ contains
   end function getUniIdx
 
   !!
-  !! Set the particle's present unique cell ID and material index
+  !! Set the particle's present unique region ID and material index
   !! Passes info from coordList
   !!
   subroutine updateLocation(self)
     class(particle) :: self
-    self % cellID = self % coords % uniqueCellID
+    self % regionID = self % coords % regionID
     self % matIdx = self % coords % matIdx
   end subroutine
 

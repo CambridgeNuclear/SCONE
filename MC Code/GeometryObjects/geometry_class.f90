@@ -45,9 +45,11 @@ module geometry_class
     integer(shortInt)                            :: numCells = 0
     integer(shortInt)                            :: numUniverses = 0
     integer(shortInt)                            :: numLattices = 0
+    integer(shortInt)                            :: numRegions = 0
   contains
     procedure :: init                    ! initialise geometry
     procedure :: whichCell               ! find which cell a neutron occupies
+    procedure :: ennumerateRegions       ! Find all unique regions and assign an ID
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
@@ -157,7 +159,7 @@ contains
       else if (c % fillType() == materialFill) then
         instance = c % coordCompare(coords)
         coords % matIdx = c % matIdx(instance)
-        coords % uniqueCellID = c % uniqueID(instance)
+        coords % regionID = c % uniqueID(instance)
         call uni % kill()
         call lat % kill()
         return
@@ -175,6 +177,35 @@ contains
     end do
 
   end function whichCell
+
+  !!
+  !! Finds all the unique cell instances in the geometry and assigns them unique IDs
+  !!
+  subroutine ennumerateRegions(self)
+    class(geometry), intent(inout)               :: self
+    integer(shortInt)                            :: nRegions
+    type(universe_ptr)                           :: uni
+    integer(shortInt), dimension(:), allocatable :: cellInstance
+    integer(shortInt)                            :: cellIdx, fill
+    type(coordList)                              :: location
+
+    ! Track total number of regions
+    nRegions = 0
+
+    ! Instances of each cell (0 for non-material cells)
+    allocate(cellInstances(self % numCells))
+    cellInstances = 0
+
+    ! Begin by searching in base universe and continue downwards
+    uni = self % rootUniverse
+    do i = 1, uni % numCells
+      fill = uni % cells(i) % fillType
+      if (fill == materialFill) then
+        cellIdx = uni % cells(i) % geometryIdx
+        cellInstances(cellIdx) = cellInstances(cellIdx) + 1
+      else
+
+  end subroutine ennumerateRegions
 
   !!
   !! Assumes that the geometry is bounded by a cuboid

@@ -199,7 +199,7 @@ contains
     ! Fill all cells given that universes, lattices, and materials are all defined
     allocate(keys(numCells))
     keys = cellDict % keysDict()
-    print *,'Filling cells'
+    print *,'Filling cells with universes and lattices'
     do i=1,numCells
       fillType = cells(i) % fillType
       if (fillType == universeFill) then
@@ -207,7 +207,8 @@ contains
       else if (fillType == latticeFill) then
         call fillCellLat(cells(i), cellDict % getDict(keys(i)), lattices)
       else if (fillType == materialFill) then
-        call fillCellMat(cells(i), cellDict % getDict(keys(i)), materials)
+        cycle ! Fill with materials after number of cell instances have been identified
+        !call fillCellMat(cells(i), cellDict % getDict(keys(i)), materials)
       else if (fillType == outsideFill) then
         ! Read and apply boundary conditions
         print *,'Applying boundary conditions'
@@ -218,9 +219,6 @@ contains
         call fatalError('fillCell, initialiseGeometryStructures','Cell has an incorrect fill type')
       end if
     end do
-    call cellDict % kill()
-    call dict % kill()
-    deallocate(keys)
 
     ! Calculate maximum nesting
     print *,'Calculating maximum geometry nesting'
@@ -230,10 +228,16 @@ contains
     !call calcMaxNesting(max_nest,universes,lattices, rootInd)
     print *,'Geometry contains ',max_nest,' nesting levels'
 
+    ! Initialise gometry
+    call geom % init(surfaces, cells, universes, rootIdx, cells(outsideIdx) % surfaces(1), lattices)
+
     ! Identify all unique base cell instances
     ! Required for regional tallies, MOC flux regions, and eventual burn-up
 
-    call geom % init(surfaces, cells, universes, rootIdx, cells(outsideIdx) % surfaces(1), lattices)
+    ! Fill cells with their materials
+    call cellDict % kill()
+    call dict % kill()
+    deallocate(keys)
 
   end subroutine initGeometryFromDict
 

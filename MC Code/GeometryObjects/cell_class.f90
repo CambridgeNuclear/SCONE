@@ -29,7 +29,7 @@ module cell_class
     integer(shortInt)                            :: id                  ! unique user-defined ID
     logical(defBool)                             :: insideGeom = .TRUE. ! is cell within geometry? Used to invoke BCs
     integer(shortInt)                            :: instances = 1       ! the number of instances of a given cell
-    integer(longInt)                             :: geometryIndex       ! index of the cell in the cell array
+    integer(shortInt)                            :: geometryIdx         ! index of the cell in the cell array
     character(100), public :: name = ""
   contains
     procedure :: init
@@ -91,6 +91,13 @@ contains
     self % geometryIdx = geometryIdx
     if (fillType == outsideFill) then
       self % insideGeom = .FALSE.
+    end if
+    ! For non-material cells, only one instance is allowed
+    if (fillType /= materialFill) then
+      allocate(matIdx(1))
+      allocate(uniqueID(1))
+      allocate(volume(1))
+      allocate(location(1))
     end if
     if (present(name)) self % name = name
 
