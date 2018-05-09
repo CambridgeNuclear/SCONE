@@ -2,27 +2,11 @@ module particleDungeon_class
 
   use numPrecision
   use genericProcedures,     only : fatalError
-  use particle_class,        only : particle
+  use particle_class,        only : particle, phaseCoord
   use RNG_class,             only : RNG
 
   implicit none
   private
-
-  !!
-  !! Support type to contain all data relevant to the particle detained in the dungeon
-  !!
-  type, private :: phaseCoord
-    real(defReal)              :: wgt  = 0.0     ! Particle weight
-    real(defReal),dimension(3) :: r    = 0.0     ! Global position
-    real(defReal),dimension(3) :: dir  = 0.0     ! Global direction
-    real(defReal)              :: E    = 0.0     ! Energy
-    integer(shortInt)          :: G    = 0       ! Energy group
-    logical(defBool)           :: isMG = .false. ! Is neutron multi-group
-  contains
-    generic  :: assignment(=) => phaseCoord_fromParticle
-    procedure, private :: phaseCoord_fromParticle
-  end type
-
 
   !!
   !! particleDungeon stores particle phase-space
@@ -196,24 +180,5 @@ contains
     pop = self % pop
 
   end function popSize
-
-  !!
-  !! Copy particle into phase coordinates
-  !!
-  subroutine phaseCoord_fromParticle(LHS,RHS)
-    class(phaseCoord), intent(out)  :: LHS
-    type(particle), intent(in)      :: RHS
-
-    LHS % wgt  = RHS % w
-    LHS % r    = RHS % rGlobal()
-    LHS % dir  = RHS % dirGlobal()
-    LHS % E    = RHS % E
-    LHS % G    = RHS % G
-    LHS % isMG = RHS % isMG
-
-  end subroutine phaseCoord_fromParticle
-
-
-
 
 end module particleDungeon_class
