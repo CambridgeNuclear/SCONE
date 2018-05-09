@@ -19,6 +19,7 @@ module particle_class
                                !*** Changed from currentMaterialIndex
     integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
 
+    integer(shortInt)          :: cellID
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
   contains
@@ -39,6 +40,7 @@ module particle_class
     procedure            :: getCellIdx
     procedure            :: getLatIdx
     procedure            :: getUniIdx
+    procedure            :: updateLocation
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
@@ -177,6 +179,16 @@ contains
     integer(shortInt)              :: idx
     idx = self % coords % lvl(i) % uniIdx
   end function getUniIdx
+
+  !!
+  !! Set the particle's present unique cell ID and material index
+  !! Passes info from coordList
+  !!
+  subroutine updateLocation(self)
+    class(particle) :: self
+    self % cellID = self % coords % uniqueCellID
+    self % matIdx = self % coords % matIdx
+  end subroutine
 
   !!
   !! Move the particle in global co-ordinates only, resetting its nesting

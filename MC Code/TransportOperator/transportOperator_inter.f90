@@ -16,7 +16,6 @@ module transportOperator_inter
   private
 
   type, abstract, public :: transportOperator
-    class(rng), pointer      :: random => null()         ! RNG - should this be associated to particle?
     !class(transport_Nuclear_data), pointer :: nuclearData => null()  ! nuclear data
     class(geometry), pointer :: geom => null()           ! references the geometry for cell searching
   contains

@@ -157,6 +157,7 @@ contains
       else if (c % fillType() == materialFill) then
         instance = c % coordCompare(coords)
         coords % matIdx = c % matIdx(instance)
+        coords % uniqueCellID = c % uniqueID(instance)
         call uni % kill()
         call lat % kill()
         return
