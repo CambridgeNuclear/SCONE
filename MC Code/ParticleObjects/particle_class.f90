@@ -9,6 +9,22 @@ module particle_class
   implicit none
   private
 
+  !!
+  !! Particle compressed for storage
+  !!
+  type, public :: phaseCoord
+    real(defReal)              :: wgt  = 0.0     ! Particle weight
+    real(defReal),dimension(3) :: r    = 0.0     ! Global position
+    real(defReal),dimension(3) :: dir  = 0.0     ! Global direction
+    real(defReal)              :: E    = 0.0     ! Energy
+    integer(shortInt)          :: G    = 0       ! Energy group
+    logical(defBool)           :: isMG = .false. ! Is neutron multi-group
+  contains
+    generic  :: assignment(=) => phaseCoord_fromParticle
+    procedure, private :: phaseCoord_fromParticle
+  end type
+
+
   type, public :: particle
     type(coordList)            :: coords
     real(defReal)              :: E         ! Particle Energy
@@ -226,6 +242,23 @@ contains
     call self % coords % rotate(mu,phi)
 
   end subroutine rotate
+
+
+  !!
+  !! Copy particle into phase coordinates
+  !!
+  subroutine phaseCoord_fromParticle(LHS,RHS)
+    class(phaseCoord), intent(out)  :: LHS
+    type(particle), intent(in)      :: RHS
+
+    LHS % wgt  = RHS % w
+    LHS % r    = RHS % rGlobal()
+    LHS % dir  = RHS % dirGlobal()
+    LHS % E    = RHS % E
+    LHS % G    = RHS % G
+    LHS % isMG = RHS % isMG
+
+  end subroutine phaseCoord_fromParticle
 
 
 

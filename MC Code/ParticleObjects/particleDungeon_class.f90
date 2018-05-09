@@ -2,27 +2,11 @@ module particleDungeon_class
 
   use numPrecision
   use genericProcedures,     only : fatalError
-  use particle_class,        only : particle
+  use particle_class,        only : particle, phaseCoord
   use RNG_class,             only : RNG
 
   implicit none
   private
-
-  !!
-  !! Support type to contain all data relevant to the particle detained in the dungeon
-  !!
-  type, private :: phaseCoord
-    real(defReal)              :: wgt  = 0.0     ! Particle weight
-    real(defReal),dimension(3) :: r    = 0.0     ! Global position
-    real(defReal),dimension(3) :: dir  = 0.0     ! Global direction
-    real(defReal)              :: E    = 0.0     ! Energy
-    integer(shortInt)          :: G    = 0       ! Energy group
-    logical(defBool)           :: isMG = .false. ! Is neutron multi-group
-  contains
-    generic  :: assignment(=) => phaseCoord_fromParticle
-    procedure, private :: phaseCoord_fromParticle
-  end type
-
 
   !!
   !! particleDungeon stores particle phase-space
@@ -53,12 +37,15 @@ module particleDungeon_class
   contains
     procedure  :: init
     procedure  :: isEmpty
-    procedure  :: throw
+    generic    :: detain  => detain_particle, detain_phaseCoord
     procedure  :: release
     procedure  :: normWeight
     procedure  :: normSize
     procedure  :: popSize
 
+    ! Private procedures
+    procedure, private :: detain_particle
+    procedure, private :: detain_phaseCoord
   end type particleDungeon
 
 
@@ -78,12 +65,12 @@ contains
   end subroutine init
 
   !!
-  !! Throw particle into the dungeon (store it)
+  !! Store particle in the dungeon
   !!
-  subroutine throw(self,p)
+  subroutine detain_particle(self,p)
     class(particleDungeon), intent(inout) :: self
     type(particle), intent(in)            :: p
-    character(100),parameter              :: Here = 'throw (particleDungeon_class.f90)'
+    character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
     ! Increase population
     self % pop = self % pop +1
@@ -98,7 +85,30 @@ contains
     ! Load new particle
     self % prisoners(self % pop) = p
 
-  end subroutine throw
+  end subroutine detain_particle
+
+  !!
+  !! Store phaseCoord in the dungeon
+  !!
+  subroutine detain_phaseCoord(self,p_phase)
+    class(particleDungeon), intent(inout) :: self
+    type(phaseCoord), intent(in)          :: p_phase
+    character(100), parameter             :: Here = 'detain_phaseCoord (particleDungeon_class.f90)'
+
+    ! Increase population
+    self % pop = self % pop +1
+
+    ! Check for population overflow
+    if (self % pop > size(self % prisoners)) then
+      print *, self % pop
+      print *, size(self % prisoners)
+      call fatalError(Here,'Run out of space for particles')
+    end if
+
+    ! Load new particle
+    self % prisoners(self % pop) = p_phase
+
+  end subroutine detain_phaseCoord
 
   !!
   !! Returns .true. if dungeon is empty
@@ -196,24 +206,5 @@ contains
     pop = self % pop
 
   end function popSize
-
-  !!
-  !! Copy particle into phase coordinates
-  !!
-  subroutine phaseCoord_fromParticle(LHS,RHS)
-    class(phaseCoord), intent(out)  :: LHS
-    type(particle), intent(in)      :: RHS
-
-    LHS % wgt  = RHS % w
-    LHS % r    = RHS % rGlobal()
-    LHS % dir  = RHS % dirGlobal()
-    LHS % E    = RHS % E
-    LHS % G    = RHS % G
-    LHS % isMG = RHS % isMG
-
-  end subroutine phaseCoord_fromParticle
-
-
-
 
 end module particleDungeon_class

@@ -4,7 +4,7 @@ program eigenCE
   use RNG_class,                         only : RNG
   use byNucNoMT_class,                   only : byNucNoMT
   use perNuclideNuclearDataCE_inter,     only : perNuclideNuclearDataCE
-  use collisionOperator_class,           only : collisionOperator
+  !use collisionOperator_class,           only : collisionOperator
   use perNuclideCollisionOpCE_class,     only : perNuclideCollisionOpCE
   use perNuclideImplicitCaptureCE_class, only : perNuclideImplicitCaptureCE
   use particle_class,                    only : particle
@@ -16,7 +16,7 @@ program eigenCE
   implicit none
 
   type(particle)          :: neutron
-  type(collisionOperator) :: collisionPhysics_implement
+  !type(collisionOperator) :: collisionPhysics_implement
   class(RNG), pointer     :: RNGptr
   class(byNucNoMT),pointer :: ce_implement
 
@@ -92,7 +92,7 @@ program eigenCE
     call neutron % point([1.0_8, 0.0_8, 0.0_8])
     neutron % w      = 1.0
     neutron % isDead = .false.
-    call cycle1 % throw(neutron)
+    call cycle1 % detain(neutron)
   end do
 
 
