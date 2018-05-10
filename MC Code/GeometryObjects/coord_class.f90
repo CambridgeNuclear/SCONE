@@ -80,7 +80,7 @@ contains
       nMin = n
     else
       nMin = 1
-      self % uniqueCellID = 0
+      self % regionID = 0
       self % matIdx = 0
     end if
     nMax = self % nesting

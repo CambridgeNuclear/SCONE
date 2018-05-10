@@ -34,7 +34,7 @@ contains
   !!
   !! Initialise the geometry on provision of a dictionary
   !!
-  subroutine initGeometryFromDict(geom, surfaces, cells, universes, lattices, max_nest, rootIdx, dict, materials)
+  subroutine initGeometryFromDict(geom, surfaces,  max_nest, dict, materials)
     class(geometry), intent(inout)                             :: geom
     class(dictionary), intent(inout)                           :: dict
     type(dictionary)                                           :: surfDict, cellDict, uniDict,&
@@ -43,14 +43,15 @@ contains
     integer(shortInt)                                          :: i,j, id, testID, &
                                                                   outsideDefined, numSurfaces, &
                                                                   numCells, numUniverses, &
-                                                                  numLattices, fillType, outsideIdx
+                                                                  numLattices, fillType, outsideIdx, &
+                                                                  rootIdx
     logical(defBool)                                           :: foundRoot
     class(surface_ptr), dimension(:), allocatable, intent(out) :: surfaces
-    class(cell), dimension(:), allocatable, intent(out)        :: cells
-    class(universe), dimension(:), allocatable, intent(out)    :: universes
-    class(lattice), dimension(:), allocatable, intent(out)     :: lattices
+    class(cell), dimension(:), allocatable                     :: cells
+    class(universe), dimension(:), allocatable                 :: universes
+    class(lattice), dimension(:), allocatable                  :: lattices
     class(nuclearData), intent(inout)                          :: materials
-    integer(shortInt), intent(out)                             :: max_nest, rootIdx
+    integer(shortInt), intent(out)                             :: max_nest
 
     print *,'Reading geometry from dictionary'
 
@@ -208,7 +209,6 @@ contains
         call fillCellLat(cells(i), cellDict % getDict(keys(i)), lattices)
       else if (fillType == materialFill) then
         cycle ! Fill with materials after number of cell instances have been identified
-        !call fillCellMat(cells(i), cellDict % getDict(keys(i)), materials)
       else if (fillType == outsideFill) then
         ! Read and apply boundary conditions
         print *,'Applying boundary conditions'
@@ -231,10 +231,15 @@ contains
     ! Initialise gometry
     call geom % init(surfaces, cells, universes, rootIdx, cells(outsideIdx) % surfaces(1), lattices)
 
-    ! Identify all unique base cell instances
-    ! Required for regional tallies, MOC flux regions, and eventual burn-up
-
+    print *,'Filling material cells'
     ! Fill cells with their materials
+    do i=1,geom%numCells
+      if (geom % cells(i) % fillType == materialFill) then
+        print *,i
+        call fillCellMat(geom % cells(i), cellDict % getDict(keys(i)), materials)
+      end if
+    end do
+    print *,'Material cells filled'
     call cellDict % kill()
     call dict % kill()
     deallocate(keys)
@@ -639,7 +644,7 @@ contains
 
     name = dict % getChar('mat')
     idx = materials % getIdx(name)
-    c % materialIdx = idx
+    call c % fill(idx)
     !call materials % addActiveMaterial(name)
 
   end subroutine fillCellMat

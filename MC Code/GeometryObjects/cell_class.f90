@@ -22,7 +22,7 @@ module cell_class
     integer(shortInt)                            :: fillType = 0        ! determines if cell contains a material, universe, or lattice (1,2,3)
     integer(shortInt)                            :: latIdx = 0          ! index of the cell's lattice contents
     integer(shortInt)                            :: uniIdx = 0          ! index of the cell's universe contents
-    integer(shortInt), dimension(:), allocatable :: matIdx = 0          ! index of the cell's material contents
+    integer(shortInt), dimension(:), allocatable :: matIdx              ! index of the cell's material contents
     integer(longInt), dimension(:), allocatable  :: uniqueID            ! identifies unique instance of a cell
     real(defReal), dimension(:), allocatable     :: volume              ! the volume of the cell
     type(coordList), dimension(:), allocatable   :: location            ! co-ord locations of each cell
@@ -46,7 +46,7 @@ module cell_class
     class(cell), pointer :: ptr
   contains
     procedure :: init => init_ptr
-    procedure :: setInstance => setInstances_ptr
+    procedure :: setInstances => setInstances_ptr
     procedure :: fill => fill_ptr
     procedure :: insideCell => insideCell_ptr
     procedure :: getDistance => getDistance_ptr
@@ -58,6 +58,7 @@ module cell_class
     procedure :: latIdx => latIdx_ptr
     procedure :: matIdx => matIdx_ptr
     procedure :: geometryIdx => geometryIdx_ptr
+    procedure :: uniqueID => uniqueID_ptr
     procedure :: associated => associated_ptr
     procedure :: name => name_ptr
     procedure :: kill
@@ -94,10 +95,11 @@ contains
     end if
     ! For non-material cells, only one instance is allowed
     if (fillType /= materialFill) then
-      allocate(matIdx(1))
-      allocate(uniqueID(1))
-      allocate(volume(1))
-      allocate(location(1))
+      allocate(self % matIdx(1))
+      self %matIdx = 0
+      allocate(self % uniqueID(1))
+      allocate(self % volume(1))
+      allocate(self % location(1))
     end if
     if (present(name)) self % name = name
 
@@ -105,27 +107,25 @@ contains
 
   !!
   !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
+  !! Should only be called for cells filled with material
   !!
-  subroutine setInstances(self, ID, location)
-    class(cell), intent(inout)                 :: self
-    integer(longInt), intent(in), dimension(:) :: ID
-    type(coordList), intent(in), dimension(:)  :: location
+  subroutine setInstances(self, n, location, ID)
+    class(cell), intent(inout)                  :: self
+    integer(shortInt), intent(in)               :: n
+    type(coordList), intent(in), dimension(:)   :: location
+    integer(shortInt), intent(in)               :: ID
+    integer(shortInt)                           :: i
 
-    self % instances = size(ID)
-    if (self % fillType .NEQV. materialFill) then
-      if (size(ID) > 1) then
-        call fatalError('setInstances, cell',&
-        'Only cells containing a material fill may have multiple instances')
-      end if
-    else
-      allocate(self % matIdx(self % instances))
-    end if
+    self % instances = n
+    allocate(self % uniqueID(n))
+    allocate(self % volume(n))
+    allocate(self % location(n))
+    allocate(self % matIdx(n))
 
-    allocate(self % uniqueID(self % instances))
-    allocate(self % volume(self % instances))
-    allocate(self % location(self % instances))
-    self % uniqueID = ID
     self % location = location
+    do i = 1,n
+      self % uniqueID(i) = ID + i - 1
+    end do
 
   end subroutine setInstances
 
@@ -140,9 +140,10 @@ contains
     integer(shortInt), intent(in), optional :: instance
 
     ! Instance only applies when filling with a material
+    ! Can be used when updating a material fill
     if (present(instance)) then
       if (self % fillType == materialFill) then
-        self % materialIdx(instance) = fillIdx
+        self % matIdx(instance) = fillIdx
       else
         call fatalError('fill, cell',&
         'When filling a cell, must only provide instances when filling material IDs')
@@ -150,7 +151,8 @@ contains
     else
       ! Fill cell depending on given fill type
       if (self % fillType == materialFill) then
-        self % materialIdx(1) = fillIdx
+        print *,'Filling cell with material'
+        self % matIdx = fillIdx
       else if (self % fillType == universeFill) then
         self % uniIdx = fillIdx
       else if (self % fillType == latticeFill) then
@@ -251,10 +253,10 @@ contains
     class(cell), intent(in) :: self
     type(coordList), intent(in) :: location
     integer(shortInt) :: idx
-    integer(shortInt) :: i
+    integer(shortInt) :: i, n
     logical(defBool)  :: found
 
-    if (self % instance == 1) then
+    if (self % instances == 1) then
       idx = 1
       return
     else
@@ -269,7 +271,10 @@ contains
           found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % ijkIdx)
           found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % cellIdx)
         end do
-        if (found) return i
+        if (found) then
+          idx = i
+          return
+        end if
       end do
     end if
 
@@ -305,11 +310,12 @@ contains
   !!
   !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
   !!
-  subroutine setInstances_ptr(self, ID, location)
-    class(cell), intent(inout)                 :: self
-    integer(longInt), intent(in), dimension(:) :: ID
-    type(coordList), intent(in), dimension(:)  :: location
-    call self % ptr % setInstances(ID, location)
+  subroutine setInstances_ptr(self, n, location, ID)
+    class(cell_ptr), intent(inout)              :: self
+    integer(shortInt), intent(in)               :: n
+    type(coordList), intent(in), dimension(:)   :: location
+    integer(shortInt), intent(in)               :: ID
+    call self % ptr % setInstances(n, location, ID)
   end subroutine setInstances_ptr
 
   !!
@@ -348,7 +354,7 @@ contains
   !! If the cell has only one instance then the index will be returned instantly as 1
   !!
   function coordCompare_ptr(self, location) result(idx)
-    class(cell), intent(in) :: self
+    class(cell_ptr), intent(in) :: self
     type(coordList), intent(in) :: location
     integer(shortInt) :: idx
     idx = self % ptr % coordCompare(location)
@@ -388,7 +394,7 @@ contains
   function matIdx_ptr(self, i) result(matIdx)
     class(cell_ptr), intent(in)   :: self
     integer(shortInt), intent(in) :: i
-    integer(shortInt)             :: materialIdx
+    integer(shortInt)             :: matIdx
     matIdx = self % ptr % matIdx(i)
   end function matIdx_ptr
 
@@ -400,6 +406,16 @@ contains
     integer(shortInt)           :: geometryIdx
     geometryIdx = self % ptr % geometryIdx
   end function geometryIdx_ptr
+
+  !!
+  !! Returns the uniqueID of the cell pointed to by cell_ptr given an instance
+  !!
+  function uniqueID_ptr(self, i) result(uniqueID)
+    class(cell_ptr), intent(in)   :: self
+    integer(shortInt)             :: uniqueID
+    integer(shortInt), intent(in) :: i
+    uniqueID = self % ptr % uniqueID(i)
+  end function uniqueID_ptr
 
   !!
   !! Check whether the pointer wrapper is associated to a cell

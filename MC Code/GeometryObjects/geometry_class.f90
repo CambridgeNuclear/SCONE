@@ -50,6 +50,8 @@ module geometry_class
     procedure :: init                    ! initialise geometry
     procedure :: whichCell               ! find which cell a neutron occupies
     procedure :: ennumerateRegions       ! Find all unique regions and assign an ID
+    procedure :: countCell               ! Recursively count all cell instances
+    procedure :: locateCell              ! Recursively locate all cell instances
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
@@ -85,6 +87,10 @@ contains
       self % numLattices = size(latticeArray)
     end if
 
+    ! Identify all unique cell instances
+    print *,'Identifying unique cell instances'
+    call self % ennumerateRegions()
+
   end subroutine init
 
   !!
@@ -96,7 +102,7 @@ contains
     integer(shortInt), intent(in), optional :: n0
     real(defReal), dimension(3)             :: r, u, offset
     integer(shortInt), dimension(3)         :: ijkLat
-    integer(shortInt)                       :: uniIdx, latIdx, n, instance
+    integer(shortInt)                       :: uniIdx, latIdx, ijkIdx, n, instance
     integer(shortInt), dimension(3)         :: ijkUni
     type(cell_ptr)                          :: c
     type(universe_ptr)                      :: uni
@@ -167,7 +173,6 @@ contains
       ! Something has gone wrong...
       else
         print *, c % name()
-        print *, c % materialIdx()
         print *, c % latIdx()
         print *, c % uniIdx()
         print *, c % geometryIdx()
@@ -180,32 +185,176 @@ contains
 
   !!
   !! Finds all the unique cell instances in the geometry and assigns them unique IDs
+  !! This routine is used in initialisation
   !!
   subroutine ennumerateRegions(self)
     class(geometry), intent(inout)               :: self
     integer(shortInt)                            :: nRegions
-    type(universe_ptr)                           :: uni
-    integer(shortInt), dimension(:), allocatable :: cellInstance
-    integer(shortInt)                            :: cellIdx, fill
-    type(coordList)                              :: location
+    integer(shortInt), dimension(:), allocatable :: cellInstances
+    integer(shortInt)                            :: cellIdx, latIdx, uniIdx, found
+    type(coordList), dimension(:), allocatable   :: location
+    type(coordList)                              :: searchLocation
+    integer(shortInt)                            :: ID, i, n
 
     ! Track total number of regions
     nRegions = 0
 
-    ! Instances of each cell (0 for non-material cells)
+    ! Instances of each cell (remains 0 for non-material cells)
     allocate(cellInstances(self % numCells))
-    cellInstances = 0
+    cellInstances(:) = 0
 
-    ! Begin by searching in base universe and continue downwards
-    uni = self % rootUniverse
-    do i = 1, uni % numCells
-      fill = uni % cells(i) % fillType
-      if (fill == materialFill) then
-        cellIdx = uni % cells(i) % geometryIdx
-        cellInstances(cellIdx) = cellInstances(cellIdx) + 1
-      else
+    ! Check each cell in the geometry by searching through all universe, starting with the root
+    ! If filled by a material, enter the count subroutine
+    ! Otherwise, continue
+    print *,'Counting cell instances'
+    do i=1,self % numCells
+      uniIdx = self % rootUniverse % geometryIdx()
+      latIdx = 0
+      if (self % cells(i) % fillType == materialFill) then
+        n = 0
+        cellIdx = self % cells(i) % geometryIdx
+        call self % countCell(cellIdx, uniIdx, latIdx, n)
+        cellInstances(i) = n
+        nRegions = nRegions + n
+      end if
+    end do
+
+    self % numRegions = nRegions
+
+    ! After counting each cell, must proceed to find them - provide with a coordList location
+    print *,'Setting unique cell IDs and locations'
+    call searchLocation % init([ZERO,ZERO,ZERO],[ONE,ZERO,ZERO])
+    searchLocation % lvl(1) % uniIdx = self % rootUniverse % geometryIdx()
+    ID = 1
+    do i=i,self % numCells
+      n = cellInstances(i)
+      ID = ID + n
+      if (n > 0) then
+        call searchLocation % resetNesting()
+        allocate(location(n))
+        uniIdx = self % rootUniverse % geometryIdx()
+        latIdx = 0
+        cellIdx = self % cells(i) % geometryIdx
+        found = 0
+        call self % locateCell(cellIdx, uniIdx, latIdx, searchLocation, location, n, found)
+        print *,'Setting instances'
+        print *,n
+        call self % cells(i) % setInstances(n,location,ID)
+      end if
+    end do
 
   end subroutine ennumerateRegions
+
+  !!
+  !! Count all the instances of a cell recursively
+  !!
+  recursive subroutine countCell(self, cellIdx, uniIdx, latIdx, n)
+    class(geometry), intent(in)      :: self
+    integer(shortInt), intent(in)    :: cellIdx
+    integer(shortInt), intent(in)    :: uniIdx
+    integer(shortInt), intent(in)    :: latIdx
+    integer(shortInt), intent(inout) :: n
+    integer(shortInt)                :: newUniIdx, newLatIdx, i, j, k, l
+    type(cell_ptr)                   :: c
+
+    do i=1,self % universes(uniIdx) % numCells
+      c = self % universes(uniIdx) % cells(i)
+
+      ! Material has been found - check against cellIdx under investigation
+      if (c % fillType() == materialFill) then
+        if (c % geometryIdx() == cellIdx) n = n + 1
+
+      ! Descend to a lower universe
+      else if (c % fillType() == universeFill) then
+        newUniIdx = c % uniIdx()
+        call self % countCell(cellIdx, newUniIdx, latIdx, n)
+
+      ! Search through each universe of a lattice
+      else if(c % fillType() == latticeFill) then
+        newLatIdx = c % latIdx()
+        do j = 1,self % lattices(newLatIdx) % extent(1)
+          do k = 1,self % lattices(newLatIdx) % extent(2)
+            do l = 1,self % lattices(newLatIdx) % extent(3)
+              newUniIdx = self % lattices(newLatIdx) % universes(j,k,l) % geometryIdx()
+              call self % countCell(cellIdx, newUniIdx, newLatIdx, n)
+            end do
+          end do
+        end do
+
+      ! An invalid fill has been found - something is terribly wrong
+      else if (c % fillType() /= outsideFill) then
+        call fatalError('countCell, geometry','Cannot identify cell contents')
+      end if
+    end do
+    call c % kill()
+
+  end subroutine countCell
+
+  !!
+  !! Locate all cell instances
+  !!
+  recursive subroutine locateCell(self, cellIdx, uniIdx, latIdx, searchLocation, location, n, found)
+    class(geometry), intent(in)                  :: self
+    integer(shortInt), intent(in)                :: cellIdx
+    integer(shortInt), intent(in)                :: uniIdx
+    integer(shortInt), intent(in)                :: latIdx
+    type(coordList), intent(inout)               :: searchLocation
+    type(coordList), dimension(:), intent(inout) :: location
+    integer(shortInt), intent(in)                :: n
+    integer(shortInt), intent(inout)             :: found
+    integer(shortInt)                            :: i, j, k, l, nesting, &
+                                                    ijkIdx, newLatIdx, newUniIdx
+    type(cell_ptr)                               :: c
+
+    do i=1,self % universes(uniIdx) % numCells
+      c = self % universes(uniIdx) % cells(i)
+      nesting = searchLocation % nesting
+      searchLocation % lvl(nesting) % cellIdx = c % geometryIdx()
+
+      ! Material has been found - check against cellIdx under investigation
+      if (c % fillType() == materialFill) then
+        if (c % geometryIdx() == cellIdx) then
+          found = found + 1
+          location(found) = searchLocation
+        end if
+
+      ! Descend to a lower universe
+      else if (c % fillType() == universeFill) then
+        newUniIdx = c % uniIdx()
+        call searchLocation % addLevel([ZERO,ZERO,ZERO], newUniIdx)
+        call self % locateCell(cellIdx, newUniIdx, latIdx, searchLocation, location, n, found)
+
+      ! Search through each universe of a lattice
+      else if(c % fillType() == latticeFill) then
+        newLatIdx = c % latIdx()
+        latSearch: do j = 1,self % lattices(newLatIdx) % extent(1)
+          do k = 1,self % lattices(newLatIdx) % extent(2)
+            do l = 1,self % lattices(newLatIdx) % extent(3)
+              ijkIdx = self % lattices(newLatIdx) % getijkIdx([j,k,l])
+              newUniIdx = self % lattices(newLatIdx) % universes(j,k,l) % geometryIdx()
+              call searchLocation % addLevel([ZERO,ZERO,ZERO], newUniIdx, newlatIdx, ijkIdx)
+              call self % locateCell(cellIdx, newUniIdx, newLatIdx, searchLocation, location, n, found)
+              if (found == n) exit latSearch
+            end do
+          end do
+        end do latSearch
+
+      ! An invalid fill has been found - something is terribly wrong
+      else if (c % fillType() /= outsideFill) then
+        call fatalError('locateCell, geometry','Cannot identify cell contents')
+      end if
+
+      ! All instances have been found - exit the search!
+      if (found == n) exit
+
+    end do
+    call c % kill()
+
+    ! The current universe on this level has been fully explored - ascend a nesting level
+    nesting = searchLocation % nesting
+    if (nesting > 1) call searchLocation % resetNesting(nesting - 1)
+
+  end subroutine locateCell
 
   !!
   !! Assumes that the geometry is bounded by a cuboid
@@ -353,7 +502,7 @@ contains
         if (.not. c % insideGeom()) then
           colourMatrix(i,j) = 0
         else
-          colourMatrix(i,j) = c % materialIdx()
+          colourMatrix(i,j) = c % matIdx(1)
         end if
       end do
     end do

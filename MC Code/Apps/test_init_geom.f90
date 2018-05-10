@@ -21,11 +21,8 @@ program test_init_geom
   implicit none
 
   type(geometry) :: geom
-  integer(shortInt) :: max_nest, rootInd
+  integer(shortInt) :: max_nest
   class(surface_ptr), dimension(:), allocatable :: surfaces
-  class(cell), dimension(:), allocatable :: cells
-  class(universe), dimension(:), allocatable :: universes
-  class(lattice), dimension(:), allocatable :: lattices
   type(IOdictionary) :: geomDict
   type(datalessMaterials) :: materials
   real(defReal) :: pitch = 1.0
@@ -47,7 +44,7 @@ program test_init_geom
   call materials % init(['uo2','mod','big'])
   print *, materials % materials
 
-  call initGeometryFromDict(geom, surfaces, cells, universes, lattices, max_nest, rootInd, geomDict, materials)
+  call initGeometryFromDict(geom, surfaces, max_nest, geomDict, materials)
 
   print *,'Plotting geometry'
   allocate(colourMatrix(pixels,pixels))
@@ -64,11 +61,11 @@ program test_init_geom
   c = geom % whichCell(p % coords)
   !print *,'found which cell'
   call rand % init(500_8)
-  call DTOperator % init(rand,geom)
-  call STOperator % init(rand,geom)
+  call DTOperator % init(geom)
+  call STOperator % init(geom)
 
   ! Initialise mesh to score points
-  call m % init([0.02_8,0.02_8,1._8], lattices(1) % corner, [200,200,1], 1, .FALSE.,'m1')
+  call m % init([0.02_8,0.02_8,1._8], [-TWO,-TWO,-HALF], [200,200,1], 1, .FALSE.,'m1')
 
   print *, 'Begin walk'
   do i=1,1000000
