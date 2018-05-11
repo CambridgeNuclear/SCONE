@@ -17,8 +17,10 @@ module coord_class
   end type coord
 
   type, public :: coordList
-    integer(shortInt)                          :: nesting ! depth of co-ordinate nesting
-    type(coord), dimension(hardcoded_max_nest) :: lvl     ! array of coords nested successively deeper
+    integer(shortInt)                          :: nesting          ! depth of co-ordinate nesting
+    type(coord), dimension(hardcoded_max_nest) :: lvl              ! array of coords nested successively deeper
+    integer(shortInt)                          :: regionID = 0     ! unique ID of the cell occupied
+    integer(shortInt)                          :: matIdx = 0       ! index of the material occupied
   contains
     procedure :: init
     procedure :: addLevel
@@ -78,6 +80,8 @@ contains
       nMin = n
     else
       nMin = 1
+      self % regionID = 0
+      self % matIdx = 0
     end if
     nMax = self % nesting
     do i = nMin+1,nMax
@@ -167,6 +171,5 @@ contains
     call self % resetNesting()
     self % lvl(1) % dir = dir
   end subroutine assignDirection
-
 
 end module coord_class

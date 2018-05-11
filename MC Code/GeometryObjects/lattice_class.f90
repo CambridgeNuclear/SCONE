@@ -270,6 +270,16 @@ contains
   end function universes_ptr
 
   !!
+  !! Return a single digit identifier for a lattice position given its 3D index
+  !!
+  function getijkIdx_ptr(self,ijk) result(ijkIdx)
+    class(lattice_ptr), intent(in)              :: self
+    integer(shortInt), dimension(3), intent(in) :: ijk
+    integer(shortInt)                           :: ijkIdx
+    ijkIdx = self % ptr % getijkIdx(ijk)
+  end function getijkIdx_ptr
+
+  !!
   !! Returns the name of the lattice
   !!
   function name_ptr(self)result(name)

@@ -34,14 +34,12 @@ contains
   !!
   !! Initialise for delta tracking
   !!
-  subroutine init(self, random, geom, settings)
+  subroutine init(self, geom, settings)
     class(transportOperatorST), intent(inout) :: self
     !class(Nuclear_data_MG), target :: nuclearData
-    class(rng), target                      :: random
     class(geometry), target                 :: geom
     class(dictionary), optional             :: settings
 
-    self%random => random
     !self%MGData => nuclearData
     self%geom => geom
 
@@ -63,9 +61,6 @@ contains
     logical(defBool)                       :: moveUp
 
     STLoop: do
-      ! Obtain the local cross-section
-      !sigmaT = self % getTotalXS(p)
-      sigmaT = 0.6
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
@@ -102,8 +97,13 @@ contains
       call lat % kill()
       n = nMin
 
+      ! Obtain the local cross-section
+      call p % updateLocation()
+      !sigmaT = self % getTotalXS(p)
+      sigmaT = 0.6
+
       ! Sample particle flight distance
-      distance = -log(self%random%get())/sigmaT
+      distance = -log(p%pRNG%get())/sigmaT
 
       ! The particle escapes the cell and moves to the next
       if (boundaryDistance <= distance) then
