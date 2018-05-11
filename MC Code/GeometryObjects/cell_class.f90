@@ -23,7 +23,7 @@ module cell_class
     integer(shortInt)                            :: latIdx = 0          ! index of the cell's lattice contents
     integer(shortInt)                            :: uniIdx = 0          ! index of the cell's universe contents
     integer(shortInt), dimension(:), allocatable :: matIdx              ! index of the cell's material contents
-    integer(longInt), dimension(:), allocatable  :: uniqueID            ! identifies unique instance of a cell
+    integer(shortInt), dimension(:), allocatable :: uniqueID            ! identifies unique instance of a cell
     real(defReal), dimension(:), allocatable     :: volume              ! the volume of the cell
     type(coordList), dimension(:), allocatable   :: location            ! co-ord locations of each cell
     integer(shortInt)                            :: id                  ! unique user-defined ID
@@ -151,7 +151,6 @@ contains
     else
       ! Fill cell depending on given fill type
       if (self % fillType == materialFill) then
-        print *,'Filling cell with material'
         self % matIdx = fillIdx
       else if (self % fillType == universeFill) then
         self % uniIdx = fillIdx
@@ -267,9 +266,9 @@ contains
         found = .TRUE.
         do n = 1, location % nesting
           found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % uniIdx)
-          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % latIdx)
-          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % ijkIdx)
-          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % cellIdx)
+          found = found .AND. (location % lvl(n) % latIdx == self % location(i) % lvl(n) % latIdx)
+          found = found .AND. (location % lvl(n) % ijkIdx == self % location(i) % lvl(n) % ijkIdx)
+          found = found .AND. (location % lvl(n) % cellIdx == self % location(i) % lvl(n) % cellIdx)
         end do
         if (found) then
           idx = i
@@ -279,6 +278,7 @@ contains
     end if
 
     call fatalError('coordCompare, cell','Could not find cell instance from the location provided')
+    idx = 0 ! Prevents warning
 
   end function coordCompare
 
