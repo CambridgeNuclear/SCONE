@@ -56,6 +56,7 @@ add_subdirectory(ParticleObjects)
 
 add_subdirectory(NuclearData)      
 add_subdirectory(GeometryObjects)  
+add_subdirectory(Tallies)
 
 add_subdirectory(CollisionOperator)
 add_subdirectory(TransportOperator)

@@ -21,7 +21,7 @@ module dictionary_class
   !
   ! will not cause a memory leak despite lack of "call locDict % kill()" before "end subroutine"
   !
-  ! Size of the stored char is predefined to be maximum of nameLen and patchLen.
+  ! Size of the stored char is predefined to be maximum of nameLen and pathLen.
   ! Maximum size of keyword is equal to nameLen
   !
   ! For now the dictionary is limited to following enteries:
