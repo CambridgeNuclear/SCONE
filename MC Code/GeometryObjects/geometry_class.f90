@@ -70,6 +70,7 @@ module geometry_class
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
+    procedure :: voxelPlot               ! Produces a voxel plot of a chosen section of the geometry
   end type geometry
 
 contains
@@ -607,13 +608,13 @@ contains
     integer(longInt)                         :: s
     real(defReal), dimension(3)              :: minPoint, width, testPoint, dummyU
     real(defReal), dimension(:), allocatable :: cellVols
-    integer(shortInt)                        :: i, cellIdx
+    integer(shortInt)                        :: i, regionIdx
     type(rng)                                :: rand
     type(box)                                :: bb
     type(cell_ptr)                           :: c
     type(coordList)                          :: coords
 
-    allocate(cellVols(self % numCells))
+    allocate(cellVols(self % numRegions))
     cellVols(:) = 0
 
     ! Cell searching requires a direction
@@ -640,21 +641,26 @@ contains
       call coords % init(testPoint, dummyU)
 
       c = self % whichCell(coords)
-      cellIdx = c % geometryIdx()
+      regionIdx = coords % regionID
 
       if (c % insideGeom()) then
-        cellVols(cellIdx) = cellVols(cellIdx) + 1
+        cellVols(regionIdx) = cellVols(regionIdx) + 1
       end if
     end do
     call c % kill()
 
     cellVols(:) = ONE*cellVols(:) * width(1) * width(2) * width(3) / numPoints
     print *,cellVols(:)
-    ! Assign volumes to cells, dividing by the number of instances
-    ! Only assign to base cells
+
+    ! Assign volumes to each material cell instance
+    ! Indexing between instances and the cell array is thankfully trivial
+    regionIdx = 1
     do i = 1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
-        self % cells(i) % volume = cellVols(i) / self % cells(i) % instances
+        do j = 1,self % cells(i) % instances
+          self % cells(i) % volume(j) = cellVols(regionIdx)
+          regionIdx = regionIdx + 1
+        end do
       end if
     end do
 
@@ -729,7 +735,7 @@ contains
         if (.not. c % insideGeom()) then
           colourMatrix(i,j) = 0
         else
-          colourMatrix(i,j) = c % matIdx(1)
+          colourMatrix(i,j) = coords % matIdx
         end if
       end do
     end do
@@ -737,6 +743,58 @@ contains
     call c % kill()
 
   end function slicePlot
+
+  !!
+  !! Obtain a 3D array for use in voxel plotting
+  !! Obtains material coloured voxel originating from a rear-bottom-left
+  !! corner of the geometry and going forward by width in each direction
+  !! Returns the colour matrix and the points corresponding to it
+  !!
+  subroutine voxelPlot(self,nVox,corner,width, colourMatrix, points)
+    class(geometry), intent(in)                                     :: self
+    integer(shortInt), dimension(3), intent(in)                     :: nVox
+    real(defReal), dimension(3), intent(in)                         :: corner
+    real(defReal), dimension(3), intent(in)                         :: width
+    integer(shortInt), dimension(:,:,:), allocatable, intent(inout) :: colourMatrix
+    real(defReal), dimension(:,:,:), allocatable, intent(inout)     :: points
+    real(defReal), dimension(3)                                     :: step
+    real(defReal), dimension(3)                                     :: x0, x, u
+    integer(shortInt)                                               :: i, j, k
+    type(coordList)                                                 :: coords
+    type(cell_ptr)                                                  :: c
+
+    allocate(colourMatrix(nVox(1),nVox(2),nVox(3)))
+    allocate(points(nVox(1),nVox(2),nVox(3)))
+
+    ! Create the co-ordinate points and widths
+    step(:) = width(:) / pixels(:)
+
+    x0 = corner + step*HALF
+    x = x0
+    u = [SQT2_2, SQRT2_2, ZERO]
+
+    call coords % init(x, u)
+
+    ! Loop over each direction
+    do k = 1,nVox(3)
+      do j = 1,nVox(2)
+        do i = 1,nVox(1)
+          x = [x0(1) + (i-1)*step(1), x0(2) + (j-1)*step(2), x0(3) + (k-1)*step(3)]
+          points(i,j,k) = x
+          call coords % init(x, u)
+          c = self % whichCell(coords)
+          if (c % insideGeom()) then
+            colourMatrix(i,j,k) = coords % matIdx
+          else
+            colourMatrix(i,j,k) = 0
+          end if
+        end do
+      end do
+    end do
+
+    call c % kill()
+
+  end function voxelPlot
 
   !!
   !! Given a dictionary describing a surface, construct a surface for the surrface array
