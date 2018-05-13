@@ -750,7 +750,7 @@ contains
   !! corner of the geometry and going forward by width in each direction
   !! Returns the colour matrix and the points corresponding to it
   !!
-  subroutine voxelPlot(self,nVox,corner,width, colourMatrix, points)
+  subroutine voxelPlot(self,nVox,corner,width, colourMatrix, points,matPlot)
     class(geometry), intent(in)                                     :: self
     integer(shortInt), dimension(3), intent(in)                     :: nVox
     real(defReal), dimension(3), intent(in)                         :: corner
@@ -794,7 +794,7 @@ contains
 
     call c % kill()
 
-  end function voxelPlot
+  end subroutine voxelPlot
 
   !!
   !! Given a dictionary describing a surface, construct a surface for the surrface array
