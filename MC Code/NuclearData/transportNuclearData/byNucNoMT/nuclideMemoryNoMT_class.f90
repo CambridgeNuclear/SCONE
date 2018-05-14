@@ -23,7 +23,8 @@ module nuclideMemoryNoMT_class
     logical(defBool)                 :: isInter      = .false. !! Are XS other then total up-to-date with energy
     type(xsEnergyPointNoMT), pointer :: low          => null() !! Pointer to low energy point
     type(xsEnergyPointNoMT), pointer :: top          => null() !! Pointer to top energy point
-    type(aceNoMT), pointer           :: data         => null() !! Pointer to nuclide data
+    ! *** Temporary made public to allow obtaining nu in materialMemory
+    type(aceNoMT), pointer,public    :: data         => null() !! Pointer to nuclide data
   contains
     procedure :: init
 

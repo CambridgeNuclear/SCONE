@@ -1,6 +1,7 @@
 module materialMemoryNoMT_class
 
   use numPrecision
+  use endfConstants
   use genericProcedures,       only : fatalError
   use xsMacroSet_class,        only : xsMacroSet
   use materialDataNoMT_class,  only : materialDataNoMT
@@ -184,9 +185,9 @@ contains
   subroutine calculateTail(self,E)
     class(materialMemoryNoMT), intent(inout) :: self
     real(defReal)                            :: E
-    real(defReal),dimension(3)               :: tempMacroXS
-    real(defReal),dimension(3)               :: xsMicro
-    real(defReal)                            :: nucDen
+    real(defReal),dimension(4)               :: tempMacroXS
+    real(defReal),dimension(4)               :: xsMicro
+    real(defReal)                            :: nucDen, nu
     integer(shortInt)                        :: i, nucIdx
 
 
@@ -203,15 +204,24 @@ contains
       xsMicro(2) = self % nucShelf(nucIdx) % xs % capture
       xsMicro(3) = self % nucShelf(nucIdx) % xs % fission
 
+      ! Calculate nu*Fission *** This implementation is cumbersome. WIll be changed
+      if (self % nucShelf(nucIdx) % data % isFissile) then
+        nu = self % nucShelf(nucIdx) % data % releaseAt(E,N_fission)
+      else
+        nu = ZERO
+      end if
+      xsMicro(4) = xsMicro(3) * nu
+
       ! Increase Material macroscopic XSs by the nuclide macroscopic XSs
       tempMacroXS = tempMacroXS + xsMicro * nucDen
 
     end do
 
     ! Load XS into Macro XS storage
-    self % XS % scatterXS = tempMacroXS(1)
-    self % XS % captureXS = tempMacroXS(2)
-    self % XS % fissionXS = tempMacroXS(3)
+    self % XS % scatterXS   = tempMacroXS(1)
+    self % XS % captureXS   = tempMacroXS(2)
+    self % XS % fissionXS   = tempMacroXS(3)
+    self % XS % nuFissionXS = tempMacroXS(4)
 
   end subroutine calculateTail
 

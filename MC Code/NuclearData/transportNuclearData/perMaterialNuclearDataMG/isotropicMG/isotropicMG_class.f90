@@ -404,6 +404,15 @@ contains
 
     call self % releaseData(idx) % init(tempXS, tempXSmatrix)
 
+    ! Calculate nu*Fission
+    if (isFissile) then
+      tempXS = self % XSs(:,idx) % fissionXS * xsDict % getRealArray('nu')
+    else
+      tempXS = 0.0
+    end if
+
+    self % XSs(:,idx) % nuFissionXS = tempXS
+
     ! Calculate total XS
     self % XSs(:,idx) % totalXS = self % XSs(:,idx) % scatterXS + &
                                   self % XSs(:,idx) % captureXS + &

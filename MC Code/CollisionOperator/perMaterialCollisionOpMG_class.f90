@@ -68,8 +68,8 @@ contains
     type(particle)                             :: pTemp
     real(defReal),dimension(3)                 :: r, dir
     integer(shortInt)                          :: G, G_out, n, i, matIdx
-    real(defReal)                              :: nu, wgt, r1, mu, phi
-    real(defReal)                              :: sig_fiss, sig_tot, k_eff
+    real(defReal)                              :: wgt, r1, mu, phi
+    real(defReal)                              :: sig_tot, k_eff, sig_nufiss
 
     if ( self % xsData % isFissileMat(self % matIdx)) then
       ! Obtain required data
@@ -77,20 +77,19 @@ contains
       wgt    = p % w
       matIdx = self % matIdx
 
-      nu    = self % xsData % releaseAt(G,G, macroFission, matIdx)
       k_eff = nextCycle % k_eff
       r1    = self % pRNG % get()
 
       call self % xsData % getMatMacroXS(materialXS, self % G, matIdx)
 
-      sig_fiss = materialXS % fissionXS()
-      sig_tot  = materialXS % totalXS()
+      sig_tot    = materialXS % totalXS()
+      sig_nuFiss = materialXS % nuFissionXS()
 
       r   = p % rGlobal()
       dir = p % dirGlobal()
 
       ! Sample number of fission sites generated
-      n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)
+      n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
 
       ! Store new sites in the next cycle dungeon
       wgt = 1.0
