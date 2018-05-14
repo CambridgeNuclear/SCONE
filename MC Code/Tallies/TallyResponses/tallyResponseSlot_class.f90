@@ -19,7 +19,8 @@ module tallyResponseSlot_class
     procedure :: getCollisionScore
 
     ! Build procedures
-    procedure :: attachResponse
+    generic           :: assignment(=) => assignResponse
+    procedure,private :: assignResponse
 
   end type tallyResponseSlot
 
@@ -47,23 +48,25 @@ contains
   !! "response" argument variable will be deallocated in the subroutine
   !! (Allocation is moved from argument variable to the slot)
   !!
-  subroutine attachResponse(self,response)
-    class(tallyResponseSlot), intent(inout)        :: self
-    class(tallyResponse),allocatable,intent(inout) :: response
-    character(100),parameter        :: Here='attachResponse (tallyResponseSlot_class.f90)'
+  subroutine assignResponse(LHS,RHS)
+    class(tallyResponseSlot), intent(inout)        :: LHS
+    class(tallyResponse),allocatable,intent(in)    :: RHS
+    character(100),parameter        :: Here='assignResponse (tallyResponseSlot_class.f90)'
 
     ! Deallocate currently stored response if present
-    if( allocated( self % response)) deallocate( self % response)
+    if( allocated( LHS % response)) deallocate( LHS % response)
 
-    if(.not.allocated(response)) then
+    if(.not.allocated(RHS)) then
       call fatalError(Here,'Trying to load unallocated tally response')
     end if
 
 
     ! Move allocation into slot
-    call move_alloc(response, self % response)
+    !call move_alloc(response, self % response)
 
-  end subroutine attachResponse
+    allocate(LHS % response, source = RHS)
+
+  end subroutine assignResponse
 
     
 end module tallyResponseSlot_class

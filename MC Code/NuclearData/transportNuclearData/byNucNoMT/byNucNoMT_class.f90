@@ -54,6 +54,7 @@ module byNucNoMT_class
     procedure :: getTransXS_E
     procedure :: getMajorantXS_E
     procedure :: getTotalMatXS_E
+    procedure :: getMatMacroXS_E
     procedure :: isFissileMat
     procedure :: initFissionSite_E
     procedure :: setActiveMaterials
@@ -71,7 +72,6 @@ module byNucNoMT_class
     procedure :: getkT
     procedure :: getNucMacroXS
 
-    procedure :: getMatMacroXS
 
     ! Type specific procedures
 
@@ -256,6 +256,20 @@ contains
     xs = self % matShelf(matIdx) % getTotal(E)
 
   end function getTotalMatXS_E
+
+  !!
+  !! Subroutine to attach pointer to a material's macroscopic XS set
+  !!
+  subroutine getMatMacroXS_E(self,macroXS,E,matIdx)
+    class(byNucNoMT), intent(inout)        :: self
+    type(xsMacroSet_ptr),intent(inout)     :: macroXS
+    real(defReal),intent(in)               :: E
+    integer(shortInt),intent(in)           :: matIdx
+
+    call self % matShelf(matIdx) % setEnergy(E)
+    macroXS = self % matShelf(matIdx) % XS
+
+  end subroutine getMatMacroXS_E
 
   !!
   !! Returns .true. if material contains fissile nuclides
@@ -533,20 +547,6 @@ contains
     nucMacroXs = self % matShelf(matIdx) % nucCDF
 
   end subroutine getNucMacroXS
-
-  !!
-  !! Subroutine to attach pointer to a material's macroscopic XS set
-  !!
-  subroutine getMatMacroXS(self,macroXS,E,matIdx)
-    class(byNucNoMT), intent(inout)        :: self
-    type(xsMacroSet_ptr),intent(inout)     :: macroXS
-    real(defReal),intent(in)               :: E
-    integer(shortInt),intent(in)           :: matIdx
-
-    call self % matShelf(matIdx) % setEnergy(E)
-    macroXS = self % matShelf(matIdx) % XS
-
-  end subroutine getMatMacroXS
 
 
 end module byNucNoMT_class

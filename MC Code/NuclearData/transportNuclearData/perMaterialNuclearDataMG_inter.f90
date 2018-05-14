@@ -19,18 +19,22 @@ module perMaterialNuclearDataMG_inter
     generic :: getTransXS    => getTransXS_G
     generic :: getMajorantXS => getMajorantXS_G
     generic :: getTotalMatXS => getTotalMatXS_G
+    generic :: getMatMacroXS => getMatMacroXS_G
+
 
     ! Adapters to transport procedures
     procedure :: getTransXS_p
     procedure :: getMajorantXS_p
     procedure :: getTotalMatXS_p
+    procedure :: getMatMacroXS_p
+
 
     ! Access to transport xs data by Energy Group
     procedure(getTransXS_G),deferred    :: getTransXS_G
     procedure(getMajorantXS_G),deferred :: getMajorantXS_G
     procedure(getTotalMatXS_G),deferred :: getTotalMatXS_G
+    procedure(getMatMacroXS_G),deferred :: getMatMacroXS_G
 
-    procedure(getMatMacroXS), deferred  :: getMatMacroXS
     procedure(releaseAt), deferred      :: releaseAt
     procedure(sampleMuGout), deferred   :: sampleMuGout
 
@@ -83,16 +87,16 @@ module perMaterialNuclearDataMG_inter
     !!
     !! Get set of material macroscopic xross-sections
     !!
-    subroutine getMatMacroXS(self,macroXS,G,matIdx)
+    subroutine getMatMacroXS_G(self,macroXS,G,matIdx)
       import :: xsMacroSet_ptr, &
                 defReal, &
                 shortInt, &
                 perMaterialNuclearDataMG
-      class(perMaterialNuclearDataMG), intent(in) :: self
-      type(xsMacroSet_ptr),intent(inout)          :: macroXS
-      integer(shortInt),intent(in)                :: G
-      integer(shortInt),intent(in)                :: matIdx
-    end subroutine getMatMacroXS
+      class(perMaterialNuclearDataMG), intent(inout) :: self
+      type(xsMacroSet_ptr),intent(inout)             :: macroXS
+      integer(shortInt),intent(in)                   :: G
+      integer(shortInt),intent(in)                   :: matIdx
+    end subroutine getMatMacroXS_G
 
     !!
     !! Obtain average emission for reaction MT
@@ -135,7 +139,7 @@ contains
 
   !!
   !! getTransXS adapter to translate call with particle to a call with ENERGY GROUP
-  !! Returns error if multigroup neutron is provided
+  !! Returns error if CE neutron is provided
   !!
   function getTransXS_p(self,p,matIdx) result (xs)
     class(perMaterialNuclearDataMG), intent(inout) :: self
@@ -154,7 +158,7 @@ contains
 
   !!
   !! getMajorantXS adapter to translate call with particle to a call with ENERGY GROUP
-  !! Returns error if multigroup neutron is provided
+  !! Returns error if CE neutron is provided
   !!
   function getMajorantXS_p(self,p) result (xs)
     class(perMaterialNuclearDataMG), intent(inout) :: self
@@ -172,7 +176,7 @@ contains
 
   !!
   !! getTotalMatXS adapter to translate call with particle to a call with ENERGY GROUP
-  !! Returns error if multigroup neutron is provided
+  !! Returns error if CE neutron is provided
   !!
   function getTotalMatXS_p(self,p,matIdx) result (xs)
     class(perMaterialNuclearDataMG), intent(inout) :: self
@@ -189,5 +193,24 @@ contains
 
   end function getTotalMatXS_p
 
+
+  !!
+  !! getMatMacroXS adapter to translate call with particle to a call with energy value
+  !! Returns error if CE neutron is provided
+  !!
+  subroutine getMatMacroXS_p(self,macroXS,p,matIdx)
+    class(perMaterialNuclearDataMG), intent(inout) :: self
+    type(xsMacroSet_ptr),intent(inout)             :: macroXS
+    class(particle), intent(in)                    :: p
+    integer(shortInt),intent(in)                   :: matIdx
+    character(100), parameter         :: Here='getMatMacroXS_p (perMaterialNuclearDataMG_inter.f90)'
+
+    if (.not.p % isMG) then
+      call fatalError(Here,'CE neutron given to MG nuclear Data')
+    end if
+
+    call self % getMatMacroXS_G(macroXS, p % G, matIdx)
+
+  end subroutine getMatMacroXS_p
     
 end module perMaterialNuclearDataMG_inter

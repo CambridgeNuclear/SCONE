@@ -20,7 +20,8 @@ module tallyProcSlot_class
     procedure  :: assignBins_loc
 
     ! Build procedure
-    procedure  :: attachProc
+    generic            :: assignment(=) => assignProc
+    procedure,private  :: assignProc
   end type tallyProcSlot
 
 contains
@@ -78,23 +79,23 @@ contains
   !!
   !! Load tallyProcessor into the slot
   !! Current content will be deallocated if present
-  !! "response" argument variable will be deallocated in the subroutine
-  !! (Allocation is moved from argument variable to the slot)
+  !! RHS will NOT be deallocated
   !!
-  subroutine attachProc(self,proc)
-    class(tallyProcSlot), intent(inout)        :: self
-    class(tallyProc),allocatable,intent(inout) :: proc
+  subroutine assignProc(LHS,RHS)
+    class(tallyProcSlot), intent(inout)        :: LHS
+    class(tallyProc),allocatable,intent(in)    :: RHS
     character(100),parameter                   :: Here='attachProc (tallyProcSlot_class.f90)'
 
-    if(allocated(self % proc)) deallocate (self % proc)
+    if(allocated(LHS % proc)) deallocate (LHS % proc)
 
-    if(.not.allocated(proc)) then
+    if(.not.allocated(RHS)) then
       call fatalError(Here,'Trying to load unallocated tally processor')
     end if
 
-    call move_alloc(proc, self % proc)
+    !call move_alloc(RHS, LHS % proc)
+    allocate(LHS % proc, source = RHS)
 
-  end subroutine attachProc
+  end subroutine assignProc
 
 
     
