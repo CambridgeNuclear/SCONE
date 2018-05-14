@@ -3,8 +3,9 @@ module particle_class
   use numPrecision
   use universalVariables
   use genericProcedures
-  use coord_class,    only : coordList
-  use RNG_class,      only : RNG
+  use coord_class,       only : coordList
+  use RNG_class,         only : RNG
+  use nuclearData_inter, only : nuclearData
 
   implicit none
   private
@@ -34,6 +35,7 @@ module particle_class
 
                                !*** Changed from currentMaterialIndex
     integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
+    class(nuclearData),pointer :: xsData => null()
 
     integer(shortInt)          :: regionID
     logical(defBool)           :: isDead

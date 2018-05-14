@@ -86,6 +86,7 @@ program eigenCE
 
 ! ##### Population initialisation
   neutron % pRNG => RNGptr
+  neutron % xsData => ce
   do i=1,N
     neutron % E      = 0.5
     call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
