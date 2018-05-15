@@ -9,12 +9,12 @@ module tallyClerk_inter
   private
 
   ! List of codes for diffrent reports
-  integer(shortInt),parameter :: collision_CODE  = 1000 ,&
-                                 path_CODE       = 1001 ,&
-                                 trans_CODE      = 1002 ,&
-                                 hist_CODE       = 1003 ,&
-                                 cycleStart_CODE = 1004 ,&
-                                 cycleEnd_CODE   = 1005
+  integer(shortInt),parameter,public :: collision_CODE  = 1000 ,&
+                                        path_CODE       = 1001 ,&
+                                        trans_CODE      = 1002 ,&
+                                        hist_CODE       = 1003 ,&
+                                        cycleStart_CODE = 1004 ,&
+                                        cycleEnd_CODE   = 1005
 
 
   !!

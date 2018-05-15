@@ -1,10 +1,14 @@
 module tallyAdminBase_class
 
   use numPrecision
+  use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
-  use tallyClerk_inter,      only : tallyClerk
+  use tallyClerk_inter,      only : tallyClerk,  collision_CODE, path_CODE, trans_CODE, &
+                                    hist_CODE, cycleStart_CODE, cycleEnd_CODE
   use tallyClerkSlot_class,  only : tallyClerkSlot
+
+
 
   implicit none
   private
@@ -55,9 +59,11 @@ module tallyAdminBase_class
 
     ! Build procedures
     !procedure :: init
-    !procedure :: addTallyClerk
-    !procedure :: kill
-    !procedure ::
+    procedure :: addTallyClerk
+    procedure :: kill
+
+    procedure,private :: addToReports
+
   end type tallyAdminBase
     
 contains
@@ -71,6 +77,15 @@ contains
     class(particle), intent(in)           :: post
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
+    integer(shortInt)                     :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % collisionClerks)
+      idx = self % collisionClerks(i)
+      call self % tallyClerks(idx) % reportCollision(pre,post,MT,muL)
+
+    end do
+
   end subroutine reportCollision
 
   !!
@@ -84,6 +99,15 @@ contains
     class(particle), intent(in)          :: post
     integer(shortInt), intent(in)        :: cellId
     real(defReal), intent(in)            :: L
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % pathClerks)
+      idx = self % pathClerks(i)
+      call self % tallyClerks(idx) % reportPath(pre,post,cellId,L)
+
+    end do
+
   end subroutine reportPath
 
   !!
@@ -96,6 +120,15 @@ contains
     class(tallyAdminBase), intent(inout) :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % transClerks)
+      idx = self % transClerks(i)
+      call self % tallyClerks(idx) % reportTrans(pre,post)
+
+    end do
+
   end subroutine reportTrans
 
   !!
@@ -108,6 +141,15 @@ contains
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt),intent(in)         :: fate
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % histClerks)
+      idx = self % histClerks(i)
+      call self % tallyClerks(idx) % reportHist(pre,post,fate)
+
+    end do
+
 
   end subroutine reportHist
 
@@ -117,6 +159,14 @@ contains
   subroutine reportCycleStart(self,start)
     class(tallyAdminBase), intent(inout) :: self
     class(particleDungeon), intent(in)   :: start
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % cycleStartClerks)
+      idx = self % cycleStartClerks(i)
+      call self % tallyClerks(idx) % reportCycleStart(start)
+
+    end do
 
   end subroutine reportCycleStart
 
@@ -126,6 +176,14 @@ contains
   subroutine reportCycleEnd(self,end)
     class(tallyAdminBase), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % cycleEndClerks)
+      idx = self % cycleEndClerks(i)
+      call self % tallyClerks(idx) % reportCycleEnd(end)
+
+    end do
 
   end subroutine reportCycleEnd
 
@@ -139,5 +197,104 @@ contains
     real(defReal),optional, intent(out) :: STD
 
   end subroutine k_eff
+
+  !!
+  !!
+  !!
+  subroutine addTallyClerk(self,clerk)
+    class(tallyAdminBase), intent(inout)          :: self
+    class(tallyClerk), intent(in)                 :: clerk
+    type(tallyClerkSlot)                          :: localSlot
+    integer(shortInt),dimension(:),allocatable    :: reportCodes
+    integer(shortInt)                             :: N, i
+
+    character(100),parameter  :: Here = 'addTallyClerk (tallyAdminBase_class.f90)'
+
+    ! Check if provided clerk is a slot. Give error if it is
+    select type(clerk)
+      type is (tallyClerkSlot)
+        call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
+    end select
+
+    ! Check if it is first clerk to be added. If yes llocate all sorting arrays to size 0
+    ! Allocate tallyClerks to size 0 as well
+    if( .not. allocated(self % tallyClerks) ) then
+      allocate(self % collisionClerks(0)  )
+      allocate(self % pathClerks(0)       )
+      allocate(self % transClerks(0)      )
+      allocate(self % histClerks(0)       )
+      allocate(self % cycleStartClerks(0) )
+      allocate(self % cycleEndClerks(0)   )
+
+      allocate(self % tallyClerks(0))
+    end if
+
+    ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature
+    localSlot = clerk
+    self % tallyClerks = [self % tallyClerks, localSlot]
+
+    ! Obtain list of reports requested by the loaded clerk
+    N = size(self % tallyClerks)
+    reportCodes = self % tallyClerks(N) % validReports()
+
+    ! Append report sorting arrays with index of new tallyClerk
+    do i=1,size(reportCodes)
+      call self % addToReports( reportCodes(i), N )
+    end do
+
+  end subroutine addTallyClerk
+
+  !!
+  !! Deallocates all content
+  !!
+  subroutine kill(self)
+    class(tallyAdminBase), intent(inout) :: self
+
+    if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
+
+    if(allocated(self % collisionClerks))  deallocate( self % collisionClerks )
+    if(allocated(self % pathClerks))       deallocate( self % pathClerks )
+    if(allocated(self % transClerks))      deallocate( self % transClerks )
+    if(allocated(self % histClerks))       deallocate( self % histClerks )
+    if(allocated(self % cycleStartClerks)) deallocate( self % cycleStartClerks )
+    if(allocated(self % cycleEndClerks))   deallocate( self % cycleEndClerks )
+
+  end subroutine kill
+
+  !!
+  !! Append sorrting array identified with the code with tallyClerk idx
+  !!
+  subroutine addToReports(self,reportCode,idx)
+    class(tallyAdminBase),intent(inout) :: self
+    integer(shortInt), intent(in)       :: reportCode
+    integer(shortInt), intent(in)       :: idx
+    character(100),parameter  :: Here='addToReports (tallyAdminBase_class.f90)'
+
+    select case(reportCode)
+      case(collision_CODE)
+        self % collisionClerks = [ self % collisionClerks, idx]
+
+      case(path_CODE)
+        self % pathClerks = [ self % pathClerks, idx]
+
+      case(trans_CODE)
+        self % transClerks = [ self % transClerks, idx]
+
+      case(hist_CODE)
+        self % histClerks = [ self % histClerks, idx]
+
+      case(cycleStart_CODE)
+        self % cycleStartClerks = [ self % cycleStartClerks, idx]
+
+      case(cycleEnd_CODE)
+        self % cycleEndClerks = [ self % cycleEndClerks, idx]
+
+      case default
+        call fatalError(Here, 'Undefined reportCode')
+    end select
+
+
+  end subroutine addToReports
+
 
 end module tallyAdminBase_class
