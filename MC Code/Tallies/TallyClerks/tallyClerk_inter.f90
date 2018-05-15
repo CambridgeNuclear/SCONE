@@ -1,4 +1,4 @@
-module tallyClerc_inter
+module tallyClerk_inter
 
   use numPrecision
   use genericProcedures,     only : fatalError
@@ -18,14 +18,14 @@ module tallyClerc_inter
 
 
   !!
-  !! Abstract interface for a single tallyClerc.
+  !! Abstract interface for a single tallyClerk.
   !! It recives reports from the admin and processed them into scores and estimates.
   !! Its responsibilites are as follows:
   !! 1) Score some result by accepting a subset of all avalible reports
   !! 2) Display implementation determined measure of convergance (usually some variance)
   !! 3) Can return information about reports it requires
   !!
-  type, public,abstract :: tallyClerc
+  type, public,abstract :: tallyClerk
     private
 
   contains
@@ -41,16 +41,16 @@ module tallyClerc_inter
     procedure(display), deferred      :: display
     !procedure(print),deferred         :: print *** Interface for this procedure will be defined shortly
 
-  end type tallyClerc
+  end type tallyClerk
 
   abstract interface
     !!
     !! Returns array of codes that represent diffrent reports
     !!
     function validReports(self) result(validCodes)
-      import :: tallyClerc ,&
+      import :: tallyClerk ,&
                 shortInt
-      class(tallyClerc),intent(in)               :: self
+      class(tallyClerk),intent(in)               :: self
       integer(shortInt),dimension(:),allocatable :: validCodes
     end function validReports
 
@@ -58,8 +58,8 @@ module tallyClerc_inter
     !! Display convergance progress on the console
     !!
     subroutine display(self)
-      import :: tallyClerc
-      class(tallyClerc), intent(in)  :: self
+      import :: tallyClerk
+      class(tallyClerk), intent(in)  :: self
     end subroutine display
 
   end interface
@@ -70,12 +70,12 @@ contains
   !! Process collision report
   !!
   subroutine reportCollision(self,pre,post,MT,muL)
-    class(tallyClerc), intent(inout)      :: self
+    class(tallyClerk), intent(inout)      :: self
     class(phaseCoord), intent(in)         :: pre
     class(particle), intent(in)           :: post
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
-    character(100),parameter  :: Here = 'reportCollision (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportCollision (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
@@ -87,12 +87,12 @@ contains
   !! Pathlength must be contained within a single cell and material
   !!
   subroutine reportPath(self,pre,post,cellId,L)
-    class(tallyClerc), intent(inout)     :: self
+    class(tallyClerk), intent(inout)     :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt), intent(in)        :: cellId
     real(defReal), intent(in)            :: L
-    character(100),parameter  :: Here = 'reportPath (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportPath (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
@@ -105,10 +105,10 @@ contains
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
   subroutine reportTrans(self,pre,post)
-    class(tallyClerc), intent(inout)     :: self
+    class(tallyClerk), intent(inout)     :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
-    character(100),parameter  :: Here = 'reportTrans (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportTrans (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
@@ -120,11 +120,11 @@ contains
   !! **** FATE CODES NEED TO BE SPECIFIED
   !!
   subroutine reportHist(self,pre,post,fate)
-    class(tallyClerc), intent(inout) :: self
+    class(tallyClerk), intent(inout) :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt),intent(in)         :: fate
-    character(100),parameter  :: Here = 'reportHist (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportHist (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
@@ -134,9 +134,9 @@ contains
   !! Process beggining of a cycle
   !!
   subroutine reportCycleStart(self,start)
-    class(tallyClerc), intent(inout) :: self
+    class(tallyClerk), intent(inout) :: self
     class(particleDungeon), intent(in)   :: start
-    character(100),parameter  :: Here = 'reportCycleStart (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportCycleStart (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
@@ -146,12 +146,12 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(tallyClerc), intent(inout) :: self
+    class(tallyClerk), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
-    character(100),parameter  :: Here = 'reportCycleEnd (tallyClerc_inter.f90)'
+    character(100),parameter  :: Here = 'reportCycleEnd (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
   end subroutine reportCycleEnd
 
-end module tallyClerc_inter
+end module tallyClerk_inter

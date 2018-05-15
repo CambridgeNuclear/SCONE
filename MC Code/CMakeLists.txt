@@ -5,7 +5,7 @@ project(directory_test)
 ###############################################################################
 # CONFIGURE ENVIROMENT 
 
-set(CMAKE_Fortran_COMPILER /home/mak60/gcc-6.3.0/bin/gfortran)
+#set(CMAKE_Fortran_COMPILER /home/mak60/gcc-6.3.0/bin/gfortran)
 enable_language(Fortran) 
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)

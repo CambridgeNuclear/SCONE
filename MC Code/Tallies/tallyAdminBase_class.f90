@@ -3,14 +3,18 @@ module tallyAdminBase_class
   use numPrecision
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
+  use tallyClerk_inter,      only : tallyClerk
+  use tallyClerkSlot_class,  only : tallyClerkSlot
 
   implicit none
   private
+  !integer(shortInt)  :: i
+  !integer(shortInt),dimension(0),parameter :: sizeZeroArray = [(i, i = 1,0 )]
 
   !!
   !! Base class for the tallies black box.
   !! Its responsibilities are as flolow:
-  !! 1) Accept events reports and routes then to individual tallyClercs
+  !! 1) Accept events reports and routes then to individual tallyClerks
   !! 2) Returns k-eff estimate for a current cycle
   !! 3) Controls end of calculation
   !! 4) Controls printing of calculation progress (to a console)
@@ -21,6 +25,16 @@ module tallyAdminBase_class
   !!
   !!
   type, public:: tallyAdminBase
+    type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
+
+    ! Lists of Clerks to be executed for each procedure
+    integer(shortInt),dimension(:),allocatable    :: collisionClerks
+    integer(shortInt),dimension(:),allocatable    :: pathClerks
+    integer(shortInt),dimension(:),allocatable    :: transClerks
+    integer(shortInt),dimension(:),allocatable    :: histClerks
+    integer(shortInt),dimension(:),allocatable    :: cycleStartClerks
+    integer(shortInt),dimension(:),allocatable    :: cycleEndClerks
+
   contains
     ! Report Interface
     procedure :: reportCollision
@@ -41,6 +55,9 @@ module tallyAdminBase_class
 
     ! Build procedures
     !procedure :: init
+    !procedure :: addTallyClerk
+    !procedure :: kill
+    !procedure ::
   end type tallyAdminBase
     
 contains

@@ -1,24 +1,24 @@
-module tallyClercSlot_class
+module tallyClerkSlot_class
 
   use numPrecision
 !  use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
-  use tallyClerc_inter,      only : tallyClerc
+  use tallyClerk_inter,      only : tallyClerk
 
   implicit none
   private
 
 
   !!
-  !! Slot to store polymorphic instances of tallyClercs in an array
+  !! Slot to store polymorphic instances of tallyClerks in an array
   !! Duplicates an interface
   !!
-  type, public,extends(tallyClerc) :: tallyClercSlot
+  type, public,extends(tallyClerk) :: tallyClerkSlot
     private
-    class(tallyClerc),allocatable :: slot
+    class(tallyClerk),allocatable :: slot
   contains
-    ! Duplicate interface of the tallyClerc
+    ! Duplicate interface of the tallyClerk
     procedure :: reportCollision
     procedure :: reportPath
     procedure :: reportTrans
@@ -34,7 +34,7 @@ module tallyClercSlot_class
     generic   :: assignment(=) => copy
     procedure :: copy
 
-  end type tallyClercSlot
+  end type tallyClerkSlot
 
 contains
 
@@ -42,7 +42,7 @@ contains
   !! Process collision report
   !!
   subroutine reportCollision(self,pre,post,MT,muL)
-    class(tallyClercSlot), intent(inout)      :: self
+    class(tallyClerkSlot), intent(inout)      :: self
     class(phaseCoord), intent(in)         :: pre
     class(particle), intent(in)           :: post
     integer(shortInt), intent(in)         :: MT
@@ -59,7 +59,7 @@ contains
   !! Pathlength must be contained within a single cell and material
   !!
   subroutine reportPath(self,pre,post,cellId,L)
-    class(tallyClercSlot), intent(inout)     :: self
+    class(tallyClerkSlot), intent(inout)     :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt), intent(in)        :: cellId
@@ -77,7 +77,7 @@ contains
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
   subroutine reportTrans(self,pre,post)
-    class(tallyClercSlot), intent(inout)     :: self
+    class(tallyClerkSlot), intent(inout)     :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
 
@@ -92,7 +92,7 @@ contains
   !! **** FATE CODES NEED TO BE SPECIFIED
   !!
   subroutine reportHist(self,pre,post,fate)
-    class(tallyClercSlot), intent(inout) :: self
+    class(tallyClerkSlot), intent(inout) :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt),intent(in)         :: fate
@@ -106,7 +106,7 @@ contains
   !! Process beggining of a cycle
   !!
   subroutine reportCycleStart(self,start)
-    class(tallyClercSlot), intent(inout) :: self
+    class(tallyClerkSlot), intent(inout) :: self
     class(particleDungeon), intent(in)   :: start
 
     ! Pass call to instance in the slot
@@ -118,7 +118,7 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(tallyClercSlot), intent(inout) :: self
+    class(tallyClerkSlot), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
 
     ! Pass call to instance in the slot
@@ -130,7 +130,7 @@ contains
   !! Returns array of codes that represent diffrent reports
   !!
   function validReports(self) result(validCodes)
-    class(tallyClercSlot),intent(in)           :: self
+    class(tallyClerkSlot),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
     ! Pass call to instance in the slot
@@ -142,7 +142,7 @@ contains
   !! Display convergance progress on the console
   !!
   subroutine display(self)
-    class(tallyClercSlot), intent(in)  :: self
+    class(tallyClerkSlot), intent(in)  :: self
 
     ! Pass call to instance in the slot
     call self % slot % display()
@@ -150,13 +150,13 @@ contains
   end subroutine display
 
   !!
-  !! Copy alloctatable on RHS into space on LHS
-  !! Does NOT deallocate RHS
-  !! RHS is allocatable
+  !! Copy RHS into slot of LHS
+  !! Be carefull about loasing slots into slots
+  !! It will work by function call chain may hurt performance
   !!
   subroutine copy(LHS,RHS)
-    class(tallyClercSlot), intent(inout)      :: LHS
-    class(tallyClerc),allocatable,intent(in)  :: RHS
+    class(tallyClerkSlot), intent(inout)      :: LHS
+    class(tallyClerk),intent(in)              :: RHS
 
     if(allocated(LHS % slot)) deallocate (LHS % slot)
 
@@ -164,4 +164,4 @@ contains
 
   end subroutine copy
     
-end module tallyClercSlot_class
+end module tallyClerkSlot_class
