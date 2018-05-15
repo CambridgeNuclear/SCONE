@@ -17,6 +17,8 @@ module geometry_class
   use dictionary_class
   use IOdictionary_class
 
+  use outputVTK_class
+
   use nuclearData_inter
 
   use coord_class
@@ -36,12 +38,13 @@ module geometry_class
   private
 
   type, public :: geometry
-    type(surface_ptr), dimension(:), allocatable :: surfaces        ! pointers to all surfaces
-    type(universe), dimension(:), allocatable    :: universes       ! array of all universes
-    type(cell), dimension(:), allocatable        :: cells           ! array of all cells
-    type(lattice), dimension(:), allocatable     :: lattices        ! array of all lattices
-    type(surface_ptr)                            :: boundarySurface ! pointer to the boundary surface
-    type(box)                                    :: boundingBox     ! bounding box for volume calculations
+    type(surface_ptr), dimension(:), allocatable :: surfaces             ! pointers to all surfaces
+    type(universe), dimension(:), allocatable    :: universes            ! array of all universes
+    type(cell), dimension(:), allocatable        :: cells                ! array of all cells
+    type(lattice), dimension(:), allocatable     :: lattices             ! array of all lattices
+    type(surface_ptr)                            :: boundarySurface      ! pointer to the boundary surface
+    type(box)                                    :: boundingBox          ! bounding box for volume calculations
+    logical(defBool)                             :: boxDefined = .FALSE. ! logical to check if the bounding box has been defined
     type(universe_ptr)                           :: rootUniverse
     integer(shortInt)                            :: numSurfaces = 0
     integer(shortInt)                            :: numCells = 0
@@ -457,8 +460,8 @@ contains
     ID = 1
     do i=1,self % numCells
       n = cellInstances(i)
-      ID = ID + n
-      if (n > 0) then
+      if (n > 1) then
+        ID = ID + n
         call searchLocation % resetNesting()
         allocate(location(n))
         uniIdx = self % rootUniverse % geometryIdx()
@@ -593,6 +596,7 @@ contains
     real(defReal), intent(in), dimension(3) :: orig
     real(defReal), intent(in), dimension(3) :: a
     call self % boundingBox % init(orig, a)
+    self % boxDefined = .TRUE.
   end subroutine constructBoundingBox
 
   !!
@@ -602,20 +606,26 @@ contains
   !! Will eventually require parallelisation
   !!
   subroutine calculateVolumes(self, numPoints, seed)
-    class(geometry), intent(inout)           :: self
-    integer(shortInt), intent(in)            :: numPoints
-    integer(longInt), intent(in), optional   :: seed
-    integer(longInt)                         :: s
-    real(defReal), dimension(3)              :: minPoint, width, testPoint, dummyU
-    real(defReal), dimension(:), allocatable :: cellVols
-    integer(shortInt)                        :: i, regionIdx
-    type(rng)                                :: rand
-    type(box)                                :: bb
-    type(cell_ptr)                           :: c
-    type(coordList)                          :: coords
+    class(geometry), intent(inout)              :: self
+    integer(shortInt), intent(in)               :: numPoints
+    integer(longInt), intent(in), optional      :: seed
+    integer(longInt)                            :: s
+    real(defReal), dimension(3)                 :: minPoint, width, testPoint, dummyU
+    integer(longInt), dimension(:), allocatable :: score
+    real(defReal), dimension(:), allocatable    :: cellVols
+    integer(shortInt)                           :: i, j, regionIdx
+    type(rng)                                   :: rand
+    type(box)                                   :: bb
+    type(cell_ptr)                              :: c
+    type(coordList)                             :: coords
+
+    if(.NOT. self % boxDefined) call fatalError('calculateVolumes, geometry',&
+                                'No bounding box has been defined')
 
     allocate(cellVols(self % numRegions))
-    cellVols(:) = 0
+    allocate(score(self % numRegions))
+    score = 0
+    cellVols = ZERO
 
     ! Cell searching requires a direction
     dummyU = [ONE, ZERO, ZERO]
@@ -640,26 +650,32 @@ contains
 
       call coords % init(testPoint, dummyU)
 
+      ! Return a base cell which either contains a material or sits outside the geometry
       c = self % whichCell(coords)
-      regionIdx = coords % regionID
 
       if (c % insideGeom()) then
-        cellVols(regionIdx) = cellVols(regionIdx) + 1
+        regionIdx = coords % regionID
+        print *,regionIdx
+        print *,score(regionIdx)
+        print *, c % name()
+        score(regionIdx) = score(regionIdx) + 1
       end if
     end do
     call c % kill()
 
-    cellVols(:) = ONE*cellVols(:) * width(1) * width(2) * width(3) / numPoints
-    print *,cellVols(:)
+    cellVols(:) = ONE*score(:) * width(1) * width(2) * width(3) / numPoints
+    print *,score
 
     ! Assign volumes to each material cell instance
-    ! Indexing between instances and the cell array is thankfully trivial
-    regionIdx = 1
+    ! Loop through cells to find which have material fills
+    ! If so, loop through each instance, checking their regionID
+    ! and providing the corresponding volume
     do i = 1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
         do j = 1,self % cells(i) % instances
-          self % cells(i) % volume(j) = cellVols(regionIdx)
-          regionIdx = regionIdx + 1
+          print *,cellVols(self % cells(i) % uniqueID(j))
+          self % cells(i) % volume(j) = cellVols(self % cells(i) % uniqueID(j))
+          print *,self % cells(i) % name
         end do
       end if
     end do
@@ -750,28 +766,27 @@ contains
   !! corner of the geometry and going forward by width in each direction
   !! Returns the colour matrix and the points corresponding to it
   !!
-  subroutine voxelPlot(self,nVox,corner,width, colourMatrix, points,matPlot)
-    class(geometry), intent(in)                                     :: self
-    integer(shortInt), dimension(3), intent(in)                     :: nVox
-    real(defReal), dimension(3), intent(in)                         :: corner
-    real(defReal), dimension(3), intent(in)                         :: width
-    integer(shortInt), dimension(:,:,:), allocatable, intent(inout) :: colourMatrix
-    real(defReal), dimension(:,:,:), allocatable, intent(inout)     :: points
-    real(defReal), dimension(3)                                     :: step
-    real(defReal), dimension(3)                                     :: x0, x, u
-    integer(shortInt)                                               :: i, j, k
-    type(coordList)                                                 :: coords
-    type(cell_ptr)                                                  :: c
+  subroutine voxelPlot(self, nVox, corner, width)
+    class(geometry), intent(in)                      :: self
+    integer(shortInt), dimension(3), intent(in)      :: nVox
+    real(defReal), dimension(3), intent(in)          :: corner
+    real(defReal), dimension(3), intent(in)          :: width
+    integer(shortInt), dimension(:,:,:), allocatable :: colourMatrix
+    real(defReal), dimension(3)                      :: step
+    real(defReal), dimension(3)                      :: x0, x, u
+    integer(shortInt)                                :: i, j, k
+    type(coordList)                                  :: coords
+    type(cell_ptr)                                   :: c
+    type(outputVTK)                                  :: vtk
 
     allocate(colourMatrix(nVox(1),nVox(2),nVox(3)))
-    allocate(points(nVox(1),nVox(2),nVox(3)))
 
     ! Create the co-ordinate points and widths
-    step(:) = width(:) / pixels(:)
+    step(:) = width(:) / nVox(:)
 
     x0 = corner + step*HALF
     x = x0
-    u = [SQT2_2, SQRT2_2, ZERO]
+    u = [SQRT2_2, SQRT2_2, ZERO]
 
     call coords % init(x, u)
 
@@ -780,7 +795,6 @@ contains
       do j = 1,nVox(2)
         do i = 1,nVox(1)
           x = [x0(1) + (i-1)*step(1), x0(2) + (j-1)*step(2), x0(3) + (k-1)*step(3)]
-          points(i,j,k) = x
           call coords % init(x, u)
           c = self % whichCell(coords)
           if (c % insideGeom()) then
@@ -793,6 +807,10 @@ contains
     end do
 
     call c % kill()
+
+    ! Output a VTK file
+    call vtk % init()
+    call vtk % outputVoxels('materialVoxels', nVox, colourMatrix, corner, width, 'materials')
 
   end subroutine voxelPlot
 

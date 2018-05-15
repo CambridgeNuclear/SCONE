@@ -64,6 +64,16 @@ program test_init_geom
   call DTOperator % init(geom)
   call STOperator % init(geom)
 
+  call geom % constructBoundingBox([ZERO,ZERO,ZERO],[4._defReal,4._defReal,HALF])
+
+  print *,'Calculating volumes'
+  call geom % calculateVolumes(1000000,1_longInt)
+  print *,'Finished volume calculation'
+  print *, geom % numRegions
+  print *,'Performing voxel calculation'
+  call geom % voxelPlot([200,200,1], [-TWO,-TWO,-HALF], [0.02_8,0.02_8,1._8])
+  print *,'Finished voxel plot'
+
   ! Initialise mesh to score points
   call m % init([0.02_8,0.02_8,1._8], [-TWO,-TWO,-HALF], [200,200,1], 1, .FALSE.,'m1')
 
