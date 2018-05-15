@@ -7,12 +7,12 @@ module tallyResponse_inter
   private
 
   !!
-  !! Abstract interface for tally response definition
+  !! Abstract interface for collision tally response definition
   !!
   type, public,abstract :: tallyResponse
-    private
+    integer(shortInt) :: responseCode = 0
   contains
-    procedure(getCollisionScore),deferred :: getCollisionScore
+    procedure(getScore),deferred :: getScore
   end type tallyResponse
 
   abstract interface
@@ -21,7 +21,7 @@ module tallyResponse_inter
     !! Given collision parameters return score function (f(x)) value for collision
     !! * f needs to be multiplied by flux estimate before scoring
     !!
-    function getCollisionScore(self,pre,post,MT,muL) result (f)
+    function getScore(self,pre,post,MT,muL) result (f)
       import :: tallyResponse, &
                 particle, &
                 phaseCoord, &
@@ -33,7 +33,7 @@ module tallyResponse_inter
       integer(shortInt), intent(in)  :: MT
       real(defReal), intent(in)      :: muL
       real(defReal)                  :: f
-    end function getCollisionScore
+    end function getScore
 
   end interface
     

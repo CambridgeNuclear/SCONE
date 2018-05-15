@@ -16,7 +16,7 @@ module tallyResponseSlot_class
     class(tallyResponse),allocatable :: response
   contains
     ! Interface procedures
-    procedure :: getCollisionScore
+    procedure :: getScore
 
     ! Build procedures
     generic           :: assignment(=) => assignResponse
@@ -30,7 +30,7 @@ contains
   !! Given collision parameters return score function (f(x)) value for collision
   !! f needs to be multiplied by flux estimate before scoring
   !!
-  function getCollisionScore(self,pre,post,MT,muL) result (f)
+  function getScore(self,pre,post,MT,muL) result (f)
     class(tallyResponseSlot), intent(inout) :: self
     class(phaseCoord), intent(in)           :: pre
     class(particle), intent(in)             :: post
@@ -38,9 +38,9 @@ contains
     real(defReal), intent(in)               :: muL
     real(defReal)                           :: f
 
-    f = self % response % getCollisionScore(pre, post, MT, muL)
+    f = self % response % getScore(pre, post, MT, muL)
 
-  end function getCollisionScore
+  end function getScore
 
   !!
   !! Load response into the slot
