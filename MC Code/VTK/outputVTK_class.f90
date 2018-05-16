@@ -45,16 +45,7 @@ contains
     real(defReal), dimension(3), intent(in)         :: width
     character(*), intent(in), optional              :: dataName ! Optional identifier for the data - mustn't have whitespace!!!!
     integer(shortInt)                               :: i, j, k, stat
-    character(256)                                  :: filename, &
-                                                       versionAndIdentifier, &
-                                                       outputHeader, &
-                                                       fileFormat, &
-                                                       dataStructure, &
-                                                       outputOrigin, &
-                                                       outputSpacing, &
-                                                       outputDimensions, &
-                                                       datasetAttributes, &
-                                                       lookupTable
+    character(256)                                  :: filename
 
     ! Append .vtk to filename
     filename = trim(name)//'.vtk'
@@ -67,17 +58,13 @@ contains
     open(unit = 10, file = filename, status = 'new')
 
     ! Output file version and identifier  ' # vtk DataFile Version x.x
-    versionAndIdentifier = '# vtk DataFile Version '//numToChar(self %version(1))//'.'//&
-                           numToChar(self % version(2))
-    write(10,*) trim(versionAndIdentifier)
+    write(10,'(A,I0,A,I0)') '# vtk DataFile Version ',self %version(1),'.', self % version(2)
 
     ! Output header - string terminated by character \n (256 characters maximum)
-    outputHeader = 'Voxel output file generated from the SCONE Monte Carlo code \n'
-    write(10,*) trim(outputHeader)
+    write(10,'(A)') 'Voxel output file generated from the SCONE Monte Carlo code \n'
 
     ! Output file format - either ASCII or BINARY
-    fileFormat = 'ASCII'
-    write(10,*) trim(fileFormat)
+    write(10,'(A)') 'ASCII'
 
     ! Output dataset structure - describe geometry and topology of the dataset
     ! Begins with a line containing DATASET followed by a keyword for the dataset type
@@ -86,16 +73,15 @@ contains
     ! Here this follows the Structured Points standard
     ! Specify number of elements in each direction, specify an origin,
     ! and specify spacing in each direction
-    dataStructure = 'DATASET STRUCTURED_POINTS'
-    outputDimensions = 'DIMENSIONS '//numToChar(arraySize(1))//' '//numToChar(arraySize(2))//&
-                       ' '//numToChar(arraySize(3))
-    write(10,*) trim(outputDimensions)
+    write(10,'(A)') 'DATASET STRUCTURED_POINTS'
+    write(10,'(A,A,A,A,A,A)') 'DIMENSIONS ',trim(numToChar(arraySize(1))),' '&
+                       ,trim(numToChar(arraySize(2))),' ',trim(numToChar(arraySize(3)))
 
-    outputOrigin = 'ORIGIN '//numToChar(corner(1))//' '//numToChar(corner(2))&
-                   //' '//numToChar(corner(3))
-    write(10,*) trim(outputOrigin)
-    outputSpacing = 'SPACING '//numToChar(width(1))//' '//numToChar(width(2))//' '//numToChar(width(3))
-    write(10,*) trim(outputSpacing)
+    write(10,'(A,A,A,A,A,A)') 'ORIGIN ',trim(numToChar(corner(1))),' ',trim(numToChar(corner(2)))&
+                   ,' ',trim(numToChar(corner(3)))
+
+    write(10,'(A,A,A,A,A,A)') 'SPACING ',trim(numToChar(width(1))),' ',trim(numToChar(width(2))),&
+                              ' ',trim(numToChar(width(3)))
 
     ! Output dataset attributes - begins with POINT_DATA or CELL_DATA followed by number of cells/points
     ! Other keyword/data combinations then define the dataset attribute values (scalar, vectors, tensors...)
@@ -104,20 +90,18 @@ contains
     ! If dataName is present, apply the name
     ! Also, assume output is an integer array (for now!)
     if(present(dataName)) then
-      datasetAttributes = 'SCALARS '//trim(dataName)//' int 1'
+      write(10,'(A,A,A)') 'SCALARS ',trim(dataName),' int 1'
     else
-      datasetAttributes = 'SCALARS int 1'
+      write(10,'(A)') 'SCALARS int 1'
     end if
-    write(10,*) trim(datasetAttributes)
 
     ! Possibility: construct and specify lookup table
-    lookupTable = 'LOOKUP_TABLE default'
-    write(10,*) trim(lookupTable)
+    write(10,'(A)') 'LOOKUP_TABLE default'
 
     do k = 1, arraySize(3)
       do j = 1, arraySize(2)
         do i = 1, arraySize(1)
-          write(10,*) numToChar(values(i,j,k))
+          write(10,'(I0)') values(i,j,k)
         end do
       end do
     end do

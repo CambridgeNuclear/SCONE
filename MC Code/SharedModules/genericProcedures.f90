@@ -628,7 +628,7 @@ module genericProcedures
     character(:), allocatable :: c
     character(40)             :: tempChar
 
-    write(tempChar,*) x
+    write(tempChar,'(I0)') x
     c = trim(tempChar)
 
   end function numToChar_shortInt
@@ -640,7 +640,7 @@ module genericProcedures
     character(:), allocatable :: c
     character(40)             :: tempChar
 
-    write(tempChar,*) x
+    write(tempChar,'(I0)') x
     c = trim(tempChar)
 
   end function numToChar_longInt
@@ -652,7 +652,7 @@ module genericProcedures
     character(:), allocatable :: c
     character(40)             :: tempChar
 
-    write(tempChar,*) x
+    write(tempChar,'(F0.0)') x
     c = trim(tempChar)
 
   end function numToChar_defReal
