@@ -1,0 +1,123 @@
+
+surfaces
+{
+
+  squareBound
+  {
+        id 1;
+        type zSquareCylinder;
+        origin (0.0 0.0 0.0);
+        halfwidth (2.0 2.0 0.0);
+  }
+
+  zcyl
+  {
+  	id 2;
+	type zCylinder;
+	origin (0.0 0.0 0.0);
+	radius 0.3;
+  }
+
+  zcyl2
+  {
+  	id 3;
+	type zCylinder;
+	origin (0.0 0.0 0.0);
+	radius 0.45;
+  }
+
+}
+
+
+cells
+{
+
+  fuel
+  {
+        id 1;
+        surfaces (-2);
+        filltype mat;
+        mat uo2;
+  }
+
+  bigfuel
+  {
+        id 5;
+        surfaces (-3);
+        filltype mat;
+        mat big;
+  }
+
+  mod
+  {
+        id 2;
+        surfaces (2);
+        filltype mat;
+        mat mod;
+  }
+
+  smallmod
+  {
+        id 6;
+        surfaces (3);
+        filltype mat;
+        mat mod;
+  }
+
+  out
+  {
+       id 3;
+       surfaces (1);
+       filltype outside;
+  }
+
+  latcell
+  {
+     	id 4;
+	surfaces (-1);
+        lattice 1;
+	filltype lat;
+  }     
+
+}
+
+universes
+{
+
+  base
+  {
+      id 1;
+      origin (0.0 0.0 0.0);
+      cells (3 4);
+      root 1;
+  }
+
+  fuelpin
+  {
+      id 2;
+      origin (0.0 0.0 0.0);
+      cells (1 2);
+  }
+
+  bigfuelpin
+  {
+      id 3;
+      origin (0.0 0.0 0.0);
+      cells (5 6);
+  }
+
+}
+
+lattices
+{
+  lat1
+  {
+	id 1;
+	shape (4 4 1);
+	pitch (1.0 1.0 1.0);
+	corner (-2.0 -2.0 -0.5);
+	universes ( 2 2 2 2 2 3 2 2 2 2 3 2 2 2 2 2);
+  }	
+}
+
+boundary (2 2 1 0 2 2);

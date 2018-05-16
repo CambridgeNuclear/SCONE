@@ -44,7 +44,7 @@ contains
     real(defReal), dimension(3), intent(in)         :: corner
     real(defReal), dimension(3), intent(in)         :: width
     character(*), intent(in), optional              :: dataName ! Optional identifier for the data - mustn't have whitespace!!!!
-    integer(shortInt)                               :: i, j, k
+    integer(shortInt)                               :: i, j, k, stat
     character(256)                                  :: filename, &
                                                        versionAndIdentifier, &
                                                        outputHeader, &
@@ -58,6 +58,10 @@ contains
 
     ! Append .vtk to filename
     filename = trim(name)//'.vtk'
+
+    ! Check if file already exists - if so, delete it
+    open(unit = 10, iostat = stat, file = filename, status = 'old')
+    if (stat == 0) close(10, status = 'delete')
 
     ! Open file to begin output
     open(unit = 10, file = filename, status = 'new')

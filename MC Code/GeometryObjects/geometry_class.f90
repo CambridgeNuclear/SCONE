@@ -461,7 +461,6 @@ contains
     do i=1,self % numCells
       n = cellInstances(i)
       if (n > 1) then
-        ID = ID + n
         call searchLocation % resetNesting()
         allocate(location(n))
         uniIdx = self % rootUniverse % geometryIdx()
@@ -470,6 +469,7 @@ contains
         found = 0
         call self % locateCell(cellIdx, uniIdx, latIdx, searchLocation, location, n, found)
         call self % cells(i) % setInstances(n,location,ID)
+        ID = ID + n
         deallocate(location)
       end if
     end do
@@ -655,16 +655,12 @@ contains
 
       if (c % insideGeom()) then
         regionIdx = coords % regionID
-        print *,regionIdx
-        print *,score(regionIdx)
-        print *, c % name()
         score(regionIdx) = score(regionIdx) + 1
       end if
     end do
     call c % kill()
 
-    cellVols(:) = ONE*score(:) * width(1) * width(2) * width(3) / numPoints
-    print *,score
+    cellVols = ONE* score * width(1) * width(2) * width(3) / numPoints
 
     ! Assign volumes to each material cell instance
     ! Loop through cells to find which have material fills
@@ -673,12 +669,11 @@ contains
     do i = 1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
         do j = 1,self % cells(i) % instances
-          print *,cellVols(self % cells(i) % uniqueID(j))
           self % cells(i) % volume(j) = cellVols(self % cells(i) % uniqueID(j))
-          print *,self % cells(i) % name
         end do
       end if
     end do
+
 
   end subroutine calculateVolumes
 
@@ -797,6 +792,7 @@ contains
           x = [x0(1) + (i-1)*step(1), x0(2) + (j-1)*step(2), x0(3) + (k-1)*step(3)]
           call coords % init(x, u)
           c = self % whichCell(coords)
+          print *,c % name()
           if (c % insideGeom()) then
             colourMatrix(i,j,k) = coords % matIdx
           else
@@ -810,7 +806,7 @@ contains
 
     ! Output a VTK file
     call vtk % init()
-    call vtk % outputVoxels('materialVoxels', nVox, colourMatrix, corner, width, 'materials')
+    call vtk % outputVoxels('materialVoxels', nVox, colourMatrix, corner, step, 'materials')
 
   end subroutine voxelPlot
 
