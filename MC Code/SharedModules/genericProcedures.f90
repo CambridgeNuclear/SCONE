@@ -652,7 +652,7 @@ module genericProcedures
     character(:), allocatable :: c
     character(40)             :: tempChar
 
-    write(tempChar,'(F0.0)') x
+    write(tempChar,*) x
     c = trim(tempChar)
 
   end function numToChar_defReal

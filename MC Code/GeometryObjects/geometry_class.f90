@@ -806,7 +806,7 @@ contains
 
     ! Output a VTK file
     call vtk % init()
-    call vtk % outputVoxels('materialVoxels', nVox, colourMatrix, corner, step, 'materials')
+    call vtk % outputVoxels('materialVoxels', colourMatrix, corner, step, 'materials')
 
   end subroutine voxelPlot
 
