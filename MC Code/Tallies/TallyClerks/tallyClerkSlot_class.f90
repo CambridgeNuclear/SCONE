@@ -19,7 +19,7 @@ module tallyClerkSlot_class
     class(tallyClerk),allocatable :: slot
   contains
     ! Duplicate interface of the tallyClerk
-    procedure :: reportCollision
+    procedure :: reportOutColl
     procedure :: reportPath
     procedure :: reportTrans
     procedure :: reportHist
@@ -39,9 +39,22 @@ module tallyClerkSlot_class
 contains
 
   !!
-  !! Process collision report
+  !! Process incoming collision report
   !!
-  subroutine reportCollision(self,pre,post,MT,muL)
+  subroutine reportInColl(self,p)
+    class(tallyClerkSlot), intent(inout)  :: self
+    class(particle), intent(in)           :: p
+
+    ! Pass call to instance in the slot
+    call self % slot % reportInColl(p)
+
+  end subroutine reportInColl
+
+
+  !!
+  !! Process outgoing collision report
+  !!
+  subroutine reportOutColl(self,pre,post,MT,muL)
     class(tallyClerkSlot), intent(inout)      :: self
     class(phaseCoord), intent(in)         :: pre
     class(particle), intent(in)           :: post
@@ -49,9 +62,9 @@ contains
     real(defReal), intent(in)             :: muL
 
     ! Pass call to instance in the slot
-    call self % slot % reportCollision(pre,post,MT,muL)
+    call self % slot % reportOutColl(pre,post,MT,muL)
 
-  end subroutine reportCollision
+  end subroutine reportOutColl
 
   !!
   !! Process pathlength report

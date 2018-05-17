@@ -4,7 +4,7 @@ module tallyAdminBase_class
   use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
-  use tallyClerk_inter,      only : tallyClerk,  collision_CODE, path_CODE, trans_CODE, &
+  use tallyClerk_inter,      only : tallyClerk,  inColl_CODE, outColl_CODE, path_CODE, trans_CODE, &
                                     hist_CODE, cycleStart_CODE, cycleEnd_CODE
   use tallyClerkSlot_class,  only : tallyClerkSlot
 
@@ -12,9 +12,8 @@ module tallyAdminBase_class
 
   implicit none
   private
-  !integer(shortInt)  :: i
-  !integer(shortInt),dimension(0),parameter :: sizeZeroArray = [(i, i = 1,0 )]
-
+  !! **** MOST LIKLEY CHANGE INTERFACES FOR CLERKS TO INCLUDE FLUX FOR IN COLLISION AND PATH
+  !! **** PRECALCULATE FLUX HERE SO THERE IS NO NEED TO WARY ABOUT DYNAMIC TYPE OF XSDATA IN CLERKS
   !!
   !! Base class for the tallies black box.
   !! Its responsibilities are as flolow:
@@ -32,7 +31,8 @@ module tallyAdminBase_class
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
 
     ! Lists of Clerks to be executed for each procedure
-    integer(shortInt),dimension(:),allocatable    :: collisionClerks
+    integer(shortInt),dimension(:),allocatable    :: inCollClerks
+    integer(shortInt),dimension(:),allocatable    :: outCollClerks
     integer(shortInt),dimension(:),allocatable    :: pathClerks
     integer(shortInt),dimension(:),allocatable    :: transClerks
     integer(shortInt),dimension(:),allocatable    :: histClerks
@@ -41,7 +41,8 @@ module tallyAdminBase_class
 
   contains
     ! Report Interface
-    procedure :: reportCollision
+    procedure :: reportInColl
+    procedure :: reportOutColl
     procedure :: reportPath
     procedure :: reportTrans
     procedure :: reportHist
@@ -67,11 +68,28 @@ module tallyAdminBase_class
   end type tallyAdminBase
     
 contains
+  !!
+  !! Process incoming collision report
+  !!
+  subroutine reportInColl(self,p)
+    class(tallyAdminBase), intent(inout) :: self
+    class(particle), intent(in)          :: p
+    integer(shortInt)                    :: i, idx
+
+    ! Go through all clerks that request the report
+    do i=1,size(self % inCollClerks)
+      idx = self % inCollClerks(i)
+      call self % tallyClerks(idx) % reportInColl(p)
+
+    end do
+
+  end subroutine reportInColl
+
 
   !!
-  !! Process collision report
+  !! Process outgoing collision report
   !!
-  subroutine reportCollision(self,pre,post,MT,muL)
+  subroutine reportOutColl(self,pre,post,MT,muL)
     class(tallyAdminBase), intent(inout)  :: self
     class(phaseCoord), intent(in)         :: pre
     class(particle), intent(in)           :: post
@@ -80,13 +98,13 @@ contains
     integer(shortInt)                     :: i, idx
 
     ! Go through all clerks that request the report
-    do i=1,size(self % collisionClerks)
-      idx = self % collisionClerks(i)
-      call self % tallyClerks(idx) % reportCollision(pre,post,MT,muL)
+    do i=1,size(self % outCollClerks)
+      idx = self % outCollClerks(i)
+      call self % tallyClerks(idx) % reportOutColl(pre,post,MT,muL)
 
     end do
 
-  end subroutine reportCollision
+  end subroutine reportOutColl
 
   !!
   !! Process pathlength report
@@ -219,7 +237,8 @@ contains
     ! Check if it is first clerk to be added. If yes llocate all sorting arrays to size 0
     ! Allocate tallyClerks to size 0 as well
     if( .not. allocated(self % tallyClerks) ) then
-      allocate(self % collisionClerks(0)  )
+      allocate(self % inCollClerks(0)     )
+      allocate(self % outCollClerks(0)    )
       allocate(self % pathClerks(0)       )
       allocate(self % transClerks(0)      )
       allocate(self % histClerks(0)       )
@@ -252,7 +271,8 @@ contains
 
     if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
 
-    if(allocated(self % collisionClerks))  deallocate( self % collisionClerks )
+    if(allocated(self % inCollClerks))     deallocate( self % inCollClerks)
+    if(allocated(self % outCollClerks))    deallocate( self % outCollClerks )
     if(allocated(self % pathClerks))       deallocate( self % pathClerks )
     if(allocated(self % transClerks))      deallocate( self % transClerks )
     if(allocated(self % histClerks))       deallocate( self % histClerks )
@@ -271,8 +291,11 @@ contains
     character(100),parameter  :: Here='addToReports (tallyAdminBase_class.f90)'
 
     select case(reportCode)
-      case(collision_CODE)
-        self % collisionClerks = [ self % collisionClerks, idx]
+      case(inColl_CODE)
+        self % inCollClerks = [self % inCollClerks, idx]
+
+      case(outColl_CODE)
+        self % outCollClerks = [ self % outCollClerks, idx]
 
       case(path_CODE)
         self % pathClerks = [ self % pathClerks, idx]

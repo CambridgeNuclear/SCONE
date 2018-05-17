@@ -9,12 +9,13 @@ module tallyClerk_inter
   private
 
   ! List of codes for diffrent reports
-  integer(shortInt),parameter,public :: collision_CODE  = 1000 ,&
-                                        path_CODE       = 1001 ,&
-                                        trans_CODE      = 1002 ,&
-                                        hist_CODE       = 1003 ,&
-                                        cycleStart_CODE = 1004 ,&
-                                        cycleEnd_CODE   = 1005
+  integer(shortInt),parameter,public :: inColl_CODE     = 1000 ,&
+                                        outColl_CODE    = 1001 ,&
+                                        path_CODE       = 1002 ,&
+                                        trans_CODE      = 1003 ,&
+                                        hist_CODE       = 1004 ,&
+                                        cycleStart_CODE = 1005 ,&
+                                        cycleEnd_CODE   = 1006
 
 
   !!
@@ -30,7 +31,8 @@ module tallyClerk_inter
 
   contains
     !!
-    procedure :: reportCollision
+    procedure :: reportInColl
+    procedure :: reportOutColl
     procedure :: reportPath
     procedure :: reportTrans
     procedure :: reportHist
@@ -67,19 +69,32 @@ module tallyClerk_inter
 contains
 
   !!
-  !! Process collision report
+  !! Process incoming collision report
   !!
-  subroutine reportCollision(self,pre,post,MT,muL)
+  subroutine reportInColl(self,p)
+    class(tallyClerk), intent(inout)      :: self
+    class(particle), intent(in)           :: p
+    character(100),parameter    :: Here = 'reportInColl (tallyClerk_inter.f90)'
+
+    call fatalError(Here,'Report was send to an instance that does not support it.')
+
+  end subroutine reportInColl
+
+
+  !!
+  !! Process outgoing collision report
+  !!
+  subroutine reportOutColl(self,pre,post,MT,muL)
     class(tallyClerk), intent(inout)      :: self
     class(phaseCoord), intent(in)         :: pre
     class(particle), intent(in)           :: post
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
-    character(100),parameter  :: Here = 'reportCollision (tallyClerk_inter.f90)'
+    character(100),parameter  :: Here = 'reportOutColl (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
-  end subroutine reportCollision
+  end subroutine reportOutColl
 
   !!
   !! Process pathlength report
