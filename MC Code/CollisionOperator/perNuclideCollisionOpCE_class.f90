@@ -12,7 +12,7 @@ module perNuclideCollisionOpCE_class
   ! Cross-section packages to interface with nuclear data
   use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
   use xsMainSet_class,        only : xsMainSet_ptr
-
+  use xsMacroSet_class,       only : xsMacroSet_ptr
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
 
   implicit none

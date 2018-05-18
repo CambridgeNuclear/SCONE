@@ -53,7 +53,7 @@ module tallyAdminBase_class
     procedure :: k_eff
 
     ! Display procedures
-    !procedure :: display
+    procedure :: display
 
     ! File writing procedures
     !procedure :: print
@@ -85,6 +85,15 @@ contains
 
   end subroutine reportInColl
 
+  !!
+  !! *** DEBUG IMPLEMENTATION WILL CHANGE
+  !!
+  subroutine display(self)
+    class(tallyAdminBase), intent(inout) :: self
+
+    call self % tallyClerks(1) % display()
+
+  end subroutine display
 
   !!
   !! Process outgoing collision report

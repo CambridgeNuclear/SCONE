@@ -19,6 +19,7 @@ module tallyClerkSlot_class
     class(tallyClerk),allocatable :: slot
   contains
     ! Duplicate interface of the tallyClerk
+    procedure :: reportInColl
     procedure :: reportOutColl
     procedure :: reportPath
     procedure :: reportTrans

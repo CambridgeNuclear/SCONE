@@ -87,7 +87,7 @@ contains
     mean = self % score / N
 
     ! Calculate Sample Variance
-    STD  = (self % score2 -  mean*mean) / (N-ONE)
+    STD  = (self % score2 -  N*mean*mean) / (N-ONE)
 
     ! Calculate Variance of the mean
     STD  = STD / N
@@ -190,7 +190,7 @@ contains
   !! given number of batches Nb (defReal)
   !!
   subroutine getEstimate_defReal(self,mean,STD,Nb)
-    class(tallyCounter), intent(inout) :: self
+    class(tallyCounter), intent(in)    :: self
     real(defReal), intent(out)         :: mean
     real(defReal), intent(out)         :: STD
     real(defReal), intent(in)          :: Nb
@@ -205,7 +205,7 @@ contains
     mean = self % batch / Nb
 
     ! Calculate Sample Variance
-    STD  = (self % batch2 -  mean*mean) / (Nb-ONE)
+    STD  = (self % batch2 -  Nb*mean*mean) / (Nb-ONE)
 
     ! Calculate Variance of the mean
     STD  = STD / Nb
@@ -220,7 +220,7 @@ contains
   !! given number of batches Nb (shortInt)
   !!
   subroutine getEstimate_shortInt(self,mean,STD,Nb)
-    class(tallyCounter), intent(inout) :: self
+    class(tallyCounter), intent(in)    :: self
     real(defReal), intent(out)         :: mean
     real(defReal), intent(out)         :: STD
     integer(shortInt),intent(in)       :: Nb
@@ -238,7 +238,7 @@ contains
   !! given number of batches Nb (longInt)
   !!
   subroutine getEstimate_longInt(self,mean,STD,Nb)
-    class(tallyCounter), intent(inout) :: self
+    class(tallyCounter), intent(in)    :: self
     real(defReal), intent(out)         :: mean
     real(defReal), intent(out)         :: STD
     integer(longInt),intent(in)        :: Nb

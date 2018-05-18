@@ -13,6 +13,9 @@ program eigenCE
   use dictionary_class ,       only : dictionary
   use IOdictionary_class,      only : IOdictionary
 
+  use tallyAdminBase_class,    only : tallyAdminBase
+  use keffClerk_class,         only : keffClerk
+
   implicit none
 
   type(particle)          :: neutron
@@ -36,6 +39,10 @@ program eigenCE
 
   type(dictionary)      :: testDict
   type(IOdictionary)    :: IOdictTest
+
+  type(tallyAdminBase)  :: tallyIMP
+  type(keffClerk)       :: k_estimator
+
 
   !### Declarations end
   !### Main Programme Begins
@@ -143,8 +150,15 @@ program eigenCE
   ksum2 = 0.0
   varK = 0.0
 
+  !***** Create Tallies
+
+  call tallyIMP % addTallyClerk(k_estimator)
+
   do i=1,nActive
     startPop = cycle1 % popSize()
+    !*** Send report to tally
+    call tallyIMP % reportCycleStart(cycle1)
+          !***
     generationA: do
 
       call cycle1 % release(neutron)
@@ -154,6 +168,9 @@ program eigenCE
         ! Tally energy
         idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         tally(idx) = tally(idx) + 1
+        !** Send report to tally
+        call tallyIMP % reportInColl(neutron)
+        !**
         call collisionPhysics % collide(neutron,cycle1,cycle2)
         if(neutron % isDead) exit HistoryA
 
@@ -162,6 +179,11 @@ program eigenCE
      if(cycle1 % isEmpty() ) exit generationA
 
     end do generationA
+
+    !*** Send report to tally
+    call tallyIMP % reportCycleEnd(cycle2)
+    !***
+
 
    ! Calculate new k
     endPop = cycle2 % popSize()
@@ -189,6 +211,7 @@ program eigenCE
     end if
 
     print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
+    call tallyIMP % display()
   end do
 
 

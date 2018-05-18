@@ -11,7 +11,7 @@ module materialMemoryNoMT_class
 
   implicit none
   private
-
+  !! *** Comments terrybly OUT-OF-DATE. Remember that calculateTail and calculateALL are quite independent
   !!
   !! Object to store material macroscopic XSs.
   !! Remembers energy so no recalculation of XS is necessary if the energy has not changed.
@@ -237,9 +237,9 @@ contains
   subroutine calculateAll(self,E)
   class(materialMemoryNoMT), intent(inout) :: self
     real(defReal)                            :: E
-    real(defReal),dimension(4)               :: tempMacroXS
-    real(defReal),dimension(4)               :: xsMicro
-    real(defReal)                            :: nucDen
+    real(defReal),dimension(5)               :: tempMacroXS
+    real(defReal),dimension(5)               :: xsMicro
+    real(defReal)                            :: nucDen, nu
     integer(shortInt)                        :: i, nucIdx
 
     tempMacroXS = 0.0
@@ -256,6 +256,14 @@ contains
       xsMicro(3) = self % nucShelf(nucIdx) % xs % capture
       xsMicro(4) = self % nucShelf(nucIdx) % xs % fission
 
+      ! Calculate nu*Fission *** This implementation is cumbersome. WIll be changed
+      if (self % nucShelf(nucIdx) % data % isFissile) then
+        nu = self % nucShelf(nucIdx) % data % releaseAt(E,N_fission)
+      else
+        nu = ZERO
+      end if
+      xsMicro(5) = xsMicro(4) * nu
+
       ! Increase Material macroscopic XSs by the nuclide macroscopic XSs
       tempMacroXS = tempMacroXS + xsMicro * nucDen
 
@@ -266,6 +274,7 @@ contains
     self % XS % scatterXS = tempMacroXS(2)
     self % XS % captureXS = tempMacroXS(3)
     self % XS % fissionXS = tempMacroXS(4)
+    self % XS % nuFissionXS = tempMacroXS(5)
 
   end subroutine calculateAll
 

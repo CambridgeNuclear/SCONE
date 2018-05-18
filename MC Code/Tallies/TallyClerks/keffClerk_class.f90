@@ -29,8 +29,10 @@ module keffClerk_class
     type(tallyCounter)                   :: k_analog
     type(tallyCounter)                   :: k_imp
 
+    real(defReal)  :: k_csum
+    real(defReal)  :: k2_csum
+
     real(defReal)                        :: startWgt
-    real(defReal)                        :: k_cycle
 
   contains
     ! Deferred Interface Procedures
@@ -68,9 +70,9 @@ contains
     call self % k_imp % getScore(k_imp, STD_imp, self % cycleCount)
     call self % k_analog % getScore(k_analog, STD_analog, self % cycleCount)
 
-    print *, 'TALLY REPORTS:'
     print *, 'k-eff (implicit): ', k_imp, ' +/- ', STD_imp
-    print *, 'k-eff (ianalog): ',  k_analog, ' +/- ', STD_analog
+    print *, 'k-eff (analog): ',  k_analog, ' +/- ', STD_analog
+
   end subroutine display
 
   !!
@@ -114,7 +116,7 @@ contains
     call self % impAbs  % addScore(s2)
 
     ! Increase collision count
-    call self % collCount % addScore(s1)
+    call self % collCount % addScore(p % w)
 
   end subroutine reportInColl
 
@@ -142,7 +144,6 @@ contains
     class(particleDungeon), intent(in)   :: start
 
     self % startWgt  = real(start % popSize(),defReal)
-    self % k_cycle   = start % k_eff
 
   end subroutine reportCycleStart
 
@@ -154,10 +155,16 @@ contains
     class(keffClerk), intent(inout)      :: self
     class(particleDungeon), intent(in)   :: end
     real(defReal)                        :: endWgt, k_est
-    real(defReal)                        :: nuFiss, absorb, collCount, dummy
+    real(defReal)                        :: nuFiss, absorb, collCount, dummy, k_cycle
+
 
     endWgt = real(end % popSize(),defReal)
-    k_est =  endWgt / self % startWgt * self % k_cycle
+    k_cycle = end % k_eff
+
+    k_est =  endWgt / self % startWgt * k_cycle
+
+    self % k_csum  = self % k_csum + k_est
+    self % k2_csum = self % k2_csum + k_est * k_est
 
     call self % k_analog % addScore(k_est)
 
@@ -169,6 +176,10 @@ contains
     k_est = nuFiss/absorb
 
     call self % k_imp % addScore(k_est)
+
+    call self % impProd % reset()
+    call self % impAbs % reset()
+    call self % collCount % reset()
 
     self % cycleCount = self % cycleCount + 1
 
