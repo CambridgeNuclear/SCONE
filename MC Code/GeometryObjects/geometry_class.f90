@@ -17,7 +17,7 @@ module geometry_class
   use dictionary_class
   use IOdictionary_class
 
-  use outputVTK_class
+  use outputMesh_class
 
   use nuclearData_inter
 
@@ -759,27 +759,28 @@ contains
   !! Obtain a 3D array for use in voxel plotting
   !! Obtains material coloured voxel originating from a rear-bottom-left
   !! corner of the geometry and going forward by width in each direction
-  !! Returns the colour matrix and the points corresponding to it
+  !! Populates an outputMesh instance with material values
   !!
-  subroutine voxelPlot(self, nVox, corner, width)
+  subroutine voxelPlot(self, vtk)
     class(geometry), intent(in)                      :: self
-    integer(shortInt), dimension(3), intent(in)      :: nVox
-    real(defReal), dimension(3), intent(in)          :: corner
-    real(defReal), dimension(3), intent(in)          :: width
+    type(outputMesh), intent(inout)                  :: vtk
+    integer(shortInt), dimension(3)                  :: nVox
+    real(defReal), dimension(3)                      :: corner
+    real(defReal), dimension(3)                      :: width
     integer(shortInt), dimension(:,:,:), allocatable :: colourMatrix
-    real(defReal), dimension(3)                      :: step
     real(defReal), dimension(3)                      :: x0, x, u
     integer(shortInt)                                :: i, j, k
     type(coordList)                                  :: coords
     type(cell_ptr)                                   :: c
-    type(outputVTK)                                  :: vtk
+
+    nVox = vtk % nVox
+    corner = vtk % corner
+    width = vtk % width
 
     allocate(colourMatrix(nVox(1),nVox(2),nVox(3)))
 
     ! Create the co-ordinate points and widths
-    step(:) = width(:) / nVox(:)
-
-    x0 = corner + step*HALF
+    x0 = corner + width*HALF
     x = x0
     u = [SQRT2_2, SQRT2_2, ZERO]
 
@@ -789,7 +790,7 @@ contains
     do k = 1,nVox(3)
       do j = 1,nVox(2)
         do i = 1,nVox(1)
-          x = [x0(1) + (i-1)*step(1), x0(2) + (j-1)*step(2), x0(3) + (k-1)*step(3)]
+          x = [x0(1) + (i-1)*width(1), x0(2) + (j-1)*width(2), x0(3) + (k-1)*width(3)]
           call coords % init(x, u)
           c = self % whichCell(coords)
           print *,c % name()
@@ -804,9 +805,8 @@ contains
 
     call c % kill()
 
-    ! Output a VTK file
-    call vtk % init()
-    call vtk % outputVoxels('materialVoxels', colourMatrix, corner, step, 'materials')
+    ! Add values to the outputMesh instance
+    call vtk % addData(real(colourMatrix,8), 'materials')
 
   end subroutine voxelPlot
 

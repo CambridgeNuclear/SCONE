@@ -16,6 +16,7 @@ program test_init_geom
   use transportOperatorDT_class
   use transportOperatorST_class
   use mesh_class
+  use outputMesh_class
 
   implicit none
 
@@ -37,6 +38,7 @@ program test_init_geom
   type(transportOperatorST) :: STOperator
   type(mesh) :: m
   real(defReal) :: angle
+  type(outputMesh) :: vtk
 
   call geomDict % initFrom(path)
 
@@ -71,7 +73,8 @@ program test_init_geom
   print *,'Finished volume calculation'
   print *, geom % numRegions
   print *,'Performing voxel calculation'
-  call geom % voxelPlot([200,200,1], [-TWO,-TWO,-HALF], [4._defReal,4._defReal,1._8])
+  call vtk % init([-TWO,-TWO,-HALF],[0.02_defReal, 0.02_defReal, ONE] ,[200,200,1])
+  call geom % voxelPlot(vtk)
   print *,'Finished voxel plot'
 
   ! Initialise mesh to score points
@@ -97,10 +100,13 @@ program test_init_geom
     end do
   end do
 
-  do i=1,200
-    do j=1,200
-      print *, m % density(i,j,1)
-    end do
-  end do
+  call vtk % addData( real(m % density,8), 'particleDensity')
+  call vtk % output('testVTK')
+
+  !do i=1,200
+  !  do j=1,200
+  !    print *, m % density(i,j,1)
+  !  end do
+  !end do
 
 end program test_init_geom
