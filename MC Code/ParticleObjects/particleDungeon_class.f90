@@ -32,6 +32,7 @@ module particleDungeon_class
     private
     real(defReal),public          :: k_eff = 1.0 ! k-eff for fission site generation rate normalisation
     integer(shortInt)             :: pop         ! Current population size of the dungeon
+    real(defReal)                 :: popWgt      ! Current population weight
     type(phaseCoord), dimension(:), allocatable :: prisoners  ! Data for the stored particles
 
   contains
@@ -42,6 +43,7 @@ module particleDungeon_class
     procedure  :: normWeight
     procedure  :: normSize
     procedure  :: popSize
+    procedure  :: popWeight
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -61,6 +63,7 @@ contains
     if(allocated(self % prisoners)) deallocate(self % prisoners)
     allocate(self % prisoners(maxSize))
     self % pop    = 0
+    self % popWgt = ZERO
 
   end subroutine init
 
@@ -72,8 +75,9 @@ contains
     type(particle), intent(in)            :: p
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
-    ! Increase population
+    ! Increase population and weight
     self % pop = self % pop +1
+    !self % popWgt = self % popWgt + p % w
 
     ! Check for population overflow
     if (self % pop > size(self % prisoners)) then
@@ -97,6 +101,7 @@ contains
 
     ! Increase population
     self % pop = self % pop +1
+    !self % popWgt = self % popWgt + p_phase % wgt
 
     ! Check for population overflow
     if (self % pop > size(self % prisoners)) then
@@ -140,9 +145,9 @@ contains
     p % isMg = self % prisoners(pop) % isMG
     p % isDead = .false.
 
-    ! Decrease population
+    ! Decrease population and weight
     self % pop = self % pop - 1
-
+    !self % popWgt = self % popWgt - p % w
   end subroutine release
 
   !!
@@ -154,7 +159,7 @@ contains
     real(defReal)                         :: factor
 
     ! Behold the glory of Fortran! Normalisation of weights in two lines
-    factor = totWgt / sum(self % prisoners % wgt)
+    factor = totWgt / sum(self % prisoners(1:self % pop) % wgt)
     self % prisoners % wgt = self % prisoners % wgt * factor
 
   end subroutine normWeight
@@ -194,6 +199,9 @@ contains
 
     end if
 
+    ! Recalculate weight
+    !self % popWgt = sum( self % prisoners(1:self % pop) % wgt )
+
   end subroutine normSize
 
   !!
@@ -206,5 +214,15 @@ contains
     pop = self % pop
 
   end function popSize
+
+  !!
+  !! Returns total population weight
+  !!
+  function popWeight(self) result(wgt)
+    class(particleDungeon), intent(in) :: self
+    real(defReal)                      :: wgt
+
+    wgt = sum( self % prisoners(1:self % pop) % wgt )
+  end function popWeight
 
 end module particleDungeon_class

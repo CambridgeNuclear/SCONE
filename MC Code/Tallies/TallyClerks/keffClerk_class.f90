@@ -29,9 +29,6 @@ module keffClerk_class
     type(tallyCounter)                   :: k_analog
     type(tallyCounter)                   :: k_imp
 
-    real(defReal)  :: k_csum
-    real(defReal)  :: k2_csum
-
     real(defReal)                        :: startWgt
 
   contains
@@ -136,20 +133,18 @@ contains
   end subroutine reportHist
 
   !!
-  !! Process beginning of a cycle *** Assumtion that each particle in Dungeaon is wgt = 1.0
-  !! *** The assumption will be dropped (Agile /)
+  !! Process beginning of a cycle
   !!
   subroutine reportCycleStart(self,start)
     class(keffClerk), intent(inout)      :: self
     class(particleDungeon), intent(in)   :: start
 
-    self % startWgt  = real(start % popSize(),defReal)
+    self % startWgt  = start % popWeight()
 
   end subroutine reportCycleStart
 
   !!
-  !! Process end of the cycle *** Assumtion that each particle in Dungeaon is wgt = 1.0
-  !! *** The assumption will be dropped (Agile /)
+  !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
     class(keffClerk), intent(inout)      :: self
@@ -157,19 +152,20 @@ contains
     real(defReal)                        :: endWgt, k_est
     real(defReal)                        :: nuFiss, absorb, collCount, dummy, k_cycle
 
-
-    endWgt = real(end % popSize(),defReal)
+    ! Obtain end of cycle weight and k value used to change fission site generation rate
+    endWgt = end % popWeight()
     k_cycle = end % k_eff
 
+    ! Calculate and score analog estimate of k-eff
     k_est =  endWgt / self % startWgt * k_cycle
 
-    self % k_csum  = self % k_csum + k_est
-    self % k2_csum = self % k2_csum + k_est * k_est
+    !self % k_csum  = self % k_csum + k_est
+    !self % k2_csum = self % k2_csum + k_est * k_est
 
     call self % k_analog % addScore(k_est)
 
+    ! Calculate and score implicit estimate of k_eff
     call self % collCount % getScore(collCount,dummy,1)
-
     call self % impProd % getScore(nuFiss,dummy,collCount)
     call self % impAbs  % getScore(absorb,dummy,collCount)
 
