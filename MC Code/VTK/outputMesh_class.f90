@@ -58,6 +58,7 @@ contains
     real(defReal), dimension(:,:,:,:), allocatable :: tempArray
     character(nameLen), dimension(:), allocatable  :: tempChar
 
+
     ! Perform error checks on the size of the array provided
     if ((size(newValues,1) /= self % nVox(1)) .OR. (size(newValues,2) /= self % nVox(2)) .OR. &
     (size(newValues,3) /= self % nVox(3))) call fatalError&
@@ -149,10 +150,10 @@ contains
         end do
       end do
 
-      ! Close the file
-      close(10)
-
     end do
+
+    ! Close the file
+    close(10)
 
   end subroutine output
 

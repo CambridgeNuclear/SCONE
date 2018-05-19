@@ -39,6 +39,8 @@ program test_init_geom
   type(mesh) :: m
   real(defReal) :: angle
   type(outputMesh) :: vtk
+  integer(shortInt), dimension(400,400,1) :: matMatrix
+  integer(longInt), dimension(400,400,1) :: d
 
   call geomDict % initFrom(path)
 
@@ -71,14 +73,14 @@ program test_init_geom
   print *,'Calculating volumes'
   call geom % calculateVolumes(1000000,1_longInt)
   print *,'Finished volume calculation'
-  print *, geom % numRegions
   print *,'Performing voxel calculation'
-  call vtk % init([-TWO,-TWO,-HALF],[0.02_defReal, 0.02_defReal, ONE] ,[200,200,1])
-  call geom % voxelPlot(vtk)
+  call vtk % init([-2.2_defReal,-2.2_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[400,400,1])
+  matMatrix = geom % voxelPlot(vtk % nVox, vtk % corner, vtk % width)
+  call vtk % addData(real(matMatrix,defReal), 'materials')
   print *,'Finished voxel plot'
 
   ! Initialise mesh to score points
-  call m % init([0.02_8,0.02_8,1._8], [-TWO,-TWO,-HALF], [200,200,1], 1, .FALSE.,'m1')
+  call m % init([0.011_8,0.011_8,1._8], [-2.2_defReal,-2.2_defReal,-HALF], [400,400,1], 1, .FALSE.,'m1')
 
   print *, 'Begin walk'
   do i=1,1000000
@@ -99,8 +101,10 @@ program test_init_geom
       end if
     end do
   end do
+  print *,'walk done'
 
-  call vtk % addData( real(m % density,8), 'particleDensity')
+  d = m % density
+  call vtk % addData(real(d,8), 'particleDensity')
   call vtk % output('testVTK')
 
   !do i=1,200
