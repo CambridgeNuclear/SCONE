@@ -6,7 +6,8 @@ module keffClerk_class
   use particleDungeon_class,      only : particleDungeon
   use tallyClerk_inter,           only : tallyClerk,  inColl_CODE, outColl_CODE, path_CODE, &
                                          trans_CODE, hist_CODE, cycleStart_CODE, cycleEnd_CODE
-  use tallyCounter_class,         only : tallyCounter
+  !use tallyCounter_class,         only : tallyCounter
+  use tallyEstimator_class,       only : tallyScore, tallyCounter
   use transportNuclearData_inter, only : transportNuclearData
 
   use xsMacroSet_class,           only : xsMacroSet_ptr
@@ -18,13 +19,13 @@ module keffClerk_class
     private
 
     integer(shortInt)                    :: cycleCount = 0
-    type(tallyCounter)                   :: collCount   ! Total collision weight
-    type(tallyCounter)                   :: histCount   ! Total histories weight
+    type(tallyScore)                     :: collCount   ! Total collision weight
+    type(tallyScore)                     :: histCount   ! Total histories weight
 
 
-    type(tallyCounter)                   :: impProd     ! Implicit neutron production
-    type(tallyCounter)                   :: impAbs      ! Implicit neutron absorbtion
-    type(tallyCounter)                   :: anaLeak     ! Analog neutron leakage
+    type(tallyScore)                     :: impProd     ! Implicit neutron production
+    type(tallyScore)                     :: impAbs      ! Implicit neutron absorbtion
+    type(tallyScore)                     :: anaLeak     ! Analog neutron leakage
 
     type(tallyCounter)                   :: k_analog
     type(tallyCounter)                   :: k_imp
@@ -64,8 +65,8 @@ contains
     real(defReal)                :: k_imp, k_analog, STD_imp, STD_analog
 
     ! Obtain current estimates of k analog and implicit
-    call self % k_imp % getScore(k_imp, STD_imp, self % cycleCount)
-    call self % k_analog % getScore(k_analog, STD_analog, self % cycleCount)
+    call self % k_imp % getEstimate(k_imp, STD_imp, self % cycleCount)
+    call self % k_analog % getEstimate(k_analog, STD_analog, self % cycleCount)
 
     ! Print estimates to a console
     print *, 'k-eff (implicit): ', k_imp, ' +/- ', STD_imp
@@ -110,11 +111,11 @@ contains
     s2 = absXS * flux
 
     ! Add scores to counters
-    call self % impProd % addScore(s1)
-    call self % impAbs  % addScore(s2)
+    call self % impProd % add(s1)
+    call self % impAbs  % add(s2)
 
     ! Increase collision count
-    call self % collCount % addScore(p % w)
+    call self % collCount % add(p % w)
 
   end subroutine reportInColl
 
@@ -159,21 +160,23 @@ contains
 
     ! Calculate and score analog estimate of k-eff
     k_est =  endWgt / self % startWgt * k_cycle
-    call self % k_analog % addScore(k_est)
+    call self % k_analog % addEstimate(k_est)
 
     ! Calculate and score implicit estimate of k_eff
-    call self % collCount % getScore(collCount,dummy,1)
-    call self % impProd % getScore(nuFiss,dummy,collCount)
-    call self % impAbs  % getScore(absorb,dummy,collCount)
+    collCount = self % collCount % get()
+    nuFiss = self % impProd % get() / collCount
+    absorb = self % impAbs % get()  / collCount
 
     k_est = nuFiss/absorb
 
-    call self % k_imp % addScore(k_est)
+    call self % k_imp % addEstimate(k_est)
 
+    ! Reset score counters
     call self % impProd % reset()
     call self % impAbs % reset()
     call self % collCount % reset()
 
+    ! Increas counter of cycles
     self % cycleCount = self % cycleCount + 1
 
   end subroutine reportCycleEnd
