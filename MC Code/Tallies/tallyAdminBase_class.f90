@@ -1,11 +1,11 @@
 module tallyAdminBase_class
 
   use numPrecision
+  use tallyCodes
   use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
-  use tallyClerk_inter,      only : tallyClerk,  inColl_CODE, outColl_CODE, path_CODE, trans_CODE, &
-                                    hist_CODE, cycleStart_CODE, cycleEnd_CODE
+  use tallyClerk_inter,      only : tallyClerk
   use tallyClerkSlot_class,  only : tallyClerkSlot
 
 

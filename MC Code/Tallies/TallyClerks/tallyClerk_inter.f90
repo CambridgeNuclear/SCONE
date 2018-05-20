@@ -1,22 +1,13 @@
 module tallyClerk_inter
 
   use numPrecision
+  use tallyCodes
   use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
 
   implicit none
   private
-
-  ! List of codes for diffrent reports
-  integer(shortInt),parameter,public :: inColl_CODE     = 1000 ,&
-                                        outColl_CODE    = 1001 ,&
-                                        path_CODE       = 1002 ,&
-                                        trans_CODE      = 1003 ,&
-                                        hist_CODE       = 1004 ,&
-                                        cycleStart_CODE = 1005 ,&
-                                        cycleEnd_CODE   = 1006
-
 
   !!
   !! Abstract interface for a single tallyClerk.
