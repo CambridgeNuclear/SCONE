@@ -7,7 +7,7 @@ program eigenCE
   !use collisionOperator_class,           only : collisionOperator
   use perNuclideCollisionOpCE_class,     only : perNuclideCollisionOpCE
   use perNuclideImplicitCaptureCE_class, only : perNuclideImplicitCaptureCE
-  use particle_class,                    only : particle
+  use particle_class,                    only : particle, phaseCoord
   use particleDungeon_class,             only : particleDungeon
 
   use dictionary_class ,       only : dictionary
@@ -31,11 +31,13 @@ program eigenCE
   integer(shortInt)          :: N, i
   real(defReal)              :: Emax,Emin,Umax,Umin
   real(defReal)              :: k_old, k_new, ksum, ksum2, varK
+  real(defReal)              :: leakProb, r1
   integer(shortInt)          :: nBins, idx
   integer(shortInt)          :: nInactive, nActive, startPop, endPop
 
   type(particleDungeon),pointer              :: cycle1, cycle2, cycleTemp
   integer(longInt), dimension(:),allocatable :: tally
+  type(phaseCoord) :: pre
 
   type(dictionary)      :: testDict
   type(IOdictionary)    :: IOdictTest
@@ -81,6 +83,7 @@ program eigenCE
   N = 5000
   allocate(tally(nBins))
   tally = 0
+  leakProb = 0.0005_8
 
   allocate(cycle1)
   allocate(cycle2)
@@ -117,6 +120,14 @@ program eigenCE
         ! Tally energy
         !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         !tally(idx) = tally(idx) + 1
+
+        ! Check if leaked
+        r1 = RNGptr % get()
+        if( r1 < leakProb ) then ! Neutron has leaked
+          exit History
+
+        end if
+
         call collisionPhysics % collide(neutron,cycle1,cycle2)
         if(neutron % isDead) exit History
 
@@ -165,14 +176,29 @@ program eigenCE
       neutron % matIdx = 4
 
       HistoryA: do
+        ! Save beginning of history info
+        pre = neutron
+
         ! Tally energy
         idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         tally(idx) = tally(idx) + 1
+
+        ! Check if leaked
+        r1 = RNGptr % get()
+        if( r1 < leakProb ) then ! Neutron has leaked
+          call tallyIMP % reportHist(pre,neutron,5001)
+          exit HistoryA
+
+        end if
+
         !** Send report to tally
         call tallyIMP % reportInColl(neutron)
         !**
         call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit HistoryA
+        if(neutron % isDead) then
+          call tallyIMP % reportHist(pre,neutron,5000)
+          exit HistoryA
+        end if
 
       end do HistoryA
 

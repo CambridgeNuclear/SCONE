@@ -6,7 +6,6 @@ module keffClerk_class
   use particle_class,             only : particle, phaseCoord
   use particleDungeon_class,      only : particleDungeon
   use tallyClerk_inter,           only : tallyClerk
-  !use tallyCounter_class,         only : tallyCounter
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use transportNuclearData_inter, only : transportNuclearData
 
@@ -19,9 +18,6 @@ module keffClerk_class
     private
 
     integer(shortInt)                    :: cycleCount = 0
-    type(tallyScore)                     :: collCount   ! Total collision weight
-    type(tallyScore)                     :: histCount   ! Total histories weight
-
 
     type(tallyScore)                     :: impProd     ! Implicit neutron production
     type(tallyScore)                     :: impAbs      ! Implicit neutron absorbtion
@@ -69,8 +65,8 @@ contains
     call self % k_analog % getEstimate(k_analog, STD_analog, self % cycleCount)
 
     ! Print estimates to a console
-    print *, 'k-eff (implicit): ', k_imp, ' +/- ', STD_imp
-    print *, 'k-eff (analog): ',  k_analog, ' +/- ', STD_analog
+    print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k_imp, ' +/- ', STD_imp
+    print '(A,F8.5,A,F8.5)', 'k-eff (analog): ',  k_analog, ' +/- ', STD_analog
 
   end subroutine display
 
@@ -114,23 +110,27 @@ contains
     call self % impProd % add(s1)
     call self % impAbs  % add(s2)
 
-    ! Increase collision count
-    call self % collCount % add(p % w)
-
   end subroutine reportInColl
 
   !!
   !! Process history report
-  !! ASSUMPTIONS:
-  !! **** FATE CODES NEED TO BE SPECIFIED
   !!
   subroutine reportHist(self,pre,post,fate)
-    class(keffClerk), intent(inout) :: self
+    class(keffClerk), intent(inout)      :: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt),intent(in)         :: fate
+    real(defReal)   :: histWgt
 
 
+    if( fate == leak_FATE) then
+      ! Obtain and score history weight
+      histWgt = pre % wgt
+
+      ! Score analog leakage
+      call self % anaLeak % add(histWgt)
+
+    end if
 
   end subroutine reportHist
 
@@ -152,7 +152,7 @@ contains
     class(keffClerk), intent(inout)      :: self
     class(particleDungeon), intent(in)   :: end
     real(defReal)                        :: endWgt, k_est
-    real(defReal)                        :: nuFiss, absorb, collCount, dummy, k_cycle
+    real(defReal)      :: nuFiss, absorb, leakage, collCount, histCount, k_cycle
 
     ! Obtain end of cycle weight and k value used to change fission site generation rate
     endWgt = end % popWeight()
@@ -163,18 +163,18 @@ contains
     call self % k_analog % addEstimate(k_est)
 
     ! Calculate and score implicit estimate of k_eff
-    collCount = self % collCount % get()
-    nuFiss = self % impProd % get() / collCount
-    absorb = self % impAbs % get()  / collCount
+    nuFiss  = self % impProd % get()
+    absorb  = self % impAbs % get()
+    leakage = self % anaLeak % get()
 
-    k_est = nuFiss/absorb
+    k_est = nuFiss / (absorb + leakage  )
 
     call self % k_imp % addEstimate(k_est)
 
     ! Reset score counters
     call self % impProd % reset()
     call self % impAbs % reset()
-    call self % collCount % reset()
+    call self % anaLeak % reset()
 
     ! Increas counter of cycles
     self % cycleCount = self % cycleCount + 1

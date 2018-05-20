@@ -161,7 +161,6 @@ contains
   !!
   !! Process history report
   !! ASSUMPTIONS:
-  !! **** FATE CODES NEED TO BE SPECIFIED
   !!
   subroutine reportHist(self,pre,post,fate)
     class(tallyAdminBase), intent(inout) :: self
