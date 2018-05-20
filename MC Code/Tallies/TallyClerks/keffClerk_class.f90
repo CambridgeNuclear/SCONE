@@ -17,9 +17,9 @@ module keffClerk_class
   type, public,extends(tallyClerk) :: keffClerk
     private
 
-    integer(shortInt)                    :: cycleCount = 0       !
+    integer(shortInt)                    :: cycleCount = 0
     type(tallyCounter)                   :: collCount   ! Total collision weight
-    type(tallyCounter)                   :: histCount        ! Total histories weight
+    type(tallyCounter)                   :: histCount   ! Total histories weight
 
 
     type(tallyCounter)                   :: impProd     ! Implicit neutron production
@@ -62,11 +62,12 @@ contains
   subroutine display(self)
     class(keffClerk), intent(in) :: self
     real(defReal)                :: k_imp, k_analog, STD_imp, STD_analog
-    ! Implement display
 
+    ! Obtain current estimates of k analog and implicit
     call self % k_imp % getScore(k_imp, STD_imp, self % cycleCount)
     call self % k_analog % getScore(k_analog, STD_analog, self % cycleCount)
 
+    ! Print estimates to a console
     print *, 'k-eff (implicit): ', k_imp, ' +/- ', STD_imp
     print *, 'k-eff (analog): ',  k_analog, ' +/- ', STD_analog
 
@@ -158,10 +159,6 @@ contains
 
     ! Calculate and score analog estimate of k-eff
     k_est =  endWgt / self % startWgt * k_cycle
-
-    !self % k_csum  = self % k_csum + k_est
-    !self % k2_csum = self % k2_csum + k_est * k_est
-
     call self % k_analog % addScore(k_est)
 
     ! Calculate and score implicit estimate of k_eff
