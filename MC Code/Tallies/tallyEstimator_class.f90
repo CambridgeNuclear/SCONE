@@ -58,8 +58,12 @@ module tallyEstimator_class
     generic   :: addEstimate   => addEstimate_tallyCounter_defReal, &
                                   addEstimate_tallyCounter_shortInt, &
                                   addEstimate_tallyCounter_longInt
-    procedure :: getEstimate   => getEstimate_tallyCounter
+    generic   :: getEstimate   => getEstimate_tallyCounter_withSTD, &
+                                  getEstimate_tallyCounter_withoutSTD
     procedure :: reset         => reset_tallyCounter
+
+    procedure,private :: getEstimate_tallyCounter_withSTD
+    procedure,private :: getEstimate_tallyCounter_withoutSTD
 
     procedure,private :: addEstimate_tallyCounter_defReal
     procedure,private :: addEstimate_tallyCounter_shortInt
@@ -100,7 +104,8 @@ module tallyEstimator_class
     generic   :: closeBatch  => closeBatch_tallyEstimator_defReal, &
                                 closeBatch_tallyEstimator_shortInt, &
                                 closeBatch_tallyEstimator_longInt
-    procedure :: getEstimate => getEstimate_tallyEstimator
+    generic   :: getEstimate => getEstimate_tallyEstimator_withSTD, &
+                                getEstimate_tallyEstimator_withoutSTD
     procedure :: reset       => reset_tallyEstimator
 
     procedure, private :: add_tallyEstimator_defReal
@@ -110,6 +115,9 @@ module tallyEstimator_class
     procedure, private :: closeBatch_tallyEstimator_defReal
     procedure, private :: closeBatch_tallyEstimator_shortInt
     procedure, private :: closeBatch_tallyEstimator_longInt
+
+    procedure, private :: getEstimate_tallyEstimator_withSTD
+    procedure, private :: getEstimate_tallyEstimator_withoutSTD
 
   end type tallyEstimator
 contains
@@ -225,32 +233,27 @@ contains
   end subroutine addEstimate_tallyCounter_longInt
 
   !!
-  !! Obtain estimate from a tally Counter.
+  !! Obtain estimate from a tally Counter. Returns standard deviation
   !! Normalise assuming N (shortInt) samples were collected
   !! There is no protection against -ve and N = 0 normal float arthmetic rules are followed
   !!
-  elemental subroutine getEstimate_tallyCounter(self,est,STD,N)
+  elemental subroutine getEstimate_tallyCounter_withSTD(self,est,STD,N)
     class(tallyCounter), intent(in) :: self
     real(defReal), intent(out)      :: est
     real(defReal), intent(out)      :: STD
     integer(shortInt), intent(in)   :: N
-    real(defReal)                   :: cSum, cSum2
+    real(defReal)                   :: cSum2
     integer(shortInt)               :: Nm1
 
-    cSum  = self % cSum  % get()
-    cSum2 = self % cSum2 % get()
+    cSum2  = self % cSum2  % get()
 
-    ! Calculate Mean
-    est = cSum / N
+    ! Call getEstimate without STD to calculate mean
+    call self % getEstimate(est,N)
 
-    ! Calculate Psudo-Variance (protect against STD = NaN if N == 1 )
+    ! Protect against STD = NaN if N == 1. Return 0.0 variance
     ! This mostly done for aesthetics. Single sample estimate is unrealible
     if ( N == 1) then
-      ! Calculate Single Sample Variance
-      STD = cSum2 - est * est
-
-      ! Calculate Standard Deviation
-      STD = sqrt(STD)
+      STD = ZERO
 
     else ! when N /= 1
       ! Precalculate denominator (N-1)
@@ -264,7 +267,25 @@ contains
 
     end if
 
-  end subroutine getEstimate_tallyCounter
+  end subroutine getEstimate_tallyCounter_withSTD
+
+  !!
+  !! Obtain estimate from a tally Counter. Does not returns Standard Deviation.
+  !! Normalise assuming N (shortInt) samples were collected
+  !! There is no protection against -ve and N = 0 normal float arthmetic rules are followed
+  !!
+  elemental subroutine getEstimate_tallyCounter_withoutSTD(self,est,N)
+    class(tallyCounter), intent(in) :: self
+    real(defReal), intent(out)      :: est
+    integer(shortInt), intent(in)   :: N
+    real(defReal)                   :: cSum
+
+    cSum  = self % cSum  % get()
+
+    ! Calculate Mean
+    est = cSum / N
+
+  end subroutine getEstimate_tallyCounter_withoutSTD
 
   !!
   !! Reset tallyCounter
@@ -394,12 +415,12 @@ contains
   end subroutine closeBatch_tallyEstimator_longInt
 
   !!
-  !! Obtain estimate from a tally Counter.
+  !! Obtain estimate from a tally Counter. Returns Standard Deviation.
   !! Normalise assuming N (shortInt) batches were collected (with closeBatch)
   !! There is no protection against N < 0 and N == 0
   !! Normal float arthmetic rules are followed
   !!
-  elemental subroutine getEstimate_tallyEstimator(self,est,STD,Nb)
+  elemental subroutine getEstimate_tallyEstimator_withSTD(self,est,STD,Nb)
     class(tallyEstimator), intent(inout) :: self
     real(defReal), intent(out)           :: est
     real(defReal), intent(out)           :: STD
@@ -407,7 +428,22 @@ contains
 
     call self % estimate % getEstimate(est,STD,Nb)
 
-  end subroutine getEstimate_tallyEstimator
+  end subroutine getEstimate_tallyEstimator_withSTD
+
+  !!
+  !! Obtain estimate from a tally Counter. Does not return Standard Deviation.
+  !! Normalise assuming N (shortInt) batches were collected (with closeBatch)
+  !! There is no protection against N < 0 and N == 0
+  !! Normal float arthmetic rules are followed
+  !!
+  elemental subroutine getEstimate_tallyEstimator_withoutSTD(self,est,Nb)
+    class(tallyEstimator), intent(inout) :: self
+    real(defReal), intent(out)           :: est
+    integer(shortInt), intent(in)        :: Nb
+
+    call self % estimate % getEstimate(est,Nb)
+
+  end subroutine getEstimate_tallyEstimator_withoutSTD
 
   !!
   !! Resets score and estimate of tallyEstimate

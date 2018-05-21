@@ -14,7 +14,8 @@ program eigenCE
   use IOdictionary_class,      only : IOdictionary
 
   use tallyAdminBase_class,    only : tallyAdminBase
-  use keffClerk_class,         only : keffClerk
+  use keffActiveClerk_class,   only : keffActiveClerk
+  use keffInactiveClerk_class, only : keffInactiveClerk
 
   implicit none
 
@@ -42,9 +43,10 @@ program eigenCE
   type(dictionary)      :: testDict
   type(IOdictionary)    :: IOdictTest
 
-  type(tallyAdminBase)  :: tallyIMP
-  type(keffClerk)       :: k_estimator
-
+  type(tallyAdminBase)  :: tallyActive
+  type(tallyAdminBase)  :: tallyInactive
+  type(keffActiveClerk)    :: k_imp
+  type(keffInactiveClerk)  :: k_ana
 
   !### Declarations end
   !### Main Programme Begins
@@ -68,10 +70,15 @@ program eigenCE
 
   ce => ce_implement
 
+  !***** Create Tallies
+  call tallyInactive % addTallyClerk(k_ana)
+  call tallyActive % addTallyClerk(k_imp)
 
   collisionPhysics % xsData => ce
 
    print *, 'Here'
+
+
 
   Emax = 20.0
   Emin = 1.0E-11
@@ -84,6 +91,7 @@ program eigenCE
   allocate(tally(nBins))
   tally = 0
   leakProb = 0.0005_8
+  leakProb = 0.0
 
   allocate(cycle1)
   allocate(cycle2)
@@ -111,12 +119,18 @@ program eigenCE
 
   do i=1,nInactive
     startPop = cycle1 % popSize()
+    !*** Send report to tally
+    call tallyInactive % reportCycleStart(cycle1)
+
     generation: do
 
       call cycle1 % release(neutron)
       neutron % matIdx = 4
 
       History: do
+        ! Save beginning of history info
+        pre = neutron
+
         ! Tally energy
         !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         !tally(idx) = tally(idx) + 1
@@ -124,18 +138,28 @@ program eigenCE
         ! Check if leaked
         r1 = RNGptr % get()
         if( r1 < leakProb ) then ! Neutron has leaked
+          call tallyInactive % reportHist(pre,neutron,5001)
           exit History
 
         end if
 
+        !** Send report to tally
+        call tallyInactive  % reportInColl(neutron)
+        !**
         call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit History
-
+        if(neutron % isDead) then
+          call tallyInactive % reportHist(pre,neutron,5000)
+          exit History
+        end if
       end do History
 
      if(cycle1 % isEmpty() ) exit generation
 
     end do generation
+
+    !*** Send report to tally
+    call tallyInactive % reportCycleEnd(cycle2)
+    !***
 
    ! Calculate new k
     endPop = cycle2 % popSize()
@@ -152,6 +176,7 @@ program eigenCE
    ! Load new k for normalisation
     cycle2 % k_eff = k_new
     print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
+    call tallyInactive % display()
   end do
 
 ! ************************************
@@ -161,14 +186,10 @@ program eigenCE
   ksum2 = 0.0
   varK = 0.0
 
-  !***** Create Tallies
-
-  call tallyIMP % addTallyClerk(k_estimator)
-
   do i=1,nActive
     startPop = cycle1 % popSize()
     !*** Send report to tally
-    call tallyIMP % reportCycleStart(cycle1)
+    call tallyActive % reportCycleStart(cycle1)
           !***
     generationA: do
 
@@ -186,17 +207,17 @@ program eigenCE
         ! Check if leaked
         r1 = RNGptr % get()
         if( r1 < leakProb ) then ! Neutron has leaked
-          call tallyIMP % reportHist(pre,neutron,5001)
+          call tallyActive % reportHist(pre,neutron,5001)
           exit HistoryA
 
         end if
 
         !** Send report to tally
-        call tallyIMP % reportInColl(neutron)
+        call tallyActive % reportInColl(neutron)
         !**
         call collisionPhysics % collide(neutron,cycle1,cycle2)
         if(neutron % isDead) then
-          call tallyIMP % reportHist(pre,neutron,5000)
+          call tallyActive % reportHist(pre,neutron,5000)
           exit HistoryA
         end if
 
@@ -207,7 +228,7 @@ program eigenCE
     end do generationA
 
     !*** Send report to tally
-    call tallyIMP % reportCycleEnd(cycle2)
+    call tallyActive % reportCycleEnd(cycle2)
     !***
 
 
@@ -237,7 +258,7 @@ program eigenCE
     end if
 
     print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
-    call tallyIMP % display()
+    call tallyActive % display()
   end do
 
 

@@ -7,6 +7,7 @@ module genericProcedures
 
   interface removeDuplicates
     module procedure removeDuplicates_Char
+    module procedure removeDuplicates_shortInt
   end interface removeDuplicates
 
   interface linFind
@@ -220,6 +221,42 @@ module genericProcedures
                                            errorMsg )
   end subroutine openToRead
 
+
+  !!
+  !! Removes duplicates from an unsorted intArray
+  !! Does not preserve the order
+  !!
+  pure function removeDuplicates_shortInt(intArray) result(out)
+    integer(shortInt), dimension(:), intent(in) :: intArray
+    integer(shortInt), dimension(:),allocatable :: out
+    integer(shortInt),dimension(size(intArray)) :: array
+    integer(shortInt)                           :: i, j, N, test, idx
+
+    N = size(intArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    array(1) = intArray(1)    ! Copy first element
+    j = 2                     ! Set new empty index
+    do i=2,N
+      test = intArray(i)
+      idx = linFind(intArray(1:i-1),test)  ! Check if element is present before i in the array
+      if  (idx == targetNotFound ) then    ! If it isn't copy it to array without duplicates
+        array(j) = test
+        j = j + 1
+
+      end if
+    end do
+
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function removeDuplicates_shortInt
+
   function removeDuplicates_Char(charArray) result(out)
     !! Function that removes duplicates from input character array. It returns array of equal or
     !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
@@ -321,7 +358,7 @@ module genericProcedures
   end function linFind_defReal
 
 
-  function linFind_shortInt(shortIntArray,target) result (idx)
+  pure function linFind_shortInt(shortIntArray,target) result (idx)
     !! Searches linearly for the occurance of target in shortIntArray. Following Errors can occur
     !! valueOutsideArray -> target is not present in the array
     integer(shortInt), dimension(:), intent(in)  :: shortIntArray

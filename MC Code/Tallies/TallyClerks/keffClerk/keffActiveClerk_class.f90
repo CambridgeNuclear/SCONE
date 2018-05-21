@@ -1,11 +1,11 @@
-module keffClerk_class
+module keffActiveClerk_class
 
   use numPrecision
   use tallyCodes
   use genericProcedures,          only : fatalError
   use particle_class,             only : particle, phaseCoord
   use particleDungeon_class,      only : particleDungeon
-  use tallyClerk_inter,           only : tallyClerk
+  use keffClerk_inter,            only : keffClerk
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use transportNuclearData_inter, only : transportNuclearData
 
@@ -14,7 +14,7 @@ module keffClerk_class
   implicit none
   private
 
-  type, public,extends(tallyClerk) :: keffClerk
+  type, public,extends(keffClerk) :: keffActiveClerk
     private
 
     integer(shortInt)                    :: cycleCount = 0
@@ -32,13 +32,14 @@ module keffClerk_class
     ! Deferred Interface Procedures
     procedure :: validReports
     procedure :: display
+    procedure :: keff
 
     ! Overwrite report procedures
     procedure :: reportInColl
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
-  end type keffClerk
+  end type keffActiveClerk
 
 contains
 
@@ -46,7 +47,7 @@ contains
   !! Return codes for reports this clerk accepts
   !!
   function validReports(self) result(validCodes)
-    class(keffClerk), intent(in)               :: self
+    class(keffActiveClerk), intent(in)         :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
     validCodes = [inColl_CODE, cycleStart_CODE, cycleEnd_CODE, hist_CODE]
@@ -57,8 +58,8 @@ contains
   !! Display progress current estimate of k-eff with STD
   !!
   subroutine display(self)
-    class(keffClerk), intent(in) :: self
-    real(defReal)                :: k_imp, k_analog, STD_imp, STD_analog
+    class(keffActiveClerk), intent(in) :: self
+    real(defReal)                      :: k_imp, k_analog, STD_imp, STD_analog
 
     ! Obtain current estimates of k analog and implicit
     call self % k_imp % getEstimate(k_imp, STD_imp, self % cycleCount)
@@ -74,12 +75,12 @@ contains
   !! Process collision report
   !!
   subroutine reportInColl(self,p)
-    class(keffClerk), intent(inout)       :: self
+    class(keffActiveClerk), intent(inout) :: self
     class(particle), intent(in)           :: p
     type(xsMacroSet_ptr)                  :: XSs
     real(defReal)                         :: totalXS, nuFissXS, absXS, flux
     real(defReal)                         :: s1, s2
-    character(100), parameter  :: Here = 'reportInColl (keffClerk_class.f90)'
+    character(100), parameter  :: Here = 'reportInColl (keffActiveClerk_class.f90)'
 
     ! Obtain XSs
     ! Check if it dynamic type is supported
@@ -116,7 +117,7 @@ contains
   !! Process history report
   !!
   subroutine reportHist(self,pre,post,fate)
-    class(keffClerk), intent(inout)      :: self
+    class(keffActiveClerk), intent(inout):: self
     class(phaseCoord), intent(in)        :: pre
     class(particle), intent(in)          :: post
     integer(shortInt),intent(in)         :: fate
@@ -138,7 +139,7 @@ contains
   !! Process beginning of a cycle
   !!
   subroutine reportCycleStart(self,start)
-    class(keffClerk), intent(inout)      :: self
+    class(keffActiveClerk), intent(inout):: self
     class(particleDungeon), intent(in)   :: start
 
     self % startWgt  = start % popWeight()
@@ -149,7 +150,7 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(keffClerk), intent(inout)      :: self
+    class(keffActiveClerk), intent(inout)   :: self
     class(particleDungeon), intent(in)   :: end
     real(defReal)                        :: endWgt, k_est
     real(defReal)      :: nuFiss, absorb, leakage, collCount, histCount, k_cycle
@@ -181,4 +182,16 @@ contains
 
   end subroutine reportCycleEnd
 
-end module keffClerk_class
+  !!
+  !! Return estimate of k-eff
+  !!
+  function keff(self) result(k)
+    class(keffActiveClerk), intent(in) :: self
+    real(defReal)                      :: k
+
+    call self % k_imp % getEstimate(k, self % cycleCount)
+
+  end function keff
+
+
+end module keffActiveClerk_class
