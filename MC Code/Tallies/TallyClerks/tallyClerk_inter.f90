@@ -2,6 +2,7 @@ module tallyClerk_inter
 
   use numPrecision
   use tallyCodes
+  use dictionary_class,      only : dictionary
   use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
@@ -32,6 +33,7 @@ module tallyClerk_inter
 
     procedure(validReports), deferred :: validReports
     procedure(display), deferred      :: display
+    procedure(init),deferred          :: init
     !procedure(print),deferred         :: print *** Interface for this procedure will be defined shortly
 
   end type tallyClerk
@@ -54,6 +56,16 @@ module tallyClerk_inter
       import :: tallyClerk
       class(tallyClerk), intent(in)  :: self
     end subroutine display
+
+    !!
+    !! Initialise tally clerk from a dictionary
+    !!
+    subroutine init(self,dict)
+      import :: tallyClerk, &
+                dictionary
+      class(tallyClerk), intent(inout) :: self
+      class(dictionary), intent(in)    :: dict
+    end subroutine init
 
   end interface
 

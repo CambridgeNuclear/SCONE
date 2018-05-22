@@ -1,14 +1,14 @@
 module tallyClerkSlot_class
 
   use numPrecision
-!  use genericProcedures,     only : fatalError
+  use genericProcedures,     only : fatalError
+  use dictionary_class,      only : dictionary
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
   use tallyClerk_inter,      only : tallyClerk
 
   implicit none
   private
-
 
   !!
   !! Slot to store polymorphic instances of tallyClerks in an array
@@ -29,7 +29,8 @@ module tallyClerkSlot_class
 
     procedure :: validReports
     procedure :: display
-    !procedure :: print *** Interface for this procedure will be defined shortly
+    ! Initialisation procedure -> return error Slot is a container
+    procedure :: init
 
     ! Define assignment
     generic   :: assignment(=) => copy
@@ -162,6 +163,19 @@ contains
     call self % slot % display()
 
   end subroutine display
+
+  !!
+  !! Initialise from dictionary.
+  !! Return error.
+  !!
+  subroutine init(self,dict)
+    class(tallyClerkSlot), intent(inout) :: self
+    class(dictionary), intent(in)        :: dict
+    character(100),parameter :: Here = 'init (tallyClerkSlot.f90)'
+
+    call fatalError(Here,'tallyClerkSlot cannot be initialised fro mdictionary')
+
+  end subroutine init
 
   !!
   !! Copy RHS into slot of LHS

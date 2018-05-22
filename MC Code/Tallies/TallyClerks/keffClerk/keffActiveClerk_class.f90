@@ -2,7 +2,8 @@ module keffActiveClerk_class
 
   use numPrecision
   use tallyCodes
-  use genericProcedures,          only : fatalError
+  use genericProcedures,          only : fatalError, charCmp
+  use dictionary_class,           only : dictionary
   use particle_class,             only : particle, phaseCoord
   use particleDungeon_class,      only : particleDungeon
   use keffClerk_inter,            only : keffClerk
@@ -13,6 +14,12 @@ module keffActiveClerk_class
 
   implicit none
   private
+
+  character(*),parameter :: CLASS_NAME = 'keffActiveClerk'
+
+  interface keffActiveClerk
+    module procedure new_keffActiveClerk
+  end interface
 
   type, public,extends(keffClerk) :: keffActiveClerk
     private
@@ -32,7 +39,9 @@ module keffActiveClerk_class
     ! Deferred Interface Procedures
     procedure :: validReports
     procedure :: display
+    procedure :: init
     procedure :: keff
+
 
     ! Overwrite report procedures
     procedure :: reportInColl
@@ -183,6 +192,25 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Initialise keffActiveClerk from dictionary
+  !! Checks if type agrees with class name. if not returns error
+  !!
+  subroutine init(self,dict)
+    class(keffActiveClerk),intent(inout) :: self
+    class(dictionary), intent(in)        :: dict
+    character(nameLen)                   :: type
+    character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
+
+    call dict % get(type,'type')
+    if ( .not.charCmp(CLASS_NAME,type) ) then
+      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+
+    end if
+
+  end subroutine init
+
+
+  !!
   !! Return estimate of k-eff
   !!
   function keff(self) result(k)
@@ -193,5 +221,15 @@ contains
 
   end function keff
 
+  !!
+  !! keffActiveClerk constructor function
+  !!
+  function new_keffActiveClerk(dict) result(new)
+    class(dictionary), intent(in) :: dict
+    type(keffActiveClerk)         :: new
+
+    call new % init(dict)
+
+  end function new_keffActiveClerk
 
 end module keffActiveClerk_class

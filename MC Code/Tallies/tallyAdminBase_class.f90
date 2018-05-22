@@ -28,6 +28,7 @@ module tallyAdminBase_class
   !!
   !!
   type, public:: tallyAdminBase
+    private
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
 
     ! Lists of Clerks to be executed for each procedure
@@ -49,9 +50,6 @@ module tallyAdminBase_class
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
 
-    ! Access Procedures
-    procedure :: k_eff
-
     ! Display procedures
     procedure :: display
 
@@ -59,13 +57,17 @@ module tallyAdminBase_class
     !procedure :: print
 
     ! Build procedures
-    !procedure :: init
+    procedure :: init
     procedure :: addTallyClerk
     procedure :: kill
 
     procedure,private :: addToReports
 
   end type tallyAdminBase
+
+  public :: reportCycleStart
+  public :: reportCycleEnd
+  public :: kill
     
 contains
   !!
@@ -86,12 +88,12 @@ contains
   end subroutine reportInColl
 
   !!
-  !! *** DEBUG IMPLEMENTATION WILL CHANGE
+  !! *** DEBUG *** IMPLEMENTATION WILL CHANGE
   !!
   subroutine display(self)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdminBase), intent(in) :: self
 
-    call self % tallyClerks(1) % display()
+    !call self % tallyClerks(1) % display()
 
   end subroutine display
 
@@ -180,7 +182,7 @@ contains
   end subroutine reportHist
 
   !!
-  !! Process beggining of a cycle
+  !! Process beginning of a cycle
   !!
   subroutine reportCycleStart(self,start)
     class(tallyAdminBase), intent(inout) :: self
@@ -213,16 +215,27 @@ contains
 
   end subroutine reportCycleEnd
 
-
   !!
-  !! Return estimate of k_eff
   !!
-  subroutine k_eff(self,k,STD)
-    class(tallyAdminBase), intent(in)   :: self
-    real(defReal), intent(out)          :: k
-    real(defReal),optional, intent(out) :: STD
+  !!
+  subroutine init(self)
+    class(tallyAdminBase), intent(inout) :: self
 
-  end subroutine k_eff
+    ! Deallocate
+    call self % kill()
+
+    ! Allocate contents
+    allocate(self % inCollClerks(0)     )
+    allocate(self % outCollClerks(0)    )
+    allocate(self % pathClerks(0)       )
+    allocate(self % transClerks(0)      )
+    allocate(self % histClerks(0)       )
+    allocate(self % cycleStartClerks(0) )
+    allocate(self % cycleEndClerks(0)   )
+
+    allocate(self % tallyClerks(0))
+
+  end subroutine init
 
   !!
   !!
@@ -242,18 +255,9 @@ contains
         call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
     end select
 
-    ! Check if it is first clerk to be added. If yes llocate all sorting arrays to size 0
-    ! Allocate tallyClerks to size 0 as well
+    ! Check if the tallyAdminBase is initialised
     if( .not. allocated(self % tallyClerks) ) then
-      allocate(self % inCollClerks(0)     )
-      allocate(self % outCollClerks(0)    )
-      allocate(self % pathClerks(0)       )
-      allocate(self % transClerks(0)      )
-      allocate(self % histClerks(0)       )
-      allocate(self % cycleStartClerks(0) )
-      allocate(self % cycleEndClerks(0)   )
-
-      allocate(self % tallyClerks(0))
+      call fatalError(Here,'tallyAdminBase is uninitialised')
     end if
 
     ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature

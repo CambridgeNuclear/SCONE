@@ -16,6 +16,7 @@ program eigenCE
   use tallyAdminBase_class,    only : tallyAdminBase
   use keffActiveClerk_class,   only : keffActiveClerk
   use keffInactiveClerk_class, only : keffInactiveClerk
+  use tallyInactiveAdmin_class, only : tallyInactiveAdmin
 
   implicit none
 
@@ -44,7 +45,8 @@ program eigenCE
   type(IOdictionary)    :: IOdictTest
 
   type(tallyAdminBase)  :: tallyActive
-  type(tallyAdminBase)  :: tallyInactive
+  !type(tallyAdminBase)  :: tallyInactive
+  type(tallyInactiveAdmin) :: tallyInactive
   type(keffActiveClerk)    :: k_imp
   type(keffInactiveClerk)  :: k_ana
 
@@ -71,7 +73,10 @@ program eigenCE
   ce => ce_implement
 
   !***** Create Tallies
-  call tallyInactive % addTallyClerk(k_ana)
+  call tallyInactive % init()
+  call tallyActive % init()
+
+  !call tallyInactive % addTallyClerk(k_ana)
   call tallyActive % addTallyClerk(k_imp)
 
   collisionPhysics % xsData => ce
@@ -121,7 +126,6 @@ program eigenCE
     startPop = cycle1 % popSize()
     !*** Send report to tally
     call tallyInactive % reportCycleStart(cycle1)
-
     generation: do
 
       call cycle1 % release(neutron)

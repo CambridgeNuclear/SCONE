@@ -2,6 +2,8 @@ module keffInactiveClerk_class
 
   use numPrecision
   use tallyCodes
+  use genericProcedures,          only : fatalError, charCmp
+  use dictionary_class,           only : dictionary
   use particle_class,             only : particle, phaseCoord
   use particleDungeon_class,      only : particleDungeon
   use keffClerk_inter,            only : keffClerk
@@ -9,6 +11,13 @@ module keffInactiveClerk_class
 
   implicit none
   private
+
+  character(*),parameter :: CLASS_NAME = 'keffInactiveClerk'
+
+  interface keffInactiveClerk
+    module procedure new_keffInactiveClerk
+  end interface
+
 
   type, public,extends(keffClerk) :: keffInactiveClerk
     private
@@ -19,6 +28,7 @@ module keffInactiveClerk_class
     ! Deferred Interface Procedures
     procedure :: validReports
     procedure :: display
+    procedure :: init
 
     ! Overwrite report procedures
     procedure :: reportCycleStart
@@ -86,6 +96,24 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Initialise keffActiveClerk from dictionary
+  !! Checks if type agrees with class name. if not returns error
+  !!
+  subroutine init(self,dict)
+    class(keffInactiveClerk),intent(inout) :: self
+    class(dictionary), intent(in)          :: dict
+    character(nameLen)                     :: type
+    character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
+
+    call dict % get(type,'type')
+    if ( .not.charCmp(CLASS_NAME, type) ) then
+      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+
+    end if
+
+  end subroutine init
+
+  !!
   !! Return current estimate of k-eff
   !!
   pure function keff(self) result(k)
@@ -97,4 +125,14 @@ contains
 
   end function keff
 
+  !!
+  !! keffInactiveClerk constructor
+  !!
+  function new_keffInactiveClerk(dict) result(new)
+    class(dictionary),intent(in) :: dict
+    type(keffInactiveClerk)      :: new
+
+    call new % init(dict)
+
+  end function new_keffInactiveClerk
 end module keffInactiveClerk_class
