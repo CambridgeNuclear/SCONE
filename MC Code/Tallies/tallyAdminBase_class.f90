@@ -93,7 +93,7 @@ contains
   subroutine display(self)
     class(tallyAdminBase), intent(in) :: self
 
-    !call self % tallyClerks(1) % display()
+  !  call self % tallyClerks(1) % display()
 
   end subroutine display
 

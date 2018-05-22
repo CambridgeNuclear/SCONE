@@ -18,6 +18,8 @@ program eigenCE
   use keffInactiveClerk_class, only : keffInactiveClerk
   use tallyInactiveAdmin_class, only : tallyInactiveAdmin
 
+  use tallyClerkFactory_func,  only : new_tallyClerk, new_tallyClerk_ptr
+
   implicit none
 
   type(particle)          :: neutron
@@ -42,6 +44,7 @@ program eigenCE
   type(phaseCoord) :: pre
 
   type(dictionary)      :: testDict
+  type(dictionary)      :: clerkDict
   type(IOdictionary)    :: IOdictTest
 
   type(tallyAdminBase)  :: tallyActive
@@ -73,11 +76,16 @@ program eigenCE
   ce => ce_implement
 
   !***** Create Tallies
+
+  call clerkDict % init(1)
+  call clerkDict % store('type','keffActiveClerk')
+
   call tallyInactive % init()
   call tallyActive % init()
 
-  !call tallyInactive % addTallyClerk(k_ana)
-  call tallyActive % addTallyClerk(k_imp)
+!  call tallyInactive % addTallyClerk(new_tallyClerk_ptr(clerkDict) )
+
+  call tallyActive % addTallyClerk(new_tallyClerk(clerkDict))
 
   collisionPhysics % xsData => ce
 
