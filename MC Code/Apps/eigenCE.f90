@@ -17,6 +17,7 @@ program eigenCE
   use keffActiveClerk_class,   only : keffActiveClerk
   use keffInactiveClerk_class, only : keffInactiveClerk
   use tallyInactiveAdmin_class, only : tallyInactiveAdmin
+  use tallyActiveAdmin_class,   only : tallyActiveAdmin
 
   use tallyClerkFactory_func,  only : new_tallyClerk, new_tallyClerk_ptr
 
@@ -47,9 +48,10 @@ program eigenCE
   type(dictionary)      :: clerkDict
   type(IOdictionary)    :: IOdictTest
 
-  type(tallyAdminBase)  :: tallyActive
+  !type(tallyAdminBase)  :: tallyActive
   !type(tallyAdminBase)  :: tallyInactive
   type(tallyInactiveAdmin) :: tallyInactive
+  type(tallyActiveAdmin) :: tallyActive
   type(keffActiveClerk)    :: k_imp
   type(keffInactiveClerk)  :: k_ana
 
@@ -78,14 +80,14 @@ program eigenCE
   !***** Create Tallies
 
   call clerkDict % init(1)
-  call clerkDict % store('type','keffActiveClerk')
+  call clerkDict % store('type','keffActiveClerk ')
 
   call tallyInactive % init()
   call tallyActive % init()
 
 !  call tallyInactive % addTallyClerk(new_tallyClerk_ptr(clerkDict) )
 
-  call tallyActive % addTallyClerk(new_tallyClerk(clerkDict))
+ ! call tallyActive % addTallyClerk(new_tallyClerk(clerkDict))
 
   collisionPhysics % xsData => ce
 

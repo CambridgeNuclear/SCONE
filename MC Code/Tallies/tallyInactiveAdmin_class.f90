@@ -3,9 +3,9 @@ module tallyInactiveAdmin_class
   use numPrecision
   use tallyCodes
   use tallyAdminBase_class,    only : tallyAdminBase, &
-                                      reportCycleStartBase => reportCycleStart, &
-                                      reportCycleEndBase => reportCycleEnd, &
-                                      killBase => kill
+                                      reportCycleStart_super => reportCycleStart, &
+                                      reportCycleEnd_super => reportCycleEnd, &
+                                      kill_super => kill
   use particle_class,          only : particle, phaseCoord
   use particleDungeon_class,   only : particleDungeon
   use keffInactiveClerk_class, only : keffInactiveClerk
@@ -20,12 +20,12 @@ module tallyInactiveAdmin_class
     ! New interface
     procedure :: keff
 
-    ! Extend Base class procedures
+    ! Extend superclass procedures
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
     procedure :: kill
 
-    ! Overwrite Base class procedures
+    ! Overwrite superclass procedures
     procedure :: display
 
 
@@ -55,8 +55,8 @@ contains
     ! Process report with internal Clerk
     call self % keff_estimator % reportCycleStart(start)
 
-    ! Call base class procedure on self
-    call reportCycleStartBase(self,start)
+    ! Call superclass procedure on self
+    call reportCycleStart_super(self,start)
 
   end subroutine reportCycleStart
 
@@ -71,8 +71,8 @@ contains
     ! Process report with internal Clerk
     call self % keff_estimator % reportCycleEnd(end)
 
-    ! Call base class procedure on self
-    call reportCycleEndBase(self,end)
+    ! Call superclass procedure on self
+    call reportCycleEnd_super(self,end)
 
   end subroutine reportCycleEnd
 
@@ -84,8 +84,8 @@ contains
 
     ! Kill internal Clerks
 
-    ! Call base class procedure on self
-    call killBase(self)
+    ! Call superclass procedure on self
+    call kill_super(self)
 
   end subroutine kill
 

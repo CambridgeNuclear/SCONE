@@ -65,8 +65,15 @@ module tallyAdminBase_class
 
   end type tallyAdminBase
 
+
+  public :: reportInColl
+  public :: reportOutColl
+  public :: reportPath
+  public :: reportTrans
+  public :: reportHist
   public :: reportCycleStart
   public :: reportCycleEnd
+  public :: display
   public :: kill
     
 contains
