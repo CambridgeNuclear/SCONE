@@ -46,7 +46,7 @@ contains
   !!
   subroutine init_fromDict(self,dict)
     class(datalessMaterials), intent(inout) :: self
-    type(dictionary), intent(in)            :: dict
+    class(dictionary), intent(in)           :: dict
 
     if(allocated(self % materials)) deallocate(self % materials)
 

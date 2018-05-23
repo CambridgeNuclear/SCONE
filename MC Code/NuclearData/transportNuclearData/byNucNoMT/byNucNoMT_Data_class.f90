@@ -48,7 +48,7 @@ contains
   !!
   subroutine init(self,matDict)
     class(byNucNoMT_Data), intent(inout)        :: self
-    type(dictionary), intent(in)                :: matDict
+    class(dictionary), intent(in)               :: matDict
     integer(shortInt)                           :: nMat
     character(nameLen),dimension(:),allocatable :: matNames
     character(pathLen)                          :: nuclideLib
@@ -73,7 +73,7 @@ contains
   !!
   subroutine readMaterials(self,matDict)
     class(byNucNoMT_Data), intent(inout)        :: self
-    type(dictionary), intent(in)                :: matDict
+    class(dictionary), intent(in)               :: matDict
     type(dictionary)                            :: locDict
     character(nameLen)                          :: matName
     integer(shortInt)                           :: nMat, i
@@ -103,7 +103,7 @@ contains
   !! Check if the dictionary has type 'material'
   !!
   function isItMaterial(dict) result(isIt)
-    type(dictionary), intent(in)    :: dict
+    class(dictionary), intent(in)   :: dict
     logical(defBool)                :: isIt
 
     isIt = ('material' == adjustl(dict % getChar('type') ))

@@ -1547,7 +1547,7 @@ contains
   subroutine store_dict(self,keywordArgument,entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
-    type(dictionary), intent(in)                :: entry
+    class(dictionary), intent(in)               :: entry
     character(nameLen)                          :: keyword
     integer(shortInt)                           :: idx
 

@@ -70,7 +70,7 @@ contains
   !!
   subroutine init(self,dict)
     class(isotropicMG), intent(inout)           :: self
-    type(dictionary), intent(in)                :: dict
+    class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: matNames
     integer(shortInt)                           :: nG,nMat,matIdx
 
@@ -319,7 +319,7 @@ contains
   !!
   subroutine readMaterial(self,dict,idx, nG)
     class(isotropicMG), intent(inout) :: self
-    type(dictionary), intent(in)      :: dict
+    class(dictionary), intent(in)     :: dict
     integer(shortInt), intent(in)     :: idx
     integer(shortInt), intent(in)     :: nG
     real(defReal),dimension(nG)       :: tempXS

@@ -122,10 +122,10 @@ contains
   !! Initialise the surfaces of which the geometry is composed
   !!
   subroutine initSurfaces(self, surfDict)
-    class(geometry), intent(inout)                :: self
-    type(dictionary), intent(in)                  :: surfDict
-    character(nameLen), dimension(:), allocatable :: keys
-    integer(shortInt)                             :: i, j, id, testId
+    class(geometry), intent(inout)                 :: self
+    class(dictionary), intent(in)                  :: surfDict
+    character(nameLen), dimension(:), allocatable  :: keys
+    integer(shortInt)                              :: i, j, id, testId
 
     call surfDict % keysDict(keys)
     self % numSurfaces = size(keys)
@@ -155,10 +155,10 @@ contains
   !! Initialise cells from dictionary
   !!
   subroutine initCells(self, cellDict)
-    class(geometry), intent(inout)            :: self
-    type(dictionary), intent(in)              :: cellDict
+    class(geometry), intent(inout)                :: self
+    class(dictionary), intent(in)                 :: cellDict
     character(nameLen), dimension(:), allocatable :: keys
-    integer(shortInt)                         :: outsideDefined, i, j, id, testId
+    integer(shortInt)                             :: outsideDefined, i, j, id, testId
 
     call cellDict % keysDict(keys)
     self % numCells = size(keys)
@@ -201,12 +201,12 @@ contains
   !! Initialise universes from dictionary
   !!
   subroutine initUniverses(self, uniDict)
-    class(geometry), intent(inout)            :: self
-    type(dictionary), intent(in)              :: uniDict
+    class(geometry), intent(inout)                :: self
+    class(dictionary), intent(in)                 :: uniDict
     character(nameLen), dimension(:), allocatable :: keys
-    integer(shortInt)                         :: i, j, id, testId, rootIdx
-    logical(defBool)                          :: foundRoot
-    type(dictionary)                          :: uniDaughterDict
+    integer(shortInt)                             :: i, j, id, testId, rootIdx
+    logical(defBool)                              :: foundRoot
+    type(dictionary)                              :: uniDaughterDict
 
     ! Read how many universes exist
     call uniDict % keysDict(keys)
@@ -258,10 +258,10 @@ contains
   !! Initialise lattices from dictionary
   !!
   subroutine initLattices(self, latDict)
-    class(geometry), intent(inout)            :: self
-    type(dictionary), intent(in)              :: latDict
+    class(geometry), intent(inout)                :: self
+    class(dictionary), intent(in)                 :: latDict
     character(nameLen), dimension(:), allocatable :: keys
-    integer(shortInt)                         :: i, j, id, testId
+    integer(shortInt)                             :: i, j, id, testId
 
     call latDict % keysDict(keys)
     self % numLattices = size(keys)
@@ -289,11 +289,11 @@ contains
   end subroutine initLattices
 
   subroutine fillCells(self, cellDict, geomDict)
-    class(geometry), intent(inout)            :: self
-    type(dictionary), intent(in)              :: cellDict
-    type(dictionary), intent(in)              :: geomDict
+    class(geometry), intent(inout)                :: self
+    class(dictionary), intent(in)                 :: cellDict
+    class(dictionary), intent(in)                 :: geomDict
     character(nameLen), dimension(:), allocatable :: keys
-    integer(shortInt)                         :: i, j, fillType
+    integer(shortInt)                             :: i, j, fillType
 
     call cellDict % keysDict(keys)
     print *,'Filling cells with universes and lattices'
@@ -758,7 +758,7 @@ contains
     type(yPlane), pointer             :: yPlaneObj
     type(zPlane), pointer             :: zPlaneObj
     type(plane), pointer              :: planeObj
-    character(nameLen)                    :: surfType
+    character(nameLen)                :: surfType
     real(defReal), dimension(4)       :: coeff
     real(defReal), dimension(3)       :: origin, halfwidth
     real(defReal)                     :: radius, halfheight, x, y, z
@@ -905,7 +905,7 @@ contains
     class(surface_ptr), dimension(:), allocatable :: surfArray
     integer(shortInt)                             :: id, testID, i, j, fillType
     logical(defBool)                              :: insideGeom
-    character(nameLen)                                :: fillName
+    character(nameLen)                            :: fillName
 
     ! Determine how many surfaces the cell contains and set their halfspace
     allocate(surfaces(size(dict % getIntArray('surfaces'))))
@@ -1145,13 +1145,13 @@ contains
   !! Fill cells containing a material
   !!
   subroutine fillMaterialCells(self, cellDict, materials)
-    class(geometry), intent(inout)            :: self
-    type(dictionary), intent(in)              :: cellDict
-    class(nuclearData), intent(inout)         :: materials
+    class(geometry), intent(inout)                :: self
+    class(dictionary), intent(in)                 :: cellDict
+    class(nuclearData), intent(inout)             :: materials
     character(nameLen), dimension(:), allocatable :: keys
-    type(dictionary)                          :: subDict
+    type(dictionary)                              :: subDict
     character(nameLen)                            :: name
-    integer(shortInt)                         :: idx, i
+    integer(shortInt)                             :: idx, i
 
 
     call cellDict % keysDict(keys)

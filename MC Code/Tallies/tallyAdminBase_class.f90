@@ -267,9 +267,7 @@ contains
   !!
   subroutine init(self,dict)
     class(tallyAdminBase), intent(inout)        :: self
-    ! *** Note that dictionary is not polymorphic becouse keys functions break compiler
-    ! *** Keys functions will be changed to subroutines and evrything should work once again
-    type(dictionary), intent(in)                :: dict
+    class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: clerks
     type(dictionary)                            :: locDict
     character(nameLen)                          :: entry

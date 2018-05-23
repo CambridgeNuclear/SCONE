@@ -46,7 +46,7 @@ module perMaterialMgXs_inter
       import :: perMaterialMgXS, &
                 dictionary
       class(perMaterialMgXS), intent(inout) :: self
-      type(dictionary), intent(in)          :: dict
+      class(dictionary), intent(in)         :: dict
     end subroutine init
 
     !!

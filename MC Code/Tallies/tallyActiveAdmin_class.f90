@@ -122,7 +122,7 @@ contains
   !!
   subroutine init(self,dict)
     class(tallyActiveAdmin), intent(inout) :: self
-    type(dictionary),intent(in)            :: dict !* Will become class after keys func -> subroutines
+    class(dictionary),intent(in)           :: dict
     type(dictionary)                       :: embDict
     character(nameLen)                     :: entry
     real(defReal)                          :: temp

@@ -33,7 +33,7 @@ contains
   !!
   subroutine init(self,dict,name)
     class(materialDataNoMT), intent(inout)      :: self
-    type(dictionary), intent(in)                :: dict
+    class(dictionary), intent(in)               :: dict
     character(*),intent(in)                     :: name
     logical(defBool)                            :: isNotMaterial
     integer(shortInt)                           :: i

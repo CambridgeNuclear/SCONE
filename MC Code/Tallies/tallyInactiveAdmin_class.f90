@@ -85,7 +85,7 @@ contains
   !!
   subroutine init(self,dict)
     class(tallyInactiveAdmin), intent(inout) :: self
-    type(dictionary),intent(in)              :: dict !* Will become class after keys func -> subroutines
+    class(dictionary),intent(in)             :: dict
     type(dictionary)                         :: embDict
 
     ! Get settings for the embedded clerk into dictionary
