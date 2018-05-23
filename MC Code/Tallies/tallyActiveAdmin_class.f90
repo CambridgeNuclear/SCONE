@@ -2,12 +2,15 @@ module tallyActiveAdmin_class
 
   use numPrecision
   use tallyCodes
+  use dictionary_class,        only : dictionary
   use tallyAdminBase_class,    only : tallyAdminBase, &
                                       reportInColl_super => reportInColl, &
                                       reportHist_super => reportHist, &
                                       reportCycleStart_super => reportCycleStart, &
                                       reportCycleEnd_super => reportCycleEnd, &
-                                      kill_super => kill
+                                      init_super => init ,&
+                                      kill_super => kill ,&
+                                      display_super => display
   use particle_class,          only : particle, phaseCoord
   use particleDungeon_class,   only : particleDungeon
   use keffActiveClerk_class,   only : keffActiveClerk
@@ -27,9 +30,8 @@ module tallyActiveAdmin_class
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: init
     procedure :: kill
-
-    ! Overwrite superclass procedures
     procedure :: display
 
   end type tallyActiveAdmin
@@ -112,6 +114,26 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Initialise active admin
+  !!
+  subroutine init(self,dict)
+    class(tallyActiveAdmin), intent(inout) :: self
+    type(dictionary),intent(in)            :: dict !* Will become class after keys func -> subroutines
+    type(dictionary)                       :: embDict
+
+    ! Get settings for the embedded clerk into dictionary
+    call embDict % init(1)
+    call embDict % store('type','keffActiveClerk')
+
+    ! Initialise embedded clerk
+    call self % keff_estimator % init(embDict)
+
+    ! Load rest of the clerks
+    call init_super(self,dict)
+
+  end subroutine init
+
+  !!
   !! Deallocates all content
   !!
   subroutine kill(self)
@@ -132,6 +154,9 @@ contains
 
     print *,'Inactive Cycle:'
     call self % keff_estimator % display()
+
+    ! Call superclass procedure on self
+    call display_super(self)
 
   end subroutine display
 

@@ -2,12 +2,13 @@ module tallyAdminBase_class
 
   use numPrecision
   use tallyCodes
-  use genericProcedures,     only : fatalError
-  use particle_class,        only : particle, phaseCoord
-  use particleDungeon_class, only : particleDungeon
-  use tallyClerk_inter,      only : tallyClerk
-  use tallyClerkSlot_class,  only : tallyClerkSlot
-
+  use genericProcedures,      only : fatalError
+  use dictionary_class,       only : dictionary
+  use particle_class,         only : particle, phaseCoord
+  use particleDungeon_class,  only : particleDungeon
+  use tallyClerk_inter,       only : tallyClerk
+  use tallyClerkSlot_class,   only : tallyClerkSlot
+  use tallyClerkFactory_func, only : new_tallyClerk
 
 
   implicit none
@@ -74,6 +75,7 @@ module tallyAdminBase_class
   public :: reportCycleStart
   public :: reportCycleEnd
   public :: display
+  public :: init
   public :: kill
     
 contains
@@ -100,7 +102,7 @@ contains
   subroutine display(self)
     class(tallyAdminBase), intent(in) :: self
 
-  !  call self % tallyClerks(1) % display()
+    call self % tallyClerks(1) % display()
 
   end subroutine display
 
@@ -225,8 +227,15 @@ contains
   !!
   !!
   !!
-  subroutine init(self)
-    class(tallyAdminBase), intent(inout) :: self
+  subroutine init(self,dict)
+    class(tallyAdminBase), intent(inout)        :: self
+    ! *** Note that dictionary is not polymorphic becouse keys functions break compiler
+    ! *** Keys functions will be changed to subroutines and evrything should work once again
+    type(dictionary), intent(in)                :: dict
+    character(nameLen),dimension(:),allocatable :: clerks
+    type(dictionary)                            :: locDict
+    integer(shortInt)                           :: i, N
+
 
     ! Deallocate
     call self % kill()
@@ -241,6 +250,20 @@ contains
     allocate(self % cycleEndClerks(0)   )
 
     allocate(self % tallyClerks(0))
+
+    ! Read all dictionaries
+    clerks = dict % keysDict()
+
+    ! Load all dictionaries as clerks
+    do i=1,size(clerks)
+      ! Copy dictionary to local copy
+      call dict % get(locDict,clerks(i))
+
+      ! Get new clerk from factory and store it ina aslot
+      call self % addTallyClerk( new_tallyClerk(locDict))
+
+    end do
+
 
   end subroutine init
 

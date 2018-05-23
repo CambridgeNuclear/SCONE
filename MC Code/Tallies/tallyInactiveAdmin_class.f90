@@ -2,10 +2,13 @@ module tallyInactiveAdmin_class
 
   use numPrecision
   use tallyCodes
+  use dictionary_class,        only : dictionary
   use tallyAdminBase_class,    only : tallyAdminBase, &
                                       reportCycleStart_super => reportCycleStart, &
                                       reportCycleEnd_super => reportCycleEnd, &
-                                      kill_super => kill
+                                      init_super => init, &
+                                      kill_super => kill, &
+                                      display_super => display
   use particle_class,          only : particle, phaseCoord
   use particleDungeon_class,   only : particleDungeon
   use keffInactiveClerk_class, only : keffInactiveClerk
@@ -23,10 +26,11 @@ module tallyInactiveAdmin_class
     ! Extend superclass procedures
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: init
     procedure :: kill
+    procedure :: display
 
     ! Overwrite superclass procedures
-    procedure :: display
 
 
   end type tallyInactiveAdmin
@@ -77,6 +81,28 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Initialise active admin
+  !!
+  subroutine init(self,dict)
+    class(tallyInactiveAdmin), intent(inout) :: self
+    type(dictionary),intent(in)              :: dict !* Will become class after keys func -> subroutines
+    type(dictionary)                         :: embDict
+
+    ! Get settings for the embedded clerk into dictionary
+    call embDict % init(1)
+    call embDict % store('type','keffInactiveClerk')
+
+    ! Initialise embedded clerk
+    call self % keff_estimator % init(embDict)
+
+    ! Load rest of the clerks
+    call init_super(self,dict)
+
+  end subroutine init
+
+
+
+  !!
   !! Deallocates all content
   !!
   subroutine kill(self)
@@ -97,6 +123,9 @@ contains
 
     print *,'Inactive Cycle:'
     call self % keff_estimator % display()
+
+    ! Call superclass procedure on self
+    call display_super(self)
 
   end subroutine display
     

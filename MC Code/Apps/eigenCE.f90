@@ -46,6 +46,7 @@ program eigenCE
 
   type(dictionary)      :: testDict
   type(dictionary)      :: clerkDict
+  type(dictionary)      :: adminDict
   type(IOdictionary)    :: IOdictTest
 
   !type(tallyAdminBase)  :: tallyActive
@@ -80,10 +81,13 @@ program eigenCE
   !***** Create Tallies
 
   call clerkDict % init(1)
-  call clerkDict % store('type','keffActiveClerk ')
+  !call clerkDict % store('type','keffActiveClerk ')
 
-  call tallyInactive % init()
-  call tallyActive % init()
+  call adminDict % init(1)
+  !call adminDict % store('keff',clerkDict)
+
+  call tallyInactive % init(adminDict)
+  call tallyActive % init(adminDict)
 
 !  call tallyInactive % addTallyClerk(new_tallyClerk_ptr(clerkDict) )
 
