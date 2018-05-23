@@ -81,6 +81,7 @@ contains
     ! Set tail status flag to false
     self % isInter = .false.
 
+
   end subroutine setTo
 
   !!
@@ -115,10 +116,13 @@ contains
 
     if (sameEnergy .and. tailIsNotInter) then
       call self % interpolateTail(self % low, self % top, self % f)
+      self % isInter = .true.
 
     elseif (.not. sameEnergy) then
       call self % setTo(E)
       call self % interpolate(self % low, self % top, self % f)
+      self % E = E
+      self % isInter = .true.
 
     end if
     ! If it is at sameEnergy with interpolated tail do nothing

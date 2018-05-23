@@ -81,10 +81,17 @@ program eigenCE
   !***** Create Tallies
 
   call clerkDict % init(1)
-  !call clerkDict % store('type','keffActiveClerk ')
-
   call adminDict % init(1)
+
+  call clerkDict % store('type','keffActiveClerk ')
   !call adminDict % store('keff',clerkDict)
+  call clerkDict % store('display','yes')
+
+
+  call adminDict % store('keff',clerkDict)
+  call adminDict % store('keff2',clerkDict)
+  call adminDict % store('keff3',clerkDict)
+  call adminDict % store('keff4',clerkDict)
 
   call tallyInactive % init(adminDict)
   call tallyActive % init(adminDict)

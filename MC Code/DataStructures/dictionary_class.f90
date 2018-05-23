@@ -942,7 +942,7 @@ contains
     select case (self % entries(idx) % getType())
       case(word)
         ! Check if the content character fits into value
-        if( len(value) < len(self % entries(idx) % char0_alloc)) then
+        if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
           call fatalError(Here,'value character is to short to store content. Increase its length')
         end if
 

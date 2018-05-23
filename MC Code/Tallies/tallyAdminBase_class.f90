@@ -2,7 +2,7 @@ module tallyAdminBase_class
 
   use numPrecision
   use tallyCodes
-  use genericProcedures,      only : fatalError
+  use genericProcedures,      only : fatalError, charCmp
   use dictionary_class,       only : dictionary
   use particle_class,         only : particle, phaseCoord
   use particleDungeon_class,  only : particleDungeon
@@ -40,6 +40,9 @@ module tallyAdminBase_class
     integer(shortInt),dimension(:),allocatable    :: histClerks
     integer(shortInt),dimension(:),allocatable    :: cycleStartClerks
     integer(shortInt),dimension(:),allocatable    :: cycleEndClerks
+
+    ! List of clerks to display
+    integer(shortInt), dimension(:),allocatable   :: displayList
 
   contains
     ! Report Interface
@@ -101,8 +104,12 @@ contains
   !!
   subroutine display(self)
     class(tallyAdminBase), intent(in) :: self
+    integer(shortInt)                 :: i
 
-    call self % tallyClerks(1) % display()
+    do i=1,size(self % displayList)
+      call self % tallyClerks(i) % display()
+
+    end do
 
   end subroutine display
 
@@ -234,6 +241,8 @@ contains
     type(dictionary), intent(in)                :: dict
     character(nameLen),dimension(:),allocatable :: clerks
     type(dictionary)                            :: locDict
+    character(nameLen)                          :: displayEntry
+    logical(defBool)                            :: partOfDisplay
     integer(shortInt)                           :: i, N
 
 
@@ -249,6 +258,8 @@ contains
     allocate(self % cycleStartClerks(0) )
     allocate(self % cycleEndClerks(0)   )
 
+    allocate(self% displayList(0)       )
+
     allocate(self % tallyClerks(0))
 
     ! Read all dictionaries
@@ -259,8 +270,12 @@ contains
       ! Copy dictionary to local copy
       call dict % get(locDict,clerks(i))
 
+      ! Check if it is part of the display
+      call locDict % getOrDefault(displayEntry,'display','no')
+      partOfDisplay = charCmp(displayEntry,'yes')
+
       ! Get new clerk from factory and store it ina aslot
-      call self % addTallyClerk( new_tallyClerk(locDict))
+      call self % addTallyClerk( new_tallyClerk(locDict),partOfDisplay)
 
     end do
 
@@ -270,9 +285,10 @@ contains
   !!
   !!
   !!
-  subroutine addTallyClerk(self,clerk)
+  subroutine addTallyClerk(self,clerk,partOfDisplay)
     class(tallyAdminBase), intent(inout)          :: self
     class(tallyClerk), intent(in)                 :: clerk
+    logical(defBool),intent(in)                   :: partOfDisplay
     type(tallyClerkSlot)                          :: localSlot
     integer(shortInt),dimension(:),allocatable    :: reportCodes
     integer(shortInt)                             :: N, i
@@ -302,6 +318,9 @@ contains
     do i=1,size(reportCodes)
       call self % addToReports( reportCodes(i), N )
     end do
+
+    ! If clerk is partOfDisplay append displayList
+    if (partOfDisplay) self % displayList = [self % displayList, N ]
 
   end subroutine addTallyClerk
 

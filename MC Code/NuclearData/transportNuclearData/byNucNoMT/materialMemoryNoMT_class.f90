@@ -129,9 +129,14 @@ contains
     sameEnergy     = (self % E == E)
 
     if (sameEnergy .and. tailIsNotInter) then
+      self % isCalc = .true.
       call self % calculateTail(E)
 
     elseif(.not. sameEnergy) then
+      !call self % calculateTotal(E)
+      !call self % calculateTail(E)
+      self % isCalc =.true.
+      self % E = E
       call self % calculateAll(E)
 
     end if
@@ -264,12 +269,16 @@ contains
       end if
       xsMicro(5) = xsMicro(4) * nu
 
+      ! Store nuclide contribution in CDF
+      self % nucCDF % nucTotalXS(i) = xsMicro(1) * nucDen
+
       ! Increase Material macroscopic XSs by the nuclide macroscopic XSs
       tempMacroXS = tempMacroXS + xsMicro * nucDen
 
     end do
 
     ! Load XS into Macro XS storage
+    self % nucCDF % matTotalXS = tempMacroXS(1)
     self % XS % totalXS   = tempMacroXS(1)
     self % XS % scatterXS = tempMacroXS(2)
     self % XS % captureXS = tempMacroXS(3)
