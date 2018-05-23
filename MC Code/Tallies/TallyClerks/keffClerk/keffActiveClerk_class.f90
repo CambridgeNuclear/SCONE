@@ -34,11 +34,13 @@ module keffActiveClerk_class
     type(tallyCounter)                   :: k_imp
 
     real(defReal)                        :: startWgt
+    real(defReal)                        :: targetSD = 0.0
 
   contains
     ! Deferred Interface Procedures
     procedure :: validReports
     procedure :: display
+    procedure :: isConverged
     procedure :: init
     procedure :: keff
 
@@ -79,6 +81,21 @@ contains
     print '(A,F8.5,A,F8.5)', 'k-eff (analog): ',  k_analog, ' +/- ', STD_analog
 
   end subroutine display
+
+  !!
+  !! Perform convergance check in the Clerk
+  !!
+  function isConverged(self) result(isIt)
+    class(keffActiveClerk), intent(in) :: self
+    logical(defBool)                   :: isIt
+    real(defReal)                      :: k, SD
+
+    call self % k_imp % getEstimate(k,SD,self % cycleCount)
+
+    isIt = (SD < self % targetSD)
+
+  end function isConverged
+
 
   !!
   !! Process collision report
@@ -202,8 +219,18 @@ contains
     character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
 
     call dict % get(type,'type')
+
+    ! Check that class description matches class name
     if ( .not.charCmp(CLASS_NAME,type) ) then
       call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+
+    end if
+
+    call dict % getOrDefault(type,'trigger','no')
+
+    ! Read convergance target
+    if( charCmp(type,'yes')) then
+      call dict % get(self % targetSD,'SDtarget')
 
     end if
 

@@ -31,6 +31,8 @@ module tallyClerk_inter
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
 
+    procedure :: isConverged
+
     procedure(validReports), deferred :: validReports
     procedure(display), deferred      :: display
     procedure(init),deferred          :: init
@@ -171,5 +173,17 @@ contains
     call fatalError(Here,'Report was send to an instance that does not support it.')
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Perform convergance check in the Clerk
+  !!
+  function isConverged(self) result(isIt)
+    class(tallyClerk), intent(in) :: self
+    logical(defBool)              :: isIt
+    character(100),parameter  :: Here = 'isConverged (tallyClerk_inter.f90)'
+
+    call fatalError(Here,'Convergence check is not implemented in the instance')
+
+  end function isConverged
 
 end module tallyClerk_inter

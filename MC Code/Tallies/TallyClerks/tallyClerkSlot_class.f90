@@ -27,6 +27,8 @@ module tallyClerkSlot_class
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
 
+    procedure :: isConverged
+
     procedure :: validReports
     procedure :: display
     ! Initialisation procedure -> return error Slot is a container
@@ -140,6 +142,18 @@ contains
     call self % slot % reportCycleEnd(end)
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Perform convergance check in the Clerk
+  !!
+  function isConverged(self) result(isIt)
+    class(tallyClerkSlot), intent(in) :: self
+    logical(defBool)                  :: isIt
+
+    ! Pass call to instance in the slot
+    isIt = self % slot % isConverged()
+
+  end function isConverged
 
   !!
   !! Returns array of codes that represent diffrent reports

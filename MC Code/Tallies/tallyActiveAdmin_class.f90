@@ -2,12 +2,14 @@ module tallyActiveAdmin_class
 
   use numPrecision
   use tallyCodes
+  use genericProcedures,       only : charCmp
   use dictionary_class,        only : dictionary
   use tallyAdminBase_class,    only : tallyAdminBase, &
                                       reportInColl_super => reportInColl, &
                                       reportHist_super => reportHist, &
                                       reportCycleStart_super => reportCycleStart, &
                                       reportCycleEnd_super => reportCycleEnd, &
+                                      isConverged_super => isConverged, &
                                       init_super => init ,&
                                       kill_super => kill ,&
                                       display_super => display
@@ -21,6 +23,7 @@ module tallyActiveAdmin_class
   type, public,extends(tallyAdminBase) :: tallyActiveAdmin
     private
     type(keffActiveClerk) :: keff_estimator
+    logical(defBool)      :: keff_convergence = .false.
   contains
     ! New Interface
     procedure :: keff
@@ -33,6 +36,7 @@ module tallyActiveAdmin_class
     procedure :: init
     procedure :: kill
     procedure :: display
+    procedure :: isConverged
 
   end type tallyActiveAdmin
 
@@ -120,9 +124,21 @@ contains
     class(tallyActiveAdmin), intent(inout) :: self
     type(dictionary),intent(in)            :: dict !* Will become class after keys func -> subroutines
     type(dictionary)                       :: embDict
+    character(nameLen)                     :: entry
+    real(defReal)                          :: temp
 
-    ! Get settings for the embedded clerk into dictionary
-    call embDict % init(1)
+    call embDict % init(3)
+
+    ! Read settings for embedded clerk and put them into embDict
+    call dict % getOrDefault(entry,'trigger','no')
+
+    if( charCmp(entry,'yes') ) then
+      self % keff_convergence = .true.
+      call dict % get(temp,'SDtarget')
+      call embDict % store('trigger','yes')
+      call embDict % store('SDtarget',temp)
+    end if
+
     call embDict % store('type','keffActiveClerk')
 
     ! Initialise embedded clerk
@@ -160,5 +176,26 @@ contains
 
   end subroutine display
 
+  !!
+  !!
+  !!
+  function isConverged(self) result(isIt)
+    class(tallyActiveAdmin), intent(in)    :: self
+    logical(defBool)                       :: isIt
+
+    if( self % keff_convergence) then
+      isIt = self % keff_estimator % isConverged()
+
+      if ( self % checkConvergence ) isIt = isIt .and. isConverged_super(self)
+
+    else if ( self % checkConvergence ) then
+       isIt = isConverged_super(self)
+
+    else
+      isIt = .false.
+
+    end if
+
+  end function isConverged
     
 end module tallyActiveAdmin_class

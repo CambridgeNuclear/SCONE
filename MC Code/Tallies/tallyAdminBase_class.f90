@@ -30,6 +30,8 @@ module tallyAdminBase_class
   !!
   type, public:: tallyAdminBase
     private
+    logical(defBool), public :: checkConvergence = .false.
+
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
 
     ! Lists of Clerks to be executed for each procedure
@@ -43,6 +45,7 @@ module tallyAdminBase_class
 
     ! List of clerks to display
     integer(shortInt), dimension(:),allocatable   :: displayList
+    integer(shortInt), dimension(:),allocatable   :: triggerList
 
   contains
     ! Report Interface
@@ -56,6 +59,9 @@ module tallyAdminBase_class
 
     ! Display procedures
     procedure :: display
+
+    ! Convergance check
+    procedure :: isConverged
 
     ! File writing procedures
     !procedure :: print
@@ -78,6 +84,7 @@ module tallyAdminBase_class
   public :: reportCycleStart
   public :: reportCycleEnd
   public :: display
+  public :: isConverged
   public :: init
   public :: kill
     
@@ -100,18 +107,42 @@ contains
   end subroutine reportInColl
 
   !!
-  !! *** DEBUG *** IMPLEMENTATION WILL CHANGE
+  !! Display convergance progress of selected tallies on the console
   !!
   subroutine display(self)
     class(tallyAdminBase), intent(in) :: self
     integer(shortInt)                 :: i
 
+    ! Go through all clerks marked as part of the display
     do i=1,size(self % displayList)
       call self % tallyClerks(i) % display()
 
     end do
 
   end subroutine display
+
+  !!
+  !! Perform convergence check in selected clerks
+  !!
+  function isConverged(self) result(isIt)
+    class(tallyAdminBase), intent(in)    :: self
+    logical(defBool)                     :: isIt
+    integer(shortInt)                    :: i,N
+
+    N = size( self % triggerList)
+
+    if( N > 0 ) then
+      isIt = self % tallyClerks(1) % isConverged()
+      do i = 2,N
+      isIt = isIt .and. self % tallyClerks(i) % isConverged()
+
+      end do
+    else
+      isIt = .false.
+
+    end if
+
+  end function isConverged
 
   !!
   !! Process outgoing collision report
@@ -232,7 +263,7 @@ contains
   end subroutine reportCycleEnd
 
   !!
-  !!
+  !! Initialise tallyAdminBase form dictionary
   !!
   subroutine init(self,dict)
     class(tallyAdminBase), intent(inout)        :: self
@@ -241,8 +272,8 @@ contains
     type(dictionary), intent(in)                :: dict
     character(nameLen),dimension(:),allocatable :: clerks
     type(dictionary)                            :: locDict
-    character(nameLen)                          :: displayEntry
-    logical(defBool)                            :: partOfDisplay
+    character(nameLen)                          :: entry
+    logical(defBool)                            :: partOfDisplay, partOfTriggers
     integer(shortInt)                           :: i, N
 
 
@@ -259,6 +290,7 @@ contains
     allocate(self % cycleEndClerks(0)   )
 
     allocate(self% displayList(0)       )
+    allocate(self% triggerList(0)       )
 
     allocate(self % tallyClerks(0))
 
@@ -271,11 +303,15 @@ contains
       call dict % get(locDict,clerks(i))
 
       ! Check if it is part of the display
-      call locDict % getOrDefault(displayEntry,'display','no')
-      partOfDisplay = charCmp(displayEntry,'yes')
+      call locDict % getOrDefault(entry,'display','no')
+      partOfDisplay = charCmp(entry,'yes')
+
+      ! Check if it is part of the convergance triggers
+      call locDict % getOrDefault(entry,'trigger','no')
+      partOfTriggers = charCmp(entry,'yes')
 
       ! Get new clerk from factory and store it ina aslot
-      call self % addTallyClerk( new_tallyClerk(locDict),partOfDisplay)
+      call self % addTallyClerk( new_tallyClerk(locDict),partOfDisplay,partOfTriggers)
 
     end do
 
@@ -283,12 +319,13 @@ contains
   end subroutine init
 
   !!
+  !! Attach new tally
   !!
-  !!
-  subroutine addTallyClerk(self,clerk,partOfDisplay)
+  subroutine addTallyClerk(self, clerk, partOfDisplay, partOfTriggers)
     class(tallyAdminBase), intent(inout)          :: self
     class(tallyClerk), intent(in)                 :: clerk
     logical(defBool),intent(in)                   :: partOfDisplay
+    logical(defBool),intent(in)                   :: partOfTriggers
     type(tallyClerkSlot)                          :: localSlot
     integer(shortInt),dimension(:),allocatable    :: reportCodes
     integer(shortInt)                             :: N, i
@@ -322,6 +359,10 @@ contains
     ! If clerk is partOfDisplay append displayList
     if (partOfDisplay) self % displayList = [self % displayList, N ]
 
+    ! If clerk is partOfTriggers append triggerList
+    if (partOfTriggers) self % triggerList = [self % triggerList, N ]
+    if (partOfTriggers) self % checkConvergence = .true.
+
   end subroutine addTallyClerk
 
   !!
@@ -332,6 +373,9 @@ contains
 
     if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
 
+    if(allocated(self % displayList)) deallocate( self % displayList)
+    if(allocated(self % triggerList)) deallocate( self % triggerList)
+
     if(allocated(self % inCollClerks))     deallocate( self % inCollClerks)
     if(allocated(self % outCollClerks))    deallocate( self % outCollClerks )
     if(allocated(self % pathClerks))       deallocate( self % pathClerks )
@@ -339,6 +383,7 @@ contains
     if(allocated(self % histClerks))       deallocate( self % histClerks )
     if(allocated(self % cycleStartClerks)) deallocate( self % cycleStartClerks )
     if(allocated(self % cycleEndClerks))   deallocate( self % cycleEndClerks )
+
 
   end subroutine kill
 

@@ -103,13 +103,19 @@ contains
     class(keffInactiveClerk),intent(inout) :: self
     class(dictionary), intent(in)          :: dict
     character(nameLen)                     :: type
-    character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
+    character(100),parameter :: Here ='init (keffInctiveClerk_class.f90)'
 
+    ! Check that class description matches class name
     call dict % get(type,'type')
-    if ( .not.charCmp(CLASS_NAME, type) ) then
+    if( .not.charCmp(CLASS_NAME, type) ) then
       call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
 
+    else if( dict % isPresent('trigger')) then
+      call fatalError(Here,'keffInactiveClerk cannot be a convergance trigger')
+
     end if
+
+
 
   end subroutine init
 

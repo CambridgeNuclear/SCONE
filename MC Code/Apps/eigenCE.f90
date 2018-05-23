@@ -80,18 +80,23 @@ program eigenCE
 
   !***** Create Tallies
 
-  call clerkDict % init(1)
-  call adminDict % init(1)
+  call clerkDict % init(10)
+  call adminDict % init(10)
 
   call clerkDict % store('type','keffActiveClerk ')
-  !call adminDict % store('keff',clerkDict)
+  call clerkDict % store('trigger','no')
+  call clerkDict % store('SDtarget',0.0002_8)
   call clerkDict % store('display','yes')
-
-
   call adminDict % store('keff',clerkDict)
-  call adminDict % store('keff2',clerkDict)
-  call adminDict % store('keff3',clerkDict)
-  call adminDict % store('keff4',clerkDict)
+  !call clerkDict % store('display','yes')
+
+
+!  call adminDict % store('keff',clerkDict)
+!  call adminDict % store('keff2',clerkDict)
+!  call adminDict % store('keff3',clerkDict)
+
+  call adminDict % store('trigger','no')
+  call adminDict % store('SDtarget', 0.0003_8)
 
   call tallyInactive % init(adminDict)
   call tallyActive % init(adminDict)
@@ -202,6 +207,7 @@ program eigenCE
     cycle2 % k_eff = k_new
     print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
     call tallyInactive % display()
+    !print *, tallyInactive % isConverged()
   end do
 
 ! ************************************
@@ -284,6 +290,7 @@ program eigenCE
 
     print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
     call tallyActive % display()
+    !print *, tallyActive % isConverged()
   end do
 
 

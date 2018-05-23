@@ -250,10 +250,10 @@ contains
     ! Call getEstimate without STD to calculate mean
     call self % getEstimate(est,N)
 
-    ! Protect against STD = NaN if N == 1. Return 0.0 variance
+    ! Protect against STD = NaN if N == 1. Return variance equal to estimate
     ! This mostly done for aesthetics. Single sample estimate is unrealible
     if ( N == 1) then
-      STD = ZERO
+      STD = est
 
     else ! when N /= 1
       ! Precalculate denominator (N-1)
