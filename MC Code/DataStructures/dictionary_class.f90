@@ -1233,11 +1233,11 @@ contains
   !!
   !! Returns an array of all keywords associated with a real rank 0
   !!
-  function keysReal(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysReal(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1246,16 +1246,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysReal
+  end subroutine keysReal
 
   !!
   !! Returns an array of all keywords associated with a real rank 1
   !!
-  function keysRealArray(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysRealArray(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1264,16 +1264,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysRealArray
+  end subroutine keysRealArray
 
   !!
   !! Returns an array of all keywords associated with an integer rank 0
   !!
-  function keysInt(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysInt(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1282,16 +1282,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysInt
+  end subroutine keysInt
 
   !!
   !! Returns an array of all keywords associated with an integer rank 0
   !!
-  function keysIntArray(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysIntArray(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1300,16 +1300,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysIntArray
+  end subroutine keysIntArray
 
   !!
   !! Returns an array of all keywords associated with an character rank 0
   !!
-  function keysChar(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysChar(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1318,16 +1318,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysChar
+  end subroutine keysChar
 
   !!
   !! Returns an array of all keywords associated with an character rank 1
   !!
-  function keysCharArray(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysCharArray(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1336,16 +1336,16 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysCharArray
+  end subroutine keysCharArray
 
   !!
   !! Returns an array of all keywords associated with a dictionary rank 0
   !!
-  function keysDict(self) result(keys)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    logical(defBool),dimension(:),allocatable    :: mask
-    integer(shortInt)                            :: L
+  subroutine keysDict(self,keys)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keys
+    logical(defBool),dimension(:),allocatable                :: mask
+    integer(shortInt)                                        :: L
 
     L = self % dictLen
     allocate( mask(L) )
@@ -1354,7 +1354,7 @@ contains
 
     keys = pack(self % keywords(1:L), mask)
 
-  end function keysDict
+  end subroutine keysDict
 
 !  !!
 !  !! Return all dictionarys with a specific type keword
@@ -1404,15 +1404,15 @@ contains
   !!
   !! Returns an array of all keywords
   !!
-  function keys(self)
-    class(dictionary), intent(in)                :: self
-    character(nameLen),dimension(:), allocatable :: keys
-    integer(shortInt)                            :: L
+  subroutine keys(self,keysArr)
+    class(dictionary), intent(in)                            :: self
+    character(nameLen),dimension(:), allocatable,intent(out) :: keysArr
+    integer(shortInt)                                        :: L
 
-    L    = self % dictLen
-    keys = self % keywords(1:L)
+    L       = self % dictLen
+    keysArr = self % keywords(1:L)
 
-  end function keys
+  end subroutine keys
 
   !!
   !! Stores a real rank 0 in dictionary

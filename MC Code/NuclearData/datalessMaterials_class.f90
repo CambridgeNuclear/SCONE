@@ -50,7 +50,7 @@ contains
 
     if(allocated(self % materials)) deallocate(self % materials)
 
-    self % materials = dict % keysDict()
+    call dict % keysDict(self % materials)
 
   end subroutine init_fromDict
 

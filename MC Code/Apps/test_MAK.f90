@@ -471,7 +471,7 @@ program test
 !
 !  print *, testType % b
 !! stop
-  call IOdictTest % initFrom(testDictFile)
+!  call IOdictTest % initFrom(testDictFile)
 
 !  print *, "TOP DICTIONARY"
 !  print *, IOdictTest % getRealArray('list1')
@@ -488,7 +488,7 @@ program test
 !  print *, testDict % getInt('keyword')
 !  print *, testDict % getReal('keyword2')
 !  print *, testDict % getChar('keyword3')
-  print *, testDict % getIntArray('list2')
+! print *, testDict % getIntArray('list2')
 !
 !  testDict2 = testDict % getDict('dictionary3')
 !
@@ -507,25 +507,20 @@ program test
 !  print *, "NESTED DICTONARY 3.1"
 !  print *, testDict4 % getReal('key')
 !  print *, testDict4 % getInt('key2')
-
-
- print *, IOdictTest % keysReal()
- print *, IOdictTest % keysInt()
- print *, IOdictTest % keysChar()
- print *, IOdictTest % keysRealArray()
- print *, IOdictTest % keysIntArray()
- print *, IOdictTest % keysCharArray()
- print *, IOdictTest % keysDict()
-
+!print *, IOdictTest % keysReal()
+!print *, IOdictTest % keysInt()
+!print *, IOdictTest % keysChar()
+!print *, IOdictTest % keysRealArray()
+!print *, IOdictTest % keysIntArray()
+!print *, IOdictTest % keysCharArray()
+!print *, IOdictTest % keysDict()
 ! print *, IOdictTest % getCharArray('list3')
-
- do i=1,100000
-   !print *, i
-   call testDict % kill()
-   call IOdictTest % get(testDict,'dictionary1')
- end do
-
- stop
+!do i=1,100000
+!  !print *, i
+!  call testDict % kill()
+!  call IOdictTest % get(testDict,'dictionary1')
+!end do
+!stop
 
 !  maxSpec => maxwellSpectrum( [1.0E-11_8, 20.0_8], [1.33974_8, 1.33974_8], -20.0_8)
 !

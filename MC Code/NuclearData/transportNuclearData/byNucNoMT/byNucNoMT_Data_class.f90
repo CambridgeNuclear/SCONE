@@ -74,22 +74,25 @@ contains
   subroutine readMaterials(self,matDict)
     class(byNucNoMT_Data), intent(inout)        :: self
     type(dictionary), intent(in)                :: matDict
+    type(dictionary)                            :: locDict
+    character(nameLen)                          :: matName
     integer(shortInt)                           :: nMat, i
     character(nameLen),dimension(:),allocatable :: matNames
-    character(nameLen)                          :: matName
-    ! Find number of materials in a problem
-    nMat = size(matDict % keysDict() )
-
-    ! Allocate memory for material data
-    allocate(self % matData(nMat ))
 
     ! Load material names
-    matNames = matDict % keysDict()
+    call matDict % keysDict(matNames)
+
+    ! Find number of materials
+    nMat = size(matNames )
+
+    ! Allocate material data
+    allocate(self % matData(nMat))
 
     ! Load individual material data
     do i=1,nMat
       matName = matNames(i)
-      call self % matData(i) % init(matDict % getDict(matName ), matName)
+      call matDict % get(locDict, matName)
+      call self % matData(i) % init(locDict, matName)
 
     end do
 

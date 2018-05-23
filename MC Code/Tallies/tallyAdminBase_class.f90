@@ -295,7 +295,7 @@ contains
     allocate(self % tallyClerks(0))
 
     ! Read all dictionaries
-    clerks = dict % keysDict()
+    call dict % keysDict(clerks)
 
     ! Load all dictionaries as clerks
     do i=1,size(clerks)

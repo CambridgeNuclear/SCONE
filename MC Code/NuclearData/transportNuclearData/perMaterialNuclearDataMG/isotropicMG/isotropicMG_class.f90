@@ -69,13 +69,17 @@ contains
   !! Load material data from a dictionary
   !!
   subroutine init(self,dict)
-    class(isotropicMG), intent(inout) :: self
-    type(dictionary), intent(in)      :: dict
-    integer(shortInt)                 :: nG,nMat,matIdx
+    class(isotropicMG), intent(inout)           :: self
+    type(dictionary), intent(in)                :: dict
+    character(nameLen),dimension(:),allocatable :: matNames
+    integer(shortInt)                           :: nG,nMat,matIdx
+
+    ! Read material names
+    call dict % keysDict(matNames)
 
     ! Read number of energy groups and materials
     nG = dict % getInt('numberOfGroups')
-    nMat = size( dict % keysDict() )
+    nMat = size( matNames )
 
     self % nG   = nG
     self % nMat = nMat
@@ -94,7 +98,7 @@ contains
     allocate( self % matData(nMat)          )
 
     ! Read material names
-    self % matData(:) % matName = dict % keysDict()
+    self % matData(:) % matName = matNames
 
     ! Read individual material data
     do matIdx=1,nMat

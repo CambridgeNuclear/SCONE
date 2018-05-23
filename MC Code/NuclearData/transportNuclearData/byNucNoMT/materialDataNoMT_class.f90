@@ -50,10 +50,12 @@ contains
 
     ! Read required data
     self % name = name
+
     self % temp = dict % getReal('temp')
 
     ! Load nuclides Keys
-    nucKeys = dict % keys()
+
+    call dict % keys(nucKeys)
 
     call filterNotNuclides(nucKeys)
 

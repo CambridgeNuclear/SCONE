@@ -22,6 +22,8 @@ program dictTest
   character(nameLen), dimension(:), allocatable :: c_alloc
   character(nameLen), dimension(:), pointer     :: c_p => null()
 
+  character(nameLen), dimension(:), allocatable :: keys1
+
   ! Main body
 
   ! Read IO dictionary
@@ -95,9 +97,15 @@ program dictTest
   call dict % get(r,'keyword')
   call dict % get(i_alloc,'list2')
   print *, i_alloc, r
-  print *, dict % keys()
-  print *, dict % keysDict()
-  print *, dict % keysReal()
+
+  call dict % keys(keys1)
+  print *, keys1
+
+  call dict % keysDict(keys1)
+  print *, keys1
+
+  call dict % keysReal(keys1)
+  print *, keys1
 
 
   ! Avoid false report of memory leak from valgrind
