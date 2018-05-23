@@ -23,7 +23,8 @@ module nuclideMemoryNoMT_class
     logical(defBool)                 :: isInter      = .false. !! Are XS other then total up-to-date with energy
     type(xsEnergyPointNoMT), pointer :: low          => null() !! Pointer to low energy point
     type(xsEnergyPointNoMT), pointer :: top          => null() !! Pointer to top energy point
-    type(aceNoMT), pointer           :: data         => null() !! Pointer to nuclide data
+    ! *** Temporary made public to allow obtaining nu in materialMemory
+    type(aceNoMT), pointer,public    :: data         => null() !! Pointer to nuclide data
   contains
     procedure :: init
 
@@ -80,6 +81,7 @@ contains
     ! Set tail status flag to false
     self % isInter = .false.
 
+
   end subroutine setTo
 
   !!
@@ -114,10 +116,13 @@ contains
 
     if (sameEnergy .and. tailIsNotInter) then
       call self % interpolateTail(self % low, self % top, self % f)
+      self % isInter = .true.
 
     elseif (.not. sameEnergy) then
       call self % setTo(E)
       call self % interpolate(self % low, self % top, self % f)
+      self % E = E
+      self % isInter = .true.
 
     end if
     ! If it is at sameEnergy with interpolated tail do nothing

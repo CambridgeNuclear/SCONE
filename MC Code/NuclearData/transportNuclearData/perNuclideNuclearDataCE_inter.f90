@@ -21,33 +21,37 @@ module perNuclideNuclearDataCE_inter
     generic :: getTransXS    => getTransXS_E
     generic :: getMajorantXS => getMajorantXS_E
     generic :: getTotalMatXS => getTotalMatXS_E
+    generic :: getMatMacroXS => getMatMacroXS_E
 
     ! Adapters to transport procedures
     procedure :: getTransXS_p
     procedure :: getMajorantXS_p
     procedure :: getTotalMatXS_p
+    procedure :: getMatMacroXS_p
+
     procedure :: initFissionSite
 
     ! Per energy access to transport xs data by Energy
-    procedure(getTransXS_E),deferred     :: getTransXS_E
-    procedure(getMajorantXS_E),deferred  :: getMajorantXS_E
-    procedure(getTotalMatXS_E),deferred  :: getTotalMatXS_E
-    procedure(initFissionSite_E),deferred:: initFissionSite_E
+    procedure(getTransXS_E),deferred      :: getTransXS_E
+    procedure(getMajorantXS_E),deferred   :: getMajorantXS_E
+    procedure(getTotalMatXS_E),deferred   :: getTotalMatXS_E
+    procedure(getMatMacroXS_E), deferred  :: getMatMacroXS_E
+    procedure(initFissionSite_E),deferred :: initFissionSite_E
+
 
     ! Procedures to obtain nuclide data
     procedure(getMainNucXS),deferred      :: getMainNucXS
     procedure(xsOf), deferred             :: xsOf
     procedure(invertScattering), deferred :: invertScattering
+    procedure(releaseAt),deferred         :: releaseAt
     procedure(sampleMuEout),deferred      :: sampleMuEout
     procedure(sampleMu),deferred          :: sampleMu
-    procedure(releaseAt),deferred         :: releaseAt
     procedure(isInCMframe),deferred       :: isInCMframe
     procedure(isFissileNuc),deferred      :: isFissileNuc
     procedure(getMass),deferred           :: getMass
     procedure(getkT),deferred             :: getkT
 
     procedure(getNucMacroXS),deferred     :: getNucMacroXS
-    procedure(getMatMacroXS), deferred    :: getMatMacroXS
 
   end type perNuclideNuclearDataCE
 
@@ -91,6 +95,20 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt), intent(in)                 :: matIdx
       real(defReal)                                 :: xs
     end function getTotalMatXS_E
+
+    !!
+    !! Get set of material macroscopic xross-sections
+    !!
+    subroutine getMatMacroXS_E(self,macroXS,E,matIdx)
+      import :: xsMacroSet_ptr, &
+                defReal, &
+                shortInt, &
+                perNuclideNuclearDataCE
+      class(perNuclideNuclearDataCE), intent(inout) :: self
+      type(xsMacroSet_ptr),intent(inout)            :: macroXS
+      real(defReal),intent(in)                      :: E
+      integer(shortInt),intent(in)                  :: matIdx
+    end subroutine getMatMacroXS_E
 
     !!
     !! Sample fission site knowing that particle is in fissile material and is CE
@@ -146,6 +164,20 @@ module perNuclideNuclearDataCE_inter
     end function invertScattering
 
     !!
+    !! Returns average neutron emission at a given energy
+    !!
+    function releaseAt(self,E_in,MT,nucIdx) result(nu)
+      import :: perNuclideNuclearDataCE, &
+                defReal ,&
+                shortInt
+      class(perNuclideNuclearDataCE), intent(in)  :: self
+      real(defReal), intent(in)     :: E_in
+      integer(shortInt), intent(in) :: MT
+      integer(shortInt), intent(in) :: nucIdx
+      real(defReal)                 :: nu
+    end function releaseAt
+
+    !!
     !! Sample deflection angle  and emission energy for given MT and nuclide index
     !!
     subroutine sampleMuEout(self,mu,E_out,E_in,rand,MT,nucIdx)
@@ -177,20 +209,6 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt), intent(in)               :: MT
       integer(shortInt), intent(in)               :: nucIdx
     end subroutine sampleMu
-
-    !!
-    !! Returns average neutron emission at a given energy
-    !!
-    function releaseAt(self,E_in,MT,nucIdx) result(nu)
-      import :: perNuclideNuclearDataCE, &
-                defReal ,&
-                shortInt
-      class(perNuclideNuclearDataCE), intent(in)  :: self
-      real(defReal), intent(in)     :: E_in
-      integer(shortInt), intent(in) :: MT
-      integer(shortInt), intent(in) :: nucIdx
-      real(defReal)                 :: nu
-    end function releaseAt
 
     !!
     !! Function which returns .true. if emission data is provided in CM frame for a given MT and
@@ -256,22 +274,6 @@ module perNuclideNuclearDataCE_inter
       integer(shortInt),intent(in)                  :: matIdx
     end subroutine getNucMacroXS
 
-
-    !!
-    !! Get set of material macroscopic xross-sections
-    !!
-    subroutine getMatMacroXS(self,macroXS,E,matIdx)
-      import :: xsMacroSet_ptr, &
-                defReal, &
-                shortInt, &
-                perNuclideNuclearDataCE
-      class(perNuclideNuclearDataCE), intent(inout) :: self
-      type(xsMacroSet_ptr),intent(inout)            :: macroXS
-      real(defReal),intent(in)                      :: E
-      integer(shortInt),intent(in)                  :: matIdx
-    end subroutine getMatMacroXS
-
-
   end interface
 
 contains
@@ -331,6 +333,25 @@ contains
     xs = self % getTotalMatXS_E(p % E, matIdx)
 
   end function getTotalMatXS_p
+
+  !!
+  !! getMatMacroXS adapter to translate call with particle to a call with energy value
+  !! Returns error if multigroup neutron is provided
+  !!
+  subroutine getMatMacroXS_p(self,macroXS,p,matIdx)
+    class(perNuclideNuclearDataCE), intent(inout) :: self
+    type(xsMacroSet_ptr),intent(inout)            :: macroXS
+    class(particle), intent(in)                   :: p
+    integer(shortInt),intent(in)                  :: matIdx
+    character(100), parameter         :: Here='getMatMacroXS_p (perNuclideNuclearDataCE_inter.f90)'
+
+    if (p % isMG) then
+      call fatalError(Here,'Multigroup neutron given to CE nuclear Data')
+    end if
+
+    call self % getMatMacroXS_E(macroXS, p % E, matIdx)
+
+  end subroutine getMatMacroXS_p
 
   !!
   !! Function to generate a fission site from a fissile material.

@@ -11,10 +11,11 @@ module xsMacroSet_class
   !! Package of material macroscopic XSs. Will be used by tallies as well.
   !!
   type, public :: xsMacroSet
-    real(defReal) :: totalXS   = 0.0
-    real(defReal) :: scatterXS = 0.0
-    real(defReal) :: captureXS = 0.0
-    real(defReal) :: fissionXS = 0.0
+    real(defReal) :: totalXS     = 0.0
+    real(defReal) :: scatterXS   = 0.0
+    real(defReal) :: captureXS   = 0.0
+    real(defReal) :: fissionXS   = 0.0
+    real(defReal) :: nuFissionXS = 0.0
   contains
     procedure :: invert
     procedure :: dummy
@@ -34,11 +35,12 @@ module xsMacroSet_class
     procedure :: shallowCopy_pointer
 
     ! Procedures to Access Target
-    procedure :: totalXS   => totalXS_ptr
-    procedure :: scatterXS => scatterXS_ptr
-    procedure :: captureXS => captureXS_ptr
-    procedure :: fissionXS => fissionXS_ptr
-    procedure :: invert    => invert_ptr
+    procedure :: totalXS     => totalXS_ptr
+    procedure :: scatterXS   => scatterXS_ptr
+    procedure :: captureXS   => captureXS_ptr
+    procedure :: fissionXS   => fissionXS_ptr
+    procedure :: nuFissionXS => nuFissionXS_ptr
+    procedure :: invert      => invert_ptr
   end type xsMacroSet_ptr
 
 contains
@@ -174,6 +176,34 @@ contains
     xs = self % ptr % fissionXS
 
   end function fissionXS_ptr
+
+  !!
+  !! Access nu*Fission Macroscopic XS
+  !!
+  function nuFissionXS_ptr(self) result(xs)
+    class(xsMacroSet_ptr), intent(in) :: self
+    real(defReal)                     :: xs
+
+    xs = self % ptr % nuFissionXS
+
+  end function nuFissionXS_ptr
+
+  !!
+  !! Obtain material average nu
+  !!
+  function nu_ptr(self) result(nu)
+    class(xsMacroSet_ptr), intent(in) :: self
+    real(defReal)                     :: nu
+
+    if ( self % ptr % fissionXS == ZERO) then
+      nu = ZERO
+
+    else
+      nu = self % ptr % nuFissionXS / self % ptr % fissionXS
+
+    end if
+  end function nu_ptr
+
 
   !!
   !! Access Invert procedure

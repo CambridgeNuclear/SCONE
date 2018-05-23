@@ -7,11 +7,19 @@ program eigenCE
   !use collisionOperator_class,           only : collisionOperator
   use perNuclideCollisionOpCE_class,     only : perNuclideCollisionOpCE
   use perNuclideImplicitCaptureCE_class, only : perNuclideImplicitCaptureCE
-  use particle_class,                    only : particle
+  use particle_class,                    only : particle, phaseCoord
   use particleDungeon_class,             only : particleDungeon
 
   use dictionary_class ,       only : dictionary
   use IOdictionary_class,      only : IOdictionary
+
+  use tallyAdminBase_class,    only : tallyAdminBase
+  use keffActiveClerk_class,   only : keffActiveClerk
+  use keffInactiveClerk_class, only : keffInactiveClerk
+  use tallyInactiveAdmin_class, only : tallyInactiveAdmin
+  use tallyActiveAdmin_class,   only : tallyActiveAdmin
+
+  use tallyClerkFactory_func,  only : new_tallyClerk, new_tallyClerk_ptr
 
   implicit none
 
@@ -28,14 +36,25 @@ program eigenCE
   integer(shortInt)          :: N, i
   real(defReal)              :: Emax,Emin,Umax,Umin
   real(defReal)              :: k_old, k_new, ksum, ksum2, varK
+  real(defReal)              :: leakProb, r1
   integer(shortInt)          :: nBins, idx
   integer(shortInt)          :: nInactive, nActive, startPop, endPop
 
   type(particleDungeon),pointer              :: cycle1, cycle2, cycleTemp
   integer(longInt), dimension(:),allocatable :: tally
+  type(phaseCoord) :: pre
 
   type(dictionary)      :: testDict
+  type(dictionary)      :: clerkDict
+  type(dictionary)      :: adminDict
   type(IOdictionary)    :: IOdictTest
+
+  !type(tallyAdminBase)  :: tallyActive
+  !type(tallyAdminBase)  :: tallyInactive
+  type(tallyInactiveAdmin) :: tallyInactive
+  type(tallyActiveAdmin) :: tallyActive
+  type(keffActiveClerk)    :: k_imp
+  type(keffInactiveClerk)  :: k_ana
 
   !### Declarations end
   !### Main Programme Begins
@@ -59,10 +78,38 @@ program eigenCE
 
   ce => ce_implement
 
+  !***** Create Tallies
+
+  call clerkDict % init(10)
+  call adminDict % init(10)
+
+  call clerkDict % store('type','keffActiveClerk ')
+  call clerkDict % store('trigger','no')
+  call clerkDict % store('SDtarget',0.0002_8)
+  call clerkDict % store('display','yes')
+  call adminDict % store('keff',clerkDict)
+  !call clerkDict % store('display','yes')
+
+
+!  call adminDict % store('keff',clerkDict)
+!  call adminDict % store('keff2',clerkDict)
+!  call adminDict % store('keff3',clerkDict)
+
+  call adminDict % store('trigger','no')
+  call adminDict % store('SDtarget', 0.0003_8)
+
+  call tallyInactive % init(adminDict)
+  call tallyActive % init(adminDict)
+
+!  call tallyInactive % addTallyClerk(new_tallyClerk_ptr(clerkDict) )
+
+ ! call tallyActive % addTallyClerk(new_tallyClerk(clerkDict))
 
   collisionPhysics % xsData => ce
 
    print *, 'Here'
+
+
 
   Emax = 20.0
   Emin = 1.0E-11
@@ -74,6 +121,8 @@ program eigenCE
   N = 5000
   allocate(tally(nBins))
   tally = 0
+  leakProb = 0.0005_8
+  leakProb = 0.0
 
   allocate(cycle1)
   allocate(cycle2)
@@ -86,6 +135,7 @@ program eigenCE
 
 ! ##### Population initialisation
   neutron % pRNG => RNGptr
+  neutron % xsData => ce
   do i=1,N
     neutron % E      = 0.5
     call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
@@ -100,23 +150,46 @@ program eigenCE
 
   do i=1,nInactive
     startPop = cycle1 % popSize()
+    !*** Send report to tally
+    call tallyInactive % reportCycleStart(cycle1)
     generation: do
 
       call cycle1 % release(neutron)
       neutron % matIdx = 4
 
       History: do
+        ! Save beginning of history info
+        pre = neutron
+
         ! Tally energy
         !idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         !tally(idx) = tally(idx) + 1
-        call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit History
 
+        ! Check if leaked
+        r1 = RNGptr % get()
+        if( r1 < leakProb ) then ! Neutron has leaked
+          call tallyInactive % reportHist(pre,neutron,5001)
+          exit History
+
+        end if
+
+        !** Send report to tally
+        call tallyInactive  % reportInColl(neutron)
+        !**
+        call collisionPhysics % collide(neutron,cycle1,cycle2)
+        if(neutron % isDead) then
+          call tallyInactive % reportHist(pre,neutron,5000)
+          exit History
+        end if
       end do History
 
      if(cycle1 % isEmpty() ) exit generation
 
     end do generation
+
+    !*** Send report to tally
+    call tallyInactive % reportCycleEnd(cycle2)
+    !***
 
    ! Calculate new k
     endPop = cycle2 % popSize()
@@ -133,6 +206,8 @@ program eigenCE
    ! Load new k for normalisation
     cycle2 % k_eff = k_new
     print *, "Inactive cycle: ", i,"/",nInactive," k-eff (analog): ", k_new, "Pop: ", startPop, " -> ", endPop
+    call tallyInactive % display()
+    !print *, tallyInactive % isConverged()
   end do
 
 ! ************************************
@@ -144,23 +219,49 @@ program eigenCE
 
   do i=1,nActive
     startPop = cycle1 % popSize()
+    !*** Send report to tally
+    call tallyActive % reportCycleStart(cycle1)
+          !***
     generationA: do
 
       call cycle1 % release(neutron)
       neutron % matIdx = 4
 
       HistoryA: do
+        ! Save beginning of history info
+        pre = neutron
+
         ! Tally energy
         idx = 1 + int( nBins/(Umax-Umin) * (log(neutron % E) - Umin))
         tally(idx) = tally(idx) + 1
+
+        ! Check if leaked
+        r1 = RNGptr % get()
+        if( r1 < leakProb ) then ! Neutron has leaked
+          call tallyActive % reportHist(pre,neutron,5001)
+          exit HistoryA
+
+        end if
+
+        !** Send report to tally
+        call tallyActive % reportInColl(neutron)
+        !**
         call collisionPhysics % collide(neutron,cycle1,cycle2)
-        if(neutron % isDead) exit HistoryA
+        if(neutron % isDead) then
+          call tallyActive % reportHist(pre,neutron,5000)
+          exit HistoryA
+        end if
 
       end do HistoryA
 
      if(cycle1 % isEmpty() ) exit generationA
 
     end do generationA
+
+    !*** Send report to tally
+    call tallyActive % reportCycleEnd(cycle2)
+    !***
+
 
    ! Calculate new k
     endPop = cycle2 % popSize()
@@ -188,6 +289,8 @@ program eigenCE
     end if
 
     print *, "Active cycle: ", i,"/",nActive," k-eff (analog): ", k_new," +/- ", varK ," Pop: ", startPop, " -> ", endPop
+    call tallyActive % display()
+    !print *, tallyActive % isConverged()
   end do
 
 

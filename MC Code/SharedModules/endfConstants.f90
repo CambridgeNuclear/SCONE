@@ -90,12 +90,15 @@ module endfConstants
                                   anyFission = -118
 
   ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
-  integer(shortInt),parameter  :: macroTotal    = -1 ,&
-                                  macroCapture  = -2 ,&
-                                  macroEscatter = -3 ,&
-                                  macroFission  = -6
+  integer(shortInt),parameter  :: macroTotal     = -1 ,&
+                                  macroCapture   = -2 ,&
+                                  macroEscatter  = -3 ,&
+                                  macroFission   = -6 ,&
+                                  macroNuFission = -7
+
   ! List of Maje MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
-  integer(shortInt), parameter :: macroAllScatter = -20
+  integer(shortInt), parameter :: macroAllScatter = -20 ,&
+                                  macroAbsorbtion = -21
 
 
 

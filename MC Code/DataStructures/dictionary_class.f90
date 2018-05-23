@@ -21,7 +21,7 @@ module dictionary_class
   !
   ! will not cause a memory leak despite lack of "call locDict % kill()" before "end subroutine"
   !
-  ! Size of the stored char is predefined to be maximum of nameLen and patchLen.
+  ! Size of the stored char is predefined to be maximum of nameLen and pathLen.
   ! Maximum size of keyword is equal to nameLen
   !
   ! For now the dictionary is limited to following enteries:
@@ -942,7 +942,7 @@ contains
     select case (self % entries(idx) % getType())
       case(word)
         ! Check if the content character fits into value
-        if( len(value) < len(self % entries(idx) % char0_alloc)) then
+        if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
           call fatalError(Here,'value character is to short to store content. Increase its length')
         end if
 

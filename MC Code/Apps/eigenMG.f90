@@ -70,6 +70,7 @@ program eigenMG
 
  ! ##### Population initialisation
   neutron % pRNG => RNGptr
+  neutron % xsData => mg
   do i=1,N
     neutron % G      = 1
     call neutron % teleport([0.0_8, 0.0_8, 0.0_8])

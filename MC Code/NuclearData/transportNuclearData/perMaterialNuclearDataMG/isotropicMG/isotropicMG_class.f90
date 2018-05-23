@@ -48,12 +48,12 @@ module isotropicMG_class
     procedure :: getTransXS_G
     procedure :: getMajorantXS_G
     procedure :: getTotalMatXS_G
+    procedure :: getMatMacroXS_G
     procedure :: isFissileMat
-    procedure :: initFissionSite        !*
-    procedure :: setActiveMaterials     !*
+    procedure :: initFissionSite
+    procedure :: setActiveMaterials
 
     ! perMaterialNuclearDataMG InterfaceProcedures
-    procedure :: getMatMacroXS
     procedure :: releaseAt
     procedure :: sampleMuGout
 
@@ -172,6 +172,19 @@ contains
   end function getTotalMatXS_G
 
   !!
+  !! Attach pointer to approperiate XS data
+  !!
+  subroutine getMatMacroXS_G(self,macroXS,G,matIdx)
+    class(isotropicMG), intent(inout)            :: self
+    type(xsMacroSet_ptr),intent(inout)           :: macroXS
+    integer(shortInt),intent(in)                 :: G
+    integer(shortInt),intent(in)                 :: matIdx
+
+    macroXS = self % XSs(G,matIdx)
+
+  end subroutine getMatMacroXS_G
+
+  !!
   !! Returns .true. if material is fissile
   !!
   function isFissileMat(self,matIdx) result(isIt)
@@ -234,23 +247,6 @@ contains
     call self % calculateMajorant()
 
   end subroutine setActiveMaterials
-
-  !!
-  !! Attach pointer to approperiate XS data
-  !!
-  subroutine getMatMacroXS(self,macroXS,G,matIdx)
-    class(isotropicMG), intent(in)               :: self
-    type(xsMacroSet_ptr),intent(inout)           :: macroXS
-    integer(shortInt),intent(in)                 :: G
-    integer(shortInt),intent(in)                 :: matIdx
-
-    macroXS = self % XSs(G,matIdx)
-    ! The weirdest error
-    ! It seems that same call to a procedure is necessary to avoid "undefined reference error"
-    ! in collision operator
-    !call macroXS % dummy()
-
-  end subroutine getMatMacroXS
 
   !!
   !! Returns neutron release at G_in for material matIdx and reaction MT
@@ -407,6 +403,15 @@ contains
     end if
 
     call self % releaseData(idx) % init(tempXS, tempXSmatrix)
+
+    ! Calculate nu*Fission
+    if (isFissile) then
+      tempXS = self % XSs(:,idx) % fissionXS * xsDict % getRealArray('nu')
+    else
+      tempXS = 0.0
+    end if
+
+    self % XSs(:,idx) % nuFissionXS = tempXS
 
     ! Calculate total XS
     self % XSs(:,idx) % totalXS = self % XSs(:,idx) % scatterXS + &

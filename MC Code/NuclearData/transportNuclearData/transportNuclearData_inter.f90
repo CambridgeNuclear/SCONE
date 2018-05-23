@@ -4,6 +4,8 @@ module transportNuclearData_inter
   use nuclearData_inter, only : nuclearData
   use particle_class,    only : particle
 
+  use xsMacroSet_class,  only : xsMacroSet_ptr
+
   implicit none
   private
 
@@ -20,10 +22,13 @@ module transportNuclearData_inter
     generic :: getTransXS      => getTransXS_p
     generic :: getMajorantXS   => getMajorantXS_p
     generic :: getTotalMatXS   => getTotalMatXS_p
+    generic :: getMatMacroXS   => getMatMacroXS_p
+
     ! XS Access
     procedure(getTransXS_p), deferred       :: getTransXS_p
     procedure(getMajorantXS_p), deferred    :: getMajorantXS_p
     procedure(getTotalMatXS_p), deferred    :: getTotalMatXS_p
+    procedure(getMatMacroXS_p), deferred    :: getMatMacroXS_p
 
     procedure(isFissileMat), deferred       :: isFissileMat
     procedure(initFissionSite), deferred    :: initFissionSite
@@ -74,6 +79,20 @@ module transportNuclearData_inter
       integer(shortInt), intent(in)              :: matIdx
       real(defReal)                              :: xs
     end function getTotalMatXS_p
+
+    !!
+    !! Get set of material macroscopic xross-sections
+    !!
+    subroutine getMatMacroXS_p(self,macroXS,p,matIdx)
+      import :: xsMacroSet_ptr, &
+                particle, &
+                shortInt, &
+                transportNuclearData
+      class(transportNuclearData), intent(inout)  :: self
+      type(xsMacroSet_ptr),intent(inout)          :: macroXS
+      class(particle), intent(in)                 :: p
+      integer(shortInt),intent(in)                :: matIdx
+    end subroutine getMatMacroXS_p
 
     !!
     !! Returns .true. if material is fissile.
