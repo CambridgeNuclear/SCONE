@@ -32,14 +32,24 @@ module aceCard_class
 
   type, public :: aceCard
     !private
-    character(zzIdLen) :: ZAID  ! 10 character name ZZZAAA.nnC
-    real(defReal)      :: AW    ! Atomic weight ratio. Atomic weight divided by the neutron mass
-    real(defReal)      :: TZ    ! Temperature at thich data were processed [MeV]
-    character(10)      :: HD    ! 10 character date when data wre processed
-    character(70)      :: HK    ! 70 character comment
-    character(10)      :: HM    ! 10 character MAT indentifier
+    character(zzIdLen) :: ZAID = ''   ! 10 character name ZZZAAA.nnC
+    real(defReal)      :: AW   = -ONE ! Atomic weight ratio. Atomic weight divided by the neutron mass
+    real(defReal)      :: TZ   = -ONE ! Temperature at thich data were processed [MeV]
+    character(10)      :: HD   = ' '  ! 10 character date when data wre processed
+    character(70)      :: HK   = ' '  ! 70 character comment
+    character(10)      :: HM   = ' '  ! 10 character MAT indentifier
 
     type(MTreaction),dimension(:),allocatable :: MTdata
+
+    ! Fission related data
+    logical(defBool)  :: isFissile = .false.    ! Flag is true if JXS(21) /= 0
+    integer(shortInt) :: fissIE    = -17        ! First energy grid index for fission XSs
+    integer(shortInt) :: fissNE    = -17        ! Number of fission XS points
+    integer(shortInt) :: fissXSp   = -17        ! Location of first fission xs point on XSS table
+    integer(shortInt) :: promptNUp = -17        ! Location of prompt NU data
+    integer(shortInt) :: delayNUp  = -17        ! Location of delay NU data
+    integer(shortInt) :: totalNUp  = -17        ! Location of total NU data
+
 
     integer(shortInt),dimension(16)        :: NXS
     integer(shortInt),dimension(32)        :: JXS
@@ -47,8 +57,11 @@ module aceCard_class
 
   contains
     procedure :: ESZblock
+
     procedure :: setMTdata
+    procedure :: setFissionData
     procedure :: readFromFile
+    procedure :: print => print_aceCard
 
   end type aceCard
 
@@ -247,6 +260,66 @@ contains
   end subroutine setMTdata
 
   !!
+  !! Loads data related to fission
+  !!
+  subroutine setFissionData(self)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt)             :: ptr
+    logical(defBool)              :: hasNoNuBlock
+    integer(shortInt)             :: KNU          ! Pointer to prompt/total Nu data
+    character(100), parameter :: Here ='setFissionData (aceCard_class.f90)'
+
+    ! Check is the nuclide is fissile
+    self % isFissile = (self % JXS(21) /= 0)
+
+    ! Read data releted to FIS block
+    if(self % isFissile) then
+      ptr = self % JXS(21)
+      self % fissIE  = real2Int( self % XSS(ptr),Here)
+      self % fissNE  = real2Int( self % XSS(ptr+1),Here)
+      self % fissXSp = self % JXS(21) + 2
+
+    end if
+
+    ! Check if NU data is provided
+    hasNoNuBlock = (self % JXS(2) == 0)
+
+    ! NU data can be provided even when nuclide is not marked fissle
+    if(self % isFissile .and. hasNoNuBlock) then
+      call fatalError(Here,'Nuclide is fissile but no NU data is provided. WTF?')
+
+    else if (hasNoNuBlock) then ! Leve the subroutine and do not process the NU data
+      return
+
+    end if
+
+    ! Read KNU pointer to prompt/total NU data
+    ptr = self % JXS(2)
+    KNU = real2Int(self % XSS(ptr),Here)
+
+    if(KNU > 0 ) then ! Only single promp/total NU data is given
+      self % totalNUp = self % JXS(2)
+
+    else if(KNU < 0) then ! Both total and prompt NU data is given
+      self % promptNUp = self % JXS(2) + 1
+      self % totalNUp  = self % JXS(2) + abs(KNU) + 1
+
+    else
+      call fatalError(Here,'KNU is equal to 0. Function should have alrady returned.')
+
+    end if
+
+    ! Read data related to deleyed neutron emissions
+    if(self % JXS(24) > 0 ) then ! Delayd NU data is present
+      self % delayNUp = self % JXS(24)
+
+    end if
+
+  end subroutine setFissionData
+
+
+
+  !!
   !! Read ACE card from dile in provided filePath that beggins at provided lineNum
   !!
   subroutine readFromFile(self,filePath,lineNum)
@@ -290,8 +363,30 @@ contains
     ! Close input file
     close(aceFile)
 
-    call self % setMTdata
+    call self % setMTdata()
+    call self % setFissionData()
   end subroutine
+
+  !!
+  !! Print contents to the screen
+  !!
+  subroutine print_aceCard(self)
+    class(aceCard),intent(in) :: self
+    integer(shortInt)         :: i
+
+    print *, 'MT REACTION DATA:'
+    do i=1,size(self % MTdata)
+      call self % MTdata(i) % print()
+    end do
+
+    print *, 'NUCLIDE DATA: '
+    print *, 'ACE HEADER DATA: '
+    print *, self % ZAID, self % AW, self % TZ, self % HD, self % HK, self % HM
+    print *, 'FISSION related DATA: '
+    print *, self % isFissile, self % fissIE, self % fissNE, self % fissXSp, self % promptNUp, &
+             self % delayNup, self % totalNup
+
+  end subroutine print_aceCard
 
 
   !!

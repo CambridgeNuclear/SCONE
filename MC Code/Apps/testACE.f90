@@ -6,7 +6,15 @@ program testACE
   implicit none
 
   character(100)    :: filePath ='/home/mak60/myACE/acedata/92238JF311.ace'
+  !character(100)    :: filePath ='/home/mak60/myACE/acedata/35081JEF311.ace'
+  !character(100)    :: filePath ='/home/mak60/myACE/acedata/8016JEF311.ace'
+  !character(100)    :: filePath ='/home/mak60/myACE/acedata/1001JEF311.ace'
   integer(shortInt) :: line = 1170286
+  !integer(shortInt) :: line = 14296
+  !integer(shortInt) :: line = 503141
+  !integer(shortInt) :: line = 7681
+
+
   type(aceCard) :: ACE
   real(defReal), dimension(:), allocatable :: eGrid
   real(defReal),dimension(:),allocatable   :: xs
@@ -14,9 +22,10 @@ program testACE
 
   call ACE % readFromFile(filePath,line)
 
-  do i=1,size(ACE % MTdata)
-    call ACE % MTdata(i) % print()
-  end do
+  call ACE % print()
+  !do i=1,size(ACE % MTdata)
+  !  call ACE % MTdata(i) % print()
+  !end do
 
   !call ACE % ESZblock(eGrid,'energyGrid')
   !call ACE % ESZblock(xs,'totalXS')
