@@ -17,7 +17,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # It should be periodicly removed to see if other surprising warining are not raised 
 # This buggy warning should be repaired in GCC 7.0 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising -flto") # -flto  
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising ") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
@@ -88,3 +88,4 @@ add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS})
 add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
 add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
 add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
+add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})

@@ -610,6 +610,7 @@ module genericProcedures
     integer(longInt)          :: tempI
     real(defReal)             :: a
 
+    ! It is Fortran 2008 Standard Compliant. Really!
     isIt = (floor(float,longInt) == ceiling(float,longInt))
 
   end function isInteger

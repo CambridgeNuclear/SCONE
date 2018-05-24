@@ -69,6 +69,10 @@ module emissionFromACE_func
 
 contains
 
+  !!
+  !! Takes defReal scalar and converts is to shortInt
+  !! Returns error if real is not an integer number
+  !!
   function real2Int_scalar(r,Where) result (i)
     real(defReal), intent(in)  :: r
     character(*), intent(in)   :: Where
@@ -82,6 +86,10 @@ contains
 
   end function real2Int_scalar
 
+  !!
+  !! Takes defReal array and converts is to shortInt
+  !! Returns error if any real is not an integer number
+  !!
   function real2Int_array(r,Where) result(i)
     real(defReal), dimension(:), intent(in) :: r
     character(*), intent(in)                :: Where
