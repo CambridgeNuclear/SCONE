@@ -1,7 +1,8 @@
 module aceCard_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, openToRead, isInteger
+  use genericProcedures, only : fatalError, openToRead, isInteger, linFind,&
+                                targetNotFound, searchError
 
   implicit none
   private
@@ -11,18 +12,19 @@ module aceCard_class
     module procedure real2Int_array
   end interface
 
+  integer(shortInt), parameter :: unInit = -17
 
   type,public :: MTreaction
     integer(shortInt) :: MT        = 0        ! ENDF MT number of reaction
     real(defReal)     :: Q         = -999.0   ! Q-value for reaction
     integer(shortInt) :: TY        = -999     ! Neutron release for reaction +ve integer. 19 means fission
     logical(defBool)  :: CMframe   = .true.   ! Is data for reaction given in CM frame
-    integer(shortInt) :: IE        = -17      ! First energy grid index
-    integer(shortInt) :: N_xs      = -17      ! Number of consecutive XS data points
-    integer(shortInt) :: XSp       = -17      ! Location of cross sections on XSS table
-    integer(shortInt) :: LOCB      = -17      ! Raw ACE LOCB parameter from MCNP manual
-    integer(shortInt) :: ANDp      = -17      ! Location of angular distribution data in XSS table
-    integer(shortInt) :: DLWp      = -17      ! Location of energy distribution data in XSS table
+    integer(shortInt) :: IE        = unINIT   ! First energy grid index
+    integer(shortInt) :: N_xs      = unINIT   ! Number of consecutive XS data points
+    integer(shortInt) :: XSp       = unINIT   ! Location of cross sections on XSS table
+    integer(shortInt) :: LOCB      = unINIT   ! Raw ACE LOCB parameter from MCNP manual
+    integer(shortInt) :: ANDp      = unINIT   ! Location of angular distribution data in XSS table
+    integer(shortInt) :: DLWp      = unINIT   ! Location of energy distribution data in XSS table
     logical(defBool)  :: isotropic = .false.  ! Indicates isotropic scattering at all energies
     logical(defBool)  :: law44     = .false.  ! Correlated angle-energy scattering with ENDF LAW 44
   contains
@@ -32,6 +34,8 @@ module aceCard_class
 
   type, public :: aceCard
     !private
+    integer(shortInt)  :: head = 0    ! Current read location on a card
+
     character(zzIdLen) :: ZAID = ''   ! 10 character name ZZZAAA.nnC
     real(defReal)      :: AW   = -ONE ! Atomic weight ratio. Atomic weight divided by the neutron mass
     real(defReal)      :: TZ   = -ONE ! Temperature at thich data were processed [MeV]
@@ -43,12 +47,12 @@ module aceCard_class
 
     ! Fission related data
     logical(defBool)  :: isFissile = .false.    ! Flag is true if JXS(21) /= 0
-    integer(shortInt) :: fissIE    = -17        ! First energy grid index for fission XSs
-    integer(shortInt) :: fissNE    = -17        ! Number of fission XS points
-    integer(shortInt) :: fissXSp   = -17        ! Location of first fission xs point on XSS table
-    integer(shortInt) :: promptNUp = -17        ! Location of prompt NU data
-    integer(shortInt) :: delayNUp  = -17        ! Location of delay NU data
-    integer(shortInt) :: totalNUp  = -17        ! Location of total NU data
+    integer(shortInt) :: fissIE    = unINIT     ! First energy grid index for fission XSs
+    integer(shortInt) :: fissNE    = unINIT     ! Number of fission XS points
+    integer(shortInt) :: fissXSp   = unINIT     ! Location of first fission xs point on XSS table
+    integer(shortInt) :: promptNUp = unINIT     ! Location of prompt NU data
+    integer(shortInt) :: delayNUp  = unINIT     ! Location of delay NU data
+    integer(shortInt) :: totalNUp  = unINIT     ! Location of total NU data
 
 
     integer(shortInt),dimension(16)        :: NXS
@@ -58,10 +62,27 @@ module aceCard_class
   contains
     procedure :: ESZblock
 
+    procedure :: firstIdxMT
+    procedure :: numXsPointsMT
+    procedure :: xsMT
+    ! Return TY for MT
+    ! Return Q for MT
+    ! Return Ref frame for MT
+    ! Return LOCB for MT
+    ! Set head to angular for MT + Escater
+    ! Set head to energy for MT
+
+    procedure :: readInt
+    procedure :: readReal
+    procedure :: readIntArray
+    procedure :: readRealArray
+
     procedure :: setMTdata
     procedure :: setFissionData
     procedure :: readFromFile
     procedure :: print => print_aceCard
+
+    procedure,private :: getMTidx
 
   end type aceCard
 
@@ -104,7 +125,6 @@ contains
     end if
 
   end function real2Int_array
-
 
   !!
   !! Returns data from ESZ block
@@ -156,6 +176,147 @@ contains
       data = self % XSS(ptr : ptr + N-1)
 
   end subroutine ESZblock
+
+  !!
+  !! For a given MT number returns first index of its XS at the energy grid
+  !!
+  function firstIdxMT(self, MT) result(IE)
+    class(aceCard),intent(in)    :: self
+    integer(shortInt),intent(in) :: MT
+    integer(shortInt)            :: IE
+    integer(shortInt)            :: idx
+
+    ! Get index of MT number on MTdata
+    idx = self % getMTidx(MT)
+
+    ! Return first index on an energy grid
+    IE = self % MTdata(idx) % IE
+
+  end function firstIdxMT
+
+  !!
+  !! For a given MT number returns total number of XS data points
+  !!
+  function numXSPointsMT(self, MT) result(N)
+    class(aceCard),intent(in)    :: self
+    integer(shortInt),intent(in) :: MT
+    integer(shortInt)            :: N
+    integer(shortInt)            :: idx
+
+    ! Get index of MT number on MTdata
+    idx = self % getMTidx(MT)
+
+    ! Return number of energy points
+    N = self % MTdata(idx) % N_xs
+
+  end function numXSPointsMT
+
+  !!
+  !! For a given MT number returns array of its XS data point
+  !!
+  function xsMT(self, MT) result (xs)
+    class(aceCard), intent(in)             :: self
+    integer(shortInt), intent(in)          :: MT
+    real(defReal),dimension(:),allocatable :: xs
+    integer(shortInt)                      :: idx, N_xs, ptr
+
+    ! Get index of MT number on MTdata
+    idx = self % getMTidx(MT)
+
+    ! Get number of energy points
+    N_xs = self % MTdata(idx) % N_xs
+
+    ! Get Xs data pointer
+    ptr = self % MTdata(idx) % XSp
+
+    ! Get XS data
+    xs = self % XSS(ptr : ptr + N_xs-1)
+
+  end function xsMT
+
+  !!
+  !! Read single integer and advance read head
+  !! Return error if under head is not integer
+  !!
+  function readInt(self) result(i)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt)             :: i
+    character(100),parameter :: Here ='readInt (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    i = real2Int(self % XSS(self % head),Here)
+
+    ! Advance head
+    self % head = self % head + 1
+
+  end function readInt
+
+  !!
+  !! Read single real and advance read head
+  !!
+  function readReal(self) result(r)
+    class(aceCard), intent(inout) :: self
+    real(defReal)                 :: r
+    character(100),parameter :: Here ='readReal (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    r = self % XSS(self % head)
+
+    ! Advance head
+    self % head = self % head + 1
+
+  end function readReal
+
+  !!
+  !! Read array of N integers and advance read head by N
+  !! Return error if any content under head is not an integer
+  !!
+  function readIntArray(self,N) result(i)
+    class(aceCard), intent(inout)  :: self
+    integer(shortInt), intent(in)  :: N
+    integer(shortInt),dimension(N) :: i
+    integer(shortInt)              :: ptr
+    character(100),parameter :: Here ='readIntArray (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    ptr = self % head
+    i = real2Int( self % XSS(ptr : ptr + N-1),Here)
+
+    ! Advance head
+    self % head = self % head + N
+
+  end function readIntArray
+
+  !!
+  !! Read array of N integers and advance read head by N
+  !!
+  function readRealArray(self,N) result(r)
+    class(aceCard), intent(inout)  :: self
+    integer(shortInt), intent(in)  :: N
+    real(defReal),dimension(N)     :: r
+    integer(shortInt)              :: ptr
+    character(100),parameter :: Here ='readRealArray (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    ptr = self % head
+    r = self % XSS(ptr : ptr + N-1)
+
+    ! Advance head
+    self % head = self % head + N
+
+  end function readRealArray
 
   !!
   !! Load data for every MT reaction type
@@ -242,11 +403,11 @@ contains
         case(1:huge(i)) ! Positive integer. Can assign pointer to angular data
           self % MTdata(i) % ANDp = self % JXS(9) + LOCB - 1
 
-        case(-17) ! default case for absorbtion reactions
+        case(unINIT) ! default case for absorbtion reactions
           ! Do nothing
 
         case default ! Should never happen
-          call fatalError(Here,'For some reason LOCB is -ve and diffrent from -17. WTF?')
+          call fatalError(Here,'For some reason LOCB is -ve and diffrent from unINIT. WTF?')
 
       end select
     end do
@@ -317,8 +478,6 @@ contains
 
   end subroutine setFissionData
 
-
-
   !!
   !! Read ACE card from dile in provided filePath that beggins at provided lineNum
   !!
@@ -388,7 +547,6 @@ contains
 
   end subroutine print_aceCard
 
-
   !!
   !! Print contents of MT reaction data to screen
   !!
@@ -400,6 +558,19 @@ contains
 
   end subroutine print_MTreaction
 
+  !!
+  !! Returns index of a given MT reaction in MTdata table
+  !!
+  function getMTidx(self,MT) result(idx)
+    class(aceCard),intent(in)     :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: idx
+    character(100),parameter :: Here = 'getMTidx ( aceCard_class.f90)'
 
+    idx = linFind( self % MTdata(:) % MT, MT)
+    if(idx == targetNotFound) call fatalError(Here,'Given MT is not present in ACE card')
+    call searchError(idx,Here)
+
+  end function getMTidx
 
 end module aceCard_class
