@@ -7,18 +7,26 @@ module aceCard_class
   implicit none
   private
 
+  !!
+  !! Function that reads scalar or rank 1 real that contains an integer (e.g. 2.0)
+  !! Converts it to integer; Returns error if the real does not contain integer (e.g. 2.1)
+  !!
   interface real2Int
     module procedure real2Int_scalar
     module procedure real2Int_array
   end interface
 
-  integer(shortInt), parameter :: unInit = -17
+  integer(shortInt), parameter :: unINIT = -17 ! Value of uninitialised integer in this module
 
-  type,public :: MTreaction
-    integer(shortInt) :: MT        = 0        ! ENDF MT number of reaction
+  !!
+  !! Private type to store all data related to an MT reaction in the ACE card
+  !!
+  type,private :: MTreaction
+    integer(shortInt) :: MT        = unInit   ! ENDF MT number of reaction
     real(defReal)     :: Q         = -999.0   ! Q-value for reaction
-    integer(shortInt) :: TY        = -999     ! Neutron release for reaction +ve integer. 19 means fission
-    logical(defBool)  :: CMframe   = .true.   ! Is data for reaction given in CM frame
+    integer(shortInt) :: TY        = unInit   ! Neutron release for reaction +ve integer. 19 means fission
+    logical(defBool)  :: isCapture = .true.   ! For internal use. Indicates capture reactions
+    logical(defBool)  :: CMframe   = .false.  ! Is data for reaction given in CM frame
     integer(shortInt) :: IE        = unINIT   ! First energy grid index
     integer(shortInt) :: N_xs      = unINIT   ! Number of consecutive XS data points
     integer(shortInt) :: XSp       = unINIT   ! Location of cross sections on XSS table
@@ -31,19 +39,42 @@ module aceCard_class
     procedure :: print => print_MTreaction
   end type MTreaction
 
-
+  !!
+  !! ACE DATA CARD PARSER FOR A SINGLE NUCLIDE (e.g. 92238.03c)
+  !!
+  !! Basic interaction is by reading enteries from advancing read head:
+  !! Procedures exist that set read head to the beggining of relevant data
+  !! After head is set entery of interest (e.g. elastic scattering mu PDF data) should be read as
+  !! a stream of data. For safety head should be reset (resetHead procedure) after reading
+  !! of a data block.
+  !! For reading it is necessary to specify whether entery at this position should be an integer
+  !! or a real. All data in XSS table is stored as reals but based on ACE specification some
+  !! positions are known to contains integers. If head is misaligned and under an integer entry
+  !! there is a real value (e.g. 2.1) procedures for "readInt" will return an error.
+  !!
+  !! For specyfication of ACE data format please refer to MCNP Manual Appendix F.
+  !! Manual for MCNP 4 from 18. December 2000 was used to create this parser.
+  !! Please note that in Appendix F, that was used obsolete flags for interpolation scheme in
+  !! angular data are given (Table F-12). In modern ACE histogram interpolation uses flag 1
+  !! (instead of 0), and linear interpolation uses flag 2 (instead of 0). In other words ACE flags
+  !! are consistant with standard ENDF interpolation flags.
+  !!
+  !! Please note that header of the ACE DATA CARD is stored in public components of type(aceCard)
+  !!
   type, public :: aceCard
-    !private
-    integer(shortInt)  :: head = 0    ! Current read location on a card
+    private
 
-    character(zzIdLen) :: ZAID = ''   ! 10 character name ZZZAAA.nnC
-    real(defReal)      :: AW   = -ONE ! Atomic weight ratio. Atomic weight divided by the neutron mass
-    real(defReal)      :: TZ   = -ONE ! Temperature at thich data were processed [MeV]
-    character(10)      :: HD   = ' '  ! 10 character date when data wre processed
-    character(70)      :: HK   = ' '  ! 70 character comment
-    character(10)      :: HM   = ' '  ! 10 character MAT indentifier
+    ! Public Components
+    character(zzIdLen),public :: ZAID = ''   ! 10 character name ZZZAAA.nnC
+    real(defReal),public      :: AW   = -ONE ! Atomic weight ratio. Atomic weight divided by the neutron mass
+    real(defReal),public      :: TZ   = -ONE ! Temperature at thich data were processed [MeV]
+    character(10),public      :: HD   = ' '  ! 10 character date when data wre processed
+    character(70),public      :: HK   = ' '  ! 70 character comment
+    character(10),public      :: HM   = ' '  ! 10 character MAT indentifier
 
-    type(MTreaction),dimension(:),allocatable :: MTdata
+    ! Private Components
+    integer(shortInt)                          :: head = 0    ! Current read location on XSS
+    type(MTreaction),dimension(:),allocatable  :: MTdata
 
     ! Fission related data
     logical(defBool)  :: isFissile = .false.    ! Flag is true if JXS(21) /= 0
@@ -54,34 +85,64 @@ module aceCard_class
     integer(shortInt) :: delayNUp  = unINIT     ! Location of delay NU data
     integer(shortInt) :: totalNUp  = unINIT     ! Location of total NU data
 
-
+    ! RAW ACE TABLES
     integer(shortInt),dimension(16)        :: NXS
     integer(shortInt),dimension(32)        :: JXS
     real(defReal),dimension(:),allocatable :: XSS
 
   contains
-    procedure :: ESZblock
+    ! XSs directly from blocks
+    procedure :: ESZblock            ! Returns ESZ block XS (see detailed description)
 
-    procedure :: firstIdxMT
-    procedure :: numXsPointsMT
-    procedure :: xsMT
-    ! Return TY for MT
-    ! Return Q for MT
-    ! Return Ref frame for MT
-    ! Return LOCB for MT
-    ! Set head to angular for MT + Escater
-    ! Set head to energy for MT
+    ! Procedures to enquire about MT reaction and set read head to angle or energy data
+    !
+    procedure :: numMT               ! Get number of MT reactions present
+    procedure :: firstIdxMT          ! Get first MT xs point index
+    procedure :: numXsPointsMT       ! Get number of MT XS points
+    procedure :: xsMT                ! Get MT XS array
+    procedure :: neutronReleaseMT    ! Return TY for MT
+    procedure :: QforMT              ! Return Q for MT
+    procedure :: isCMframe           ! Return Ref frame for MT
+    procedure :: LOCBforMT           ! Return LOCB for MT
+    procedure :: setToAngleMT        ! Set head to beggining of angular for MT reaction
+    procedure :: setToEnergyMT       ! Set head to energy for MT
 
-    procedure :: readInt
-    procedure :: readReal
-    procedure :: readIntArray
-    procedure :: readRealArray
+    ! Procedures releted to Elastic Scattering
+    procedure :: setToAngleEscatter  ! Set head to beggining of angle data for Elastic Scatter
 
-    procedure :: setMTdata
-    procedure :: setFissionData
+    ! Procedures releated to Fission data
+    procedure :: firstIdxFiss        ! Get first fission Idx
+    procedure :: numXsPointsFiss     ! Get number of fission XS points
+    procedure :: xsFiss              ! Get fission XS array
+
+    procedure :: hasNuPrompt         ! Is prompt NU present
+    procedure :: hasNuTotal          ! Is total NU present
+    procedure :: hasNuDelayed        ! Is delayed NU present
+
+    procedure :: setToNuPrompt       ! Set head to prompt NU
+    procedure :: setToNuTotal        ! Set head to total NU
+    procedure :: setToNuDelayed      ! Set head to delayed Nu
+
+    ! Procedures related to reading under head and head status
+    !
+    procedure :: readInt             ! Read int under head and advance
+    procedure :: readReal            ! Read real under head and advance
+    procedure :: readIntArray        ! Read N ints beginning under head and advance by N
+    procedure :: readRealArray       ! Read N ints beginning under head and advance by N
+
+    procedure :: readIntNotAdvance   ! Read int under head and NOT ADVANCE
+    procedure :: readRealNotAdvance  ! Read real under head and NOT ADVANCE
+
+    procedure :: advanceHead         ! Move head by an integer +ve forward -ve backward
+    procedure :: resetHead           ! Move head back to position 0
+
+    ! Initialisation and display procedures
     procedure :: readFromFile
     procedure :: print => print_aceCard
 
+    ! Private procedures
+    procedure,private :: setMTdata
+    procedure,private :: setFissionData
     procedure,private :: getMTidx
 
   end type aceCard
@@ -178,6 +239,17 @@ contains
   end subroutine ESZblock
 
   !!
+  !! Returns number of MT reactions in a nuclide
+  !!
+  function numMT(self) result(N)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: N
+
+    N = size(self % MTdata)
+
+  end function numMT
+
+  !!
   !! For a given MT number returns first index of its XS at the energy grid
   !!
   function firstIdxMT(self, MT) result(IE)
@@ -233,6 +305,309 @@ contains
     xs = self % XSS(ptr : ptr + N_xs-1)
 
   end function xsMT
+
+  !!
+  !! Returns integer neutron release
+  !! This is abs(TY) where TY is defined in MCNP manual
+  !! TY = 19 indicates fission and NU data to be used
+  !! TY > 100 indicates anothe NU like table for release (energy dependant yield)
+  !!
+  function neutronReleaseMT(self,MT) result(N)
+    class(aceCard), intent(in)   :: self
+    integer(shortInt),intent(in) :: MT
+    integer(shortInt)            :: N
+    integer(shortInt)            :: idx
+
+     idx = self % getMTidx(MT)
+
+     N = self % MTdata(idx) % TY
+
+  end function neutronReleaseMT
+
+  !!
+  !! Resturns Q-value for reaction MT
+  !!
+  function QforMT(self,MT) result(Q)
+    class(aceCard), intent(in)    :: self
+    integer(shortInt), intent(in) :: MT
+    real(defReal)                 :: Q
+    integer(shortInt)             :: idx
+
+    idx = self % getMTidx(MT)
+
+    Q = self % MTdata(idx) % Q
+
+  end function QforMT
+
+  !!
+  !! Returns .true. is secondary neutron data for a MT reaction
+  !! is in Center-of-Mass (CM) frame
+  !!
+  function isCMframe(self,MT) result (isIt)
+    class(aceCard), intent(in)    :: self
+    integer(shortInt), intent(in) :: MT
+    logical(defBool)              :: isIt
+    integer(shortInt)             :: idx
+
+    idx = self % getMTidx(MT)
+
+    isIt = self % MTdata(idx) % CMframe
+
+  end function isCMframe
+
+  !!
+  !! Returns raw LOCB parameter for MT reaction as defined in MCNP Manual
+  !! Returns error is reaction is capture
+  !!
+  function LOCBforMT(self,MT) result(LOCB)
+    class(aceCard), intent(in)    :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: LOCB
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here='LOCBforMT (aceCard_class.f90)'
+
+    idx = self % getMTidx(MT)
+
+    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. No LOCB data.')
+
+    LOCB = self % MTdata(idx) % LOCB
+
+  end function LOCBforMT
+
+  !!
+  !! Sets read head to beginning of angular data for reaction MT
+  !! Returns error is reaction is capture
+  !!
+  subroutine setToAngleMT(self,MT)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here='setToAngleMT (aceCard_class.f90)'
+
+    idx = self % getMTidx(MT)
+
+    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Angle data &
+                                                             & does not exist')
+
+    self % head = self % MTdata(idx) % ANDp
+
+  end subroutine setToAngleMT
+
+  !!
+  !! Sets read head to beginning of energy data for reaction MT
+  !! Returns error is reaction is capture
+  !!
+  subroutine setToEnergyMT(self,MT)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here='setToEnergyMT (aceCard_class.f90)'
+
+    idx = self % getMTidx(MT)
+
+    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
+                                                             & does not exist')
+
+    self % head = self % MTdata(idx) % DLWp
+
+  end subroutine setToEnergyMT
+
+
+  !!
+  !! Sets read head to beginning of angular data for ELASTIC SCATTERING
+  !!
+  subroutine setToAngleEscatter(self)
+    class(aceCard), intent(inout) :: self
+
+    self % head = self % JXS(9)
+
+  end subroutine setToAngleEscatter
+
+  !!
+  !! Returns first index of fission XS data on the energy grid
+  !! Returns error is nuclide is not fissile
+  !!
+  function firstIdxFiss(self) result(IE)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: IE
+    character(100), parameter  :: Here='firstIdxFiss (aceCard_class.f90)'
+
+    if(self % isFissile) then
+      IE = self % fissIE
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+  end function firstIdxFiss
+
+  !!
+  !! Returns number of fission xs data points
+  !! Returns error is nuclide is not fissile
+  !!
+  function numXsPointsFiss(self) result(N)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: N
+    character(100), parameter  :: Here='numXsPointsFiss (aceCard_class.f90)'
+
+    if(self % isFissile) then
+      N = self % fissNE
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+  end function numXsPointsFiss
+
+  !!
+  !! Returns number of fission xs data points
+  !! Returns error is nuclide is not fissile
+  !!
+  function xsFiss(self) result(xs)
+    class(aceCard), intent(in) :: self
+    real(defReal),dimension(:),allocatable :: xs
+    integer(shortInt)                      :: ptr, N
+    character(100), parameter  :: Here='xsFiss(aceCard_class.f90)'
+
+    if(self % isFissile) then
+      ! Get number of XS points
+      N = self % fissNE
+
+      ! Set pointer to XS data
+      ptr = self % fissXSp
+
+      ! Read xs data
+      xs = self % XSS(ptr : ptr + N-1)
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+  end function xsFiss
+
+  !!
+  !! Returns .true. if nuclide has NU prompt data
+  !! If only one prompt/total table is given it is regardes as total
+  !! Returns error is nuclide is not fissile
+  !!
+  function hasNuPrompt(self) result(doesIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: doesIt
+    character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
+
+    if(self % isFissile) then
+      doesIt = (self % promptNUp /= unINIT)
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+
+  end function hasNuPrompt
+
+  !!
+  !! Returns .true. if nuclide has NU total data
+  !! If only one prompt/total table is given it is regardes as total
+  !! Returns error is nuclide is not fissile
+  !!
+  function hasNuTotal(self) result(doesIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: doesIt
+    character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
+
+    if(self % isFissile) then
+      doesIt = (self % totalNUp /= unINIT)
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+
+  end function hasNuTotal
+
+  !!
+  !! Returns .true. if nuclide has NU delayed data
+  !! Returns error is nuclide is not fissile
+  !!
+  function hasNuDelayed(self) result(doesIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: doesIt
+    character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
+
+    if(self % isFissile) then
+      doesIt = (self % delayNUp /= unINIT)
+
+    else
+      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+
+    end if
+
+
+  end function hasNuDelayed
+
+  !!
+  !! Sets read head to beginning of NU prompt Data
+  !! If only one prompt/total table is given it is regardes as total
+  !! If there is no prompt data returns an error
+  !! Returns error is nuclide is not fissile
+  !!
+  subroutine setToNuPrompt(self)
+    class(aceCard), intent(inout) :: self
+    character(100),parameter :: Here ='setToNuPromt (aceCard_class.f90)'
+
+    if(self % hasNuPrompt()) then
+      self % head = self % promptNUp
+
+    else
+      call fatalError(Here,'Should never happen')
+
+    end if
+
+  end subroutine setToNuPrompt
+
+  !!
+  !! Sets read head to beginning of NU total Data
+  !! If only one prompt/total table is given it is regardes as total
+  !! If there is no total data returns an error
+  !! Returns error is nuclide is not fissile
+  !!
+  subroutine setToNuTotal(self)
+    class(aceCard), intent(inout) :: self
+    character(100),parameter :: Here ='setToNuTotal (aceCard_class.f90)'
+
+    if(self % hasNuTotal()) then
+      self % head = self % totalNUp
+
+    else
+      call fatalError(Here,'Should never happen')
+
+    end if
+
+  end subroutine setToNuTotal
+
+  !!
+  !! Sets read head to beginning of NU delayed Data
+  !! If there is no total data returns an error
+  !! Returns error is nuclide is not fissile
+  !!
+  subroutine setToNuDelayed(self)
+    class(aceCard), intent(inout) :: self
+    character(100),parameter :: Here ='setToNuDelayed (aceCard_class.f90)'
+
+    if(self % hasNuDelayed()) then
+      self % head = self % delayNUp
+
+    else
+      call fatalError(Here,'Should never happen')
+
+    end if
+
+  end subroutine setToNuDelayed
 
   !!
   !! Read single integer and advance read head
@@ -319,6 +694,61 @@ contains
   end function readRealArray
 
   !!
+  !! Reads integer under head and does NOT advance
+  !!
+  function readIntNotAdvance(self) result(i)
+    class(aceCard),intent(in)  :: self
+    integer(shortInt)          :: i
+    character(100),parameter   :: Here ='readIntNotAdvance (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    i = real2Int(self % XSS(self % head),Here)
+
+  end function readIntNotAdvance
+
+  !!
+  !! Reads real under head and does NOT advance
+  !!
+  function readRealNotAdvance(self) result(r)
+    class(aceCard), intent(in) :: self
+    real(defReal)              :: r
+    character(100),parameter   :: Here ='readRealNotAdvance (aceCard_class.f90)'
+
+    ! Check head status
+    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+
+    ! Read value
+    r = self % XSS(self % head)
+
+  end function readRealNotAdvance
+
+  !!
+  !! Advances head by N
+  !! Moves forward for +ve N
+  !! Moves backwards for -ve N
+  !!
+  subroutine advanceHead(self,N)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: N
+
+    self % head = self % head + N
+
+  end subroutine advanceHead
+
+  !!
+  !! Resets head position back to 0
+  !!
+  subroutine resetHead(self)
+    class(aceCard), intent(inout) :: self
+
+    self % head = 0
+
+  end subroutine resetHead
+
+  !!
   !! Load data for every MT reaction type
   !! NOTE: in ACE format reactions with no secondary neutrons are at the end of MT numbers list.
   !!       As the result it is safe to read data with MTdata(1:NMTs).
@@ -355,11 +785,16 @@ contains
     ! If raw TY is -ve, set CMframe to .true. and convert TY to +ve
     do i=1,NMT
       if( self % MTdata(i) % TY < 0 ) then
-        self % MTdata(i) % TY = abs(self % MTdata(i) % TY)
-        self % MTdata(i) % CMframe = .true.
+        self % MTdata(i) % TY        = abs(self % MTdata(i) % TY)
+        self % MTdata(i) % CMframe   = .true.
+        self % MTdata(i) % isCapture = .false.
+
+      else if(self % MTdata(i) % TY == 0) then
+        self % MTdata(i) % isCapture = .true.
 
       else
-        self % MTdata(i) % CMframe = .false.
+        self % MTdata(i) % CMframe   = .false.
+        self % MTdata(i) % isCapture = .false.
 
       end if
     end do
@@ -489,6 +924,8 @@ contains
     character(pathLen)             :: localFilePath
     integer(shortInt)              :: i
     character(100)                 :: debug
+    character(13)                  :: skip
+    character(100),parameter :: Here ='readFromFile (aceCard_class.f90)'
 
     ! Copy filepath and make shure it is left adjusted
     localFilePath = trim(adjustl(filePath))
@@ -497,11 +934,31 @@ contains
     call openToRead(aceFile,localFilePath)
 
     ! Skip lines
-    if (lineNum > 1) then
-      do i = 1, lineNum-1
+    select case(lineNum)
+      case(:0)
+        call fatalError(Here,'Invalid line number. 0 or -ve' )
+
+      case(1)
+        !Do nothing
+
+      case(2)
         read(aceFile,*)
-      end do
-    endif
+
+      case(3:)
+        write(skip,'(A1,I10,A2)') '(',lineNum-2,'/)'
+        read(aceFile,skip)
+
+      end select
+
+    ! Old skip lines for reference with a do loop
+      !if (lineNum > 1) then
+      !  do i = 1, lineNum-1
+      !    read(aceFile,*)
+      !  end do
+      !endif
+    ! Using write(unit,('numLines/')) to skip lines is much faster.
+    ! Needs to be lineNum-2 becouse it skips lineNum-2 lines and then reads another line
+    ! with read statement. lineNum-1 is the target line becouse in Fortran indices start with 1
 
     ! Read Header information
     read(aceFile,'(A10, F12.6, E12.0, 1X, A10)') self % ZAID, self % AW, self % TZ, self % HD
@@ -527,7 +984,8 @@ contains
   end subroutine
 
   !!
-  !! Print contents to the screen
+  !! Print contents to the screen.
+  !! For DEBUG. Is not pretty.
   !!
   subroutine print_aceCard(self)
     class(aceCard),intent(in) :: self
@@ -549,12 +1007,13 @@ contains
 
   !!
   !! Print contents of MT reaction data to screen
+  !! For DEBUG. Is not pretty.
   !!
   subroutine print_MTreaction(self)
     class(MTreaction),intent(in) :: self
 
-    print *, self % MT, self % Q, self % TY, self % CMframe, self % IE, self % N_xs, self % XSp,&
-             self % LOCB, self % ANDp, self % DLWp, self % isotropic, self % law44
+    print *, self % MT, self % Q, self % TY, self % isCapture ,self % CMframe, self % IE, &
+             self % N_xs, self % XSp, self % LOCB, self % ANDp, self % DLWp, self % isotropic, self % law44
 
   end subroutine print_MTreaction
 
