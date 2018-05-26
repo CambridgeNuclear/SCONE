@@ -12,7 +12,9 @@ module angleLawENDFfactory_func
   use tabularAngle_class,     only : tabularAngle
 
   implicit none
+  private
 
+  ! Define public interface
   public :: new_angleLawENDF
   public :: new_angleLawENDF_ptr
 

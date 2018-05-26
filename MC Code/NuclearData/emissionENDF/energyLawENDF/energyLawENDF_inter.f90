@@ -1,4 +1,4 @@
-module energyLawEndf_class
+module energyLawEndf_inter
 
   use numPrecision
   use RNG_class, only : RNG
@@ -6,6 +6,9 @@ module energyLawEndf_class
   implicit none
   private
 
+  !!
+  !! Abstract interface for diffrent energy distributions
+  !!
   type,abstract, public :: energyLawENDF
       private
     contains
@@ -16,6 +19,9 @@ module energyLawEndf_class
 
   abstract interface
 
+    !!
+    !! Sample outgoing energy given random number generator and incedent energy
+    !!
     function sample(self,E_in,rand) result (E_out)
       import :: energyLawEndf,&
                 defReal,      &
@@ -26,7 +32,9 @@ module energyLawEndf_class
       real(defReal)                    :: E_out
     end function
 
-
+    !!
+    !! Give probability of outgoing energy given incedent energy
+    !!
     function probabilityOf(self,E_out,E_in) result (prob)
       import :: energyLawEndf,&
                 defReal
@@ -35,12 +43,5 @@ module energyLawEndf_class
       real(defReal)                    :: prob
     end function
 
-
   end interface
-
-
-contains
-
-
-    
-end module energyLawEndf_class
+end module energyLawEndf_inter

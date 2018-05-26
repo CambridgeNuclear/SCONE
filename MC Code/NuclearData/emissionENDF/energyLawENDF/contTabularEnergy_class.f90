@@ -2,9 +2,10 @@ module contTabularEnergy_class
 
   use numPrecision
   use genericProcedures,   only : binarySearch, fatalError, interpolate, searchError, isSorted
+  use aceCard_class,       only : aceCard
   use tabularEnergy_class, only : tabularEnergy
   use RNG_class,           only : RNG
-  use energyLawENDF_class, only : energyLawENDF
+  use energyLawENDF_inter, only : energyLawENDF
 
 
   implicit none
@@ -12,8 +13,14 @@ module contTabularEnergy_class
 
   interface contTabularEnergy
     module procedure new_contTabularEnergy
+    module procedure new_contTabularEnergy_fromACE
   end interface
 
+  !!
+  !! Continuous Tabular Distribution
+  !! Energy distribution for an outgoing particle. LAW 4 in ENDF and ACE
+  !! Does not support multiple interpolation regions & discrete photon lines
+  !!
   type, public,extends(energyLawENDF):: contTabularEnergy
     private
     real(defReal),dimension(:),allocatable       :: eGrid
@@ -28,6 +35,9 @@ module contTabularEnergy_class
 
 contains
 
+  !!
+  !! Sample outgoing particle energy given Random Number Generator and collision energy
+  !!
   function sample(self,E_in,rand) result (E_out)
     class(contTabularEnergy), intent(in) :: self
     real(defReal), intent(in)            :: E_in
@@ -51,7 +61,10 @@ contains
 
   end function sample
 
-
+  !!
+  !! Returns probability of emission of particle with energy E_out
+  !! Given collision happend at energy E_in
+  !!
   function probabilityOf(self,E_out,E_in) result (prob)
     class(contTabularEnergy), intent(in) :: self
     real(defReal), intent(in)            :: E_out, E_in
@@ -73,7 +86,9 @@ contains
 
   end function probabilityOf
 
-
+  !!
+  !! Initialise from energy grid and table of single energy probabilty distributions
+  !!
   subroutine init(self,eGrid,ePdfs)
     class(contTabularEnergy), intent(inout)     :: self
     real(defReal),dimension(:),intent(in)       :: eGrid
@@ -96,15 +111,58 @@ contains
 
   end subroutine init
 
-
-  function new_contTabularEnergy(eGrid,ePdfs) result (new)
+  !!
+  !! Constructor
+  !!
+  function new_contTabularEnergy(eGrid,ePdfs) result(new)
     real(defReal),dimension(:),intent(in)        :: eGrid
     type(tabularEnergy),dimension(:),intent(in)  :: ePdfs
-    type(contTabularEnergy),pointer              :: new
+    type(contTabularEnergy)                      :: new
 
-    allocate(new)
     call new % init(eGrid,ePdfs)
 
   end function new_contTabularEnergy
+
+  !!
+  !! Constructor from ACE
+  !! Head of aceCard needs to be set to the beginning of the data
+  !! NOTE : Defining another init for ACE would help to avoid unnecesary reallocation of memory
+  !!
+  function new_contTabularEnergy_fromACE(ACE) result(new)
+    type(aceCard), intent(inout)                 :: ACE
+    type(contTabularEnergy)                      :: new
+    integer(shortInt)                            :: NR
+    integer(shortInt)                            :: N, i
+    real(defReal),dimension(:),allocatable       :: eGrid
+    integer(shortInt),dimension(:),allocatable   :: locEne
+    type(tabularEnergy),dimension(:),allocatable :: ePdfs
+    character(100),parameter :: Here = 'new_contTabularEnergy_fromACE (contTabularEnergy_class.f90)'
+
+    ! Read number of interpolation regions
+    NR = ACE % readInt()
+
+    ! Return error if there are multiple regions
+    if(NR /= 0) then
+      call fatalError(Here,'Many inter. regions on energy distr. table are not supported')
+    end if
+
+    ! Read rest of the data
+    N      = ACE % readInt()        ! Number of energy points
+    eGrid  = ACE % readRealArray(N) ! Incident neutron energy grid
+    locEne = ACE % readIntArray(N)  ! Read locations of PDF tables at a given incident energy
+
+    allocate(ePdfs(N))
+
+    ! Loop over all locations and read PDF at the given energy
+    do i=1,N
+      call ACE % setToEnergyLaw(locEne(i))
+      ePdfs(i) = tabularEnergy(ACE)
+    end do
+
+    ! Initialise
+    call new % init(eGrid,ePdfs)
+
+  end function new_contTabularEnergy_fromACE
+
 
 end module contTabularEnergy_class

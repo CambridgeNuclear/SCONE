@@ -23,21 +23,21 @@ module emissionFromACE_func
 
   ! Import Angular Distributions
   use angleLawENDF_inter,             only : angleLawENDF
-  use noAngle_class,                  only : noAngle
-  use tabularAngle_class,             only : tabularAngle
-  use isotropicAngle_class,           only : isotropicAngle
+  !use noAngle_class,                  only : noAngle
+  !use tabularAngle_class,             only : tabularAngle
+  !use isotropicAngle_class,           only : isotropicAngle
 
   ! Import Mu Probability Density Functions (PDF)
-  use muEndfPdf_inter,                only : muEndfPdf, muEndfPdf_ptr
-  use equiBin32Mu_class,              only : equiBin32Mu
-  use isotropicMu_class,              only : isotropicMu
-  use tabularMu_class,                only : tabularMu
+  !use muEndfPdf_inter,                only : muEndfPdf, muEndfPdf_ptr
+  !use equiBin32Mu_class,              only : equiBin32Mu
+  !use isotropicMu_class,              only : isotropicMu
+  !use tabularMu_class,                only : tabularMu
 
   ! Import Energy distributions
-  use energyLawENDF_class,            only : energyLawENDF
-  use noEnergy_class,                 only : noEnergy
-  use contTabularEnergy_class,        only : contTabularEnergy
-  use maxwellSpectrum_class,          only : maxwellSpectrum
+  use energyLawENDF_inter,            only : energyLawENDF
+  !use noEnergy_class,                 only : noEnergy
+  !use contTabularEnergy_class,        only : contTabularEnergy
+  !use maxwellSpectrum_class,          only : maxwellSpectrum
 
   ! Import Energy Probability Density Functions (PDF)
   use tabularEnergy_class,            only : tabularEnergy
@@ -46,6 +46,7 @@ module emissionFromACE_func
 
   ! Import factories
   use angleLawENDFfactory_func,       only : new_angleLawENDF_ptr
+  use energyLawENDFfactory_func,      only : new_energyLawENDF_ptr
 
   ! Import Neutron Release Distributions
   use releaseLawENDF_class,           only : releaseLawENDF
@@ -141,7 +142,7 @@ contains
         !angleLaw   => noAngle()
         !call ACE % setToAngleMT(MT)
         angleLaw   => new_angleLawENDF_ptr(ACE,MT)
-        energyLaw  => noEnergy()
+        energyLaw => new_energyLawENDF_ptr(ACE,MT)
         releaseLaw => constantRelease(0.0_defReal)
 
         new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
@@ -156,7 +157,7 @@ contains
         class(releaseLawENDF), pointer :: releaseLaw
 
 
-        energyLaw  => noEnergy()
+        energyLaw => new_energyLawENDF_ptr(ACE,MT)
         releaseLaw => constantRelease(1.0_defReal)
 
 
@@ -240,19 +241,19 @@ contains
         elseif (isCapture) then
           !call ACE % setToAngleMT(MT)
           angleLaw  => new_angleLawENDF_ptr(ACE,MT)
-          energyLaw => noEnergy()
+          energyLaw => new_energyLawENDF_ptr(ACE,MT)
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
         elseif (isIsotropic) then
           !call ACE % setToAngleMT(MT)
           angleLaw  => new_angleLawENDF_ptr(ACE,MT)
-          energyLaw => readEnergyArray(JXS(11)+LOCC-1)
+          energyLaw => new_energyLawENDF_ptr(ACE,MT)
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
         else
           !call ACE % setToAngleMT(MT)
           angleLaw  => new_angleLawENDF_ptr(ACE,MT)
-          energyLaw => readEnergyArray(JXS(11)+LOCC-1)
+          energyLaw => new_energyLawENDF_ptr(ACE,MT)
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
         end if
@@ -367,204 +368,204 @@ contains
 
 
 
-      function readEnergyArray(addr) result(energyLaw)
-        !! Function returns pointer to energy law that begins at a given address (addr) in XSS
-        !! table.
-        !! addr should point to JXS(11)+LOCC-1
-        integer(shortInt),intent(in)   :: addr
-        class(energyLawENDF),pointer   :: energyLaw
-        integer(shortInt)              :: nLaws                       ! Number of energy Laws
-        integer(shortInt)              :: lawType                     ! Type of energy Law
-        integer(shortInt)              :: addrLaw                     ! Adress of the Law data
-        real(defReal)                  :: nLaws_r,lawType_r,addrLaw_r ! Temp real holders
-        character(100),parameter       :: Here='readEnergyArray (emissionFromACE_func.f90)'
-
-        nLaws_r   = XSS(addr)
-        lawType_r    = XSS(addr+1)
-        addrLaw_r = XSS(addr+2)
-
-        ! Perform Sanity Checks
-        if (.not.isInteger(nLaws_r))   call fatalError(Here,'Read number of Laws is not integer')
-        if ( nLaws_r < 0)              call fatalError(Here,'-ve number of laws')
-        if (.not.isInteger(lawType_r)) call fatalError(Here,'Read Law type is not integer')
-        if ( lawType_r < 0)            call fatalError(Here,'Read Law type is -ve integer')
-        if (.not.isInteger(addrLaw_r)) call fatalError(Here,'Read addres of energy Law is not int')
-        if (addrLaw_r < 0)             call fatalError(Here,'Read adress of energy Law is -ve')
-
-        ! Convert to integers
-        nLaws   = nLaws_r
-        lawType = lawType_r
-        addrLaw = addrLaw_r
-
-
-        ! Read energy law
-        if (nLaws == 0) then
-          energyLaw => readSingleEnergyLaw(JXS(11)+addrLaw-1,lawType)
-        else
-          call fatalError(Here,'Multiple energy laws for a single MT are not yet supported')
-        end if
-
-      end function readEnergyArray
-
-
-
-      function readSingleEnergyLaw(addr,lawType) result (energyLaw)
-        !! Function to select approperiate function for reading a single energy Law
-        !! addr should point to LDAT(1) = JXS(11)+IDAT-1
-        integer(shortInt), intent(in)  :: addr
-        integer(shortInt), intent(in)  :: lawType
-        class(energyLawENDF),pointer   :: energyLaw
-        character(100),parameter       :: Here='readEnergyLaw (emissionFromACE_func.f90)'
-
-        select case (lawType)
-          case (continuousTabularDistribution)
-            energyLaw => readEnergyLaw_contTabularEnergy(addr)
-
-          case (simpleMaxwellFissionSpectrum)
-            energyLaw => readEnergyLaw_maxwellSpectrum(addr)
-
-          case default
-            print *, 'Energy Law Type :', lawType
-            call fatalError(Here,'Energy Law Type is not recognised')
-
-        end select
-
-      end function readSingleEnergyLaw
-
-
-      function readEnergyLaw_contTabularEnergy(addr) result(energyLaw)
-        !! Reads energy Law in continuous tabular distribution form.
-        !! In the future this subroutine should be moved to object definition
-        !! Argument addr should point to LDAT(1) -> NR -> Number of interpolation regions
-        integer(shortInt), intent(in)                :: addr
-        class(energyLawENDF),pointer                 :: energyLaw
-        integer(shortInt)                            :: interRegions  , numE
-        real(defReal)                                :: interRegions_r, numE_r
-        integer(shortInt)                            :: i
-        real(defReal),dimension(:),allocatable       :: eGrid
-        integer(shortInt),dimension(:),allocatable   :: ePdfLoc         ! Locators of energy PDFs
-        type(tabularEnergy),dimension(:),allocatable :: ePdfs
-        character(100),parameter                     :: Here ='readEnergyLaw_contTabularEnergy &
-                                                             & (emissionFromACE_func.f90)'
-        ! Read and check number of interpolation paramethers
-        interRegions_r = XSS(addr)
-        if(.not.isInteger(interRegions_r)) then
-          call fatalError(Here,'Number of interpolation regions is not an integer')
-        end if
-
-        interRegions = interRegions_r
-
-        if(interRegions /= 0) then
-          call fatalError(Here,'Many inter. regions on energy distr. table are not supported')
-        end if
-
-        ! Read and check number of energy points
-        numE_r = XSS(addr+1)
-        if(.not.isInteger(numE_r)) call fatalError(Here,'Number of energy points is not an integer')
-        if(numE_r < 0 )            call fatalError(Here,'-ve number of energy points')
-        numE = numE_r
-
-        ! Read Data
-        eGrid   = XSS(addr+2      : addr+2+numE-1   )
-        ePdfLoc = XSS(addr+2+numE : addr+2+2*numE-1 )
-
-        allocate(ePdfs(numE))
-
-        do i=1,numE
-          ePdfs(i) = readSingleEnergyTabularPdf(JXS(11)+ePdfLoc(i)-1)
-        end do
-
-        energyLaw => contTabularEnergy(eGrid,ePdfs)
-
-      end function readEnergyLaw_contTabularEnergy
-
-
-
-      function readSingleEnergyTabularPdf(addr) result(tabularEnergyPdf)
-        integer(shortInt),intent(in)           :: addr
-        type(tabularEnergy)                    :: tabularEnergyPdf
-        integer(shortInt)                      :: interType, nPoints
-        real(defReal)                          :: interType_r, nPoints_r
-        real(defReal),dimension(:),allocatable :: eGrid, PDF, CDF
-        character(100),parameter               :: Here ='readSingleEnergyTabularPdf &
-                                                        & (emissionFromACE_func.f90)'
-
-        ! Read and check number of points and interpolation type
-        interType_r = XSS(addr)
-        nPoints_r   = XSS(addr+1)
-
-        if(.not.isInteger(interType_r)) call fatalError(Here,'Interpolation type is not an int')
-        if(.not.isInteger(nPoints_r))   call fatalError(Here,'Number of PDF points is not an int')
-        if(nPoints_r < 0)               call fatalError(Here,'-ve number of PDF points')
-
-        interType = interType_r
-        nPoints   = nPoints_r
-
-        ! Read arrays
-        eGrid = XSS(addr+2           : addr+2+nPoints-1  )
-        PDF   = XSS(addr+2+nPoints   : addr+2+2*nPoints-1)
-        CDF   = XSS(addr+2+2*nPoints : addr+2+3*nPoints-1)
-
-        call tabularEnergyPdf % init(eGrid,PDF,CDF,interType)
-
-      end function readSingleEnergyTabularPdf
-
-
-
-      function readEnergyLaw_maxwellSpectrum(addr) result (energyLaw)
-        !! Reads energy Law given as maxwellian energy spectrum.
-        !! In the future this subroutine should be moved to object definition
-        !! Argument addr should point to LDAT(1) -> NR -> Number of interpolation regions
-        integer(shortInt), intent(in)                :: addr
-        class(energyLawENDF),pointer                 :: energyLaw
-        integer(shortInt)                            :: NR  , numE
-        real(defReal)                                :: NR_r, numE_r
-        real(defReal),dimension(:),allocatable       :: eGrid
-        real(defReal),dimension(:),allocatable       :: T
-        integer(shortInt),dimension(:),allocatable   :: bounds, interENDF
-        real(defReal)                                :: U
-        character(100),parameter                     :: Here ='readEnergyLaw_maxwellSpectrum &
-                                                             & (emissionFromACE_func.f90)'
-
-        ! Read and check number of interpolation paramethers
-        NR_r = XSS(addr)
-        if(.not.isInteger(NR_r)) then
-          call fatalError(Here,'Number of interpolation regions is not an integer')
-        end if
-
-        NR = NR_r
-
-        if(NR /= 0) then
-          ! Read interpolation parameters
-          allocate(bounds(NR))
-          allocate(interENDF(NR))
-
-          bounds    = real2Int( XSS(addr+1    : addr+1+NR-1   ), Here )
-          interEndf = real2Int( XSS(addr+1+NR : addr +1+2*NR-1), Here )
-
-        end if
-
-        ! Read and check number of energy points
-        numE_r = XSS(addr+2*NR+1)
-        if(.not.isInteger(numE_r)) call fatalError(Here,'Number of energy points is not an integer')
-        if(numE_r < 0 )            call fatalError(Here,'-ve number of energy points')
-        numE = numE_r
-
-        ! Read energy grid and neutron temperature (T) values
-        eGrid   = XSS(addr+2*NR+2      : addr+2*NR+2+numE-1   )
-        T       = XSS(addr+2*NR+2+numE : addr+2*NR+2+2*numE-1 )
-        U       = XSS(addr+2*NR+2+2*numE )
-
-        ! Create maxwellSpectrum object
-        if (NR == 0 ) then
-          energyLaw => maxwellSpectrum(eGrid,T,U)
-
-        else
-          energyLaw => maxwellSpectrum(eGrid,T,U,bounds,interENDF)
-
-        end if
-
-      end function readEnergyLaw_maxwellSpectrum
+!      function readEnergyArray(addr) result(energyLaw)
+!        !! Function returns pointer to energy law that begins at a given address (addr) in XSS
+!        !! table.
+!        !! addr should point to JXS(11)+LOCC-1
+!        integer(shortInt),intent(in)   :: addr
+!        class(energyLawENDF),pointer   :: energyLaw
+!        integer(shortInt)              :: nLaws                       ! Number of energy Laws
+!        integer(shortInt)              :: lawType                     ! Type of energy Law
+!        integer(shortInt)              :: addrLaw                     ! Adress of the Law data
+!        real(defReal)                  :: nLaws_r,lawType_r,addrLaw_r ! Temp real holders
+!        character(100),parameter       :: Here='readEnergyArray (emissionFromACE_func.f90)'
+!
+!        nLaws_r   = XSS(addr)
+!        lawType_r    = XSS(addr+1)
+!        addrLaw_r = XSS(addr+2)
+!
+!        ! Perform Sanity Checks
+!        if (.not.isInteger(nLaws_r))   call fatalError(Here,'Read number of Laws is not integer')
+!        if ( nLaws_r < 0)              call fatalError(Here,'-ve number of laws')
+!        if (.not.isInteger(lawType_r)) call fatalError(Here,'Read Law type is not integer')
+!        if ( lawType_r < 0)            call fatalError(Here,'Read Law type is -ve integer')
+!        if (.not.isInteger(addrLaw_r)) call fatalError(Here,'Read addres of energy Law is not int')
+!        if (addrLaw_r < 0)             call fatalError(Here,'Read adress of energy Law is -ve')
+!
+!        ! Convert to integers
+!        nLaws   = nLaws_r
+!        lawType = lawType_r
+!        addrLaw = addrLaw_r
+!
+!
+!        ! Read energy law
+!        if (nLaws == 0) then
+!          energyLaw => readSingleEnergyLaw(JXS(11)+addrLaw-1,lawType)
+!        else
+!          call fatalError(Here,'Multiple energy laws for a single MT are not yet supported')
+!        end if
+!
+!      end function readEnergyArray
+!
+!
+!
+!      function readSingleEnergyLaw(addr,lawType) result (energyLaw)
+!        !! Function to select approperiate function for reading a single energy Law
+!        !! addr should point to LDAT(1) = JXS(11)+IDAT-1
+!        integer(shortInt), intent(in)  :: addr
+!        integer(shortInt), intent(in)  :: lawType
+!        class(energyLawENDF),pointer   :: energyLaw
+!        character(100),parameter       :: Here='readEnergyLaw (emissionFromACE_func.f90)'
+!
+!        select case (lawType)
+!          case (continuousTabularDistribution)
+!            energyLaw => readEnergyLaw_contTabularEnergy(addr)
+!
+!          case (simpleMaxwellFissionSpectrum)
+!            energyLaw => readEnergyLaw_maxwellSpectrum(addr)
+!
+!          case default
+!            print *, 'Energy Law Type :', lawType
+!            call fatalError(Here,'Energy Law Type is not recognised')
+!
+!        end select
+!
+!      end function readSingleEnergyLaw
+!
+!
+!      function readEnergyLaw_contTabularEnergy(addr) result(energyLaw)
+!        !! Reads energy Law in continuous tabular distribution form.
+!        !! In the future this subroutine should be moved to object definition
+!        !! Argument addr should point to LDAT(1) -> NR -> Number of interpolation regions
+!        integer(shortInt), intent(in)                :: addr
+!        class(energyLawENDF),pointer                 :: energyLaw
+!        integer(shortInt)                            :: interRegions  , numE
+!        real(defReal)                                :: interRegions_r, numE_r
+!        integer(shortInt)                            :: i
+!        real(defReal),dimension(:),allocatable       :: eGrid
+!        integer(shortInt),dimension(:),allocatable   :: ePdfLoc         ! Locators of energy PDFs
+!        type(tabularEnergy),dimension(:),allocatable :: ePdfs
+!        character(100),parameter                     :: Here ='readEnergyLaw_contTabularEnergy &
+!                                                             & (emissionFromACE_func.f90)'
+!        ! Read and check number of interpolation paramethers
+!        interRegions_r = XSS(addr)
+!        if(.not.isInteger(interRegions_r)) then
+!          call fatalError(Here,'Number of interpolation regions is not an integer')
+!        end if
+!
+!        interRegions = interRegions_r
+!
+!        if(interRegions /= 0) then
+!          call fatalError(Here,'Many inter. regions on energy distr. table are not supported')
+!        end if
+!
+!        ! Read and check number of energy points
+!        numE_r = XSS(addr+1)
+!        if(.not.isInteger(numE_r)) call fatalError(Here,'Number of energy points is not an integer')
+!        if(numE_r < 0 )            call fatalError(Here,'-ve number of energy points')
+!        numE = numE_r
+!
+!        ! Read Data
+!        eGrid   = XSS(addr+2      : addr+2+numE-1   )
+!        ePdfLoc = XSS(addr+2+numE : addr+2+2*numE-1 )
+!
+!        allocate(ePdfs(numE))
+!
+!        do i=1,numE
+!          ePdfs(i) = readSingleEnergyTabularPdf(JXS(11)+ePdfLoc(i)-1)
+!        end do
+!
+!        energyLaw => contTabularEnergy(eGrid,ePdfs)
+!
+!      end function readEnergyLaw_contTabularEnergy
+!
+!
+!
+!      function readSingleEnergyTabularPdf(addr) result(tabularEnergyPdf)
+!        integer(shortInt),intent(in)           :: addr
+!        type(tabularEnergy)                    :: tabularEnergyPdf
+!        integer(shortInt)                      :: interType, nPoints
+!        real(defReal)                          :: interType_r, nPoints_r
+!        real(defReal),dimension(:),allocatable :: eGrid, PDF, CDF
+!        character(100),parameter               :: Here ='readSingleEnergyTabularPdf &
+!                                                        & (emissionFromACE_func.f90)'
+!
+!        ! Read and check number of points and interpolation type
+!        interType_r = XSS(addr)
+!        nPoints_r   = XSS(addr+1)
+!
+!        if(.not.isInteger(interType_r)) call fatalError(Here,'Interpolation type is not an int')
+!        if(.not.isInteger(nPoints_r))   call fatalError(Here,'Number of PDF points is not an int')
+!        if(nPoints_r < 0)               call fatalError(Here,'-ve number of PDF points')
+!
+!        interType = interType_r
+!        nPoints   = nPoints_r
+!
+!        ! Read arrays
+!        eGrid = XSS(addr+2           : addr+2+nPoints-1  )
+!        PDF   = XSS(addr+2+nPoints   : addr+2+2*nPoints-1)
+!        CDF   = XSS(addr+2+2*nPoints : addr+2+3*nPoints-1)
+!
+!        call tabularEnergyPdf % init(eGrid,PDF,CDF,interType)
+!
+!      end function readSingleEnergyTabularPdf
+!
+!
+!
+!      function readEnergyLaw_maxwellSpectrum(addr) result (energyLaw)
+!        !! Reads energy Law given as maxwellian energy spectrum.
+!        !! In the future this subroutine should be moved to object definition
+!        !! Argument addr should point to LDAT(1) -> NR -> Number of interpolation regions
+!        integer(shortInt), intent(in)                :: addr
+!        class(energyLawENDF),pointer                 :: energyLaw
+!        integer(shortInt)                            :: NR  , numE
+!        real(defReal)                                :: NR_r, numE_r
+!        real(defReal),dimension(:),allocatable       :: eGrid
+!        real(defReal),dimension(:),allocatable       :: T
+!        integer(shortInt),dimension(:),allocatable   :: bounds, interENDF
+!        real(defReal)                                :: U
+!        character(100),parameter                     :: Here ='readEnergyLaw_maxwellSpectrum &
+!                                                             & (emissionFromACE_func.f90)'
+!
+!        ! Read and check number of interpolation paramethers
+!        NR_r = XSS(addr)
+!        if(.not.isInteger(NR_r)) then
+!          call fatalError(Here,'Number of interpolation regions is not an integer')
+!        end if
+!
+!        NR = NR_r
+!
+!        if(NR /= 0) then
+!          ! Read interpolation parameters
+!          allocate(bounds(NR))
+!          allocate(interENDF(NR))
+!
+!          bounds    = real2Int( XSS(addr+1    : addr+1+NR-1   ), Here )
+!          interEndf = real2Int( XSS(addr+1+NR : addr +1+2*NR-1), Here )
+!
+!        end if
+!
+!        ! Read and check number of energy points
+!        numE_r = XSS(addr+2*NR+1)
+!        if(.not.isInteger(numE_r)) call fatalError(Here,'Number of energy points is not an integer')
+!        if(numE_r < 0 )            call fatalError(Here,'-ve number of energy points')
+!        numE = numE_r
+!
+!        ! Read energy grid and neutron temperature (T) values
+!        eGrid   = XSS(addr+2*NR+2      : addr+2*NR+2+numE-1   )
+!        T       = XSS(addr+2*NR+2+numE : addr+2*NR+2+2*numE-1 )
+!        U       = XSS(addr+2*NR+2+2*numE )
+!
+!        ! Create maxwellSpectrum object
+!        if (NR == 0 ) then
+!          energyLaw => maxwellSpectrum(eGrid,T,U)
+!
+!        else
+!          energyLaw => maxwellSpectrum(eGrid,T,U,bounds,interENDF)
+!
+!        end if
+!
+!      end function readEnergyLaw_maxwellSpectrum
 
 
 

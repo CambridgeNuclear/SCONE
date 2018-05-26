@@ -3,9 +3,10 @@ module maxwellSpectrum_class
   use numPrecision
   use genericProcedures,      only : fatalError, linearFloorIdxClosed_Real, searchError, isSorted, &
                                      interpolate
+  use aceCard_class,          only : aceCard
   use RNG_class,              only : RNG
   use maxwellEnergyPdf_class, only : maxwellEnergyPdf
-  use energyLawENDF_class,    only : energyLawENDF
+  use energyLawENDF_inter,    only : energyLawENDF
   use endfTable_class,        only : endfTable
 
   implicit none
@@ -20,16 +21,17 @@ module maxwellSpectrum_class
   interface maxwellSpectrum
     module procedure new_maxwellSpectrum
     module procedure new_maxwellSpectrum_Inter
+    module procedure new_maxwellSpectrum_fromACE
   end interface
 
-
+  !!
+  !! Simple Maxwell Fission Spectrum (ENDF LAW 7 )
+  !!
   type, public, extends(energyLawENDF) :: maxwellSpectrum
     private
-    type(maxwellEnergyPdf) :: maxwellPdf
-    !real(defReal), dimension(:), allocatable :: eGrid
-    !real(defReal), dimension(:), allocatable :: T
-    type(endfTable)           :: T_of_E
-    real(defReal)             :: U
+    type(maxwellEnergyPdf)    :: maxwellPdf ! Maxwell Energy pdf
+    type(endfTable)           :: T_of_E     ! "Temperature" as function of incident energy
+    real(defReal)             :: U          ! Restriction energy
 
   contains
     procedure :: sample
@@ -41,6 +43,9 @@ module maxwellSpectrum_class
 
 contains
 
+  !!
+  !! Samples energy of outgoing neutron given incedent particle energy and random number generator
+  !!
   function sample(self,E_in,rand) result (E_out)
     class(maxwellSpectrum), intent(in) :: self
     real(defReal),intent(in)           :: E_in
@@ -66,8 +71,9 @@ contains
 
   end function sample
 
-
-
+  !!
+  !! Returns probability that particle was emmited with energy E_out given incident energy E_in
+  !!
   function probabilityOf(self,E_out,E_in) result (prob)
     class(maxwellSpectrum), intent(in) :: self
     real(defReal), intent(in)          :: E_out
@@ -90,14 +96,16 @@ contains
 
   end function probabilityOf
 
-
-
+  !!
+  !! Initialise
+  !!
   subroutine init(self,eGrid,T,U,bounds,interENDF)
     class(maxwellSpectrum), intent(inout)              :: self
-    real(defReal),dimension(:),intent(in)              :: eGrid
-    real(defReal),dimension(:),intent(in)              :: T
-    real(defReal), intent(in)                          :: U
-    integer(shortInt),dimension(:),intent(in),optional :: bounds, interENDF
+    real(defReal),dimension(:),intent(in)              :: eGrid     ! T energy grid
+    real(defReal),dimension(:),intent(in)              :: T         ! T values
+    real(defReal), intent(in)                          :: U         ! Restriction energy
+    integer(shortInt),dimension(:),intent(in),optional :: bounds    ! Bounds of interpolation regions
+    integer(shortInt),dimension(:),intent(in),optional :: interENDF ! Interpolation flag
     character(100),parameter              :: Here='init (maxwellSpectrum_class.f90)'
 
     ! Perform sanity checks
@@ -115,40 +123,87 @@ contains
     else if ( present(bounds) .or. present(interENDF)) then
       call fatalError(Here,'Either "bounds" or "interENDF" is not given')
     else
-      call self % T_of_E % init(eGrid,T)
+      call self % T_of_E % init(eGrid,T) ! Default single region lin-lin interpolation
     end if
 
     self % U = U
 
   end subroutine init
 
-
-
+  !!
+  !! Simple constructor
+  !! Only one lin-lin interpolation region
+  !!
   function new_maxwellSpectrum(eGrid,T,U) result(new)
     real(defReal),dimension(:),intent(in)   :: eGrid
     real(defReal),dimension(:),intent(in)   :: T
     real(defReal), intent(in)               :: U
-    type(maxwellSpectrum), pointer          :: new
+    type(maxwellSpectrum)                   :: new
 
-    allocate(new)
     call new % init(eGrid,T,U)
 
   end function new_maxwellSPectrum
     
 
-
+  !!
+  !! Constructor
+  !! Multiple interpolation regions & interpolation schemes
+  !!
   function new_maxwellSpectrum_Inter(eGrid,T,U,bounds,interENDF) result(new)
     real(defReal),dimension(:),intent(in)     :: eGrid
     real(defReal),dimension(:),intent(in)     :: T
     real(defReal), intent(in)                 :: U
     integer(shortInt),dimension(:),intent(in) :: bounds, interENDF
-    type(maxwellSpectrum), pointer            :: new
+    type(maxwellSpectrum)                     :: new
 
-    allocate(new)
     call new % init(eGrid,T,U,bounds,interENDF)
 
   end function new_maxwellSPectrum_Inter
 
+  !!
+  !! Constructor from ACE
+  !! aceCard head needs to be set to the beginning of the data
+  !! Note: Should be accompanied by another initialisation routine to avoid reallocation of memory
+  !!
+  function new_maxwellSpectrum_fromACE(ACE) result(new)
+    type(aceCard), intent(inout)               :: ACE
+    type(maxwellSpectrum)                      :: new
+    real(defReal),dimension(:),allocatable     :: eGrid
+    real(defReal),dimension(:),allocatable     :: T
+    real(defReal)                              :: U
+    integer(shortInt),dimension(:),allocatable :: bounds
+    integer(shortInt),dimension(:),allocatable :: interENDF
+    integer(shortInt)                          :: NR
+    integer(shortInt)                          :: N
+    logical(defBool)                           :: hasInterRegions
+
+    ! Read number of interpolation regions
+    NR = ACE % readInt()
+    hasInterRegions = (NR /= 0)
+
+    ! Read interpolation data if present
+    if ( hasInterRegions ) then
+      bounds    = ACE % readIntArray(NR)
+      interENDF = ACE % readIntArray(NR)
+
+    end if
+
+    ! Read rest of the data
+    N     = ACE % readInt()        ! Number of incident energy points
+    eGrid = ACE % readRealArray(N) ! Read incident energy grid
+    T     = ACE % readRealArray(N) ! Temperature values
+    U     = ACE % readReal()       ! Read restriction energy
+
+    ! Initialise
+    if (hasInterRegions) then
+      call new % init(eGrid,T,U,bounds,interENDF)
+
+    else
+      call new % init(eGrid,T,U)
+
+    end if
+
+  end function new_maxwellSpectrum_fromACE
 
 
 end module maxwellSpectrum_class

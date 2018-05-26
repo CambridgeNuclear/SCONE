@@ -1,7 +1,7 @@
 module noEnergy_class
 
   use numPrecision
-  use energyLawENDF_class, only : energyLawENDF
+  use energyLawENDF_inter, only : energyLawENDF
   use RNG_class,           only : RNG
 
   implicit none
@@ -11,6 +11,10 @@ module noEnergy_class
     module procedure new_noEnergy
   end interface
 
+  !!
+  !! Null object if for no energy distribution
+  !! It is delta function at energy of the indedent particle
+  !!
   type, public,extends(energyLawENDF) :: noEnergy
     private
   contains
@@ -20,6 +24,10 @@ module noEnergy_class
 
 contains
 
+  !!
+  !! "Sample" outgoing energy.
+  !! Returns incedent energy
+  !!
   function sample(self,E_in,rand) result (E_out)
     class(noEnergy), intent(in)  :: self
     real(defReal), intent(in)    :: E_in
@@ -29,7 +37,11 @@ contains
     E_out = E_in
 
   end function sample
-    
+
+  !!
+  !! Return probability of particle beeing emit with E_out given incedent energy E_in
+  !! Returns 1.0 if E_out == E_in (perfectly)
+  !!
   function probabilityOf(self,E_out,E_in) result (prob)
     class(noEnergy), intent(in)       :: self
     real(defReal), intent(in)         :: E_out, E_in
@@ -40,14 +52,16 @@ contains
     else
       prob = 0.0
     end if
+
   end function probabilityOf
 
+  !!
+  !! Constructor
+  !!
   function new_noEnergy()
-    type(noEnergy),pointer :: new_noEnergy
-
-    allocate(new_noEnergy)
-
-  end function
+    type(noEnergy) :: new_noEnergy
+    ! Nothing to be done
+  end function new_noEnergy
 
 
 end module noEnergy_class

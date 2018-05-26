@@ -963,7 +963,7 @@ contains
     self % MTdata(1:NMTs) % DLWp = real2Int( self % XSS(ptr : ptr+NMTs-1),Here )
 
     ! Relate energy distributions pointers to XSS table
-    self % MTdata(1:NMTs) % DLWp = self % MTdata(1:NMTs) % DLWp + self % JXS(9) - 1
+    self % MTdata(1:NMTs) % DLWp = self % MTdata(1:NMTs) % DLWp + self % JXS(11) - 1
   end subroutine setMTdata
 
   !!

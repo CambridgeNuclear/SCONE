@@ -14,7 +14,7 @@ program test
   use polynomialRelease_class, only : polynomialRelease
   use tabularRelease_class, only : tabularRelease
 
-  use muEndfPdf_class,   only : muEndfPdf, muEndfPdf_ptr
+  use muEndfPdf_inter,   only : muEndfPdf, muEndfPdf_ptr
   use isotropicmu_class, only : isotropicmu
   use equiBin32mu_class, only : equiBin32mu
   use tabularmu_class,   only : tabularmu
@@ -25,7 +25,7 @@ program test
 
   use tabularEnergy_class, only: tabularEnergy
   use contTabularEnergy_class, only : contTabularEnergy
-  use energyLawENDF_class,     only : energyLawENDF
+  use energyLawENDF_inter,     only : energyLawENDF
   use noEnergy_class,          only : noEnergy
 
   use dictionary_class , only: dictionary, dictContent
