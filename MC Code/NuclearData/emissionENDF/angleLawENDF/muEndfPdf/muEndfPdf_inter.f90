@@ -1,4 +1,4 @@
-module muEndfPdf_class
+module muEndfPdf_inter
 
   use numPrecision
   use RNG_class, only : RNG
@@ -6,9 +6,11 @@ module muEndfPdf_class
   implicit none
   private
 
+  !!
+  !! Abstract interface  for all polymorphic objects containing probability density function (pdf)
+  !! for secondary emission angle cosine mu.
+  !!
   type,abstract, public :: muEndfPdf
-    !! Abstract class for all polymorphic objects containing probability density function (pdf)
-    !! for secondary emission angle cosine mu.
     private
   contains
     procedure(sample), deferred        :: sample
@@ -17,6 +19,9 @@ module muEndfPdf_class
 
   abstract interface
 
+    !!
+    !! Sample mu given random number generator
+    !!
     function sample(self,rand) result(mu)
       import :: RNG,&
                 muEndfPdf, &
@@ -26,6 +31,10 @@ module muEndfPdf_class
       real(defReal)                :: mu
     end function sample
 
+    !!
+    !! Give probability density of mu
+    !! Does not check if mu is in <-1;1>
+    !!
     function probabilityOf(self,mu) result(probability)
       import :: defReal,&
                 muEndfPdf
@@ -35,8 +44,10 @@ module muEndfPdf_class
     end function probabilityOf
   end interface
 
+  !! *** OBSOLETE WILL BE REPLACED WITH SLOTS SOON
+  !! Pointer wrapper object on muEndfPdf so arrays of pointers can be created
+  !!
   type,public :: muEndfPdf_ptr
-    !! Pointer wrapper object on muEndfPdf so arrays of pointers can be created
       private
       class(muEndfPdf),pointer :: ptr => null()
     contains
@@ -49,6 +60,11 @@ module muEndfPdf_class
   end type muEndfPdf_ptr
 
 contains
+
+  !!
+  !! Overload assignment.
+  !! Copy pointer from pointer wrapper to pointer wrapper
+  !!
   subroutine assignPointer_ptr(LHS,RHS)
     class(muEndfPdf_ptr),intent(out) :: LHS
     type(muEndfPdf_ptr),intent(in)   :: RHS
@@ -58,6 +74,10 @@ contains
 
   end subroutine
 
+  !!
+  !! Overload assignment.
+  !! Copy pointer to pointer wrapper
+  !!
   subroutine assignPointer(LHS,RHS)
     class(muEndfPdf_ptr),intent(out)    :: LHS
     class(muEndfPdf),pointer,intent(in) :: RHS
@@ -66,6 +86,9 @@ contains
     LHS % ptr => RHS
   end subroutine assignPointer
 
+  !!
+  !! Tranfer sample call to content
+  !!
   function sample_ptr(self,rand) result (mu)
     class(muEndfPdf_ptr),intent(in)  :: self
     class(RNG),intent(inout)         :: rand
@@ -74,6 +97,9 @@ contains
     mu = self % ptr % sample(rand)
   end function sample_ptr
 
+  !!
+  !! Tranfer probabilityOf call to content
+  !!
   function probabilityOf_ptr(self,mu) result(probability)
     class(muEndfPdf_ptr),intent(in)  :: self
     real(defReal),intent(in)         :: mu
@@ -84,4 +110,4 @@ contains
   end function probabilityOf_ptr
 
 
-end module muEndfPdf_class
+end module muEndfPdf_inter

@@ -1,8 +1,9 @@
 module noAngle_class
 
   use numPrecision
-  use angleLawENDF_class, only : angleLawENDF
-  use RNG_class, only : RNG
+  use RNG_class,          only : RNG
+  use angleLawENDF_inter, only : angleLawENDF
+
 
   implicit none
   private
@@ -11,6 +12,10 @@ module noAngle_class
     module procedure new_noAngle
   end interface
 
+  !!
+  !! Null object for lack of mu data
+  !! Can be used as a placeholder for reactions that are no scattering
+  !!
   type, public,extends(angleLawENDF) :: noAngle
     private
   contains
@@ -20,7 +25,10 @@ module noAngle_class
 
 contains
 
-
+  !!
+  !! Do not change direction
+  !! Always return mu = 1.0
+  !!
   function sample(self,E,rand) result (mu)
     class(noAngle), intent(in)   :: self
     real(defReal), intent(in)    :: E
@@ -31,6 +39,10 @@ contains
 
   end function sample
 
+  !!
+  !! Does not change direction
+  !! Probability density is a delta function delta(mu-1.0)
+  !!
   function probabilityOf(self,mu,E) result (prob)
     class(noAngle), intent(in)  :: self
     real(defReal), intent(in)   :: E, mu
@@ -44,12 +56,13 @@ contains
 
   end function probabilityOf
 
-  function new_noAngle()
-    type(noAngle), pointer  :: new_noAngle
-
-    allocate(new_noAngle)
-
-  end function
+  !!
+  !! Constructor
+  !!
+  function new_noAngle() result(new)
+    type(noAngle)  :: new
+    ! Nothing to be done
+  end function new_noAngle
 
     
 end module noAngle_class

@@ -1,6 +1,7 @@
 module aceCard_class
 
   use numPrecision
+  use endfConstants
   use genericProcedures, only : fatalError, openToRead, isInteger, linFind,&
                                 targetNotFound, searchError
 
@@ -61,6 +62,8 @@ module aceCard_class
   !!
   !! Please note that header of the ACE DATA CARD is stored in public components of type(aceCard)
   !!
+  !! Procedures for MT accept elastic scattering which has MT = N_N_elastic (from endfConstants)
+  !!
   type, public :: aceCard
     private
 
@@ -77,7 +80,7 @@ module aceCard_class
     type(MTreaction),dimension(:),allocatable  :: MTdata
 
     ! Fission related data
-    logical(defBool)  :: isFissile = .false.    ! Flag is true if JXS(21) /= 0
+    logical(defBool)  :: isFiss    = .false.    ! Flag is true if JXS(21) /= 0
     integer(shortInt) :: fissIE    = unINIT     ! First energy grid index for fission XSs
     integer(shortInt) :: fissNE    = unINIT     ! Number of fission XS points
     integer(shortInt) :: fissXSp   = unINIT     ! Location of first fission xs point on XSS table
@@ -85,10 +88,10 @@ module aceCard_class
     integer(shortInt) :: delayNUp  = unINIT     ! Location of delay NU data
     integer(shortInt) :: totalNUp  = unINIT     ! Location of total NU data
 
-    ! RAW ACE TABLES
-    integer(shortInt),dimension(16)        :: NXS
-    integer(shortInt),dimension(32)        :: JXS
-    real(defReal),dimension(:),allocatable :: XSS
+    ! RAW ACE TABLES *** PUBLIC in DEBUG * WILL BE PRIVATE
+    integer(shortInt),dimension(16),public        :: NXS
+    integer(shortInt),dimension(32),public        :: JXS
+    real(defReal),dimension(:),allocatable,public :: XSS
 
   contains
     ! XSs directly from blocks
@@ -108,12 +111,14 @@ module aceCard_class
     procedure :: setToEnergyMT       ! Set head to energy for MT
 
     ! Procedures releted to Elastic Scattering
+    procedure :: LOCBforEscatter     ! Return LOCB for Elastic Scattering
     procedure :: setToAngleEscatter  ! Set head to beggining of angle data for Elastic Scatter
 
     ! Procedures releated to Fission data
     procedure :: firstIdxFiss        ! Get first fission Idx
     procedure :: numXsPointsFiss     ! Get number of fission XS points
     procedure :: xsFiss              ! Get fission XS array
+    procedure :: isFissile           ! Returns tru if nuclide is fissile
 
     procedure :: hasNuPrompt         ! Is prompt NU present
     procedure :: hasNuTotal          ! Is total NU present
@@ -135,6 +140,9 @@ module aceCard_class
 
     procedure :: advanceHead         ! Move head by an integer +ve forward -ve backward
     procedure :: resetHead           ! Move head back to position 0
+
+    procedure :: setToAnglePdf       ! Sets head to single energy mu pdf. Adress relative to JXS(9)
+    procedure :: setToEnergyLaw      ! Sets head to single energy law. Adress relative to JXS(11)
 
     ! Initialisation and display procedures
     procedure :: readFromFile
@@ -192,7 +200,7 @@ contains
   !! request string specifies which array is returned:
   !!  'energyGrid'   -> energy grid
   !!  'totalXS'      -> total cross-section
-  !!  'absorbtionXS' -> total absorbtion cross-section (without fission)
+  !!  'absorptionXS' -> total absorbtion cross-section (without fission)
   !!  'elasticXS'    -> elastic scattering cross-section
   !!  'heatingNumber'-> average heating number
   !!
@@ -215,7 +223,7 @@ contains
         ! Set pointer to approperiate place in XSS
         ptr = self % JXS(1) + N
 
-      case('absorbtionXS')
+      case('absorptionXS')
         ! Set pointer to approperiate place in XSS
         ptr = self % JXS(1) + 2*N
 
@@ -258,6 +266,12 @@ contains
     integer(shortInt)            :: IE
     integer(shortInt)            :: idx
 
+    ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      IE = 1
+      return
+    end if
+
     ! Get index of MT number on MTdata
     idx = self % getMTidx(MT)
 
@@ -275,6 +289,12 @@ contains
     integer(shortInt)            :: N
     integer(shortInt)            :: idx
 
+    ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      N = self % NXS(3)
+      return
+    end if
+
     ! Get index of MT number on MTdata
     idx = self % getMTidx(MT)
 
@@ -291,6 +311,12 @@ contains
     integer(shortInt), intent(in)          :: MT
     real(defReal),dimension(:),allocatable :: xs
     integer(shortInt)                      :: idx, N_xs, ptr
+
+    ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      call self % ESZblock(xs,'elasticXS')
+      return
+    end if
 
     ! Get index of MT number on MTdata
     idx = self % getMTidx(MT)
@@ -318,9 +344,15 @@ contains
     integer(shortInt)            :: N
     integer(shortInt)            :: idx
 
-     idx = self % getMTidx(MT)
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      N = ONE
+      return
+    end if
 
-     N = self % MTdata(idx) % TY
+    idx = self % getMTidx(MT)
+
+    N = self % MTdata(idx) % TY
 
   end function neutronReleaseMT
 
@@ -332,6 +364,12 @@ contains
     integer(shortInt), intent(in) :: MT
     real(defReal)                 :: Q
     integer(shortInt)             :: idx
+
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      Q = ZERO
+      return
+    end if
 
     idx = self % getMTidx(MT)
 
@@ -348,6 +386,12 @@ contains
     integer(shortInt), intent(in) :: MT
     logical(defBool)              :: isIt
     integer(shortInt)             :: idx
+
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      isIt = .true.
+      return
+    end if
 
     idx = self % getMTidx(MT)
 
@@ -366,6 +410,12 @@ contains
     integer(shortInt)             :: idx
     character(100), parameter :: Here='LOCBforMT (aceCard_class.f90)'
 
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      LOCB = self % LOCBforEscatter()
+      return
+    end if
+
     idx = self % getMTidx(MT)
 
     if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. No LOCB data.')
@@ -383,6 +433,12 @@ contains
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
     character(100), parameter :: Here='setToAngleMT (aceCard_class.f90)'
+
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      call self % setToAngleEscatter()
+      return
+    end if
 
     idx = self % getMTidx(MT)
 
@@ -403,6 +459,12 @@ contains
     integer(shortInt)             :: idx
     character(100), parameter :: Here='setToEnergyMT (aceCard_class.f90)'
 
+   ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      call fatalError(Here,'Elastic scattering has no energy law')
+      return
+    end if
+
     idx = self % getMTidx(MT)
 
     if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
@@ -412,6 +474,20 @@ contains
 
   end subroutine setToEnergyMT
 
+  !!
+  !! Returns LOCB for elastic scattering
+  !!
+  function LOCBforEscatter(self) result(LOCB)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: LOCB
+    integer(shortInt)          :: ptr
+    character(100), parameter :: Here = 'LOCBforEscatter (aceCard_class.f90)'
+
+    ptr = self % JXS(8)
+
+    LOCB = real2Int( self % XSS(ptr),Here)
+
+  end function LOCBforEscatter
 
   !!
   !! Sets read head to beginning of angular data for ELASTIC SCATTERING
@@ -432,7 +508,7 @@ contains
     integer(shortInt)          :: IE
     character(100), parameter  :: Here='firstIdxFiss (aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       IE = self % fissIE
 
     else
@@ -451,7 +527,7 @@ contains
     integer(shortInt)          :: N
     character(100), parameter  :: Here='numXsPointsFiss (aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       N = self % fissNE
 
     else
@@ -471,7 +547,7 @@ contains
     integer(shortInt)                      :: ptr, N
     character(100), parameter  :: Here='xsFiss(aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       ! Get number of XS points
       N = self % fissNE
 
@@ -489,6 +565,17 @@ contains
   end function xsFiss
 
   !!
+  !! Returns .true. if nuclide is fissile
+  !!
+  function isFissile(self) result(isIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: isIt
+
+    isIt = self % isFiss
+
+  end function isFissile
+
+  !!
   !! Returns .true. if nuclide has NU prompt data
   !! If only one prompt/total table is given it is regardes as total
   !! Returns error is nuclide is not fissile
@@ -498,7 +585,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       doesIt = (self % promptNUp /= unINIT)
 
     else
@@ -519,7 +606,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       doesIt = (self % totalNUp /= unINIT)
 
     else
@@ -539,7 +626,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFissile) then
+    if(self % isFiss) then
       doesIt = (self % delayNUp /= unINIT)
 
     else
@@ -749,6 +836,30 @@ contains
   end subroutine resetHead
 
   !!
+  !! Sets head to position of a single energy mu pdf
+  !! Position is supplied by addr( LC(J) in Table F-12 of Appendix F )
+  !!
+  subroutine setToAnglePdf(self,addr)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: addr
+
+    self % head = self % JXS(9) + addr - 1
+
+  end subroutine setToAnglePdf
+
+  !!
+  !! Sets head to position of a single energy law
+  !! Position is supplied by addrr ( LNW in Table F-14 of Appendix F )
+  !!
+  subroutine setToEnergyLaw(self,addr)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: addr
+
+    self % head = self % JXS(11) + addr -1
+
+  end subroutine setToEnergyLaw
+
+  !!
   !! Load data for every MT reaction type
   !! NOTE: in ACE format reactions with no secondary neutrons are at the end of MT numbers list.
   !!       As the result it is safe to read data with MTdata(1:NMTs).
@@ -866,10 +977,10 @@ contains
     character(100), parameter :: Here ='setFissionData (aceCard_class.f90)'
 
     ! Check is the nuclide is fissile
-    self % isFissile = (self % JXS(21) /= 0)
+    self % isFiss = (self % JXS(21) /= 0)
 
     ! Read data releted to FIS block
-    if(self % isFissile) then
+    if(self % isFiss) then
       ptr = self % JXS(21)
       self % fissIE  = real2Int( self % XSS(ptr),Here)
       self % fissNE  = real2Int( self % XSS(ptr+1),Here)
@@ -881,7 +992,7 @@ contains
     hasNoNuBlock = (self % JXS(2) == 0)
 
     ! NU data can be provided even when nuclide is not marked fissle
-    if(self % isFissile .and. hasNoNuBlock) then
+    if(self % isFiss .and. hasNoNuBlock) then
       call fatalError(Here,'Nuclide is fissile but no NU data is provided. WTF?')
 
     else if (hasNoNuBlock) then ! Leve the subroutine and do not process the NU data
@@ -1000,7 +1111,7 @@ contains
     print *, 'ACE HEADER DATA: '
     print *, self % ZAID, self % AW, self % TZ, self % HD, self % HK, self % HM
     print *, 'FISSION related DATA: '
-    print *, self % isFissile, self % fissIE, self % fissNE, self % fissXSp, self % promptNUp, &
+    print *, self % isFiss, self % fissIE, self % fissNE, self % fissXSp, self % promptNUp, &
              self % delayNup, self % totalNup
 
   end subroutine print_aceCard

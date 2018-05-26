@@ -14,6 +14,7 @@ module emissionFromACE_func
   use numPrecision
   use genericProcedures, only : linFind, searchError, isInteger, fatalError
   use endfConstants
+  use aceCard_class,     only : aceCard
 
   ! Import emission objects
   use emissionENDF_class,             only : emissionENDF
@@ -21,13 +22,13 @@ module emissionFromACE_func
   use correlatedEmissionENDF_class,   only : correlatedEmissionENDF
 
   ! Import Angular Distributions
-  use angleLawENDF_class,             only : angleLawENDF
+  use angleLawENDF_inter,             only : angleLawENDF
   use noAngle_class,                  only : noAngle
   use tabularAngle_class,             only : tabularAngle
   use isotropicAngle_class,           only : isotropicAngle
 
   ! Import Mu Probability Density Functions (PDF)
-  use muEndfPdf_class,                only : muEndfPdf, muEndfPdf_ptr
+  use muEndfPdf_inter,                only : muEndfPdf, muEndfPdf_ptr
   use equiBin32Mu_class,              only : equiBin32Mu
   use isotropicMu_class,              only : isotropicMu
   use tabularMu_class,                only : tabularMu
@@ -43,6 +44,8 @@ module emissionFromACE_func
 
   ! Import Correlated Angle-Energy Distributions
 
+  ! Import factories
+  use angleLawENDFfactory_func,       only : new_angleLawENDF_ptr
 
   ! Import Neutron Release Distributions
   use releaseLawENDF_class,           only : releaseLawENDF
@@ -104,9 +107,10 @@ contains
   end function real2Int_array
 
 
-  function emissionFromACE(NXS,JXS,XSS,MT) result(new)
+  function emissionFromACE(ACE,NXS,JXS,XSS,MT) result(new)
     !! Function that for a given ACE libraries and MT number build and returns pointer to a
     !! emission ENDF object
+    type(aceCard), intent(inout)                 :: ACE
     integer(shortInt), dimension(16),intent(in)  :: NXS
     integer(shortInt), dimension(32),intent(in)  :: JXS
     real(defReal), dimension(:),intent(in)       :: XSS
@@ -134,7 +138,9 @@ contains
         class(energyLawENDF), pointer  :: energyLaw
         class(releaseLawENDF), pointer :: releaseLaw
 
-        angleLaw   => noAngle()
+        !angleLaw   => noAngle()
+        !call ACE % setToAngleMT(MT)
+        angleLaw   => new_angleLawENDF_ptr(ACE,MT)
         energyLaw  => noEnergy()
         releaseLaw => constantRelease(0.0_defReal)
 
@@ -149,13 +155,18 @@ contains
         class(energyLawENDF), pointer  :: energyLaw
         class(releaseLawENDF), pointer :: releaseLaw
 
+
         energyLaw  => noEnergy()
         releaseLaw => constantRelease(1.0_defReal)
-        if(int(XSS(JXS(8))) == isotropic) then
-          angleLaw => isotropicAngle()
+
+
+        if(ACE % LOCBforEscatter() == isotropic) then
+          !call ACE % setToAngleEscatter()
+          angleLaw  => new_angleLawENDF_ptr(ACE,N_N_elastic)
 
         else
-          angleLaw => readAngleArray(JXS(9))
+          !call ACE % setToAngleEscatter()
+          angleLaw => new_angleLawENDF_ptr(ACE,N_N_elastic)
 
         end if
 
@@ -227,17 +238,20 @@ contains
           call fatalError(Here,'Correleted emission laws are not yet implemented. Sorry...')
 
         elseif (isCapture) then
-          angleLaw  => noAngle()
+          !call ACE % setToAngleMT(MT)
+          angleLaw  => new_angleLawENDF_ptr(ACE,MT)
           energyLaw => noEnergy()
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
         elseif (isIsotropic) then
-          angleLaw  => isotropicAngle()
+          !call ACE % setToAngleMT(MT)
+          angleLaw  => new_angleLawENDF_ptr(ACE,MT)
           energyLaw => readEnergyArray(JXS(11)+LOCC-1)
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
         else
-          angleLaw  => readAngleArray( JXS(9)+LOCB-1 )
+          !call ACE % setToAngleMT(MT)
+          angleLaw  => new_angleLawENDF_ptr(ACE,MT)
           energyLaw => readEnergyArray(JXS(11)+LOCC-1)
           new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
@@ -250,106 +264,106 @@ contains
 
 
 
-      function readAngleArray(addr) result(angleLaw)
-        !! Function returns pointer to angular law that begins at a given address (addr) in XSS
-        !! table.
-        !! addr should point to JXS(9)+LOCB-1
-        integer(shortInt),intent(in)                 :: addr
-        integer(shortInt)                            :: numE     ! Number of energy points
-        real(defReal),dimension(:),allocatable       :: eGrid    ! Energy Grid
-        integer(shortInt),dimension(:),allocatable   :: muAddr   ! Addresses of Mu PDFs
-        type(muEndfPdf_ptr),dimension(:),allocatable :: muPdfs   ! Pointers to Mu PDFs
-        class(angleLawENDF),pointer                  :: angleLaw ! Pointer to Angle Law to return
-        integer(shortInt)                            :: i
-        real(defReal)                                :: temp
-        character(100),parameter                     :: Here = 'readAngleArray (emissionFromACE_func.f90)'
+!      function readAngleArray(addr) result(angleLaw)
+!        !! Function returns pointer to angular law that begins at a given address (addr) in XSS
+!        !! table.
+!        !! addr should point to JXS(9)+LOCB-1
+!        integer(shortInt),intent(in)                 :: addr
+!        integer(shortInt)                            :: numE     ! Number of energy points
+!        real(defReal),dimension(:),allocatable       :: eGrid    ! Energy Grid
+!        integer(shortInt),dimension(:),allocatable   :: muAddr   ! Addresses of Mu PDFs
+!        type(muEndfPdf_ptr),dimension(:),allocatable :: muPdfs   ! Pointers to Mu PDFs
+!        class(angleLawENDF),pointer                  :: angleLaw ! Pointer to Angle Law to return
+!        integer(shortInt)                            :: i
+!        real(defReal)                                :: temp
+!        character(100),parameter                     :: Here = 'readAngleArray (emissionFromACE_func.f90)'
+!
+!        ! Read number of energy points and verify that it is +ve integer
+!        !temp = XSS(addr)
+!
+!        !if (.not. (temp > 0 .and. isInteger(temp))) then
+!        !  call fatalError(Here,'Beginning of angular data record is not +ve int. Adress must be wrong.')
+!        !end if
+!
+!        numE = ACE % readInt()
+!
+!        allocate( eGrid(numE) )
+!        allocate( muAddr(numE))
+!        allocate( muPdfs(numE))
+!
+!        ! Read energy points and muPdfs adresses
+!        eGrid =  ACE % readRealArray(numE)
+!        muAddr = ACE % readIntArray(numE)
+!
+!        do i=1,numE
+!          muPdfs(i) = readMuPdf(muAddr(i))
+!        end do
+!
+!        !angleLaw => tabularAngle(eGrid,muPdfs)
+!
+!      end function readAngleArray
 
-        ! Read number of energy points and verify that it is +ve integer
-        temp = XSS(addr)
-
-        if (.not. (temp > 0 .and. isInteger(temp))) then
-          call fatalError(Here,'Beginning of angular data record is not +ve int. Adress must be wrong.')
-        end if
-
-        numE = temp
-
-        allocate( eGrid(numE) )
-        allocate( muAddr(numE))
-        allocate( muPdfs(numE))
-
-        ! Read energy points and muPdfs adresses
-        eGrid =       XSS(addr+1      : addr+1+numE-1 )
-        muAddr = int( XSS(addr+1+numE : addr+1+2*numE ) )
-
-        do i=1,numE
-          muPdfs(i) = readMuPdf(muAddr(i))
-        end do
-
-        angleLaw => tabularAngle(eGrid,muPdfs)
-
-      end function readAngleArray
 
 
-
-      function readMuPdf(LC) result(muPdf)
-        !! Function to read a single mu distribution at an energy point
-        !! LC should be locator flag wrt. to JXS(9) read in AND block
-        integer(shortInt), intent(in)          :: LC
-        class(muEndfPdf), pointer              :: muPdf
-        real(defReal),dimension(:),allocatable :: muGrid, pdfGrid, cdfGrid
-        real(defReal)                          :: temp
-        integer(shortInt)                      :: interFlag, numE, locAddr
-
-        integer(shortInt),parameter            :: histogram  = tabPdfHistogram, &
-                                                  linLin     = tabPdfLinLin
-        character(100),parameter               :: Here='readMuPdf (emissionFromACE_func.f90)'
-
-        if (LC < 0) then
-        ! Tabular Energy Distribution
-          locAddr = abs(LC)
-
-          ! Read interpolation flag and valide it
-          interFlag = XSS(JXS(9)+locAddr-1)
-
-          if (interFlag /= histogram .and. interFlag /= linLin) then
-            call fatalError(Here,'Invalid interpolation parameter was read.')
-          end if
-
-          ! Read number of energy points and validate it
-          temp = XSS(JXS(9)+locAddr)
-
-          if (.not.(isInteger(temp))) call fatalError(Here,'Number of energy points is not'// &
-                                                           'integer')
-          numE = temp
-
-          if (numE <= 0) call fatalError(Here,'Number of energy points is not strictly +ve')
-
-          ! Read muGrid and pdfGrid
-          muGrid  = XSS( JXS(9)+locAddr+1        : JXS(9)+locAddr+1+numE-1   )
-          pdfGrid = XSS( JXS(9)+locAddr+1+numE   : JXS(9)+locAddr+1+2*numE-1 )
-          cdfGrid = XSS( JXS(9)+locAddr+1+2*numE : JXS(9)+locAddr+1+3*numE-1 )
-
-          muPdf => tabularMu(muGrid,pdfGrid,cdfGrid,interFlag)
-
-        else if(LC > 0) then
-        ! 32 equiprobable bins Energy Distribution
-          locAddr = abs(LC)
-
-          allocate(muGrid(33))
-
-          muGrid = XSS(JXS(9)+locAddr-1 : JXS(9)+locAddr+33-1)
-          print *, muGrid
-          muPdf => equiBin32Mu(muGrid)
-
-        else if(LC == 0) then
-        ! Isotropic energy distribution
-          muPdf => isotropicMu()
-        else
-        ! Imppossible state
-          call fatalError(Here,'addr in readMuPdf is not -ve, not +ve and not 0. WTF?')
-        end if
-
-      end function
+!      function readMuPdf(LC) result(muPdf)
+!        !! Function to read a single mu distribution at an energy point
+!        !! LC should be locator flag wrt. to JXS(9) read in AND block
+!        integer(shortInt), intent(in)          :: LC
+!        class(muEndfPdf), pointer              :: muPdf
+!        real(defReal),dimension(:),allocatable :: muGrid, pdfGrid, cdfGrid
+!        real(defReal)                          :: temp
+!        integer(shortInt)                      :: interFlag, numE, locAddr
+!
+!        integer(shortInt),parameter            :: histogram  = tabPdfHistogram, &
+!                                                  linLin     = tabPdfLinLin
+!        character(100),parameter               :: Here='readMuPdf (emissionFromACE_func.f90)'
+!
+!        if (LC < 0) then
+!        ! Tabular Energy Distribution
+!          locAddr = abs(LC)
+!
+!          ! Read interpolation flag and valide it
+!          interFlag = ACE % readInt() !XSS(JXS(9)+locAddr-1)
+!
+!          if (interFlag /= histogram .and. interFlag /= linLin) then
+!            call fatalError(Here,'Invalid interpolation parameter was read.')
+!          end if
+!
+!          ! Read number of energy points and validate it
+!          temp =  XSS(JXS(9)+locAddr)
+!
+!          if (.not.(isInteger(temp))) call fatalError(Here,'Number of energy points is not'// &
+!                                                           'integer')
+!          numE = ACE % readInt()
+!
+!          if (numE <= 0) call fatalError(Here,'Number of energy points is not strictly +ve')
+!
+!          ! Read muGrid and pdfGrid
+!          muGrid  = ACE % readRealArray(numE)!XSS( JXS(9)+locAddr+1        : JXS(9)+locAddr+1+numE-1   )
+!          pdfGrid = ACE % readRealArray(numE)!XSS( JXS(9)+locAddr+1+numE   : JXS(9)+locAddr+1+2*numE-1 )
+!          cdfGrid = ACE % readRealArray(numE)!XSS( JXS(9)+locAddr+1+2*numE : JXS(9)+locAddr+1+3*numE-1 )
+!
+!          muPdf => tabularMu(muGrid,pdfGrid,cdfGrid,interFlag)
+!
+!        else if(LC > 0) then
+!        ! 32 equiprobable bins Energy Distribution
+!          locAddr = abs(LC)
+!
+!          allocate(muGrid(33))
+!
+!          muGrid = ACE % readRealArray(33) !XSS(JXS(9)+locAddr-1 : JXS(9)+locAddr+33-1)
+!          print *, muGrid
+!          muPdf => equiBin32Mu(muGrid)
+!
+!        else if(LC == 0) then
+!        ! Isotropic energy distribution
+!          muPdf => isotropicMu()
+!        else
+!        ! Imppossible state
+!          call fatalError(Here,'addr in readMuPdf is not -ve, not +ve and not 0. WTF?')
+!        end if
+!
+!      end function
 
 
 

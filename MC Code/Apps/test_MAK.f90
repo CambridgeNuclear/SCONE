@@ -19,7 +19,7 @@ program test
   use equiBin32mu_class, only : equiBin32mu
   use tabularmu_class,   only : tabularmu
   use tabularPdf_class,    only : tabularPdf
-  use angleLawENDF_class,   only : angleLawENDF
+  use angleLawENDF_inter,  only : angleLawENDF
   use tabularAngle_class, only : tabularAngle
   use noAngle_class,       only: noAngle
 

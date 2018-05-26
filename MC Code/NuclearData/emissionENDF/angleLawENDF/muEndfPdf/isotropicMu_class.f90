@@ -2,7 +2,7 @@ module isotropicMu_class
 
   use numPrecision
   use RNG_class,          only : RNG
-  use muEndfPdf_class,    only : muEndfPdf
+  use muEndfPdf_inter,    only : muEndfPdf
 
   implicit none
   private
@@ -11,8 +11,11 @@ module isotropicMu_class
     module procedure new_isotropicMu
   end interface
 
+  !!
+  !! Class that contains isotropic secondary angle distribution.
+  !! Extends muEndfPdf abstract interface
+  !!
   type, public,extends(muEndfPdf) :: isotropicMu
-    !! Class that contains isotropic secondary angle distribution.
     private
   contains
     procedure :: sample
@@ -21,29 +24,38 @@ module isotropicMu_class
 
 contains
 
+  !!
+  !! Samples angle given the random number generator
+  !!
   function sample(self,rand) result(mu)
     class(isotropicMu), intent(in)   :: self
     class(RNG), intent(inout)        :: rand
     real(defReal)                    :: mu
 
-    mu = 2.0 * rand % get() - 1.0
+    mu = TWO * rand % get() - ONE
+
   end function sample
 
-
+  !!
+  !! Return probability of mu
+  !! Does no check if mu is in <-1;1>
+  !!
   function probabilityOf(self,mu) result(probability)
     class(isotropicMu), intent(in)  :: self
     real(defReal), intent(in)       :: mu
     real(defReal)                   :: probability
 
-    probability = 0.5
+    probability = HALF
+
   end function probabilityOf
 
 
-  function new_isotropicMu()
-    type(isotropicMu),pointer :: new_isotropicMu
-
-    allocate(new_isotropicMu)
-
+  !!
+  !! Constructor. Needs no arguments
+  !!
+  function new_isotropicMu() result(new)
+    type(isotropicMu):: new
+    ! Nothing to be done
   end function new_isotropicMu
 
 

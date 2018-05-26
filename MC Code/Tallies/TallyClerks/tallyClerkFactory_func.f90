@@ -3,6 +3,8 @@ module tallyClerkFactory_func
   use numPrecision
   use genericProcedures,       only : fatalError
   use dictionary_class,        only : dictionary
+
+  ! Tally Clerks
   use tallyClerk_inter,        only : tallyClerk
   use keffActiveClerk_class,   only : keffActiveClerk
   use keffInactiveClerk_class, only : keffInactiveClerk

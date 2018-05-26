@@ -1,4 +1,4 @@
-module angleLawENDF_class
+module angleLawENDF_inter
 
   use numPrecision
   use RNG_class, only : RNG
@@ -6,6 +6,9 @@ module angleLawENDF_class
   implicit none
   private
 
+  !!
+  !! Abstract interface for object containing angle (mu) pdf
+  !!
   type,abstract, public :: angleLawENDF
     private
   contains
@@ -16,6 +19,9 @@ module angleLawENDF_class
 
   abstract interface
 
+    !!
+    !! Given collison energy and random number generator sample mu
+    !!
     function sample(self,E,rand) result (mu)
       import :: angleLawENDF, &
                 RNG,          &
@@ -26,7 +32,9 @@ module angleLawENDF_class
       real(defReal)                    :: mu
     end function sample
 
-
+    !!
+    !! Return probability density of mu at collision energy E
+    !!
     function probabilityOf(self,mu,E) result (prob)
       import :: angleLawENDF, &
                 defReal
@@ -36,7 +44,5 @@ module angleLawENDF_class
     end function probabilityOf
 
   end interface
-
-contains
     
-end module angleLawENDF_class
+end module angleLawENDF_inter

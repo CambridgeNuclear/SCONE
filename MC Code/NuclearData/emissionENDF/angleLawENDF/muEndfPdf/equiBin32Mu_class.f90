@@ -2,24 +2,30 @@ module equiBin32Mu_class
 
   use numPrecision
   use genericProcedures , only : linearFloorIdxClosed_Real, searchError, fatalError
+  use aceCard_class,      only : aceCard
   use RNG_class ,         only : RNG
-  use muEndfPdf_class,    only : muEndfPdf
+  use muEndfPdf_inter,    only : muEndfPdf
 
   implicit none
   private
 
-
+  !!
+  !! Constructor interface
+  !!
   interface equiBin32Mu
     module procedure new_equiBin32Mu
+    module procedure new_equiBin32Mu_fromACE
   end interface
 
  interface linSearch
     module procedure linearFloorIdxClosed_Real
   end interface
 
-
+  !!
+  !! Class that stores PDF of mu in 32 equiprobable bins.
+  !! Extends muEndfPdf abstract interface
+  !!
   type, public,extends(muEndfPdf) :: equiBin32Mu
-    !! Class that stores PDF of mu in 32 equiprobable bins.
     private
     real(defReal),dimension(33) :: boundaries
   contains
@@ -31,34 +37,51 @@ module equiBin32Mu_class
 
 contains
 
+  !!
+  !! Samples angle given random number generator
+  !!
   function sample(self,rand) result (mu)
     class(equiBin32Mu), intent(in)  :: self
     class(RNG), intent(inout)       :: rand
     real(defReal)                   :: mu
-    integer(shortInt)               :: binIdx
+    integer(shortInt)               :: bin
     real(defReal)                   :: f
 
-    binIdx = floor(32 * rand % get())
+    ! Sample bin
+    bin = floor(32 * rand % get())
+
+    ! Sample angle within bin
     f = rand % get()
-    mu = (1.0-f)*self % boundaries(binIdx) + f* self% boundaries(binIdx+1)
+    mu = (ONE-f)*self % boundaries(bin) + f* self% boundaries(bin+1)
 
   end function sample
 
-
+  !!
+  !! Returns probability density of mu
+  !!
   function probabilityOf(self,mu) result(prob)
     class(equiBin32Mu), intent(in)  :: self
     real(defReal), intent(in)       :: mu
     real(defReal)                   :: prob
-    integer(shortInt)               :: binIdx
+    integer(shortInt)               :: idx
+    real(defReal)                   :: binWidth
     character(100),parameter        :: Here='probabilityOf (equiBin32Mu_class.f90)'
 
-    binIdx = linSearch(self % boundaries, mu)
-    call searchError(binIdx,Here)
-    prob = 1.0 / 32.0 / (self % boundaries(binIdx+1) - self % boundaries(binIdx) )
+    ! Find bin location
+    idx = linSearch(self % boundaries, mu)
+    call searchError(idx,Here)
+
+    ! Calculate bin width
+    binWidth = (self % boundaries(idx+1) - self % boundaries(idx) )
+
+    ! Calculate probability density
+    prob = ONE / 32.0 / binWidth
 
   end function probabilityOf
 
-
+  !!
+  !! Initialise equiBin32Mu from array of bin boundaries
+  !!
   subroutine init(self,boundaries)
     class(equiBin32Mu), intent(inout)        :: self
     real(defReal), dimension(33), intent(in) :: boundaries
@@ -75,14 +98,33 @@ contains
 
   end subroutine init
 
-    
-  function new_equiBin32Mu(boundaries)
+  !!
+  !! Constructor from array of bin boundaries
+  !!
+  function new_equiBin32Mu(boundaries) result(new)
     real(defReal),dimension(33), intent(in) :: boundaries
-    type(equiBin32Mu),pointer               :: new_equiBin32Mu
+    type(equiBin32Mu)                       :: new
 
-    allocate(new_equiBin32Mu)
-    call new_equiBin32Mu % init(boundaries)
+    ! Allocate space and call initialisation procedure
+    call new % init(boundaries)
 
   end function new_equiBin32Mu
+
+  !!
+  !! Constructor form aceCard
+  !! aceCard head needs to be set to beginning of data
+  !!
+  function new_equiBin32Mu_fromACE(ACE) result(new)
+    type(aceCard), intent(inout) :: ACE
+    type(equiBin32Mu)            :: new
+    real(defReal),dimension(33)  :: boundaries
+
+    ! Read Boundaries from ACE library
+    boundaries = ACE % readRealArray(33)
+
+    ! Allocate space and call initialisation procedure
+    call new % init(boundaries)
+
+  end function new_equiBin32Mu_fromACE
 
 end module equiBin32Mu_class

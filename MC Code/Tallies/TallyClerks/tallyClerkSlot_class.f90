@@ -187,13 +187,13 @@ contains
     class(dictionary), intent(in)        :: dict
     character(100),parameter :: Here = 'init (tallyClerkSlot.f90)'
 
-    call fatalError(Here,'tallyClerkSlot cannot be initialised fro mdictionary')
+    call fatalError(Here,'tallyClerkSlot cannot be initialised from dictionary')
 
   end subroutine init
 
   !!
   !! Copy RHS into slot of LHS
-  !! Be carefull about loasing slots into slots
+  !! Be carefull about loading slots into slots
   !! It will work by function call chain may hurt performance
   !!
   subroutine copy(LHS,RHS)

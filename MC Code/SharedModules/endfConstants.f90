@@ -15,6 +15,10 @@ module endfConstants
   integer(shortInt), parameter :: tabPdfHistogram = 1 ,&
                                   tabPdfLinLin    = 2
 
+  ! Other constants related to ACE format
+  integer(shortInt), parameter :: LOCB_LAW44     = -1 ,&
+                                  LOCB_ISOTROPIC = 0
+
 
   ! List of reaction MT numbers, See Serpent 2 Wiki or ENDF manual for exact details:
   !
