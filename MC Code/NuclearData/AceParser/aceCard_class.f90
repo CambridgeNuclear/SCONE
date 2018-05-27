@@ -35,7 +35,7 @@ module aceCard_class
     integer(shortInt) :: ANDp      = unINIT   ! Location of angular distribution data in XSS table
     integer(shortInt) :: DLWp      = unINIT   ! Location of energy distribution data in XSS table
     logical(defBool)  :: isotropic = .false.  ! Indicates isotropic scattering at all energies
-    logical(defBool)  :: law44     = .false.  ! Correlated angle-energy scattering with ENDF LAW 44
+    logical(defBool)  :: correl    = .false.  ! Correlated angle-energy scattering
   contains
     procedure :: print => print_MTreaction
   end type MTreaction
@@ -943,8 +943,8 @@ contains
         case(0)  ! Isotropic scattering, No data is given
           self % MTdata(i) % isotropic = .true.
 
-        case(-1) ! Correleted scattering with LAW 44
-          self % MTdata(i) % law44 = .true.
+        case(-1) ! Correleted scattering
+          self % MTdata(i) % correl = .true.
 
         case(1:huge(i)) ! Positive integer. Can assign pointer to angular data
           self % MTdata(i) % ANDp = self % JXS(9) + LOCB - 1
@@ -1124,7 +1124,7 @@ contains
     class(MTreaction),intent(in) :: self
 
     print *, self % MT, self % Q, self % TY, self % isCapture ,self % CMframe, self % IE, &
-             self % N_xs, self % XSp, self % LOCB, self % ANDp, self % DLWp, self % isotropic, self % law44
+             self % N_xs, self % XSp, self % LOCB, self % ANDp, self % DLWp, self % isotropic, self % correl
 
   end subroutine print_MTreaction
 

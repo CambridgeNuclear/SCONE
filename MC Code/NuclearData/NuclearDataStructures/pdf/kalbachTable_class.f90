@@ -33,7 +33,7 @@ module kalbachTable_class
     procedure :: sample
     procedure :: probabilityOf
 
-    procedure, private :: initPdf
+    procedure :: initPdf
     procedure, private :: initCdf
 
   end type kalbachTable

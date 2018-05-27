@@ -75,7 +75,7 @@ contains
 
       case default
         print *, 'Energy Law Type :', LAW
-        call fatalError(Here,'Energy Law Type is not recognised or yet supported ')
+        call fatalError(Here,'Energy Law Type is not recognised, yet supported or is correlated')
 
     end select
 

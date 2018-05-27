@@ -43,8 +43,8 @@ contains
     LOCB = ACE % LOCBforMT(MT)
 
     ! Return error if LOCB corresponds to LAW 44
-    if(LOCB == LOCB_LAW44) then
-      call fatalError(Here,'Cannot build angle law for correlated LAW 44')
+    if(LOCB == LOCB_CORRELATED) then
+      call fatalError(Here,'Cannot build angle law for correlated angle-energy')
 
     end if
 
