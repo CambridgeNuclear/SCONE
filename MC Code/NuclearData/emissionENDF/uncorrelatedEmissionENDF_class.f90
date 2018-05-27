@@ -5,7 +5,7 @@ module uncorrelatedEmissionENDF_class
   use RNG_class,            only : RNG
   use energyLawENDF_inter,  only : energyLawENDF
   use angleLawENDF_inter,   only : angleLawENDF
-  use releaseLawENDF_class, only : releaseLawENDF
+  use releaseLawENDF_inter, only : releaseLawENDF
 
   implicit none
   private

@@ -9,7 +9,7 @@ program test
 
   use endfTable_class, only : endfTable
 
-  use releaseLawENDF_class
+  use releaseLawENDF_inter
   use constantRelease_class, only : constantRelease
   use polynomialRelease_class, only : polynomialRelease
   use tabularRelease_class, only : tabularRelease

@@ -2,7 +2,7 @@ module constantRelease_class
 
   use numPrecision
   use genericProcedures,    only : fatalError
-  use releaseLawENDF_class, only : releaseLawENDF
+  use releaseLawENDF_inter, only : releaseLawENDF
 
   implicit none
   private
@@ -11,6 +11,9 @@ module constantRelease_class
    module procedure new_constantRelease
   end interface
 
+  !!
+  !! Constant release of neutrons independent of incedent energy
+  !!
   type, public, extends(releaseLawENDF) :: constantRelease
       private
       real(defReal) :: secondaryRelease = 1.0
@@ -21,6 +24,9 @@ module constantRelease_class
 
 contains
 
+  !!
+  !! Initialise
+  !!
   subroutine init(self,release)
     class(constantRelease), intent(inout) :: self
     real(defReal), intent(in)             :: release
@@ -31,21 +37,26 @@ contains
 
   end subroutine init
 
-  function releaseAt(self,energy) result(release)
+  !!
+  !! Release at energy E_in
+  !!
+  function releaseAt(self,E_in) result(release)
     class(constantRelease), intent(in) :: self
-    real(defReal), intent(in)         :: energy
-    real(defReal)                     :: release
+    real(defReal), intent(in)          :: E_in
+    real(defReal)                      :: release
 
     release = self % secondaryRelease
 
   end function releaseAt
 
-  function new_constantRelease(release) result(newConstantRelease)
+  !!
+  !! Constructor
+  !!
+  function new_constantRelease(release) result(new)
     real(defReal), intent(in)            :: release
-    type(constantRelease),pointer        :: newConstantRelease
+    type(constantRelease)                :: new
 
-    allocate(newConstantRelease)
-    call newConstantRelease % init(release)
+    call new % init(release)
 
   end function new_constantRelease
 

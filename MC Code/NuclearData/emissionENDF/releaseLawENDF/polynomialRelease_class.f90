@@ -1,18 +1,24 @@
 module polynomialrelease_class
 
   use numPrecision
-  use releaseLawENDF_class, only : releaseLawENDF
+  use aceCard_class,        only : aceCard
+  use releaseLawENDF_inter, only : releaseLawENDF
 
   implicit none
   private
 
   interface polynomialRelease
     module procedure new_polynomialRelease
+    module procedure new_polynomialRelease_fromACE
   end interface
 
+  !!
+  !! Polynomial representation of Nu data
+  !! a_0 + a_1 * x + a_2 * x**2 + ... etc.
+  !!
   type, public,extends(releaseLawENDF) :: polynomialRelease
       private
-      real(defReal),dimension(:),allocatable :: coefficients  !! Polynomial coefficients [a_0,a_1,...]
+      real(defReal),dimension(:),allocatable :: coeffs  !! Polynomial coefficients [a_0,a_1,...]
     contains
       procedure :: init
       procedure :: releaseAt
@@ -20,40 +26,68 @@ module polynomialrelease_class
 
 contains
 
-  subroutine init(self,coefficients)
+  !!
+  !! Initialise
+  !!
+  subroutine init(self,coeffs)
     class(polynomialRelease), intent(inout)  :: self
-    real(defReal),dimension(:),intent(in)    :: coefficients
+    real(defReal),dimension(:),intent(in)    :: coeffs
 
-    if (allocated(self % coefficients)) deallocate(self % coefficients)
+    if (allocated(self % coeffs)) deallocate(self % coeffs)
 
-    self % coefficients = coefficients ! implicit allocation
+    self % coeffs = coeffs ! implicit allocation
   end subroutine
     
-  pure function releaseAt(self,energy) result(release)
-    class(polynomialRelease), intent(in)  :: self
-    real(defReal), intent(in)            :: energy
+  !!
+  !! Calculate release at energy E_in
+  !!
+  pure function releaseAt(self,E_in) result(release)
+    class(polynomialRelease), intent(in) :: self
+    real(defReal), intent(in)            :: E_in
     real(defReal)                        :: release
     real(defReal)                        :: x
     integer(shortInt)                    :: i
 
-
     ! Horner Method Evaluation of a Polynomial
     release = 0.0
-    do i=size(self % coefficients),1,-1
-      release = release * energy + self % coefficients(i)
+    do i=size(self % coeffs),1,-1
+      release = release * E_in + self % coeffs(i)
     end do
 
   end function releaseAt
 
+  !!
+  !! Constructor
+  !!
+  function new_polynomialRelease(coeffs) result(new)
+    real(defReal),dimension(:),intent(in)   :: coeffs
+    type(polynomialRelease)                 :: new
 
-  function new_polynomialRelease(coefficients) result (newPolynomialRelease)
-    real(defReal),dimension(:),intent(in)   :: coefficients
-    type(polynomialRelease), pointer         :: newPolynomialRelease
-
-    allocate(newPolynomialRelease)
-    call newPolynomialRelease % init(coefficients)
+    call new % init(coeffs)
 
   end function new_polynomialRelease
+
+  !!
+  !! Constructor from ACE
+  !! Head of aceCard needs to be set to the beginning of the data (KNU+1 in Table F-5 of MCNP Manual)
+  !! NOTE : Defining another init for ACE would help to avoid unnecesary reallocation of memory
+  !!
+  function new_polynomialRelease_fromACE(ACE) result(new)
+    type(aceCard), intent(inout)           :: ACE
+    type(polynomialRelease)                :: new
+    real(defReal),dimension(:),allocatable :: coeffs
+    integer(shortInt)                      :: N
+
+    ! Read number of coefficients
+    N = ACE % readInt()
+
+    ! Read coefficients
+    coeffs = ACE % readRealArray(N)
+
+    ! Initialise
+    call new % init(coeffs)
+
+  end function new_polynomialRelease_fromACE
 
 
 end module polynomialRelease_class

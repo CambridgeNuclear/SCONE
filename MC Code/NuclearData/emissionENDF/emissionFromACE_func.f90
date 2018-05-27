@@ -47,12 +47,13 @@ module emissionFromACE_func
   ! Import factories
   use angleLawENDFfactory_func,       only : new_angleLawENDF_ptr
   use energyLawENDFfactory_func,      only : new_energyLawENDF_ptr
+  use releaseLawENDFfactory_func,     only : new_releaseLawENDF_ptr
 
   ! Import Neutron Release Distributions
-  use releaseLawENDF_class,           only : releaseLawENDF
-  use constantRelease_class,          only : constantRelease
-  use polynomialRelease_class,        only : polynomialRelease
-  use tabularRelease_class,           only : tabularRelease
+  use releaseLawENDF_inter,           only : releaseLawENDF
+ ! use constantRelease_class,          only : constantRelease
+ ! use polynomialRelease_class,        only : polynomialRelease
+ ! use tabularRelease_class,           only : tabularRelease
 
   implicit none
   private
@@ -143,7 +144,7 @@ contains
         !call ACE % setToAngleMT(MT)
         angleLaw   => new_angleLawENDF_ptr(ACE,MT)
         energyLaw => new_energyLawENDF_ptr(ACE,MT)
-        releaseLaw => constantRelease(0.0_defReal)
+        releaseLaw => new_releaseLawENDF_ptr(ACE,MT)
 
         new => uncorrelatedEmissionENDF(angleLaw,energyLaw,releaseLaw)
 
@@ -158,7 +159,7 @@ contains
 
 
         energyLaw => new_energyLawENDF_ptr(ACE,MT)
-        releaseLaw => constantRelease(1.0_defReal)
+        releaseLaw => new_releaseLawENDF_ptr(ACE,MT)
 
 
         if(ACE % LOCBforEscatter() == isotropic) then
@@ -228,9 +229,9 @@ contains
         ! Read neutron release
         if (TY == fission) then
           !* Call subroutine to read Nu data
-          releaseLaw => readNuArray()
+          releaseLaw => new_releaseLawENDF_ptr(ACE,MT)
         else
-          releaseLaw => constantRelease( real(TY,defReal) )
+          releaseLaw => new_releaseLawENDF_ptr(ACE,MT)
         end if
 
         ! Create emissionENDF object
@@ -567,120 +568,120 @@ contains
 !
 !      end function readEnergyLaw_maxwellSpectrum
 
-
-
-      function readNuArray() result (nuDat)
-        !! Function reads total vu_bar data (sum of prompt and delayed)
-        class(releaseLawENDF), pointer             :: nuDat
-        integer(shortInt)                          :: addr             ! Adress of NU data
-        integer(shortInt)                          :: nuType           ! Polynomial or Tabular
-        real(defReal)                              :: addr_r, nuType_r ! Dummy Reals for tests
-        character(100),parameter                   :: Here='readNuArray (emissionFromACE_func.f90)'
-
-        if (JXS(2) == 0) call fatalError(Here,'Nu data does not exist: JXS(2) = 0 !')
-
-        ! Read Adress of NU data
-        addr_r = XSS(JXS(2))
-
-        if(.not.isInteger(addr_r)) call fatalError(Here,'Value under JXS(2) is not integer!')
-        addr = addr_r
-
-        ! Choose addres of NU array
-        if (addr > 0) then               ! Only one table is given (promt or total)
-          addr = JXS(2)
-        elseif (addr < 0) then           ! Both promt and total tabels are given. Use total.
-          addr = JXS(2) + abs(addr) + 1
-        else
-          call fatalError(Here,'Value XSS(JXS(2)) == 0. This is undefined')
-        end if
-
-        ! Read type
-        nuType_r = XSS(addr)
-        if(.not.isInteger(nuType_r)) call fatalError(Here,'Type of NU array is not an integer.')
-        nuType = nuType_r
-
-        if (nuType == polynomial) then
-          nuDat => readPolynomialNu(addr+1)
-
-        else if(nuType == tabular) then
-          nuDat => readTabularNu(addr+1)
-
-        else
-          call fatalError(Here,'Unrecognised type of Nu data')
-        end if
-
-      end function readNuArray
-
-
-
-      function readPolynomialNu(addr) result (nuDat)
-        integer(shortInt), intent(in)          :: addr
-        class(releaseLawENDF), pointer         :: nuDat
-        integer(shortInt)                      :: nCoeff
-        real(defReal)                          :: nCoeff_r
-        real(defReal),dimension(:),allocatable :: coeffs
-        character(100),parameter               :: Here='readPolynomialNu (emissionFromACE_func.f90)'
-
-        ! Read Number of coefficients and check it
-        nCoeff_r = XSS(addr)
-
-        if(.not.isInteger(nCoeff_r)) then
-          call fatalError(Here,'Number of polynomial coefficients is not an integer')
-        end if
-
-        nCoeff = nCoeff_r
-
-        coeffs = XSS(addr+1 : addr+1+nCoeff-1)
-
-        nuDat => polynomialRelease(coeffs)
-
-      end function readPolynomialNu
-
-
-      function readTabularNu(addr) result (nuDat)
-        integer(shortInt), intent(in)              :: addr
-        class(releaseLawENDF), pointer             :: nuDat
-        integer(shortInt)                          :: nEne  , nInter, i
-        real(defReal)                              :: nEne_r, nInter_r
-        real(defReal),dimension(:),allocatable     :: eGrid
-        real(defReal),dimension(:),allocatable     :: nuValues
-        integer(shortInt),dimension(:),allocatable :: bounds      ! Bounds of ENDF inter regions
-        integer(shortInt),dimension(:),allocatable :: interEndf   ! Flags for ENDF interpolation
-        character(100),parameter                   :: Here='readtabularNu (emissionFromACE_func.f90)'
-
-        ! Read number of interpolation regions and energies
-        nInter_r = XSS(addr)
-        if(.not.isInteger(nInter_r)) call fatalError(Here,'Number of inter regions is not an int')
-        if(nInter_r < 0 )            call fatalError(Here,'-ve number of inter regions')
-        nInter = nInter_r
-
-        nEne_r = XSS(addr+1+2*nInter)
-        if(.not.isInteger(nEne_r)) call fatalError(Here,'Number of energy points is not an int')
-        if(nEne_r < 0 )            call fatalError(Here,'-ve number of energy points')
-        nEne = nEne_r
-
-        ! Construct objects
-        if (nInter == 0) then
-          i = addr+2
-          eGrid    = XSS(i      : i+nEne-1  )
-          nuValues = XSS(i+nEne : i+2*nEne-1)
-
-          nuDat => tabularRelease(eGrid,nuValues)
-
-        else
-          i = addr +2
-          bounds    = XSS(i        : i+nInter-1  )
-          interEndf = XSS(i+nInter : i+2*nInter-1)
-
-          i = addr+2+2*nInter
-          eGrid    = XSS(i      : i+nEne-1)
-          nuValues = XSS(i+nEne : i+2*nEne)
-
-          nuDat => tabularRelease(eGrid,nuValues,bounds,interEndf)
-
-        end if
-
-      end function readTabularNu
+!
+!
+!      function readNuArray() result (nuDat)
+!        !! Function reads total vu_bar data (sum of prompt and delayed)
+!        class(releaseLawENDF), pointer             :: nuDat
+!        integer(shortInt)                          :: addr             ! Adress of NU data
+!        integer(shortInt)                          :: nuType           ! Polynomial or Tabular
+!        real(defReal)                              :: addr_r, nuType_r ! Dummy Reals for tests
+!        character(100),parameter                   :: Here='readNuArray (emissionFromACE_func.f90)'
+!
+!        if (JXS(2) == 0) call fatalError(Here,'Nu data does not exist: JXS(2) = 0 !')
+!
+!        ! Read Adress of NU data
+!        addr_r = XSS(JXS(2))
+!
+!        if(.not.isInteger(addr_r)) call fatalError(Here,'Value under JXS(2) is not integer!')
+!        addr = addr_r
+!
+!        ! Choose addres of NU array
+!        if (addr > 0) then               ! Only one table is given (promt or total)
+!          addr = JXS(2)
+!        elseif (addr < 0) then           ! Both promt and total tabels are given. Use total.
+!          addr = JXS(2) + abs(addr) + 1
+!        else
+!          call fatalError(Here,'Value XSS(JXS(2)) == 0. This is undefined')
+!        end if
+!
+!        ! Read type
+!        nuType_r = XSS(addr)
+!        if(.not.isInteger(nuType_r)) call fatalError(Here,'Type of NU array is not an integer.')
+!        nuType = nuType_r
+!
+!        if (nuType == polynomial) then
+!          nuDat => readPolynomialNu(addr+1)
+!
+!        else if(nuType == tabular) then
+!          nuDat => readTabularNu(addr+1)
+!
+!        else
+!          call fatalError(Here,'Unrecognised type of Nu data')
+!        end if
+!
+!      end function readNuArray
+!
+!
+!
+!      function readPolynomialNu(addr) result (nuDat)
+!        integer(shortInt), intent(in)          :: addr
+!        class(releaseLawENDF), pointer         :: nuDat
+!        integer(shortInt)                      :: nCoeff
+!        real(defReal)                          :: nCoeff_r
+!        real(defReal),dimension(:),allocatable :: coeffs
+!        character(100),parameter               :: Here='readPolynomialNu (emissionFromACE_func.f90)'
+!
+!        ! Read Number of coefficients and check it
+!        nCoeff_r = XSS(addr)
+!
+!        if(.not.isInteger(nCoeff_r)) then
+!          call fatalError(Here,'Number of polynomial coefficients is not an integer')
+!        end if
+!
+!        nCoeff = nCoeff_r
+!
+!        coeffs = XSS(addr+1 : addr+1+nCoeff-1)
+!
+!        nuDat => polynomialRelease(coeffs)
+!
+!      end function readPolynomialNu
+!
+!
+!      function readTabularNu(addr) result (nuDat)
+!        integer(shortInt), intent(in)              :: addr
+!        class(releaseLawENDF), pointer             :: nuDat
+!        integer(shortInt)                          :: nEne  , nInter, i
+!        real(defReal)                              :: nEne_r, nInter_r
+!        real(defReal),dimension(:),allocatable     :: eGrid
+!        real(defReal),dimension(:),allocatable     :: nuValues
+!        integer(shortInt),dimension(:),allocatable :: bounds      ! Bounds of ENDF inter regions
+!        integer(shortInt),dimension(:),allocatable :: interEndf   ! Flags for ENDF interpolation
+!        character(100),parameter                   :: Here='readtabularNu (emissionFromACE_func.f90)'
+!
+!        ! Read number of interpolation regions and energies
+!        nInter_r = XSS(addr)
+!        if(.not.isInteger(nInter_r)) call fatalError(Here,'Number of inter regions is not an int')
+!        if(nInter_r < 0 )            call fatalError(Here,'-ve number of inter regions')
+!        nInter = nInter_r
+!
+!        nEne_r = XSS(addr+1+2*nInter)
+!        if(.not.isInteger(nEne_r)) call fatalError(Here,'Number of energy points is not an int')
+!        if(nEne_r < 0 )            call fatalError(Here,'-ve number of energy points')
+!        nEne = nEne_r
+!
+!        ! Construct objects
+!        if (nInter == 0) then
+!          i = addr+2
+!          eGrid    = XSS(i      : i+nEne-1  )
+!          nuValues = XSS(i+nEne : i+2*nEne-1)
+!
+!          nuDat => tabularRelease(eGrid,nuValues)
+!
+!        else
+!          i = addr +2
+!          bounds    = XSS(i        : i+nInter-1  )
+!          interEndf = XSS(i+nInter : i+2*nInter-1)
+!
+!          i = addr+2+2*nInter
+!          eGrid    = XSS(i      : i+nEne-1)
+!          nuValues = XSS(i+nEne : i+2*nEne)
+!
+!          nuDat => tabularRelease(eGrid,nuValues,bounds,interEndf)
+!
+!        end if
+!
+!      end function readTabularNu
 
 
       function findMtIdx()
