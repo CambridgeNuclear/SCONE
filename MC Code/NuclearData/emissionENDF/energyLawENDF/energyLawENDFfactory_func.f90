@@ -9,6 +9,7 @@ module energyLawENDFfactory_func
   use energyLawENDF_inter,     only : energyLawENDF
   use contTabularEnergy_class, only : contTabularEnergy
   use maxwellSpectrum_class,   only : maxwellSpectrum
+  use levelScattering_class,   only : levelScattering
   use noEnergy_class,          only : noEnergy
 
   implicit none
@@ -68,6 +69,9 @@ contains
 
       case (simpleMaxwellFissionSpectrum)
         allocate(new, source = maxwellSpectrum(ACE))
+
+      case (levelScatteringLaw)
+        allocate(new, source = levelScattering(ACE))
 
       case default
         print *, 'Energy Law Type :', LAW

@@ -117,7 +117,7 @@ module endfConstants
   !
   integer(shortInt),parameter  :: tabularEquiprobableEnergyBins = 1  ,&
                                   discretePhotonEnergy          = 2  ,&
-                                  levelScattering               = 3  ,&
+                                  levelScatteringLaw            = 3  ,&
                                   continuousTabularDistribution = 4  ,&
                                   generalEvaporationSpectrum    = 5  ,&
                                   simpleMaxwellFissionSpectrum  = 7  ,&
