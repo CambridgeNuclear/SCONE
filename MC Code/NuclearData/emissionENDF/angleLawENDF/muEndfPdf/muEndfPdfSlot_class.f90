@@ -7,7 +7,7 @@ module muEndfPdfSlot_class
   implicit none
   private
 
-  type, public :: muEndfPdfSlot
+  type, public,extends(muEndfPdf) :: muEndfPdfSlot
     private
     class(muEndfPdf),allocatable :: slot
   contains
