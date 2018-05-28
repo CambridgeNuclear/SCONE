@@ -19,6 +19,8 @@ module kalbach87_class
   !! Kalbach-87 Formalism (ACE LAW 44. ENDF File 6 Law 1)
   !! Correlated mu-energy distribution
   !! Does not support multiple interpolation regions on incident energy grid.
+  !! Provisionaly tested.
+  !! probabilityOf was NOT properly verified
   !!
   type, public,extends(correlatedLawENDF) :: kalbach87
     private
@@ -60,7 +62,7 @@ contains
       call self % pdfs(idx+1) % sample(mu,E_out,rand)
 
     else
-      call self % pdfs(idx+1) % sample(mu,E_out,rand)
+      call self % pdfs(idx) % sample(mu,E_out,rand)
 
     end if
     
