@@ -5,7 +5,4 @@ add_subdirectory(releaseLawENDF)
 add_subdirectory(correlatedLawENDF) 
 
 # Add Source Files to the global list 
-add_sources( ./emissionENDF_class.f90
-             ./correlatedEmissionENDF_class.f90 
-             ./uncorrelatedEmissionENDF_class.f90
-             ./emissionFromACE_func.f90)
+add_sources( ./emissionENDF_class.f90) 

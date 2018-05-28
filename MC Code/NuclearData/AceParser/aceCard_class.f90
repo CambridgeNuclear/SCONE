@@ -104,6 +104,7 @@ module aceCard_class
     procedure :: numXsPointsMT       ! Get number of MT XS points
     procedure :: xsMT                ! Get MT XS array
     procedure :: neutronReleaseMT    ! Return TY for MT
+    procedure :: isCaptureMT         ! returns .true. if MT is capture reaction
     procedure :: QforMT              ! Return Q for MT
     procedure :: isCMframe           ! Return Ref frame for MT
     procedure :: LOCBforMT           ! Return LOCB for MT
@@ -355,6 +356,30 @@ contains
     N = self % MTdata(idx) % TY
 
   end function neutronReleaseMT
+
+  !!
+  !! Returns .true. if the reaction under MT is capture
+  !!
+  function isCaptureMT(self,MT) result(isIt)
+    class(aceCard),intent(in)    :: self
+    integer(shortInt),intent(in) :: MT
+    logical(defBool)             :: isIt
+    integer(shortInt)            :: idx
+
+    ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      isIt = .false.
+      return
+    end if
+
+    ! Get index of MT number on MTdata
+    idx = self % getMTidx(MT)
+
+    ! Check if MT represents capture
+    isIt = self % MTdata(idx) % isCapture
+
+  end function isCaptureMT
+
 
   !!
   !! Resturns Q-value for reaction MT

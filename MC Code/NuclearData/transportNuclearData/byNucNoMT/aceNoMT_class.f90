@@ -2,21 +2,23 @@ module aceNoMT_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures ,      only : openToRead, binarySearch, interpolate, searchError, fatalError
-  use aceCard_class,           only : aceCard
-  use RNG_class,               only : RNG
-  use emissionFromACE_func,    only : emissionFromACE
-  use emissionENDF_class,      only : emissionENDF, emissionENDF_ptr
-  use xsEnergyPointNoMT_class, only : xsEnergyPointNoMT
-  use materialDataNoMT_class,  only : materialDataNoMT
+  use genericProcedures ,         only : openToRead, binarySearch, interpolate, searchError, fatalError
+  use aceCard_class,              only : aceCard
+  use RNG_class,                  only : RNG
+
+  ! Emission data objects
+  use emissionENDF_class,         only : emissionENDF
+  use releaseLawENDF_inter,       only : releaseLawENDF
+  use releaseLawENDFfactory_func, only : new_totalNu
+
+  ! XS data objects
+  use xsEnergyPointNoMT_class,    only : xsEnergyPointNoMT
+  use materialDataNoMT_class,     only : materialDataNoMT
 
 
   implicit none
   private
 
-  integer(shortInt), parameter :: captureIdx  = 1, &
-                                  escatterIdx = 2, &
-                                  fissionIdx  = 3
   !!
   !! Class that stores nuclide reaction cross-sections read from ACE data card.
   !!
@@ -32,9 +34,12 @@ module aceNoMT_class
     logical(defBool)   :: isFissile = .false.
 
 !    integer(shortInt),dimension(:), pointer         :: xsMT  => null()  !! MT numbers of cross-sections in xs
-    type(emissionENDF_ptr),dimension(3)             :: emissionData
-    real(defReal),dimension(:),allocatable          :: energyGrid         !! Energy grid for xs data
-    type(xsEnergyPointNoMT),dimension(:),pointer    :: xsData => null()
+    type(emissionENDF)                           :: eScatterKinematics
+    type(emissionENDF)                           :: fissionKinematics
+    class(releaseLawENDF),allocatable            :: nuData
+
+    real(defReal),dimension(:),allocatable       :: energyGrid         !! Energy grid for xs data
+    type(xsEnergyPointNoMT),dimension(:),pointer :: xsData => null()
 
 
   contains
@@ -79,13 +84,14 @@ contains
 
     select case(MT)
       case (anyScatter, N_N_elastic)
-        call self % emissionData(escatterIdx) % sampleAngleEnergy(mu,E_out,E_in,rand)
+        call self % eScatterKinematics % sampleAngleEnergy(mu,E_out,E_in,rand)
 
       case (anyCapture, N_disap:) ! Any capture and all MT >= 101
-        call self % emissionData(captureIdx)  % sampleAngleEnergy(mu,E_out,E_in,rand)
+        mu    = ONE
+        E_out = E_in
 
       case (anyFission, N_fission)
-        call self % emissionData(fissionIdx)  % sampleAngleEnergy(mu,E_out,E_in,rand)
+        call self % fissionKinematics  % sampleAngleEnergy(mu,E_out,E_in,rand)
 
       case default
         call fatalError(Here,'Unknown MT number')
@@ -105,13 +111,13 @@ contains
 
     select case(MT)
       case (anyScatter, N_N_elastic)
-        isIt = self % emissionData(escatterIdx) % isInCMframe()
+        isIt = self % eScatterKinematics % isInCMframe()
 
       case (anyCapture, N_disap:) ! Any capture and all MT >= 101
-        isIt = self % emissionData(captureIdx)  % isInCMframe()
+        isIt = .false.
 
       case (anyFission, N_fission)
-        isIt = self % emissionData(fissionIdx)  % isInCMframe()
+        isIt = self % fissionKinematics % isInCMframe()
 
       case default
         call fatalError(Here,'Unknown MT number')
@@ -134,13 +140,13 @@ contains
 
     select case(MT)
       case (anyScatter, N_N_elastic)
-        nu = self % emissionData(escatterIdx) % releaseAt(E_in)
+        nu = ONE
 
       case (anyCapture, N_disap:) ! Any capture and all MT >= 101
-        nu = self % emissionData(captureIdx)  % releaseAt(E_in)
+        nu = ZERO
 
       case (anyFission, N_fission)
-        nu = self % emissionData(fissionIdx)  % releaseAt(E_in)
+        nu = self % nuData % releaseAt(E_in)
 
       case default
         call fatalError(Here,'Unknown MT number')
@@ -224,24 +230,17 @@ contains
     ! Move cross section data into xsEnergyPointType
     call self % xsData % load (xsEScatter,xsCapture,xsFission)
 
-    !**** DEBUG pass NXS, JXS and XSS directly
-    associate( NXS => ACE % NXS, JXS => ACE % JXS, XSS => ACE % XSS)
-
-    ! Read emission data
-    self % emissionData(captureIdx)   = emissionFromACE(ACE,NXS,JXS,XSS,N_gamma)
-    self % emissionData(escatterIdx)  = emissionFromACE(ACE,NXS,JXS,XSS,N_N_elastic)
+    ! Read elastic scattering angles
+    call self % eScatterKinematics % init(ACE,N_N_elastic)
 
     if (self % isFissile) then
-      self % emissionData(fissionIdx) = emissionFromACE(ACE,NXS,JXS,XSS,N_fission)
+      call self % fissionKinematics % init(ACE,N_fission)
 
-    else
-      ! Put placeholder emission type equivalent to capture for non=present fission
-      self % emissionData(fissionIdx) = emissionFromACE(ACE,NXS,JXS,XSS,N_gamma)
+      ! Read and allocate NU data
+      allocate(self % nuData, source = new_totalNu(ACE))
 
     end if
 
-    end associate
-    !***** DEBUG ZONE END
   end subroutine readXS
 
 

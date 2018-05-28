@@ -1,86 +1,73 @@
 module emissionENDF_class
 
   use numPrecision
-  use RNG_class
+  use endfConstants
+  use RNG_class,                     only : RNG
+  use aceCard_class,                 only : aceCard
+
+  ! Interfaces
+  use angleLawENDF_inter,            only : angleLawENDF
+  use energyLawENDF_inter,           only : energyLawENDF
+  use correlatedLawENDF_inter,       only : correlatedLawENDF
+
+  ! Factories
+  use angleLawENDFfactory_func,      only : new_angleLawENDF
+  use energyLawENDFfactory_func,     only : new_energyLawENDF
+  use correlatedLawENDFfactory_func, only : new_correlatedLawENDF
 
   implicit none
   private
 
-  type,abstract, public :: emissionENDF
+  type, public :: emissionENDF
     private
-    integer(shortInt)  :: MT
-    logical(defBool)   :: cmFrame = .true.
+    ! Reference frame and emission type flags
+    logical(defBool)   :: cmFrame    = .true.
+    logical(defBool)   :: correlated = .false.
+
+    ! Emission laws
+    class(angleLawENDF),allocatable      :: muLaw
+    class(energyLawENDF),allocatable     :: eLaw
+    class(correlatedLawENDF),allocatable :: corrLaw
+
   contains
-    procedure(sampleAngleEnergy),deferred :: sampleAngleEnergy
-    procedure(releaseAt),deferred         :: releaseAt
-    procedure                             :: setMT
-    procedure                             :: setLabFrame
-    procedure                             :: isInCMframe
+    generic   :: init => init_uncorrelated, init_correlated, init_fromACE
+
+    procedure :: sampleAngleEnergy
+    procedure :: isInCMframe
+
+    procedure, private :: init_uncorrelated
+    procedure, private :: init_correlated
+    procedure, private :: init_fromACE
+
   end type emissionENDF
-
-  abstract interface
-
-    subroutine sampleAngleEnergy(self,angle,E_out,E_in,rand )
-      !! Interface for a subroutine of emissionsENDF class that returns angle and energy of emitted
-      !! secondary neutron from a reaction given by class MT number.
-      import :: defReal, &
-                emissionENDF, &
-                RNG
-      class(emissionENDF), intent(in)   :: self
-      real(defReal), intent(out)        :: angle
-      real(defReal), intent(out)        :: E_out
-      real(defReal), intent(in)         :: E_in
-      class(RNG), intent(inout)         :: rand
-
-    end subroutine sampleAngleEnergy
-
-    function releaseAt(self,E_in) result(number)
-      !! Interface for a subroutine of emissionsENDF class that returns average number of secondary
-      !! neutrons emitted from the reactio ngiven by the class MT number. (0 for absorbtion)
-      import :: defReal, &
-                emissionENDF
-      class(emissionENDF), intent(in)  :: self
-      real(defReal), intent(in)        :: E_in
-      real(defReal)                    :: number
-    end function releaseAt
-
-  end interface
-
-  type,public :: emissionENDF_ptr
-   !! Pointer Wrapper for emissionENDF class so arrays of pointers can be created
-      private
-      class(emissionENDF), pointer :: ptr => null()
-    contains
-      generic   :: assignment(=)     => assignPointer_ptr, assignPointer
-      procedure :: sampleAngleEnergy => sampleAngleEnergy_ptr
-      procedure :: releaseAt         => releaseAt_ptr
-      procedure :: setMT             => setMT_ptr
-      procedure :: setLabFrame       => setLabFrame_ptr
-      procedure :: isInCMframe       => isInCMframe_ptr
-
-      procedure, private :: assignPointer_ptr
-      procedure, private :: assignPointer
-
-  end type emissionENDF_ptr
 
 contains
 
-  subroutine setMT(self,MT)
-    !! Subrutine that sets MT number of reaction the emissionENDF object is associated with
-    class(emissionENDF), intent(inout) :: self
-    integer(shortInt),intent(in)       :: MT
-      self % MT = MT
-  end subroutine setMT
+  !!
+  !! Samples angle mu and energy E_out of outgoing neutron given incident energy and
+  !! random number generator
+  !!
+  subroutine sampleAngleEnergy(self,mu,E_out,E_in,rand )
+    class(emissionENDF), intent(in)   :: self
+    real(defReal), intent(out)        :: mu
+    real(defReal), intent(out)        :: E_out
+    real(defReal), intent(in)         :: E_in
+    class(RNG), intent(inout)         :: rand
 
+    if(self % correlated) then
+      call self % corrLaw % sample(mu,E_out,E_in,rand)
 
-  subroutine setLabFrame(self)
-    class(emissionENDF), intent(inout) :: self
+    else
+      mu    = self % muLaw % sample(E_in,rand)
+      E_out = self % eLaw  % sample(E_in,rand)
 
-    self % cmFrame = .false.
+    end if
 
-  end subroutine setLabFrame
+  end subroutine sampleAngleEnergy
 
-
+  !!
+  !! Returns true is data for the reaction is given in Centre-of-Mass Frame
+  !!
   function isInCMframe(self)
     class(emissionENDF), intent(in) :: self
     logical(defBool)                :: isInCMframe
@@ -88,77 +75,137 @@ contains
     isInCMframe = self % cmFrame
   end function isInCMframe
 
-!**************************************************************************************************!
-! Pointer Wrapper Procedures
-!
-!**************************************************************************************************!
+  !!
+  !! Copies RHS into LHS and deallocates contents of RHS
+  !!
+  subroutine moveAllocFrom(LHS,RHS)
+    class(emissionENDF), intent(out)  :: LHS
+    type(emissionENDF), intent(inout) :: RHS
 
+    LHS % cmFrame    = RHS % cmFrame
+    LHS % correlated = RHS % correlated
 
-  subroutine setMT_ptr(self,MT)
-    class(emissionENDF_ptr), intent(inout) :: self
-    integer(shortInt),intent(in)           :: MT
+    ! Move allocateion to avoid unnecessary memory allocation
+    if(RHS % correlated) then
+      call move_alloc(RHS % corrLaw, LHS % corrLaw)
 
-    call self % ptr %setMT(MT)
+    else
+      call move_alloc(RHS % muLaw, LHS % muLaw)
+      call move_alloc(RHS % eLaw,  RHS % eLaw )
 
-  end subroutine setMT_ptr
+    end if
 
+  end subroutine moveAllocFrom
 
-  subroutine setLabFrame_ptr(self)
-    class(emissionENDF_ptr), intent(inout) :: self
+  !!
+  !! Initialisation of uncorrelated emission
+  !!
+  subroutine init_uncorrelated(self,muLaw,eLaw,cmFrame)
+    class(emissionENDF), intent(inout) :: self
+    class(angleLawENDF), intent(in)    :: muLaw
+    class(energyLawENDF), intent(in)   :: eLaw
+    logical(defBool),intent(in)        :: cmFrame
 
-    call self % ptr % setLabFrame()
+    allocate(self % muLaw, source = muLaw)
+    allocate(self % eLaw,  source = eLaw )
+    self % correlated = .false.
+    self % cmFrame = cmFrame
 
-  end subroutine setLabFrame_ptr
+  end subroutine init_uncorrelated
 
+  !!
+  !! Initialisation of correlated emission
+  !!
+  subroutine init_correlated(self,corrLaw,cmFrame)
+    class(emissionENDF), intent(inout)   :: self
+    class(correlatedLawENDF), intent(in) :: corrLaw
+    logical(defBool),intent(in)          :: cmFrame
 
-  function isInCMframe_ptr(self)
-    class(emissionENDF_ptr), intent(in) :: self
-    logical(defBool)                    :: isInCMframe_ptr
+    allocate(self % corrLaw, source = corrLaw)
+    self % correlated = .true.
+    self % cmFrame = cmFrame
 
-    isInCMframe_ptr = self % ptr % isInCMframe()
+  end subroutine init_correlated
 
-  end function isInCMframe_ptr
+  !!
+  !! Initialisation of emissionENDF from ACE and MT number
+  !! aceCard read head can be in any position
+  !! read head will be moved in the subroutine
+  !!
+  subroutine init_fromACE(self,ACE,MT)
+    class(emissionENDF), intent(inout)   :: self
+    class(aceCard), intent(inout) :: ACE
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: LOCB
 
+    if( ACE % isCaptureMT(MT)) then
+      ! Capture Does not have LOCB. Thus build it here.
+      ! Will be filled with placeholder LawENDF's
+      self % correlated = .false.
+      allocate(self % muLaw, source = new_angleLawENDF(ACE,MT))
+      allocate(self % eLaw, source = new_energyLawENDF(ACE,MT))
+      return
 
-  subroutine sampleAngleEnergy_ptr(self,angle,E_out,E_in,rand )
-      class(emissionENDF_ptr), intent(in)   :: self
-      real(defReal), intent(out)            :: angle
-      real(defReal), intent(out)            :: E_out
-      real(defReal), intent(in)             :: E_in
-      class(RNG), intent(inout)             :: rand
+    end if
 
-      call self % ptr % sampleAngleEnergy(angle,E_out,E_in,rand)
+    ! Read LOCB for reaction under MT
+    LOCB = ACE % LOCBforMT(MT)
 
-  end subroutine sampleAngleEnergy_ptr
+    ! Read if data for reaction is in Centre-of-Mass frame
+    self % cmFrame = ACE % isCMframe(MT)
 
-  function releaseAt_ptr(self,E_in) result(number)
-    class(emissionENDF_ptr), intent(in) :: self
-    real(defReal), intent(in)           :: E_in
-    real(defReal)                       :: number
+    ! Build as correlated or uncorrelated depending on LOCB
+    select case(LOCB)
+      case(LOCB_CORRELATED)
+        self % correlated = .true.
+        allocate(self % corrLaw, source = new_correlatedLawENDF(ACE,MT))
 
-    number = self % ptr % releaseAt(E_in)
+      case default
+        self % correlated = .false.
+        allocate(self % muLaw, source = new_angleLawENDF(ACE,MT))
+        allocate(self % eLaw, source = new_energyLawENDF(ACE,MT))
 
-  end function releaseAt_ptr
+    end select
 
+  end subroutine init_fromACE
 
-  subroutine assignPointer_ptr(LHS,RHS)
-    class(emissionENDF_ptr),intent(out) :: LHS
-    type(emissionENDF_ptr),intent(in)   :: RHS
+  !!
+  !! Constructor of uncorrelated emission
+  !!
+  function new_emissionENDF_uncorrelated(muLaw,eLaw,cmFrame) result(new)
+    class(angleLawENDF), intent(in)  :: muLaw
+    class(energyLawENDF), intent(in) :: eLaw
+    logical(defBool),intent(in)      :: cmFrame
+    type(emissionENDF)               :: new
 
-    if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS % ptr
+    call new % init(muLaw,eLaw,cmFrame)
 
-  end subroutine
+  end function new_emissionENDF_uncorrelated
 
-  subroutine assignPointer(LHS,RHS)
-    class(emissionENDF_ptr),intent(out)    :: LHS
-    class(emissionENDF),pointer,intent(in) :: RHS
+  !!
+  !! Constructor of correlated emission
+  !!
+  function new_emissionENDF_correlated(corrLaw,cmFrame) result(new)
+    class(correlatedLawENDF), intent(in)  :: corrLaw
+    logical(defBool),intent(in)           :: cmFrame
+    type(emissionENDF)                    :: new
 
-    if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS
-  end subroutine assignPointer
+    call new % init(corrLaw,cmFrame)
 
+  end function new_emissionENDF_correlated
 
+  !!
+  !! Constructor from ACE and MT number
+  !! aceCard read head can be in any position
+  !! read head will be moved in the subroutine
+  !!
+  function new_emissionENDF_fromACE(ACE,MT) result(new)
+    class(aceCard), intent(inout) :: ACE
+    integer(shortInt), intent(in) :: MT
+    type(emissionENDF)            :: new
 
+    call new % init(ACE,MT)
+
+  end function new_emissionENDF_fromACE
 
 end module emissionENDF_class
