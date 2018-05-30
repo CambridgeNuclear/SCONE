@@ -63,7 +63,6 @@ program test_init_geom
   print *,'Preparing transport'
   call p % build([0.2_8,0.0_8,ZERO],[sin(PI*0.9),cos(PI*0.9),ZERO],1,1._8)
   c = geom % whichCell(p % coords)
-  print *,'found which cell'
   call rand % init(500_8)
   call DTOperator % init(geom)
   call STOperator % init(geom)
