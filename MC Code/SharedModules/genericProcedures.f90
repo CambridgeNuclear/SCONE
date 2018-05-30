@@ -37,6 +37,12 @@ module genericProcedures
     module procedure isSorted_shortInt
   end interface
 
+  interface numToChar
+    module procedure numToChar_shortInt
+    module procedure numToChar_longInt
+    module procedure numToChar_defReal
+  end interface
+
 
   integer(shortInt), parameter :: valueOutsideArray = -1,&
                                   tooManyIter       = -2,&
@@ -653,6 +659,42 @@ module genericProcedures
 
   end function isSorted_shortInt
 
+  !! Convert shortInt to character
+  !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
+  function numToChar_shortInt(x) result(c)
+    integer(shortInt)         :: x
+    character(:), allocatable :: c
+    character(40)             :: tempChar
+
+    write(tempChar,'(I0)') x
+    c = trim(tempChar)
+
+  end function numToChar_shortInt
+
+  !! Convert longInt to character
+  !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
+  function numToChar_longInt(x) result(c)
+    integer(longInt)          :: x
+    character(:), allocatable :: c
+    character(40)             :: tempChar
+
+    write(tempChar,'(I0)') x
+    c = trim(tempChar)
+
+  end function numToChar_longInt
+
+  !! Convert defReal to character
+  !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
+  function numToChar_defReal(x) result(c)
+    real(defReal)             :: x
+    character(:), allocatable :: c
+    character(40)             :: tempChar
+
+    write(tempChar,*) x
+    c = trim(tempChar)
+
+  end function numToChar_defReal
+
 
   !!
   !! Subroutine takes a normilised direction vector dir and rotates it by cosine of a polar angle
@@ -677,8 +719,8 @@ module genericProcedures
     w = dir(3)
 
     ! Perform standard roatation. Note that indexes are parametrised
-    A = sqrt(max(0.0_defReal, 1.0_defReal - mu*mu))
-    B = sqrt(max(0.0_defReal, 1.0_defReal - w*w  ))
+    A = sqrt(max(ZERO, ONE - mu*mu))
+    B = sqrt(max(ZERO, ONE - w*w  ))
 
 
     if ( B > 1E-8) then
@@ -687,7 +729,7 @@ module genericProcedures
       newDir(3) = mu * w - A * B * cosPol
 
     else
-      B = sqrt(max(0.0_defReal, 1.0_defReal - v*v))
+      B = sqrt(max(ZERO, ONE - v*v))
       newDir(1) = mu * u + A *(u*v*cosPol + w * sinPol) / B
       newDir(2) = mu * v - A * B * cosPol
       newDir(3) = mu * w + A* (v*w*cosPol - u * sinPol) /B

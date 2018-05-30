@@ -36,12 +36,13 @@ module geometry_class
   private
 
   type, public :: geometry
-    type(surface_ptr), dimension(:), allocatable :: surfaces        ! pointers to all surfaces
-    type(universe), dimension(:), allocatable    :: universes       ! array of all universes
-    type(cell), dimension(:), allocatable        :: cells           ! array of all cells
-    type(lattice), dimension(:), allocatable     :: lattices        ! array of all lattices
-    type(surface_ptr)                            :: boundarySurface ! pointer to the boundary surface
-    type(box)                                    :: boundingBox     ! bounding box for volume calculations
+    type(surface_ptr), dimension(:), allocatable :: surfaces             ! pointers to all surfaces
+    type(universe), dimension(:), allocatable    :: universes            ! array of all universes
+    type(cell), dimension(:), allocatable        :: cells                ! array of all cells
+    type(lattice), dimension(:), allocatable     :: lattices             ! array of all lattices
+    type(surface_ptr)                            :: boundarySurface      ! pointer to the boundary surface
+    type(box)                                    :: boundingBox          ! bounding box for volume calculations
+    logical(defBool)                             :: boxDefined = .FALSE. ! logical to check if the bounding box has been defined
     type(universe_ptr)                           :: rootUniverse
     integer(shortInt)                            :: numSurfaces = 0
     integer(shortInt)                            :: numCells = 0
@@ -70,6 +71,7 @@ module geometry_class
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
+    procedure :: voxelPlot               ! Produces a voxel plot of a chosen section of the geometry
   end type geometry
 
 contains
@@ -452,8 +454,7 @@ contains
     ID = 1
     do i=1,self % numCells
       n = cellInstances(i)
-      ID = ID + n
-      if (n > 0) then
+      if (n > 1) then
         call searchLocation % resetNesting()
         allocate(location(n))
         uniIdx = self % rootUniverse % geometryIdx()
@@ -462,6 +463,7 @@ contains
         found = 0
         call self % locateCell(cellIdx, uniIdx, latIdx, searchLocation, location, n, found)
         call self % cells(i) % setInstances(n,location,ID)
+        ID = ID + n
         deallocate(location)
       end if
     end do
@@ -588,6 +590,7 @@ contains
     real(defReal), intent(in), dimension(3) :: orig
     real(defReal), intent(in), dimension(3) :: a
     call self % boundingBox % init(orig, a)
+    self % boxDefined = .TRUE.
   end subroutine constructBoundingBox
 
   !!
@@ -597,20 +600,26 @@ contains
   !! Will eventually require parallelisation
   !!
   subroutine calculateVolumes(self, numPoints, seed)
-    class(geometry), intent(inout)           :: self
-    integer(shortInt), intent(in)            :: numPoints
-    integer(longInt), intent(in), optional   :: seed
-    integer(longInt)                         :: s
-    real(defReal), dimension(3)              :: minPoint, width, testPoint, dummyU
-    real(defReal), dimension(:), allocatable :: cellVols
-    integer(shortInt)                        :: i, cellIdx
-    type(rng)                                :: rand
-    type(box)                                :: bb
-    type(cell_ptr)                           :: c
-    type(coordList)                          :: coords
+    class(geometry), intent(inout)              :: self
+    integer(shortInt), intent(in)               :: numPoints
+    integer(longInt), intent(in), optional      :: seed
+    integer(longInt)                            :: s
+    real(defReal), dimension(3)                 :: minPoint, width, testPoint, dummyU
+    integer(longInt), dimension(:), allocatable :: score
+    real(defReal), dimension(:), allocatable    :: cellVols
+    integer(shortInt)                           :: i, j, regionIdx
+    type(rng)                                   :: rand
+    type(box)                                   :: bb
+    type(cell_ptr)                              :: c
+    type(coordList)                             :: coords
 
-    allocate(cellVols(self % numCells))
-    cellVols(:) = 0
+    if(.NOT. self % boxDefined) call fatalError('calculateVolumes, geometry',&
+                                'No bounding box has been defined')
+
+    allocate(cellVols(self % numRegions))
+    allocate(score(self % numRegions))
+    score = 0
+    cellVols = ZERO
 
     ! Cell searching requires a direction
     dummyU = [ONE, ZERO, ZERO]
@@ -635,24 +644,30 @@ contains
 
       call coords % init(testPoint, dummyU)
 
+      ! Return a base cell which either contains a material or sits outside the geometry
       c = self % whichCell(coords)
-      cellIdx = c % geometryIdx()
 
       if (c % insideGeom()) then
-        cellVols(cellIdx) = cellVols(cellIdx) + 1
+        regionIdx = coords % regionID
+        score(regionIdx) = score(regionIdx) + 1
       end if
     end do
     call c % kill()
 
-    cellVols(:) = ONE*cellVols(:) * width(1) * width(2) * width(3) / numPoints
-    print *,cellVols(:)
-    ! Assign volumes to cells, dividing by the number of instances
-    ! Only assign to base cells
+    cellVols = ONE* score * width(1) * width(2) * width(3) / numPoints
+
+    ! Assign volumes to each material cell instance
+    ! Loop through cells to find which have material fills
+    ! If so, loop through each instance, checking their regionID
+    ! and providing the corresponding volume
     do i = 1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
-        self % cells(i) % volume = cellVols(i) / self % cells(i) % instances
+        do j = 1,self % cells(i) % instances
+          self % cells(i) % volume(j) = cellVols(self % cells(i) % uniqueID(j))
+        end do
       end if
     end do
+
 
   end subroutine calculateVolumes
 
@@ -725,7 +740,7 @@ contains
         if (.not. c % insideGeom()) then
           colourMatrix(i,j) = 0
         else
-          colourMatrix(i,j) = c % matIdx(1)
+          colourMatrix(i,j) = coords % matIdx
         end if
       end do
     end do
@@ -733,6 +748,52 @@ contains
     call c % kill()
 
   end function slicePlot
+
+  !!
+  !! Obtain a 3D array for use in voxel plotting
+  !! Obtains material coloured voxel originating from a rear-bottom-left
+  !! corner of the geometry and going forward by width in each direction
+  !! Populates an outputMesh instance with material values
+  !!
+  function voxelPlot(self, nVox, corner, width) result(colourMatrix)
+    class(geometry), intent(in)                      :: self
+    integer(shortInt), dimension(3), intent(in)      :: nVox
+    real(defReal), dimension(3), intent(in)          :: corner
+    real(defReal), dimension(3), intent(in)          :: width
+    integer(shortInt), dimension(:,:,:), allocatable :: colourMatrix
+    real(defReal), dimension(3)                      :: x0, x, u
+    integer(shortInt)                                :: i, j, k
+    type(coordList)                                  :: coords
+    type(cell_ptr)                                   :: c
+
+    allocate(colourMatrix(nVox(1),nVox(2),nVox(3)))
+
+    ! Create the co-ordinate points and widths
+    x0 = corner + width*HALF
+    x = x0
+    u = [SQRT2_2, SQRT2_2, ZERO]
+
+    call coords % init(x, u)
+
+    ! Loop over each direction
+    do k = 1,nVox(3)
+      do j = 1,nVox(2)
+        do i = 1,nVox(1)
+          x = [x0(1) + (i-1)*width(1), x0(2) + (j-1)*width(2), x0(3) + (k-1)*width(3)]
+          call coords % init(x, u)
+          c = self % whichCell(coords)
+          if (c % insideGeom()) then
+            colourMatrix(i,j,k) = coords % matIdx
+          else
+            colourMatrix(i,j,k) = 0
+          end if
+        end do
+      end do
+    end do
+
+    call c % kill()
+
+  end function voxelPlot
 
   !!
   !! Given a dictionary describing a surface, construct a surface for the surrface array

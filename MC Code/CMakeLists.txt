@@ -17,7 +17,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # It should be periodicly removed to see if other surprising warining are not raised 
 # This buggy warning should be repaired in GCC 7.0 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising -flto") # -flto  
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
@@ -51,7 +51,8 @@ add_sources( ./DataStructures/dictionary_class.f90
 
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
-add_subdirectory(RandomNumbers)    
+add_subdirectory(RandomNumbers)  
+add_subdirectory(VTK)  
 add_subdirectory(ParticleObjects)  
 
 add_subdirectory(NuclearData)      

@@ -16,6 +16,7 @@ program test_init_geom
   use transportOperatorDT_class
   use transportOperatorST_class
   use mesh_class
+  use outputMesh_class
 
   implicit none
 
@@ -37,6 +38,9 @@ program test_init_geom
   type(transportOperatorST) :: STOperator
   type(mesh) :: m
   real(defReal) :: angle
+  type(outputMesh) :: vtk
+  integer(shortInt), dimension(400,400,1) :: matMatrix
+  integer(longInt), dimension(400,400,1) :: d
 
   call geomDict % initFrom(path)
 
@@ -59,13 +63,23 @@ program test_init_geom
   print *,'Preparing transport'
   call p % build([0.2_8,0.0_8,ZERO],[sin(PI*0.9),cos(PI*0.9),ZERO],1,1._8)
   c = geom % whichCell(p % coords)
-  print *,'found which cell'
   call rand % init(500_8)
   call DTOperator % init(geom)
   call STOperator % init(geom)
 
+  call geom % constructBoundingBox([ZERO,ZERO,ZERO],[2._defReal,2._defReal,HALF])
+
+  print *,'Calculating volumes'
+  call geom % calculateVolumes(1000000,1_longInt)
+  print *,'Finished volume calculation'
+  print *,'Performing voxel calculation'
+  call vtk % init([-2.2_defReal,-2.2_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[400,400,1])
+  matMatrix = geom % voxelPlot(vtk % nVox, vtk % corner, vtk % width)
+  call vtk % addData(real(matMatrix,defReal), 'materials')
+  print *,'Finished voxel plot'
+
   ! Initialise mesh to score points
-  call m % init([0.02_8,0.02_8,1._8], [-TWO,-TWO,-HALF], [200,200,1], 1, .FALSE.,'m1')
+  call m % init([0.011_8,0.011_8,1._8], [-2.2_defReal,-2.2_defReal,-HALF], [400,400,1], 1, .FALSE.,'m1')
 
   print *, 'Begin walk'
   do i=1,1000000
@@ -86,11 +100,16 @@ program test_init_geom
       end if
     end do
   end do
+  print *,'walk done'
 
-  do i=1,200
-    do j=1,200
-      print *, m % density(i,j,1)
-    end do
-  end do
+  d = m % density
+  call vtk % addData(real(d,8), 'particleDensity')
+  call vtk % output('testVTK')
+
+  !do i=1,200
+  !  do j=1,200
+  !    print *, m % density(i,j,1)
+  !  end do
+  !end do
 
 end program test_init_geom
