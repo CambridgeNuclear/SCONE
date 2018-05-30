@@ -13,7 +13,8 @@ module collisionOperator_class
  ! use xsMainCDF_class,        only : xsMainCDF
   use xsMainSet_class,        only : xsMainSet_ptr
 
-  use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
+  use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
+                                     asymptoticInelasticScatter
 
   implicit none
   private
@@ -203,17 +204,19 @@ contains
     integer(shortInt),intent(in)            :: nucIdx      ! Target nuclide index
     real(defReal)                           :: phi
     real(defReal)                           :: E_out
-    character(100),parameter       :: Here = 'scatterFromStationary (collisionOperator_class.f90)'
+    real(defReal)                           :: E_outCM
+    character(100),parameter       :: Here = 'scatterFromFixed (collisionOperator_class.f90)'
 
     ! Sample mu and outgoing energy
-    call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, MT, nucIdx)
+    call self % xsData % sampleMuEout(mu, E_outCM, E, self % locRNG, MT, nucIdx)
 
     select case(MT)
       case(N_N_elastic)
         call asymptoticScatter(E_out,mu,A)
 
       case default
-        call fatalError(Here,'Unknown MT number')
+        call asymptoticInelasticScatter(E_out,mu,E_outCM,A)
+        !call fatalError(Here,'Unknown MT number')
 
     end select
 

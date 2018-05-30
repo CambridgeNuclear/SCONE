@@ -21,6 +21,10 @@ program eigenCE
 
   use tallyClerkFactory_func,  only : new_tallyClerk, new_tallyClerk_ptr
 
+  !*** TESTS
+  use byNucMT_data_class, only : byNucMT_Data
+  use byNucMT_class,      only : byNucMT
+
   implicit none
 
   type(particle)          :: neutron
@@ -32,6 +36,8 @@ program eigenCE
   type(perNuclideCollisionOpCE) :: collisionPhysics
   class(perNuclideNuclearDataCE),pointer :: ce
 
+  !*** TESTS
+  class(byNucMT),pointer  :: dataWithMT
 
   integer(shortInt)          :: N, i
   real(defReal)              :: Emax,Emin,Umax,Umin
@@ -62,11 +68,16 @@ program eigenCE
 
 
   call IOdictTest % initFrom('./materialInput')
-
   testDict = IOdictTest
 
+  allocate(dataWithMT)
+  call dataWithMT % init(IOdictTest)
   allocate(ce_implement)
   call ce_implement % init(testDict)
+
+
+  !allocate(ce_implement)
+  !call ce_implement % init(testDict)
 
   allocate(RNGptr)
   call RNGptr % init(75785746574_longInt)
@@ -76,7 +87,8 @@ program eigenCE
  ! allocate(collisionPhysics)
  ! call collisionPhysics_implement % attachXsData(ce_implement)
 
-  ce => ce_implement
+  !ce => ce_implement
+  ce => dataWithMT
 
   !***** Create Tallies
 

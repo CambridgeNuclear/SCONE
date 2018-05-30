@@ -10,7 +10,7 @@ module scatteringKernels_func
 
   public  :: asymptoticScatter
   public  :: targetVelocity_constXS
-
+  public  :: asymptoticInelasticScatter
 
   private :: sample_x2expx2
   private :: sample_x3expx2
@@ -47,6 +47,36 @@ contains
 
   end subroutine asymptoticScatter
 
+  !!
+  !! Subroutine to perform INELASTIC SCATTERING from a stationary target nucleus.
+  !! Changes direction and energy in LAB system
+  !! Takes mu in CM system, and E_out in CM system.
+  !! Returns mu in LAB system.
+  !!
+  !! Dir needs to be normalised. Prodedure will produce wrong results without error message
+  !! if it is not.
+  !!
+  !! Based on MCNP manual chapter 2.
+  !!
+  subroutine asymptoticInelasticScatter(E,mu,E_out,A)
+    real(defReal), intent(inout) :: E     !! Pre-collision energy in Lab
+    real(defReal), intent(inout) :: mu    !! Cosine of delection angle
+    real(defReal), intent(in)    :: E_out !! Post collision energy in CM
+    real(defReal), intent(in)    :: A     !! Target mass [neutrons]
+    real(defReal)                :: E_in
+    real(defReal)                :: inv_Ap1
+
+    ! Store initial energy and precalculate 1/(A+1)
+    E_in = E
+    inv_Ap1 = 1.0/ (A + 1.0)
+
+    ! Find post-collision energy
+    E = E_out + (E_in +TWO*mu*(A+ONE)*sqrt(E_in*E_out)) * inv_Ap1 * inv_Ap1
+
+    ! Find deflection angle in LAB
+    mu = mu * sqrt(E_out/E) + sqrt(E_in/E)* inv_Ap1
+
+  end subroutine asymptoticInelasticScatter
 
 
   !!

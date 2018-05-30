@@ -1,5 +1,6 @@
 # Add Nested Directories 
 add_subdirectory(byNucNoMT)
+add_subdirectory(byNucMT)
 add_subdirectory(perMaterialNuclearDataMG)
 
 

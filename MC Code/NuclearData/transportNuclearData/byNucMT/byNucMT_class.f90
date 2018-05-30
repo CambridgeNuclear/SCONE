@@ -1,4 +1,4 @@
-module byNucNoMT_class
+module byNucMT_class
 
   ! Global modules
   use numPrecision
@@ -11,12 +11,12 @@ module byNucNoMT_class
   ! Interface
   use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
 
-  ! Modules specific to byNucNoMT type of XS data storage
-  use byNucNoMT_Data_class ,         only : byNucNoMT_Data
-  use nuclideMemoryNoMT_class,       only : nuclideMemoryNoMT
-  use materialMemoryNoMT_class,      only : materialMemoryNoMT
-  use materialDataNoMT_class,        only : materialDataNoMT
-  use aceNoMT_class,                 only : aceNoMT
+  ! Modules specific to byNucMT type of XS data storage
+  use byNucMT_Data_class ,         only : byNucMT_Data
+  use nuclideMemoryMT_class,       only : nuclideMemoryMT
+  use materialMemoryMT_class,      only : materialMemoryMT
+  use materialDataNoMT_class,      only : materialDataNoMT
+  use aceMT_class,                 only : aceMT
 
   ! Cross-section packages to interface with Collision Operator
  ! use xsMainCDF_class,               only : xsMainCDF
@@ -27,15 +27,15 @@ module byNucNoMT_class
   implicit none
   private
 
-  type, public,extends(perNuclideNuclearDataCE) :: byNucNoMT
+  type, public,extends(perNuclideNuclearDataCE) :: byNucMT
     !private **** Should be uncommented after debug
 
     ! Storage of static XS and Material data
-    type(byNucNoMT_Data),pointer                    :: dataBlock => null()
+    type(byNucMT_Data),pointer                    :: dataBlock => null()
 
     ! Dynamic, local handels to store interpolated data and have memory of the last call
-    type(nuclideMemoryNoMT), dimension(:), pointer  :: nucShelf  => null()
-    type(materialMemoryNoMT), dimension(:),pointer  :: matShelf  => null()
+    type(nuclideMemoryMT), dimension(:), pointer  :: nucShelf  => null()
+    type(materialMemoryMT), dimension(:),pointer  :: matShelf  => null()
 
     ! Data for majorant XS calculations
     integer(shortInt), dimension(:), allocatable :: activeMaterials   !! Materials used in majorant calculation
@@ -44,7 +44,6 @@ module byNucNoMT_class
 
   contains
     procedure :: init
-    procedure :: readFrom
 
     ! Nuclear Data Interface Procedures
     procedure :: getIdx
@@ -75,17 +74,17 @@ module byNucNoMT_class
 
     ! Type specific procedures
 
-  end type byNucNoMT
+  end type byNucMT
 
 contains
   subroutine init(self,dict)
-    class(byNucNoMT), intent(inout)      :: self
+    class(byNucMT), intent(inout)      :: self
     class(dictionary), intent(inout)     :: dict
-    type(aceNoMT),pointer                :: nucPtr
+    type(aceMT),pointer                :: nucPtr
     type(materialDataNoMt),pointer       :: matPtr
     integer(shortInt)                    :: numNuclide, numMaterials
     integer(shortInt)                    :: i
-    character(100), parameter            :: Here = 'init (byNUcNoMT_class.f90)'
+    character(100), parameter            :: Here = 'init (byNUcMT_class.f90)'
 
     ! Check if material data was alrady read. If it was return error becouse prodecures
     ! for cleaning memory from material and xs data are not implemented
@@ -122,63 +121,15 @@ contains
 
   end subroutine init
 
-
-  !!
-  !! Read material and nuclide data using input files at the provided paths
-  !!
-  subroutine readFrom(self,matInput,nuclideLib)
-    class(byNucNoMT),intent(inout)       :: self
-    character(*), intent(in)             :: matInput
-    character(*), intent(in)             :: nuclideLib
-    type(aceNoMT),pointer                :: nucPtr
-    type(materialDataNoMt),pointer       :: matPtr
-    integer(shortInt)                    :: numNuclide, numMaterials
-    integer(shortInt)                    :: i
-    character(100), parameter            :: Here = 'readFrom (byNUcNoMT_class.f90)'
-
-    ! Check if material data was alrady read. If it was return error becouse prodecures
-    ! for cleaning memory from material and xs data are not implemented
-    if(associated(self % dataBlock)) call fatalError(Here,'It is forbidden to reinitialise XS data')
-
-    ! Read Material data into a shared "fat" object
-    allocate (self % dataBlock)
-    call self % dataBlock  % readFrom(matInput, nuclideLib)
-
-    ! Allocate space for nuclide and material shelfs
-    numNuclide   = size(self % dataBlock % nucXsData)
-    numMaterials = size(self % dataBlock % matData  )
-
-    allocate (self % nucShelf (numNuclide  ))
-    allocate (self % matShelf (numMaterials))
-
-    ! Attach nuclides to the shelf
-    do i=1,numNuclide
-      nucPtr => self % dataBlock % nucXsData(i)
-      call self % nucShelf(i) % init(i,nucPtr)
-
-    end do
-
-    ! Attach materials to the shelf
-    do i=1,numMaterials
-      matPtr => self % dataBlock % matData(i)
-      call self % matShelf(i) % init(matPtr,self % nucShelf)
-    end do
-
-    ! At this point assume all defined materials are present in the geometry
-    ! Include all material indexes
-    self % activeMaterials = [(i , i=1,numMaterials)]
-
-  end subroutine readFrom
-
   !!
   !! Returns material index for given material name
   !! Throws error if material is not found
   !!
   function getIdx(self,matName) result(matIdx)
-    class(byNucNoMT), intent(in) :: self
+    class(byNucMT), intent(in) :: self
     character(*), intent(in)     :: matName
     integer(shortInt)            :: matIdx
-    character(100), parameter    :: Here = 'getIdx (byNucNoMt_class.f90)'
+    character(100), parameter    :: Here = 'getIdx (byNucMT_class.f90)'
 
     matIdx = linFind(self % dataBlock % matData(:) % name, matName)
     call searchError(matIdx,Here)
@@ -190,10 +141,10 @@ contains
   !! Throws error if material index does not correspond to valid material
   !!
   function getName(self,matIdx) result(matName)
-    class(byNucNoMT), intent(in)   :: self
+    class(byNucMT), intent(in)   :: self
     integer(shortInt), intent(in)  :: matIdx
     character(nameLen)             :: matName
-    character(100),parameter       :: Here = 'getName (byNucNoMT_class.f90)'
+    character(100),parameter       :: Here = 'getName (byNucMT_class.f90)'
 
     associate (matData => self % dataBlock % matData)
 
@@ -211,7 +162,7 @@ contains
   !! In this implementation it is equal to total XS
   !!
   function getTransXS_E(self,E,matIdx) result (xs)
-    class(byNucNoMT), intent(inout)  :: self
+    class(byNucMT), intent(inout)  :: self
     real(defReal),intent(in)         :: E
     integer(shortInt), intent(in)    :: matIdx
     real(defReal)                    :: xs
@@ -224,7 +175,7 @@ contains
   !! Function to obtain majorant XS for all active materials
   !!
   function getMajorantXS_E(self,E) result (xs)
-    class(byNucNoMT), intent(inout)   :: self
+    class(byNucMT), intent(inout)   :: self
     real(defReal), intent(in)         :: E
     real(defReal)                     :: xs
     integer(shortInt)                 :: i, currentMat
@@ -248,7 +199,7 @@ contains
   !! Function to obtain total XS for material identified by its index
   !!
   function getTotalMatXS_E(self,E,matIdx) result (xs)
-    class(byNucNoMT), intent(inout)  :: self
+    class(byNucMT), intent(inout)  :: self
     real(defReal),intent(in)         :: E
     integer(shortInt), intent(in)    :: matIdx
     real(defReal)                    :: xs
@@ -261,7 +212,7 @@ contains
   !! Subroutine to attach pointer to a material's macroscopic XS set
   !!
   subroutine getMatMacroXS_E(self,macroXS,E,matIdx)
-    class(byNucNoMT), intent(inout)        :: self
+    class(byNucMT), intent(inout)        :: self
     type(xsMacroSet_ptr),intent(inout)     :: macroXS
     real(defReal),intent(in)               :: E
     integer(shortInt),intent(in)           :: matIdx
@@ -275,7 +226,7 @@ contains
   !! Returns .true. if material contains fissile nuclides
   !!
   function isFissileMat(self,matIdx) result(isIt)
-    class(byNucNoMT), intent(in)   :: self
+    class(byNucMT), intent(in)   :: self
     integer(shortInt), intent(in)  :: matIdx
     logical(defBool)               :: isIt
 
@@ -290,13 +241,13 @@ contains
   !! Remember that fissile material and CE neutron is assured by the adapter interface
   !!
   subroutine initFissionSite_E(self,p)
-    class(byNucNoMT), intent(in)   :: self
+    class(byNucMT), intent(in)   :: self
     class(particle), intent(inout) :: p
     integer(shortInt)              :: matIdx, nucIdx, nucIdx_temp, i
     real(defReal)                  :: E_out, mu, phi, maxDens
     real(defReal)                  :: r1
     real(defReal), parameter       :: E_in = 1.0E-6_defReal
-    character(100), parameter      :: Here=' initFissionSite_E ( byNucNoMT_class.f90)'
+    character(100), parameter      :: Here=' initFissionSite_E ( byNucMT_class.f90)'
 
     ! Obtain random numbers
     r1 = p % pRNG % get()
@@ -348,9 +299,9 @@ contains
   !! Order is not significant (assume there is none)
   !!
   subroutine setActiveMaterials(self,matIdxList)
-    class(byNucNoMT), intent(inout)           :: self
+    class(byNucMT), intent(inout)           :: self
     integer(shortInt),dimension(:),intent(in) :: matIdxList
-    character(100),parameter                  :: Here= 'setActiveMaterials (byNucNoMT_class.f90)'
+    character(100),parameter                  :: Here= 'setActiveMaterials (byNucMT_class.f90)'
 
     if( allocated(self % activeMaterials)) deallocate( self % activeMaterials)
 
@@ -368,7 +319,7 @@ contains
   !! Subroutine to attach pointer to the Main xs set of the nuclide
   !!
   subroutine getMainNucXS(self,xsPtr,E,nucIdx)
-    class(byNucNoMT), intent(inout)         :: self
+    class(byNucMT), intent(inout)         :: self
     type(xsMainSet_ptr),intent(inout)       :: xsPtr
     real(defReal),intent(in)                :: E
     integer(shortInt), intent(in)           :: nucIdx
@@ -385,12 +336,12 @@ contains
   !! Obtain xs for given energy, nuclide and MT number
   !!
   function xsOf(self,E,nucIdx,MT) result(xs)
-    class(byNucNoMT), intent(inout) :: self
+    class(byNucMT), intent(inout) :: self
     real(defReal),intent(in)        :: E
     integer(shortInt),intent(in)    :: nucIdx
     integer(shortInt),intent(in)    :: MT
     real(defReal)                   :: xs
-    character(100),parameter        :: Here='xsOf (byNucNoMT_class.f90)'
+    character(100),parameter        :: Here='xsOf (byNucMT_class.f90)'
 
     ! Set approperiate nuclide shelf to energy
     call self % nucShelf(nucIdx) % setEnergy(E)
@@ -420,19 +371,15 @@ contains
 
   !!
   !! Invert scattering - for given random number, sample MT number of a scattering reaction
-  !! In the cace of byNucNoMT only Elastic Stattering can happen
   !!
   function invertScattering(self,E,r,nucIdx) result(MT)
-    class(byNucNoMT), intent(inout) :: self
-    real(defReal), intent(in)       :: E
-    real(defReal), intent(in)       :: r
-    integer(shortInt),intent(in)    :: nucIdx
-    integer(shortInt)               :: MT
+    class(byNucMT), intent(inout) :: self
+    real(defReal), intent(in)     :: E
+    real(defReal), intent(in)     :: r
+    integer(shortInt),intent(in)  :: nucIdx
+    integer(shortInt)             :: MT
 
-    MT = N_N_elastic
-    return
-    ! Avoid compiler warnings include dead code that uses dummy variables
-    MT = MT+ 0 * int(E*r)
+    MT = self % nucShelf(nucIdx) % invertScatter(E,r)
 
   end function invertScattering
 
@@ -440,7 +387,7 @@ contains
   !! Subroutine which samples deflecton angle and emission energy for a given MT and nuclide index.
   !!
   subroutine sampleMuEout(self,mu,E_out,E_in,rand,MT,nucIdx)
-    class(byNucNoMT), intent(in)  :: self
+    class(byNucMT), intent(in)  :: self
     real(defReal), intent(out)    :: mu
     real(defReal), intent(out)    :: E_out
     real(defReal), intent(in)     :: E_in
@@ -457,7 +404,7 @@ contains
   !! For now there should be no performance benefit but better implementation may arrive
   !!
   subroutine sampleMu(self,mu,E_in,rand,MT,nucIdx)
-    class(byNucNoMT), intent(in)  :: self
+    class(byNucMT), intent(in)  :: self
     real(defReal), intent(out)    :: mu
     real(defReal), intent(in)     :: E_in
     class(RNG), intent(inout)     :: rand
@@ -473,7 +420,7 @@ contains
   !! Function which returns average neutron emission at a given energy
   !!
   function releaseAt(self,E_in,MT,nucIdx) result(nu)
-    class(byNucNoMT), intent(in)  :: self
+    class(byNucMT), intent(in)  :: self
     real(defReal), intent(in)     :: E_in
     integer(shortInt), intent(in) :: MT
     integer(shortInt), intent(in) :: nucIdx
@@ -488,7 +435,7 @@ contains
   !! nuclide index.
   !!
   function isInCMframe(self,MT,nucIdx) result(isIt)
-    class(byNucNoMT), intent(in)  :: self
+    class(byNucMT), intent(in)  :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt), intent(in) :: nucIdx
     logical(defBool)              :: isIt
@@ -501,7 +448,7 @@ contains
   !! Returns .true. if nuclide under nucIdx is fissile
   !!
   function isFissileNuc(self,nucIdx) result(isIt)
-    class(byNucNoMT), intent(in)  :: self
+    class(byNucMT), intent(in)  :: self
     integer(shortInt), intent(in) :: nucIdx
     logical(defBool)              :: isIt
 
@@ -513,7 +460,7 @@ contains
   !! Function that returns Mass of the nuclide; A in [Mn - neutron mass ]
   !!
   function getMass(self,nucIdx) result(A)
-    class(byNucNoMT),intent(in)  :: self
+    class(byNucMT),intent(in)  :: self
     integer(shortInt),intent(in) :: nucIdx
     real(defReal)                :: A
 
@@ -527,7 +474,7 @@ contains
   !! Function that returns temperature of the nuclide; kT in [MeV]
   !!
   function getkT(self,nucIdx) result(kT)
-    class(byNucNoMT),intent(in)  :: self
+    class(byNucMT),intent(in)  :: self
     integer(shortInt),intent(in) :: nucIdx
     real(defReal)                :: kT
 
@@ -539,7 +486,7 @@ contains
   !! Subroutine to attach pointer to a material's cdf to choose collision nuclide
   !!
   subroutine getNucMacroXS(self,nucMacroXs,E,matIdx)
-    class(byNucNoMT),intent(inout)            :: self
+    class(byNucMT),intent(inout)            :: self
     type(xsNucMacroSet_ptr),intent(inout)     :: nucMacroXs
     real(defReal),intent(in)                  :: E
     integer(shortInt),intent(in)              :: matIdx
@@ -550,4 +497,4 @@ contains
   end subroutine getNucMacroXS
 
 
-end module byNucNoMT_class
+end module byNucMT_class

@@ -32,7 +32,7 @@ contains
     character(100),parameter :: Here='new_angleLawENDF (angleLawENDFfactory_func.f90)'
 
     ! Check if reaction is absorbtion
-    if( MT >= N_disap) then ! Reaction is absorbtion MT > 100
+    if( ACE % isCaptureMT(MT)) then ! Reaction is absorbtion MT > 100
       !call fatalError(Here,'Cannot build angle law for absorbtion reaction')
       allocate(new, source = noAngle() )
       return

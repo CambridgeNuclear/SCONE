@@ -99,7 +99,12 @@ module aceCard_class
 
     ! Procedures to enquire about MT reaction and set read head to angle or energy data
     !
+    procedure :: getMTs              ! Get array of MT numners present
+    procedure :: getScatterMTs
+    procedure :: getCaptureMTs
+    procedure :: getFissionMTs
     procedure :: numMT               ! Get number of MT reactions present
+    procedure :: numMTscatter        ! Number of scattering MT reactions
     procedure :: firstIdxMT          ! Get first MT xs point index
     procedure :: numXsPointsMT       ! Get number of MT XS points
     procedure :: xsMT                ! Get MT XS array
@@ -248,6 +253,55 @@ contains
   end subroutine ESZblock
 
   !!
+  !! Returns array of present MT reactions
+  !!
+  function getMTs(self) result(MT)
+    class(aceCard), intent(in)                        :: self
+    integer(shortInt),dimension(size(self % MTdata))  :: MT
+
+    MT = self % MTdata(:) % MT
+
+  end function
+
+  !!
+  !! Returns array of scattering MTs. (Secondary particles but not fission)
+  !!
+  function getScatterMTs(self) result(MT)
+    class(aceCard), intent(in)                      :: self
+    logical(defBool),dimension(size(self % MTdata)) :: mask
+    integer(shortInt),dimension(:),allocatable          :: MT
+
+    mask = (self % MTdata % TY /= 19) .and. (.not.self % MTdata % isCapture)
+    MT = pack(self % MTdata % MT, mask)
+
+  end function getScatterMTs
+
+  !!
+  !! Returns array of capture MTs
+  !!
+  function getCaptureMTs(self) result(MT)
+    class(aceCard), intent(in)                      :: self
+    logical(defBool),dimension(size(self % MTdata)) :: mask
+    integer(shortInt),dimension(:),allocatable          :: MT
+
+    mask = self % MTdata % isCapture
+    MT = pack(self % MTdata % MT, mask)
+
+  end function getCaptureMTs
+
+  !!
+  !! Returns array of fission MTs
+  !!
+  function getFissionMTs(self) result(MT)
+    class(aceCard), intent(in)                      :: self
+    logical(defBool),dimension(size(self % MTdata)) :: mask
+    integer(shortInt),dimension(:),allocatable          :: MT
+
+    mask = self % MTdata % TY /= 19
+    MT = pack(self % MTdata % MT, mask)
+  end function getFissionMTs
+
+  !!
   !! Returns number of MT reactions in a nuclide
   !!
   function numMT(self) result(N)
@@ -257,6 +311,17 @@ contains
     N = size(self % MTdata)
 
   end function numMT
+
+  !!
+  !! Returns number of scattering MT reactions.
+  !!
+  function numMTscatter(self) result(N)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: N
+
+    N = self % NXS(5)
+
+  end function numMTscatter
 
   !!
   !! For a given MT number returns first index of its XS at the energy grid
@@ -1056,7 +1121,7 @@ contains
     class(aceCard), intent(inout)  :: self
     character(*), intent(in)       :: filePath
     integer(shortInt), intent(in)  :: lineNum
-    integer(shortInt)              :: aceFile
+    integer(shortInt)              :: aceFile = 8
     character(pathLen)             :: localFilePath
     integer(shortInt)              :: i
     character(100)                 :: debug

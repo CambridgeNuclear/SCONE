@@ -13,7 +13,8 @@ module perNuclideCollisionOpCE_class
   use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
   use xsMainSet_class,        only : xsMainSet_ptr
   use xsMacroSet_class,       only : xsMacroSet_ptr
-  use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS
+  use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
+                                     asymptoticInelasticScatter
 
   implicit none
   !private
@@ -160,19 +161,20 @@ contains
 
     !Sample MT of scattering reaction
     r = self % pRNG % get()
-    self % MT = self % xsData % invertScattering(self %E, r)
+    self % MT = self % xsData % invertScattering(self %E, r, self % nucIdx )
 
     select case(self % MT)
       case(N_N_elastic)
         call self % elastic(p,thisCycle,nextCycle)
 
-      case(N_Nl1:N_Nl40, N_Ncont)
+      case(N_Nl1:N_Nl40, N_Ncont,N_Na)
         call self % inelastic(p,thisCycle,nextCycle)
 
       case(N_2N,N_3N,N_4N)
         call self % N_XN(p,thisCycle,nextCycle)
 
       case default
+        print *, self % MT
         call fatalError(Here,'Unrecognised scattering MT number')
 
       end select
@@ -228,8 +230,26 @@ contains
     class(particleDungeon),intent(inout)          :: thisCycle
     class(particleDungeon),intent(inout)          :: nextCycle
     character(100),parameter              :: Here =' inelastic (perNuclideCollisionOp_class.f90)'
+    integer(shortInt)                             :: MT, nucIdx
+    real(defReal)                                 :: E          ! Pre-collision energy
+    real(defReal)                                 :: A          ! Target mass [Mn]
+    real(defReal)                                 :: muL        ! Cosine of scattering in LAB frame
 
-    call fatalError(Here,'Inelastic Scattering is not implemented')
+    ! Copy operator variables to local copies for clarity
+    MT     = self % MT
+    E      = self % E
+    nucIdx = self % nucIdx
+
+    if (self % xsData % isInCMFrame(MT, nucIdx)) then
+      A =  self % xsData % getMass(nucIdx)
+      call self % scatterFromFixed(muL,p,E,A,MT,nucIdx)
+
+    else
+      call self % scatterInLAB(muL,p,E,MT,nucIdx)
+
+    end if
+
+    self % muL = muL
 
   end subroutine inelastic
 
@@ -242,8 +262,41 @@ contains
     class(particleDungeon),intent(inout)          :: thisCycle
     class(particleDungeon),intent(inout)          :: nextCycle
     character(100),parameter              :: Here =' N_XN (perNuclideCollisionOp_class.f90)'
+    integer(shortInt)                             :: MT, nucIdx
+    real(defReal)                                 :: E          ! Pre-collision energy
+    real(defReal)                                 :: A          ! Target mass [Mn]
+    real(defReal)                                 :: muL        ! Cosine of scattering in LAB frame
 
-    call fatalError(Here,'N_XN Scattering is not implemented')
+    ! Copy operator variables to local copies for clarity
+    MT     = self % MT
+    E      = self % E
+    nucIdx = self % nucIdx
+
+    if (self % xsData % isInCMFrame(MT, nucIdx)) then
+      A =  self % xsData % getMass(nucIdx)
+      call self % scatterFromFixed(muL,p,E,A,MT,nucIdx)
+
+    else
+      call self % scatterInLAB(muL,p,E,MT,nucIdx)
+
+    end if
+
+    self % muL = muL
+
+    select case(MT)
+      case(N_2N)
+        p % w = p % w * 2.0_defReal
+
+      case(N_3N)
+        p % w = p % w * 3.0_defReal
+
+      case(N_4N)
+        p % w = p % w * 4.0_defReal
+
+      case default
+        call fatalError(Here,'Unknown N_XN scattering. WTF?')
+
+    end select
 
   end subroutine N_XN
 
@@ -328,17 +381,22 @@ contains
     integer(shortInt),intent(in)            :: nucIdx      ! Target nuclide index
     real(defReal)                           :: phi
     real(defReal)                           :: E_out
+    real(defReal)                           :: E_outCM
     character(100),parameter       :: Here = 'scatterFromStationary (collisionOperator_class.f90)'
 
     ! Sample mu and outgoing energy
-    call self % xsData % sampleMuEout(mu, E_out, E, self % pRNG, MT, nucIdx)
+    call self % xsData % sampleMuEout(mu, E_outCM, E, self % pRNG, MT, nucIdx)
+
+    ! Save incident energy
+    E_out = E
 
     select case(MT)
       case(N_N_elastic)
         call asymptoticScatter(E_out,mu,A)
 
       case default
-        call fatalError(Here,'Unknown MT number')
+        call asymptoticInelasticScatter(E_out,mu,E_outCM,A)
+        !call fatalError(Here,'Unknown MT number')
 
     end select
 

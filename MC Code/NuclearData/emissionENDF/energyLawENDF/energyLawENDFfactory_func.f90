@@ -33,15 +33,15 @@ contains
     character(100),parameter :: Here='new_energyLawENDF (energyLawENDFfactory_func.f90)'
 
     ! Protect against reactions with no energy data (absorbtions and eleastic scattering)
-    select case(MT)
-      case(N_N_elastic)
-        allocate(new, source = noEnergy())
-        return
+    if(MT == N_N_elastic) then
+      allocate(new, source = noEnergy())
+      return
 
-      case(N_disap:) ! MT > 100 capture reaction
-        allocate(new, source = noEnergy())
-        return
-    end select
+    else if(ACE % isCaptureMT(MT)) then
+      allocate(new, source = noEnergy())
+      return
+
+    end if
 
     ! Set aceCard read head to beginning of energy data for MT
     call ACE % setToEnergyMT(MT)

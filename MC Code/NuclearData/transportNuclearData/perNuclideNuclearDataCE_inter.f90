@@ -153,13 +153,14 @@ module perNuclideNuclearDataCE_inter
     !! Invert scattering - for given random number sample MT number of a scattering reaction
     !! All reactions that produce secondary neutrons should be considered
     !!
-    function invertScattering(self,E,r) result(MT)
+    function invertScattering(self,E,r,nucIdx) result(MT)
       import :: perNuclideNuclearDataCE, &
                 defReal ,&
                 shortInt
       class(perNuclideNuclearDataCE), intent(inout) :: self
       real(defReal), intent(in)                     :: E
       real(defReal), intent(in)                     :: r
+      integer(shortInt),intent(in)                  :: nucIdx
       integer(shortInt)                             :: MT
     end function invertScattering
 

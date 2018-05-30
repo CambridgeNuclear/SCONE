@@ -32,8 +32,8 @@ program testACE
 
   call ACE % readFromFile(filePath,line)
 
-  !call ACE % print()
-
+  call ACE % print()
+  stop
   allocate(correl, source = new_correlatedLawENDF(ACE,16))
   print *,'A=['
 

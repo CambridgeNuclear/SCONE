@@ -8,7 +8,8 @@ myFirstMaterial {
 
 mySecondMat { 
   temp       345; 
-  35081.03c  1.0; 
+  //35081.03c  1.0; 
+  1001.09c    1.0;  
 } 
 
 myThirdMat { 
