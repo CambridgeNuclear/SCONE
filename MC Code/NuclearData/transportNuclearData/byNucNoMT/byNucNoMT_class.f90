@@ -80,7 +80,7 @@ module byNucNoMT_class
 contains
   subroutine init(self,dict)
     class(byNucNoMT), intent(inout)      :: self
-    class(dictionary), intent(inout)     :: dict
+    class(dictionary), intent(in)        :: dict
     type(aceNoMT),pointer                :: nucPtr
     type(materialDataNoMt),pointer       :: matPtr
     integer(shortInt)                    :: numNuclide, numMaterials

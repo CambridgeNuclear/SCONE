@@ -45,7 +45,7 @@ contains
   !! Subroutine to build byNucMT_Data from dictionary
   !!
   subroutine init(self,matDict)
-    class(byNucMT_Data), intent(inout)        :: self
+    class(byNucMT_Data), intent(inout)          :: self
     class(dictionary), intent(in)               :: matDict
     integer(shortInt)                           :: nMat
     character(nameLen),dimension(:),allocatable :: matNames

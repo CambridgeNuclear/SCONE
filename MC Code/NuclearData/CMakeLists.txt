@@ -6,6 +6,7 @@ add_subdirectory(AceParser)
 
 # Add Source Files to the global list 
 add_sources( ./nuclearData_inter.f90
+             ./nuclearDataFactory_func.f90
              ./datalessMaterials_class.f90                     
              ./CrossSectionPackages/xsCDF_class.f90
              ./CrossSectionPackages/xsMainCDF_class.f90 
