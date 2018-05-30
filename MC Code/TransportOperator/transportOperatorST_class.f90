@@ -3,21 +3,25 @@
 !!
 module transportOperatorST_class
   use numPrecision
-  use genericProcedures
   use universalVariables
-  use dictionary_class
 
-  use transportOperator_inter
+  use genericProcedures,          only : fatalError
+  use particle_class,             only : particle
+  use dictionary_class,           only : dictionary
+  use rng_class,                  only : rng
 
-  use particle_class
-  use surface_class
-  use geometry_class
-  use cell_class
-  use rng_class
-  use lattice_class
+  ! Superclass
+  use transportOperator_inter,    only : transportOperator
 
-  !use Nuclear_Data_MG_class           !Re-instate later!!!
-  !use Nuclear_Data_CE_class
+  ! Geometry interfaces
+  use geometry_class,             only : geometry
+  use surface_class,              only : surface_ptr
+  use cell_class,                 only : cell_ptr
+  use lattice_class,              only : lattice_ptr
+
+  ! Nuclear data interfaces
+  use nuclearData_inter,          only : nuclearData
+  use transportNuclearData_inter, only : transportNuclearData
 
   implicit none
   private
@@ -32,18 +36,29 @@ module transportOperatorST_class
 contains
 
   !!
-  !! Initialise for delta tracking
+  !! Initialise transportOperatorST
   !!
-  subroutine init(self, geom, settings)
+  subroutine init(self, nucData, geom, settings)
     class(transportOperatorST), intent(inout) :: self
-    !class(Nuclear_data_MG), target :: nuclearData
-    class(geometry), target                 :: geom
-    class(dictionary), optional             :: settings
+    class(nuclearData), pointer, intent(in)   :: nucData
+    class(geometry), pointer, intent(in)      :: geom
+    class(dictionary), optional, intent(in)   :: settings
+    character(100),parameter :: Here ='init (transportOperatorDT_class.f90)'
 
-    !self%MGData => nuclearData
-    self%geom => geom
+    ! Check that nuclear data type is supported
+    select type(nucData)
+      class is (transportNuclearData)
+        self % nuclearData => nucData
 
-    ! TO DO: include settings, e.g., variance reduction
+      class default
+        call fatalError(Here,'Class of provided nuclear data is not supported by transportOperator')
+
+    end select
+
+    ! Attach geometry
+    self % geom => geom
+
+    ! TO DO: include settings, e.g., variance reduction, majorant adjustment
 
   end subroutine init
 

@@ -1,30 +1,43 @@
 module transportOperator_inter
+
   use numPrecision
-  use genericProcedures
   use universalVariables
 
-  use particle_class
-  use surface_class
-  use geometry_class
-  use cell_class
-  use rng_class
+  use particle_class,             only : particle
+  use dictionary_class,           only : dictionary
 
-  !use Nuclear_Data_MG_class           !Re-instate later!!!
-  !use Nuclear_Data_CE_class
+  ! Geometry interfaces
+  use surface_class,              only : surface
+  use geometry_class,             only : geometry
+  use cell_class,                 only : cell_ptr
+
+  ! Nuclear data interfaces
+  use nuclearData_inter,          only : nuclearData
+  use transportNuclearData_inter, only : transportNuclearData
+
 
   implicit none
   private
 
+  !!
+  !! Abstract interface for all collision operators
+  !!
   type, abstract, public :: transportOperator
-    !class(transport_Nuclear_data), pointer :: nuclearData => null()  ! nuclear data
-    class(geometry), pointer :: geom => null()           ! references the geometry for cell searching
+    !! Components below are not part of the interface!
+    !! They are public ONLY to allow inheritance!
+    class(transportNuclearData), pointer :: nuclearData => null()  ! nuclear data
+    class(geometry), pointer             :: geom        => null()  ! references the geometry for cell searching
   contains
     procedure(transport), deferred :: transport
     procedure(applyBC), deferred   :: applyBC
+    procedure(init),deferred       :: init
   end type transportOperator
 
   abstract interface
 
+    !!
+    !! Move particle from collision to collision
+    !!
     subroutine transport(self, p)
       import :: transportOperator, &
                 particle
@@ -32,6 +45,9 @@ module transportOperator_inter
       class(particle), intent(inout)       :: p
     end subroutine transport
 
+    !!
+    !! Apply boundary condition. Not a part of a public interface.
+    !!
     subroutine applyBC(self, p, currentCell)
       import :: transportOperator, &
                 particle, &
@@ -41,6 +57,20 @@ module transportOperator_inter
       class(cell_ptr), intent(inout)        :: currentCell
     end subroutine applyBC
 
+    !!
+    !! Connect transport operator to other blocks.
+    !! Each implementation checks if the geometry & nuclear data it gets it supports
+    !!
+    subroutine init(self,nucData,geom,settings)
+      import :: transportOperator, &
+                nuclearData, &
+                geometry, &
+                dictionary
+      class(transportOperator), intent(inout) :: self
+      class(nuclearData),pointer, intent(in)  :: nucData
+      class(geometry),pointer, intent(in)     :: geom
+      class(dictionary),optional,intent(in)   :: settings
+    end subroutine init
   end interface
 
 end module transportOperator_inter
