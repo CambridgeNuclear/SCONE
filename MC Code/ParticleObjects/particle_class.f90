@@ -75,7 +75,7 @@ contains
   end subroutine makeMG
 
   subroutine buildCE(self,r,dir,E,w)
-    class(particle), intent(out)            :: self
+    class(particle), intent(inout)          :: self
     real(defReal),dimension(3),intent(in)   :: r, dir
     real(defReal),intent(in)                :: E, w
 
@@ -88,7 +88,7 @@ contains
   end subroutine
 
   subroutine buildMG(self,r,dir,G,w)
-    class(particle), intent(out)            :: self
+    class(particle), intent(inout)          :: self
     real(defReal),dimension(3),intent(in)   :: r, dir
     real(defReal),intent(in)                :: w
     integer(shortInt),intent(in)            :: G

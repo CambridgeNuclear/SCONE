@@ -3,10 +3,16 @@ module collisionOperatorBase_inter
   use numPrecision
   use endfConstants
   use genericProcedures,     only : fatalError
+  use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
-  use particle_class,        only : particle
+  use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
 
+  ! Nuclear Data interface
+  use nuclearData_inter,     only : nuclearData
+
+  ! Tally interfaces
+  use tallyAdminBase_class,  only : tallyAdminBase
 
   implicit none
   private
@@ -24,15 +30,19 @@ module collisionOperatorBase_inter
   !! scatter  -> needs to choose whether to call elastic, inelastic, or N_XN
   !!
   type, public,abstract :: collisionOperatorBase
+    ! Part of the interface
+    class(tallyAdminBase), pointer :: tally
+
     !* Colision Operator Local variables. Used by all collision operators
     !* Should be protected (C++ terminology), but it cannot be implemented with Fortran.
     !* Components are public but are not part of the interface (DO NOT ACCESS THEM DIRECTLY)
-    class(RNG), pointer :: pRNG   => null()  !! Pointer to random number generator
-    integer(shortInt)   :: nucIdx = 0        !! Collision nuclide index
-    integer(shortInt)   :: matIdx = 0        !! Current material index
-    integer(shortInt)   :: MT     = 0        !! Collision reaction channel
-    real(defReal)       :: muL    = 0.0      !! Deflectio angle in current collision
-    integer(longInt)    :: collCount = 0
+    class(RNG), pointer            :: pRNG   => null()  !! Pointer to random number generator
+    integer(shortInt)              :: nucIdx = 0        !! Collision nuclide index
+    integer(shortInt)              :: matIdx = 0        !! Current material index
+    integer(shortInt)              :: MT     = 0        !! Collision reaction channel
+    real(defReal)                  :: muL    = 0.0      !! Deflection angle in current collision
+    integer(longInt)               :: collCount = 0
+
 
 
   contains
@@ -49,7 +59,7 @@ module collisionOperatorBase_inter
     procedure(collisionMacro),deferred  :: capture          !! Capture reaction processing
     procedure(collisionMacro),deferred  :: fission          !! Fission reaction processing
     procedure(collisionMacro),deferred  :: cutoffs          !! Apply energy and weight cutoffs
-
+    procedure(init)          ,deferred  :: init             !! Initialise
   end type collisionOperatorBase
 
   abstract interface
@@ -68,6 +78,18 @@ module collisionOperatorBase_inter
       class(particleDungeon),intent(inout)        :: nextCycle
 
     end subroutine collisionMacro
+
+    !!
+    !! Interface of initialisation subroutine
+    !!
+    subroutine init(self,nucData,settings)
+      import :: collisionOperatorBase, &
+                nuclearData, &
+                dictionary
+      class(collisionOperatorBase), intent(inout) :: self
+      class(nuclearData), pointer, intent(in)     :: nucData
+      class(dictionary), intent(in)               :: settings
+    end subroutine init
   end interface
 
   contains
@@ -82,6 +104,7 @@ module collisionOperatorBase_inter
       class(particle), intent(inout)              :: p
       class(particleDungeon),intent(inout)        :: thisCycle
       class(particleDungeon),intent(inout)        :: nextCycle
+      type(phaseCoord)                            :: preState
       character(100),parameter                    :: Here = ' collide (collisionOperatorBase.f90)'
 
       ! Load particle data
@@ -90,6 +113,10 @@ module collisionOperatorBase_inter
       self % pRNG => p % pRNG
       self % nucIdx = 0
       self % MT = 0
+
+      ! Report in-collision & save pre-collison state
+      call self % tally % reportInColl(p)
+      preState = p
 
       call self % sampleCollision(p,thisCycle,nextCycle)
       call self % implicit(p,thisCycle,nextCycle)
@@ -111,6 +138,9 @@ module collisionOperatorBase_inter
       end select
 
       call self % cutoffs(p,thisCycle,nextCycle)
+
+      ! Report out-of-collision
+      call self % tally % reportOutColl(preState, p, self%MT, self % mul)
 
     end subroutine collide
 

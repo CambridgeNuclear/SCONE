@@ -435,7 +435,7 @@ contains
 
     ! Find indexes of active materials
     mask = self % matData % isActive
-    activeIdx = pack([(i,i=1,self % nG)], mask)
+    activeIdx = pack([(i,i=1,self % nMat)], mask)
 
     ! Calculate majorantXS
     self % majorantXS = maxval( self % XSs(:,activeIdx) % totalXS, 2 )

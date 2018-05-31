@@ -4,9 +4,11 @@ module perMaterialCollisionOpMG_class
   use endfConstants
 
   use genericProcedures,              only : fatalError, rotateVector
+  use dictionary_class,               only : dictionary
   use RNG_class,                      only : RNG
   use particle_class,                 only : particle
   use particleDungeon_class,          only : particleDungeon
+  use nuclearData_inter,              only : nuclearData
   use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
   use collisionOperatorBase_inter,    only : collisionOperatorBase
 
@@ -28,6 +30,7 @@ module perMaterialCollisionOpMG_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: init
   end type perMaterialCollisionOpMG
 
 contains
@@ -160,5 +163,26 @@ contains
     class(particleDungeon),intent(inout)           :: nextCycle
 
   end subroutine cutoffs
+
+  !!
+  !! Initialise
+  !!
+  subroutine init(self,nucData,settings)
+    class(perMaterialCollisionOpMG), intent(inout) :: self
+    class(nuclearData), pointer, intent(in)        :: nucData
+    class(dictionary), intent(in)                  :: settings
+    character(100),parameter :: Here ='init (perMaterialCollisionOpMG_class.f90)'
+
+    ! Attach nuclear data
+    select type(nucData)
+      class is(perMaterialNuclearDataMG)
+        self % xsData => nucData
+
+      class default
+        call fatalError(Here,'Unsupported nuclear data class')
+
+    end select
+
+  end subroutine init
 
 end module perMaterialCollisionOpMG_class

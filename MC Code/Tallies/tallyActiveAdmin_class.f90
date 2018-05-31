@@ -168,7 +168,7 @@ contains
   subroutine display(self)
     class(tallyActiveAdmin), intent(in) :: self
 
-    print *,'Inactive Cycle:'
+    print *,'Active Cycle:'
     call self % keff_estimator % display()
 
     ! Call superclass procedure on self

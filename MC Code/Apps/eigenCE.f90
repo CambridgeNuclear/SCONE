@@ -239,6 +239,7 @@ program eigenCE
       call cycle1 % release(neutron)
       neutron % matIdx = 4
 
+
       HistoryA: do
         ! Save beginning of history info
         pre = neutron

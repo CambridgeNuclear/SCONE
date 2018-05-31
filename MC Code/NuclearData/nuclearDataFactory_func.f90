@@ -1,5 +1,5 @@
 !!
-!! Module to build nuclear data classes and store information (names + pointers) abou them
+!! Module to build nuclear data classes and store information (names + pointers) about them
 !!
 module nuclearDataFactory_func
 
@@ -19,6 +19,7 @@ module nuclearDataFactory_func
   use isotropicMG_class, only : isotropicMG
 
   implicit none
+  private
 
   ! *** ADD NAME OF A NEW NUCLEAR DATA HERE ***!
   ! List that contains all accaptable types of nuclear data
@@ -29,15 +30,17 @@ module nuclearDataFactory_func
                                                                         'byNucMT    ', &
                                                                         'isotropicMG']
 
+  public :: new_nuclearData_ptr
+
 contains
 
   !!
   !! Builds and allocates an instance of nuclear data from dictionary
   !!
   function new_nuclearData_ptr(dict) result(new)
-    class(dictionary), intent(in)   :: dict
-    class(nuclearData), pointer     :: new
-    character(nameLen)              :: type
+    class(dictionary), intent(in)         :: dict
+    class(nuclearData), pointer           :: new
+    character(nameLen)                    :: type
     character(100),parameter :: Here = 'new_nuclearData_ptr (nuclearDataFactory_func.f90)'
 
     ! Obtain string that specifies type to be built

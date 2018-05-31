@@ -137,8 +137,10 @@ contains
 
     ! Load data into the particle
     pop = self % pop
-    call p % teleport(self % prisoners(pop) % r)
-    call p % point(self % prisoners(pop) % dir)
+    ! Place in geometry
+    call p % coords % init(self % prisoners(pop) % r, &
+                           self % prisoners(pop) % dir)
+    ! Copy rest of the data
     p % w    = self % prisoners(pop) % wgt
     p % E    = self % prisoners(pop) % E
     p % G    = self % prisoners(pop) % G

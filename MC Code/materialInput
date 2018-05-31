@@ -1,26 +1,33 @@
 aceLibrary /home/mak60/myACE/JEF311.aceXS; 
 
-myFirstMaterial { 
+type isotropicMG;
+numberOfGroups 2; 
+
+firstMat { 
   temp         273; 
   92238.03c    1.0; 
   1001.09c     2.0;     
+  xsFile ./SerpentMatData;
 }
 
-mySecondMat { 
+big { 
   temp       345; 
   //35081.03c  1.0; 
   1001.09c    1.0;  
+  xsFile ./SerpentMatData;
 } 
 
-myThirdMat { 
+mod { 
   temp      273; 
   5010.03c  1.0;
+  xsFile ./SerpentMatData;
 } 
 
-myFourthMat {  
+uo2 {  
   temp       273; 
   1001.09c   2.0; 
   8016.09c   1.0; 
   92238.09c  0.1; 
   92235.09c  0.001;
+  xsFile ./SerpentMatData;
 }	 

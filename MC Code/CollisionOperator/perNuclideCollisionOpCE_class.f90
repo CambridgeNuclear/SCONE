@@ -3,10 +3,12 @@ module perNuclideCollisionOpCE_class
   use numPrecision
   use endfConstants
   use genericProcedures,             only : fatalError, rotateVector
+  use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
   use particle_class,                only : particle
   use particleDungeon_class,         only : particleDungeon
   use collisionOperatorBase_inter,   only : collisionOperatorBase
+  use nuclearData_inter,             only : nuclearData
   use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
 
   ! Cross-section packages to interface with nuclear data
@@ -40,6 +42,7 @@ module perNuclideCollisionOpCE_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: init
 
     ! Scattering processing
     procedure :: elastic
@@ -130,6 +133,7 @@ contains
 
       ! Store new sites in the next cycle dungeon
       wgt = 1.0
+
       do i=1,n
           call self % xsData % sampleMuEout(mu, E_out, self % E, self % pRNG, N_fission, self % nucIdx)
           phi = 2*PI * self % pRNG % get()
@@ -139,7 +143,6 @@ contains
 
           call pTemp % build(r,dir,E_out,wgt)
           call nextCycle % detain(pTemp)
-
       end do
     end if
 
@@ -167,7 +170,7 @@ contains
       case(N_N_elastic)
         call self % elastic(p,thisCycle,nextCycle)
 
-      case(N_Nl1:N_Nl40, N_Ncont,N_Na)
+      case(N_Nl1:N_Nl40, N_Ncont,N_Na, N_Np)
         call self % inelastic(p,thisCycle,nextCycle)
 
       case(N_2N,N_3N,N_4N)
@@ -342,6 +345,27 @@ contains
     if (p % E < energyCutoff ) p % isDead = .true.
 
   end subroutine cutoffs
+
+  !!
+  !! Initialise
+  !!
+  subroutine init(self,nucData,settings)
+    class(perNuclideCollisionOpCE), intent(inout) :: self
+    class(nuclearData), pointer, intent(in)       :: nucData
+    class(dictionary), intent(in)                 :: settings
+    character(100),parameter :: Here ='init (perNuclideCollisionOpCE_class.f90)'
+
+    ! Attach nuclear data
+    select type(nucData)
+      class is(perNuclideNuclearDataCE)
+        self % xsData => nucData
+
+      class default
+        call fatalError(Here,'Unsupported nuclear data class')
+
+    end select
+
+  end subroutine init
 
   !!
   !! Subroutine to perform scattering in LAB frame

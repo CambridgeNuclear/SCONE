@@ -1,0 +1,2 @@
+type b; 
+clerk1 { type keffActiveClerk; display yes; }
