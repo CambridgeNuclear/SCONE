@@ -141,7 +141,6 @@ module collisionOperatorBase_inter
 
       ! Report out-of-collision
       call self % tally % reportOutColl(preState, p, self%MT, self % mul)
-
     end subroutine collide
 
 end module collisionOperatorBase_inter

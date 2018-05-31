@@ -45,7 +45,7 @@ cells
         id 5;
         surfaces (-3);
         filltype mat;
-        mat big;
+        mat uo2;
   }
 
   mod
@@ -53,7 +53,7 @@ cells
         id 2;
         surfaces (2);
         filltype mat;
-        mat mod;
+        mat uo2;
   }
 
   smallmod
@@ -61,7 +61,7 @@ cells
         id 6;
         surfaces (3);
         filltype mat;
-        mat mod;
+        mat uo2;
   }
 
   out
@@ -120,4 +120,4 @@ lattices
   }	
 }
 
-boundary (2 2 1 0 2 2);
+boundary (1 1 1 1 1 1);

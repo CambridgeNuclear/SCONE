@@ -45,7 +45,7 @@ module eigenPhysicsPackage_class
     type(tallyActiveAdmin),pointer         :: activeTally   => null()
 
     ! Settings
-    integer(shortInt)  :: N_inactive = 300
+    integer(shortInt)  :: N_inactive = 800
     integer(shortInt)  :: N_active   = 500
     integer(shortInt)  :: pop        = 5000
 
@@ -101,13 +101,11 @@ contains
 
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
-
-        ! *** Hardcoded material
-        neutron % matIdx = 4
+        call self % geom % placeParticle(neutron)
 
           history: do
             preState = neutron
-            !call self % transOp % transport(neutron)
+            call self % transOp % transport(neutron)
 
             ! Exit history and score leakage
             if(neutron % isDead) then
@@ -179,13 +177,11 @@ contains
 
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
-
-        ! *** Hardcoded material
-        neutron % matIdx = 4
+        call self % geom % placeParticle(neutron)
 
           history: do
             preState = neutron
-            !call self % transOp % transport(neutron)
+            call self % transOp % transport(neutron)
 
             ! Exit history and score leakage
             if(neutron % isDead) then
@@ -244,12 +240,12 @@ contains
 
      do i=1,self % pop
       neutron % E      = 0.5
-      neutron % G      = 1
+      !neutron % G      = 1
       call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
       call neutron % point([1.0_8, 0.0_8, 0.0_8])
       neutron % w      = 1.0
       neutron % isDead = .false.
-      neutron % isMG   = .true.
+      neutron % isMG   = .false.
       call self % thisCycle % detain(neutron)
     end do
 
@@ -291,7 +287,7 @@ contains
 
     ! Initialise RNG
     allocate(self % pRNG)
-    call self % pRNG % init(76856858_8)
+    call self % pRNG % init(768568_8)
   end subroutine init
 
 

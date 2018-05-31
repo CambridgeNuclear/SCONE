@@ -67,8 +67,8 @@ contains
     real(defReal)                          :: majorant, sigmaT, distance
     type(cell_ptr)                         :: currentCell
 
-    !majorant = self % getMajorantXS(p)
-    majorant = 0.8
+    majorant = self % nuclearData % getMajorantXS(p)
+
     DTLoop:do
       distance = -log(p%pRNG%get())/majorant
 
@@ -89,8 +89,7 @@ contains
 
       ! Obtain the local cross-section
       call p % updateLocation()
-      !sigmaT = self % getTotalXS(p)
-      sigmaT = 0.6
+      sigmaT = self % nuclearData % getTransXS(p, p% matIdx)
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real

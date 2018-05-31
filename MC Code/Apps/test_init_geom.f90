@@ -30,7 +30,7 @@ program test_init_geom
   integer(shortInt) :: pixels = 1000
   integer(shortInt) :: i,j
   integer(shortInt), dimension(:,:), allocatable :: colourMatrix
-  character(100) :: path = './lattice.txt'
+  character(100) :: path = './InputFiles/pinCell.txt'
   type(particle) :: p
   type(rng), target :: rand
   type(cell_ptr) :: c
@@ -39,12 +39,12 @@ program test_init_geom
   type(mesh) :: m
   real(defReal) :: angle
   type(outputMesh) :: vtk
-  integer(shortInt), dimension(400,400,1) :: matMatrix
-  integer(longInt), dimension(400,400,1) :: d
+  integer(shortInt), dimension(800,800,1) :: matMatrix
+  integer(longInt), dimension(800,800,1) :: d
 
   call geomDict % initFrom(path)
 
-  call materials % init(['uo2','mod','big'])
+  call materials % init(['uo2  ','water','big  '])
   print *, materials % materials
 
   !call initGeometryFromDict(geom, surfaces, max_nest, geomDict, materials)
@@ -76,13 +76,16 @@ program test_init_geom
   call geom % constructBoundingBox([ZERO,ZERO,ZERO],[2._defReal,2._defReal,HALF])
 
   print *,'Calculating volumes'
-  call geom % calculateVolumes(1000000,1_longInt)
+ ! call geom % calculateVolumes(1000000,1_longInt)
   print *,'Finished volume calculation'
   print *,'Performing voxel calculation'
-  call vtk % init([-2.2_defReal,-2.2_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[400,400,1])
+  call vtk % init([-16.0_defReal,-12.0_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[800,800,1])
   matMatrix = geom % voxelPlot(vtk % nVox, vtk % corner, vtk % width)
   call vtk % addData(real(matMatrix,defReal), 'materials')
   print *,'Finished voxel plot'
+  call vtk % output('testVTK')
+  stop
+
 
   ! Initialise mesh to score points
   call m % init([0.011_8,0.011_8,1._8], [-2.2_defReal,-2.2_defReal,-HALF], [400,400,1], 1, .FALSE.,'m1')

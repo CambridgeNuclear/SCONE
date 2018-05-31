@@ -1,0 +1,22 @@
+aceLibrary /home/mak60/myACE/JEF311.aceXS; 
+
+//type isotropicMG;
+type byNucMT;
+
+numberOfGroups 2; 
+
+water { 
+  temp      273; 
+  1001.03c    5.028E-02;
+  8016.03c    2.505E-02;
+  5010.03c    2.0E-005;
+  xsFile ./InputFiles/SerpentMatData;  
+} 
+
+uo2 {  
+  temp       273; 
+  8016.03c   4.571E-02; 
+  92238.03c  2.180E-02; 
+  92235.03c  1.042E-03;
+  xsFile ./InputFiles/SerpentMatData;
+}	 

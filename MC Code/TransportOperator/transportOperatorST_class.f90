@@ -114,8 +114,7 @@ contains
 
       ! Obtain the local cross-section
       call p % updateLocation()
-      !sigmaT = self % getTotalXS(p)
-      sigmaT = 0.6
+      sigmaT = self % nuclearData % getTransXS(p, p % matIdx)
 
       ! Sample particle flight distance
       distance = -log(p%pRNG%get())/sigmaT
@@ -131,7 +130,7 @@ contains
 
         ! If the particle is outside the geometry, apply boundary conditions
         do while (.not. currentCell % insideGeom())
-          print *,'boundary'
+          !print *,'boundary'
           call self % applyBC(p, currentCell)
           ! End transport if the particle is killed
           if (p % isDead) then

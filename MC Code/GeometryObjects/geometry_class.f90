@@ -12,6 +12,8 @@ module geometry_class
   use genericProcedures
   use universalVariables
 
+  use particle_class,       only : particle
+
   use rng_class
 
   use dictionary_class
@@ -72,9 +74,26 @@ module geometry_class
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
     procedure :: voxelPlot               ! Produces a voxel plot of a chosen section of the geometry
+
+    procedure :: placeParticle           ! Places a fresh particle in geometry. Assigns region and mat ID
   end type geometry
 
 contains
+
+
+  !!
+  !! Puts fresh particle in a geometry
+  !! Assigns regionID and matIdx to a particle
+  !!
+  subroutine placeParticle(self,p)
+    class(geometry), intent(in)   :: self
+    type(particle), intent(inout) :: p
+    type(cell_ptr)                :: dummy_c
+
+    dummy_c = self % whichCell(p % coords)
+    call p % updateLocation()
+
+  end subroutine placeParticle
 
   !!
   !! Initialise geometry from a dictionary

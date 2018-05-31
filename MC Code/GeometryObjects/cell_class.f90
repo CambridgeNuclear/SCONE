@@ -43,7 +43,7 @@ module cell_class
 
   ! Wrapper type for cell pointers
   type, public :: cell_ptr
-    class(cell), pointer :: ptr
+    class(cell), pointer :: ptr => null()
   contains
     procedure :: init => init_ptr
     procedure :: setInstances => setInstances_ptr
@@ -143,6 +143,7 @@ contains
     ! Can be used when updating a material fill
     if (present(instance)) then
       if (self % fillType == materialFill) then
+
         self % matIdx(instance) = fillIdx
       else
         call fatalError('fill, cell',&
@@ -395,6 +396,7 @@ contains
     class(cell_ptr), intent(in)   :: self
     integer(shortInt), intent(in) :: i
     integer(shortInt)             :: matIdx
+
     matIdx = self % ptr % matIdx(i)
   end function matIdx_ptr
 

@@ -13,15 +13,15 @@ program eigenvalue
   type(IOdictionary)       :: collData
   type(IOdictionary)       :: activeTally
   type(IOdictionary)       :: inactiveTally
-  type(eigenPhysicsPackage :: core
+  type(eigenPhysicsPackage) :: core
 
   ! Read data
-  call matData   % initFrom('./materialInput')
-  call geomData  % initFrom('./lattice.txt')
-  call transData % initFrom('./transOp.txt')
-  call collData  % initFrom('./collOp.txt')
-  call inactiveTally % initFrom('./iaTally.txt')
-  call activeTally   % initFrom('./aTally.txt')
+  call matData   % initFrom('./InputFiles/materialInput')
+  call geomData  % initFrom('./InputFiles/pinCell.txt')
+  call transData % initFrom('./InputFiles/transOp.txt')
+  call collData  % initFrom('./InputFiles/collOp.txt')
+  call inactiveTally % initFrom('./InputFiles/iaTally.txt')
+  call activeTally   % initFrom('./InputFiles/aTally.txt')
 
   call core % init(matData, geomData, collData, transData, inactiveTally, activeTally)
 
