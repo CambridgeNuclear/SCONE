@@ -241,7 +241,7 @@ contains
      do i=1,self % pop
       neutron % E      = 0.5
       !neutron % G      = 1
-      call neutron % teleport([0.0_8, 0.0_8, 0.0_8])
+      call neutron % teleport([0.1_8, 0.1_8, 0.1_8])
       call neutron % point([1.0_8, 0.0_8, 0.0_8])
       neutron % w      = 1.0
       neutron % isDead = .false.
@@ -288,6 +288,7 @@ contains
     ! Initialise RNG
     allocate(self % pRNG)
     call self % pRNG % init(768568_8)
+    !call self % pRNG % init(67858567567_8)
   end subroutine init
 
 

@@ -6,7 +6,7 @@ module transportOperatorST_class
   use universalVariables
 
   use genericProcedures,          only : fatalError
-  use particle_class,             only : particle
+  use particle_class,             only : particle, phaseCoord
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
 
@@ -18,6 +18,9 @@ module transportOperatorST_class
   use surface_class,              only : surface_ptr
   use cell_class,                 only : cell_ptr
   use lattice_class,              only : lattice_ptr
+
+  !** Debug
+  use coord_class,  only : coordList
 
   ! Nuclear data interfaces
   use nuclearData_inter,          only : nuclearData
@@ -74,6 +77,11 @@ contains
     type(cell_ptr)                         :: c, currentCell
     type(lattice_ptr)                      :: lat
     logical(defBool)                       :: moveUp
+    type(phaseCoord)   :: pre, pre2, post2
+    type(coordList)                        :: debugList
+
+    ! Save state of the particle
+    pre = p
 
     STLoop: do
 
@@ -96,17 +104,27 @@ contains
             latDistance = lDist
             iLat = i - 1
           end if
+
         end if
 
         if (boundaryDistance > testDistance) then
           boundaryDistance = testDistance
           nMin = i
           ! Must move up a level if crossing a lattice boundary
-          if (boundaryDistance > latDistance) then
+        !*** nested if seemed to spoil calculation
+        !*** Original comment is above but I am not shure I understand it (MAK)
+        !*** When moving to infinity in a cell in a lattice bug would happen
+        !*** testDistance would be equal ti infinity
+        !*** Boundary distance would be equal to some value
+        !*** latDistance < boundary distance would not be set
+        !*** as the result particle would be teleported across the boundary into an unknown cell
+        !*** and often would change its material
+        else if (boundaryDistance > latDistance) then
             nMin = iLat
             boundaryDistance = latDistance
-          end if
+         !end if
         end if
+
       end do
       call c % kill()
       call lat % kill()
@@ -125,13 +143,16 @@ contains
         ! Move particle to the surface with a small nudge to move across the boundary
         call p % moveLocal(boundaryDistance + NUDGE, n)
 
+
         ! Find the new base cell which the particle occupies
         currentCell = self % geom % whichCell(p%coords, n)
 
         ! If the particle is outside the geometry, apply boundary conditions
+
         do while (.not. currentCell % insideGeom())
-          !print *,'boundary'
+
           call self % applyBC(p, currentCell)
+
           ! End transport if the particle is killed
           if (p % isDead) then
             exit STLoop
@@ -139,14 +160,29 @@ contains
         end do
 
         ! Continue performing surface tracking
-        cycle
+        cycle STLoop
 
       else
         ! Move particle to new location
         call p % moveLocal(distance, n)
+        call p % updateLocation()
         exit STLoop
       end if
     end do STLoop
+
+    ! *** DEBUG obtain local material
+    call debugList % assignPosition( p % rGlobal() )
+    currentCell = self % geom % whichCell(debugList)
+
+    !currentCell = self % geom % whichCell(p % coords)
+    if( currentCell % matIdx(1) /= p % matIdx) then
+      print *, 'LOST'
+      print *, currentCell % matIdx(1), p % matIdx
+      call pre % display()
+      call p % display()
+      stop
+    end if
+
 
     call currentCell % kill()
 

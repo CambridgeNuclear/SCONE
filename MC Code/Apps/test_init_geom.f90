@@ -39,8 +39,8 @@ program test_init_geom
   type(mesh) :: m
   real(defReal) :: angle
   type(outputMesh) :: vtk
-  integer(shortInt), dimension(800,800,1) :: matMatrix
-  integer(longInt), dimension(800,800,1) :: d
+  integer(shortInt), dimension(400,400,1) :: matMatrix
+  integer(longInt), dimension(400,400,1) :: d
 
   call geomDict % initFrom(path)
 
@@ -79,7 +79,7 @@ program test_init_geom
  ! call geom % calculateVolumes(1000000,1_longInt)
   print *,'Finished volume calculation'
   print *,'Performing voxel calculation'
-  call vtk % init([-16.0_defReal,-12.0_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[800,800,1])
+  call vtk % init([-2.0_defReal,-2.0_defReal,-HALF],[0.011_defReal, 0.011_defReal, ONE] ,[400,400,1])
   matMatrix = geom % voxelPlot(vtk % nVox, vtk % corner, vtk % width)
   call vtk % addData(real(matMatrix,defReal), 'materials')
   print *,'Finished voxel plot'

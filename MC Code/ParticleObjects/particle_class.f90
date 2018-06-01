@@ -21,7 +21,9 @@ module particle_class
     integer(shortInt)          :: G    = 0       ! Energy group
     logical(defBool)           :: isMG = .false. ! Is neutron multi-group
   contains
-    generic  :: assignment(=) => phaseCoord_fromParticle
+    generic    :: assignment(=) => phaseCoord_fromParticle
+    procedure  :: display => display_phaseCoord
+
     procedure, private :: phaseCoord_fromParticle
   end type
 
@@ -59,6 +61,9 @@ module particle_class
     procedure            :: getLatIdx
     procedure            :: getUniIdx
     procedure            :: updateLocation
+    ! Debug procedures
+    procedure            :: display => display_particle
+
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
@@ -259,6 +264,19 @@ contains
 
 
   !!
+  !! Display state of a particle
+  !!
+  subroutine display_particle(self)
+    class(particle), intent(in) :: self
+    type(phaseCoord)            :: state
+
+    state = self
+    call state % display()
+
+  end subroutine display_particle
+
+
+  !!
   !! Copy particle into phase coordinates
   !!
   subroutine phaseCoord_fromParticle(LHS,RHS)
@@ -274,6 +292,14 @@ contains
 
   end subroutine phaseCoord_fromParticle
 
+  !!
+  !! Prints state of the phaseCoord
+  !!
+  subroutine display_phaseCoord(self)
+    class(phaseCoord), intent(in) :: self
 
+    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt
+
+  end subroutine display_phaseCoord
 
 end module particle_class
