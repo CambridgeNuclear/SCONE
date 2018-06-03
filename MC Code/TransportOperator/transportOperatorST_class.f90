@@ -73,7 +73,7 @@ contains
     class(particle), intent(inout)         :: p
     real(defReal)                          :: sigmaT, distance, boundaryDistance, &
                                               testDistance, latDistance, lDist
-    integer(shortInt)                      :: i, n, nMin, latIdx, iLat
+    integer(shortInt)                      :: i, n0, n, nMin, latIdx, iLat
     type(cell_ptr)                         :: c, currentCell
     type(lattice_ptr)                      :: lat
     logical(defBool)                       :: moveUp
@@ -87,11 +87,11 @@ contains
 
       ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
       ! Ensures bounds of parent cells are not exceeded
-      n = p % nesting()
+      n0 = p % nesting()
       nMin = 1
       boundaryDistance = INFINITY
       latDistance = INFINITY
-      do i = 1,n
+      do i = 1,n0
         c = self % geom % cells(p % getCellIdx(i))
         testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
 
@@ -107,24 +107,19 @@ contains
 
         end if
 
+        ! Is the particle crossing a cell boundary?
         if (boundaryDistance > testDistance) then
           boundaryDistance = testDistance
           nMin = i
-          ! Must move up a level if crossing a lattice boundary
-        !*** nested if seemed to spoil calculation
-        !*** Original comment is above but I am not shure I understand it (MAK)
-        !*** When moving to infinity in a cell in a lattice bug would happen
-        !*** testDistance would be equal ti infinity
-        !*** Boundary distance would be equal to some value
-        !*** latDistance < boundary distance would not be set
-        !*** as the result particle would be teleported across the boundary into an unknown cell
-        !*** and often would change its material
-        else if (boundaryDistance > latDistance) then
-            nMin = iLat
-            boundaryDistance = latDistance
-         !end if
         end if
 
+        ! Is the particle crossing a lattice boundary?
+        if (latIdx > 0) then
+          if (boundaryDistance > latDistance) then
+            nMin = iLat
+            boundaryDistance = latDistance
+          end if
+        end if
       end do
       call c % kill()
       call lat % kill()
@@ -143,12 +138,10 @@ contains
         ! Move particle to the surface with a small nudge to move across the boundary
         call p % moveLocal(boundaryDistance + NUDGE, n)
 
-
         ! Find the new base cell which the particle occupies
         currentCell = self % geom % whichCell(p%coords, n)
 
         ! If the particle is outside the geometry, apply boundary conditions
-
         do while (.not. currentCell % insideGeom())
 
           call self % applyBC(p, currentCell)
@@ -164,14 +157,14 @@ contains
 
       else
         ! Move particle to new location
-        call p % moveLocal(distance, n)
-        call p % updateLocation()
+        call p % moveLocal(distance, n0)
         exit STLoop
       end if
     end do STLoop
 
     ! *** DEBUG obtain local material
     call debugList % assignPosition( p % rGlobal() )
+    call debugList % assignDirection( p % dirGlobal() )
     currentCell = self % geom % whichCell(debugList)
 
     !currentCell = self % geom % whichCell(p % coords)
