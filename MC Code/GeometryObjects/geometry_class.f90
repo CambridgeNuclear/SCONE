@@ -32,8 +32,12 @@ module geometry_class
   use yPlane_class,      only : yPlane
   use zPlane_class,      only : zPlane
 
+  ! Cylinders
+  use xCylinder_class,   only : xCylinder
+  use yCylinder_class,   only : yCylinder
+  use zCylinder_class,   only : zCylinder
+
   use box_class
-  use cylinder_class
   use squareCylinder_class
   use truncatedCylinder_class
   use cell_class

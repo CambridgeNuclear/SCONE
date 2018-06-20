@@ -7,7 +7,9 @@ module truncatedCylinder_class
   use xPlane_class,      only : xPlane
   use yPlane_class,      only : yPlane
   use zPlane_class,      only : zPlane
-  use cylinder_class
+  use xCylinder_class,   only : xCylinder
+  use yCylinder_class,   only : yCylinder
+  use zCylinder_class,   only : zCylinder
 
   implicit none
   private
