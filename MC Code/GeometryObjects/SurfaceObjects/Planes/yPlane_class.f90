@@ -3,11 +3,18 @@ module yPlane_class
   use numPrecision
   use universalVariables
   use genericProcedures,    only : fatalError, dotProduct
-
+  use dictionary_class,     only : dictionary
   use surface_inter,        only : surface
 
   implicit none
   private
+
+  !!
+  !! Constructor
+  !!
+  interface yPlane
+    module procedure yPlane_fromDict
+  end interface
 
   !!
   !! Simple plane perpendicular to y-axis
@@ -44,6 +51,25 @@ contains
     if(present(name)) self % name = name
 
   end subroutine init
+
+  !!
+  !! Returns an initialised instance of yPlane for dictionary and name
+  !!
+  function yPlane_fromDict(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(yPlane)                   :: new
+    integer(shortInt)              :: id
+    real(defReal)                  :: y0
+    character(100),parameter :: Here ='yPlane_fromDict ( yPlane_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    y0 = dict % getReal('y')
+    call new % init(y0, id, name)
+
+  end function yPlane_fromDict
 
   !!
   !! Evaluate plane distance
@@ -83,8 +109,7 @@ contains
   !!
   subroutine reflectiveTransform(self,r,u)
     class(yPlane), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r, &
-                                                  u
+    real(defReal), dimension(3), intent(inout) :: r, u
     real(defReal) :: yDisplacement
 
     ! Reflect the particle y-coordinate across the plane
@@ -105,7 +130,6 @@ contains
     real(defReal), dimension(3), intent(in) :: r
 
     normal = [ZERO, ONE, ZERO]
-    return
 
   end function normalVector
   !!
@@ -115,8 +139,9 @@ contains
     class(yPlane), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
+    character(100),parameter :: Here ='whichSurface ( yPlane_class.f90)'
 
-    call fatalError('whichYPlane','This function should never be called for a simple surface')
+    call fatalError(Here,'This function should never be called for a simple surface')
 
   end function whichSurface
 
@@ -126,7 +151,10 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(yPlane), intent(inout)                :: self
     integer(shortInt), dimension(6), intent(in) :: BC
-    call fatalError('setBoundaryConditionsYPlane','Boundary conditions may not be set for a plane surface')
+    character(100),parameter :: Here ='setBoundaryConditions( yPlane_class.f90)'
+
+    call fatalError(Here,'Boundary conditions may not be set for a plane surface')
+
   end subroutine setBoundaryConditions
 
   !!
@@ -137,6 +165,7 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
+    character(100),parameter :: Here ='boundaryTransform ( yPlane_class.f90)'
 
     if (self % isVacuum) then
       isVacuum = .TRUE.
@@ -145,7 +174,7 @@ contains
     else if (self % isReflective) then
       call self % reflectiveTransform(r,u)
     else
-      call fatalError('boundaryTransform, yPlane','No boundary condition applied to surface')
+      call fatalError(Here,'No boundary condition applied to surface')
     end if
 
   end subroutine boundaryTransform

@@ -1,32 +1,41 @@
 module sphere_class      
 
   use numPrecision
-  use genericProcedures, only : fatalError, dotProduct
   use universalVariables
-
-  use surface_inter
+  use genericProcedures, only : fatalError, dotProduct
+  use dictionary_class,  only : dictionary
+  use surface_inter,     only : surface
 
   implicit none
   private
 
-  !
-  ! Sphere
-  ! f = (x-x0)^2 + (y-y0)^2 + (z-z0)^2 = R^2
-  !
+  !!
+  !! Constructor
+  !!
+  interface sphere
+    module procedure sphere_fromDict
+  end interface
+
+  !!
+  !! Sphere
+  !! f = (x-x0)^2 + (y-y0)^2 + (z-z0)^2 = R^2
+  !!
   type, public, extends (surface) :: sphere
     private
     real(defReal), dimension(3) :: origin
     real(defReal) :: rSquared = ZERO
     real(defReal) :: radius = ZERO
+
   contains
-    procedure :: init => initSphere
-    procedure :: evaluate => evaluateSphere
-    procedure :: distanceToSurface => distanceToSphere
-    procedure :: reflectiveTransform => reflectiveTransformSphere
-    procedure :: normalVector => normalVectorSphere
+    procedure :: init
+    procedure :: evaluate
+    procedure :: distanceToSurface
+    procedure :: reflectiveTransform
+    procedure :: normalVector
     procedure :: whichSurface
-    procedure :: setBoundaryConditions => setBoundaryConditionsSphere
-    procedure :: boundaryTransform => boundaryTransformSphere
+    procedure :: setBoundaryConditions
+    procedure :: boundaryTransform
+
   end type sphere
 
 contains
@@ -34,7 +43,7 @@ contains
   !!
   !! Given an origin and radius, create a sphere object
   !!
-  subroutine initSphere(self, origin, radius, id, name)
+  subroutine init(self, origin, radius, id, name)
     class(sphere), intent(inout)            :: self
     real(defReal), dimension(3), intent(in) :: origin
     real(defReal), intent (in)              :: radius
@@ -49,13 +58,35 @@ contains
     if(present(id)) self % id = id
     if(present(name)) self % name = name
 
-  end subroutine initSphere
+  end subroutine init
+
+  !!
+  !! Returns and initialised instance of sphere from dictionary and name
+  !!
+  function sphere_fromDict(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(sphere)                   :: new
+    integer(shortInt)              :: id
+    real(defReal)                  :: radius
+    real(defReal), dimension(3)    :: origin
+    character(100), parameter :: Here = 'sphere_fromDict (sphere_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    radius = dict % getReal('radius')
+    origin = dict % getRealArray('origin')
+
+    call new % init(origin, radius, id, name)
+
+  end function sphere_fromDict
 
   !!
   !! Calculate squared difference between point and origin of sphere
   !! Insert values into sphere equation
   !!
-  function evaluateSphere(self, r) result(res)
+  function evaluate(self, r) result(res)
     class(sphere), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: diff
@@ -64,7 +95,7 @@ contains
     diff=(r - self % origin)**2
     res = diff(1) + diff(2) + diff(3) - self % rSquared
 
-  end function evaluateSphere
+  end function evaluate
 
   !!
   !! Calculate the neutron's distance to the sphere surface
@@ -72,7 +103,7 @@ contains
   !! k = (x-x0)u + (y-y0)v + (z-z0)w
   !! c = (x-x0)^2 + (y-y0)^2 + (z-z0)^2 - R^2
   !!
-  function distanceToSphere(self,r,u)result(distance)
+  function distanceToSurface(self,r,u)result(distance)
     class(sphere), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r, &
                                                u
@@ -111,7 +142,7 @@ contains
       return
     end if
 
-  end function distanceToSphere
+  end function distanceToSurface
 
   !!
   !! Perform a co-ordinate transform on a particle to apply reflective boundary condition
@@ -123,10 +154,10 @@ contains
   !! Reflect the particle in the plane given by this outward normal
   !!
   !! THIS WILL NOT WORK IF USED - NEED TO ADD A DISTANCE ARGUMENT
-  subroutine reflectiveTransformSphere(self, r, u)
+  subroutine reflectiveTransform(self, r, u)
     class(sphere), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r, &
-                                                  u
+    real(defReal), dimension(3), intent(inout) :: r, u
+    character(100), parameter :: Here = 'reflectiveTransform (sphere_class.f90)'
     !real(defReal), dimension(3) :: Ovector, &    ! vector towards origin from neutron
     !                               normal, &     ! normal vector of the reflection plane
     !                               perpVector, & ! normal vector to the plane in which motion/rotation is occurring
@@ -138,7 +169,7 @@ contains
     !                 dOrigin             ! distance from the starting point to the origin
 
     ! Reflective transforms will not be allowed to occur in geometries other than planes
-    call fatalError('reflectiveTransformSphere, sphere','Spheres may not have reflective boundaries')
+    call fatalError(Here,'Spheres may not have reflective boundaries')
 
     ! Calculate the normalised origin vector
     !Ovector= self % origin - r
@@ -174,19 +205,19 @@ contains
     ! Reflect the particle direction (independent of intersection point for plane)
     !u = u - 2*dotProduct(normal,u)*normal
 
-  end subroutine reflectiveTransformSphere
+  end subroutine reflectiveTransform
 
   !!
   !! Supply the normal vector given a point on the sphere
   !!
-  function normalVectorSphere(self, r) result(normal)
+  function normalVector(self, r) result(normal)
     class(sphere), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: normal
 
     normal = TWO * (r - self % origin)
 
-  end function normalVectorSphere
+  end function normalVector
 
   !!
   !! Give an error: this routine should not be called for a non-compound surface
@@ -195,39 +226,46 @@ contains
     class(sphere), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
-    call fatalError('whichSurface (sphere)','This function should never be called for a simple surface')
+    character(100), parameter :: Here = 'whichSurface (sphere_class.f90)'
+
+    call fatalError(Here,'This function should never be called for a simple surface')
+
   end function whichSurface
 
   !!
   !! Set boundary conditions for a sphere: may only be vacuum
   !!
-  subroutine setBoundaryConditionsSphere(self, BC)
+  subroutine setBoundaryConditions(self, BC)
     class(sphere), intent(inout)                :: self
     integer(shortInt), dimension(6), intent(in) :: BC
+    character(100), parameter :: Here = 'setBoundaryConditions (sphere_class.f90)'
 
     if (any(BC /= vacuum)) then
-      call fatalError('setBoundaryConditionsSphere','Sphere boundaries may only be vacuum')
+      call fatalError(Here,'Sphere boundaries may only be vacuum')
+
     else
       self % isVacuum = .TRUE.
+
     end if
-  end subroutine setBoundaryConditionsSphere
+  end subroutine setBoundaryConditions
 
   !!
   !! Apply boundary conditions
   !!
-  subroutine boundaryTransformSphere(self, r, u, isVacuum)
+  subroutine boundaryTransform(self, r, u, isVacuum)
     class(sphere), intent(in)                  :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
+    character(100), parameter :: Here = 'boundaryTransform (sphere_class.f90)'
 
     if (self % isVacuum) then
       isVacuum = .TRUE.
-    else
-      call fatalError('boundaryTransform, sphere',&
-      'This routine should only be called if there sphere has vacuum boundaries')
-    end if
 
-  end subroutine boundaryTransformSphere
+    else
+      call fatalError(Here,'This routine should only be called if there sphere has vacuum boundaries')
+
+    end if
+  end subroutine boundaryTransform
 
 end module sphere_class

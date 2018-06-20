@@ -1,15 +1,19 @@
-!
-! Module containing the 3 planes perpendicular to the x, y, or z axis and the general plane
-!
 module plane_class
   use numPrecision
   use universalVariables
-  use genericProcedures,    only : fatalError, dotProduct
-
-  use surface_inter,        only : surface
+  use genericProcedures,  only : fatalError, dotProduct
+  use dictionary_class,   only : dictionary
+  use surface_inter,      only : surface
 
   implicit none
   private
+
+  !!
+  !! Constructor
+  !!
+  interface plane
+    module procedure plane_fromDict
+  end interface
 
   !!
   !! General plane
@@ -47,6 +51,25 @@ contains
   end subroutine init
 
   !!
+  !! Returns an initialised instance of plane for dictionary and name
+  !!
+  function plane_fromDict(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(plane)                    :: new
+    integer(shortInt)              :: id
+    real(defReal),dimension(4)     :: coeff
+    character(100),parameter :: Here =' plane_fromDict ( plane_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    coeff = dict % getRealArray('coeff')
+    call new % init(coeff, id, name)
+
+  end function plane_fromDict
+
+  !!
   !! Evaluate plane distance
   !!
   function evaluate(self, r) result(res)
@@ -63,12 +86,12 @@ contains
   !!
   function distanceToSurface(self,r,u) result(distance)
     class(plane), intent(in)                :: self
-    real(defReal), dimension(3), intent(in) :: r, &
-                                               u
+    real(defReal), dimension(3), intent(in) :: r, u
     real(defReal)                           :: distance, denominator, numerator
 
     denominator = self%coeff(1)*u(1) + self%coeff(2)*u(2) + self%coeff(3)*u(3)
     numerator = self%coeff(4) - self%coeff(1)*r(1) - self%coeff(2)*r(2) - self%coeff(3)*r(3)
+
     if ((denominator==ZERO) .OR. (abs(numerator) < surface_tol))  then
       distance = INFINITY
       return
@@ -113,7 +136,6 @@ contains
     real(defReal), dimension(3), intent(in) :: r
 
     normal = [self%coeff(1), self%coeff(2), self%coeff(3)]
-    return
 
   end function normalVector
 
@@ -124,8 +146,9 @@ contains
     class(plane), intent(in)                :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
+    character(100),parameter :: Here = 'whichSurface (plane_class.f90)'
 
-    call fatalError('whichPlane','This function should never be called for a simple surface')
+    call fatalError(Here,'This function should never be called for a simple surface')
 
   end function whichSurface
 
@@ -135,7 +158,10 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(plane), intent(inout)                 :: self
     integer(shortInt), dimension(6), intent(in) :: BC
-    call fatalError('setBoundaryConditionsPlane','Boundary conditions may not be set for a plane surface')
+    character(100),parameter :: Here = 'setBoundaryConditions (plane_class.f90)'
+
+    call fatalError(Here,'Boundary conditions may not be set for a plane surface')
+
   end subroutine setBoundaryConditions
 
   !!
@@ -146,8 +172,9 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
+    character(100),parameter :: Here = 'boundaryTransform (plane_class.f90)'
 
-    call fatalError('boundaryTransform, plane','This surface does not support boundary conditions')
+    call fatalError(Here,'This surface does not support boundary conditions')
 
   end subroutine boundaryTransform
 

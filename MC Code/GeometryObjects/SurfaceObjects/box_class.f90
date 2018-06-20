@@ -3,9 +3,9 @@
 !
 module box_class
   use numPrecision
-  use genericProcedures, only : fatalError
   use universalVariables
-
+  use genericProcedures, only : fatalError
+  use dictionary_class,  only : dictionary
   use surface_inter,     only : surface
   use xPlane_class,      only : xPlane
   use yPlane_class,      only : yPlane
@@ -14,21 +14,33 @@ module box_class
   implicit none
   private
 
+  !!
+  !! Constructor
+  !!
+  interface box
+    module procedure box_fromDict
+  end interface
+
+  !!
+  !! Cuboid alligned with coordinate axies
+  !!
   type, public, extends(surface) :: box
     type(xPlane), dimension(:), pointer :: xPlanes => null()
     type(yPlane), dimension(:), pointer :: yPlanes => null()
     type(zPlane), dimension(:), pointer :: zPlanes => null()
     real(defReal), dimension(3)         :: a    ! the half-width in each direction of the cubic box
     real(defReal), dimension(3)         :: origin = [ZERO, ZERO, ZERO]
+
   contains
-    procedure :: init => initBox
-    procedure :: evaluate => evaluateBox
-    procedure :: distanceToSurface => distanceToBox
-    procedure :: reflectiveTransform => reflectiveTransformBox
-    procedure :: normalVector => normalVectorBox
-    procedure :: whichSurface => whichPlane
-    procedure :: setBoundaryConditions => setBoundaryConditionsBox
-    procedure :: boundaryTransform => boundaryTransformBox
+    procedure :: init
+    procedure :: evaluate
+    procedure :: distanceToSurface
+    procedure :: reflectiveTransform
+    procedure :: normalVector
+    procedure :: whichSurface
+    procedure :: setBoundaryConditions
+    procedure :: boundaryTransform
+
   end type box
 
 contains
@@ -38,21 +50,22 @@ contains
   ! Employ the convention that the first plane
   ! is in front of the origin, the second behind
   !
-  subroutine initBox(self, origin, a, id, name)
+  subroutine init(self, origin, a, id, name)
     class(box), intent(inout)               :: self
-    real(defReal), dimension(3), intent(in) :: a, &
-                                              origin
+    real(defReal), dimension(3), intent(in) :: a, origin
     integer(shortInt), intent(in), optional :: id
     character(*), optional, intent(in)      :: name
     integer(shortInt)                       :: i
     real(defReal)                           :: neg
+    character(100),parameter :: Here ='init( box_class.f90)'
 
     self % isCompound = .true.
     self % origin = origin
     self % a = a
-    if(any(a < surface_tol)) &
-    call fatalError('initBox, box','Box dimensions must be greater than surface tolerance')
-    if(present(id)) self % id = id
+
+    if(any(a < surface_tol)) call fatalError(Here,'Box dimensions must be greater than surface tolerance')
+
+    if(present(id))    self % id = id
     if (present(name)) self % name = name
 
     if(associated(self % xPlanes)) deallocate (self % xPlanes)
@@ -72,12 +85,33 @@ contains
       neg = -ONE
     end do
 
-  end subroutine initBox
+  end subroutine init
 
-  !
-  ! Evaluate the surface function of the box
-  !
-  function evaluateBox(self, r) result(res)
+  !!
+  !! Returns an initialised instance of box from dictionary and name
+  !!
+  function box_fromDict(dict,name) result(new)
+    class(dictionary), intent(in) :: dict
+    character(nameLen),intent(in) :: name
+    type(box)                     :: new
+    integer(shortInt)             :: id
+    real(defReal),dimension(3)    :: halfwidth, origin
+    character(100),parameter :: Here ='box_fromDict ( box_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    halfwidth = dict % getRealArray('halfwidth')
+    origin = dict % getRealArray('origin')
+
+    call new % init(origin, halfwidth, id, name)
+
+  end function box_fromDict
+
+  !!
+  !! Evaluate the surface function of the box
+  !!
+  function evaluate(self, r) result(res)
     class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: res
@@ -130,14 +164,14 @@ contains
       res = testRes
     end if
 
-  end function evaluateBox
+  end function evaluate
 
-  !
-  ! Calculate the distance to the nearest surface of the box
-  ! Requires checking that only real surfaces are intercepted,
-  ! i.e., not the extensions of the box plane surfaces
-  !
-  function distanceToBox(self, r, u) result(distance)
+  !!
+  !! Calculate the distance to the nearest surface of the box
+  !! Requires checking that only real surfaces are intercepted,
+  !! i.e., not the extensions of the box plane surfaces
+  !!
+  function distanceToSurface(self, r, u) result(distance)
     class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r, u
     real(defReal), dimension(3)             :: posBound, negBound, testPoint
@@ -192,17 +226,17 @@ contains
       if (testDistance < distance) distance = testDistance
     end if
 
-  end function distanceToBox
+  end function distanceToSurface
 
-  !
-  ! Apply a reflective transformation to a particle during delta tracking
-  ! Assumes particle has already crossed the plane, hence the direction reversal
-  ! Do so by determining which plane the particle intersects and applying the plane reflection
-  !
-  ! This routine has been obviated due to BC implementation in the transport operator and surface
-  ! search in the cell
-  !
-  subroutine reflectiveTransformBox(self, r, u)
+  !!
+  !! Apply a reflective transformation to a particle during delta tracking
+  !! Assumes particle has already crossed the plane, hence the direction reversal
+  !! Do so by determining which plane the particle intersects and applying the plane reflection
+  !!
+  !! This routine has been obviated due to BC implementation in the transport operator and surface
+  !! search in the cell
+  !!
+  subroutine reflectiveTransform(self, r, u)
     class(box), intent(in)                     :: self
     real(defReal), dimension(3), intent(inout) :: r, u
     class(surface), pointer                    :: surfPointer
@@ -210,17 +244,18 @@ contains
     surfPointer => self % whichSurface(r, u)
     call surfPointer % reflectiveTransform(r,u)
 
-  end subroutine reflectiveTransformBox
+  end subroutine reflectiveTransform
 
-  !
-  ! Determine on which surface the particle is located and obtain
-  ! its normal vector
-  !
-  function normalVectorBox(self, r) result(normal)
+  !!
+  !! Determine on which surface the particle is located and obtain
+  !! its normal vector
+  !!
+  function normalVector(self, r) result(normal)
     class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: normal
     real(defReal), dimension(3)             :: posBound, negBound
+    character(100),parameter :: Here ='normalVectorBox ( box_class.f90)'
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -245,18 +280,18 @@ contains
       normal = self % zPlanes(2) % normalVector(r)
       return
     else
-      call fatalError('normalVector, box','Point is not on a surface')
+      call fatalError(Here,'Point is not on a surface')
     end if
 
-  end function normalVectorBox
+  end function normalVector
 
-  !
-  ! Helper routine: find the plane which a particle will have crossed
-  ! This is done by calculating the distance to each surface
-  ! Include inside or outside to allow generality (need to change
-  ! particle direction otherwise)
-  !
-  function whichPlane(self, r, u) result(surfPointer)
+  !!
+  !! Helper routine: find the plane which a particle will have crossed
+  !! This is done by calculating the distance to each surface
+  !! Include inside or outside to allow generality (need to change
+  !! particle direction otherwise)
+  !!
+  function whichSurface(self, r, u) result(surfPointer)
     class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
@@ -329,14 +364,15 @@ contains
       end if
     end if
 
-  end function whichPlane
+  end function whichSurface
 
   !!
   !! Apply generic boundary conditions to the box
   !!
-  subroutine setBoundaryConditionsBox(self, BC)
+  subroutine setBoundaryConditions(self, BC)
     class(box), intent(inout)                   :: self
     integer(shortInt), dimension(6), intent(in) :: BC
+    character(100),parameter :: Here ='setBoundaryConditionsBox( box_class.f90)'
 
     ! Positive x boundary
     if(BC(1) == vacuum) then
@@ -345,14 +381,13 @@ contains
       self % xPlanes(1) % isReflective = .TRUE.
     else if(BC(1) == periodic) then
       if(BC(2) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(1) % isPeriodic = .TRUE.
         self % xPlanes(1) % periodicTranslation = [-TWO*self % a(1), ZERO, ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Negative x boundary
@@ -362,14 +397,13 @@ contains
       self % xPlanes(2) % isReflective = .TRUE.
     else if(BC(2) == periodic) then
       if(BC(1) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % xPlanes(2) % isPeriodic = .TRUE.
         self % xPlanes(2) % periodicTranslation = [TWO*self % a(1), ZERO, ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Positive y boundary
@@ -379,14 +413,13 @@ contains
       self % yPlanes(1) % isReflective = .TRUE.
     else if(BC(3) == periodic) then
       if(BC(4) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(1) % isPeriodic = .TRUE.
         self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Negative y boundary
@@ -396,14 +429,13 @@ contains
       self % yPlanes(2) % isReflective = .TRUE.
     else if(BC(4) == periodic) then
       if(BC(3) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(2) % isPeriodic = .TRUE.
         self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Positive z boundary
@@ -413,14 +445,13 @@ contains
       self % zPlanes(1) % isReflective = .TRUE.
     else if(BC(5) == periodic) then
       if(BC(6) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(1) % isPeriodic = .TRUE.
         self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -TWO*self % a(3)]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Negative z boundary
@@ -430,28 +461,28 @@ contains
       self % zPlanes(2) % isReflective = .TRUE.
     else if(BC(6) == periodic) then
       if(BC(5) /= periodic) then
-        call fatalError('setBoundaryConditions, box', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(2) % isPeriodic = .TRUE.
         self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, TWO*self % a(3)]
       end if
     else
-      call fatalError('setBoundaryConditionsBox','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
-  end subroutine setBoundaryConditionsBox
+  end subroutine setBoundaryConditions
 
   !!
   !! Check halfspaces to identify which combination of
   !! boundary conditions to apply to a point
   !!
-  subroutine boundaryTransformBox(self, r, u, isVacuum)
+  subroutine boundaryTransform(self, r, u, isVacuum)
     class(box), intent(in)                     :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
     logical(defBool)                           :: front, back, left, right, above, below
+    character(100),parameter :: Here ='boundaryTransform( box_class.f90)'
 
     ! Point can be within one of 27 regions
     ! Locate which region and then apply BCs as appropriate
@@ -582,10 +613,9 @@ contains
 
     ! Point is in the box
     else
-      call fatalError('boundaryTransformation, box',&
-      'Cannot apply boundary transformation: point is already within the boundary')
+      call fatalError(Here,'Cannot apply boundary transformation: point is already within the boundary')
     end if
 
-  end subroutine boundaryTransformBox
+  end subroutine boundaryTransform
 
 end module box_class

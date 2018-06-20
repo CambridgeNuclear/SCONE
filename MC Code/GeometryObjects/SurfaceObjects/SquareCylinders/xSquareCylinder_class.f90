@@ -1,8 +1,9 @@
 module xSquareCylinder_class
 
   use numPrecision
-  use genericProcedures, only : fatalError
   use universalVariables
+  use genericProcedures, only : fatalError
+  use dictionary_class,  only : dictionary
 
   use surface_inter,     only : surface
   use yPlane_class,      only : yPlane
@@ -11,6 +12,16 @@ module xSquareCylinder_class
   implicit none
   private
 
+  !!
+  !! Constructor
+  !!
+  interface xSquareCylinder
+    module procedure xSquareCylinder_fromDict
+  end interface
+
+  !!
+  !! Square cylinder aligned with x-axis
+  !!
   type, public, extends(surface) :: xSquareCylinder
     private
     type(yPlane), dimension(:), pointer :: yPlanes => null()
@@ -34,7 +45,7 @@ module xSquareCylinder_class
 contains
 
   !!
-  !! Initialise the box as six plane surfaces
+  !! Initialise the square cylinder from components
   !!
   subroutine init(self, origin, a, id, name)
     class(xSquareCylinder), intent(inout)   :: self
@@ -69,6 +80,27 @@ contains
     end do
 
   end subroutine init
+
+  !!
+  !! Returns and initialised instance of xSquareCylinder from dictionary and name
+  !!
+  function xSquareCylinder_fromDict(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(xSquareCylinder)          :: new
+    integer(shortInt)              :: id
+    real(defReal), dimension(3)    :: origin, halfwidth
+    character(100),parameter :: Here ='xSquareCylinder_fromDict ( xSquareCylinder_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    halfwidth = dict % getRealArray('halfwidth')
+    origin = dict % getRealArray('origin')
+
+    call new % init(origin, halfwidth, id, name)
+
+  end function xSquareCylinder_fromDict
 
   !!
   !! Evaluate the surface function of the square cylinder
@@ -178,8 +210,10 @@ contains
     class(xSquareCylinder), intent(in)         :: self
     real(defReal), dimension(3), intent(inout) :: r, u
     class(surface), pointer                    :: surfPointer
+    character(100),parameter :: Here ='reflectiveTransform ( xSquareCylinder_class.f90)'
 
-    call fatalError('reflectiveTransformXSquCyl','This routine should not be called')
+
+    call fatalError(Here,'This routine should not be called')
     surfPointer => self % whichSurface(r, u)
     call surfPointer % reflectiveTransform(r,u)
 
@@ -193,6 +227,7 @@ contains
     class(xSquareCylinder), intent(in)      :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: normal, posBound, negBound
+    character(100),parameter :: Here ='normalVector ( xSquareCylinder_class.f90)'
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % origin + self % a
@@ -211,7 +246,7 @@ contains
       normal = self % zPlanes(2) % normalVector(r)
       return
     else
-      call fatalError('normalVector, XSquareCylinder','Point is not on a surface')
+      call fatalError(Here,'Point is not on a surface')
     end if
 
   end function normalVector
@@ -279,6 +314,7 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(xSquareCylinder), intent(inout)       :: self
     integer(shortInt), dimension(6), intent(in) :: BC
+    character(100),parameter :: Here ='setBoundaryConditions ( xSquareCylinder_class.f90)'
 
     ! Positive y boundary
     if(BC(3) == vacuum) then
@@ -287,14 +323,14 @@ contains
       self % yPlanes(1) % isReflective = .TRUE.
     else if(BC(3) == periodic) then
       if(BC(4) /= periodic) then
-        call fatalError('setBoundaryConditionsXSquareCylinder', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
+
       else
         self % yPlanes(1) % isPeriodic = .TRUE.
         self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Negative y boundary
@@ -304,14 +340,14 @@ contains
       self % yPlanes(2) % isReflective = .TRUE.
     else if(BC(4) == periodic) then
       if(BC(3) /= periodic) then
-        call fatalError('setBoundaryConditionsXSquareCylinder', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % yPlanes(2) % isPeriodic = .TRUE.
         self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
       end if
     else
-      call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
+
     end if
 
     ! Positive z boundary
@@ -321,14 +357,13 @@ contains
       self % zPlanes(1) % isReflective = .TRUE.
     else if(BC(5) == periodic) then
       if(BC(6) /= periodic) then
-        call fatalError('setBoundaryConditionsXSquareCylinder', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(1) % isPeriodic = .TRUE.
         self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -2.*self % a(3)]
       end if
     else
-      call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
 
     ! Negative z boundary
@@ -338,14 +373,13 @@ contains
       self % zPlanes(2) % isReflective = .TRUE.
     else if(BC(6) == periodic) then
       if(BC(5) /= periodic) then
-        call fatalError('setBoundaryConditionsXSquareCylinder', &
-        'Both positive and negative boundary conditions must be periodic')
+        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
         self % zPlanes(2) % isPeriodic = .TRUE.
         self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, 2.*self % a(3)]
       end if
     else
-      call fatalError('setBoundaryConditionsXSquareCylinder','Invalid boundary condition provided')
+      call fatalError(Here,'Invalid boundary condition provided')
     end if
   end subroutine setBoundaryConditions
 
@@ -358,6 +392,7 @@ contains
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
     logical(defBool)                           :: left, right, above, below
+    character(100),parameter :: Here ='boundaryTransform ( xSquareCylinder_class.f90)'
 
     ! Point can be within one of 9 regions
     ! Locate which region and then apply BCs as appropriate
@@ -387,8 +422,7 @@ contains
     else if (right) then
       call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
     else
-      call fatalError('boundaryTransform, xSquareCylinder',&
-      'Cannot apply boundary condition: point is inside surface')
+      call fatalError(Here,'Cannot apply boundary condition: point is inside surface')
     end if
 
   end subroutine boundaryTransform

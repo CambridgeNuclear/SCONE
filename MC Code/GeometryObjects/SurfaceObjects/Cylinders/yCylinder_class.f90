@@ -1,13 +1,20 @@
 module yCylinder_class
 
   use numPrecision
-  use genericProcedures, only : fatalError
   use universalVariables
-
+  use genericProcedures, only : fatalError
+  use dictionary_class,  only : dictionary
   use surface_inter,     only : surface
 
   implicit none
   private
+
+  !!
+  !! Constructor
+  !!
+  interface yCylinder
+    module procedure yCylinder_fromDict
+  end interface
 
   !!
   !! Cylinder aligned with Y-axis
@@ -51,6 +58,27 @@ contains
   end subroutine init
 
   !!
+  !! Returns and initialised instance of yCylinder from dictionary and name
+  !!
+  function yCylinder_fromDict(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(yCylinder)                :: new
+    integer(shortInt)              :: id
+    real(defReal)                  :: radius
+    real(defReal), dimension(3)    :: origin
+    character(100),parameter :: Here ='yCylinder_fromDict ( yCylinder_class.f90)'
+
+    id = dict % getInt('id')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+
+    radius = dict % getReal('radius')
+    origin = dict % getRealArray('origin')
+    call new % init(radius, origin, id, name)
+
+  end function yCylinder_fromDict
+
+  !!
   !! Evaluate remainder of cylinder equation
   !!
   function evaluate(self, r) result(res)
@@ -59,7 +87,6 @@ contains
     real(defReal)                           :: res
 
     res = (r(1) - self%origin(1))**2 + (r(3) - self%origin(3))**2 - self%rSquared
-    return
 
   end function evaluate
 
@@ -68,15 +95,10 @@ contains
   !!
   function distanceToSurface(self, r, u) result(distance)
     class(yCylinder), intent(in)            :: self
-    real(defReal), dimension(3), intent(in) :: r, &
-                                               u
-    real(defReal)                           :: xBar, &
-                                               zBar, &
-                                               k, &
-                                               c, &
-                                               a, &
-                                               discriminant, &
-                                               distance
+    real(defReal), dimension(3), intent(in) :: r, u
+    real(defReal)                           :: xBar, zBar
+    real(defReal)                           :: k, c, a
+    real(defReal)                           :: discriminant, distance
 
     xBar = r(1) - self%origin(1)
     zBar = r(3) - self%origin(3)
@@ -118,8 +140,9 @@ contains
   !!
   subroutine reflectiveTransform(self,r,u)
     class(yCylinder), intent(in)               :: self
-    real(defReal), dimension(3), intent(inout) :: r, &
-                                                  u
+    real(defReal), dimension(3), intent(inout) :: r, u
+    character(100),parameter :: Here ='reflectiveTransform ( yCylinder_class.f90)'
+
     !real(defReal), dimension(3) :: normal, &
     !                               Ovector, &
     !                               xzVector, &
@@ -132,7 +155,7 @@ contains
     !                 sinGamma
 
     ! Reflective transforms will not be allowed to occur in geometries other than planes
-    call fatalError('reflectiveTransformYCyl, yCylinder','Cylinders may not have reflective boundaries')
+    call fatalError(Here,'Cylinders may not have reflective boundaries')
 
     ! Construct unit vector from origin to starting point
     ! Zero the y-entry as there is no true y-origin
@@ -192,8 +215,9 @@ contains
     class(yCylinder), intent(in)            :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
+    character(100),parameter :: Here ='whichSurface ( yCylinder_class.f90)'
 
-    call fatalError('whichYCylinder','This function should never be called for a simple surface')
+    call fatalError(Here,'This function should never be called for a simple surface')
 
   end function whichSurface
 
@@ -203,12 +227,14 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(yCylinder), intent(inout)             :: self
     integer(shortInt), dimension(6), intent(in) :: BC
+    character(100),parameter :: Here ='setBoundaryConditions ( yCylinder_class.f90)'
 
     if (any(BC /= vacuum)) then
-      call fatalError('setBoundaryConditionsYCylinder','Cylinder boundaries may only be vacuum')
+      call fatalError(Here,'Cylinder boundaries may only be vacuum')
     else
       self % isVacuum = .TRUE.
     end if
+
   end subroutine setBoundaryConditions
 
   !!
@@ -219,12 +245,14 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
+    character(100),parameter :: Here ='boundaryTransform ( yCylinder_class.f90)'
 
     if (self % isVacuum) then
       isVacuum = .TRUE.
+
     else
-      call fatalError('boundaryTransform, yCylinder',&
-      'This should only be called for a cylinder with vacuum boundaries')
+      call fatalError(Here,'This should only be called for a cylinder with vacuum boundaries')
+
     end if
 
   end subroutine boundaryTransform
