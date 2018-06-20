@@ -7,7 +7,7 @@ module transportOperator_inter
   use dictionary_class,           only : dictionary
 
   ! Geometry interfaces
-  use surface_class,              only : surface
+  use surface_inter,              only : surface
   use geometry_class,             only : geometry
   use cell_class,                 only : cell_ptr
 

@@ -15,7 +15,7 @@ module transportOperatorST_class
 
   ! Geometry interfaces
   use geometry_class,             only : geometry
-  use surface_class,              only : surface_ptr
+  use surface_inter,              only : surface_ptr
   use cell_class,                 only : cell_ptr
   use lattice_class,              only : lattice_ptr
 

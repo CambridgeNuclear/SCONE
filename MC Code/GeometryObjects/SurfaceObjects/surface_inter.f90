@@ -6,7 +6,7 @@
 ! Each surface class should contain the data necessary to define it
 ! and the ability to locate which halfspace a given point occupies
 !
-module surface_class
+module surface_inter
   use numPrecision
   use universalVariables
   use genericProcedures, only : dotProduct
@@ -300,4 +300,4 @@ contains
     LHS % ptr => RHS
   end subroutine surface_ptr_assignment_target
 
-end module surface_class
+end module surface_inter

@@ -23,7 +23,7 @@ module geometry_class
 
   use coord_class
 
-  use surface_class
+  use surface_inter
   use sphere_class
   use plane_class
   use box_class

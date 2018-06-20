@@ -4,7 +4,7 @@ module sphere_class
   use genericProcedures, only : fatalError, dotProduct
   use universalVariables
 
-  use surface_class
+  use surface_inter
 
   implicit none
   private

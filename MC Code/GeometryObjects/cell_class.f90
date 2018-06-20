@@ -9,7 +9,7 @@ module cell_class
   use numPrecision
   use genericProcedures, only : fatalError
   use universalVariables
-  use surface_class
+  use surface_inter
   use coord_class
 
   implicit none

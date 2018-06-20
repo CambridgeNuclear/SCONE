@@ -6,7 +6,7 @@ module box_class
   use genericProcedures, only : fatalError
   use universalVariables
 
-  use surface_class
+  use surface_inter
   use plane_class
 
   implicit none

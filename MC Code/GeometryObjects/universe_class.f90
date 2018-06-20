@@ -9,7 +9,7 @@
 module universe_class
   use numPrecision
   use genericProcedures
-  use surface_class
+  use surface_inter
   use cell_class
 
   implicit none
