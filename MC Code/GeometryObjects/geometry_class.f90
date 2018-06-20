@@ -37,8 +37,12 @@ module geometry_class
   use yCylinder_class,   only : yCylinder
   use zCylinder_class,   only : zCylinder
 
+  ! Square Cylinders
+  use xSquareCylinder_class, only : xSquareCylinder
+  use ySquareCylinder_class, only : ySquareCylinder
+  use zSquareCylinder_class, only : zSquareCylinder
+
   use box_class
-  use squareCylinder_class
   use truncatedCylinder_class
   use cell_class
   use universe_class
