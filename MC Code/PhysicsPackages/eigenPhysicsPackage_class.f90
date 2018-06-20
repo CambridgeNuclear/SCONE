@@ -45,7 +45,7 @@ module eigenPhysicsPackage_class
     type(tallyActiveAdmin),pointer         :: activeTally   => null()
 
     ! Settings
-    integer(shortInt)  :: N_inactive = 800
+    integer(shortInt)  :: N_inactive = 300
     integer(shortInt)  :: N_active   = 500
     integer(shortInt)  :: pop        = 5000
 

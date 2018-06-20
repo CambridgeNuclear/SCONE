@@ -23,9 +23,15 @@ module geometry_class
 
   use coord_class
 
-  use surface_inter
+  use surface_inter,     only : surface_ptr
   use sphere_class
-  use plane_class
+
+  ! Planes
+  use plane_class,       only : plane
+  use xPlane_class,      only : xPlane
+  use yPlane_class,      only : yPlane
+  use zPlane_class,      only : zPlane
+
   use box_class
   use cylinder_class
   use squareCylinder_class

@@ -31,7 +31,7 @@ module surface_inter
     procedure(normalVector), deferred            :: normalVector
     procedure(whichSurface), deferred            :: whichSurface
     procedure(setBoundaryConditions), deferred   :: setBoundaryConditions
-    procedure(boundaryTransform), deferred :: boundaryTransform
+    procedure(boundaryTransform), deferred       :: boundaryTransform
   end type surface
 
   type, public :: surface_ptr

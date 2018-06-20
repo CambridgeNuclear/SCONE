@@ -6,8 +6,10 @@ module squareCylinder_class
   use genericProcedures, only : fatalError
   use universalVariables
 
-  use surface_inter
-  use plane_class
+  use surface_inter,     only : surface
+  use xPlane_class,      only : xPlane
+  use yPlane_class,      only : yPlane
+  use zPlane_class,      only : zPlane
 
   implicit none
   private
