@@ -1,4 +1,4 @@
-module xTruncatedCylinder_class
+module yTruncCylinder_class
 
   use numPrecision
   use universalVariables
@@ -6,8 +6,8 @@ module xTruncatedCylinder_class
   use dictionary_class,  only : dictionary
 
   use surface_inter,     only : surface
-  use xPlane_class,      only : xPlane
-  use xCylinder_class,   only : xCylinder
+  use yPlane_class,      only : yPlane
+  use yCylinder_class,   only : yCylinder
 
   implicit none
   private
@@ -15,20 +15,21 @@ module xTruncatedCylinder_class
   !!
   !! Constructor
   !!
-  interface xTruncatedCylinder
-    module procedure xTruncatedCylinder_fromDict
+  interface yTruncCylinder
+    module procedure yTruncCylinder_fromDict
   end interface
 
   !!
-  !! Truncated cylinder aligned with x-axis
+  !! Truncated cylinder aligned with y-axis
   !! Has finate length
   !!
-  type, public, extends(surface) :: xTruncatedCylinder
+  type, public, extends(surface) :: yTruncCylinder
     private
-    type(xPlane), dimension(:), pointer   :: xPlanes => null()
-    type(xCylinder), pointer              :: cyl => null()  ! substituent cylinder
+    type(yPlane), dimension(:), pointer   :: yPlanes => null()
+    type(yCylinder), pointer              :: cyl => null()  ! substituent cylinder
     real(defReal)                         :: a              ! the half-width separation of the planes
     real(defReal), dimension(3)           :: origin = [ZERO, ZERO, ZERO]
+
   contains
     procedure :: init
     procedure :: evaluate
@@ -39,7 +40,7 @@ module xTruncatedCylinder_class
     procedure :: setBoundaryConditions
     procedure :: boundaryTransform
 
-  end type xTruncatedCylinder
+  end type yTruncCylinder
 
 contains
 
@@ -47,44 +48,42 @@ contains
   !! Initialise the box as six plane surfaces
   !!
   subroutine init(self, origin, a, radius, id, name)
-    class(xTruncatedCylinder), intent(inout) :: self
+    class(yTruncCylinder), intent(inout) :: self
     real(defReal), dimension(3), intent(in)  :: origin
-    real(defReal), intent(in)                :: a
-    real(defReal), intent(in)                :: radius
+    real(defReal), intent(in)                :: a, radius
     integer(shortInt), intent(in), optional  :: id
     character(*), optional, intent(in)       :: name
 
     self % isCompound = .true.
     self % a = a
     if(a < surface_tol) &
-    call fatalError('init, xTruncCylinder','Width must be greater than surface tolerance')
+    call fatalError('init, yTruncCylinder','Width must be greater than surface tolerance')
     if(radius < surface_tol) &
-    call fatalError('init, xTruncCylinder','Radius must be greater than surface tolerance')
+    call fatalError('init, yTruncCylinder','Radius must be greater than surface tolerance')
     self % origin = origin
     if(present(id)) self % id = id
     if(present(name)) self % name = name
 
-    if(associated(self % xPlanes)) deallocate (self % xPlanes)
+    if(associated(self % yPlanes)) deallocate (self % yPlanes)
+    allocate(self%yPlanes(2))
 
-    allocate(self%xPlanes(2))
-
-    call self % xPlanes(1) % init(origin(1) + a)
-    call self % xPlanes(2) % init(origin(1) - a)
+    call self % yPlanes(1) % init(origin(2) + a)
+    call self % yPlanes(2) % init(origin(2) - a)
     call self % cyl % init(radius, origin)
 
   end subroutine init
 
   !!
-  !! Returns and initialised instance of xTruncatedCylinder from dictionary and name
+  !! Returns and initialised instance of yTruncCylinder from dictionary and name
   !!
-  function xTruncatedCylinder_fromDict(dict,name) result(new)
+  function yTruncCylinder_fromDict(dict,name) result(new)
     class(dictionary), intent(in)  :: dict
     character(nameLen), intent(in) :: name
-    type(xTruncatedCylinder)       :: new
+    type(yTruncCylinder)           :: new
     integer(shortInt)              :: id
     real(defReal)                  :: radius, halfheight
     real(defReal), dimension(3)    :: origin
-    character(100),parameter :: Here ='xTruncatedCylinder_fromDict ( xTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='yTruncCylinder_fromDict ( yTruncCylinder_class.f90)'
 
     id = dict % getInt('id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
@@ -95,38 +94,38 @@ contains
 
     call new % init(origin, halfheight, radius, id, name)
 
-  end function xTruncatedCylinder_fromDict
+  end function yTruncCylinder_fromDict
 
   !!
   !! Evaluate the surface function of the square cylinder
   !!
   function evaluate(self, r) result(res)
-    class(xTruncatedCylinder), intent(in)   :: self
+    class(yTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: res
-    real(defReal), dimension(2)             :: resX      ! Results from yPlanes
+    real(defReal), dimension(2)             :: resY      ! Results from yPlanes
     real(defReal)                           :: resCyl    ! Results from cylinder
     real(defReal)                           :: absMinRes ! Identify if particle sits on a surface
     real(defReal)                           :: testRes   ! The most positive residual
 
     ! Evaluate the top plane's surface function
-    resX(1) = self % xPlanes(1) % evaluate(r)
+    resY(1) = self % yPlanes(1) % evaluate(r)
 
     ! If the result is greater than the surface tolerance
     ! then the particle is not inside the cylinder and the result should
     ! be returned
-    if (resX(1) > surface_tol) then
-      res = resX(1)
+    if (resY(1) > surface_tol) then
+      res = resY(1)
       return
     end if
 
-    resX(2) = -self % xPlanes(2) % evaluate(r)
-    absMinRes = min(abs(resX(1)),abs(resX(2)))
-    testRes = max(resX(1),resX(2))
+    resY(2) = -self % yPlanes(2) % evaluate(r)
+    absMinRes = min(abs(resY(1)),abs(resY(2)))
+    testRes = max(resY(1),resY(2))
 
     ! Same as before - particle is outside the cylinder
-    if (resX(2) > surface_tol) then
-      res = resX(2)
+    if (resY(2) > surface_tol) then
+      res = resY(2)
       return
     end if
 
@@ -163,21 +162,21 @@ contains
   !! i.e., not the extensions of the plane or cylinderical surfaces
   !!
   function distanceToSurface(self, r, u)result(distance)
-    class(xTruncatedCylinder), intent(in)   :: self
+    class(yTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal), dimension(3)             :: testPoint
-    real(defReal)                           :: posBound, negBound
-    real(defReal)                           :: distance
-    real(defReal)                           :: testDistance
-    real(defReal)                           :: testCyl
+    real(defReal), dimension(3) :: testPoint
+    real(defReal) :: posBound, negBound
+    real(defReal) :: distance
+    real(defReal) :: testDistance
+    real(defReal) :: testCyl
 
     distance = INFINITY
     ! Find the positive and negative bounds which the particle
     ! must fall within
-    posBound = self % xPlanes(1) % x0
-    negBound = self % xPlanes(2) % x0
+    posBound = self % yPlanes(1) % y0
+    negBound = self % yPlanes(2) % y0
 
-    testDistance = self%xPlanes(1)%distanceToSurface(r,u)
+    testDistance = self%yPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
     testCyl = self % cyl % evaluate(testPoint)
 
@@ -186,7 +185,7 @@ contains
       if (testDistance < distance) distance = testDistance
     end if
 
-    testDistance = self%xPlanes(2)%distanceToSurface(r,u)
+    testDistance = self%yPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
     testCyl = self % cyl % evaluate(testPoint)
 
@@ -196,23 +195,23 @@ contains
 
     testDistance = self% cyl %distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    if ((testPoint(1) < posBound) .and. (testPoint(1) > negBound)) then
+    if ((testPoint(2) < posBound) .and. (testPoint(2) > negBound)) then
       if (testDistance < distance) distance = testDistance
     end if
 
   end function distanceToSurface
 
-  !!
+  !
   !! Apply a reflective transformation to a particle during delta tracking
   !! Do so by determining which plane the particle intersects and applying the plane reflection
   !!
   !! This routine is obviated due to the implementation in the transport operator and cell
   !!
   subroutine reflectiveTransform(self, r, u)
-    class(xTruncatedCylinder), intent(in)      :: self
+    class(yTruncCylinder), intent(in)          :: self
     real(defReal), dimension(3), intent(inout) :: r, u
     class(surface), pointer                    :: surfPointer
-    character(100),parameter :: Here ='reflectiveTransform ( xTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='reflectiveTransform ( yTruncCylinder_class.f90)'
 
 
     call fatalError(Here,'This routine should not be called')
@@ -225,22 +224,22 @@ contains
   !! Determine on which surface the particle is located and obtain
   !! its normal vector
   !!
-  function normalVector(self, r) result(normal)
-    class(xTruncatedCylinder), intent(in)   :: self
+  function normalVector(self, r)result(normal)
+    class(yTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: normal
     real(defReal)                           :: posBound, negBound
-    character(100),parameter :: Here ='normalVector ( xTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='normalVector ( yTruncCylinder_class.f90)'
 
     ! Compare the point's position to the maximum and minimum
-    posBound = self % xPlanes(1) % x0
-    negBound = self % xPlanes(2) % x0
+    posBound = self % yPlanes(1) % y0
+    negBound = self % yPlanes(2) % y0
 
-    if (abs(posBound - r(1)) < surface_tol) then
-      normal = self % xPlanes(1) % normalVector(r)
+    if (abs(posBound - r(2)) < surface_tol) then
+      normal = self % yPlanes(1) % normalVector(r)
       return
-    else if (abs(negBound - r(1)) < surface_tol) then
-      normal = self % xPlanes(2) % normalVector(r)
+    else if (abs(negBound - r(2)) < surface_tol) then
+      normal = self % yPlanes(2) % normalVector(r)
       return
     else if (abs(self % cyl % evaluate(r)) < surface_tol) then
       normal = self % cyl % normalVector(r)
@@ -258,7 +257,7 @@ contains
   !! particle direction otherwise)
   !!
   function whichSurface(self, r, u) result(surfPointer)
-    class(xTruncatedCylinder), intent(in)   :: self
+    class(yTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
     real(defReal), dimension(3)             :: testPoint
@@ -267,36 +266,36 @@ contains
     real(defReal)                           :: testCyl
 
     distance = INFINITY
-    posBound = self % xPlanes(1) % x0
-    negBound = self % xPlanes(2) % x0
+    posBound = self % yPlanes(1) % y0
+    negBound = self % yPlanes(2) % y0
 
     ! Evaluate distance to each plane and point to surface
     ! with the minimum real distance
-    testDistance = self%xPlanes(1)%distanceToSurface(r,u)
+    testDistance = self%yPlanes(1)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
     testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
         distance = testDistance
-        surfPointer => self % xPlanes(1)
+        surfPointer => self % yPlanes(1)
       end if
     end if
 
-    testDistance = self%xPlanes(2)%distanceToSurface(r,u)
+    testDistance = self%yPlanes(2)%distanceToSurface(r,u)
     testPoint = r + u*testDistance
     testCyl = self % cyl % evaluate(testPoint)
 
     if (testCyl < surface_tol) then
       if (testDistance < distance) then
         distance = testDistance
-        surfPointer => self % xPlanes(2)
+        surfPointer => self % yPlanes(2)
       end if
     end if
 
     testDistance = self % cyl % distanceToSurface(r,u)
     testPoint = r + u*testDistance
-    if ((testPoint(1) < posBound).and.(testPoint(1) > negBound))  then
+    if ((testPoint(2) < posBound).and.(testPoint(2) > negBound))  then
       if (testDistance < distance) then
         distance = testDistance
         surfPointer => self % cyl
@@ -306,46 +305,46 @@ contains
   end function whichSurface
 
   !!
-  !! Set boundary conditions for an xTruncCylinder
+  !! Set boundary conditions for a yTruncCylinder
   !!
   subroutine setBoundaryConditions(self, BC)
-    class(xTruncatedCylinder), intent(inout)    :: self
+    class(yTruncCylinder), intent(inout)        :: self
     integer(shortInt), dimension(6), intent(in) :: BC
-    character(100),parameter :: Here ='setBoundaryConditions ( xTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='setBoundaryConditions ( yTruncCylinder_class.f90)'
 
-    ! Positive x boundary
-    if(BC(1) == vacuum) then
-      self % xPlanes(1) % isVacuum = .TRUE.
-    else if(BC(1) == reflective) then
-      self % xPlanes(1) % isReflective = .TRUE.
-    else if(BC(1) == periodic) then
-      if(BC(2) /= periodic) then
+    ! Positive y boundary
+    if(BC(3) == vacuum) then
+      self % yPlanes(1) % isVacuum = .TRUE.
+    else if(BC(3) == reflective) then
+      self % yPlanes(1) % isReflective = .TRUE.
+    else if(BC(3) == periodic) then
+      if(BC(4) /= periodic) then
         call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
-        self % xPlanes(1) % isPeriodic = .TRUE.
-        self % xPlanes(1) % periodicTranslation = [-TWO*self % a, ZERO, ZERO]
+        self % yPlanes(1) % isPeriodic = .TRUE.
+        self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a, ZERO]
       end if
     else
       call fatalError(Here,'Invalid boundary condition provided')
     end if
 
-    ! Negative x boundary
-    if(BC(2) == vacuum) then
-      self % xPlanes(2) % isVacuum = .TRUE.
-    else if(BC(2) == reflective) then
-      self % xPlanes(2) % isReflective = .TRUE.
-    else if(BC(2) == periodic) then
-      if(BC(1) /= periodic) then
+    ! Negative y boundary
+    if(BC(4) == vacuum) then
+      self % yPlanes(2) % isVacuum = .TRUE.
+    else if(BC(4) == reflective) then
+      self % yPlanes(2) % isReflective = .TRUE.
+    else if(BC(4) == periodic) then
+      if(BC(3) /= periodic) then
         call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
       else
-        self % xPlanes(2) % isPeriodic = .TRUE.
-        self % xPlanes(2) % periodicTranslation = [TWO*self % a, ZERO, ZERO]
+        self % yPlanes(2) % isPeriodic = .TRUE.
+        self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a, ZERO]
       end if
     else
       call fatalError(Here,'Invalid boundary condition provided')
     end if
 
-    if(any(BC(3:6) /= vacuum))then
+    if(any(BC(1:2) /= vacuum) .OR. any(BC(5:6) /= vacuum))then
       call fatalError(Here,'Cylinder boundaries may only be vacuum')
     else
       self % cyl % isVacuum = .TRUE.
@@ -356,12 +355,12 @@ contains
   !! Apply boundary transformation
   !!
   subroutine boundaryTransform(self, r, u, isVacuum)
-    class(xTruncatedCylinder), intent(in)      :: self
+    class(yTruncCylinder), intent(in)          :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
-    logical(defBool)                           :: front, back, outsideCyl
-    character(100),parameter :: Here ='boundaryTransform ( xTruncatedCylinder_class.f90)'
+    logical(defBool)                           :: left, right, outsideCyl
+    character(100),parameter :: Here ='boundaryTransform ( yTruncCylinder_class.f90)'
 
     outsideCyl = self % cyl % halfspace(r, u)
     if (outsideCyl) then
@@ -369,16 +368,16 @@ contains
       return
     end if
 
-    front = self % xPlanes(1) % halfspace(r, u)
-    back = .NOT. self % xPlanes(2) % halfspace(r, u)
-    if (front) then
-      call self % xPlanes(1) % boundaryTransform(r, u, isVacuum)
-    else if (back) then
-      call self % xPlanes(2) % boundaryTransform(r, u, isVacuum)
+    left = self % yPlanes(1) % halfspace(r, u)
+    right = .NOT. self % yPlanes(2) % halfspace(r, u)
+    if (left) then
+      call self % yPlanes(1) % boundaryTransform(r, u, isVacuum)
+    else if (right) then
+      call self % yPlanes(2) % boundaryTransform(r, u, isVacuum)
     else
       call fatalError(Here,'Cannot apply boundary condition: point is inside the surface')
     end if
 
   end subroutine boundaryTransform
-
-end module xTruncatedCylinder_class
+    
+end module yTruncCylinder_class

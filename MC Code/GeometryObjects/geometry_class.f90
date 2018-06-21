@@ -43,9 +43,9 @@ module geometry_class
   use zSquareCylinder_class, only : zSquareCylinder
 
   ! Truncated Cylinders
-  use xTruncatedCylinder_class, only : xTruncatedCylinder
-  use yTruncatedCylinder_class, only : yTruncatedCylinder
-  use zTruncatedCylinder_class, only : zTruncatedCylinder
+  use xTruncCylinder_class, only : xTruncCylinder
+  use yTruncCylinder_class, only : yTruncCylinder
+  use zTruncCylinder_class, only : zTruncCylinder
 
 
   use box_class
@@ -850,9 +850,9 @@ contains
     type(xSquareCylinder), pointer    :: xSquCylObj
     type(ySquareCylinder), pointer    :: ySquCylObj
     type(zSquareCylinder), pointer    :: zSquCylObj
-    type(xTruncatedCylinder), pointer :: xTruncCylObj
-    type(yTruncatedCylinder), pointer :: yTruncCylObj
-    type(zTruncatedCylinder), pointer :: zTruncCylObj
+    type(xTruncCylinder), pointer :: xTruncCylObj
+    type(yTruncCylinder), pointer :: yTruncCylObj
+    type(zTruncCylinder), pointer :: zTruncCylObj
     type(xPlane), pointer             :: xPlaneObj
     type(yPlane), pointer             :: yPlaneObj
     type(zPlane), pointer             :: zPlaneObj

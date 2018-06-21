@@ -1,4 +1,4 @@
-module zTruncatedCylinder_class
+module zTruncCylinder_class
 
   use numPrecision
   use universalVariables
@@ -15,15 +15,15 @@ module zTruncatedCylinder_class
   !!
   !! Constructor
   !!
-  interface zTruncatedCylinder
-    module procedure zTruncatedCylinder_fromDict
+  interface zTruncCylinder
+    module procedure zTruncCylinder_fromDict
   end interface
 
   !!
   !! Truncated cylinder aligned with z-axis
   !! Has finate length
   !!
-  type, public, extends(surface) :: zTruncatedCylinder
+  type, public, extends(surface) :: zTruncCylinder
     private
     type(zPlane), dimension(:), pointer   :: zPlanes => null()
     type(zCylinder), pointer              :: cyl => null()  ! substituent cylinder
@@ -40,7 +40,7 @@ module zTruncatedCylinder_class
     procedure :: setBoundaryConditions
     procedure :: boundaryTransform
 
-  end type zTruncatedCylinder
+  end type zTruncCylinder
 
 contains
 
@@ -48,10 +48,9 @@ contains
   !! Initialise the box as six plane surfaces
   !!
   subroutine init(self, origin, a, radius, id, name)
-    class(zTruncatedCylinder), intent(inout) :: self
+    class(zTruncCylinder), intent(inout)     :: self
     real(defReal), dimension(3), intent(in)  :: origin
-    real(defReal), intent(in)                :: a, &
-                                                radius
+    real(defReal), intent(in)                :: a, radius
     integer(shortInt), intent(in), optional  :: id
     character(*), optional, intent(in)       :: name
 
@@ -76,16 +75,16 @@ contains
   end subroutine init
 
   !!
-  !! Returns and initialised instance of zTruncatedCylinder from dictionary and name
+  !! Returns and initialised instance of zTruncCylinder from dictionary and name
   !!
-  function zTruncatedCylinder_fromDict(dict,name) result(new)
+  function zTruncCylinder_fromDict(dict,name) result(new)
     class(dictionary), intent(in)  :: dict
     character(nameLen), intent(in) :: name
-    type(zTruncatedCylinder)       :: new
+    type(zTruncCylinder)           :: new
     integer(shortInt)              :: id
     real(defReal)                  :: radius, halfheight
     real(defReal), dimension(3)    :: origin
-    character(100),parameter :: Here ='zTruncatedCylinder_fromDict ( zTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='zTruncCylinder_fromDict ( zTruncCylinder_class.f90)'
 
     id = dict % getInt('id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
@@ -96,14 +95,14 @@ contains
 
     call new % init(origin, halfheight, radius, id, name)
 
-  end function zTruncatedCylinder_fromDict
+  end function zTruncCylinder_fromDict
 
 
   !!
   !! Evaluate the surface function of the square cylinder
   !!
   function evaluate(self, r) result(res)
-    class(zTruncatedCylinder), intent(in)   :: self
+    class(zTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: res
     real(defReal), dimension(2)             :: resZ     ! Results from zPlanes
@@ -165,7 +164,7 @@ contains
   !! i.e., not the extensions of the plane or cylinderical surfaces
   !!
   function distanceToSurface(self, r, u) result(distance)
-    class(zTruncatedCylinder), intent(in)   :: self
+    class(zTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r, u
     real(defReal), dimension(3)             :: testPoint
     real(defReal)                           :: posBound, negBound
@@ -211,10 +210,10 @@ contains
   !! This route is obviated due to the implementation in transport operator and cell
   !!
   subroutine reflectiveTransform(self, r, u)
-    class(zTruncatedCylinder), intent(in)      :: self
+    class(zTruncCylinder), intent(in)          :: self
     real(defReal), dimension(3), intent(inout) :: r, u
     class(surface), pointer                    :: surfPointer
-    character(100),parameter :: Here ='reflectiveTransform ( zTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='reflectiveTransform ( zTruncCylinder_class.f90)'
 
     call fatalError(Here,'This routine should not be called')
     surfPointer => self % whichSurface(r, u)
@@ -227,11 +226,11 @@ contains
   !! its normal vector
   !!
   function normalVector(self, r) result(normal)
-    class(zTruncatedCylinder), intent(in)   :: self
+    class(zTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3)             :: normal
     real(defReal)                           :: posBound, negBound
-    character(100),parameter :: Here ='normalVector ( zTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='normalVector ( zTruncCylinder_class.f90)'
 
     ! Compare the point's position to the maximum and minimum
     posBound = self % zPlanes(1) % z0
@@ -259,7 +258,7 @@ contains
   !! particle direction otherwise)
   !!
   function whichSurface(self, r, u) result(surfPointer)
-    class(zTruncatedCylinder), intent(in)   :: self
+    class(zTruncCylinder), intent(in)       :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
     real(defReal), dimension(3)             :: testPoint
@@ -310,9 +309,9 @@ contains
   !! Set boundary conditions for a zTruncCylinder
   !!
   subroutine setBoundaryConditions(self, BC)
-    class(zTruncatedCylinder), intent(inout) :: self
+    class(zTruncCylinder), intent(inout)        :: self
     integer(shortInt), dimension(6), intent(in) :: BC
-    character(100),parameter :: Here ='setBoundaryConditions ( zTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='setBoundaryConditions ( zTruncCylinder_class.f90)'
 
     ! Positive z boundary
     if(BC(5) == vacuum) then
@@ -357,12 +356,12 @@ contains
   !! Apply boundary transformation
   !!
   subroutine boundaryTransform(self, r, u, isVacuum)
-    class(zTruncatedCylinder), intent(in)      :: self
+    class(zTruncCylinder), intent(in)          :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
     logical(defBool)                           :: above, below, outsideCyl
-    character(100),parameter :: Here ='boundaryTransform ( zTruncatedCylinder_class.f90)'
+    character(100),parameter :: Here ='boundaryTransform ( zTruncCylinder_class.f90)'
 
     outsideCyl = self % cyl % halfspace(r, u)
     if (outsideCyl) then
@@ -382,4 +381,4 @@ contains
 
   end subroutine boundaryTransform
 
-end module zTruncatedCylinder_class
+end module zTruncCylinder_class

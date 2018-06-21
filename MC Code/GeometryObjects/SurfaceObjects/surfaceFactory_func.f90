@@ -22,10 +22,10 @@ module surfaceFactory_func
   use xSquareCylinder_class,    only : xSquareCylinder
   use ySquareCylinder_class,    only : ySquareCylinder
   use zSquareCylinder_class,    only : zSquareCylinder
-  ! TruncatedCylinders
-  use xTruncatedCylinder_class, only : xTruncatedCylinder
-  use yTruncatedCylinder_class, only : yTruncatedCylinder
-  use zTruncatedCylinder_class, only : zTruncatedCylinder
+  ! TruncCylinders
+  use xTruncCylinder_class, only : xTruncCylinder
+  use yTruncCylinder_class, only : yTruncCylinder
+  use zTruncCylinder_class, only : zTruncCylinder
 
   implicit none
   private
@@ -114,13 +114,13 @@ contains
         allocate(new, source = zSquareCylinder(dict,name) )
 
       case('xTruncCylinder')
-        allocate(new, source = xTruncatedCylinder(dict,name) )
+        allocate(new, source = xTruncCylinder(dict,name) )
 
       case('yTruncCylinder')
-        allocate(new, source = yTruncatedCylinder(dict,name) )
+        allocate(new, source = yTruncCylinder(dict,name) )
 
       case('zTruncCylinder')
-        allocate(new, source = zTruncatedCylinder(dict,name) )
+        allocate(new, source = zTruncCylinder(dict,name) )
 
      !*** NEW SURFACE TEMPLATE ***!
      !case('<newSUrfaceName>')
