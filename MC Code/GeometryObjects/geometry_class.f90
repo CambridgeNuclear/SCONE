@@ -9,49 +9,29 @@
 !
 module geometry_class
   use numPrecision
-  use genericProcedures
   use universalVariables
+  use genericProcedures, only : fatalError
+
 
   use particle_class,       only : particle
 
-  use rng_class
+  use RNG_class,          only : RNG
 
-  use dictionary_class
-  use IOdictionary_class
+  use dictionary_class,   only : dictionary
 
-  use nuclearData_inter
+  use nuclearData_inter,  only : nuclearData
 
-  use coord_class
+  use coord_class,        only : coord, coordList
 
-  use surface_inter,     only : surface_ptr
-  use sphere_class
-
-  ! Planes
-  use plane_class,       only : plane
-  use xPlane_class,      only : xPlane
-  use yPlane_class,      only : yPlane
-  use zPlane_class,      only : zPlane
-
-  ! Cylinders
-  use xCylinder_class,   only : xCylinder
-  use yCylinder_class,   only : yCylinder
-  use zCylinder_class,   only : zCylinder
-
-  ! Square Cylinders
-  use xSquareCylinder_class, only : xSquareCylinder
-  use ySquareCylinder_class, only : ySquareCylinder
-  use zSquareCylinder_class, only : zSquareCylinder
-
-  ! Truncated Cylinders
-  use xTruncCylinder_class, only : xTruncCylinder
-  use yTruncCylinder_class, only : yTruncCylinder
-  use zTruncCylinder_class, only : zTruncCylinder
+  use surface_inter,       only : surface_ptr
+  use surfaceFactory_func, only : new_surface_ptr
 
 
-  use box_class
-  use cell_class
-  use universe_class
-  use lattice_class
+  use box_class,           only : box
+
+  use cell_class,          only : cell, cell_ptr
+  use universe_class,      only : universe, universe_ptr
+  use lattice_class,       only : lattice, lattice_ptr
 
   implicit none
   private
@@ -77,7 +57,7 @@ module geometry_class
     procedure :: initUniverses           ! initialise universes
     procedure :: initLattices            ! initialise lattices
     procedure :: fillCells               ! fill cells with non-material contents
-    procedure :: surfaceFromDict         ! initialise a surface from a dictionary
+
     procedure :: cellFromDict            ! initialise a cell from a dictionary
     procedure :: universeFromDict        ! initialise a universe from a dictionary
     procedure :: latticeFromDict         ! initialise a lattice from a dictionary
@@ -165,6 +145,7 @@ contains
     class(geometry), intent(inout)                 :: self
     class(dictionary), intent(in)                  :: surfDict
     character(nameLen), dimension(:), allocatable  :: keys
+    type(dictionary)                               :: tempDict
     integer(shortInt)                              :: i, j, id, testId
 
     call surfDict % keysDict(keys)
@@ -174,9 +155,10 @@ contains
     ! Construct surfaces and store in the surface array
     print *,'Constructing ',self % numSurfaces,' surfaces'
     do i=1,self % numSurfaces
-      call self % surfaceFromDict(surfDict % getDict(keys(i)), keys(i), i)
+      !call self % surfaceFromDict(surfDict % getDict(keys(i)), keys(i), i)
+      call surfDict % get(tempDict,keys(i))
+      self % surfaces(i) = new_surface_ptr(tempDict,keys(i))
     end do
-    deallocate(keys)
 
     ! Ensure no surfaces have the same id's
     if (self % numSurfaces > 1) then
@@ -832,164 +814,6 @@ contains
     call c % kill()
 
   end function voxelPlot
-
-  !!
-  !! Given a dictionary describing a surface, construct a surface for the surrface array
-  !!
-  subroutine surfaceFromDict(self, dict, name, geometryIdx)
-    class(geometry), intent(inout)    :: self
-    class(dictionary), intent(in)     :: dict
-    character(*), intent(in)          :: name
-    integer(shortInt), intent(in)     :: geometryIdx
-    integer(shortInt)                 :: id
-    type(box), pointer                :: boxObj
-    type(sphere), pointer             :: sphereObj
-    type(xCylinder), pointer          :: xCylObj
-    type(yCylinder), pointer          :: yCylObj
-    type(zCylinder), pointer          :: zCylObj
-    type(xSquareCylinder), pointer    :: xSquCylObj
-    type(ySquareCylinder), pointer    :: ySquCylObj
-    type(zSquareCylinder), pointer    :: zSquCylObj
-    type(xTruncCylinder), pointer :: xTruncCylObj
-    type(yTruncCylinder), pointer :: yTruncCylObj
-    type(zTruncCylinder), pointer :: zTruncCylObj
-    type(xPlane), pointer             :: xPlaneObj
-    type(yPlane), pointer             :: yPlaneObj
-    type(zPlane), pointer             :: zPlaneObj
-    type(plane), pointer              :: planeObj
-    character(nameLen)                :: surfType
-    real(defReal), dimension(4)       :: coeff
-    real(defReal), dimension(3)       :: origin, halfwidth
-    real(defReal)                     :: radius, halfheight, x, y, z
-
-    surfType = dict % getChar('type')
-
-    id = dict % getInt('id')
-    if(id < 1) call fatalError('surfaceFromDict, geometry','Invalid surface id provided')
-
-    if (surfType == 'box') then
-      allocate(boxObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call boxObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = boxObj
-      return
-
-    else if (surfType == 'xSquareCylinder') then
-      allocate(xSquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call xSquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = xSquCylObj
-      return
-
-    else if (surfType == 'ySquareCylinder') then
-      allocate(ySquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call ySquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = ySquCylObj
-      return
-
-    else if (surfType == 'zSquareCylinder') then
-      allocate(zSquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call zSquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = zSquCylObj
-      return
-
-    else if (surfType == 'sphere') then
-      allocate(sphereObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call sphereObj % init(origin, radius, id, name)
-      self % surfaces(geometryIdx) = sphereObj
-      return
-
-    else if (surfType == 'xCylinder') then
-      allocate(xCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call xCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = xCylObj
-      return
-
-    else if (surfType == 'yCylinder') then
-      allocate(yCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call yCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = yCylObj
-      return
-
-    else if (surfType == 'zCylinder') then
-      allocate(zCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call zCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = zCylObj
-      return
-
-    else if (surfType == 'xTruncCylinder') then
-      allocate(xTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call xTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = xTruncCylObj
-      return
-
-    else if (surfType == 'yTruncCylinder') then
-      allocate(yTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call yTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = yTruncCylObj
-      return
-
-    else if (surfType == 'zTruncCylinder') then
-      allocate(zTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call zTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = zTruncCylObj
-      return
-
-    else if (surfType == 'xPlane') then
-      allocate(xPlaneObj)
-      x = dict % getReal('x')
-      call xPlaneObj % init(x, id, name)
-      self % surfaces(geometryIdx) = xPlaneObj
-      return
-
-    else if (surfType == 'yPlane') then
-      allocate(yPlaneObj)
-      y = dict % getReal('y')
-      call yPlaneObj % init(y, id, name)
-      self % surfaces(geometryIdx) = yPlaneObj
-      return
-
-    else if (surfType == 'zPlane') then
-      allocate(zPlaneObj)
-      z = dict % getReal('z')
-      call xPlaneObj % init(z, id, name)
-      self % surfaces(geometryIdx) = zPlaneObj
-      return
-
-    else if (surfType == 'plane') then
-      allocate(planeObj)
-      coeff = dict % getRealArray('coeff')
-      call planeObj % init(coeff, id, name)
-      self % surfaces(geometryIdx) = planeObj
-      return
-
-    else
-      call fatalError('surfaceFromDict, geometry','Did not recognise surface type')
-    end if
-  end subroutine surfaceFromDict
 
   !!
   !! Given a dictionary describing a cell, construct a cell for the cell array
