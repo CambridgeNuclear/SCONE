@@ -51,13 +51,13 @@ module geometry_class
     integer(shortInt)                            :: numLattices = 0
     integer(shortInt)                            :: numRegions = 0
   contains
+    ! Build Procedures
     procedure :: init                    ! initialise geometry
     procedure :: initSurfaces            ! initialise surfaces
     procedure :: initCells               ! initialise cells
     procedure :: initUniverses           ! initialise universes
     procedure :: initLattices            ! initialise lattices
     procedure :: fillCells               ! fill cells with non-material contents
-
     procedure :: cellFromDict            ! initialise a cell from a dictionary
     procedure :: universeFromDict        ! initialise a universe from a dictionary
     procedure :: latticeFromDict         ! initialise a lattice from a dictionary
@@ -65,16 +65,20 @@ module geometry_class
     procedure :: fillCellLat             ! fill a cell with a lattice
     procedure :: setBoundaryConditions   ! set the boundary conditions for the geometry
     procedure :: fillMaterialCells       ! fill cells with materials
-    procedure :: whichCell               ! find which cell a neutron occupies
+
+    ! ? Procedures
     procedure :: ennumerateRegions       ! Find all unique regions and assign an ID
     procedure :: countCell               ! Recursively count all cell instances
     procedure :: locateCell              ! Recursively locate all cell instances
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
+
+    ! Interface Procedures
+    procedure :: whichCell               ! find which cell a neutron occupies
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
     procedure :: voxelPlot               ! Produces a voxel plot of a chosen section of the geometry
-
     procedure :: placeParticle           ! Places a fresh particle in geometry. Assigns region and mat ID
+
   end type geometry
 
 contains
@@ -155,9 +159,9 @@ contains
     ! Construct surfaces and store in the surface array
     print *,'Constructing ',self % numSurfaces,' surfaces'
     do i=1,self % numSurfaces
-      !call self % surfaceFromDict(surfDict % getDict(keys(i)), keys(i), i)
       call surfDict % get(tempDict,keys(i))
       self % surfaces(i) = new_surface_ptr(tempDict,keys(i))
+
     end do
 
     ! Ensure no surfaces have the same id's
@@ -254,13 +258,10 @@ contains
         call self % universeFromDict(uniDaughterDict, i, keys(i), .FALSE.)
       end if
     end do
-    self % rootUniverse = self % universes(rootIdx)
-    deallocate(keys)
 
-    ! Ensure that a root universe has been defined
-    if(.not.foundRoot)then
-      call fatalError('initUniverses, geometry','The root universe has not been defined')
-    end if
+    ! Ensure that a root universe has been defined. Store pointer to it.
+    if(.not.foundRoot) call fatalError('initUniverses, geometry','The root universe has not been defined')
+    self % rootUniverse = self % universes(rootIdx) !*** This assignment is not STANDARD FORTRAN. self % universes are not "target"
 
     ! Ensure no universes have the same id's
     if (self % numUniverses > 1) then
@@ -357,10 +358,10 @@ contains
     ! If a nesting level is not specified, begin from the root universe
     if(present(n0)) then
       n = n0
-      uni = self % universes(coords % lvl(n) % uniIdx)
+      uni = self % universes(coords % lvl(n) % uniIdx) !*** BRAKES FORTRAN STANDARD. uni is undefined after execution
     else
       n = 1
-      uni = self % rootUniverse
+      uni = self % rootUniverse          !*** BRAKES FORTRAN STANDARD. uni is undefined after execution
       call coords % resetNesting()
       coords % lvl(1) % uniIdx = uni % geometryIdx()
     end if
@@ -380,8 +381,6 @@ contains
 
       ! The cell is outside the geometry
       else if (.NOT. c % insideGeom()) then
-        call uni % kill()
-        call lat % kill()
         return
 
       ! The cell is filled with a universe - update the universe and continue search
@@ -412,8 +411,6 @@ contains
         instance = c % coordCompare(coords)
         coords % matIdx = c % matIdx(instance)
         coords % regionID = c % uniqueID(instance)
-        call uni % kill()
-        call lat % kill()
         return
 
       ! Something has gone wrong...
@@ -836,7 +833,7 @@ contains
     allocate(surfArray(size(surfaces)))
     allocate(halfspaces(size(surfaces)))
     do i=1,size(surfaces)
-      if(surfaces(i) > 0)then
+      if(surfaces(i) > 0)then     ! *** Remove the loop. Use array expr. instead
         halfspaces(i) = .TRUE.
       else if(surfaces(i) < 0)then
         halfspaces(i) = .FALSE.

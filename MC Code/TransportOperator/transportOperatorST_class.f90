@@ -77,11 +77,6 @@ contains
     type(cell_ptr)                         :: c, currentCell
     type(lattice_ptr)                      :: lat
     logical(defBool)                       :: moveUp
-    type(phaseCoord)   :: pre, pre2, post2
-    type(coordList)                        :: debugList
-
-    ! Save state of the particle
-    pre = p
 
     STLoop: do
 
@@ -121,8 +116,6 @@ contains
           end if
         end if
       end do
-      call c % kill()
-      call lat % kill()
       n = nMin
 
       ! Obtain the local cross-section
@@ -161,23 +154,6 @@ contains
         exit STLoop
       end if
     end do STLoop
-
-    ! *** DEBUG obtain local material
-    call debugList % assignPosition( p % rGlobal() )
-    call debugList % assignDirection( p % dirGlobal() )
-    currentCell = self % geom % whichCell(debugList)
-
-    !currentCell = self % geom % whichCell(p % coords)
-    if( currentCell % matIdx(1) /= p % matIdx) then
-      print *, 'LOST'
-      print *, currentCell % matIdx(1), p % matIdx
-      call pre % display()
-      call p % display()
-      stop
-    end if
-
-
-    call currentCell % kill()
 
   end subroutine surfaceTracking
 

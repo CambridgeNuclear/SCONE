@@ -43,7 +43,7 @@ module cell_class
 
   ! Wrapper type for cell pointers
   type, public :: cell_ptr
-    class(cell), pointer :: ptr => null()
+    type(cell), pointer :: ptr => null()
   contains
     procedure :: init => init_ptr
     procedure :: setInstances => setInstances_ptr
