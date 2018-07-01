@@ -24,7 +24,7 @@ module numPrecision
                                       TWO = 2.0_defReal, &
                                       HALF = 0.5_defReal
 
-  !real(defReal), public, parmater  :: floatTol = 1.0e-23
+  real(defReal), public, parameter  :: floatTol = 1.0e-23
 
 contains
     

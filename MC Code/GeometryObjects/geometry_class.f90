@@ -362,7 +362,7 @@ contains
     else
       n = 1
       uni = self % rootUniverse          !*** BRAKES FORTRAN STANDARD. uni is undefined after execution
-      call coords % resetNesting()
+      call coords % takeAboveGeom()
       coords % lvl(1) % uniIdx = uni % geometryIdx()
     end if
 
@@ -472,7 +472,7 @@ contains
     do i=1,self % numCells
       n = cellInstances(i)
       if (n > 1) then
-        call searchLocation % resetNesting()
+        call searchLocation % takeAboveGeom()
         allocate(location(n))
         uniIdx = self % rootUniverse % geometryIdx()
         latIdx = 0
@@ -594,7 +594,7 @@ contains
 
     ! The current universe on this level has been fully explored - ascend a nesting level
     nesting = searchLocation % nesting
-    if (nesting > 1) call searchLocation % resetNesting(nesting - 1)
+    if (nesting > 1) call searchLocation % decreaseNesting(nesting - 1)
 
   end subroutine locateCell
 
@@ -1075,6 +1075,7 @@ contains
 
 
     call cellDict % keysDict(keys)
+
     do i=1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
         subDict = cellDict % getDict(keys(i))

@@ -169,7 +169,7 @@ contains
     type(surface_ptr)                    :: currentSurface
 
     ! Return to global coordinates - this may be a superfluous call!!
-    call p % resetNesting()
+    call p % takeAboveGeom()
 
     ! Identify which surface the particle crossed at the highest geometry level
     currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())

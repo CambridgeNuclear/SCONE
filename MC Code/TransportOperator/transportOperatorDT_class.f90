@@ -123,7 +123,7 @@ contains
       currentSurface = self % geom % boundarySurface
 
       ! Reset nesting and apply appropriate transformations to the particle
-      call p % resetNesting()
+      call p % takeAboveGeom()
       call currentSurface % boundaryTransform(p%coords%lvl(1)%r, p%coords%lvl(1)%dir, killParticle)
 
       ! Kill particle if it crossed a vacuum boundary

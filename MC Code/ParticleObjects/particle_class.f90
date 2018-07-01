@@ -35,7 +35,6 @@ module particle_class
     real(defReal)              :: w         ! Particle Weight
     class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
 
-                               !*** Changed from currentMaterialIndex
     integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
     class(nuclearData),pointer :: xsData => null()
 
@@ -56,7 +55,7 @@ module particle_class
     procedure            :: dirLocal
     procedure            :: dirGlobal
     procedure            :: nesting
-    procedure            :: resetNesting
+    procedure            :: takeAboveGeom
     procedure            :: getCellIdx
     procedure            :: getLatIdx
     procedure            :: getUniIdx
@@ -168,10 +167,10 @@ contains
   !!
   !! Resets the particle's nesting level
   !!
-  subroutine resetNesting(self)
+  subroutine takeAboveGeom(self)
     class(particle), intent(inout) :: self
-    call self % coords % resetNesting()
-  end subroutine resetNesting
+    call self % coords % takeAboveGeom()
+  end subroutine takeAboveGeom
 
   !!
   !! Get cell index for a given nested level

@@ -143,7 +143,6 @@ contains
     ! Can be used when updating a material fill
     if (present(instance)) then
       if (self % fillType == materialFill) then
-
         self % matIdx(instance) = fillIdx
       else
         call fatalError('fill, cell',&
