@@ -115,7 +115,7 @@ contains
     associate (xsData => p % xsData)
       select type(xsData)
         class is (transportNuclearData)
-          call xsData % getMatMacroXS(XSs, p, p % matIdx)
+          call xsData % getMatMacroXS(XSs, p, p % matIdx())
 
         class default
           call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')

@@ -40,13 +40,18 @@ module coord_class
   !!   moveGlobal resets regionId & matIdx to 0
   !!   moveLocal  leaves regionID & matIdx unchanged
   !!
+  !! * RegionID should be part of coord becouse multiple cells are occupied at diffrent levels
+  !!
   type, public :: coordList
     integer(shortInt)                          :: nesting = 0      ! depth of co-ordinate nesting
     type(coord), dimension(hardcoded_max_nest) :: lvl              ! array of coords nested successively deeper
     integer(shortInt)                          :: regionID = 0     ! unique ID of the cell occupied
     integer(shortInt)                          :: matIdx = 0       ! index of the material occupied
   contains
+    ! Build procedures
     procedure :: init
+
+    ! Interface procedures
     procedure :: addLevel
     procedure :: decreaseNesting
     procedure :: takeAboveGeom
@@ -56,6 +61,7 @@ module coord_class
     procedure :: cell
     procedure :: assignPosition
     procedure :: assignDirection
+
   end type coordList
 
 contains
@@ -105,10 +111,11 @@ contains
     character(100),parameter :: Here ='addLevel (coord_class.f90)'
 
     n = self % nesting + 1
-    self % lvl(n) % r = self % lvl(n-1) % r - offset
-    self % lvl(n) % dir = self % lvl(n-1) % dir
-    self % lvl(n) % uniIdx = uniIdx
     self % nesting = n
+
+    self % lvl(n) % r       = self % lvl(n-1) % r - offset
+    self % lvl(n) % dir     = self % lvl(n-1) % dir
+    self % lvl(n) % uniIdx  = uniIdx
 
     if(present(latIdx) .and. present(ijkIdx)) then
       self % lvl(n) % latIdx = latIdx
@@ -121,6 +128,10 @@ contains
 
   end subroutine addLevel
 
+  !!
+  !! Changes state of the coordList to above the geometry
+  !! Does not change position or direction at nesting level 1
+  !!
   subroutine takeAboveGeom(self)
     class(coordList), intent(inout) :: self
 

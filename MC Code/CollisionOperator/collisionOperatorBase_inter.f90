@@ -109,7 +109,7 @@ module collisionOperatorBase_inter
 
       ! Load particle data
       self % collCount = self % collCount + 1
-      self % matIdx = p % matIdx
+      self % matIdx = p % matIdx()
       self % pRNG => p % pRNG
       self % nucIdx = 0
       self % MT = 0

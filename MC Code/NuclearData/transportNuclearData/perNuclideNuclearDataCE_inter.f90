@@ -365,7 +365,7 @@ contains
     integer(shortInt)                            :: matIdx
     character(100), parameter      :: Here = 'initFissionSite (perNuclideNuclearDataCE_inter.f90)'
 
-    matIdx = p % matIdx
+    matIdx = p % matIdx()
 
     ! Determine if material is fissile
     if ( .not.self % isFissileMat(matIdx) ) then

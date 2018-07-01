@@ -22,9 +22,10 @@ module particle_class
     logical(defBool)           :: isMG = .false. ! Is neutron multi-group
   contains
     generic    :: assignment(=) => phaseCoord_fromParticle
-    procedure  :: display => display_phaseCoord
+    procedure  :: display       => display_phaseCoord
 
     procedure, private :: phaseCoord_fromParticle
+
   end type
 
 
@@ -33,192 +34,189 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
+
     class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
+    class(nuclearData),pointer :: xsData => null() ! Pointer to nuclear data
 
-    integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
-    class(nuclearData),pointer :: xsData => null()
-
-    integer(shortInt)          :: regionID
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
+
   contains
-    !! Public Interface
+    ! Build procedures
     generic              :: build => buildCE, buildMG
-    procedure            :: makeMG
-    procedure            :: moveGlobal
-    procedure            :: moveLocal
-    procedure            :: rotate
-    procedure            :: teleport
-    procedure            :: point
+
+    ! Inquiry about coordinates
     procedure            :: rLocal
     procedure            :: rGlobal
     procedure            :: dirLocal
     procedure            :: dirGlobal
     procedure            :: nesting
-    procedure            :: takeAboveGeom
     procedure            :: getCellIdx
     procedure            :: getLatIdx
     procedure            :: getUniIdx
-    procedure            :: updateLocation
+    procedure            :: regionID
+    procedure            :: matIdx
+
+    ! Operations on coordinates
+    procedure            :: moveGlobal
+    procedure            :: moveLocal
+    procedure            :: rotate
+    procedure            :: teleport
+    procedure            :: point
+    procedure            :: takeAboveGeom
+
     ! Debug procedures
     procedure            :: display => display_particle
 
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
+
   end type particle
 
 contains
-
-  subroutine makeMG(self,G)
-    class(particle), intent(inout)      :: self
-    integer(shortInt), intent(in)  :: G
-    self % G = G
-    self % isMG = .true.
-
-  end subroutine makeMG
-
-  subroutine buildCE(self,r,dir,E,w)
-    class(particle), intent(inout)          :: self
-    real(defReal),dimension(3),intent(in)   :: r, dir
-    real(defReal),intent(in)                :: E, w
-
-    call self % coords % init(r, dir)
-    self % E = E
-    self % w = w
-
-    self % isDead = .false.
-    self % isMG = .false.
-  end subroutine
-
-  subroutine buildMG(self,r,dir,G,w)
-    class(particle), intent(inout)          :: self
-    real(defReal),dimension(3),intent(in)   :: r, dir
-    real(defReal),intent(in)                :: w
-    integer(shortInt),intent(in)            :: G
-
-    call self % coords % init(r, dir)
-    self % G = G
-    self % w = w
-
-    self % isDead = .false.
-    self % isMG = .true.
-  end subroutine
 
   !!
   !! Return the position either at the deepest nested level or a specified level
   !!
   function rLocal(self,n)result(r)
-    class(particle), intent(in) :: self
+    class(particle), intent(in)             :: self
     integer(shortInt), intent(in), optional :: n
-    real(defReal), dimension(3) :: r
-    integer(shortInt) :: nMax
+    real(defReal), dimension(3)             :: r
+    integer(shortInt)                       :: nMax
+
     if (present(n)) then
       r = self % coords % lvl(n) % r
+
     else
       nMax = self % coords % nesting
-      r = self % coords % lvl(nMax) % r
+      r    = self % coords % lvl(nMax) % r
+
     end if
+
   end function rLocal
 
   !!
-  !! Return the position at the global level
+  !! Return the position at the highest level
   !!
   function rGlobal(self)result(r)
     class(particle), intent(in) :: self
     real(defReal), dimension(3) :: r
+
     r = self % coords % lvl(1) % r
+
   end function rGlobal
 
   !!
-  !! Return the direction either at the deepest nested level or a specified level
+  !! Return the direction either at the deepest nested level or at a specified level
   !!
   function dirLocal(self,n)result(dir)
     class(particle), intent(in) :: self
     integer(shortInt), optional :: n
     real(defReal), dimension(3) :: dir
-    integer(shortInt) :: nMax
+    integer(shortInt)           :: nMax
+
     if (present(n)) then
       dir = self % coords % lvl(n) % dir
+
     else
       nMax = self % coords % nesting
-      dir = self % coords % lvl(nMax) % dir
+      dir  = self % coords % lvl(nMax) % dir
+
     end if
+
   end function dirLocal
 
   !!
-  !! Return the direction at the global level
+  !! Return the direction at the highest nesting level
   !!
   function dirGlobal(self)result(dir)
     class(particle), intent(in) :: self
     real(defReal), dimension(3) :: dir
+
     dir = self % coords % lvl(1) % dir
+
   end function dirGlobal
 
   !!
-  !! Return the nestedness of the particle
+  !! Return the lowest nesting level of the particle
   !!
   function nesting(self) result(n)
     class(particle), intent(in) :: self
     integer(shortInt)           :: n
+
     n = self % coords % nesting
+
   end function nesting
 
   !!
-  !! Resets the particle's nesting level
+  !! Return cell index at a given nesting level n
   !!
-  subroutine takeAboveGeom(self)
-    class(particle), intent(inout) :: self
-    call self % coords % takeAboveGeom()
-  end subroutine takeAboveGeom
-
-  !!
-  !! Get cell index for a given nested level
-  !!
-  function getCellIdx(self,i) result(idx)
+  function getCellIdx(self,n) result(idx)
     class(particle), intent(in)    :: self
-    integer(shortInt), intent(in)  :: i
+    integer(shortInt), intent(in)  :: n
     integer(shortInt)              :: idx
-    idx = self % coords % lvl(i) % cellIdx
+
+    idx = self % coords % lvl(n) % cellIdx
+
   end function getCellIdx
 
   !!
-  !! Get lattice index for a given nested level
+  !! Return lattice index at a given nesting level n
   !!
-  function getLatIdx(self,i) result(idx)
+  function getLatIdx(self,n) result(idx)
     class(particle), intent(in)    :: self
-    integer(shortInt), intent(in)  :: i
+    integer(shortInt), intent(in)  :: n
     integer(shortInt)              :: idx
-    idx = self % coords % lvl(i) % latIdx
+
+    idx = self % coords % lvl(n) % latIdx
+
   end function getLatIdx
 
   !!
-  !! Get universe index for a given nested level
+  !! Return universe index at a given nesting level n
   !!
-  function getUniIdx(self,i) result(idx)
+  function getUniIdx(self,n) result(idx)
     class(particle), intent(in)    :: self
-    integer(shortInt), intent(in)  :: i
+    integer(shortInt), intent(in)  :: n
     integer(shortInt)              :: idx
-    idx = self % coords % lvl(i) % uniIdx
+
+    idx = self % coords % lvl(n) % uniIdx
+
   end function getUniIdx
 
   !!
-  !! Set the particle's present unique region ID and material index
-  !! Passes info from coordList
+  !! Return unique cell id (regionID) at the lowest coordinate level
   !!
-  subroutine updateLocation(self)
-    class(particle) :: self
-    self % regionID = self % coords % regionID
-    self % matIdx = self % coords % matIdx
-  end subroutine
+  function regionID(self) result(ID)
+    class(particle), intent(in) :: self
+    integer(shortInt)           :: ID
+
+    ID = self % coords % regionID
+
+  end function regionID
 
   !!
-  !! Move the particle in global co-ordinates only, resetting its nesting
+  !! Return current material index
+  !!
+  function matIdx(self) result(Idx)
+    class(particle), intent(in) :: self
+    integer(shortInt)           :: Idx
+
+    Idx = self % coords % matIdx
+
+  end function matIdx
+
+  !!
+  !! Move the particle above the geometry
+  !! NOTE: regionID & matIdx will be reset!!!
   !!
   subroutine moveGlobal(self,distance)
     class(particle), intent(inout) :: self
-    real(defReal), intent(in) :: distance
+    real(defReal), intent(in)      :: distance
+
     call self % coords % moveGlobal(distance)
+
   end subroutine moveGlobal
 
   !!
@@ -226,31 +224,17 @@ contains
   !!
   subroutine moveLocal(self,distance,n)
     class(particle), intent(inout) :: self
-    real(defReal), intent(in) :: distance
-    integer(shortInt), intent(in) :: n
+    real(defReal), intent(in)      :: distance
+    integer(shortInt), intent(in)  :: n
+
     call self % coords % moveLocal(distance,n)
+
   end subroutine moveLocal
 
   !!
-  !! Place particle at an arbitrary point in the geometry in global co-ordinates
-  !!
-  subroutine teleport(self, r)
-    class(particle), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: r
-    call self % coords % assignPosition(r)
-  end subroutine teleport
-
-  !!
-  !! Point particle in an arbitrary direction in global co-ordinates
-  !!
-  subroutine point(self, dir)
-    class(particle), intent(inout) :: self
-    real(defReal), dimension(3), intent(in) :: dir
-    call self % coords % assignDirection(dir)
-  end subroutine point
-
-  !!
-  !! Rotate particle by an angle
+  !! Rotate particle
+  !!  mu  -> cosine of deflection from current direction
+  !!  phi -> azimuthal angle of rotation
   !!
   subroutine rotate(self,mu,phi)
     class(particle), intent(inout) :: self
@@ -261,6 +245,38 @@ contains
 
   end subroutine rotate
 
+  !!
+  !! Place particle at an arbitrary point in above the geometry
+  !!
+  subroutine teleport(self, r)
+    class(particle), intent(inout)          :: self
+    real(defReal), dimension(3), intent(in) :: r
+
+    call self % coords % assignPosition(r)
+
+  end subroutine teleport
+
+  !!
+  !! Point particle in direction dir in highest nesting level
+  !! Propagates new direction to lower levels
+  !!
+  subroutine point(self, dir)
+    class(particle), intent(inout)          :: self
+    real(defReal), dimension(3), intent(in) :: dir
+
+    call self % coords % assignDirection(dir)
+
+  end subroutine point
+
+  !!
+  !! Resets the particle's nesting level
+  !!
+  subroutine takeAboveGeom(self)
+    class(particle), intent(inout) :: self
+
+    call self % coords % takeAboveGeom()
+
+  end subroutine takeAboveGeom
 
   !!
   !! Display state of a particle
@@ -300,5 +316,41 @@ contains
     print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt
 
   end subroutine display_phaseCoord
+
+  !!
+  !! Initialise CE particle
+  !!
+  subroutine buildCE(self,r,dir,E,w)
+    class(particle), intent(inout)          :: self
+    real(defReal),dimension(3),intent(in)   :: r, dir
+    real(defReal),intent(in)                :: E, w
+
+    call self % coords % init(r, dir)
+    self % E = E
+    self % w = w
+
+    self % isDead = .false.
+    self % isMG   = .false.
+
+  end subroutine buildCE
+
+  !!
+  !! Initialise MG particle
+  !!
+  subroutine buildMG(self,r,dir,G,w)
+    class(particle), intent(inout)          :: self
+    real(defReal),dimension(3),intent(in)   :: r, dir
+    real(defReal),intent(in)                :: w
+    integer(shortInt),intent(in)            :: G
+
+    call self % coords % init(r, dir)
+    self % G = G
+    self % w = w
+
+    self % isDead = .false.
+    self % isMG   = .true.
+
+  end subroutine buildMG
+
 
 end module particle_class

@@ -94,7 +94,6 @@ contains
     type(cell_ptr)                :: dummy_c
 
     dummy_c = self % whichCell(p % coords)
-    call p % updateLocation()
 
   end subroutine placeParticle
 
@@ -349,7 +348,8 @@ contains
     integer(shortInt), intent(in), optional :: n0
     real(defReal), dimension(3)             :: r, u, offset
     integer(shortInt), dimension(3)         :: ijkLat
-    integer(shortInt)                       :: uniIdx, latIdx, ijkIdx, n, instance
+    integer(shortInt)                       :: uniIdx, latIdx, ijkIdx
+    integer(shortInt)                       :: n, instance
     integer(shortInt), dimension(3)         :: ijkUni
     type(cell_ptr)                          :: c
     type(universe_ptr)                      :: uni

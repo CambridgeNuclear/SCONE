@@ -88,8 +88,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      call p % updateLocation()
-      sigmaT = self % nuclearData % getTransXS(p, p% matIdx)
+      sigmaT = self % nuclearData % getTransXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real

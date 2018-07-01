@@ -119,8 +119,7 @@ contains
       n = nMin
 
       ! Obtain the local cross-section
-      call p % updateLocation()
-      sigmaT = self % nuclearData % getTransXS(p, p % matIdx)
+      sigmaT = self % nuclearData % getTransXS(p, p % matIdx())
 
       ! Sample particle flight distance
       distance = -log(p%pRNG%get())/sigmaT
