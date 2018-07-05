@@ -13,6 +13,12 @@ module zTruncCylinder_class
   private
 
   !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'zTruncCylinder'
+  logical(defBool),parameter   :: ACCEPTS_BC   = .true.
+
+  !!
   !! Constructor
   !!
   interface zTruncCylinder
@@ -33,6 +39,8 @@ module zTruncCylinder_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
+    procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
@@ -156,6 +164,28 @@ contains
     end if
 
   end function evaluate
+
+  !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(zTruncCylinder), intent(in) :: self
+    character(nameLen)                :: type
+
+    type = TYPE_NAME
+
+  end function type
+
+  !!
+  !! Override base type function to returns .false.
+  !!
+  function cannotBeBoundary(self) result(itCant)
+    class(zTruncCylinder), intent(in) :: self
+    logical(defBool)                  :: itCant
+
+    itCant = .not.ACCEPTS_BC
+
+  end function cannotBeBoundary
 
   !!
   !! Calculate the distance to the nearest surface of the cylinder

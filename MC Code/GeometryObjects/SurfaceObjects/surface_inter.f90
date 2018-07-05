@@ -9,19 +9,24 @@
 module surface_inter
   use numPrecision
   use universalVariables
-  use genericProcedures, only : dotProduct
+  use genericProcedures, only : fatalError, dotProduct
 
   implicit none
   private
     
   type, abstract, public :: surface
+    character(nameLen)          :: name =""
+    integer(shortInt)           :: id = 0
+
+    ! Perhaps to be removed
+    logical(defBool)            :: isCompound   = .FALSE.
+
+    ! Obsolate components to be removed
     logical(defBool)            :: isReflective = .FALSE.
     logical(defBool)            :: isPeriodic   = .FALSE.
     logical(defBool)            :: isVacuum     = .FALSE.
-    logical(defBool)            :: isCompound   = .FALSE.
     real(defReal), dimension(3) :: periodicTranslation
-    character(100)              :: name =""
-    integer(shortInt)           :: id = 0
+
   contains
     ! Interface to stay
     procedure                                    :: halfspace
@@ -29,8 +34,12 @@ module surface_inter
     procedure(evaluate), deferred                :: evaluate
     procedure(distanceToSurface), deferred       :: distanceToSurface
     procedure(normalVector), deferred            :: normalVector
-    procedure(setBoundaryConditions), deferred   :: setBoundaryConditions
     procedure(boundaryTransform), deferred       :: boundaryTransform
+
+    ! New interface
+    procedure                                    :: cannotBeBoundary
+    procedure                                    :: setBoundaryConditions
+    procedure(type),deferred                     :: type
 
     ! To delate
     procedure(whichSurface), deferred            :: whichSurface
@@ -57,12 +66,26 @@ module surface_inter
     procedure :: id
     generic   :: assignment(=) => surface_ptr_assignment, surface_ptr_assignment_target!,surface_ptr_assignment_pointer
 
+    ! New interface
+    procedure :: type_ptr
+    procedure :: cannotBeBoundary_ptr
+
     procedure,private :: surface_ptr_assignment
     procedure,private :: surface_ptr_assignment_target
     !procedure,private :: surface_ptr_assignment_pointer
   end type surface_ptr
 
   abstract interface
+
+    !!
+    !! Return character with name of surface type
+    !!
+    function type(self)
+      import :: nameLen,&
+                surface
+      class(surface), intent(in) :: self
+      character(nameLen)         :: type
+    end function type
 
     !!
     !! Return a value of the surface expression
@@ -121,16 +144,6 @@ module surface_inter
       real(defReal), dimension(3), intent(in) :: r, u
       class(surface), pointer                 :: surfPointer
     end function
-
-    !!
-    !! Provide Boundary Condition string of integers
-    !!
-    subroutine setBoundaryConditions(self, BC)
-      import :: surface, &
-                shortInt
-      class(surface), intent(inout)               :: self
-      integer(shortInt), dimension(:), intent(in) :: BC
-    end subroutine setBoundaryConditions
 
     !!
     !! Perform reflection of point r and direction u by the surface
@@ -197,6 +210,32 @@ contains
     r = r + NUDGE * u
 
   end subroutine reflect
+
+  !!
+  !! Always returns true.
+  !! Surfaces that support boundary conditions need to overwrite this procedure
+  !!
+  function cannotBeBoundary(self) result(itCant)
+    class(surface), intent(in) :: self
+    logical(defBool)           :: itCant
+
+    itCant = .true.
+
+  end function cannotBeBoundary
+
+
+  !!
+  !! Provide Boundary Condition as array of integers
+  !! Base class returns error. Surfaces that support BC need to override this subroutine
+  !!
+  subroutine setBoundaryConditions(self, BC)
+    class(surface), intent(inout)               :: self
+    integer(shortInt), dimension(:), intent(in) :: BC
+    character(100),parameter :: Here='setBoundaryConditions (surface_inter.f90)'
+
+    call fatalError(Here,'Surface: ' // self % type() // ' does not accept BCs')
+
+  end subroutine setBoundaryConditions
 
 !!
 !! Surface pointer procedures
@@ -268,6 +307,22 @@ contains
     ind = self % ptr % id
   end function id
 
+  function type_ptr(self) result(type)
+    class(surface_ptr), intent(in) :: self
+    character(nameLen)             :: type
+
+    type = self % ptr % type()
+
+  end function type_ptr
+
+  function cannotBeBoundary_ptr(self) result(itCant)
+    class(surface_ptr), intent(in) :: self
+    logical(defBool)               :: itCant
+
+    itCant = self % ptr % cannotBeBoundary()
+
+  end function cannotBeBoundary_ptr
+
   function periodicTranslation_ptr(self) result(periodicTranslation)
     class(surface_ptr), intent(in) :: self
     real(defReal), dimension(3)    :: periodicTranslation
@@ -293,11 +348,6 @@ contains
     character(100)                 :: name
     name = self % ptr % name
   end function name_ptr
-
-  subroutine kill(self)
-    class(surface_ptr), intent(inout) :: self
-    self % ptr => null()
-  end subroutine kill
 
   subroutine surface_ptr_assignment(LHS,RHS)
     class(surface_ptr), intent(out)  :: LHS

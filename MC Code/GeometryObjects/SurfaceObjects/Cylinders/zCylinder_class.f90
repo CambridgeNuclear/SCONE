@@ -10,6 +10,12 @@ module zCylinder_class
   private
 
   !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'zCylinder'
+  logical(defBool),parameter   :: ACCEPTS_BC   = .true.
+
+  !!
   !! Constructor
   !!
   interface zCylinder
@@ -27,6 +33,8 @@ module zCylinder_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
+    procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
@@ -79,7 +87,6 @@ contains
 
   end function zCylinder_fromDict
 
-
   !!
   !! Evaluate remainder of cylinder equation
   !!
@@ -91,6 +98,28 @@ contains
     res = (r(1) - self%origin(1))**2 + (r(2) - self%origin(2))**2 - self%rSquared
 
   end function evaluate
+
+  !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(zCylinder), intent(in) :: self
+    character(nameLen)           :: type
+
+    type = TYPE_NAME
+
+  end function type
+
+  !!
+  !! Override base type function to returns .false.
+  !!
+  function cannotBeBoundary(self) result(itCant)
+    class(zCylinder), intent(in) :: self
+    logical(defBool)             :: itCant
+
+    itCant = .not.ACCEPTS_BC
+
+  end function cannotBeBoundary
 
   !!
   !! Calculate distance to cylinder along direction u

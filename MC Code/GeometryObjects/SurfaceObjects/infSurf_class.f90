@@ -9,6 +9,14 @@ module infSurf_class
   implicit none
   private
 
+  !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'infSurf'
+
+  !!
+  !! Constructor
+  !!
   interface infSurf
     module procedure infSurf_fromDict
   end interface
@@ -21,10 +29,10 @@ module infSurf_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
-    procedure :: setBoundaryConditions
     procedure :: boundaryTransform
   end type infSurf
 
@@ -73,6 +81,17 @@ contains
   end function evaluate
 
   !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(infSurf), intent(in) :: self
+    character(nameLen)         :: type
+
+    type = TYPE_NAME
+
+  end function type
+
+  !!
   !! Calculate distance to infinity's surface - always infinity
   !!
   function distanceToSurface(self,r,u) result(distance)
@@ -109,24 +128,6 @@ contains
     call fatalError(Here,'This function should never be called for a simple surface')
 
   end function whichSurface
-
-  !!
-  !! Set boundary conditions for an infinite surface: may only be vacuum
-  !! Doesn't matter - a particle will never reach the surface anyway
-  !!
-  subroutine setBoundaryConditions(self, BC)
-    class(infSurf), intent(inout)               :: self
-    integer(shortInt), dimension(:), intent(in) :: BC
-    character(100), parameter :: Here ='setBoundaryConditions (infSurf_class.f90)'
-
-    if (any(BC /= vacuum)) then
-      call fatalError(Here,'Infinite surfaces may only be vacuum')
-
-    else
-      self % isVacuum = .TRUE.
-
-    end if
-  end subroutine setBoundaryConditions
 
   !!
   !! Apply boundary transformation

@@ -10,6 +10,12 @@ module xCylinder_class
   private
 
   !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'xCylinder'
+  logical(defBool),parameter   :: ACCEPTS_BC   = .true.
+
+  !!
   !! Constructor
   !!
   interface xCylinder
@@ -27,6 +33,8 @@ module xCylinder_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
+    procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
@@ -89,6 +97,28 @@ contains
     res = (r(2) - self%origin(2))**2 + (r(3) - self%origin(3))**2 - self%rSquared
 
   end function evaluate
+
+  !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(xCylinder), intent(in) :: self
+    character(nameLen)           :: type
+
+    type = TYPE_NAME
+
+  end function type
+
+  !!
+  !! Override base type function to returns .false.
+  !!
+  function cannotBeBoundary(self) result(itCant)
+    class(xCylinder), intent(in) :: self
+    logical(defBool)       :: itCant
+
+    itCant = .not.ACCEPTS_BC
+
+  end function cannotBeBoundary
 
   !!
   !! Calculate distance to cylinder along direction u

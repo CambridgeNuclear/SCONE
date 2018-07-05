@@ -10,6 +10,11 @@ module zPlane_class
   private
 
   !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'zPlane'
+
+  !!
   !! Constructor
   !!
   interface zPlane
@@ -25,10 +30,11 @@ module zPlane_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
-    procedure :: setBoundaryConditions
+
     procedure :: boundaryTransform
 
    procedure,private :: reflectiveTransform
@@ -82,6 +88,17 @@ contains
     res = r(3) - self % z0
 
   end function evaluate
+
+  !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(zPlane), intent(in) :: self
+    character(nameLen)        :: type
+
+    type = TYPE_NAME
+
+  end function type
 
   !!
   !! Calculate distance to plane along direction u
@@ -145,18 +162,6 @@ contains
     call fatalError(Here,'This function should never be called for a simple surface')
 
   end function whichSurface
-
-  !!
-  !! Crash on attempting to set boundary conditions for a plane object
-  !!
-  subroutine setBoundaryConditions(self, BC)
-    class(zPlane), intent(inout)                :: self
-    integer(shortInt), dimension(:), intent(in) :: BC
-    character(100),parameter :: Here ='setBoundaryConditions ( zPlane_class.f90)'
-
-    call fatalError(Here,'Boundary conditions may not be set for a plane surface')
-
-  end subroutine setBoundaryConditions
 
   !!
   !! Apply boundary transformations

@@ -10,6 +10,12 @@ module sphere_class
   private
 
   !!
+  !! Constants describing surface properties
+  !!
+  character(nameLen),parameter :: TYPE_NAME    = 'sphere'
+  logical(defBool),parameter   :: ACCEPTS_BC   = .true.
+
+  !!
   !! Constructor
   !!
   interface sphere
@@ -29,6 +35,8 @@ module sphere_class
   contains
     procedure :: init
     procedure :: evaluate
+    procedure :: type
+    procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: reflectiveTransform
     procedure :: normalVector
@@ -96,6 +104,28 @@ contains
     res = diff(1) + diff(2) + diff(3) - self % rSquared
 
   end function evaluate
+
+  !!
+  !! Return parameter character containing TYPE NAME
+  !!
+  function type(self)
+    class(sphere), intent(in) :: self
+    character(nameLen)        :: type
+
+    type = TYPE_NAME
+
+  end function type
+
+  !!
+  !! Override base type function to returns .false.
+  !!
+  function cannotBeBoundary(self) result(itCant)
+    class(sphere), intent(in) :: self
+    logical(defBool)          :: itCant
+
+    itCant = .not.ACCEPTS_BC
+
+  end function cannotBeBoundary
 
   !!
   !! Calculate the neutron's distance to the sphere surface
