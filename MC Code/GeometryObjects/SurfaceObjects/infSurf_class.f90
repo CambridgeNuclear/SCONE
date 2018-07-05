@@ -22,7 +22,6 @@ module infSurf_class
     procedure :: init
     procedure :: evaluate
     procedure :: distanceToSurface
-    procedure :: reflectiveTransform
     procedure :: normalVector
     procedure :: whichSurface
     procedure :: setBoundaryConditions
@@ -86,19 +85,6 @@ contains
   end function distanceToSurface
 
   !!
-  !! Perform a co-ordinate transform on a particle to apply reflective boundary condition
-  !!
-  subroutine reflectiveTransform(self, r, u)
-    class(infSurf), intent(in)                 :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    character(100), parameter :: Here ='reflectiveTransform (infSurf_class.f90)'
-
-    ! Reflective transforms will not be allowed to occur in geometries other than planes
-    call fatalError(Here,'Infinite surfaces may not have reflective boundaries')
-
-  end subroutine reflectiveTransform
-
-  !!
   !! Supply the normal vector
   !!
   function normalVector(self, r) result(normal)
@@ -130,7 +116,7 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(infSurf), intent(inout)               :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     character(100), parameter :: Here ='setBoundaryConditions (infSurf_class.f90)'
 
     if (any(BC /= vacuum)) then

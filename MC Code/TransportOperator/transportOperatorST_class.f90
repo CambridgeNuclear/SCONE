@@ -177,7 +177,7 @@ contains
     ! If vacuum, kill the particle
     if (currentSurface % isVacuum()) then
       p % isDead = .TRUE.
-      call currentSurface % kill()
+     ! call currentSurface % kill()
 
     ! If reflective or periodic, must ensure that the surface is a plane!
     else if (currentSurface % isReflective()) then
@@ -195,7 +195,7 @@ contains
       currentCell = self % geom % whichCell(p%coords)
 
       ! The particle should no longer be sat on a surface
-      call currentSurface % kill()
+      !call currentSurface % kill()
 
     else if (currentSurface % isPeriodic()) then
 
@@ -207,7 +207,7 @@ contains
       currentCell = self % geom % whichCell(p%coords)
 
       ! The particle should no longer be sat on a surface
-      call currentSurface % kill()
+      !call currentSurface % kill()
 
     else
       call fatalError('applyBC, transportOperatorST',&

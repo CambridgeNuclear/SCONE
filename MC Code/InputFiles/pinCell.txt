@@ -125,4 +125,5 @@ lattices
   }	
 }
 
+//boundary (1);
 boundary (1 1 1 1 0 0);

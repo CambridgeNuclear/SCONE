@@ -8,14 +8,18 @@ program test
   implicit none
   integer(shortInt)  :: i,j,k
   integer(shortInt)  :: N_uni, N_cell, N_lat
-  character(12)      :: Ent
+  character(4)      :: Ent
+  character(nameLen) :: C1,C2,C3
   integer(16)      :: longlongInt
   integer(longInt) :: hashedKey
 
-  N_uni  = 10
+  N_uni  = 1000
   N_cell = 1000
-  N_lat  = 5000
+  N_lat  = 100000
 
+ ! print '(z20)', FNV_1('123')
+
+  Ent ='aaav'
   ! Loop across universes
   do i=1,N_uni
 
@@ -25,10 +29,10 @@ program test
       do k=1,N_lat
 
         ! Calculate and print hash
-        Ent = transfer([i,j,k],Ent)
+        !write(ent,'(I4.4, I10.10, I10.10)') i!, j, k
+        !print '(A30, z20)',ent, FNV_1(Ent)
         hashedKey = FNV_1(Ent)
-       ! print '(z35, z20)', transfer(Ent,longlongInt), FNV_1(Ent)
-
+        !print *, hashedKey
       end do
     end do
   end do

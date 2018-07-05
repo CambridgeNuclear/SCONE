@@ -28,7 +28,6 @@ module yCylinder_class
     procedure :: init
     procedure :: evaluate
     procedure :: distanceToSurface
-    procedure :: reflectiveTransform
     procedure :: normalVector
     procedure :: whichSurface
     procedure :: setBoundaryConditions
@@ -135,68 +134,6 @@ contains
   end function distanceToSurface
 
   !!
-  !! Apply reflective BC
-  !! ***THIS WILL NOT WORK IF USED - NEED TO ADD A DISTANCE ARGUMENT
-  !!
-  subroutine reflectiveTransform(self,r,u)
-    class(yCylinder), intent(in)               :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    character(100),parameter :: Here ='reflectiveTransform ( yCylinder_class.f90)'
-
-    !real(defReal), dimension(3) :: normal, &
-    !                               Ovector, &
-    !                               xzVector, &
-    !                               intersect
-    !real(defReal) :: magSquared, &
-    !                 radius, &
-    !                 dOrigin, &
-    !                 perpDistance, &
-    !                 cosGamma, &
-    !                 sinGamma
-
-    ! Reflective transforms will not be allowed to occur in geometries other than planes
-    call fatalError(Here,'Cylinders may not have reflective boundaries')
-
-    ! Construct unit vector from origin to starting point
-    ! Zero the y-entry as there is no true y-origin
-    !Ovector = self%origin - r
-    !Ovector(2) = 0.0
-    ! Calculate the distance to the origin
-    !dOrigin = norm2(Ovector)
-    !Ovector = Ovector/dOrigin
-
-    ! Determine the direction vector of the particle in the xz-plane
-    !xzVector = u
-    !xzVector(2) = 0.0
-    !xzVector = xzVector/norm2(xzVector)
-
-    ! Calculate sinGamma using the cross-product of the two vectors and the sine law
-    !sinGamma = (dOrigin/self%radius)*norm2(crossProduct(Ovector,xzVector))
-    !cosGamma = sqrt(1 - sinGamma*sinGamma)
-
-    ! Rotate the particle direction by gamma to obtain the normal vector
-    !normal = xzVector
-    !normal(1) = xzVector(1) * cosGamma - xzVector(3) * sinGamma
-    !normal(3) = xzVector(1) * sinGamma + xzVector(3) * cosGamma
-
-    ! Obtain the point at which the intersection occurs from the normal, radius and origin
-    !intersect = self%origin + normal * self%radius
-
-    ! Calculate particle position outside the cylinder
-    !r = r + u*distance
-
-    ! Calculate the perpendicular distance to the plane
-    !perpDistance = abs(dotProduct(normal,r-intersect))
-
-    ! Translate the particle position across the plane
-    !r = r - 2*perpDistance*normal
-
-    ! Reflect the particle direction (independent of intersection point for plane)
-    !u = u - 2*dotProduct(normal,u)*normal
-
-  end subroutine reflectiveTransform
-
-  !!
   !! Return normal to the cylinder
   !!
   function normalVector(self,r) result(normal)
@@ -215,7 +152,7 @@ contains
     class(yCylinder), intent(in)            :: self
     real(defReal), dimension(3), intent(in) :: r, u
     class(surface), pointer                 :: surfPointer
-    character(100),parameter :: Here ='whichSurface ( yCylinder_class.f90)'
+    character(100),parameter :: Here ='whichSurface (yCylinder_class.f90)'
 
     call fatalError(Here,'This function should never be called for a simple surface')
 
@@ -226,8 +163,8 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(yCylinder), intent(inout)             :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
-    character(100),parameter :: Here ='setBoundaryConditions ( yCylinder_class.f90)'
+    integer(shortInt), dimension(:), intent(in) :: BC
+    character(100),parameter :: Here ='setBoundaryConditions (yCylinder_class.f90)'
 
     if (any(BC /= vacuum)) then
       call fatalError(Here,'Cylinder boundaries may only be vacuum')
@@ -245,7 +182,7 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     logical(defBool), intent(inout)            :: isVacuum
-    character(100),parameter :: Here ='boundaryTransform ( yCylinder_class.f90)'
+    character(100),parameter :: Here ='boundaryTransform (yCylinder_class.f90)'
 
     if (self % isVacuum) then
       isVacuum = .TRUE.

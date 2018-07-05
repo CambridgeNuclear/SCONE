@@ -17,6 +17,7 @@ module cellGeometry_inter
   !!   -> Boundary is the interface surface between domain and outside
   !!   -> Boundary is a single surface
   !!   -> Boundary conditions are handeled by coordinate transformations
+  !!   -> Vacuum, reflective and periodic BC are supported
   !!   -> Calculation domain must be convex
   !!   -> Geometry can contain a single trip surface
   !!   -> Intersection of trip surface with boundary cannot be a surface
@@ -24,8 +25,9 @@ module cellGeometry_inter
   type, public,extends(geometry),abstract :: cellGeometry
     private
   contains
-    procedure(move),deferred     :: move
-    procedure(teleport),deferred :: teleport
+    procedure(move),deferred       :: move
+    procedure(teleport),deferred   :: teleport
+    procedure(moveGlobal),deferred :: moveGlobal
   end type cellGeometry
 
   abstract interface

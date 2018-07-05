@@ -26,11 +26,12 @@ module zPlane_class
     procedure :: init
     procedure :: evaluate
     procedure :: distanceToSurface
-    procedure :: reflectiveTransform
     procedure :: normalVector
     procedure :: whichSurface
     procedure :: setBoundaryConditions
     procedure :: boundaryTransform
+
+   procedure,private :: reflectiveTransform
 
   end type zPlane
 
@@ -150,7 +151,7 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(zPlane), intent(inout)                :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     character(100),parameter :: Here ='setBoundaryConditions ( zPlane_class.f90)'
 
     call fatalError(Here,'Boundary conditions may not be set for a plane surface')

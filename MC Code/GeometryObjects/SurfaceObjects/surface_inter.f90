@@ -23,15 +23,19 @@ module surface_inter
     character(100)              :: name =""
     integer(shortInt)           :: id = 0
   contains
+    ! Interface to stay
     procedure                                    :: halfspace
     procedure                                    :: reflect
     procedure(evaluate), deferred                :: evaluate
-    procedure(reflectiveTransform), deferred     :: reflectiveTransform
     procedure(distanceToSurface), deferred       :: distanceToSurface
     procedure(normalVector), deferred            :: normalVector
-    procedure(whichSurface), deferred            :: whichSurface
     procedure(setBoundaryConditions), deferred   :: setBoundaryConditions
     procedure(boundaryTransform), deferred       :: boundaryTransform
+
+    ! To delate
+    procedure(whichSurface), deferred            :: whichSurface
+
+
   end type surface
 
   type, public :: surface_ptr
@@ -40,7 +44,6 @@ module surface_inter
     procedure :: halfspace => halfspace_ptr
     procedure :: reflect => reflect_ptr
     procedure :: evaluate => evaluate_ptr
-    procedure :: reflectiveTransform => reflectiveTransform_ptr
     procedure :: distanceToSurface => distanceToSurface_ptr
     procedure :: normalVector => normalVector_ptr
     procedure :: whichSurface => whichSurface_ptr
@@ -52,7 +55,6 @@ module surface_inter
     procedure :: boundaryTransform => boundaryTransform_ptr
     procedure :: name => name_ptr
     procedure :: id
-    procedure :: kill
     generic   :: assignment(=) => surface_ptr_assignment, surface_ptr_assignment_target!,surface_ptr_assignment_pointer
 
     procedure,private :: surface_ptr_assignment
@@ -62,41 +64,55 @@ module surface_inter
 
   abstract interface
 
+    !!
+    !! Return a value of the surface expression
+    !!
     function evaluate(self, r) result(res)
-      use numPrecision
-      import :: surface
-      implicit none
+      import :: surface, &
+                defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
       real(defReal)                           :: res
-    end function
+    end function evaluate
 
+    !!
+    !! OBSOLETE
+    !!
     subroutine reflectiveTransform(self, r, u)
-      use numPrecision
-      import :: surface
-      implicit none
+      import :: surface, &
+               defReal
       class(surface), intent(in)                 :: self
       real(defReal), dimension(3), intent(inout) :: r, u
-    end subroutine
+    end subroutine reflectiveTransform
 
+    !!
+    !! Return +ve distance to surface from point r along direction u
+    !! Return INFINITY if there is no crossing
+    !!
     function distanceToSurface(self, r, u) result(distance)
-      use numPrecision
-      import :: surface
-      implicit none
+      import :: surface, &
+                defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
       real(defReal)                           :: distance
     end function
 
+    !!
+    !! Return vector normal to the surface for a point r on the surface
+    !! Vector is pointing into +ve halfspace
+    !! No check if r lies on the surface is performed
+    !!
     function normalVector(self, r) result(normal)
-      use numPrecision
-      import :: surface
-      implicit none
+      import :: surface, &
+                defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
       real(defReal), dimension(3)             :: normal
     end function
 
+    !!
+    !! WILL BECOME OBSOLETE
+    !!
     function whichSurface(self, r, u) result(surfPointer)
       use numPrecision
       use genericProcedures
@@ -106,14 +122,19 @@ module surface_inter
       class(surface), pointer                 :: surfPointer
     end function
 
+    !!
+    !! Provide Boundary Condition string of integers
+    !!
     subroutine setBoundaryConditions(self, BC)
-      use numPrecision
-      use genericProcedures
-      import :: surface
+      import :: surface, &
+                shortInt
       class(surface), intent(inout)               :: self
-      integer(shortInt), dimension(6), intent(in) :: BC
+      integer(shortInt), dimension(:), intent(in) :: BC
     end subroutine setBoundaryConditions
 
+    !!
+    !! Perform reflection of point r and direction u by the surface
+    !!
     subroutine boundaryTransform(self, r, u, isVacuum)
       use numPrecision
       use genericProcedures
@@ -194,12 +215,6 @@ contains
    call self%ptr%reflect(r,u)
   end subroutine reflect_ptr
 
-  subroutine reflectiveTransform_ptr(self, r, u)
-    class(surface_ptr), intent(in)             :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    call self%ptr%reflectiveTransform(r,u)
-  end subroutine reflectiveTransform_ptr
-
   function distanceToSurface_ptr(self, r, u) result(distance)
     class(surface_ptr), intent(in)          :: self
     real(defReal), dimension(3), intent(in) :: r, u
@@ -261,7 +276,7 @@ contains
 
   subroutine setBoundaryConditions_ptr(self,BC)
     class(surface_ptr), intent(in)              :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     call self % ptr % setBoundaryConditions(BC)
   end subroutine setBoundaryConditions_ptr
 

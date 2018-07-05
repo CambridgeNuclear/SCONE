@@ -35,7 +35,6 @@ module box_class
     procedure :: init
     procedure :: evaluate
     procedure :: distanceToSurface
-    procedure :: reflectiveTransform
     procedure :: normalVector
     procedure :: whichSurface
     procedure :: setBoundaryConditions
@@ -229,24 +228,6 @@ contains
   end function distanceToSurface
 
   !!
-  !! Apply a reflective transformation to a particle during delta tracking
-  !! Assumes particle has already crossed the plane, hence the direction reversal
-  !! Do so by determining which plane the particle intersects and applying the plane reflection
-  !!
-  !! This routine has been obviated due to BC implementation in the transport operator and surface
-  !! search in the cell
-  !!
-  subroutine reflectiveTransform(self, r, u)
-    class(box), intent(in)                     :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer                    :: surfPointer
-
-    surfPointer => self % whichSurface(r, u)
-    call surfPointer % reflectiveTransform(r,u)
-
-  end subroutine reflectiveTransform
-
-  !!
   !! Determine on which surface the particle is located and obtain
   !! its normal vector
   !!
@@ -371,8 +352,10 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(box), intent(inout)                   :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     character(100),parameter :: Here ='setBoundaryConditionsBox( box_class.f90)'
+
+    if (size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')
 
     ! Positive x boundary
     if(BC(1) == vacuum) then

@@ -865,10 +865,6 @@ contains
     ! Initialise the cell without filling: fill after all other geometry construction completed
     call self % cells(geometryIdx) % init(surfArray, halfspaces, id, fillType, geometryIdx, name)
 
-    do i=1,size(surfaces)
-      call surfArray(i) % kill()
-    end do
-
   end subroutine cellFromDict
 
   !!
@@ -1046,11 +1042,11 @@ contains
   !! Applies the boundary conditions to the bounding surfaces as defined in the BC dictionary
   !!
   subroutine setBoundaryConditions(self, geometryIdx, dict)
-    class(geometry), intent(inout)  :: self
-    integer(shortInt), intent(in)   :: geometryIdx
-    class(dictionary), intent(in)   :: dict
-    integer(shortInt)               :: i,j
-    integer(shortInt), dimension(6) :: BC
+    class(geometry), intent(inout)              :: self
+    integer(shortInt), intent(in)               :: geometryIdx
+    class(dictionary), intent(in)               :: dict
+    integer(shortInt)                           :: i,j
+    integer(shortInt), dimension(:),allocatable :: BC
 
     ! Identify the boundary conditions
     BC= dict % getIntArray('boundary')

@@ -45,32 +45,55 @@ module hashFunctions_func
 
 contains
 
+!  function Knuth_Hash(intKey) result(hash)
+!    integer(shortInt)
+!
+!  end function Knuth_hash
+
+
   function FNV_1(key) result(hash)
     character(*),intent(in) :: key
     character(len(key))     :: lKey
     integer(int64)          :: hash
-    type(unSig64Int)        :: hash_temp
-    type(unSig64Int)        :: FNV_prime
-    type(unSig64Int)        :: byt
+    integer(int64),parameter  :: FNV_prime  = transfer(z'100000001b3',type_int64)
+    integer(int64),parameter  :: FNV_offset = transfer(z'cbf29ce484222325',type_int64)
+    integer(int64)           :: byt
+    !type(unSig64Int)        :: hash_temp
+    !type(unSig64Int)        :: FNV_prime
+    !type(unSig64Int)        :: byt
     integer(shortInt)       :: N, i
 
-    ! Made local kopy of key and store its length
-    lKey = key
-    N = len(lKey)
+    byt = ichar(key(1:1),int64)
+    hash = FNV_offset
+    hash = hash * FNV_prime
+    hash = ieor(hash,byt)
 
-    ! Load FNV prime number
-    FNV_prime  = transfer(z'100000001b3',type_int64)
-
-    ! Load offset basis
-    hash_temp  = transfer(z'cbf29ce484222325',type_int64)
-
-    do i=1,N
-      byt = ichar(lKey(i:i),shortInt)
-      hash_temp = hash_temp * FNV_prime
-      hash_temp = ieor(hash_temp % value, byt % value)
+    do i=2,len(key)
+      byt  = ichar(key(i:i),int64)
+      hash = hash * FNV_prime
+      hash = ieor(hash,byt)
     end do
 
-    hash = hash_temp % value
+   ! do i=1,N
+
+
+!    ! Made local kopy of key and store its length
+!    lKey = key
+!    N = len(lKey)
+!
+!    ! Load FNV prime number
+!    FNV_prime  = transfer(z'100000001b3',type_int64)
+!
+!    ! Load offset basis
+!    hash_temp  = transfer(z'cbf29ce484222325',type_int64)
+!
+!    do i=1,N
+!      byt = ichar(lKey(i:i),shortInt)
+!      hash_temp = hash_temp * FNV_prime
+!      hash_temp = ieor(hash_temp % value, byt % value)
+!    end do
+!
+!    hash = hash_temp % value
 
   end function FNV_1
 
@@ -182,7 +205,8 @@ contains
     type(unSig64Int)              :: res
     type(unSig64Int)              :: a,b
 
-
+    res = LHS % value * RHS % value
+    return
     ! Assign a to be the larger of RHS and LHS
     if ( RHS % value > LHS % value) then
       a   = RHS
@@ -205,6 +229,9 @@ contains
       if (b % value == 0) return
     end do
 
+!    if ((res % value) /= (LHS % value * RHS % value)) then
+!      print *, res,
+!    end if
 
   end function mul_unSig64Int
 

@@ -237,7 +237,7 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(sphere), intent(inout)                :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     character(100), parameter :: Here = 'setBoundaryConditions (sphere_class.f90)'
 
     if (any(BC /= vacuum)) then

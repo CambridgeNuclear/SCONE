@@ -35,7 +35,6 @@ module yTruncCylinder_class
     procedure :: evaluate
     procedure :: distanceToSurface
     procedure :: normalVector
-    procedure :: reflectiveTransform
     procedure :: whichSurface
     procedure :: setBoundaryConditions
     procedure :: boundaryTransform
@@ -201,25 +200,6 @@ contains
 
   end function distanceToSurface
 
-  !
-  !! Apply a reflective transformation to a particle during delta tracking
-  !! Do so by determining which plane the particle intersects and applying the plane reflection
-  !!
-  !! This routine is obviated due to the implementation in the transport operator and cell
-  !!
-  subroutine reflectiveTransform(self, r, u)
-    class(yTruncCylinder), intent(in)          :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    class(surface), pointer                    :: surfPointer
-    character(100),parameter :: Here ='reflectiveTransform ( yTruncCylinder_class.f90)'
-
-
-    call fatalError(Here,'This routine should not be called')
-    surfPointer => self % whichSurface(r, u)
-    call surfPointer % reflectiveTransform(r,u)
-
-  end subroutine reflectiveTransform
-
   !!
   !! Determine on which surface the particle is located and obtain
   !! its normal vector
@@ -309,8 +289,10 @@ contains
   !!
   subroutine setBoundaryConditions(self, BC)
     class(yTruncCylinder), intent(inout)        :: self
-    integer(shortInt), dimension(6), intent(in) :: BC
+    integer(shortInt), dimension(:), intent(in) :: BC
     character(100),parameter :: Here ='setBoundaryConditions ( yTruncCylinder_class.f90)'
+
+    if(size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')
 
     ! Positive y boundary
     if(BC(3) == vacuum) then
