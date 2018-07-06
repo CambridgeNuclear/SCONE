@@ -86,6 +86,9 @@ contains
       neg = -ONE
     end do
 
+    ! Hash and store surface definition
+    call self % hashSurfDef()
+
   end subroutine init
 
   !!

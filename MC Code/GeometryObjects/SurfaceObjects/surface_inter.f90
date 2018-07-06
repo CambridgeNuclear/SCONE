@@ -1,7 +1,8 @@
 module surface_inter
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError, dotProduct
+  use genericProcedures,  only : fatalError, dotProduct
+  use hashFunctions_func, only : FNV_1
 
   implicit none
   private
@@ -13,6 +14,7 @@ module surface_inter
   character(*),parameter         :: width           = '13' ! defTol + expSize + 5
   integer(shortInt), parameter   :: int_width = 13
   character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize
+  integer(shortInt),parameter    :: UNHASHED =0
 
   public :: real2char_surf
   public :: printSurfDef
@@ -23,6 +25,7 @@ module surface_inter
   type, abstract, public :: surface
     character(nameLen)          :: name =""
     integer(shortInt)           :: id = 0
+    integer(shortInt)           :: hash = UNHASHED
 
     ! Perhaps to be removed -> will be removed
     logical(defBool)            :: isCompound   = .FALSE.
@@ -46,6 +49,7 @@ module surface_inter
     generic                                      :: operator(.same.) => same_surf
     procedure                                    :: cannotBeBoundary
     procedure                                    :: setBoundaryConditions
+    procedure                                    :: hashSurfDef
     procedure, private                           :: same_surf
     procedure(type),deferred                     :: type
     procedure(getDef),deferred                   :: getDef
@@ -269,15 +273,40 @@ contains
     logical(defBool)          :: same
     character(:),allocatable  :: LHS_def
     character(:),allocatable  :: RHS_def
+    logical(defBool)          :: notHashed, sameHashes
 
-    ! Obtain definition strings
-    call LHS % getDef(LHS_def)
-    call RHS % getDef(RHS_def)
+    notHashed = (LHS % hash == UNHASHED) .or. (RHS % hash == UNHASHED)
+    sameHashes = LHS % hash == RHS % hash
 
-    ! Compare
-    same = LHS_def == RHS_def
+    if (sameHashes .or. notHashed) then
+      ! Obtain definition strings
+      call LHS % getDef(LHS_def)
+      call RHS % getDef(RHS_def)
+
+      ! Compare
+      same = LHS_def == RHS_def
+
+    else
+      same = .false.
+
+    end if
 
   end function same_surf
+
+  !!
+  !! Hashes surface definitions and saves hash for surface comparisons
+  !!
+  subroutine hashSurfDef(self)
+    class(surface), intent(inout) :: self
+    character(:),allocatable      :: defString
+
+    ! Obtain definition string
+   ! call self % getDef(defString)
+
+    ! Hash and store hashed definition string
+   ! call FNV_1(defString, self % hash)
+
+  end subroutine hashSurfDef
 
 !!
 !! Surface pointer procedures

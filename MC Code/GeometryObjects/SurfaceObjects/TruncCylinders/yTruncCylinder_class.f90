@@ -79,6 +79,9 @@ contains
     call self % yPlanes(2) % init(origin(2) - a)
     call self % cyl % init(radius, origin)
 
+    ! Hash and store surface definition
+    call self % hashSurfDef()
+
   end subroutine init
 
   !!

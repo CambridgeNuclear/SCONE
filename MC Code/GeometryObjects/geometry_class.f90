@@ -245,7 +245,7 @@ contains
       uniDaughterDict = uniDict % getDict(keys(i))
       if(uniDaughterDict % isPresent('root')) then
         if (uniDaughterDict % getInt('root') == 1) then
-          call self % universeFromDict(uniDaughterDict, i, keys(i), .TRUE.)
+          call self % universeFromDict(uniDaughterDict, i, keys(i), .TRUE._defBool)
           rootIdx = i
           if (.NOT.foundRoot) then
             foundRoot = .TRUE.
@@ -254,7 +254,7 @@ contains
           end if
         end if
       else
-        call self % universeFromDict(uniDaughterDict, i, keys(i), .FALSE.)
+        call self % universeFromDict(uniDaughterDict, i, keys(i), .FALSE._defBool)
       end if
     end do
 

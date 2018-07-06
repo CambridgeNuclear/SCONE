@@ -80,6 +80,9 @@ contains
     call self % xPlanes(2) % init(origin(1) - a)
     call self % cyl % init(radius, origin)
 
+    ! Hash and store surface definition
+    call self % hashSurfDef()
+
   end subroutine init
 
   !!

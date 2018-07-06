@@ -63,6 +63,9 @@ contains
     if(present(id)) self % id = id
     if(present(name)) self % name = name
 
+    ! Hash and store surface definition
+    call self % hashSurfDef()
+
   end subroutine init
 
   !!

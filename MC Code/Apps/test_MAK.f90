@@ -3,7 +3,7 @@ program test
   use numPrecision
   use RNG_class
   use genericProcedures
-  use hashFunctions_func, only : unSig64Int, FNV_1
+  use hashFunctions_func, only : FNV_1
   use plane_class, only : plane
   use xCylinder_class, only : xCylinder
 
@@ -15,12 +15,17 @@ program test
   type(xCylinder) :: myXCyl
   character(:), allocatable :: myChar
   character(:), allocatable :: myChar2
+  integer(shortInt) :: hash
 
   call myXCyl % init (1.0_8, [0.0_8, 0.0_8, 1.0_8], 2, 'DooM')
 
   call myPlane % init( [1.0_8, 2.0_8, 3.0_8, 4.0_8], 1, 'Plane_of_Doom')
   call myPlane % getDef(myChar)
   call myPlane % getDef(myChar2)
+
+  call FNV_1(myChar,hash)
+  print *, myChar
+  print '(z20)', hash
 
 
  ! print *, len(myChar), len_trim(myChar), allocated(myChar)

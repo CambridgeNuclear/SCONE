@@ -6,6 +6,14 @@ module hashFunctions_func
   implicit none
   private
 
+
+  !!
+  !! Public interface for FNV_1 hash function
+  !!
+  interface FNV_1
+    module procedure FNV_1_shortInt
+  end interface
+
   !!
   !! Local constants
   !!
@@ -28,7 +36,7 @@ module hashFunctions_func
   public :: FNV_1
 
   !!
-  !! Unsigned 64-bit integer
+  !! Unsigned 64-bit integer - OBSOLETE
   !!
   type, public :: unSig64Int
     integer(int64) :: value
@@ -50,52 +58,75 @@ contains
 !
 !  end function Knuth_hash
 
+  subroutine FNV_1_shortInt(key,hash)
+    character(:),allocatable    :: key
+    integer(shortInt)           :: hash
+    integer(shortInt),parameter :: FNV_prime  = 16777619_shortInt
+    integer(shortInt),parameter :: FNV_offset = transfer(z'811c9dc5',shortInt)
+    integer(shortInt)           :: bajt, i
+    character(100),parameter    :: Here ='FNV_1_shortInt (hashFunctions_func.f90)'
 
-  function FNV_1(key) result(hash)
-    character(*),intent(in) :: key
-    character(len(key))     :: lKey
-    integer(int64)          :: hash
-    integer(int64),parameter  :: FNV_prime  = transfer(z'100000001b3',type_int64)
-    integer(int64),parameter  :: FNV_offset = transfer(z'cbf29ce484222325',type_int64)
-    integer(int64)           :: byt
-    !type(unSig64Int)        :: hash_temp
-    !type(unSig64Int)        :: FNV_prime
-    !type(unSig64Int)        :: byt
-    integer(shortInt)       :: N, i
+    if(storage_size(hash) /= 32) call fatalError(Here,'hash int is not 32bit')
 
-    byt = ichar(key(1:1),int64)
+    bajt = ichar(key(1:1),shortInt)
     hash = FNV_offset
     hash = hash * FNV_prime
-    hash = ieor(hash,byt)
+    hash = ieor(hash,bajt)
 
     do i=2,len(key)
-      byt  = ichar(key(i:i),int64)
+      bajt = ichar(key(i:i),shortInt)
       hash = hash * FNV_prime
-      hash = ieor(hash,byt)
+      hash = ieor(hash,bajt)
     end do
 
-   ! do i=1,N
+  end subroutine FNV_1_shortInt
 
 
-!    ! Made local kopy of key and store its length
-!    lKey = key
-!    N = len(lKey)
+!  function FNV_1(key) result(hash)
+!    character(*),intent(in) :: key
+!    character(len(key))     :: lKey
+!    integer(int64)          :: hash
+!    integer(int64),parameter  :: FNV_prime  = transfer(z'100000001b3',type_int64)
+!    integer(int64),parameter  :: FNV_offset = transfer(z'cbf29ce484222325',type_int64)
+!    integer(int64)           :: byt
+!    !type(unSig64Int)        :: hash_temp
+!    !type(unSig64Int)        :: FNV_prime
+!    !type(unSig64Int)        :: byt
+!    integer(shortInt)       :: N, i
 !
-!    ! Load FNV prime number
-!    FNV_prime  = transfer(z'100000001b3',type_int64)
+!    byt = ichar(key(1:1),int64)
+!    hash = FNV_offset
+!    hash = hash * FNV_prime
+!    hash = ieor(hash,byt)
 !
-!    ! Load offset basis
-!    hash_temp  = transfer(z'cbf29ce484222325',type_int64)
-!
-!    do i=1,N
-!      byt = ichar(lKey(i:i),shortInt)
-!      hash_temp = hash_temp * FNV_prime
-!      hash_temp = ieor(hash_temp % value, byt % value)
+!    do i=2,len(key)
+!      byt  = ichar(key(i:i),int64)
+!      hash = hash * FNV_prime
+!      hash = ieor(hash,byt)
 !    end do
 !
-!    hash = hash_temp % value
-
-  end function FNV_1
+!   ! do i=1,N
+!
+!
+!!    ! Made local kopy of key and store its length
+!!    lKey = key
+!!    N = len(lKey)
+!!
+!!    ! Load FNV prime number
+!!    FNV_prime  = transfer(z'100000001b3',type_int64)
+!!
+!!    ! Load offset basis
+!!    hash_temp  = transfer(z'cbf29ce484222325',type_int64)
+!!
+!!    do i=1,N
+!!      byt = ichar(lKey(i:i),shortInt)
+!!      hash_temp = hash_temp * FNV_prime
+!!      hash_temp = ieor(hash_temp % value, byt % value)
+!!    end do
+!!
+!!    hash = hash_temp % value
+!
+!  end function FNV_1
 
 
 
