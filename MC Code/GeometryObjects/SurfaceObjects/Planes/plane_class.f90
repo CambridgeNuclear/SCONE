@@ -3,7 +3,7 @@ module plane_class
   use universalVariables
   use genericProcedures,  only : fatalError, dotProduct
   use dictionary_class,   only : dictionary
-  use surface_inter,      only : surface
+  use surface_inter,      only : surface, printSurfDef
 
   implicit none
   private
@@ -11,7 +11,7 @@ module plane_class
   !!
   !! Constants describing surface properties
   !!
-  character(nameLen),parameter :: TYPE_NAME    = 'box'
+  character(nameLen),parameter :: TYPE_NAME    = 'plane'
 
   !!
   !! Constructor
@@ -30,6 +30,7 @@ module plane_class
     procedure :: init
     procedure :: evaluate
     procedure :: type
+    procedure :: getDef
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
@@ -97,6 +98,17 @@ contains
     type = TYPE_NAME
 
   end function type
+
+  !!
+  !! Return string with definition of this surface
+  !!
+  pure subroutine getDef(self,string)
+    class(plane), intent(in)               :: self
+    character(:),allocatable,intent(inout) :: string
+
+    string = printSurfDef(TYPE_NAME, self % coeff)
+
+  end subroutine getDef
 
   !!
   !! Calculate distance to plane along direction u

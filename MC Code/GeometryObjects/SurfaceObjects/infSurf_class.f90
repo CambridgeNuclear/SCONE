@@ -4,7 +4,7 @@ module infSurf_class
   use universalVariables
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
-  use surface_inter,     only : surface
+  use surface_inter,     only : surface, printSurfDef
 
   implicit none
   private
@@ -30,6 +30,7 @@ module infSurf_class
     procedure :: init
     procedure :: evaluate
     procedure :: type
+    procedure :: getDef
     procedure :: distanceToSurface
     procedure :: normalVector
     procedure :: whichSurface
@@ -90,6 +91,17 @@ contains
     type = TYPE_NAME
 
   end function type
+
+  !!
+  !! Return string with definition of this surface
+  !!
+  pure subroutine getDef(self,string)
+    class(infSurf), intent(in)             :: self
+    character(:),allocatable,intent(inout) :: string
+
+    string = printSurfDef(TYPE_NAME, [ZERO])
+
+  end subroutine getDef
 
   !!
   !! Calculate distance to infinity's surface - always infinity

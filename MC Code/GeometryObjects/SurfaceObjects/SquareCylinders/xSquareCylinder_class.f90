@@ -5,7 +5,7 @@ module xSquareCylinder_class
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
 
-  use surface_inter,     only : surface
+  use surface_inter,     only : surface, printSurfDef
   use yPlane_class,      only : yPlane
   use zPlane_class,      only : zPlane
 
@@ -39,6 +39,7 @@ module xSquareCylinder_class
     procedure :: init
     procedure :: evaluate
     procedure :: type
+    procedure :: getDef
     procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: normalVector
@@ -174,6 +175,17 @@ contains
     type = TYPE_NAME
 
   end function type
+
+  !!
+  !! Return string with definition of this surface
+  !!
+  pure subroutine getDef(self,string)
+    class(xSquareCylinder), intent(in)     :: self
+    character(:),allocatable,intent(inout) :: string
+
+    string = printSurfDef(TYPE_NAME, [self % a, self % origin])
+
+  end subroutine getDef
 
   !!
   !! Override base type function to returns .false.

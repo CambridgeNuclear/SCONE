@@ -5,7 +5,7 @@ module yTruncCylinder_class
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
 
-  use surface_inter,     only : surface
+  use surface_inter,     only : surface, printSurfDef
   use yPlane_class,      only : yPlane
   use yCylinder_class,   only : yCylinder
 
@@ -40,6 +40,7 @@ module yTruncCylinder_class
     procedure :: init
     procedure :: evaluate
     procedure :: type
+    procedure :: getDef
     procedure :: cannotBeBoundary
     procedure :: distanceToSurface
     procedure :: normalVector
@@ -173,6 +174,18 @@ contains
     type = TYPE_NAME
 
   end function type
+
+  !!
+  !! Return string with definition of this surface
+  !!
+  pure subroutine getDef(self,string)
+    class(yTruncCylinder), intent(in)      :: self
+    character(:),allocatable,intent(inout) :: string
+
+    ! This chained call is SUPER dirty...
+    string = printSurfDef(TYPE_NAME, [self % cyl % radius, self % a, self % origin])
+
+  end subroutine getDef
 
   !!
   !! Override base type function to returns .false.

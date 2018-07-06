@@ -1,11 +1,3 @@
-!
-! The surface class is a base class for second order surfaces
-! These surfaces have the form:
-! Axx + Byy + Czz + Dxy + Eyz + Fxz + Gx + Hy + Jz + K
-!
-! Each surface class should contain the data necessary to define it
-! and the ability to locate which halfspace a given point occupies
-!
 module surface_inter
   use numPrecision
   use universalVariables
@@ -13,12 +5,26 @@ module surface_inter
 
   implicit none
   private
-    
+
+  !! Number of significant digits when writing and comparing surface parameters
+  !! Format string for writing a single real for convinience
+  character(*),parameter         :: defTol   = '6'
+  character(*),parameter         :: expSize  = '2'
+  character(*),parameter         :: width           = '13' ! defTol + expSize + 5
+  integer(shortInt), parameter   :: int_width = 13
+  character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize
+
+  public :: real2char_surf
+  public :: printSurfDef
+
+  !!
+  !! Abstract interface for a surface
+  !!
   type, abstract, public :: surface
     character(nameLen)          :: name =""
     integer(shortInt)           :: id = 0
 
-    ! Perhaps to be removed
+    ! Perhaps to be removed -> will be removed
     logical(defBool)            :: isCompound   = .FALSE.
 
     ! Obsolate components to be removed
@@ -37,9 +43,13 @@ module surface_inter
     procedure(boundaryTransform), deferred       :: boundaryTransform
 
     ! New interface
+    generic                                      :: operator(.same.) => same_surf
     procedure                                    :: cannotBeBoundary
     procedure                                    :: setBoundaryConditions
+    procedure, private                           :: same_surf
     procedure(type),deferred                     :: type
+    procedure(getDef),deferred                   :: getDef
+
 
     ! To delate
     procedure(whichSurface), deferred            :: whichSurface
@@ -68,11 +78,11 @@ module surface_inter
 
     ! New interface
     procedure :: type_ptr
+    procedure :: getDef_ptr
     procedure :: cannotBeBoundary_ptr
 
     procedure,private :: surface_ptr_assignment
     procedure,private :: surface_ptr_assignment_target
-    !procedure,private :: surface_ptr_assignment_pointer
   end type surface_ptr
 
   abstract interface
@@ -86,6 +96,17 @@ module surface_inter
       class(surface), intent(in) :: self
       character(nameLen)         :: type
     end function type
+
+    !!
+    !! Returns string containing surface def into allocatable string
+    !! Structure of surf def can be diffrent for each surf type
+    !!
+    pure subroutine getDef(self,string)
+      import :: surface
+      class(surface), intent(in)             :: self
+      character(:),allocatable,intent(inout) :: string
+    end subroutine getDef
+
 
     !!
     !! Return a value of the surface expression
@@ -237,6 +258,27 @@ contains
 
   end subroutine setBoundaryConditions
 
+  !!
+  !! Compare definition of surfaces
+  !! Returns .true. if surfaces are the same (in space)
+  !! Surfaces can differ in ID and name
+  !!
+  elemental function same_surf(LHS,RHS) result(same)
+    class(surface),intent(in) :: LHS
+    class(surface),intent(in) :: RHS
+    logical(defBool)          :: same
+    character(:),allocatable  :: LHS_def
+    character(:),allocatable  :: RHS_def
+
+    ! Obtain definition strings
+    call LHS % getDef(LHS_def)
+    call RHS % getDef(RHS_def)
+
+    ! Compare
+    same = LHS_def == RHS_def
+
+  end function same_surf
+
 !!
 !! Surface pointer procedures
 !!
@@ -315,6 +357,14 @@ contains
 
   end function type_ptr
 
+  pure subroutine getDef_ptr(self,string)
+    class(surface_ptr), intent(in)         :: self
+    character(:),allocatable,intent(inout) :: string
+
+    call self % ptr % getDef(string)
+
+  end subroutine getDef_ptr
+
   function cannotBeBoundary_ptr(self) result(itCant)
     class(surface_ptr), intent(in) :: self
     logical(defBool)               :: itCant
@@ -364,5 +414,35 @@ contains
     if(associated(LHS % ptr)) deallocate(LHS % ptr)
     LHS % ptr => RHS
   end subroutine surface_ptr_assignment_target
+
+  !!
+  !! Write parameter using local format specification defined for surfaces in this module
+  !!
+  pure function real2Char_surf(num) result(str)
+    real(defReal), intent(in) :: num
+    character(int_width)      :: str
+
+    write(str,'('//realForm//')') num
+
+  end function real2Char_surf
+
+  !!
+  !! Template function for writing definition strings
+  !!
+  pure function printSurfDef(type,coeff) result (str)
+    character(nameLen), intent(in)         :: type
+    real(defReal),dimension(:), intent(in) :: coeff
+    character(:), allocatable              :: str
+    character(size(coeff)*int_width)       :: tail
+    integer(shortInt)                      :: i
+
+    tail = ''
+    do i=1,size(coeff)
+      tail = trim(tail) // real2Char_surf(coeff(i))
+    end do
+
+    str = 'Type: '// trim(type)// '; Coeff:' // tail
+
+  end function printSurfDef
 
 end module surface_inter
