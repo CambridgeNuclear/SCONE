@@ -81,6 +81,8 @@ contains
     ! Set tail status flag to false
     self % isInter = .false.
 
+    ! Save energy value
+    self % E = E
 
   end subroutine setTo
 
