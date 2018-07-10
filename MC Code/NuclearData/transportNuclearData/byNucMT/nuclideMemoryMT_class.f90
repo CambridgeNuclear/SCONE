@@ -86,6 +86,8 @@ contains
     ! Save index on nuclide grid
     self % eIdx = idx
 
+    ! Save energy value
+    self % E = E
 
   end subroutine setTo
 
