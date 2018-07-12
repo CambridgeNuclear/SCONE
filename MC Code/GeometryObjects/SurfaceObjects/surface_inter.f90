@@ -6,17 +6,24 @@ module surface_inter
 
   implicit none
   private
+  !
+  ! Unfortunatly this module will be somewhat breaking rules
+  ! In order to avoid circular dependencies surface interface, surface slot and surface shelf
+  ! need to be placed in the same module. This is why this one is quite monstrous.
+  !
+
+
 
   ! Local Paramethers
   character(*),parameter         :: defTol   = '6'
   character(*),parameter         :: expSize  = '2'
   character(*),parameter         :: width    = '13'  ! defTol + expSize + 5
   integer(shortInt), parameter   :: int_width = 13   ! Needs to be the same as width but as int
-  character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize
   integer(shortInt),parameter    :: UNHASHED = 0
+  character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize !
 
-  !! Public function to print surface definition string
-  public :: printSurfDef
+  ! Public functions
+  public :: printSurfDef  !! Print surface definition string
 
 
   !!
@@ -25,77 +32,99 @@ module surface_inter
   type, abstract, public :: surface
     private
     !! Move the entire public interface into procedures ENCAPSULATION GOD DAMN IT!
-    character(nameLen)          :: name =""
-    integer(shortInt)           :: id = 0
-    integer(shortInt)           :: hash = UNHASHED
+!    character(nameLen)          :: name =""
+!    integer(shortInt)           :: id = 0
+!    integer(shortInt)           :: hash = UNHASHED
 
     ! Perhaps to be removed -> will be moved to a function (better slot support etc.
     logical(defBool)            :: isCompound   = .FALSE.
 
   contains
-    ! Interface to stay
-    procedure                                    :: halfspace
-    procedure                                    :: reflect
-    procedure(evaluate), deferred                :: evaluate
-    procedure(distanceToSurface), deferred       :: distanceToSurface
-    procedure(normalVector), deferred            :: normalVector
-    procedure(boundaryTransform), deferred       :: boundaryTransform
-
-    ! New interface
+    ! Operators and assignments
     generic                                      :: operator(.same.) => same_surf
+
+    ! Initialisation & Indentification procedures
+    procedure(name),deferred                     :: name
+    procedure(id),deferred                       :: id
+    procedure(hash),deferred                     :: hash
+    procedure(type),deferred                     :: type
+    procedure(getDef),deferred                   :: getDef
     procedure                                    :: cannotBeBoundary
     procedure                                    :: setBoundaryConditions
     procedure                                    :: hashSurfDef
     procedure, private                           :: same_surf
-    procedure(type),deferred                     :: type
-    procedure(getDef),deferred                   :: getDef
 
-    ! Old components
-    procedure(name),deferred                     :: name
-    procedure(hash),deferred                     :: hash
-    procedure(id),deferred                       :: id
-
-
-    ! To delate
-    procedure(whichSurface), deferred            :: whichSurface
-
+    ! Runtime procedures
+    procedure                                    :: halfspace
+    procedure                                    :: reflect
+    procedure(evaluate), deferred                :: evaluate
+    procedure(distance), deferred                :: distance
+    procedure(normalVector), deferred            :: normalVector
+    procedure(boundaryTransform), deferred       :: boundaryTransform
 
   end type surface
-
-!  type, public :: surface_ptr
-!    class(surface), pointer :: ptr => null()
+!
+!  !!
+!  !!
+!  !!
+!  type,public,extends(surface) :: surfaceSlot
+!    private
+!    class(surface),allocatable :: slot
 !  contains
-!    procedure :: halfspace => halfspace_ptr
-!    procedure :: reflect => reflect_ptr
-!    procedure :: evaluate => evaluate_ptr
-!    procedure :: distanceToSurface => distanceToSurface_ptr
-!    procedure :: normalVector => normalVector_ptr
-!    procedure :: whichSurface => whichSurface_ptr
-!    procedure :: isReflective => isReflective_ptr
-!    procedure :: isVacuum => isVacuum_ptr
-!    procedure :: isPeriodic => isPeriodic_ptr
-!    procedure :: periodicTranslation => periodicTranslation_ptr
-!    procedure :: setBoundaryConditions => setBoundaryConditions_ptr
-!    procedure :: boundaryTransform => boundaryTransform_ptr
-!    procedure :: name => name_ptr
-!    procedure :: id
-!    generic   :: assignment(=) => surface_ptr_assignment, surface_ptr_assignment_target!,surface_ptr_assignment_pointer
+!    ! Initialisation & Identification procedures
+!    procedure :: name                  => name_slot
+!    procedure :: id                    => id_slot
+!    procedure :: hash                  => hash_id
+!    procedure :: type                  => type_slot
+!    procedure :: getDef                => getDef_slot
+!    procedure :: cannotBeBoundary      => cannotBeBoundary_slot
+!    procedure :: setBoundaryConditions => setBoundaryConditions_slot
+!    procedure :: hashSurfDef           => hashSurfDef_slot
 !
-!    ! New interface
-!    procedure :: type_ptr
-!    procedure :: getDef_ptr
-!    procedure :: cannotBeBoundary_ptr
+!    ! Run time procedures
+!    procedure :: evaluate          => evaluate_slot
+!    procedure :: reflect           => reflect_slot
+!    procedure :: distance          => distance_slot
+!    procedure :: normalVector      => normalVector_slot
+!    procedure :: boundaryTransform => boundaryTransform_slot
 !
-!    procedure,private :: surface_ptr_assignment
-!    procedure,private :: surface_ptr_assignment_target
-!  end type surface_ptr
+!  end type surfaceSlot
 
   abstract interface
+    !!
+    !! Returns surface name
+    !!
+    elemental function name(self)
+      import :: nameLen,&
+                surface
+      class(surface), intent(in) :: self
+      character(nameLen)         :: name
+    end function name
+
+    !!
+    !! Returns surface ID
+    !!
+    elemental function id(self)
+      import :: shortInt,&
+                surface
+      class(surface), intent(in) :: self
+      integer(shortInt)          :: id
+    end function id
+
+    !!
+    !! Returns surface hashed definition
+    !!
+    elemental function hash(self)
+      import :: shortInt,&
+                surface
+      class(surface), intent(in) :: self
+      integer(shortInt)          :: hash
+    end function hash
 
     !!
     !! Return character with name of surface type
     !!
-    function type(self)
+    elemental function type(self)
       import :: nameLen,&
                 surface
       class(surface), intent(in) :: self
@@ -116,7 +145,7 @@ module surface_inter
     !!
     !! Return a value of the surface expression
     !!
-    function evaluate(self, r) result(res)
+    elemental function evaluate(self, r) result(res)
       import :: surface, &
                 defReal
       class(surface), intent(in)              :: self
@@ -127,9 +156,9 @@ module surface_inter
     !!
     !! OBSOLETE
     !!
-    subroutine reflectiveTransform(self, r, u)
+    pure subroutine reflectiveTransform(self, r, u)
       import :: surface, &
-               defReal
+                defReal
       class(surface), intent(in)                 :: self
       real(defReal), dimension(3), intent(inout) :: r, u
     end subroutine reflectiveTransform
@@ -138,42 +167,30 @@ module surface_inter
     !! Return +ve distance to surface from point r along direction u
     !! Return INFINITY if there is no crossing
     !!
-    function distanceToSurface(self, r, u) result(distance)
+    elemental function distance(self, r, u) result(dist)
       import :: surface, &
                 defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r, u
-      real(defReal)                           :: distance
-    end function
+      real(defReal)                           :: dist
+    end function distance
 
     !!
     !! Return vector normal to the surface for a point r on the surface
     !! Vector is pointing into +ve halfspace
     !! No check if r lies on the surface is performed
     !!
-    function normalVector(self, r) result(normal)
+    elemental function normalVector(self, r) result(normal)
       import :: surface, &
                 defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r
       real(defReal), dimension(3)             :: normal
-    end function
-
-    !!
-    !! WILL BECOME OBSOLETE
-    !!
-    function whichSurface(self, r, u) result(surfPointer)
-      use numPrecision
-      use genericProcedures
-      import :: surface
-      class(surface), intent(in)              :: self
-      real(defReal), dimension(3), intent(in) :: r, u
-      class(surface), pointer                 :: surfPointer
-    end function
+    end function normalVector
 
     !!
     !! Perform reflection of point r and direction u by the surface
-    !!
+    !! Perform coordinate transformation of a point r with direction u by the surface
     subroutine boundaryTransform(self, r, u, isVacuum)
       use numPrecision
       use genericProcedures
@@ -276,8 +293,8 @@ contains
     character(:),allocatable  :: RHS_def
     logical(defBool)          :: notHashed, sameHashes
 
-    notHashed = (LHS % hash == UNHASHED) .or. (RHS % hash == UNHASHED)
-    sameHashes = LHS % hash == RHS % hash
+    notHashed = (LHS % hash() == UNHASHED) .or. (RHS % hash() == UNHASHED)
+    sameHashes = LHS % hash() == RHS % hash()
 
     if (sameHashes .or. notHashed) then
       ! Obtain definition strings
@@ -309,141 +326,6 @@ contains
 
   end subroutine hashSurfDef
 
-!!
-!! Surface pointer procedures
-!!
-
-  function evaluate_ptr(self, r) result(res)
-    class(surface_ptr), intent(in)          :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
-    res=self%ptr%evaluate(r)
-  end function evaluate_ptr
-
-  subroutine reflect_ptr(self, r, u)
-   class(surface_ptr), intent(in)             :: self
-   real(defReal), dimension(3), intent(inout) :: r, u
-   call self%ptr%reflect(r,u)
-  end subroutine reflect_ptr
-
-  function distanceToSurface_ptr(self, r, u) result(distance)
-    class(surface_ptr), intent(in)          :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance
-    distance = self%ptr%distanceToSurface(r,u)
-  end function distanceToSurface_ptr
-
-  function normalVector_ptr(self, r) result(normal)
-    class(surface_ptr), intent(in)          :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3)             :: normal
-    normal = self%ptr%normalVector(r)
-  end function normalVector_ptr
-
-  function halfspace_ptr(self,r,u) result(position)
-    class(surface_ptr), intent(in)          :: self
-    real(defReal), dimension(3), intent(in) :: r, &  ! position relative to the surface
-                                               u     ! direction of travel (for coincidence cases)
-    logical(defBool)                        :: position
-    position = self%ptr%halfspace(r,u)
-  end function halfspace_ptr
-
-  function whichSurface_ptr(self, r, u) result(surfPointer)
-    class(surface_ptr), intent(in)          :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    surfPointer => self%ptr%whichSurface(r, u)
-  end function
-
-  function isReflective_ptr(self) result(isReflective)
-    class(surface_ptr), intent(in) :: self
-    logical(defBool)               :: isReflective
-    isReflective = self % ptr % isReflective
-  end function isReflective_ptr
-
-  function isVacuum_ptr(self) result(isVacuum)
-    class(surface_ptr), intent(in) :: self
-    logical(defBool)               :: isVacuum
-    isVacuum = self % ptr % isVacuum
-  end function isVacuum_ptr
-
-  function isPeriodic_ptr(self) result(isPeriodic)
-    class(surface_ptr), intent(in) :: self
-    logical(defBool)               :: isPeriodic
-    isPeriodic = self % ptr % isPeriodic
-  end function isPeriodic_ptr
-
-  function id(self) result(ind)
-    class(surface_ptr), intent(in) :: self
-    integer(shortInt)              :: ind
-    ind = self % ptr % id
-  end function id
-
-  function type_ptr(self) result(type)
-    class(surface_ptr), intent(in) :: self
-    character(nameLen)             :: type
-
-    type = self % ptr % type()
-
-  end function type_ptr
-
-  pure subroutine getDef_ptr(self,string)
-    class(surface_ptr), intent(in)         :: self
-    character(:),allocatable,intent(inout) :: string
-
-    call self % ptr % getDef(string)
-
-  end subroutine getDef_ptr
-
-  function cannotBeBoundary_ptr(self) result(itCant)
-    class(surface_ptr), intent(in) :: self
-    logical(defBool)               :: itCant
-
-    itCant = self % ptr % cannotBeBoundary()
-
-  end function cannotBeBoundary_ptr
-
-  function periodicTranslation_ptr(self) result(periodicTranslation)
-    class(surface_ptr), intent(in) :: self
-    real(defReal), dimension(3)    :: periodicTranslation
-    periodicTranslation = self % ptr % periodicTranslation
-  end function periodicTranslation_ptr
-
-  subroutine setBoundaryConditions_ptr(self,BC)
-    class(surface_ptr), intent(in)              :: self
-    integer(shortInt), dimension(:), intent(in) :: BC
-    call self % ptr % setBoundaryConditions(BC)
-  end subroutine setBoundaryConditions_ptr
-
-  subroutine boundaryTransform_ptr(self,r,u,isVacuum)
-    class(surface_ptr), intent(in)             :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
-    call self % ptr % boundaryTransform(r,u,isVacuum)
-  end subroutine boundaryTransform_ptr
-
-  function name_ptr(self) result(name)
-    class(surface_ptr), intent(in) :: self
-    character(100)                 :: name
-    name = self % ptr % name
-  end function name_ptr
-
-  subroutine surface_ptr_assignment(LHS,RHS)
-    class(surface_ptr), intent(out)  :: LHS
-    type(surface_ptr), intent(in)    :: RHS
-
-    if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS % ptr
-  end subroutine surface_ptr_assignment
-
-  subroutine surface_ptr_assignment_target(LHS,RHS)
-    class(surface_ptr), intent(out)        :: LHS
-    class(surface), pointer, intent(in)    :: RHS
-
-    if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS
-  end subroutine surface_ptr_assignment_target
 
   !!
   !! Write parameter using local format specification defined for surfaces in this module

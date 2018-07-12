@@ -3,5 +3,6 @@ add_sources( ./genericProcedures.f90
              ./numPrecision.f90
              ./endfConstants.f90
              ./universalVariables.f90 
-             ./hashFunctions_func.f90) 
+             ./hashFunctions_func.f90
+             ./vector_class.f90) 
  
