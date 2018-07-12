@@ -60,11 +60,11 @@ add_subdirectory(GeometryObjects)
 add_subdirectory(Tallies)
 
 add_subdirectory(CollisionOperator)
-add_subdirectory(TransportOperator)
+#add_subdirectory(TransportOperator)
 
 add_subdirectory(MOCObjects) 
 
-add_subdirectory(PhysicsPackages)
+#add_subdirectory(PhysicsPackages)
 
 ###############################################################################
 # PREPROCESS COLLECTED SOURCES FROM GLOBAL PROPERTY INTO VARIABLE
@@ -91,4 +91,4 @@ add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
 #add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
 #add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})
-add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})
+#add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})

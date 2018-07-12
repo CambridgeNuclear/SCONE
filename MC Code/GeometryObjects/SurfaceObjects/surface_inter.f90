@@ -7,34 +7,30 @@ module surface_inter
   implicit none
   private
 
-  !! Number of significant digits when writing and comparing surface parameters
-  !! Format string for writing a single real for convinience
+  ! Local Paramethers
   character(*),parameter         :: defTol   = '6'
   character(*),parameter         :: expSize  = '2'
-  character(*),parameter         :: width           = '13' ! defTol + expSize + 5
-  integer(shortInt), parameter   :: int_width = 13
+  character(*),parameter         :: width    = '13'  ! defTol + expSize + 5
+  integer(shortInt), parameter   :: int_width = 13   ! Needs to be the same as width but as int
   character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize
-  integer(shortInt),parameter    :: UNHASHED =0
+  integer(shortInt),parameter    :: UNHASHED = 0
 
-  public :: real2char_surf
+  !! Public function to print surface definition string
   public :: printSurfDef
+
 
   !!
   !! Abstract interface for a surface
   !!
   type, abstract, public :: surface
+    private
+    !! Move the entire public interface into procedures ENCAPSULATION GOD DAMN IT!
     character(nameLen)          :: name =""
     integer(shortInt)           :: id = 0
     integer(shortInt)           :: hash = UNHASHED
 
-    ! Perhaps to be removed -> will be removed
+    ! Perhaps to be removed -> will be moved to a function (better slot support etc.
     logical(defBool)            :: isCompound   = .FALSE.
-
-    ! Obsolate components to be removed
-    logical(defBool)            :: isReflective = .FALSE.
-    logical(defBool)            :: isPeriodic   = .FALSE.
-    logical(defBool)            :: isVacuum     = .FALSE.
-    real(defReal), dimension(3) :: periodicTranslation
 
   contains
     ! Interface to stay
@@ -54,6 +50,11 @@ module surface_inter
     procedure(type),deferred                     :: type
     procedure(getDef),deferred                   :: getDef
 
+    ! Old components
+    procedure(name),deferred                     :: name
+    procedure(hash),deferred                     :: hash
+    procedure(id),deferred                       :: id
+
 
     ! To delate
     procedure(whichSurface), deferred            :: whichSurface
@@ -61,33 +62,33 @@ module surface_inter
 
   end type surface
 
-  type, public :: surface_ptr
-    class(surface), pointer :: ptr => null()
-  contains
-    procedure :: halfspace => halfspace_ptr
-    procedure :: reflect => reflect_ptr
-    procedure :: evaluate => evaluate_ptr
-    procedure :: distanceToSurface => distanceToSurface_ptr
-    procedure :: normalVector => normalVector_ptr
-    procedure :: whichSurface => whichSurface_ptr
-    procedure :: isReflective => isReflective_ptr
-    procedure :: isVacuum => isVacuum_ptr
-    procedure :: isPeriodic => isPeriodic_ptr
-    procedure :: periodicTranslation => periodicTranslation_ptr
-    procedure :: setBoundaryConditions => setBoundaryConditions_ptr
-    procedure :: boundaryTransform => boundaryTransform_ptr
-    procedure :: name => name_ptr
-    procedure :: id
-    generic   :: assignment(=) => surface_ptr_assignment, surface_ptr_assignment_target!,surface_ptr_assignment_pointer
-
-    ! New interface
-    procedure :: type_ptr
-    procedure :: getDef_ptr
-    procedure :: cannotBeBoundary_ptr
-
-    procedure,private :: surface_ptr_assignment
-    procedure,private :: surface_ptr_assignment_target
-  end type surface_ptr
+!  type, public :: surface_ptr
+!    class(surface), pointer :: ptr => null()
+!  contains
+!    procedure :: halfspace => halfspace_ptr
+!    procedure :: reflect => reflect_ptr
+!    procedure :: evaluate => evaluate_ptr
+!    procedure :: distanceToSurface => distanceToSurface_ptr
+!    procedure :: normalVector => normalVector_ptr
+!    procedure :: whichSurface => whichSurface_ptr
+!    procedure :: isReflective => isReflective_ptr
+!    procedure :: isVacuum => isVacuum_ptr
+!    procedure :: isPeriodic => isPeriodic_ptr
+!    procedure :: periodicTranslation => periodicTranslation_ptr
+!    procedure :: setBoundaryConditions => setBoundaryConditions_ptr
+!    procedure :: boundaryTransform => boundaryTransform_ptr
+!    procedure :: name => name_ptr
+!    procedure :: id
+!    generic   :: assignment(=) => surface_ptr_assignment, surface_ptr_assignment_target!,surface_ptr_assignment_pointer
+!
+!    ! New interface
+!    procedure :: type_ptr
+!    procedure :: getDef_ptr
+!    procedure :: cannotBeBoundary_ptr
+!
+!    procedure,private :: surface_ptr_assignment
+!    procedure,private :: surface_ptr_assignment_target
+!  end type surface_ptr
 
   abstract interface
 
@@ -301,10 +302,10 @@ contains
     character(:),allocatable      :: defString
 
     ! Obtain definition string
-   ! call self % getDef(defString)
+    call self % getDef(defString)
 
     ! Hash and store hashed definition string
-   ! call FNV_1(defString, self % hash)
+    call FNV_1(defString, self % hash)
 
   end subroutine hashSurfDef
 
