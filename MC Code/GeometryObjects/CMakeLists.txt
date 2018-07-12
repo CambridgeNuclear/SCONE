@@ -1,4 +1,4 @@
-#add_subdirectory(SurfaceObjects)
+add_subdirectory(SurfaceObjects)
 
 # Add Source Files to the global list 
 add_sources( ./geometry_inter.f90 
