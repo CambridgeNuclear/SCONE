@@ -1,7 +1,7 @@
 module surface_inter
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, dotProduct
+  use genericProcedures,  only : fatalError, dotProduct, linFind
   use vector_class,       only : vector
   use hashFunctions_func, only : FNV_1
 
@@ -92,7 +92,15 @@ module surface_inter
   end type surfaceSlot
 
   !!
-  !!
+  !! Stores number of polymorphic surfaces
+  !! Public interface:
+  !!  shelf     -> array of surface slots
+  !!  addUnique -> adds a surface with unique definition and id to Shelf
+  !!  getOrAdd  -> returns ID & Idx of provided surface, If it isn't present it adds it to the shelf
+  !!  getIdx    -> returns Idx of surface with ID. returns "targetNotFound" if ID is not present
+  !!  trimSize  -> Resizes array to contain no empty entries
+  !!  init      -> initialises with maximum size and stride
+  !!  kill      -> returns to uninitialised state
   !!
   type,public :: surfaceShelf
     private
@@ -100,20 +108,22 @@ module surface_inter
     integer(shortInt)                                  :: Nmax   = 0
     integer(shortInt)                                  :: N      = 0
     integer(shortInt)                                  :: stride = DEF_STRIDE
-    integer(shortInt)                                  :: nextID = 0
+    integer(shortInt)                                  :: nextID = 1
 
   contains
     procedure :: init       => init_shelf
     procedure :: kill       => kill_shelf
-    !procedure :: addUnique  => addUnique_shelf
-    !procedure :: getOrAdd   => getOrAdd_shelf
-    !procedure :: freeID     => freeId_shelf
-    !procedure :: getIdx     => getIdx_shelf
-    !procedure :: resize     => resize_shelf
+    procedure :: trimSize   => trimSize_shelf
 
-    !procedure, private :: add_shelf
-    !procedure, private :: grow_shelf
-    !procedure, private :: containsID_shelf
+    procedure :: addUnique  => addUnique_shelf
+    procedure :: getOrAdd   => getOrAdd_shelf
+    procedure :: getIdx     => getIdx_shelf
+
+
+    ! Private procedures
+    procedure, private :: grow   => grow_shelf
+    procedure, private :: resize => resize_shelf
+    procedure, private :: freeID     => freeId_shelf
   end type surfaceShelf
 
 
@@ -591,6 +601,187 @@ contains
   end subroutine init_shelf
 
   !!
+  !! Adds allocatable surface to the shelf
+  !! Surf needs to be allocated upon entry
+  !! Deallocates surface in the process
+  !! Throws error if surface with the same definition or id is already present
+  !! Returns surfIdx in the surfaceShelf
+  !!
+  subroutine addUnique_shelf(self,surf,surfIdx)
+    class(surfaceShelf), intent(inout)       :: self
+    class(surface),allocatable,intent(inout) :: surf
+    integer(shortInt), intent(out)           :: surfIdx
+    integer(shortInt)                        :: N
+    character(100),parameter :: Here = 'addUnique_shelf (surface_inter.f90)'
+
+    if(.not.allocated(surf)) call fatalError(Here, 'surf argument is not allocated')
+
+    ! Load surface counter for convenience
+    N = self % N
+
+    if( N == 0) then ! First surface is  being loaded
+      call self % shelf(1) % load(surf)
+      surfIdx = 1
+
+    else
+      ! There are already surfaces present (need to check uniqueness)
+      associate ( storedSurf => self % shelf(1:N) )
+
+        if ( any( storedSurf % id() == surf % id() )) then        ! ID is already present
+          call fatalError(Here,'Id is already present in the surface shelf')
+
+        else if ( any( storedSurf .same. surf )) then            ! Definition is not unique
+          call fatalError(Here,'Surface with the same definition is already present')
+
+        end if
+      end associate
+
+      ! Load surface
+      call self % shelf(N+1) % load(surf)
+      surfIdx = N +1
+
+    end if
+
+    ! Increment surface counter
+    self % N = N + 1
+
+    ! Grow storage if needed
+    call self % grow()
+
+  end subroutine addUnique_shelf
+
+  !!
+  !! Returns surfId and surfIdx of the surface with the same definition
+  !! Surf needs to be allocated upon entry
+  !! If there is no surface with the same definition adds it the shelf
+  !! It completly ignores id of surf dummy argument
+  !! surf if deallocated upon exit
+  !!
+  subroutine getOrAdd_shelf(self,surf,surfId,surfIdx)
+    class(surfaceShelf), intent(inout)        :: self
+    class(surface),allocatable, intent(inout) :: surf
+    integer(shortInt), intent(out)            :: surfId
+    integer(shortInt), intent(out)            :: surfIdx
+    integer(shortInt)                         :: i
+    character(100),parameter :: Here = 'getOrAdd_shelf (surface_inter.f90)'
+
+    if(.not.allocated(surf)) call fatalError(Here, 'surf argument is not allocated')
+
+    ! Find surface with the same definition
+    do i=1,self % N
+      if(surf .same. self % shelf(i)) then ! Return Idx & ID of existing surface
+        surfId  = self % shelf(i) % id()
+        surfIdx = i
+        deallocate(surf)
+        return
+
+      end if
+    end do
+
+    ! Surface was not found set a next free Id and add to shelf
+    surfId = self % freeId()
+    call surf % setId(surfId)
+    call self % addUnique(surf,surfIdx)
+
+  end subroutine getOrAdd_shelf
+
+  !!
+  !! Returns smallest +ve free id in the shelf
+  !!
+  function freeId_shelf(self) result(id)
+    class(surfaceShelf), intent(inout) :: self
+    integer(shortInt)                  :: id
+
+    associate( storedSurf => self % shelf(1:self % N) )
+
+      do
+        id = self % nextId
+
+        ! Check if the proposed id is unique
+        if ( all(storedSurf % id() /= id )) return
+
+        ! Increment test id if current nextId is occupied
+        self % nextId = self % nextId + 1
+
+      end do
+    end associate
+
+  end function freeId_shelf
+
+  !!
+  !! Return surface idx given surf ID
+  !! Returns "targetNotFound" if id is not present
+  !!
+  elemental function getIdx_shelf(self,id) result(idx)
+    class(surfaceShelf), intent(in) :: self
+    integer(shortInt), intent(in)   :: id
+    integer(shortInt)               :: idx
+    integer(shortInt)               :: i
+
+    associate( storedSurf => self % shelf(1:self % N))
+      idx = linFind(storedSurf % id(), id)
+
+    end associate
+  end function getIdx_shelf
+
+  !!
+  !! Increases the size of the shelf by stride if N >= Nmax
+  !!
+  subroutine grow_shelf(self)
+    class(surfaceShelf), intent(inout)         :: self
+    type(surfaceSlot),dimension(:),allocatable :: tempShelf
+    integer(shortInt)                          :: Nmax
+
+    ! Return if shelf does not need to grow
+    if ( self % N < self % Nmax) then
+      return
+    end if
+
+    ! Calculate new maximum size
+    Nmax = self % Nmax + self % stride
+    call self % resize(Nmax)
+
+
+  end subroutine grow_shelf
+
+  !!
+  !! Set shelf size to the number of stored entries
+  !!
+  subroutine trimSize_shelf(self)
+    class(surfaceShelf), intent(inout) :: self
+
+    call self % resize(self % N)
+
+  end subroutine trimSize_shelf
+
+  !!
+  !! Set size of the shelf to Nmax >= self % N
+  !!
+  subroutine resize_shelf(self,Nmax)
+    class(surfaceShelf), intent(inout)         :: self
+    integer(shortInt), intent(in)              :: Nmax
+    type(surfaceSlot),dimension(:),allocatable :: tempShelf
+    character(100), parameter :: Here ='resize (surface_inter.f90)'
+
+    if( Nmax < self % N) call fatalError(Here,'Resizeing to size smaller then number of entries')
+
+    ! Allocate new storage space
+    allocate(tempShelf(Nmax) )
+
+    ! Copy Old enteries without reallocation
+    associate ( new => tempShelf(1:self % N), &
+                old => self % shelf(1:self % N) )
+
+      call new % moveAllocFrom( old)
+    end associate
+
+    ! Replace shelf and update Nmax
+    call move_alloc(tempShelf, self % shelf)
+    self % Nmax = Nmax
+
+  end subroutine resize_shelf
+
+  !!
   !! Deallocate storage space and returns shelf to uninitialised state
   !!
   subroutine kill_shelf(self)
@@ -600,7 +791,8 @@ contains
     self % Nmax   = 0
     self % N      = 0
     self % stride = DEF_STRIDE
-    self % nextID = 0
+    self % nextID = 1
+
   end subroutine kill_shelf
 
 
