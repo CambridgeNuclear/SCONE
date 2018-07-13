@@ -3,8 +3,9 @@ module sphere_class
   use numPrecision
   use universalVariables
   use genericProcedures, only : fatalError, dotProduct
+  use vector_class,      only : vector
   use dictionary_class,  only : dictionary
-  use surface_inter,     only : surface, printSurfDef
+  use surface_inter,     only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -29,20 +30,22 @@ module sphere_class
   type, public, extends (surface) :: sphere
     private
     real(defReal), dimension(3) :: origin
-    real(defReal) :: rSquared = ZERO
-    real(defReal) :: radius = ZERO
+    real(defReal) :: rSquared  = ZERO
+    real(defReal) :: radius    = ZERO
+    integer(shortInt) :: BC    = noBC
 
   contains
+    ! Initialisation & Indentification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
     procedure :: cannotBeBoundary
-    procedure :: distanceToSurface
-    procedure :: reflectiveTransform
-    procedure :: normalVector
-    procedure :: whichSurface
     procedure :: setBoundaryConditions
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
+    procedure :: normalVector
     procedure :: boundaryTransform
 
   end type sphere
@@ -52,20 +55,22 @@ contains
   !!
   !! Given an origin and radius, create a sphere object
   !!
-  subroutine init(self, origin, radius, id, name)
+  subroutine init(self, origin, radius, id)
     class(sphere), intent(inout)            :: self
     real(defReal), dimension(3), intent(in) :: origin
     real(defReal), intent (in)              :: radius
-    integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
+    integer(shortInt), intent(in)           :: id
+    character(100),parameter :: Here = 'init (sphere_class.f90)'
 
+    ! Load surface paramethers
     self % origin = origin
     self % radius = radius
-    if (radius < surface_tol) &
-    call fatalError('initSphere, sphere','Radius must be greater than surface tolerance')
-    self % rSquared = radius*radius
-    if(present(id)) self % id = id
-    if(present(name)) self % name = name
+
+    if (radius < surface_tol) call fatalError(Here,'Radius must be greater than surface tolerance')
+    self % rSquared = radius * radius
+
+    ! Set Id
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -75,9 +80,8 @@ contains
   !!
   !! Returns and initialised instance of sphere from dictionary and name
   !!
-  function sphere_fromDict(dict,name) result(new)
+  function sphere_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
     type(sphere)                   :: new
     integer(shortInt)              :: id
     real(defReal)                  :: radius
@@ -85,12 +89,12 @@ contains
     character(100), parameter :: Here = 'sphere_fromDict (sphere_class.f90)'
 
     id = dict % getInt('id')
-    if(id < 1) call fatalError(Here,'Invalid surface id provided')
+    if(id < 1) call fatalError(Here,'Invalid surface id provided. Id must be < 1')
 
     radius = dict % getReal('radius')
     origin = dict % getRealArray('origin')
 
-    call new % init(origin, radius, id, name)
+    call new % init(origin, radius, id)
 
   end function sphere_fromDict
 
@@ -98,21 +102,25 @@ contains
   !! Calculate squared difference between point and origin of sphere
   !! Insert values into sphere equation
   !!
-  function evaluate(self, r) result(res)
+  elemental subroutine evaluate(self, res, r, shelf)
     class(sphere), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), intent(out)              :: res
+    type(vector), intent(in)                :: r
+    type(surfaceShelf), intent(in)          :: shelf
     real(defReal), dimension(3)             :: diff
-    real(defReal)                           :: res
 
-    diff=(r - self % origin)**2
-    res = diff(1) + diff(2) + diff(3) - self % rSquared
+    ! Substract Vectors -> position from sphere centre
+    diff = r % v - self % origin
 
-  end function evaluate
+    ! Evaluate remainder
+    res  = diff(1)*diff(1) + diff(2)*diff(2) + diff(3)*diff(3) - self % rSquared
+
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(sphere), intent(in) :: self
     character(nameLen)        :: type
 
@@ -148,46 +156,47 @@ contains
   !! k = (x-x0)u + (y-y0)v + (z-z0)w
   !! c = (x-x0)^2 + (y-y0)^2 + (z-z0)^2 - R^2
   !!
-  function distanceToSurface(self,r,u)result(distance)
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
     class(sphere), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, &
-                                               u
-    real(defReal), dimension(3)             :: rBar
-    real(defReal)                           :: k, &
-                                               c, &
-                                               discriminant, &
-                                               distance
+    real(defReal), intent(out)              :: dist
+    integer(shortInt), intent(out)          :: idx
+    type(vector), intent(in)                :: r
+    type(vector), intent(in)                :: u
+    type(surfaceShelf), intent(in)          :: shelf
+    type(vector)                            :: rBar
+    real(defReal)                           :: k, c
+    real(defReal)                           :: discriminant
 
-    rBar = r - self%origin
-    k = dotProduct(rBar,u)
-    c = dotProduct(rBar,rBar) - self%rSquared
+    rBar = r - self % origin
+    k =  rBar .dot. u
+    c = (rBar .dot. rBar) - self % rSquared
     discriminant = k*k - c
 
     ! Particle does not intersect the surface
     if(discriminant < ZERO ) then
-      distance = INFINITY
+      dist = INFINITY
       return
     ! Particle is on the sphere - the distance will be either positive or negative
     else if (abs(c) < surface_tol) then
       if (k >= ZERO) then
-        distance = INFINITY
+        dist = INFINITY
         return
       else
-        distance = -k + sqrt(discriminant)
+        dist = -k + sqrt(discriminant)
         return
       end if
     ! Particle is inside the surface
     else if (c < ZERO) then
-      distance = -k + sqrt(discriminant)
+      dist = -k + sqrt(discriminant)
       return
     ! The neutron is outside the surface
     else
-      distance = -k - sqrt(discriminant)
-      if (distance < ZERO) distance = INFINITY
+      dist = -k - sqrt(discriminant)
+      if (dist < ZERO) dist = INFINITY
       return
     end if
 
-  end function distanceToSurface
+  end subroutine distance
 
   !!
   !! Perform a co-ordinate transform on a particle to apply reflective boundary condition
@@ -255,27 +264,15 @@ contains
   !!
   !! Supply the normal vector given a point on the sphere
   !!
-  function normalVector(self, r) result(normal)
-    class(sphere), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3)             :: normal
+  elemental function normalVector(self, r, shelf) result(normal)
+    class(sphere), intent(in)      :: self
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
+    type(vector)                   :: normal
 
     normal = TWO * (r - self % origin)
 
   end function normalVector
-
-  !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(sphere), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100), parameter :: Here = 'whichSurface (sphere_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
 
   !!
   !! Set boundary conditions for a sphere: may only be vacuum
@@ -289,28 +286,35 @@ contains
       call fatalError(Here,'Sphere boundaries may only be vacuum')
 
     else
-      self % isVacuum = .TRUE.
+      self % BC = vacuum
 
     end if
+
   end subroutine setBoundaryConditions
 
   !!
   !! Apply boundary conditions
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
+  subroutine boundaryTransform(self, r, u, isVacuum,shelf)
     class(sphere), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
+    type(vector), intent(inout)                :: r
+    type(vector), intent(inout)                :: u
+    logical(defBool), intent(out)              :: isVacuum
+    type(surfaceShelf), intent(in)             :: shelf
     character(100), parameter :: Here = 'boundaryTransform (sphere_class.f90)'
 
-    if (self % isVacuum) then
-      isVacuum = .TRUE.
+    select case(self % BC)
+      case(vacuum)
+        isVacuum = .true.
+        return
 
-    else
-      call fatalError(Here,'This routine should only be called if there sphere has vacuum boundaries')
+      case(noBC)
+        call fatalError(Here, 'This surface has no BC')
 
-    end if
+      case default
+        call fatalError(Here, 'Unsuported BC')
+
+      end select
   end subroutine boundaryTransform
 
 end module sphere_class

@@ -1,7 +1,10 @@
 module universalVariables
+
   use numPrecision
+
   implicit none
 
+  ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
   integer(shortInt), parameter, public :: hardcoded_max_nest = 5
@@ -18,14 +21,15 @@ module universalVariables
                                          inside = .TRUE.
 
   ! Define integers for each fill type that a cell may have
-  integer(shortInt), parameter :: outsideFill = 0,  &
+  integer(shortInt), parameter :: outsideFill  = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
                                   latticeFill  = 3
 
   ! Define integers for boundary condition types
-  integer(shortInt), parameter :: vacuum = 0, &
+  integer(shortInt), parameter :: vacuum     = 0, &
                                   reflective = 1, &
-                                  periodic = 2
+                                  periodic   = 2, &
+                                  noBC       = -1
 
 end module universalVariables

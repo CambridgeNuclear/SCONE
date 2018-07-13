@@ -32,18 +32,17 @@ module surface_inter
   !!
   type, abstract, public :: surface
     private
-    integer(shortInt)           :: hash = UNHASHED
-
-    ! Perhaps to be removed -> will be moved to a function (better slot support etc.
-    logical(defBool)            :: isCompound   = .FALSE.
+    integer(shortInt)       :: hash   = UNHASHED
+    integer(shortInt)       :: surfID = -1
+    integer(shortInt)       :: idx    = 0
 
   contains
     ! Operators and assignments
     generic                                      :: operator(.same.) => same_surf
 
     ! Initialisation & Indentification procedures
-    procedure(name),deferred                     :: name
-    procedure(id),deferred                       :: id
+    procedure                                    :: id
+    procedure                                    :: setId
     procedure(type),deferred                     :: type
     procedure(getDef),deferred                   :: getDef
     procedure                                    :: cannotBeBoundary
@@ -75,8 +74,8 @@ module surface_inter
     procedure,private :: copy_slot
 
     ! Initialisation & Identification procedures
-    procedure :: name                  => name_slot
     procedure :: id                    => id_slot
+    procedure :: setId                 => setId_slot
     procedure :: type                  => type_slot
     procedure :: getDef                => getDef_slot
     procedure :: cannotBeBoundary      => cannotBeBoundary_slot
@@ -119,25 +118,6 @@ module surface_inter
 
 
   abstract interface
-    !!
-    !! Returns surface name
-    !!
-    elemental function name(self)
-      import :: nameLen,&
-                surface
-      class(surface), intent(in) :: self
-      character(nameLen)         :: name
-    end function name
-
-    !!
-    !! Returns surface ID
-    !!
-    elemental function id(self)
-      import :: shortInt,&
-                surface
-      class(surface), intent(in) :: self
-      integer(shortInt)          :: id
-    end function id
 
     !!
     !! Returns surface hashed definition
@@ -219,9 +199,10 @@ module surface_inter
     end function normalVector
 
     !!
-    !! Perform reflection of point r and direction u by the surface
     !! Perform coordinate transformation of a point r with direction u by the surface
-    elemental subroutine boundaryTransform(self, r, u, isVacuum, shelf)
+    !! Set isVacuum to true if vacuum BC was X-ed
+    !!
+    subroutine boundaryTransform(self, r, u, isVacuum, shelf)
       import :: surface, &
                 vector, &
                 defBool, &
@@ -229,7 +210,7 @@ module surface_inter
       class(surface), intent(in)                 :: self
       type(vector), intent(inout)                :: r
       type(vector), intent(inout)                :: u
-      logical(defBool), intent(inout)            :: isVacuum
+      logical(defBool), intent(out)              :: isVacuum
       type(surfaceShelf), intent(in)             :: shelf
     end subroutine boundaryTransform
 
@@ -240,6 +221,28 @@ contains
 !! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!!
 !! surface procedures
 !! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>!!
+  !!
+  !! Returns surface ID
+  !!
+  elemental function id(self)
+    class(surface), intent(in) :: self
+    integer(shortInt)          :: id
+
+    id = self % surfID
+
+  end function id
+
+  !!
+  !! Sets surface ID
+  !!
+  elemental subroutine setId(self,ID)
+    class(surface), intent(inout) :: self
+    integer(shortInt), intent(in) :: ID
+
+    self % surfID = ID
+
+  end subroutine setId
+
   !!
   !! Determine whether a point occupies the positive or negative halfspace of a surface
   !! Point can also be located on a surface - must include direction to determine halfspace
@@ -375,6 +378,9 @@ contains
     if(allocated(LHS % slot)) deallocate (LHS % slot)
     call move_alloc(RHS , LHS % slot)
 
+    LHS % hash   = LHS % slot % hash
+    LHS % surfID = LHS % slot % id()
+
   end subroutine load_slot
 
   !!
@@ -389,6 +395,9 @@ contains
     if(allocated(LHS % slot)) deallocate (LHS % slot)
     allocate(LHS % slot, source = RHS)
 
+    LHS % hash   = LHS % slot % hash
+    LHS % surfID = LHS % slot % id()
+
   end subroutine copy_slot
 
   !!
@@ -398,22 +407,13 @@ contains
     class(surfaceSlot), intent(inout) :: LHS
     class(surfaceSlot), intent(inout) :: RHS
 
-    ! Please give me some tamplates in Fortran... MAK
     if(allocated(LHS % slot)) deallocate (LHS % slot)
     call move_alloc(RHS % slot, LHS % slot)
 
+    LHS % hash   = LHS % slot % hash
+    LHS % surfID = LHS % slot % id()
+
   end subroutine moveAllocFrom_slot
-
-  !!
-  !! Get name from the slot
-  !!
-  elemental function name_slot(self) result(name)
-    class(surfaceSlot), intent(in) :: self
-    character(nameLen)             :: name
-
-    name = self % slot % name()
-
-  end function name_slot
 
   !!
   !! Get id from the slot
@@ -423,8 +423,21 @@ contains
     integer(shortInt)              :: id
 
     id = self % slot % id()
+    !id = self % surfId
 
   end function id_slot
+
+  !!
+  !! Set ID inside the slot
+  !!
+  elemental subroutine setId_slot(self,Id)
+    class(surfaceSlot), intent(inout) :: self
+    integer(shortInt), intent(in)     :: Id
+
+    call self % slot % setId(Id)
+    self % surfId = Id
+
+  end subroutine setId_slot
 
   !!
   !! Get type from the slot
@@ -493,7 +506,6 @@ contains
     type(vector), intent(in)       :: r
     type(surfaceShelf), intent(in) :: shelf
 
-
     call self % slot % evaluate(res, r, shelf)
 
   end subroutine evaluate_slot
@@ -522,7 +534,6 @@ contains
     type(vector), intent(in)       :: u
     type(surfaceShelf), intent(in) :: shelf
 
-
     call self % slot % distance(dist, idx, r, u, shelf)
 
   end subroutine distance_slot
@@ -543,11 +554,11 @@ contains
   !!
   !! Boundary transform by the surface inside the slot
   !!
-  elemental subroutine boundaryTransform_slot(self, r, u, isVacuum, shelf)
+  subroutine boundaryTransform_slot(self, r, u, isVacuum, shelf)
     class(surfaceSlot), intent(in)  :: self
     type(vector), intent(inout)     :: r
     type(vector), intent(inout)     :: u
-    logical(defBool), intent(inout) :: isVacuum
+    logical(defBool), intent(out)   :: isVacuum
     type(surfaceShelf), intent(in)  :: shelf
 
     call self % slot % boundaryTransform(r, u, isVacuum, shelf)
