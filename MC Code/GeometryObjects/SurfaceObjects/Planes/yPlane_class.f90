@@ -2,9 +2,10 @@ module yPlane_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,    only : fatalError, dotProduct
-  use dictionary_class,     only : dictionary
-  use surface_inter,        only : surface, printSurfDef
+  use genericProcedures,  only : fatalError
+  use vector_class,       only : vector
+  use dictionary_class,   only : dictionary
+  use surface_inter,      only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -28,16 +29,18 @@ module yPlane_class
     real(defReal) :: y0 ! y-axis offset
 
   contains
+    ! Initialisation & Indentification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
-    procedure :: distanceToSurface
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
     procedure :: normalVector
-    procedure :: whichSurface
     procedure :: boundaryTransform
 
-    procedure,private :: reflectiveTransform
+    procedure :: reflectAny
 
   end type yPlane
 
@@ -45,17 +48,15 @@ module yPlane_class
 contains
 
   !!
-  !! Initialise Y-Plabne from offset
+  !! Initialise Y-Plane from offset
   !!
-  subroutine init(self, y0, id, name)
+  subroutine init(self, y0, id)
     class(yPlane), intent(inout)            :: self
     real(defReal), intent(in)               :: y0
     integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
 
     self % y0 = y0
-    if(present(id)) self % id = id
-    if(present(name)) self % name = name
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -65,9 +66,8 @@ contains
   !!
   !! Returns an initialised instance of yPlane for dictionary and name
   !!
-  function yPlane_fromDict(dict,name) result(new)
+  function yPlane_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
     type(yPlane)                   :: new
     integer(shortInt)              :: id
     real(defReal)                  :: y0
@@ -77,26 +77,27 @@ contains
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
     y0 = dict % getReal('y')
-    call new % init(y0, id, name)
+    call new % init(y0, id)
 
   end function yPlane_fromDict
 
   !!
   !! Evaluate plane distance
   !!
-  function evaluate(self, r) result(res)
-    class(yPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
+  elemental subroutine evaluate(self, res, r, shelf)
+    class(yPlane), intent(in)     :: self
+    real(defReal), intent(out)    :: res
+    type(vector), intent(in)      :: r
+    type(surfaceShelf),intent(in) :: shelf
 
-    res = r(2) - self % y0
+    res = r % v(2) - self % y0
 
-  end function evaluate
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(yPlane), intent(in) :: self
     character(nameLen)        :: type
 
@@ -118,84 +119,76 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  function distanceToSurface(self,r,u)result(distance)
-    class(yPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance, v
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
+    class(yPlane), intent(in)       :: self
+    real(defReal), intent(out)      :: dist
+    integer(shortInt), intent(out)  :: idx
+    type(vector), intent(in)        :: r
+    type(vector), intent(in)        :: u
+    type(surfaceShelf), intent(in)  :: shelf
+    real(defReal)                   :: u2
 
-    v = u(2)
-    distance = self%y0 - r(2)
-    if ((v==ZERO) .OR. (abs(distance) < surface_tol)) then
-      distance = INFINITY
+    ! Set index
+    idx = self % myIdx()
+
+    u2   = u % v(2)
+    dist = self % y0 - r % v(2)
+
+    if ((u2 == ZERO) .OR. (abs(dist) < surface_tol)) then
+      dist = INFINITY
       return
     end if
 
-    distance = distance/v
-    if (distance < ZERO) distance = INFINITY
+    dist = dist/u2
+    if (dist < ZERO) dist = INFINITY
     return
 
-  end function distanceToSurface
+  end subroutine distance
 
   !!
   !! Perform reflection
   !!
-  subroutine reflectiveTransform(self,r,u)
-    class(yPlane), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    real(defReal) :: yDisplacement
+  elemental subroutine reflectAny(self,r,u,shelf)
+    class(yPlane), intent(in)        :: self
+    type(vector), intent(inout)      :: r
+    type(vector), intent(inout)      :: u
+    type(surfaceShelf), intent(in)   :: shelf
+    real(defReal)                    :: yDisplacement
 
     ! Reflect the particle y-coordinate across the plane
-    yDisplacement = r(2) - self%y0
-    r(2) = r(2) - TWO*yDisplacement
+    yDisplacement = r % v(2) - self % y0
+    r % v(2) = r % v(2) - TWO * yDisplacement
 
     ! Reflect the particle direction (independent of intersection point for plane)
-    u(2) = -u(2)
+    u % v(2) = -u % v(2)
 
-  end subroutine reflectiveTransform
+  end subroutine reflectAny
 
   !!
   !! Returns vector normal to the plane
   !!
-  function normalVector(self,r)result(normal)
-    class(yPlane), intent(in)               :: self
-    real(defReal), dimension(3)             :: normal
-    real(defReal), dimension(3), intent(in) :: r
+  elemental function normalVector(self, r, shelf) result(normal)
+    class(yPlane), intent(in)      :: self
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
+    type(vector)                   :: normal
 
     normal = [ZERO, ONE, ZERO]
 
   end function normalVector
-  !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(yPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100),parameter :: Here ='whichSurface ( yPlane_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
 
   !!
   !! Apply boundary transformations
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
-    class(yPlane), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
-    character(100),parameter :: Here ='boundaryTransform ( yPlane_class.f90)'
+  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
+    class(yPlane), intent(in)      :: self
+    type(vector), intent(inout)    :: r
+    type(vector), intent(inout)    :: u
+    logical(defBool), intent(out)  :: isVacuum
+    type(surfaceShelf), intent(in) :: shelf
+    character(100),parameter       :: Here ='boundaryTransform (yPlane_class.f90)'
 
-    if (self % isVacuum) then
-      isVacuum = .TRUE.
-    else if (self % isPeriodic) then
-      r = r + self % periodicTranslation
-    else if (self % isReflective) then
-      call self % reflectiveTransform(r,u)
-    else
-      call fatalError(Here,'No boundary condition applied to surface')
-    end if
+    call fatalError(Here,' yPlane does not support BC ')
 
   end subroutine boundaryTransform
 

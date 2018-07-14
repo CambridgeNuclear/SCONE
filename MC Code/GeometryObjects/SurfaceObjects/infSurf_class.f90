@@ -3,8 +3,9 @@ module infSurf_class
   use numPrecision
   use universalVariables
   use genericProcedures, only : fatalError
+  use vector_class,      only : vector
   use dictionary_class,  only : dictionary
-  use surface_inter,     only : surface, printSurfDef
+  use surface_inter,     only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -27,14 +28,17 @@ module infSurf_class
   type, public, extends (surface) :: infSurf
     private
   contains
+    ! Initialisation & Identification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
-    procedure :: distanceToSurface
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
     procedure :: normalVector
-    procedure :: whichSurface
     procedure :: boundaryTransform
+
   end type infSurf
 
 contains
@@ -42,13 +46,11 @@ contains
   !!
   !! Create an infinity surface object
   !!
-  subroutine init(self, id, name)
-    class(infSurf), intent(inout)           :: self
-    integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
+  subroutine init(self, id)
+    class(infSurf), intent(inout)   :: self
+    integer(shortInt), intent(in)   :: id
 
-    if(present(id))   self % id = id
-    if(present(name)) self % name = name
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -58,9 +60,8 @@ contains
   !!
   !! Returns an initialised instance of infSurf from dictionary and name
   !!
-  function infSurf_fromDict(dict,name) result(new)
+  function infSurf_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen),intent(in)  :: name
     type(infSurf)                  :: new
     integer(shortInt)              :: id
     character(100), parameter :: Here ='infSurf_fromDict (infSurf_class.f90)'
@@ -68,26 +69,27 @@ contains
     id = dict % getInt('id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    call new % init(id,name)
+    call new % init(id)
 
   end function infSurf_fromDict
 
   !!
   !! Always return inside for an infinite surface
   !!
-  function evaluate(self, r) result(res)
+  elemental subroutine evaluate(self, res, r, shelf)
     class(infSurf), intent(in)              :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
+    real(defReal), intent(out)              :: res
+    type(vector), intent(in)                :: r
+    type(surfaceShelf), intent(in)          :: shelf
 
     res = -ONE
 
-  end function evaluate
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(infSurf), intent(in) :: self
     character(nameLen)         :: type
 
@@ -109,52 +111,48 @@ contains
   !!
   !! Calculate distance to infinity's surface - always infinity
   !!
-  function distanceToSurface(self,r,u) result(distance)
-    class(infSurf), intent(in)              :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
+    class(infSurf), intent(in)     :: self
+    real(defReal), intent(out)     :: dist
+    integer(shortInt), intent(out) :: idx
+    type(vector), intent(in)       :: r
+    type(vector), intent(in)       :: u
+    type(surfaceShelf), intent(in) :: shelf
 
-    distance = INFINITY
+    ! Set index
+    idx = self % myIdx()
 
-  end function distanceToSurface
+    dist = INFINITY
+
+  end subroutine distance
 
   !!
   !! Supply the normal vector
   !!
-  function normalVector(self, r) result(normal)
-    class(infSurf), intent(in)              :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3)             :: normal
-    character(100), parameter :: Here ='normalVector (infSurf_class.f90)'
+  elemental function normalVector(self, r, shelf) result(normal)
+    class(infSurf), intent(in)       :: self
+    type(vector), intent(in)         :: r
+    type(surfaceShelf), intent(in)   :: shelf
+    type(vector)                     :: normal
 
-    call fatalError(Here,'Infinite surfaces do not have normals')
+    ! Interpret infinate surface as a shpere centered at (0,0,0) with infinate radius
+    ! Normal vector is just normalised current position
+    normal = r / r % L2norm()
 
   end function normalVector
 
   !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(infSurf), intent(in)              :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100), parameter :: Here ='whichSurface (infSurf_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
-
-  !!
   !! Apply boundary transformation
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
-    class(infSurf), intent(in)                 :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
-    character(100), parameter :: Here ='boundaryTransform (infSurf_class.f90)'
+  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
+    class(infSurf), intent(in)        :: self
+    type(vector), intent(inout)       :: r
+    type(vector), intent(inout)       :: u
+    logical(defBool), intent(out)     :: isVacuum
+    type(surfaceShelf), intent(in)    :: shelf
+    character(100), parameter :: Here = 'boundaryTransform (infSurf_class.f90)'
 
-    call fatalError(Here,'Infinite surfaces should not have associated boundary conditions')
+    call fatalError(Here,'infSurf cannot have BC')
 
   end subroutine boundaryTransform
 

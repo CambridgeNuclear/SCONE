@@ -32,4 +32,9 @@ module universalVariables
                                   periodic   = 2, &
                                   noBC       = -1
 
+  ! Search error codes
+  integer(shortInt), parameter :: valueOutsideArray = -1,&
+                                  tooManyIter       = -2,&
+                                  targetNotFound    = -3
+
 end module universalVariables

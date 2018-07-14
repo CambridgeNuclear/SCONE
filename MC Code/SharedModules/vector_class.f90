@@ -327,8 +327,8 @@ contains
   !!
   !! Assign vector from size(3) array of real8s
   !!
-  subroutine assignVector_real8(LHS,RHS)
-    class(vector), intent(out)            :: LHS
+  pure subroutine assignVector_real8(LHS,RHS)
+    class(vector), intent(inout)          :: LHS
     real(8),dimension(3),intent(in)       :: RHS
 
     LHS % v = RHS
@@ -338,8 +338,8 @@ contains
   !!
   !! Assign vector from size(3) array of real4s
   !!
-  subroutine assignVector_real4(LHS,RHS)
-    class(vector), intent(out)            :: LHS
+  pure subroutine assignVector_real4(LHS,RHS)
+    class(vector), intent(inout)          :: LHS
     real(4),dimension(3),intent(in)       :: RHS
 
     LHS % v = RHS

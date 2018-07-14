@@ -2,6 +2,7 @@ module genericProcedures
 
   use numPrecision
   use endfConstants
+  use universalVariables
 
   implicit none
 
@@ -42,11 +43,6 @@ module genericProcedures
     module procedure numToChar_longInt
     module procedure numToChar_defReal
   end interface
-
-
-  integer(shortInt), parameter :: valueOutsideArray = -1,&
-                                  tooManyIter       = -2,&
-                                  targetNotFound    = -3
 
   contains
 

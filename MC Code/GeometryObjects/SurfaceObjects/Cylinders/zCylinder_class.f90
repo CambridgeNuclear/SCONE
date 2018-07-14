@@ -3,8 +3,9 @@ module zCylinder_class
   use numPrecision
   use universalVariables
   use genericProcedures, only : fatalError
+  use vector_class,      only : vector
   use dictionary_class,  only : dictionary
-  use surface_inter,     only : surface, printSurfDef
+  use surface_inter,     only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -29,17 +30,19 @@ module zCylinder_class
     real(defReal)                :: rSquared = ZERO             ! squared radius of the cylinder
     real(defReal)                :: radius = ZERO               ! radius of the cylinder
     real(defReal), dimension(3)  :: origin = [ZERO, ZERO, ZERO] ! 2D origin of cylinder assumed parallel to z-axis
-
+    integer(shortInt)            :: BC    = noBC
   contains
+    ! Initialisation & Indentification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
     procedure :: cannotBeBoundary
-    procedure :: distanceToSurface
-    procedure :: normalVector
-    procedure :: whichSurface
     procedure :: setBoundaryConditions
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
+    procedure :: normalVector
     procedure :: boundaryTransform
 
   end type zCylinder
@@ -50,20 +53,19 @@ contains
   !!
   !! Initialise Z-Cylinder from components
   !!
-  subroutine init(self, radius, origin, id, name)
+  subroutine init(self, radius, origin, id)
     class(zCylinder), intent(inout)         :: self
     real(defReal), intent(in)               :: radius
     real(defReal), dimension(3), intent(in) :: origin
-    integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
+    integer(shortInt), intent(in)           :: id
 
     self % radius = radius
     if (radius < surface_tol) &
     call fatalError('init, zCylinder','Radius must be greater than surface tolerance')
     self % rSquared = radius*radius
     self % origin = origin
-    if(present(id)) self % id = id
-    if(present(name)) self % name = name
+
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -73,9 +75,8 @@ contains
   !!
   !! Returns and initialised instance of zCylinder from dictionary and name
   !!
-  function zCylinder_fromDict(dict,name) result(new)
+  function zCylinder_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
     type(zCylinder)                :: new
     integer(shortInt)              :: id
     real(defReal)                  :: radius
@@ -87,26 +88,27 @@ contains
 
     radius = dict % getReal('radius')
     origin = dict % getRealArray('origin')
-    call new % init(radius, origin, id, name)
+    call new % init(radius, origin, id)
 
   end function zCylinder_fromDict
 
   !!
   !! Evaluate remainder of cylinder equation
   !!
-  function evaluate(self, r) result(res)
-    class(zCylinder), intent(in)            :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
+  elemental subroutine evaluate(self, res, r, shelf)
+    class(zCylinder), intent(in)   :: self
+    real(defReal), intent(out)     :: res
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
 
-    res = (r(1) - self%origin(1))**2 + (r(2) - self%origin(2))**2 - self%rSquared
+    res = (r % v(1) - self%origin(1))**2 + (r % v(2) - self%origin(2))**2 - self%rSquared
 
-  end function evaluate
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(zCylinder), intent(in) :: self
     character(nameLen)           :: type
 
@@ -139,71 +141,66 @@ contains
   !!
   !! Calculate distance to cylinder along direction u
   !!
-  function distanceToSurface(self, r, u) result(distance)
-    class(zCylinder), intent(in)            :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: xBar, yBar
-    real(defReal)                           :: k, c, a
-    real(defReal)                           :: discriminant, distance
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
+    class(zCylinder), intent(in)    :: self
+    real(defReal), intent(out)      :: dist
+    integer(shortInt), intent(out)  :: idx
+    type(vector), intent(in)        :: r
+    type(vector), intent(in)        :: u
+    type(surfaceShelf), intent(in)  :: shelf
+    real(defReal)                   :: xBar, yBar
+    real(defReal)                   :: k, c, a
+    real(defReal)                   :: discriminant
 
-    xBar = r(1) - self%origin(1)
-    yBar = r(2) - self%origin(2)
+    ! Set index
+    idx = self % myIdx()
 
-    k = xBar*u(1) + yBar*u(2)
-    a = ONE - u(3)*u(3) ! = u(1)*u(1) + u(2)*u(2)
+    xBar = r % v(1) - self%origin(1)
+    yBar = r % v(2) - self%origin(2)
+
+    k = xBar*u % v(1) + yBar*u % v(2)
+    a = ONE - u % v(3)*u % v(3) ! = u(1)*u(1) + u(2)*u(2)
     c = xBar*xBar + yBar*yBar - self%rSquared
     discriminant = k*k - a*c
 
     ! No intersection
-    if ((a==ZERO).OR.(discriminant<ZERO)) then
-      distance = INFINITY
+    if ((a == ZERO).OR.(discriminant < ZERO)) then
+      dist = INFINITY
       return
     ! Particle is on the cylinder - the distance will be either positive or negative
     else if (abs(c) < surface_tol) then
       if (k >= ZERO) then
-        distance = INFINITY
+        dist = INFINITY
         return
       else
-        distance = (-k + sqrt(discriminant))/a
+        dist = (-k + sqrt(discriminant))/a
         return
       end if
     ! Particle is inside - take solution with + before sqrt
     else if (c<ZERO) then
-      distance = (-k + sqrt(discriminant))/a
+      dist = (-k + sqrt(discriminant))/a
       return
     ! Particle is outside - both distances are either positive or negative
     else
-      distance = (-k -sqrt(discriminant))/a
-      if (distance<ZERO) distance = INFINITY
+      dist = (-k -sqrt(discriminant))/a
+      if (dist<ZERO) dist = INFINITY
       return
     end if
 
-  end function distanceToSurface
+  end subroutine distance
 
   !!
   !! Return normal to the cylinder
   !!
-  function normalVector(self,r) result(normal)
-    class(zCylinder), intent(in)            :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal), dimension(3)             :: normal
+  elemental function normalVector(self, r, shelf) result(normal)
+    class(zCylinder), intent(in)   :: self
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
+    type(vector)                   :: normal
 
-    normal = [TWO*(r(1) - self%origin(1)), TWO*(r(2) - self%origin(2)), ZERO]
+    normal = [TWO*(r % v(1) - self%origin(1)), TWO*(r % v(2) - self%origin(2)), ZERO]
 
   end function normalVector
-
-  !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(zCylinder), intent(in)            :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100),parameter :: Here ='whichSurface ( zCylinder_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
 
   !!
   !! Set boundary conditions for a zCylinder: may only be vacuum
@@ -217,7 +214,7 @@ contains
       call fatalError(Here,'Cylinder boundaries may only be vacuum')
 
     else
-      self % isVacuum = .TRUE.
+      self % BC = vacuum
 
     end if
 
@@ -226,21 +223,26 @@ contains
   !!
   !! Apply boundary transformation
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
-    class(zCylinder), intent(in) :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
-    character(100),parameter :: Here ='boundaryTransform ( zCylinder_class.f90)'
+  subroutine boundaryTransform(self, r, u, isVacuum,shelf)
+    class(zCylinder), intent(in)     :: self
+    type(vector), intent(inout)      :: r
+    type(vector), intent(inout)      :: u
+    logical(defBool), intent(out)    :: isVacuum
+    type(surfaceShelf), intent(in)   :: shelf
+    character(100),parameter         :: Here ='boundaryTransform (zCylinder_class.f90)'
 
-    if (self % isVacuum) then
-      isVacuum = .TRUE.
+    select case(self % BC)
+      case(vacuum)
+        isVacuum = .true.
+        return
 
-    else
-      call fatalError(Here,'This should only be called for a cylinder with vacuum boundaries')
+      case(noBC)
+        call fatalError(Here, 'This surface has no BC')
 
-    end if
+      case default
+        call fatalError(Here, 'Unsuported BC')
 
+      end select
   end subroutine boundaryTransform
 
     

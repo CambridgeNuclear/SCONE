@@ -2,8 +2,9 @@ module plane_class
   use numPrecision
   use universalVariables
   use genericProcedures,  only : fatalError, dotProduct
+  use vector_class,       only : vector
   use dictionary_class,   only : dictionary
-  use surface_inter,      only : surface, printSurfDef
+  use surface_inter,      only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -27,16 +28,18 @@ module plane_class
     real(defReal), dimension(4), private :: coeff ! coefficients determining general plane (a,b,c,d)
 
   contains
+    ! Initialisation & Indentification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
-    procedure :: distanceToSurface
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
     procedure :: normalVector
-    procedure :: whichSurface
     procedure :: boundaryTransform
 
-    procedure,private :: reflectiveTransform
+    procedure :: reflectAny
 
   end type plane
 
@@ -45,15 +48,13 @@ contains
   !!
   !! Initialise general plane from coefficients
   !!
-  subroutine init(self, coeff, id, name)
+  subroutine init(self, coeff, id)
     class(plane), intent(inout)             :: self
     real(defReal), dimension(4), intent(in) :: coeff
-    integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
+    integer(shortInt), intent(in)           :: id
 
     self % coeff = coeff
-    if(present(id)) self % id = id
-    if(present(name)) self % name = name
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -63,9 +64,8 @@ contains
   !!
   !! Returns an initialised instance of plane for dictionary and name
   !!
-  function plane_fromDict(dict,name) result(new)
+  function plane_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
     type(plane)                    :: new
     integer(shortInt)              :: id
     real(defReal),dimension(4)     :: coeff
@@ -75,26 +75,27 @@ contains
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
     coeff = dict % getRealArray('coeff')
-    call new % init(coeff, id, name)
+    call new % init(coeff, id)
 
   end function plane_fromDict
 
   !!
   !! Evaluate plane distance
   !!
-  function evaluate(self, r) result(res)
+  elemental subroutine evaluate(self,res, r, shelf)
     class(plane), intent(in)                :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
+    real(defReal), intent(out)              :: res
+    type(vector), intent(in)                :: r
+    type(surfaceShelf), intent(in)          :: shelf
 
-    res = r(1)*self%coeff(1) + r(2)*self%coeff(2) + r(3)*self%coeff(3) - self%coeff(4)
+    res = r%v(1)*self%coeff(1) + r%v(2)*self%coeff(2) + r%v(3)*self%coeff(3) - self%coeff(4)
 
-  end function evaluate
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(plane), intent(in) :: self
     character(nameLen)     :: type
 
@@ -116,82 +117,75 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  function distanceToSurface(self,r,u) result(distance)
-    class(plane), intent(in)                :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance, denominator, numerator
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
+    class(plane), intent(in)          :: self
+    real(defReal), intent(out)        :: dist
+    integer(shortInt), intent(out)    :: idx
+    type(vector), intent(in)          :: r
+    type(vector), intent(in)          :: u
+    type(surfaceShelf), intent(in)    :: shelf
+    real(defReal)                     :: denominator, numerator
 
-    denominator = self%coeff(1)*u(1) + self%coeff(2)*u(2) + self%coeff(3)*u(3)
-    numerator = self%coeff(4) - self%coeff(1)*r(1) - self%coeff(2)*r(2) - self%coeff(3)*r(3)
+    ! Set index
+    idx = self % myIdx()
+
+    denominator = self%coeff(1)*u%v(1) + self%coeff(2)*u%v(2) + self%coeff(3)*u%v(3)
+    numerator = self%coeff(4) - self%coeff(1)*r%v(1) - self%coeff(2)*r%v(2) - self%coeff(3)*r%v(3)
 
     if ((denominator==ZERO) .OR. (abs(numerator) < surface_tol))  then
-      distance = INFINITY
+      dist = INFINITY
       return
     end if
 
-    distance = numerator/denominator
-    if (distance < ZERO) distance = INFINITY
+    dist = numerator/denominator
+    if (dist < ZERO) dist = INFINITY
     return
 
-  end function distanceToSurface
+  end subroutine distance
 
   !!
-  !! Perform reflection
+  !! Reflect position and direction by the plane
   !!
-  subroutine reflectiveTransform(self,r,u)
-    class(plane), intent(in)                   :: self
-    real(defReal), dimension(3), intent(inout) :: r, &
-                                                  u
-    real(defReal), dimension(3)                :: normal
-    real(defReal)                              :: magSquared, perpDistance
-
-    ! Re-examine whether this should be commented after defining the transport operator
-    !p%r = p%r + p%dir*distance
+  elemental subroutine reflectAny(self, r, u, shelf)
+    class(plane), intent(in)       :: self
+    type(vector), intent(inout)    :: r
+    type(vector), intent(inout)    :: u
+    type(surfaceShelf), intent(in) :: shelf
+    type(vector)                   :: normal
+    real(defReal)                  :: perpDist
 
     ! Translate the particle position across the plane
-    normal = self%normalVector(r)
-    magSquared = dotProduct(normal,normal)
-    perpDistance = self%evaluate(r)
-    r = r - TWO*perpDistance*normal
+    call self % evaluate(perpDist, r, shelf)
+    normal  = self % normalVector(r, shelf)
+    r       = r - TWO * perpDist * normal
 
     ! Reflect the particle direction (independent of intersection point for plane)(assume normalised)
-    u = u - TWO*dotProduct(normal,u)*normal
+    u = u - TWO * (normal .dot. u) * normal
 
-  end subroutine reflectiveTransform
+  end subroutine reflectAny
 
   !!
   !! Returns vector normal to the plane
   !!
-  function normalVector(self,r) result(normal)
+  elemental function normalVector(self, r, shelf) result(normal)
     class(plane), intent(in)                :: self
-    real(defReal), dimension(3)             :: normal
-    real(defReal), dimension(3), intent(in) :: r
+    type(vector), intent(in)                :: r
+    type(surfaceShelf), intent(in)          :: shelf
+    type(vector)                            :: normal
 
     normal = [self%coeff(1), self%coeff(2), self%coeff(3)]
 
   end function normalVector
 
   !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(plane), intent(in)                :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100),parameter :: Here = 'whichSurface (plane_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
-
-  !!
   !! Apply boundary transformation
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
-    class(plane), intent(in)                   :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
+  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
+    class(plane), intent(in)       :: self
+    type(vector), intent(inout)    :: r
+    type(vector), intent(inout)    :: u
+    logical(defBool), intent(out)  :: isVacuum
+    type(surfaceShelf), intent(in) :: shelf
     character(100),parameter :: Here = 'boundaryTransform (plane_class.f90)'
 
     call fatalError(Here,'This surface does not support boundary conditions')

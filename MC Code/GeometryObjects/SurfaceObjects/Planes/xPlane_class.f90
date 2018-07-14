@@ -2,9 +2,10 @@ module xPlane_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,    only : fatalError, dotProduct
+  use genericProcedures,    only : fatalError
+  use vector_class,         only : vector
   use dictionary_class,     only : dictionary
-  use surface_inter,        only : surface, printSurfDef
+  use surface_inter,        only : surface, printSurfDef, surfaceShelf
 
   implicit none
   private
@@ -28,16 +29,18 @@ module xPlane_class
     real(defReal) :: x0 ! x-axis offset
 
   contains
+    ! Initialisation & Indentification procedures
     procedure :: init
-    procedure :: evaluate
     procedure :: type
     procedure :: getDef
-    procedure :: distanceToSurface
+
+    ! Runtime procedures
+    procedure :: evaluate
+    procedure :: distance
     procedure :: normalVector
-    procedure :: whichSurface
     procedure :: boundaryTransform
 
-    procedure,private :: reflectiveTransform
+    procedure :: reflectAny
 
   end type xPlane
 
@@ -46,15 +49,13 @@ contains
   !!
   !! Initialise X-Plane from offset
   !!
-  subroutine init(self, x0, id, name)
-    class(xPlane), intent(inout)            :: self
-    real(defReal), intent(in)               :: x0
-    integer(shortInt), intent(in), optional :: id
-    character(*), optional, intent(in)      :: name
+  subroutine init(self, x0, id)
+    class(xPlane), intent(inout)  :: self
+    real(defReal), intent(in)     :: x0
+    integer(shortInt), intent(in) :: id
 
     self % x0 = x0
-    if(present(id)) self % id = id
-    if(present(name)) self % name = name
+    call self % setId(id)
 
     ! Hash and store surface definition
     call self % hashSurfDef()
@@ -64,9 +65,8 @@ contains
   !!
   !! Returns an initialised instance of xPlane for dictionary and name
   !!
-  function xPlane_fromDict(dict,name) result(new)
+  function xPlane_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
     type(xPlane)                   :: new
     integer(shortInt)              :: id
     real(defReal)                  :: x0
@@ -76,26 +76,27 @@ contains
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
     x0 = dict % getReal('x')
-    call new % init(x0, id, name)
+    call new % init(x0, id)
 
   end function xPlane_fromDict
 
   !!
   !!  Evaluate plane distance
   !!
-  function evaluate(self, r) result(res)
-    class(xPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: res
+  elemental subroutine evaluate(self, res, r, shelf)
+    class(xPlane), intent(in)      :: self
+    real(defReal), intent(out)     :: res
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
 
-    res = r(1) - self % x0
+    res = r % v(1) - self % x0
 
-  end function evaluate
+  end subroutine evaluate
 
   !!
   !! Return parameter character containing TYPE NAME
   !!
-  function type(self)
+  elemental function type(self)
     class(xPlane), intent(in) :: self
     character(nameLen)        :: type
 
@@ -117,85 +118,75 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  function distanceToSurface(self,r,u)result(distance)
-    class(xPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance, u1
+  elemental subroutine distance(self, dist, idx, r, u, shelf)
+    class(xPlane), intent(in)      :: self
+    real(defReal), intent(out)     :: dist
+    integer(shortInt), intent(out) :: idx
+    type(vector), intent(in)       :: r
+    type(vector), intent(in)       :: u
+    type(surfaceShelf), intent(in) :: shelf
+    real(defReal)                  :: u1
 
-    u1 = u(1)
-    distance = self%x0 - r(1)
-    if ((u1==ZERO) .OR. (abs(distance) < surface_tol)) then
-      distance = INFINITY
+    ! Set index
+    idx = self % myIdx()
+
+    u1   = u % v(1)
+    dist = self % x0 - r % v(1)
+
+    if ((u1==ZERO) .OR. (abs(dist) < surface_tol)) then
+      dist = INFINITY
       return
     end if
 
-    distance = distance/u1
-    if (distance < ZERO) distance = INFINITY
-    return
+    dist = dist/u1
+    if (dist < ZERO) dist = INFINITY
 
-  end function distanceToSurface
+  end subroutine distance
 
   !!
   !! Perform reflection
   !!
-  subroutine reflectiveTransform(self, r, u)
-    class(xPlane), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    real(defReal)                              :: xDisplacement
+  elemental subroutine reflectAny(self, r, u, shelf)
+    class(xPlane), intent(in)      :: self
+    type(vector), intent(inout)    :: r
+    type(vector), intent(inout)    :: u
+    type(surfaceShelf), intent(in) :: shelf
+    real(defReal)                  :: xDisplacement
 
     ! Reflect the particle x-coordinate across the plane
-    xDisplacement = r(1) - self%x0
-    r(1) = r(1) - TWO*xDisplacement
+    xDisplacement = r % v(1) - self % x0
+    r % v(1) = r % v(1) - TWO * xDisplacement
 
     ! Reflect the particle direction (independent of intersection point for plane)
-    u(1) = -u(1)
+    u % v(1) = -u % v(1)
 
-  end subroutine reflectiveTransform
+  end subroutine reflectAny
 
   !!
   !! Return normal of the plane
   !!
-  function normalVector(self,r)result(normal)
-    class(xPlane), intent(in)               :: self
-    real(defReal), dimension(3)             :: normal
-    real(defReal), dimension(3), intent(in) :: r
+  elemental function normalVector(self,r, shelf) result(normal)
+    class(xPlane), intent(in)      :: self
+    type(vector), intent(in)       :: r
+    type(surfaceShelf), intent(in) :: shelf
+    type(vector)                   :: normal
 
     normal = [ONE, ZERO, ZERO]
 
   end function normalVector
 
   !!
-  !! Give an error: this routine should not be called for a non-compound surface
-  !!
-  function whichSurface(self, r, u) result(surfPointer)
-    class(xPlane), intent(in)               :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    character(100),parameter :: Here ='whichSurface ( xPlane_class.f90)'
-
-    call fatalError(Here,'This function should never be called for a simple surface')
-
-  end function whichSurface
-
-  !!
   !! Apply boundary transformations
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum)
-    class(xPlane), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r
-    real(defReal), dimension(3), intent(inout) :: u
-    logical(defBool), intent(inout)            :: isVacuum
-    character(100),parameter :: Here =' boundaryTransform ( xPlane_class.f90)'
+  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
+    class(xPlane), intent(in)       :: self
+    type(vector), intent(inout)     :: r
+    type(vector), intent(inout)     :: u
+    logical(defBool), intent(out)   :: isVacuum
+    type(surfaceShelf), intent(in)  :: shelf
+    character(100), parameter :: Here ='boundaryTransform (xPlane_class.f90)'
 
-    if (self % isVacuum) then
-      isVacuum = .TRUE.
-    else if (self % isPeriodic) then
-      r = r + self % periodicTranslation
-    else if (self % isReflective) then
-      call self % reflectiveTransform(r,u)
-    else
-      call fatalError(Here,'No boundary condition applied to surface')
-    end if
+    call fatalError(Here,'xPlane does not support BC')
 
   end subroutine boundaryTransform
     

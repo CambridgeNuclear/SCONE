@@ -51,6 +51,7 @@ module surface_inter
     procedure, private                           :: same_surf
 
     ! Runtime procedures
+    procedure                                    :: myIdx
     procedure                                    :: halfspace
     procedure                                    :: reflect
     procedure(evaluate), deferred                :: evaluate
@@ -325,6 +326,17 @@ contains
     call fatalError(Here,'Surface: ' // self % type() // ' does not accept BCs')
 
   end subroutine setBoundaryConditions
+
+  !!
+  !! Returns surface index in the shelf
+  !!
+  elemental function myIdx(self) result(idx)
+    class(surface), intent(in) :: self
+    integer(shortInt)          :: idx
+
+    idx = self % idx
+
+  end function myIdx
 
   !!
   !! Compare definition of surfaces

@@ -167,6 +167,9 @@ contains
     real(defReal)                           :: k, c
     real(defReal)                           :: discriminant
 
+    ! Set index
+    idx = self % myIdx()
+
     rBar = r - self % origin
     k =  rBar .dot. u
     c = (rBar .dot. rBar) - self % rSquared
