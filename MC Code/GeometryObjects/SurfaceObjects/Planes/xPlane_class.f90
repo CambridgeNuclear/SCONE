@@ -38,7 +38,6 @@ module xPlane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: normalVector
-    procedure :: boundaryTransform
 
     procedure :: reflectAny
 
@@ -83,11 +82,10 @@ contains
   !!
   !!  Evaluate plane distance
   !!
-  elemental subroutine evaluate(self, res, r, shelf)
+  elemental subroutine evaluate(self, res, r)
     class(xPlane), intent(in)      :: self
     real(defReal), intent(out)     :: res
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
 
     res = r % v(1) - self % x0
 
@@ -118,13 +116,12 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(xPlane), intent(in)      :: self
     real(defReal), intent(out)     :: dist
     integer(shortInt), intent(out) :: idx
     type(vector), intent(in)       :: r
     type(vector), intent(in)       :: u
-    type(surfaceShelf), intent(in) :: shelf
     real(defReal)                  :: u1
 
     ! Set index
@@ -146,11 +143,10 @@ contains
   !!
   !! Perform reflection
   !!
-  elemental subroutine reflectAny(self, r, u, shelf)
+  elemental subroutine reflectAny(self, r, u)
     class(xPlane), intent(in)      :: self
     type(vector), intent(inout)    :: r
     type(vector), intent(inout)    :: u
-    type(surfaceShelf), intent(in) :: shelf
     real(defReal)                  :: xDisplacement
 
     ! Reflect the particle x-coordinate across the plane
@@ -163,31 +159,14 @@ contains
   end subroutine reflectAny
 
   !!
-  !! Return normal of the plane
+  !! Returns vector normal to the plane
   !!
-  elemental function normalVector(self,r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(xPlane), intent(in)      :: self
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
     type(vector)                   :: normal
 
     normal = [ONE, ZERO, ZERO]
 
   end function normalVector
-
-  !!
-  !! Apply boundary transformations
-  !!
-  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
-    class(xPlane), intent(in)       :: self
-    type(vector), intent(inout)     :: r
-    type(vector), intent(inout)     :: u
-    logical(defBool), intent(out)   :: isVacuum
-    type(surfaceShelf), intent(in)  :: shelf
-    character(100), parameter :: Here ='boundaryTransform (xPlane_class.f90)'
-
-    call fatalError(Here,'xPlane does not support BC')
-
-  end subroutine boundaryTransform
-    
 end module xPlane_class

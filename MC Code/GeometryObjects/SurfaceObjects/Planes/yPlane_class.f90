@@ -38,7 +38,6 @@ module yPlane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: normalVector
-    procedure :: boundaryTransform
 
     procedure :: reflectAny
 
@@ -84,11 +83,10 @@ contains
   !!
   !! Evaluate plane distance
   !!
-  elemental subroutine evaluate(self, res, r, shelf)
+  elemental subroutine evaluate(self, res, r)
     class(yPlane), intent(in)     :: self
     real(defReal), intent(out)    :: res
     type(vector), intent(in)      :: r
-    type(surfaceShelf),intent(in) :: shelf
 
     res = r % v(2) - self % y0
 
@@ -119,13 +117,12 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(yPlane), intent(in)       :: self
     real(defReal), intent(out)      :: dist
     integer(shortInt), intent(out)  :: idx
     type(vector), intent(in)        :: r
     type(vector), intent(in)        :: u
-    type(surfaceShelf), intent(in)  :: shelf
     real(defReal)                   :: u2
 
     ! Set index
@@ -148,11 +145,10 @@ contains
   !!
   !! Perform reflection
   !!
-  elemental subroutine reflectAny(self,r,u,shelf)
+  elemental subroutine reflectAny(self, r, u)
     class(yPlane), intent(in)        :: self
     type(vector), intent(inout)      :: r
     type(vector), intent(inout)      :: u
-    type(surfaceShelf), intent(in)   :: shelf
     real(defReal)                    :: yDisplacement
 
     ! Reflect the particle y-coordinate across the plane
@@ -167,30 +163,13 @@ contains
   !!
   !! Returns vector normal to the plane
   !!
-  elemental function normalVector(self, r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(yPlane), intent(in)      :: self
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
     type(vector)                   :: normal
 
     normal = [ZERO, ONE, ZERO]
 
   end function normalVector
-
-  !!
-  !! Apply boundary transformations
-  !!
-  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
-    class(yPlane), intent(in)      :: self
-    type(vector), intent(inout)    :: r
-    type(vector), intent(inout)    :: u
-    logical(defBool), intent(out)  :: isVacuum
-    type(surfaceShelf), intent(in) :: shelf
-    character(100),parameter       :: Here ='boundaryTransform (yPlane_class.f90)'
-
-    call fatalError(Here,' yPlane does not support BC ')
-
-  end subroutine boundaryTransform
-
 
 end module yPlane_class

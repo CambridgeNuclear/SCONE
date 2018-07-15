@@ -37,7 +37,6 @@ module infSurf_class
     procedure :: evaluate
     procedure :: distance
     procedure :: normalVector
-    procedure :: boundaryTransform
 
   end type infSurf
 
@@ -76,11 +75,10 @@ contains
   !!
   !! Always return inside for an infinite surface
   !!
-  elemental subroutine evaluate(self, res, r, shelf)
+  elemental subroutine evaluate(self, res, r)
     class(infSurf), intent(in)              :: self
     real(defReal), intent(out)              :: res
     type(vector), intent(in)                :: r
-    type(surfaceShelf), intent(in)          :: shelf
 
     res = -ONE
 
@@ -111,13 +109,12 @@ contains
   !!
   !! Calculate distance to infinity's surface - always infinity
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(infSurf), intent(in)     :: self
     real(defReal), intent(out)     :: dist
     integer(shortInt), intent(out) :: idx
     type(vector), intent(in)       :: r
     type(vector), intent(in)       :: u
-    type(surfaceShelf), intent(in) :: shelf
 
     ! Set index
     idx = self % myIdx()
@@ -129,10 +126,9 @@ contains
   !!
   !! Supply the normal vector
   !!
-  elemental function normalVector(self, r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(infSurf), intent(in)       :: self
     type(vector), intent(in)         :: r
-    type(surfaceShelf), intent(in)   :: shelf
     type(vector)                     :: normal
 
     ! Interpret infinate surface as a shpere centered at (0,0,0) with infinate radius
@@ -140,20 +136,5 @@ contains
     normal = r / r % L2norm()
 
   end function normalVector
-
-  !!
-  !! Apply boundary transformation
-  !!
-  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
-    class(infSurf), intent(in)        :: self
-    type(vector), intent(inout)       :: r
-    type(vector), intent(inout)       :: u
-    logical(defBool), intent(out)     :: isVacuum
-    type(surfaceShelf), intent(in)    :: shelf
-    character(100), parameter :: Here = 'boundaryTransform (infSurf_class.f90)'
-
-    call fatalError(Here,'infSurf cannot have BC')
-
-  end subroutine boundaryTransform
 
 end module infSurf_class

@@ -37,7 +37,6 @@ module plane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: normalVector
-    procedure :: boundaryTransform
 
     procedure :: reflectAny
 
@@ -82,11 +81,10 @@ contains
   !!
   !! Evaluate plane distance
   !!
-  elemental subroutine evaluate(self,res, r, shelf)
+  elemental subroutine evaluate(self,res, r)
     class(plane), intent(in)                :: self
     real(defReal), intent(out)              :: res
     type(vector), intent(in)                :: r
-    type(surfaceShelf), intent(in)          :: shelf
 
     res = r%v(1)*self%coeff(1) + r%v(2)*self%coeff(2) + r%v(3)*self%coeff(3) - self%coeff(4)
 
@@ -117,13 +115,12 @@ contains
   !!
   !! Calculate distance to plane along direction u
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(plane), intent(in)          :: self
     real(defReal), intent(out)        :: dist
     integer(shortInt), intent(out)    :: idx
     type(vector), intent(in)          :: r
     type(vector), intent(in)          :: u
-    type(surfaceShelf), intent(in)    :: shelf
     real(defReal)                     :: denominator, numerator
 
     ! Set index
@@ -146,17 +143,16 @@ contains
   !!
   !! Reflect position and direction by the plane
   !!
-  elemental subroutine reflectAny(self, r, u, shelf)
+  elemental subroutine reflectAny(self, r, u)
     class(plane), intent(in)       :: self
     type(vector), intent(inout)    :: r
     type(vector), intent(inout)    :: u
-    type(surfaceShelf), intent(in) :: shelf
     type(vector)                   :: normal
     real(defReal)                  :: perpDist
 
     ! Translate the particle position across the plane
-    call self % evaluate(perpDist, r, shelf)
-    normal  = self % normalVector(r, shelf)
+    call self % evaluate(perpDist, r)
+    normal  = self % normalVector(r)
     r       = r - TWO * perpDist * normal
 
     ! Reflect the particle direction (independent of intersection point for plane)(assume normalised)
@@ -167,29 +163,13 @@ contains
   !!
   !! Returns vector normal to the plane
   !!
-  elemental function normalVector(self, r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(plane), intent(in)                :: self
     type(vector), intent(in)                :: r
-    type(surfaceShelf), intent(in)          :: shelf
     type(vector)                            :: normal
 
     normal = [self%coeff(1), self%coeff(2), self%coeff(3)]
 
   end function normalVector
-
-  !!
-  !! Apply boundary transformation
-  !!
-  subroutine boundaryTransform(self, r, u, isVacuum, shelf)
-    class(plane), intent(in)       :: self
-    type(vector), intent(inout)    :: r
-    type(vector), intent(inout)    :: u
-    logical(defBool), intent(out)  :: isVacuum
-    type(surfaceShelf), intent(in) :: shelf
-    character(100),parameter :: Here = 'boundaryTransform (plane_class.f90)'
-
-    call fatalError(Here,'This surface does not support boundary conditions')
-
-  end subroutine boundaryTransform
 
 end module plane_class

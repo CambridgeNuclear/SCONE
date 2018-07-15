@@ -53,11 +53,11 @@ module surface_inter
     ! Runtime procedures
     procedure                                    :: myIdx
     procedure                                    :: halfspace
-    procedure                                    :: reflect
+    procedure                                    :: bounce
     procedure(evaluate), deferred                :: evaluate
     procedure(distance), deferred                :: distance
     procedure(normalVector), deferred            :: normalVector
-    procedure(boundaryTransform), deferred       :: boundaryTransform
+    procedure                                    :: boundaryTransform
 
   end type surface
 
@@ -85,7 +85,7 @@ module surface_inter
 
     ! Run time procedures
     procedure :: evaluate          => evaluate_slot
-    procedure :: reflect           => reflect_slot
+    procedure :: bounce            => bounce_slot
     procedure :: distance          => distance_slot
     procedure :: normalVector      => normalVector_slot
     procedure :: boundaryTransform => boundaryTransform_slot
@@ -164,7 +164,7 @@ module surface_inter
     !!
     !! Return a value of the surface expression
     !!
-    elemental subroutine evaluate(self,res, r, shelf)
+    elemental subroutine evaluate(self,res, r)
       import :: surface, &
                 defReal, &
                 vector, &
@@ -172,7 +172,6 @@ module surface_inter
       class(surface), intent(in)              :: self
       real(defReal), intent(out)              :: res
       type(vector), intent(in)                :: r
-      type(surfaceShelf), intent(in)          :: shelf
     end subroutine evaluate
 
     !!
@@ -180,7 +179,7 @@ module surface_inter
     !! Return INFINITY if there is no crossing
     !! Also return index of the surface being X-ed
     !!
-    elemental subroutine distance(self, dist, idx, r, u, shelf)
+    elemental subroutine distance(self, dist, idx, r, u)
       import :: surface, &
                 defReal,&
                 vector, &
@@ -191,7 +190,6 @@ module surface_inter
       integer(shortInt), intent(out)          :: idx
       type(vector), intent(in)                :: r
       type(vector), intent(in)                :: u
-      type(surfaceShelf), intent(in)          :: shelf
     end subroutine distance
 
     !!
@@ -199,31 +197,14 @@ module surface_inter
     !! Vector is pointing into +ve halfspace
     !! No check if r lies on the surface is performed
     !!
-    elemental function normalVector(self, r, shelf) result(normal)
+    elemental function normalVector(self, r) result(normal)
       import :: surface, &
                 vector, &
                 surfaceShelf
       class(surface), intent(in)      :: self
       type(vector), intent(in)        :: r
-      type(surfaceShelf), intent(in)  :: shelf
       type(vector)                    :: normal
     end function normalVector
-
-    !!
-    !! Perform coordinate transformation of a point r with direction u by the surface
-    !! Set isVacuum to true if vacuum BC was X-ed
-    !!
-    subroutine boundaryTransform(self, r, u, isVacuum, shelf)
-      import :: surface, &
-                vector, &
-                defBool, &
-                surfaceShelf
-      class(surface), intent(in)                 :: self
-      type(vector), intent(inout)                :: r
-      type(vector), intent(inout)                :: u
-      logical(defBool), intent(out)              :: isVacuum
-      type(surfaceShelf), intent(in)             :: shelf
-    end subroutine boundaryTransform
 
   end interface
 
@@ -258,15 +239,14 @@ contains
   !! Determine whether a point occupies the positive or negative halfspace of a surface
   !! Point can also be located on a surface - must include direction to determine halfspace
   !!
-  elemental function halfspace(self, r, u, shelf) result(position)
+  elemental function halfspace(self, r, u) result(position)
     class(surface), intent(in)              :: self
     type(vector),intent(in)                 :: r
     type(vector),intent(in)                 :: u
-    type(surfaceShelf), intent(in)          :: shelf
     real(defReal)                           :: res
     logical(defBool)                        :: position
 
-    call self % evaluate(res, r, shelf)
+    call self % evaluate(res, r)
 
     ! Set halfspace based on sign of res
     if( res > ZERO) then
@@ -277,29 +257,28 @@ contains
 
     ! If res is within surface tolerance choose halfspace based on direction
     if(abs(res) < surface_tol) then
-      position = (self % normalVector(r,shelf) .dot. u) > ZERO
+      position = (self % normalVector(r) .dot. u) > ZERO
     end if
 
   end function halfspace
 
   !!
-  !! Reflect a particle incident on a surface and nudge it away from the surface
+  !! Reflect a direction of a point r at the surface and nudge it along new direction
   !!
-  elemental subroutine reflect(self, r, u, shelf)
+  elemental subroutine bounce(self, r, u)
     class(surface), intent(in)                 :: self
     type(vector),intent(inout)                 :: r
     type(vector),intent(inout)                 :: u
-    type(surfaceShelf), intent(in)             :: shelf
     type(vector)                               :: normal
     real(defReal)                              :: magSquared
 
-    normal     = self % normalVector(r, shelf)
+    normal     = self % normalVector(r)
     magSquared = normal .dot. normal
 
     u = u - TWO * (u .dot. normal) * normal / magSquared
     r = r + NUDGE * u
 
-  end subroutine reflect
+  end subroutine bounce
 
   !!
   !! Always returns true.
@@ -326,6 +305,23 @@ contains
     call fatalError(Here,'Surface: ' // self % type() // ' does not accept BCs')
 
   end subroutine setBoundaryConditions
+
+
+  !!
+  !! Perform BC coordinate transformation of a point r with direction u
+  !! By default surfaces can have no BC.
+  !! Thus by default they need to give error if the boundaryTransform is called
+  !! If surface supports BC it needs to override this subroutine
+  !!
+  subroutine boundaryTransform(self, r, u)
+    class(surface), intent(in)     :: self
+    type(vector), intent(inout)    :: r
+    type(vector), intent(inout)    :: u
+    character(100),parameter :: Here = 'boundaryTransform (surface_inter.f90)'
+
+    call fatalError(Here,"Surface: " // self % type() // " doesn't support BC." )
+
+  end subroutine boundaryTransform
 
   !!
   !! Returns surface index in the shelf
@@ -522,68 +518,62 @@ contains
   !!
   !! Evaluate surface expression inside slot
   !!
-  elemental subroutine evaluate_slot(self, res, r, shelf)
+  elemental subroutine evaluate_slot(self, res, r)
     class(surfaceSlot), intent(in) :: self
     real(defReal), intent(out)     :: res
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
 
-    call self % slot % evaluate(res, r, shelf)
+    call self % slot % evaluate(res, r)
 
   end subroutine evaluate_slot
 
   !!
   !! Reflect from surface inside the slot
   !!
-  elemental subroutine reflect_slot(self, r, u, shelf)
+  elemental subroutine bounce_slot(self, r, u)
     class(surfaceSlot), intent(in)     :: self
     type(vector), intent(inout)        :: r
     type(vector), intent(inout)        :: u
-    type(surfaceShelf), intent(in)     :: shelf
 
-    call self % slot % reflect(r, u, shelf)
+    call self % slot % bounce(r, u)
 
-  end subroutine reflect_slot
+  end subroutine bounce_slot
 
   !!
   !! Evaluate distance from the surface in the slot
   !!
-  elemental subroutine distance_slot(self, dist, idx, r , u, shelf)
+  elemental subroutine distance_slot(self, dist, idx, r , u)
     class(surfaceSlot), intent(in) :: self
     real(defReal), intent(out)     :: dist
     integer(shortInt),intent(out)  :: idx
     type(vector), intent(in)       :: r
     type(vector), intent(in)       :: u
-    type(surfaceShelf), intent(in) :: shelf
 
-    call self % slot % distance(dist, idx, r, u, shelf)
+    call self % slot % distance(dist, idx, r, u)
 
   end subroutine distance_slot
 
   !!
   !! Normal vector into +ve halfspace of the surface inside the slot
   !!
-  elemental function normalVector_slot(self, r, shelf) result(normal)
+  elemental function normalVector_slot(self, r) result(normal)
     class(surfaceSlot), intent(in) :: self
     type(vector), intent(in)       :: r
     type(vector)                   :: normal
-    type(surfaceShelf),intent(in)  :: shelf
 
-    normal = self % slot % normalVector(r, shelf)
+    normal = self % slot % normalVector(r)
 
   end function normalVector_slot
 
   !!
   !! Boundary transform by the surface inside the slot
   !!
-  subroutine boundaryTransform_slot(self, r, u, isVacuum, shelf)
+  subroutine boundaryTransform_slot(self, r, u)
     class(surfaceSlot), intent(in)  :: self
     type(vector), intent(inout)     :: r
     type(vector), intent(inout)     :: u
-    logical(defBool), intent(out)   :: isVacuum
-    type(surfaceShelf), intent(in)  :: shelf
 
-    call self % slot % boundaryTransform(r, u, isVacuum, shelf)
+    call self % slot % boundaryTransform(r, u)
 
   end subroutine boundaryTransform_slot
 

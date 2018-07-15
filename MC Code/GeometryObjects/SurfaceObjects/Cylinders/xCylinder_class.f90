@@ -94,11 +94,10 @@ contains
   !!
   !! Evaluate remainder of cylinder equation
   !!
-  elemental subroutine evaluate(self, res, r, shelf)
+  elemental subroutine evaluate(self, res, r)
     class(xCylinder), intent(in)   :: self
     real(defReal), intent(out)     :: res
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
 
     res = (r % v(2) - self % origin(2))**2 + (r % v(3) - self%origin(3))**2 - self % rSquared
 
@@ -140,13 +139,12 @@ contains
   !!
   !! Calculate distance to cylinder along direction u
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(xCylinder), intent(in)    :: self
     real(defReal), intent(out)      :: dist
     integer(shortInt), intent(out)  :: idx
     type(vector), intent(in)        :: r
     type(vector), intent(in)        :: u
-    type(surfaceShelf), intent(in)  :: shelf
     real(defReal)                   :: yBar, zBar
     real(defReal)                   :: k, c, a
     real(defReal)                   :: discriminant
@@ -191,10 +189,9 @@ contains
   !!
   !! Return normal to the cylinder
   !!
-  elemental function normalVector(self, r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(xCylinder), intent(in)   :: self
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
     type(vector)                   :: normal
 
     normal = [ZERO, TWO*(r % v(2) - self%origin(2)), TWO*(r % v(3) - self%origin(3))]
@@ -222,17 +219,14 @@ contains
   !!
   !! Apply boundary transformation
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum,shelf)
+  subroutine boundaryTransform(self, r, u)
     class(xCylinder), intent(in)     :: self
     type(vector), intent(inout)      :: r
     type(vector), intent(inout)      :: u
-    logical(defBool), intent(out)    :: isVacuum
-    type(surfaceShelf), intent(in)   :: shelf
     character(100),parameter         :: Here ='boundaryTransform (xCylinder_class.f90)'
 
     select case(self % BC)
       case(vacuum)
-        isVacuum = .true.
         return
 
       case(noBC)

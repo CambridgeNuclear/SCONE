@@ -102,11 +102,10 @@ contains
   !! Calculate squared difference between point and origin of sphere
   !! Insert values into sphere equation
   !!
-  elemental subroutine evaluate(self, res, r, shelf)
+  elemental subroutine evaluate(self, res, r)
     class(sphere), intent(in)               :: self
     real(defReal), intent(out)              :: res
     type(vector), intent(in)                :: r
-    type(surfaceShelf), intent(in)          :: shelf
     real(defReal), dimension(3)             :: diff
 
     ! Substract Vectors -> position from sphere centre
@@ -156,13 +155,12 @@ contains
   !! k = (x-x0)u + (y-y0)v + (z-z0)w
   !! c = (x-x0)^2 + (y-y0)^2 + (z-z0)^2 - R^2
   !!
-  elemental subroutine distance(self, dist, idx, r, u, shelf)
+  elemental subroutine distance(self, dist, idx, r, u)
     class(sphere), intent(in)               :: self
     real(defReal), intent(out)              :: dist
     integer(shortInt), intent(out)          :: idx
     type(vector), intent(in)                :: r
     type(vector), intent(in)                :: u
-    type(surfaceShelf), intent(in)          :: shelf
     type(vector)                            :: rBar
     real(defReal)                           :: k, c
     real(defReal)                           :: discriminant
@@ -267,10 +265,9 @@ contains
   !!
   !! Supply the normal vector given a point on the sphere
   !!
-  elemental function normalVector(self, r, shelf) result(normal)
+  elemental function normalVector(self, r) result(normal)
     class(sphere), intent(in)      :: self
     type(vector), intent(in)       :: r
-    type(surfaceShelf), intent(in) :: shelf
     type(vector)                   :: normal
 
     normal = TWO * (r - self % origin)
@@ -298,17 +295,14 @@ contains
   !!
   !! Apply boundary conditions
   !!
-  subroutine boundaryTransform(self, r, u, isVacuum,shelf)
+  subroutine boundaryTransform(self, r, u)
     class(sphere), intent(in)                  :: self
     type(vector), intent(inout)                :: r
     type(vector), intent(inout)                :: u
-    logical(defBool), intent(out)              :: isVacuum
-    type(surfaceShelf), intent(in)             :: shelf
     character(100), parameter :: Here = 'boundaryTransform (sphere_class.f90)'
 
     select case(self % BC)
       case(vacuum)
-        isVacuum = .true.
         return
 
       case(noBC)
