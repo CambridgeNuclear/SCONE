@@ -38,7 +38,8 @@ module plane_class
     procedure :: distance
     procedure :: normalVector
 
-    procedure :: reflectAny
+    ! Type specific procedures
+    procedure :: reflect
 
   end type plane
 
@@ -141,9 +142,9 @@ contains
   end subroutine distance
 
   !!
-  !! Reflect position and direction by the plane
+  !! Perform reflection by the plane
   !!
-  elemental subroutine reflectAny(self, r, u)
+  elemental subroutine reflect(self, r, u)
     class(plane), intent(in)       :: self
     type(vector), intent(inout)    :: r
     type(vector), intent(inout)    :: u
@@ -158,7 +159,7 @@ contains
     ! Reflect the particle direction (independent of intersection point for plane)(assume normalised)
     u = u - TWO * (normal .dot. u) * normal
 
-  end subroutine reflectAny
+  end subroutine reflect
 
   !!
   !! Returns vector normal to the plane
