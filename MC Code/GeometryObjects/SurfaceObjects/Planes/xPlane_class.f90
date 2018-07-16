@@ -131,7 +131,7 @@ contains
     u1   = u % v(1)
     dist = self % x0 - r % v(1)
 
-    if ((u1==ZERO) .OR. (abs(dist) < surface_tol)) then
+    if ((u1 == ZERO) .OR. (abs(dist) < surface_tol)) then
       dist = INFINITY
       return
     end if
