@@ -34,16 +34,8 @@ module box_class
   !!
   type, public, extends(surface) :: box
     private
-    !type(xPlane), dimension(:), pointer :: xPlanes => null()
-    !type(yPlane), dimension(:), pointer :: yPlanes => null()
-    !type(zPlane), dimension(:), pointer :: zPlanes => null()
-
     !! Planes and plane indexes
-    type(xPlane), dimension(2)      :: xPlanes
-    type(yPlane), dimension(2)      :: yPlanes
-    type(zPlane), dimension(2)      :: zPlanes
     integer(shortInt), dimension(6) :: planeIdx  = [1,2,3,4,5,6]
-
 
     !! Boundary conditions in order x1, x2, y1, y2, z1, z2
     integer(shortInt), dimension(1:6) :: BC = noBc
@@ -91,16 +83,6 @@ contains
     if(any(a < surface_tol)) call fatalError(Here,'Box dimensions must be greater than surface tolerance & +ve ')
 
     call self % setId(id)
-
-    ! Initialise each plane in each cardinal direction - Top planes
-    call self % xPlanes(1) % init(origin(1) + a(1),1)
-    call self % yPlanes(1) % init(origin(2) + a(2),1)
-    call self % zPlanes(1) % init(origin(3) + a(3),1)
-
-    ! Initialise each plane in each cardinal direction - Bottom planes
-    call self % xPlanes(1) % init(origin(1) + a(1),1)
-    call self % yPlanes(1) % init(origin(2) + a(2),1)
-    call self % zPlanes(1) % init(origin(3) + a(3),1)
 
     ! Load planes no the shelf and obtain indices
     ! *** IMPLEMENT ***
