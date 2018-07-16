@@ -1,7 +1,7 @@
 module box_class
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
   use surface_inter,     only : surface, printSurfDef, surfaceShelf
@@ -17,6 +17,7 @@ module box_class
   !!
   character(nameLen),parameter :: TYPE_NAME    = 'box'
   logical(defBool),parameter   :: ACCEPTS_BC   = .true.
+  integer(shortInt),parameter  :: ABOVE = 1, IN = 0, BELOW = -1
 
   !!
   !! Constructor
@@ -45,7 +46,7 @@ module box_class
 
 
     !! Boundary conditions in order x1, x2, y1, y2, z1, z2
-    integer(shortInt), dimension(6) :: BC = noBC
+    integer(shortInt), dimension(1:6) :: BC = noBc
 
     real(defReal), dimension(3)         :: a    ! the half-width in each direction of the cubic box
     real(defReal), dimension(3)         :: origin
@@ -63,6 +64,9 @@ module box_class
     procedure :: distance
     procedure :: normalVector
     procedure :: boundaryTransform
+
+    ! Private procedures
+    procedure, private :: applyBC
 
   end type box
 
@@ -365,251 +369,127 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(box), intent(inout)                   :: self
     integer(shortInt), dimension(:), intent(in) :: BC
+    logical(defBool), dimension(3)              :: top_periodic
     character(100),parameter :: Here ='setBoundaryConditionsBox( box_class.f90)'
-!
-!    if (size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')
-!
-!    ! Positive x boundary
-!    if(BC(1) == vacuum) then
-!      self % xPlanes(1) % isVacuum = .TRUE.
-!    else if(BC(1) == reflective) then
-!      self % xPlanes(1) % isReflective = .TRUE.
-!    else if(BC(1) == periodic) then
-!      if(BC(2) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % xPlanes(1) % isPeriodic = .TRUE.
-!        self % xPlanes(1) % periodicTranslation = [-TWO*self % a(1), ZERO, ZERO]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
-!
-!    ! Negative x boundary
-!    if(BC(2) == vacuum) then
-!      self % xPlanes(2) % isVacuum = .TRUE.
-!    else if(BC(2) == reflective) then
-!      self % xPlanes(2) % isReflective = .TRUE.
-!    else if(BC(2) == periodic) then
-!      if(BC(1) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % xPlanes(2) % isPeriodic = .TRUE.
-!        self % xPlanes(2) % periodicTranslation = [TWO*self % a(1), ZERO, ZERO]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
-!
-!    ! Positive y boundary
-!    if(BC(3) == vacuum) then
-!      self % yPlanes(1) % isVacuum = .TRUE.
-!    else if(BC(3) == reflective) then
-!      self % yPlanes(1) % isReflective = .TRUE.
-!    else if(BC(3) == periodic) then
-!      if(BC(4) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % yPlanes(1) % isPeriodic = .TRUE.
-!        self % yPlanes(1) % periodicTranslation = [ZERO, -TWO*self % a(2), ZERO]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
-!
-!    ! Negative y boundary
-!    if(BC(4) == vacuum) then
-!      self % yPlanes(2) % isVacuum = .TRUE.
-!    else if(BC(4) == reflective) then
-!      self % yPlanes(2) % isReflective = .TRUE.
-!    else if(BC(4) == periodic) then
-!      if(BC(3) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % yPlanes(2) % isPeriodic = .TRUE.
-!        self % yPlanes(2) % periodicTranslation = [ZERO, TWO*self % a(2), ZERO]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
-!
-!    ! Positive z boundary
-!    if(BC(5) == vacuum) then
-!      self % zPlanes(1) % isVacuum = .TRUE.
-!    else if(BC(5) == reflective) then
-!      self % zPlanes(1) % isReflective = .TRUE.
-!    else if(BC(5) == periodic) then
-!      if(BC(6) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % zPlanes(1) % isPeriodic = .TRUE.
-!        self % zPlanes(1) % periodicTranslation = [ZERO, ZERO, -TWO*self % a(3)]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
-!
-!    ! Negative z boundary
-!    if(BC(6) == vacuum) then
-!      self % zPlanes(2) % isVacuum = .TRUE.
-!    else if(BC(6) == reflective) then
-!      self % zPlanes(2) % isReflective = .TRUE.
-!    else if(BC(6) == periodic) then
-!      if(BC(5) /= periodic) then
-!        call fatalError(Here, 'Both positive and negative boundary conditions must be periodic')
-!      else
-!        self % zPlanes(2) % isPeriodic = .TRUE.
-!        self % zPlanes(2) % periodicTranslation = [ZERO, ZERO, TWO*self % a(3)]
-!      end if
-!    else
-!      call fatalError(Here,'Invalid boundary condition provided')
-!    end if
+
+    ! Load BC codes
+    self % BC = BC(1:6)
+
+    ! Verify BC periodic BC
+    !*** Sorry for the oneliner but TBH its not that horrible.
+    !*** I'm just to tired to name a halper variable in a good way... -MAK
+    if(.not.all( (self % BC([1,3,5] ) == periodic) .eqv. (self % BC([2,4,6]) == periodic))) then
+      call fatalError(Here,'Periodic BC need to be applied to oposite surfaces')
+
+    end if
 
   end subroutine setBoundaryConditions
 
-  !! *** NEED to be reworked
-  !! Check halfspaces to identify which combination of
-  !! boundary conditions to apply to a point
+  !!
+  !! Apply boundary conditions specified by BC array given at initialisation
   !!
   subroutine boundaryTransform(self, r, u)
-    class(box), intent(in)                     :: self
-    type(vector), intent(inout)                :: r
-    type(vector), intent(inout)                :: u
-    logical(defBool)                           :: front, back, left, right, above, below
+    class(box), intent(in)               :: self
+    type(vector), intent(inout)          :: r
+    type(vector), intent(inout)          :: u
+    real(defReal), dimension(3)          :: pos
+    real(defReal), dimension(3)          :: a_bar
+    integer(shortInt), dimension(3)      :: Ri
+    integer(shortInt)                    :: N_trans, i, dir,flag
     character(100),parameter :: Here ='boundaryTransform( box_class.f90)'
 
-!    ! Point can be within one of 27 regions
-!    ! Locate which region and then apply BCs as appropriate
-!    front = self % xPlanes(1) % halfspace(r, u)
-!    back = .NOT. self % xPlanes(2) % halfspace(r, u)
-!    left = self % yPlanes(1) % halfspace(r, u)
-!    right = .NOT. self % yPlanes(2) % halfspace(r, u)
-!    above = self % zPlanes(1) % halfspace(r, u)
-!    below = .NOT. self % zPlanes(2) % halfspace(r, u)
-!
-!    ! Point is in the upper front left corner
-!    if (front .AND. left .AND. above) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is in the upper back left corner
-!    else if (back .AND. left .AND. above) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is above and to the left
-!    else if (left .AND. above) then
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is in the upper front right corner
-!    else if (front .AND. right .AND. above) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is in the upper back right corner
-!    else if (back .AND. right .AND. above) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is above and to the right
-!    else if (right .AND. above) then
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is above
-!    else if (above) then
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is above and in front
-!    else if (front .AND. above) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is above and behind
-!    else if (back .AND. above) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower front left
-!    else if (front .AND. left .AND. below) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower back left
-!    else if (back .AND. left .AND. below) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower left
-!    else if (left .AND. below) then
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower front right
-!    else if (front .AND. right .AND. below) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower back right
-!    else if (back .AND. right .AND. below) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the lower right
-!    else if (right .AND. below) then
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is below
-!    else if (below) then
-!      call self % zPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the front left
-!    else if (front .AND. left) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is in the back left
-!    else if (back .AND. left) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is on the left
-!    else if (left) then
-!      call self % yPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is on the front right
-!    else if (front .AND. right) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is on the back right
-!    else if (back .AND. right) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!      call self % yPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is on the front
-!    else if (front) then
-!      call self % xPlanes(1) % boundaryTransform(r, u)
-!
-!    ! Point is on the back
-!    else if (back) then
-!      call self % xPlanes(2) % boundaryTransform(r, u)
-!
-!    ! Point is in the box
-!    else
-!      call fatalError(Here,'Cannot apply boundary transformation: point is already within the boundary')
-!    end if
+    ! Calculate dimension reduced by surface tolerance
+    ! This is needed to apply BC for particles at the surface
+    a_bar = self % a - surface_tol
 
+    ! Calculate maximum distance in terms of coordinate transforms N_trans
+    Ri = ceiling(abs(r % v - self % origin)/ a_bar)/2
+    N_trans = max(Ri(1), Ri(2), Ri(3))
+
+    ! Loop over number of transformation required to fold back to inside geometry
+    do i=1,N_trans
+
+      ! Calculate position of the point wrt to orgin
+      pos = r % v - self % origin
+
+      ! Loop over cardinal directions and apply BC
+      do dir =1,3
+        if( pos(dir) > a_bar(dir) ) then       ! ABOVE BOX
+          flag = ABOVE
+
+        else if( pos(dir) < -a_bar(dir) ) then ! BELOW BOX
+          flag = BELOW
+
+        else
+          flag = IN
+
+        end if
+        ! Apply BC
+        call self % applyBC(r,u,flag,dir)
+
+      end do
+    end do
   end subroutine boundaryTransform
+
+  !!
+  !! Macro to apply BC given direction and flag which specifies position wrt planes
+  !!
+  subroutine applyBC(self,r,u,flag,dir)
+    class(box), intent(in)        :: self
+    type(vector), intent(inout)   :: r
+    type(vector), intent(inout)   :: u
+    integer(shortInt), intent(in) :: flag
+    integer(shortInt), intent(in) :: dir
+    integer(shortInt)             :: BC, idx
+    real(defReal)                 :: off, disp
+    character(100),parameter      :: Here ='applyBC( box_class.f90)'
+
+    ! Flag can be 1, 0, -1 corresponding to Above, Inside, Below
+    ! dir can be 1, 2, 3 and specifies cardinal direction
+
+    ! Note that flag 0 is eqivalent to application of vacuum BC
+
+    ! Recover BC
+    if (flag == IN) then
+      BC = vacuum
+
+    else
+      idx = dir * 2
+      if( flag == ABOVE) idx = idx - 1
+      BC = self % BC(idx)
+
+    end if
+
+    ! Apply BC
+    select case(BC)
+      case(vacuum)
+        ! Do nothing
+
+      case(reflective)
+        ! Find point offset
+        off = self % a(dir)
+        if (flag == BELOW) off = -off
+        off = self % origin(dir) + off
+
+        ! Calculate displacement
+        disp = r % v(dir) - off
+
+        ! Perform reflection
+        r % v(dir) = r % v(dir) - TWO * disp
+        u % v(dir) = -u % v(dir)
+
+      case(periodic)
+        ! Calculate offset
+        off = self % a(dir)
+        if (flag == BELOW) off = -off
+
+        ! Perform transition
+        r % v(dir) = r % v(dir) - TWO * off
+
+      case default
+        call fatalError(Here,'Unrecognised BC: '// numToChar(BC) )
+
+    end select
+  end subroutine applyBC
 
 end module box_class

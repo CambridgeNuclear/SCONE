@@ -24,7 +24,7 @@ subroutine boxTest()
   integer(shortInt) :: i
 
   call tBox % init([ZERO, ZERO, ZERO], [0.5_8, 0.6_8, 0.7_8],1)
-
+  !call tBox % setBoundaryConditions([1,1,2,1,1,0])
 
   temp = -1.0_8 * surface_tol - 0.7_8
   r = [0.3_8 ,-0.6_8 ,temp]
@@ -64,5 +64,28 @@ subroutine boxTest()
   print *, "HALFSPACE: ", tBox % halfspace(r,u)
   call tBox % distance(ev,i,r,u)
   print *, "DISTANCE : ", ev, i
+
+
+  print *, "BC CHECK"
+
+  call tBox % init([ZERO, ZERO, ZERO], [0.5_8, 0.6_8, 0.7_8],1)
+  call tBox % setBoundaryConditions([1,1,1,1,2,2])
+
+  r = [ -0.5_8   -0.0_8 * surface_tol ,&
+        -0.6_8   +0.0_8 * surface_tol ,&
+         0.7_8   -0.0_8 * surface_tol ]
+
+  u = [mu, -(ONE-mu*mu), 1.0000000_8]
+  u = u / u % L2norm()
+
+  print *, "BEFORE"
+  print *, "r: ", r % v
+  print *, "u: ", u % v
+
+
+  call tBox % boundaryTransform(r,u)
+  print *, "AFTER"
+  print *, "r: ", r % v
+  print *, "u: ", u % v
 
 end subroutine  boxTest
