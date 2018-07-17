@@ -31,6 +31,10 @@ module universalVariables
                                   reflective = 1, &
                                   periodic   = 2, &
                                   noBC       = -1
+  ! Integer indexes of cardinal directions
+  integer(shortInt), parameter :: X_axis = 1 ,&
+                                  Y_axis = 2 ,&
+                                  Z_axis = 3
 
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&
