@@ -354,6 +354,8 @@ contains
     logical(defBool), dimension(3)              :: top_periodic
     character(100),parameter :: Here ='setBoundaryConditionsBox( box_class.f90)'
 
+    if(size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')
+
     ! Load BC codes
     self % BC = BC(1:6)
 
@@ -369,6 +371,7 @@ contains
 
   !!
   !! Apply boundary conditions specified by BC array given at initialisation
+  !! If the point is inside the box it does nothing to its position & direction.
   !!
   subroutine boundaryTransform(self, r, u)
     class(box), intent(in)               :: self

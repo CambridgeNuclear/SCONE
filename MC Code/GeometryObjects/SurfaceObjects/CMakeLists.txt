@@ -1,6 +1,6 @@
 add_subdirectory(Planes)
 add_subdirectory(Cylinders)
-#add_subdirectory(SquareCylinders)
+add_subdirectory(SquareCylinders)
 #add_subdirectory(TruncCylinders) 
 
 # Add Source Files to the global list 
