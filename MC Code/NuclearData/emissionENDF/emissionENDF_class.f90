@@ -91,7 +91,7 @@ contains
 
     else
       call move_alloc(RHS % muLaw, LHS % muLaw)
-      call move_alloc(RHS % eLaw,  RHS % eLaw )
+      call move_alloc(RHS % eLaw,  LHS % eLaw )
 
     end if
 
