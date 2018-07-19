@@ -6,6 +6,18 @@ module genericProcedures
 
   implicit none
 
+  interface swap
+    module procedure swap_shortInt
+  end interface
+
+  interface quickSort
+    module procedure quickSort_shortInt
+  end interface
+
+  interface hasDuplicates
+    module procedure hasDuplicates_shortInt
+  end interface
+
   interface removeDuplicates
     module procedure removeDuplicates_Char
     module procedure removeDuplicates_shortInt
@@ -760,6 +772,71 @@ module genericProcedures
 
   end function crossProduct
 
+  !!
+  !! Returns true if array contains duplicates
+  !!
+  pure function hasDuplicates_shortInt(array) result(doesIt)
+    integer(shortInt), dimension(:), intent(in) :: array
+    logical(defBool)                            :: doesIt
+    integer(shortInt), dimension(size(array))   :: arrayCopy
+    integer(shortInt)                           :: i
+
+    ! Copy and sort array
+    arrayCopy = array
+    call quickSort(arrayCopy)
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
+
+    end do
+
+  end function hasDuplicates_shortInt
+
+  !!
+  !! Quick sort for integer array
+  !!
+  recursive pure subroutine quickSort_shortInt(array)
+    integer(shortInt), dimension(:), intent(inout) :: array
+    integer(shortInt)                              :: pivot
+    integer(shortInt)                              :: i, maxSmall
+
+    if (size(array) > 0 ) then
+      ! Set a pivot to the rightmost element
+      pivot = size(array)
+
+      ! Move all elements <= pivot to the LHS of the pivot
+      ! Find position of the pivot in the array at the end (maxSmall)
+      maxSmall = 0
+      do i=1,size(array)
+
+        if( array(i) <= array(pivot)) then
+          maxSmall = maxSmall + 1
+          call swap(array(i),array(maxSmall))
+        end if
+      end do
+
+      ! Recursivly sort the sub arrays divided by the pivot
+      call quickSort(array(1:maxSmall-1))
+      call quickSort(array(maxSmall+1:size(array)))
+    end if
+
+  end subroutine quickSort_shortInt
+
+  !!
+  !! Swap to integers
+  !! Use XOR to avoid extra space (which is completly unnecessary)
+  !!
+  elemental subroutine swap_shortInt(i1,i2)
+    integer(shortInt), intent(inout) :: i1
+    integer(shortInt), intent(inout) :: i2
+
+    i1 = IEOR(i1,i2)
+    i2 = IEOR(i1,i2)
+    i1 = IEOR(i1,i2)
+
+  end subroutine swap_shortInt
 
 
 end module genericProcedures

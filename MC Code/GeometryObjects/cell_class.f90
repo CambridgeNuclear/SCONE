@@ -1,9 +1,9 @@
 module cell_class
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError, linFind, targetNotFound
+  use genericProcedures, only : fatalError, linFind, targetNotFound, numToChar, hasDuplicates
   use vector_class,      only : vector
-  use surface_inter,     only  : surface, surfaceShelf
+  use surface_inter,     only : surface, surfaceShelf
 
   implicit none
   private
@@ -23,7 +23,6 @@ module cell_class
   type, public :: cell
     private
     integer(shortInt)                            :: cellId      ! unique user-defined ID
-    integer(shortInt)                            :: cellIdx     ! Index of the cell on cellShelf
     integer(shortInt),dimension(:),allocatable   :: surfaces    ! +/- surfIDXs for +/- halfspace
 
   contains
@@ -43,7 +42,17 @@ module cell_class
 
   end type cell
 
-
+  !!
+  !! Stores number of cells
+  !! Public interface:
+  !!  shelf     -> array of cells
+  !!  addUnique -> adds a cell with unique definition and id to Shelf
+  !!  getOrAdd  -> returns ID & Idx of provided cell, If it isn't present it adds it to the shelf
+  !!  getIdx    -> returns Idx of cell with ID. returns "targetNotFound" if ID is not present
+  !!  trimSize  -> Resizes array to contain no empty entries
+  !!  init      -> initialises with "maximum size" and "stride"
+  !!  kill      -> returns to uninitialised state
+  !!
   type, public :: cellShelf
     private
     type(cell),dimension(:),allocatable, public :: shelf
@@ -57,15 +66,16 @@ module cell_class
     procedure :: trimSize   => trimSize_shelf
 
     procedure :: addUnique  => addUnique_shelf
-    !procedure :: getOrAdd   => getOrAdd_shelf
+    procedure :: getOrAdd   => getOrAdd_shelf
     procedure :: getIdx     => getIdx_shelf
-
 
     ! Private procedures
     procedure, private :: grow    => grow_shelf
     procedure, private :: resize  => resize_shelf
     procedure, private :: freeID  => freeId_shelf
-  end type
+
+  end type cellShelf
+
 contains
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! cell procedures
@@ -76,11 +86,10 @@ contains
   !! Give id and idx of the cell on the callShelf
   !! Give surfShelf to translate surfId to surfIdx
   !!
-  subroutine init(self, surfIds, id, cellIdx, surfShelf)
+  subroutine init(self, surfIds, id, surfShelf)
     class(cell), intent(inout)                   :: self
     integer(shortInt),dimension(:),intent(in)    :: surfIDs
     integer(shortInt), intent(in)                :: id
-    integer(shortInt), intent(in)                :: cellIdx
     type(surfaceShelf), intent(in)               :: surfShelf
     character(100), parameter :: Here ='init (cell_class.f90)'
 
@@ -89,17 +98,22 @@ contains
 
     ! Verify that all IDs were present
     if(any( self % surfaces == targetNotFound)) then
-      print *, surfIds
-      print *, self % surfaces
-      call fatalError(Here,'One or more of the surface IDs was not found on the shelf')
+      print *, "Surface IDs :",surfIds
+      print *, "Surface IDXs:",self % surfaces
+      call fatalError(Here,'One or more of the surface IDs was not found on the shelf in cell: ' &
+                            // numToChar(id) )
     end if
 
     ! Correct sign of surfaces
     self % surfaces = sign(self % surfaces, surfIDs)
 
-    ! Load cellIdx and Id
+    ! Load cellId
     self % cellId  = id
-    self % cellIdx = cellIdx
+
+    ! Check that no surfaces are repeated in surfIds
+    if(hasDuplicates(abs(self % surfaces))) then
+      call fatalError(Here,'There are repeated surfaces in definition of cell: '//numToChar(id))
+    end if
 
   end subroutine init
 
@@ -113,7 +127,6 @@ contains
 
     ! Copy components
     LHS % cellId  = RHS % cellId
-    LHS % cellIdx = RHS % cellIdx
 
     ! Move allocation
     call move_alloc(RHS % surfaces, LHS % surfaces)
@@ -146,7 +159,6 @@ contains
     ! Compare individual entries if size is the same
     ! *** Need to account for possible permutations in definitions
     if(same) then
-
       do i=1,size(LHS % surfaces)
         testIdx = linFind(RHS % surfaces, LHS % surfaces(i))
 
@@ -167,7 +179,6 @@ contains
     class(cell), intent(inout) :: self
 
     self % cellId  = 0
-    self % cellIdx = 0
     if(allocated(self % surfaces)) deallocate(self % surfaces)
 
   end subroutine kill
@@ -290,11 +301,11 @@ contains
   end subroutine trimSize_shelf
 
   !!
-  !! Adds allocatable surface to the shelf
-  !! Surf needs to be allocated upon entry
-  !! Deallocates surface in the process
-  !! Throws error if surface with the same definition or id is already present
-  !! Returns surfIdx in the surfaceShelf
+  !! Adds acell to the shelf
+  !! Cell needs to be initialised
+  !! Kills cell in the process
+  !! Throws error if cell with the same definition or id is already present
+  !! Returns cellIdx in the cellShelf
   !!
   subroutine addUnique_shelf(self,newCell,cellIdx)
     class(cellShelf), intent(inout)          :: self
@@ -342,13 +353,13 @@ contains
   end subroutine addUnique_shelf
 
   !!
-  !! Returns surfId and surfIdx of the surface with the same definition
-  !! Surf needs to be allocated upon entry
-  !! If there is no surface with the same definition adds it the shelf
-  !! It completly ignores id of surf dummy argument
-  !! surf if deallocated upon exit
+  !! Returns cellId and cellIdx of the cell with the same definition
+  !! Cell needs to be initialised on entry
+  !! If there is no cell with the same definition adds it the shelf
+  !! It completly ignores id of cell dummy argument
+  !! cell if uninitialised upon exit
   !!
-  subroutine getOrAdd_shelf(self,newCell,cellId,cellIdx)
+  subroutine getOrAdd_shelf(self, newCell, cellId, cellIdx)
     class(cellShelf), intent(inout)        :: self
     type(cell), intent(inout)              :: newCell
     integer(shortInt), intent(out)         :: cellId
@@ -373,8 +384,8 @@ contains
 
     ! Surface was not found set a next free Id and add to shelf
     cellId = self % freeId()
-    call newCell % setId(surfId)
-    call self % addUnique(surf,surfIdx)
+    newCell % cellId = cellId
+    call self % addUnique(newCell,cellIdx)
 
   end subroutine getOrAdd_shelf
 
