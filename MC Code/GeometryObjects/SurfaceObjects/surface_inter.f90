@@ -15,12 +15,12 @@ module surface_inter
 
 
   ! Local Paramethers
-  character(*),parameter         :: defTol   = '6'
-  character(*),parameter         :: expSize  = '2'
-  character(*),parameter         :: width    = '13'  ! defTol + expSize + 5
-  integer(shortInt), parameter   :: int_width = 13   ! Needs to be the same as width but as int
-  integer(shortInt),parameter    :: UNHASHED = 0
-  character(*),parameter,public  :: realForm = 'ES'//width//'.'//defTol//'E'//expSize !
+  character(*),parameter         :: defTol     = '6'
+  character(*),parameter         :: expSize    = '2'
+  character(*),parameter         :: width      = '13'  ! defTol + expSize + 5
+  integer(shortInt), parameter   :: int_width  = 13   ! Needs to be the same as width but as int
+  integer(shortInt),parameter    :: UNHASHED   = 0
+  character(*),parameter,public  :: realForm   = 'ES'//width//'.'//defTol//'E'//expSize !
   integer(shortInt),parameter    :: DEF_STRIDE = 20
 
   ! Public functions
@@ -238,6 +238,7 @@ contains
   !!
   !! Determine whether a point occupies the positive or negative halfspace of a surface
   !! Point can also be located on a surface - must include direction to determine halfspace
+  !! Returns .true. for +ve Halfspace
   !!
   elemental function halfspace(self, r, u) result(position)
     class(surface), intent(in)              :: self
@@ -731,7 +732,6 @@ contains
   !!
   subroutine grow_shelf(self)
     class(surfaceShelf), intent(inout)         :: self
-    type(surfaceSlot),dimension(:),allocatable :: tempShelf
     integer(shortInt)                          :: Nmax
 
     ! Return if shelf does not need to grow

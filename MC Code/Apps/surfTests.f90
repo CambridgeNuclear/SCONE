@@ -561,7 +561,7 @@ subroutine zSquareCylTests()
   print *, "r: ", r % v
   print *, "u: ", u % v
   call tSq % distance(ev,i,r,u)
-  print *, "DISTANCE : ", ev, "SHOULD BE :", sqrt(TWO)*0.5, " AT SURFACE 1/5", i
+  print *, "DISTANCE : ", ev, "SHOULD BE :", sqrt(TWO)*0.5, " AT SURFACE 1/3", i
 
   print *, "CASE AT THE SURFACE GOING VERY SHALLOW OUTSIDE "
   mu = 0.999_8
