@@ -52,9 +52,9 @@ module particle_class
     procedure            :: dirGlobal
     procedure            :: nesting
     procedure            :: getCellIdx
-    procedure            :: getLatIdx
+    !procedure            :: getLatIdx
     procedure            :: getUniIdx
-    procedure            :: regionID
+    !procedure            :: regionID
     procedure            :: matIdx
 
     ! Operations on coordinates
@@ -161,17 +161,17 @@ contains
 
   end function getCellIdx
 
-  !!
-  !! Return lattice index at a given nesting level n
-  !!
-  function getLatIdx(self,n) result(idx)
-    class(particle), intent(in)    :: self
-    integer(shortInt), intent(in)  :: n
-    integer(shortInt)              :: idx
-
-    idx = self % coords % lvl(n) % latIdx
-
-  end function getLatIdx
+!  !!
+!  !! Return lattice index at a given nesting level n
+!  !!
+!  function getLatIdx(self,n) result(idx)
+!    class(particle), intent(in)    :: self
+!    integer(shortInt), intent(in)  :: n
+!    integer(shortInt)              :: idx
+!
+!    idx = self % coords % lvl(n) % latIdx
+!
+!  end function getLatIdx
 
   !!
   !! Return universe index at a given nesting level n
@@ -185,16 +185,16 @@ contains
 
   end function getUniIdx
 
-  !!
-  !! Return unique cell id (regionID) at the lowest coordinate level
-  !!
-  function regionID(self) result(ID)
-    class(particle), intent(in) :: self
-    integer(shortInt)           :: ID
-
-    ID = self % coords % regionID
-
-  end function regionID
+!  !!
+!  !! Return unique cell id (regionID) at the lowest coordinate level
+!  !!
+!  function regionID(self) result(ID)
+!    class(particle), intent(in) :: self
+!    integer(shortInt)           :: ID
+!
+!    ID = self % coords % regionID
+!
+!  end function regionID
 
   !!
   !! Return current material index

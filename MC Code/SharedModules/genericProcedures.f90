@@ -795,7 +795,7 @@ module genericProcedures
   end function hasDuplicates_shortInt
 
   !!
-  !! Quick sort for integer array
+  !! Quicksort for integer array
   !!
   recursive pure subroutine quickSort_shortInt(array)
     integer(shortInt), dimension(:), intent(inout) :: array

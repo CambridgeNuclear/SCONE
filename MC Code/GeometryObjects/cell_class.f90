@@ -16,9 +16,14 @@ module cell_class
   !! Cell is an intersection of surface halfspaces
   !! +ve and -ve halfspaces are indentified with a sign of surfIdx
   !!
-  !! NOTE: Definition of a cell tells us nothing about its content. It only defines region
-  !! of space the cell occupies. Content of the cell is obtained from fill Array by providing
-  !! uniqueID of a cell
+  !! NOTE:
+  !!   1) Definition of a cell tells us nothing about its content. It only defines region
+  !!   of space the cell occupies. Content of the cell is obtained from fill Array by providing
+  !!   uniqueID of a cell
+  !!   2) Cells stores surfaces in order given by the user. This makes some checks for the same
+  !!   definition mopre convoluted (permutations of surfaces need to be detected), but allows
+  !!   a bit of hand optimisation when checking for halfspace (start with a surface particle is
+  !!   least likley to be).
   !!
   type, public :: cell
     private
@@ -52,6 +57,7 @@ module cell_class
   !!  trimSize  -> Resizes array to contain no empty entries
   !!  init      -> initialises with "maximum size" and "stride"
   !!  kill      -> returns to uninitialised state
+  !!
   !!
   type, public :: cellShelf
     private

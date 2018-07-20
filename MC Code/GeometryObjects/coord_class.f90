@@ -12,16 +12,16 @@ module coord_class
   !!   -> norm2(dir) = 1
   !!   -> uniIdx & cellIdx > 0
   !!
-  !! *** NOTE will store coordinate transformations to reapply them
+  !! *** NOTE will store coordinate rotations to reapply them
   !!
   type, public :: coord
     real(defReal), dimension(3) :: r         = ZERO    ! position
     real(defReal), dimension(3) :: dir       = ZERO    ! direction
     logical(defBool)            :: isRotated = .FALSE. ! is the co-ordinate in a rotated reference frame?
-    integer(shortInt)           :: uniIdx    = 0       ! index of the universe occupied
-    integer(shortInt)           :: latIdx    = 0       ! index of the lattice occupied
-    integer(shortInt)           :: ijkIdx    = 0       ! index of the lattice cell occupied (reduced to single number)
-    integer(shortInt)           :: cellIdx   = 0       ! point to the cell occupied
+    integer(shortInt)           :: uniIdx    = 0       ! Index of the universe definition occupied
+    integer(shortInt)           :: uniRootID = 0       ! Unique ID = uniRootID + localID
+    integer(shortInt)           :: localID   = 0       ! ID of the cell occupied within local universe
+    integer(shortInt)           :: cellIdx   = 0       ! Index of a cell definition occupied
   contains
     procedure :: isValid => isValid_coord
   end type coord
@@ -37,7 +37,7 @@ module coord_class
   !!  inside geometry  -> Nesting >=1. regionID & matIdx are assigned.
   !!                                   coordinates up to nesting are realible
   !! IMPORTANT NOTE:
-  !!   moveGlobal resets regionId & matIdx to 0
+  !!   moveGlobal resets regionID & matIdx to 0
   !!   moveLocal  leaves regionID & matIdx unchanged
   !!
   !! * RegionID should be part of coord becouse multiple cells are occupied at diffrent levels
@@ -45,7 +45,6 @@ module coord_class
   type, public :: coordList
     integer(shortInt)                          :: nesting = 0      ! depth of co-ordinate nesting
     type(coord), dimension(hardcoded_max_nest) :: lvl              ! array of coords nested successively deeper
-    integer(shortInt)                          :: regionID = 0     ! unique ID of the cell occupied
     integer(shortInt)                          :: matIdx = 0       ! index of the material occupied
   contains
     ! Build procedures
@@ -98,15 +97,13 @@ contains
 
   !!
   !! Add another level of co-ordinates
+  !! Apply provided offset
   !! Translational transformation is only supported
-  !! latIdx & ijkIdx need to be provided together
   !!
-  subroutine addLevel(self, offset, uniIdx, latIdx, ijkIdx)
+  subroutine addLevel(self, offset, uniIdx)
     class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: offset
     integer(shortInt), intent(in)           :: uniIdx
-    integer(shortInt), intent(in), optional :: latIdx
-    integer(shortInt), intent(in), optional :: ijkIdx
     integer(shortInt)                       :: n
     character(100),parameter :: Here ='addLevel (coord_class.f90)'
 
@@ -116,15 +113,6 @@ contains
     self % lvl(n) % r       = self % lvl(n-1) % r - offset
     self % lvl(n) % dir     = self % lvl(n-1) % dir
     self % lvl(n) % uniIdx  = uniIdx
-
-    if(present(latIdx) .and. present(ijkIdx)) then
-      self % lvl(n) % latIdx = latIdx
-      self % lvl(n) % ijkIdx = ijkIdx
-
-    else if(present(latIdx) .neqv. present(ijkIdx)) then
-      call fatalError(Here,'ijkIds  and latIdx are not given together')
-
-    end if
 
   end subroutine addLevel
 
@@ -136,7 +124,6 @@ contains
     class(coordList), intent(inout) :: self
 
     self % nesting  = 1
-    self % regionID = 0
     self % matIdx   = 0
 
   end subroutine takeAboveGeom
@@ -149,21 +136,11 @@ contains
     class(coordList), intent(inout)         :: self
     integer(shortInt), intent(in), optional :: n
     character(100),parameter :: Here='decreaseNesting ( coord_class.f90)'
-  !  integer(shortInt)                       :: nMax, i
 
     if (n > self % nesting) call fatalError(Here,' New nesting level > old nesting level')
 
     self % nesting = n
 
-    ! This cleanup is does not seem strictly necessary - Thus it is removed for now (MAK)
-!    nMax = self % nesting
-!    do i = nMin+1,nMax
-!      self % lvl(i) % uniIdx  = 0
-!      self % lvl(i) % latIdx  = 0
-!      self % lvl(i) % cellIdx = 0
-!      self % lvl(i) % ijkIdx = 0
-!      self % lvl(i) % isRotated = .FALSE.
-!    end do
   end subroutine decreaseNesting
 
   !!
