@@ -47,7 +47,8 @@ endfunction(add_sources)
 # COLLECT ALL SOURCE FILES 
 
 add_sources( ./DataStructures/dictionary_class.f90
-             ./DataStructures/IOdictionary_class.f90)
+             ./DataStructures/IOdictionary_class.f90
+             ./DataStructures/maps_class.f90)
 
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
