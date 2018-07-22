@@ -24,6 +24,7 @@ module universe_inter
     ! Build procedures
     procedure :: id
     procedure :: setId
+    procedure :: setOffset
 
     ! Runtime procedures
     procedure                      :: enter
@@ -39,8 +40,9 @@ module universe_inter
     class(universe),allocatable :: slot
   contains
     ! Build procedures
-    procedure :: id    => id_slot
-    procedure :: setId => setId_slot
+    procedure :: id         => id_slot
+    procedure :: setId      => setId_slot
+    procedure :: setOffset  => setOffset_slot
 
     ! Run time procedures
     procedure :: enter      => enter_slot
@@ -152,6 +154,17 @@ contains
     self % uniId = id
 
   end subroutine setId
+
+  !!
+  !! Set universe offset
+  !!
+  pure subroutine setOffset(self,offset)
+    class(universe), intent(inout)        :: self
+    real(defReal),dimension(3),intent(in) :: offset
+
+    self % offset = offset
+
+  end subroutine setOffset
     
   !!
   !! Enter universe
@@ -198,6 +211,18 @@ contains
     self % uniId = id
 
   end subroutine setId_slot
+
+  !!
+  !! Set offset of universe in the slot
+  !!
+  pure subroutine setOffset_slot(self,offset)
+    class(universeSlot), intent(inout)    :: self
+    real(defReal),dimension(3),intent(in) :: offset
+
+    call self % slot % setOffset(offset)
+    self % offset = offset
+
+  end subroutine setOffset_slot
 
   !!
   !! Enter universe in the slot

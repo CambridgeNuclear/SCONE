@@ -5,18 +5,10 @@ module fillArray_class
   implicit none
   private
 
-  integer(shortInt), parameter :: UNSET = 0
-
-  type,private :: fillContent
-    integer(shortInt) :: fill = 0
-    integer(shortInt) :: ptr  = UNSET
-
-  end type fillContent
-
 
   type, public :: fillArray
     private
-    type(fillContent), dimension(:), allocatable :: fills
+    integer(shortInt),dimension(:),allocatable :: fills
   contains
     ! Build procedure
     procedure :: init

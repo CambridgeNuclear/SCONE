@@ -19,14 +19,13 @@ module maps_class
     integer(shortInt) :: val
   end type
 
-
   !!
   !! Maps integers to shortInt to shortInt
   !! Dictionary with shortInt key and shortInt content
   !! Implemented as a hash table with open adressing
   !! Does not support 0 as a key
   type, public :: intMap
-   !** private
+    private
     integer(shortInt)                        :: Nexp
     integer(shortInt)                        :: N
     integer(shortInt)                        :: Load
@@ -95,14 +94,14 @@ contains
 
     ! Find next non empty place
     do while (self % map(hash) % key /= EMPTY)
-      ! Exit if the entry with the same kay was found
+      ! Exit if the entry with the same key was found
       if( self % map(hash) % key == key) exit
 
       ! Increment position
       hash = hash + 1
-
       ! Go to the beggining of table if overflow
       if(hash > self % N) hash = 1
+
     end do
 
     ! Increment load if not overwriting existing entry
@@ -115,7 +114,8 @@ contains
   end subroutine add
 
   !!
-  !!
+  !! Retrive entry in the map
+  !! Returns error if key is not present
   !!
   function get(self,key) result(val)
     class(intMap), intent(in)     :: self
@@ -135,19 +135,16 @@ contains
         return
 
       end if
-
       ! Increment position
       hash = hash + 1
-
       ! Go to the beggining of table if overflow
       if(hash > self % N) hash = 1
+
     end do
 
-    call fatalError(Here,'Target key:'// numToChar(key) // ' was not found')
+    call fatalError(Here,'Target key: '// numToChar(key) // ' was not found')
 
   end function get
-
-
 
   !!
   !! Increase size of the map by factor of 2

@@ -10,31 +10,116 @@ program test
   use sphere_class,  only : sphere
   use cell_class,    only : cell, cellShelf
   use maps_class,    only : intMap
+  use cellUniverse_class, only : cellUniverse
+  use coord_class,        only : coord
 
   implicit none
+  type(vector)               :: r, u
+  real(defReal)              :: dist
+  class(surface),allocatable :: s1
+  class(surface),allocatable :: s2
+  class(surface),allocatable :: s3
+  type(surfaceShelf) :: sShelf
+  type(cell)         :: c1
+  type(cell)         :: c2
+  type(cell)         :: c3
+  type(cellShelf)    :: cShelf
+  type(cellUniverse) :: uni
+  type(coord)        :: coords
+  integer(shortInt)  :: i,j
+  integer(shortInt),dimension(:),allocatable :: intArr
 
-  type(intMap) :: myMap
+  allocate(sphere :: s1)
+  allocate(sphere :: s2)
+  allocate(sphere :: s3)
 
-  call myMap % init(1)
-  call myMap % add(1,7)
-  call myMap % add(2,77)
-  call myMap % add(3,777)
-  call myMap % add(2,7777)
-  call myMap % add(4,77777)
-  call myMap % add(5,7)
-  call myMap % add(6,7)
-  !call myMap % add(7,7)
-  !call myMap % add(8,7)
 
-  print *, size(myMap % map), myMap % Nexp, myMap % N, myMap % Load
-  print *, myMap % map % key
-  print *, myMap % map % val
+  select type(s1)
+    type is (sphere)
+      call s1 % init([ZERO, ZERO, ZERO], 1.0_8, 1)
+  end select
 
-  print *, myMap % get(1)
-  print *, myMap % get(2)
-  print *, myMap % get(1)
-  print *, myMap % get(3)
-  print *, myMap % get(4)
+  select type(s2)
+    type is (sphere)
+      call s2 % init([ZERO, ZERO, ZERO], 2.0_8, 2)
+  end select
+
+  select type(s3)
+  type is (sphere)
+      call s3 % init([ZERO, ZERO, ZERO], 3.0_8, 3)
+  end select
+
+
+  call sShelf % init(1)
+  call sShelf % addUnique(s1,i)
+  call sShelf % addUnique(s2,i)
+  call sShelf % addUnique(s3,i)
+
+  call c1 % init([-1],2,sShelf)
+  call c2 % init([1, -3 ],1,sShelf)
+  call c3 % init([3],77,sShelf)
+
+  call cShelf % init(1,1)
+  call cShelf % addUnique(c1,i)
+  call cShelf % addUnique(c2,i)
+  call cShelf % addUnique(c3,i)
+
+
+  call uni % init([ZERO, ZERO, ZERO],[2,77,1],cShelf)
+
+  coords % r   = [1.0_8- 0.9 * surface_tol, 0.0_8, 0.0_8]
+  coords % dir = [0.1, 0.6, 0.0]
+  coords % dir = coords % dir / norm2(coords % dir)
+
+  call uni % enter(coords, cShelf, sShelf)
+
+  call uni % distance(dist,i,coords,cShelf, sShelf)
+  print *, dist, i
+  coords % r = coords % r + coords % dir * dist
+
+  call uni % cross(coords, i, cShelf, sShelf)
+  call uni % distance(dist,i,coords,cShelf, sShelf)
+  print *, dist, i
+
+
+  print *, coords % r
+  print *, coords % dir
+  print *, coords % uniIdx, coords % uniRootID
+  print *, coords % localID, coords % cellIdx
+
+
+
+
+
+
+
+!! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! intMap test
+!! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+!  type(intMap) :: myMap
+!
+!  call myMap % init(1)
+!  call myMap % add(1,7)
+!  call myMap % add(2,77)
+!  call myMap % add(3,777)
+!  call myMap % add(2,7777)
+!  call myMap % add(4,77777)
+!  call myMap % add(5,7)
+!  call myMap % add(6,7)
+!  !call myMap % add(7,7)
+!  !call myMap % add(8,7)
+!
+!  print *, size(myMap % map), myMap % Nexp, myMap % N, myMap % Load
+!  print *, myMap % map % key
+!  print *, myMap % map % val
+!
+!  print *, myMap % get(1)
+!  print *, myMap % get(2)
+!  print *, myMap % get(1)
+!  print *, myMap % get(3)
+!  print *, myMap % get(4)
+!  print *, myMap % get(99)
 
 
 !! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

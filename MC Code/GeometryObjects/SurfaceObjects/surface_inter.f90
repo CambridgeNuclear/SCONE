@@ -399,6 +399,7 @@ contains
 
     LHS % hash   = LHS % slot % hash
     LHS % surfID = LHS % slot % id()
+    LHS % idx    = LHS % slot % idx
 
   end subroutine load_slot
 
@@ -416,6 +417,7 @@ contains
 
     LHS % hash   = LHS % slot % hash
     LHS % surfID = LHS % slot % id()
+    LHS % idx    = LHS % slot % idx
 
   end subroutine copy_slot
 
@@ -431,6 +433,7 @@ contains
 
     LHS % hash   = LHS % slot % hash
     LHS % surfID = LHS % slot % id()
+    LHS % idx    = LHS % slot % idx
 
   end subroutine moveAllocFrom_slot
 
@@ -623,6 +626,7 @@ contains
     N = self % N
 
     if( N == 0) then ! First surface is  being loaded
+      surf % idx = 1
       call self % shelf(1) % load(surf)
       surfIdx = 1
 
@@ -640,6 +644,7 @@ contains
       end associate
 
       ! Load surface
+      surf % idx = N + 1
       call self % shelf(N+1) % load(surf)
       surfIdx = N +1
 
