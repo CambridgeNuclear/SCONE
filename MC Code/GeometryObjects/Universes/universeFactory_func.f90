@@ -33,13 +33,15 @@ contains
 
   !!
   !! Returns allocatable universe form dictionary and surface & cell Shelfs
+  !! Return fillVector as well. +ve entries are fill cells, -ve are fill universes
   !!
-  function new_universe(dict, cShelf, sShelf) result(new)
-    class(dictionary), intent(in)     :: dict
-    type(cellShelf), intent(inout)    :: cShelf
-    type(surfaceShelf), intent(inout) :: sShelf
-    class(universe),allocatable       :: new
-    character(nameLen)                :: type
+  function new_universe(fillVector, dict, cShelf, sShelf ) result(new)
+    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
+    class(dictionary), intent(in)                          :: dict
+    type(cellShelf), intent(inout)                         :: cShelf
+    type(surfaceShelf), intent(inout)                      :: sShelf
+    class(universe),allocatable                            :: new
+    character(nameLen)                                     :: type
     character(100),parameter          :: Here = 'new_universe (universeFactory_func.f90)'
 
     ! Obtain string that specifies type to be built
@@ -49,7 +51,7 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW SURFACE BELOW ***!
     select case(type)
       case('cellUniverse')
-        allocate(new, source = cellUniverse(dict, cShelf, sShelf)
+        allocate(new, source = cellUniverse(fillVector, dict, cShelf, sShelf)
 
      !*** NEW SURFACE TEMPLATE ***!
      !case('<newSUrfaceName>')
@@ -65,15 +67,17 @@ contains
 
   !!
   !! Returns pointer to allocated universe from dictionary and surface & cell Shelfs
+  !! Return fillVector as well. +ve entries are fill cells, -ve are fill universes
   !!
-  function new_universe_ptr(dict, cShelf, sShelf) result(new)
+  function new_universe_ptr(fillVector, cShelf, sShelf) result(new)
+    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
     class(dictionary), intent(in)     :: dict
     type(cellShelf), intent(inout)    :: cShelf
     type(surfaceShelf), intent(inout) :: sShelf
     class(universe),pointer           :: new
 
     ! Allocate pointer and copy data from local allocatable
-    allocate( new, source = new_surface(dict, cShelf, sShelf) )
+    allocate( new, source = new_surface(fillVector ,dict, cShelf, sShelf) )
 
   end function new_universe_ptr
 

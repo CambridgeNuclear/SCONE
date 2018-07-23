@@ -67,14 +67,16 @@ contains
 
   !!
   !! Returns an initialised instance of cell universe from dict and cellShelf
+  !! Return fillVector as well. +ve entries are fill cells, -ve are fill universes
   !!
-  function cellUniverse_fromDict(dict, cShelf) result (new)
-    class(dictionary), intent(in)               :: dict
-    type(cellShelf), intent(inout)              :: cShelf
-    type(cellUniverse)                          :: new
-    real(defReal), dimension(:),allocatable     :: offset
-    integer(shortInt)                           :: id
-    integer(shortInt),dimension(:), allocatable :: cellIDs
+  function cellUniverse_fromDict(fillVector, dict, cShelf) result (new)
+    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
+    class(dictionary), intent(in)                          :: dict
+    type(cellShelf), intent(inout)                         :: cShelf
+    type(cellUniverse)                                     :: new
+    real(defReal), dimension(:),allocatable                :: offset
+    integer(shortInt)                                      :: id
+    integer(shortInt),dimension(:), allocatable            :: cellIDs
     character(100), parameter :: Here = ' cellUniverse_fromDict (cellUniverse_class.f90)'
 
     ! Load all data
@@ -89,6 +91,9 @@ contains
 
     ! Initialise universe
     call new % init(offset,id,cellIDs, cShelf)
+
+    ! Allocate fillVector
+    fillVEctor = cellIDs
 
   end function cellUniverse_fromDict
 
