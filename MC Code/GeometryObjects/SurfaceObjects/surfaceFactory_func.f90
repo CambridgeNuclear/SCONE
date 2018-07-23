@@ -19,13 +19,12 @@ module surfaceFactory_func
   use zCylinder_class,          only : zCylinder
   ! Boxes & Square Cylinders
   use box_class,                only : box
-  use xSquareCylinder_class,    only : xSquareCylinder
-  use ySquareCylinder_class,    only : ySquareCylinder
-  use zSquareCylinder_class,    only : zSquareCylinder
+  use squareCylinder_class,     only : xSquareCylinder,  ySquareCylinder, zSquareCylinder
+
   ! TruncCylinders
-  use xTruncCylinder_class, only : xTruncCylinder
-  use yTruncCylinder_class, only : yTruncCylinder
-  use zTruncCylinder_class, only : zTruncCylinder
+  !use xTruncCylinder_class, only : xTruncCylinder
+  !use yTruncCylinder_class, only : yTruncCylinder
+  !use zTruncCylinder_class, only : zTruncCylinder
 
   implicit none
   private
@@ -50,10 +49,10 @@ module surfaceFactory_func
                                                                      'box            ' ,&
                                                                      'xSquareCylinder',&
                                                                      'ySquareCylinder',&
-                                                                     'zSquareCylinder',&
-                                                                     'xTruncCylinder ',&
-                                                                     'yTruncCylinder ',&
-                                                                     'zTruncCylinder ' ]
+                                                                     'zSquareCylinder']!,&
+                                                                     !'xTruncCylinder ',&
+                                                                     !'yTruncCylinder ',&
+                                                                     !'zTruncCylinder ' ]
 
 
 contains
@@ -61,9 +60,8 @@ contains
   !!
   !! Returns allocatable surface form dictionary
   !!
-  function new_surface(dict,name) result(new)
+  function new_surface(dict) result(new)
     class(dictionary), intent(in) :: dict
-    character(nameLen),intent(in) :: name
     class(surface),allocatable    :: new
     character(nameLen)            :: type
     character(100),parameter      :: Here = 'new_surface (surfaceFactory_func.f90)'
@@ -75,52 +73,52 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW SURFACE BELOW ***!
     select case(type)
       case('infSurf')
-        allocate(new, source = infSurf(dict,name) )
+        allocate(new, source = infSurf(dict) )
 
       case('plane')
-        allocate(new, source = plane(dict,name) )
+        allocate(new, source = plane(dict) )
 
       case('xPlane')
-        allocate(new, source = xPlane(dict,name) )
+        allocate(new, source = xPlane(dict) )
 
       case('yPlane')
-        allocate(new, source = yPlane(dict,name) )
+        allocate(new, source = yPlane(dict) )
 
       case('zPlane')
-        allocate(new, source = zPlane(dict,name) )
+        allocate(new, source = zPlane(dict) )
 
       case('sphere')
-        allocate(new, source = sphere(dict,name) )
+        allocate(new, source = sphere(dict) )
 
       case('xCylinder')
-        allocate(new, source = xCylinder(dict,name) )
+        allocate(new, source = xCylinder(dict) )
 
       case('yCylinder')
-        allocate(new, source = yCylinder(dict,name) )
+        allocate(new, source = yCylinder(dict) )
 
       case('zCylinder')
-        allocate(new, source = zCylinder(dict,name) )
+        allocate(new, source = zCylinder(dict) )
 
       case('box')
-        allocate(new, source = box(dict,name) )
+        allocate(new, source = box(dict) )
 
       case('xSquareCylinder')
-        allocate(new, source = xSquareCylinder(dict,name) )
+        allocate(new, source = xSquareCylinder(dict) )
 
       case('ySquareCylinder')
-        allocate(new, source = ySquareCylinder(dict,name) )
+        allocate(new, source = ySquareCylinder(dict) )
 
       case('zSquareCylinder')
-        allocate(new, source = zSquareCylinder(dict,name) )
+        allocate(new, source = zSquareCylinder(dict) )
 
-      case('xTruncCylinder')
-        allocate(new, source = xTruncCylinder(dict,name) )
-
-      case('yTruncCylinder')
-        allocate(new, source = yTruncCylinder(dict,name) )
-
-      case('zTruncCylinder')
-        allocate(new, source = zTruncCylinder(dict,name) )
+!      case('xTruncCylinder')
+!        allocate(new, source = xTruncCylinder(dict) )
+!
+!      case('yTruncCylinder')
+!        allocate(new, source = yTruncCylinder(dict) )
+!
+!      case('zTruncCylinder')
+!        allocate(new, source = zTruncCylinder(dict,name) )
 
      !*** NEW SURFACE TEMPLATE ***!
      !case('<newSUrfaceName>')
@@ -138,13 +136,12 @@ contains
   !!
   !! Returns pointer to allocated surface from dictionary
   !!
-  function new_surface_ptr(dict,name) result(new)
+  function new_surface_ptr(dict) result(new)
     class(dictionary), intent(in) :: dict
-    character(nameLen),intent(in) :: name
     class(surface),pointer        :: new
 
     ! Allocate pointer and copy data from local allocatable
-    allocate( new, source = new_surface(dict,name) )
+    allocate( new, source = new_surface(dict) )
 
   end function new_surface_ptr
 

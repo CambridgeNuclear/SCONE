@@ -78,7 +78,7 @@ contains
   end subroutine init
 
   !!
-  !! Returns and initialised instance of sphere from dictionary and name
+  !! Returns and initialised instance of sphere from dictionary
   !!
   function sphere_fromDict(dict) result(new)
     class(dictionary), intent(in)  :: dict

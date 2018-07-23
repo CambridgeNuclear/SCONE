@@ -60,12 +60,12 @@ program test
   call c3 % init([3],77,sShelf)
 
   call cShelf % init(1,1)
-  call cShelf % addUnique(c1,i)
-  call cShelf % addUnique(c2,i)
-  call cShelf % addUnique(c3,i)
+  call cShelf % add(c1,i)
+  call cShelf % add(c2,i)
+  call cShelf % add(c3,i)
 
 
-  call uni % init([ZERO, ZERO, ZERO],[2,77,1],cShelf)
+  call uni % init([ZERO, ZERO, ZERO],1,[2,77,1],cShelf)
 
   coords % r   = [1.0_8- 0.9 * surface_tol, 0.0_8, 0.0_8]
   coords % dir = [0.1, 0.6, 0.0]

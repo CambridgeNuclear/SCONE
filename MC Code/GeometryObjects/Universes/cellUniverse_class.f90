@@ -3,6 +3,7 @@ module cellUniverse_class
   use numPrecision
   use genericProcedures, only : fatalError, targetNotFound
   use vector_class,      only : vector
+  use dictionary_class,  only : dictionary
   use coord_class,       only : coord
   use surface_inter,     only : surfaceShelf
   use cell_class,        only : cell, cellSHelf
@@ -10,6 +11,13 @@ module cellUniverse_class
 
   implicit none
   private
+
+  !!
+  !! Constructor
+  !!
+  interface cellUniverse
+    module procedure cellUniverse_fromDict
+  end interface
 
   !!
   !! Basic implementation of the universe
@@ -29,7 +37,6 @@ module cellUniverse_class
     procedure :: cross
     procedure :: cellOffset
 
-
   end type cellUniverse
 
 contains
@@ -37,9 +44,10 @@ contains
   !!
   !! Initialise cellUniverse
   !!
-  subroutine init(self, offset, cellIDs, cShelf)
+  subroutine init(self, offset, id, cellIDs, cShelf)
     class(cellUniverse), intent(inout)        :: self
     real(defReal),dimension(3), intent(in)    :: offset
+    integer(shortInt), intent(in)             :: id
     integer(shortInt),dimension(:),intent(in) :: cellIDs
     type(cellShelf), intent(in)               :: cShelf
     character(100),parameter :: Here = 'init (cellUniverse_class.f90)'
@@ -56,6 +64,33 @@ contains
     end if
 
   end subroutine init
+
+  !!
+  !! Returns an initialised instance of cell universe from dict and cellShelf
+  !!
+  function cellUniverse_fromDict(dict, cShelf) result (new)
+    class(dictionary), intent(in)               :: dict
+    type(cellShelf), intent(inout)              :: cShelf
+    type(cellUniverse)                          :: new
+    real(defReal), dimension(:),allocatable     :: offset
+    integer(shortInt)                           :: id
+    integer(shortInt),dimension(:), allocatable :: cellIDs
+    character(100), parameter :: Here = ' cellUniverse_fromDict (cellUniverse_class.f90)'
+
+    ! Load all data
+    call dict % get(id,'id')
+    call dict % get( cellIds,'cells')
+
+    call dict % getOrDefault( offset, 'origin', [ZERO, ZERO, ZERO] )
+
+    ! Verify data
+    if( size(offset)  /= 3) call fatalError(Here,'Origin needs to be size 3')
+    if( size(cellIds) == 0) call fatalError(Here,'Universe needs to contain some cells')
+
+    ! Initialise universe
+    call new % init(offset,id,cellIDs, cShelf)
+
+  end function cellUniverse_fromDict
 
   !!
   !! Using the coordinates it finds a localID & cellIDx inside the universe
@@ -164,5 +199,4 @@ contains
 
   end function cellOffset
 
-    
 end module cellUniverse_class

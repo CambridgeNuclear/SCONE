@@ -3,6 +3,7 @@ module cell_class
   use universalVariables
   use genericProcedures, only : fatalError, linFind, targetNotFound, numToChar, hasDuplicates
   use vector_class,      only : vector
+  use dictionary_class,  only : dictionary
   use surface_inter,     only : surface, surfaceShelf
 
   implicit none
@@ -10,6 +11,11 @@ module cell_class
 
   !! Local Parameters
   integer(shortInt),parameter    :: DEF_STRIDE = 20
+
+  !!
+  !! Public function to get cell from dict and surface shelf
+  !!
+  public :: new_cell
 
   !!
   !! Geometry Cell
@@ -51,13 +57,12 @@ module cell_class
   !! Stores number of cells
   !! Public interface:
   !!  shelf     -> array of cells
-  !!  addUnique -> adds a cell with unique definition and id to Shelf
+  !!  add       -> adds a cell with unique id to Shelf
   !!  getOrAdd  -> returns ID & Idx of provided cell, If it isn't present it adds it to the shelf
   !!  getIdx    -> returns Idx of cell with ID. returns "targetNotFound" if ID is not present
   !!  trimSize  -> Resizes array to contain no empty entries
   !!  init      -> initialises with "maximum size" and "stride"
   !!  kill      -> returns to uninitialised state
-  !!
   !!
   type, public :: cellShelf
     private
@@ -71,7 +76,7 @@ module cell_class
     procedure :: kill       => kill_shelf
     procedure :: trimSize   => trimSize_shelf
 
-    procedure :: addUnique  => addUnique_shelf
+    procedure :: add        => add_shelf
     procedure :: getOrAdd   => getOrAdd_shelf
     procedure :: getIdx     => getIdx_shelf
 
@@ -122,6 +127,25 @@ contains
     end if
 
   end subroutine init
+
+  !!
+  !! Return a cell from a dictionary and surface shelf
+  !!
+  function new_cell(dict,sShelf) result(new)
+    class(dictionary), intent(in)              :: dict
+    type(surfaceShelf), intent(inout)          :: sShelf
+    type(cell)                                 :: new
+    integer(shortInt)                          :: id
+    integer(shortInt),dimension(:),allocatable :: surfIds
+
+    ! Obtain input
+    call dict % get(id,'id')
+    call dict % get(surfIds,'surfaces')
+
+    ! Initialise
+    call new % init(surfIds, id, sShelf)
+
+  end function new_cell
 
   !!
   !! Move cell from RHS to LHS
@@ -310,15 +334,15 @@ contains
   !! Adds acell to the shelf
   !! Cell needs to be initialised
   !! Kills cell in the process
-  !! Throws error if cell with the same definition or id is already present
+  !! Throws error if cell with the same id is already present
   !! Returns cellIdx in the cellShelf
   !!
-  subroutine addUnique_shelf(self,newCell,cellIdx)
+  subroutine add_shelf(self,newCell,cellIdx)
     class(cellShelf), intent(inout)          :: self
     type(cell),intent(inout)                 :: newCell
     integer(shortInt), intent(out)           :: cellIdx
     integer(shortInt)                        :: N
-    character(100),parameter :: Here = 'addUnique_shelf (cell_class.f90)'
+    character(100),parameter :: Here = 'add_shelf (cell_class.f90)'
 
     if(.not.allocated(newCell % surfaces )) then
       call fatalError(Here, 'Provided cell to store was not initialised')
@@ -338,9 +362,6 @@ contains
         if ( any( storedCells % id() == newCell % id() )) then        ! ID is already present
           call fatalError(Here,'Id is already present in the cell shelf')
 
-        else if ( any( storedCells .same. newCell )) then          ! Definition is not unique
-          call fatalError(Here,'Cell with the same definition is already present')
-
         end if
       end associate
 
@@ -356,7 +377,7 @@ contains
     ! Grow storage if needed
     call self % grow()
 
-  end subroutine addUnique_shelf
+  end subroutine add_shelf
 
   !!
   !! Returns cellId and cellIdx of the cell with the same definition
@@ -391,7 +412,7 @@ contains
     ! Surface was not found set a next free Id and add to shelf
     cellId = self % freeId()
     newCell % cellId = cellId
-    call self % addUnique(newCell,cellIdx)
+    call self % add(newCell, cellIdx)
 
   end subroutine getOrAdd_shelf
 

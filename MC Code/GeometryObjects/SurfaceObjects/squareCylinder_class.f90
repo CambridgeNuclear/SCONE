@@ -23,14 +23,17 @@ module squareCylinder_class
   !!
   !! Constructor interfaces
   !!
+  public :: xSquareCylinder
   interface xSquareCylinder
     module procedure xSquareCylinder_fromDict
   end interface
 
+  public :: ySquareCylinder
   interface ySquareCylinder
     module procedure ySquareCylinder_fromDict
   end interface
 
+  public :: zSquareCylinder
   interface zSquareCylinder
     module procedure zSquareCylinder_fromDict
   end interface
