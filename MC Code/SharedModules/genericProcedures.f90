@@ -669,10 +669,10 @@ module genericProcedures
 
   !! Convert shortInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_shortInt(x) result(c)
-    integer(shortInt)         :: x
-    character(:), allocatable :: c
-    character(40)             :: tempChar
+  elemental function numToChar_shortInt(x) result(c)
+    integer(shortInt),intent(in) :: x
+    character(:), allocatable    :: c
+    character(40)                :: tempChar
 
     write(tempChar,'(I0)') x
     c = trim(tempChar)
@@ -681,10 +681,10 @@ module genericProcedures
 
   !! Convert longInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_longInt(x) result(c)
-    integer(longInt)          :: x
-    character(:), allocatable :: c
-    character(40)             :: tempChar
+  elemental function numToChar_longInt(x) result(c)
+    integer(longInt),intent(in) :: x
+    character(:), allocatable   :: c
+    character(40)               :: tempChar
 
     write(tempChar,'(I0)') x
     c = trim(tempChar)
@@ -693,8 +693,8 @@ module genericProcedures
 
   !! Convert defReal to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_defReal(x) result(c)
-    real(defReal)             :: x
+  elemental function numToChar_defReal(x) result(c)
+    real(defReal),intent(in)  :: x
     character(:), allocatable :: c
     character(40)             :: tempChar
 
@@ -838,5 +838,22 @@ module genericProcedures
 
   end subroutine swap_shortInt
 
+  !!
+  !! Prints Scone ACII Header
+  !!
+  subroutine printStart()
+
+    print *, repeat(" ><((((*> ",10)
+    print *,
+    print * ,"        _____ __________  _   ________  "
+    print * ,"       / ___// ____/ __ \/ | / / ____/  "
+    print * ,"       \__ \/ /   / / / /  |/ / __/     "
+    print * ,"      ___/ / /___/ /_/ / /|  / /___     "
+    print * ,"     /____/\____/\____/_/ |_/_____/     "
+    print * ,
+    print * ,
+    print *, repeat(" <*((((>< ",10)
+
+  end subroutine printStart
 
 end module genericProcedures

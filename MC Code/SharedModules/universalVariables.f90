@@ -21,7 +21,7 @@ module universalVariables
                                          inside = .TRUE.
 
   ! Define integers for each fill type that a cell may have
-  integer(shortInt), parameter :: outsideFill  = 0,  &
+  integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
                                   latticeFill  = 3

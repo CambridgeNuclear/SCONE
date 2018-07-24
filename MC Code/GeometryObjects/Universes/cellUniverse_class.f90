@@ -1,13 +1,16 @@
 module cellUniverse_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, targetNotFound
+  use genericProcedures, only : fatalError, targetNotFound, numToChar
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
   use coord_class,       only : coord
   use surface_inter,     only : surfaceShelf
   use cell_class,        only : cell, cellSHelf
   use universe_inter,    only : universe
+
+  !*** STAYS HERE ONLY PROVISIONALLY
+  use nuclearData_inter, only : nuclearData
 
   implicit none
   private
@@ -52,6 +55,10 @@ contains
     type(cellShelf), intent(in)               :: cShelf
     character(100),parameter :: Here = 'init (cellUniverse_class.f90)'
 
+    ! Load ID
+    if( id < 1) call fatalError(Here,'Invalid id: ' // numToChar(id))
+    call self % setId(Id)
+
     ! Load universe offset
     call self% setOffset(offset)
 
@@ -68,11 +75,14 @@ contains
   !!
   !! Returns an initialised instance of cell universe from dict and cellShelf
   !! Return fillVector as well. +ve entries are fill cells, -ve are fill universes
+  !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
   !!
-  function cellUniverse_fromDict(fillVector, dict, cShelf) result (new)
+  function cellUniverse_fromDict(fillVector, dict, cShelf, sShelf, materials) result (new)
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
     class(dictionary), intent(in)                          :: dict
     type(cellShelf), intent(inout)                         :: cShelf
+    type(surfaceShelf), intent(inout)                      :: sShelf
+    class(nuclearData), intent(in)                         :: materials
     type(cellUniverse)                                     :: new
     real(defReal), dimension(:),allocatable                :: offset
     integer(shortInt)                                      :: id

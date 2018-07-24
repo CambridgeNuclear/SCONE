@@ -46,6 +46,7 @@ module cell_class
     procedure          :: id
     procedure, private :: same_cell
     procedure          :: kill
+    procedure          :: getDef
 
     ! Runtime procedure
     procedure          :: isInside
@@ -212,6 +213,17 @@ contains
     if(allocated(self % surfaces)) deallocate(self % surfaces)
 
   end subroutine kill
+
+  !!
+  !! Returns array of surfaces defining cell with +/-ve signs for halfspaces
+  !!
+  function getDef(self) result(def)
+    class(cell), intent(in)                    :: self
+    integer(shortInt),dimension(:),allocatable :: def
+
+    def = self % surfaces
+
+  end function getDef
 
   !!
   !! Checks whether a point occupies a cell by examining each surface in turn

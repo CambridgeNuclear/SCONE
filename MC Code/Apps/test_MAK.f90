@@ -13,84 +13,99 @@ program test
   use cellUniverse_class, only : cellUniverse
   use coord_class,        only : coord
 
+  use csg_class,          only : csg
+  use IOdictionary_class, only : IOdictionary
+  use datalessMaterials_class, only : datalessMaterials
+
   implicit none
-  type(vector)               :: r, u
-  real(defReal)              :: dist
-  class(surface),allocatable :: s1
-  class(surface),allocatable :: s2
-  class(surface),allocatable :: s3
-  type(surfaceShelf) :: sShelf
-  type(cell)         :: c1
-  type(cell)         :: c2
-  type(cell)         :: c3
-  type(cellShelf)    :: cShelf
-  type(cellUniverse) :: uni
-  type(coord)        :: coords
-  integer(shortInt)  :: i,j
-  integer(shortInt),dimension(:),allocatable :: intArr
 
-  allocate(sphere :: s1)
-  allocate(sphere :: s2)
-  allocate(sphere :: s3)
+  type(csg) :: geom
+  type(datalessMaterials) :: nucData
+  type(IOdictionary) :: geomData
 
+  call nucData % init(['uo2  ','water'])
 
-  select type(s1)
-    type is (sphere)
-      call s1 % init([ZERO, ZERO, ZERO], 1.0_8, 1)
-  end select
+  call geomData  % initFrom('./InputFiles/pinCell2.txt')
 
-  select type(s2)
-    type is (sphere)
-      call s2 % init([ZERO, ZERO, ZERO], 2.0_8, 2)
-  end select
+  call geom % init(geomData, nucData)
 
-  select type(s3)
-  type is (sphere)
-      call s3 % init([ZERO, ZERO, ZERO], 3.0_8, 3)
-  end select
-
-
-  call sShelf % init(1)
-  call sShelf % addUnique(s1,i)
-  call sShelf % addUnique(s2,i)
-  call sShelf % addUnique(s3,i)
-
-  call c1 % init([-1],2,sShelf)
-  call c2 % init([1, -3 ],1,sShelf)
-  call c3 % init([3],77,sShelf)
-
-  call cShelf % init(1,1)
-  call cShelf % add(c1,i)
-  call cShelf % add(c2,i)
-  call cShelf % add(c3,i)
-
-
-  call uni % init([ZERO, ZERO, ZERO],1,[2,77,1],cShelf)
-
-  coords % r   = [1.0_8- 0.9 * surface_tol, 0.0_8, 0.0_8]
-  coords % dir = [0.1, 0.6, 0.0]
-  coords % dir = coords % dir / norm2(coords % dir)
-
-  call uni % enter(coords, cShelf, sShelf)
-
-  call uni % distance(dist,i,coords,cShelf, sShelf)
-  print *, dist, i
-  coords % r = coords % r + coords % dir * dist
-
-  call uni % cross(coords, i, cShelf, sShelf)
-  call uni % distance(dist,i,coords,cShelf, sShelf)
-  print *, dist, i
-
-
-  print *, coords % r
-  print *, coords % dir
-  print *, coords % uniIdx, coords % uniRootID
-  print *, coords % localID, coords % cellIdx
-
-
-
-
-
+!  type(vector)               :: r, u
+!  real(defReal)              :: dist
+!  class(surface),allocatable :: s1
+!  class(surface),allocatable :: s2
+!  class(surface),allocatable :: s3
+!  type(surfaceShelf) :: sShelf
+!  type(cell)         :: c1
+!  type(cell)         :: c2
+!  type(cell)         :: c3
+!  type(cellShelf)    :: cShelf
+!  type(cellUniverse) :: uni
+!  type(coord)        :: coords
+!  integer(shortInt)  :: i,j
+!  integer(shortInt),dimension(:),allocatable :: intArr
+!
+!  allocate(sphere :: s1)
+!  allocate(sphere :: s2)
+!  allocate(sphere :: s3)
+!
+!
+!  select type(s1)
+!    type is (sphere)
+!      call s1 % init([ZERO, ZERO, ZERO], 1.0_8, 1)
+!  end select
+!
+!  select type(s2)
+!    type is (sphere)
+!      call s2 % init([ZERO, ZERO, ZERO], 2.0_8, 2)
+!  end select
+!
+!  select type(s3)
+!  type is (sphere)
+!      call s3 % init([ZERO, ZERO, ZERO], 3.0_8, 3)
+!  end select
+!
+!
+!  call sShelf % init(1)
+!  call sShelf % addUnique(s1,i)
+!  call sShelf % addUnique(s2,i)
+!  call sShelf % addUnique(s3,i)
+!
+!  call c1 % init([-1],2,sShelf)
+!  call c2 % init([1, -3 ],1,sShelf)
+!  call c3 % init([3],77,sShelf)
+!
+!  call cShelf % init(1,1)
+!  call cShelf % add(c1,i)
+!  call cShelf % add(c2,i)
+!  call cShelf % add(c3,i)
+!
+!
+!  call uni % init([ZERO, ZERO, ZERO],1,[2,77,1],cShelf)
+!
+!  coords % r   = [1.0_8- 0.9 * surface_tol, 0.0_8, 0.0_8]
+!  coords % dir = [0.1, 0.6, 0.0]
+!  coords % dir = coords % dir / norm2(coords % dir)
+!
+!  call uni % enter(coords, cShelf, sShelf)
+!
+!  call uni % distance(dist,i,coords,cShelf, sShelf)
+!  print *, dist, i
+!  coords % r = coords % r + coords % dir * dist
+!
+!  call uni % cross(coords, i, cShelf, sShelf)
+!  call uni % distance(dist,i,coords,cShelf, sShelf)
+!  print *, dist, i
+!
+!
+!  print *, coords % r
+!  print *, coords % dir
+!  print *, coords % uniIdx, coords % uniRootID
+!  print *, coords % localID, coords % cellIdx
+!
+!
+!
+!
+!
 
 
 !! <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

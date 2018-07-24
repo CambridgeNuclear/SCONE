@@ -463,6 +463,8 @@ contains
       associate ( storedUnis => self % shelf(1:N) )
 
         if ( any( storedUnis % id() == newUni % id() )) then        ! ID is already present
+          print *, storedUnis % id()
+          print *, newUni % id()
           call fatalError(Here,'Id is already present in the universe shelf')
 
         end if

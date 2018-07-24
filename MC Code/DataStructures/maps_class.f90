@@ -70,6 +70,9 @@ contains
     self % N    = 2**nextPow2
     allocate(self % map( self % N))
 
+    ! SET map keys to EMPY
+    self % map % key = EMPTY
+
   end subroutine init
 
   !!
@@ -155,7 +158,7 @@ contains
     integer(shortInt)            :: i
 
     ! When growing rehasing is required. We will just create new map and copy all values in
-    call tempMap % init( self % N * 2)
+    call tempMap % init( self % Load * 2)
 
     ! Loop throuth current table and rehash non-empty entries
     do i=1,self % N

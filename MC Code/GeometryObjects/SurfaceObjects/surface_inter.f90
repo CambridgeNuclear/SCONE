@@ -120,11 +120,11 @@ module surface_inter
     procedure :: getOrAdd   => getOrAdd_shelf
     procedure :: getIdx     => getIdx_shelf
 
-
     ! Private procedures
     procedure, private :: grow   => grow_shelf
     procedure, private :: resize => resize_shelf
-    procedure, private :: freeID     => freeId_shelf
+    procedure, private :: freeID => freeId_shelf
+
   end type surfaceShelf
 
 
