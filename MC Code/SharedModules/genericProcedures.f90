@@ -1,4 +1,6 @@
 module genericProcedures
+  ! Intrinsic fortran Modules
+  use iso_fortran_env, only : compiler_version
 
   use numPrecision
   use endfConstants
@@ -844,15 +846,18 @@ module genericProcedures
   subroutine printStart()
 
     print *, repeat(" ><((((*> ",10)
-    print *,
+    print *, ''
     print * ,"        _____ __________  _   ________  "
     print * ,"       / ___// ____/ __ \/ | / / ____/  "
     print * ,"       \__ \/ /   / / / /  |/ / __/     "
     print * ,"      ___/ / /___/ /_/ / /|  / /___     "
     print * ,"     /____/\____/\____/_/ |_/_____/     "
-    print * ,
-    print * ,
+    print * , ''
+    print * , ''
+    print * , "Compiler Info :   ", compiler_version()
     print *, repeat(" <*((((>< ",10)
+
+    ! TODO: Add extra info like date & time
 
   end subroutine printStart
 

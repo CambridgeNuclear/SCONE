@@ -5,6 +5,7 @@ module csg_class
   use genericProcedures,    only : fatalError, numToChar, targetNotFound, linFind, printStart
   use dictionary_class,     only : dictionary
   use maps_class,           only : intMap
+  use coord_class,          only : coord
 
   ! Material Names interface
   use nuclearData_inter,    only : nuclearData
@@ -63,12 +64,15 @@ module csg_class
 
   !!
   !! Structure that allows to obtain fill for uniqueID and uniRootID for a transfer
+  !! *** It is sub-optimal at the moment. There are gaps in id numbering
+  !! *** Should be relativly easy to correct it
   !!
   type, public :: fillArray
     private
     integer(shortInt), dimension(:),allocatable :: fills
   contains
-    procedure :: init => init_fillArray
+    procedure :: init    => init_fillArray
+    procedure :: getFill => getFill_fillArray
 
     ! Private procedures
     procedure,private :: layoutUniverse => layoutUniverse_fillArray
@@ -113,6 +117,7 @@ contains
     type(uniFill),dimension(:),allocatable     :: uniFills
     integer(shortInt),dimension(:),allocatable :: BC
     type(csgTree)                              :: tree
+    type(coord)          :: testco
     character(100),parameter :: Here = 'init (csg_class.f90)'
     integer(shortInt) :: cells, trans, nesting
 
@@ -195,7 +200,7 @@ contains
     print *,"  Nested Universes: ",       numToChar(trans)
     print *,"  Unused Universes by ID: ", numToChar(tree % unusedUniverses())
     print *,"  Boundary Surface ID: ",    numToChar(self % sShelf% shelf(self % boundaryIdx) % id())
-    print *,"  Boundary Syrface Type: ",   self % sShelf % shelf(self % boundaryIdx) % type()
+    print *,"  Boundary Surface Type: ",   self % sShelf % shelf(self % boundaryIdx) % type()
     print *,"  Boundary Conditions: ",    numToChar(BC)
     ! TODO: ADD PROCEDURE FOR SURFACES TO PRINT BC AND PROVIDE BC INFORMATION
 
@@ -203,7 +208,6 @@ contains
     print *, "BUILD FILL ARRAY:"
     call self % fills % init(tree)
     print *, "  Fill Array - DONE!"
-
 
     print *, "\/\/ FINISHED READING GEOMETRY \/\/"
     print *, repeat('<>',50)
@@ -873,6 +877,33 @@ contains
     end if
 
   end subroutine init_fillArray
+
+  !!
+  !! Return a fill of a cell given by localID and uniRootID in coords
+  !! If the cell is material fill is +ve and uniRootID is copied from coords
+  !! If the cell is universe fill is -ve and uniRootID corresponds to the universe
+  !!
+  subroutine getFill_fillArray(self, coords, fill, uniRootID)
+    class(fillArray), intent(in)   :: self
+    type(coord), intent(in)        :: coords
+    integer(shortInt), intent(out) :: fill
+    integer(shortInt), intent(out) :: uniRootID
+    integer(shortInt)              :: localID
+
+    ! Read fill from fill array
+    localID   = coords % localID
+    uniRootID = coords % uniRootID
+
+    fill = self % fills(uniRootID + localID)
+
+    ! If fill is universe read uniRootID and read fill uniIdx
+    if (fill < 0 ) then
+      uniRootID = - fill
+      fill      = - self % fills(uniRootID)
+    end if
+
+  end subroutine getFill_fillArray
+
 
   !!
   !! Set entries starting with freeLoc to fill of universe under uniIdx
