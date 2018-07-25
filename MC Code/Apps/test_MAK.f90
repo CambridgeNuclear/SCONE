@@ -14,20 +14,46 @@ program test
   use coord_class,        only : coord
 
   use csg_class,          only : csg
+  use basicCellCSG_class, only : basicCellCSG
   use IOdictionary_class, only : IOdictionary
   use datalessMaterials_class, only : datalessMaterials
 
   implicit none
 
-  type(csg) :: geom
+  type(basicCellCSG) :: geom
   type(datalessMaterials) :: nucData
   type(IOdictionary) :: geomData
+  integer(shortInt)      :: i, file
+  integer(shortInt),dimension(:,:),allocatable :: colorMat
 
   call nucData % init(['uo2  ','water'])
 
   call geomData  % initFrom('./InputFiles/pinCell2.txt')
 
   call geom % init(geomData, nucData)
+
+  allocate(colorMat(1500,1500))
+
+  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'x','material',[5.0_8,5.0_8])
+
+  ! Print matrix to MATLAB Pcolor
+
+  file = 7
+  open(file, file='picture.m', action = 'write')
+
+  write(file,*) "a = ["
+  do i=1,size(colorMat,2)-1
+     write(file,*) modulo(colorMat(:,i),10), ';'
+
+  end do
+  write(file,*) modulo(colorMat(:,i),10), '];'
+  write(file,*) "figure"
+  write(file,*) "h = pcolor(a)"
+  write(file,*) "set(h,'EdgeColor','none')"
+  write(file,*) "colorbar"
+
+
+
 
 !  type(vector)               :: r, u
 !  real(defReal)              :: dist

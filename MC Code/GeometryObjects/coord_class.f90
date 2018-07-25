@@ -60,6 +60,7 @@ module coord_class
     procedure :: cell
     procedure :: assignPosition
     procedure :: assignDirection
+    procedure :: uniqueId
 
   end type coordList
 
@@ -100,19 +101,21 @@ contains
   !! Apply provided offset
   !! Translational transformation is only supported
   !!
-  subroutine addLevel(self, offset, uniIdx)
+  subroutine addLevel(self, offset, uniIdx, uniRootID)
     class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: offset
     integer(shortInt), intent(in)           :: uniIdx
+    integer(shortInt), intent(in)           :: uniRootID
     integer(shortInt)                       :: n
     character(100),parameter :: Here ='addLevel (coord_class.f90)'
 
     n = self % nesting + 1
     self % nesting = n
 
-    self % lvl(n) % r       = self % lvl(n-1) % r - offset
-    self % lvl(n) % dir     = self % lvl(n-1) % dir
-    self % lvl(n) % uniIdx  = uniIdx
+    self % lvl(n) % r         = self % lvl(n-1) % r - offset
+    self % lvl(n) % dir       = self % lvl(n-1) % dir
+    self % lvl(n) % uniIdx    = uniIdx
+    self % lvl(n) % uniRootID = uniRootID
 
   end subroutine addLevel
 
@@ -252,5 +255,19 @@ contains
     end do
 
   end subroutine assignDirection
+
+  !!
+  !! Returns unique ID of the lowest level cell in geometry
+  !!
+  function uniqueId(self) result(id)
+    class(coordList), intent(in) :: self
+    integer(shortInt)            :: id
+    integer(shortInt) :: n
+
+    n = self % nesting
+
+    id = self % lvl(n) % uniRootID + self % lvl(n) % localID
+
+  end function uniqueId
 
 end module coord_class

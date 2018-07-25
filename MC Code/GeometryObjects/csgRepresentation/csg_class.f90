@@ -121,8 +121,6 @@ contains
     character(100),parameter :: Here = 'init (csg_class.f90)'
     integer(shortInt) :: cells, trans, nesting
 
-    call printStart()
-
     print *, repeat('<>',50)
     ! *** START GEOMETRY BUILD
     print *, "/\/\ READING CSG GEOMETRY REPRESENTATION /\/\"
