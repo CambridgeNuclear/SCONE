@@ -59,7 +59,7 @@ program test
 
 
 
-  stop
+  !stop
   !*** SLICE PLOT
   allocate(colorMat(1500,1500))
   call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','uniqueID',[5.0_8,5.0_8])

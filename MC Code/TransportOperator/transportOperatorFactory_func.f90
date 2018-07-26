@@ -8,8 +8,8 @@ module transportOperatorFactory_func
   use dictionary_class,  only : dictionary
 
   ! Nuclear Data an geometry interface
-  use nuclearData_inter, only : nuclearData
-  use geometry_class,    only : geometry
+  use nuclearData_inter,  only : nuclearData
+  use cellGeometry_inter, only : cellGeometry
 
   ! Transport Operators
   use transportOperator_inter,   only : transportOperator
@@ -32,11 +32,11 @@ module transportOperatorFactory_func
 contains
 
   function new_transportOperator_ptr(nucData,geom,dict) result(new)
-    class(nuclearData),pointer,intent(in) :: nucData
-    class(geometry),pointer,intent(in)    :: geom
-    class(dictionary), intent(in)     :: dict
-    class(transportOperator),pointer  :: new
-    character(nameLen)                :: type
+    class(nuclearData),pointer,intent(in)  :: nucData
+    class(cellGeometry),pointer,intent(in) :: geom
+    class(dictionary), intent(in)          :: dict
+    class(transportOperator),pointer       :: new
+    character(nameLen)                     :: type
     character(100),parameter :: Here = 'new_transportOperator_ptr (transportOperatorFactory_func.f90)'
 
     ! Obtain string that specifies type to be built

@@ -287,6 +287,7 @@ contains
 
     state = self
     call state % display()
+    print *, self % coords % matIdx
 
   end subroutine display_particle
 

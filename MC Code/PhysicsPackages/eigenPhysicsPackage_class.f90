@@ -11,7 +11,8 @@ module eigenPhysicsPackage_class
   use RNG_class,                     only : RNG
 
   ! Geometry & Nuclear Data
-  use geometry_class,                only : geometry
+  use cellGeometry_inter,            only : cellGeometry
+  use basicCellCSG_class,            only : basicCellCSG !** Provisional
   use nuclearData_inter,             only : nuclearData
 
   ! Operators
@@ -37,7 +38,7 @@ module eigenPhysicsPackage_class
     ! private ** DEBUG
     ! Building blocks
     class(nuclearData), pointer            :: nucData       => null()
-    class(geometry), pointer               :: geom          => null()
+    class(cellGeometry), pointer           :: geom          => null()
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
@@ -101,10 +102,11 @@ contains
 
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
-        call self % geom % placeParticle(neutron)
+        call self % geom % placeCoord(neutron % coords)
 
           history: do
             preState = neutron
+
             call self % transOp % transport(neutron)
 
             ! Exit history and score leakage
@@ -177,7 +179,7 @@ contains
 
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
-        call self % geom % placeParticle(neutron)
+        call self % geom % placeCoord(neutron % coords)
 
           history: do
             preState = neutron
@@ -268,9 +270,14 @@ contains
     ! Build nuclear data
     self % nucData => new_nuclearData_ptr(matDict)
 
-    ! Build geometry *** Will be replaced by a factory at some point
-    allocate(self % geom)
-    call self % geom % init( geomDict, self % nucData)
+    ! Build geometry *** Will be replaced by a factory SOON !!!
+    allocate(basicCellCSG :: self % geom)
+    associate ( g => self % geom)
+      select type (g)
+        type is ( basicCellCSG)
+          call g % init( geomDict, self % nucData)
+      end select
+    end associate
 
     ! Build collision operator
     self % collOp => new_collisionOperator_ptr(self % nucData, collDict)
@@ -289,6 +296,8 @@ contains
     allocate(self % pRNG)
     call self % pRNG % init(768568_8)
     !call self % pRNG % init(67858567567_8)
+
+
   end subroutine init
 
 

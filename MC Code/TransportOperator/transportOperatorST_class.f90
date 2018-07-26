@@ -14,10 +14,7 @@ module transportOperatorST_class
   use transportOperator_inter,    only : transportOperator
 
   ! Geometry interfaces
-  use geometry_class,             only : geometry
-  use surface_inter,              only : surface_ptr
-  use cell_class,                 only : cell_ptr
-  use lattice_class,              only : lattice_ptr
+  use cellGeometry_inter,         only : cellGeometry
 
   !** Debug
   use coord_class,  only : coordList
@@ -33,7 +30,6 @@ module transportOperatorST_class
   contains
     procedure :: init
     procedure :: transport => surfaceTracking
-    procedure :: applyBC
   end type transportOperatorST
 
 contains
@@ -44,7 +40,7 @@ contains
   subroutine init(self, nucData, geom, settings)
     class(transportOperatorST), intent(inout) :: self
     class(nuclearData), pointer, intent(in)   :: nucData
-    class(geometry), pointer, intent(in)      :: geom
+    class(cellGeometry), pointer, intent(in)  :: geom
     class(dictionary), optional, intent(in)   :: settings
     character(100),parameter :: Here ='init (transportOperatorDT_class.f90)'
 
@@ -71,149 +67,27 @@ contains
   subroutine surfaceTracking(self,p)
     class(transportOperatorST), intent(in) :: self
     class(particle), intent(inout)         :: p
-    real(defReal)                          :: sigmaT, distance, boundaryDistance, &
-                                              testDistance, latDistance, lDist
-    integer(shortInt)                      :: i, n0, n, nMin, latIdx, iLat
-    type(cell_ptr)                         :: c, currentCell
-    type(lattice_ptr)                      :: lat
-    logical(defBool)                       :: moveUp
+    logical(defBool)                       :: isColl
+    real(defReal)                          :: sigmaT, dist
 
     STLoop: do
-
-      ! Calculate boundary distance: descend the different co-ordinate levels starting from the highest
-      ! Ensures bounds of parent cells are not exceeded
-      n0 = p % nesting()
-      nMin = 1
-      boundaryDistance = INFINITY
-      latDistance = INFINITY
-      do i = 1,n0
-        c = self % geom % cells(p % getCellIdx(i))
-        testDistance = c % getDistance(p%rLocal(i), p%dirLocal(i))
-
-        ! Check if the particle is in a lattice cell
-        latIdx = p % getLatIdx(i)
-        if (latIdx > 0) then
-          lat = self % geom % lattices(latIdx)
-          lDist = lat % getDistance(p%rLocal(i), p%dirLocal(i))
-          if (latDistance >= lDist) then
-            latDistance = lDist
-            iLat = i - 1
-          end if
-
-        end if
-
-        ! Is the particle crossing a cell boundary?
-        if (boundaryDistance > testDistance) then
-          boundaryDistance = testDistance
-          nMin = i
-        end if
-
-        ! Is the particle crossing a lattice boundary?
-        if (latIdx > 0) then
-          if (boundaryDistance > latDistance) then
-            nMin = iLat
-            boundaryDistance = latDistance
-          end if
-        end if
-      end do
-      n = nMin
 
       ! Obtain the local cross-section
       sigmaT = self % nuclearData % getTransXS(p, p % matIdx())
 
       ! Sample particle flight distance
-      distance = -log(p%pRNG%get())/sigmaT
+      dist = -log( p % pRNG % get()) / sigmaT
 
-      ! The particle escapes the cell and moves to the next
-      if (boundaryDistance <= distance) then
+      ! Move to the next stop
+      call self % geom % move(p % coords, dist, isColl)
 
-        ! Move particle to the surface with a small nudge to move across the boundary
-        call p % moveLocal(boundaryDistance + NUDGE, n)
+      ! * TODO SEND TALLY REPORT
 
-        ! Find the new base cell which the particle occupies
-        currentCell = self % geom % whichCell(p%coords, n)
+      ! Return if particle stoped at collision (not cell boundary)
+      if( isColl ) return
 
-        ! If the particle is outside the geometry, apply boundary conditions
-        do while (.not. currentCell % insideGeom())
-
-          call self % applyBC(p, currentCell)
-
-          ! End transport if the particle is killed
-          if (p % isDead) then
-            exit STLoop
-          end if
-        end do
-
-        ! Continue performing surface tracking
-        cycle STLoop
-
-      else
-        ! Move particle to new location
-        call p % moveLocal(distance, n0)
-        exit STLoop
-      end if
     end do STLoop
 
   end subroutine surfaceTracking
-
-  !!
-  !! Apply boundary conditions when using surface tracking
-  !! This routine may need checking for cases in which the boundary
-  !! is crossed repeatedly
-  !!
-  subroutine applyBC(self, p, currentCell)
-    class(transportOperatorST), intent(in) :: self
-    class(particle), intent(inout)       :: p
-    class(cell_ptr), intent(inout)       :: currentCell
-    type(surface_ptr)                    :: currentSurface
-
-    ! Return to global coordinates - this may be a superfluous call!!
-    call p % takeAboveGeom()
-
-    ! Identify which surface the particle crossed at the highest geometry level
-    currentSurface = currentCell % whichSurface(p%rGlobal(), -p%dirGlobal())
-
-    ! Check the boundary conditions on the surface
-    ! If vacuum, kill the particle
-    if (currentSurface % isVacuum()) then
-      p % isDead = .TRUE.
-     ! call currentSurface % kill()
-
-    ! If reflective or periodic, must ensure that the surface is a plane!
-    else if (currentSurface % isReflective()) then
-
-      ! Move particle back to surface which it crossed at the highest geometry level
-      call p % moveGlobal(-NUDGE)
-
-      ! Reflect the particle's direction of travel at the highest geometry level
-      call currentSurface % reflect(p%coords%lvl(1)%r, p%coords%lvl(1)%dir)
-
-      ! Nudge the particle to avoid problems at corners
-      call p % moveGlobal(NUDGE)
-
-      ! Identify which cell the particle now occupies
-      currentCell = self % geom % whichCell(p%coords)
-
-      ! The particle should no longer be sat on a surface
-      !call currentSurface % kill()
-
-    else if (currentSurface % isPeriodic()) then
-
-      ! Apply the periodic translation associated with the surface
-      call p % teleport(p%rGlobal() + currentSurface % periodicTranslation() &
-                        + NUDGE * p%dirGlobal())
-
-      ! Identify which cell the particle now occupies
-      currentCell = self % geom % whichCell(p%coords)
-
-      ! The particle should no longer be sat on a surface
-      !call currentSurface % kill()
-
-    else
-      call fatalError('applyBC, transportOperatorST',&
-      'Could not identify correct boundary conditions')
-    end if
-
-  end subroutine applyBC
 
 end module transportOperatorST_class

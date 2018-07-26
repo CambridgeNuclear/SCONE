@@ -268,15 +268,17 @@ contains
   !!
   !! If during motion boundary is crossed transformations are applied and particle is stopped
   !! If particle is stopped at the trip surface tripFlag is set to .true.
-  !!
+  !! If particle stoped at the collision isColl is set to .true.
+
   !! NOTE:
   !!  -> if coords is not placed in the geometry behaviour is unspecified
   !!  -> if maxDist < 0.0 behaviour is unspecified
   !!
-  subroutine move(self, coords, maxDist, tripFlag)
+  subroutine move(self, coords, maxDist, isColl, tripFlag)
     class(basicCellCSG), intent(inout)    :: self
     type(coordList), intent(inout)        :: coords
     real(defReal),intent(in)              :: maxDist
+    logical(defBool),intent(out)          :: isColl
     logical(defBool),optional,intent(out) :: tripFlag
     integer(shortInt)                     :: surfIdx, level, uniIdx
     real(defReal)                         :: dist
@@ -298,6 +300,7 @@ contains
 
     if (maxDist < dist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
+      isColl = .true.
 
     else if (surfIdx == self % geom % boundaryIdx) then ! Crosses domain boundary
       ! Move global to the boundary
@@ -314,11 +317,13 @@ contains
 
       ! Return particle to geometry
       call self % placeCoord(coords)
+      isColl = .false.
 
     else ! Crosses cell to cell boundary
       ! Move to the boundary at "level"
       call coords % moveLocal(dist, level)
       uniIdx = coords % lvl(level) % uniIdx
+      isColl = .false.
 
       associate (g => self % geom)
 
