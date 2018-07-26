@@ -69,21 +69,20 @@ module geometry_inter
     !!
     !! NOTES:
     !! -> what = {"material","cellID"} determines if matIdx is put in colorMat or unique cellID
-    !! -> dir is vector perpendicular to the slice plane
-    !! -> If only corner1 is provided it determines offset of a slice plane
-    !! -> If corner1 & corner2 are provided they specify extent of plot on a slice plane
-    !! -> If bounds of the plot are infinate plot is still produced
+    !! -> dir  = {"x","y","z"} specifies direction of the plot
+    !! -> centre allows to set offset of a plane
+    !! -> width sets well... width in each direction of the plane width(1) is either x or y
     !!
-    subroutine slicePlot(self,colorMat,dir,what,corner1,corner2)
+    subroutine slicePlot(self, colorMat, centre, dir, what, width)
       import :: geometry, &
                 shortInt,&
                 defReal
-      class(geometry),intent(in)                     :: self
-      integer(shortInt),dimension(:,:),intent(inout) :: colorMat
-      real(defReal),dimension(3), intent(in)         :: dir
-      character(*),intent(in)                        :: what
-      real(defReal),dimension(3),optional,intent(in) :: corner1
-      real(defReal),dimension(3),optional,intent(in) :: corner2
+      class(geometry),intent(in)                       :: self
+      integer(shortInt),dimension(:,:), intent(inout)  :: colorMat
+      real(defReal), dimension(3), intent(in)          :: centre
+      character(1), intent(in)                         :: dir
+      character(*), intent(in)                         :: what
+      real(defReal), dimension(2), optional,intent(in) :: width
     end subroutine slicePlot
 
     !!
@@ -93,18 +92,18 @@ module geometry_inter
     !!
     !! NOTES:
     !! -> what = {"material","cellID"} determines if matIdx is put in voxel Mat or unique cellID
-    !! -> corner1 & corner2 must be given together.
-    !!    They specify extend of space covered by voxel plot
+    !! -> centere and optional width specify extent of plot
+    !! -> Voxel plot is always a box and it is axis aligned
     !!
-    subroutine voxelPlot(self,voxelMat,what,corner1,corner2)
+    subroutine voxelPlot(self,voxelMat,what,center,width)
       import :: geometry, &
                 shortInt, &
                 defReal
       class(geometry),intent(in)                       :: self
       integer(shortInt),dimension(:,:,:),intent(inout) :: voxelMat
       character(*),intent(in)                          :: what
-      real(defReal),dimension(3),optional,intent(in)   :: corner1
-      real(defReal),dimension(3),optional,intent(in)   :: corner2
+      real(defReal),dimension(3),intent(in)            :: center
+      real(defReal),dimension(3),optional,intent(in)   :: width
    end subroutine voxelPlot
 
   end interface

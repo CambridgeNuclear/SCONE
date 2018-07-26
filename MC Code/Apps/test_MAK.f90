@@ -11,7 +11,7 @@ program test
   use cell_class,    only : cell, cellShelf
   use maps_class,    only : intMap
   use cellUniverse_class, only : cellUniverse
-  use coord_class,        only : coord
+  use coord_class,        only : coord, coordList
 
   use csg_class,          only : csg
   use basicCellCSG_class, only : basicCellCSG
@@ -25,6 +25,8 @@ program test
   type(IOdictionary) :: geomData
   integer(shortInt)      :: i, file
   integer(shortInt),dimension(:,:),allocatable :: colorMat
+  real(defReal),dimension(3)     :: u
+  type(coordList)         :: coords
 
   call nucData % init(['uo2  ','water'])
 
@@ -32,9 +34,35 @@ program test
 
   call geom % init(geomData, nucData)
 
-  allocate(colorMat(1500,1500))
 
-  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'x','material',[5.0_8,5.0_8])
+  ! Initialise coordinates
+  u =[ONE, ZERO, ZERO]
+  u = u / norm2(u)
+
+  call coords % init([ZERO, -0.56_8, ZERO], u)
+  call geom % placeCoord(coords)
+
+  !call geom % move(coords, 1.0_8)
+  !call geom % teleport(coords, 3.9_8)
+  call geom % moveGlobal(coords, 3.9_8)
+
+  print *, "MAT IDX:", coords % matIDx, "NESTING:", coords % nesting
+
+  do i=1,5
+    print *, "LEVEL: ", numToChar(i), " ", coords % lvl(i) % r, coords % lvl(i) % dir
+    print *, "UniIdx: ", coords % lvl(i) % uniIdx, "CellIdx:", coords % lvl(i) % cellIdx , "localID:", coords % lvl(i) % localID
+  end do
+
+
+
+
+
+
+
+  stop
+  !*** SLICE PLOT
+  allocate(colorMat(1500,1500))
+  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','uniqueID',[5.0_8,5.0_8])
 
   ! Print matrix to MATLAB Pcolor
 
@@ -43,10 +71,10 @@ program test
 
   write(file,*) "a = ["
   do i=1,size(colorMat,2)-1
-     write(file,*) modulo(colorMat(:,i),10), ';'
+     write(file,*) colorMat(:,i), ';'
 
   end do
-  write(file,*) modulo(colorMat(:,i),10), '];'
+  write(file,*) colorMat(:,i), '];'
   write(file,*) "figure"
   write(file,*) "h = pcolor(a)"
   write(file,*) "set(h,'EdgeColor','none')"

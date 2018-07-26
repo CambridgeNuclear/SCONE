@@ -288,11 +288,12 @@ contains
       ! *** We use testIdx becouse compond surfaces can return index of other surface
       if (testDist < dist) then
         dist = testDist
-        idx  = testIdx
+        idx  = surfIdx
+        ! For now return index of the global surface
+        !idx  = testIdx
 
       end if
     end do
-
   end subroutine distance
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

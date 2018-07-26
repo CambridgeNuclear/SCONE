@@ -2,27 +2,52 @@ module basicCellCSG_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError
-  use dictionary_class,  only : dictionary
-  use nuclearData_inter, only : nuclearData
+  use genericProcedures,  only : fatalError
+  use vector_class,       only : vector
+  use dictionary_class,   only : dictionary
+
+  ! Map of material names to material indexes
+  ! *** MAY be replaced with a char-int map later
+  use nuclearData_inter,  only : nuclearData
 
   ! Geometry modules
-  !* Provisional
-  use geometry_inter,    only : geometry
-  use coord_class,       only : coord, coordList
-  use csg_class,         only : csg, fillArray
+  use cellGeometry_inter, only : cellGeometry
+  use coord_class,        only : coord, coordList
+  use csg_class,          only : csg, fillArray
 
   implicit none
   private
 
-  type, public :: basicCellCSG
+  !! Parameter for tracking recovery options
+  integer(shortInt), parameter :: RECOVER = 0
+
+
+  !!
+  !! Implementation of the cell geometry model using CSG representation of geometry
+  !! Does not support trip surface at the moment
+  !!
+  type, public,extends(cellGeometry) :: basicCellCSG
     private
     type(csg)  :: geom
   contains
+    ! Build procedures
     procedure :: init
+
+    ! Interface of geometry_inter
     procedure :: placeCoord
     procedure :: whatIsAt
+    procedure :: bounds
     procedure :: slicePlot
+    procedure :: voxelPlot
+
+    ! Interface of cellGeometry_inter
+    procedure :: move
+    procedure :: teleport
+    procedure :: moveGlobal
+
+    ! Private procedures
+    procedure, private :: closestDist
+    procedure, private :: diveToMat
 
   end type basicCellCSG
 
@@ -66,34 +91,8 @@ contains
       coords % lvl(1) % uniRootID = 1
       call geom % uShelf % shelf(1) % enter( coords % lvl(1), geom % cShelf, geom % sShelf)
 
-      do i=1,hardcoded_max_nest
-        ! Find cell fill
-        call geom % fills % getFill(coords % lvl(i),fill, nextUniRoot)
-
-        if (fill >= 0) then ! fill is a material or outside
-          coords % matIdx = fill
-          return
-
-        end if
-
-        if (fill < 0) then ! fill is a nested universe
-          ! Change fill to uniIdx
-          fill = -fill
-
-          ! Current universe
-          uniIdx = coords % lvl(i) % uniIdx
-
-          ! Get cell offset
-          offset = geom % uShelf % shelf(uniIdx) % cellOffset( coords % lvl(i) )
-
-          ! Enter lower level
-          call coords % addLevel(offset, fill, nextUniRoot)
-          call geom % uShelf % shelf(fill)% enter( coords % lvl(i+1), geom % cShelf, geom % sShelf)
-
-        end if
-      end do
-
-      call fatalError(Here,'Material cell was not found')
+      ! Dive into geometry until material is found from 1st level
+      call self % diveToMat( coords, 1)
 
     end associate
   end subroutine placeCoord
@@ -121,6 +120,21 @@ contains
   end subroutine whatIsAT
 
   !!
+  !! Return bounds of the geometry domain in cartesian co-ordinates
+  !! bounds = [x_min, x_max, y_min, y_max, z_min, z_max]
+  !! If geometry is infinate in a given axis direction * then:
+  !! *_min = *_max = ZERO
+  !!
+  function bounds(self)
+    class(basicCellCSG), intent(in) :: self
+    real(defReal),dimension(6)      :: bounds
+    character(100), parameter :: Here ='bounds (basicCellCSG_class.f90)'
+
+    call fatalError(Here,'Bounds are not yet implemented. Need to modify surfaces to provide them')
+
+  end function bounds
+
+  !!
   !! Produce a 2D plot of a geometry
   !! Resolution is determined by a size of input matrix colorMat
   !! By default extent of a plot is determined by bounds of the domain and offset is [0,0,0]
@@ -132,15 +146,15 @@ contains
   !! -> width sets well... width in each direction of the plane width(1) is either x or y
   !!
   subroutine slicePlot(self, colorMat, centre, dir, what, width)
-    class(basicCellCSG), intent(in)                 :: self
-    integer(shortInt),dimension(:,:), intent(inout) :: colorMat
-    real(defReal), dimension(3), intent(in)         :: centre
-    character(1), intent(in)                        :: dir
-    character(*), intent(in)                        :: what
-    real(defReal), dimension(2), optional           :: width
-    real(defReal)                                   :: step1, step2
-    real(defReal),dimension(3)                      :: x0, inc1, inc2, point
-    integer(shortInt)                               :: i,j, flag, matIdx, uniqueId
+    class(basicCellCSG), intent(in)                  :: self
+    integer(shortInt),dimension(:,:), intent(inout)  :: colorMat
+    real(defReal), dimension(3), intent(in)          :: centre
+    character(1), intent(in)                         :: dir
+    character(*), intent(in)                         :: what
+    real(defReal), dimension(2), optional,intent(in) :: width
+    real(defReal)                                    :: step1, step2
+    real(defReal),dimension(3)                       :: x0, inc1, inc2, point
+    integer(shortInt)                                :: i,j, flag, matIdx, uniqueId
     character(100),parameter :: Here = 'slicePlot (basicCellCSG_Class.f90)'
 
     ! Check that width was provided
@@ -173,7 +187,7 @@ contains
     end select
 
     ! Calculate corner
-    x0 = centre - inc1 * (width(1)-step1)/2 - inc2 * (width(2)-step2)/2
+    x0 = centre - inc1 * (width(1) + step1)/2 - inc2 * (width(2) + step2)/2
 
     ! Choose to print uniqueID or matIdx
     select case(what)
@@ -205,5 +219,308 @@ contains
     end do
   end subroutine slicePlot
 
+  !!
+  !! Produce a voxel 3D plot of geometry
+  !! Resolution is determined by a size of input voxelMat
+  !! By default bounds of the voxel plot correspond to bounds of geometry
+  !!
+  !! NOTES:
+  !! -> what = {"material","cellID"} determines if matIdx is put in voxel Mat or unique cellID
+  !! -> centere and optional width specify extent of plot
+  !! -> Voxel plot is always a box and it is axis aligned
+  !!
+  subroutine voxelPlot(self,voxelMat,what,center,width)
+    class(basicCellCSG),intent(in)                   :: self
+    integer(shortInt),dimension(:,:,:),intent(inout) :: voxelMat
+    character(*),intent(in)                          :: what
+    real(defReal),dimension(3),intent(in)            :: center
+    real(defReal),dimension(3),optional,intent(in)   :: width
+    real(defReal)                                    :: stepZ, z0
+    real(defReal),dimension(3)                       :: point
+    real(defReal),dimension(2)                       :: width_bar
+    integer(shortInt)                                :: i
+    character(100),parameter :: Here = 'voxelPlot ( basicCellCSG_class.f90)'
+
+    ! Check that width was provided
+    if (.not.present(width)) then
+      call fatalError(Here,'Sorry but width must be provided before surfaces return their bounds')
+    end if
+
+    ! Calculate step in z direction
+    stepZ = width(3) / size(voxelMat,3)
+
+    ! Calculate starting z
+    z0 = center(3) - (width(3) + stepZ)/TWO
+
+    ! Construct voxel plot from multiple slice plots
+    point = center
+    do i=1,size(voxelMat,3)
+      point(3) = z0 + stepZ
+      call self % slicePlot(voxelMat(:,:,i), point, 'z', what, width(1:2) )
+
+    end do
+
+ end subroutine voxelPlot
+
+  !!
+  !! Given coordinates placed in a geometry move point through the geometry
+  !! Move by maxDist. Stop at the boundaries between unique cell IDs or at the trip surface
+  !!
+  !! If during motion boundary is crossed transformations are applied and particle is stopped
+  !! If particle is stopped at the trip surface tripFlag is set to .true.
+  !!
+  !! NOTE:
+  !!  -> if coords is not placed in the geometry behaviour is unspecified
+  !!  -> if maxDist < 0.0 behaviour is unspecified
+  !!
+  subroutine move(self, coords, maxDist, tripFlag)
+    class(basicCellCSG), intent(inout)    :: self
+    type(coordList), intent(inout)        :: coords
+    real(defReal),intent(in)              :: maxDist
+    logical(defBool),optional,intent(out) :: tripFlag
+    integer(shortInt)                     :: surfIdx, level, uniIdx
+    real(defReal)                         :: dist
+    type(vector)                          :: r, u
+    character(100),parameter  :: Here ='move (basicCellCSG_Class.f90)'
+
+    ! *** TRIP SURFACES NOT YET IMPLEMENTED
+    if(present(tripFlag)) tripFlag = .false.
+
+    ! Perform Check whether coordinates are placed
+    if(.not. coords % isPlaced()) then
+      call fatalError(Here, 'Coordinate List is not placed in geometry')
+    end if
+
+    ! Find distance to the next surface
+    call self % closestDist(dist, surfIdx, level, coords)
+
+    !print *, surfIdx, dist
+
+    if (maxDist < dist) then ! Moves within cell
+      call coords % moveLocal(maxDist, coords % nesting)
+
+    else if (surfIdx == self % geom % boundaryIdx) then ! Crosses domain boundary
+      ! Move global to the boundary
+      call coords % moveGlobal(dist)
+
+      ! Apply boundary condition *** This interface is to horrible. Must be repaired
+      r = coords % lvl(1) % r
+      u = coords % lvl(1) % dir
+
+      call self % geom % sShelf % shelf(surfIdx) % boundaryTransform(r, u)
+
+      coords % lvl(1) % r   = r % v
+      coords % lvl(1) % dir = u % v
+
+      ! Return particle to geometry
+      call self % placeCoord(coords)
+
+    else ! Crosses cell to cell boundary
+      ! Move to the boundary at "level"
+      call coords % moveLocal(dist, level)
+      uniIdx = coords % lvl(level) % uniIdx
+
+      associate (g => self % geom)
+
+        ! Cross boundary (sets cellIdx and localCell after boundary)
+        call g % uShelf % shelf(uniIdx) % cross(coords % lvl(level), surfIdx, g % cShelf, g % sShelf)
+
+        ! Dive further into geometry until material is found
+        call self % diveToMat(coords,level)
+
+      end associate
+
+    end if
+  end subroutine move
+
+  !!
+  !! Given coordinates transport point outside the geometry by distance dist
+  !!
+  !! If during motion boundary is crossed transformation are applied
+  !! Particle is NOT stoped but transport continues until total
+  !! transport length is equal to dist.
+  !!
+  !! NOTE:
+  !!  -> if coords is not placed in the geometry behaviour is unspecified
+  !!  -> if maxDist < 0.0 behaviour is unspecified
+  !!
+  subroutine teleport(self,coords,dist)
+    class(basicCellCSG), intent(inout) :: self
+    type(coordList), intent(inout)     :: coords
+    real(defReal), intent(in)          :: dist
+    type(vector)                       :: r, u
+
+    ! Move the coords above the geometry
+    call coords % moveGlobal(dist)
+
+    ! Place coordinates in back in the goemetry
+    call self % placeCoord(coords)
+
+    ! If point is outside apply boundary transformations
+    if (coords % matIdx == OUTSIDE_FILL) then
+
+      ! Apply boundary condition *** This interface is to horrible. Must be repaired
+      r = coords % lvl(1) % r
+      u = coords % lvl(1) % dir
+
+      call self % geom % sShelf % shelf(self % geom % boundaryIdx) % boundaryTransform(r, u)
+
+      coords % lvl(1) % r   = r % v
+      coords % lvl(1) % dir = u % v
+
+      ! Return particle to geometry
+      call self % placeCoord(coords)
+
+    end if
+
+  end subroutine teleport
+
+  !!
+  !! Given coordinates move point in global geometry level
+  !! Move by maxDist. Stop at the boundary or at the trip surface
+  !!
+  !! If during motion boundary is crossed transformations are applied and particle is stopped
+  !! If particle is stopped at the trip surface tripFlag is set to .true.
+  !!
+  !! NOTE:
+  !!  -> if maxDist < 0.0 behaviour is unspecified
+  !!
+  subroutine moveGlobal(self,coords,maxDist,tripFlag)
+    class(basicCellCSG), intent(inout)    :: self
+    type(coordList), intent(inout)        :: coords
+    real(defReal), intent(in)             :: maxDist
+    logical(defBool),optional,intent(out) :: tripFlag
+    integer(shortInt)                     :: surfIdx
+    real(defReal)                         :: dist
+    type(vector)                          :: r, u
+    character(100), parameter :: Here ='moveGlobal (basciCSG_class.f90)'
+
+    ! *** TRIP SURFACES NOT YET IMPLEMENTED
+    if(present(tripFlag)) tripFlag = .false.
+
+    ! Perform Check whether coordinates are placed
+    if(.not. coords % isPlaced()) then
+      call fatalError(Here, 'Coordinate List is not placed in geometry')
+    end if
+
+    ! Find distance to the boundary surface
+    associate ( g => self % geom)
+      surfIdx = g % boundaryIdx
+
+      ! Get position and direction into vectors
+      r = coords % lvl(1) % r
+      u = coords % lvl(1) % dir
+
+      ! Calculate distance to the boundary
+      call g % sShelf % shelf(surfIdx) % distance(dist, surfIdx, r, u)
+
+      if (maxDist < dist) then
+        ! Move above the geometry
+        call coords % moveGlobal(maxDist)
+
+      else
+        ! Move above the geometry
+        call coords % moveGlobal(dist)
+
+        ! Apply boundary condition *** This interface is to horrible. Must be repaired
+        r = coords % lvl(1) % r
+        u = coords % lvl(1) % dir
+
+        call g % sShelf % shelf(g % boundaryIdx) % boundaryTransform(r, u)
+
+        coords % lvl(1) % r   = r % v
+        coords % lvl(1) % dir = u % v
+      end if
+
+      ! Return particle to geometry
+      call self % placeCoord(coords)
+
+    end associate
+  end subroutine moveGlobal
+
+
+  !!
+  !! Returns distance, surfIdx for the next surface
+  !! Also returns level at which the surface is encountered
+  !!
+  subroutine closestDist(self, dist, surfIdx, level, coords)
+    class(basicCellCSG), intent(in)       :: self
+    real(defReal), intent(out)            :: dist
+    integer(shortInt), intent(out)        :: surfIdx
+    integer(shortInt), intent(out)        :: level
+    type(coordList), intent(in)           :: coords
+    integer(shortInt)                     :: l, sIdxTest, uniIdx
+    real(defReal)                         :: testDist
+
+    dist = INFINITY
+    associate ( g => self % geom)
+      ! Loop over levels occupied by the particle
+      do l=1, coords % nesting
+        ! Get universe index
+        uniIdx = coords % lvl(l) % uniIdx
+
+        ! Find distance to next surface at level l
+        call g % uShelf % shelf(uniIdx) % distance(testDist       ,&
+                                                   sIdxTest       ,&
+                                                   coords % lvl(l),&
+                                                   g % cShelf     ,&
+                                                   g % sShelf     )
+
+        ! Save distance, surfIdx & level coresponding to shortest distance
+        if (testDist < dist) then
+          dist    = testDist
+          surfIdx = sIdxTest
+          level   = l
+        end if
+      end do
+    end associate
+  end subroutine closestDist
+
+  !!
+  !! Dives into geometry until material is found starting from level start
+  !! Assumes that coords are already placed at level start
+  !!
+  subroutine diveToMat(self, coords, start)
+    class(basicCellCSG), intent(in) :: self
+    type(coordList), intent(inout)  :: coords
+    integer(shortInt), intent(in)   :: start
+    integer(shortInt)               :: uniIdx, fill, nextUniRoot
+    integer(shortInt)               :: i
+    real(defReal),dimension(3)      :: offset
+    character(100), parameter :: Here ='diveToMat (basicCellCSG_class.f90)'
+
+    associate (g => self % geom)
+
+      do i=start,hardcoded_max_nest
+        ! Find cell fill
+        call g % fills % getFill(coords % lvl(i),fill, nextUniRoot)
+
+        if (fill >= 0) then ! fill is a material or outside
+          coords % matIdx = fill
+          return
+
+        end if
+
+        if (fill < 0) then ! fill is a nested universe
+          ! Change fill to uniIdx
+          fill = -fill
+
+          ! Current universe
+          uniIdx = coords % lvl(i) % uniIdx
+
+          ! Get cell offset
+          offset = g % uShelf % shelf(uniIdx) % cellOffset( coords % lvl(i) )
+
+          ! Enter lower level
+          call coords % addLevel(offset, fill, nextUniRoot)
+          call g % uShelf % shelf(fill)% enter( coords % lvl(i+1), g % cShelf, g % sShelf)
+
+        end if
+      end do
+
+      call fatalError(Here,'Material cell was not found')
+
+    end associate
+  end subroutine diveToMat
 
 end module basicCellCSG_class

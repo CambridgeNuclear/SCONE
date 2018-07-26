@@ -32,9 +32,9 @@ module coord_class
   !!
   !! Following states are possible:
   !!  uninitialised    -> Nesting is < 1. All coordinate values are unreliable
-  !!  above geometry   -> Nesting = 1. regionID & matIdx are equal to 0 (unassigned)
+  !!  above geometry   -> Nesting = 1. matIdx is equal to 0 (unassigned)
   !!                                   coordinates at nesting level 1 are realible
-  !!  inside geometry  -> Nesting >=1. regionID & matIdx are assigned.
+  !!  inside geometry  -> Nesting >=1. matIdx is assigned.
   !!                                   coordinates up to nesting are realible
   !! IMPORTANT NOTE:
   !!   moveGlobal resets regionID & matIdx to 0
@@ -49,6 +49,11 @@ module coord_class
   contains
     ! Build procedures
     procedure :: init
+
+    ! State enquiry procedures
+    procedure :: isPlaced
+    procedure :: isAbove
+    procedure :: isUninitialised
 
     ! Interface procedures
     procedure :: addLevel
@@ -95,6 +100,40 @@ contains
     self % nesting = 1
 
   end subroutine init
+
+  !!
+  !! Return true if coordinates List is placed in geometry
+  !!
+  function isPlaced(self) result(isIt)
+    class(coordList), intent(in) :: self
+    logical(defBool)             :: isIt
+
+    isIt = (self % matIdx > 0) .and. (self % nesting >= 1)
+
+  end function isPlaced
+
+  !!
+  !! Return ture if coordinates are above geometry
+  !!
+  function isAbove(self) result(isIt)
+    class(coordList), intent(in) :: self
+    logical(defBool)             :: isIt
+
+    isIt = (self % matIdx <= 0) .and. (self % nesting == 1)
+
+  end function isAbove
+
+  !!
+  !! Return true if coordinates are uninitialised
+  !!
+  function isUninitialised(self)  result(isIt)
+    class(coordList), intent(in) :: self
+    logical(defBool)             :: isIt
+
+    isIt = .not.( self % isPlaced() .or. self % isAbove() )
+
+  end function isUninitialised
+
 
   !!
   !! Add another level of co-ordinates
