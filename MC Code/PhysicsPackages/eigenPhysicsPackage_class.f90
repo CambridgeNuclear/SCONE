@@ -294,9 +294,9 @@ contains
 
     ! Initialise RNG
     allocate(self % pRNG)
-    call self % pRNG % init(768568_8)
-    !call self % pRNG % init(67858567567_8)
-
+    !call self % pRNG % init(768568_8)
+    call self % pRNG % init(67858567567_8)
+    !call self % pRNG % init(5764746_8)
 
   end subroutine init
 

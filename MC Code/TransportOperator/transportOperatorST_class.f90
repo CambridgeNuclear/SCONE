@@ -86,6 +86,13 @@ contains
       ! Return if particle stoped at collision (not cell boundary)
       if( isColl ) return
 
+      ! If particle has leaked exit
+      if (p % matIdx() == OUTSIDE_FILL) then
+        p % isDead = .true.
+        ! TODO: REPORT HISTORY END
+        return
+      end if
+
     end do STLoop
 
   end subroutine surfaceTracking

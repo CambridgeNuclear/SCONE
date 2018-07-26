@@ -76,7 +76,7 @@ contains
 
       ! If particle has leaked exit
       if (p % matIdx() == OUTSIDE_FILL) then
-        p % isDEad = .true.
+        p % isDead = .true.
         ! TODO: REPORT HISTORY END
         return
       end if
