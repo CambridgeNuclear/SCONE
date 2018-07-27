@@ -20,6 +20,7 @@ program test
 
   implicit none
 
+
   type(basicCellCSG) :: geom
   type(datalessMaterials) :: nucData
   type(IOdictionary) :: geomData
@@ -79,9 +80,6 @@ program test
   write(file,*) "h = pcolor(a)"
   write(file,*) "set(h,'EdgeColor','none')"
   write(file,*) "colorbar"
-
-
-
 
 !  type(vector)               :: r, u
 !  real(defReal)              :: dist

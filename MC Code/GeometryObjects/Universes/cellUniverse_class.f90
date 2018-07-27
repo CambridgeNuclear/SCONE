@@ -1,11 +1,12 @@
 module cellUniverse_class
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError, targetNotFound, numToChar
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
   use coord_class,       only : coord
-  use surface_inter,     only : surfaceShelf
+  use surface_inter,     only : surfaceSlot, surfaceShelf
   use cell_class,        only : cell, cellSHelf
   use universe_inter,    only : universe
 
@@ -191,9 +192,18 @@ contains
     integer(shortInt), intent(in)   :: surfIdx
     type(cellShelf), intent(in)     :: cShelf
     type(surfaceShelf), intent(in)  :: sShelf
+    real(defReal), dimension(3)     :: r_in
+
+    ! Nudge position slightly forward to avoid dot product with normal vector at the surface
+    ! This is done mainly for optimisation. Avoids calculation normal vector.
+    r_in = coords % r
+    coords % r = r_in + coords % dir * NUDGE
 
     ! For now there is nothing fancy just try to locate next cell within universe
     call self % findCell(coords, cShelf, sShelf)
+
+    ! Return to original position
+    coords % r = r_in
 
   end subroutine cross
 

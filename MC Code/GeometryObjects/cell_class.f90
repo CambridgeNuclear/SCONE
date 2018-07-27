@@ -4,7 +4,7 @@ module cell_class
   use genericProcedures, only : fatalError, linFind, targetNotFound, numToChar, hasDuplicates
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
-  use surface_inter,     only : surface, surfaceShelf
+  use surface_inter,     only : surface, surfaceSlot, surfaceShelf
 
   implicit none
   private
