@@ -29,7 +29,7 @@ module csg_class
   !!
   !! Local helper wrapper around universe fill vector
   !! Vectors can have diffrent length so this allows us to store array of vectors
-  !! +ve entries in fill vectors are cell IDs
+  !! +ve entries in fill vectors are material IDXs
   !! -ve entries in fill vector are uni IDs
   !!
   type, private :: uniFill
@@ -43,7 +43,7 @@ module csg_class
   !!
   type, private :: csgTree
     type(uniFill), dimension(:), allocatable :: uniFills
-    type(intMap)                             :: cellFillMap
+    !type(intMap)                             :: cellFillMap
     type(intMap)                             :: uniMap
   contains
     !! Procedures
@@ -137,7 +137,7 @@ contains
     call self % buildCells(fillMap, cellDict, materials)
 
     ! Build defined universes, put root universe under idx = 1
-    call self % buildUniverses(uniFills, uniDict, materials)
+    call self % buildUniverses(uniFills, uniDict, fillMap, materials)
 
     ! Remove extra memory from shelfs
     call self % sShelf % trimSize()
@@ -148,15 +148,16 @@ contains
     call self % findBoundarySurface(uniFills, fillMap)
     call self % setBC(dict)
 
-
     ! *** START GEOMETRY CHECKS
     print *, "CHECKING GEOMETRY:"
 
     ! Check that all universes filling cells are defined
     call self % checkCellFills(fillMap)
 
+    ! CHeck that all universes in fillVectors are defined
+
     ! Initialise csgTree
-    call tree % init(fillMap, uniFills)
+    call tree % init(uniFills)
 
     ! Check for recursion
     if (tree % isRecursive()) then
@@ -319,10 +320,11 @@ contains
   !!
   !! Build all universes in the dictionary
   !!
-  subroutine buildUniverses(self, uniFills, uniDict, materials)
+  subroutine buildUniverses(self, uniFills, uniDict, cellFillMap ,materials)
     class(csg), intent(inout)                          :: self
     type(uniFill),dimension(:),allocatable,intent(out) :: uniFills
     class(dictionary), intent(inout)                   :: uniDict
+    type(intMap), intent(in)                           :: cellFillMap
     class(nuclearData), intent(in)                     :: materials
     character(nameLen),dimension(:),allocatable        :: keys
     type(dictionary)                                   :: tempDict
@@ -344,6 +346,7 @@ contains
                                              tempDict,           &
                                              self % cShelf,      &
                                              self % sShelf,      &
+                                             cellFillMap,        &
                                              materials) )
     uniFills(1) % uniID = tempUni % id()
     call self % uShelf % add( tempUni, uniFills(1) % uniIdx)
@@ -355,9 +358,10 @@ contains
     do i=1,size(keys)
       call uniDict % get(tempDict, keys(i))
       allocate( tempUni, source = new_universe(uniFills(i+1) % fillV,&
-                                               tempDict,           &
-                                               self % cShelf,      &
-                                               self % sShelf,      &
+                                               tempDict,             &
+                                               self % cShelf,        &
+                                               self % sShelf,        &
+                                               cellFillMap,          &
                                                materials) )
       uniFills(i+1) % uniID = tempUni % id()
       call self % uShelf % add( tempUni, uniFills(i+1) % uniIdx)
@@ -414,14 +418,10 @@ contains
     ! Loop over cells in root universe
     do i=1,N
       fill = uniFills(1) % fillV(i)
-      cellID = abs(fill)
-
-      ! If fill is a cell, change fill to matIdx or universe index
-      if (fill > 0) fill = fillMap % get(fill)
 
       ! If fill is outside set cellID of outside cell and increment outside cell counter
       if( fill == OUTSIDE_FILL ) then
-        outsideCell = cellID
+        outsideCell = i
         N_out = N_out + 1
 
       end if
@@ -436,7 +436,7 @@ contains
     end if
 
     ! Find outside cell index and surfaces that define it
-    cellIdx = self % cShelf % getIdx(outsideCell)
+    cellIdx = self % uShelf % shelf(1) % cellIdx(outsideCell)
     surfs = self % cShelf % shelf(cellIdx) % getDef()
 
     ! Verify that only single surface is used for definition
@@ -485,9 +485,8 @@ contains
   !! Initialise csgTree from cellFill map, and uniFillVector array (uniFills)
   !! UniFills becomes unallocated upon exit
   !!
-  subroutine init_tree(self, cellFillMap, uniFills)
+  subroutine init_tree(self, uniFills)
     class(csgTree), intent(inout)                        :: self
-    type(intMap), intent(inout)                          :: cellFillMap
     type(uniFill),dimension(:),allocatable,intent(inout) :: uniFills
     integer(shortInt)                                    :: i
     character(100), parameter :: Here = 'init_tree (csg_class.f90)'
@@ -507,7 +506,6 @@ contains
     end do
 
     ! Load uniFills & cellFillMap
-    self % cellFillMap = cellFillMap
     call move_alloc(uniFills, self % uniFills)
 
   end subroutine init_tree
@@ -549,9 +547,6 @@ contains
     ! Loop over all cells - ignore outside fill
     do i=1,N
       fill = self % uniFills(uniIdx) % fillV(i)
-
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
 
       ! If fill is a universe look if it is present in uniIdsAbove
       ! It it is, set doesIt to .true.
@@ -605,9 +600,6 @@ contains
     depth = 0
     do i=1,N
       fill = self % uniFills(uniIdx) % fillV(i)
-
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
 
       ! If fill is a universe calculate its nesting depth and keep maximum
       if (fill < 0) then
@@ -665,9 +657,6 @@ contains
     do i=1,N
       fill = self % uniFills(uniIdx) % fillV(i)
 
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
-
       ! If fill is a universe add cells and tranfers below
       if (fill < 0) then
         ! Increment transfers count
@@ -698,9 +687,6 @@ contains
     ! Loop over all cells - ignore outside cells
     do i=1,N
       fill = self % uniFills(1) % fillV(i)
-
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
 
       ! If fill is a universe and contains outside below set doesIt = .true. and return
       if (fill < 0) then
@@ -736,9 +722,6 @@ contains
     ! Loop over all cells
     do i=1,N
       fill = self % uniFills(uniIdx) % fillV(i)
-
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
 
       ! If fill is a universe and contains outside below change fill to outside
       if (fill < 0) then
@@ -800,9 +783,6 @@ contains
     do i=1,N
       fill = self % uniFills(uniIdx) % fillV(i)
 
-      ! If fill is a cell change fill to matIdx or uniId
-      if (fill > 0) fill = self % cellFillMap % get(fill)
-
       ! If fill is a universe
       if (fill < 0) then
         ! Set corresponding entry in uniVEctor to .true.
@@ -848,11 +828,6 @@ contains
       ! Loop over all cells in a uiverse
       do j=1,size(fillIdxs(i) % fillV)
         associate (fill => fillIdxs(i) % fillV(j))
-
-          ! Translate cell id to cell fill
-          if( fill > 0 ) then ! fill is a cell
-            fill = tree % cellFillMap % get(fill)
-          end if
 
           ! If fill is universe change -uniID to -uniIdx
           if( fill < 0) then

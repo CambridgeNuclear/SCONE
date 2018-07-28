@@ -10,14 +10,18 @@ module genericProcedures
 
   interface swap
     module procedure swap_shortInt
+    module procedure swap_defReal
+    module procedure swap_char_nameLen
   end interface
 
   interface quickSort
     module procedure quickSort_shortInt
+    module procedure quickSort_defReal
   end interface
 
   interface hasDuplicates
     module procedure hasDuplicates_shortInt
+    module procedure hasDuplicates_defReal
   end interface
 
   interface removeDuplicates
@@ -797,6 +801,28 @@ module genericProcedures
   end function hasDuplicates_shortInt
 
   !!
+  !! Returns tue if array contains duplicates
+  !!
+  pure function hasDuplicates_defReal(array) result(doesIt)
+    real(defReal), dimension(:), intent(in) :: array
+    logical(defBool)                        :: doesIt
+    real(defReal), dimension(size(array))   :: arrayCopy
+    integer(shortInt)                       :: i
+
+    ! Copy and sort array
+    arrayCopy = array
+    call quickSort(arrayCopy)
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
+
+    end do
+
+  end function hasDuplicates_defReal
+
+  !!
   !! Quicksort for integer array
   !!
   recursive pure subroutine quickSort_shortInt(array)
@@ -827,7 +853,36 @@ module genericProcedures
   end subroutine quickSort_shortInt
 
   !!
-  !! Swap to integers
+  !! Quicksort for real array
+  !!
+  recursive pure subroutine quickSort_defReal(array)
+    real(defReal), dimension(:), intent(inout) :: array
+    integer(shortInt)                          :: i, maxSmall, pivot
+
+    if (size(array) > 0 ) then
+      ! Set a pivot to the rightmost element
+      pivot = size(array)
+
+      ! Move all elements <= pivot to the LHS of the pivot
+      ! Find position of the pivot in the array at the end (maxSmall)
+      maxSmall = 0
+      do i=1,size(array)
+
+        if( array(i) <= array(pivot)) then
+          maxSmall = maxSmall + 1
+          call swap(array(i),array(maxSmall))
+        end if
+      end do
+
+      ! Recursivly sort the sub arrays divided by the pivot
+      call quickSort(array(1:maxSmall-1))
+      call quickSort(array(maxSmall+1:size(array)))
+    end if
+
+  end subroutine quickSort_defReal
+
+  !!
+  !! Swap two integers
   !! Use XOR to avoid extra space (which is completly unnecessary)
   !!
   elemental subroutine swap_shortInt(i1,i2)
@@ -839,6 +894,34 @@ module genericProcedures
     i1 = IEOR(i1,i2)
 
   end subroutine swap_shortInt
+
+  !!
+  !! Swap to reals
+  !!
+  elemental subroutine swap_defReal(r1,r2)
+    real(defReal), intent(inout) :: r1
+    real(defReal), intent(inout) :: r2
+    real(defReal)                :: temp
+
+    temp = r1
+    r1 = r2
+    r2 = temp
+
+  end subroutine swap_defReal
+
+  !!
+  !! Swap character of length nameLen
+  !!
+  elemental subroutine swap_char_nameLen(c1,c2)
+    character(nameLen), intent(inout) :: c1
+    character(nameLen), intent(inout) :: c2
+    character(nameLen)                :: temp
+
+    temp = c1
+    c1 = c2
+    c2 = temp
+
+  end subroutine swap_char_nameLen
 
   !!
   !! Prints Scone ACII Header

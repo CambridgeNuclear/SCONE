@@ -104,7 +104,7 @@ module surface_inter
   !!  kill      -> returns to uninitialised state
   !!
   type,public :: surfaceShelf
-    private
+    !**private
     type(surfaceSlot),dimension(:),allocatable, public :: shelf
     integer(shortInt)                                  :: Nmax   = 0
     integer(shortInt)                                  :: N      = 0

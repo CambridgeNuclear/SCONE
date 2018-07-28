@@ -26,9 +26,10 @@ module universe_inter
     real(defReal),dimension(3) :: offset = ZERO
   contains
     ! Build procedures
-    procedure :: id
-    procedure :: setId
-    procedure :: setOffset
+    procedure                      :: id
+    procedure                      :: setId
+    procedure                      :: setOffset
+    procedure(cellIdx), deferred   :: cellIdx
 
     ! Runtime procedures
     procedure                      :: enter
@@ -56,6 +57,7 @@ module universe_inter
     procedure :: id         => id_slot
     procedure :: setId      => setId_slot
     procedure :: setOffset  => setOffset_slot
+    procedure :: cellIdx    => cellIDx_slot
 
     ! Run time procedures
     procedure :: enter      => enter_slot
@@ -100,6 +102,17 @@ module universe_inter
 
 
   abstract interface
+    !!
+    !! Given cell localID returtns cellIdx
+    !!
+    function cellIdx(self, localID)
+      import :: universe, &
+                shortInt
+      class(universe), intent(in)   :: self
+      integer(shortInt), intent(in) :: localID
+      integer(shortInt)             :: cellIdx
+    end function cellIdx
+
     !!
     !! Using the coordinates it finds a localID & cellIDx inside the universe
     !!
@@ -317,6 +330,18 @@ contains
     self % offset = offset
 
   end subroutine setOffset_slot
+
+  !!
+  !! Return cellIdx given local cellId
+  !!
+  function cellIdx_slot(self, localID)
+    class(universeSlot), intent(in) :: self
+    integer(shortInt), intent(in)   :: localID
+    integer(shortInt)               :: cellIdx_slot
+
+    cellIdx_slot = self % slot % cellIdx(localID)
+
+  end function cellIdx_slot
 
   !!
   !! Enter universe in the slot

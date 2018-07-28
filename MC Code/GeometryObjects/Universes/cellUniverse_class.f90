@@ -6,8 +6,9 @@ module cellUniverse_class
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
   use coord_class,       only : coord
+  use maps_class,        only : intMap
   use surface_inter,     only : surfaceSlot, surfaceShelf
-  use cell_class,        only : cell, cellSHelf
+  use cell_class,        only : cell, cellShelf
   use universe_inter,    only : universe
 
   !*** STAYS HERE ONLY PROVISIONALLY
@@ -34,6 +35,7 @@ module cellUniverse_class
   contains
     ! Build procedures
     procedure :: init
+    procedure :: cellIdx
 
     ! Runtime procedures
     procedure :: findCell
@@ -75,18 +77,19 @@ contains
 
   !!
   !! Returns an initialised instance of cell universe from dict and cellShelf
-  !! Return fillVector as well. +ve entries are fill cells, -ve are fill universes
+  !! Return fillVector as well. +ve entries are materials IDXs, -ve are fill universes IDs
   !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
   !!
-  function cellUniverse_fromDict(fillVector, dict, cShelf, sShelf, materials) result (new)
+  function cellUniverse_fromDict(fillVector, dict, cShelf, sShelf, cellFillMap, materials) result (new)
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
     class(dictionary), intent(in)                          :: dict
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
+    type(intMap), intent(in)                               :: cellFillMap
     class(nuclearData), intent(in)                         :: materials
     type(cellUniverse)                                     :: new
     real(defReal), dimension(:),allocatable                :: offset
-    integer(shortInt)                                      :: id
+    integer(shortInt)                                      :: id, i
     integer(shortInt),dimension(:), allocatable            :: cellIDs
     character(100), parameter :: Here = ' cellUniverse_fromDict (cellUniverse_class.f90)'
 
@@ -104,9 +107,28 @@ contains
     call new % init(offset,id,cellIDs, cShelf)
 
     ! Allocate fillVector
-    fillVEctor = cellIDs
+    fillVector = cellIDs
+
+    ! Translate cell fills to matarial and uniIds
+    do i= 1, size(cellIds)
+      fillVector(i) = cellFillMap % get(cellIDs(i))
+
+    end do
 
   end function cellUniverse_fromDict
+
+  !!
+  !! Give cellIdx given localID of cell
+  !!
+  function cellIdx(self, localID)
+    class(cellUniverse), intent(in) :: self
+    integer(shortInt), intent(in) :: localID
+    integer(shortInt)             :: cellIdx
+
+    cellIdx = self % cellIDXs(localID)
+
+  end function cellIdx
+
 
   !!
   !! Using the coordinates it finds a localID & cellIDx inside the universe

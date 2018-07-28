@@ -66,7 +66,7 @@ module cell_class
   !!  kill      -> returns to uninitialised state
   !!
   type, public :: cellShelf
-    private
+    !private
     type(cell),dimension(:),allocatable, public :: shelf
     integer(shortInt)                           :: Nmax   = 0
     integer(shortInt)                           :: N      = 0
