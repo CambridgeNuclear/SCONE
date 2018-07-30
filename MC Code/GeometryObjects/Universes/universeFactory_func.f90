@@ -14,6 +14,7 @@ module universeFactory_func
 
   ! Universe implementations
   use cellUniverse_class, only : cellUniverse
+  use pinUniverse_class,  only : pinUniverse
 
   !*** STAYS HERE ONLY PROVISIONALLY
   use nuclearData_inter,  only : nuclearData
@@ -31,7 +32,8 @@ module universeFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_universes = [ 'cellUniverse']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_universes = [ 'cellUniverse',&
+                                                                      'pinUniverse ']
 
 contains
 
@@ -58,6 +60,9 @@ contains
     select case(type)
       case('cellUniverse')
         allocate(new, source = cellUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
+
+      case('pinUniverse')
+        allocate(new, source = pinUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
 
      !*** NEW SURFACE TEMPLATE ***!
      !case('<newSUrfaceName>')

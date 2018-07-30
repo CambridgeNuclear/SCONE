@@ -115,6 +115,7 @@ module surface_inter
     procedure :: init       => init_shelf
     procedure :: kill       => kill_shelf
     procedure :: trimSize   => trimSize_shelf
+    procedure :: size       => size_shelf
 
     procedure :: addUnique  => addUnique_shelf
     procedure :: getOrAdd   => getOrAdd_shelf
@@ -760,6 +761,17 @@ contains
     call self % resize(self % N)
 
   end subroutine trimSize_shelf
+
+  !!
+  !! Returns current size of shelf filled with non-empty elements
+  !!
+  function size_shelf(self) result(N)
+    class(surfaceShelf), intent(inout) :: self
+    integer(shortInt)                  :: N
+
+    N = self % N
+
+  end function size_shelf
 
   !!
   !! Set size of the shelf to Nmax >= self % N

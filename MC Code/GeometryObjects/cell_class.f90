@@ -76,6 +76,7 @@ module cell_class
     procedure :: init       => init_shelf
     procedure :: kill       => kill_shelf
     procedure :: trimSize   => trimSize_shelf
+    procedure :: size       => size_shelf
 
     procedure :: add        => add_shelf
     procedure :: getOrAdd   => getOrAdd_shelf
@@ -342,6 +343,17 @@ contains
     call self % resize(self % N)
 
   end subroutine trimSize_shelf
+
+  !!
+  !! Returns current size of shelf filled with non-empty elements
+  !!
+  function size_shelf(self) result(N)
+    class(cellShelf), intent(in) :: self
+    integer(shortInt)            :: N
+
+    N = self % N
+
+  end function size_shelf
 
   !!
   !! Adds acell to the shelf

@@ -69,6 +69,8 @@ contains
     class(particle), intent(inout)         :: p
     logical(defBool)                       :: isColl
     real(defReal)                          :: sigmaT, dist
+    type(coordList) :: listDebug
+    type(phaseCoord) :: pre
 
     STLoop: do
 
@@ -77,9 +79,30 @@ contains
 
       ! Sample particle flight distance
       dist = -log( p % pRNG % get()) / sigmaT
-
+!      pre = p
       ! Move to the next stop
       call self % geom % move(p % coords, dist, isColl)
+
+      ! Place
+      call listDebug % init( p % rGlobal() + NUDGE * p % dirGlobal(), p % dirGlobal())
+      call self % geom % placeCoord(listDebug)
+
+!      if (listDebug % matIdx /= p % coords % matIdx ) then
+!        call pre % display()
+!        call p % display()
+!        print *, p %coords % lvl(2) % localID
+!        print *, "CONFLICT", isColl, dist
+!        print *, listDebug % lvl(1) % r, listDebug % lvl(1) % dir
+!        print *, listDebug % matIdx
+!        print *, listDebug % lvl(2) % localID
+!      !  call self % geom % move(p % coords, dist, isColl)
+!      !  call p % display()
+!      !  call self % geom % move(p % coords, dist, isColl)
+!      !  call p % display()
+!      !  call self % geom % move(p % coords, dist, isColl)
+!      !  call p % display()
+!        stop
+!      end if
 
       ! * TODO SEND TALLY REPORT
 

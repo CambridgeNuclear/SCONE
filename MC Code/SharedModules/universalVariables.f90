@@ -11,7 +11,7 @@ module universalVariables
 
   ! Define variables which are important for tracking neutrons in the geometry
   real(defReal), parameter, public :: INFINITY    = 2.0_defReal**63, &
-                                      surface_tol = 1.0e-14_defReal, & ! Tol. on closeness to surface
+                                      surface_tol = 1.0e-12_defReal, & ! Tol. on closeness to surface
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Create definitions for readability when dealing with positions relative to surfaces

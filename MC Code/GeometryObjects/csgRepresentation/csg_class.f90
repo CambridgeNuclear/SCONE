@@ -98,6 +98,7 @@ module csg_class
     procedure, private :: buildCells
     procedure, private :: buildUniverses
     procedure, private :: checkCellFills
+    procedure, private :: checkUniverseFills
     procedure, private :: findBoundarySurface
     procedure, private :: setBC
   end type csg
@@ -116,6 +117,7 @@ contains
     type(intMap)                               :: fillMap
     type(uniFill),dimension(:),allocatable     :: uniFills
     integer(shortInt),dimension(:),allocatable :: BC
+    integer(shortInt),dimension(:),allocatable :: defCellIDs
     type(csgTree)                              :: tree
     type(coord)          :: testco
     character(100),parameter :: Here = 'init (csg_class.f90)'
@@ -136,6 +138,9 @@ contains
     ! Build defined cells
     call self % buildCells(fillMap, cellDict, materials)
 
+    ! Save defined cell IDs for later checks
+    defCellIDs = self % cShelf % shelf(1: self % cShelf % size()) % id()
+
     ! Build defined universes, put root universe under idx = 1
     call self % buildUniverses(uniFills, uniDict, fillMap, materials)
 
@@ -152,9 +157,12 @@ contains
     print *, "CHECKING GEOMETRY:"
 
     ! Check that all universes filling cells are defined
-    call self % checkCellFills(fillMap)
+    ! NOTE: This check is redundant wrt "checkUniverseFills"
+    !       but produces nice error message so it stays for now
+    call self % checkCellFills(fillMap, defCellIDs)
 
-    ! CHeck that all universes in fillVectors are defined
+    ! Check that all universes in fillVectors are defined
+    call self % checkUniverseFills(uniFills)
 
     ! Initialise csgTree
     call tree % init(uniFills)
@@ -372,28 +380,60 @@ contains
   end subroutine buildUniverses
 
   !!
-  !! Subroutine gives error if any cell is filled with an undefined universe
+  !! Subroutine gives error if any cell defined in input file
+  !! are filled with an undefined universe
   !!
-  subroutine checkCellFills(self,fillMap)
-    class(csg), intent(in)   :: self
-    type(intMap), intent(in) :: fillMap
-    integer(shortInt)        :: i, cellID, fill, uniIdx
+  subroutine checkCellFills(self,fillMap, defCellIDs)
+    class(csg), intent(in)          :: self
+    type(intMap), intent(in)        :: fillMap
+    integer(shortInt), dimension(:) :: defCellIDs
+    integer(shortInt)               :: i, fill, uniIdx
     character(100), parameter :: Here = 'checkCellFills (csg_class.f90)'
 
-    do i=1,size(self % cShelf % shelf)
-      ! Find cell Id
-      cellID = self % cShelf % shelf(i) % id()
+    do i=1,size(defCellIDs)
       ! Get fill
-      fill = fillMap % get(cellID)
+      fill = fillMap % get(defCellIDs(i))
+
       if (fill < 0 ) then
         uniIdx = self % uShelf % getIdx(-fill)
         if (uniIdx == targetNotFound) then
-          call fatalError(Here, 'Undefined uni: '//numToChar(-fill)//' in cell '//numToChar(cellID))
-
+          call fatalError(Here, 'Undefined uni: '//numToChar(-fill)//' in cell '&
+                                 //numToChar(defCellIDs(i)))
         end if
       end if
     end do
   end subroutine checkCellFills
+
+  !!
+  !! Subroutine gives error if any universe fill vector contains an undefined universe
+  !!
+  subroutine checkUniverseFills(self, uniFills)
+    class(csg), intent(in)                  :: self
+    type(uniFill),dimension(:),intent(in)   :: uniFills
+    integer(shortInt)                       :: i,j, idx
+    character(100), parameter :: Here = 'checkUniverseFills (csg_class.f90)'
+
+    ! Loop over all universes
+    do i=1,size(uniFills)
+
+      ! Loop over all cells in a universe
+      do j=1,size(uniFills(i) % fillV)
+        associate (fill => uniFills(i) % fillV(j))
+
+          ! If fill is universe verify if it is present on universe shelf
+          if( fill < 0) then
+            idx = self % uShelf % getIdx(-fill)
+            if (idx == targetNotFound) then
+              call fatalError(Here,'Fill universe: '// numToChar(-fill) // ' defined in universe: '&
+                                   // numToChar(uniFills(i) % uniID) // ' is undefined. ' )
+            end if
+          end if
+        end associate
+      end do
+    end do
+  end subroutine checkUniverseFills
+
+
 
   !!
   !! Set boundaryIdx to surface defining outside cell. Return error if outside is defined
@@ -501,6 +541,7 @@ contains
                               // numToChar(uniFills(i) % uniID) )
       end if
       ! Load entry on universe ID to Idx map
+      print *, 'HERE', uniFills(i) % uniID, uniFills(i) % uniIdx
       call self % uniMap % add(uniFills(i) % uniID, uniFills(i) % uniIdx)
 
     end do
@@ -823,7 +864,7 @@ contains
     ! Copy fill vectors
     fillIdxs = tree % uniFills
 
-    ! Loop over universes -> translate cell & uni Ids in fillIdxs into mat & uni IDXs
+    ! Loop over universes -> uni Ids in fillIdxs into uni IDXs
     do i=1,size(fillIdxs)
       ! Loop over all cells in a uiverse
       do j=1,size(fillIdxs(i) % fillV)

@@ -296,8 +296,6 @@ contains
     ! Find distance to the next surface
     call self % closestDist(dist, surfIdx, level, coords)
 
-    !print *, surfIdx, dist
-
     if (maxDist < dist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       isColl = .true.
@@ -336,6 +334,7 @@ contains
       end associate
 
     end if
+
   end subroutine move
 
   !!
