@@ -15,6 +15,7 @@ module universeFactory_func
   ! Universe implementations
   use cellUniverse_class, only : cellUniverse
   use pinUniverse_class,  only : pinUniverse
+  use latUniverse_class,  only : latUniverse
 
   !*** STAYS HERE ONLY PROVISIONALLY
   use nuclearData_inter,  only : nuclearData
@@ -33,7 +34,8 @@ module universeFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_universes = [ 'cellUniverse',&
-                                                                      'pinUniverse ']
+                                                                      'pinUniverse ',&
+                                                                      'latUniverse ']
 
 contains
 
@@ -63,6 +65,9 @@ contains
 
       case('pinUniverse')
         allocate(new, source = pinUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
+
+      case('latUniverse')
+        allocate(new, source = latUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
 
      !*** NEW SURFACE TEMPLATE ***!
      !case('<newSUrfaceName>')

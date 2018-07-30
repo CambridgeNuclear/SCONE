@@ -2,4 +2,5 @@
 add_sources( ./universe_inter.f90
              ./cellUniverse_class.f90
              ./pinUniverse_class.f90
+             ./latUniverse_class.f90
              ./universeFactory_func.f90) 

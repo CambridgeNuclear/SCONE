@@ -21,141 +21,142 @@ program test
 
   implicit none
 
-!
-!  type(basicCellCSG) :: geom
-!  type(datalessMaterials) :: nucData
-!  type(IOdictionary) :: geomData
-!  integer(shortInt)      :: i, file
-!  integer(shortInt),dimension(:,:),allocatable :: colorMat
-!  real(defReal),dimension(3)     :: u
-!  type(coordList)         :: coords
-!
-!  call nucData % init(['uo2  ','water'])
-!
-!  call geomData  % initFrom('./InputFiles/pinCell2.txt')
-!
-!  call geom % init(geomData, nucData)
-!
-!
-!  ! Initialise coordinates
-!  u =[ONE, ZERO, ZERO]
-!  u = u / norm2(u)
-!
-!  call coords % init([ZERO, -0.56_8, ZERO], u)
-!  call geom % placeCoord(coords)
-!
-!  !call geom % move(coords, 1.0_8)
-!  !call geom % teleport(coords, 3.9_8)
-!  call geom % moveGlobal(coords, 3.9_8)
-!
-!  print *, "MAT IDX:", coords % matIDx, "NESTING:", coords % nesting
-!
-!  do i=1,5
-!    print *, "LEVEL: ", numToChar(i), " ", coords % lvl(i) % r, coords % lvl(i) % dir
-!    print *, "UniIdx: ", coords % lvl(i) % uniIdx, "CellIdx:", coords % lvl(i) % cellIdx , "localID:", coords % lvl(i) % localID
-!  end do
-!
-!
-!
-!
-!
-!
-!
-!  !stop
-!  !*** SLICE PLOT
-!  allocate(colorMat(1500,1500))
-!  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','uniqueID',[5.0_8,5.0_8])
-!
-!  ! Print matrix to MATLAB Pcolor
-!
-!  file = 7
-!  open(file, file='picture.m', action = 'write')
-!
-!  write(file,*) "a = ["
-!  do i=1,size(colorMat,2)-1
-!     write(file,*) colorMat(:,i), ';'
-!
-!  end do
-!  write(file,*) colorMat(:,i), '];'
-!  write(file,*) "figure"
-!  write(file,*) "h = pcolor(a)"
-!  write(file,*) "set(h,'EdgeColor','none')"
-!  write(file,*) "colorbar"
 
-  type(vector)               :: r, u
-  real(defReal)              :: dist
-  class(surface),allocatable :: s1
-  class(surface),allocatable :: s2
-  class(surface),allocatable :: s3
-  type(surfaceShelf) :: sShelf
-  type(cell)         :: c1
-  type(cell)         :: c2
-  type(cell)         :: c3
-  type(cellShelf)    :: cShelf
-  type(cellUniverse) :: uni
-  type(pinUniverse)  :: pin, pin2
-  type(coord)        :: coords
-  integer(shortInt)  :: i,j
-  integer(shortInt),dimension(:),allocatable :: intArr
-  character(nameLen),dimension(:),allocatable :: charArr
+
+  type(basicCellCSG) :: geom
   type(datalessMaterials) :: nucData
-  character(:), allocatable :: defStr
-
-  allocate(sphere :: s1)
-  allocate(sphere :: s2)
-  allocate(sphere :: s3)
-
-
-  select type(s1)
-    type is (sphere)
-      call s1 % init([ZERO, ZERO, ZERO], 1.0_8, 1)
-  end select
-
-  select type(s2)
-    type is (sphere)
-      call s2 % init([ZERO, ZERO, ZERO], 2.0_8, 2)
-  end select
-
-  select type(s3)
-  type is (sphere)
-      call s3 % init([ZERO, ZERO, ZERO], 3.0_8, 3)
-  end select
-
-
-  call sShelf % init(1)
-  call sShelf % addUnique(s1,i)
-  call sShelf % addUnique(s2,i)
-  call sShelf % addUnique(s3,i)
-
-  call c1 % init([-1],2,sShelf)
-  call c2 % init([1, -3 ],1,sShelf)
-  call c3 % init([3],77,sShelf)
-
-  call cShelf % init(1,1)
-  call cShelf % add(c1,i)
-  call cShelf % add(c2,i)
-  call cShelf % add(c3,i)
+  type(IOdictionary) :: geomData
+  integer(shortInt)      :: i, file
+  integer(shortInt),dimension(:,:),allocatable :: colorMat
+  real(defReal),dimension(3)     :: u
+  type(coordList)         :: coords
 
   call nucData % init(['uo2  ','water'])
 
-  allocate(charArr(4))
-  charArr(1) ='uo2'
-  charArr(2) ='u<17>'
-  charArr(3) ='u<137>'
-  charArr(4) ='water'
+  call geomData  % initFrom('./InputFiles/pinCell5.txt')
 
-  call pin % init(intArr, 1, charArr,[1.0_8, 2.0_8,0.5_8, 0.0_8], sShelf, cShelf, nucData)
+  call geom % init(geomData, nucData)
 
 
-  do i = 1, sShelf % N
-    call sShelf % shelf(i)  % getDef(defStr)
-    print *, defStr
+  ! Initialise coordinates
+  u =[ONE, ZERO, ZERO]
+  u = u / norm2(u)
+
+  call coords % init([ZERO, -0.56_8, ZERO], u)
+  call geom % placeCoord(coords)
+
+  !call geom % move(coords, 1.0_8)
+  !call geom % teleport(coords, 3.9_8)
+  call geom % moveGlobal(coords, 3.9_8)
+
+  print *, "MAT IDX:", coords % matIDx, "NESTING:", coords % nesting
+
+  do i=1,5
+    print *, "LEVEL: ", numToChar(i), " ", coords % lvl(i) % r, coords % lvl(i) % dir
+    print *, "UniIdx: ", coords % lvl(i) % uniIdx, "CellIdx:", coords % lvl(i) % cellIdx , "localID:", coords % lvl(i) % localID
   end do
 
-  do i = 1, cShelf % N
-    !call sShelf % shelf(i)  % getDef(defStr)
-    print *, cShelf % shelf(i) % getDef()
+
+
+
+
+
+
+  !stop
+  !*** SLICE PLOT
+  allocate(colorMat(1500,1500))
+  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','material',[2.1_8,2.1_8])
+
+  ! Print matrix to MATLAB Pcolor
+
+  file = 7
+  open(file, file='picture.m', action = 'write')
+
+  write(file,*) "a = ["
+  do i=1,size(colorMat,2)-1
+     write(file,*) colorMat(:,i), ';'
+
   end do
+  write(file,*) colorMat(:,i), '];'
+  write(file,*) "figure"
+  write(file,*) "h = pcolor(a)"
+  write(file,*) "set(h,'EdgeColor','none')"
+  write(file,*) "colorbar"
+
+!  type(vector)               :: r, u
+!  real(defReal)              :: dist
+!  class(surface),allocatable :: s1
+!  class(surface),allocatable :: s2
+!  class(surface),allocatable :: s3
+!  type(surfaceShelf) :: sShelf
+!  type(cell)         :: c1
+!  type(cell)         :: c2
+!  type(cell)         :: c3
+!  type(cellShelf)    :: cShelf
+!  type(cellUniverse) :: uni
+!  type(pinUniverse)  :: pin, pin2
+!  type(coord)        :: coords
+!  integer(shortInt)  :: i,j
+!  integer(shortInt),dimension(:),allocatable :: intArr
+!  character(nameLen),dimension(:),allocatable :: charArr
+!  type(datalessMaterials) :: nucData
+!  character(:), allocatable :: defStr
+!
+!  allocate(sphere :: s1)
+!  allocate(sphere :: s2)
+!  allocate(sphere :: s3)
+!
+!
+!  select type(s1)
+!    type is (sphere)
+!      call s1 % init([ZERO, ZERO, ZERO], 1.0_8, 1)
+!  end select
+!
+!  select type(s2)
+!    type is (sphere)
+!      call s2 % init([ZERO, ZERO, ZERO], 2.0_8, 2)
+!  end select
+!
+!  select type(s3)
+!  type is (sphere)
+!      call s3 % init([ZERO, ZERO, ZERO], 3.0_8, 3)
+!  end select
+!
+!
+!  call sShelf % init(1)
+!  call sShelf % addUnique(s1,i)
+!  call sShelf % addUnique(s2,i)
+!  call sShelf % addUnique(s3,i)
+!
+!  call c1 % init([-1],2,sShelf)
+!  call c2 % init([1, -3 ],1,sShelf)
+!  call c3 % init([3],77,sShelf)
+!
+!  call cShelf % init(1,1)
+!  call cShelf % add(c1,i)
+!  call cShelf % add(c2,i)
+!  call cShelf % add(c3,i)
+!
+!  call nucData % init(['uo2  ','water'])
+!
+!  allocate(charArr(4))
+!  charArr(1) ='uo2'
+!  charArr(2) ='u<17>'
+!  charArr(3) ='u<137>'
+!  charArr(4) ='water'
+!
+!  call pin % init(intArr, 1, charArr,[1.0_8, 2.0_8,0.5_8, 0.0_8], sShelf, cShelf, nucData)
+!
+!
+!  do i = 1, sShelf % N
+!    call sShelf % shelf(i)  % getDef(defStr)
+!    print *, defStr
+!  end do
+!
+!  do i = 1, cShelf % N
+!    !call sShelf % shelf(i)  % getDef(defStr)
+!    print *, cShelf % shelf(i) % getDef()
+!  end do
 
 
   !intArr = [1,2,3,4]

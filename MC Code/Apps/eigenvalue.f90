@@ -17,7 +17,7 @@ program eigenvalue
 
   ! Read data
   call matData   % initFrom('./InputFiles/materialInput')
-  call geomData  % initFrom('./InputFiles/pinCell3.txt')
+  call geomData  % initFrom('./InputFiles/pinCell5.txt')
   call transData % initFrom('./InputFiles/transOp.txt')
   call collData  % initFrom('./InputFiles/collOp.txt')
   call inactiveTally % initFrom('./InputFiles/iaTally.txt')

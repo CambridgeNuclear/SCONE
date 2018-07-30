@@ -541,7 +541,6 @@ contains
                               // numToChar(uniFills(i) % uniID) )
       end if
       ! Load entry on universe ID to Idx map
-      print *, 'HERE', uniFills(i) % uniID, uniFills(i) % uniIdx
       call self % uniMap % add(uniFills(i) % uniID, uniFills(i) % uniIdx)
 
     end do
