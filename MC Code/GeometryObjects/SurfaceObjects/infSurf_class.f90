@@ -32,6 +32,7 @@ module infSurf_class
     procedure :: init
     procedure :: type
     procedure :: getDef
+    procedure :: boundingBox
 
     ! Runtime procedures
     procedure :: evaluate
@@ -105,6 +106,19 @@ contains
     string = printSurfDef(TYPE_NAME, [ZERO])
 
   end subroutine getDef
+
+  !!
+  !! Returns an axis alligned bouding box of surface -ve halfspace
+  !!
+  pure subroutine boundingBox(self,origin, halfwidth)
+    class(infSurf), intent(in)              :: self
+    real(defReal), dimension(3),intent(out) :: origin
+    real(defReal), dimension(3),intent(out) :: halfwidth
+
+    origin    = ZERO
+    halfwidth = INFINITY
+
+  end subroutine boundingBox
 
   !!
   !! Calculate distance to infinity's surface - always infinity

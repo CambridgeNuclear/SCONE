@@ -33,6 +33,7 @@ module yPlane_class
     procedure :: init
     procedure :: type
     procedure :: getDef
+    procedure :: boundingBox
 
     ! Runtime procedures
     procedure :: evaluate
@@ -114,6 +115,22 @@ contains
     string = printSurfDef(TYPE_NAME, [self % y0])
 
   end subroutine getDef
+
+  !!
+  !! Returns an axis alligned bouding box of surface -ve halfspace
+  !!
+  pure subroutine boundingBox(self,origin, halfwidth)
+    class(yPlane), intent(in)               :: self
+    real(defReal), dimension(3),intent(out) :: origin
+    real(defReal), dimension(3),intent(out) :: halfwidth
+
+    origin    = ZERO
+    halfwidth = INFINITY
+
+    origin(2)      = (INFINITY + self % y0) * HALF
+    halfwidth(2)   = (INFINITY + self % y0) * HALF
+
+  end subroutine boundingBox
 
   !!
   !! Calculate distance to plane along direction u

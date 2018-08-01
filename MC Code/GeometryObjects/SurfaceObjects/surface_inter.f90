@@ -45,6 +45,7 @@ module surface_inter
     procedure                                    :: setId
     procedure(type),deferred                     :: type
     procedure(getDef),deferred                   :: getDef
+    procedure(boundingBox),deferred              :: boundingBox
     procedure                                    :: cannotBeBoundary
     procedure                                    :: setBoundaryConditions
     procedure                                    :: hashSurfDef
@@ -79,6 +80,7 @@ module surface_inter
     procedure :: setId                 => setId_slot
     procedure :: type                  => type_slot
     procedure :: getDef                => getDef_slot
+    procedure :: boundingBox           => boundingBox_slot
     procedure :: cannotBeBoundary      => cannotBeBoundary_slot
     procedure :: setBoundaryConditions => setBoundaryConditions_slot
     procedure :: hashSurfDef           => hashSurfDef_slot
@@ -104,7 +106,7 @@ module surface_inter
   !!  kill      -> returns to uninitialised state
   !!
   type,public :: surfaceShelf
-    !**private
+    private
     type(surfaceSlot),dimension(:),allocatable, public :: shelf
     integer(shortInt)                                  :: Nmax   = 0
     integer(shortInt)                                  :: N      = 0
@@ -161,6 +163,16 @@ module surface_inter
       character(:),allocatable,intent(inout) :: string
     end subroutine getDef
 
+    !!
+    !! Returns an axis alligned bouding box of surface -ve halfspace
+    !!
+    pure subroutine boundingBox(self,origin, halfwidth)
+      import :: surface, &
+                defReal
+      class(surface), intent(in)              :: self
+      real(defReal), dimension(3),intent(out) :: origin
+      real(defReal), dimension(3),intent(out) :: halfwidth
+    end subroutine boundingBox
 
     !!
     !! Return a value of the surface expression
@@ -483,6 +495,18 @@ contains
     call self % slot % getDef(string)
 
   end subroutine getDef_slot
+
+  !!
+  !! Get a axis aligned bounding box from the slot
+  !!
+  pure subroutine boundingBox_slot(self,origin, halfwidth)
+    class(surfaceSlot), intent(in)          :: self
+    real(defReal), dimension(3),intent(out) :: origin
+    real(defReal), dimension(3),intent(out) :: halfwidth
+
+    call self % slot % boundingBox(origin,halfwidth)
+
+  end subroutine boundingBox_slot
 
   !!
   !! Determine if surface in slot can be boundary

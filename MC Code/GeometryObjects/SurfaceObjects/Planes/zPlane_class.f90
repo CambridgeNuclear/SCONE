@@ -33,6 +33,7 @@ module zPlane_class
     procedure :: init
     procedure :: type
     procedure :: getDef
+    procedure :: boundingBox
 
     ! Runtime procedures
     procedure :: evaluate
@@ -113,6 +114,22 @@ contains
     string = printSurfDef(TYPE_NAME, [self % z0])
 
   end subroutine getDef
+
+  !!
+  !! Returns an axis alligned bouding box of surface -ve halfspace
+  !!
+  pure subroutine boundingBox(self,origin, halfwidth)
+    class(zPlane), intent(in)               :: self
+    real(defReal), dimension(3),intent(out) :: origin
+    real(defReal), dimension(3),intent(out) :: halfwidth
+
+    origin    = ZERO
+    halfwidth = INFINITY
+
+    origin(3)      = (INFINITY + self % z0) * HALF
+    halfwidth(3)   = (INFINITY + self % z0) * HALF
+
+  end subroutine boundingBox
 
   !!
   !! Calculate distance to plane along direction u

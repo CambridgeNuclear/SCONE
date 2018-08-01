@@ -48,6 +48,7 @@ module box_class
     procedure :: init
     procedure :: type
     procedure :: getDef
+    procedure :: boundingBox
     procedure :: cannotBeBoundary
     procedure :: setBoundaryConditions
 
@@ -161,6 +162,19 @@ contains
     string = printSurfDef(TYPE_NAME, [self % a, self % origin])
 
   end subroutine getDef
+
+  !!
+  !! Returns an axis alligned bouding box of surface -ve halfspace
+  !!
+  pure subroutine boundingBox(self,origin, halfwidth)
+    class(box), intent(in)                  :: self
+    real(defReal), dimension(3),intent(out) :: origin
+    real(defReal), dimension(3),intent(out) :: halfwidth
+
+    origin    = self % origin
+    halfwidth = self % a
+
+  end subroutine boundingBox
 
   !!
   !! Override base type function to returns .false.
