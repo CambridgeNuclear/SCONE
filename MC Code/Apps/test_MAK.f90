@@ -24,82 +24,95 @@ program test
   type(cellShelf)    :: cSHelf
   type(surfaceShelf) :: sSHelf
   type(latUniverse)  :: lUni
-  type(coord) :: coords
-  real(defReal) :: dist
-  integer(shortInt) :: surfIdx
+  type(coord)        :: coords
+  real(defReal)      :: dist
+  integer(shortInt)  :: surfIdx, i
+  real(defReal), dimension(3) :: r_glob
 
   call cShelf % init(5)
   call sShelf % init(5)
-  call lUni % init([ZERO, ZERO], 1, [1.0_8, 1.0_8], [2,2],sShelf, cShelf)
+  call lUni % init([ZERO, ZERO, ZERO], 1, [1.0_8, 1.0_8, 1.0_8], [2,2,2],sShelf, cShelf)
 
 
-
-  !coords % r = [1.0000000000000000_8,0.46949786724748671_8,2.5995410581742573_8]
-  !coords % dir =[-0.85680983930871757_8, -4.4530903955338173E-002_8, 0.51370604226219707_8]
-
-  !coords % r =[0.42524463481721542_8, 0.44624350795579298_8,2.4052121488106071_8]
-  !coords % dir = [-4.9280758631338455E-002_8,  0.69528162797343607_8, -0.71704592923419352_8]
-
-  coords % r =[0.0000000000000000_8,-4.6679592846875839E-002_8,2.5356872951500131_8]
-  coords % dir=[0.69212836788662557_8,0.49681567512931618_8,0.52357664893728573_8]
+  coords % r   = [-0.5,-0.5, -0.5]
+  r_glob       = coords % r
+  coords % dir = [ 1.0, 1.0, 1.0]
+  coords % dir = coords % dir / norm2(coords % dir)
 
   call lUni % enter(coords, cShelf,sShelf)
-
-  call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
-  call coords % display()
-  print *, "DIST: ", dist, surfIDx
-
-  coords % r = coords % r + coords % dir * 9.3957568538322572E-002_8
-
-  call coords % display()
-  call lUni % cross(coords,surfIdx, cShelf,sShelf)
-
   call coords % display()
 
-  stop
+  do i = 1,5
+    call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
+    print *,
+    print *, "DIST: ", dist, surfIDx
+    ! Move
+    coords % r = coords % r + coords % dir * dist
+    r_glob     = r_glob + coords % dir * dist
 
-  print *, "+ve X TRAVERS"
+    print *, "BEFORE X:"
+    print *, "R_GLOB: ", r_glob
+    call coords % display()
+    ! Cross
+    call lUni % cross(coords, surfIdx, cShelf, sShelf)
+    print *, "AFTER X:"
+    call coords % display()
 
-  coords % r = [-1.0_8, -0.5_8, ZERO]
-  coords % dir = [1.0_8, ZERO, ZERO]
-  call lUni % enter(coords, cShelf,sShelf)
-
-  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
-
-  call coords % display()
-  coords % r = coords % r + coords % dir * 1.0_8
-
-  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
+  end do
 
 
-
-  call lUni % cross(coords, surfIdx, cShelf, sShelf)
-  call coords % display()
-
-  coords % r = coords % r + coords % dir * 1.0_8
-
-  call lUni % cross(coords, surfIdx, cShelf, sShelf)
-  call coords % display()
-
-  print *, "-ve X TRAVERS"
-
-  coords % r = [1.0_8, -0.5_8, ZERO]
-  coords % dir = [-1.0_8, ZERO, ZERO]
-  call lUni % enter(coords, cShelf,sShelf)
-  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
-
-  call coords % display()
-  coords % r = coords % r + coords % dir * 1.0_8
-
-  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
-
-  call lUni % cross(coords, surfIdx, cShelf, sShelf)
-  call coords % display()
-
-  coords % r = coords % r + coords % dir * 1.0_8
-
-  call lUni % cross(coords, surfIdx, cShelf, sShelf)
-  call coords % display()
+!  coords % r = coords % r + coords % dir * 9.3957568538322572E-002_8
+!
+!  call coords % display()
+!  call lUni % cross(coords,surfIdx, cShelf,sShelf)
+!
+!  call coords % display()
+!
+!  stop
+!
+!
+!  print *, "+ve X TRAVERS"
+!
+!  coords % r = [-1.0_8, -0.5_8, ZERO]
+!  coords % dir = [1.0_8, ZERO, ZERO]
+!  call lUni % enter(coords, cShelf,sShelf)
+!
+!  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
+!
+!  call coords % display()
+!  coords % r = coords % r + coords % dir * 1.0_8
+!
+!  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
+!
+!
+!
+!  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+!  call coords % display()
+!
+!  coords % r = coords % r + coords % dir * 1.0_8
+!
+!  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+!  call coords % display()
+!
+!  print *, "-ve X TRAVERS"
+!
+!  coords % r = [1.0_8, -0.5_8, ZERO]
+!  coords % dir = [-1.0_8, ZERO, ZERO]
+!  call lUni % enter(coords, cShelf,sShelf)
+!  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
+!
+!  call coords % display()
+!  coords % r = coords % r + coords % dir * 1.0_8
+!
+!  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
+!
+!  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+!  call coords % display()
+!
+!  coords % r = coords % r + coords % dir * 1.0_8
+!
+!  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+!  call coords % display()
 
 
 !  type(basicCellCSG) :: geom

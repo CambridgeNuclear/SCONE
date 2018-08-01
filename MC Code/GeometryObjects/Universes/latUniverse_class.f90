@@ -28,12 +28,10 @@ module latUniverse_class
   !!
   !! Regular rectangular lattice in 2D or 3D
   !!
-  !! Enumeration is from bottom top left corner so map in input file is directly
-  !! transformed into lattice
-  !!
+  !! Enumeration is from lower, bottom left corner inside the representation of the latticle
   !! z = 1  z = 2   z = 3
-  !!  1  2   5  6    9 10
   !!  3  4   7  8   11 12
+  !!  1  2   5  6   9  10
   !!
   type, public, extends(universe) :: latUniverse
     private
@@ -41,6 +39,7 @@ module latUniverse_class
     real(defReal), dimension(3)     :: pitch  = 0.0
     integer(shortInt), dimension(3) :: sizeN  = 0
     real(defReal), dimension(3)     :: corner
+    real(defReal), dimension(3)     :: half_bar
 
     integer(shortInt)               :: pCellIdx   ! Pitch cell index
     integer(shortInt)               :: oCellIdx   ! Out cell index
@@ -100,7 +99,6 @@ contains
     end if
 
     ! Load id and offset
-    ! **** Uncomment ofter extension is done
     call self % setId(id)
     if (maxDim == 2) then
       offsetTemp = [offset, ZERO]
@@ -163,10 +161,10 @@ contains
     self % outLocalID = product(sizeN, sizeN > 0) + 1
 
     ! Save position of the bottom(Z) top(Y) left corner
-    self % corner = offsetTemp - outHW !* [1.0, -1.0, 1.0]
+    self % corner = offsetTemp - outHW
 
-    ! Correct pitch for diffrent coordinate frame (inverted y-axis)
-    !self % pitch = self % pitch * [1.0, -1.0, 1.0]
+    ! Save surface tolerance corrested cell halfwidth
+    self % half_bar = self % pitch * HALF - surface_tol
 
   end subroutine init
 
@@ -174,6 +172,7 @@ contains
   !! Returns an initialised instance of a lattice universe
   !! Returns fillVector as well with +ve entries being materialIDXs and -ve fill universes IDs
   !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
+  !! *** TODO: IMPLEMENT MAP REPEAT FEATURE
   !!
   function latUniverse_fromDict(fillVector, dict, cShelf, sShelf, cellFillMap, materials) result (new)
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
@@ -266,7 +265,7 @@ contains
     r_bar = coords % r - self % corner
     u     = coords % dir
 
-    ! Please note that pitch in y-axis is -ve becouse of axis inversion
+    ! Calculate position inside the lattice
     ijk(1:maxDim) = floor( r_bar(1:maxDim) / self % pitch(1:maxDim)) + 1
 
     ! Calculate coordinates wrt middle of the current cell
@@ -275,14 +274,17 @@ contains
     ! Check if position is within surface tolerance and if it is moving outside
     ! Use the fact that it is moving outside if u(i) and r(i) have the same sign
     do i=1,maxDim
-      atSurface = (abs(r_bar(i)) - abs(HALF * self % pitch(i))) > -surface_tol
+      atSurface = abs(r_bar(i)) > self % half_bar(i)
       goingOut  = u(i) * r_bar(i) > ZERO
 
       if (atSurface .and. goingOut ) then
-        ! Change lattice potision in direction of motion
+        ! Set increment to 1 if u is +ve and -1 if u is -ve
         inc = 1
         if ( u(i) < 0 ) inc = -1
+
+        ! Update ijk index and local coordinates
         ijk(i) = ijk(i) + inc
+        r_bar(i) = r_bar(i) - self % pitch(i) * inc
       end if
     end do
 
@@ -303,7 +305,7 @@ contains
       coords % cellIdx = self % pCellIdx
 
       ! Shift local coords to correspond to centre of a pitch cell
-      coords % r(1:maxDim) = coords % r(1:maxDim) - self % corner(1:maxDim) - (ijk(1:maxDim) - HALF) * self % pitch(1:maxDim)
+      coords % r(1:maxDim) = r_bar(1:maxDim)
 
     end if
 
@@ -325,44 +327,54 @@ contains
     type(surfaceShelf),intent(in)  :: sShelf
     real(defReal),dimension(3)     :: bound
     real(defReal),dimension(3)     :: r, u
+    type(vector)                   :: rv, uv
     real(defReal)                  :: testDist
     integer(shortInt)              :: maxDim, i, xDir
 
-    ! Load maximum dimension & position & direction
-    maxDim = self % maxDim
-    r = coords % r
-    u = coords % dir
+    if(coords % localID /= self % outLocalID) then
 
-    ! Find bounds of the pitch cell
-    bound = sign(self % pitch * HALF, u)
+      ! Load maximum dimension & position & direction
+      maxDim = self % maxDim
+      r = coords % r
+      u = coords % dir
 
-    ! Find minimum distance and direction
-    dist = INFINITY + 1.0
-    do i=1,maxDim
-      ! Calculate distance to the boundary
-      if ( u(i) /= ZERO) then
-        testDist = (bound(i) - r(i)) / u(i)
+      ! Find bounds of the pitch cell
+      bound = sign(self % pitch * HALF, u)
 
-      else
-        testDist = INFINITY
+      ! Find minimum distance and direction
+      dist = INFINITY
 
-      end if
+      do i=1,maxDim
+        ! Calculate distance to the boundary
+        if ( u(i) /= ZERO) then
+          testDist = (bound(i) - r(i)) / u(i)
 
-      ! Catch a case of an accidental crossing of a boundary in previous move
-      ! In such case test Dist is -ve
-      !testDist = max(ZERO,testDist)
+        else
+          testDist = INFINITY
 
-      if (testDist < dist) then
-        dist = testDist
-        xDir = i
-      end if
-    end do
+        end if
 
-    ! Find code of a face beeing X-ed
-    surfIdx = xDir * 2 - 1
-    if ( u(xDir) < ZERO ) surfIdx = surfIdx +1
-    surfIdx = -surfIdx
+        testDist = max(ZERO,testDist)
 
+        ! Save shortest distance
+        if (testDist < dist) then
+          dist = testDist
+          xDir = i
+        end if
+
+      end do
+
+      ! Find code of a face beeing X-ed
+      surfIdx = xDir * 2 - 1
+      if ( u(xDir) < ZERO ) surfIdx = surfIdx +1
+      surfIdx = -surfIdx
+    else
+      ! Get position and direction
+      rv = coords % r
+      uv = coords % dir
+
+      call cShelf % shelf(self % oCellIdx) % distance(dist, surfIdx, rv, uv, sShelf)
+    end if
   end subroutine distance
 
   !!
@@ -371,29 +383,55 @@ contains
   !! IT DOES NOT PERFORM CHECK IF THE ABOVE ASSUMPTION IS VALID! (Be careful - MAK)
   !!
   subroutine cross(self, coords, surfIdx, cShelf, sShelf)
-    class(latUniverse), intent(in) :: self
-    type(coord),intent(inout)      :: coords
-    integer(shortInt), intent(in)  :: surfIdx
-    type(cellShelf), intent(in)    :: cShelf
-    type(surfaceShelf), intent(in) :: sShelf
+    class(latUniverse), intent(in)  :: self
+    type(coord),intent(inout)       :: coords
+    integer(shortInt), intent(in)   :: surfIdx
+    type(cellShelf), intent(in)     :: cShelf
+    type(surfaceShelf), intent(in)  :: sShelf
     integer(shortInt), dimension(3) :: ijk
-    integer(shortInt)               :: localId, maxDim
+    integer(shortInt)               :: localId, inc, dir, maxDim
 
-    ! Inefficient(ish) implementatyion
-    ! Return to global position
-    localID = coords % localId
-    maxDim = self % maxDim
+    ! Set local cell to outside. Save localID outside bounds to reconstruct ijk
+    localID = coords % localID
 
-    ijk(1) = modulo(localID-1, self % sizeN(1)) + 1
-    localID = (localID - ijk(1)) / self % sizeN(1)
-    ijk(2) = modulo(localID, self % sizeN(2)) + 1
-    localID = (localID - ijk(2) +1) / self % sizeN(2)
-    ijk(3) = localID + 1
+    if (coords % localID /= self % outLocalID) then
+      ! Find direction beeing X-ed (Note that surfIdx is -ve)
+      dir = (1-surfIdx) / 2
 
-    coords % r(1:maxDim) = self % corner(1:maxDim) + (ijk(1:maxDim) - HALF) * self % pitch(1:maxDim) + coords % r(1:maxDim)
+      ! Set increment to 1 if u is +ve and -1 if u is -ve
+      inc = 1
+      if ( coords % dir(dir) < 0 ) inc = -1
 
-    call self % findCell(coords,cShelf,sShelf)
+      ! Increment location
+      coords % r(dir) = coords % r(dir) - self % pitch(dir) * inc
+      coords % localID = coords % localID + inc * product(self % sizeN(1:dir-1))
 
+      ! If partcile has leaked change to frame wrt centre of the lattice
+      if (coords % localID < 1 .or. coords % localID >= self % outLocalID) then
+        ! Set localID to outside cell
+        coords % localID = self % outLocalID
+
+        ! Load maximum dimenstion
+        maxDim = self % maxDim
+
+        ! Return to co-ordinates aligned with centre of lattice
+        ijk(1) = modulo(localID-1, self % sizeN(1)) + 1
+        localID = (localID - ijk(1)) / self % sizeN(1)
+        ijk(2) = modulo(localID, self % sizeN(2)) + 1
+        localID = (localID - ijk(2) +1) / self % sizeN(2)
+        ijk(3) = localID + 1
+
+        ! Reapply crossing on ijk
+        ijk(dir) = ijk(dir) + inc
+
+        coords % r(1:maxDim) = self % corner(1:maxDim) + &
+                             (ijk(1:maxDim) - HALF) * self % pitch(1:maxDim) + coords % r(1:maxDim)
+      end if
+
+    else
+      call self % findCell(coords,cShelf,sShelf)
+
+    end if
   end subroutine cross
 
   !!
