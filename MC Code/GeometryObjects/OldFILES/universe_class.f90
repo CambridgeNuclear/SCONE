@@ -9,7 +9,7 @@
 module universe_class
   use numPrecision
   use genericProcedures
-  use surface_class
+  use surface_inter
   use cell_class
 
   implicit none
@@ -29,7 +29,7 @@ module universe_class
   end type universe
 
   type, public :: universe_ptr
-    class(universe), pointer :: ptr => null()
+    type(universe), pointer :: ptr => null()
   contains
     procedure :: init => init_ptr
     procedure :: whichCell => whichCell_ptr

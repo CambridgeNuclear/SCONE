@@ -26,6 +26,8 @@ surfaces
 	radius 0.45;
   }
 
+  
+
 }
 
 
@@ -67,7 +69,7 @@ cells
   out
   {
        id 3;
-       surfaces (1);
+       surfaces (1 );
        filltype outside;
   }
 
@@ -123,4 +125,5 @@ lattices
   }	
 }
 
+//boundary (1);
 boundary (1 1 1 1 0 0);

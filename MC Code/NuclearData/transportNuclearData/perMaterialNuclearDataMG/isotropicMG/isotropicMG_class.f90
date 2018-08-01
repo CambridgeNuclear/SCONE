@@ -216,7 +216,7 @@ contains
     r1 = p % pRNG % get()
 
     ! Sample outgoing data
-    call self % sampleMuGout(mu, G_out, G_in, p % pRNG, macroFission ,p % matIdx )
+    call self % sampleMuGout(mu, G_out, G_in, p % pRNG, macroFission ,p % matIdx() )
     phi = 2*PI * r1
 
     ! Update particle state

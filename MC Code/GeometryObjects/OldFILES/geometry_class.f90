@@ -9,30 +9,29 @@
 !
 module geometry_class
   use numPrecision
-  use genericProcedures
   use universalVariables
+  use genericProcedures, only : fatalError
+
 
   use particle_class,       only : particle
 
-  use rng_class
+  use RNG_class,          only : RNG
 
-  use dictionary_class
-  use IOdictionary_class
+  use dictionary_class,   only : dictionary
 
-  use nuclearData_inter
+  use nuclearData_inter,  only : nuclearData
 
-  use coord_class
+  use coord_class,        only : coord, coordList
 
-  use surface_class
-  use sphere_class
-  use plane_class
-  use box_class
-  use cylinder_class
-  use squareCylinder_class
-  use truncatedCylinder_class
-  use cell_class
-  use universe_class
-  use lattice_class
+  use surface_inter,       only : surface_ptr
+  use surfaceFactory_func, only : new_surface_ptr
+
+
+  use box_class,           only : box
+
+  use cell_class,          only : cell, cell_ptr
+  use universe_class,      only : universe, universe_ptr
+  use lattice_class,       only : lattice, lattice_ptr
 
   implicit none
   private
@@ -52,13 +51,13 @@ module geometry_class
     integer(shortInt)                            :: numLattices = 0
     integer(shortInt)                            :: numRegions = 0
   contains
+    ! Build Procedures
     procedure :: init                    ! initialise geometry
     procedure :: initSurfaces            ! initialise surfaces
     procedure :: initCells               ! initialise cells
     procedure :: initUniverses           ! initialise universes
     procedure :: initLattices            ! initialise lattices
     procedure :: fillCells               ! fill cells with non-material contents
-    procedure :: surfaceFromDict         ! initialise a surface from a dictionary
     procedure :: cellFromDict            ! initialise a cell from a dictionary
     procedure :: universeFromDict        ! initialise a universe from a dictionary
     procedure :: latticeFromDict         ! initialise a lattice from a dictionary
@@ -66,16 +65,20 @@ module geometry_class
     procedure :: fillCellLat             ! fill a cell with a lattice
     procedure :: setBoundaryConditions   ! set the boundary conditions for the geometry
     procedure :: fillMaterialCells       ! fill cells with materials
-    procedure :: whichCell               ! find which cell a neutron occupies
+
+    ! ? Procedures
     procedure :: ennumerateRegions       ! Find all unique regions and assign an ID
     procedure :: countCell               ! Recursively count all cell instances
     procedure :: locateCell              ! Recursively locate all cell instances
     procedure :: constructBoundingBox    ! Construct the box bounding the geometry
+
+    ! Interface Procedures
+    procedure :: whichCell               ! find which cell a neutron occupies
     procedure :: calculateVolumes        ! Calculates the volumes of all cells in the geometry
     procedure :: slicePlot               ! Produces a geometry plot of a slice perpendicular to a given axis
     procedure :: voxelPlot               ! Produces a voxel plot of a chosen section of the geometry
-
     procedure :: placeParticle           ! Places a fresh particle in geometry. Assigns region and mat ID
+
   end type geometry
 
 contains
@@ -91,7 +94,6 @@ contains
     type(cell_ptr)                :: dummy_c
 
     dummy_c = self % whichCell(p % coords)
-    call p % updateLocation()
 
   end subroutine placeParticle
 
@@ -146,6 +148,7 @@ contains
     class(geometry), intent(inout)                 :: self
     class(dictionary), intent(in)                  :: surfDict
     character(nameLen), dimension(:), allocatable  :: keys
+    type(dictionary)                               :: tempDict
     integer(shortInt)                              :: i, j, id, testId
 
     call surfDict % keysDict(keys)
@@ -155,9 +158,10 @@ contains
     ! Construct surfaces and store in the surface array
     print *,'Constructing ',self % numSurfaces,' surfaces'
     do i=1,self % numSurfaces
-      call self % surfaceFromDict(surfDict % getDict(keys(i)), keys(i), i)
+      call surfDict % get(tempDict,keys(i))
+      self % surfaces(i) = new_surface_ptr(tempDict,keys(i))
+
     end do
-    deallocate(keys)
 
     ! Ensure no surfaces have the same id's
     if (self % numSurfaces > 1) then
@@ -241,7 +245,7 @@ contains
       uniDaughterDict = uniDict % getDict(keys(i))
       if(uniDaughterDict % isPresent('root')) then
         if (uniDaughterDict % getInt('root') == 1) then
-          call self % universeFromDict(uniDaughterDict, i, keys(i), .TRUE.)
+          call self % universeFromDict(uniDaughterDict, i, keys(i), .TRUE._defBool)
           rootIdx = i
           if (.NOT.foundRoot) then
             foundRoot = .TRUE.
@@ -250,16 +254,13 @@ contains
           end if
         end if
       else
-        call self % universeFromDict(uniDaughterDict, i, keys(i), .FALSE.)
+        call self % universeFromDict(uniDaughterDict, i, keys(i), .FALSE._defBool)
       end if
     end do
-    self % rootUniverse = self % universes(rootIdx)
-    deallocate(keys)
 
-    ! Ensure that a root universe has been defined
-    if(.not.foundRoot)then
-      call fatalError('initUniverses, geometry','The root universe has not been defined')
-    end if
+    ! Ensure that a root universe has been defined. Store pointer to it.
+    if(.not.foundRoot) call fatalError('initUniverses, geometry','The root universe has not been defined')
+    self % rootUniverse = self % universes(rootIdx) !*** This assignment is not STANDARD FORTRAN. self % universes are not "target"
 
     ! Ensure no universes have the same id's
     if (self % numUniverses > 1) then
@@ -347,7 +348,8 @@ contains
     integer(shortInt), intent(in), optional :: n0
     real(defReal), dimension(3)             :: r, u, offset
     integer(shortInt), dimension(3)         :: ijkLat
-    integer(shortInt)                       :: uniIdx, latIdx, ijkIdx, n, instance
+    integer(shortInt)                       :: uniIdx, latIdx, ijkIdx
+    integer(shortInt)                       :: n, instance
     integer(shortInt), dimension(3)         :: ijkUni
     type(cell_ptr)                          :: c
     type(universe_ptr)                      :: uni
@@ -356,11 +358,11 @@ contains
     ! If a nesting level is not specified, begin from the root universe
     if(present(n0)) then
       n = n0
-      uni = self % universes(coords % lvl(n) % uniIdx)
+      uni = self % universes(coords % lvl(n) % uniIdx) !*** BRAKES FORTRAN STANDARD. uni is undefined after execution
     else
       n = 1
-      uni = self % rootUniverse
-      call coords % resetNesting()
+      uni = self % rootUniverse          !*** BRAKES FORTRAN STANDARD. uni is undefined after execution
+      call coords % takeAboveGeom()
       coords % lvl(1) % uniIdx = uni % geometryIdx()
     end if
 
@@ -379,8 +381,6 @@ contains
 
       ! The cell is outside the geometry
       else if (.NOT. c % insideGeom()) then
-        call uni % kill()
-        call lat % kill()
         return
 
       ! The cell is filled with a universe - update the universe and continue search
@@ -411,8 +411,6 @@ contains
         instance = c % coordCompare(coords)
         coords % matIdx = c % matIdx(instance)
         coords % regionID = c % uniqueID(instance)
-        call uni % kill()
-        call lat % kill()
         return
 
       ! Something has gone wrong...
@@ -474,7 +472,7 @@ contains
     do i=1,self % numCells
       n = cellInstances(i)
       if (n > 1) then
-        call searchLocation % resetNesting()
+        call searchLocation % takeAboveGeom()
         allocate(location(n))
         uniIdx = self % rootUniverse % geometryIdx()
         latIdx = 0
@@ -596,7 +594,7 @@ contains
 
     ! The current universe on this level has been fully explored - ascend a nesting level
     nesting = searchLocation % nesting
-    if (nesting > 1) call searchLocation % resetNesting(nesting - 1)
+    if (nesting > 1) call searchLocation % decreaseNesting(nesting - 1)
 
   end subroutine locateCell
 
@@ -815,164 +813,6 @@ contains
   end function voxelPlot
 
   !!
-  !! Given a dictionary describing a surface, construct a surface for the surrface array
-  !!
-  subroutine surfaceFromDict(self, dict, name, geometryIdx)
-    class(geometry), intent(inout)    :: self
-    class(dictionary), intent(in)     :: dict
-    character(*), intent(in)          :: name
-    integer(shortInt), intent(in)     :: geometryIdx
-    integer(shortInt)                 :: id
-    type(box), pointer                :: boxObj
-    type(sphere), pointer             :: sphereObj
-    type(xCylinder), pointer          :: xCylObj
-    type(yCylinder), pointer          :: yCylObj
-    type(zCylinder), pointer          :: zCylObj
-    type(xSquareCylinder), pointer    :: xSquCylObj
-    type(ySquareCylinder), pointer    :: ySquCylObj
-    type(zSquareCylinder), pointer    :: zSquCylObj
-    type(xTruncatedCylinder), pointer :: xTruncCylObj
-    type(yTruncatedCylinder), pointer :: yTruncCylObj
-    type(zTruncatedCylinder), pointer :: zTruncCylObj
-    type(xPlane), pointer             :: xPlaneObj
-    type(yPlane), pointer             :: yPlaneObj
-    type(zPlane), pointer             :: zPlaneObj
-    type(plane), pointer              :: planeObj
-    character(nameLen)                :: surfType
-    real(defReal), dimension(4)       :: coeff
-    real(defReal), dimension(3)       :: origin, halfwidth
-    real(defReal)                     :: radius, halfheight, x, y, z
-
-    surfType = dict % getChar('type')
-
-    id = dict % getInt('id')
-    if(id < 1) call fatalError('surfaceFromDict, geometry','Invalid surface id provided')
-
-    if (surfType == 'box') then
-      allocate(boxObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call boxObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = boxObj
-      return
-
-    else if (surfType == 'xSquareCylinder') then
-      allocate(xSquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call xSquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = xSquCylObj
-      return
-
-    else if (surfType == 'ySquareCylinder') then
-      allocate(ySquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call ySquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = ySquCylObj
-      return
-
-    else if (surfType == 'zSquareCylinder') then
-      allocate(zSquCylObj)
-      halfwidth = dict % getRealArray('halfwidth')
-      origin = dict % getRealArray('origin')
-      call zSquCylObj % init(origin, halfwidth, id, name)
-      self % surfaces(geometryIdx) = zSquCylObj
-      return
-
-    else if (surfType == 'sphere') then
-      allocate(sphereObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call sphereObj % init(origin, radius, id, name)
-      self % surfaces(geometryIdx) = sphereObj
-      return
-
-    else if (surfType == 'xCylinder') then
-      allocate(xCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call xCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = xCylObj
-      return
-
-    else if (surfType == 'yCylinder') then
-      allocate(yCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call yCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = yCylObj
-      return
-
-    else if (surfType == 'zCylinder') then
-      allocate(zCylObj)
-      radius = dict % getReal('radius')
-      origin = dict % getRealArray('origin')
-      call zCylObj % init(radius, origin, id, name)
-      self % surfaces(geometryIdx) = zCylObj
-      return
-
-    else if (surfType == 'xTruncCylinder') then
-      allocate(xTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call xTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = xTruncCylObj
-      return
-
-    else if (surfType == 'yTruncCylinder') then
-      allocate(yTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call yTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = yTruncCylObj
-      return
-
-    else if (surfType == 'zTruncCylinder') then
-      allocate(zTruncCylObj)
-      radius = dict % getReal('radius')
-      halfheight = dict % getReal('halfheight')
-      origin = dict % getRealArray('origin')
-      call zTruncCylObj % init(origin, halfheight, radius, id, name)
-      self % surfaces(geometryIdx) = zTruncCylObj
-      return
-
-    else if (surfType == 'xPlane') then
-      allocate(xPlaneObj)
-      x = dict % getReal('x')
-      call xPlaneObj % init(x, id, name)
-      self % surfaces(geometryIdx) = xPlaneObj
-      return
-
-    else if (surfType == 'yPlane') then
-      allocate(yPlaneObj)
-      y = dict % getReal('y')
-      call yPlaneObj % init(y, id, name)
-      self % surfaces(geometryIdx) = yPlaneObj
-      return
-
-    else if (surfType == 'zPlane') then
-      allocate(zPlaneObj)
-      z = dict % getReal('z')
-      call xPlaneObj % init(z, id, name)
-      self % surfaces(geometryIdx) = zPlaneObj
-      return
-
-    else if (surfType == 'plane') then
-      allocate(planeObj)
-      coeff = dict % getRealArray('coeff')
-      call planeObj % init(coeff, id, name)
-      self % surfaces(geometryIdx) = planeObj
-      return
-
-    else
-      call fatalError('surfaceFromDict, geometry','Did not recognise surface type')
-    end if
-  end subroutine surfaceFromDict
-
-  !!
   !! Given a dictionary describing a cell, construct a cell for the cell array
   !!
   subroutine cellFromDict(self, dict, geometryIdx, name)
@@ -993,7 +833,7 @@ contains
     allocate(surfArray(size(surfaces)))
     allocate(halfspaces(size(surfaces)))
     do i=1,size(surfaces)
-      if(surfaces(i) > 0)then
+      if(surfaces(i) > 0)then     ! *** Remove the loop. Use array expr. instead
         halfspaces(i) = .TRUE.
       else if(surfaces(i) < 0)then
         halfspaces(i) = .FALSE.
@@ -1024,10 +864,6 @@ contains
 
     ! Initialise the cell without filling: fill after all other geometry construction completed
     call self % cells(geometryIdx) % init(surfArray, halfspaces, id, fillType, geometryIdx, name)
-
-    do i=1,size(surfaces)
-      call surfArray(i) % kill()
-    end do
 
   end subroutine cellFromDict
 
@@ -1206,11 +1042,11 @@ contains
   !! Applies the boundary conditions to the bounding surfaces as defined in the BC dictionary
   !!
   subroutine setBoundaryConditions(self, geometryIdx, dict)
-    class(geometry), intent(inout)  :: self
-    integer(shortInt), intent(in)   :: geometryIdx
-    class(dictionary), intent(in)   :: dict
-    integer(shortInt)               :: i,j
-    integer(shortInt), dimension(6) :: BC
+    class(geometry), intent(inout)              :: self
+    integer(shortInt), intent(in)               :: geometryIdx
+    class(dictionary), intent(in)               :: dict
+    integer(shortInt)                           :: i,j
+    integer(shortInt), dimension(:),allocatable :: BC
 
     ! Identify the boundary conditions
     BC= dict % getIntArray('boundary')
@@ -1235,6 +1071,7 @@ contains
 
 
     call cellDict % keysDict(keys)
+
     do i=1,self%numCells
       if (self % cells(i) % fillType == materialFill) then
         subDict = cellDict % getDict(keys(i))

@@ -17,7 +17,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # It should be periodicly removed to see if other surprising warining are not raised 
 # This buggy warning should be repaired in GCC 7.0 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -Ofast -Wall -Wno-surprising -flto") # -flto  
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
@@ -47,7 +47,8 @@ endfunction(add_sources)
 # COLLECT ALL SOURCE FILES 
 
 add_sources( ./DataStructures/dictionary_class.f90
-             ./DataStructures/IOdictionary_class.f90)
+             ./DataStructures/IOdictionary_class.f90
+             ./DataStructures/maps_class.f90)
 
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
@@ -85,10 +86,12 @@ foreach(s IN LISTS SRCS)
 endforeach()
 ###############################################################################
 # COMPILE SOLVERS 
-#add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
+add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
-add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
+#add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
 #add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
 #add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})
 add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})
+#add_executable(surfTests.f90       ./Apps/surfTests.f90      ${PREP_SRCS})
+add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${PREP_SRCS})
