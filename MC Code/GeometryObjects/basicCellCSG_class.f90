@@ -21,8 +21,6 @@ module basicCellCSG_class
   !! Parameter for tracking recovery options
   integer(shortInt), parameter :: RECOVER = 0
 
-  integer(shortInt) :: CLOCK =0
-
   !!
   !! Implementation of the cell geometry model using CSG representation of geometry
   !! Does not support trip surface at the moment
@@ -74,11 +72,7 @@ contains
   subroutine placeCoord(self, coords)
     class(basicCellCSG), intent(in) :: self
     type(coordList), intent(inout)  :: coords
-    integer(shortInt)               :: nextUniRoot, fill
-    integer(shortInt)               :: i, uniIdx
-    real(defReal), dimension(3)     :: offset
-    character(100), parameter  :: Here = 'placeCoord (basicCellCSG_class.f90)'
-
+    character(100), parameter       :: Here = 'placeCoord (basicCellCSG_class.f90)'
 
     ! Check that coordList is initialised
     if( coords % nesting < 1) call fatalError(Here,'Uninitialised coord List')
@@ -277,7 +271,6 @@ contains
     real(defReal),dimension(3)                       :: center_L
     real(defReal)                                    :: stepZ, z0
     real(defReal),dimension(3)                       :: point
-    real(defReal),dimension(2)                       :: width_bar
     integer(shortInt)                                :: i
     character(100),parameter :: Here = 'voxelPlot ( basicCellCSG_class.f90)'
 

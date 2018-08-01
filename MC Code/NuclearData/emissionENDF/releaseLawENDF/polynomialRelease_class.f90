@@ -45,7 +45,6 @@ contains
     class(polynomialRelease), intent(in) :: self
     real(defReal), intent(in)            :: E_in
     real(defReal)                        :: release
-    real(defReal)                        :: x
     integer(shortInt)                    :: i
 
     ! Horner Method Evaluation of a Polynomial

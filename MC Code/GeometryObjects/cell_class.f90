@@ -449,7 +449,6 @@ contains
     class(cellShelf), intent(in)  :: self
     integer(shortInt), intent(in) :: id
     integer(shortInt)             :: idx
-    integer(shortInt)             :: i
 
     associate( storedCells => self % shelf(1:self % N))
       idx = linFind(storedCells % id(), id)

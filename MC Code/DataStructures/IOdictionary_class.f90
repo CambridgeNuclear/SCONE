@@ -72,7 +72,6 @@ contains
     character(maxColumn),dimension(:),allocatable  :: file
     character(:),allocatable                       :: tape
     character(1)                                   :: tab
-    integer(shortInt)                              :: i
     character(100),parameter                       :: Here='initFrom (IOdictionary_class.f90)'
 
     file = readFile(filename)
@@ -102,8 +101,7 @@ contains
     character(*), intent(in)            :: tape
     class(dictionary), intent(inout)    :: dict
     character(len(tape))                :: localTape
-    integer(shortInt)                   :: start, end, pos, listEnd, tapeEnd, i, dictEnd
-    type(dictionary)                    :: localDict
+    integer(shortInt)                   :: start, pos, listEnd, tapeEnd, dictEnd
     character(100),parameter            :: Here='readDictionary (IOdictionary_class.f90)'
 
     ! Kill dictionary
@@ -427,7 +425,6 @@ contains
         character(100)                           :: formatInt
         character(100)                           :: formatReal
         integer(shortInt)                        :: tempInt
-        character(charLen)                       :: tempChar
 
 
         allocate(tempReal(datSize))

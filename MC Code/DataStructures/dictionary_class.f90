@@ -653,7 +653,7 @@ contains
     class(dictionary), intent(in)                             :: self
     character(*),dimension(:),pointer,intent(inout)           :: value
     character(*),intent(in)                                   :: keyword
-    integer(shortInt)                                         :: idx,N
+    integer(shortInt)                                         :: idx
     character(100),parameter                       :: Here='getCharArray_ptr (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)
@@ -1009,8 +1009,7 @@ contains
     character(*),dimension(:),pointer,intent(inout)           :: value
     character(*),intent(in)                                   :: keyword
     character(*),dimension(:),intent(in)                      :: default
-    character(charLen),dimension(size(default))               :: loc_Char
-    integer(shortInt)                                         :: idx,N
+    integer(shortInt)                                         :: idx
     character(100),parameter            :: Here='getOrDefault_charArray_ptr (dictionary_class.f90)'
 
     idx = linFind(self % keywords, keyword)

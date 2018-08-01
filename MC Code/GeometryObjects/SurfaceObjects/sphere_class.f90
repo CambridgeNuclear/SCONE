@@ -213,68 +213,68 @@ contains
 
   end subroutine distance
 
-  !!
-  !! Perform a co-ordinate transform on a particle to apply reflective boundary condition
-  !! Used as the standard reflection is not particularly agreeable when used with delta tracking
-  !!
-  !! Calculate particle's initial angle to the centre point of the sphere
-  !! Then find the particle's new position after being moved by a given distance
-  !! Calculate the outward normal where the particle crossed the surface
-  !! Reflect the particle in the plane given by this outward normal
-  !!
-  !! THIS WILL NOT WORK IF USED - NEED TO ADD A DISTANCE ARGUMENT
-  subroutine reflectiveTransform(self, r, u)
-    class(sphere), intent(in)                  :: self
-    real(defReal), dimension(3), intent(inout) :: r, u
-    character(100), parameter :: Here = 'reflectiveTransform (sphere_class.f90)'
-    !real(defReal), dimension(3) :: Ovector, &    ! vector towards origin from neutron
-    !                               normal, &     ! normal vector of the reflection plane
-    !                               perpVector, & ! normal vector to the plane in which motion/rotation is occurring
-    !                               intersect     ! point at which the particle intersects the sphere
-    !real(defReal) :: cosGamma, &         ! cosine of the half angle of reflection
-    !                 perpDistanceOrig, & ! perpendicular distance between neutron path and origin
-    !                 sinGamma, &         ! sine of the half angle of reflection
-    !                 perpDistance, &     ! distance of a point outside surface to reflective plane
-    !                 dOrigin             ! distance from the starting point to the origin
-
-    ! Reflective transforms will not be allowed to occur in geometries other than planes
-    call fatalError(Here,'Spheres may not have reflective boundaries')
-
-    ! Calculate the normalised origin vector
-    !Ovector= self % origin - r
-    !dOrigin=norm2(Ovector)
-    !Ovector = Ovector / dOrigin
-
-    ! Obtain a perpendicular vector by taking the cross product
-    ! Rotation will take place around this axis
-    !perpVector = crossProduct(Ovector,u)
-
-    ! Calculate sinGamma using the cross-product of the two vectors and the sine law
-    !sinGamma = (dOrigin/self%radius)*norm2(perpVector)
-    !cosGamma = sqrt(1 - sinGamma*sinGamma)
-
-    ! Rotate the particle direction by gamma to obtain the reflection plane normal
-    ! Use Rodrigues' rotation formula
-    ! (Neglect [1 - cosGamma] term in formula due to taking a dotProduct of perp. vectors)
-    !normal = cosGamma*u + sinGamma*crossProduct(perpVector,u)
-
-    ! Obtain the point at which the intersection occurs from the normal, radius and origin
-    !intersect = self%origin + normal * self%radius
-
-    ! Calculate particle position outside the sphere
-    !r = r + u*distance
-    !MAY NEED TO FIX
-
-    ! Calculate the perpendicular distance to the reflecting plane
-    !perpDistance = abs(dotProduct(normal,r-intersect))
-
-    ! Translate the particle position across the plane
-    !r = r - 2*perpDistance*normal
-
-    ! Reflect the particle direction (independent of intersection point for plane)
-    !u = u - 2*dotProduct(normal,u)*normal
-
-  end subroutine reflectiveTransform
+!  !!
+!  !! Perform a co-ordinate transform on a particle to apply reflective boundary condition
+!  !! Used as the standard reflection is not particularly agreeable when used with delta tracking
+!  !!
+!  !! Calculate particle's initial angle to the centre point of the sphere
+!  !! Then find the particle's new position after being moved by a given distance
+!  !! Calculate the outward normal where the particle crossed the surface
+!  !! Reflect the particle in the plane given by this outward normal
+!  !!
+!  !! THIS WILL NOT WORK IF USED - NEED TO ADD A DISTANCE ARGUMENT
+!  subroutine reflectiveTransform(self, r, u)
+!    class(sphere), intent(in)                  :: self
+!    real(defReal), dimension(3), intent(inout) :: r, u
+!    character(100), parameter :: Here = 'reflectiveTransform (sphere_class.f90)'
+!    !real(defReal), dimension(3) :: Ovector, &    ! vector towards origin from neutron
+!    !                               normal, &     ! normal vector of the reflection plane
+!    !                               perpVector, & ! normal vector to the plane in which motion/rotation is occurring
+!    !                               intersect     ! point at which the particle intersects the sphere
+!    !real(defReal) :: cosGamma, &         ! cosine of the half angle of reflection
+!    !                 perpDistanceOrig, & ! perpendicular distance between neutron path and origin
+!    !                 sinGamma, &         ! sine of the half angle of reflection
+!    !                 perpDistance, &     ! distance of a point outside surface to reflective plane
+!    !                 dOrigin             ! distance from the starting point to the origin
+!
+!    ! Reflective transforms will not be allowed to occur in geometries other than planes
+!    call fatalError(Here,'Spheres may not have reflective boundaries')
+!
+!    ! Calculate the normalised origin vector
+!    !Ovector= self % origin - r
+!    !dOrigin=norm2(Ovector)
+!    !Ovector = Ovector / dOrigin
+!
+!    ! Obtain a perpendicular vector by taking the cross product
+!    ! Rotation will take place around this axis
+!    !perpVector = crossProduct(Ovector,u)
+!
+!    ! Calculate sinGamma using the cross-product of the two vectors and the sine law
+!    !sinGamma = (dOrigin/self%radius)*norm2(perpVector)
+!    !cosGamma = sqrt(1 - sinGamma*sinGamma)
+!
+!    ! Rotate the particle direction by gamma to obtain the reflection plane normal
+!    ! Use Rodrigues' rotation formula
+!    ! (Neglect [1 - cosGamma] term in formula due to taking a dotProduct of perp. vectors)
+!    !normal = cosGamma*u + sinGamma*crossProduct(perpVector,u)
+!
+!    ! Obtain the point at which the intersection occurs from the normal, radius and origin
+!    !intersect = self%origin + normal * self%radius
+!
+!    ! Calculate particle position outside the sphere
+!    !r = r + u*distance
+!    !MAY NEED TO FIX
+!
+!    ! Calculate the perpendicular distance to the reflecting plane
+!    !perpDistance = abs(dotProduct(normal,r-intersect))
+!
+!    ! Translate the particle position across the plane
+!    !r = r - 2*perpDistance*normal
+!
+!    ! Reflect the particle direction (independent of intersection point for plane)
+!    !u = u - 2*dotProduct(normal,u)*normal
+!
+!  end subroutine reflectiveTransform
 
   !!
   !! Supply the normal vector given a point on the sphere

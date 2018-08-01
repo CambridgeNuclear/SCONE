@@ -272,7 +272,7 @@ contains
     type(dictionary)                            :: locDict
     character(nameLen)                          :: entry
     logical(defBool)                            :: partOfDisplay, partOfTriggers
-    integer(shortInt)                           :: i, N
+    integer(shortInt)                           :: i
 
 
     ! Deallocate

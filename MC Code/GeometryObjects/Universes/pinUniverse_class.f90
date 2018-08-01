@@ -77,9 +77,7 @@ contains
     type(cellShelf),intent(inout)                          :: cShelf
     class(nuclearData), intent(in)                         :: materials
     character(nameLen),dimension(size(radii))              :: names
-    integer(shortInt)                                      :: N, i, idx, surfID
-    type(dictionary)                                       :: tempDict
-    class(surface), allocatable                            :: surf
+    integer(shortInt)                                      :: N, i, idx
     character(100), parameter :: Here = 'init (pinUniverse_class.f90)'
 
     ! Set id
@@ -351,7 +349,6 @@ contains
     class(nuclearData), intent(in)                         :: materials
     integer(shortInt)                                      :: i, fill, L
     character(nameLen)                                     :: tempName
-    logical(defBool)                                       :: isUniverse
     character(100), parameter :: Here ='makeFillVector (pinUniverse_class.f90)'
 
     ! Double check that size of radii match size of matNames

@@ -529,7 +529,6 @@ contains
     class(universeShelf), intent(in) :: self
     integer(shortInt), intent(in)    :: id
     integer(shortInt)                :: idx
-    integer(shortInt)                :: i
 
     associate( storedUniss => self % shelf(1:self % N))
       idx = linFind(storedUniss % id(), id)

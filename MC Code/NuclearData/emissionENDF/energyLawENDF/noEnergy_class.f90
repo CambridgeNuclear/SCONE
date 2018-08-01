@@ -58,9 +58,12 @@ contains
   !!
   !! Constructor
   !!
-  function new_noEnergy()
-    type(noEnergy) :: new_noEnergy
-    ! Nothing to be done
+  function new_noEnergy() result(new)
+    type(noEnergy) :: new
+    real(defReal) :: dummy
+    ! Nothing to be done Avoid compiler warning
+    return
+    dummy = new % probabilityOf(HALF,ONE)
   end function new_noEnergy
 
 

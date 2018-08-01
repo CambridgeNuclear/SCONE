@@ -55,7 +55,10 @@ contains
   !!
   function new_isotropicMu() result(new)
     type(isotropicMu):: new
-    ! Nothing to be done
+    real(defReal) :: dummy
+    ! Nothing to be done Avoid compiler warning
+    return
+    dummy = new % probabilityOf(HALF)
   end function new_isotropicMu
 
 

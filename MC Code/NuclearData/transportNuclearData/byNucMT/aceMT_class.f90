@@ -245,9 +245,7 @@ contains
     real(defReal), dimension(:), allocatable     :: xsAnyScatter
     real(defReal), dimension(:), allocatable     :: xsCapture
     real(defReal), dimension(:), allocatable     :: xsFission
-    integer(shortInt)                            :: reactionNum
     integer(shortInt)                            :: i,j, Ngrid
-    integer(shortInt)                            :: firstIdx, numIdx
     integer(shortInt), dimension(:), allocatable :: MTs
 
     if (allocated(self % energyGrid)) deallocate(self % energyGrid)

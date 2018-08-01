@@ -74,8 +74,6 @@ contains
     class(box), intent(inout)               :: self
     real(defReal), dimension(3), intent(in) :: a, origin
     integer(shortInt), intent(in)           :: id
-    integer(shortInt)                       :: i
-    real(defReal)                           :: neg
     character(100),parameter :: Here ='init( box_class.f90)'
 
     self % origin = origin
@@ -365,7 +363,6 @@ contains
   subroutine setBoundaryConditions(self, BC)
     class(box), intent(inout)                   :: self
     integer(shortInt), dimension(:), intent(in) :: BC
-    logical(defBool), dimension(3)              :: top_periodic
     character(100),parameter :: Here ='setBoundaryConditionsBox( box_class.f90)'
 
     if(size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')

@@ -119,9 +119,9 @@ contains
     integer(shortInt),dimension(:),allocatable :: BC
     integer(shortInt),dimension(:),allocatable :: defCellIDs
     type(csgTree)                              :: tree
-    type(coord)          :: testco
+    integer(shortInt)                          :: cells, trans, nesting
     character(100),parameter :: Here = 'init (csg_class.f90)'
-    integer(shortInt) :: cells, trans, nesting
+
 
     print *, repeat('<>',50)
     ! *** START GEOMETRY BUILD
@@ -337,7 +337,7 @@ contains
     character(nameLen),dimension(:),allocatable        :: keys
     type(dictionary)                                   :: tempDict
     class(universe),allocatable                        :: tempUni
-    integer(shortInt)                                  :: N, i, uniIdx, uniID
+    integer(shortInt)                                  :: N, i
 
     ! Get all cell keys and number of cells
     call uniDict % keysDict(keys)
@@ -444,7 +444,7 @@ contains
     type(uniFill),dimension(:),intent(in)      :: uniFills
     type(intMap),intent(in)                    :: fillMap
     integer(shortInt)                          :: N, i, N_out
-    integer(shortInt)                          :: outsideCell, cellID, fill, cellIdx
+    integer(shortInt)                          :: outsideCell, fill, cellIdx
     integer(shortInt),dimension(:),allocatable :: surfs
     character(100), parameter :: Here ='findBoundarySurface (csg_class.f90)'
 

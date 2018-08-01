@@ -1124,7 +1124,6 @@ contains
     integer(shortInt)              :: aceFile = 8
     character(pathLen)             :: localFilePath
     integer(shortInt)              :: i
-    character(100)                 :: debug
     character(13)                  :: skip
     character(100),parameter :: Here ='readFromFile (aceCard_class.f90)'
 

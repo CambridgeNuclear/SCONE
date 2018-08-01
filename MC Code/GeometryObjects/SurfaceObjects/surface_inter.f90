@@ -749,7 +749,6 @@ contains
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: id
     integer(shortInt)               :: idx
-    integer(shortInt)               :: i
 
     associate( storedSurf => self % shelf(1:self % N))
       idx = linFind(storedSurf % id(), id)

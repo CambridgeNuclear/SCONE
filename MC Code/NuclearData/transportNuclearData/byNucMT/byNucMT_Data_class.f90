@@ -47,8 +47,6 @@ contains
   subroutine init(self,matDict)
     class(byNucMT_Data), intent(inout)          :: self
     class(dictionary), intent(in)               :: matDict
-    integer(shortInt)                           :: nMat
-    character(nameLen),dimension(:),allocatable :: matNames
     character(pathLen)                          :: nuclideLib
 
     call self % readMaterials(matDict)
@@ -97,16 +95,16 @@ contains
   end subroutine readMaterials
 
 
-  !!
-  !! Check if the dictionary has type 'material'
-  !!
-  function isItMaterial(dict) result(isIt)
-    class(dictionary), intent(in)   :: dict
-    logical(defBool)                :: isIt
-
-    isIt = ('material' == adjustl(dict % getChar('type') ))
-
-  end function isItMaterial
+!  !!
+!  !! Check if the dictionary has type 'material'
+!  !!
+!  function isItMaterial(dict) result(isIt)
+!    class(dictionary), intent(in)   :: dict
+!    logical(defBool)                :: isIt
+!
+!    isIt = ('material' == adjustl(dict % getChar('type') ))
+!
+!  end function isItMaterial
 
   !!
   !! Remove repetitions from material definitions and create a list of all used nuclide data
@@ -227,42 +225,42 @@ contains
   end subroutine readNuclides
 
 
-  !!
-  !! Read input file and indentify maximum number of nuclides in the problem
-  !!
-  subroutine readMaxNumNuc(Input,maxNuc)
-    integer(shortInt),intent(in)      :: Input
-    integer(shortInt),intent(out)     :: maxNuc
-    character(99),parameter           :: Here='readMaxNumNuc (byNucMT_Data_class.f90)'
-    character(99)                     :: readMsg
-    integer(shortInt)                 :: numMat, numNuc, readStat, i, j
-    character(3)                      :: dummyChar
-    real(defReal)                     :: dummyReal
-
-    rewind(Input)
-
-    read(unit = Input, fmt=* , iostat = readStat, iomsg = readMsg) numMat
-    if (readStat > 0) call fatalError(Here, readMsg)
-
-    maxNuc = -1
-    do i=1,numMat
-      read(unit = Input, fmt=*, iostat=readStat, iomsg = readMsg) dummyChar, &
-                                                                  dummyReal,    &
-                                                                  numNuc
-      if (readStat > 0) call fatalError(Here, readMsg)
-      if (numNuc <= 0)  call fatalError(Here,'Number of Material Nuclides is 0 or -ve')
-      maxNuc=max(maxNuc,numNuc)
-
-      ! Skip lines to get to next material header
-      do j=1,numNuc
-        read(Input,*) dummyChar, dummyReal
-      end do
-
-    end do
-
-    rewind(Input)
-
-  end subroutine readMaxNumNuc
+!  !!
+!  !! Read input file and indentify maximum number of nuclides in the problem
+!  !!
+!  subroutine readMaxNumNuc(Input,maxNuc)
+!    integer(shortInt),intent(in)      :: Input
+!    integer(shortInt),intent(out)     :: maxNuc
+!    character(99),parameter           :: Here='readMaxNumNuc (byNucMT_Data_class.f90)'
+!    character(99)                     :: readMsg
+!    integer(shortInt)                 :: numMat, numNuc, readStat, i, j
+!    character(3)                      :: dummyChar
+!    real(defReal)                     :: dummyReal
+!
+!    rewind(Input)
+!
+!    read(unit = Input, fmt=* , iostat = readStat, iomsg = readMsg) numMat
+!    if (readStat > 0) call fatalError(Here, readMsg)
+!
+!    maxNuc = -1
+!    do i=1,numMat
+!      read(unit = Input, fmt=*, iostat=readStat, iomsg = readMsg) dummyChar, &
+!                                                                  dummyReal,    &
+!                                                                  numNuc
+!      if (readStat > 0) call fatalError(Here, readMsg)
+!      if (numNuc <= 0)  call fatalError(Here,'Number of Material Nuclides is 0 or -ve')
+!      maxNuc=max(maxNuc,numNuc)
+!
+!      ! Skip lines to get to next material header
+!      do j=1,numNuc
+!        read(Input,*) dummyChar, dummyReal
+!      end do
+!
+!    end do
+!
+!    rewind(Input)
+!
+!  end subroutine readMaxNumNuc
 
   !!
   !! Set isFissile flag in materials containing fissile nuclides to .true.

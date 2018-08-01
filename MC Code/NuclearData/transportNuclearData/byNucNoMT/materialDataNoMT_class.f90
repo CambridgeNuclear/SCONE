@@ -35,18 +35,10 @@ contains
     class(materialDataNoMT), intent(inout)      :: self
     class(dictionary), intent(in)               :: dict
     character(*),intent(in)                     :: name
-    logical(defBool)                            :: isNotMaterial
     integer(shortInt)                           :: i
     real(defReal)                               :: temp
     character(nameLen),dimension(:),allocatable :: nucKeys
     character(100), parameter                   :: Here ='init (materialDataNoMT_class.f90)'
-
-    ! Verify that provided dictionary contains material
-    ! isNotMaterial = ('material' /= adjustl(dict % getChar('type') ))
-    ! if (isNotMaterial) then
-    !  call fatalError(Here,'Provided Dictionery is not a "material" it is: ' // dict % getChar('type') )
-    !
-    !end if
 
     ! Read required data
     self % name = name
@@ -80,7 +72,6 @@ contains
         character(*),dimension(:),allocatable, intent(inout) :: keys
         character(len(keys)), dimension(:), allocatable      :: tempKeys
         logical(defBool),dimension(:),allocatable            :: mask
-        integer(shortInt) :: i
 
         ! Create mask array
         mask = isZZid(keys)
@@ -159,6 +150,9 @@ contains
 
   end subroutine setNumberOfNuc
 
+  !!
+  !! Prints contents to the console
+  !!
   subroutine printMe(self)
     class(materialDataNoMT), intent(in) :: self
     character(100)                      :: format1, format2, line
@@ -166,7 +160,7 @@ contains
 
     format1 = '(100G20.10)'
     format2 = '(A100)'
-    line = repeat('<>',100)
+    line = repeat('<>',50)
 
 
     print format2, line
