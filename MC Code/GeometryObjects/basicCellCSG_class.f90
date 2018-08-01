@@ -129,9 +129,25 @@ contains
   function bounds(self)
     class(basicCellCSG), intent(in) :: self
     real(defReal),dimension(6)      :: bounds
-    character(100), parameter :: Here ='bounds (basicCellCSG_class.f90)'
+    real(defReal),dimension(3)      :: origin
+    real(defReal),dimension(3)      :: halfwidth
+    integer(shortInt)               :: i
+    !character(100), parameter :: Here ='bounds (basicCellCSG_class.f90)'
 
-    call fatalError(Here,'Bounds are not yet implemented. Need to modify surfaces to provide them')
+    ! Get origin and halfwidths of Axis Aligned Bunding Box around domain
+    call self % geom % sShelf % shelf( self % geom % boundaryIdx) % boundingBox(origin, halfwidth)
+
+    where (halfwidth == INFINITY .and. origin == ZERO)
+      halfwidth = ZERO
+    end where
+
+    do i=1,3
+      bounds(2*(i-1) +1) = origin(1) - halfwidth(i)
+      bounds(2*(i-1) +2) = origin(1) + halfwidth(i)
+    end do
+
+
+    !call fatalError(Here,'Bounds are not yet implemented. Need to modify surfaces to provide them')
 
   end function bounds
 
@@ -145,6 +161,7 @@ contains
   !! -> dir  = {"x","y","z"} specifies direction of the plot
   !! -> centre allows to set offset of a plane
   !! -> width sets well... width in each direction of the plane width(1) is either x or y
+  !! -> If width is not set centre is moved to the middle of geometry (except for offset)
   !!
   subroutine slicePlot(self, colorMat, centre, dir, what, width)
     class(basicCellCSG), intent(in)                  :: self
@@ -153,42 +170,62 @@ contains
     character(1), intent(in)                         :: dir
     character(*), intent(in)                         :: what
     real(defReal), dimension(2), optional,intent(in) :: width
+    real(defReal), dimension(2)                      :: width_L
+    real(defReal),dimension(3)                       :: aabb_o, aabb_a
+    real(defReal),dimension(3)                       :: centre_L
+    integer(shortInt),dimension(2)                   :: perp_dir
     real(defReal)                                    :: step1, step2
     real(defReal),dimension(3)                       :: x0, inc1, inc2, point
     integer(shortInt)                                :: i,j, flag, matIdx, uniqueId
     character(100),parameter :: Here = 'slicePlot (basicCellCSG_Class.f90)'
 
-    ! Check that width was provided
-    if (.not.present(width)) then
-      call fatalError(Here,'Sorry but width must be provided before surfaces return their bounds')
-    end if
-
-    ! Calculate step in direction 1 & 2
-    step1 = width(1) / size(colorMat,1)
-    step2 = width(2) / size(colorMat,2)
-
     ! Depending on perpendicular direction set increment direction 1 & 2
+    ! Also set indexes of perpendicular directions
     inc1 = ZERO
     inc2 = ZERO
     select case(dir)
       case('x')
         inc1(2) = ONE  ! Set inc1 to y-axis
         inc2(3) = ONE  ! Set inc2 to z-axis
+        perp_dir = [2,3]
 
       case('y')
         inc1(1) = ONE  ! Set inc1 to x-axis
         inc2(3) = ONE  ! Set inc2 to z-axis
+        perp_dir = [1,3]
 
       case('z')
         inc1(1) = ONE  ! Set inc1 to x-axis
         inc2(2) = ONE  ! Set inc2 to y-axis
+        perp_dir = [1,2]
 
       case default
         call fatalError(Here,'Unrecognised perpendicular ridection code: '//dir)
     end select
 
+    ! Check if width was provided
+    if (present(width)) then
+      ! Copy width into local copy
+      width_L  = width
+      centre_L = centre
+
+    else
+      ! Get origin and halfwidths of Axis Aligned Bunding Box around domain
+      call self % geom % sShelf % shelf( self % geom % boundaryIdx) % boundingBox(aabb_o, aabb_a)
+
+      ! Select width and new centre of the plot
+      width_L = 2*aabb_a(perp_dir)
+      centre_L = centre
+      centre_L(perp_dir) = aabb_o(perp_dir)
+
+    end if
+
+    ! Calculate step in direction 1 & 2
+    step1 = width_L(1) / size(colorMat,1)
+    step2 = width_L(2) / size(colorMat,2)
+
     ! Calculate corner
-    x0 = centre - inc1 * (width(1) + step1)/2 - inc2 * (width(2) + step2)/2
+    x0 = centre_L - inc1 * (width_L(1) + step1)/2 - inc2 * (width_L(2) + step2)/2
 
     ! Choose to print uniqueID or matIdx
     select case(what)
@@ -236,6 +273,8 @@ contains
     character(*),intent(in)                          :: what
     real(defReal),dimension(3),intent(in)            :: center
     real(defReal),dimension(3),optional,intent(in)   :: width
+    real(defReal),dimension(3)                       :: width_L
+    real(defReal),dimension(3)                       :: center_L
     real(defReal)                                    :: stepZ, z0
     real(defReal),dimension(3)                       :: point
     real(defReal),dimension(2)                       :: width_bar
@@ -243,21 +282,27 @@ contains
     character(100),parameter :: Here = 'voxelPlot ( basicCellCSG_class.f90)'
 
     ! Check that width was provided
-    if (.not.present(width)) then
+    if (present(width)) then
+      width_L  = width
+      center_L = center
+    else
+      ! Get origin and halfwidths of Axis Aligned Bunding Box around domain
+      call self % geom % sShelf % shelf( self % geom % boundaryIdx) % boundingBox(center_L, width_L)
+
       call fatalError(Here,'Sorry but width must be provided before surfaces return their bounds')
     end if
 
     ! Calculate step in z direction
-    stepZ = width(3) / size(voxelMat,3)
+    stepZ = width_L(3) / size(voxelMat,3)
 
     ! Calculate starting z
-    z0 = center(3) - (width(3) + stepZ)/TWO
+    z0 = center_L(3) - (width_L(3) + stepZ)/TWO
 
     ! Construct voxel plot from multiple slice plots
-    point = center
+    point = center_L
     do i=1,size(voxelMat,3)
       point(3) = z0 + stepZ
-      call self % slicePlot(voxelMat(:,:,i), point, 'z', what, width(1:2) )
+      call self % slicePlot(voxelMat(:,:,i), point, 'z', what, width_L(1:2) )
 
     end do
 

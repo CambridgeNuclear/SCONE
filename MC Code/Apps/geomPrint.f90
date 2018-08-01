@@ -26,7 +26,7 @@ program geomPrint
 
   !*** SLICE PLOT
   allocate(colorMat(1500,1500))
-  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','material',[2.1_8,2.1_8])
+  call geom % slicePlot(colorMat,[0.5_8, 0.3_8, ZERO],'z','uniqueID')
 
   ! Print matrix to MATLAB Pcolor
 
