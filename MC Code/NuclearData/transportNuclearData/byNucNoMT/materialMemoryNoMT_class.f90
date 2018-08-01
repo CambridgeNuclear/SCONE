@@ -295,7 +295,7 @@ contains
   subroutine checkZZids(self)
     class(materialMemoryNoMT), intent(in) :: self
     logical(defBool)                      :: isNotInitialised
-    character(zzIdLen)                    :: zzFromHere, zzFromNuc
+    character(nameLen)                    :: zzFromHere, zzFromNuc
     integer(shortInt)                     :: nucIdx, i
     character(100), parameter             :: Here='checkZZids (materialMemoryNoMT_class.f90)'
 

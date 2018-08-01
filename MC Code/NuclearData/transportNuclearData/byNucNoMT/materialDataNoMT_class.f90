@@ -13,13 +13,13 @@ module materialDataNoMT_class
   !! Should not be modified or used outside byNucNoMT
   !!
   type, public :: materialDataNoMT
-    character(matNameLen)                       :: name     !! Material name
+    character(nameLen)                          :: name     !! Material name
     real(defReal)                               :: temp     !! Material temperature [K]
     integer(shortInt)                           :: numNuc   !! Number of nuclides in material
     logical(defBool)                            :: isFissile =.false. !! True is contains fissile nuclides
     integer(shortInt),dimension(:),allocatable  :: nucIdx   !! Index Ids of Nuclides
     real(defReal),dimension(:),allocatable      :: nucDens  !! Nuclide densities 1/barn*cm
-    character(ZZidLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
+    character(nameLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
   contains
     procedure :: init
     procedure :: setNumberOfNuc

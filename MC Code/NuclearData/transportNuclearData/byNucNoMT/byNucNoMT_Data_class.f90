@@ -23,7 +23,7 @@ module byNucNoMT_Data_class
     type(materialDataNoMT),dimension(:),pointer :: matData     => null()
 
     ! Isotope Data
-    character(zzIdLen),dimension(:),pointer    :: nucNames    => null()
+    character(nameLen),dimension(:),pointer    :: nucNames    => null()
     type(aceNoMT),dimension(:), pointer        :: nucXsData   => null()
 
   contains
@@ -139,8 +139,8 @@ contains
     character(99),parameter          :: here='readFrom in byNucNoMT_Data_class.f03'
     character(99)                    :: readMsg
 
-    character(matNameLen)            :: matName
-    character(ZZidLen)               :: ZZid
+    character(nameLen)               :: matName
+    character(nameLen)               :: ZZid
     integer(shortInt)                :: numMat, numNuc, maxNuc
     real(defReal)                    :: temp, numDen
     integer(shortInt)                :: i, j, readStat
@@ -208,8 +208,8 @@ contains
   subroutine createNuclideList(self)
     class(byNucNoMT_Data),intent(inout)           :: self
     integer(shortInt)                             :: maxNucNames
-    character(zzIdLen),dimension(:),allocatable   :: withRepetition
-    character(zzIdLen),dimension(:),allocatable   :: noRepetition
+    character(nameLen),dimension(:),allocatable   :: withRepetition
+    character(nameLen),dimension(:),allocatable   :: noRepetition
     integer(shortInt)                             :: i,j
 
     maxNucNames=sum(self % matData(:) % numNuc)
@@ -256,12 +256,12 @@ contains
     character(*),intent(in)                      :: libraryPath
     integer(shortInt),parameter                  :: library=78
     character(99)                                :: readMsg
-    character(zzIdLen),dimension(:),allocatable  :: zzIDs
+    character(nameLen),dimension(:),allocatable  :: zzIDs
     integer(shortInt),dimension(:),allocatable   :: startLine
     character(pathLen),dimension(:),allocatable  :: nucPath
     integer(shortInt)                            :: i, j, readStat
     integer(shortInt)                            :: libLen
-    character(zzIDLen)                           :: currentZZId, &
+    character(nameLen)                           :: currentZZId, &
                                                     pastZZId
     call openToRead(library,libraryPath)
 
@@ -374,8 +374,6 @@ contains
     end do
 
   end subroutine setFissileMaterials
-
-
 
   !!
   !! Print data about all materials to the console

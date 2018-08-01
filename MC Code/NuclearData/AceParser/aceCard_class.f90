@@ -68,7 +68,7 @@ module aceCard_class
     private
 
     ! Public Components
-    character(zzIdLen),public :: ZAID = ''   ! 10 character name ZZZAAA.nnC
+    character(nameLen),public :: ZAID = ''   ! 10 character name ZZZAAA.nnC
     real(defReal),public      :: AW   = -ONE ! Atomic weight ratio. Atomic weight divided by the neutron mass
     real(defReal),public      :: TZ   = -ONE ! Temperature at thich data were processed [MeV]
     character(10),public      :: HD   = ' '  ! 10 character date when data wre processed

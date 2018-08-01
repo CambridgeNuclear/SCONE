@@ -300,6 +300,7 @@ contains
 
     ! Obtain random numbers
     r1 = p % pRNG % get()
+    matIdx = p % matIdx()
 
     ! Choose fission Nuclide -> fissile nuclide with the largest numerical density
     associate (materialDat => self % dataBlock % matData(matIdx))
