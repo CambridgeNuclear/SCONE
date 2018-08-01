@@ -28,4 +28,8 @@ module universalVariables
                                   reflective = 1, &
                                   periodic = 2
 
+  ! Physical constants
+  real(defReal), parameter :: neutronMass = 939.5654133, &   ! Neutron mass in MeV/c^2
+                              lightSpeed  = 2.99792458e10, & ! Light speed in cm/s
+
 end module universalVariables

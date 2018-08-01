@@ -20,6 +20,7 @@ module particle_class
     real(defReal)              :: E    = 0.0     ! Energy
     integer(shortInt)          :: G    = 0       ! Energy group
     logical(defBool)           :: isMG = .false. ! Is neutron multi-group
+    real(defReal)              :: time = 0.0     ! Particle time position
   contains
     generic    :: assignment(=) => phaseCoord_fromParticle
     procedure  :: display => display_phaseCoord
@@ -42,6 +43,9 @@ module particle_class
     integer(shortInt)          :: regionID
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
+    real(defReal)              :: time      ! Particle time point
+    real(defReal)              :: timeMax   ! Maximum neutron time before cut-off
+    integer(shortInt)          :: fate = 0  ! Neutron's fate after being subjected to an operator
   contains
     !! Public Interface
     generic              :: build => buildCE, buildMG
@@ -289,6 +293,7 @@ contains
     LHS % E    = RHS % E
     LHS % G    = RHS % G
     LHS % isMG = RHS % isMG
+    LHS % time = RHS % time
 
   end subroutine phaseCoord_fromParticle
 
