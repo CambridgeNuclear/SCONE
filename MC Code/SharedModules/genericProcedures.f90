@@ -830,7 +830,7 @@ module genericProcedures
     integer(shortInt)                              :: pivot
     integer(shortInt)                              :: i, maxSmall
 
-    if (size(array) > 0 ) then
+    if (size(array) > 1 ) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
@@ -859,7 +859,7 @@ module genericProcedures
     real(defReal), dimension(:), intent(inout) :: array
     integer(shortInt)                          :: i, maxSmall, pivot
 
-    if (size(array) > 0 ) then
+    if (size(array) > 1 ) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
@@ -888,10 +888,11 @@ module genericProcedures
   elemental subroutine swap_shortInt(i1,i2)
     integer(shortInt), intent(inout) :: i1
     integer(shortInt), intent(inout) :: i2
+    integer(shortInt)                :: temp
 
-    i1 = IEOR(i1,i2)
-    i2 = IEOR(i1,i2)
-    i1 = IEOR(i1,i2)
+    temp = i1
+    i1 = i2
+    i2 = temp
 
   end subroutine swap_shortInt
 

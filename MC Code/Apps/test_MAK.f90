@@ -18,70 +18,149 @@ program test
   use basicCellCSG_class, only : basicCellCSG
   use IOdictionary_class, only : IOdictionary
   use datalessMaterials_class, only : datalessMaterials
+  use latUniverse_class,  only : latUniverse
 
   implicit none
+  type(cellShelf)    :: cSHelf
+  type(surfaceShelf) :: sSHelf
+  type(latUniverse)  :: lUni
+  type(coord) :: coords
+  real(defReal) :: dist
+  integer(shortInt) :: surfIdx
+
+  call cShelf % init(5)
+  call sShelf % init(5)
+  call lUni % init([ZERO, ZERO], 1, [1.0_8, 1.0_8], [2,2],sShelf, cShelf)
 
 
 
-  type(basicCellCSG) :: geom
-  type(datalessMaterials) :: nucData
-  type(IOdictionary) :: geomData
-  integer(shortInt)      :: i, file
-  integer(shortInt),dimension(:,:),allocatable :: colorMat
-  real(defReal),dimension(3)     :: u
-  type(coordList)         :: coords
+  !coords % r = [1.0000000000000000_8,0.46949786724748671_8,2.5995410581742573_8]
+  !coords % dir =[-0.85680983930871757_8, -4.4530903955338173E-002_8, 0.51370604226219707_8]
 
-  call nucData % init(['uo2  ','water'])
+  !coords % r =[0.42524463481721542_8, 0.44624350795579298_8,2.4052121488106071_8]
+  !coords % dir = [-4.9280758631338455E-002_8,  0.69528162797343607_8, -0.71704592923419352_8]
 
-  call geomData  % initFrom('./InputFiles/pinCell5.txt')
+  coords % r =[0.0000000000000000_8,-4.6679592846875839E-002_8,2.5356872951500131_8]
+  coords % dir=[0.69212836788662557_8,0.49681567512931618_8,0.52357664893728573_8]
 
-  call geom % init(geomData, nucData)
+  call lUni % enter(coords, cShelf,sShelf)
+
+  call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
+  call coords % display()
+  print *, "DIST: ", dist, surfIDx
+
+  coords % r = coords % r + coords % dir * 9.3957568538322572E-002_8
+
+  call coords % display()
+  call lUni % cross(coords,surfIdx, cShelf,sShelf)
+
+  call coords % display()
+
+  stop
+
+  print *, "+ve X TRAVERS"
+
+  coords % r = [-1.0_8, -0.5_8, ZERO]
+  coords % dir = [1.0_8, ZERO, ZERO]
+  call lUni % enter(coords, cShelf,sShelf)
+
+  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
+
+  call coords % display()
+  coords % r = coords % r + coords % dir * 1.0_8
+
+  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
 
 
-  ! Initialise coordinates
-  u =[ONE, ZERO, ZERO]
-  u = u / norm2(u)
 
-  call coords % init([ZERO, -0.56_8, ZERO], u)
-  call geom % placeCoord(coords)
+  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+  call coords % display()
 
-  !call geom % move(coords, 1.0_8)
-  !call geom % teleport(coords, 3.9_8)
-  call geom % moveGlobal(coords, 3.9_8)
+  coords % r = coords % r + coords % dir * 1.0_8
 
-  print *, "MAT IDX:", coords % matIDx, "NESTING:", coords % nesting
+  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+  call coords % display()
 
-  do i=1,5
-    print *, "LEVEL: ", numToChar(i), " ", coords % lvl(i) % r, coords % lvl(i) % dir
-    print *, "UniIdx: ", coords % lvl(i) % uniIdx, "CellIdx:", coords % lvl(i) % cellIdx , "localID:", coords % lvl(i) % localID
-  end do
+  print *, "-ve X TRAVERS"
+
+  coords % r = [1.0_8, -0.5_8, ZERO]
+  coords % dir = [-1.0_8, ZERO, ZERO]
+  call lUni % enter(coords, cShelf,sShelf)
+  call lUni % distance(dist,surfIdx,coords, cShelf,sShelf)
+
+  call coords % display()
+  coords % r = coords % r + coords % dir * 1.0_8
+
+  print *, "DIST: ", dist, "SURFIDX: ", surfIdx
+
+  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+  call coords % display()
+
+  coords % r = coords % r + coords % dir * 1.0_8
+
+  call lUni % cross(coords, surfIdx, cShelf, sShelf)
+  call coords % display()
 
 
-
-
-
-
-
-  !stop
-  !*** SLICE PLOT
-  allocate(colorMat(1500,1500))
-  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','material',[2.1_8,2.1_8])
-
-  ! Print matrix to MATLAB Pcolor
-
-  file = 7
-  open(file, file='picture.m', action = 'write')
-
-  write(file,*) "a = ["
-  do i=1,size(colorMat,2)-1
-     write(file,*) colorMat(:,i), ';'
-
-  end do
-  write(file,*) colorMat(:,i), '];'
-  write(file,*) "figure"
-  write(file,*) "h = pcolor(a)"
-  write(file,*) "set(h,'EdgeColor','none')"
-  write(file,*) "colorbar"
+!  type(basicCellCSG) :: geom
+!  type(datalessMaterials) :: nucData
+!  type(IOdictionary) :: geomData
+!  integer(shortInt)      :: i, file
+!  integer(shortInt),dimension(:,:),allocatable :: colorMat
+!  real(defReal),dimension(3)     :: u
+!  type(coordList)         :: coords
+!
+!  call nucData % init(['uo2  ','water'])
+!
+!  call geomData  % initFrom('./InputFiles/pinCell5.txt')
+!
+!  call geom % init(geomData, nucData)
+!
+!  print *, tiny(u)
+!  ! Initialise coordinates
+!  u =[ONE, ZERO, ZERO]
+!  u = u / norm2(u)
+!
+!  call coords % init([ZERO, -0.56_8, ZERO], u)
+!  call geom % placeCoord(coords)
+!
+!  !call geom % move(coords, 1.0_8)
+!  !call geom % teleport(coords, 3.9_8)
+!  call geom % moveGlobal(coords, 3.9_8)
+!
+!  print *, "MAT IDX:", coords % matIDx, "NESTING:", coords % nesting
+!
+!  do i=1,5
+!    print *, "LEVEL: ", numToChar(i), " ", coords % lvl(i) % r, coords % lvl(i) % dir
+!    print *, "UniIdx: ", coords % lvl(i) % uniIdx, "CellIdx:", coords % lvl(i) % cellIdx , "localID:", coords % lvl(i) % localID
+!  end do
+!
+!
+!
+!
+!
+!
+!
+!  !stop
+!  !*** SLICE PLOT
+!  allocate(colorMat(1500,1500))
+!  call geom % slicePlot(colorMat,[ZERO, ZERO, ZERO],'z','material',[2.1_8,2.1_8])
+!
+!  ! Print matrix to MATLAB Pcolor
+!
+!  file = 7
+!  open(file, file='picture.m', action = 'write')
+!
+!  write(file,*) "a = ["
+!  do i=1,size(colorMat,2)-1
+!     write(file,*) colorMat(:,i), ';'
+!
+!  end do
+!  write(file,*) colorMat(:,i), '];'
+!  write(file,*) "figure"
+!  write(file,*) "h = pcolor(a)"
+!  write(file,*) "set(h,'EdgeColor','none')"
+!  write(file,*) "colorbar"
 
 !  type(vector)               :: r, u
 !  real(defReal)              :: dist

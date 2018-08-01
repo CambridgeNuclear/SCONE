@@ -21,6 +21,7 @@ module basicCellCSG_class
   !! Parameter for tracking recovery options
   integer(shortInt), parameter :: RECOVER = 0
 
+  integer(shortInt) :: CLOCK =0
 
   !!
   !! Implementation of the cell geometry model using CSG representation of geometry
@@ -269,7 +270,7 @@ contains
   !! If during motion boundary is crossed transformations are applied and particle is stopped
   !! If particle is stopped at the trip surface tripFlag is set to .true.
   !! If particle stoped at the collision isColl is set to .true.
-
+  !!
   !! NOTE:
   !!  -> if coords is not placed in the geometry behaviour is unspecified
   !!  -> if maxDist < 0.0 behaviour is unspecified
@@ -310,6 +311,7 @@ contains
 
       call self % geom % sShelf % shelf(surfIdx) % boundaryTransform(r, u)
 
+
       coords % lvl(1) % r   = r % v
       coords % lvl(1) % dir = u % v
 
@@ -332,9 +334,7 @@ contains
         call self % diveToMat(coords,level)
 
       end associate
-
     end if
-
   end subroutine move
 
   !!
@@ -471,11 +471,13 @@ contains
                                                    g % sShelf     )
 
         ! Save distance, surfIdx & level coresponding to shortest distance
-        if (testDist < dist) then
+        ! Note that we need to account for floating point error
+        if ((dist - testDist)/dist >= FP_REL_TOL) then
           dist    = testDist
           surfIdx = sIdxTest
           level   = l
         end if
+
       end do
     end associate
   end subroutine closestDist
@@ -520,6 +522,7 @@ contains
           call g % uShelf % shelf(fill)% enter( coords % lvl(i+1), g % cShelf, g % sShelf)
 
         end if
+
       end do
 
       call fatalError(Here,'Material cell was not found')

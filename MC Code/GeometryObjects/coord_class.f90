@@ -1,7 +1,7 @@
 module coord_class
   use numPrecision
   use universalVariables
-  use genericProcedures, only : rotateVector, fatalError
+  use genericProcedures, only : rotateVector, fatalError, numToChar
 
   implicit none
   private
@@ -24,6 +24,7 @@ module coord_class
     integer(shortInt)           :: cellIdx   = 0       ! Index of a cell definition occupied
   contains
     procedure :: isValid => isValid_coord
+    procedure :: display => display_coord
   end type coord
 
   !!
@@ -85,6 +86,18 @@ contains
     correct = correct .and. self % cellIdx > 0
 
   end function isValid_coord
+
+  !!
+  !! Print to screen contents of the coord
+  !!
+  subroutine display_coord(self)
+    class(coord), intent(in) :: self
+
+    print *, "R: ", self % r, " U: ", self % dir
+    print *, "UniIDx: ", numToChar(self % uniIDx), " LocalID: ", numToChar(self % localID)
+
+  end subroutine display_coord
+
 
   !!
   !! Initialise coordList.
