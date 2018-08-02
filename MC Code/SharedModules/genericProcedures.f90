@@ -920,11 +920,26 @@ module genericProcedures
 
   end subroutine swap_char_nameLen
 
+  pure function charCshift(string,N) result(shifted)
+    character(*), intent(in)      :: string
+    integer(shortInt), intent(in) :: N
+    character(len(string))        :: shifted
+    integer(shortInt)             :: i, i_swap
+    character(1)                  :: temp
+
+    ! Loop over character and copy character with an offset
+    do i=1,len(string)
+      i_swap = modulo(i+N-1,len(string))+1
+      shifted(i_swap:i_swap) = string(i:i)
+    end do
+
+  end function charCShift
+
   !!
   !! Prints Scone ACII Header
   !!
   subroutine printStart()
-
+    print *, repeat(" ><((((*> ",10)
     print *, repeat(" ><((((*> ",10)
     print *, ''
     print * ,"        _____ __________  _   ________  "
@@ -940,5 +955,30 @@ module genericProcedures
     ! TODO: Add extra info like date & time
 
   end subroutine printStart
+
+  !!
+  !! Prints line of fishes swiming right with an offset
+  !!
+  subroutine printFishLineR(offset)
+    integer(shortInt),intent(in) :: offset
+    integer(shortInt)            :: offset_L
+    character(100), parameter    :: line = repeat(" ><((((*> ",10)
+    character(100),dimension(10), parameter :: lines = [ &
+    " ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*> " ,&
+    "  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>" ,&
+    ">  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*" ,&
+    "*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((" ,&
+    "(*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(((" ,&
+    "((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((" ,&
+    "(((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(" ,&
+    "((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><" ,&
+    "<((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  >" ,&
+    "><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  " ]
+
+    offset_L = modulo(offset,10)
+
+    print *, lines(offset_L+1)
+
+  end subroutine  printFishLineR
 
 end module genericProcedures

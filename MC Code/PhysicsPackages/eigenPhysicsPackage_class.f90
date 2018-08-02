@@ -2,7 +2,7 @@ module eigenPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,             only : fatalError
+  use genericProcedures,             only : fatalError, printFishLineR
   use dictionary_class,              only : dictionary
 
   ! Particle classes and Random number generator
@@ -14,6 +14,9 @@ module eigenPhysicsPackage_class
   use cellGeometry_inter,            only : cellGeometry
   use basicCellCSG_class,            only : basicCellCSG !** Provisional
   use nuclearData_inter,             only : nuclearData
+  use transportNuclearData_inter,    only : transportNuclearData
+  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
+  use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Operators
   use collisionOperatorBase_inter,   only : collisionOperatorBase
@@ -147,8 +150,11 @@ contains
       self % nextCycle % k_eff = k_new
 
       ! Display progress
+      call printFishLineR(i)
+      print *
       print *, 'Cycle: ', i, ' of ', self % N_inactive,' Pop: ', Nstart, ' -> ',Nend
       call self % inactiveTally % display()
+      print *
     end do
 
   end subroutine inactiveCycles
@@ -224,33 +230,91 @@ contains
       self % nextCycle % k_eff = k_new
 
       ! Display progress
+      call printFishLineR(i)
+      print *
       print *, 'Cycle: ', i, ' of ', self % N_active,' Pop: ', Nstart, ' -> ',Nend
       call self % activeTally % display()
+      print *
+
     end do
   end subroutine activeCycles
 
   subroutine generateInitialState(self)
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    integer(shortInt)                         :: i
+    integer(shortInt)                         :: i, matIdx, dummy
+    real(defReal),dimension(6)                :: bounds
+    real(defReal),dimension(3)                :: top, bottom
+    real(defReal),dimension(3)                :: r
+    real(defReal),dimension(3)                :: rand
+    character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
 
+    ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
 
     call self % thisCycle % init(3*self % pop)
     call self % nextCycle % init(3*self % pop)
 
-     do i=1,self % pop
-      neutron % E      = 0.5
-      !neutron % G      = 1
-      call neutron % teleport([0.1_8, 0.1_8, 0.1_8])
-      call neutron % point([1.0_8, 0.0_8, 0.0_8])
-      neutron % w      = 1.0
-      neutron % isDead = .false.
-      neutron % isMG   = .false.
-      call self % thisCycle % detain(neutron)
-    end do
+    ! Obtain bounds of the geometry
+    bounds = self % geom % bounds()
 
+    bottom = bounds([1,3,5])
+    top    = bounds([2,4,6])
+
+
+    ! Set flag of MG particle depending on the data
+    !*** THIS IS CUMBERSOME AND NEEDS TO BE CORRECTED IN NEW NUCLEAR DATA INTERFACES
+    associate( nucData => self % nucData)
+      select type(nucData)
+        class is( perNuclideNuclearDataCE)
+          neutron % isMG = .false.
+
+        class is( perMaterialNuclearDataMG)
+          neutron % isMG = .true.
+
+        class default
+          call fatalError(Here,' Nuclear data does not support eigenvalue calculations')
+
+      end select
+    end associate
+
+    ! This is horrible. REPAIR IT
+    associate( nucData => self % nucData)
+    select type(nucData)
+    class is(transportNuclearData)
+    i = 0
+    neutron % pRNG => self % pRNG
+    do while (i <= self % pop)
+      ! Sample position
+      rand(1) = neutron % pRNG % get()
+      rand(2) = neutron % pRNG % get()
+      rand(3) = neutron % pRNG % get()
+
+      r = (top - bottom) * rand + bottom
+
+      ! Find material under postision
+      call self % geom % whatIsAt(r,matIdx,dummy)
+
+      ! Resample position if material is not fissile
+      if( .not. nucData % isFissileMat(matIdx)) cycle
+
+      ! Set neutron position weight and direction
+      ! Be crefull to assign matIdx anfter teleport as teleport removes matIdx!
+      call neutron % point( [ONE, ZERO, ZERO])
+      neutron % w = 1.0
+      call neutron % teleport(r)
+      neutron % coords % matIdx = matIdx
+
+      ! Generate and store fission site
+      call nucData % initFissionSite(neutron)
+      call self % thisCycle % detain(neutron)
+
+      ! Update iterator
+      i = i +1
+    end do
+    end select
+    end associate
 
   end subroutine generateInitialState
 
@@ -299,7 +363,5 @@ contains
     !call self % pRNG % init(5764746_8)
 
   end subroutine init
-
-
     
 end module eigenPhysicsPackage_class

@@ -44,7 +44,7 @@ program test
 
   do i = 1,5
     call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
-    print *,
+    print *
     print *, "DIST: ", dist, surfIDx
     ! Move
     coords % r = coords % r + coords % dir * dist
