@@ -4,7 +4,7 @@
 module transportOperatorDynamicDT_class
   use numPrecision
   use universalVariables
-  use tallyCodes                  only : leak_FATE, aged_FATE
+  use tallyCodes,                 only : leak_FATE, aged_FATE
 
   use genericProcedures,          only : fatalError
   use particle_class,             only : particle
@@ -71,12 +71,12 @@ contains
 
     majorant = self % nuclearData % getMajorantXS(p)
     tmax = p % timeMax
+    speed = lightSpeed * sqrt(TWO * p % E / neutronMass)
 
     DTLoop:do
       distance = -log(p%pRNG%get())/majorant
 
       ! Calculate particle flight time
-      speed = lightSpeed * sqrt(TWO * p % E / neutronMass)
       flightTime = distance / speed
 
       ! Does particle cross time boundary?

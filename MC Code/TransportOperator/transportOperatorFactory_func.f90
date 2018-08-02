@@ -12,9 +12,10 @@ module transportOperatorFactory_func
   use geometry_class,    only : geometry
 
   ! Transport Operators
-  use transportOperator_inter,   only : transportOperator
-  use transportOperatorST_class, only : transportOperatorST
-  use transportOperatorDT_class, only : transportOperatorDT
+  use transportOperator_inter,          only : transportOperator
+  use transportOperatorST_class,        only : transportOperatorST
+  use transportOperatorDT_class,        only : transportOperatorDT
+  use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
   implicit none
   private
@@ -25,7 +26,8 @@ module transportOperatorFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST', &
-                                                                         'transportOperatorDT']
+                                                                         'transportOperatorDT', &
+                                                                         'dynamicTranspOperDT']
 
   public :: new_transportOperator_ptr
 
@@ -53,6 +55,11 @@ contains
       case('transportOperatorDT')
         ! Allocate and initialise
         allocate( transportOperatorDT :: new)
+        call new % init(nucData, geom, dict)
+
+      case('dynamicTranspOperDT')
+        ! Allocate and initialise
+        allocate( transportOperatorDynamicDT :: new)
         call new % init(nucData, geom, dict)
 
       case default
