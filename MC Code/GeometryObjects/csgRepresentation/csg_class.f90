@@ -109,7 +109,7 @@ contains
   !!
   subroutine init(self,dict, materials)
     class(csg), intent(inout)                  :: self
-    class(dictionary), intent(inout)           :: dict
+    class(dictionary), intent(in)              :: dict
     class(nuclearData), intent(in)             :: materials
     type(dictionary)                           :: surfDict
     type(dictionary)                           :: cellDict

@@ -57,7 +57,7 @@ contains
   !!
   subroutine init(self,dict, materials)
     class(basicCellCSG), intent(inout) :: self
-    class(dictionary), intent(inout)   :: dict
+    class(dictionary), intent(in)      :: dict
     class(nuclearData), intent(in)     :: materials
 
     call self % geom % init(dict, materials)

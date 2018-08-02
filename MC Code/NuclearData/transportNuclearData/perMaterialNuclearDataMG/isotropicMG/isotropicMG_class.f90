@@ -2,6 +2,7 @@ module isotropicMG_class
 
   use numPrecision
   use endfConstants
+  use universalVariables
   use genericProcedures,              only : fatalError, linFind, searchError
   use dictionary_class,               only : dictionary
   use IOdictionary_class,             only : IOdictionary
@@ -196,32 +197,54 @@ contains
     integer(shortInt), intent(in)   :: matIdx
     logical(defBool)                :: isIt
 
-    isIt = self % matData(matIdx) % isFissile
+    select case(matIdx)
+      case(OUTSIDE_MAT)
+        isIT = .false.
 
+      case(VOID_MAT)
+        isIt = .false.
+
+      case default
+        isIt = self % matData(matIdx) % isFissile
+    end select
   end function isFissileMat
 
   !!
   !! Procedure to generate a fission site from a fissile material.
   !! Necassary in initialisation of an eigenvalue calculation:
-  !! Remember that fissile material and MG neutron is assured by the adapter interface
   !!
-  subroutine initFissionSite(self,p)
-    class(isotropicMG), intent(in)    :: self
-    class(particle), intent(inout)    :: p
-    integer(shortInt)                 :: G_out
-    real(defReal)                     :: mu, phi, r1
-    integer(shortInt),parameter       :: G_in = 1
+  subroutine initFissionSite(self,p,r)
+    class(isotropicMG), intent(in)         :: self
+    class(particle), intent(inout)         :: p
+    real(defReal),dimension(3), intent(in) :: r
+    integer(shortInt)                      :: G_out, matIdx
+    real(defReal)                          :: mu, phi, r1
+    integer(shortInt),parameter            :: G_in = 1
+    character(100), parameter      :: Here = 'initFissionSite (isotropicMG_class.f90)'
+
+    matIdx = p % matIdx()
+    p % isMG = .true.
+
+    ! Determine if material is fissile
+    if ( .not.self % isFissileMat(matIdx) ) then
+      call fatalError(Here,' Material: '//self % getName(matIdx) //' is not fissile')
+    end if
 
     ! Generate random numbers
     r1 = p % pRNG % get()
 
     ! Sample outgoing data
-    call self % sampleMuGout(mu, G_out, G_in, p % pRNG, macroFission ,p % matIdx() )
+    call self % sampleMuGout(mu, G_out, G_in, p % pRNG, macroFission ,matIdx)
     phi = 2*PI * r1
 
     ! Update particle state
+    call p % point([ONE, ZERO, ZERO])
     call p % rotate(mu,phi)
     p % G = G_out
+    p % w = ONE
+    call p % teleport(r)
+    ! *** HAVING FUNCTION TO FOR STTING MATIDX WILL BE GOOD
+    p % coords % matIdx = matIdx
     p % isDead = .false.
 
 

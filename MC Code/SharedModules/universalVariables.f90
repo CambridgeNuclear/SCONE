@@ -20,6 +20,12 @@ module universalVariables
                                          outside = .FALSE., &
                                          inside = .TRUE.
 
+  ! Special material Indexes
+  ! NOTE: All material indices MUST BE NON-NEGATIVE!
+  integer(shortInt), parameter :: OUTSIDE_MAT = 0 ,&
+                                  VOID_MAT    = huge(OUTSIDE_MAT)
+
+
   ! Define integers for each fill type that a cell may have
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &

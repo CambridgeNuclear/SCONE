@@ -2,7 +2,7 @@ module eigenPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,             only : fatalError, printFishLineR
+  use genericProcedures,             only : fatalError, printFishLineR, numToChar
   use dictionary_class,              only : dictionary
 
   ! Particle classes and Random number generator
@@ -41,6 +41,7 @@ module eigenPhysicsPackage_class
     ! private ** DEBUG
     ! Building blocks
     class(nuclearData), pointer            :: nucData       => null()
+    class(transportNuclearData), pointer   :: transNucData  => null()
     class(cellGeometry), pointer           :: geom          => null()
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
@@ -60,6 +61,7 @@ module eigenPhysicsPackage_class
 
   contains
     procedure :: init
+    procedure :: printSettings
     procedure :: inactiveCycles
     procedure :: activeCycles
     procedure :: generateInitialState
@@ -71,6 +73,9 @@ contains
 
   subroutine run(self)
     class(eigenPhysicsPackage), intent(inout) :: self
+
+    print *, repeat("<>",50)
+    print *, "/\/\ EIGENVALUE CALCULATION /\/\" 
 
     call self % generateInitialState()
     call self % inactiveCycles()
@@ -154,7 +159,6 @@ contains
       print *
       print *, 'Cycle: ', i, ' of ', self % N_inactive,' Pop: ', Nstart, ' -> ',Nend
       call self % inactiveTally % display()
-      print *
     end do
 
   end subroutine inactiveCycles
@@ -234,7 +238,6 @@ contains
       print *
       print *, 'Cycle: ', i, ' of ', self % N_active,' Pop: ', Nstart, ' -> ',Nend
       call self % activeTally % display()
-      print *
 
     end do
   end subroutine activeCycles
@@ -262,29 +265,12 @@ contains
     bottom = bounds([1,3,5])
     top    = bounds([2,4,6])
 
-
-    ! Set flag of MG particle depending on the data
-    !*** THIS IS CUMBERSOME AND NEEDS TO BE CORRECTED IN NEW NUCLEAR DATA INTERFACES
-    associate( nucData => self % nucData)
-      select type(nucData)
-        class is( perNuclideNuclearDataCE)
-          neutron % isMG = .false.
-
-        class is( perMaterialNuclearDataMG)
-          neutron % isMG = .true.
-
-        class default
-          call fatalError(Here,' Nuclear data does not support eigenvalue calculations')
-
-      end select
-    end associate
-
-    ! This is horrible. REPAIR IT
-    associate( nucData => self % nucData)
-    select type(nucData)
-    class is(transportNuclearData)
+    ! Initialise iterator and attach RNG to neutron
     i = 0
     neutron % pRNG => self % pRNG
+
+    print *, "GENERATING INITIAL FISSION SOURCE"
+    ! Loop over requested population
     do while (i <= self % pop)
       ! Sample position
       rand(1) = neutron % pRNG % get()
@@ -297,27 +283,21 @@ contains
       call self % geom % whatIsAt(r,matIdx,dummy)
 
       ! Resample position if material is not fissile
-      if( .not. nucData % isFissileMat(matIdx)) cycle
+      if( .not.self % transNucData % isFissileMat(matIdx)) cycle
 
-      ! Set neutron position weight and direction
-      ! Be crefull to assign matIdx anfter teleport as teleport removes matIdx!
-      call neutron % point( [ONE, ZERO, ZERO])
-      neutron % w = 1.0
-      call neutron % teleport(r)
+      ! Put material in neutron
       neutron % coords % matIdx = matIdx
 
       ! Generate and store fission site
-      call nucData % initFissionSite(neutron)
+      call self % transNucData % initFissionSite(neutron,r)
       call self % thisCycle % detain(neutron)
 
       ! Update iterator
       i = i +1
     end do
-    end select
-    end associate
+    print *, "DONE!"
 
   end subroutine generateInitialState
-
 
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
@@ -325,14 +305,27 @@ contains
   subroutine init(self, matDict, geomDict, collDict ,transDict, inactiveDict, activeDict )
     class(eigenPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(in)             :: matDict
-    class(dictionary), intent(inout)          :: geomDict  !*** Maybe change to intent(in) in geom?
+    class(dictionary), intent(in)             :: geomDict
     class(dictionary), intent(in)             :: collDict
     class(dictionary), intent(in)             :: transDict
     class(dictionary), intent(in)             :: inactiveDict
     class(dictionary), intent(in)             :: activeDict
+    class(nuclearData),pointer                :: nucData_ptr
+    character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     ! Build nuclear data
-    self % nucData => new_nuclearData_ptr(matDict)
+    nucData_ptr => new_nuclearData_ptr(matDict)
+    self % nucData => nucData_ptr
+
+    ! Attach transport nuclear data
+    select type(nucData_ptr)
+      class is(transportNuclearData)
+        self % transNucData => nucData_ptr
+
+      class default
+        call fatalError(Here,'Nuclear data needs be of class: transportNuclearData')
+
+    end select
 
     ! Build geometry *** Will be replaced by a factory SOON !!!
     allocate(basicCellCSG :: self % geom)
@@ -358,10 +351,30 @@ contains
 
     ! Initialise RNG
     allocate(self % pRNG)
-    !call self % pRNG % init(768568_8)
-    call self % pRNG % init(67858567567_8)
-    !call self % pRNG % init(5764746_8)
+   ! call self % pRNG % init(768568_8)
+    !call self % pRNG % init(6585886547_8)
+    !call self % pRNG % init(67858567567_8)
+    call self % pRNG % init(5764746_8)
+    !call self % pRNG % init(1346575219654672_8)
+
+    call self % printSettings()
 
   end subroutine init
+
+  !!
+  !! Print settings of the physics package
+  !!
+  subroutine printSettings(self)
+    class(eigenPhysicsPackage), intent(in) :: self
+
+    print *, repeat("<>",50)
+    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\" 
+    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
+    print *, "Active Cycles:      ", numToChar(self % N_active)
+    print *, "Neutron Population: ", numToChar(self % pop)
+    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
+    print *
+    print *, repeat("<>",50)
+  end subroutine printSettings
     
 end module eigenPhysicsPackage_class
