@@ -940,7 +940,6 @@ module genericProcedures
   !!
   subroutine printStart()
     print *, repeat(" ><((((*> ",10)
-    print *, repeat(" ><((((*> ",10)
     print *, ''
     print * ,"        _____ __________  _   ________  "
     print * ,"       / ___// ____/ __ \/ | / / ____/  "
@@ -950,6 +949,7 @@ module genericProcedures
     print * , ''
     print * , ''
     print * , "Compiler Info :   ", compiler_version()
+    print *
     print *, repeat(" <*((((>< ",10)
 
     ! TODO: Add extra info like date & time

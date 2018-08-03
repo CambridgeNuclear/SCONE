@@ -2,36 +2,38 @@ module eigenPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,             only : fatalError, printFishLineR, numToChar
-  use hashFunctions_func,            only : FNV_1
-  use dictionary_class,              only : dictionary
+  use genericProcedures,              only : fatalError, printFishLineR, numToChar
+  use hashFunctions_func,             only : FNV_1
+  use dictionary_class,               only : dictionary
 
   ! Particle classes and Random number generator
-  use particle_class,                only : particle, phaseCoord
-  use particleDungeon_class,         only : particleDungeon
-  use RNG_class,                     only : RNG
+  use particle_class,                 only : particle, phaseCoord
+  use particleDungeon_class,          only : particleDungeon
+  use RNG_class,                      only : RNG
+
+  ! Physics package interface
+  use physicsPackage_inter,           only : physicsPackage
 
   ! Geometry & Nuclear Data
-  use cellGeometry_inter,            only : cellGeometry
-  use basicCellCSG_class,            only : basicCellCSG !** Provisional
-  use nuclearData_inter,             only : nuclearData
-  use transportNuclearData_inter,    only : transportNuclearData
-  use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
+  use cellGeometry_inter,             only : cellGeometry
+  use nuclearData_inter,              only : nuclearData
+  use transportNuclearData_inter,     only : transportNuclearData
+  use perNuclideNuclearDataCE_inter,  only : perNuclideNuclearDataCE
   use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Operators
-  use collisionOperatorBase_inter,   only : collisionOperatorBase
-  use transportOperator_inter,       only : transportOperator
+  use collisionOperatorBase_inter,    only : collisionOperatorBase
+  use transportOperator_inter,        only : transportOperator
 
   ! Tallies
-  use tallyInactiveAdmin_class,      only : tallyInactiveAdmin
-  use tallyActiveAdmin_class,        only : tallyActiveAdmin
+  use tallyInactiveAdmin_class,       only : tallyInactiveAdmin
+  use tallyActiveAdmin_class,         only : tallyActiveAdmin
 
   ! Factories
-  use nuclearDataFactory_func,       only : new_nuclearData_ptr
-  use geometryFactory_func,          only : new_cellGeometry_ptr
-  use collisionOperatorFactory_func, only : new_collisionOperator_ptr
-  use transportOperatorFactory_func, only : new_transportOperator_ptr
+  use nuclearDataFactory_func,        only : new_nuclearData_ptr
+  use geometryFactory_func,           only : new_cellGeometry_ptr
+  use collisionOperatorFactory_func,  only : new_collisionOperator_ptr
+  use transportOperatorFactory_func,  only : new_transportOperator_ptr
 
   implicit none
   private
@@ -39,8 +41,8 @@ module eigenPhysicsPackage_class
   !!
   !! Physics Package for eigenvalue calculations
   !!
-  type, public :: eigenPhysicsPackage
-    ! private ** DEBUG
+  type, public,extends(physicsPackage) :: eigenPhysicsPackage
+     private
     ! Building blocks
     class(nuclearData), pointer            :: nucData       => null()
     class(transportNuclearData), pointer   :: transNucData  => null()
@@ -48,8 +50,8 @@ module eigenPhysicsPackage_class
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
-    class(tallyInactiveAdmin),pointer       :: inactiveTally => null()
-    class(tallyActiveAdmin),pointer         :: activeTally   => null()
+    class(tallyInactiveAdmin),pointer      :: inactiveTally => null()
+    class(tallyActiveAdmin),pointer        :: activeTally   => null()
 
     ! Settings
     integer(shortInt)  :: N_inactive
@@ -306,7 +308,7 @@ contains
   !!
   subroutine init(self, dict)
     class(eigenPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(in)             :: dict
+    class(dictionary), intent(inout)          :: dict
     type(dictionary)                          :: tempDict
     integer(shortInt)                         :: seed_temp
     integer(longInt)                          :: seed
@@ -385,6 +387,16 @@ contains
     call self % printSettings()
 
   end subroutine init
+
+  !!
+  !! Deallocate memory
+  !!
+  subroutine kill(self)
+    class(eigenPhysicsPackage), intent(inout) :: self
+
+    ! TODO: This subroutine
+
+  end subroutine kill
 
   !!
   !! Print settings of the physics package
