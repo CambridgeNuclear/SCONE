@@ -3,6 +3,7 @@ module eigenPhysicsPackage_class
   use numPrecision
   use universalVariables
   use genericProcedures,             only : fatalError, printFishLineR, numToChar
+  use hashFunctions_func,            only : FNV_1
   use dictionary_class,              only : dictionary
 
   ! Particle classes and Random number generator
@@ -51,9 +52,9 @@ module eigenPhysicsPackage_class
     class(tallyActiveAdmin),pointer         :: activeTally   => null()
 
     ! Settings
-    integer(shortInt)  :: N_inactive = 300
-    integer(shortInt)  :: N_active   = 500
-    integer(shortInt)  :: pop        = 5000
+    integer(shortInt)  :: N_inactive
+    integer(shortInt)  :: N_active
+    integer(shortInt)  :: pop
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -303,19 +304,44 @@ contains
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
   !!
-  subroutine init(self, matDict, geomDict, collDict ,transDict, inactiveDict, activeDict )
+  subroutine init(self, dict)
     class(eigenPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(in)             :: matDict
-    class(dictionary), intent(in)             :: geomDict
-    class(dictionary), intent(in)             :: collDict
-    class(dictionary), intent(in)             :: transDict
-    class(dictionary), intent(in)             :: inactiveDict
-    class(dictionary), intent(in)             :: activeDict
+    class(dictionary), intent(in)             :: dict
+    type(dictionary)                          :: tempDict
+    integer(shortInt)                         :: seed_temp
+    integer(longInt)                          :: seed
+    character(10)                             :: time
+    character(8)                              :: date
+    character(:),allocatable                  :: string
     class(nuclearData),pointer                :: nucData_ptr
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
+    ! Read calculation settings
+    call dict % get( self % pop,'pop')
+    call dict % get( self % N_inactive,'inactive')
+    call dict % get( self % N_active,'active')
+
+    ! Initialise RNG
+    allocate(self % pRNG)
+
+    ! *** It is a bit silly but dictionary cannot store longInt for now
+    !     so seeds are limited to 32 bits (can be -ve)
+    if( dict % isPresent('seed')) then
+      call dict % get(seed_temp,'seed')
+
+    else
+      ! Obtain time string and hash it to obtain random seed
+      call date_and_time(date, time)
+      string = date // time
+      call FNV_1(string,seed_temp)
+
+    end if
+    seed = seed_temp
+    call self % pRNG % init(seed)
+
     ! Build nuclear data
-    nucData_ptr => new_nuclearData_ptr(matDict)
+    call dict % get(tempDict,'materials')
+    nucData_ptr => new_nuclearData_ptr(tempDict)
     self % nucData => nucData_ptr
 
     ! Attach transport nuclear data
@@ -328,36 +354,32 @@ contains
 
     end select
 
-    ! Build geometry *** Will be replaced by a factory SOON !!!
-!    allocate(basicCellCSG :: self % geom)
-!    associate ( g => self % geom)
-!      select type (g)
-!        type is ( basicCellCSG)
-!          call g % init( geomDict, self % nucData)
-!      end select
-!    end associate
-
-    self % geom => new_cellGeometry_ptr(geomDict, self % nucData)
+    ! Build geometry
+    call dict % get(tempDict,'geometry')
+    self % geom => new_cellGeometry_ptr(tempDict, self % nucData)
 
     ! Build collision operator
-    self % collOp => new_collisionOperator_ptr(self % nucData, collDict)
+    call dict % get(tempDict,'collisionOperator')
+    self % collOp => new_collisionOperator_ptr(self % nucData, tempDict)
 
-    ! Build transport operator *** Maybe put dictionary at the end in geometry as well?
-    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, transDict)
+    ! Build transport operator
+    call dict % get(tempDict,'transportOperator')
+    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
 
     ! Initialise active & inactive tally Admins
+    call dict % get(tempDict,'inactiveTally')
     allocate(self % inactiveTally)
-    call self % inactiveTally % init(inactiveDict)
+    call self % inactiveTally % init(tempDict)
 
+    call dict % get(tempDict,'activeTally')
     allocate(self % activeTally)
-    call self % activeTally % init(activeDict)
+    call self % activeTally % init(tempDict)
 
-    ! Initialise RNG
-    allocate(self % pRNG)
+
    ! call self % pRNG % init(768568_8)
     !call self % pRNG % init(6585886547_8)
     !call self % pRNG % init(67858567567_8)
-    call self % pRNG % init(5764746_8)
+    !call self % pRNG % init(5764746_8)
     !call self % pRNG % init(1346575219654672_8)
 
     call self % printSettings()

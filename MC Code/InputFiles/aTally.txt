@@ -1,6 +1,6 @@
 type a; 
 
-clerk1 { type keffActiveClerk; display yes; }
+ 
 !clerk2 { type keffActiveClerk; display no; }
 !clerk3 { type keffActiveClerk; display no; }
 !clerk4 { type keffActiveClerk; display no; }

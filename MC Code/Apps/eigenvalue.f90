@@ -6,7 +6,7 @@ program eigenvalue
   use eigenPhysicsPackage_class, only : eigenPhysicsPackage
 
   implicit none
-
+  type(IOdictionary)       :: input
   type(IOdictionary)       :: matData
   type(IOdictionary)       :: geomData
   type(IOdictionary)       :: transData
@@ -14,6 +14,10 @@ program eigenvalue
   type(IOdictionary)       :: activeTally
   type(IOdictionary)       :: inactiveTally
   type(eigenPhysicsPackage) :: core
+
+
+
+  call input % initFrom('./InputFiles/FirstInput.c')
 
   ! Read data
   call matData   % initFrom('./InputFiles/materialInput')
@@ -23,7 +27,7 @@ program eigenvalue
   call inactiveTally % initFrom('./InputFiles/iaTally.txt')
   call activeTally   % initFrom('./InputFiles/aTally.txt')
 
-  call core % init(matData, geomData, collData, transData, inactiveTally, activeTally)
+  call core % init(input)
 
   call core % run()
 

@@ -13,6 +13,7 @@ module hashFunctions_func
   public :: FNV_1
   interface FNV_1
     module procedure FNV_1_shortInt
+    module procedure FNV_1_longInt
   end interface
 
   !!
@@ -77,6 +78,34 @@ contains
     end do
 
   end subroutine FNV_1_shortInt
+
+
+  !!
+  !!
+  !!
+  subroutine FNV_1_longInt(key,hash)
+    character(:),allocatable   :: key
+    integer(longInt)           :: hash
+    integer(longInt),parameter :: FNV_prime  = 1099511628211 _longInt
+    integer(longInt),parameter :: FNV_offset = transfer(z'cbf29ce484222325',longInt)
+    integer(longInt)           :: bajt
+    integer(shortInt)          :: i
+    character(100),parameter   :: Here ='FNV_1_longInt (hashFunctions_func.f90)'
+
+    if(storage_size(hash) /= 64) call fatalError(Here,'hash int is not 64bit')
+
+    bajt = ichar(key(1:1),shortInt)
+    hash = FNV_offset
+    hash = hash * FNV_prime
+    hash = ieor(hash,bajt)
+
+    do i=2,len(key)
+      bajt = ichar(key(i:i),shortInt)
+      hash = hash * FNV_prime
+      hash = ieor(hash,bajt)
+    end do
+
+  end subroutine FNV_1_longInt
 
     
 end module hashFunctions_func
