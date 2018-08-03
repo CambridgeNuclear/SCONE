@@ -31,5 +31,9 @@ module universalVariables
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133, &   ! Neutron mass in MeV/c^2
                               lightSpeed  = 2.99792458e10, & ! Light speed in cm/s
+                              energyPerFission = 200         ! MeV
+
+  ! Unit conversion
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
 
 end module universalVariables

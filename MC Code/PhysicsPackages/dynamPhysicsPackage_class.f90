@@ -19,7 +19,6 @@ module dynamPhysicsPackage_class
   use transportOperator_inter,       only : transportOperator
 
   ! Tallies
-  use tallyInactiveAdmin_class,      only : tallyInactiveAdmin
   use tallyActiveAdmin_class,        only : tallyActiveAdmin
 
   ! Factories
@@ -85,12 +84,12 @@ contains
     neutron % pRNG   => self % pRNG
 
     ! Attach tally to operators
-    self % collOP % tally => self % activeTally
+    self % collOP % tally => self % timeTally
 
     do i=1,self % N_steps
       ! Send start of cycle report
       Nstart = self % thisStep % popSize()
-      call self % activeTally % reportCycleStart(self % thisStep)
+      call self % timeTally % reportCycleStart(self % thisStep)
 
       step: do
 
@@ -105,7 +104,7 @@ contains
 
             ! Exit history - score leakage or place particle in next time point
             if(neutron % isDead) then
-              call self % activeTally %  reportHist(preState,neutron,neutron%fate)
+              call self % timeTally % reportHist(preState,neutron,neutron%fate)
               ! Place neutron in next step if it became too old
               if (neutron % fate == aged_FATE) then
                 neutron % isDead = .false.
@@ -118,7 +117,7 @@ contains
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
-              call self % activeTally %  reportHist(preState,neutron,abs_FATE)
+              call self % timeTally % reportHist(preState,neutron,abs_FATE)
               exit history
             end if
 
@@ -129,7 +128,7 @@ contains
 
       ! Send end of cycle report
       Nend = self % nextStep % popSize()
-      call self % activeTally % reportCycleEnd(self % nextStep)
+      call self % timeTally % reportCycleEnd(self % nextStep)
 
       ! Normalise population
       call self % nextStep % normSize(self % pop, neutron % pRNG)
@@ -141,13 +140,13 @@ contains
 
       ! Load new k-eff estimate into next cycle dungeon
       power_old = self % nextCycle % k_eff
-      power_new = self % activeTally % keff()
+      power_new = self % timeTally % power()
 
       self % nextCycle % power = power_new
 
       ! Display progress
       print *, 'Step: ', i, ' of ', self % N_steps,' Pop: ', Nstart, ' -> ',Nend
-      call self % activeTally % display()
+      call self % timeTally % display()
     end do
   end subroutine timeSteps
 
@@ -172,7 +171,6 @@ contains
       neutron % isMG   = .false.
       call self % thisStep % detain(neutron)
     end do
-
 
   end subroutine generateInitialState
 
@@ -202,7 +200,7 @@ contains
     self % transOp => new_transportOperator_ptr(self % nucData, self % geom, transDict)
 
     allocate(self % activeTally)
-    call self % activeTally % init(timeDict)
+    call self % timeTally % init(timeDict)
 
     ! Initialise RNG
     allocate(self % pRNG)
