@@ -28,6 +28,7 @@ module eigenPhysicsPackage_class
 
   ! Factories
   use nuclearDataFactory_func,       only : new_nuclearData_ptr
+  use geometryFactory_func,          only : new_cellGeometry_ptr
   use collisionOperatorFactory_func, only : new_collisionOperator_ptr
   use transportOperatorFactory_func, only : new_transportOperator_ptr
 
@@ -46,8 +47,8 @@ module eigenPhysicsPackage_class
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
-    type(tallyInactiveAdmin),pointer       :: inactiveTally => null()
-    type(tallyActiveAdmin),pointer         :: activeTally   => null()
+    class(tallyInactiveAdmin),pointer       :: inactiveTally => null()
+    class(tallyActiveAdmin),pointer         :: activeTally   => null()
 
     ! Settings
     integer(shortInt)  :: N_inactive = 300
@@ -328,13 +329,15 @@ contains
     end select
 
     ! Build geometry *** Will be replaced by a factory SOON !!!
-    allocate(basicCellCSG :: self % geom)
-    associate ( g => self % geom)
-      select type (g)
-        type is ( basicCellCSG)
-          call g % init( geomDict, self % nucData)
-      end select
-    end associate
+!    allocate(basicCellCSG :: self % geom)
+!    associate ( g => self % geom)
+!      select type (g)
+!        type is ( basicCellCSG)
+!          call g % init( geomDict, self % nucData)
+!      end select
+!    end associate
+
+    self % geom => new_cellGeometry_ptr(geomDict, self % nucData)
 
     ! Build collision operator
     self % collOp => new_collisionOperator_ptr(self % nucData, collDict)
