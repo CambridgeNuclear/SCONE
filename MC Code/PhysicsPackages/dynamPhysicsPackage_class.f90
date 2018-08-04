@@ -45,6 +45,7 @@ module dynamPhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_steps    = 500
     integer(shortInt)  :: pop        = 5000
+    real(defReal)      :: timeMax    = ZERO
 
     ! Calculation components
     type(particleDungeon), pointer :: thisStep     => null()
@@ -73,7 +74,7 @@ contains
   !! Perform transport over time steps
   !!
   subroutine timeSteps(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
@@ -86,17 +87,23 @@ contains
     ! Attach tally to operators
     self % collOP % tally => self % timeTally
 
+    ! Load initial power
+    power_old = self % timeTally % power()
+
     do i=1,self % N_steps
       ! Send start of cycle report
       Nstart = self % thisStep % popSize()
       call self % timeTally % reportCycleStart(self % thisStep)
+
+      ! Increment timeMax
+      self % timeMax = self % timeMax + self % timeTally % stepLengths(i)
 
       step: do
 
         ! Obtain paticle from current cycle dungeon
         call self % thisStep % release(neutron)
         call self % geom % placeParticle(neutron)
-        neutron % timeMax = timeMax(i)             ! Need to define where this comes from!!!
+        neutron % timeMax = self % timeMax  ! Need to define where this comes from!!!
 
           history: do
             preState = neutron
@@ -105,7 +112,7 @@ contains
             ! Exit history - score leakage or place particle in next time point
             if(neutron % isDead) then
               call self % timeTally % reportHist(preState,neutron,neutron%fate)
-              ! Place neutron in next step if it became too old
+              ! Revive neutron and place in next step if it became too old
               if (neutron % fate == aged_FATE) then
                 neutron % isDead = .false.
                 call self % nextStep % detain(neutron)
@@ -129,20 +136,23 @@ contains
       ! Send end of cycle report
       Nend = self % nextStep % popSize()
       call self % timeTally % reportCycleEnd(self % nextStep)
+      power_new = self % timeTally % power()
 
       ! Normalise population
       call self % nextStep % normSize(self % pop, neutron % pRNG)
+
+      ! Adjust weight for population growth or decay
+      ! Only applied after the first step - first step is used for subsequent normalisation
+      if (i > 1) then
+        call self % nextStep % normWeight(thisStep % popWgt * power_new / power_old)
+      end if
 
       ! Flip cycle dungeons
       self % temp_dungeon => self % nextStep
       self % nextStep     => self % thisStep
       self % thisStep     => self % temp_dungeon
 
-      ! Load new k-eff estimate into next cycle dungeon
-      power_old = self % nextCycle % k_eff
-      power_new = self % timeTally % power()
-
-      self % nextCycle % power = power_new
+      power_old = power_new
 
       ! Display progress
       print *, 'Step: ', i, ' of ', self % N_steps,' Pop: ', Nstart, ' -> ',Nend
@@ -162,13 +172,14 @@ contains
     call self % nextStep % init(3*self % pop)
 
      do i=1,self % pop
-      neutron % E      = 0.5
+      neutron % E      = ONE
       !neutron % G      = 1
       call neutron % teleport([ZERO, ZERO, ZERO])
       call neutron % point([1.0_8, 0.0_8, 0.0_8]) ! Should distribute uniformly in angle
-      neutron % w      = 1.0
+      neutron % w      = ONE
       neutron % isDead = .false.
       neutron % isMG   = .false.
+      neutron % time   = ZERO
       call self % thisStep % detain(neutron)
     end do
 
@@ -207,7 +218,5 @@ contains
     call self % pRNG % init(768568_8)
     !call self % pRNG % init(67858567567_8)
   end subroutine init
-
-
     
 end module dynamPhysicsPackage_class

@@ -21,17 +21,19 @@ module timeClerk_class
   type, public,extends(tallyClerk) :: timeClerk
     private
 
-    integer(shortInt)                    :: cycleCount = 0
+    integer(shortInt)                             :: stepCount = 1
 
-    type(tallyScore)                     :: impFissions ! Implicit fission
-    type(tallyScore)                     :: anaLeak     ! Analog neutron leakage
+    type(tallyScore)                              :: impFissions ! Implicit fission
+    type(tallyScore)                              :: anaLeak     ! Analog neutron leakage
 
-    type(tallyCounter)                   :: power_imp
+    integer(shortInt)                             :: nSteps      ! Number of timesteps
+    real(defReal), dimension(:), allocatable      :: stepLength  ! Time step length
+    type(tallyCounter), dimension(:), allocatable :: power_imp   ! Stores power at each time step
+    real(defReal)                                 :: power0      ! Initial power
+    real(defReal)                                 :: normPower   ! Normalisation factor
 
-    real(defReal)                        :: startWgt
-    real(defReal)                        :: targetSD = 0.0
-
-    real(defReal)                        :: stepLength = 1.0 ! Time step length
+    real(defReal)                                 :: startWgt
+    real(defReal)                                 :: targetSD = 0.0
 
   contains
     ! Deferred Interface Procedures
@@ -63,14 +65,14 @@ contains
   end function validReports
 
   !!
-  !! Display progress current estimate of k-eff with STD
+  !! Display progress current estimate of power with STD
   !!
   subroutine display(self)
     class(timeClerk), intent(in) :: self
     real(defReal)                :: power_imp, STD_imp, STD_analog
 
     ! Obtain current implicit estimate of power
-    call self % power_imp % getEstimate(power_imp, STD_imp, self % stepCount)
+    call self % power_imp(self % stepCount) % getEstimate(power_imp, STD_imp, 1)
 
     ! Print estimates to a console
     print '(A,F8.5,A,F8.5)', 'Power (implicit): ', power_imp, ' +/- ', STD_imp
@@ -85,7 +87,7 @@ contains
     logical(defBool)             :: isIt
     real(defReal)                :: power, SD
 
-    call self % power_imp % getEstimate(power,SD,self % cycleCount)
+    call self % power_imp(self % cycleCount) % getEstimate(power,SD,1)
 
     isIt = (SD < self % targetSD)
 
@@ -121,7 +123,7 @@ contains
     totalXS  = XSs % totalXS()
     fissXS   = XSs % fissionXS()
 
-    ! Calculate flux and energy scores
+    ! Calculate flux and fission scores
     flux = p % w / totalXS
 
     s1 = fissXS * flux
@@ -133,6 +135,7 @@ contains
 
   !!
   !! Process history report
+  !! Probably needn't be here!
   !!
   subroutine reportHist(self,pre,post,fate)
     class(timeClerk), intent(inout):: self
@@ -173,25 +176,28 @@ contains
     real(defReal)                        :: power_est
     real(defReal)                        :: fissions
 
-    ! Obtain end of cycle weight and k value used to change fission site generation rate
-    !endWgt = end % popWeight()
-    !power_step = end % power
-
-    ! Calculate and score analog estimate of power
-    !power_est =  endWgt / self % startWgt * power_step
-    !call self % power_analog % addEstimate(power_est)
-
-    ! Calculate and score implicit estimate of power
+    ! Calculate implicit estimate of power
     fissions  = self % impFission % get()
 
-    power_est = joulesPerMeV * energyPerFission * fissions / self % stepLength
+    power_est = joulesPerMeV * energyPerFission * fissions / self % stepLength(self % stepCount)
 
-    call self % power_imp % addEstimate(power_est)
+    ! If the first step, must normalise estimate to the initial power
+    ! Normalisation factor must be stored for subsequent steps
+    ! Don't require joulesPerMeV and energyPerFission should cancel - used here for future proofing
+    ! when energyPerFission may be tallied explicitly
+    if (self % stepCount == 1) then
+      self % normFactor = self % power0 / power_est
+      power_est = self % power0
+    else
+      power_est = power_est * self % normFactor
+    end if
+
+    call self % power_imp(self % stepCount) % addEstimate(power_est)
 
     ! Reset score counters
     call self % impFission % reset()
 
-    ! Increas counter of steps
+    ! Increment step count
     self % stepCount = self % stepCount + 1
 
   end subroutine reportCycleEnd
@@ -222,8 +228,16 @@ contains
 
     end if
 
-  end subroutine init
+    ! Read initial power
+    call dict % get(self % power0, 'power')
 
+    ! Read number of time steps
+    call dict % get(self % nSteps, 'numSteps')
+
+    ! Read array providing time step lengths
+    call dict % get(self % stepLength, 'steps')
+
+  end subroutine init
 
   !!
   !! Return estimate of power
@@ -232,7 +246,7 @@ contains
     class(keffActiveClerk), intent(in) :: self
     real(defReal)                      :: p
 
-    call self % power_imp % getEstimate(p, self % stepCount)
+    call self % power_imp(self % stepCount) % getEstimate(p, 1)
 
   end function power
 
