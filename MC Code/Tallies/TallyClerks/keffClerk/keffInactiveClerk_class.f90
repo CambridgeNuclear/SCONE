@@ -57,7 +57,7 @@ contains
   !!
   subroutine display(self)
     class(keffInactiveClerk), intent(in) :: self
-    real(defReal)                        :: k_analog, STD_analog
+    real(defReal)                        :: k_analog
 
     ! Obtain k-eff estimate for this cycle
     k_analog = self % k_est
@@ -125,7 +125,6 @@ contains
   pure function keff(self) result(k)
     class(keffInactiveClerk), intent(in) :: self
     real(defReal)                        :: k
-    real(defReal)                        :: STD_analog
 
     k = self % k_est
 

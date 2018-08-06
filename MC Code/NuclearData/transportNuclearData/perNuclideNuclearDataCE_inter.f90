@@ -113,12 +113,13 @@ module perNuclideNuclearDataCE_inter
     !!
     !! Sample fission site knowing that particle is in fissile material and is CE
     !!
-    subroutine initFissionSite_E(self,p)
+    subroutine initFissionSite_E(self,p,r)
       import :: perNuclideNuclearDataCE, &
-                particle
+                particle, &
+                defReal
       class(perNuclideNuclearDataCE), intent(in) :: self
       class(particle), intent(inout)             :: p
-
+      real(defReal),dimension(3), intent(in)     :: r
     end subroutine initFissionSite_E
 
     !!
@@ -357,29 +358,26 @@ contains
   !!
   !! Function to generate a fission site from a fissile material.
   !! Necassary in initialisation of an eigenvalue calculation:
-  !! Is it to avoid reapeting code to determine if material is fissile and CE
+  !! Is it to avoid reapeting code to determine if material is fissile
   !!
-  subroutine initFissionSite(self,p)
+  subroutine initFissionSite(self,p,r)
     class(perNuclideNuclearDataCE), intent(in)   :: self
     class(particle), intent(inout)               :: p
+    real(defReal),dimension(3), intent(in)       :: r
     integer(shortInt)                            :: matIdx
     character(100), parameter      :: Here = 'initFissionSite (perNuclideNuclearDataCE_inter.f90)'
 
-    matIdx = p % matIdx
+    matIdx = p % matIdx()
 
     ! Determine if material is fissile
     if ( .not.self % isFissileMat(matIdx) ) then
-      p % isDead = .true.
-      return
+      call fatalError(Here,' Material: '//self % getName(matIdx) //' is not fissile')
     end if
 
-    ! Determine if particle is CE and throw error if it is MG
-    if ( p % isMG ) then
-      call fatalError(Here,'Trying to create fission site for MG particle with CE data')
-    end if
+    p % isMG = .false.
 
     ! Call specific instance implementation of sampling
-    call self % initFissionSite_E(p)
+    call self % initFissionSite_E(p,r)
 
   end subroutine initFissionSite
 

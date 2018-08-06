@@ -1,473 +1,528 @@
-!
-! The cell class is the basic geometrical structure: it contains either universes, lattices or materials
-! This class will contains bounding surfaces and their halfspace and can be searched to identify
-! whether a particle is inside the cell.
-! There will be many repeated instances of cells with identical geometries but different locations
-! and contents. These must be uniquely identified
-!
 module cell_class
   use numPrecision
-  use genericProcedures, only : fatalError
   use universalVariables
-  use surface_class
-  use coord_class
+  use genericProcedures, only : fatalError, linFind, targetNotFound, numToChar, hasDuplicates
+  use vector_class,      only : vector
+  use dictionary_class,  only : dictionary
+  use surface_inter,     only : surface, surfaceSlot, surfaceShelf
 
   implicit none
   private
 
+  !! Local Parameters
+  integer(shortInt),parameter    :: DEF_STRIDE = 20
+
+  !!
+  !! Public function to get cell from dict and surface shelf
+  !!
+  public :: new_cell
+
+  !!
+  !! Geometry Cell
+  !! Cell is an intersection of surface halfspaces
+  !! +ve and -ve halfspaces are indentified with a sign of surfIdx
+  !!
+  !! NOTE:
+  !!   1) Definition of a cell tells us nothing about its content. It only defines region
+  !!   of space the cell occupies. Content of the cell is obtained from fill Array by providing
+  !!   uniqueID of a cell
+  !!   2) Cells stores surfaces in order given by the user. This makes some checks for the same
+  !!   definition mopre convoluted (permutations of surfaces need to be detected), but allows
+  !!   a bit of hand optimisation when checking for halfspace (start with a surface particle is
+  !!   least likley to be).
+  !!
   type, public :: cell
-    type(surface_ptr), dimension(:), allocatable :: surfaces            ! the surfaces which define the cell
-    logical(defBool), dimension(:), allocatable  :: halfspaces          ! The halfspace of each surface corresponding to inside the cell
-    integer(shortInt)                            :: numSurfaces         ! the number of surfaces which define the cell
-    integer(shortInt)                            :: fillType = 0        ! determines if cell contains a material, universe, or lattice (1,2,3)
-    integer(shortInt)                            :: latIdx = 0          ! index of the cell's lattice contents
-    integer(shortInt)                            :: uniIdx = 0          ! index of the cell's universe contents
-    integer(shortInt), dimension(:), allocatable :: matIdx              ! index of the cell's material contents
-    integer(shortInt), dimension(:), allocatable :: uniqueID            ! identifies unique instance of a cell
-    real(defReal), dimension(:), allocatable     :: volume              ! the volume of the cell
-    type(coordList), dimension(:), allocatable   :: location            ! co-ord locations of each cell
-    integer(shortInt)                            :: id                  ! unique user-defined ID
-    logical(defBool)                             :: insideGeom = .TRUE. ! is cell within geometry? Used to invoke BCs
-    integer(shortInt)                            :: instances = 1       ! the number of instances of a given cell
-    integer(shortInt)                            :: geometryIdx         ! index of the cell in the cell array
-    character(100), public :: name = ""
+    private
+    integer(shortInt)                            :: cellId      ! unique user-defined ID
+    integer(shortInt),dimension(:),allocatable   :: surfaces    ! +/- surfIDXs for +/- halfspace
+
   contains
-    procedure :: init
-    procedure :: setInstances
-    procedure :: fill
-    procedure :: insideCell
-    procedure :: getDistance
-    procedure :: whichSurface
-    procedure :: coordCompare
+    ! Operators and assignments
+    generic   :: operator(.same.) => same_cell
+
+    ! Build procedures
+    procedure          :: init
+    procedure          :: moveAllocFrom
+    procedure          :: id
+    procedure, private :: same_cell
+    procedure          :: kill
+    procedure          :: getDef
+
+    ! Runtime procedure
+    procedure          :: isInside
+    procedure          :: distance
+
   end type cell
 
-  ! Wrapper type for cell pointers
-  type, public :: cell_ptr
-    class(cell), pointer :: ptr => null()
+  !!
+  !! Stores number of cells
+  !! Public interface:
+  !!  shelf     -> array of cells
+  !!  add       -> adds a cell with unique id to Shelf
+  !!  getOrAdd  -> returns ID & Idx of provided cell, If it isn't present it adds it to the shelf
+  !!  getIdx    -> returns Idx of cell with ID. returns "targetNotFound" if ID is not present
+  !!  trimSize  -> Resizes array to contain no empty entries
+  !!  init      -> initialises with "maximum size" and "stride"
+  !!  kill      -> returns to uninitialised state
+  !!
+  type, public :: cellShelf
+    !private
+    type(cell),dimension(:),allocatable, public :: shelf
+    integer(shortInt)                           :: Nmax   = 0
+    integer(shortInt)                           :: N      = 0
+    integer(shortInt)                           :: stride = DEF_STRIDE
+    integer(shortInt)                           :: nextID = 1
   contains
-    procedure :: init => init_ptr
-    procedure :: setInstances => setInstances_ptr
-    procedure :: fill => fill_ptr
-    procedure :: insideCell => insideCell_ptr
-    procedure :: getDistance => getDistance_ptr
-    procedure :: whichSurface => whichSurface_ptr
-    procedure :: coordCompare => coordCompare_ptr
-    procedure :: insideGeom => insideGeom_ptr
-    procedure :: fillType => fillType_ptr
-    procedure :: uniIdx => uniIdx_ptr
-    procedure :: latIdx => latIdx_ptr
-    procedure :: matIdx => matIdx_ptr
-    procedure :: geometryIdx => geometryIdx_ptr
-    procedure :: uniqueID => uniqueID_ptr
-    procedure :: associated => associated_ptr
-    procedure :: name => name_ptr
-    procedure :: kill
-    generic   :: assignment(=) => cell_ptr_assignment, cell_ptr_assignment_target
-    procedure,private :: cell_ptr_assignment
-    procedure,private :: cell_ptr_assignment_target
-    !procedure,private :: cell_ptr_assignment_null
-  end type cell_ptr
+    procedure :: init       => init_shelf
+    procedure :: kill       => kill_shelf
+    procedure :: trimSize   => trimSize_shelf
+    procedure :: size       => size_shelf
+
+    procedure :: add        => add_shelf
+    procedure :: getOrAdd   => getOrAdd_shelf
+    procedure :: getIdx     => getIdx_shelf
+
+    ! Private procedures
+    procedure, private :: grow    => grow_shelf
+    procedure, private :: resize  => resize_shelf
+    procedure, private :: freeID  => freeId_shelf
+
+  end type cellShelf
 
 contains
-
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! cell procedures
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
   !!
-  !! Initialise the cell with the bounding surfaces, their halfspaces and parent universe
+  !! Initialise the cell
+  !! Provide vector of surface IDs. Let sign determine halfspace
+  !! Give id and idx of the cell on the callShelf
+  !! Give surfShelf to translate surfId to surfIdx
   !!
-  subroutine init(self, surfaces, halfspaces, id, fillType, geometryIdx, name)
+  subroutine init(self, surfIds, id, surfShelf)
     class(cell), intent(inout)                   :: self
-    class(surface_ptr), dimension(:), intent(in) :: surfaces
-    logical(defBool), dimension(:), intent(in)   :: halfspaces
+    integer(shortInt),dimension(:),intent(in)    :: surfIDs
     integer(shortInt), intent(in)                :: id
-    integer(shortInt), intent(in)                :: fillType
-    integer(shortInt), intent(in)                :: geometryIdx
-    character(*), optional, intent(in)           :: name
+    type(surfaceShelf), intent(in)               :: surfShelf
+    character(100), parameter :: Here ='init (cell_class.f90)'
 
-    self % numSurfaces = size(halfspaces)
-    allocate(self % surfaces(self % numSurfaces))
-    allocate(self % halfspaces(self % numSurfaces))
-    self % surfaces = surfaces
-    self % halfspaces = halfspaces
-    self % id = id
-    self % fillType = fillType
-    self % geometryIdx = geometryIdx
-    if (fillType == outsideFill) then
-      self % insideGeom = .FALSE.
+    ! Load surface IDXs
+    self % surfaces = surfShelf % getIdx( abs(surfIDs) )
+
+    ! Verify that all IDs were present
+    if(any( self % surfaces == targetNotFound)) then
+      print *, "Surface IDs :",surfIds
+      print *, "Surface IDXs:",self % surfaces
+      call fatalError(Here,'One or more of the surface IDs was not found on the shelf in cell: ' &
+                            // numToChar(id) )
     end if
-    ! For non-material cells, only one instance is allowed
-    if (fillType /= materialFill) then
-      allocate(self % matIdx(1))
-      self %matIdx = 0
-      allocate(self % uniqueID(1))
-      allocate(self % volume(1))
-      allocate(self % location(1))
+
+    ! Correct sign of surfaces
+    self % surfaces = sign(self % surfaces, surfIDs)
+
+    ! Load cellId
+    self % cellId  = id
+
+    ! Check that no surfaces are repeated in surfIds
+    if(hasDuplicates(abs(self % surfaces))) then
+      call fatalError(Here,'There are repeated surfaces in definition of cell: '//numToChar(id))
     end if
-    if (present(name)) self % name = name
 
   end subroutine init
 
   !!
-  !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
-  !! Should only be called for cells filled with material
+  !! Return a cell from a dictionary and surface shelf
   !!
-  subroutine setInstances(self, n, location, ID)
-    class(cell), intent(inout)                  :: self
-    integer(shortInt), intent(in)               :: n
-    type(coordList), intent(in), dimension(:)   :: location
-    integer(shortInt), intent(in)               :: ID
-    integer(shortInt)                           :: i
+  function new_cell(dict,sShelf) result(new)
+    class(dictionary), intent(in)              :: dict
+    type(surfaceShelf), intent(inout)          :: sShelf
+    type(cell)                                 :: new
+    integer(shortInt)                          :: id
+    integer(shortInt),dimension(:),allocatable :: surfIds
 
-    self % instances = n
-    allocate(self % uniqueID(n))
-    allocate(self % volume(n))
-    allocate(self % location(n))
-    allocate(self % matIdx(n))
+    ! Obtain input
+    call dict % get(id,'id')
+    call dict % get(surfIds,'surfaces')
 
-    self % location = location
-    do i = 1,n
-      self % uniqueID(i) = ID + i - 1
-    end do
+    ! Initialise
+    call new % init(surfIds, id, sShelf)
 
-  end subroutine setInstances
+  end function new_cell
 
   !!
-  !! Fills the cell with a material, universe or lattice
-  !! If instance is not included, fills only the first instance
-  !! If instance is present, must be filling a material
+  !! Move cell from RHS to LHS
+  !! Moves allocation of "surface" component
   !!
-  subroutine fill(self, fillIdx, instance)
-    class(cell), intent(inout)              :: self
-    integer(shortInt), intent(in)           :: fillIdx
-    integer(shortInt), intent(in), optional :: instance
+  elemental subroutine moveAllocFrom(LHS,RHS)
+    class(cell), intent(inout) :: LHS
+    type(cell), intent(inout)  :: RHS
 
-    ! Instance only applies when filling with a material
-    ! Can be used when updating a material fill
-    if (present(instance)) then
-      if (self % fillType == materialFill) then
+    ! Copy components
+    LHS % cellId  = RHS % cellId
 
-        self % matIdx(instance) = fillIdx
-      else
-        call fatalError('fill, cell',&
-        'When filling a cell, must only provide instances when filling material IDs')
-      end if
-    else
-      ! Fill cell depending on given fill type
-      if (self % fillType == materialFill) then
-        self % matIdx = fillIdx
-      else if (self % fillType == universeFill) then
-        self % uniIdx = fillIdx
-      else if (self % fillType == latticeFill) then
-        self % latIdx = fillIdx
-      else if (self % fillType /= outsideFill) then
-        call fatalError('fill, cell', 'Cell filled with an incorrect fill index')
-      end if
+    ! Move allocation
+    call move_alloc(RHS % surfaces, LHS % surfaces)
+
+  end subroutine moveAllocFrom
+
+  !!
+  !! Return ID of the cell
+  !!
+  elemental function id(self)
+    class(cell), intent(in) :: self
+    integer(shortInt)       :: id
+
+    id = self % cellId
+
+  end function id
+
+  !!
+  !! Compares definition of two cells and returns .true. if they are the same
+  !!
+  elemental function same_cell(LHS,RHS) result(same)
+    class(cell),intent(in) :: LHS
+    class(cell),intent(in) :: RHS
+    logical(defBool)       :: same
+    integer(shortInt)      :: i, testIdx
+
+    ! Compare size of surface component
+    same = size(LHS % surfaces) == size(RHS % surfaces)
+
+    ! Compare individual entries if size is the same
+    ! *** Need to account for possible permutations in definitions
+    if(same) then
+      do i=1,size(LHS % surfaces)
+        testIdx = linFind(RHS % surfaces, LHS % surfaces(i))
+
+        if (testIdx == targetNotFound) then
+          same = .false.
+          return
+        end if
+
+      end do
     end if
-  end subroutine fill
+
+  end function same_cell
+
+  !!
+  !! Returns cell to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(cell), intent(inout) :: self
+
+    self % cellId  = 0
+    if(allocated(self % surfaces)) deallocate(self % surfaces)
+
+  end subroutine kill
+
+  !!
+  !! Returns array of surfaces defining cell with +/-ve signs for halfspaces
+  !!
+  function getDef(self) result(def)
+    class(cell), intent(in)                    :: self
+    integer(shortInt),dimension(:),allocatable :: def
+
+    def = self % surfaces
+
+  end function getDef
 
   !!
   !! Checks whether a point occupies a cell by examining each surface in turn
   !! Returns TRUE if point is in cell, FALSE if point is not
   !!
-  function insideCell(self, r, u) result(exists)
+  elemental function isInside(self, r, u, surfShelf) result(isIt)
     class(cell), intent(in)                 :: self
-    real(defReal), dimension(3), intent(in) :: r, &
-                                               u
-    logical(defBool)                        :: exists, &  ! whether point exists in cell
-                                               sense      ! halfspace of surface in which point exists
-    integer(shortInt)                       :: i
+    type(vector), intent(in)                :: r
+    type(vector), intent(in)                :: u
+    type(surfaceShelf), intent(in)          :: surfShelf
+    logical(defBool)                        :: isIt
+    integer(shortInt)                       :: surfIdx, i
+    logical(defBool)                        :: halfspace, sense
 
     ! Need only check that halfspaces are satisfied: if not, the point is outside the cell
-    ! Check each surrounding surface of the cell to ensure point is within its halfspace
-    do i = 1, self % numSurfaces
-      exists = self % surfaces(i) % halfspace(r,u)
-      sense = self % halfspaces(i)
+    ! Check each cell surface to ensure point is within its halfspace
+     do i=1,size(self % surfaces)
+       surfIdx   = abs(self % surfaces(i))
 
-      ! If not in halfspace, terminate the search
-      if ( exists .NEQV. sense ) then
-        exists = outside
-        return
-      end if
-    end do
-    exists = inside
-    return
+       ! Check that halfspace of the surface is equivalent to one in definition
+       halfspace = surfShelf % shelf(surfIdx) % halfspace(r,u)
+       sense     = self % surfaces(i) > 0
 
-  end function insideCell
+       if ( halfspace .neqv. sense) then
+         isIt = .false.
+         return
+
+       end if
+     end do
+
+     ! If reached here it means point is inside cell
+     isIt = .true.
+
+  end function isInside
 
   !!
   !! Find the shortest positive distance to the boundary of the cell
   !!
-  function getDistance(self, r, u) result(distance)
-    class(cell), intent(in)                 :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance
-    real(defReal)                           :: testDistance
-    integer(shortInt)                       :: i
+  elemental subroutine distance(self, dist, idx, r, u, surfShelf)
+    class(cell), intent(in)          :: self
+    real(defReal), intent(out)       :: dist
+    integer(shortInt), intent(out)   :: idx
+    type(vector), intent(in)         :: r
+    type(vector), intent(in)         :: u
+    type(surfaceShelf), intent(in)   :: surfShelf
+    real(defReal)                    :: testDist
+    integer(shortInt)                :: i, testIdx, surfIdx
 
-    distance = INFINITY
+    dist = INFINITY
+    idx  = 0
 
     ! Search through all surfaces to find the minimum distance to the boundary
     ! Should not have to check for negative distances: these are set to INFINITY
     ! in the distance routines
-    do i = 1, self%numSurfaces
-      testDistance = self % surfaces(i) % distanceToSurface(r,u)
-      if (testDistance < distance) then
-        distance = testDistance
+    do i = 1, size(self % surfaces)
+
+      ! Obtain test distance and corresponding surface index
+      surfIdx = abs(self % surfaces(i))
+      call surfShelf % shelf(surfIdx) % distance(testDist, testIdx, r, u)
+
+      ! Retain smallest distance & corresponding surfaceIdx
+      ! *** We use testIdx becouse compond surfaces can return index of other surface
+      if (testDist < dist) then
+        dist = testDist
+        idx  = surfIdx
+        ! For now return index of the global surface
+        !idx  = testIdx
+
       end if
     end do
+  end subroutine distance
 
-  end function getDistance
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! cellShelf procedures
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+  !! Initialise shelf
+  !! Give initial size and optionaly stride to override default
+  !!
+  subroutine init_shelf(self,N,stride)
+    class(cellShelf), intent(inout)        :: self
+    integer(shortInt), intent(in)          :: N
+    integer(shortInt), optional,intent(in) :: stride
+
+    ! Return to uninitialised state
+    call self % kill()
+
+    ! Allocate storage space
+    allocate( self % shelf(N))
+
+    ! Assign constants
+    self % Nmax = N
+    if(present(stride)) self % stride = stride
+
+  end subroutine init_shelf
 
   !!
-  !! Find which surface of a cell was crossed by a particle
-  !! For compound surfaces must return component surface
+  !! Deallocate storage space and returns shelf to uninitialised state
   !!
-  function whichSurface(self, r, u)result(surfPointer)
-    class(cell), intent(in)                 :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    integer(shortInt)                       :: i
-    real(defReal)                           :: distance, testDistance
+  subroutine kill_shelf(self)
+    class(cellShelf), intent(inout) :: self
 
-    distance = INFINITY
-    ! First identify which surface will have been crossed assuming all surfaces are simple
-    do i = 1, self % numSurfaces
-      testDistance = self % surfaces(i) % distanceToSurface(r,u)
-      if (testDistance < distance) then
-        distance = testDistance
-        surfPointer => self % surfaces(i) % ptr
-      end if
-    end do
+    if(allocated(self % shelf)) deallocate(self % shelf)
+    self % Nmax   = 0
+    self % N      = 0
+    self % stride = DEF_STRIDE
+    self % nextID = 1
 
-    ! If the identified surface is compound, identify which constituent surface is crossed
-    if (surfPointer % isCompound) then
-      surfPointer => surfPointer % whichSurface(r, u)
+  end subroutine kill_shelf
+
+  !!
+  !! Set shelf size to the number of stored entries
+  !!
+  subroutine trimSize_shelf(self)
+    class(cellShelf), intent(inout) :: self
+
+    call self % resize(self % N)
+
+  end subroutine trimSize_shelf
+
+  !!
+  !! Returns current size of shelf filled with non-empty elements
+  !!
+  function size_shelf(self) result(N)
+    class(cellShelf), intent(in) :: self
+    integer(shortInt)            :: N
+
+    N = self % N
+
+  end function size_shelf
+
+  !!
+  !! Adds acell to the shelf
+  !! Cell needs to be initialised
+  !! Kills cell in the process
+  !! Throws error if cell with the same id is already present
+  !! Returns cellIdx in the cellShelf
+  !!
+  subroutine add_shelf(self,newCell,cellIdx)
+    class(cellShelf), intent(inout)          :: self
+    type(cell),intent(inout)                 :: newCell
+    integer(shortInt), intent(out)           :: cellIdx
+    integer(shortInt)                        :: N
+    character(100),parameter :: Here = 'add_shelf (cell_class.f90)'
+
+    if(.not.allocated(newCell % surfaces )) then
+      call fatalError(Here, 'Provided cell to store was not initialised')
     end if
 
-  end function whichSurface
+    ! Load surface counter for convenience
+    N = self % N
 
-  !!
-  !! Given a co-ordinate list, compare with instances of a cell's location to find
-  !! the instance index
-  !! If the cell has only one instance then the index will be returned instantly as 1
-  !!
-  function coordCompare(self, location) result(idx)
-    class(cell), intent(in) :: self
-    type(coordList), intent(in) :: location
-    integer(shortInt) :: idx
-    integer(shortInt) :: i, n
-    logical(defBool)  :: found
+    if( N == 0) then ! First surface is  being loaded
+      call self % shelf(1) % moveAllocFrom(newCell)
+      cellIdx = 1
 
-    if (self % instances == 1) then
-      idx = 1
-      return
     else
-      ! Efficiently compare co-ordinates
-      ! Presume all cell locations are unique!
-      ! Branchless search - thanks for the good shout, Mikolaj!
-      do i = 1, self % instances
-        found = .TRUE.
-        do n = 1, location % nesting
-          found = found .AND. (location % lvl(n) % uniIdx == self % location(i) % lvl(n) % uniIdx)
-          found = found .AND. (location % lvl(n) % latIdx == self % location(i) % lvl(n) % latIdx)
-          found = found .AND. (location % lvl(n) % ijkIdx == self % location(i) % lvl(n) % ijkIdx)
-          found = found .AND. (location % lvl(n) % cellIdx == self % location(i) % lvl(n) % cellIdx)
-        end do
-        if (found) then
-          idx = i
-          return
+      ! There are already surfaces present (need to check uniqueness)
+      associate ( storedCells => self % shelf(1:N) )
+
+        if ( any( storedCells % id() == newCell % id() )) then        ! ID is already present
+          call fatalError(Here,'Id is already present in the cell shelf')
+
         end if
-      end do
+      end associate
+
+      ! Load surface
+      call self % shelf(N+1) % moveAllocFrom(newCell)
+      cellIdx = N +1
+
     end if
 
-    call fatalError('coordCompare, cell','Could not find cell instance from the location provided')
-    idx = 0 ! Prevents warning
+    ! Increment surface counter
+    self % N = N + 1
 
-  end function coordCompare
+    ! Grow storage if needed
+    call self % grow()
 
-!!
-!! Pointer wrapper functions
-!!
-  !!
-  !! Initialise the cell with the bounding surfaces, their halfspaces and the
-  !! indices describing the fill type, fill, and parent universe
-  !!
-  subroutine init_ptr(self, surfaces, halfspaces, id, fillType, geometryIdx, name)
-    class(cell_ptr), intent(inout)               :: self
-    class(surface_ptr), dimension(:), intent(in) :: surfaces
-    logical(defBool), dimension(:), intent(in)   :: halfspaces
-    integer(shortInt), intent(in)                :: id
-    integer(shortInt), intent(in)                :: fillType
-    integer(shortInt), intent(in)                :: geometryIdx
-    character(100), optional, intent(in)         :: name
-    call self % ptr % init(surfaces, halfspaces, id, fillType, geometryIdx, name)
-  end subroutine init_ptr
-
-  subroutine fill_ptr(self, fillIdx, instance)
-    class(cell_ptr), intent(inout)          :: self
-    integer(shortInt), intent(in)           :: fillIdx
-    integer(shortInt), intent(in), optional :: instance
-    call self % ptr % fill(fillIdx, instance)
-  end subroutine fill_ptr
+  end subroutine add_shelf
 
   !!
-  !! Set the number of cell instances and provide unique ID(s) and location(s) for searching
+  !! Returns cellId and cellIdx of the cell with the same definition
+  !! Cell needs to be initialised on entry
+  !! If there is no cell with the same definition adds it the shelf
+  !! It completly ignores id of cell dummy argument
+  !! cell if uninitialised upon exit
   !!
-  subroutine setInstances_ptr(self, n, location, ID)
-    class(cell_ptr), intent(inout)              :: self
-    integer(shortInt), intent(in)               :: n
-    type(coordList), intent(in), dimension(:)   :: location
-    integer(shortInt), intent(in)               :: ID
-    call self % ptr % setInstances(n, location, ID)
-  end subroutine setInstances_ptr
+  subroutine getOrAdd_shelf(self, newCell, cellId, cellIdx)
+    class(cellShelf), intent(inout)        :: self
+    type(cell), intent(inout)              :: newCell
+    integer(shortInt), intent(out)         :: cellId
+    integer(shortInt), intent(out)         :: cellIdx
+    integer(shortInt)                      :: i
+    character(100),parameter :: Here = 'getOrAdd_shelf (cell_class.f90)'
+
+    if(.not.allocated(newCell % surfaces )) then
+      call fatalError(Here, 'Provided cell to store was not initialised')
+    end if
+
+    ! Find surface with the same definition
+    do i=1,self % N
+      if(newCell .same. self % shelf(i)) then ! Return Idx & ID of existing cell
+        cellId  = self % shelf(i) % id()
+        cellIdx = i
+        call newCell % kill()
+        return
+
+      end if
+    end do
+
+    ! Surface was not found set a next free Id and add to shelf
+    cellId = self % freeId()
+    newCell % cellId = cellId
+    call self % add(newCell, cellIdx)
+
+  end subroutine getOrAdd_shelf
 
   !!
-  !! Checks whether a point occupies a cell by examining each surface in turn
-  !! Returns TRUE if point is in cell, FALSE if point is not
+  !! Return cell idx given cell ID
+  !! Returns "targetNotFound" if id is not present
   !!
-  function insideCell_ptr(self, r, u) result(exists)
-    class(cell_ptr), intent(in)             :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    logical(defBool)                        :: exists
-    exists = self % ptr % insideCell(r,u)
-  end function insideCell_ptr
+  elemental function getIdx_shelf(self,id) result(idx)
+    class(cellShelf), intent(in)  :: self
+    integer(shortInt), intent(in) :: id
+    integer(shortInt)             :: idx
+
+    associate( storedCells => self % shelf(1:self % N))
+      idx = linFind(storedCells % id(), id)
+
+    end associate
+  end function getIdx_shelf
+
 
   !!
-  !! Find the shortest positive distance to the boundary of the cell
+  !! Increases the size of the shelf by stride if N >= Nmax
   !!
-  function getDistance_ptr(self, r, u) result(distance)
-    class(cell_ptr), intent(in)             :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    real(defReal)                           :: distance
-    distance = self % ptr % getDistance(r,u)
-  end function getDistance_ptr
+  subroutine grow_shelf(self)
+    class(cellShelf), intent(inout)            :: self
+    integer(shortInt)                          :: Nmax
+
+    ! Return if shelf does not need to grow
+    if ( self % N < self % Nmax) then
+      return
+    end if
+
+    ! Calculate new maximum size
+    Nmax = self % Nmax + self % stride
+    call self % resize(Nmax)
+
+  end subroutine grow_shelf
 
   !!
-  !! Return whether cell_ptr points to a cell which is inside the geometry
+  !! Set size of the shelf to Nmax >= self % N
   !!
-  function insideGeom_ptr(self) result(insideGeom)
-    class(cell_ptr), intent(in) :: self
-    logical(defBool)            :: insideGeom
-    insideGeom = self % ptr % insideGeom
-  end function insideGeom_ptr
+  subroutine resize_shelf(self,Nmax)
+    class(cellShelf), intent(inout)      :: self
+    integer(shortInt), intent(in)        :: Nmax
+    type(cell),dimension(:),allocatable  :: tempShelf
+    character(100), parameter :: Here ='resize (cell_class.f90)'
+
+    if( Nmax < self % N) call fatalError(Here,'Resizeing to size smaller then number of entries')
+
+    ! Allocate new storage space
+    allocate(tempShelf(Nmax) )
+
+    ! Copy Old enteries without reallocation
+    associate ( new => tempShelf(1:self % N), &
+                old => self % shelf(1:self % N) )
+
+      call new % moveAllocFrom( old)
+    end associate
+
+    ! Replace shelf and update Nmax
+    call move_alloc(tempShelf, self % shelf)
+    self % Nmax = Nmax
+
+  end subroutine resize_shelf
 
   !!
-  !! Given a co-ordinate list, compare with instances of a cell's location to find
-  !! the instance index
-  !! If the cell has only one instance then the index will be returned instantly as 1
+  !! Returns smallest +ve free id in the shelf
   !!
-  function coordCompare_ptr(self, location) result(idx)
-    class(cell_ptr), intent(in) :: self
-    type(coordList), intent(in) :: location
-    integer(shortInt) :: idx
-    idx = self % ptr % coordCompare(location)
-  end function coordCompare_ptr
+  function freeId_shelf(self) result(id)
+    class(cellShelf), intent(inout) :: self
+    integer(shortInt)               :: id
 
-  !!
-  !! Returns the fill type of the cell pointed to by cell_ptr
-  !!
-  function fillType_ptr(self) result(fillType)
-    class(cell_ptr), intent(in) :: self
-    integer(shortInt)           :: fillType
-    fillType = self % ptr % fillType
-  end function fillType_ptr
+    associate( storedCells => self % shelf(1:self % N) )
 
-  !!
-  !! Returns the universe index of the cell pointed to by cell_ptr
-  !!
-  function uniIdx_ptr(self) result(uniIdx)
-    class(cell_ptr), intent(in) :: self
-    integer(shortInt)           :: uniIdx
-    uniIdx = self % ptr % uniIdx
-  end function uniIdx_ptr
+      do
+        id = self % nextId
 
-  !!
-  !! Returns the lattice index of the cell pointed to by cell_ptr
-  !!
-  function latIdx_ptr(self) result(latIdx)
-    class(cell_ptr), intent(in) :: self
-    integer(shortInt)           :: latIdx
-    latIdx = self % ptr % latIdx
-  end function latIdx_ptr
+        ! Check if the proposed id is unique
+        if ( all(storedCells % id() /= id )) return
 
-  !!
-  !! Returns the material index of the cell pointed to by cell_ptr
-  !! Must provide an index for multiple cells
-  !!
-  function matIdx_ptr(self, i) result(matIdx)
-    class(cell_ptr), intent(in)   :: self
-    integer(shortInt), intent(in) :: i
-    integer(shortInt)             :: matIdx
+        ! Increment test id if current nextId is occupied
+        self % nextId = self % nextId + 1
 
-    matIdx = self % ptr % matIdx(i)
-  end function matIdx_ptr
+      end do
+    end associate
 
-  !!
-  !! Returns the geometry index of the cell pointed to by cell_ptr
-  !!
-  function geometryIdx_ptr(self) result(geometryIdx)
-    class(cell_ptr), intent(in) :: self
-    integer(shortInt)           :: geometryIdx
-    geometryIdx = self % ptr % geometryIdx
-  end function geometryIdx_ptr
-
-  !!
-  !! Returns the uniqueID of the cell pointed to by cell_ptr given an instance
-  !!
-  function uniqueID_ptr(self, i) result(uniqueID)
-    class(cell_ptr), intent(in)   :: self
-    integer(shortInt)             :: uniqueID
-    integer(shortInt), intent(in) :: i
-    uniqueID = self % ptr % uniqueID(i)
-  end function uniqueID_ptr
-
-  !!
-  !! Check whether the pointer wrapper is associated to a cell
-  !!
-  function associated_ptr(self) result(assoc)
-    class(cell_ptr), intent(in) :: self
-    logical(defBool)            :: assoc
-    assoc = associated(self % ptr)
-  end function associated_ptr
-
-  !!
-  !! Returns the name of the cell pointed to by cell_ptr
-  !!
-  function name_ptr(self)result(name)
-    class(cell_ptr), intent(in) :: self
-    character(100)              :: name
-    name = self % ptr % name
-  end function name_ptr
-
-  !!
-  !! Find which surface of a cell was crossed by a particle
-  !! For compound surfaces must return component surface
-  !!
-  function whichSurface_ptr(self, r, u) result(surfPointer)
-    class(cell_ptr), intent(in)             :: self
-    real(defReal), dimension(3), intent(in) :: r, u
-    class(surface), pointer                 :: surfPointer
-    surfPointer => self % ptr % whichSurface(r,u)
-  end function whichSurface_ptr
-
-  subroutine cell_ptr_assignment(LHS,RHS)
-    class(cell_ptr), intent(out)  :: LHS
-    type(cell_ptr), intent(in)    :: RHS
-
-    !if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS % ptr
-  end subroutine cell_ptr_assignment
-
-  subroutine cell_ptr_assignment_target(LHS,RHS)
-    class(cell_ptr), intent(out)        :: LHS
-    class(cell), target, intent(in)     :: RHS
-
-    !if(associated(LHS % ptr)) deallocate(LHS % ptr)
-    LHS % ptr => RHS
-
-  end subroutine cell_ptr_assignment_target
-
-  subroutine kill(self)
-    class(cell_ptr), intent(inout) :: self
-    self % ptr => null()
-  end subroutine kill
+  end function freeId_shelf
 
 end module cell_class

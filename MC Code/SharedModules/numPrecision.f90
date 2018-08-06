@@ -6,10 +6,7 @@ module numPrecision
                                 shortInt = 4,    &
                                 longInt = 8,     &
                                 defBool = 4,     &
-                                matNameLen = 20, &
                                 pathLen = 100,   &
-                                zzIdLen = 10,    &
-                                lineLen = 300,   &
                                 nameLen = 30
   ! I/O error codes
   integer, public, parameter :: endOfFile = -1
@@ -24,7 +21,9 @@ module numPrecision
                                       TWO = 2.0_defReal, &
                                       HALF = 0.5_defReal
 
-  !real(defReal), public, parmater  :: floatTol = 1.0e-23
+  real(defReal), public, parameter  :: floatTol = 1.0e-12 !*** Should be replaced
+  real(defReal), public, parameter  :: FP_REL_TOL = 1.0e-7_defReal
+
 
 contains
     

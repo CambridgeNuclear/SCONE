@@ -93,7 +93,6 @@ contains
     real(defReal), intent(in)               :: kT
     class(RNG), intent(inout)               :: rand
     real(defReal),dimension(3)              :: V_t
-    real(defReal)                           :: V_n
     real(defReal)                           :: alpha, mu, phi, P_acc
     real(defReal)                           :: X, Y
     real(defReal)                           :: r1, r2, r3, r4

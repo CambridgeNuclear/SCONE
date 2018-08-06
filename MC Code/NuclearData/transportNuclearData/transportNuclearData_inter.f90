@@ -105,15 +105,17 @@ module transportNuclearData_inter
       class(transportNuclearData), intent(in) :: self
       integer(shortInt), intent(in)           :: matIdx
       logical(defBool)                        :: isIt
-
     end function isFissileMat
 
     !!
     !! Function to generate a fission site from a fissile material.
     !! Necassary in initialisation of an eigenvalue calculation:
     !!
-    !! If input particle isMG flag is .true. returns MG neutron
+    !! MG data sets isMG flag to .true.
+    !! CE data sets isMG flag to .false.
     !! Uses input particle RNG to sample fission site
+    !! Sets neutron global position to r
+    !! Sets weight to 1.0
     !!
     !! If provided material is fissile:
     !!   nuclide nuclear data:
@@ -127,12 +129,13 @@ module transportNuclearData_inter
     !! If provided material is not fissile:
     !!  Changes isAlive flag of a partice to .false.
     !!
-    subroutine initFissionSite(self,p)
+    subroutine initFissionSite(self,p,r)
       import :: transportNuclearData, &
-                particle
+                particle, &
+                defReal
       class(transportNuclearData), intent(in) :: self
       class(particle), intent(inout)          :: p
-
+      real(defReal),dimension(3), intent(in)  :: r
     end subroutine initFissionSite
 
 
@@ -148,7 +151,6 @@ module transportNuclearData_inter
                 shortInt
       class(transportNuclearData), intent(inout) :: self
       integer(shortInt),dimension(:), intent(in) :: matIdxList
-
     end subroutine
 
   end interface

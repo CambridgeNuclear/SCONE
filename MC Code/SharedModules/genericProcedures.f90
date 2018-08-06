@@ -1,9 +1,28 @@
 module genericProcedures
+  ! Intrinsic fortran Modules
+  use iso_fortran_env, only : compiler_version
 
   use numPrecision
   use endfConstants
+  use universalVariables
 
   implicit none
+
+  interface swap
+    module procedure swap_shortInt
+    module procedure swap_defReal
+    module procedure swap_char_nameLen
+  end interface
+
+  interface quickSort
+    module procedure quickSort_shortInt
+    module procedure quickSort_defReal
+  end interface
+
+  interface hasDuplicates
+    module procedure hasDuplicates_shortInt
+    module procedure hasDuplicates_defReal
+  end interface
 
   interface removeDuplicates
     module procedure removeDuplicates_Char
@@ -42,11 +61,6 @@ module genericProcedures
     module procedure numToChar_longInt
     module procedure numToChar_defReal
   end interface
-
-
-  integer(shortInt), parameter :: valueOutsideArray = -1,&
-                                  tooManyIter       = -2,&
-                                  targetNotFound    = -3
 
   contains
 
@@ -93,18 +107,18 @@ module genericProcedures
 
   end function binaryFloorIdxClosed_Real
 
-
+  !!
+  !! Performes linear search of an real sorted array and returns index of the largest
+  !! element smaller-or-equal to the requested value. For the value equal to the largest element
+  !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
+  !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
+  !! paramether. Following errors can happen
+  !!   valueOutsideArray -> larger or smaller then array bounds
+  !!
   pure function linearFloorIdxClosed_Real(array,value) result (idx)
-    !! Performes linear search of an real sorted array and returns index of the largest
-    !! element smaller-or-equal to the requested value. For the value equal to the largest element
-    !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
-    !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
-    !! paramether. Following errors can happen
-    !!   valueOutsideArray -> larger or smaller then array bounds
     real(defReal),dimension(:),intent(in) :: array
     real(defReal),intent(in)              :: value
     integer(shortInt)                     :: idx
-    integer(shortInt)                     :: i
 
     if (value > array(size(array)) .or. value < array(1)) then
       idx = valueOutsideArray
@@ -117,12 +131,13 @@ module genericProcedures
 
   end function linearFloorIdxClosed_Real
 
-
+  !!
+  !! Performes linear search of an integer sorted array and returns index of the largest element,
+  !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
+  !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
+  !! for the value equal to the largest element it returns an error.
+  !!
   function linearFloorIdxClosed_shortInt(array,value) result(idx)
-    !! Performes linear search of an integer sorted array and returns index of the largest element,
-    !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
-    !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
-    !! for the value equal to the largest element it returns an error.
     integer(shortInt),dimension(:),intent(in) :: Array
     integer(shortInt),intent(in)              :: Value
     integer(shortInt)                         :: idx
@@ -139,12 +154,14 @@ module genericProcedures
 
   end function linearFloorIdxClosed_shortInt
 
+  !!
+  !! Performes linear search of an integer sorted array and returns index of the smallest element,
+  !! which is greater-or-equal to the requested value. Returns errors for elements larger than
+  !! the upper bound of the array. Returns 1 for values smaller or equal to the lower bound of the
+  !! array. Following errors can happen:
+  !!   valueOutsideArray -> larger then the upper bound of array
+  !!
   pure function linearCeilingIdxOpen_shortInt(array,value) result(idx)
-    !! Performes linear search of an integer sorted array and returns index of the smallest element,
-    !! which is greater-or-equal to the requested value. Returns errors for elements larger than
-    !! the upper bound of the array. Returns 1 for values smaller or equal to the lower bound of the
-    !! array. Following errors can happen:
-    !!   valueOutsideArray -> larger then the upper bound of array
     integer(shortInt),dimension(:),intent(in) :: Array
     integer(shortInt),intent(in)              :: Value
     integer(shortInt)                         :: idx
@@ -159,14 +176,15 @@ module genericProcedures
 
   end function linearCeilingIdxOpen_shortInt
 
+  !!
+  !! Subroutine that checks whether there was an error during search and returns approperiate
+  !! message.
+  !!
   subroutine searchError(idx,Here)
-    !! Subroutine that checks whether there was an error during search and returns approperiate
-    !! message.
     integer(shortInt),intent(in)  :: idx
     character(*),intent(in)       :: Here
 
     if (idx < 0) then
-
       select case (idx)
         case (valueOutsideArray)
           call fatalError(Here,'The requested value was outide the array bounds')
@@ -181,16 +199,16 @@ module genericProcedures
           call fatalError(Here,'Search returned unknown error flag (negative index)')
 
       end select
-
     end if
+  end subroutine searchError
 
-  end subroutine
-
+  !!
+  !! Displays error message and stops execution
+  !!
   subroutine fatalError(Where,Why)
     character(*), intent(in)    :: Why, Where
     character(100)              :: Line, locWhy, locWhere
     character(20)               :: format
-    integer(shortInt)           :: i
 
     Line = repeat('<>',50)
     format = '(A100)'
@@ -206,13 +224,17 @@ module genericProcedures
     print *
     print format, Line
     stop
+
   end subroutine fatalError
 
+  !!
+  !! Open "File" for reading under with "unitNum" reference
+  !!
   subroutine openToRead(unitNum,File)
-    integer(kind=shortInt), intent(in)    :: unitNum
-    character(len=*), intent(in)          :: File
-    integer(kind=shortInt)                :: errorStat
-    character(len=99)                     :: errorMsg
+    integer(shortInt), intent(in)  :: unitNum
+    character(*), intent(in)       :: File
+    integer(shortInt)              :: errorStat
+    character(99)                  :: errorMsg
 
         open ( unit   = unitNum,   &
                file   = File,      &
@@ -220,8 +242,6 @@ module genericProcedures
                action = "read",    &
                iostat = errorStat, &
                iomsg  = errorMsg)
-
-        !errorMsg=adjustR(errorMsg)
 
         if (errorStat > 0) call fatalError('openToRead subroutine (genericProcedures.f90)', &
                                            errorMsg )
@@ -258,20 +278,21 @@ module genericProcedures
       end if
     end do
 
-
     out = array(1:j-1)  ! Allocate output
 
   end function removeDuplicates_shortInt
 
+  !!
+  !! Function that removes duplicates from input character array. It returns array of equal or
+  !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
+  !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
+  !! length greater then 100
+  !!
   function removeDuplicates_Char(charArray) result(out)
-    !! Function that removes duplicates from input character array. It returns array of equal or
-    !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
-    !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
-    !! length greater then 100
-    character(len=*),dimension(:),intent(in)       :: charArray
-    character(len=100),dimension(:),allocatable    :: out
-    logical(kind=defBool),dimension(:),allocatable :: unique
-    integer(kind=shortInt)                         :: i,j
+    character(nameLen),dimension(:),intent(in)   :: charArray
+    character(nameLen),dimension(:),allocatable  :: out
+    logical(defBool),dimension(:),allocatable    :: unique
+    integer(shortInt)                            :: i,j
 
     if (len(charArray) > len(out)) call fatalError('removeDuplicates_Char (genericProcedures.f90)',&
                                                    'Maximum length of input character is 100 ')
@@ -294,17 +315,19 @@ module genericProcedures
         ! Select elements from charArray for which unique == .true.
         out = pack(charArray, unique)
     end if
-  end function
+  end function removeDuplicates_Char
 
+  !!
+  !! Function that finds duplicates in array of characters. Returns array that contains repeted
+  !! element. Unfortunatly Fortran requires output character to have specified length. Length
+  !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
+  !! length greater then 100
+  !!
   function findDuplicates_Char(charArray) result(out)
-    !! Function that finds duplicates in array of characters. Returns array that contains repeted
-    !! element. Unfortunatly Fortran requires output character to have specified length. Length
-    !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
-    !! length greater then 100
-    character(len=*),dimension(:),intent(in)       :: charArray
-    character(len=100),dimension(:),allocatable    :: out
-    logical(kind=defBool),dimension(:),allocatable :: unique
-    integer(kind=shortInt)                         :: i,j
+    character(nameLen),dimension(:),intent(in)  :: charArray
+    character(nameLen),dimension(:),allocatable :: out
+    logical(defBool),dimension(:),allocatable   :: unique
+    integer(shortInt)                           :: i,j
 
     if (len(charArray) > len(out)) call fatalError('removeDuplicates_Char (genericProcedures.f90)',&
                                                    'Maximum length of input character is 100 ')
@@ -328,14 +351,14 @@ module genericProcedures
         out = pack(charArray, .not.unique)
         out = removeDuplicates(out)
     end if
-  end function
+  end function findDuplicates_Char
 
-
-
+  !!
+  !! Searches linearly for the occurance of target in charArray. Removes left blanks.
+  !! Following Errors can occur:
+  !! targetNotFound -> target is not present in the array
+  !!
   function linFind_Char(charArray,target) result(idx)
-    !! Searches linearly for the occurance of target in charArray. Removes left blanks.
-    !! Following Errors can occur:
-    !! targetNotFound -> target is not present in the array
     character(*),dimension(:),intent(in) :: charArray
     character(*),intent(in)              :: target
     integer(shortInt)                    :: idx
@@ -346,13 +369,13 @@ module genericProcedures
     end do
     idx = targetNotFound
 
-  end function
+  end function linFind_Char
 
-
-
+  !!
+  !! Searches linearly for the occurance of target in defRealArray. Following Errors can occur
+  !! valueOutsideArray -> target is not present in the array
+  !!
   function linFind_defReal(defRealArray,target) result (idx)
-    !! Searches linearly for the occurance of target in defRealArray. Following Errors can occur
-    !! valueOutsideArray -> target is not present in the array
     real(defReal), dimension(:), intent(in)  :: defRealArray
     real(defReal), intent(in)                :: target
     integer(shortInt)                        :: idx
@@ -363,10 +386,11 @@ module genericProcedures
     idx = targetNotFound
   end function linFind_defReal
 
-
+  !!
+  !! Searches linearly for the occurance of target in shortIntArray. Following Errors can occur
+  !! valueOutsideArray -> target is not present in the array
+  !!
   pure function linFind_shortInt(shortIntArray,target) result (idx)
-    !! Searches linearly for the occurance of target in shortIntArray. Following Errors can occur
-    !! valueOutsideArray -> target is not present in the array
     integer(shortInt), dimension(:), intent(in)  :: shortIntArray
     integer(shortInt), intent(in)                :: target
     integer(shortInt)                            :: idx
@@ -377,35 +401,11 @@ module genericProcedures
     idx = targetNotFound
   end function linFind_shortInt
 
-!  function arrayConcat(charArray) result(out)
-!    !! Concatenate strings from an array into a single long character. Trims elements of char Array
-!    !! and ads on blank between them for separation.
-!    character(*),dimension(:),intent(in)       :: charArray
-!    character(:),allocatable                   :: out
-!    integer(shortInt)                          :: trimLen , i
-!
-!    ! Find total trim length of elements of charArray
-!    trimLen=0
-!    do i=1,size(charArray)
-!      trimLen = trimLen + len(trim(charArray(i)))
-!    end do
-!
-!    i = trimLen + size(charArray)
-!    allocate(character(i) :: out)
-!
-!    out = ''
-!
-!    do i=1,size(charArray)
-!      out = out // trim(charArray(i)) // ' '
-!    end do
-!
-!  end function arrayConcat
-
-
-
+  !!
+  !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
+  !! elements of char Array. Adds a blank at the end of a line
+  !!
   function arrayConcat(charArray) result(out)
-    !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
-    !! elements of char Array. Adds a blank at the end of a line
     character(*),dimension(:),intent(in)       :: charArray
     character(:),allocatable                   :: out
     integer(shortInt)                          :: elementLen, trimLen , i
@@ -431,10 +431,10 @@ module genericProcedures
 
   end function arrayConcat
 
-
-
+  !!
+  !! Function that searches counts all occurences of a "symbol" in a "string"
+  !!
   function countSymbol(string,symbol) result(num)
-    ! Function that searches counts all occurences of a "symbol" in a "string"
     character(*),intent(in)  :: string
     character(1),intent(in)  :: symbol
     integer(shortInt)        :: num
@@ -453,10 +453,11 @@ module genericProcedures
 
   end function countSymbol
 
-
+  !!
+  !! Goes through the string and adds +1 to balance for each leftS and -1 for each rightS. It
+  !! terminates and returns -1 when balance becomes -ve.
+  !!
   function symbolBalance(str,leftS,rightS) result (balance)
-    !! Goes through the string and adds +1 to balance for each leftS and -1 for each rightS. It
-    !! terminates and returns -1 when balance becomes -ve.
     character(*),intent(in)       :: str
     character(1),intent(in)       :: leftS
     character(1),intent(in)       :: rightS
@@ -480,13 +481,13 @@ module genericProcedures
 
   end function symbolBalance
 
-
-
+  !!
+  !! Finds index of next character in signs in the string
+  !!
   function indexOfNext(signs,string) result (idx)
     character(1),dimension(:),intent(in)     :: signs
     character(*), intent(in)                 :: string
     integer(shortInt)                        :: idx
-    integer(shortInt)                        :: i
     integer(shortInt),dimension(size(signs)) :: temp_idx
     character(100),parameter                 :: here='indexOf (genericProcedures.f90)'
 
@@ -499,7 +500,9 @@ module genericProcedures
 
   end function indexOfNext
 
-
+  !!
+  !! Replaces all repeated blanks in string with a single blank
+  !!
   subroutine compressBlanks(string)
     character(*), intent(inout)     :: string
     character(len(string))          :: stringCopy
@@ -532,7 +535,9 @@ module genericProcedures
 
   end subroutine compressBlanks
 
-
+  !!
+  !! Replaces all symbols "oldS" with "newS" in string
+  !!
   subroutine replaceChar(string,oldS,newS)
     character(*), intent(inout) :: string
     character(1), intent(in)    :: oldS
@@ -557,8 +562,9 @@ module genericProcedures
 
   end function charCmp
 
-
-
+  !!
+  !! Perform linear interpolation between defReals
+  !!
   elemental function RealReal_linlin_elemental_interpolate(xMin,xMax,yMin,yMax,x) result(y)
     real(defReal), intent(in) :: xMin, xMax, yMin, yMax, x
     real(defReal)             :: y
@@ -569,8 +575,9 @@ module genericProcedures
 
   end function RealReal_linlin_elemental_interpolate
 
-
-
+  !!
+  !! Perform one of ENDF defined interpolation types
+  !!
   function RealReal_endf_interpolate(xMin,xMax,yMin,yMax,x,endfNum) result(y)
     real(defReal), intent(in)     :: xMin, xMax, yMin, yMax, x
     integer(shortInt), intent(in) :: endfNum
@@ -605,26 +612,23 @@ module genericProcedures
 
   end function RealReal_endf_interpolate
 
-
-
+  !!
+  !! Checks if the provided float is an integer. It may not be rebust and requires further
+  !! testing. It uses the fact that ceiling and floor of an integer are the same.
+  !!
   elemental function isInteger(float) result (isIt)
-    !! Checks if the provided float is an integer. It may not be rebust and requires further
-    !! testing. It uses the fact that ceiling and floor of an integer are the same.
-
     real(defReal), intent(in) :: float
     logical(defBool)          :: isIt
-    integer(longInt)          :: tempI
-    real(defReal)             :: a
 
     ! It is Fortran 2008 Standard Compliant. Really!
     isIt = (floor(float,longInt) == ceiling(float,longInt))
 
   end function isInteger
 
-
-
+  !!
+  !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
+  !!
   function isSorted_defReal(array) result (isIt)
-    !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
     real(defReal),dimension(:),intent(in) :: array
     logical(defBool)                      :: isIt
     integer(shortInt)                     :: i
@@ -640,10 +644,10 @@ module genericProcedures
 
   end function isSorted_defReal
 
-
-
+  !!
+  !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
+  !!
   function isSorted_shortInt(array) result (isIt)
-    !! Function that check if the array is sorted in ascending order (a(i) >= a(i-1) for all i).
     integer(shortInt),dimension(:),intent(in) :: array
     logical(defBool)                          :: isIt
     integer(shortInt)                         :: i
@@ -659,34 +663,40 @@ module genericProcedures
 
   end function isSorted_shortInt
 
+  !!
   !! Convert shortInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_shortInt(x) result(c)
-    integer(shortInt)         :: x
-    character(:), allocatable :: c
-    character(40)             :: tempChar
+  !!
+  elemental function numToChar_shortInt(x) result(c)
+    integer(shortInt),intent(in) :: x
+    character(:), allocatable    :: c
+    character(40)                :: tempChar
 
     write(tempChar,'(I0)') x
     c = trim(tempChar)
 
   end function numToChar_shortInt
 
+  !!
   !! Convert longInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_longInt(x) result(c)
-    integer(longInt)          :: x
-    character(:), allocatable :: c
-    character(40)             :: tempChar
+  !!
+  elemental function numToChar_longInt(x) result(c)
+    integer(longInt),intent(in) :: x
+    character(:), allocatable   :: c
+    character(40)               :: tempChar
 
     write(tempChar,'(I0)') x
     c = trim(tempChar)
 
   end function numToChar_longInt
 
+  !!
   !! Convert defReal to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
-  function numToChar_defReal(x) result(c)
-    real(defReal)             :: x
+  !!
+  elemental function numToChar_defReal(x) result(c)
+    real(defReal),intent(in)  :: x
     character(:), allocatable :: c
     character(40)             :: tempChar
 
@@ -764,6 +774,211 @@ module genericProcedures
 
   end function crossProduct
 
+  !!
+  !! Returns true if array contains duplicates
+  !!
+  pure function hasDuplicates_shortInt(array) result(doesIt)
+    integer(shortInt), dimension(:), intent(in) :: array
+    logical(defBool)                            :: doesIt
+    integer(shortInt), dimension(size(array))   :: arrayCopy
+    integer(shortInt)                           :: i
 
+    ! Copy and sort array
+    arrayCopy = array
+    call quickSort(arrayCopy)
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
+
+    end do
+
+  end function hasDuplicates_shortInt
+
+  !!
+  !! Returns tue if array contains duplicates
+  !!
+  pure function hasDuplicates_defReal(array) result(doesIt)
+    real(defReal), dimension(:), intent(in) :: array
+    logical(defBool)                        :: doesIt
+    real(defReal), dimension(size(array))   :: arrayCopy
+    integer(shortInt)                       :: i
+
+    ! Copy and sort array
+    arrayCopy = array
+    call quickSort(arrayCopy)
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
+
+    end do
+
+  end function hasDuplicates_defReal
+
+  !!
+  !! Quicksort for integer array
+  !!
+  recursive pure subroutine quickSort_shortInt(array)
+    integer(shortInt), dimension(:), intent(inout) :: array
+    integer(shortInt)                              :: pivot
+    integer(shortInt)                              :: i, maxSmall
+
+    if (size(array) > 1 ) then
+      ! Set a pivot to the rightmost element
+      pivot = size(array)
+
+      ! Move all elements <= pivot to the LHS of the pivot
+      ! Find position of the pivot in the array at the end (maxSmall)
+      maxSmall = 0
+      do i=1,size(array)
+
+        if( array(i) <= array(pivot)) then
+          maxSmall = maxSmall + 1
+          call swap(array(i),array(maxSmall))
+        end if
+      end do
+
+      ! Recursivly sort the sub arrays divided by the pivot
+      call quickSort(array(1:maxSmall-1))
+      call quickSort(array(maxSmall+1:size(array)))
+    end if
+
+  end subroutine quickSort_shortInt
+
+  !!
+  !! Quicksort for real array
+  !!
+  recursive pure subroutine quickSort_defReal(array)
+    real(defReal), dimension(:), intent(inout) :: array
+    integer(shortInt)                          :: i, maxSmall, pivot
+
+    if (size(array) > 1 ) then
+      ! Set a pivot to the rightmost element
+      pivot = size(array)
+
+      ! Move all elements <= pivot to the LHS of the pivot
+      ! Find position of the pivot in the array at the end (maxSmall)
+      maxSmall = 0
+      do i=1,size(array)
+
+        if( array(i) <= array(pivot)) then
+          maxSmall = maxSmall + 1
+          call swap(array(i),array(maxSmall))
+        end if
+      end do
+
+      ! Recursivly sort the sub arrays divided by the pivot
+      call quickSort(array(1:maxSmall-1))
+      call quickSort(array(maxSmall+1:size(array)))
+    end if
+
+  end subroutine quickSort_defReal
+
+  !!
+  !! Swap two integers
+  !! Use XOR to avoid extra space (which is completly unnecessary)
+  !!
+  elemental subroutine swap_shortInt(i1,i2)
+    integer(shortInt), intent(inout) :: i1
+    integer(shortInt), intent(inout) :: i2
+    integer(shortInt)                :: temp
+
+    temp = i1
+    i1 = i2
+    i2 = temp
+
+  end subroutine swap_shortInt
+
+  !!
+  !! Swap to reals
+  !!
+  elemental subroutine swap_defReal(r1,r2)
+    real(defReal), intent(inout) :: r1
+    real(defReal), intent(inout) :: r2
+    real(defReal)                :: temp
+
+    temp = r1
+    r1 = r2
+    r2 = temp
+
+  end subroutine swap_defReal
+
+  !!
+  !! Swap character of length nameLen
+  !!
+  elemental subroutine swap_char_nameLen(c1,c2)
+    character(nameLen), intent(inout) :: c1
+    character(nameLen), intent(inout) :: c2
+    character(nameLen)                :: temp
+
+    temp = c1
+    c1 = c2
+    c2 = temp
+
+  end subroutine swap_char_nameLen
+
+  pure function charCshift(string,N) result(shifted)
+    character(*), intent(in)      :: string
+    integer(shortInt), intent(in) :: N
+    character(len(string))        :: shifted
+    integer(shortInt)             :: i, i_swap
+    character(1)                  :: temp
+
+    ! Loop over character and copy character with an offset
+    do i=1,len(string)
+      i_swap = modulo(i+N-1,len(string))+1
+      shifted(i_swap:i_swap) = string(i:i)
+    end do
+
+  end function charCShift
+
+  !!
+  !! Prints Scone ACII Header
+  !!
+  subroutine printStart()
+    print *, repeat(" ><((((*> ",10)
+    print *, ''
+    print * ,"        _____ __________  _   ________  "
+    print * ,"       / ___// ____/ __ \/ | / / ____/  "
+    print * ,"       \__ \/ /   / / / /  |/ / __/     "
+    print * ,"      ___/ / /___/ /_/ / /|  / /___     "
+    print * ,"     /____/\____/\____/_/ |_/_____/     "
+    print * , ''
+    print * , ''
+    print * , "Compiler Info :   ", compiler_version()
+    print *
+    print *, repeat(" <*((((>< ",10)
+
+    ! TODO: Add extra info like date & time
+
+  end subroutine printStart
+
+  !!
+  !! Prints line of fishes swiming right with an offset
+  !!
+  subroutine printFishLineR(offset)
+    integer(shortInt),intent(in) :: offset
+    integer(shortInt)            :: offset_L
+    character(100), parameter    :: line = repeat(" ><((((*> ",10)
+    character(100),dimension(10), parameter :: lines = [ &
+    " ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*> " ,&
+    "  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>" ,&
+    ">  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*" ,&
+    "*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((" ,&
+    "(*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(((" ,&
+    "((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((" ,&
+    "(((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(" ,&
+    "((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><" ,&
+    "<((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  >" ,&
+    "><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  " ]
+
+    offset_L = modulo(offset,10)
+
+    print *, lines(offset_L+1)
+
+  end subroutine  printFishLineR
 
 end module genericProcedures

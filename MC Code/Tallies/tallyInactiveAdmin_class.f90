@@ -54,7 +54,6 @@ contains
   subroutine reportCycleStart(self,start)
     class(tallyInactiveAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)       :: start
-    integer(shortInt)                        :: i, idx
 
     ! Process report with internal Clerk
     call self % keff_estimator % reportCycleStart(start)
@@ -70,7 +69,6 @@ contains
   subroutine reportCycleEnd(self,end)
     class(tallyInactiveAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)       :: end
-    integer(shortInt)                        :: i, idx
 
     ! Process report with internal Clerk
     call self % keff_estimator % reportCycleEnd(end)

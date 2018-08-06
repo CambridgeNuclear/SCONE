@@ -23,9 +23,10 @@ module particle_class
     real(defReal)              :: time = 0.0     ! Particle time position
   contains
     generic    :: assignment(=) => phaseCoord_fromParticle
-    procedure  :: display => display_phaseCoord
+    procedure  :: display       => display_phaseCoord
 
     procedure, private :: phaseCoord_fromParticle
+
   end type
 
 
@@ -34,18 +35,17 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
+
     class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
+    class(nuclearData),pointer :: xsData => null() ! Pointer to nuclear data
 
-                               !*** Changed from currentMaterialIndex
-    integer(shortInt)          :: matIdx      ! The index of the current material which the particle is traversing
-    class(nuclearData),pointer :: xsData => null()
-
-    integer(shortInt)          :: regionID
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
-    real(defReal)              :: time      ! Particle time point
+ real(defReal)              :: time      ! Particle time point
     real(defReal)              :: timeMax   ! Maximum neutron time before cut-off
-    integer(shortInt)          :: fate = 0  ! Neutron's fate after being subjected to an operator
+    integer(shortInt)          :: fate = 0  ! Neutron's fate after being subjected to an operator     
+    
+ 
   contains
     !! Public Interface
     generic              :: build => buildCE, buildMG

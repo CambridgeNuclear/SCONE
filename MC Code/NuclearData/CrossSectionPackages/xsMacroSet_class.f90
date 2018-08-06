@@ -40,6 +40,7 @@ module xsMacroSet_class
     procedure :: captureXS   => captureXS_ptr
     procedure :: fissionXS   => fissionXS_ptr
     procedure :: nuFissionXS => nuFissionXS_ptr
+    procedure :: nu          => nu_ptr
     procedure :: invert      => invert_ptr
   end type xsMacroSet_ptr
 

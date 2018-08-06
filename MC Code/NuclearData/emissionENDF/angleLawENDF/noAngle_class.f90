@@ -61,7 +61,10 @@ contains
   !!
   function new_noAngle() result(new)
     type(noAngle)  :: new
-    ! Nothing to be done
+    real(defReal) :: dummy
+    ! Nothing to be done Avoid compiler warning
+    return
+    dummy = new % probabilityOf(HALF,ONE)
   end function new_noAngle
 
     

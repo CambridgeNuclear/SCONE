@@ -176,8 +176,6 @@ contains
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP
     integer(shortInt)                     :: i, idx
-    real(defReal)                         :: r1
-    real(defReal)                         :: flipProb
 
     ! Calculate excess particles to be removed
     excessP = self % pop - N

@@ -19,7 +19,6 @@ module endfConstants
   integer(shortInt), parameter :: LOCB_CORRELATED = -1 ,&
                                   LOCB_ISOTROPIC  = 0
 
-
   ! List of reaction MT numbers, See Serpent 2 Wiki or ENDF manual for exact details:
   !
   ! Trkov, A., M. Herman, and D. A. Brown. “ENDF-6 Formats Manual.”

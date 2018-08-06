@@ -13,6 +13,7 @@ module correlatedLawENDFfactory_func
   private
 
   public :: new_correlatedLawENDF
+  public :: new_correlatedLawENDF_ptr
 
 contains
 

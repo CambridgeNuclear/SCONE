@@ -13,13 +13,13 @@ module materialDataNoMT_class
   !! Should not be modified or used outside byNucNoMT
   !!
   type, public :: materialDataNoMT
-    character(matNameLen)                       :: name     !! Material name
+    character(nameLen)                          :: name     !! Material name
     real(defReal)                               :: temp     !! Material temperature [K]
     integer(shortInt)                           :: numNuc   !! Number of nuclides in material
     logical(defBool)                            :: isFissile =.false. !! True is contains fissile nuclides
     integer(shortInt),dimension(:),allocatable  :: nucIdx   !! Index Ids of Nuclides
     real(defReal),dimension(:),allocatable      :: nucDens  !! Nuclide densities 1/barn*cm
-    character(ZZidLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
+    character(nameLen),dimension(:),allocatable :: nucNames !! ZZids of nuclides
   contains
     procedure :: init
     procedure :: setNumberOfNuc
@@ -35,18 +35,10 @@ contains
     class(materialDataNoMT), intent(inout)      :: self
     class(dictionary), intent(in)               :: dict
     character(*),intent(in)                     :: name
-    logical(defBool)                            :: isNotMaterial
     integer(shortInt)                           :: i
     real(defReal)                               :: temp
     character(nameLen),dimension(:),allocatable :: nucKeys
     character(100), parameter                   :: Here ='init (materialDataNoMT_class.f90)'
-
-    ! Verify that provided dictionary contains material
-    ! isNotMaterial = ('material' /= adjustl(dict % getChar('type') ))
-    ! if (isNotMaterial) then
-    !  call fatalError(Here,'Provided Dictionery is not a "material" it is: ' // dict % getChar('type') )
-    !
-    !end if
 
     ! Read required data
     self % name = name
@@ -80,7 +72,6 @@ contains
         character(*),dimension(:),allocatable, intent(inout) :: keys
         character(len(keys)), dimension(:), allocatable      :: tempKeys
         logical(defBool),dimension(:),allocatable            :: mask
-        integer(shortInt) :: i
 
         ! Create mask array
         mask = isZZid(keys)
@@ -159,6 +150,9 @@ contains
 
   end subroutine setNumberOfNuc
 
+  !!
+  !! Prints contents to the console
+  !!
   subroutine printMe(self)
     class(materialDataNoMT), intent(in) :: self
     character(100)                      :: format1, format2, line
@@ -166,7 +160,7 @@ contains
 
     format1 = '(100G20.10)'
     format2 = '(A100)'
-    line = repeat('<>',100)
+    line = repeat('<>',50)
 
 
     print format2, line

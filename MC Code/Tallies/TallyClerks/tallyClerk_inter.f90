@@ -184,6 +184,9 @@ contains
 
     call fatalError(Here,'Convergence check is not implemented in the instance')
 
+    ! Avoid warning
+    isIt =.false.
+
   end function isConverged
 
 end module tallyClerk_inter

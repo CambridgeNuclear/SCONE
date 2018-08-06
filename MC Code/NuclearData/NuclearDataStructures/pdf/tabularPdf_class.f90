@@ -177,7 +177,6 @@ contains
     real(defReal),dimension(:),intent(in)  :: pdf
     real(defReal),dimension(:),intent(in)  :: cdf
     integer(shortInt),intent(in)           :: flag ! Interpolation scheme flag
-    integer(shortInt)                      :: i
     character(100),parameter               :: Here='init (tabularPdf_class.f90)'
 
     ! Check Input

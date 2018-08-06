@@ -56,7 +56,10 @@ contains
   !!
   function new_isotropicAngle() result(new)
     type(isotropicAngle) :: new
-    ! Nothing to be done
+    real(defReal)        :: dummy
+    ! Nothing to be done Avoid compiler warning
+    return
+    dummy = new % probabilityOf(HALF,ONE)
   end function new_isotropicAngle
 
 end module isotropicAngle_class

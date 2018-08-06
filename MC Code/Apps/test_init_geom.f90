@@ -2,7 +2,7 @@ program test_init_geom
   use numPrecision
   use genericProcedures
   use universalVariables
-  use surface_class
+  use surface_inter
   use cell_class
   use universe_class
   use lattice_class

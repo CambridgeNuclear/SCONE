@@ -142,7 +142,7 @@ contains
   !!
   function getZZId(self) result(zzId)
     class(nuclideMemoryMT), intent(in) :: self
-    character(zzIdLen)                   :: zzId
+    character(nameLen)                 :: zzId
 
     ZZid = self % data % zzId
 

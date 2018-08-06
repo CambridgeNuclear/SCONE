@@ -27,7 +27,7 @@ module aceMT_class
   type, public :: aceMT
     real(defReal),public      :: atomWeight    !! Atomic weight ratio A/m_neutron
     real(defReal),public      :: temp          !! Temperature of nucleide [MeV]
-    character(zzIdLen),public :: zzId          !! Nuclide ZZid ie. ZZZAAA.nnC
+    character(nameLen),public :: zzId          !! Nuclide ZZid ie. ZZZAAA.nnC
     character(10)             :: date          !! Date the data were processed
     character(70)             :: comment       !! Quick! Guess what is it!
     character(10)             :: MATid         !! MAT indentifier (see p. F-9 Appendic F MCNP 4 manual)
@@ -245,9 +245,7 @@ contains
     real(defReal), dimension(:), allocatable     :: xsAnyScatter
     real(defReal), dimension(:), allocatable     :: xsCapture
     real(defReal), dimension(:), allocatable     :: xsFission
-    integer(shortInt)                            :: reactionNum
     integer(shortInt)                            :: i,j, Ngrid
-    integer(shortInt)                            :: firstIdx, numIdx
     integer(shortInt), dimension(:), allocatable :: MTs
 
     if (allocated(self % energyGrid)) deallocate(self % energyGrid)

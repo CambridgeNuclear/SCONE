@@ -115,7 +115,7 @@ contains
     associate (xsData => p % xsData)
       select type(xsData)
         class is (transportNuclearData)
-          call xsData % getMatMacroXS(XSs, p, p % matIdx)
+          call xsData % getMatMacroXS(XSs, p, p % matIdx())
 
         class default
           call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
@@ -176,10 +176,10 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(keffActiveClerk), intent(inout)   :: self
-    class(particleDungeon), intent(in)   :: end
-    real(defReal)                        :: endWgt, k_est
-    real(defReal)      :: nuFiss, absorb, leakage, collCount, histCount, k_cycle
+    class(keffActiveClerk), intent(inout) :: self
+    class(particleDungeon), intent(in)    :: end
+    real(defReal)                         :: endWgt, k_est
+    real(defReal)                         :: nuFiss, absorb, leakage, k_cycle
 
     ! Obtain end of cycle weight and k value used to change fission site generation rate
     endWgt = end % popWeight()

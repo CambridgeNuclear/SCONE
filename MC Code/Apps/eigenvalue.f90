@@ -1,29 +1,24 @@
 program eigenvalue
 
   use numPrecision
-
-  use IOdictionary_class,        only : IOdictionary
-  use eigenPhysicsPackage_class, only : eigenPhysicsPackage
+  use genericProcedures,          only : printStart
+  use IOdictionary_class,         only : IOdictionary
+  use physicsPackage_inter,       only : physicsPackage
+  use physicsPackageFactory_func, only : new_physicsPackage
 
   implicit none
+  type(IOdictionary)                :: input
+  class(physicsPackage),allocatable :: core
 
-  type(IOdictionary)       :: matData
-  type(IOdictionary)       :: geomData
-  type(IOdictionary)       :: transData
-  type(IOdictionary)       :: collData
-  type(IOdictionary)       :: activeTally
-  type(IOdictionary)       :: inactiveTally
-  type(eigenPhysicsPackage) :: core
+  call printStart()
+
+  call input % initFrom('./InputFiles/FirstInput.c')
+
+  allocate( core, source = new_physicsPackage(input))
 
   ! Read data
-  call matData   % initFrom('./InputFiles/materialInput')
-  call geomData  % initFrom('./InputFiles/pinCell.txt')
-  call transData % initFrom('./InputFiles/transOp.txt')
-  call collData  % initFrom('./InputFiles/collOp.txt')
-  call inactiveTally % initFrom('./InputFiles/iaTally.txt')
-  call activeTally   % initFrom('./InputFiles/aTally.txt')
 
-  call core % init(matData, geomData, collData, transData, inactiveTally, activeTally)
+  call core % init(input)
 
   call core % run()
 

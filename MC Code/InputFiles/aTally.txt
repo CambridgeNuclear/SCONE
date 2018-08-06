@@ -1,3 +1,19 @@
 type a; 
 
-clerk1 { type keffActiveClerk; display yes; }
+ 
+!clerk2 { type keffActiveClerk; display no; }
+!clerk3 { type keffActiveClerk; display no; }
+!clerk4 { type keffActiveClerk; display no; }
+!clerk5 { type keffActiveClerk; display no; }
+!clerk6 { type keffActiveClerk; display no; }
+!clerk7 { type keffActiveClerk; display no; }
+!clerk8 { type keffActiveClerk; display no; }
+!clerk9 { type keffActiveClerk; display no; }
+!clerk10 { type keffActiveClerk; display no; }
+!clerk11 { type keffActiveClerk; display no; }
+!clerk12 { type keffActiveClerk; display no; }
+!clerk13 { type keffActiveClerk; display no; }
+!clerk14 { type keffActiveClerk; display no; }
+!clerk15 { type keffActiveClerk; display no; }
+!clerk16 { type keffActiveClerk; display no; }
+!clerk17 { type keffActiveClerk; display no; }

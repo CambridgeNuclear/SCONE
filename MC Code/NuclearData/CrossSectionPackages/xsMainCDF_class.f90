@@ -31,7 +31,7 @@ contains
     real(defReal),intent(in)          :: capture
     real(defReal),intent(in),optional :: fission
     real(defReal)                     :: locFission
-    real(defReal)                     :: total
+
     ! Check if the fission XS is supplied
     if(present(fission)) then
       locFission = fission

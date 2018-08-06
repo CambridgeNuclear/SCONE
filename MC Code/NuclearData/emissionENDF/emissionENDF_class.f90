@@ -18,6 +18,18 @@ module emissionENDF_class
   implicit none
   private
 
+  !!
+  !! Constructor
+  !!
+  interface emissionENDF
+    module procedure new_emissionENDF_uncorrelated
+    module procedure new_emissionENDF_correlated
+    module procedure new_emissionENDF_fromACE
+  end interface
+
+  !!
+  !! Strores outgoing energy & angle distribution for an MT reaction
+  !!
   type, public :: emissionENDF
     private
     ! Reference frame and emission type flags
@@ -34,6 +46,7 @@ module emissionENDF_class
 
     procedure :: sampleAngleEnergy
     procedure :: isInCMframe
+    procedure :: moveAllocFrom
 
     procedure, private :: init_uncorrelated
     procedure, private :: init_correlated

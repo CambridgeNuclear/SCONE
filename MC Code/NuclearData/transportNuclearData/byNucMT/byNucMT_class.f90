@@ -3,6 +3,7 @@ module byNucMT_class
   ! Global modules
   use numPrecision
   use endfConstants
+  use universalVariables
   use genericProcedures,             only : fatalError, linFind, searchError
   use RNG_class,                     only : RNG
   use dictionary_class,              only : dictionary
@@ -230,27 +231,39 @@ contains
     integer(shortInt), intent(in)  :: matIdx
     logical(defBool)               :: isIt
 
-    isIt = self % dataBlock % matData(matIdx) % isFissile
+    select case(matIdx)
+      case(OUTSIDE_MAT)
+        isIT = .false.
 
+      case(VOID_MAT)
+        isIt = .false.
+
+      case default
+        isIt = self % dataBlock % matData(matIdx) % isFissile
+    end select
   end function isFissileMat
 
 
   !!
   !! Function to generate a fission site from a fissile material.
   !! Necassary in initialisation of an eigenvalue calculation:
-  !! Remember that fissile material and CE neutron is assured by the adapter interface
+  !! Remember that fissile material is assured by the adapter interface
   !!
-  subroutine initFissionSite_E(self,p)
-    class(byNucMT), intent(in)   :: self
-    class(particle), intent(inout) :: p
-    integer(shortInt)              :: matIdx, nucIdx, nucIdx_temp, i
-    real(defReal)                  :: E_out, mu, phi, maxDens
-    real(defReal)                  :: r1
-    real(defReal), parameter       :: E_in = 1.0E-6_defReal
-    character(100), parameter      :: Here=' initFissionSite_E ( byNucMT_class.f90)'
+  subroutine initFissionSite_E(self,p,r)
+    class(byNucMT), intent(in)             :: self
+    class(particle), intent(inout)         :: p
+    real(defReal),dimension(3), intent(in) :: r
+    integer(shortInt)                      :: matIdx, nucIdx, nucIdx_temp, i
+    real(defReal)                          :: E_out, mu, phi, maxDens
+    real(defReal)                          :: r1
+    real(defReal), parameter               :: E_in = 1.0E-6_defReal
+    character(100), parameter              :: Here=' initFissionSite_E ( byNucMT_class.f90)'
 
     ! Obtain random numbers
     r1 = p % pRNG % get()
+
+    ! Save material
+    matIdx = p % matIdx()
 
     ! Choose fission Nuclide -> fissile nuclide with the largest numerical density
     associate (materialDat => self % dataBlock % matData(matIdx))
@@ -284,8 +297,13 @@ contains
     phi = 2*PI*r1
 
     ! Update particle state
+    call p % point([ONE, ZERO, ZERO])
     call p % rotate(mu,phi)
     p % E = E_out
+    p % w = ONE
+    call p % teleport(r)
+    ! *** HAVING FUNCTION TO FOR STTING MATIDX WILL BE GOOD
+    p % coords % matIdx = matIdx
     p % isDead = .false.
 
   end subroutine initFissionSite_E
