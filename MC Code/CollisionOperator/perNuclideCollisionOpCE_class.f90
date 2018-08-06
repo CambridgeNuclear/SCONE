@@ -5,7 +5,7 @@ module perNuclideCollisionOpCE_class
   use genericProcedures,             only : fatalError, rotateVector
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
-  use particle_class,                only : particle
+  use particle_class,                only : particle, phaseCoord
   use particleDungeon_class,         only : particleDungeon
   use collisionOperatorBase_inter,   only : collisionOperatorBase
   use nuclearData_inter,             only : nuclearData
@@ -105,7 +105,7 @@ contains
     class(particleDungeon),intent(inout)          :: thisCycle
     class(particleDungeon),intent(inout)          :: nextCycle
     type(xsMainSet_ptr)                      :: nuclideXss
-    type(particle)                           :: pTemp
+    type(phaseCoord)                         :: pTemp
     real(defReal),dimension(3)               :: r, dir
     integer(shortInt)                        :: n, i
     real(defReal)                            :: nu, wgt, r1, E_out, mu, phi
@@ -140,8 +140,15 @@ contains
           dir = rotateVector(dir,mu,phi)
 
           if (E_out > energyMaximum) E_out = energyMaximum
+          ! Copy extra detail from parent particle (i.e. time, flags ect.)
+          pTemp       = p
 
-          call pTemp % build(r,dir,E_out,wgt)
+          ! Overwrite position, direction, energy and weight
+          pTemp % r   = r
+          pTemp % dir = dir
+          pTemp % E   = E_out
+          pTemp % wgt = wgt
+
           call nextCycle % detain(pTemp)
       end do
     end if

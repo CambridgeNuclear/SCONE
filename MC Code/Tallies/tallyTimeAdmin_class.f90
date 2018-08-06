@@ -181,7 +181,6 @@ contains
   subroutine display(self)
     class(tallyTimeAdmin), intent(in) :: self
 
-    print *,'Active Cycle:'
     call self % power_estimator % display()
 
     ! Call superclass procedure on self

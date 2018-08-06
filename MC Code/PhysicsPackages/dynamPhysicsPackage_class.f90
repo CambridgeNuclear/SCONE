@@ -2,21 +2,28 @@ module dynamPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,             only : fatalError
-  use dictionary_class,              only : dictionary
+  use genericProcedures,              only : fatalError, printFishLineR, numToChar
+  use hashFunctions_func,             only : FNV_1
+  use dictionary_class,               only : dictionary
 
   ! Particle classes and Random number generator
-  use particle_class,                only : particle, phaseCoord
-  use particleDungeon_class,         only : particleDungeon
-  use RNG_class,                     only : RNG
+  use particle_class,                 only : particle, phaseCoord
+  use particleDungeon_class,          only : particleDungeon
+  use RNG_class,                      only : RNG
+
+  ! Physics package interface
+  use physicsPackage_inter,           only : physicsPackage
 
   ! Geometry & Nuclear Data
-  use geometry_class,                only : geometry
-  use nuclearData_inter,             only : nuclearData
+  use cellGeometry_inter,             only : cellGeometry
+  use nuclearData_inter,              only : nuclearData
+  use transportNuclearData_inter,     only : transportNuclearData
+  use perNuclideNuclearDataCE_inter,  only : perNuclideNuclearDataCE
+  use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Operators
-  use collisionOperatorBase_inter,   only : collisionOperatorBase
-  use transportOperator_inter,       only : transportOperator
+  use collisionOperatorBase_inter,    only : collisionOperatorBase
+  use transportOperator_inter,        only : transportOperator
 
   ! Tallies
   use tallyCodes
@@ -24,6 +31,7 @@ module dynamPhysicsPackage_class
 
   ! Factories
   use nuclearDataFactory_func,       only : new_nuclearData_ptr
+  use geometryFactory_func,          only : new_cellGeometry_ptr
   use collisionOperatorFactory_func, only : new_collisionOperator_ptr
   use transportOperatorFactory_func, only : new_transportOperator_ptr
 
@@ -33,20 +41,21 @@ module dynamPhysicsPackage_class
   !!
   !! Physics Package for dynamic calculations
   !!
-  type, public :: dynamPhysicsPackage
-    ! private ** DEBUG
+  type, public, extends(physicsPackage) :: dynamPhysicsPackage
+    private
     ! Building blocks
     class(nuclearData), pointer            :: nucData       => null()
-    class(geometry), pointer               :: geom          => null()
+    class(transportNuclearData), pointer   :: transNucData  => null()
+    class(cellGeometry), pointer           :: geom          => null()
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
-    type(tallyTimeAdmin),pointer           :: timeTally     => null()
+    type(tallyTimeAdmin), pointer          :: timeTally     => null()
 
     ! Settings
-    integer(shortInt)  :: N_steps    = 100
-    integer(shortInt)  :: pop        = 5000
-    real(defReal)      :: timeMax    = ZERO
+    integer(shortInt)                        :: N_steps
+    integer(shortInt)                        :: pop
+    real(defReal), dimension(:), allocatable :: stepLength
 
     ! Calculation components
     type(particleDungeon), pointer :: thisStep     => null()
@@ -55,6 +64,7 @@ module dynamPhysicsPackage_class
 
   contains
     procedure :: init
+    procedure :: printSettings
     procedure :: timeSteps
     procedure :: generateInitialState
     procedure :: run
@@ -65,6 +75,9 @@ contains
 
   subroutine run(self)
     class(dynamPhysicsPackage), intent(inout) :: self
+
+    print *, repeat("<>",50)
+    print *, "/\/\ DYNAMIC CALCULATION /\/\" 
 
     call self % generateInitialState()
     call self % timeSteps()
@@ -79,7 +92,7 @@ contains
     type(particle)                            :: neutron
     type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
-    real(defReal) :: power_old, power_new
+    real(defReal)                             :: power_old, power_new, timeMax, genWeight
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -90,21 +103,28 @@ contains
 
     ! Load initial power
     power_old = self % timeTally % power()
+    print *,'POWER OLD = ',power_old
+
+    ! Initialise time max
+    timeMax = ZERO
+
+    print *,'BEGINNING TIME STEPPING'
 
     do i=1,self % N_steps
       ! Send start of cycle report
       Nstart = self % thisStep % popSize()
+      genWeight = self % thisStep % popWeight()
       call self % timeTally % reportCycleStart(self % thisStep)
 
       ! Increment timeMax
-      self % timeMax = self % timeMax + self % timeTally % stepLength(i)
+      timeMax = timeMax + self % stepLength(i)
 
       step: do
 
         ! Obtain paticle from current cycle dungeon
         call self % thisStep % release(neutron)
-        call self % geom % placeParticle(neutron)
-        neutron % timeMax = self % timeMax  ! Need to define where this comes from!!!
+        call self % geom % placeCoord(neutron % coords)
+        neutron % timeMax = timeMax
 
           history: do
             preState = neutron
@@ -116,6 +136,7 @@ contains
               ! Revive neutron and place in next step if it became too old
               if (neutron % fate == aged_FATE) then
                 neutron % isDead = .false.
+                neutron % fate = 0
                 call self % nextStep % detain(neutron)
               end if
               exit history
@@ -136,8 +157,9 @@ contains
 
       ! Send end of cycle report
       Nend = self % nextStep % popSize()
-      call self % timeTally % reportCycleEnd(self % nextStep)
+      ! Must obtain power before ending cycle! Otherwise, zero power will be returned
       power_new = self % timeTally % power()
+      call self % timeTally % reportCycleEnd(self % nextStep)
 
       ! Normalise population
       call self % nextStep % normSize(self % pop, neutron % pRNG)
@@ -145,8 +167,9 @@ contains
       ! Adjust weight for population growth or decay
       ! Only applied after the first step - first step is used for subsequent normalisation
       if (i > 1) then
-        call self % nextStep % normWeight(self % thisStep % popWeight() * power_new / power_old)
+        call self % nextStep % normWeight(genWeight * power_new / power_old)
       end if
+      print *,'POPWEIGHT = ',genWeight
 
       ! Flip cycle dungeons
       self % temp_dungeon => self % nextStep
@@ -156,8 +179,12 @@ contains
       power_old = power_new
 
       ! Display progress
+      call printFishLineR(i)
+      print *
+      print *, 'Time: ', timeMax
       print *, 'Step: ', i, ' of ', self % N_steps,' Pop: ', Nstart, ' -> ',Nend
       call self % timeTally % display()
+
     end do
   end subroutine timeSteps
 
@@ -173,7 +200,8 @@ contains
     call self % thisStep % init(3*self % pop)
     call self % nextStep % init(3*self % pop)
 
-     do i=1,self % pop
+    print *, "GENERATING ISOTROPIC NEUTRON SOURCE"
+    do i=1,self % pop
       neutron % E      = ONE
       !neutron % G      = 1
       call neutron % teleport([ZERO, ZERO, ZERO])
@@ -187,6 +215,7 @@ contains
       neutron % time   = ZERO
       call self % thisStep % detain(neutron)
     end do
+    print *, "NEUTRONS GENERATED"
 
   end subroutine generateInitialState
 
@@ -194,34 +223,90 @@ contains
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
   !!
-  subroutine init(self, matDict, geomDict, collDict ,transDict, timeDict )
+  subroutine init(self, dict)
     class(dynamPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(in)             :: matDict
-    class(dictionary), intent(inout)          :: geomDict  !*** Maybe change to intent(in) in geom?
-    class(dictionary), intent(in)             :: collDict
-    class(dictionary), intent(in)             :: transDict
-    class(dictionary), intent(in)             :: timeDict
+    class(dictionary), intent(inout)          :: dict
+    type(dictionary)                          :: tempDict
+    integer(shortInt)                         :: seed_temp
+    integer(longInt)                          :: seed
+    character(10)                             :: time
+    character(8)                              :: date
+    character(:),allocatable                  :: string
+    class(nuclearData),pointer                :: nucData_ptr
+    character(100), parameter :: Here ='init (dynamPhysicsPackage_class.f90)'
 
-    ! Build nuclear data
-    self % nucData => new_nuclearData_ptr(matDict)
-
-    ! Build geometry *** Will be replaced by a factory at some point
-    allocate(self % geom)
-    call self % geom % init( geomDict, self % nucData)
-
-    ! Build collision operator
-    self % collOp => new_collisionOperator_ptr(self % nucData, collDict)
-
-    ! Build transport operator *** Maybe put dictionary at the end in geometry as well?
-    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, transDict)
-
-    allocate(self % timeTally)
-    call self % timeTally % init(timeDict)
+    ! Read calculation settings
+    call dict % get( self % pop,'pop')
+    call dict % get( self % N_steps, 'nsteps')
+    call dict % get( self % stepLength, 'dt')
 
     ! Initialise RNG
     allocate(self % pRNG)
-    call self % pRNG % init(768568_8)
-    !call self % pRNG % init(67858567567_8)
+
+    ! *** It is a bit silly but dictionary cannot store longInt for now
+    !     so seeds are limited to 32 bits (can be -ve)
+    if( dict % isPresent('seed')) then
+      call dict % get(seed_temp,'seed')
+
+    else
+      ! Obtain time string and hash it to obtain random seed
+      call date_and_time(date, time)
+      string = date // time
+      call FNV_1(string,seed_temp)
+
+    end if
+    seed = seed_temp
+    call self % pRNG % init(seed)
+
+    ! Build nuclear data
+    call dict % get(tempDict,'materials')
+    nucData_ptr => new_nuclearData_ptr(tempDict)
+    self % nucData => nucData_ptr
+
+    ! Attach transport nuclear data
+    select type(nucData_ptr)
+      class is(transportNuclearData)
+        self % transNucData => nucData_ptr
+
+      class default
+        call fatalError(Here,'Nuclear data needs be of class: transportNuclearData')
+
+    end select
+
+    ! Build geometry
+    call dict % get(tempDict,'geometry')
+    self % geom => new_cellGeometry_ptr(tempDict, self % nucData)
+
+    ! Build collision operator
+    call dict % get(tempDict,'collisionOperator')
+    self % collOp => new_collisionOperator_ptr(self % nucData, tempDict)
+
+    ! Build transport operator
+    call dict % get(tempDict,'transportOperator')
+    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
+
+    ! Initialise time tally Admins
+    call dict % get(tempDict,'timeTally')
+    allocate(self % timeTally)
+    call self % timeTally % init(tempDict)
+
+    call self % printSettings()
+
   end subroutine init
+
+  !!
+  !! Print settings of the physics package
+  !!
+  subroutine printSettings(self)
+    class(dynamPhysicsPackage), intent(in) :: self
+
+    print *, repeat("<>",50)
+    print *, "/\/\ DYNAMIC CALCULATION USING FIXED SOURCE /\/\" 
+    print *, "Number of time steps: ", numToChar(self % N_steps)
+    print *, "Neutron Population: ", numToChar(self % pop)
+    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
+    print *
+    print *, repeat("<>",50)
+  end subroutine printSettings
     
 end module dynamPhysicsPackage_class

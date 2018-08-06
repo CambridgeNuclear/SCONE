@@ -76,7 +76,7 @@ contains
     real(defReal)                :: power_imp, STD_imp, STD_analog
 
     ! Obtain current implicit estimate of power
-    call self % power_imp(self % stepCount) % getEstimate(power_imp, STD_imp, 1)
+    call self % power_imp(self % stepCount-1) % getEstimate(power_imp, STD_imp, 1)
 
     ! Print estimates to a console
     print '(A,F8.5,A,F8.5)', 'Power (implicit): ', power_imp, ' +/- ', STD_imp
@@ -116,7 +116,7 @@ contains
     associate (xsData => p % xsData)
       select type(xsData)
         class is (transportNuclearData)
-          call xsData % getMatMacroXS(XSs, p, p % matIdx)
+          call xsData % getMatMacroXS(XSs, p, p % matIdx())
 
         class default
           call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
@@ -190,10 +190,13 @@ contains
     ! Don't require joulesPerMeV and energyPerFission should cancel - used here for future proofing
     ! when energyPerFission may be tallied explicitly
     if (self % stepCount == 1) then
+      print *,'P est = ',power_est
       self % normFactor = self % power0 / power_est
       power_est = self % power0
+      print *,'Norm fac = ',self % normFactor
     else
       power_est = power_est * self % normFactor
+      print *,'P est = ',power_est
     end if
 
     call self % power_imp(self % stepCount) % addEstimate(power_est)
@@ -236,10 +239,11 @@ contains
     call dict % get(self % power0, 'power')
 
     ! Read number of time steps
-    call dict % get(self % nSteps, 'numSteps')
+    call dict % get(self % nSteps, 'nsteps')
+    allocate(self % power_imp(self % nSteps))
 
     ! Read array providing time step lengths
-    call dict % get(self % stepLength, 'steps')
+    call dict % get(self % stepLength, 'dt')
 
   end subroutine init
 
@@ -250,7 +254,13 @@ contains
     class(timeClerk), intent(in) :: self
     real(defReal)                :: p
 
-    call self % power_imp(self % stepCount) % getEstimate(p, 1)
+    ! On the first step, use the specified initial power
+    if (self % stepCount == 1) then
+      p = self % power0
+      print *,'P = ',p
+    else
+      call self % power_imp(self % stepCount) % getEstimate(p, 1)
+    end if
 
   end function power
 

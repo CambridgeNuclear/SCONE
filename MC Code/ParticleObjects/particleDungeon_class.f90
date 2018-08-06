@@ -137,14 +137,8 @@ contains
 
     ! Load data into the particle
     pop = self % pop
-    ! Place in geometry
-    call p % coords % init(self % prisoners(pop) % r, &
-                           self % prisoners(pop) % dir)
-    ! Copy rest of the data
-    p % w    = self % prisoners(pop) % wgt
-    p % E    = self % prisoners(pop) % E
-    p % G    = self % prisoners(pop) % G
-    p % isMg = self % prisoners(pop) % isMG
+
+    p = self % prisoners(pop)
     p % isDead = .false.
 
     ! Decrease population and weight

@@ -47,7 +47,8 @@ endfunction(add_sources)
 # COLLECT ALL SOURCE FILES 
 
 add_sources( ./DataStructures/dictionary_class.f90
-             ./DataStructures/IOdictionary_class.f90)
+             ./DataStructures/IOdictionary_class.f90
+             ./DataStructures/maps_class.f90)
 
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
@@ -88,8 +89,7 @@ endforeach()
 #add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
-add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
+#add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
 #add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
 #add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})
 add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})
-add_executable(dynamic.out     ./Apps/dynamic.f90        ${PREP_SRCS})
