@@ -1,7 +1,7 @@
 module timeClerk_class
 
   use numPrecision
-  use universalVariables,         only : energyPerFiss, joulesPerMeV
+  use universalVariables
   use tallyCodes
   use genericProcedures,          only : fatalError, charCmp
   use dictionary_class,           only : dictionary
@@ -18,22 +18,26 @@ module timeClerk_class
 
   character(*),parameter :: CLASS_NAME = 'timeClerk'
 
+  interface timeClerk
+    module procedure new_timeClerk
+  end interface
+
   type, public,extends(tallyClerk) :: timeClerk
     private
 
-    integer(shortInt)                             :: stepCount = 1
+    integer(shortInt)                                :: stepCount = 1 ! Current step
 
-    type(tallyScore)                              :: impFissions ! Implicit fission
-    type(tallyScore)                              :: anaLeak     ! Analog neutron leakage
+    type(tallyScore)                                 :: impFission    ! Implicit fission
+    type(tallyScore)                                 :: anaLeak       ! Analog neutron leakage
 
-    integer(shortInt)                             :: nSteps      ! Number of timesteps
-    real(defReal), dimension(:), allocatable      :: stepLength  ! Time step length
-    type(tallyCounter), dimension(:), allocatable :: power_imp   ! Stores power at each time step
-    real(defReal)                                 :: power0      ! Initial power
-    real(defReal)                                 :: normPower   ! Normalisation factor
+    integer(shortInt)                                :: nSteps        ! Number of timesteps
+    real(defReal), dimension(:), allocatable, public :: stepLength    ! Time step length
+    type(tallyCounter), dimension(:), allocatable    :: power_imp     ! Stores power at each time step
+    real(defReal)                                    :: power0        ! Initial power
+    real(defReal)                                    :: normFactor    ! Normalisation factor
 
-    real(defReal)                                 :: startWgt
-    real(defReal)                                 :: targetSD = 0.0
+    real(defReal)                                    :: startWgt
+    real(defReal)                                    :: targetSD = 0.0
 
   contains
     ! Deferred Interface Procedures
@@ -87,7 +91,7 @@ contains
     logical(defBool)             :: isIt
     real(defReal)                :: power, SD
 
-    call self % power_imp(self % cycleCount) % getEstimate(power,SD,1)
+    call self % power_imp(self % stepCount) % getEstimate(power,SD,1)
 
     isIt = (SD < self % targetSD)
 
@@ -99,10 +103,10 @@ contains
   !!
   subroutine reportInColl(self,p)
     class(timeClerk), intent(inout) :: self
-    class(particle), intent(in)           :: p
-    type(xsMacroSet_ptr)                  :: XSs
-    real(defReal)                         :: totalXS, fissXS, flux
-    real(defReal)                         :: s1
+    class(particle), intent(in)     :: p
+    type(xsMacroSet_ptr)            :: XSs
+    real(defReal)                   :: totalXS, fissXS, flux
+    real(defReal)                   :: s1
     character(100), parameter  :: Here = 'reportInColl (timeClerk_class.f90)'
 
     ! Obtain XSs
@@ -212,13 +216,13 @@ contains
     character(nameLen)                   :: type
     character(100),parameter :: Here ='init (timeClerk_class.f90)'
 
-    call dict % get(type,'type')
+!    call dict % get(type,'type')
 
-    ! Check that class description matches class name
-    if ( .not.charCmp(CLASS_NAME,type) ) then
-      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
-
-    end if
+!    ! Check that class description matches class name
+!    if ( .not.charCmp(CLASS_NAME,type) ) then
+!      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+!
+!    end if
 
     call dict % getOrDefault(type,'trigger','no')
 
@@ -243,8 +247,8 @@ contains
   !! Return estimate of power
   !!
   function power(self) result(p)
-    class(keffActiveClerk), intent(in) :: self
-    real(defReal)                      :: p
+    class(timeClerk), intent(in) :: self
+    real(defReal)                :: p
 
     call self % power_imp(self % stepCount) % getEstimate(p, 1)
 

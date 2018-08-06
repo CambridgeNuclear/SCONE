@@ -63,14 +63,14 @@ contains
   end subroutine init
 
   subroutine deltaTracking(self,p)
-    class(transportOperatorDT), intent(in) :: self
+    class(transportOperatorDynamicDT), intent(in) :: self
     class(particle), intent(inout)         :: p
     real(defReal)                          :: majorant, sigmaT, distance, &
-                                              tmax, time, flightTime, speed
+                                              timeMax, time, flightTime, speed
     type(cell_ptr)                         :: currentCell
 
     majorant = self % nuclearData % getMajorantXS(p)
-    tmax = p % timeMax
+    timeMax = p % timeMax
     speed = lightSpeed * sqrt(TWO * p % E / neutronMass)
 
     DTLoop:do
@@ -107,7 +107,7 @@ contains
 
       ! Check whether particle has reached the time boundary
       if ( p % fate == aged_FATE) then
-        p % isDead
+        p % isDead = .true.
         exit DTLoop
       end if
 
@@ -132,7 +132,7 @@ contains
   !! communicate the necessary transformations required
   !!
   subroutine applyBC(self, p, currentCell)
-    class(transportOperatorDT), intent(in) :: self
+    class(transportOperatorDynamicDT), intent(in) :: self
     class(particle), intent(inout)         :: p
     class(cell_ptr), intent(inout)         :: currentCell
     type(surface_ptr)                      :: currentSurface
@@ -162,4 +162,4 @@ contains
 
   end subroutine applyBC
 
-end module transportOperatorDT_class
+end module transportOperatorDynamicDT_class

@@ -19,7 +19,8 @@ module dynamPhysicsPackage_class
   use transportOperator_inter,       only : transportOperator
 
   ! Tallies
-  use tallyActiveAdmin_class,        only : tallyActiveAdmin
+  use tallyCodes
+  use tallyTimeAdmin_class,          only : tallyTimeAdmin
 
   ! Factories
   use nuclearDataFactory_func,       only : new_nuclearData_ptr
@@ -40,10 +41,10 @@ module dynamPhysicsPackage_class
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
-    type(tallyActiveAdmin),pointer         :: timeTally     => null()
+    type(tallyTimeAdmin),pointer           :: timeTally     => null()
 
     ! Settings
-    integer(shortInt)  :: N_steps    = 500
+    integer(shortInt)  :: N_steps    = 100
     integer(shortInt)  :: pop        = 5000
     real(defReal)      :: timeMax    = ZERO
 
@@ -96,7 +97,7 @@ contains
       call self % timeTally % reportCycleStart(self % thisStep)
 
       ! Increment timeMax
-      self % timeMax = self % timeMax + self % timeTally % stepLengths(i)
+      self % timeMax = self % timeMax + self % timeTally % stepLength(i)
 
       step: do
 
@@ -144,7 +145,7 @@ contains
       ! Adjust weight for population growth or decay
       ! Only applied after the first step - first step is used for subsequent normalisation
       if (i > 1) then
-        call self % nextStep % normWeight(thisStep % popWgt * power_new / power_old)
+        call self % nextStep % normWeight(self % thisStep % popWeight() * power_new / power_old)
       end if
 
       ! Flip cycle dungeons
@@ -164,6 +165,7 @@ contains
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     integer(shortInt)                         :: i
+    real(defReal)                             :: azim, polar
 
     allocate(self % thisStep)
     allocate(self % nextStep)
@@ -175,7 +177,10 @@ contains
       neutron % E      = ONE
       !neutron % G      = 1
       call neutron % teleport([ZERO, ZERO, ZERO])
-      call neutron % point([1.0_8, 0.0_8, 0.0_8]) ! Should distribute uniformly in angle
+      ! Sample uniform angular distribution
+      polar = TWO * self % pRNG % get() - ONE
+      azim  = TWO * self % pRNG % get() - ONE
+      call neutron % point([azim*polar, sqrt(ONE - azim*azim)*polar, sqrt(ONE - polar*polar)])
       neutron % w      = ONE
       neutron % isDead = .false.
       neutron % isMG   = .false.
@@ -189,8 +194,8 @@ contains
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
   !!
-  subroutine init(self, matDict, geomDict, collDict ,transDict, inactiveDict, activeDict )
-    class(eigenPhysicsPackage), intent(inout) :: self
+  subroutine init(self, matDict, geomDict, collDict ,transDict, timeDict )
+    class(dynamPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(in)             :: matDict
     class(dictionary), intent(inout)          :: geomDict  !*** Maybe change to intent(in) in geom?
     class(dictionary), intent(in)             :: collDict
@@ -210,7 +215,7 @@ contains
     ! Build transport operator *** Maybe put dictionary at the end in geometry as well?
     self % transOp => new_transportOperator_ptr(self % nucData, self % geom, transDict)
 
-    allocate(self % activeTally)
+    allocate(self % timeTally)
     call self % timeTally % init(timeDict)
 
     ! Initialise RNG
