@@ -17,7 +17,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # It should be periodicly removed to see if other surprising warining are not raised 
 # This buggy warning should be repaired in GCC 7.0  
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -g  -Wall -Wno-surprising -Wno-unused-dummy-argument -flto ") # -flto  
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -g  -Wall -Wno-surprising -Wno-unused-dummy-argument ") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)
@@ -64,6 +64,7 @@ add_subdirectory(CollisionOperator)
 add_subdirectory(TransportOperator)
 
 add_subdirectory(MOCObjects) 
+add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
 
