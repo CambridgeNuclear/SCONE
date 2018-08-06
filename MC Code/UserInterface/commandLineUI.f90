@@ -172,7 +172,7 @@ contains
   !!
   subroutine parseCL()
     integer(shortInt)         :: argCount
-    integer(shortInt)         :: i, keywords
+    integer(shortInt)         :: i
     integer(shortInt)         :: argLen
     integer(shortInt)         :: idx
     character(:), allocatable :: string
@@ -239,12 +239,20 @@ contains
     integer(shortInt)       :: idx
     integer(shortInt)       :: hash, i
     logical(defBool)        :: same
+    integer(shortInt)       :: N
 
     ! Hash the keyword
     call FNV_1(trim(adjustl(keyword)),hash)
 
+    ! Protect agains the case where no options are present
+    if( allocated(options)) then
+      N = size(options)
+    else
+      N = 0
+    end if
+
     ! Loop over all options
-    do i=1,size(options)
+    do i=1,N
       ! Compare hashes
       same = hash == options(i) % keywordHash
 
@@ -410,13 +418,20 @@ contains
   !! Print description of all command line options
   !!
   subroutine displayClOptions()
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, N
 
     print *, "Usage: (Executable) <input File>  [Options]"
     print *
     print *, "Following options are available: "
 
-    do i=1,size(options)
+    ! Protect agains the case where no options are present
+    if( allocated(options)) then
+      N = size(options)
+    else
+      N = 0
+    end if
+
+    do i=1,N
       call options(i) % display()
     end do
 
