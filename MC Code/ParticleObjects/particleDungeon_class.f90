@@ -128,7 +128,7 @@ contains
 
 
   !!
-  !! Obtain the particle from the dungeon. **** Will need to be change for more rebust loading
+  !! Obtain the particle from the dungeon.
   !!
   subroutine release(self,p )
     class(particleDungeon), intent(inout) :: self

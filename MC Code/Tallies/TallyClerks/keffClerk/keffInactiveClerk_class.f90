@@ -107,10 +107,10 @@ contains
 
     ! Check that class description matches class name
     call dict % get(type,'type')
-    if( .not.charCmp(CLASS_NAME, type) ) then
-      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+!    if( .not.charCmp(CLASS_NAME, type) ) then
+!!      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
 
-    else if( dict % isPresent('trigger')) then
+    if( dict % isPresent('trigger')) then
       call fatalError(Here,'keffInactiveClerk cannot be a convergance trigger')
 
     end if

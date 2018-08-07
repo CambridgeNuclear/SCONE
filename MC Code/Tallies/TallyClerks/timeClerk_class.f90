@@ -27,14 +27,16 @@ module timeClerk_class
 
     integer(shortInt)                                :: stepCount = 1 ! Current step
 
-    type(tallyScore)                                 :: impFission    ! Implicit fission
+    type(tallyCounter)                               :: impFission    ! Implicit fission
     type(tallyScore)                                 :: anaLeak       ! Analog neutron leakage
 
-    integer(shortInt)                                :: nSteps        ! Number of timesteps
-    real(defReal), dimension(:), allocatable, public :: stepLength    ! Time step length
-    type(tallyCounter), dimension(:), allocatable    :: power_imp     ! Stores power at each time step
-    real(defReal)                                    :: power0        ! Initial power
-    real(defReal)                                    :: normFactor    ! Normalisation factor
+    integer(shortInt)                                :: nSteps           ! Number of timesteps
+    real(defReal), dimension(:), allocatable, public :: stepLength       ! Time step length
+    real(defReal), dimension(:), allocatable         :: power_imp        ! Stores power at each time step
+    real(defReal), dimension(:), allocatable         :: power_std        ! Stores power STD at each time step
+    real(defReal)                                    :: power0           ! Initial power
+    real(defReal)                                    :: normFactor       ! Normalisation factor
+    integer(shortInt)                                :: eventCounter = 0 ! Count collision events
 
     real(defReal)                                    :: startWgt
     real(defReal)                                    :: targetSD = 0.0
@@ -46,13 +48,13 @@ module timeClerk_class
     procedure :: isConverged
     procedure :: init
 
-
     ! Overwrite report procedures
     procedure :: reportInColl
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
     procedure :: power
+    procedure :: incrementStep
   end type timeClerk
 
 contains
@@ -75,25 +77,26 @@ contains
     class(timeClerk), intent(in) :: self
     real(defReal)                :: power_imp, STD_imp, STD_analog
 
-    ! Obtain current implicit estimate of power
-    call self % power_imp(self % stepCount-1) % getEstimate(power_imp, STD_imp, 1)
-
     ! Print estimates to a console
-    print '(A,F8.5,A,F8.5)', 'Power (implicit): ', power_imp, ' +/- ', STD_imp
+    print '(A,ES15.5,A,ES15.5)', 'Power (implicit): ', &
+    self % power_imp(self % stepCount), ' +/- ', self % power_std(self % stepCount)
 
   end subroutine display
 
   !!
   !! Perform convergance check in the Clerk
   !!
+  !! NEVER USE THIS! Not Implemented yet.
+  !!
   function isConverged(self) result(isIt)
     class(timeClerk), intent(in) :: self
     logical(defBool)             :: isIt
     real(defReal)                :: power, SD
 
-    call self % power_imp(self % stepCount) % getEstimate(power,SD,1)
+   ! SD = self % power_std(self % stepCount)
 
-    isIt = (SD < self % targetSD)
+   ! isIt = (SD < self % targetSD)
+    isIt = .false.
 
   end function isConverged
 
@@ -124,6 +127,8 @@ contains
       end select
     end associate
 
+    self % eventCounter = self % eventCounter + 1
+
     totalXS  = XSs % totalXS()
     fissXS   = XSs % fissionXS()
 
@@ -133,7 +138,7 @@ contains
     s1 = fissXS * flux
 
     ! Add score to counter
-    call self % impFission % add(s1)
+    call self % impFission % addEstimate(s1)
 
   end subroutine reportInColl
 
@@ -168,6 +173,10 @@ contains
     class(particleDungeon), intent(in)   :: start
 
     self % startWgt = start % popWeight()
+    self % eventCounter = 0
+
+    ! Reset score counters
+    call self % impFission % reset()
 
   end subroutine reportCycleStart
 
@@ -177,35 +186,31 @@ contains
   subroutine reportCycleEnd(self,end)
     class(timeClerk), intent(inout)      :: self
     class(particleDungeon), intent(in)   :: end
-    real(defReal)                        :: power_est
-    real(defReal)                        :: fissions
+    real(defReal)                        :: power_est, power_STD
+    real(defReal)                        :: fission_imp, STD_imp
 
     ! Calculate implicit estimate of power
-    fissions  = self % impFission % get()
-
-    power_est = joulesPerMeV * energyPerFission * fissions / self % stepLength(self % stepCount)
+    call self % impFission % getEstimate(fission_imp, STD_imp, self % eventCounter)
+    fission_imp = fission_imp * self % eventCounter
+    STD_imp = STD_imp * self % eventCounter
+    power_est = joulesPerMeV * energyPerFission * fission_imp / self % stepLength(self % stepCount)
+    power_STD = joulesPerMeV * energyPerFission * STD_imp / self % stepLength(self % stepCount)
 
     ! If the first step, must normalise estimate to the initial power
     ! Normalisation factor must be stored for subsequent steps
     ! Don't require joulesPerMeV and energyPerFission should cancel - used here for future proofing
     ! when energyPerFission may be tallied explicitly
     if (self % stepCount == 1) then
-      print *,'P est = ',power_est
       self % normFactor = self % power0 / power_est
       power_est = self % power0
-      print *,'Norm fac = ',self % normFactor
+      power_STD = power_STD * self % normFactor
     else
       power_est = power_est * self % normFactor
-      print *,'P est = ',power_est
+      power_STD = power_STD * self % normFactor
     end if
 
-    call self % power_imp(self % stepCount) % addEstimate(power_est)
-
-    ! Reset score counters
-    call self % impFission % reset()
-
-    ! Increment step count
-    self % stepCount = self % stepCount + 1
+    self % power_imp(self % stepCount) = power_est
+    self % power_std(self % stepCount) = power_STD
 
   end subroutine reportCycleEnd
 
@@ -241,6 +246,7 @@ contains
     ! Read number of time steps
     call dict % get(self % nSteps, 'nsteps')
     allocate(self % power_imp(self % nSteps))
+    allocate(self % power_std(self % nSteps))
 
     ! Read array providing time step lengths
     call dict % get(self % stepLength, 'dt')
@@ -257,12 +263,19 @@ contains
     ! On the first step, use the specified initial power
     if (self % stepCount == 1) then
       p = self % power0
-      print *,'P = ',p
     else
-      call self % power_imp(self % stepCount) % getEstimate(p, 1)
+      p = self % power_imp(self % stepCount)
     end if
 
   end function power
+
+  !!
+  !! Increment step count
+  !!
+  subroutine incrementStep(self)
+    class(timeClerk), intent(inout) :: self
+    self % stepCount = self % stepCount + 1
+  end subroutine incrementStep
 
   !!
   !! timeClerk constructor function

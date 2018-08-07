@@ -103,7 +103,6 @@ contains
 
     ! Load initial power
     power_old = self % timeTally % power()
-    print *,'POWER OLD = ',power_old
 
     ! Initialise time max
     timeMax = ZERO
@@ -113,7 +112,6 @@ contains
     do i=1,self % N_steps
       ! Send start of cycle report
       Nstart = self % thisStep % popSize()
-      genWeight = self % thisStep % popWeight()
       call self % timeTally % reportCycleStart(self % thisStep)
 
       ! Increment timeMax
@@ -157,19 +155,17 @@ contains
 
       ! Send end of cycle report
       Nend = self % nextStep % popSize()
-      ! Must obtain power before ending cycle! Otherwise, zero power will be returned
-      power_new = self % timeTally % power()
       call self % timeTally % reportCycleEnd(self % nextStep)
+      power_new = self % timeTally % power()
 
-      ! Normalise population
+      ! Store initial weight and normalise population
+      genWeight = self % nextStep % popWeight()
       call self % nextStep % normSize(self % pop, neutron % pRNG)
 
       ! Adjust weight for population growth or decay
       ! Only applied after the first step - first step is used for subsequent normalisation
-      if (i > 1) then
-        call self % nextStep % normWeight(genWeight * power_new / power_old)
-      end if
-      print *,'POPWEIGHT = ',genWeight
+      !call self % nextStep % normWeight(genWeight * power_new / power_old)
+      call self % nextStep % normWeight(genWeight)
 
       ! Flip cycle dungeons
       self % temp_dungeon => self % nextStep
@@ -181,9 +177,10 @@ contains
       ! Display progress
       call printFishLineR(i)
       print *
-      print *, 'Time: ', timeMax
+      print '(A,ES15.2,A)', 'Time: ', timeMax,'s'
       print *, 'Step: ', i, ' of ', self % N_steps,' Pop: ', Nstart, ' -> ',Nend
       call self % timeTally % display()
+      call self % timeTally % incrementStep()
 
     end do
   end subroutine timeSteps
@@ -197,10 +194,10 @@ contains
     allocate(self % thisStep)
     allocate(self % nextStep)
 
-    call self % thisStep % init(3*self % pop)
-    call self % nextStep % init(3*self % pop)
+    call self % thisStep % init(5*self % pop)
+    call self % nextStep % init(5*self % pop)
 
-    print *, "GENERATING ISOTROPIC NEUTRON SOURCE"
+    print *, "GENERATING ISOTROPIC NEUTRON SOURCE AT ORIGIN"
     do i=1,self % pop
       neutron % E      = ONE
       !neutron % G      = 1

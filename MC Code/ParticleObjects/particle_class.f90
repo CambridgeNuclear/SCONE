@@ -35,6 +35,7 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
+    real(defReal)              :: w0        ! Particle initial weight (for implicit, variance reduction...)
 
     class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
     class(nuclearData),pointer :: xsData => null() ! Pointer to nuclear data
@@ -324,6 +325,7 @@ contains
     type(phaseCoord), intent(in)  :: RHS
 
     LHS % w                     = RHS % wgt
+    LHS % w0                    = RHS % wgt
     call LHS % takeAboveGeom()
     LHS % coords % lvl(1) % r   = RHS % r
     LHS % coords % lvl(1) % dir = RHS % dir
@@ -353,8 +355,9 @@ contains
     real(defReal),intent(in)                :: E, w
 
     call self % coords % init(r, dir)
-    self % E = E
-    self % w = w
+    self % E  = E
+    self % w  = w
+    self % w0 = w
 
     self % isDead = .false.
     self % isMG   = .false.
@@ -371,8 +374,9 @@ contains
     integer(shortInt),intent(in)            :: G
 
     call self % coords % init(r, dir)
-    self % G = G
-    self % w = w
+    self % G  = G
+    self % w  = w
+    self % w0 = w
 
     self % isDead = .false.
     self % isMG   = .true.

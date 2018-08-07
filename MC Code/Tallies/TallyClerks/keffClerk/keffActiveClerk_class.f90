@@ -221,10 +221,10 @@ contains
     call dict % get(type,'type')
 
     ! Check that class description matches class name
-    if ( .not.charCmp(CLASS_NAME,type) ) then
-      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
-
-    end if
+!    if ( .not.charCmp(CLASS_NAME,type) ) then
+!      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
+!
+!    end if
 
     call dict % getOrDefault(type,'trigger','no')
 

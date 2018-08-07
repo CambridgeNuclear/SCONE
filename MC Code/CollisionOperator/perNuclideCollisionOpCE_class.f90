@@ -128,11 +128,11 @@ contains
       r   = p % rGlobal()
       dir = p % dirGlobal()
 
-      ! Sample number of fission sites generated
-      n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)
+      ! Sample number of fission sites generated *** w0 is a placeholder for starting particle weight
+      n = int(wgt/p % w0 * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)
 
       ! Store new sites in the next cycle dungeon
-      wgt = 1.0
+      wgt = p % w0
 
       do i=1,n
           call self % xsData % sampleMuEout(mu, E_out, self % E, self % pRNG, N_fission, self % nucIdx)

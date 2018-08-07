@@ -28,6 +28,7 @@ module tallyTimeAdmin_class
     ! New Interface
     procedure :: power
     procedure :: stepLength
+    procedure :: incrementStep
 
     ! Extend superclass procedures
     procedure :: reportInColl
@@ -64,6 +65,14 @@ contains
     dt = self % power_estimator % stepLength(idx)
 
   end function stepLength
+
+  !!
+  !! Increment step count
+  !!
+  subroutine incrementStep(self)
+    class(tallyTimeAdmin), intent(inout) :: self
+    call self % power_estimator % incrementStep()
+  end subroutine incrementStep
 
   !!
   !! Process incoming collision report
