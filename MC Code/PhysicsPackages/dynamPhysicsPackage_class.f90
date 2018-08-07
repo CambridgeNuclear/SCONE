@@ -28,6 +28,7 @@ module dynamPhysicsPackage_class
   ! Tallies
   use tallyCodes
   use tallyTimeAdmin_class,          only : tallyTimeAdmin
+  use tallyInactiveAdmin_class,      only : tallyInactiveAdmin
 
   ! Factories
   use nuclearDataFactory_func,       only : new_nuclearData_ptr
@@ -44,18 +45,24 @@ module dynamPhysicsPackage_class
   type, public, extends(physicsPackage) :: dynamPhysicsPackage
     private
     ! Building blocks
-    class(nuclearData), pointer            :: nucData       => null()
-    class(transportNuclearData), pointer   :: transNucData  => null()
-    class(cellGeometry), pointer           :: geom          => null()
-    class(collisionOperatorBase), pointer  :: collOp        => null()
-    class(transportOperator), pointer      :: transOp       => null()
-    class(RNG), pointer                    :: pRNG          => null()
-    type(tallyTimeAdmin), pointer          :: timeTally     => null()
+    class(nuclearData), pointer            :: nucData         => null()
+    class(transportNuclearData), pointer   :: transNucData    => null()
+    class(cellGeometry), pointer           :: geom            => null()
+    class(collisionOperatorBase), pointer  :: collOp          => null()
+    class(transportOperator), pointer      :: dynamTransOp    => null()
+    class(transportOperator), pointer      :: inactiveTransOp => null()
+    class(RNG), pointer                    :: pRNG            => null()
+    type(tallyTimeAdmin), pointer          :: timeTally       => null()
+    type(tallyInactiveAdmin), pointer      :: inactiveTally   => null()
 
     ! Settings
     integer(shortInt)                        :: N_steps
+    integer(shortInt)                        :: N_inactive
     integer(shortInt)                        :: pop
     real(defReal), dimension(:), allocatable :: stepLength
+    real(defReal)                            :: initialStepLength
+    logical(defBool)                         :: ageNeutrons = .false.
+    logical(defBool)                         :: findFissionSource
 
     ! Calculation components
     type(particleDungeon), pointer :: thisStep     => null()
@@ -65,8 +72,11 @@ module dynamPhysicsPackage_class
   contains
     procedure :: init
     procedure :: printSettings
-    procedure :: timeSteps
-    procedure :: generateInitialState
+    procedure :: inactiveCycles       ! Perform inactive cycles to obtain fundamental mode
+    procedure :: timeSteps            ! Perform time stepping
+    procedure :: generateInitialState ! Generate initial neutrons for inactive cycles
+    procedure :: generatePointSource  ! Generate isotropic point source of neutrons *** Replace in future
+    procedure :: ageSourceNeutrons    ! Age initial neutrons to attempt to achieve more realistic distribution
     procedure :: run
 
   end type dynamPhysicsPackage
@@ -79,7 +89,16 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ DYNAMIC CALCULATION /\/\" 
 
-    call self % generateInitialState()
+    ! Obtain an initial neutron source
+    if (self % findFissionSource) then
+      call self % generateInitialState()
+      call self % inactiveCycles()
+      call self % ageSourceNeutrons()
+
+    ! Use an isotropic point source
+    else
+      call self % generatePointSource()
+    end if
     call self % timeSteps()
 
   end subroutine
@@ -126,7 +145,7 @@ contains
 
           history: do
             preState = neutron
-            call self % transOp % transport(neutron)
+            call self % dynamTransOp % transport(neutron)
 
             ! Exit history - score leakage or place particle in next time point
             if(neutron % isDead) then
@@ -185,7 +204,172 @@ contains
     end do
   end subroutine timeSteps
 
-  subroutine generateInitialState(self)
+  !!
+  !! Takes neutrons from inactive cycles and ages them by a chosen time step
+  !! Used to obtain a more representative neutron distribution rather than using a fission source
+  !!
+  subroutine ageSourceNeutrons(self)
+    class(dynamPhysicsPackage), intent(inout) :: self
+    type(particle)                            :: neutron
+    type(phaseCoord)                          :: preState
+    integer(shortInt)                         :: i, Nstart, Nend
+    real(defReal)                             :: power_old, power_new, timeMax, genWeight
+
+    ! Attach nuclear data and RNG to neutron
+    neutron % xsData => self % nucData
+    neutron % pRNG   => self % pRNG
+
+    ! Attach tally to operators
+    self % collOP % tally => self % timeTally
+
+    print *,'AGING NEUTRONS WITH AN INITIAL TIME STEP'
+
+    ! Send start of cycle report
+    call self % timeTally % reportCycleStart(self % thisStep)
+
+    ! Increment timeMax
+    timeMax = self % initialStepLength
+
+    step: do
+
+      ! Obtain paticle from current cycle dungeon
+      call self % thisStep % release(neutron)
+      call self % geom % placeCoord(neutron % coords)
+      neutron % timeMax = self % initialStepLength
+
+        history: do
+          preState = neutron
+          call self % dynamTransOp % transport(neutron)
+
+          ! Exit history - score leakage or place particle in next time point
+          if(neutron % isDead) then
+            call self % timeTally % reportHist(preState,neutron,neutron%fate)
+            ! Revive neutron and place in next step if it became too old
+            if (neutron % fate == aged_FATE) then
+              neutron % isDead = .false.
+              neutron % fate = 0
+              neutron % time = ZERO ! Reset neutron's age
+              call self % nextStep % detain(neutron)
+            end if
+            exit history
+          end if
+
+          call self % collOp % collide(neutron, self % thisStep, self % thisStep)
+
+          ! Exit history and score absorbtion
+          if(neutron % isDead) then
+            exit history
+          end if
+
+        end do history
+
+      if( self % thisStep % isEmpty()) exit step
+    end do step
+
+    ! Store initial weight and normalise population
+    genWeight = self % nextStep % popWeight()
+    call self % nextStep % normSize(self % pop, neutron % pRNG)
+
+    ! Adjust weight for population growth or decay
+    call self % nextStep % normWeight(genWeight)
+
+    ! Flip cycle dungeons
+    self % temp_dungeon => self % nextStep
+    self % nextStep     => self % thisStep
+    self % thisStep     => self % temp_dungeon
+
+
+    ! Display progress
+    call printFishLineR(i)
+    print *
+    print *, 'Initial time step complete'
+
+  end subroutine ageSourceNeutrons
+
+  !!
+  !! Perform inactive cycles
+  !!
+  subroutine inactiveCycles(self)
+    class(dynamPhysicsPackage), intent(inout) :: self
+    type(particle)                            :: neutron
+    type(phaseCoord)                          :: preState
+    integer(shortInt)                         :: i, Nstart, Nend
+    real(defReal) :: k_old, k_new
+
+    ! Attach nuclear data and RNG to neutron
+    neutron % xsData => self % nucData
+    neutron % pRNG   => self % pRNG
+
+    ! Attach tally to operators
+    self % collOP % tally => self % inactiveTally
+
+    do i=1,self % N_inactive
+      ! Send start of cycle report
+      Nstart = self % thisStep % popSize()
+      call self % inactiveTally % reportCycleStart(self % thisStep)
+
+      gen: do
+
+        ! Obtain paticle from current cycle dungeon
+        call self % thisStep % release(neutron)
+        call self % geom % placeCoord(neutron % coords)
+
+          history: do
+            preState = neutron
+
+            call self % inactiveTransOp % transport(neutron)
+
+            ! Exit history and score leakage
+            if(neutron % isDead) then
+              call self % inactiveTally %  reportHist(preState,neutron,leak_FATE)
+              exit history
+            end if
+
+            call self % collOp % collide(neutron, self % thisStep, self % nextStep)
+
+            ! Exit history and score absorbtion
+            if(neutron % isDead) then
+              call self % inactiveTally %  reportHist(preState,neutron,abs_FATE)
+              exit history
+            end if
+
+          end do history
+
+        if( self % thisStep % isEmpty()) exit gen
+      end do gen
+
+      ! Send end of cycle report
+      Nend = self % nextStep % popSize()
+      call self % inactiveTally % reportCycleEnd(self % nextStep)
+
+      ! Normalise population
+      call self % nextStep % normSize(self % pop, neutron % pRNG)
+
+      ! Flip cycle dungeons
+      self % temp_dungeon => self % nextStep
+      self % nextStep     => self % thisStep
+      self % thisStep     => self % temp_dungeon
+
+      ! Load new k-eff estimate into next cycle dungeon
+      k_old = self % nextStep % k_eff
+      k_new = self % inactiveTally % keff()
+
+      self % nextStep % k_eff = k_new
+
+      ! Display progress
+      call printFishLineR(i)
+      print *
+      print *, 'Cycle: ', i, ' of ', self % N_inactive,' Pop: ', Nstart, ' -> ',Nend
+      call self % inactiveTally % display()
+    end do
+
+  end subroutine inactiveCycles
+
+  !!
+  !! Generate a source of neutrons with isotropic direction from the origin
+  !! ***Will be replaced once fixed source input is implemented
+  !!
+  subroutine generatePointSource(self)
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     integer(shortInt)                         :: i
@@ -212,7 +396,67 @@ contains
       neutron % time   = ZERO
       call self % thisStep % detain(neutron)
     end do
-    print *, "NEUTRONS GENERATED"
+    print *, "DONE!"
+
+  end subroutine generatePointSource
+
+  !!
+  !! Generate initial neutron source for inactive cycles
+  !!
+  subroutine generateInitialState(self)
+    class(dynamPhysicsPackage), intent(inout) :: self
+    type(particle)                            :: neutron
+    integer(shortInt)                         :: i, matIdx, dummy
+    real(defReal),dimension(6)                :: bounds
+    real(defReal),dimension(3)                :: top, bottom
+    real(defReal),dimension(3)                :: r
+    real(defReal),dimension(3)                :: rand
+    character(100), parameter :: Here =' generateInitialState( dynamPhysicsPackage_class.f90)'
+
+    ! Allocate and initialise particle Dungeons
+    allocate(self % thisStep)
+    allocate(self % nextStep)
+
+    call self % thisStep % init(5*self % pop)
+    call self % nextStep % init(5*self % pop)
+
+    ! Obtain bounds of the geometry
+    bounds = self % geom % bounds()
+
+    bottom = bounds([1,3,5])
+    top    = bounds([2,4,6])
+
+    ! Initialise iterator and attach RNG to neutron
+    i = 0
+    neutron % pRNG => self % pRNG
+
+    print *, "GENERATING INITIAL FISSION SOURCE"
+    ! Loop over requested population
+    do while (i <= self % pop)
+      ! Sample position
+      rand(1) = neutron % pRNG % get()
+      rand(2) = neutron % pRNG % get()
+      rand(3) = neutron % pRNG % get()
+
+      r = (top - bottom) * rand + bottom
+
+      ! Find material under postision
+      call self % geom % whatIsAt(r,matIdx,dummy)
+
+      ! Resample position if material is not fissile
+      if( .not.self % transNucData % isFissileMat(matIdx)) cycle
+
+      ! Put material in neutron
+      neutron % coords % matIdx = matIdx
+
+      ! Generate and store fission site
+      call self % transNucData % initFissionSite(neutron,r)
+      call self % thisStep % detain(neutron)
+
+      ! Update iterator
+      i = i +1
+    end do
+    print *, "DONE!"
 
   end subroutine generateInitialState
 
@@ -236,6 +480,10 @@ contains
     call dict % get( self % pop,'pop')
     call dict % get( self % N_steps, 'nsteps')
     call dict % get( self % stepLength, 'dt')
+    call dict % getOrDefault( self % N_inactive, 'inactive', 0)
+    if (self % N_inactive > 0) self % findFissionSource = .true.
+    call dict % getOrDefault( self % initialStepLength, 'age', -ONE)
+    if (self % initialStepLength < 0) self % ageNeutrons = .false.
 
     ! Initialise RNG
     allocate(self % pRNG)
@@ -279,13 +527,24 @@ contains
     self % collOp => new_collisionOperator_ptr(self % nucData, tempDict)
 
     ! Build transport operator
-    call dict % get(tempDict,'transportOperator')
-    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
+    call dict % get(tempDict,'dynamicTransportOperator')
+    self % dynamTransOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
 
-    ! Initialise time tally Admins
+    ! Build inactive cycle transport operator if desired
+    if (self % findFissionSource) then
+      call dict % get(tempDict,'inactiveTransportOperator')
+      self % inactiveTransOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
+    end if
+
+    ! Initialise time tally Admin
     call dict % get(tempDict,'timeTally')
     allocate(self % timeTally)
     call self % timeTally % init(tempDict)
+
+    ! Initialise inactive tally Admin
+    call dict % get(tempDict,'inactiveTally')
+    allocate(self % inactiveTally)
+    call self % inactiveTally % init(tempDict)
 
     call self % printSettings()
 
@@ -298,7 +557,15 @@ contains
     class(dynamPhysicsPackage), intent(in) :: self
 
     print *, repeat("<>",50)
-    print *, "/\/\ DYNAMIC CALCULATION USING FIXED SOURCE /\/\" 
+    if (self % findFissionSource) then
+      print *, "/\/\ DYNAMIC CALCULATION WITH INACTIVE CYCLES /\/\"
+      print *, "Number of inactive cycles: ", numToChar(self % N_inactive)
+      if (self % ageNeutrons) then
+        print *, "Initial neutron aging step length: ", numToChar(self % initialStepLength)
+      end if
+    else
+      print *, "/\/\ DYNAMIC CALCULATION USING FIXED SOURCE /\/\"
+    end if
     print *, "Number of time steps: ", numToChar(self % N_steps)
     print *, "Neutron Population: ", numToChar(self % pop)
     print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
