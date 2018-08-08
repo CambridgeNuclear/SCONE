@@ -48,7 +48,8 @@ endfunction(add_sources)
 
 add_sources( ./DataStructures/dictionary_class.f90
              ./DataStructures/IOdictionary_class.f90
-             ./DataStructures/maps_class.f90)
+             ./DataStructures/maps_class.f90
+             ./DataStructures/stack_class.f90)
 
 # Include Nested Directories  
 add_subdirectory(SharedModules)    

@@ -1,93 +1,119 @@
 program test
 
   use numPrecision
-  use RNG_class
-  use genericProcedures
-  use universalVariables
-  use hashFunctions_func, only : FNV_1, knuthHash
-  use vector_class, only : vector
-  use surface_inter, only : surfaceShelf, surface
-  use sphere_class,  only : sphere
-  use cell_class,    only : cell, cellShelf
-  use maps_class,    only : intMap
-  use cellUniverse_class, only : cellUniverse
-  use pinUniverse_class,  only : pinUniverse
-  use coord_class,        only : coord, coordList
-
-  use csg_class,          only : csg
-  use basicCellCSG_class, only : basicCellCSG
-  use IOdictionary_class, only : IOdictionary
-  use datalessMaterials_class, only : datalessMaterials
-  use latUniverse_class,  only : latUniverse
-  use commandLineUI
+  use genericProcedures, only : numToChar
+  use particle_class, only : particle
+  use stack_class, only : stackInt, stackChar
+!  use charTape_class, only : charTape
+!  use RNG_class
+!  use genericProcedures
+!  use universalVariables
+!  use hashFunctions_func, only : FNV_1, knuthHash
+!  use vector_class, only : vector
+!  use surface_inter, only : surfaceShelf, surface
+!  use sphere_class,  only : sphere
+!  use cell_class,    only : cell, cellShelf
+!  use maps_class,    only : intMap
+!  use cellUniverse_class, only : cellUniverse
+!  use pinUniverse_class,  only : pinUniverse
+!  use coord_class,        only : coord, coordList
+!
+!  use csg_class,          only : csg
+!  use basicCellCSG_class, only : basicCellCSG
+!  use IOdictionary_class, only : IOdictionary
+!  use datalessMaterials_class, only : datalessMaterials
+!  use latUniverse_class,  only : latUniverse
+!  use commandLineUI
 
   implicit none
-  type(cellShelf)    :: cSHelf
-  type(surfaceShelf) :: sSHelf
-  type(latUniverse)  :: lUni
-  type(coord)        :: coords
-  real(defReal)      :: dist
-  integer(shortInt)  :: surfIdx, i
-  real(defReal), dimension(3) :: r_glob
-  character(:),allocatable  :: inputa
-  character(:),allocatable  :: chart
+  type(stackChar) :: stack
+  integer(shortInt) :: i, N
+  character(nameLen) :: val
 
+  N = 1000
 
-  call addClOption('-input',1,['char'], 'Specify relative path from current directory to the input file. Cannot contain blanks')
-  call addClOption('-in',2,['int ','real'],'This is 2nd option')
-  call addClOption('-omp',0,[''],'Dummy help string')
-
- ! call displayClOptions()
- ! call parseCL()
-  !print *, input
-  print *, clOptionIsPresent('-omp ')
-  call getInputFile(inputa)
-
-  print *, trim(inputa)
-  call getFromCL(i,'-in',1)
-  print *, i
-
-  call getFromCL(dist,'-in',2)
-  print *, dist
-  call getFromCL(chart,'-input',1)
-
-  print *,chart
-
-!  print *, len_trim('        ')
-  !call parseCommandLine()
-
-  stop
-
-  call cShelf % init(5)
-  call sShelf % init(5)
-  call lUni % init([ZERO, ZERO, ZERO], 1, [1.0_8, 1.0_8, 1.0_8], [2,2,2],sShelf, cShelf)
-
-
-  coords % r   = [-0.5,-0.5, -0.5]
-  r_glob       = coords % r
-  coords % dir = [ 1.0, 1.0, 1.0]
-  coords % dir = coords % dir / norm2(coords % dir)
-
-  call lUni % enter(coords, cShelf,sShelf)
-  call coords % display()
-
-  do i = 1,5
-    call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
-    print *
-    print *, "DIST: ", dist, surfIDx
-    ! Move
-    coords % r = coords % r + coords % dir * dist
-    r_glob     = r_glob + coords % dir * dist
-
-    print *, "BEFORE X:"
-    print *, "R_GLOB: ", r_glob
-    call coords % display()
-    ! Cross
-    call lUni % cross(coords, surfIdx, cShelf, sShelf)
-    print *, "AFTER X:"
-    call coords % display()
-
+  do i=1,N
+    val = "My name is: "//numToChar(i)
+    call stack % push(val)
   end do
+
+  print *, stack % size()
+
+  do i=N,1,-1
+    call stack % pop(val)
+    print *, val
+  end do
+
+  print *, stack % isEmpty()
+  call stack % pop(val)
+
+
+!  type(cellShelf)    :: cSHelf
+!  type(surfaceShelf) :: sSHelf
+!  type(latUniverse)  :: lUni
+!  type(coord)        :: coords
+!  real(defReal)      :: dist
+!  integer(shortInt)  :: surfIdx, i
+!  real(defReal), dimension(3) :: r_glob
+!  character(:),allocatable  :: inputa
+!  character(:),allocatable  :: chart
+!
+!
+!  call addClOption('-input',1,['char'], 'Specify relative path from current directory to the input file. Cannot contain blanks')
+!  call addClOption('-in',2,['int ','real'],'This is 2nd option')
+!  call addClOption('-omp',0,[''],'Dummy help string')
+!
+! ! call displayClOptions()
+! ! call parseCL()
+!  !print *, input
+!  print *, clOptionIsPresent('-omp ')
+!  call getInputFile(inputa)
+!
+!  print *, trim(inputa)
+!  call getFromCL(i,'-in',1)
+!  print *, i
+!
+!  call getFromCL(dist,'-in',2)
+!  print *, dist
+!  call getFromCL(chart,'-input',1)
+!
+!  print *,chart
+!
+!!  print *, len_trim('        ')
+!  !call parseCommandLine()
+!
+!  stop
+!
+!  call cShelf % init(5)
+!  call sShelf % init(5)
+!  call lUni % init([ZERO, ZERO, ZERO], 1, [1.0_8, 1.0_8, 1.0_8], [2,2,2],sShelf, cShelf)
+!
+!
+!  coords % r   = [-0.5,-0.5, -0.5]
+!  r_glob       = coords % r
+!  coords % dir = [ 1.0, 1.0, 1.0]
+!  coords % dir = coords % dir / norm2(coords % dir)
+!
+!  call lUni % enter(coords, cShelf,sShelf)
+!  call coords % display()
+!
+!  do i = 1,5
+!    call lUni % distance(dist,surfIdx,coords, cShelf, sShelf)
+!    print *
+!    print *, "DIST: ", dist, surfIDx
+!    ! Move
+!    coords % r = coords % r + coords % dir * dist
+!    r_glob     = r_glob + coords % dir * dist
+!
+!    print *, "BEFORE X:"
+!    print *, "R_GLOB: ", r_glob
+!    call coords % display()
+!    ! Cross
+!    call lUni % cross(coords, surfIdx, cShelf, sShelf)
+!    print *, "AFTER X:"
+!    call coords % display()
+!
+!  end do
 
 
 !  coords % r = coords % r + coords % dir * 9.3957568538322572E-002_8

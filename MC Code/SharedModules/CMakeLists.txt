@@ -4,5 +4,6 @@ add_sources( ./genericProcedures.f90
              ./endfConstants.f90
              ./universalVariables.f90 
              ./hashFunctions_func.f90
-             ./vector_class.f90) 
+             ./vector_class.f90
+             ./charTape_class.f90) 
  
