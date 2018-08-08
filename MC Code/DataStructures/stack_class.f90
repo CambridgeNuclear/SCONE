@@ -13,7 +13,7 @@ module stack_class
   !!
   type, public :: stackInt
     private
-    integer(shortInt)                            :: top
+    integer(shortInt)                            :: top  = 0
     integer(shortInt), dimension(:), allocatable :: stack
   contains
     procedure :: push     => push_shortInt
@@ -29,7 +29,7 @@ module stack_class
   !!
   type, public :: stackChar
     private
-    integer(shortInt)                             :: top
+    integer(shortInt)                             :: top  = 0
     character(nameLen), dimension(:), allocatable :: stack
   contains
     procedure :: push     => push_char

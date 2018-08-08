@@ -23,37 +23,41 @@ module asciiOutput_inter
   !!    -> print(char,mold)       - print char asuming it has the same type as mold(defReal, etc. )
   !!
   !! Assume that checks for name uniqueness are performed by the user class.
+  !! Assume that checks for mixed arrays are performed by the user class.
   !! Printer should return errors if calls for ends are out of correct sequence
   !!
   type, public,abstract :: asciiOutput
     private
   contains
-    procedure(startBlock),deferred :: startBlock
-    procedure(endBlock),deferred   :: endBlock
-    procedure(startEntry),deferred :: startEntry
-    procedure(endEntry),deferred   :: endEntry
-    procedure(startArray),deferred :: startArray
-    procedure(endArray),deferred   :: endArray
-    generic                        :: print => print_defReal,  &
-                                               print_shortInt, &
-                                               print_longInt , &
-                                               print_char
-
-    procedure(print_defReal),deferred,private  :: print_defReal
-    procedure(print_shortInt),deferred,private :: print_shortInt
-    procedure(print_longInt),deferred,private  :: print_longInt
-    procedure(print_char),deferred,private     :: print_char
+    procedure(writeToFile),deferred :: writeToFile
+    procedure(startBlock),deferred  :: startBlock
+    procedure(endBlock),deferred    :: endBlock
+    procedure(startEntry),deferred  :: startEntry
+    procedure(endEntry),deferred    :: endEntry
+    procedure(startArray),deferred  :: startArray
+    procedure(endArray),deferred    :: endArray
+    procedure(printNum),deferred    :: printNum
+    procedure(printChar),deferred   :: printChar
   end type asciiOutput
 
 
   abstract interface
     !!
+    !! For now it prints to screen for debug
+    !!
+    subroutine writeToFile(self)
+      import :: asciiOutput
+      class(asciiOutput), intent(inout) :: self
+    end subroutine writeToFile
+
+    !!
     !! Change state to writing new block with "name"
     !!
     subroutine startBlock(self,name)
-      import :: asciiOutput
+      import :: asciiOutput, &
+                nameLen
       class(asciiOutput), intent(inout) :: self
-      character(*), intent(in)          :: name
+      character(nameLen), intent(in)    :: name
     end subroutine startBlock
 
     !!
@@ -70,9 +74,10 @@ module asciiOutput_inter
     !! Can recive single value or array next
     !!
     subroutine startEntry(self,name)
-      import :: asciiOutput
+      import :: asciiOutput, &
+                nameLen
       class(asciiOutput), intent(inout) :: self
-      character(*), intent(in)          :: name
+      character(nameLen), intent(in)    :: name
     end subroutine startEntry
 
     !!
@@ -85,13 +90,13 @@ module asciiOutput_inter
 
     !!
     !! Start writing array with shape & column-major order(leftmost index varies fastest)
+    !! Name should alrady be provided by "startEntry"
     !!
-    subroutine startArray(self,name,shape)
+    subroutine startArray(self,shape)
       import :: asciiOutput, &
                 shortInt
       class(asciiOutput), intent(inout) :: self
-      character(*), intent(in)           :: name
-      integer(shortInt),dimension(:)     :: shape
+      integer(shortInt),dimension(:)    :: shape
     end subroutine startArray
 
     !!
@@ -103,47 +108,22 @@ module asciiOutput_inter
     end subroutine endArray
 
     !!
-    !! Print val assuming it contains valid printed real with no leading or trailing blanks
+    !! Print val assuming it contains valid printed number with no leading or trailing blanks
     !!
-    subroutine print_defReal(self,val,mold)
-      import :: asciiOutput, &
-                defReal
+    subroutine printNum(self,val)
+      import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val
-      real(defReal), intent(in)         :: mold
-    end subroutine print_defReal
-
-    !!
-    !! Print val assuming it contains valid printed shortInt with no leading or trailing blanks
-    !!
-    subroutine print_shortInt(self,val,mold)
-      import :: asciiOutput, &
-                shortInt
-      class(asciiOutput), intent(inout) :: self
-      character(*),intent(in)           :: val
-      integer(shortInt), intent(in)     :: mold
-    end subroutine print_shortInt
-
-    !!
-    !! Print val assuming it contains valid printed longInt with no leading or trailing blanks
-    !!
-    subroutine print_longInt(self,val,mold)
-      import :: asciiOutput, &
-                longInt
-      class(asciiOutput), intent(inout) :: self
-      character(*),intent(in)           :: val
-      integer(longInt), intent(in)      :: mold
-    end subroutine print_longInt
+    end subroutine printNum
 
     !!
     !! Print val assuming it contains valid printed string with no leading or trailing blanks
     !!
-    subroutine print_char(self,val,mold)
+    subroutine printChar(self,val)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val
-      character(*),intent(in)           :: mold
-    end subroutine print_char
+    end subroutine printChar
   end interface
 
 end module asciiOutput_inter

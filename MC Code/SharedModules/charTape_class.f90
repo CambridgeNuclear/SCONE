@@ -16,11 +16,13 @@ module charTape_class
   type, public :: charTape
     private
     integer(shortInt)        :: end    = 0
-    integer(shortInt)        :: length = 0
+    integer(shortInt)        :: leng   = 0
     character(:),allocatable :: tape
   contains
     generic    :: append => append_tape, append_char
     procedure  :: expose
+    procedure  :: cut
+    procedure  :: length
 
     procedure, private :: append_tape
     procedure, private :: append_char
@@ -40,6 +42,27 @@ contains
 
   end function expose
 
+  !!
+  !! Returns length of the string
+  !!
+  function length(self) result(L)
+    class(charTape), intent(in) :: self
+    integer(shortInt)           :: L
+
+    L = self % end
+
+  end function length
+
+  !!
+  !! Cut N last characters from the tape
+  !!
+  subroutine cut(self,N)
+    class(charTape), intent(inout) :: self
+    integer(shortInt)              :: N
+
+    self % end = max(0, self % end - N)
+
+  end subroutine cut
 
   !!
   !! Appends self with tape on the RHS
@@ -98,18 +121,18 @@ contains
     character(:),allocatable       :: temp
 
     ! Return if length is OK
-    if( N < self % length) return
+    if( N < self % leng) return
 
-    self % length = ceiling(N * GROWTH_RATIO)
+    self % leng = ceiling(N * GROWTH_RATIO)
 
     ! Extend or allocate tape
     if(allocated(self % tape)) then
-      allocate( character(self % length) :: temp)
+      allocate( character(self % leng) :: temp)
       temp(1:self % end) = self % tape
       call move_alloc(temp, self % tape)
 
     else
-      allocate( character(self % length) :: self % tape)
+      allocate( character(self % leng) :: self % tape)
 
     end if
   end subroutine resize
