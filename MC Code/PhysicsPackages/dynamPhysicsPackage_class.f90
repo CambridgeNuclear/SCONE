@@ -93,8 +93,7 @@ contains
     if (self % findFissionSource) then
       call self % generateInitialState()
       call self % inactiveCycles()
-      call self % ageSourceNeutrons()
-
+      if (self % ageNeutrons) call self % ageSourceNeutrons()
     ! Use an isotropic point source
     else
       call self % generatePointSource()
@@ -112,6 +111,7 @@ contains
     type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
     real(defReal)                             :: power_old, power_new, timeMax, genWeight
+    integer(longInt) :: leak
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -125,7 +125,7 @@ contains
 
     ! Initialise time max
     timeMax = ZERO
-
+    leak = 0
     print *,'BEGINNING TIME STEPPING'
 
     do i=1,self % N_steps
@@ -156,6 +156,7 @@ contains
                 neutron % fate = 0
                 call self % nextStep % detain(neutron)
               end if
+              if (neutron % fate == leak_FATE) leak = leak + 1
               exit history
             end if
 
@@ -227,6 +228,9 @@ contains
     ! Send start of cycle report
     call self % timeTally % reportCycleStart(self % thisStep)
 
+    ! Store initial weight and normalise population
+    genWeight = self % thisStep % popWeight()
+
     ! Increment timeMax
     timeMax = self % initialStepLength
 
@@ -267,7 +271,7 @@ contains
     end do step
 
     ! Store initial weight and normalise population
-    genWeight = self % nextStep % popWeight()
+    !genWeight = self % nextStep % popWeight()
     call self % nextStep % normSize(self % pop, neutron % pRNG)
 
     ! Adjust weight for population growth or decay
@@ -362,6 +366,10 @@ contains
       print *, 'Cycle: ', i, ' of ', self % N_inactive,' Pop: ', Nstart, ' -> ',Nend
       call self % inactiveTally % display()
     end do
+
+    ! Must return k_eff to 1, otherwise population will not shrink or grow
+    self % thisStep % k_eff = ONE
+    self % nextStep % k_eff = ONE
 
   end subroutine inactiveCycles
 
