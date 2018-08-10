@@ -85,13 +85,15 @@ contains
     class(tallyInactiveAdmin), intent(inout) :: self
     class(dictionary),intent(in)             :: dict
     type(dictionary)                         :: embDict
+    character(nameLen)                       :: name
 
     ! Get settings for the embedded clerk into dictionary
     call embDict % init(1)
     call embDict % store('type','keffInactiveClerk')
 
     ! Initialise embedded clerk
-    call self % keff_estimator % init(embDict,'IA_ADMIN')
+    name = 'IA_ADMIN'
+    call self % keff_estimator % init(embDict,name)
 
     ! Load rest of the clerks
     call init_super(self,dict)

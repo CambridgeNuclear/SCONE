@@ -11,11 +11,13 @@ module tallyTimeAdmin_class
                                       reportCycleEnd_super => reportCycleEnd, &
                                       isConverged_super => isConverged, &
                                       init_super => init ,&
+                                      print_super => print, &
                                       kill_super => kill ,&
                                       display_super => display
   use particle_class,          only : particle, phaseCoord
   use particleDungeon_class,   only : particleDungeon
   use timeClerk_class,         only : timeClerk
+  use outputFile_class,        only : outputFile
 
   implicit none
   private
@@ -36,6 +38,7 @@ module tallyTimeAdmin_class
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
     procedure :: init
+    procedure :: print
     procedure :: kill
     procedure :: display
     procedure :: isConverged
@@ -113,7 +116,6 @@ contains
   subroutine reportCycleStart(self, start)
     class(tallyTimeAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)   :: start
-    integer(shortInt)                    :: i, idx
 
     ! Process report with internal Clerk
     call self % power_estimator % reportCycleStart(start)
@@ -129,7 +131,6 @@ contains
   subroutine reportCycleEnd(self, end)
     class(tallyTimeAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
-    integer(shortInt)                    :: i, idx
 
     ! Process report with internal Clerk
     call self % power_estimator % reportCycleEnd(end)
@@ -140,31 +141,29 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Add all results to outputfile
+  !!
+  subroutine print(self,output)
+    class(tallyTimeAdmin), intent(in)    :: self
+    class(outputFile), intent(inout)     :: output
+
+    print *, 'HERE'
+    call self % power_estimator % print(output)
+    call print_super(self,output)
+
+  end subroutine print
+
+  !!
   !! Initialise time admin
   !!
   subroutine init(self,dict)
     class(tallyTimeAdmin), intent(inout) :: self
     class(dictionary),intent(in)         :: dict
-!    type(dictionary)                     :: embDict
-!    character(nameLen)                   :: entry
-!    real(defReal)                        :: temp
-
-!    call embDict % init(3)
-
-    ! Read settings for embedded clerk and put them into embDict
-!    call dict % getOrDefault(entry,'trigger','no')
-!
-!    if( charCmp(entry,'yes') ) then
-!      self % power_convergence = .true.
-!      call dict % get(temp,'SDtarget')
-!      call embDict % store('trigger','yes')
-!      call embDict % store('SDtarget',temp)
-!    end if
-!
-!    call embDict % store('type','timeClerk')
+    character(nameLen)                   :: entry
 
     ! Initialise embedded clerk
-    call self % power_estimator % init(dict)
+    entry = 'T_ADMIN'
+    call self % power_estimator % init(dict,entry)
 
     ! Load rest of the clerks
     call init_super(self,dict)

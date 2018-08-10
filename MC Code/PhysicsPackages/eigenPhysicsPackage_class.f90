@@ -363,7 +363,6 @@ contains
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
-    !self % outputFile = string
 
     ! Initialise RNG
     allocate(self % pRNG)

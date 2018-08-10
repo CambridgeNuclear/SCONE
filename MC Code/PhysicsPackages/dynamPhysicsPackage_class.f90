@@ -5,6 +5,7 @@ module dynamPhysicsPackage_class
   use genericProcedures,              only : fatalError, printFishLineR, numToChar
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
+  use outputFile_class,               only : outputFile
 
   ! Particle classes and Random number generator
   use particle_class,                 only : particle, phaseCoord
@@ -63,6 +64,7 @@ module dynamPhysicsPackage_class
     real(defReal)                            :: initialStepLength
     logical(defBool)                         :: ageNeutrons = .false.
     logical(defBool)                         :: findFissionSource
+    character(pathLen)                       :: outputFile
 
     ! Calculation components
     type(particleDungeon), pointer :: thisStep     => null()
@@ -72,11 +74,12 @@ module dynamPhysicsPackage_class
   contains
     procedure :: init
     procedure :: printSettings
-    procedure :: inactiveCycles       ! Perform inactive cycles to obtain fundamental mode
-    procedure :: timeSteps            ! Perform time stepping
-    procedure :: generateInitialState ! Generate initial neutrons for inactive cycles
-    procedure :: generatePointSource  ! Generate isotropic point source of neutrons *** Replace in future
-    procedure :: ageSourceNeutrons    ! Age initial neutrons to attempt to achieve more realistic distribution
+    procedure :: inactiveCycles       !! Perform inactive cycles to obtain fundamental mode
+    procedure :: timeSteps            !! Perform time stepping
+    procedure :: generateInitialState !! Generate initial neutrons for inactive cycles
+    procedure :: generatePointSource  !! Generate isotropic point source of neutrons *** Replace in future
+    procedure :: ageSourceNeutrons    !! Age initial neutrons to attempt to achieve more realistic distribution
+    procedure :: collectResults       !! Print results to output file
     procedure :: run
 
   end type dynamPhysicsPackage
@@ -99,6 +102,7 @@ contains
       call self % generatePointSource()
     end if
     call self % timeSteps()
+    call self % collectResults()
 
   end subroutine
 
@@ -213,8 +217,8 @@ contains
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     type(phaseCoord)                          :: preState
-    integer(shortInt)                         :: i, Nstart, Nend
-    real(defReal)                             :: power_old, power_new, timeMax, genWeight
+    integer(shortInt)                         :: i
+    real(defReal)                             :: timeMax, genWeight
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -468,6 +472,34 @@ contains
 
   end subroutine generateInitialState
 
+  subroutine collectResults(self)
+    class(dynamPhysicsPackage), intent(in) :: self
+    type(outputFile)                       :: out
+    character(pathLen)                     :: path
+    character(nameLen)                     :: name
+
+    name = 'asciiMATLAB'
+    call out % init(name)
+
+    name = 'seed'
+    call out % printValue(self % pRNG % getSeed(),name)
+!
+!    name = 'pop'
+!    call out % printValue(self % pop,name)
+!
+!    name = 'Inactive_Cycles'
+!    call out % printValue(self % N_inactive,name)
+!
+!    name = 'Active_Cycles'
+!    call out % printValue(self % N_active,name)
+
+    call self % timeTally % print(out)
+
+    path = trim(self % outputFile) // '.m'
+    call out % writeToFile(path)
+
+  end subroutine collectResults
+
 
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
@@ -492,6 +524,9 @@ contains
     if (self % N_inactive > 0) self % findFissionSource = .true.
     call dict % getOrDefault( self % initialStepLength, 'age', -ONE)
     if (self % initialStepLength < 0) self % ageNeutrons = .false.
+
+    ! Read outputfile path
+    call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
     ! Initialise RNG
     allocate(self % pRNG)

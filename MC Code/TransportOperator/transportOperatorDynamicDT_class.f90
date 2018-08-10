@@ -63,7 +63,7 @@ contains
     class(transportOperatorDynamicDT), intent(in) :: self
     class(particle), intent(inout)         :: p
     real(defReal)                          :: majorant, sigmaT, distance, &
-                                              timeMax, time, flightTime, speed
+                                              timeMax, flightTime, speed
 
     majorant = self % nuclearData % getMajorantXS(p)
     timeMax = p % timeMax

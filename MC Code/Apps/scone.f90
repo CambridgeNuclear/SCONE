@@ -23,9 +23,6 @@ program scone
 
   allocate( core, source = new_physicsPackage(input))
 
-  ! Read data
-  call core % init(input)
-
   call core % run()
 
 end program scone

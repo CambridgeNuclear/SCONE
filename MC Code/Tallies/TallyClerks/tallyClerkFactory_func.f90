@@ -52,7 +52,7 @@ contains
         allocate(new, source = keffInactiveClerk(dict,name) )
 
       case('dynamicTallyClerk')
-        allocate(new, source = timeClerk(dict))
+        allocate(new, source = timeClerk(dict,name))
 
      !*** NEW TALLY CLERK TEMPLATE ***!
      !case('<newTallyClerkName>')

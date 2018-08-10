@@ -10,6 +10,7 @@ module timeClerk_class
   use tallyClerk_inter,           only : tallyClerk
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use transportNuclearData_inter, only : transportNuclearData
+  use outputFile_class,           only : outputFile
 
   use xsMacroSet_class,           only : xsMacroSet_ptr
 
@@ -24,19 +25,20 @@ module timeClerk_class
 
   type, public,extends(tallyClerk) :: timeClerk
     private
+    character(nameLen)                               :: name             !! Clerk name
 
-    integer(shortInt)                                :: stepCount = 1 ! Current step
+    integer(shortInt)                                :: stepCount = 1    !! Current step
 
-    type(tallyCounter)                               :: impFission    ! Implicit fission
-    type(tallyScore)                                 :: anaLeak       ! Analog neutron leakage
+    type(tallyCounter)                               :: impFission       !! Implicit fission
+    type(tallyScore)                                 :: anaLeak          !! Analog neutron leakage
 
-    integer(shortInt)                                :: nSteps           ! Number of timesteps
-    real(defReal), dimension(:), allocatable, public :: stepLength       ! Time step length
-    real(defReal), dimension(:), allocatable         :: power_imp        ! Stores power at each time step
-    real(defReal), dimension(:), allocatable         :: power_std        ! Stores power STD at each time step
-    real(defReal)                                    :: power0           ! Initial power
-    real(defReal)                                    :: normFactor       ! Normalisation factor
-    integer(shortInt)                                :: eventCounter = 0 ! Count collision events
+    integer(shortInt)                                :: nSteps           !! Number of timesteps
+    real(defReal), dimension(:), allocatable, public :: stepLength       !! Time step length
+    real(defReal), dimension(:), allocatable         :: power_imp        !! Stores power at each time step
+    real(defReal), dimension(:), allocatable         :: power_std        !! Stores power STD at each time step
+    real(defReal)                                    :: power0           !! Initial power
+    real(defReal)                                    :: normFactor       !! Normalisation factor
+    integer(shortInt)                                :: eventCounter = 0 !! Count collision events
 
     real(defReal)                                    :: startWgt
     real(defReal)                                    :: targetSD = 0.0
@@ -47,6 +49,7 @@ module timeClerk_class
     procedure :: display
     procedure :: isConverged
     procedure :: init
+    procedure :: print
 
     ! Overwrite report procedures
     procedure :: reportInColl
@@ -75,7 +78,6 @@ contains
   !!
   subroutine display(self)
     class(timeClerk), intent(in) :: self
-    real(defReal)                :: power_imp, STD_imp, STD_analog
 
     ! Print estimates to a console
     print '(A,ES15.5,A,ES15.5)', 'Power (implicit): ', &
@@ -91,7 +93,7 @@ contains
   function isConverged(self) result(isIt)
     class(timeClerk), intent(in) :: self
     logical(defBool)             :: isIt
-    real(defReal)                :: power, SD
+!    real(defReal)                :: power, SD
 
    ! SD = self % power_std(self % stepCount)
 
@@ -215,22 +217,58 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Write contents of the time Clerk to output file
+  !!
+  subroutine print(self,outFile)
+    class(timeClerk), intent(in)       :: self
+    class(outputFile), intent(inout)   :: outFile
+    integer(shortInt)                  :: N,i
+    real(defReal)                      :: time
+    character(nameLen)                 :: name
+
+    call outFile % startBlock(self % name)
+
+    ! Calculate grid size
+    N = size(self % stepLength)
+
+    ! Print time grid. Assume start at time = 0
+    name = 'timeGrid_ends'
+    time = ZERO
+    call outFile % startArray(name,[N])
+
+    do i=1,N
+      time = time + self % stepLength(i)
+      call outFile % addValue(time)
+    end do
+
+    call outFile % endArray()
+
+    ! Print power results
+    name = 'power'
+    call outFile % startArray(name,[N])
+
+    call outFile % addResult(self % power_imp, self % power_std)
+
+    call outFile % endArray()
+
+    call outFile % endBlock()
+
+  end subroutine print
+
+
+  !!
   !! Initialise timeClerk from dictionary
   !! Checks if type agrees with class name. if not returns error
   !!
-  subroutine init(self,dict)
-    class(timeClerk),intent(inout) :: self
+  subroutine init(self,dict, name)
+    class(timeClerk),intent(inout)       :: self
     class(dictionary), intent(in)        :: dict
+    character(nameLen),intent(in)        :: name
     character(nameLen)                   :: type
     character(100),parameter :: Here ='init (timeClerk_class.f90)'
 
-!    call dict % get(type,'type')
-
-!    ! Check that class description matches class name
-!    if ( .not.charCmp(CLASS_NAME,type) ) then
-!      call fatalError(Here, 'Type : ' // type // ' is different form class name ' // CLASS_NAME )
-!
-!    end if
+    ! Assign name
+    self % name = name
 
     call dict % getOrDefault(type,'trigger','no')
 
@@ -280,11 +318,12 @@ contains
   !!
   !! timeClerk constructor function
   !!
-  function new_timeClerk(dict) result(new)
-    class(dictionary), intent(in) :: dict
-    type(timeClerk)               :: new
+  function new_timeClerk(dict,name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(timeClerk)                :: new
 
-    call new % init(dict)
+    call new % init(dict,name)
 
   end function new_timeClerk
 
