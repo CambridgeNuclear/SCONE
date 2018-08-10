@@ -128,7 +128,7 @@ contains
 
 
   !!
-  !! Obtain the particle from the dungeon. **** Will need to be change for more rebust loading
+  !! Obtain the particle from the dungeon.
   !!
   subroutine release(self,p )
     class(particleDungeon), intent(inout) :: self
@@ -137,14 +137,8 @@ contains
 
     ! Load data into the particle
     pop = self % pop
-    ! Place in geometry
-    call p % coords % init(self % prisoners(pop) % r, &
-                           self % prisoners(pop) % dir)
-    ! Copy rest of the data
-    p % w    = self % prisoners(pop) % wgt
-    p % E    = self % prisoners(pop) % E
-    p % G    = self % prisoners(pop) % G
-    p % isMg = self % prisoners(pop) % isMG
+
+    p = self % prisoners(pop)
     p % isDead = .false.
 
     ! Decrease population and weight

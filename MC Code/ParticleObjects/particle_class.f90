@@ -20,6 +20,7 @@ module particle_class
     real(defReal)              :: E    = 0.0     ! Energy
     integer(shortInt)          :: G    = 0       ! Energy group
     logical(defBool)           :: isMG = .false. ! Is neutron multi-group
+    real(defReal)              :: time = 0.0     ! Particle time position
   contains
     generic    :: assignment(=) => phaseCoord_fromParticle
     procedure  :: display       => display_phaseCoord
@@ -34,16 +35,22 @@ module particle_class
     real(defReal)              :: E         ! Particle Energy
     integer(shortInt)          :: G         ! Particle Energy Group
     real(defReal)              :: w         ! Particle Weight
+    real(defReal)              :: w0        ! Particle initial weight (for implicit, variance reduction...)
 
     class(RNG), pointer        :: pRNG      ! Pointer to RNG associated with the particle
     class(nuclearData),pointer :: xsData => null() ! Pointer to nuclear data
 
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
-
+    real(defReal)              :: time      ! Particle time point
+    real(defReal)              :: timeMax   ! Maximum neutron time before cut-off
+    integer(shortInt)          :: fate = 0  ! Neutron's fate after being subjected to an operator     
+    
+ 
   contains
-    ! Build procedures
+     ! Build procedures
     generic              :: build => buildCE, buildMG
+    generic              :: assignment(=) => particle_fromPhaseCoord
 
     ! Inquiry about coordinates
     procedure            :: rLocal
@@ -71,6 +78,7 @@ module particle_class
     !! Private - Implementation specific procedures
     procedure,private    :: buildCE
     procedure,private    :: buildMG
+    procedure, private   :: particle_fromPhaseCoord
 
   end type particle
 
@@ -305,8 +313,28 @@ contains
     LHS % E    = RHS % E
     LHS % G    = RHS % G
     LHS % isMG = RHS % isMG
+    LHS % time = RHS % time
 
   end subroutine phaseCoord_fromParticle
+
+  !!
+  !! Copy phase coordinates into particle
+  !!
+  subroutine particle_fromPhaseCoord(LHS,RHS)
+    class(particle), intent(inout)  :: LHS
+    type(phaseCoord), intent(in)  :: RHS
+
+    LHS % w                     = RHS % wgt
+    LHS % w0                    = RHS % wgt
+    call LHS % takeAboveGeom()
+    LHS % coords % lvl(1) % r   = RHS % r
+    LHS % coords % lvl(1) % dir = RHS % dir
+    LHS % E                     = RHS % E
+    LHS % G                     = RHS % G
+    LHS % isMG                  = RHS % isMG
+    LHS % time                  = RHS % time
+
+  end subroutine particle_fromPhaseCoord
 
   !!
   !! Prints state of the phaseCoord
@@ -314,7 +342,7 @@ contains
   subroutine display_phaseCoord(self)
     class(phaseCoord), intent(in) :: self
 
-    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt
+    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
 
   end subroutine display_phaseCoord
 
@@ -327,8 +355,9 @@ contains
     real(defReal),intent(in)                :: E, w
 
     call self % coords % init(r, dir)
-    self % E = E
-    self % w = w
+    self % E  = E
+    self % w  = w
+    self % w0 = w
 
     self % isDead = .false.
     self % isMG   = .false.
@@ -345,8 +374,9 @@ contains
     integer(shortInt),intent(in)            :: G
 
     call self % coords % init(r, dir)
-    self % G = G
-    self % w = w
+    self % G  = G
+    self % w  = w
+    self % w0 = w
 
     self % isDead = .false.
     self % isMG   = .true.

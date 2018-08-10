@@ -15,9 +15,9 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 #
 # -Wno-surprising flag is enabled to suppress a buggy warning about final subroutine 
 # It should be periodicly removed to see if other surprising warining are not raised 
-# This buggy warning should be repaired in GCC 7.0  
+# This buggy warning should be repaired in GCC 7.0 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -O3 -g  -Wall -Wno-surprising -Wno-unused-dummy-argument -flto ") # -flto  
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O0 -Wall -Wno-surprising ") # -flto  
 
 # -flto = Link Time Optimisation - SUPER important for performance 
 MESSAGE( STATUS CMAKE_fortran_COMPILER_ID)

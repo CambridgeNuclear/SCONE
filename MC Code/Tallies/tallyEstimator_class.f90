@@ -71,7 +71,7 @@ module tallyEstimator_class
 
   end type tallyCounter
 
-  !!
+  !! *** DO NOT USE: WILL CHANGE! CAN'T RECALL WHAT IT WAS MEANT TO DO!  -MAK
   !! Class that combine tallyScore and tally Counter into one entity.
   !! It is used with estimates based on a single integration (i.e. reaction rates)
   !! INTERFACE:

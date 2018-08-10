@@ -12,6 +12,7 @@ module physicsPackageFactory_func
 
   ! Implementations
   use eigenPhysicsPackage_class, only : eigenPhysicsPackage
+  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
   private
@@ -21,7 +22,8 @@ module physicsPackageFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_physicsPackages = [ 'eigenPhysicsPackage']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_physicsPackages = [ 'eigenPhysicsPackage',&
+                                                                            'dynamPhysicsPackage']
 
   !!
   !! Public interface
@@ -53,6 +55,14 @@ contains
         allocate( eigenPhysicsPackage :: new)
         select type(new)
           type is (eigenPhysicsPackage)
+            call new % init(dict)
+        end select
+
+      case('dynamPhysicsPackage')
+        ! Allocate and initialise
+        allocate( dynamPhysicsPackage :: new)
+        select type(new)
+          type is (dynamPhysicsPackage)
             call new % init(dict)
         end select
 

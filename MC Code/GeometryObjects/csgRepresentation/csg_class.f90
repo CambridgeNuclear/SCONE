@@ -578,6 +578,9 @@ contains
     logical(defBool)                            :: doesIt
     integer(shortInt)                           :: N, i, uniIdx, fill, idx
 
+    ! Initialise doesIt to false for single level geometries
+    doesIt = .false.
+
     ! Find uniIdx of uniID
     uniIdx = self % uniMap % get(uniID)
 
