@@ -19,6 +19,13 @@ module asciiMATLAB_class
                                   IN_ARRAY = 2
 
   !!
+  !! Constructor
+  !!
+  interface asciiMATLAB
+    module procedure asciiMATLAB_constructor
+  end interface
+
+  !!
   !! Printer for ASCII MATLAB output file
   !!
   type, public,extends(asciiOutput) :: asciiMATLAB
@@ -53,15 +60,23 @@ module asciiMATLAB_class
 contains
 
   !!
+  !!
+  !!
+  function asciiMATLAB_constructor() result (new)
+    type(asciiMATLAB) :: new
+  end function asciiMATLAB_constructor
+
+  !!
   !! For now it prints to screen for debug
   !!
-  subroutine writeToFile(self)
+  subroutine writeToFile(self,unit)
     class(asciiMATLAB), intent(inout) :: self
+    integer(shortInt), intent(in)     :: unit
     character(:),allocatable          :: form
 
     form = '(A'//numToChar(self % output % length())//')'
 
-    print form, self % output % expose()
+    write(unit,form) self % output % expose()
 
   end subroutine writeToFile
 

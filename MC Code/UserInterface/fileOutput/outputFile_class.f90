@@ -1,10 +1,10 @@
-module outputFile_inter
+module outputFile_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, numToChar
-  use stack_class,       only : stackChar
-  use asciiOutput_inter, only : asciiOutput
-  use asciiMATLAB_class, only : asciiMATLAB
+  use genericProcedures,       only : fatalError, numToChar
+  use stack_class,             only : stackChar
+  use asciiOutput_inter,       only : asciiOutput
+  use asciiOutputFactory_func, only : new_asciiOutput
 
   implicit none
   private
@@ -110,23 +110,42 @@ module outputFile_inter
 
 contains
   !!
+  !! Initialise output file by providing format type
   !!
-  !!
-  subroutine init(self)
+  subroutine init(self,type)
     class(outputFile), intent(inout) :: self
-    type(asciiMATLAB) :: temp
+    character(nameLen),intent(in)    :: type
 
-    allocate( self % output, mold = temp)
+    allocate( self % output, source = new_asciiOutput(type))
 
   end subroutine init
 
   !!
+  !! Dump collected results to file
   !!
-  !!
-  subroutine writeToFile(self)
+  subroutine writeToFile(self,file)
     class(outPutFile), intent(inout) :: self
+    character(pathLen), intent(in)   :: file
+    integer(shortInt)                :: unitNum
+    integer(shortInt)                :: error
+    character(99)                    :: errorMsg
+    character(100), parameter :: Here ='writeToFile ( outputFile_class.f90)'
 
-    call self % output % writeToFile()
+    ! Open file to write
+    open ( newunit   = unitNum, &
+           file      = file   , &
+           action    = 'write', &
+           iostat    = error  , &
+           iomsg     = errorMsg )
+
+    ! Catch error
+    if (error /= 0 ) call fatalError(Here, errorMsg)
+
+    ! Write to file
+    call self % output % writeToFile(unitNum)
+
+    ! Close file
+    close(unitNum)
 
   end subroutine writeToFile
 
@@ -137,7 +156,7 @@ contains
   subroutine startBlock(self,name)
     class(outputFile), intent(inout) :: self
     character(nameLen), intent(in)   :: name
-    character(100), parameter :: Here ='startBlock (outputFile_inter.f90)'
+    character(100), parameter :: Here ='startBlock (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -164,7 +183,7 @@ contains
   !!
   subroutine endBlock(self)
     class(outputFile), intent(inout) :: self
-    character(100), parameter :: Here ='endBlock (outputFile_inter.f90)'
+    character(100), parameter :: Here ='endBlock (outputFile_class.f90)'
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -193,7 +212,7 @@ contains
     class(outputFile), intent(inout) :: self
     character(nameLen), intent(in)   :: name
     integer(shortInt),dimension(:)   :: shape
-    character(100), parameter :: Here ='startArray (outputFile_inter.f90)'
+    character(100), parameter :: Here ='startArray (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -227,7 +246,7 @@ contains
   !!
   subroutine endArray(self)
     class(outputFile), intent(inout) :: self
-    character(100), parameter :: Here = 'endArray ( outputFile_inter.f90)'
+    character(100), parameter :: Here = 'endArray ( outputFile_class.f90)'
 
     ! Check that all entries for current array were given
     if(self % arrayTop /= self % arrayLimit) then
@@ -257,7 +276,7 @@ contains
     class(outputFile), intent(inout) :: self
     real(defReal), intent(in)        :: val
     real(defReal), intent(in)        :: std
-    character(100),parameter :: Here ='addResult_scalar (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addResult_scalar (outputFile_class.f90)'
 
     ! Check is array is undefined
     if( self % arrayType == UNDEF_ARRAY) then
@@ -294,7 +313,7 @@ contains
     real(defReal), dimension(:), intent(in) :: val
     real(defReal), dimension(:),intent(in)  :: std
     integer(shortInt)                       :: N, i
-    character(100),parameter :: Here ='addResult_rank1 (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addResult_rank1 (outputFile_class.f90)'
 
     N = size(val)
     if (N /= size(std)) call fatalError(Here,'val and std have diffrent size.')
@@ -314,7 +333,7 @@ contains
     real(defReal),intent(in)          :: val
     real(defReal),intent(in)          :: std
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here = 'printResult (outputFile_inter.f90)'
+    character(100), parameter :: Here = 'printResult (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -343,7 +362,7 @@ contains
   subroutine addValue_defReal_scalar(self,val)
     class(outputFile), intent(inout) :: self
     real(defReal), intent(in)        :: val
-    character(100),parameter :: Here ='addValue_defReal_scalar (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addValue_defReal_scalar (outputFile_class.f90)'
 
     ! Check is array is undefined
     if( self % arrayType == UNDEF_ARRAY) then
@@ -398,7 +417,7 @@ contains
     class(outputFile), intent(inout)  :: self
     real(defReal),intent(in)          :: val
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here = 'printValue_defReal (outputFile_inter.f90)'
+    character(100), parameter :: Here = 'printValue_defReal (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -424,7 +443,7 @@ contains
     class(outputFile), intent(inout) :: self
     integer(shortInt), intent(in)    :: val
     integer(longInt)                 :: val_t
-    character(100),parameter :: Here ='addValue_shortInt_scalar (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addValue_shortInt_scalar (outputFile_class.f90)'
 
     val_t = val
     call self % addValue_longInt_scalar(val_t)
@@ -453,7 +472,7 @@ contains
     class(outputFile), intent(inout)  :: self
     integer(shortInt), intent(in)     :: val
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here = 'printValue_shortInt (outputFile_inter.f90)'
+    character(100), parameter :: Here = 'printValue_shortInt (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -479,7 +498,7 @@ contains
   subroutine addValue_longInt_scalar(self,val)
     class(outputFile), intent(inout) :: self
     integer(longInt), intent(in)     :: val
-    character(100),parameter :: Here ='addValue_longInt_scalar (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addValue_longInt_scalar (outputFile_class.f90)'
 
     ! Check is array is undefined
     if( self % arrayType == UNDEF_ARRAY) then
@@ -534,7 +553,7 @@ contains
     class(outputFile), intent(inout)  :: self
     integer(longInt), intent(in)      :: val
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here = 'printValue_longInt (outputFile_inter.f90)'
+    character(100), parameter :: Here = 'printValue_longInt (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -560,7 +579,7 @@ contains
   subroutine addValue_char_scalar(self,val)
     class(outputFile), intent(inout) :: self
     character(*), intent(in)         :: val
-    character(100),parameter :: Here ='addValue_char_scalar (outputFile_inter.f90)'
+    character(100),parameter :: Here ='addValue_char_scalar (outputFile_class.f90)'
 
     ! Check is array is undefined
     if( self % arrayType == UNDEF_ARRAY) then
@@ -615,7 +634,7 @@ contains
     class(outputFile), intent(inout)  :: self
     character(*), intent(in)          :: val
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here = 'printValue_char (outputFile_inter.f90)'
+    character(100), parameter :: Here = 'printValue_char (outputFile_class.f90)'
 
     !*** Check that name is unique in current block
     !*** Add name to keywords occupied in current block
@@ -676,4 +695,4 @@ contains
 
   end function num2char_longInt
     
-end module outputFile_inter
+end module outputFile_class

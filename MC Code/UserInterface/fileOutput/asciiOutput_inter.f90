@@ -45,9 +45,11 @@ module asciiOutput_inter
     !!
     !! For now it prints to screen for debug
     !!
-    subroutine writeToFile(self)
-      import :: asciiOutput
+    subroutine writeToFile(self,unit)
+      import :: asciiOutput, &
+                shortInt
       class(asciiOutput), intent(inout) :: self
+      integer(shortInt), intent(in)     :: unit
     end subroutine writeToFile
 
     !!

@@ -2,7 +2,7 @@ program test
 
   use numPrecision
   use genericProcedures, only : numToChar
-  use outPutFile_inter, only : outputFile
+  use outPutFile_class, only : outputFile
 !  use charTape_class, only : charTape
 !  use RNG_class
 !  use genericProcedures
@@ -27,8 +27,13 @@ program test
   implicit none
   type(outputFile) :: of
   character(nameLen) :: name
+  character(pathLen) :: path
 
-  call of % init()
+  name = 'asciiMATLAB'
+  path = './myFile'
+
+  call of % init(name)
+
   name ='myResult'
   call of % printResult(1.0_8,0.5_8,name)
 
@@ -68,7 +73,7 @@ program test
   call of % endBlock
 
 
-  call of % writeToFile()
+  call of % writeToFile(path)
 
 !  type(cellShelf)    :: cSHelf
 !  type(surfaceShelf) :: sSHelf
