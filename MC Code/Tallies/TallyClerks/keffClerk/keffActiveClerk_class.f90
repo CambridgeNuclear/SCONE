@@ -215,8 +215,24 @@ contains
   subroutine print(self,outFile)
     class(keffActiveClerk), intent(in) :: self
     class(outputFile), intent(inout)   :: outFile
+    real(defReal)                      :: val, std
+    character(nameLen)                 :: name
+    call outFile % startBlock(self % name)
 
 
+    !call self % k_analog % getEstimate(k_analog, STD_analog, self % cycleCount)
+
+    ! Print k implicit
+    call self % k_imp % getEstimate(val, std, self % cycleCount)
+    name = 'k_Imp'
+    call outFile % printResult(val,std,name)
+
+    ! Print k implicit
+    call self % k_analog % getEstimate(val, std, self % cycleCount)
+    name = 'k_Analog'
+    call outFile % printResult(val,std,name)
+
+    call outFile % endBlock()
 
 
   end subroutine print

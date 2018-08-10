@@ -5,6 +5,7 @@ module eigenPhysicsPackage_class
   use genericProcedures,              only : fatalError, printFishLineR, numToChar
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
+  use outputFile_class,               only : outputFile
 
   ! Particle classes and Random number generator
   use particle_class,                 only : particle, phaseCoord
@@ -57,6 +58,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: N_inactive
     integer(shortInt)  :: N_active
     integer(shortInt)  :: pop
+    character(pathLen) :: outputFile
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -69,6 +71,7 @@ module eigenPhysicsPackage_class
     procedure :: inactiveCycles
     procedure :: activeCycles
     procedure :: generateInitialState
+    procedure :: collectResults
     procedure :: run
     procedure :: kill
 
@@ -85,6 +88,7 @@ contains
     call self % generateInitialState()
     call self % inactiveCycles()
     call self % activeCycles()
+    call self % collectResults()
 
   end subroutine
 
@@ -304,6 +308,39 @@ contains
 
   end subroutine generateInitialState
 
+
+  !!
+  !! Print calculation results to file
+  !!
+  subroutine collectResults(self)
+    class(eigenPhysicsPackage), intent(in) :: self
+    type(outputFile)                       :: out
+    character(pathLen)                     :: path
+    character(nameLen)                     :: name
+
+    name = 'asciiMATLAB'
+    call out % init(name)
+
+    name = 'seed'
+    call out % printValue(self % pRNG % getSeed(),name)
+
+    name = 'pop'
+    call out % printValue(self % pop,name)
+
+    name = 'Inactive_Cycles'
+    call out % printValue(self % N_inactive,name)
+
+    name = 'Active_Cycles'
+    call out % printValue(self % N_active,name)
+
+    call self % activeTally % print(out)
+
+    path = trim(self % outputFile) // '.m'
+    call out % writeToFile(path)
+
+  end subroutine collectResults
+
+
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
   !!
@@ -323,6 +360,10 @@ contains
     call dict % get( self % pop,'pop')
     call dict % get( self % N_inactive,'inactive')
     call dict % get( self % N_active,'active')
+
+    ! Read outputfile path
+    call dict % getOrDefault(self % outputFile,'outputFile','./output')
+    !self % outputFile = string
 
     ! Initialise RNG
     allocate(self % pRNG)

@@ -9,6 +9,7 @@ module tallyAdminBase_class
   use tallyClerk_inter,       only : tallyClerk
   use tallyClerkSlot_class,   only : tallyClerkSlot
   use tallyClerkFactory_func, only : new_tallyClerk
+  use outputFile_class,       only : outputFile
 
 
   implicit none
@@ -64,7 +65,7 @@ module tallyAdminBase_class
     procedure :: isConverged
 
     ! File writing procedures
-    !procedure :: print
+    procedure :: print
 
     ! Build procedures
     procedure :: init
@@ -86,6 +87,7 @@ module tallyAdminBase_class
   public :: display
   public :: isConverged
   public :: init
+  public :: print
   public :: kill
     
 contains
@@ -143,6 +145,20 @@ contains
     end if
 
   end function isConverged
+
+  !!
+  !! Add all results to outputfile
+  !!
+  subroutine print(self,output)
+    class(tallyAdminBase), intent(in)    :: self
+    class(outputFile), intent(inout)     :: output
+    integer(shortInt)                    :: i
+
+    do i=1,size(self % tallyClerks)
+      call self % tallyClerks(i) % print(output)
+    end do
+
+  end subroutine print
 
   !!
   !! Process outgoing collision report

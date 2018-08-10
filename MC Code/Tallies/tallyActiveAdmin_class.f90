@@ -10,12 +10,14 @@ module tallyActiveAdmin_class
                                       reportCycleStart_super => reportCycleStart, &
                                       reportCycleEnd_super => reportCycleEnd, &
                                       isConverged_super => isConverged, &
-                                      init_super => init ,&
-                                      kill_super => kill ,&
+                                      init_super  => init ,&
+                                      print_super => print, &
+                                      kill_super  => kill ,&
                                       display_super => display
   use particle_class,          only : particle, phaseCoord
   use particleDungeon_class,   only : particleDungeon
   use keffActiveClerk_class,   only : keffActiveClerk
+  use outputFile_class,        only : outputFile
 
   implicit none
   private
@@ -34,6 +36,7 @@ module tallyActiveAdmin_class
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
     procedure :: init
+    procedure :: print
     procedure :: kill
     procedure :: display
     procedure :: isConverged
@@ -140,12 +143,25 @@ contains
     call embDict % store('type','keffActiveClerk')
 
     ! Initialise embedded clerk
-    call self % keff_estimator % init(embDict,'A_ADMIN')
+    entry = 'A_ADMIN'
+    call self % keff_estimator % init(embDict,entry)
 
     ! Load rest of the clerks
     call init_super(self,dict)
 
   end subroutine init
+
+  !!
+  !! Add all results to outputfile
+  !!
+  subroutine print(self,output)
+    class(tallyActiveAdmin), intent(in)  :: self
+    class(outputFile), intent(inout)     :: output
+
+    call self % keff_estimator % print(output)
+    call print_super(self,output)
+
+  end subroutine print
 
   !!
   !! Deallocates all content
