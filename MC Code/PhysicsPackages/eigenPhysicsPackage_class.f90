@@ -70,6 +70,7 @@ module eigenPhysicsPackage_class
     procedure :: activeCycles
     procedure :: generateInitialState
     procedure :: run
+    procedure :: kill
 
   end type eigenPhysicsPackage
 

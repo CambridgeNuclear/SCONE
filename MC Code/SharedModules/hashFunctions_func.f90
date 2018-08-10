@@ -57,11 +57,11 @@ contains
   !!
   !!
   subroutine FNV_1_shortInt(key,hash)
-    character(:),allocatable    :: key
-    integer(shortInt)           :: hash
-    integer(shortInt),parameter :: FNV_prime  = 16777619_shortInt
-    integer(shortInt),parameter :: FNV_offset = transfer(z'811c9dc5',shortInt)
-    integer(shortInt)           :: bajt, i
+    character(*),intent(in)         :: key
+    integer(shortInt), intent(out)  :: hash
+    integer(shortInt),parameter     :: FNV_prime  = 16777619_shortInt
+    integer(shortInt),parameter     :: FNV_offset = transfer(z'811c9dc5',shortInt)
+    integer(shortInt)               :: bajt, i
     character(100),parameter    :: Here ='FNV_1_shortInt (hashFunctions_func.f90)'
 
     if(storage_size(hash) /= 32) call fatalError(Here,'hash int is not 32bit')
@@ -84,12 +84,12 @@ contains
   !!
   !!
   subroutine FNV_1_longInt(key,hash)
-    character(:),allocatable   :: key
-    integer(longInt)           :: hash
-    integer(longInt),parameter :: FNV_prime  = 1099511628211 _longInt
-    integer(longInt),parameter :: FNV_offset = transfer(z'cbf29ce484222325',longInt)
-    integer(longInt)           :: bajt
-    integer(shortInt)          :: i
+    character(*),intent(in)      :: key
+    integer(longInt),intent(out) :: hash
+    integer(longInt),parameter   :: FNV_prime  = 1099511628211 _longInt
+    integer(longInt),parameter   :: FNV_offset = transfer(z'cbf29ce484222325',longInt)
+    integer(longInt)             :: bajt
+    integer(shortInt)            :: i
     character(100),parameter   :: Here ='FNV_1_longInt (hashFunctions_func.f90)'
 
     if(storage_size(hash) /= 64) call fatalError(Here,'hash int is not 64bit')

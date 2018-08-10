@@ -64,6 +64,7 @@ add_subdirectory(CollisionOperator)
 add_subdirectory(TransportOperator)
 
 add_subdirectory(MOCObjects) 
+add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
 
@@ -86,10 +87,13 @@ foreach(s IN LISTS SRCS)
 endforeach()
 ###############################################################################
 # COMPILE SOLVERS 
-#add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
+add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
 #add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
 #add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})
 add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})
+#add_executable(surfTests.f90       ./Apps/surfTests.f90      ${PREP_SRCS})
+add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${PREP_SRCS})
+add_executable(scone.out       ./Apps/scone.f90      ${PREP_SRCS})

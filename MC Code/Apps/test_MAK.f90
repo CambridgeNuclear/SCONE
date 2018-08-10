@@ -19,6 +19,7 @@ program test
   use IOdictionary_class, only : IOdictionary
   use datalessMaterials_class, only : datalessMaterials
   use latUniverse_class,  only : latUniverse
+  use commandLineUI
 
   implicit none
   type(cellShelf)    :: cSHelf
@@ -28,6 +29,34 @@ program test
   real(defReal)      :: dist
   integer(shortInt)  :: surfIdx, i
   real(defReal), dimension(3) :: r_glob
+  character(:),allocatable  :: inputa
+  character(:),allocatable  :: chart
+
+
+  call addClOption('-input',1,['char'], 'Specify relative path from current directory to the input file. Cannot contain blanks')
+  call addClOption('-in',2,['int ','real'],'This is 2nd option')
+  call addClOption('-omp',0,[''],'Dummy help string')
+
+ ! call displayClOptions()
+ ! call parseCL()
+  !print *, input
+  print *, clOptionIsPresent('-omp ')
+  call getInputFile(inputa)
+
+  print *, trim(inputa)
+  call getFromCL(i,'-in',1)
+  print *, i
+
+  call getFromCL(dist,'-in',2)
+  print *, dist
+  call getFromCL(chart,'-input',1)
+
+  print *,chart
+
+!  print *, len_trim('        ')
+  !call parseCommandLine()
+
+  stop
 
   call cShelf % init(5)
   call sShelf % init(5)

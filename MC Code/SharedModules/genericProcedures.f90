@@ -925,7 +925,6 @@ module genericProcedures
     integer(shortInt), intent(in) :: N
     character(len(string))        :: shifted
     integer(shortInt)             :: i, i_swap
-    character(1)                  :: temp
 
     ! Loop over character and copy character with an offset
     do i=1,len(string)
