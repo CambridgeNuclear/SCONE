@@ -30,8 +30,9 @@ contains
   !!
   !! Allocates an allocatable tallyClerk based on dictionary
   !!
-  function new_tallyClerk(dict) result(new)
+  function new_tallyClerk(dict,name) result(new)
     class(dictionary), intent(in)               :: dict
+    character(nameLen), intent(in)              :: name
     class(tallyClerk),allocatable               :: new
     character(nameLen)                          :: type
     character(100),parameter :: Here = 'new_tallyClerk (tallyClerkFactory_func.f90)'
@@ -43,10 +44,10 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW TALLY CLERK BELOW ***!
     select case(type)
       case('keffActiveClerk')
-        allocate(new, source = keffActiveClerk(dict) )
+        allocate(new, source = keffActiveClerk(dict,name) )
 
       case('keffInactiveClerk')
-        allocate(new, source = keffInactiveClerk(dict) )
+        allocate(new, source = keffInactiveClerk(dict,name) )
 
      !*** NEW TALLY CLERK TEMPLATE ***!
      !case('<newTallyClerkName>')
@@ -64,13 +65,14 @@ contains
   !! Allocates a null pointer to tallyClerk to an instance based on dictionary
   !! If pointer is alrady allocated it returns an error
   !!
-  function new_tallyClerk_ptr(dict) result(new)
+  function new_tallyClerk_ptr(dict,name) result(new)
     class(dictionary), intent(in)            :: dict
+    character(nameLen), intent(in)           :: name
     class(tallyClerk),pointer                :: new
     character(100),parameter :: Here = 'new_tallyClerk_ptr (tallyClerkFactory_func.f90)'
 
     ! Allocate pointer and copy data from local allocatable
-    allocate( new, source = new_TallyClerk(dict) )
+    allocate( new, source = new_TallyClerk(dict, name) )
 
   end function new_tallyClerk_ptr
 

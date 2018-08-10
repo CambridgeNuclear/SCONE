@@ -9,6 +9,7 @@ module keffActiveClerk_class
   use keffClerk_inter,            only : keffClerk
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use transportNuclearData_inter, only : transportNuclearData
+  use outputFile_class,           only : outputFile
 
   use xsMacroSet_class,           only : xsMacroSet_ptr
 
@@ -23,18 +24,18 @@ module keffActiveClerk_class
 
   type, public,extends(keffClerk) :: keffActiveClerk
     private
+    character(nameLen)   :: name
+    integer(shortInt)    :: cycleCount = 0
 
-    integer(shortInt)                    :: cycleCount = 0
+    type(tallyScore)     :: impProd     ! Implicit neutron production
+    type(tallyScore)     :: impAbs      ! Implicit neutron absorbtion
+    type(tallyScore)     :: anaLeak     ! Analog neutron leakage
 
-    type(tallyScore)                     :: impProd     ! Implicit neutron production
-    type(tallyScore)                     :: impAbs      ! Implicit neutron absorbtion
-    type(tallyScore)                     :: anaLeak     ! Analog neutron leakage
+    type(tallyCounter)   :: k_analog
+    type(tallyCounter)   :: k_imp
 
-    type(tallyCounter)                   :: k_analog
-    type(tallyCounter)                   :: k_imp
-
-    real(defReal)                        :: startWgt
-    real(defReal)                        :: targetSD = 0.0
+    real(defReal)        :: startWgt
+    real(defReal)        :: targetSD = 0.0
 
   contains
     ! Deferred Interface Procedures
@@ -43,7 +44,7 @@ module keffActiveClerk_class
     procedure :: isConverged
     procedure :: init
     procedure :: keff
-
+    procedure :: print
 
     ! Overwrite report procedures
     procedure :: reportInColl
@@ -209,14 +210,30 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Write contents of the keffActive Clerk to output file
+  !!
+  subroutine print(self,outFile)
+    class(keffActiveClerk), intent(in) :: self
+    class(outputFile), intent(inout)   :: outFile
+
+
+
+
+  end subroutine print
+
+  !!
   !! Initialise keffActiveClerk from dictionary
   !! Checks if type agrees with class name. if not returns error
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict,name)
     class(keffActiveClerk),intent(inout) :: self
     class(dictionary), intent(in)        :: dict
+    character(nameLen), intent(in)       :: name
     character(nameLen)                   :: type
     character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
+
+    ! Assign name
+    self % name = name
 
     call dict % get(type,'type')
 
@@ -251,11 +268,12 @@ contains
   !!
   !! keffActiveClerk constructor function
   !!
-  function new_keffActiveClerk(dict) result(new)
-    class(dictionary), intent(in) :: dict
-    type(keffActiveClerk)         :: new
+  function new_keffActiveClerk(dict, name) result(new)
+    class(dictionary), intent(in)  :: dict
+    character(nameLen), intent(in) :: name
+    type(keffActiveClerk)          :: new
 
-    call new % init(dict)
+    call new % init(dict, name)
 
   end function new_keffActiveClerk
 

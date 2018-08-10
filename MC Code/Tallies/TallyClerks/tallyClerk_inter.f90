@@ -6,6 +6,7 @@ module tallyClerk_inter
   use genericProcedures,     only : fatalError
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
+  use outputFile_class,      only : outputFile
 
   implicit none
   private
@@ -36,7 +37,7 @@ module tallyClerk_inter
     procedure(validReports), deferred :: validReports
     procedure(display), deferred      :: display
     procedure(init),deferred          :: init
-    !procedure(print),deferred         :: print *** Interface for this procedure will be defined shortly
+    procedure(print),deferred         :: print !*** Interface for this procedure will be defined shortly
 
   end type tallyClerk
 
@@ -62,12 +63,25 @@ module tallyClerk_inter
     !!
     !! Initialise tally clerk from a dictionary
     !!
-    subroutine init(self,dict)
+    subroutine init(self,dict,name)
       import :: tallyClerk, &
-                dictionary
+                dictionary, &
+                nameLen
       class(tallyClerk), intent(inout) :: self
       class(dictionary), intent(in)    :: dict
+      character(nameLen), intent(in)   :: name
     end subroutine init
+
+    !!
+    !! Write contents of the clerk to output file
+    !!
+    subroutine print(self,outFile)
+      import :: tallyClerk, &
+                outputFile
+      class(tallyClerk), intent(in)    :: self
+      class(outputFile), intent(inout) :: outFile
+    end subroutine print
+
 
   end interface
 

@@ -8,6 +8,7 @@ module keffInactiveClerk_class
   use particleDungeon_class,      only : particleDungeon
   use keffClerk_inter,            only : keffClerk
   use tallyEstimator_class,       only : tallyScore, tallyCounter
+  use outputFile_class,           only : outputFile
 
   implicit none
   private
@@ -21,6 +22,7 @@ module keffInactiveClerk_class
 
   type, public,extends(keffClerk) :: keffInactiveClerk
     private
+    character(nameLen)        :: name
     real(defReal)             :: k_est
     real(defReal)             :: startWgt
 
@@ -29,6 +31,7 @@ module keffInactiveClerk_class
     procedure :: validReports
     procedure :: display
     procedure :: init
+    procedure :: print
 
     ! Overwrite report procedures
     procedure :: reportCycleStart
@@ -96,14 +99,30 @@ contains
   end subroutine reportCycleEnd
 
   !!
+  !! Write contents of the keffActive Clerk to output file
+  !!
+  subroutine print(self,outFile)
+    class(keffInactiveClerk), intent(in) :: self
+    class(outputFile), intent(inout)     :: outFile
+
+
+
+
+  end subroutine print
+
+  !!
   !! Initialise keffActiveClerk from dictionary
   !! Checks if type agrees with class name. if not returns error
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict,name)
     class(keffInactiveClerk),intent(inout) :: self
+    character(nameLen), intent(in)         :: name
     class(dictionary), intent(in)          :: dict
     character(nameLen)                     :: type
     character(100),parameter :: Here ='init (keffInctiveClerk_class.f90)'
+
+    ! Assign name
+    self % name = name
 
     ! Check that class description matches class name
     call dict % get(type,'type')
@@ -114,8 +133,6 @@ contains
       call fatalError(Here,'keffInactiveClerk cannot be a convergance trigger')
 
     end if
-
-
 
   end subroutine init
 
@@ -133,11 +150,12 @@ contains
   !!
   !! keffInactiveClerk constructor
   !!
-  function new_keffInactiveClerk(dict) result(new)
-    class(dictionary),intent(in) :: dict
-    type(keffInactiveClerk)      :: new
+  function new_keffInactiveClerk(dict,name) result(new)
+    class(dictionary),intent(in)   :: dict
+    character(nameLen), intent(in) :: name
+    type(keffInactiveClerk)        :: new
 
-    call new % init(dict)
+    call new % init(dict,name)
 
   end function new_keffInactiveClerk
 end module keffInactiveClerk_class

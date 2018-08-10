@@ -6,6 +6,7 @@ module tallyClerkSlot_class
   use particle_class,        only : particle, phaseCoord
   use particleDungeon_class, only : particleDungeon
   use tallyClerk_inter,      only : tallyClerk
+  use outputFile_class,      only : outputFile
 
   implicit none
   private
@@ -33,6 +34,7 @@ module tallyClerkSlot_class
     procedure :: display
     ! Initialisation procedure -> return error Slot is a container
     procedure :: init
+    procedure :: print
 
     ! Define assignment
     generic   :: assignment(=) => copy
@@ -182,14 +184,26 @@ contains
   !! Initialise from dictionary.
   !! Return error.
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict,name)
     class(tallyClerkSlot), intent(inout) :: self
     class(dictionary), intent(in)        :: dict
+    character(nameLen), intent(in)       :: name
     character(100),parameter :: Here = 'init (tallyClerkSlot.f90)'
 
     call fatalError(Here,'tallyClerkSlot cannot be initialised from dictionary')
 
   end subroutine init
+
+  !!
+  !! Write contents of the clerk in the slot to output file
+  !!
+  subroutine print(self,outFile)
+    class(tallyClerkSlot), intent(in) :: self
+    class(outputFile), intent(inout)  :: outFile
+
+    call self % slot % print(outFile)
+
+  end subroutine print
 
   !!
   !! Copy RHS into slot of LHS

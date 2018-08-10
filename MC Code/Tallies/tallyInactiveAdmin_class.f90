@@ -91,7 +91,7 @@ contains
     call embDict % store('type','keffInactiveClerk')
 
     ! Initialise embedded clerk
-    call self % keff_estimator % init(embDict)
+    call self % keff_estimator % init(embDict,'IA_ADMIN')
 
     ! Load rest of the clerks
     call init_super(self,dict)

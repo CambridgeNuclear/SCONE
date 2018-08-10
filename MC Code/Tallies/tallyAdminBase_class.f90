@@ -309,7 +309,7 @@ contains
       partOfTriggers = charCmp(entry,'yes')
 
       ! Get new clerk from factory and store it ina aslot
-      call self % addTallyClerk( new_tallyClerk(locDict),partOfDisplay,partOfTriggers)
+      call self % addTallyClerk( new_tallyClerk(locDict,clerks(i)),partOfDisplay,partOfTriggers)
 
     end do
 
