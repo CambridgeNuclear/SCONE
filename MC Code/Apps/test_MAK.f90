@@ -1,8 +1,8 @@
 program test
 
   use numPrecision
-  use genericProcedures, only : numToChar
-  use outPutFile_class, only : outputFile
+!  use genericProcedures, only : numToChar
+!  use outPutFile_class, only : outputFile
 !  use charTape_class, only : charTape
 !  use RNG_class
 !  use genericProcedures
@@ -25,55 +25,7 @@ program test
 !  use commandLineUI
 
   implicit none
-  type(outputFile) :: of
-  character(nameLen) :: name
-  character(pathLen) :: path
 
-  name = 'asciiMATLAB'
-  path = './myFile'
-
-  call of % init(name)
-
-  name ='myResult'
-  call of % printResult(1.0_8,0.5_8,name)
-
-  name = 'realVal'
-  call of % printValue(7.0E-12_8,name)
-
-  name = 'intVale'
-  call of % printValue(12,name)
-
-  name = 'longIntVal'
-  call of % printValue(686574747_8,name)
-
-  name = 'charVal'
-  call of % printValue('This is a string',name)
-
-  name = 'blockName'
-  call of % startBlock(name)
-
-  name = 'block2'
-  call of % startBlock(name)
-
-  name ='myArray'
-  call of % startArray(name,[2,2])
-  call of % addValue(1.0_8)
-  call of % addValue([2.0_8, 3.0_8, 4.0_8])
-  call of % endArray()
-
-  call of % endBlock()
-
-
-  name ='resArrray'
-  call of % startArray(name,[4])
-  call of % addResult(0.7_8,4.5_8)
-  call of % addResult([1.0_8, 1.2_8, 1.3_8],[0.1_8, 0.2_8, 0.3_8])
-  call of % endArray()
-
-  call of % endBlock
-
-
-  call of % writeToFile(path)
 
 !  type(cellShelf)    :: cSHelf
 !  type(surfaceShelf) :: sSHelf
