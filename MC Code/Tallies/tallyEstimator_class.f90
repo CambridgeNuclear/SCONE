@@ -421,7 +421,7 @@ contains
   !! Normal float arthmetic rules are followed
   !!
   elemental subroutine getEstimate_tallyEstimator_withSTD(self,est,STD,Nb)
-    class(tallyEstimator), intent(inout) :: self
+    class(tallyEstimator), intent(in)    :: self
     real(defReal), intent(out)           :: est
     real(defReal), intent(out)           :: STD
     integer(shortInt), intent(in)        :: Nb
@@ -437,7 +437,7 @@ contains
   !! Normal float arthmetic rules are followed
   !!
   elemental subroutine getEstimate_tallyEstimator_withoutSTD(self,est,Nb)
-    class(tallyEstimator), intent(inout) :: self
+    class(tallyEstimator), intent(in)    :: self
     real(defReal), intent(out)           :: est
     integer(shortInt), intent(in)        :: Nb
 

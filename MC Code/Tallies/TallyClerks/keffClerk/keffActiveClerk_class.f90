@@ -239,7 +239,6 @@ contains
 
   !!
   !! Initialise keffActiveClerk from dictionary
-  !! Checks if type agrees with class name. if not returns error
   !!
   subroutine init(self,dict,name)
     class(keffActiveClerk),intent(inout) :: self

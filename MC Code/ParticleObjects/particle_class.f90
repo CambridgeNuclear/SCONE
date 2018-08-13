@@ -107,7 +107,7 @@ contains
   !!
   !! Return the position at the highest level
   !!
-  function rGlobal(self)result(r)
+  pure function rGlobal(self)result(r)
     class(particle), intent(in) :: self
     real(defReal), dimension(3) :: r
 
