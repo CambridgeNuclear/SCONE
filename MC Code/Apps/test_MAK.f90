@@ -1,6 +1,7 @@
 program test
 
   use numPrecision
+  use grid_class, only : grid
 !  use genericProcedures, only : numToChar
 !  use outPutFile_class, only : outputFile
 !  use charTape_class, only : charTape
@@ -25,7 +26,10 @@ program test
 !  use commandLineUI
 
   implicit none
+  type(grid) :: gr
 
+  call gr % init(1.0E-11_8,20.0_8,300,'log')
+  print *, gr % bins
 
 !  type(cellShelf)    :: cSHelf
 !  type(surfaceShelf) :: sSHelf

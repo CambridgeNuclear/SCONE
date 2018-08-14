@@ -9,6 +9,7 @@ module tallyClerkFactory_func
   use keffActiveClerk_class,   only : keffActiveClerk
   use keffInactiveClerk_class, only : keffInactiveClerk
   use timeClerk_class,         only : timeClerk
+  use macroClerk_class,        only : macroClerk
 
   implicit none
   private
@@ -23,7 +24,8 @@ module tallyClerkFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffActiveClerk  ',&
                                                                         'keffInactiveClerk',&
-                                                                        'dynamicTallyClerk' ]
+                                                                        'dynamicTallyClerk',&
+                                                                        'macroClerk       ']
 
 
 contains
@@ -53,6 +55,9 @@ contains
 
       case('dynamicTallyClerk')
         allocate(new, source = timeClerk(dict,name))
+
+      case('macroClerk')
+        allocate(new, source = macroClerk(dict,name))
 
      !*** NEW TALLY CLERK TEMPLATE ***!
      !case('<newTallyClerkName>')

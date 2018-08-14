@@ -2,7 +2,7 @@ module xsMacroSet_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
 
   implicit none
   private
@@ -18,6 +18,7 @@ module xsMacroSet_class
     real(defReal) :: nuFissionXS = 0.0
   contains
     procedure :: invert
+    procedure :: xsOf
     procedure :: dummy
 
   end type xsMacroSet
@@ -42,6 +43,7 @@ module xsMacroSet_class
     procedure :: nuFissionXS => nuFissionXS_ptr
     procedure :: nu          => nu_ptr
     procedure :: invert      => invert_ptr
+    procedure :: xsOf        => xsOf_ptr
   end type xsMacroSet_ptr
 
 contains
@@ -105,6 +107,40 @@ contains
 
     end select
   end function invert
+
+  !!
+  !! Return XS based on macroscopic MT number
+  !!
+  function xsOf(self,MT) result(xs)
+    class(xsMacroSet), intent(in) :: self
+    integer(shortInt), intent(in) :: MT
+    real(defReal)                 :: xs
+    character(100), parameter     :: Here ='xsOf (xsMacroSet_class.f90)'
+
+    select case(MT)
+      case(macroTotal)
+        xs = self % totalXS
+
+      case(macroCapture)
+        xs = self % captureXS
+
+      case(macroEscatter)
+        call fatalError(Here,'Current design of data does not provide macroscopic Elastic scatter')
+
+      case(macroFission)
+        xs = self % fissionXS
+
+      case(macroNuFission)
+        xs = self % nuFissionXS
+
+      case(macroAbsorbtion)
+        xs = self % fissionXS + self % captureXS
+
+      case default
+        call fatalError(Here,'Unknown macroscopic MT number: '//numToChar(MT))
+
+    end select
+  end function xsOf
 
   !!************************************************************************************************
   !! Pointer Wrapper Procedures
@@ -217,5 +253,17 @@ contains
     MT = self % ptr % invert(r)
 
   end function invert_ptr
+
+  !!
+  !! Acess xsOf procedure
+  !!
+  function xsOf_ptr(self,MT) result(xs)
+    class(xsMacroSet_ptr), intent(in) :: self
+    integer(shortInt), intent(in)     :: MT
+    real(defReal)                     :: xs
+
+    xs = self % ptr % xsOf(MT)
+
+  end function xsOf_ptr
     
 end module xsMacroSet_class

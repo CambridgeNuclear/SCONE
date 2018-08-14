@@ -15,7 +15,7 @@ module grid_class
 
 
   type, public :: grid
-    private
+   ! private
     integer(shortInt)                      :: type = UNDEF
     real(defReal),dimension(:),allocatable :: bins
     real(defReal)                          :: step

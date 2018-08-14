@@ -49,7 +49,7 @@ contains
     class(energyMap), intent(inout)         :: self
     real(defReal), dimension(:), intent(in) :: grid
 
-    self % N = size(grid)
+    self % N = size(grid)-1
     call self % binBounds % init(grid)
 
   end subroutine init_fromGrid
@@ -64,7 +64,7 @@ contains
     integer(shortInt),intent(in)    :: N
     character(nameLen), intent(in)  :: type
 
-    self % N = N +1
+    self % N = N
     call self % binBounds % init(mini, maxi, N, type)
 
   end subroutine init_structured
@@ -117,15 +117,17 @@ contains
     ! Name the array
     name = trim(self % getAxisName()) //'Bounds'
 
-    call out % startArray(name,[2,self % N])
+    call out % startArray(name,[self % N,2])
     do i=1,self % N
       ! Print lower bin boundary
       call out % addValue(self % binBounds % bin(i))
+    end do
 
+    do i=1,self % N
       ! Print upper bin boundar
       call out % addValue(self % binBounds % bin(i+1))
-
     end do
+
     call out % endArray()
 
   end subroutine print
