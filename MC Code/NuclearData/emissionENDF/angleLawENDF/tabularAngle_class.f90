@@ -51,7 +51,7 @@ contains
     idx = binarySearch(self % eGrid,E)
     call searchError(idx,Here)
 
-    eps = E - self % eGrid(idx)
+    eps = (E - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
     r = rand % get()
 
     if(r < eps) then

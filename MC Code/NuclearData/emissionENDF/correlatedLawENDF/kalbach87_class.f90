@@ -54,7 +54,7 @@ contains
     call searchError(idx,Here)
 
     ! Calculate threshold and sample random number
-    eps = E_in - self % eGrid(idx)
+    eps = (E_in - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
     r = rand % get()
 
     ! Select distribuition at idx or idx+1
