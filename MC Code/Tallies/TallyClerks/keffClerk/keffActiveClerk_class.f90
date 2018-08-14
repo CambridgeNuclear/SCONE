@@ -2,6 +2,7 @@ module keffActiveClerk_class
 
   use numPrecision
   use tallyCodes
+  use endfConstants
   use genericProcedures,          only : fatalError, charCmp
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, phaseCoord
@@ -28,6 +29,7 @@ module keffActiveClerk_class
     integer(shortInt)    :: cycleCount = 0
 
     type(tallyScore)     :: impProd     ! Implicit neutron production
+    type(tallyScore)     :: scatterProd ! Analog estimate of scattering production by (N,XN)
     type(tallyScore)     :: impAbs      ! Implicit neutron absorbtion
     type(tallyScore)     :: anaLeak     ! Analog neutron leakage
 
@@ -48,6 +50,7 @@ module keffActiveClerk_class
 
     ! Overwrite report procedures
     procedure :: reportInColl
+    procedure :: reportOutColl
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
@@ -62,7 +65,7 @@ contains
     class(keffActiveClerk), intent(in)         :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, cycleStart_CODE, cycleEnd_CODE, hist_CODE]
+    validCodes = [inColl_CODE, outColl_CODE, cycleStart_CODE, cycleEnd_CODE, hist_CODE]
 
   end function validReports
 
@@ -141,6 +144,35 @@ contains
   end subroutine reportInColl
 
   !!
+  !! Process outgoing collision report
+  !!
+  subroutine reportOutColl(self,pre,post,MT,muL)
+    class(keffActiveClerk), intent(inout) :: self
+    class(phaseCoord), intent(in)         :: pre
+    class(particle), intent(in)           :: post
+    integer(shortInt), intent(in)         :: MT
+    real(defReal), intent(in)             :: muL
+    real(defReal)                         :: mult
+
+    ! Select weight multiplier
+    select case(MT)
+      case(N_2N)
+        mult = 1.0_defReal
+      case(N_3N)
+        mult = 2.0_defReal
+      case(N_4N)
+        mult = 3.0_defReal
+      case default
+        mult = ZERO
+    end select
+
+    ! Add to scattering production estimator
+    ! Use pre collision weight
+    if (mult /= ZERO) call self % scatterProd % add(pre % wgt * mult)
+
+  end subroutine reportOutColl
+
+  !!
   !! Process history report
   !!
   subroutine reportHist(self,pre,post,fate)
@@ -180,7 +212,7 @@ contains
     class(keffActiveClerk), intent(inout) :: self
     class(particleDungeon), intent(in)    :: end
     real(defReal)                         :: endWgt, k_est
-    real(defReal)                         :: nuFiss, absorb, leakage, k_cycle
+    real(defReal)                         :: nuFiss, absorb, leakage, scatterMul, k_cycle
 
     ! Obtain end of cycle weight and k value used to change fission site generation rate
     endWgt = end % popWeight()
@@ -191,11 +223,12 @@ contains
     call self % k_analog % addEstimate(k_est)
 
     ! Calculate and score implicit estimate of k_eff
-    nuFiss  = self % impProd % get()
-    absorb  = self % impAbs % get()
-    leakage = self % anaLeak % get()
+    nuFiss     = self % impProd % get()
+    absorb     = self % impAbs % get()
+    leakage    = self % anaLeak % get()
+    scatterMul = self % scatterProd % get()
 
-    k_est = nuFiss / (absorb + leakage  )
+    k_est = nuFiss / (absorb + leakage - scatterMul )
 
     call self % k_imp % addEstimate(k_est)
 
@@ -203,6 +236,7 @@ contains
     call self % impProd % reset()
     call self % impAbs % reset()
     call self % anaLeak % reset()
+    call self % scatterProd % reset()
 
     ! Increas counter of cycles
     self % cycleCount = self % cycleCount + 1

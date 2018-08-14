@@ -6,6 +6,7 @@ module tallyActiveAdmin_class
   use dictionary_class,        only : dictionary
   use tallyAdminBase_class,    only : tallyAdminBase, &
                                       reportInColl_super => reportInColl, &
+                                      reportOutColl_super => reportOutColl, &
                                       reportHist_super => reportHist, &
                                       reportCycleStart_super => reportCycleStart, &
                                       reportCycleEnd_super => reportCycleEnd, &
@@ -32,6 +33,7 @@ module tallyActiveAdmin_class
 
     ! Extend superclass procedures
     procedure :: reportInColl
+    procedure :: reportOutColl
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
@@ -69,6 +71,24 @@ contains
     call reportInColl_super(self, p)
 
   end subroutine reportInColl
+
+  !!
+  !! Process outgoing collision report
+  !!
+  subroutine reportOutColl(self,pre,post,MT,muL)
+    class(tallyActiveAdmin), intent(inout) :: self
+    class(phaseCoord), intent(in)          :: pre
+    class(particle), intent(in)            :: post
+    integer(shortInt), intent(in)          :: MT
+    real(defReal), intent(in)              :: muL
+
+    ! Process report with internal Clerk
+    call self % keff_estimator % reportOutColl(pre, post, MT, muL)
+
+    ! Call superclass procedure on self
+    call reportOutColl_super(self, pre, post, MT, muL)
+
+  end subroutine reportOutColl
 
   !!
   !! Process history report

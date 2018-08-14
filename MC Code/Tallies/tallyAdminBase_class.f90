@@ -162,6 +162,7 @@ contains
 
   !!
   !! Process outgoing collision report
+  !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
   !!
   subroutine reportOutColl(self,pre,post,MT,muL)
     class(tallyAdminBase), intent(inout)  :: self

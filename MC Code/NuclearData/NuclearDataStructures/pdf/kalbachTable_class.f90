@@ -2,7 +2,7 @@ module kalbachTable_class
 
   use numPrecision
   use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
-                                isSorted
+                                isSorted, numToChar
   use endfConstants
 
   implicit none
@@ -10,7 +10,7 @@ module kalbachTable_class
 
   integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
                                   linLin     = tabPdfLinLin
-  real(defReal),parameter      :: tolerance = 1.0e-23
+  real(defReal),parameter      :: tolerance = 1.0e-6
 
   interface linearSearch
     module procedure linearFloorIdxClosed_Real
@@ -158,11 +158,14 @@ contains
     if(allocated(self % R))   deallocate(self % R)
     if(allocated(self % A))   deallocate(self % A)
 
+    ! Allocate cdf
+    allocate(self % cdf(size(x)))
+
     self % x   = x
     self % pdf = pdf
     self % cdf = ZERO
     self % R   = R
-    self % A   =A
+    self % A   = A
 
     select case (flag)
       case(histogram)
@@ -173,7 +176,8 @@ contains
         end do
 
         if (abs(self % cdf(size(x))-1.0_defReal) > tolerance) then
-          call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance')
+          call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance:'&
+                               //numToChar(self % cdf(size(x))))
         end if
 
       case(linLin)
@@ -185,7 +189,8 @@ contains
         end do
 
         if (abs(self % cdf(size(x))-1.0_defReal) > tolerance) then
-          call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance')
+          call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance:'&
+                               //numToChar(self % cdf(size(x))))
 
         end if
 
