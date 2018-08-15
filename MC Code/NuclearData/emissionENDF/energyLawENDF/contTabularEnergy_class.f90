@@ -45,26 +45,52 @@ contains
     real(defReal)                        :: E_out
     integer(shortInt)                    :: idx
     real(defReal)                        :: r, eps
+    real(defReal)                        :: E_min_low, E_max_low
+    real(defReal)                        :: E_min_up, E_max_up
+    real(defReal)                        :: E_min, E_max
+    real(defReal)                        :: factor
     character(100),parameter             :: Here='sample (contTabularEnergy_class.f90)'
 
     idx = binarySearch(self % eGrid,E_in)
     call searchError(idx,Here)
 
-    eps = (E_in - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
+    eps     = (E_in - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
+
     r = rand % get()
 
+    ! NOTE: Unlike in the equivalent tabular distribution for mu bounds of the
+    !       energy distribution change between bins. We need to interpolate them
+    !       as the result.
+
+    ! Obtain bounds of the lower and upper bin
+    call self % ePdfs(idx) % bounds(E_min_low, E_max_low)
+    call self % ePdfs(idx) % bounds(E_min_up,  E_max_up )
+
+    ! Calculate interpolated bounds
+    E_min = E_min_low * (ONE - eps) + eps * E_min_up
+    E_max = E_max_low * (ONE - eps) + eps * E_max_up
+
+    ! Calculate interpolation between bounds of the distribution from which
+    ! outgoing energy was sampled
     if(r < eps) then
       E_out = self % ePdfs(idx+1) % sample(rand)
+      factor = (E_out- E_min_up)/(E_max_up - E_min_up)
+
     else
       E_out = self % ePdfs(idx) % sample(rand)
+      factor = (E_out- E_min_low)/(E_max_low - E_min_low)
+
     end if
+
+    ! Interpolate outgoing energy
+    E_out = E_min *(ONE - factor) + factor * E_max
 
   end function sample
 
   !!
   !! Returns probability of emission of particle with energy E_out
   !! Given collision happend at energy E_in
-  !!
+  !! MAY NOT BE UP TO DATE
   function probabilityOf(self,E_out,E_in) result (prob)
     class(contTabularEnergy), intent(in) :: self
     real(defReal), intent(in)            :: E_out, E_in

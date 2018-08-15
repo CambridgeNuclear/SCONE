@@ -24,6 +24,7 @@ module kalbachPdf_class
   contains
     ! Functional procedures
     procedure :: sample
+    procedure :: bounds
     procedure :: probabilityOf
 
     ! Initialisation procedures
@@ -65,6 +66,18 @@ contains
     end if
 
   end subroutine sample
+
+  !!
+  !! Return energy bounds of the probability distribution
+  !!
+  subroutine bounds(self,E_min,E_max)
+    class(kalbachPdf), intent(in)    :: self
+    real(defReal), intent(out)       :: E_min
+    real(defReal), intent(out)       :: E_max
+
+    call self % table % bounds(E_min, E_max)
+
+  end subroutine bounds
 
   !!
   !! Returns probability that neutron was emitted at angle mu and energy E_out

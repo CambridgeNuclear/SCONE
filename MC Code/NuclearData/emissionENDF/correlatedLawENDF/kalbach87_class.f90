@@ -46,6 +46,10 @@ contains
     real(defReal), intent(in)     :: E_in
     class(RNG), intent(inout)     :: rand
     integer(shortInt)             :: idx
+    real(defReal)                 :: E_min_low, E_max_low
+    real(defReal)                 :: E_min_up, E_max_up
+    real(defReal)                 :: E_min, E_max
+    real(defReal)                 :: factor
     real(defReal)                 :: r, eps
     character(100),parameter      :: Here='sample (kalbach87_class.f90)'
 
@@ -55,17 +59,38 @@ contains
 
     ! Calculate threshold and sample random number
     eps = (E_in - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
+
     r = rand % get()
 
-    ! Select distribuition at idx or idx+1
+    ! NOTE: Unlike in the equivalent tabular distribution for mu bounds of the
+    !       energy distribution change between bins. We need to interpolate them
+    !       as the result.
+
+    ! Obtain bounds of the lower and upper bin
+    call self % pdfs(idx)   % bounds(E_min_low, E_max_low)
+    call self % pdfs(idx+1) % bounds(E_min_up,  E_max_up )
+
+    ! Calculate interpolated bounds
+    E_min = E_min_low * (ONE - eps) + eps * E_min_up
+    E_max = E_max_low * (ONE - eps) + eps * E_max_up
+
+    ! Calculate interpolation between bounds of the distribution from which
+    ! outgoing energy was sampled
     if(r < eps) then
-      call self % pdfs(idx+1) % sample(mu,E_out,rand)
+      call self % pdfs(idx+1) % sample(mu, E_out, rand)
+      factor = (E_out- E_min_up)/(E_max_up - E_min_up)
 
     else
-      call self % pdfs(idx) % sample(mu,E_out,rand)
+      call self % pdfs(idx) % sample(mu, E_out, rand)
+      factor = (E_out- E_min_low)/(E_max_low - E_min_low)
 
     end if
     
+    if (E_min /= E_min_low) print *, ' HERE '
+
+    ! Interpolate outgoing energy
+    E_out = E_min *(ONE - factor) + factor * E_max
+
   end subroutine sample
 
   !!

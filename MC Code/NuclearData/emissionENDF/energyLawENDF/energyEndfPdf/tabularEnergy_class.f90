@@ -18,12 +18,15 @@ module tabularEnergy_class
   !!
   !! Probability distribuition table for energy of emitted neutron at a single incomeing energy
   !! Does not support discrete photon lines
+  !! NOTE: It is effectivly a wrapper around tabularPdf with extra checks for validity of
+  !!       the data (Energies must be +ve)
   !!
   type, public:: tabularEnergy
     private
     type(tabularPdf) :: pdf
   contains
     procedure :: sample
+    procedure :: bounds
     procedure :: probabilityOf
 
     generic           :: init          => init_withPDF, init_withCDF
@@ -49,6 +52,18 @@ contains
     E = self % pdf % sample(r)
 
   end function sample
+
+  !!
+  !! Return energy bounds of the probability distribution
+  !!
+  subroutine bounds(self,E_min,E_max)
+    class(tabularEnergy), intent(in) :: self
+    real(defReal), intent(out)       :: E_min
+    real(defReal), intent(out)       :: E_max
+
+    call self % pdf % bounds(E_min, E_max)
+
+  end subroutine bounds
 
   !!
   !! Return probability that neutron was emitted with energy E

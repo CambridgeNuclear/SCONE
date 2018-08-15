@@ -28,6 +28,7 @@ module tabularPdf_class
   contains
     generic   :: init          => initPdf, initCdf
     procedure :: sample
+    procedure :: bounds
     procedure :: probabilityOf
 
     procedure, private :: initPdf
@@ -77,6 +78,20 @@ contains
     end select
 
   end function sample
+
+  !!
+  !! Subroutine assigns x(1) to x_min and x(N) to x_max
+  !! Returns bounds of the probability distribution
+  !!
+  subroutine bounds(self,x_min,x_max)
+    class(tabularPdf), intent(in) :: self
+    real(defReal), intent(out)    :: x_min
+    real(defReal), intent(out)    :: x_max
+
+    x_min = self % x(1)
+    x_max = self % x(size(self % x))
+
+  end subroutine bounds
 
   !!
   !! Returns probability of x
