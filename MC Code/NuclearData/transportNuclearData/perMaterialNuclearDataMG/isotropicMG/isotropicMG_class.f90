@@ -33,15 +33,14 @@ module isotropicMG_class
     private
     integer(shortInt)   :: nG
     integer(shortInt)   :: nMat
-
-
-    type(xsMacroSet),dimension(:,:),pointer,public     :: XSs => null()   ! (energyGroup,matIdx)
-    type(outscatterCDF), dimension(:,:), allocatable   :: transferMatrix  ! (energyGroup,matIdx)
-    type(outscatterCDF), dimension(:), allocatable     :: chiValues       ! (matIdx)
-    type(releaseMatrixMG), dimension(:), allocatable   :: releaseData     ! (matIdx)
     type(materialData), dimension(:), allocatable      :: matData         ! (matIdx)
-    ! Note that majorantXS is protected member, thus prefix P_ and public attribute
-    real(defReal), dimension(:), allocatable, public   :: P_majorantXS    ! (energyGroup)
+
+    ! Note that the following are protected members, thus prefix P_ and public attribute
+    type(xsMacroSet),dimension(:,:),pointer,public          :: P_XSs => null()   ! (energyGroup,matIdx)
+    type(outscatterCDF), dimension(:,:), allocatable,public :: P_transferMatrix  ! (energyGroup,matIdx)
+    type(outscatterCDF), dimension(:), allocatable,public   :: P_chiValues       ! (matIdx)
+    type(releaseMatrixMG), dimension(:), allocatable,public :: P_releaseData     ! (matIdx)
+    real(defReal), dimension(:), allocatable, public        :: P_majorantXS    ! (energyGroup)
 
   contains
     procedure :: init
@@ -101,16 +100,16 @@ contains
     self % nMat = nMat
 
     ! Allocate space fo XS data
-    if (associated( self % XSs           )) deallocate (self % XSs            )
-    if (allocated(  self % transferMatrix)) deallocate (self % transferMatrix )
-    if (allocated(  self % chiValues     )) deallocate (self % chiValues      )
-    if (allocated(  self % releaseData   )) deallocate (self % releaseData    )
+    if (associated( self % P_XSs           )) deallocate (self % P_XSs            )
+    if (allocated(  self % P_transferMatrix)) deallocate (self % P_transferMatrix )
+    if (allocated(  self % P_chiValues     )) deallocate (self % P_chiValues      )
+    if (allocated(  self % P_releaseData   )) deallocate (self % P_releaseData    )
     if (allocated(  self % matData       )) deallocate (self % matData        )
 
-    allocate( self % XSs(nG,nMat)           )
-    allocate( self % transferMatrix(ng,nMat))
-    allocate( self % chiValues(nMat)        )
-    allocate( self % releaseData(nMat)      )
+    allocate( self % P_XSs(nG,nMat)           )
+    allocate( self % P_transferMatrix(ng,nMat))
+    allocate( self % P_chiValues(nMat)        )
+    allocate( self % P_releaseData(nMat)      )
     allocate( self % matData(nMat)          )
 
     ! Read material names
@@ -162,7 +161,7 @@ contains
     integer(shortInt), intent(in)      :: matIdx
     real(defReal)                      :: xs
 
-    xs = self % XSs(G,matIdx) % totalXS
+    xs = self % P_XSs(G,matIdx) % totalXS
 
   end function getTransXS_G
 
@@ -187,7 +186,7 @@ contains
     integer(shortInt), intent(in)      :: matIdx
     real(defReal)                      :: xs
 
-    xs = self % XSs(G,matIdx) % totalXS
+    xs = self % P_XSs(G,matIdx) % totalXS
 
   end function getTotalMatXS_G
 
@@ -200,7 +199,7 @@ contains
     integer(shortInt),intent(in)                 :: G
     integer(shortInt),intent(in)                 :: matIdx
 
-    macroXS = self % XSs(G,matIdx)
+    macroXS = self % P_XSs(G,matIdx)
 
   end subroutine getMatMacroXS_G
 
@@ -304,10 +303,10 @@ contains
 
     select case(MT)
       case(macroAllScatter)
-        nu = self % releaseData(matIdx) % scatterRelease(G_in,G_out)
+        nu = self % P_releaseData(matIdx) % scatterRelease(G_in,G_out)
 
       case(macroFission)
-        nu = self % releaseData(matIdx) % fissionRelease(G_in)
+        nu = self % P_releaseData(matIdx) % fissionRelease(G_in)
 
       case default
         call fatalError(Here,'Unrecoginsed MT number')
@@ -337,10 +336,10 @@ contains
 
     select case(MT)
       case(macroAllScatter)
-        G_out = self % transferMatrix(G_in, matIdx) % invert(r1)
+        G_out = self % P_transferMatrix(G_in, matIdx) % invert(r1)
 
       case(macroFission)
-        G_out = self % chiValues(matIdx) % invert(r1)
+        G_out = self % P_chiValues(matIdx) % invert(r1)
 
       case default
         call fatalError(Here,'Unrecoginsed MT number')
@@ -425,7 +424,7 @@ contains
     ! Load and store capture XSs
     tempXS = xsDict % getRealArray('capture')
     if (any( tempXS < 0.0)) call fatalError(Here,'capture xss are -ve')
-    self % XSs(:,idx) % captureXS = tempXS
+    self % P_XSs(:,idx) % captureXS = tempXS
 
     ! Load and store fission XSs
     if (isFissile) then
@@ -434,7 +433,7 @@ contains
       tempXS = 0.0
     end if
     if (any( tempXS < 0.0)) call fatalError(Here,'fission xss are -ve')
-    self % XSs(:,idx) % fissionXS = tempXS
+    self % P_XSs(:,idx) % fissionXS = tempXS
 
     ! Load and store chi values
     if (isFissile) then
@@ -444,16 +443,16 @@ contains
       tempXS(1) = 1.0 ! Avoid Floating point exception
     end if
     if (any( tempXS < 0.0)) call fatalError(Here,'chi is -ve')
-    call self % chiValues(idx) % init(tempXS)
+    call self % P_chiValues(idx) % init(tempXS)
 
     ! Load scattering matrix. Indexing convenction is (G_out,G_in)
     tempXSmatrix_rank1 = xsDict % getRealArray('scattering_P0')
     if (any( tempXSmatrix_rank1 < 0.0)) call fatalError(Here,'Scattering_P0 is -ve')
     tempXSmatrix = reshape(tempXSmatrix_rank1,[nG, nG])
     do i=1,nG
-      call self % transferMatrix(i,idx) % init ( tempXSmatrix(:,i) )
+      call self % P_transferMatrix(i,idx) % init ( tempXSmatrix(:,i) )
     end do
-    self % XSs(:,idx) % scatterXS = sum(tempXSmatrix,1)
+    self % P_XSs(:,idx) % scatterXS = sum(tempXSmatrix,1)
 
     ! Load production matrix and nu. Indexing convenction is (G_out,G_in).
     tempXSmatrix_rank1 = xsDict % getRealArray('scatteringMultiplicity')
@@ -466,21 +465,21 @@ contains
       tempXS = 0.0
     end if
 
-    call self % releaseData(idx) % init(tempXS, tempXSmatrix)
+    call self % P_releaseData(idx) % init(tempXS, tempXSmatrix)
 
     ! Calculate nu*Fission
     if (isFissile) then
-      tempXS = self % XSs(:,idx) % fissionXS * xsDict % getRealArray('nu')
+      tempXS = self % P_XSs(:,idx) % fissionXS * xsDict % getRealArray('nu')
     else
       tempXS = 0.0
     end if
 
-    self % XSs(:,idx) % nuFissionXS = tempXS
+    self % P_XSs(:,idx) % nuFissionXS = tempXS
 
     ! Calculate total XS
-    self % XSs(:,idx) % totalXS = self % XSs(:,idx) % scatterXS + &
-                                  self % XSs(:,idx) % captureXS + &
-                                  self % XSs(:,idx) % fissionXS
+    self % P_XSs(:,idx) % totalXS = self % P_XSs(:,idx) % scatterXS + &
+                                  self % P_XSs(:,idx) % captureXS + &
+                                  self % P_XSs(:,idx) % fissionXS
 
   end subroutine readMaterial
 
@@ -511,7 +510,7 @@ contains
     call self % activeIdx(activeIdx)
 
     ! Calculate majorantXS
-    self % P_majorantXS = maxval( self % XSs(:,activeIdx) % totalXS, 2 )
+    self % P_majorantXS = maxval( self % P_XSs(:,activeIdx) % totalXS, 2 )
 
   end subroutine calculateMajorant
 

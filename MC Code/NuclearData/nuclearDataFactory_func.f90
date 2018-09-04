@@ -17,7 +17,8 @@ module nuclearDataFactory_func
   use byNucNoMT_class,   only : byNucNoMT
   use byNucMT_class,     only : byNucMT
   use isotropicMG_class, only : isotropicMG
-  use transMG_class,      only : transMG
+  use transMG_class,     only : transMG
+  use P1MG_class,        only : P1MG
 
   implicit none
   private
@@ -30,7 +31,8 @@ module nuclearDataFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_nuclearData = [ 'byNucNoMT  ', &
                                                                         'byNucMT    ', &
                                                                         'isotropicMG', &
-                                                                        'transMG    ']
+                                                                        'transMG    ', &
+                                                                        'P1MG       ']
 
   public :: new_nuclearData_ptr
 
@@ -82,6 +84,14 @@ contains
         allocate( transMG :: new)
         select type(new)
           type is (transMG)
+            call new % init(dict)
+        end select
+
+      case('P1MG')
+        ! Allocate and initialise
+        allocate( P1MG :: new)
+        select type(new)
+          type is (P1MG)
             call new % init(dict)
         end select
 

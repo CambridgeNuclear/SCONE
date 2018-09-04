@@ -2,6 +2,8 @@ program test
 
   use numPrecision
   use grid_class, only : grid
+  use legendrePoly_func, only : sampleLegendre
+  use RNG_class, only : RNG
 !  use genericProcedures, only : numToChar
 !  use outPutFile_class, only : outputFile
 !  use charTape_class, only : charTape
@@ -26,10 +28,15 @@ program test
 !  use commandLineUI
 
   implicit none
-  type(grid) :: gr
+  type(RNG)     :: Rand
+  real(defReal) :: P1 = 0.0
+  integer(shortInt) :: i, N
+  call Rand % init(6864577437_8)
 
-  call gr % init(1.0E-11_8,20.0_8,300,'log')
-  print *, gr % bins
+  print *, sampleLegendre(P1,Rand)
+
+
+
 
 !  type(cellShelf)    :: cSHelf
 !  type(surfaceShelf) :: sSHelf

@@ -13,7 +13,6 @@ module transMG_class
 
   !!
   !! Extension of isotropic MG scattering, but with transport correction on the transport XS.
-  !! pone stands for P1
   !!
   type, public,extends(isotropicMG) :: transMG
     private
@@ -51,13 +50,10 @@ contains
     ! Call superclass initialisation (note that it will call extended readMaterial in this module)
     call init_super(self,dict)
 
-    print *, self % transportXSs(:,1)
-    print *, self % transportXSs(:,2)
-
   end subroutine init
 
   !!
-  !! Extend superclass subroutine to read additional data to produce P1 corrected
+  !! Extend superclass subroutine to read additional data to produce P1 transport corrected
   !! transport XSs
   !!
   subroutine readMaterial(self, dict, idx, nG)
