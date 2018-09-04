@@ -17,6 +17,7 @@ module nuclearDataFactory_func
   use byNucNoMT_class,   only : byNucNoMT
   use byNucMT_class,     only : byNucMT
   use isotropicMG_class, only : isotropicMG
+  use transMG_class,      only : transMG
 
   implicit none
   private
@@ -28,7 +29,8 @@ module nuclearDataFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_nuclearData = [ 'byNucNoMT  ', &
                                                                         'byNucMT    ', &
-                                                                        'isotropicMG']
+                                                                        'isotropicMG', &
+                                                                        'transMG    ']
 
   public :: new_nuclearData_ptr
 
@@ -72,6 +74,14 @@ contains
         allocate( isotropicMG :: new)
         select type(new)
           type is (isotropicMG)
+            call new % init(dict)
+        end select
+
+      case('transMG')
+        ! Allocate and initialise
+        allocate( transMG :: new)
+        select type(new)
+          type is (transMG)
             call new % init(dict)
         end select
 

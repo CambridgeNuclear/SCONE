@@ -26,17 +26,22 @@ module isotropicMG_class
     logical(defBool)   :: isActive  = .true.
   end type materialData
 
+  !!
+  !! DETAILED EXPLENETAION WILL GO HERE
+  !!
   type, public, extends(perMaterialNuclearDataMG) :: isotropicMG
     private
     integer(shortInt)   :: nG
     integer(shortInt)   :: nMat
 
-    type(xsMacroSet),dimension(:,:),pointer            :: XSs => null()  ! (energyGroup,matIdx)
-    type(outscatterCDF), dimension(:,:), allocatable   :: transferMatrix ! (energyGroup,matIdx)
-    type(outscatterCDF), dimension(:), allocatable     :: chiValues      ! (matIdx)
-    type(releaseMatrixMG), dimension(:), allocatable   :: releaseData    ! (matIdx)
-    type(materialData), dimension(:), allocatable      :: matData        ! (matIdx)
-    real(defReal), dimension(:), allocatable           :: majorantXS     ! (energyGroup)
+
+    type(xsMacroSet),dimension(:,:),pointer,public     :: XSs => null()   ! (energyGroup,matIdx)
+    type(outscatterCDF), dimension(:,:), allocatable   :: transferMatrix  ! (energyGroup,matIdx)
+    type(outscatterCDF), dimension(:), allocatable     :: chiValues       ! (matIdx)
+    type(releaseMatrixMG), dimension(:), allocatable   :: releaseData     ! (matIdx)
+    type(materialData), dimension(:), allocatable      :: matData         ! (matIdx)
+    ! Note that majorantXS is protected member, thus prefix P_ and public attribute
+    real(defReal), dimension(:), allocatable, public   :: P_majorantXS    ! (energyGroup)
 
   contains
     procedure :: init
@@ -58,11 +63,21 @@ module isotropicMG_class
     procedure :: releaseAt
     procedure :: sampleMuGout
 
+    ! Inquiry procedures
+    procedure, non_overridable :: numG
+    procedure, non_overridable :: numMat
+
     !* TYPE PROCEDURES *!
     procedure, private :: readMaterial
+    procedure, private :: activeIdx
     procedure, private :: calculateMajorant
 
   end type isotropicMG
+
+  !! Procedures that are used by subclasses of isotropicMG
+  public :: init
+  public :: readMaterial
+  public :: activeIdx
 
 contains
 
@@ -159,7 +174,7 @@ contains
     integer(shortInt), intent(in)      :: G
     real(defReal)                      :: xs
 
-    xs = self % majorantXS(G)
+    xs = self % P_majorantXS(G)
 
   end function getMajorantXS_G
 
@@ -335,6 +350,28 @@ contains
   end subroutine sampleMuGout
 
   !!
+  !! Returns number of groups for a data in the isotropicMG
+  !!
+  pure function numG(self) result(nG)
+    class(isotropicMG), intent(in) :: self
+    integer(shortInt)              :: nG
+
+    nG = self % nG
+
+  end function numG
+
+  !!
+  !! Returns number of materials in the data in the isotropicMG
+  !!
+  pure function numMat(self) result(nMat)
+    class(isotropicMg), intent(in) :: self
+    integer(shortInt)              :: nMat
+
+    nMat = self % nMat
+
+  end function numMat
+
+  !!
   !! Read material under index "idx" from dictionary "dict"
   !! For group transfer matrixes indexing convention is (G_out,G_in)
   !! When Matrixes are rank1 then the sequence follows SERPENT(2.1.30) output convention:
@@ -448,22 +485,34 @@ contains
   end subroutine readMaterial
 
   !!
+  !! Allocates an array with active indices
+  !!
+  subroutine activeIdx(self,array)
+    class(isotropicMG), intent(in)                             :: self
+    integer(shortInt), dimension(:),allocatable, intent(inout) :: array
+    logical(defBool), dimension(:), allocatable                :: mask
+    integer(shortInt)                                          :: i
+
+    if(allocated(array)) deallocate(array)
+    mask  = self % matData % isActive
+    array = pack([(i,i=1,self % nMat)], mask)
+
+  end subroutine activeIdx
+
+
+  !!
   !! Recalculates majorant using current active materials
   !!
   subroutine calculateMajorant(self)
     class(isotropicMG), intent(inout)           :: self
     integer(shortInt), dimension(:),allocatable :: activeIdx
-    logical(defBool), dimension(:), allocatable :: mask
-    integer(shortInt)                           :: i
 
     ! Find indexes of active materials
-    mask = self % matData % isActive
-    activeIdx = pack([(i,i=1,self % nMat)], mask)
+    call self % activeIdx(activeIdx)
 
     ! Calculate majorantXS
-    self % majorantXS = maxval( self % XSs(:,activeIdx) % totalXS, 2 )
+    self % P_majorantXS = maxval( self % XSs(:,activeIdx) % totalXS, 2 )
 
   end subroutine calculateMajorant
-
 
 end module isotropicMG_class
