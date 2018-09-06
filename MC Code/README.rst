@@ -71,7 +71,7 @@ Rules on files
 #. Content of a module file must be clearly identified by its suffix
      * ``_func`` contains a library of functions. (genericProcedures.f90 breaks it for now) 
      
-     * ``_inte`` contains and abstract class (abstract interface). 
+     * ``_inter`` contains and abstract class (abstract interface). 
      
      * ``_class`` contains a class. 
      
