@@ -1,3 +1,0 @@
-ADD_TEST_SUITE(Test_RestrictSphericalCoordinates_mod_suite)
-ADD_TEST_SUITE(Cases_mod_suite)
-

@@ -1,1 +1,0 @@
-ADD_TEST_SUITE(Test_LinearInterpolator_mod_suite)
