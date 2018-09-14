@@ -26,6 +26,7 @@ set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno
 # CHECK FOR DEPENDENCIES 
 
 # FIND PYTHON INTERPRETER 
+# Sets PYTHONINTERP_FOUND & PYTHON_EXECUTABLE
 find_package(PythonInterp)
 
 if(NOT PYTHONINTERP_FOUND) 
@@ -39,7 +40,8 @@ endif()
 #
 if(DEFINED ENV{PFUNIT_INSTALL}) 
    set(PFUNIT_DIR $ENV{PFUNIT_INSTALL})
-
+   add_library( pFUnit STATIC IMPORTED ) 
+   set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_DIR}/lib/libpfunit.a)
 else()
     include(ExternalProject)  
 
@@ -50,7 +52,7 @@ else()
         -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
         )
 
-    ExternalProject_Add(pfunit 
+    ExternalProject_Add(pFUnit 
          PREFIX          ${PROJECT_BINARY_DIR}/external/pFUnit
          GIT_REPOSITORY  https://git.code.sf.net/p/pfunit/code 
          GIT_TAG         master
@@ -76,18 +78,17 @@ function(add_sources)
       get_filename_component(s "${s}" ABSOLUTE)
     endif()
     list(APPEND SRCS "${s}")
-    MESSAGE(STATUS ${SRCS})
   endforeach()
   # append to global list
   set_property(GLOBAL APPEND PROPERTY SRCS_LIST "${SRCS}")  
 endfunction(add_sources)
 
 ###############################################################################
-# DEFINE FUNCTION TO COLLETC ALL TEST SOURCE FILES 
-function(add_tests) 
-  get_property(is_defined GLOBAL PROPERTY TEST_LIST DEFINED)
+# DEFINE FUNCTION TO COLLETC ALL UNIT TEST SOURCE FILES 
+function(add_unit_tests) 
+  get_property(is_defined GLOBAL PROPERTY UNIT_TEST_LIST DEFINED)
   if(NOT is_defined)
-    define_property(GLOBAL PROPERTY TEST_LIST
+    define_property(GLOBAL PROPERTY UNIT_TEST_LIST
       BRIEF_DOCS "List of all test files" 
       FULL_DOCS "List of all pFUnit test suite files for preprocessing & compilation") 
   endif()
@@ -98,12 +99,11 @@ function(add_tests)
       get_filename_component(t "${t}" ABSOLUTE)
     endif()
     list(APPEND TESTS "${t}")
-    MESSAGE(STATUS ${TESTS})
   endforeach()
   # Append to Global List 
-  set_property(GLOBAL APPEND PROPERTY TESTS_LIST "${TESTS}")    
+  set_property(GLOBAL APPEND PROPERTY UNIT_TESTS_LIST "${TESTS}")    
   
-endfunction(add_tests) 
+endfunction(add_unit_tests) 
 
 ###############################################################################
 # COLLECT ALL SOURCE AND TEST FILES 
@@ -112,7 +112,8 @@ add_sources( ./DataStructures/dictionary_class.f90
              ./DataStructures/IOdictionary_class.f90
              ./DataStructures/maps_class.f90
              ./DataStructures/stack_class.f90)
-add_tests( ./DataStructures/RANDOMFILE)
+add_unit_tests( ./DataStructures/Tests/myTest.f90)
+
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
 add_subdirectory(RandomNumbers)  
@@ -132,56 +133,80 @@ add_subdirectory(UserInterface)
 add_subdirectory(PhysicsPackages)
 
 ###############################################################################
-# PREPROCESS COLLECTED SOURCES FROM GLOBAL PROPERTY INTO VARIABLE
-# COPY THE FILES TO THE BUILD FOLDER 
-set(PREP_SRCS)
+# COPY GLOBAL PROPERTY  SRC_LIST TO VARIABLE SRCS  
 get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
-foreach(s IN LISTS SRCS)
-  file(RELATIVE_PATH rs "${CMAKE_CURRENT_SOURCE_DIR}" "${s}")
-  string(REGEX REPLACE "r$" "" o "${CMAKE_CURRENT_BINARY_DIR}/${rs}")
-  add_custom_command(
-    OUTPUT "${o}"
-    COMMAND ${CMAKE_COMMAND} -E copy "${s}" "${o}"
-    DEPENDS "${s}"
-    COMMENT "Creating ${o}"
-    VERBATIM
+
+#foreach(s IN LISTS SRCS)
+#  file(RELATIVE_PATH rs "${CMAKE_CURRENT_SOURCE_DIR}" "${s}")
+#  string(REGEX REPLACE "r$" "" o "${CMAKE_CURRENT_BINARY_DIR}/${rs}")
+#  add_custom_command(
+#    OUTPUT "${o}"
+#    COMMAND ${CMAKE_COMMAND} -E copy "${s}" "${o}"
+#    DEPENDS "${s}"
+#    COMMENT "Creating ${o}"
+#    VERBATIM
+#    )
+#  list(APPEND PREP_SRCS ${o})
+#endforeach()
+
+###############################################################################
+# COMPILE SOLVERS 
+add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
+#add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${SRCS}) 
+#add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${SRCS}) 
+#add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${SRCS}) 
+#add_executable(dictTest.out       ./Apps/dictTest.f90          ${SRCS})
+#add_executable(parser.out         ./Apps/testACE.f90           ${SRCS})
+#add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${SRCS})
+#add_executable(surfTests.f90       ./Apps/surfTests.f90      ${SRCS})
+add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${SRCS})
+add_executable(scone.out       ./Apps/scone.f90      ${SRCS})
+
+###############################################################################
+# COMPILE TESTS 
+
+# CREATE DIRECTORY IN BINARY_DIR FOR TEMPORARY FILES TO COMPILE TESTS  
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
+file(WRITE ${PROJECT_BINARY_DIR}/generated/testSuites.inc "")
+ 
+include_directories(
+    ${PROJECT_BINARY_DIR}/generated
+    ${PFUNIT_DIR}/mod
     )
-  list(APPEND PREP_SRCS ${o})
-endforeach()
 
 ###############################################################################
 # PREPROCESS COLLECTED TEST FILES FROM GLOBAL PROPERTY INTO VARIABLE
 # COPY THE FILES TO THE BUILD FOLDER 
-set(PREP_TESTS)
-get_property(TESTS GLOBAL PROPERTY TESTS_LIST)
+set(PREP_UNIT_TESTS)
+get_property(UNIT_TESTS GLOBAL PROPERTY UNIT_TESTS_LIST)
 
-foreach(t IN LISTS TESTS)
-  file(RELATIVE_PATH relPath "${CMAKE_CURRENT_SOURCE_DIR}" "${t}")
-  string(REGEX REPLACE "r$" "" o "${CMAKE_CURRENT_BINARY_DIR}/${relPath}")
-  add_custom_command(
-    OUTPUT "${o}"
-    COMMAND ${CMAKE_COMMAND} -E copy "${t}" "${o}"
-    DEPENDS "${t}"
-    COMMENT "Creating ${o}"
-    VERBATIM
-    )
-  list(APPEND PREP_TESTS ${o})
+foreach(_testPath IN LISTS UNIT_TESTS)
+    # OBTAIN EXTENSION 
+    string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
+    
+    # REMOVE EXTENSION 
+    string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
+
+    # OBTAIN FILE NAME WITHOUT EXTENSION 
+    string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
+
+    # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR 
+    add_custom_command(
+        OUTPUT ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
+        COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_DIR}/bin/pFUnitParser.py ${_testPath} ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
+        DEPENDS pFUnit ${_testPath}
+        COMMENT "Preprocessing test ${testName}"
+        VERBATIM
+        )
+    # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc 
+    set(PREP_UNIT_TESTS ${PREP_UNIT_TESTS} ${PROJECT_BINARY_DIR}/generated/${testName}${extension})   
+    file(APPEND ${PROJECT_BINARY_DIR}/generated/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")    
 endforeach()
+####################################################################################################
+add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS}) 
+target_link_libraries(allTests pFUnit)  
 
-
-###############################################################################
-# COMPILE SOLVERS 
-add_executable(test.out           ./Apps/test_MAK.f90          ${PREP_SRCS})
-#add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${PREP_SRCS}) 
-#add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${PREP_SRCS}) 
-#add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${PREP_SRCS}) 
-#add_executable(dictTest.out       ./Apps/dictTest.f90          ${PREP_SRCS})
-#add_executable(parser.out         ./Apps/testACE.f90           ${PREP_SRCS})
-add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${PREP_SRCS})
-#add_executable(surfTests.f90       ./Apps/surfTests.f90      ${PREP_SRCS})
-add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${PREP_SRCS})
-add_executable(scone.out       ./Apps/scone.f90      ${PREP_SRCS})
-
-###############################################################################
-# COMPILE TESTS 
+# Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
+# directives  
+set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w")
