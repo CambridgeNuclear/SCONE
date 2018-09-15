@@ -17,8 +17,10 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # This buggy warning should be repaired in GCC 7.0 
 #
 # -flto (Link Time Optimisation) is SUPER important for performance. Allows to inline function 
-#  across diffrent source files (and modules)          
+#  across diffrent source files (and modules)  
 #
+# FLAGS FOR CODE COVERAGE        
+# -fprofile-arcs -ftest-coverage
 #
 set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
 
@@ -112,8 +114,9 @@ add_sources( ./DataStructures/dictionary_class.f90
              ./DataStructures/IOdictionary_class.f90
              ./DataStructures/maps_class.f90
              ./DataStructures/stack_class.f90)
-add_unit_tests( ./DataStructures/Tests/myTest.f90)
-
+             
+add_unit_tests( ./DataStructures/Tests/dictionary_test.f90)
+            
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
 add_subdirectory(RandomNumbers)  
@@ -203,10 +206,11 @@ foreach(_testPath IN LISTS UNIT_TESTS)
     set(PREP_UNIT_TESTS ${PREP_UNIT_TESTS} ${PROJECT_BINARY_DIR}/generated/${testName}${extension})   
     file(APPEND ${PROJECT_BINARY_DIR}/generated/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")    
 endforeach()
-####################################################################################################
-add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS}) 
+###############################################################################
+
+add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS} ${SRCS}) 
 target_link_libraries(allTests pFUnit)  
 
 # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
 # directives  
-set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w")
+set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")

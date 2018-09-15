@@ -1,6 +1,7 @@
 program test
 
   use numPrecision
+  use dictionary_class, only : dictionary
   use grid_class, only : grid
   use legendrePoly_func, only : sampleLegendre
   use RNG_class, only : RNG
@@ -31,11 +32,32 @@ program test
   type(RNG)     :: Rand
   real(defReal) :: P1 = 0.0
   integer(shortInt) :: i, N
-  call Rand % init(6864577437_8)
+  type(dictionary) :: dict, tempDict
+  real(defReal),parameter                  :: realVal     = 3.3_defReal
+  integer(shortInt), parameter             :: intVal      = 1_shortInt
+  character(nameLen),parameter             :: charNameLen = 'GoFortran_DownWithCpp'
+  character(pathLen), parameter            :: charPathLen ='/home/KyloRen/VaderFanFic'
+  real(defReal), dimension(2), parameter   :: realArray = [-1.0E-17_defReal, 14.7_defReal]
+  integer(shortInt),dimension(3),parameter :: intArray =[-6475_shortInt, 13_shortInt, 14_shortInt]
+  character(nameLen), dimension(1), parameter :: charNameLenArray = ['TK-421']
+  character(pathLen), dimension(2), parameter :: charPathLenArray = ['C:\User\Tarkin\DeathStarPlans              ', &
+                                                                     '/home/Dodonna/Articles/whyRebelsUseUNIX.odt']
 
-  print *, sampleLegendre(P1,Rand)
 
+  !call Rand % init(6864577437_8)
 
+    call  dict % init(1)
+    call  dict % store('myReal', realVal)
+    call  dict % store('myInt', intVal )
+    call  dict % store('myCharNameLen', charNameLen)
+    call  dict % store('myCharPathLen', charPathLen)
+    call  dict % store('realArray', realArray)
+    call  dict % store('intArray', intArray)
+    call  dict % store('charNameLenArray', charNameLenArray)
+    call  dict % store('charPathLenArray', charPathLenArray)
+
+    tempDict =  dict
+    call  dict % store('nestedDict', tempDict)
 
 
 !  type(cellShelf)    :: cSHelf

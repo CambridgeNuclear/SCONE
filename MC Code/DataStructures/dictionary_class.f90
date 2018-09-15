@@ -233,13 +233,12 @@ contains
     end if
 
     ! Check whether keywods contains characters
-
     if (adjustl(keyword) == adjustl('')) then
       call fatalError(Here,"Keyword contains only blanks : '' ")
     end if
 
     ! Find if keyword is alrady present
-    i = linFind(self % keywords,keyword)
+    i = linFind(self % keywords(1:self % dictLen), keyword)
     if (i > 0 ) call fatalError(Here, 'Keyword: ' // keyword // ' is already present in dictionary')
 
     ! Increase counter and return avalible index
@@ -1355,51 +1354,6 @@ contains
 
   end subroutine keysDict
 
-!  !!
-!  !! Return all dictionarys with a specific type keword
-!  !!
-!  function keysDict_type(self,dictType) result(keys)
-!    class(dictionary), intent(in)               :: self
-!    character(*), intent(in)                    :: dictType
-!    character(nameLen),dimension(:),allocatable :: keys
-!    character(nameLen),dimension(:),allocatable :: allDict
-!    logical(defBool), dimension(:), allocatable :: mask
-!    integer(shortInt)                           :: L,i
-!    character(charLen)                          :: typeTemp
-!    type(dictionary)                            :: tempDict
-!
-!
-!    ! Due to compiler bugs copy keysDict_all
-!    L = self % dictLen
-!    allocate( mask(L) )
-!
-!    mask = (self % entries(1:L) % getType() == nestDict)
-!
-!    allDict = pack(self % keywords(1:L), mask)
-!    deallocate(mask)
-!
-!    ! Find all indexes in keys that match requested type
-!    L = size(allDict)
-!    allocate(mask(L))
-!
-!    do i=1,L
-!      tempDict = self % getDict(allDict(i))
-!
-!      if (tempDict % isPresent('type')) then
-!        typeTemp = tempDict % getChar('type')
-!        mask(i) = (trim(adjustl(dictType)) == trim(adjustl(typeTemp)))
-!
-!      else
-!        mask(i) = .false.
-!
-!      end if
-!    end do
-!
-!    keys = pack(allDict,mask)
-!
-!  end function keysDict_type
-
-
   !!
   !! Returns an array of all keywords
   !!
@@ -1590,8 +1544,7 @@ contains
     if (allocated( RHS % char1_alloc)) LHS % char1_alloc = RHS % char1_alloc
 
     if (associated( RHS % dict0_alloc)) then
-      allocate(LHS % dict0_alloc)
-      LHS % dict0_alloc = RHS % dict0_alloc
+      allocate(LHS % dict0_alloc, source = RHS % dict0_alloc )
     end if
 
   end subroutine copy_dictCont
