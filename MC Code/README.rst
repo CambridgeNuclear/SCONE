@@ -68,7 +68,7 @@ SCONE itself
    pFUnit into "external" folder in cmake build directory. This may take a long time so it is 
    recommended that pFUnit is installed beforehand and environmental variable is set.  
 
-#. Download the repositry. It may be extremely slow. Run the following commands:: 
+#. Download the repositry. Run the following commands:: 
 
      git clone https://Mikolaj_Adam_Kowalski@bitbucket.org/Mikolaj_Adam_Kowalski/cued-mc-code.git  
     
