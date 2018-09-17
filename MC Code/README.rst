@@ -21,28 +21,97 @@ Prerequisites
 * Modern Fortran Compiler 
 
   * gfortran 6.3 or higher 
-* CMake 2.8.11.2 or higher 
+* CMake 3.0.0 or higher 
+* pFUnit framework if testing is to be enabled
+
+  * pFUnit requires python to be installed  
 
 
 Installation
 ------------
 
-1. Download the repositry. Run the following commands:: 
+Unit Testing Framework
+''''''''''''''''''''''
+#. Make sure python can be invoked by a command 'python' by typing:: 
+
+     python --version 
+
+#. Create a folder for the local installation of pFUnit e.g. in your home directory and 
+   download the pFUnit repository and enter the source code folder:: 
+   
+     mkdir pFUnit
+     cd pFUnit
+     git clone git://git.code.sf.net/p/pfunit/code pfunit-code
+     cd pfunit-code
+          
+#. Export environmental variables required by pFUnit:: 
+
+     export F90=gfortran
+     export F90_VENDOR=GNU  
+     
+#. Build and test pFUnit by typing::
+
+     make tests 
+     
+#. Install pFUnit in any directory you have access to e.g. :: 
+
+     make install INSTALL_DIR=~/pFUnit
+
+SCONE itself
+''''''''''''
+#. If you want to install with tests set PFUNIT_INSTALL environmental variable to directory in 
+   which pFUnit was installed. e.g. :: 
+   
+     export PFUNIT_INSTALL=~/pFUnit    
+
+#. If PFUNIT_INSTALL is unset and tests are on, cmake will attempt to download, compile and install 
+   pFUnit into "external" folder in cmake build directory. This may take a long time so it is 
+   recommended that pFUnit is installed beforehand and environmental variable is set.  
+
+#. Download the repositry. It may be extremely slow. Run the following commands:: 
 
      git clone https://Mikolaj_Adam_Kowalski@bitbucket.org/Mikolaj_Adam_Kowalski/cued-mc-code.git  
     
-2. Create build folder in the project directory(e.g. Debug):: 
+#. Create build folder in the project directory(e.g. Debug):: 
 
      cd ./cued-mc-code
      mkdir Debug
    
-3. Generate makefile with CMake and compile::
+#. Generate makefile with CMake and compile::
 
      cmake -E chdir ./Debug cmake ./..
      make -C Debug
 
+#. To switch off compilation of tests use the following commands:: 
 
+     cmake -E chdir ./Debug cmake ./.. -DBUILD_TESTS=OFF 
+     make -C Debug 
 
+#. Note that to change form compilation with tests to without tests you need to delete all files
+   in build directory (Debug in the example) and execute appropriate cmake command again. 
+   
+Development Guide (Draft)
+=========================
+
+Writing Tests in SCONE
+----------------------
+There are three main types of tests
+
+* Unit Tests, which main goal is to enforce specification (interface and behaviour) of the code 
+  component. In Fortran this component may be a procedure, derived type or a module. <Finish this 
+  at some point> 
+
+* Integration tests, which aim to verify that large pieces of the code behave as expected in
+  **realistic use scenarios**. So for example particle crossing number of surfaces in PWR geometry 
+  ends up in a place its supposed to.      
+ 
+* Regression tests, which check that the output of the code for a given input has not changed.
+  This should be a collection of input files for a real-life use cases. In Monte Carlo there is 
+  a problem that if the sequence of the psudo-random number generator is changed regression tests
+   will fail even if the result is still valid.      
+ 
+<Finish by giving rules on how to write unit tests> 
+ 
 Style Guide (Draft)
 ===================
 Please note that this style guide is new and a lot of code was written without it. As such it is 

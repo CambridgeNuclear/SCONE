@@ -318,7 +318,7 @@ contains
   !! Dealloacte storage space
   !! Returns dictionary to uninitialised state (including stride)
   !!
-  subroutine kill_dictionary(self)
+  recursive subroutine kill_dictionary(self)
     class(dictionary), intent(inout) :: self
     integer(shortInt)                :: i
     logical(defBool)                 :: keysAllocated
@@ -363,7 +363,7 @@ contains
   !! Copy one dictionary to another
   !! Overwrites LHS
   !!
-  subroutine copy_dictionary(LHS,RHS)
+  recursive subroutine copy_dictionary(LHS,RHS)
     class(dictionary), intent(inout) :: LHS
     class(dictionary), intent(in)    :: RHS
     integer(shortInt)                :: rhsSize, stride
@@ -381,7 +381,7 @@ contains
     ! Copy Keywords and entries
     LHS % keywords = RHS % keywords
 
-    do i=1,RHS % maxSize
+    do i=1,RHS % dictLen
       call LHS % entries(i) % copy(RHS % entries(i) )
 
     end do
@@ -1521,7 +1521,7 @@ contains
   !!
   !! Copies dictContent
   !!
-  subroutine copy_dictCont(LHS,RHS)
+  recursive subroutine copy_dictCont(LHS,RHS)
     class(dictContent), intent(inout) :: LHS
     type(dictContent), intent(in)     :: RHS
 
@@ -1539,12 +1539,14 @@ contains
     LHS % real0_alloc = RHS % real0_alloc
     if (allocated( RHS % real1_alloc)) LHS % real1_alloc = RHS % real1_alloc
 
-
     LHS % char0_alloc = RHS % char0_alloc
     if (allocated( RHS % char1_alloc)) LHS % char1_alloc = RHS % char1_alloc
 
     if (associated( RHS % dict0_alloc)) then
-      allocate(LHS % dict0_alloc, source = RHS % dict0_alloc )
+      ! Ensure hard copy of nested dictionary
+      allocate(LHS % dict0_alloc)
+      LHS % dict0_alloc = RHS % dict0_alloc
+
     end if
 
   end subroutine copy_dictCont
