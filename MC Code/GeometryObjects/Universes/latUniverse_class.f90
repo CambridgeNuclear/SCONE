@@ -160,8 +160,8 @@ contains
     ! Save local id of outside cell
     self % outLocalID = product(sizeN, sizeN > 0) + 1
 
-    ! Save position of the bottom(Z) top(Y) left corner
-    self % corner = offsetTemp - outHW
+    ! Save position of the bottom(Z) bottom(Y) left corner
+    self % corner = - outHW
 
     ! Save surface tolerance corrested cell halfwidth
     self % half_bar = self % pitch * HALF - surface_tol
