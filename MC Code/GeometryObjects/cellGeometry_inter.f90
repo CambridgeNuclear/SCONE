@@ -40,6 +40,8 @@ module cellGeometry_inter
     !! If particle is stopped at the trip surface tripFlag is set to .true.
     !! If particle stoped at the collision isColl is set to .true.
     !!
+    !! maxDist is set to (maxDist - "distance moved") at the end of execution
+    !!
     !! NOTE:
     !!  -> if coords is not placed in the geometry behaviour is unspecified
     !!  -> if maxDist < 0.0 behaviour is unspecified
@@ -51,7 +53,7 @@ module cellGeometry_inter
                 defBool
       class(cellGeometry), intent(inout)    :: self
       type(coordList), intent(inout)        :: coords
-      real(defReal),intent(in)              :: maxDist
+      real(defReal),intent(inout)           :: maxDist
       logical(defBool), intent(out)         :: isColl
       logical(defBool),optional,intent(out) :: tripFlag
     end subroutine move
@@ -83,6 +85,7 @@ module cellGeometry_inter
     !!
     !! If during motion boundary is crossed transformations are applied and particle is stopped
     !! If particle is stopped at the trip surface tripFlag is set to .true.
+    !! maxDist is set to (maxDist - "distance moved") at the end of execution
     !!
     !! NOTE:
     !!  -> if maxDist < 0.0 behaviour is unspecified
@@ -94,7 +97,7 @@ module cellGeometry_inter
                 defBool
       class(cellGeometry), intent(inout)    :: self
       type(coordList), intent(inout)        :: coords
-      real(defReal), intent(in)             :: maxDist
+      real(defReal), intent(inout)          :: maxDist
       logical(defBool),optional,intent(out) :: tripFlag
     end subroutine moveGlobal
 

@@ -316,7 +316,7 @@ contains
   subroutine move(self, coords, maxDist, isColl, tripFlag)
     class(basicCellCSG), intent(inout)    :: self
     type(coordList), intent(inout)        :: coords
-    real(defReal),intent(in)              :: maxDist
+    real(defReal),intent(inout)           :: maxDist
     logical(defBool),intent(out)          :: isColl
     logical(defBool),optional,intent(out) :: tripFlag
     integer(shortInt)                     :: surfIdx, level, uniIdx
@@ -338,6 +338,7 @@ contains
     if (maxDist < dist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       isColl = .true.
+      maxDist = ZERO
 
     else if (surfIdx == self % geom % boundaryIdx) then ! Crosses domain boundary
       ! Move global to the boundary
@@ -356,12 +357,14 @@ contains
       ! Return particle to geometry
       call self % placeCoord(coords)
       isColl = .false.
+      maxDist = max(maxDist - dist, ZERO)
 
     else ! Crosses cell to cell boundary
       ! Move to the boundary at "level"
       call coords % moveLocal(dist, level)
       uniIdx = coords % lvl(level) % uniIdx
       isColl = .false.
+      maxDist = max(maxDist - dist, ZERO)
 
       associate (g => self % geom)
 
@@ -430,7 +433,7 @@ contains
   subroutine moveGlobal(self,coords,maxDist,tripFlag)
     class(basicCellCSG), intent(inout)    :: self
     type(coordList), intent(inout)        :: coords
-    real(defReal), intent(in)             :: maxDist
+    real(defReal), intent(inout)          :: maxDist
     logical(defBool),optional,intent(out) :: tripFlag
     integer(shortInt)                     :: surfIdx
     real(defReal)                         :: dist
