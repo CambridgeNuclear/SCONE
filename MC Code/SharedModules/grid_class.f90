@@ -129,6 +129,11 @@ contains
   !! Returns  valueOutsideArray if target is outside bounds
   !! Returns  valueOutsideArray if grid is uninitialised
   !!
+  !! NOTE: Behaviour for values very close to bin boundary with exception of the bin(1)
+  !!       is UNDEFINED, due to numerical precision. When creating structured grid there
+  !!       is going to be some accumulation of numerical error and boundaries are not exactly
+  !!       where they should be. Thus exact value of the bin boundary is not easy to predict.
+  !!
   elemental function search(self, value) result(idx)
     class(grid), intent(in)  :: self
     real(defReal),intent(in) :: value
