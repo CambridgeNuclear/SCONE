@@ -116,7 +116,7 @@ contains
     integer(shortInt), intent(in) :: idx
     real(defReal)                 :: bin
     
-    if (idx > 0 .and. idx < size(self % bins)) then
+    if (idx > 0 .and. idx <= size(self % bins)) then
       bin = self % bins(idx)
     else
       bin = -huge(bin)

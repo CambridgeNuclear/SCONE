@@ -2,9 +2,11 @@ program test
 
   use numPrecision
   use dictionary_class, only : dictionary
-  use grid_class, only : grid
-  use legendrePoly_func, only : sampleLegendre
-  use RNG_class, only : RNG
+  use grid_class,       only : grid
+  use spaceMap_class,   only : spaceMap
+  use outputFile_class, only : outputFile
+!  use legendrePoly_func, only : sampleLegendre
+!  use RNG_class, only : RNG
 !  use genericProcedures, only : numToChar
 !  use outPutFile_class, only : outputFile
 !  use charTape_class, only : charTape
@@ -29,11 +31,19 @@ program test
 !  use commandLineUI
 
   implicit none
-  integer(shortInt), parameter :: a = 1
-  integer(shortInt)  :: b = storage_size(a)/8
-  integer(shortInt), dimension(4) :: T = [10, 11, 12 ,13]
 
-  print *, T(b)
+  type(grid) :: mygrid
+  type(spaceMap) :: myMap
+  type(outputFile) :: out
+
+  !call mygrid % init(-10.0_8, 10.0_8, 20, 'lin')
+  !print *, mygrid % bins
+  !print *, size(mygrid % bins)
+  call out % init('asciiMATLAB                   ')
+  call myMap % init(-10.0_8, 10.0_8, 20, 1)
+
+  call myMap % print(out)
+  call out % writeToConsole()
 
   !call Rand % init(6864577437_8)
 

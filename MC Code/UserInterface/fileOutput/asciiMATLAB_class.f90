@@ -67,7 +67,7 @@ contains
   end function asciiMATLAB_constructor
 
   !!
-  !! For now it prints to screen for debug
+  !! Write to a provided unit
   !!
   subroutine writeToFile(self,unit)
     class(asciiMATLAB), intent(inout) :: self

@@ -68,10 +68,11 @@ contains
     integer(shortInt), intent(in)   :: axis
     character(nameLen)              :: type
 
-    self % N = N +1
+    self % N = N
     type = 'lin'
     self % dir = axis
     call self % binBounds % init(mini, maxi, N, type)
+
 
   end subroutine init_structured
 

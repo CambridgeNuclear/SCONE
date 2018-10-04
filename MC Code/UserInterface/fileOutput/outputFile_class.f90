@@ -5,6 +5,7 @@ module outputFile_class
   use stack_class,             only : stackChar
   use asciiOutput_inter,       only : asciiOutput
   use asciiOutputFactory_func, only : new_asciiOutput
+  use iso_fortran_env,         only : OUTPUT_UNIT
 
   implicit none
   private
@@ -65,6 +66,7 @@ module outputFile_class
   contains
     procedure :: init
     procedure :: writeToFile
+    procedure :: writeToConsole
 
     ! Block writing interface
     procedure :: startBlock
@@ -148,6 +150,16 @@ contains
     close(unitNum)
 
   end subroutine writeToFile
+
+  !!
+  !! Dump Collected Results to Console (default output)
+  !!
+  subroutine writeToConsole(self)
+    class(outputFile), intent(inout) :: self
+
+    call self % output % writeToFile(OUTPUT_UNIT)
+
+  end subroutine writeToConsole
 
 
   !!
