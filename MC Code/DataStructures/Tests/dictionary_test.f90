@@ -81,6 +81,13 @@ contains
     call this % dict % getOrDefault(tempReal,'invalid',7.0_defReal)
     @assertEqual(7.0_defReal, tempReal, 'Get or Default Retrival Failed for Absent Keyword')
 
+    ! Int as real
+    call this % dict % get(tempReal,'myInt')
+    @assertEqual(real(intVal,defReal), tempReal, 'Retrival of int into real')
+
+    call this % dict % getOrDefault(tempReal,'myInt',7.0_defReal)
+    @assertEqual(real(intVal,defReal), tempReal, 'Get or Default Retrival of Int for Present Keyword')
+
   end subroutine testGettingReal
 
 !!
@@ -90,6 +97,7 @@ contains
   subroutine testGettingRealArray(this)
     class(test_dictionary), intent(inout)    :: this
     real(defReal),dimension(:),allocatable   :: tempReal
+    real(defReal),dimension(:),pointer       :: tempReal_ptr => null()
 
     call this % dict % get(tempReal,'realArray')
     @assertEqual(realArray, tempReal, 'Ordinary Retrival Failed')
@@ -98,7 +106,30 @@ contains
     @assertEqual(realArray, tempReal, 'Get or Default Retrival Failed for Present Keyword')
 
     call this % dict % getOrDefault(tempReal,'myRealNon',[7.0_defReal])
-    @assertEqual([7.0_defReal], tempReal, 'Get or Default Retrival Failed for Absent Keyword')
+    @assertEqual([7.0_defReal], tempReal, 'Get or Default Retrival Failed for Absent Keyword[ptr]')
+
+    ! With pointer attribute
+    call this % dict % get(tempReal_ptr,'realArray')
+    @assertEqual(realArray, tempReal_ptr, 'Ordinary Retrival Failed[ptr]')
+
+    call this % dict % getOrDefault(tempReal_ptr,'realArray', [7.0_defReal])
+    @assertEqual(realArray, tempReal_ptr, 'Get or Default Retrival Failed for Present Keyword[ptr]')
+
+    call this % dict % getOrDefault(tempReal_ptr,'myRealNon',[7.0_defReal])
+    @assertEqual([7.0_defReal], tempReal_ptr, 'Get or Default Retrival Failed for Absent Keyword[ptr]')
+
+    ! Retrival of int array into real array
+    call this % dict % get(tempReal,'intArray')
+    @assertEqual(real(intArray,defReal), tempReal, 'Ordinary Retrival of int Failed')
+
+    call this % dict % getOrDefault(tempReal,'intArray', [7.0_defReal])
+    @assertEqual(real(intArray,defReal), tempReal, 'Get or Default int Retrival for Present Keyword')
+
+    call this % dict % get(tempReal_ptr,'intArray')
+    @assertEqual(real(intArray,defReal), tempReal_ptr, 'Ordinary Retrival of int Failed')
+
+    call this % dict % getOrDefault(tempReal_ptr,'intArray', [7.0_defReal])
+    @assertEqual(real(intArray,defReal), tempReal_ptr, 'Get or Default int Retrival for Present Keyword')
 
   end subroutine testGettingRealArray
 
@@ -128,6 +159,7 @@ contains
   subroutine testGettingIntArray(this)
     class(test_dictionary), intent(inout)      :: this
     integer(shortInt),dimension(:),allocatable :: temp
+    integer(shortInt),dimension(:),pointer     :: temp_ptr => null()
 
     call this % dict % get(temp,'intArray')
     @assertEqual(intArray, temp, 'Ordinary Retrival Failed')
@@ -137,6 +169,16 @@ contains
 
     call this % dict % getOrDefault(temp,'invalid', [7_shortInt])
     @assertEqual([7_shortInt], temp, 'Get or Default Retrival Failed for Absent Keyword')
+
+    ! With pointer attribute
+    call this % dict % get(temp_ptr,'intArray')
+    @assertEqual(intArray, temp_ptr, 'Ordinary Retrival Failed')
+
+    call this % dict % getOrDefault(temp_ptr,'intArray',[7_shortInt])
+    @assertEqual(intArray, temp_ptr, 'Get or Default Retrival Failed for Present Keyword')
+
+    call this % dict % getOrDefault(temp_ptr,'invalid', [7_shortInt])
+    @assertEqual([7_shortInt], temp_ptr, 'Get or Default Retrival Failed for Absent Keyword')
 
   end subroutine testGettingIntArray
 
@@ -187,6 +229,7 @@ contains
   subroutine testGettingNameLenCharArray(this)
     class(test_dictionary), intent(inout)        :: this
     character(nameLen),dimension(:),allocatable  :: temp
+    character(nameLen),dimension(:),pointer      :: temp_ptr => null()
     character(nameLen),dimension(1),parameter    :: default = ['Brasil, meu Brasil Brasileiro']
     logical(defBool)                             :: isSame
 
@@ -204,6 +247,21 @@ contains
     isSame = all(default == temp)
     @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
 
+    !* With  pointer attribute
+    call this % dict % get(temp_ptr,'charNameLenArray')
+    ! Fun Fact. pFUnit does not support character arrays comparisons.
+    ! Let Fortran handle comparisons
+    isSame = all(charNameLenArray == temp_ptr)
+    @assertTrue(isSame, 'Ordinary Retrival Failed')
+
+    call this % dict % getOrDefault(temp_ptr,'charNameLenArray', default)
+    isSame = all(charNameLenArray == temp_ptr)
+    @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
+
+    call this % dict % getOrDefault(temp_ptr,'invalid', default)
+    isSame = all(default == temp_ptr)
+    @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
+
   end subroutine testGettingNameLenCharArray
 
 !!
@@ -213,6 +271,7 @@ contains
   subroutine testGettingPathLenCharArray(this)
     class(test_dictionary), intent(inout)        :: this
     character(pathLen),dimension(:),allocatable  :: temp
+    character(pathLen),dimension(:),pointer      :: temp_ptr => null()
     character(pathLen),dimension(1),parameter    :: default = ['Brasil, meu Brasil Brasileiro']
     logical(defBool)                             :: isSame
 
@@ -228,6 +287,21 @@ contains
 
     call this % dict % getOrDefault(temp,'invalid', default)
     isSame = all(default == temp)
+    @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
+
+    !* With pointer attribute
+    call this % dict % get(temp_ptr,'charPathLenArray')
+    ! Fun Fact. pFUnit does not support character arrays comparisons.
+    ! Let Fortran handle comparisons
+    isSame = all(charPathLenArray == temp_ptr)
+    @assertTrue(isSame, 'Ordinary Retrival Failed')
+
+    call this % dict % getOrDefault(temp_ptr,'charPathLenArray', default)
+    isSame = all(charPathLenArray == temp_ptr)
+    @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
+
+    call this % dict % getOrDefault(temp_ptr,'invalid', default)
+    isSame = all(default == temp_ptr)
     @assertTrue(isSame, 'Get or Default Retrival Failed for Present Keyword')
 
   end subroutine testGettingPathLenCharArray
@@ -366,6 +440,27 @@ contains
     @assertFalse(isPresent)
 
   end subroutine testIsPresent
+
+  !!
+  !! Test getSize function of a dictionary
+  !!
+@test
+  subroutine testGetSize(this)
+    class(test_dictionary), intent(inout) :: this
+
+    ! Get size of scalar
+    @assertEqual(1, this % dict % getSize('myInt'))
+
+    ! Get size of int Array
+    @assertEqual(3, this % dict % getSize('intArray'))
+
+    ! Get size of realArray
+    @assertEqual(2, this % dict % getSize('realArray'))
+
+    ! Get size of word Array
+    @assertEqual(1, this % dict % getSize('charNameLenArray'))
+
+  end subroutine testGetSize
 
 
 end module dictionary_test

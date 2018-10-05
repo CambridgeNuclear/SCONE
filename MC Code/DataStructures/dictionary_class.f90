@@ -502,7 +502,10 @@ contains
         allocate(value(N))
         value = self % entries(idx) % real1_alloc
 
+
       case(arrInt)
+        N = size (self % entries(idx) % int1_alloc)
+        allocate(value(N))
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
@@ -816,6 +819,8 @@ contains
         value = self % entries(idx) % real1_alloc
 
       case(arrInt)
+        N = size (self % entries(idx) % int1_alloc)
+        allocate(value(N))
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
