@@ -106,6 +106,7 @@ module dictionary_class
     procedure :: kill          => kill_dictCont
     procedure :: copy          => copy_dictCont
     procedure :: getType       => getType_dictContent
+    procedure :: getSize       => getSize_dictContent
 
   end type dictContent
 
@@ -131,15 +132,7 @@ module dictionary_class
                            store_charArray ,&
                            store_dict
     procedure  :: isPresent
-    !*** Obsolete functional access interface will be removed
-    procedure  :: getReal      => getReal_old
-    procedure  :: getRealArray => getRealArray_old
-    procedure  :: getInt       => getInt_old
-    procedure  :: getIntArray  => getIntArray_old
-    procedure  :: getChar      => getChar_old
-    procedure  :: getCharArray => getCharArray_old
-    procedure  :: getDict      => getDict_old
-    !***********************
+    procedure  :: getSize
 
     generic    :: get => getReal_new,&
                          getRealArray_alloc_new,&
@@ -405,6 +398,27 @@ contains
     isIt = .not.(idx == targetNotFound)
 
   end function isPresent
+
+  !!
+  !! Returns size of the content under the keyword
+  !! Returns 1 for scalars
+  !!
+  function getSize(self, keyword) result(S)
+    class(dictionary), intent(in) :: self
+    character(*), intent(in)      :: keyword
+    integer(shortInt)             :: S
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here = 'getSize (dictionary_class.f90)'
+
+    idx = linFind(self % keywords, keyword)
+    if (idx == targetNotFound) then
+      call fatalError(Here,'Target: '//trim(keyword)//' is not in dictionary')
+    end if
+
+    S = self % entries(idx) % getSize()
+
+  end function getSize
+
 
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
@@ -1047,187 +1061,6 @@ contains
 
   end subroutine getOrDefault_charArray_ptr
 
-
-  !!
-  !! Reads a real rank 0 entery from a dictionary
-  !! If keyword is associated with an integer it converts it to real
-  !!
-  function getReal_old(self,keyword) result(value)
-    class(dictionary), intent(in)  :: self
-    character(*),intent(in)        :: keyword
-    real(defReal)                  :: value
-    integer(shortInt)              :: idx
-    character(100),parameter       :: Here='getReal (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(numReal)
-        value = self % entries(idx) % real0_alloc
-
-      case(numInt)
-        value = real(self % entries(idx) % int0_alloc, defReal)
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
-
-    end select
-
-  end function getReal_old
-
-  !!
-  !! Reads a real rank 1 from a dictionary
-  !! If keyword is associated with an integer it converts it to real
-  !!
-  function getRealArray_old(self,keyword) result(value)
-    class(dictionary), intent(in)          :: self
-    character(*),intent(in)                :: keyword
-    real(defReal),dimension(:),allocatable :: value
-    integer(shortInt)                      :: idx
-    character(100),parameter               :: Here='getRealArray (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(arrReal)
-        value = self % entries(idx) % real1_alloc
-
-      case(arrInt)
-        value = real(self % entries(idx) % int1_alloc, defReal)
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
-
-    end select
-
-  end function getRealArray_old
-
-  !!
-  !! Reads a integer rank 0 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
-  !!
-  function getInt_old(self,keyword) result(value)
-    class(dictionary), intent(in)  :: self
-    character(*),intent(in)        :: keyword
-    integer(shortInt)              :: value
-    integer(shortInt)              :: idx
-    character(100),parameter       :: Here='getInt (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(numInt)
-        value = self % entries(idx) % int0_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
-
-    end select
-
-  end function getInt_old
-
-  !!
-  !! Reads a integer rank 1 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
-  !!
-  function getIntArray_old(self,keyword) result(value)
-    class(dictionary), intent(in)              :: self
-    character(*),intent(in)                    :: keyword
-    integer(shortInt),dimension(:),allocatable :: value
-    integer(shortInt)                          :: idx
-    character(100),parameter                   :: Here='getIntArray (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(arrInt)
-        value = self % entries(idx) % int1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
-
-    end select
-
-  end function getIntArray_old
-
-  !!
-  !! Reads a character rank 0 from a dictionary
-  !!
-  function getChar_old(self,keyword) result(value)
-    class(dictionary), intent(in)  :: self
-    character(*),intent(in)        :: keyword
-    character(charLen)             :: value
-    integer(shortInt)              :: idx
-    character(100),parameter       :: Here='getChar (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(word)
-        value = self % entries(idx) % char0_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
-
-    end select
-
-
-  end function getChar_old
-
-  !!
-  !! Reads a character rank 1 from a dictionary
-  !!
-  function getCharArray_old(self,keyword) result(value)
-    class(dictionary), intent(in)               :: self
-    character(*),intent(in)                     :: keyword
-    character(charLen),dimension(:),allocatable :: value
-    integer(shortInt)                           :: idx
-    character(100),parameter                    :: Here='getCharArray (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-    select case (self % entries(idx) % getType())
-      case(arrWord)
-        value = self % entries(idx) % char1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
-
-    end select
-
-  end function getCharArray_old
-
-  !!
-  !! Reads a dictionary rank 0 from a dictionary
-  !!
-  function getDict_old(self,keyword) result(value)
-    class(dictionary), intent(in)  :: self
-    character(*),intent(in)        :: keyword
-    type(dictionary)               :: value
-    integer(shortInt)              :: idx
-    character(100),parameter       :: Here='getChar (dictionary_class.f90)'
-
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
-
-
-    select case (self % entries(idx) % getType())
-      case(nestDict)
-        value = self % entries(idx) % dict0_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
-
-    end select
-
-  end function getDict_old
-
   !!
   !! Returns an array of all keywords associated with a real rank 0
   !!
@@ -1586,5 +1419,36 @@ contains
     type = self % type
 
   end function getType_dictContent
+
+  !!
+  !! Returns size of the content in dictContent
+  !! Returns 1 for scalars
+  !! Returns 0 for empty
+  !!
+  elemental function getSize_dictContent(self) result(S)
+    class(dictContent), intent(in) :: self
+    integer(shortInt)              :: S
+
+    select case(self % type)
+      case(numInt, numReal, word, nestDict)
+        ! Scalar Content
+        S = 1
+
+      case(arrInt)
+        S = size(self % int1_alloc)
+
+      case(arrReal)
+        S = size(self % real1_alloc)
+
+      case(arrWord)
+        S = size(self % char1_alloc)
+
+      case default
+        S = 0
+
+    end select
+
+  end function getSize_dictContent
+
 
 end module dictionary_class

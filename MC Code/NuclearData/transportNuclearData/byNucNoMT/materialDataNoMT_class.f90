@@ -43,7 +43,7 @@ contains
     ! Read required data
     self % name = name
 
-    self % temp = dict % getReal('temp')
+    call dict % get(self % temp, 'temp')
 
     ! Load nuclides Keys
 
@@ -56,7 +56,7 @@ contains
 
     ! Load nuclide densities
     do i=1,size(nucKeys)
-      temp = dict % getReal(nucKeys(i))
+      call dict % get(temp, nucKeys(i))
       if (temp < 0) call fatalError(Here,'Density of nuclide: '// nucKeys(i) //' is negative')
       self % nucDens(i) = temp
 

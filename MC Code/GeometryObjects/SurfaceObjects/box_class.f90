@@ -95,17 +95,25 @@ contains
   !! Returns an initialised instance of box from dictionary and name
   !!
   function box_fromDict(dict) result(new)
-    class(dictionary), intent(in) :: dict
-    type(box)                     :: new
-    integer(shortInt)             :: id
-    real(defReal),dimension(3)    :: halfwidth, origin
+    class(dictionary), intent(in)           :: dict
+    type(box)                               :: new
+    integer(shortInt)                       :: id
+    real(defReal),dimension(:),allocatable  :: halfwidth, origin
     character(100),parameter :: Here ='box_fromDict ( box_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    halfwidth = dict % getRealArray('halfwidth')
-    origin = dict % getRealArray('origin')
+    call dict % get(halfwidth, 'halfwidth')
+    call dict % get(origin,'origin')
+
+    if(size(halfwidth) /= 3) then
+      call fatalError(Here,'Halfwidth has size diffrent from 3')
+
+    else if( size(origin) /= 3) then
+      call fatalError(Here,'Origin has size diffrent form 3')
+
+    end if
 
     call new % init(origin, halfwidth, id)
 

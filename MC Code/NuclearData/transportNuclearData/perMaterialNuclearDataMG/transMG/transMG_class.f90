@@ -65,13 +65,15 @@ contains
     integer(shortInt)                      :: i
     real(defReal),dimension(nG)            :: tempXS
     real(defReal),dimension(:),allocatable :: tempXSmatrix_rank1
+    character(pathLen)                     :: xsPath
     character(100), parameter :: Here='readMaterial (transMG_class.f90)'
 
     ! Call superclass procedure
     call readMaterial_super(self, dict, idx, nG)
 
     ! Obtain path from dict and read into xsDict
-    call xsDict % initFrom( dict % getChar('xsFile'))
+    call dict % get(xsPath, 'xsFile')
+    call xsDict % initFrom(xsPath)
 
     ! Obtain array of sum of P1 outscattering XSs
     call xsDict % get(tempXSmatrix_rank1, 'scattering_P1')

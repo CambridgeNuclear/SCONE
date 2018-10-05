@@ -66,13 +66,15 @@ contains
     integer(shortInt)                      :: i
     real(defReal),dimension(:),allocatable :: P0
     real(defReal),dimension(:),allocatable :: P1
+    character(pathLen)                     :: xsPath
     character(100), parameter :: Here='readMaterial (P1MG_class.f90)'
 
     ! Call superclass procedure
     call readMaterial_super(self, dict, idx, nG)
 
     ! Obtain path from dict and read into xsDict
-    call xsDict % initFrom( dict % getChar('xsFile'))
+    call dict % get(xsPath, 'xsFile')
+    call xsDict % initFrom(xsPath)
 
     ! Obtain P0 and P1 scattering XSs
     call xsDict % get(P1, 'scattering_P1')

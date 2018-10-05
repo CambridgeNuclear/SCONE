@@ -66,16 +66,19 @@ contains
   !! Returns an initialised instance of plane for dictionary and name
   !!
   function plane_fromDict(dict) result(new)
-    class(dictionary), intent(in)  :: dict
-    type(plane)                    :: new
-    integer(shortInt)              :: id
-    real(defReal),dimension(4)     :: coeff
+    class(dictionary), intent(in)          :: dict
+    type(plane)                            :: new
+    integer(shortInt)                      :: id
+    real(defReal),dimension(:),allocatable :: coeff
     character(100),parameter :: Here =' plane_fromDict ( plane_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    coeff = dict % getRealArray('coeff')
+    call dict % get(coeff, 'coeff')
+
+    if(size(coeff) /= 4) call fatalError(Here,'4 plane coefficients are required')
+
     call new % init(coeff, id)
 
   end function plane_fromDict

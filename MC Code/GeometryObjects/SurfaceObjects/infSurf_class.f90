@@ -66,7 +66,7 @@ contains
     integer(shortInt)              :: id
     character(100), parameter :: Here ='infSurf_fromDict (infSurf_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
     call new % init(id)

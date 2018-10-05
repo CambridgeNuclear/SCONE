@@ -73,10 +73,10 @@ contains
     real(defReal)                  :: x0
     character(100),parameter :: Here =' xPlane_fromDict ( xPlane_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    x0 = dict % getReal('x')
+    call dict % get(x0, 'x')
     call new % init(x0, id)
 
   end function xPlane_fromDict

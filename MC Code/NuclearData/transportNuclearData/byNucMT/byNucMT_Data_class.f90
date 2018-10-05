@@ -56,7 +56,7 @@ contains
     call self % assignNucIndices()
 
     ! Read
-    nuclideLib = matDict % getChar('aceLibrary')
+    call matDict % get(nuclideLib, 'aceLibrary')
     call self % readNuclides(nuclideLib)
 
     call self % setFissileMaterials

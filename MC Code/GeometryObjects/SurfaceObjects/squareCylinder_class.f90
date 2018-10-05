@@ -93,7 +93,7 @@ contains
   !! Initialise the square cylinder from components
   !!
   subroutine init(self, origin, a, id, type)
-    class(squareCylinder), intent(inout)   :: self
+    class(squareCylinder), intent(inout)    :: self
     real(defReal), dimension(3), intent(in) :: a
     real(defReal), dimension(3), intent(in) :: origin
     integer(shortInt), intent(in)           :: id
@@ -159,17 +159,23 @@ contains
   !! Returns and initialised instance of squareCylinder along X from dictionary
   !!
   function xSquareCylinder_fromDict(dict) result(new)
-    class(dictionary), intent(in)  :: dict
-    type(squareCylinder)           :: new
-    integer(shortInt)              :: id
-    real(defReal), dimension(3)    :: origin, halfwidth
+    class(dictionary), intent(in)              :: dict
+    type(squareCylinder)                       :: new
+    integer(shortInt)                          :: id
+    real(defReal), dimension(:),allocatable    :: origin, halfwidth
     character(100),parameter :: Here ='xSquareCylinder_fromDict ( squareCylinder_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    halfwidth = dict % getRealArray('halfwidth')
-    origin = dict % getRealArray('origin')
+    call dict % get(halfwidth, 'halfwidth')
+    call dict % get(origin, 'origin')
+
+    if(size(halfwidth) /= 3) then
+      call fatalError(Here,'Halfwidth must have size 3')
+    else if(size(origin) /=3) then
+      call fatalError(Here,'Origin must have size 3')
+    end if
 
     call new % init(origin, halfwidth, id,'xSquareCylinder')
 
@@ -179,17 +185,23 @@ contains
   !! Returns and initialised instance of squareCylinder along Y from dictionary
   !!
   function ySquareCylinder_fromDict(dict) result(new)
-    class(dictionary), intent(in)  :: dict
-    type(squareCylinder)           :: new
-    integer(shortInt)              :: id
-    real(defReal), dimension(3)    :: origin, halfwidth
+    class(dictionary), intent(in)              :: dict
+    type(squareCylinder)                       :: new
+    integer(shortInt)                          :: id
+    real(defReal), dimension(:),allocatable    :: origin, halfwidth
     character(100),parameter :: Here ='ySquareCylinder_fromDict ( squareCylinder_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    halfwidth = dict % getRealArray('halfwidth')
-    origin = dict % getRealArray('origin')
+    call dict % get(halfwidth, 'halfwidth')
+    call dict % get(origin, 'origin')
+
+    if(size(halfwidth) /= 3) then
+      call fatalError(Here,'Halfwidth must have size 3')
+    else if(size(origin) /=3) then
+      call fatalError(Here,'Origin must have size 3')
+    end if
 
     call new % init(origin, halfwidth, id,'ySquareCylinder')
 
@@ -199,17 +211,23 @@ contains
   !! Returns and initialised instance of squareCylinder along Y from dictionary
   !!
   function zSquareCylinder_fromDict(dict) result(new)
-    class(dictionary), intent(in)  :: dict
-    type(squareCylinder)           :: new
-    integer(shortInt)              :: id
-    real(defReal), dimension(3)    :: origin, halfwidth
+    class(dictionary), intent(in)              :: dict
+    type(squareCylinder)                       :: new
+    integer(shortInt)                          :: id
+    real(defReal), dimension(:),allocatable    :: origin, halfwidth
     character(100),parameter :: Here ='zSquareCylinder_fromDict ( squareCylinder_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    halfwidth = dict % getRealArray('halfwidth')
-    origin = dict % getRealArray('origin')
+    call dict % get(halfwidth, 'halfwidth')
+    call dict % get(origin, 'origin')
+
+    if(size(halfwidth) /= 3) then
+      call fatalError(Here,'Halfwidth must have size 3')
+    else if(size(origin) /=3) then
+      call fatalError(Here,'Origin must have size 3')
+    end if
 
     call new % init(origin, halfwidth, id,'zSquareCylinder')
 

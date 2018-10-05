@@ -86,6 +86,7 @@ contains
   subroutine init(self,dict)
     class(isotropicMG), intent(inout)           :: self
     class(dictionary), intent(in)               :: dict
+    type(dictionary)                            :: tempDict
     character(nameLen),dimension(:),allocatable :: matNames
     integer(shortInt)                           :: nG,nMat,matIdx
 
@@ -93,7 +94,7 @@ contains
     call dict % keysDict(matNames)
 
     ! Read number of energy groups and materials
-    nG = dict % getInt('numberOfGroups')
+    call dict % get(nG, 'numberOfGroups')
     nMat = size( matNames )
 
     self % nG   = nG
@@ -117,9 +118,8 @@ contains
 
     ! Read individual material data
     do matIdx=1,nMat
-      call self % readMaterial(dict % getDict( self % matData(matIdx) % matName ),&
-                               matIdx, &
-                               self % nG)
+      call dict % get(tempDict, self % matData(matIdx) % matName)
+      call self % readMaterial(tempDict, matIdx, self % nG)
     end do
 
     call self % calculateMajorant()
@@ -381,54 +381,56 @@ contains
     class(dictionary), intent(in)     :: dict
     integer(shortInt), intent(in)     :: idx
     integer(shortInt), intent(in)     :: nG
-    real(defReal),dimension(nG)       :: tempXS
-    real(defReal),dimension(nG*nG)    :: tempXSmatrix_rank1
+    real(defReal),dimension(:),allocatable       :: tempXS
+    real(defReal),dimension(:),allocatable       :: tempXSmatrix_rank1
     real(defReal),dimension(nG,nG)    :: tempXSmatrix
     type(IOdictionary)                :: xsDict
     integer(shortInt)                 :: i
     logical(defBool)                  :: isFissile
+    character(pathLen)                :: xsPath
     character(100), parameter         :: Here='readMaterial (isotropicMG_class.f90)'
 
     ! Obtain path from dict and read into xsDict
-    call xsDict % initFrom( dict % getChar('xsFile'))
+    call dict % get(xsPath, 'xsFile')
+    call xsDict % initFrom(xsPath)
 
     ! Check if material is fissile
     isFissile = xsDict % isPresent('fission')
     self % matData(idx) % isFissile = isFissile
 
     ! Verify size of stored data
-    if (size(xsDict % getRealArray('capture')) /= nG) then
+    if (xsDict % getSize('capture') /= nG) then
       call fatalError(Here,'capture xs are inconsistant with number of energy groups')
 
-    elseif (size(xsDict % getRealArray('scattering_P0')) /= nG*nG) then
+    elseif (xsDict % getSize('scattering_P0') /= nG*nG) then
       call fatalError(Here,'scatter xs are inconsistant with number of energy groups')
 
-    else if (size(xsDict % getRealArray('scatteringMultiplicity')) /= nG*nG) then
+    else if (xsDict % getSize('scatteringMultiplicity') /= nG*nG) then
       call fatalError(Here,'scattering production data is inconsistant with number of energy groups')
 
     end if
 
     if (isFissile) then
-      if (size(xsDict % getRealArray('fission')) /= nG) then
+      if (xsDict % getSize('fission') /= nG) then
         call fatalError(Here,'fission xs are inconsistant with number of energy groups')
 
-      else if (size(xsDict % getRealArray('chi')) /= nG) then
+      else if (xsDict % getSize('chi') /= nG) then
         call fatalError(Here,'chi data is inconsistant with number of energy groups')
 
-      else if (size(xsDict % getRealArray('nu')) /= nG) then
+      else if (xsDict % getSize('nu') /= nG) then
         call fatalError(Here,'nu data is inconsistant with number of energy groups')
 
       end if
     end if
 
     ! Load and store capture XSs
-    tempXS = xsDict % getRealArray('capture')
+    call xsDict % get(tempXS, 'capture')
     if (any( tempXS < 0.0)) call fatalError(Here,'capture xss are -ve')
     self % P_XSs(:,idx) % captureXS = tempXS
 
     ! Load and store fission XSs
     if (isFissile) then
-      tempXS = xsDict % getRealArray('fission')
+      call xsDict % get(tempXS, 'fission')
     else
       tempXS = 0.0
     end if
@@ -437,7 +439,7 @@ contains
 
     ! Load and store chi values
     if (isFissile) then
-      tempXS = xsDict % getRealArray('chi')
+      call xsDict % get(tempXS, 'chi')
     else
       tempXS = 0.0
       tempXS(1) = 1.0 ! Avoid Floating point exception
@@ -446,7 +448,7 @@ contains
     call self % P_chiValues(idx) % init(tempXS)
 
     ! Load scattering matrix. Indexing convenction is (G_out,G_in)
-    tempXSmatrix_rank1 = xsDict % getRealArray('scattering_P0')
+    call xsDict % get(tempXSmatrix_rank1, 'scattering_P0')
     if (any( tempXSmatrix_rank1 < 0.0)) call fatalError(Here,'Scattering_P0 is -ve')
     tempXSmatrix = reshape(tempXSmatrix_rank1,[nG, nG])
     do i=1,nG
@@ -455,12 +457,12 @@ contains
     self % P_XSs(:,idx) % scatterXS = sum(tempXSmatrix,1)
 
     ! Load production matrix and nu. Indexing convenction is (G_out,G_in).
-    tempXSmatrix_rank1 = xsDict % getRealArray('scatteringMultiplicity')
+    call xsDict % get(tempXSmatrix_rank1, 'scatteringMultiplicity')
     if (any( tempXSmatrix_rank1 < 0.0)) call fatalError(Here,'scateringMultiplicity in -ve')
     tempXSmatrix = reshape(tempXSmatrix_rank1,[nG, nG])
 
     if (isFissile) then
-      tempXS = xsDict % getRealArray('nu')
+      call xsDict % get(tempXS, 'nu')
     else
       tempXS = 0.0
     end if
@@ -469,7 +471,7 @@ contains
 
     ! Calculate nu*Fission
     if (isFissile) then
-      tempXS = self % P_XSs(:,idx) % fissionXS * xsDict % getRealArray('nu')
+      tempXS = self % P_XSs(:,idx) % fissionXS * tempXS
     else
       tempXS = 0.0
     end if

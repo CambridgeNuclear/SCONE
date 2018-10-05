@@ -76,18 +76,21 @@ contains
   !! Returns and initialised instance of xCylinder from dictionary and name
   !!
   function xCylinder_fromDict(dict) result(new)
-    class(dictionary), intent(in)  :: dict
-    type(xCylinder)                :: new
-    integer(shortInt)              :: id
-    real(defReal)                  :: radius
-    real(defReal), dimension(3)    :: origin
+    class(dictionary), intent(in)           :: dict
+    type(xCylinder)                         :: new
+    integer(shortInt)                       :: id
+    real(defReal)                           :: radius
+    real(defReal), dimension(:),allocatable :: origin
     character(100),parameter :: Here ='xCylinder_fromDict ( xCylinder_class.f90)'
 
-    id = dict % getInt('id')
+    call dict % get(id, 'id')
     if(id < 1) call fatalError(Here,'Invalid surface id provided')
 
-    radius = dict % getReal('radius')
-    origin = dict % getRealArray('origin')
+    call dict % get(radius, 'radius')
+    call dict % get(origin, 'origin')
+
+    if(size(origin) /= 3) call fatalError(Here,'Origin must have size 3')
+
     call new % init(radius, origin, id)
 
   end function xCylinder_fromDict
