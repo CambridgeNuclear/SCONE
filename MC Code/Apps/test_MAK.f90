@@ -1,5 +1,4 @@
 program test
-
   use numPrecision
   use dictionary_class, only : dictionary
   use grid_class,       only : grid
@@ -32,18 +31,18 @@ program test
 
   implicit none
 
-  type(grid) :: mygrid
-  type(spaceMap) :: myMap
-  type(outputFile) :: out
+  !type(grid) :: mygrid
+  !type(spaceMap) :: myMap
+  !type(outputFile) :: out
 
   !call mygrid % init(-10.0_8, 10.0_8, 20, 'lin')
   !print *, mygrid % bins
   !print *, size(mygrid % bins)
-  call out % init('asciiMATLAB                   ')
-  call myMap % init(-10.0_8, 10.0_8, 20, 1)
+  !call out % init('asciiMATLAB                   ')
+  !call myMap % init(-10.0_8, 10.0_8, 20, 1)
 
-  call myMap % print(out)
-  call out % writeToConsole()
+  !call myMap % print(out)
+  !call out % writeToConsole()
 
   !call Rand % init(6864577437_8)
 

@@ -1,10 +1,8 @@
 module dictionary_test
   use numPrecision
   use dictionary_class, only : dictionary
-  use pfunit_mod
+  use pFUnit_mod
   implicit none
-
-  public :: test_dictionary
 
 @TestCase
   type, extends(TestCase) :: test_dictionary
