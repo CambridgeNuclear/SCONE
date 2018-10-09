@@ -164,10 +164,9 @@ contains
   !! Process outgoing collision report
   !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
   !!
-  subroutine reportOutColl(self,pre,post,MT,muL)
+  subroutine reportOutColl(self,p,MT,muL)
     class(tallyAdminBase), intent(inout)  :: self
-    class(phaseCoord), intent(in)         :: pre
-    class(particle), intent(in)           :: post
+    class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     integer(shortInt)                     :: i, idx
@@ -175,7 +174,7 @@ contains
     ! Go through all clerks that request the report
     do i=1,size(self % outCollClerks)
       idx = self % outCollClerks(i)
-      call self % tallyClerks(idx) % reportOutColl(pre,post,MT,muL)
+      call self % tallyClerks(idx) % reportOutColl(p,MT,muL)
 
     end do
 

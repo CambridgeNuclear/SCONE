@@ -104,7 +104,6 @@ module collisionOperatorBase_inter
       class(particle), intent(inout)              :: p
       class(particleDungeon),intent(inout)        :: thisCycle
       class(particleDungeon),intent(inout)        :: nextCycle
-      type(phaseCoord)                            :: preState
       character(100),parameter                    :: Here = ' collide (collisionOperatorBase.f90)'
 
       ! Load particle data
@@ -116,7 +115,7 @@ module collisionOperatorBase_inter
 
       ! Report in-collision & save pre-collison state
       call self % tally % reportInColl(p)
-      preState = p
+      call p % savePreCollision()
 
       call self % sampleCollision(p,thisCycle,nextCycle)
       call self % implicit(p,thisCycle,nextCycle)
@@ -140,7 +139,7 @@ module collisionOperatorBase_inter
       call self % cutoffs(p,thisCycle,nextCycle)
 
       ! Report out-of-collision
-      call self % tally % reportOutColl(preState, p, self%MT, self % mul)
+      call self % tally % reportOutColl(p, self % MT, self % mul)
     end subroutine collide
 
 end module collisionOperatorBase_inter

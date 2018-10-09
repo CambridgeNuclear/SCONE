@@ -146,10 +146,9 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self,pre,post,MT,muL)
+  subroutine reportOutColl(self,p,MT,muL)
     class(keffActiveClerk), intent(inout) :: self
-    class(phaseCoord), intent(in)         :: pre
-    class(particle), intent(in)           :: post
+    class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     real(defReal)                         :: mult
@@ -168,7 +167,7 @@ contains
 
     ! Add to scattering production estimator
     ! Use pre collision weight
-    if (mult /= ZERO) call self % scatterProd % add(pre % wgt * mult)
+    if (mult /= ZERO) call self % scatterProd % add(p % preCollision % wgt * mult)
 
   end subroutine reportOutColl
 

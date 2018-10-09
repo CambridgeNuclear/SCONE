@@ -60,15 +60,14 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self,pre,post,MT,muL)
-    class(tallyClerkSlot), intent(inout)      :: self
-    class(phaseCoord), intent(in)         :: pre
-    class(particle), intent(in)           :: post
+  subroutine reportOutColl(self,p,MT,muL)
+    class(tallyClerkSlot), intent(inout)  :: self
+    class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
 
     ! Pass call to instance in the slot
-    call self % slot % reportOutColl(pre,post,MT,muL)
+    call self % slot % reportOutColl(p,MT,muL)
 
   end subroutine reportOutColl
 

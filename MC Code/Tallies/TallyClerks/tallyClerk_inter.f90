@@ -103,10 +103,9 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self,pre,post,MT,muL)
+  subroutine reportOutColl(self,p,MT,muL)
     class(tallyClerk), intent(inout)      :: self
-    class(phaseCoord), intent(in)         :: pre
-    class(particle), intent(in)           :: post
+    class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     character(100),parameter  :: Here = 'reportOutColl (tallyClerk_inter.f90)'

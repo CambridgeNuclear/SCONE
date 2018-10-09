@@ -75,18 +75,17 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self,pre,post,MT,muL)
+  subroutine reportOutColl(self,p,MT,muL)
     class(tallyActiveAdmin), intent(inout) :: self
-    class(phaseCoord), intent(in)          :: pre
-    class(particle), intent(in)            :: post
+    class(particle), intent(in)            :: p
     integer(shortInt), intent(in)          :: MT
     real(defReal), intent(in)              :: muL
 
     ! Process report with internal Clerk
-    call self % keff_estimator % reportOutColl(pre, post, MT, muL)
+    call self % keff_estimator % reportOutColl(p, MT, muL)
 
     ! Call superclass procedure on self
-    call reportOutColl_super(self, pre, post, MT, muL)
+    call reportOutColl_super(self, p, MT, muL)
 
   end subroutine reportOutColl
 
