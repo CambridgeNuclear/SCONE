@@ -16,8 +16,8 @@ module transportOperatorST_class
   ! Geometry interfaces
   use cellGeometry_inter,         only : cellGeometry
 
-  !** Debug
-  use coord_class,  only : coordList
+  ! Tally interface
+  use tallyAdminBase_class,       only : tallyAdminBase
 
   ! Nuclear data interfaces
   use nuclearData_inter,          only : nuclearData
@@ -70,6 +70,9 @@ contains
     logical(defBool)                       :: isColl
     real(defReal)                          :: sigmaT, dist
 
+    ! Save pre-Transition state
+    call p % savePreTransition()
+
     STLoop: do
 
       ! Obtain the local cross-section
@@ -78,22 +81,28 @@ contains
       ! Sample particle flight distance
       dist = -log( p % pRNG % get()) / sigmaT
 
+      ! Save state before movement
+      call p % savePrePath()
+
       ! Move to the next stop
       call self % geom % move(p % coords, dist, isColl)
 
-      ! * TODO SEND TALLY REPORT
+      ! Send tally report
+      call self % tally % reportPath(p, dist)
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( isColl ) return
+      if( isColl ) exit STLoop
 
       ! If particle has leaked exit
       if (p % matIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         ! TODO: REPORT HISTORY END
-        return
+        exit STLoop
       end if
-
     end do STLoop
+
+    ! Send transition report
+    call self % tally % reportTrans(p)
 
   end subroutine surfaceTracking
 

@@ -69,6 +69,9 @@ contains
     timeMax = p % timeMax
     speed = lightSpeed * sqrt(TWO * p % E / neutronMass)
 
+    ! Save pre-transition state
+    call p % savePreTransition()
+
     DTLoop:do
       distance = -log(p%pRNG%get())/majorant
 
@@ -110,6 +113,9 @@ contains
       if (p%pRNG%get() < sigmaT/majorant) exit DTLoop
 
     end do DTLoop
+
+    ! Tally transition
+    call self % tally % reportTrans(p)
 
   end subroutine deltaTracking
 

@@ -111,10 +111,10 @@ module particle_class
     procedure            :: takeAboveGeom
 
     ! Save particle state information
-    procedure            :: savePreHistory
-    procedure            :: savePreTransition
-    procedure            :: savePrePath
-    procedure            :: savePreCollision
+    procedure, non_overridable  :: savePreHistory
+    procedure, non_overridable  :: savePreTransition
+    procedure, non_overridable  :: savePrePath
+    procedure, non_overridable  :: savePreCollision
 
     ! Debug procedures
     procedure            :: display => display_particle

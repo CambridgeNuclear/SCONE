@@ -9,6 +9,9 @@ module transportOperator_inter
   ! Geometry interfaces
   use cellGeometry_inter,         only : cellGeometry
 
+  ! Tally interface
+  use tallyAdminBase_class,       only : tallyAdminBase
+
   ! Nuclear data interfaces
   use nuclearData_inter,          only : nuclearData
   use transportNuclearData_inter, only : transportNuclearData
@@ -25,6 +28,7 @@ module transportOperator_inter
     !! They are public ONLY to allow inheritance!
     class(transportNuclearData), pointer :: nuclearData => null()  ! nuclear data
     class(cellGeometry), pointer         :: geom        => null()  ! references the geometry for cell searching
+    class(tallyAdminBase), pointer       :: tally       => null()  ! Tally to recive reports
   contains
     procedure(transport), deferred :: transport
     procedure(init),deferred       :: init

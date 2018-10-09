@@ -109,6 +109,7 @@ contains
 
     ! Attach tally to operators
     self % collOP % tally => self % inactiveTally
+    self % transOP % tally => self % inactiveTally
 
     do i=1,self % N_inactive
       ! Send start of cycle report
@@ -189,6 +190,7 @@ contains
 
     ! Attach tally to operators
     self % collOP % tally => self % activeTally
+    self % transOP % tally => self % activeTally
 
     do i=1,self % N_active
       ! Send start of cycle report

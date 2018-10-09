@@ -16,6 +16,9 @@ module transportOperatorDT_class
   ! Geometry interfaces
   use cellGeometry_inter,         only : cellGeometry
 
+  ! Tally interface
+  use tallyAdminBase_class,       only : tallyAdminBase
+
   ! Nuclear data interfaces
   use nuclearData_inter,          only : nuclearData
   use transportNuclearData_inter, only : transportNuclearData
@@ -68,6 +71,9 @@ contains
 
     majorant = self % nuclearData % getMajorantXS(p)
 
+    ! Save pre-transition state
+    call p % savePreTransition()
+
     DTLoop:do
       distance = -log( p% pRNG % get() )/majorant
 
@@ -89,6 +95,9 @@ contains
       if (p % pRNG % get() < sigmaT/majorant) exit DTLoop
 
     end do DTLoop
+
+    ! Tally transition
+    call self % tally % reportTrans(p)
 
   end subroutine deltaTracking
 

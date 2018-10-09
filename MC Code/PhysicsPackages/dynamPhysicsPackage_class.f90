@@ -122,6 +122,7 @@ contains
 
     ! Attach tally to operators
     self % collOP % tally => self % timeTally
+    self % dynamTransOP % tally => self % timeTally
 
     ! Load initial power
     power_old = self % timeTally % power()
@@ -225,6 +226,7 @@ contains
 
     ! Attach tally to operators
     self % collOP % tally => self % timeTally
+    self % dynamTransOp % tally => self % timeTally
 
     print *,'AGING NEUTRONS WITH AN INITIAL TIME STEP'
 
@@ -308,6 +310,7 @@ contains
 
     ! Attach tally to operators
     self % collOP % tally => self % inactiveTally
+    self % inactiveTransOP % tally => self % inactiveTally
 
     do i=1,self % N_inactive
       ! Send start of cycle report
