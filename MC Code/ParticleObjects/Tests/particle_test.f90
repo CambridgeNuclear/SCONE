@@ -400,6 +400,11 @@ contains
     isCorrect = this % p_CE % preTransition == stateRef
     @assertTrue(isCorrect,'preTransition check CE')
 
+    ! Check prePath saving
+    call this % p_CE % savePrePath()
+    isCorrect = this % p_CE % prePath == stateRef
+    @assertTrue(isCorrect,'prePath check CE')
+
     ! Check precollision saving
     call this % p_CE % savePreCollision()
     isCorrect = this % p_CE % preCollision == stateRef
@@ -418,6 +423,11 @@ contains
     call this % p_MG % savePreTransition()
     isCorrect = this % p_MG % preTransition == stateRef
     @assertTrue(isCorrect,'preTransition check MG')
+
+    ! Check prePath saving
+    call this % p_MG % savePrePath()
+    isCorrect = this % p_MG % prePath == stateRef
+    @assertTrue(isCorrect,'prePath check MG')
 
     ! Check precollision saving
     call this % p_MG % savePreCollision()

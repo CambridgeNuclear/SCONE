@@ -84,6 +84,7 @@ module particle_class
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
     type(particleState)        :: preTransition
+    type(particleState)        :: prePath
     type(particleState)        :: preCollision
 
   contains
@@ -112,6 +113,7 @@ module particle_class
     ! Save particle state information
     procedure            :: savePreHistory
     procedure            :: savePreTransition
+    procedure            :: savePrePath
     procedure            :: savePreCollision
 
     ! Debug procedures
@@ -337,6 +339,16 @@ contains
     self % preTransition = self
 
   end subroutine savePreTransition
+
+  !!
+  !! Save state of the particle at the beginning of history
+  !!
+  subroutine savePrePath(self)
+    class(particle), intent(inout) :: self
+
+    self % prePath = self
+
+  end subroutine savePrePath
 
   !!
   !! Save state of the particle at the beginning of history
