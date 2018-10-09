@@ -119,11 +119,9 @@ contains
   !! ASSUMPTIONS:
   !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self,pre,post,cellId,L)
+  subroutine reportPath(self,p,L)
     class(tallyClerk), intent(inout)     :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt), intent(in)        :: cellId
+    class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     character(100),parameter  :: Here = 'reportPath (tallyClerk_inter.f90)'
 
@@ -137,10 +135,9 @@ contains
   !! Transition must be a straight line
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self,pre,post)
+  subroutine reportTrans(self,p)
     class(tallyClerk), intent(inout)     :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
+    class(particle), intent(in)          :: p
     character(100),parameter  :: Here = 'reportTrans (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -152,11 +149,9 @@ contains
   !! ASSUMPTIONS:
   !! **** FATE CODES NEED TO BE SPECIFIED
   !!
-  subroutine reportHist(self,pre,post,fate)
+  subroutine reportHist(self,p)
     class(tallyClerk), intent(inout) :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt),intent(in)         :: fate
+    class(particle), intent(in)      :: p
     character(100),parameter  :: Here = 'reportHist (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')

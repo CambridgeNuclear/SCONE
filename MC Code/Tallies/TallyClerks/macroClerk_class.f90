@@ -228,7 +228,7 @@ contains
     class(macroClerk), intent(inout) :: self
     class(particle), intent(in)      :: p
     type(xsMacroSet_ptr)             :: XSs
-    real(defReal)                    :: flux, totalXS, score
+    real(defReal)                    :: totalXS, score
     integer(shortInt)                :: idx
     character(100), parameter  :: Here = 'reportInColl (macroClerk_class.f90)'
 

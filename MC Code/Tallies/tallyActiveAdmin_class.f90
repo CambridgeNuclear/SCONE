@@ -93,17 +93,15 @@ contains
   !! Process history report
   !! ASSUMPTIONS:
   !!
-  subroutine reportHist(self, pre, post, fate)
+  subroutine reportHist(self, p)
     class(tallyActiveAdmin), intent(inout) :: self
-    class(phaseCoord), intent(in)          :: pre
-    class(particle), intent(in)            :: post
-    integer(shortInt),intent(in)           :: fate
+    class(particle), intent(in)            :: p
 
     ! Process report with internal Clerk
-    call self % keff_estimator % reportHist(pre, post, fate)
+    call self % keff_estimator % reportHist(p)
 
     ! Call superclass procedure on self
-    call reportHist_super(self, pre, post, fate)
+    call reportHist_super(self, p)
 
   end subroutine reportHist
 

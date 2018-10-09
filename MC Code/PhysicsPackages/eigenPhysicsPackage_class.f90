@@ -27,6 +27,7 @@ module eigenPhysicsPackage_class
   use transportOperator_inter,        only : transportOperator
 
   ! Tallies
+  use tallyCodes
   use tallyInactiveAdmin_class,       only : tallyInactiveAdmin
   use tallyActiveAdmin_class,         only : tallyActiveAdmin
 
@@ -99,7 +100,6 @@ contains
   subroutine inactiveCycles(self)
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
     real(defReal) :: k_old, k_new
 
@@ -122,13 +122,14 @@ contains
         call self % geom % placeCoord(neutron % coords)
 
           history: do
-            preState = neutron
+            call neutron % savePreHistory()
 
             call self % transOp % transport(neutron)
 
             ! Exit history and score leakage
             if(neutron % isDead) then
-              call self % inactiveTally %  reportHist(preState,neutron,5001)
+              neutron % fate = leak_FATE
+              call self % inactiveTally %  reportHist(neutron)
               exit history
             end if
 
@@ -136,7 +137,8 @@ contains
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
-              call self % inactiveTally %  reportHist(preState,neutron,5000)
+              neutron % fate = abs_FATE
+              call self % inactiveTally %  reportHist(neutron)
               exit history
             end if
 
@@ -178,7 +180,6 @@ contains
   subroutine activeCycles(self)
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
     real(defReal) :: k_old, k_new
 
@@ -201,12 +202,13 @@ contains
         call self % geom % placeCoord(neutron % coords)
 
           history: do
-            preState = neutron
+            call neutron % savePreHistory()
             call self % transOp % transport(neutron)
 
             ! Exit history and score leakage
             if(neutron % isDead) then
-              call self % activeTally %  reportHist(preState,neutron,5001)
+              neutron % fate = leak_FATE
+              call self % activeTally %  reportHist(neutron)
               exit history
             end if
 
@@ -215,7 +217,8 @@ contains
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
-              call self % activeTally %  reportHist(preState,neutron,5000)
+              neutron % fate = abs_FATE
+              call self % activeTally %  reportHist(neutron)
               exit history
             end if
 

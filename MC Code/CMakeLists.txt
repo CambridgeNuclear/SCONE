@@ -3,7 +3,7 @@ project(SCONE)
 ##############################################################################
 # DEFINE COMPILATION OPTIONS 
 
-option(BUILD_TESTS "If is set to ON will compile tests" ON)
+option(BUILD_TESTS "If is set to ON will compile tests" OFF)
 
 
 ###############################################################################
@@ -24,9 +24,9 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 #  across diffrent source files (and modules)  
 #
 # FLAGS FOR CODE COVERAGE        
-# -fprofile-arcs -ftest-coverage
+# -coverage -Wno-surprising 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-unused-dummy-argument -flto")   
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 

@@ -112,7 +112,6 @@ contains
   subroutine timeSteps(self)
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
     real(defReal)                             :: power_old, power_new, timeMax, genWeight
     integer(longInt) :: leak
@@ -148,12 +147,12 @@ contains
         neutron % timeMax = timeMax
 
           history: do
-            preState = neutron
+            call neutron % savePreHistory()
             call self % dynamTransOp % transport(neutron)
 
             ! Exit history - score leakage or place particle in next time point
             if(neutron % isDead) then
-              call self % timeTally % reportHist(preState,neutron,neutron%fate)
+              call self % timeTally % reportHist(neutron)
               ! Revive neutron and place in next step if it became too old
               if (neutron % fate == aged_FATE) then
                 neutron % isDead = .false.
@@ -168,7 +167,8 @@ contains
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
-              call self % timeTally % reportHist(preState,neutron,abs_FATE)
+              neutron % fate = abs_FATE
+              call self % timeTally % reportHist(neutron)
               exit history
             end if
 
@@ -216,7 +216,6 @@ contains
   subroutine ageSourceNeutrons(self)
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i
     real(defReal)                             :: timeMax, genWeight
 
@@ -246,12 +245,12 @@ contains
       neutron % timeMax = self % initialStepLength
 
         history: do
-          preState = neutron
+          call neutron % savePreHistory()
           call self % dynamTransOp % transport(neutron)
 
           ! Exit history - score leakage or place particle in next time point
           if(neutron % isDead) then
-            call self % timeTally % reportHist(preState,neutron,neutron%fate)
+            call self % timeTally % reportHist(neutron)
             ! Revive neutron and place in next step if it became too old
             if (neutron % fate == aged_FATE) then
               neutron % isDead = .false.
@@ -300,7 +299,6 @@ contains
   subroutine inactiveCycles(self)
     class(dynamPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
-    type(phaseCoord)                          :: preState
     integer(shortInt)                         :: i, Nstart, Nend
     real(defReal) :: k_old, k_new
 
@@ -323,13 +321,14 @@ contains
         call self % geom % placeCoord(neutron % coords)
 
           history: do
-            preState = neutron
+            call neutron % savePreHistory()
 
             call self % inactiveTransOp % transport(neutron)
 
             ! Exit history and score leakage
             if(neutron % isDead) then
-              call self % inactiveTally %  reportHist(preState,neutron,leak_FATE)
+              neutron % fate = leak_FATE
+              call self % inactiveTally %  reportHist(neutron)
               exit history
             end if
 
@@ -337,7 +336,8 @@ contains
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
-              call self % inactiveTally %  reportHist(preState,neutron,abs_FATE)
+              neutron % fate = abs_FATE
+              call self % inactiveTally %  reportHist(neutron)
               exit history
             end if
 

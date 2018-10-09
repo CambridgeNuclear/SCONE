@@ -119,7 +119,7 @@ contains
     class(RNG), intent(inout)      :: rand
     integer(shortInt), intent(in)  :: MT
     integer(shortInt), intent(in)  :: matIdx
-    real(defReal)                  :: r1, r2
+    real(defReal)                  :: r1
     character(100), parameter      :: Here ='sampleMuGout (P1MG_class.f90)'
 
     r1 = rand % get()

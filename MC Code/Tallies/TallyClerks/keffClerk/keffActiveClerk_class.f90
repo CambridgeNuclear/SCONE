@@ -174,17 +174,15 @@ contains
   !!
   !! Process history report
   !!
-  subroutine reportHist(self,pre,post,fate)
+  subroutine reportHist(self,p)
     class(keffActiveClerk), intent(inout):: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt),intent(in)         :: fate
+    class(particle), intent(in)          :: p
     real(defReal)   :: histWgt
 
 
-    if( fate == leak_FATE) then
+    if( p % fate == leak_FATE) then
       ! Obtain and score history weight
-      histWgt = pre % wgt
+      histWgt = p % preHistory % wgt
 
       ! Score analog leakage
       call self % anaLeak % add(histWgt)

@@ -76,15 +76,13 @@ contains
   !! ASSUMPTIONS:
   !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self,pre,post,cellId,L)
-    class(tallyClerkSlot), intent(inout)     :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt), intent(in)        :: cellId
+  subroutine reportPath(self,p,L)
+    class(tallyClerkSlot), intent(inout) :: self
+    class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
 
     ! Pass call to instance in the slot
-    call self % slot % reportPath(pre,post,cellId,L)
+    call self % slot % reportPath(p,L)
 
   end subroutine reportPath
 
@@ -94,13 +92,12 @@ contains
   !! Transition must be a straight line
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self,pre,post)
-    class(tallyClerkSlot), intent(inout)     :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
+  subroutine reportTrans(self,p)
+    class(tallyClerkSlot), intent(inout) :: self
+    class(particle), intent(in)          :: p
 
     ! Pass call to instance in the slot
-    call self % slot % reportTrans(pre,post)
+    call self % slot % reportTrans(p)
 
   end subroutine reportTrans
 
@@ -109,14 +106,12 @@ contains
   !! ASSUMPTIONS:
   !! **** FATE CODES NEED TO BE SPECIFIED
   !!
-  subroutine reportHist(self,pre,post,fate)
+  subroutine reportHist(self,p)
     class(tallyClerkSlot), intent(inout) :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt),intent(in)         :: fate
+    class(particle), intent(in)          :: p
 
     ! Pass call to instance in the slot
-    call self % slot % reportHist(pre,post,fate)
+    call self % slot % reportHist(p)
 
   end subroutine reportHist
 

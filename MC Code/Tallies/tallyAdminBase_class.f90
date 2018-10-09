@@ -185,18 +185,16 @@ contains
   !! ASSUMPTIONS:
   !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self,pre,post,cellId,L)
+  subroutine reportPath(self,p,L)
     class(tallyAdminBase), intent(inout) :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt), intent(in)        :: cellId
+    class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
 
     ! Go through all clerks that request the report
     do i=1,size(self % pathClerks)
       idx = self % pathClerks(i)
-      call self % tallyClerks(idx) % reportPath(pre,post,cellId,L)
+      call self % tallyClerks(idx) % reportPath(p,L)
 
     end do
 
@@ -208,16 +206,15 @@ contains
   !! Transition must be a straight line
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self,pre,post)
+  subroutine reportTrans(self,p)
     class(tallyAdminBase), intent(inout) :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
+    class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
     ! Go through all clerks that request the report
     do i=1,size(self % transClerks)
       idx = self % transClerks(i)
-      call self % tallyClerks(idx) % reportTrans(pre,post)
+      call self % tallyClerks(idx) % reportTrans(p)
 
     end do
 
@@ -227,17 +224,15 @@ contains
   !! Process history report
   !! ASSUMPTIONS:
   !!
-  subroutine reportHist(self,pre,post,fate)
+  subroutine reportHist(self,p)
     class(tallyAdminBase), intent(inout) :: self
-    class(phaseCoord), intent(in)        :: pre
-    class(particle), intent(in)          :: post
-    integer(shortInt),intent(in)         :: fate
+    class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
     ! Go through all clerks that request the report
     do i=1,size(self % histClerks)
       idx = self % histClerks(i)
-      call self % tallyClerks(idx) % reportHist(pre,post,fate)
+      call self % tallyClerks(idx) % reportHist(p)
 
     end do
 
