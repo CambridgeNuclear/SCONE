@@ -10,7 +10,7 @@ module tallyMap_inter
 
   !!
   !! Abstract interface for maping event to approperiate bins
-  !!   Given particle it returns and index of the bin
+  !!   Given particle it returns an index of the bin
   !!
   !!
   type, public,abstract :: tallyMap
