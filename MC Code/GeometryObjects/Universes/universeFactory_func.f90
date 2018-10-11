@@ -3,7 +3,7 @@ module universeFactory_func
   use numPrecision
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
-  use maps_class,         only : intMap
+  use intMap_class,       only : intMap
 
   ! Surface and Cell Shelf
   use surface_inter,      only : surfaceShelf

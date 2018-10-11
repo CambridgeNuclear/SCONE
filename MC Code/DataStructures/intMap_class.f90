@@ -1,4 +1,4 @@
-module maps_class
+module intMap_class
 
   use numPrecision
   use genericProcedures , only : fatalError, numToChar
@@ -178,4 +178,4 @@ contains
   end subroutine grow
 
     
-end module maps_class
+end module intMap_class

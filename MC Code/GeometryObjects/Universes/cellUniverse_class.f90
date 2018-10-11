@@ -6,7 +6,7 @@ module cellUniverse_class
   use vector_class,      only : vector
   use dictionary_class,  only : dictionary
   use coord_class,       only : coord
-  use maps_class,        only : intMap
+  use intMap_class,      only : intMap
   use surface_inter,     only : surfaceSlot, surfaceShelf
   use cell_class,        only : cell, cellShelf
   use universe_inter,    only : universe

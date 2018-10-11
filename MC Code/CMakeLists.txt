@@ -121,10 +121,11 @@ endfunction(add_unit_tests)
 
 add_sources( ./DataStructures/dictionary_class.f90
              ./DataStructures/IOdictionary_class.f90
-             ./DataStructures/maps_class.f90
+             ./DataStructures/intMap_class.f90
              ./DataStructures/stack_class.f90)
              
-add_unit_tests( ./DataStructures/Tests/dictionary_test.f90)
+add_unit_tests( ./DataStructures/Tests/dictionary_test.f90
+                ./DataStructures/Tests/intMap_test.f90)
             
 # Include Nested Directories  
 add_subdirectory(SharedModules)    

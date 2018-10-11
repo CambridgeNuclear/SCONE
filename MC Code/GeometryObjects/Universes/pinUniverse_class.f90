@@ -5,7 +5,7 @@ module pinUniverse_class
   use genericProcedures,   only : fatalError, hasDuplicates, linFind, targetNotFound, swap, numToChar
   use vector_class,        only : vector
   use dictionary_class,    only : dictionary
-  use maps_class,          only : intMap
+  use intMap_class,        only : intMap
 
   use coord_class,         only : coord
   use surface_inter,       only : surface, surfaceSlot, surfaceShelf

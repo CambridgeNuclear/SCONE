@@ -4,7 +4,7 @@ module csg_class
   use universalVariables
   use genericProcedures,    only : fatalError, numToChar, targetNotFound, linFind, printStart
   use dictionary_class,     only : dictionary
-  use maps_class,           only : intMap
+  use intMap_class,         only : intMap
   use coord_class,          only : coord
 
   ! Material Names interface

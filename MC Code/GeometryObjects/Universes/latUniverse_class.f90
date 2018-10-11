@@ -6,7 +6,7 @@ module latUniverse_class
   use vector_class,        only : vector
   use dictionary_class,    only : dictionary
   use coord_class,         only : coord
-  use maps_class,          only : intMap
+  use intMap_class,        only : intMap
   use surface_inter,       only : surface, surfaceSlot, surfaceShelf
   use surfaceFactory_func, only : new_surface
   use cell_class,          only : cell, cellShelf
