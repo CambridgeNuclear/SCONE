@@ -45,10 +45,8 @@ contains
     integer(shortInt)                 :: temp
     integer(shortInt)                 :: N, i
 
-    ! Initialise
-    call this % map % init(2)
-
     ! Load entries
+     call this % map % add(KEY1, VAL1)
      call this % map % add(KEY2, VAL2)
      call this % map % add(KEY3, VAL3)
      call this % map % add(KEY4, VAL4)
@@ -63,6 +61,8 @@ contains
   !!
   subroutine tearDown(this)
     class(test_intMap), intent(inout) :: this
+
+    call this % map % kill()
 
   end subroutine tearDown
 
@@ -79,23 +79,26 @@ contains
     class(test_intMap), intent(inout) :: this
     integer(shortInt)                 :: temp
 
+    temp = this % map % get(KEY1)
+    @assertEqual(VAL1, temp)
+
     temp = this % map % get(KEY2)
-    @assertEqual(KEY2, temp)
+    @assertEqual(VAL2, temp)
 
     temp = this % map % get(KEY3)
-    @assertEqual(KEY3, temp)
+    @assertEqual(VAL3, temp)
 
     temp = this % map % get(KEY4)
-    @assertEqual(KEY4, temp)
+    @assertEqual(VAL4, temp)
 
     temp = this % map % get(KEY5)
-    @assertEqual(KEY5, temp)
+    @assertEqual(VAL5, temp)
 
     temp = this % map % get(KEY6)
-    @assertEqual(KEY6, temp)
+    @assertEqual(VAL6, temp)
 
     temp = this % map % get(KEY7)
-    @assertEqual(KEY7, temp)
+    @assertEqual(VAL7, temp)
 
   end subroutine testRetrieval
 

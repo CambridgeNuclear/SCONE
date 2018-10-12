@@ -8,13 +8,16 @@ module intMap_class
   private
 
   !! Local parameters
-  integer(shortInt) :: EMPTY    = 0
-  real(defReal)     :: MAX_LOAD = 0.6
+  integer(shortInt),parameter :: EMPTY    = 0
+  integer(shortInt),parameter :: TAKEN    = 1
+  integer(shortInt),parameter :: DELETED  = 2
+  real(defReal),parameter     :: MAX_LOAD = 0.6
 
   !!
   !! Helper type to wrap key and value
   !!
   type, private :: content
+    integer(shortInt) :: status = EMPTY
     integer(shortInt) :: key
     integer(shortInt) :: val
   end type
@@ -23,19 +26,21 @@ module intMap_class
   !! Maps integers to shortInt to shortInt
   !! Dictionary with shortInt key and shortInt content
   !! Implemented as a hash table with open adressing
-  !! Does not support 0 as a key
+  !!
   type, public :: intMap
     private
-    integer(shortInt)                        :: Nexp
-    integer(shortInt)                        :: N
-    integer(shortInt)                        :: Load
+    integer(shortInt)                        :: Nexp      ! Nexp = log2(N)
+    integer(shortInt)                        :: N     = 0 ! Current size of the map is a power of 2
+    integer(shortInt)                        :: Load  = 0 ! Number of occupied entries
     type(content), dimension(:), allocatable :: map
   contains
     procedure :: init
     procedure :: add
     procedure :: get
+    procedure :: kill
     !procedure :: remove
     procedure, private :: grow
+
   end type intMap
 
 
@@ -54,6 +59,9 @@ contains
 
     if( N <= 0) call fatalError(Here,'Size needs to be +ve')
 
+    ! Clean map
+    call self % kill()
+
     ! Find minumim size required for N entries
     N_bar = int(N/MAX_LOAD)
 
@@ -70,10 +78,25 @@ contains
     self % N    = 2**nextPow2
     allocate(self % map( self % N))
 
-    ! SET map keys to EMPY
-    self % map % key = EMPTY
+    ! SET map keys to EMTPY
+    self % map % status = EMPTY
 
   end subroutine init
+
+  !!
+  !! Kill intMap
+  !!
+  subroutine kill(self)
+    class(intMap), intent(inout) :: self
+
+    ! Deallocate space
+    if(allocated(self % map)) deallocate(self % map)
+
+    ! Set default values of parameters
+    self % N    = 0
+    self % Load = 0
+
+  end subroutine kill
 
   !!
   !! Add a new entry to map or overwrite the existing one
@@ -83,20 +106,21 @@ contains
     integer(shortInt), intent(in) :: key
     integer(shortInt), intent(in) :: val
     integer(shortInt)             :: hash
-    character(100), parameter :: Here =' add (maps_class.f90)'
 
-    if (key == 0) call fatalError(Here,'Key cannot be 0')
+    ! Check for initialisation or growth
+    if (self % N == 0) then ! Initialise map
+      call self % init(1)
 
-    ! Increase size if maximum load factor is exceeded
-    if (real(self % Load +1) / self % N > MAX_LOAD) then
+    else if (real(self % Load +1) / self % N > MAX_LOAD) then ! Double storage space
       call self % grow()
+
     end if
 
     ! Calculate Hash
     hash = knuthHash(key, self % Nexp) + 1
 
     ! Find next non empty place
-    do while (self % map(hash) % key /= EMPTY)
+    do while (self % map(hash) % status /= EMPTY)
       ! Exit if the entry with the same key was found
       if( self % map(hash) % key == key) exit
 
@@ -111,8 +135,9 @@ contains
     if (self % map(hash) % key /= key) self % Load = self % Load +1
 
     ! Load key and value
-    self % map(hash) % key = key
-    self % map(hash) % val = val
+    self % map(hash) % key    = key
+    self % map(hash) % val    = val
+    self % map(hash) % status = TAKEN
 
   end subroutine add
 
@@ -131,7 +156,7 @@ contains
     hash = knuthHash(key, self % Nexp) + 1
 
     ! Look for the entry
-    do while (self % map(hash) % key /= EMPTY)
+    do while (self % map(hash) % status /= EMPTY)
       ! Exit if the entry with the same kay was found
       if( self % map(hash) % key == key) then
         val = self % map(hash) % val
@@ -163,7 +188,7 @@ contains
     ! Loop throuth current table and rehash non-empty entries
     do i=1,self % N
       associate (entry => self % map(i) )
-        if(entry % key /= EMPTY) then
+        if(entry % status /= EMPTY) then
           call tempMap % add( entry % key, entry % val)
 
         end if

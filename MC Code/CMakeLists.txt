@@ -3,7 +3,7 @@ project(SCONE)
 ##############################################################################
 # DEFINE COMPILATION OPTIONS 
 
-option(BUILD_TESTS "If is set to ON will compile tests" OFF)
+option(BUILD_TESTS "If is set to ON will compile tests" ON)
 
 
 ###############################################################################
