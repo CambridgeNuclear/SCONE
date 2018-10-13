@@ -137,15 +137,15 @@ add_subdirectory(ParticleObjects)
 
 add_subdirectory(NuclearData)      
 add_subdirectory(GeometryObjects)  
-add_subdirectory(Tallies)
+#add_subdirectory(Tallies)
 
-add_subdirectory(CollisionOperator)
-add_subdirectory(TransportOperator)
+#add_subdirectory(CollisionOperator)
+#add_subdirectory(TransportOperator)
 
-add_subdirectory(MOCObjects) 
+#add_subdirectory(MOCObjects) 
 add_subdirectory(UserInterface)
 
-add_subdirectory(PhysicsPackages)
+#add_subdirectory(PhysicsPackages)
 
 ###############################################################################
 # COPY GLOBAL PROPERTY  SRC_LIST TO VARIABLE SRCS  
@@ -175,8 +175,8 @@ add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
 #add_executable(parser.out         ./Apps/testACE.f90           ${SRCS})
 #add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${SRCS})
 #add_executable(surfTests.f90       ./Apps/surfTests.f90      ${SRCS})
-add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${SRCS})
-add_executable(scone.out       ./Apps/scone.f90      ${SRCS})
+#add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${SRCS})
+#add_executable(scone.out       ./Apps/scone.f90      ${SRCS})
 
 ###############################################################################
 # COMPILE TESTS 

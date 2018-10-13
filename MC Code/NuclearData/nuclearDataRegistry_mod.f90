@@ -1,7 +1,7 @@
 !!
 !! Module to build nuclear data classes and store information (names + pointers) about them
 !!
-module nuclearDataFactory_func
+module nuclearDataRegistry_mod
 
   use numPrecision
   use genericProcedures, only : fatalError
@@ -33,10 +33,30 @@ module nuclearDataFactory_func
                                                                         'isotropicMG', &
                                                                         'transMG    ', &
                                                                         'P1MG       ']
+  !!
+  !! Helper structure to store pointers to multiple nuclear data
+  !! objects in an array
+  !!
+  type, private :: nuclearDataBox
+    character(nameLen)          :: name
+    class(nuclearData), pointer :: data  => null()
+  end type nuclearDataBox
 
-  public :: new_nuclearData_ptr
+
+  !public :: new_nuclearData_ptr
+
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Module Components
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  type(nuclearDataBox),dimension(:),allocatable :: nucData
+
 
 contains
+
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!!
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Builds and allocates an instance of nuclear data from dictionary
@@ -103,4 +123,20 @@ contains
 
   end function new_nuclearData_ptr
 
-end module nuclearDataFactory_func
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Public Interface of the module
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Given with a dictionary this subroutine builds all nuclear data representations
+  !!
+  subroutine nuclearData_buildMaterials(dict)
+    class(dictionary), intent(in) :: dict
+
+
+
+  end subroutine nuclearData_buildMaterials
+
+
+
+end module nuclearDataRegistry_mod
