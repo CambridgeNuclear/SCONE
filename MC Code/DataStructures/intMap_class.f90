@@ -15,6 +15,7 @@ module intMap_class
 
   !!
   !! Helper type to wrap key and value
+  !! Also contains status of the entry
   !!
   type, private :: content
     integer(shortInt) :: status = EMPTY
@@ -39,13 +40,14 @@ module intMap_class
     procedure :: get
     procedure :: getOrDefault
     procedure :: kill
-    !procedure :: remove
-    procedure, private :: grow
 
+    ! Private procedures
+    procedure, private :: grow
   end type intMap
 
 
 contains
+
   !!
   !! Initialise intMap with a desired size
   !! It will be allocated to size equal to smallest larger power of 2 > N
@@ -225,7 +227,7 @@ contains
     ! Loop throuth current table and rehash non-empty entries
     do i=1,self % N
       associate (entry => self % map(i) )
-        if(entry % status /= EMPTY) then
+        if(entry % status == TAKEN) then
           call tempMap % add( entry % key, entry % val)
 
         end if
