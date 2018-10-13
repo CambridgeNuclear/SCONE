@@ -344,6 +344,69 @@ contains
 
   end subroutine testGettingNestedDictionary
 
+  !!
+  !!
+  !!
+@Test
+  subroutine testPointerPassing(this)
+    class(test_dictionary), intent(inout)        :: this
+    type(dictionary)                      :: temp
+    real(defReal)                         :: tempReal
+    integer(shortInt)                     :: tempInt
+    character(nameLen)                    :: tempCharNameLen
+    character(pathLen)                    :: tempCharPathLen
+    real(defReal),dimension(:),allocatable        :: tempRealArray
+    integer(shortInt), dimension(:), allocatable  :: tempIntArray
+    character(nameLen), dimension(:), allocatable :: tempCharArrayNameLen
+    character(pathLen), dimension(:), allocatable :: tempCharArrayPathLen
+    logical(defBool)                      :: isSame
+
+    ! Retrieve pointer in a subroutine
+    ! It is to test whether pointer to a nested dictionary
+    ! going out of scope upon subroutine termination
+    ! causes deallocation of memory.
+    !
+    call getAndFinalPointer(this % dict)
+
+    call this % dict % get(temp,'nestedDict')
+
+    ! Get all contents of the dictionary
+    call temp % get(tempReal, 'myReal')
+    call temp % get(tempint, 'myInt')
+    call temp % get(tempCharNameLen, 'myCharNameLen')
+    call temp % get(tempCharPathLen, 'myCharPathLen')
+    call temp % get(tempRealArray, 'realArray')
+    call temp % get(tempIntArray, 'intArray')
+    call temp % get(tempCharArrayNameLen, 'charNameLenArray')
+    call temp % get(tempCharArrayPathLen, 'charPathLenArray')
+
+    ! Verify that content was not deformed
+    isSame = tempReal == realVal
+    isSame = isSame .and. tempInt == intVal
+    isSame = isSame .and. tempCharNameLen == charNameLen
+    isSame = isSame .and. tempCharPathLen == charPathLen
+    isSame = isSame .and. all(tempIntArray == intArray)
+    isSame = isSame .and. all(tempRealArray == realArray)
+    isSame = isSame .and. all(tempCharArrayNameLen == charNameLenArray)
+    isSame = isSame .and. all(tempCharArrayPathLen == charPathLenArray)
+
+    @assertTrue(isSame, 'Contents of nested dictionary were changed')
+
+  end subroutine testPointerPassing
+
+  !!
+  !!
+  !!
+  subroutine getAndFinalPointer(dict)
+    class(dictionary), intent(in) :: dict
+    class(dictionary),pointer     :: ptr
+    logical(defBool)              :: myBool
+
+    ptr => dict % getDictPtr('nestedDict')
+    myBool = ptr % isPresent('bla')
+
+  end subroutine getAndFinalPointer
+
 !!
 !! Test keys retrival
 !!
