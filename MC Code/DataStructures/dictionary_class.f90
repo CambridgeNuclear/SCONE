@@ -55,6 +55,7 @@ module dictionary_class
   !      keyword error is returned
   !    - if <type> is array character and its length is too short to fit the trimmed content inder
   !      keyword error is returned
+  !    - if get is used to retrieve dictionary deep copy is made and dictionary is of type ROOT
   !
   ! 2) getOrDefault(<type>,keyword,default)
   !    - getOrDefault does not support <type> = dictionary
@@ -118,6 +119,7 @@ module dictionary_class
     ! Dictionary storage array
     character(nameLen),dimension(:),allocatable  :: keywords
     type(dictContent),dimension(:), allocatable  :: entries
+
     ! Dictionary state information
     integer(shortInt)                            :: maxSize = 0         ! Maximum size of a dictionary
     integer(shortInt)                            :: dictLen = 0         ! Current size of the dictionary
@@ -133,6 +135,7 @@ module dictionary_class
                            store_dict
     procedure  :: isPresent
     procedure  :: getSize
+    procedure  :: getDictPtr
 
     generic    :: get => getReal_new,&
                          getRealArray_alloc_new,&
@@ -718,6 +721,32 @@ contains
     end select
 
   end subroutine getDict_new
+
+  !!
+  !! Returns pointer to the nested dictionary
+  !!
+  function getDictPtr(self, keyword) result(ptr)
+    class(dictionary), intent(in) :: self
+    character(*),intent(in)       :: keyword
+    integer(shortInt)             :: idx
+    class(dictionary),pointer     :: ptr
+    character(100),parameter      :: Here='getDictPtr (dictionary_class.f90)'
+
+
+    idx = linFind(self % keywords, keyword)
+    call searchError(idx,Here)
+
+    select case (self % entries(idx) % getType())
+      case(nestDict)
+        ptr => self % entries(idx) % dict0_alloc
+
+      case default
+        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
+
+    end select
+
+  end function getDictPtr
+
 
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
@@ -1329,7 +1358,6 @@ contains
     self % entries(idx) % type = arrWord
 
   end subroutine store_charArray
-
 
   !!
   !! Stores a dictionary rank 0 in dictionary
