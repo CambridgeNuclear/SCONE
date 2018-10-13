@@ -37,6 +37,7 @@ module intMap_class
     procedure :: init
     procedure :: add
     procedure :: get
+    procedure :: getOrDefault
     procedure :: kill
     !procedure :: remove
     procedure, private :: grow
@@ -173,6 +174,42 @@ contains
     call fatalError(Here,'Target key: '// numToChar(key) // ' was not found')
 
   end function get
+
+  !!
+  !! Returns entry under key.
+  !! If key is not present return val == default
+  !!
+  function getOrDefault(self,key,default) result(val)
+    class(intMap), intent(in)     :: self
+    integer(shortInt), intent(in) :: key
+    integer(shortInt), intent(in) :: default
+    integer(shortInt)             :: val
+    integer(shortInt)             :: hash
+
+    ! Calculate Hash
+    hash = knuthHash(key, self % Nexp) + 1
+
+    ! Look for the entry
+    do while (self % map(hash) % status /= EMPTY)
+      ! Exit if the entry with the same kay was found
+      if( self % map(hash) % key == key) then
+        val = self % map(hash) % val
+        return
+
+      end if
+      ! Increment position
+      hash = hash + 1
+      ! Go to the beggining of table if overflow
+      if(hash > self % N) hash = 1
+
+    end do
+
+    ! Entry was not found -> return default
+    val = default
+
+  end function getOrDefault
+
+
 
   !!
   !! Increase size of the map by factor of 2

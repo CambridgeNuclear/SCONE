@@ -102,6 +102,49 @@ contains
 
   end subroutine testRetrieval
 
+  !!
+  !! Test getting entery with default for absent keys
+  !!
+@Test
+  subroutine testGetOrDefault(this)
+    class(test_intMap), intent(inout) :: this
+    integer(shortInt)                 :: temp
+    integer(shortInt)                 :: default = 8
+
+    ! Google says its Chinese Lucky number. We do need luck
+    default = 8
+
+    ! Retrieve present entries. Do all cases to spot possible
+    ! small differences between get and getOrDefault implementations
+    temp = this % map % getOrDefault(KEY1, default)
+    @assertEqual(VAL1, temp)
+
+    temp = this % map % getOrDefault(KEY2, default)
+    @assertEqual(VAL2, temp)
+
+    temp = this % map % getOrDefault(KEY3, default)
+    @assertEqual(VAL3, temp)
+
+    temp = this % map % getOrDefault(KEY4, default)
+    @assertEqual(VAL4, temp)
+
+    temp = this % map % getOrDefault(KEY5, default)
+    @assertEqual(VAL5, temp)
+
+    temp = this % map % getOrDefault(KEY6, default)
+    @assertEqual(VAL6, temp)
+
+    temp = this % map % getOrDefault(KEY7, default)
+    @assertEqual(VAL7, temp)
+
+    ! Get default. (Yes I love Tolkien - MAK)
+    @assertEqual(default, this % map % getOrDefault(1973,default))
+
+  end subroutine testGetOrDefault
+
+  !!
+  !! Test putting new entry under exoisting key
+  !!
 @Test
   subroutine testOverwriting(this)
     class(test_intMap), intent(inout) :: this
