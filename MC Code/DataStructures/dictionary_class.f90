@@ -419,7 +419,6 @@ contains
 
   end function getSize
 
-
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
   !! If keyword is associated with an integer it converts it to real
