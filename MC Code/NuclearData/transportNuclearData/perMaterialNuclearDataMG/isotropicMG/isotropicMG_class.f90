@@ -83,15 +83,12 @@ contains
   !!
   !! Load material data from a dictionary
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict, matNames)
     class(isotropicMG), intent(inout)           :: self
     class(dictionary), intent(in)               :: dict
-    type(dictionary)                            :: tempDict
-    character(nameLen),dimension(:),allocatable :: matNames
+    character(nameLen),dimension(:),intent(in)  :: matNames
+    class(dictionary), pointer                  :: tempDict => null()
     integer(shortInt)                           :: nG,nMat,matIdx
-
-    ! Read material names
-    call dict % keysDict(matNames)
 
     ! Read number of energy groups and materials
     call dict % get(nG, 'numberOfGroups')
@@ -118,7 +115,7 @@ contains
 
     ! Read individual material data
     do matIdx=1,nMat
-      call dict % get(tempDict, self % matData(matIdx) % matName)
+      tempDict => dict % getDictPtr(self % matData(matIdx) % matName)
       call self % readMaterial(tempDict, matIdx, self % nG)
     end do
 

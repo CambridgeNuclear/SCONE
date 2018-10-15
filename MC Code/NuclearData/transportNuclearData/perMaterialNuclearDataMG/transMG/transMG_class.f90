@@ -31,14 +31,11 @@ contains
   !!
   !! Initialise transMG
   !!
-  subroutine init(self, dict)
-    class(transMG), intent(inout)  :: self
-    class(dictionary), intent(in) :: dict
-    integer(shortInt)             :: nG, nMat
-    character(nameLen),dimension(:),allocatable :: matNames
-
-    ! Read material names
-    call dict % keysDict(matNames)
+  subroutine init(self, dict, matNames)
+    class(transMG), intent(inout)                :: self
+    class(dictionary), intent(in)                :: dict
+    character(nameLen), dimension(:), intent(in) :: matNames
+    integer(shortInt)                            :: nG, nMat
 
     ! Read number of energy groups and materials
     call dict % get(nG, 'numberOfGroups')
@@ -48,7 +45,7 @@ contains
     allocate(self % transportXSs(nG,nMat))
 
     ! Call superclass initialisation (note that it will call extended readMaterial in this module)
-    call init_super(self,dict)
+    call init_super(self, dict, matNames)
 
   end subroutine init
 

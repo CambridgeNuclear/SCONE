@@ -14,45 +14,31 @@ module datalessMaterials_class
   !! Stores material names and indices without any nuclear data information
   !!
   type, public,extends(nuclearData) :: datalessMaterials
-   !* private
+    private
     character(nameLen), dimension(:), allocatable :: materials ! the names of each material
 
   contains
-    generic :: init => init_fromArray, init_fromDict
+    procedure :: init
     procedure :: getIdx
     procedure :: getName
-
-    procedure, private :: init_fromArray
-    procedure, private :: init_fromDict
 
   end type datalessMaterials
 
 contains
+
   !!
-  !! Initialisation from an array of material names
+  !! Initialisation from a dictionary
   !!
-  subroutine init_fromArray(self, matNames)
-    class(datalessMaterials), intent(inout) :: self
-    character(*),dimension(:)               :: matNames
+  subroutine init(self, dict, matNames)
+    class(datalessMaterials), intent(inout)     :: self
+    class(dictionary), intent(in)               :: dict
+    character(nameLen),dimension(:), intent(in) :: matNames
 
     if(allocated(self % materials)) deallocate(self % materials)
 
     self % materials = matNames
 
-  end subroutine init_fromArray
-    
-  !!
-  !! Initialisation from a dictionary
-  !!
-  subroutine init_fromDict(self,dict)
-    class(datalessMaterials), intent(inout) :: self
-    class(dictionary), intent(in)           :: dict
-
-    if(allocated(self % materials)) deallocate(self % materials)
-
-    call dict % keysDict(self % materials)
-
-  end subroutine init_fromDict
+  end subroutine init
 
   !!
   !! Returns material index for given material name

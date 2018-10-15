@@ -14,8 +14,6 @@ module perMaterialMgXs_inter
   type, public,extends(nuclearData), abstract :: perMaterialMgXs
     private
   contains
-    ! Initialisation
-    procedure(init), deferred            :: init
 
     ! Procedures to obtain XSs
     procedure(getMatMacroXS), deferred   :: getMatMacroXS
@@ -38,16 +36,6 @@ module perMaterialMgXs_inter
 
 
   abstract interface
-
-    !!
-    !! Initialise from dictionary
-    !!
-    subroutine init(self,dict)
-      import :: perMaterialMgXS, &
-                dictionary
-      class(perMaterialMgXS), intent(inout) :: self
-      class(dictionary), intent(in)         :: dict
-    end subroutine init
 
     !!
     !! Interface to obtain main XS of the material

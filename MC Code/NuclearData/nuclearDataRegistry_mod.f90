@@ -21,7 +21,7 @@ module nuclearDataRegistry_mod
   use P1MG_class,        only : P1MG
 
   implicit none
-  private
+!  private
 
   ! *** ADD NAME OF A NEW NUCLEAR DATA HERE ***!
   ! List that contains all accaptable types of nuclear data
@@ -61,65 +61,44 @@ contains
   !!
   !! Builds and allocates an instance of nuclear data from dictionary
   !!
-  function new_nuclearData_ptr(dict) result(new)
-    class(dictionary), intent(in)         :: dict
-    class(nuclearData), pointer           :: new
-    character(nameLen)                    :: type
+  function new_nuclearData_ptr(dict, type, matNames) result(new)
+    class(dictionary), intent(in)              :: dict
+    character(nameLen),intent(in)              :: type
+    character(nameLen),dimension(:),intent(in) :: matNames
+    class(nuclearData), pointer                :: new
     character(100),parameter :: Here = 'new_nuclearData_ptr (nuclearDataFactory_func.f90)'
-
-    ! Obtain string that specifies type to be built
-    call dict % get(type,'type')
 
     ! Allocate approperiate subclass of nuclear data
     ! *** ADD CASE STATEMENT FOR A NEW NUCLEAR DATA BELOW ***!
-    ! **** AT THE MOMENT ALLOCATE + SELECT TYPE + INIT is very unelegant implementation
-    ! **** Will have to be improved
     select case(type)
       case('byNucNoMT')
         ! Allocate and initialise
         allocate( byNucNoMT :: new)
-        select type(new)
-          type is (byNucNoMT)
-            call new % init(dict)
-        end select
 
       case('byNucMT')
         ! Allocate and initialise
         allocate( byNucMT :: new)
-        select type(new)
-          type is (byNucMT)
-            call new % init(dict)
-        end select
 
       case('isotropicMG')
         ! Allocate and initialise
         allocate( isotropicMG :: new)
-        select type(new)
-          type is (isotropicMG)
-            call new % init(dict)
-        end select
 
       case('transMG')
         ! Allocate and initialise
         allocate( transMG :: new)
-        select type(new)
-          type is (transMG)
-            call new % init(dict)
-        end select
 
       case('P1MG')
         ! Allocate and initialise
         allocate( P1MG :: new)
-        select type(new)
-          type is (P1MG)
-            call new % init(dict)
-        end select
 
       case default
         print *, AVALIBLE_nuclearData
         call fatalError(Here, 'Unrecognised type of nuclearData: ' // trim(type))
 
     end select
+
+    ! Initialise an instance of data
+    call new % init(dict, matNames)
 
   end function new_nuclearData_ptr
 
@@ -128,12 +107,22 @@ contains
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
-  !! Given with a dictionary this subroutine builds all nuclear data representations
+  !! Given a dictionary this subroutine builds all nuclear data representations
   !!
   subroutine nuclearData_buildMaterials(dict)
     class(dictionary), intent(in) :: dict
+    class(dictionary), pointer    :: handlesDict   => null()
+    class(dictionary), pointer    :: materialsDict => null()
 
+    ! Obtain dictionaries
+    handlesDict   => dict % getDictPtr('handles')
+    materialsDict => dict % getDictPtr('materials')
 
+    ! Loop over all handles and build data representations and handle name -> handleIdx map
+
+    ! Loop over materials and load them into charMap (be carefull to preserve order).
+
+    ! Verify material order for all data types
 
   end subroutine nuclearData_buildMaterials
 

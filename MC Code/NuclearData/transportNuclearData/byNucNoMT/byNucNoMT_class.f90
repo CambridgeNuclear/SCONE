@@ -79,13 +79,16 @@ module byNucNoMT_class
   end type byNucNoMT
 
 contains
-  subroutine init(self,dict)
-    class(byNucNoMT), intent(inout)      :: self
-    class(dictionary), intent(in)        :: dict
-    type(aceNoMT),pointer                :: nucPtr
-    type(materialDataNoMt),pointer       :: matPtr
-    integer(shortInt)                    :: numNuclide, numMaterials
-    integer(shortInt)                    :: i
+
+
+  subroutine init(self,dict,matNames)
+    class(byNucNoMT), intent(inout)              :: self
+    class(dictionary), intent(in)                :: dict
+    character(nameLen), dimension(:), intent(in) :: matNames
+    type(aceNoMT),pointer                        :: nucPtr
+    type(materialDataNoMt),pointer               :: matPtr
+    integer(shortInt)                            :: numNuclide, numMaterials
+    integer(shortInt)                            :: i
     character(100), parameter            :: Here = 'init (byNUcNoMT_class.f90)'
 
     ! Check if material data was alrady read. If it was return error becouse prodecures
@@ -94,7 +97,7 @@ contains
 
     ! Read Material data into a shared "fat" object
     allocate(self % dataBlock)
-    call self % dataBlock % init(dict)
+    call self % dataBlock % init(dict, matNames)
 
     ! Allocate space for nuclide and material shelfs
     numNuclide   = size(self % dataBlock % nucXsData)

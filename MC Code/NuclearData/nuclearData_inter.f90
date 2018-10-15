@@ -1,6 +1,7 @@
 module nuclearData_inter
 
   use numPrecision
+  use dictionary_class, only : dictionary
 
   implicit none
   private
@@ -18,12 +19,27 @@ module nuclearData_inter
   type,abstract, public :: nuclearData
     private
   contains
+    procedure(init), deferred     :: init
     procedure(getIdx), deferred   :: getIdx
     procedure(getName), deferred  :: getName
 
   end type nuclearData
 
   abstract interface
+
+    !!
+    !! Initialise nuclear data
+    !! from material dictionary
+    !! and an array of material names, that specifies material indices
+    !!
+    subroutine init(self, dict, matNames)
+      import :: nuclearData, &
+                dictionary, &
+                nameLen
+      class(nuclearData), intent(inout)            :: self
+      class(dictionary), intent(in)                :: dict
+      character(nameLen), dimension(:), intent(in) :: matNames
+    end subroutine init
 
     !!
     !! Returns material index for given material name

@@ -46,12 +46,13 @@ contains
   !!
   !! Subroutine to build byNucNoMT_Data from dictionary
   !!
-  subroutine init(self,matDict)
-    class(byNucNoMT_Data), intent(inout)        :: self
-    class(dictionary), intent(in)               :: matDict
-    character(pathLen)                          :: nuclideLib
+  subroutine init(self,matDict, matNames)
+    class(byNucNoMT_Data), intent(inout)         :: self
+    character(nameLen), dimension(:), intent(in) :: matNames
+    class(dictionary), intent(in)                :: matDict
+    character(pathLen)                           :: nuclideLib
 
-    call self % readMaterials(matDict)
+    call self % readMaterials(matDict, matNames)
 
     call self % createNuclideList()
 
@@ -69,16 +70,13 @@ contains
   !! Reads materials data from dictionary.
   !! All data except nuclide indexes is assigned.
   !!
-  subroutine readMaterials(self,matDict)
-    class(byNucNoMT_Data), intent(inout)        :: self
-    class(dictionary), intent(in)               :: matDict
-    type(dictionary)                            :: locDict
-    character(nameLen)                          :: matName
-    integer(shortInt)                           :: nMat, i
-    character(nameLen),dimension(:),allocatable :: matNames
-
-    ! Load material names
-    call matDict % keysDict(matNames)
+  subroutine readMaterials(self,matDict,matNames)
+    class(byNucNoMT_Data), intent(inout)         :: self
+    class(dictionary), intent(in)                :: matDict
+    character(nameLen), dimension(:), intent(in) :: matNames
+    class(dictionary),pointer                    :: locDict
+    character(nameLen)                           :: matName
+    integer(shortInt)                            :: nMat, i
 
     ! Find number of materials
     nMat = size(matNames )
@@ -89,7 +87,7 @@ contains
     ! Load individual material data
     do i=1,nMat
       matName = matNames(i)
-      call matDict % get(locDict, matName)
+      locDict => matDict % getDictPtr(matName)
       call self % matData(i) % init(locDict, matName)
 
     end do
