@@ -23,7 +23,13 @@ module nuclearDataRegistry_mod
   use P1MG_class,              only : P1MG
 
   implicit none
-!  private
+  private
+
+  ! Module public interface
+  public :: build_nuclearData
+  public :: kill_nuclearData
+  public :: getMatIdx
+  public :: getHandlePtr
 
   ! *** ADD NAME OF A NEW NUCLEAR DATA HERE ***!
   ! List that contains all accaptable types of nuclear data
@@ -54,6 +60,7 @@ module nuclearDataRegistry_mod
 
   type(nuclearDataBox),dimension(:),allocatable :: nucData
   type(charMap)                                 :: matNames
+  type(charMap)                                 :: handleNames
 
 contains
 
@@ -116,7 +123,7 @@ contains
   !!
   !! Given a dictionary this subroutine builds all nuclear data representations
   !!
-  subroutine nuclearData_buildMaterials(dict)
+  subroutine build_NuclearData(dict)
     class(dictionary), intent(in)               :: dict
     class(dictionary), pointer                  :: handlesDict   => null()
     class(dictionary), pointer                  :: materialsDict => null()
@@ -133,6 +140,13 @@ contains
     call handlesDict % keys(names)
     allocate(nucData( size(names) ))
     nucData % name = names
+
+    ! Load handles names into charMap
+    call handleNames % init(size(names))
+    do i=1,size(names)
+      call handleNames % add(names(i), i)
+
+    end do
 
     ! Loop over materials and load them into charMap (be carefull to preserve order).
     call materialsDict % keysDict(names)
@@ -159,12 +173,55 @@ contains
       end do
     end do
 
-  end subroutine nuclearData_buildMaterials
+  end subroutine build_NuclearData
+
+  !!
+  !! Given name of the material return its index
+  !!
+  function getMatIdx(matName) result(idx)
+    character(nameLen), intent(in) :: matName
+    integer(shortInt)              :: idx
+    integer(shortInt), parameter   :: NOT_FOUND = -huge(idx)
+    character(100),parameter :: Here ='getMatIdx (nuclearDataRegistry_mod.f90)'
+
+    idx = matNames % getOrDefault(matName, NOT_FOUND)
+    if (idx == NOT_FOUND) then
+      call fatalError(Here,'Material '// trim(matName) // ' is not defined')
+
+    else if (idx <= 0) then
+      call fatalError(Here,'material index is 0 or -ve. WTF?')
+
+    end if
+
+  end function getMatIdx
+
+  !!
+  !! Return pointer to nuclear data handle with the given name
+  !!
+  function getHandlePtr(handleName) result(ptr)
+    character(nameLen), intent(in) :: handleName
+    class(nuclearData),pointer     :: ptr
+    integer(shortInt)              :: idx
+    integer(shortInt), parameter   :: NOT_FOUND = -huge(idx)
+    character(100),parameter :: Here ='getHandlePtr (nuclearDataRegistry_mod.f90)'
+
+    idx = handleNames % getOrDefault(handleName, NOT_FOUND)
+    if (idx == NOT_FOUND) then
+      call fatalError(Here,'Handle '// trim(handleName) // ' is not defined')
+
+    else if (idx <= 0) then
+      call fatalError(Here,'handle index is 0 or -ve. WTF?')
+
+    end if
+
+    ptr => nucData(idx) % data
+
+  end function getHandlePtr
 
   !!
   !! Deallocate memory taken by nuclear data
   !!
-  subroutine nuclearData_kill()
+  subroutine kill_nuclearData()
     integer(shortInt) :: i
 
     if(allocated(nucData)) then
@@ -178,7 +235,8 @@ contains
     end if
 
     call matNames % kill()
+    call handleNames % kill()
 
-  end subroutine nuclearData_kill
+  end subroutine kill_nuclearData
 
 end module nuclearDataRegistry_mod

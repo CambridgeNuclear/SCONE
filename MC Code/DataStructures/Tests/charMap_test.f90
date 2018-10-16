@@ -159,5 +159,4 @@ contains
 
   end subroutine testOverwriting
 
-
 end module charMap_test
