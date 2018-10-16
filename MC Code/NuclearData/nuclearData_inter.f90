@@ -22,6 +22,7 @@ module nuclearData_inter
     procedure(init), deferred     :: init
     procedure(getIdx), deferred   :: getIdx
     procedure(getName), deferred  :: getName
+    procedure(kill), deferred     :: kill
 
   end type nuclearData
 
@@ -67,6 +68,16 @@ module nuclearData_inter
       character(nameLen)             :: matName
 
     end function getName
+
+    !!
+    !! Deallocate memory occupied by nuclearData
+    !!
+    elemental subroutine kill(self)
+      import :: nuclearData
+      class(nuclearData), intent(inout) :: self
+
+    end subroutine kill
+
 
   end interface
     

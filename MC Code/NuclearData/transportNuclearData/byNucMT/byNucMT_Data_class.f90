@@ -28,6 +28,7 @@ module byNucMT_Data_class
 
   contains
     procedure :: init
+    procedure :: kill
     procedure :: printMe
 
     procedure,private :: readMaterials
@@ -63,6 +64,21 @@ contains
     call self % setFissileMaterials
 
   end subroutine init
+
+  !!
+  !!
+  !!
+  elemental subroutine kill(self)
+    class(byNucMT_Data), intent(inout) :: self
+
+    if(associated( self % matData))   deallocate( self % matData)
+    if(associated( self % nucNames))  deallocate( self % nucNames)
+
+    call self % nucXSData % kill()
+    if(associated( self % nucXsData)) deallocate( self % nucXsData)
+
+  end subroutine kill
+
 
   !!
   !! Reads materials data from dictionary.

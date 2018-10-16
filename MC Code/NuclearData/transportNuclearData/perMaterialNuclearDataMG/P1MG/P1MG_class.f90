@@ -8,6 +8,7 @@ module P1MG_class
   use dictionary_class,   only : dictionary
   use IOdictionary_class, only : IOdictionary
   use isotropicMG_class,  only : isotropicMG, init_super         => init,        &
+                                              kill_super         => kill,        &
                                               readMaterial_super => readMaterial,&
                                               activeIdx_super    => activeIdx
   implicit none
@@ -23,6 +24,7 @@ module P1MG_class
   contains
     ! Overwrite key isotropicMG procedures
     procedure :: init
+    procedure :: kill
     procedure :: readMaterial
     procedure :: sampleMuGout
   end type P1MG
@@ -49,6 +51,18 @@ contains
     call init_super(self,dict, matNames)
 
   end subroutine init
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(P1MG), intent(inout) :: self
+
+    if(allocated(self % P1)) deallocate(self % P1)
+    call kill_super(self)
+
+  end subroutine kill
+
 
   !!
   !! Extend superclass subroutine to read additional data to produce P1 transport corrected

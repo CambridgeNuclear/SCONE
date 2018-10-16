@@ -5,6 +5,7 @@ module transMG_class
   use dictionary_class,   only : dictionary
   use IOdictionary_class, only : IOdictionary
   use isotropicMG_class,  only : isotropicMG, init_super         => init,        &
+                                              kill_super         => kill,        &
                                               readMaterial_super => readMaterial,&
                                               activeIdx_super    => activeIdx
 
@@ -20,6 +21,7 @@ module transMG_class
   contains
     ! Overwrite key isotropicMG procedures
     procedure         :: init
+    procedure         :: kill
     procedure,private :: readMaterial
     procedure         :: calculateMajorant
     procedure         :: getTransXS_G
@@ -48,6 +50,18 @@ contains
     call init_super(self, dict, matNames)
 
   end subroutine init
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(transMG), intent(inout) :: self
+
+    if(allocated(self % transportXSs)) deallocate( self % transportXSs)
+    call kill_super(self)
+
+  end subroutine kill
+
 
   !!
   !! Extend superclass subroutine to read additional data to produce P1 transport corrected

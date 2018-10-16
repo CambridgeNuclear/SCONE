@@ -15,11 +15,12 @@ module nuclearDataRegistry_mod
   use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Individual implementations
-  use byNucNoMT_class,   only : byNucNoMT
-  use byNucMT_class,     only : byNucMT
-  use isotropicMG_class, only : isotropicMG
-  use transMG_class,     only : transMG
-  use P1MG_class,        only : P1MG
+  use datalessMaterials_class, only : datalessMaterials
+  use byNucNoMT_class,         only : byNucNoMT
+  use byNucMT_class,           only : byNucMT
+  use isotropicMG_class,       only : isotropicMG
+  use transMG_class,           only : transMG
+  use P1MG_class,              only : P1MG
 
   implicit none
 !  private
@@ -29,11 +30,12 @@ module nuclearDataRegistry_mod
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_nuclearData = [ 'byNucNoMT  ', &
-                                                                        'byNucMT    ', &
-                                                                        'isotropicMG', &
-                                                                        'transMG    ', &
-                                                                        'P1MG       ']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_nuclearData = [ 'byNucNoMT        ', &
+                                                                        'byNucMT          ', &
+                                                                        'isotropicMG      ', &
+                                                                        'transMG          ', &
+                                                                        'P1MG             ', &
+                                                                        'datalessMaterials']
   !!
   !! Helper structure to store pointers to multiple nuclear data
   !! objects in an array
@@ -92,6 +94,10 @@ contains
         ! Allocate and initialise
         allocate( P1MG :: new)
 
+      case('datalessMaterials')
+        ! Allocate
+        allocate( datalessMaterials :: new)
+
       case default
         print *, AVALIBLE_nuclearData
         call fatalError(Here, 'Unrecognised type of nuclearData: ' // trim(type))
@@ -139,7 +145,7 @@ contains
     ! Build nuclear data representations
     do i=1,size(nucData)
       call handlesDict % get(type, nucData(i) % name)
-      nucData(i) % data => new_nuclearData_ptr(materialsDict, type, names)
+      nucData(i) % data  => new_nuclearData_ptr(materialsDict, type, names)
 
     end do
 
@@ -153,7 +159,26 @@ contains
       end do
     end do
 
-
   end subroutine nuclearData_buildMaterials
+
+  !!
+  !! Deallocate memory taken by nuclear data
+  !!
+  subroutine nuclearData_kill()
+    integer(shortInt) :: i
+
+    if(allocated(nucData)) then
+      ! Deallocate data
+      do i=1,size(nucData)
+        call nucData(i) % data % kill()
+      end do
+      ! Deallocate containers
+      deallocate(nucData)
+
+    end if
+
+    call matNames % kill()
+
+  end subroutine nuclearData_kill
 
 end module nuclearDataRegistry_mod

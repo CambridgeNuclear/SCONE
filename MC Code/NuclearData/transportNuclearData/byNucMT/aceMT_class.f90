@@ -53,6 +53,7 @@ module aceMT_class
 
   contains
     procedure :: init
+    procedure :: kill
     procedure :: energyIdxFor
     procedure :: sampleMuEout
     procedure :: releaseAt
@@ -233,6 +234,19 @@ contains
     call self % readXS(ACE)
 
   end subroutine init
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(aceMT), intent(inout) :: self
+
+    if (allocated(self % energyGrid)) deallocate(self % energyGrid)
+    if (associated(self % xsData)) deallocate(self % xsData)
+    if (allocated(self % MTreactions)) deallocate(self % MTreactions)
+
+  end subroutine kill
+
 
   !!
   !! Read cross-sections into type variables from NXS,JXS and XSS tabels

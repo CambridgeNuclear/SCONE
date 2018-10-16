@@ -44,6 +44,7 @@ module aceNoMT_class
 
   contains
     procedure :: init
+    procedure :: kill
     procedure :: energyIdxFor
     procedure :: sampleMuEout
     procedure :: releaseAt
@@ -180,6 +181,17 @@ contains
   end subroutine init
 
   !!
+  !! Deallocate memory
+  !!
+  elemental subroutine kill(self)
+    class(aceNoMT), intent(inout) :: self
+
+    if(associated(self % xsData)) deallocate(self % xsData)
+
+  end subroutine kill
+
+
+  !!
   !! Read cross-sections into type variables from NXS,JXS and XSS tabels
   !! This implementation ignores reaction other then total,elastic scattering, total capture and
   !! fission.
@@ -240,6 +252,8 @@ contains
     end if
 
   end subroutine readXS
+
+
 
 
 end module aceNoMT_class

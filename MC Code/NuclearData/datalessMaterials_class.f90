@@ -19,6 +19,7 @@ module datalessMaterials_class
 
   contains
     procedure :: init
+    procedure :: kill
     procedure :: getIdx
     procedure :: getName
 
@@ -39,6 +40,17 @@ contains
     self % materials = matNames
 
   end subroutine init
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(datalessMaterials), intent(inout) :: self
+
+    if(allocated(self % materials)) deallocate (self % materials)
+
+  end subroutine kill
+
 
   !!
   !! Returns material index for given material name

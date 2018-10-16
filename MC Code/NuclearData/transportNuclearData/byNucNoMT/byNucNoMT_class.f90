@@ -45,6 +45,7 @@ module byNucNoMT_class
 
   contains
     procedure :: init
+    procedure :: kill
     procedure :: readFrom
 
     ! Nuclear Data Interface Procedures
@@ -125,6 +126,23 @@ contains
 
 
   end subroutine init
+
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(byNucNoMT), intent(inout) :: self
+
+    if(associated(self % nucShelf)) deallocate(self % nucShelf)
+    if(associated(self % matShelf)) deallocate(self % matShelf)
+
+    if(associated(self % dataBlock)) then
+      call self % dataBlock % kill()
+      deallocate(self % dataBlock)
+    end if
+
+  end subroutine kill
 
 
   !!

@@ -45,6 +45,7 @@ module byNucMT_class
 
   contains
     procedure :: init
+    procedure :: kill
 
     ! Nuclear Data Interface Procedures
     procedure :: getIdx
@@ -122,6 +123,22 @@ contains
 
 
   end subroutine init
+
+  !!
+  !! Deallocate space
+  !!
+  elemental subroutine kill(self)
+    class(byNucMT), intent(inout) :: self
+
+    if(associated(self % nucShelf)) deallocate(self % nucShelf)
+    if(associated(self % matShelf)) deallocate(self % matShelf)
+
+    if(associated(self % dataBlock)) then
+      call self % dataBlock % kill()
+      deallocate(self % dataBlock)
+    end if
+
+  end subroutine kill
 
   !!
   !! Returns material index for given material name

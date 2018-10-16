@@ -44,6 +44,7 @@ module isotropicMG_class
 
   contains
     procedure :: init
+    procedure :: kill
 
     ! Nuclear Data Interface Procedures
     procedure :: getIdx
@@ -75,6 +76,7 @@ module isotropicMG_class
 
   !! Procedures that are used by subclasses of isotropicMG
   public :: init
+  public :: kill
   public :: readMaterial
   public :: activeIdx
 
@@ -122,6 +124,20 @@ contains
     call self % calculateMajorant()
 
   end subroutine init
+
+  !!
+  !! Deallocate occupied space
+  !!
+  elemental subroutine kill(self)
+    class(isotropicMG), intent(inout) :: self
+
+    if (associated( self % P_XSs           )) deallocate (self % P_XSs            )
+    if (allocated(  self % P_transferMatrix)) deallocate (self % P_transferMatrix )
+    if (allocated(  self % P_chiValues     )) deallocate (self % P_chiValues      )
+    if (allocated(  self % P_releaseData   )) deallocate (self % P_releaseData    )
+    if (allocated(  self % matData       )) deallocate (self % matData        )
+
+  end subroutine kill
 
   !!
   !! Return matIdx of material with matName
