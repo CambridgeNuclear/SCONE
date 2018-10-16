@@ -4,7 +4,7 @@ program test
   use nuclearData_inter, only : nuclearData
   use IOdictionary_class, only : IOdictionary
   use dictionary_class,   only : dictionary
-  use nuclearDataRegistry_mod, only : new_nuclearData_ptr
+  use nuclearDataRegistry_mod, only : new_nuclearData_ptr, nuclearData_buildMaterials
 
 
   implicit none
@@ -17,18 +17,9 @@ program test
 
   call inDict % initFrom('./InputFiles/FirstInput.c')
 
-  dict => inDict % getDictPtr('materials')
-  call dict % keysDict(matNames)
-  type = 'transMG'
+  dict => inDict % getDictPtr('nuclearData')
 
-  print *, dict % length()
-
-  myPtr => new_nuclearData_ptr(dict,type,matNames)
-
-  do i=1,size(matNames)
-    print *, matNames(i), 'INSIDE: ' , myPtr % getName(i)
-  end do
-
+  call nuclearData_buildMaterials(dict)
 
 
 

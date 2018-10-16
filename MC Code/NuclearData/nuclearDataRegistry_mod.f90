@@ -6,6 +6,7 @@ module nuclearDataRegistry_mod
   use numPrecision
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
+  use charMap_class,     only : charMap
 
   ! Abstract interfaces
   use nuclearData_inter,              only : nuclearData
@@ -50,7 +51,7 @@ module nuclearDataRegistry_mod
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   type(nuclearDataBox),dimension(:),allocatable :: nucData
-
+  type(charMap)                                 :: matNames
 
 contains
 
@@ -110,22 +111,49 @@ contains
   !! Given a dictionary this subroutine builds all nuclear data representations
   !!
   subroutine nuclearData_buildMaterials(dict)
-    class(dictionary), intent(in) :: dict
-    class(dictionary), pointer    :: handlesDict   => null()
-    class(dictionary), pointer    :: materialsDict => null()
+    class(dictionary), intent(in)               :: dict
+    class(dictionary), pointer                  :: handlesDict   => null()
+    class(dictionary), pointer                  :: materialsDict => null()
+    character(nameLen),dimension(:),allocatable :: names
+    character(nameLen)                          :: type
+    integer(shortInt)                           :: i,j
+    character(100),parameter :: Here ='nuclearData_buildMaterials (nuclearDataRegisty_mod.f90)'
 
     ! Obtain dictionaries
     handlesDict   => dict % getDictPtr('handles')
     materialsDict => dict % getDictPtr('materials')
 
-    ! Loop over all handles and build data representations and handle name -> handleIdx map
+    ! Retrieve handles names and allocate storage for pointers
+    call handlesDict % keys(names)
+    allocate(nucData( size(names) ))
+    nucData % name = names
 
     ! Loop over materials and load them into charMap (be carefull to preserve order).
+    call materialsDict % keysDict(names)
+    call matNames % init(size(names))
+    do i=1,size(names)
+      call matNames % add(names(i), i)
+
+    end do
+
+    ! Build nuclear data representations
+    do i=1,size(nucData)
+      call handlesDict % get(type, nucData(i) % name)
+      nucData(i) % data => new_nuclearData_ptr(materialsDict, type, names)
+
+    end do
 
     ! Verify material order for all data types
+    do i=1,size(nucData)
+      do j=1,size(names)
+        if( nucData(i) % data % getIdx(names(j)) /= j) then
+          call fatalError(Here,'Inconsistent material names for representation: '// &
+                                nucData(i) % name)
+        end if
+      end do
+    end do
+
 
   end subroutine nuclearData_buildMaterials
-
-
 
 end module nuclearDataRegistry_mod
