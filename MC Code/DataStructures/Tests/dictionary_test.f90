@@ -521,6 +521,9 @@ contains
     ! Get size of word Array
     @assertEqual(1, this % dict % getSize('charNameLenArray'))
 
+    ! Get length of the dictionary (number of entries)
+    @assertEqual(9, this % dict % length())
+
   end subroutine testGetSize
 
 

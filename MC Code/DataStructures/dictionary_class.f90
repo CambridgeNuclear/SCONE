@@ -136,6 +136,7 @@ module dictionary_class
     procedure  :: isPresent
     procedure  :: getSize
     procedure  :: getDictPtr
+    procedure  :: length => length_dictionary
 
     generic    :: get => getReal_new,&
                          getRealArray_alloc_new,&
@@ -420,6 +421,18 @@ contains
     S = self % entries(idx) % getSize()
 
   end function getSize
+
+  !!
+  !! Return number of non-empty dictionary entries
+  !!
+  pure function length_dictionary(self) result(S)
+    class(dictionary), intent(in) :: self
+    integer(shortInt)             :: S
+
+    S = self % dictLen
+
+  end function length_dictionary
+
 
   !!
   !! Loads a real rank 0 from a dictionary into provided variable

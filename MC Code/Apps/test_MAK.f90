@@ -3,7 +3,8 @@ program test
 
   use nuclearData_inter, only : nuclearData
   use IOdictionary_class, only : IOdictionary
-  use nuclearDataRegistry_mod
+  use dictionary_class,   only : dictionary
+  use nuclearDataRegistry_mod, only : new_nuclearData_ptr
 
 
   implicit none
@@ -20,6 +21,7 @@ program test
   call dict % keysDict(matNames)
   type = 'transMG'
 
+  print *, dict % length()
 
   myPtr => new_nuclearData_ptr(dict,type,matNames)
 
