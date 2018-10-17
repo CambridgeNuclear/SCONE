@@ -32,7 +32,7 @@ module eigenPhysicsPackage_class
   use tallyActiveAdmin_class,         only : tallyActiveAdmin
 
   ! Factories
-  use nuclearDataFactory_func,        only : new_nuclearData_ptr
+  use nuclearDataRegistry_mod,       only : build_NuclearData, getHandlePtr
   use geometryFactory_func,           only : new_cellGeometry_ptr
   use collisionOperatorFactory_func,  only : new_collisionOperator_ptr
   use transportOperatorFactory_func,  only : new_transportOperator_ptr
@@ -352,12 +352,13 @@ contains
   subroutine init(self, dict)
     class(eigenPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)          :: dict
-    type(dictionary)                          :: tempDict
+    class(dictionary),pointer                 :: tempDict
     integer(shortInt)                         :: seed_temp
     integer(longInt)                          :: seed
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
+    character(nameLen)                        :: nucData
     class(nuclearData),pointer                :: nucData_ptr
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
@@ -365,6 +366,7 @@ contains
     call dict % get( self % pop,'pop')
     call dict % get( self % N_inactive,'inactive')
     call dict % get( self % N_active,'active')
+    call dict % get( nucData, 'XSdata')
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -388,8 +390,9 @@ contains
     call self % pRNG % init(seed)
 
     ! Build nuclear data
-    call dict % get(tempDict,'materials')
-    nucData_ptr => new_nuclearData_ptr(tempDict)
+    tempDict => dict % getDictPtr('nuclearData')
+    call build_nuclearData(tempDict)
+    nucData_ptr => getHandlePtr(nucData)
     self % nucData => nucData_ptr
 
     ! Attach transport nuclear data
@@ -403,23 +406,23 @@ contains
     end select
 
     ! Build geometry
-    call dict % get(tempDict,'geometry')
+    tempDict => dict % getDictPtr('geometry')
     self % geom => new_cellGeometry_ptr(tempDict, self % nucData)
 
     ! Build collision operator
-    call dict % get(tempDict,'collisionOperator')
+    tempDict => dict % getDictPtr('collisionOperator')
     self % collOp => new_collisionOperator_ptr(self % nucData, tempDict)
 
     ! Build transport operator
-    call dict % get(tempDict,'transportOperator')
+    tempDict => dict % getDictPtr('transportOperator')
     self % transOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
 
     ! Initialise active & inactive tally Admins
-    call dict % get(tempDict,'inactiveTally')
+    tempDict => dict % getDictPtr('inactiveTally')
     allocate(self % inactiveTally)
     call self % inactiveTally % init(tempDict)
 
-    call dict % get(tempDict,'activeTally')
+    tempDict => dict % getDictPtr('activeTally')
     allocate(self % activeTally)
     call self % activeTally % init(tempDict)
 

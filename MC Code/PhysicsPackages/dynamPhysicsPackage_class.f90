@@ -32,7 +32,7 @@ module dynamPhysicsPackage_class
   use tallyInactiveAdmin_class,      only : tallyInactiveAdmin
 
   ! Factories
-  use nuclearDataFactory_func,       only : new_nuclearData_ptr
+  use nuclearDataRegistry_mod,       only : build_NuclearData, getHandlePtr
   use geometryFactory_func,          only : new_cellGeometry_ptr
   use collisionOperatorFactory_func, only : new_collisionOperator_ptr
   use transportOperatorFactory_func, only : new_transportOperator_ptr
@@ -510,12 +510,13 @@ contains
   subroutine init(self, dict)
     class(dynamPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)          :: dict
-    type(dictionary)                          :: tempDict
+    class(dictionary), pointer                :: tempDict => null()
     integer(shortInt)                         :: seed_temp
     integer(longInt)                          :: seed
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
+    character(nameLen)                        :: nucData
     class(nuclearData),pointer                :: nucData_ptr
     character(100), parameter :: Here ='init (dynamPhysicsPackage_class.f90)'
 
@@ -524,6 +525,7 @@ contains
     call dict % get( self % N_steps, 'nsteps')
     call dict % get( self % stepLength, 'dt')
     call dict % getOrDefault( self % N_inactive, 'inactive', 0)
+    call dict % get(nucData, 'XSdata')
     if (self % N_inactive > 0) self % findFissionSource = .true.
     call dict % getOrDefault( self % initialStepLength, 'age', -ONE)
     if (self % initialStepLength < 0) self % ageNeutrons = .false.
@@ -550,8 +552,9 @@ contains
     call self % pRNG % init(seed)
 
     ! Build nuclear data
-    call dict % get(tempDict,'materials')
-    nucData_ptr => new_nuclearData_ptr(tempDict)
+    tempDict => dict % getDictPtr('nuclearData')
+    call build_nuclearData(tempDict)
+    nucData_ptr => getHandlePtr(nucData)
     self % nucData => nucData_ptr
 
     ! Attach transport nuclear data
