@@ -16,7 +16,7 @@ module intMap_test
   end type test_intMap
 
   ! Parameters
-  integer(shortInt), parameter :: VAL1 = 0
+  integer(shortInt), parameter :: VAL1 = 9
   integer(shortInt), parameter :: VAL2 = 1
   integer(shortInt), parameter :: VAL3 = -1
   integer(shortInt), parameter :: VAL4 =  huge(VAL1)
@@ -160,5 +160,15 @@ contains
 
   end subroutine testOverwriting
 
+  !!
+  !! Test getting length
+  !!
+@Test
+  subroutine testGetLength(this)
+    class(test_intMap), intent(inout) :: this
+
+    @assertEqual(7, this % map % length())
+
+  end subroutine testGetLength
 
 end module intMap_test

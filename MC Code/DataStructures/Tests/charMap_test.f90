@@ -159,4 +159,16 @@ contains
 
   end subroutine testOverwriting
 
+  !!
+  !! Test getting length
+  !!
+@Test
+  subroutine testGetLength(this)
+    class(test_charMap), intent(inout) :: this
+
+    @assertEqual(7, this % map % length())
+
+  end subroutine testGetLength
+
+
 end module charMap_test

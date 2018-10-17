@@ -17,9 +17,9 @@ module intMap_class
   !! Helper type to wrap key and value
   !! Also contains status of the entry
   !!
-  type, private :: content
+  type,private :: content
     integer(shortInt) :: status = EMPTY
-    integer(shortInt) :: key
+    integer(shortInt) :: key = 0
     integer(shortInt) :: val
   end type
 
@@ -40,6 +40,7 @@ module intMap_class
     procedure :: get
     procedure :: getOrDefault
     procedure :: kill
+    procedure :: length
 
     ! Private procedures
     procedure, private :: grow
@@ -102,6 +103,17 @@ contains
   end subroutine kill
 
   !!
+  !! Returns current length of the map
+  !!
+  pure function length(self) result(L)
+    class(intMap), intent(in)  :: self
+    integer(shortInt)          :: L
+
+    L = self % Load
+
+  end function length
+
+  !!
   !! Add a new entry to map or overwrite the existing one
   !!
   subroutine add(self,key,val)
@@ -135,7 +147,7 @@ contains
     end do
 
     ! Increment load if not overwriting existing entry
-    if (self % map(hash) % key /= key) self % Load = self % Load +1
+    if (self % map(hash) % status /= TAKEN) self % Load = self % Load +1
 
     ! Load key and value
     self % map(hash) % key    = key

@@ -43,6 +43,7 @@ module charMap_class
     procedure :: get
     procedure :: getOrDefault
     procedure :: kill
+    procedure :: length
 
     ! Private Procedures
     procedure, private :: grow
@@ -102,6 +103,17 @@ contains
     self % Load = 0
 
   end subroutine kill
+
+  !!
+  !! Returns current length of the map
+  !!
+  pure function length(self) result(L)
+    class(charMap), intent(in) :: self
+    integer(shortInt)          :: L
+
+    L = self % Load
+
+  end function length
 
   !!
   !! Add a new entry to map or overwrite the existing one

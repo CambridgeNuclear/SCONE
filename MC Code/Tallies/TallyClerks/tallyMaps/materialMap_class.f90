@@ -1,19 +1,22 @@
 module materialMap_class
 
   use numPrecision
-  use genericProcedures, only : fatalError
-  use particle_class,    only : particle
-  use outputFile_class,  only : outputFile
-  use tallyMap_inter,    only : tallyMap
+  use genericProcedures,       only : fatalError
+  use particle_class,          only : particle
+  use outputFile_class,        only : outputFile
+  use tallyMap_inter,          only : tallyMap
+
+  use nuclearDataRegistry_mod, only : getMatIdx
 
   implicit none
   private
 
   !!
-  !! Map that divides based on the material in a particle
+  !! Map that divides based on the material a particle is in
   !!
   type, public,extends(tallyMap) :: materialMap
     private
+
 
   contains
     ! Superclass interface implementaction
