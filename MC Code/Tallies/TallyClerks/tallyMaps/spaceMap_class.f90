@@ -91,7 +91,7 @@ contains
   !!
   !! Map particle to a single bin. Return 0 for particle out of division
   !!
-  elemental function map(self,p) result(idx)
+  function map(self,p) result(idx)
     class(spaceMap), intent(in)     :: self
     class(particle), intent(in)     :: p
     integer(shortInt)               :: idx
@@ -106,7 +106,7 @@ contains
   !!
   !! Return string that describes variable used to divide event space
   !!
-  pure function getAxisName(self) result(name)
+  function getAxisName(self) result(name)
     class(spaceMap), intent(in)     :: self
     character(nameLen)              :: name
 

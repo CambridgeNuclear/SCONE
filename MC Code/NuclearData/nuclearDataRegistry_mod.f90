@@ -4,7 +4,7 @@
 module nuclearDataRegistry_mod
 
   use numPrecision
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
   use charMap_class,     only : charMap
 
@@ -29,6 +29,8 @@ module nuclearDataRegistry_mod
   public :: build_nuclearData
   public :: kill_nuclearData
   public :: getMatIdx
+  public :: getMatNumber
+  public :: getMatName
   public :: getHandlePtr
 
   ! *** ADD NAME OF A NEW NUCLEAR DATA HERE ***!
@@ -59,8 +61,9 @@ module nuclearDataRegistry_mod
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   type(nuclearDataBox),dimension(:),allocatable :: nucData
-  type(charMap)                                 :: matNames
+  type(charMap)                                 :: matIndices
   type(charMap)                                 :: handleNames
+  character(nameLen),dimension(:),allocatable   :: matNames
 
 contains
 
@@ -150,11 +153,15 @@ contains
 
     ! Loop over materials and load them into charMap (be carefull to preserve order).
     call materialsDict % keysDict(names)
-    call matNames % init(size(names))
+    call matIndices % init(size(names))
     do i=1,size(names)
-      call matNames % add(names(i), i)
+      call matIndices % add(names(i), i)
 
     end do
+
+    ! Store material names in registry variable
+    matNames = names
+
 
     ! Build nuclear data representations
     do i=1,size(nucData)
@@ -184,7 +191,7 @@ contains
     integer(shortInt), parameter   :: NOT_FOUND = -huge(idx)
     character(100),parameter :: Here ='getMatIdx (nuclearDataRegistry_mod.f90)'
 
-    idx = matNames % getOrDefault(matName, NOT_FOUND)
+    idx = matIndices % getOrDefault(matName, NOT_FOUND)
     if (idx == NOT_FOUND) then
       call fatalError(Here,'Material '// trim(matName) // ' is not defined')
 
@@ -194,6 +201,38 @@ contains
     end if
 
   end function getMatIdx
+
+  !!
+  !! Returns number of defined materials
+  !!
+  function getMatNumber() result(N)
+    integer(shortInt) :: N
+
+    N = matIndices % length()
+
+  end function getMatNumber
+
+  !!
+  !! Returns name of a material given index
+  !!
+  function getMatName(matIdx) result(name)
+    integer(shortInt), intent(in) :: matIdx
+    character(nameLen)            :: name
+    character(100), parameter  :: Here = 'getMatName ( nuclearDataRegistry_mod.f90)'
+
+    ! Check if index is within bounds
+    if( matIdx <= 0) then
+      call fatalError(Here,'material Index' // numToChar(matIdx) //' is not +ve')
+
+    else if (matIdx > size(matNames)) then
+      call fatalError(Here,'Material Index' // numToChar(matIdx) // &
+                           ' exceeds number of materials: ' // numToChar(size(matNames)))
+
+    end if
+
+    name = matNames(matIdx)
+
+  end function getMatName
 
   !!
   !! Return pointer to nuclear data handle with the given name
@@ -234,7 +273,7 @@ contains
 
     end if
 
-    call matNames % kill()
+    call matIndices % kill()
     call handleNames % kill()
 
   end subroutine kill_nuclearData

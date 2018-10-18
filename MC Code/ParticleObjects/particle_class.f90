@@ -241,7 +241,7 @@ contains
   !!
   !! Return current material index
   !!
-  function matIdx(self) result(Idx)
+  pure function matIdx(self) result(Idx)
     class(particle), intent(in) :: self
     integer(shortInt)           :: idx
 
