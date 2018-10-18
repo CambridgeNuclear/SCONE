@@ -226,6 +226,20 @@ contains
   end subroutine testMiscAccess
 
   !!
+  !! Test material setting outside geometry
+  !!
+@test
+  subroutine testSetMatIdx(this)
+    class(test_particle), intent(inout) :: this
+
+    call this % p_CE % setMatIdx(3)
+
+    @assertEqual(3, this % p_CE % matIdx())
+
+  end subroutine testSetMatIdx
+
+
+  !!
   !! Test movement procedures
   !!
 @test

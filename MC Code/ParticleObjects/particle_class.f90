@@ -109,6 +109,7 @@ module particle_class
     procedure            :: teleport
     procedure            :: point
     procedure            :: takeAboveGeom
+    procedure            :: setMatIdx
 
     ! Save particle state information
     procedure, non_overridable  :: savePreHistory
@@ -248,6 +249,17 @@ contains
     idx = self % coords % matIdx
 
   end function matIdx
+
+  !!
+  !! Set Material index for testing purposes
+  !!
+  pure subroutine setMatIdx(self,matIdx)
+    class(particle), intent(inout) :: self
+    integer(shortInt), intent(in)  :: matIdx
+
+    self % coords % matIdx = matIdx
+
+  end subroutine setMatIdx
 
   !!
   !! Move the particle above the geometry

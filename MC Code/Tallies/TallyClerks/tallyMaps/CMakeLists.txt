@@ -5,3 +5,5 @@ add_sources(./tallyMap_inter.f90
             ./energyMap_class.f90
             ./spaceMap_class.f90
             ./materialMap_class.f90)
+            
+add_unit_tests(./Tests/materialMap_test.f90) 
