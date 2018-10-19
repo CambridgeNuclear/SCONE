@@ -136,7 +136,7 @@ contains
     character(nameLen)                          :: type
     character(nameLen),dimension(:),allocatable :: maps
     type(dictionary)                            :: tempDict
-    character(100),parameter :: Here ='init (keffActiveClerk_class.f90)'
+    character(100),parameter :: Here ='init (macroClerk_class.f90)'
 
     ! Assign name
     self % name = name

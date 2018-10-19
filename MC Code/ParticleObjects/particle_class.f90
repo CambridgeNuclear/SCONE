@@ -90,7 +90,7 @@ module particle_class
   contains
      ! Build procedures
     generic              :: build => buildCE, buildMG
-    generic              :: assignment(=) => particle_fromPhaseCoord
+    generic              :: assignment(=) => particle_fromPhaseCoord, particle_fromParticleState
 
     ! Inquiry about coordinates
     procedure            :: rLocal
@@ -124,6 +124,7 @@ module particle_class
     procedure,private                   :: buildCE
     procedure,private                   :: buildMG
     procedure,non_overridable,private   :: particle_fromPhaseCoord
+    procedure,non_overridable,private   :: particle_fromParticleState
 
   end type particle
 
@@ -478,6 +479,37 @@ contains
     LHS % time                  = RHS % time
 
   end subroutine particle_fromPhaseCoord
+
+  !!
+  !! Copy particleState into particle
+  !!
+  !! NOTE: THIS PROCEDURE IS A TRICK TO USE TALLY MAPS FOR PARTICLE STATES
+  !!       IT SHOULD BE REPLACED AT SOME POINT
+  !!
+  subroutine particle_fromParticleState(LHS,RHS)
+    class(particle), intent(inout)  :: LHS
+    type(particleState), intent(in) :: RHS
+
+    ! Copy phase coords
+    LHS % w                     = RHS % wgt
+    LHS % w0                    = RHS % wgt
+    call LHS % takeAboveGeom()
+    LHS % coords % lvl(1) % r   = RHS % r
+    LHS % coords % lvl(1) % dir = RHS % dir
+    LHS % E                     = RHS % E
+    LHS % G                     = RHS % G
+    LHS % isMG                  = RHS % isMG
+    LHS % time                  = RHS % time
+
+    ! Copy matIdx, cellIdx and uniqueID
+    LHS % coords % matIdx            = RHS % matIdx
+    LHS % coords % lvl(1) % cellIdx  = RHS % cellIdx
+
+    ! Fake Unique ID
+    LHS % coords % lvl(1) % uniRootID = 0
+    LHS % coords % lvl(1) % localID   = RHS % uniqueID
+
+  end subroutine particle_fromParticleState
 
   !!
   !! Prints state of the phaseCoord

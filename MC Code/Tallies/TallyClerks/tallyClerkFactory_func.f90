@@ -10,6 +10,7 @@ module tallyClerkFactory_func
   use keffInactiveClerk_class, only : keffInactiveClerk
   use timeClerk_class,         only : timeClerk
   use macroClerk_class,        only : macroClerk
+  use collProbClerk_class,     only : collProbClerk
 
   implicit none
   private
@@ -25,7 +26,8 @@ module tallyClerkFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffActiveClerk  ',&
                                                                         'keffInactiveClerk',&
                                                                         'dynamicTallyClerk',&
-                                                                        'macroClerk       ']
+                                                                        'macroClerk       ',&
+                                                                        'collProbClerk    ']
 
 
 contains
@@ -59,6 +61,8 @@ contains
       case('macroClerk')
         allocate(new, source = macroClerk(dict,name))
 
+      case('collProbClerk')
+        allocate(new, source = collProbClerk(dict,name))
      !*** NEW TALLY CLERK TEMPLATE ***!
      !case('<newTallyClerkName>')
      !  allocate(new, source = <newTallyClerkName>(dict) )

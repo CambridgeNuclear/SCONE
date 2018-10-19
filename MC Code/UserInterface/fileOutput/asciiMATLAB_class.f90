@@ -12,7 +12,9 @@ module asciiMATLAB_class
   !! Local parameters
   character(1),parameter :: BLANK = ' ', &
                             NEWLINE = new_line(BLANK) ,&
-                            APOS    = char(39)
+                            APOS    = char(39) ,&
+                            BRAKET_L  = '{' ,&
+                            BRAKET_R  = '}'
 
   integer(shortInt), parameter :: IN_BLOCK = 0, &
                                   IN_ENTRY = 1, &
@@ -263,10 +265,10 @@ contains
     character(100), parameter :: Here ='printChar (asciiMATLAB_class.f90)'
 
     if(self % state == IN_ARRAY) then
-      call self % output % append(APOS//val//APOS //",")
+      call self % output % append(BRAKET_L//APOS//val//APOS//BRAKET_R //",")
 
     else if( self % state == IN_ENTRY) then
-      call self % output % append(APOS//val//APOS)
+      call self % output % append(BRAKET_L//APOS//val//APOS//BRAKET_R )
 
     else
       call fatalError(Here,'Cannot print number directly into block')
