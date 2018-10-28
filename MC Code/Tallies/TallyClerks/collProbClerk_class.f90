@@ -58,7 +58,6 @@ module collProbClerk_class
     procedure :: reportTrans
     procedure :: reportCycleEnd
 
-
   end type collProbClerk
 
 contains

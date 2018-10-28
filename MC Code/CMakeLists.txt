@@ -51,7 +51,7 @@ if (BUILD_TESTS)
     if(DEFINED ENV{PFUNIT_INSTALL}) 
         set(PFUNIT_DIR $ENV{PFUNIT_INSTALL})
         add_library( pFUnit STATIC IMPORTED ) 
-        set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_DIR}/lib/libpfunit.a)
+        set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_DIR}/lib/libpfunit.a)        
     else()
         include(ExternalProject)  
 
