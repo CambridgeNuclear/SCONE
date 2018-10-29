@@ -69,7 +69,7 @@ module dancoffBellClerk_class
     ! Result bins
     integer(shortInt)                           :: Nbins
     type(tallyScore),dimension(:),allocatable   :: escSigmaT
-    type(tallyScore),dimension(:),allocatable   :: modWgt
+    type(tallyScore),dimension(:),allocatable   :: fuelWgt
     type(tallyCounter),dimension(:),allocatable :: D_eff
 
 
@@ -201,7 +201,7 @@ contains
 
     ! Create space for results
     allocate(self % escSigmaT(N))
-    allocate(self % modWgt(N) )
+    allocate(self % fuelWgt(N) )
     allocate(self % D_eff(N)    )
 
   end subroutine init
@@ -278,7 +278,7 @@ contains
 
     ! Add to approperiate bins
     select case(T_end)
-      case(FUEL)
+      case(MODERATOR)
         ! Obtain XSs
         ! Check if it dynamic type is supported
         ! If it is obtain macroscopic XSs
@@ -295,8 +295,8 @@ contains
 
         call self % escSigmaT(B) % add(w_end * SigmaTot)
 
-      case(MODERATOR)
-        call self % modWgt(B) % add(w_end)
+      case(FUEL)
+        call self % fuelWgt(B) % add(w_end)
 
       case default
         call fatalError(Here, 'WTF? Impossible state')
@@ -318,10 +318,10 @@ contains
 
     ! Store results. Behold the glorious Fortran oneliner! Power of the Elemental Procedures!
     ! NOTE: It may tend to create an unnecessary temp array...
-    call self % D_eff % addEstimate( self % escSigmaT % get() / self % modWgt % get() )
+    call self % D_eff % addEstimate( self % escSigmaT % get() / self % fuelWgt % get() )
 
     call self % escSigmaT % reset()
-    call self % modWgt % reset()
+    call self % fuelWgt % reset()
 
   end subroutine reportCycleEnd
 
