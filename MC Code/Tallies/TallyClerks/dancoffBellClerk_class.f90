@@ -9,7 +9,11 @@ module dancoffBellClerk_class
 
   use particle_class,             only : particle, phaseCoord, particleState
   use particleDungeon_class,      only : particleDungeon
+
+  ! Nuclear Data
   use nuclearDataRegistry_mod,    only : getMatIdx, getMatName
+  use transportNuclearData_inter, only : transportNuclearData
+
   ! Tally Interfaces
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use tallyClerk_inter,           only : tallyClerk
@@ -28,6 +32,14 @@ module dancoffBellClerk_class
                                   OUTSIDE   = 0
 
   !!
+  !! Constructor
+  !!
+  interface dancoffBellClerk
+    module procedure dancoffBellClerk_fromDict
+  end interface
+
+
+  !!
   !! Special tally clerk design to tally combined dancoff and bell factor
   !! multiplied by escepe probability SIGMA_e = 1/ L_bar, where L_bar is
   !! an average cord of a fuel lump.
@@ -37,7 +49,7 @@ module dancoffBellClerk_class
   !!
   !! D_eff = P_e * SIGMA_t / (1-P_e)
   !!
-  !! D_eff = wgt_e * SIGMA_t / (wgt_total - wgt_e)
+  !! D_eff = wgt_e * SIGMA_t / wgt_mod
   !!
   type, public,extends(tallyClerk) :: dancoffBellClerk
     private
@@ -57,7 +69,7 @@ module dancoffBellClerk_class
     ! Result bins
     integer(shortInt)                           :: Nbins
     type(tallyScore),dimension(:),allocatable   :: escSigmaT
-    type(tallyScore),dimension(:),allocatable   :: startWgt
+    type(tallyScore),dimension(:),allocatable   :: modWgt
     type(tallyCounter),dimension(:),allocatable :: D_eff
 
 
@@ -135,7 +147,7 @@ contains
 
     ! Get fuel material elements
     call dict % get(tempCharArr, 'fuelMat')
-    allocate(fuelMatIdx (size(tempCharArr))
+    allocate(fuelMatIdx (size(tempCharArr)))
     do i = 1,size(fuelMatIdx)
       fuelMatIdx(i) = getMatIdx(tempCharArr(i))
 
@@ -143,14 +155,14 @@ contains
 
     ! Get moderator material elements
     call dict % get(tempCharArr, 'modMat')
-    allocate(modMatIdx (size(tempCharArr))
+    allocate(modMatIdx (size(tempCharArr)))
     do i = 1,size(modMatIdx)
       modMatIdx(i) = getMatIdx(tempCharArr(i))
 
     end do
 
     ! Check for overlap
-    if (hasDuplicates([modMatIdx, fuelMatIdx]) then
+    if (hasDuplicates([modMatIdx, fuelMatIdx])) then
       call fatalError(Here, 'Same materials are defined as fuel and moderator')
 
     end if
@@ -171,20 +183,26 @@ contains
     end do
 
     ! Check if has map and load the map
+    if( dict % isPresent('energyMap')) then
+      self % hasMap = .true.
+      self % map = energyMap( dict % getDictPtr('energyMap'))
 
+    else
+      self % hasMap = .false.
+
+    end if
     ! Create Space for the results
-!><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-    ! Initialise maps
-!    self % map = materialMap(dict)
+    ! Find size of map
+    if(self % hasMap) then
+      N = self % map % bins()
+    else
+      N = 1
+    end if
 
-!    ! Find size of map
-!    N = self % map % bins()
-!    self % N_map = N
-!
-!    ! Create space for results
-!    allocate(self % bins(N*N))
-!    allocate(self % out_w(N))
-!    self % out_w = ZERO
+    ! Create space for results
+    allocate(self % escSigmaT(N))
+    allocate(self % modWgt(N) )
+    allocate(self % D_eff(N)    )
 
   end subroutine init
 
@@ -195,36 +213,36 @@ contains
     class(dancoffBellClerk), intent(in)   :: self
     class(outputFile), intent(inout)      :: outFile
     real(defReal)                         :: val, std
-    integer(shortInt)                     :: i
+    integer(shortInt)                     :: i, N
     character(nameLen)                    :: name
 
     ! Begin block
     call outFile % startBlock(self % name)
 
-!    ! Write map data
-!    call self % map % print(outFile)
-!
-!    ! Write axis descriptor
-!    name = 'axisDescriptor'
-!    call outFile % startArray(name,[2])
-!    name = 'StartingBin'
-!    call outFile % addValue(name)
-!    name = 'EndBin'
-!    call outFile % addValue(name)
-!    call outFile % endArray()
-!
-!    ! Write results
-!    name = 'Res'
-!    call outFile % startArray(name,[self % N_map, self % N_map ])
-!
-!    do i=1,size(self % bins)
-!      call self % bins(i) % getEstimate(val, std, self % cycleCount)
-!      call outFile % addResult(val,std)
-!    end do
-!
-!    call outFile % endArray()
-!
-!    call outFile % endBlock()
+    if (self % hasMap) then
+      ! Write axis data
+      call self % map % print(outFile)
+
+      ! Write axis descriptor
+      name = 'axisDescriptor'
+      call outFile % startArray(name,[1])
+      call outFile % addValue(self % map % getAxisName())
+      call outFile % endArray()
+    end if
+
+    ! Write results
+    name = 'Res'
+    N = self % map % bins()
+    call outFile % startArray(name,[N])
+
+    do i=1,size(self % D_eff)
+      call self % D_eff(i) % getEstimate(val, std, self % cycleCount)
+      call outFile % addResult(val,std)
+    end do
+
+    call outFile % endArray()
+
+    call outFile % endBlock()
 
   end subroutine print
 
@@ -233,33 +251,57 @@ contains
   !!
   subroutine reportTrans(self,p)
     class(dancoffBellClerk), intent(inout)  :: self
-    class(particle), intent(in)          :: p
-    type(particle)                       :: p_temp
-    integer(shortInt)                    :: B_end, B_start, B
-    real(defReal)                        :: w_end, w_start
+    class(particle), intent(in)             :: p
+    real(defReal)                           :: SigmaTot
+    integer(shortInt)                       :: T_end, T_start, B
+    real(defReal)                           :: w_end
+    character(100),parameter :: Here = 'reportTrans (dancoffBellClerk_class.f90)'
 
-!    ! Find current bin
-!    B_end = self % map % map(p)
-!
-!    ! Find starting bin *** BIT DIRTY
-!    p_temp  = p % preTransition
-!    B_start = self % map % map(p_temp)
-!
-!    ! Return if tranbsistion is outside matrix
-!    if (B_end == 0 .or. B_start == 0 ) return
-!
-!    ! Obtain starting and ending weights
-!    w_start = p % preTransition % wgt
-!    w_end   = p % w
-!
-!    ! Calculate bin index
-!    B = self % N_map * (B_start - 1) + B_end
-!
-!    ! Store result
-!    call self % bins(B) % add(w_end)
-!
-!    ! Store outgoing weight
-!    self % out_w(B_start) = self % out_w(B_start) + w_start
+    ! Find start material type; Exit if not fuel
+    T_start = self % materialSet % getOrDefault(p % preTransition % matIdx, OUTSIDE)
+    if( T_start /= FUEL) return
+
+    ! Find bin
+    if(self % hasMap) then
+      B = self % map % map(p)
+    else
+      B = 1
+    end if
+    if(B == 0) return
+
+    ! Find end material type; Exit if not fuel or moderator
+    T_end = self % materialSet % getOrDefault(p % matIdx(), OUTSIDE)
+    if(T_end == OUTSIDE) return
+
+    ! Obtain starting and ending weights
+    w_end   = p % w
+
+    ! Add to approperiate bins
+    select case(T_end)
+      case(FUEL)
+        ! Obtain XSs
+        ! Check if it dynamic type is supported
+        ! If it is obtain macroscopic XSs
+        ! It it isn't throw error
+        associate (xsData => p % xsData)
+          select type(xsData)
+            class is (transportNuclearData)
+              SigmaTot = xsData % getTotalMatXS(p, self % xsMatIdx)
+
+            class default
+              call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
+          end select
+        end associate
+
+        call self % escSigmaT(B) % add(w_end * SigmaTot)
+
+      case(MODERATOR)
+        call self % modWgt(B) % add(w_end)
+
+      case default
+        call fatalError(Here, 'WTF? Impossible state')
+
+    end select
 
   end subroutine reportTrans
 
@@ -269,20 +311,17 @@ contains
   !!
   subroutine reportCycleEnd(self,end)
     class(dancoffBellClerk), intent(inout)   :: self
-    class(particleDungeon), intent(in)    :: end
-    integer(shortInt)                     :: i, j, B
+    class(particleDungeon), intent(in)       :: end
+    integer(shortInt)                        :: i,N
 
-!    self % cycleCount = self % cycleCount + 1
-!
-!    ! Loop over start and end bins
-!    do i=1,self % N_map
-!      do j=1, self % N_map
-!        B = self % N_map * (i - 1) + j
-!        call self % bins(B) % closeBatch(self % out_w(i))
-!      end do
-!    end do
-!
-!    self % out_w = ZERO
+    self % cycleCount = self % cycleCount + 1
+
+    ! Store results. Behold the glorious Fortran oneliner! Power of the Elemental Procedures!
+    ! NOTE: It may tend to create an unnecessary temp array...
+    call self % D_eff % addEstimate( self % escSigmaT % get() / self % modWgt % get() )
+
+    call self % escSigmaT % reset()
+    call self % modWgt % reset()
 
   end subroutine reportCycleEnd
 
@@ -292,7 +331,7 @@ contains
   function dancoffBellClerk_fromDict(dict,name) result(new)
     class(dictionary), intent(in)  :: dict
     character(nameLen), intent(in) :: name
-    type(dancoffBellClerk)               :: new
+    type(dancoffBellClerk)         :: new
 
     call new % init(dict,name)
 
