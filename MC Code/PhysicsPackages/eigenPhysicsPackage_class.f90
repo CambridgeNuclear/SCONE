@@ -60,6 +60,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: N_active
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
+    integer(shortInt)  :: printSource = 0
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -155,6 +156,10 @@ contains
       ! Normalise population
       call self % nextCycle % normSize(self % pop, neutron % pRNG)
 
+      if(self % printSource == 1) then
+        call self % nextCycle % printSourceToFile(trim(self % outputFile)//'_source'//numToChar(i))
+      end if
+
       ! Flip cycle dungeons
       self % temp_dungeon => self % nextCycle
       self % nextCycle    => self % thisCycle
@@ -235,6 +240,11 @@ contains
 
       ! Normalise population
       call self % nextCycle % normSize(self % pop, neutron % pRNG)
+
+      if(self % printSource == 1) then
+        call self % nextCycle % printSourceToFile&
+        (trim(self % outputFile)//'_source'//numToChar(self % N_inactive + i))
+      end if
 
       ! Flip cycle dungeons
       self % temp_dungeon => self % nextCycle
@@ -388,6 +398,9 @@ contains
     end if
     seed = seed_temp
     call self % pRNG % init(seed)
+
+    ! Read whether to print particle source per cycle
+    call dict % getOrDefault(self % printSource, 'printSource', 0)
 
     ! Build nuclear data
     tempDict => dict % getDictPtr('nuclearData')

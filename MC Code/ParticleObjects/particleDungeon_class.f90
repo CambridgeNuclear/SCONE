@@ -1,7 +1,7 @@
 module particleDungeon_class
 
   use numPrecision
-  use genericProcedures,     only : fatalError
+  use genericProcedures,     only : fatalError, numToChar
   use particle_class,        only : particle, phaseCoord
   use RNG_class,             only : RNG
 
@@ -44,6 +44,7 @@ module particleDungeon_class
     procedure  :: normSize
     procedure  :: popSize
     procedure  :: popWeight
+    procedure  :: printSourceToFile
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -218,5 +219,28 @@ contains
 
     wgt = sum( self % prisoners(1:self % pop) % wgt )
   end function popWeight
+
+  !!
+  !! Prints the position of fission sites to a file
+  !! Used initially for looking at clustering
+  !!
+  subroutine printSourceToFile(self, name)
+    class(particleDungeon), intent(in) :: self
+    character(*), intent(in)           :: name
+    character(256)                     :: filename
+    integer(shortInt)                  :: i
+
+    filename = trim(name)//'.txt'
+    open(unit = 10, file = filename, status = 'new')
+
+    ! Print out each particle co-ordinate
+    do i = 1, self % pop
+      write(10,'(A,A,A)') numToChar(self % prisoners(i) % r)
+    end do
+
+    ! Close the file
+    close(10)
+
+  end subroutine printSourceToFile
 
 end module particleDungeon_class
