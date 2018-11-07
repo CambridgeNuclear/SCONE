@@ -1,9 +1,10 @@
 type eigenPhysicsPackage; 
 
-pop      5000; 
+//pop      100000; 
+pop      50000;
 active   500; 
 inactive 300; 
-seed     -6574747;
+//seed     -6574747;
 XSdata   ce2;
 
 collisionOperator { type perNuclideCollisionOpCE; 
@@ -21,7 +22,10 @@ activeTally  { //clerk1 { type macroClerk; display no; map { type energyMap; gri
                //clerk2 { type macroClerk; display no; map { type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20;} } 
                clerk3 {type collProbClerk; display yes; materials (uo2 water); } 
                clerk4 {type dancoffBellClerk; XSmat uo2; fuelMat (uo2); modMat (water); 
-		      energyMap { type energyMap; grid log; min 1.0E-6; max 0.1; N 70;}  
+		       Etop 0.02; 
+		       Elow 4.0E-6; 
+		    //  map { type energyMap; grid log; min 0.5E-3; max 0.7E-3; N 50;}  
+		      map { type matXsMap; grid log; min 0.4; max 10.0; N 40; mat uo2;} 
 	              }
 	      }
 

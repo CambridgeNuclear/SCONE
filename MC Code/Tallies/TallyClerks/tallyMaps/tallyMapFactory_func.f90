@@ -10,6 +10,8 @@ module tallyMapFactory_func
   ! TallyMap implementations
   use energyMap_class,   only : energyMap
   use spaceMap_class,    only : spaceMap
+  use materialMap_class, only : materialMap
+  use matXsMap_class,    only : matXsMap
 
   implicit none
   private
@@ -22,8 +24,10 @@ module tallyMapFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'energyMap',&
-                                                                      'spaceMap ' ]
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'energyMap  ',&
+                                                                      'spaceMap   ',&
+                                                                      'materialMap',&
+                                                                      'matXsMap   ' ]
 
 contains
 
@@ -47,6 +51,13 @@ contains
 
       case('spaceMap')
         allocate(new, source = spaceMap(dict))
+
+      case('materialMap')
+        allocate(new, source = materialMap(dict))
+
+      case('matXsMap')
+        allocate(new, source = matXsMap(dict))
+
 
      !*** NEW TALLY MAP TEMPLATE ***!
      !case('<newTallyMapName>')

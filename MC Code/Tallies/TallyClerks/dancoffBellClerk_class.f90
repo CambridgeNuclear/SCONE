@@ -18,7 +18,8 @@ module dancoffBellClerk_class
   use tallyEstimator_class,       only : tallyScore, tallyCounter
   use tallyClerk_inter,           only : tallyClerk
   use materialMap_class,          only : materialMap
-  use energyMap_class,            only : energyMap
+  use tallyMapSlot_class,         only : tallyMapSlot
+  use tallyMapFactory_func,       only : new_tallyMap
 
   implicit none
   private
@@ -62,9 +63,11 @@ module dancoffBellClerk_class
 
     ! Maping variables
     logical(defBool)     :: hasMap =.false.
-    type(energyMap)      :: map
+    type(tallyMapSlot)   :: map
     type(intMap)         :: materialSet
     integer(shortInt)    :: xsMatIdx
+    real(defReal)        :: upperE
+    real(defReal)        :: bottomE
 
     ! Result bins
     integer(shortInt)                           :: Nbins
@@ -145,6 +148,12 @@ contains
     call dict % get(tempChar,'XSmat')
     self % xsMatIdx = getMatIdx(tempChar)
 
+    ! Load energy boundaries
+    call dict % getOrDefault(self % upperE, 'Etop', huge(ONE))
+    call dict % getOrDefault(self % bottomE,'Elow', ZERO)
+
+    if( self % bottomE > self % upperE) call fatalError(Here,'Bottom Energy > Top Energy')
+
     ! Get fuel material elements
     call dict % get(tempCharArr, 'fuelMat')
     allocate(fuelMatIdx (size(tempCharArr)))
@@ -183,9 +192,9 @@ contains
     end do
 
     ! Check if has map and load the map
-    if( dict % isPresent('energyMap')) then
+    if( dict % isPresent('map')) then
       self % hasMap = .true.
-      self % map = energyMap( dict % getDictPtr('energyMap'))
+      self % map = new_tallyMap( dict % getDictPtr('map'))
 
     else
       self % hasMap = .false.
@@ -218,6 +227,7 @@ contains
 
     ! Begin block
     call outFile % startBlock(self % name)
+    N = 1
 
     if (self % hasMap) then
       ! Write axis data
@@ -228,11 +238,14 @@ contains
       call outFile % startArray(name,[1])
       call outFile % addValue(self % map % getAxisName())
       call outFile % endArray()
+
+      ! Get number of bins
+      N = self % map % bins()
+
     end if
 
     ! Write results
     name = 'Res'
-    N = self % map % bins()
     call outFile % startArray(name,[N])
 
     do i=1,size(self % D_eff)
@@ -260,6 +273,9 @@ contains
     ! Find start material type; Exit if not fuel
     T_start = self % materialSet % getOrDefault(p % preTransition % matIdx, OUTSIDE)
     if( T_start /= FUEL) return
+
+    ! Exit if outside energy range
+    if( p % E < self % bottomE .or. p % E > self % upperE) return
 
     ! Find bin
     if(self % hasMap) then
