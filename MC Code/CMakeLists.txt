@@ -53,6 +53,7 @@ if (BUILD_TESTS)
         add_library( pFUnit STATIC IMPORTED ) 
         set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_DIR}/lib/libpfunit.a)        
     else()
+        MESSAGE(FATAL_ERROR "PFUNIT_INSTALL DIRECTORY MUST BE SET")     
         include(ExternalProject)  
 
        # SET CMAKE ARGUMENTS FOR pFUnit Compilation with CMAKE
