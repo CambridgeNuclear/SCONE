@@ -2,6 +2,7 @@
 #add_subdirectory(TallyProc)
 
 add_subdirectory(TallyClerks)
+add_subdirectory(TallyFilters)
 
 # Add Source Files to the global list 
 add_sources( ./tallyCodes.f90
