@@ -6,12 +6,12 @@ module tallyClerkFactory_func
 
   ! Tally Clerks
   use tallyClerk_inter,        only : tallyClerk
-  use keffActiveClerk_class,   only : keffActiveClerk
-  use keffInactiveClerk_class, only : keffInactiveClerk
-  use timeClerk_class,         only : timeClerk
-  use macroClerk_class,        only : macroClerk
-  use collProbClerk_class,     only : collProbClerk
-  use dancoffBellClerk_class,  only : dancoffBellClerk
+!  use keffActiveClerk_class,   only : keffActiveClerk
+!  use keffInactiveClerk_class, only : keffInactiveClerk
+!  use timeClerk_class,         only : timeClerk
+!  use macroClerk_class,        only : macroClerk
+!  use collProbClerk_class,     only : collProbClerk
+!  use dancoffBellClerk_class,  only : dancoffBellClerk
 
   implicit none
   private
@@ -51,23 +51,23 @@ contains
     ! Allocate approperiate subclass of tallyClerk
     ! *** ADD CASE STATEMENT FOR A NEW TALLY CLERK BELOW ***!
     select case(type)
-      case('keffActiveClerk')
-        allocate(new, source = keffActiveClerk(dict,name) )
-
-      case('keffInactiveClerk')
-        allocate(new, source = keffInactiveClerk(dict,name) )
-
-      case('dynamicTallyClerk')
-        allocate(new, source = timeClerk(dict,name))
-
-      case('macroClerk')
-        allocate(new, source = macroClerk(dict,name))
-
-      case('collProbClerk')
-        allocate(new, source = collProbClerk(dict,name))
-
-      case('dancoffBellClerk')
-        allocate(new, source = dancoffBellClerk(dict,name))
+!      case('keffActiveClerk')
+!        allocate(new, source = keffActiveClerk(dict,name) )
+!
+!      case('keffInactiveClerk')
+!        allocate(new, source = keffInactiveClerk(dict,name) )
+!
+!      case('dynamicTallyClerk')
+!        allocate(new, source = timeClerk(dict,name))
+!
+!      case('macroClerk')
+!        allocate(new, source = macroClerk(dict,name))
+!
+!      case('collProbClerk')
+!        allocate(new, source = collProbClerk(dict,name))
+!
+!      case('dancoffBellClerk')
+!        allocate(new, source = dancoffBellClerk(dict,name))
 
      !*** NEW TALLY CLERK TEMPLATE ***!
      !case('<newTallyClerkName>')

@@ -29,7 +29,7 @@ contains
   !! maximum packing fraction in Euclidian geometry = pi/3/sqrt(2) [3180339487 for 32 bits]
   !! NOTE: Ratio was changed for fun -> no particular reason
   !!
-  function knuthHash(key,m) result(hash)
+  pure function knuthHash(key,m) result(hash)
     integer(shortInt), intent(in) :: key
     integer(shortInt), intent(in) :: m
     integer(shortInt)             :: hash
@@ -40,9 +40,10 @@ contains
     !! Get bit size of the integer
     N = bit_size(key)
 
-    if(N /= 32) call fatalError(Here,'Implementation assumes 32 bit integer')
-    if(m < 1 )  call fatalError(Here,'At least one bit of hash needs to be kept')
-    if(m > N )  call fatalError(Here,'No more than 32 bits can be kept')
+    !! Hash functions should be pure -> Change error checking
+!    if(N /= 32) call fatalError(Here,'Implementation assumes 32 bit integer')
+!    if(m < 1 )  call fatalError(Here,'At least one bit of hash needs to be kept')
+!    if(m > N )  call fatalError(Here,'No more than 32 bits can be kept')
 
     ! Calculate prime * key modulo word
     hash = prime * key
