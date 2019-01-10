@@ -119,7 +119,7 @@ contains
     integer(shortInt), intent(in)   :: D
     integer(shortInt)               :: N
 
-    if (D == 1) then
+    if (D == 1 .or. D == 0) then
       N = self % Nbins
     else
       N = 0

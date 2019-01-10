@@ -9,4 +9,4 @@ add_sources(./tallyMap_inter.f90
  #           ./matXsMap_class.f90
             )
             
-#add_unit_tests(./Tests/materialMap_test.f90) 
+add_unit_tests(./Tests/materialMap_test.f90) 
