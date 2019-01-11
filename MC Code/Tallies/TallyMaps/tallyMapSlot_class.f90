@@ -11,7 +11,10 @@ module tallyMapSlot_class
   private
 
   !!
-  !!
+  !! Container for polymorphic instances of tallyMaps
+  !! It is itself a tally map
+  !! Init functions uses tallyMapFactory to build any type of tallyMap as specified in
+  !! the provided dictionary
   !!
   type, public,extends(tallyMap) :: tallyMapSlot
     private
@@ -26,8 +29,6 @@ module tallyMapSlot_class
     procedure  :: print       ! Print values associated with bins to outputfile
 
     ! Class specific procedures
-    generic   :: assignment(=) => copy
-    procedure :: copy
     procedure :: moveAllocFrom
     procedure :: kill
 
@@ -107,28 +108,13 @@ contains
   end subroutine print
 
   !!
-  !! Copy RHS into slot of LHS
-  !! Be carefull about loading slots into slots
-  !! It will work by function call chain may hurt performance
-  !!
-  subroutine copy(LHS,RHS)
-    class(tallyMapSlot), intent(inout) :: LHS
-    class(tallyMap),intent(in)         :: RHS
-
-    if(allocated(LHS % slot)) deallocate(LHS % slot)
-
-    allocate(LHS % slot, source = RHS )
-
-  end subroutine copy
-
-  !!
   !! Move allocation from allocatable RHS into slot
   !!
   subroutine moveAllocFrom(LHS,RHS)
     class(tallyMapSlot), intent(inout)          :: LHS
     class(tallyMap), allocatable, intent(inout) :: RHS
 
-    if(allocated(LHS % slot)) deallocate(LHS % slot)
+    call LHS % kill()
     call move_alloc(RHS, LHS % slot)
 
   end subroutine moveAllocFrom

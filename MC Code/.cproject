@@ -98,10 +98,10 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Eclipse">
+		<configuration configurationName="Test">
 			<resource resourceType="PROJECT" workspacePath="/MC Code"/>
 		</configuration>
-		<configuration configurationName="Test">
+		<configuration configurationName="Eclipse">
 			<resource resourceType="PROJECT" workspacePath="/MC Code"/>
 		</configuration>
 		<configuration configurationName="Debug">
@@ -121,6 +121,14 @@
 			<target name="CMake Debug NoTests" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 				<buildCommand>cmake</buildCommand>
 				<buildArguments>-E chdir ./Debug cmake ./.. -DBUILD_TESTS=OFF</buildArguments>
+				<stopOnError>true</stopOnError>
+				<useDefaultCommand>false</useDefaultCommand>
+				<runAllBuilders>true</runAllBuilders>
+			</target>
+			<target name="gfortran Version" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+				<buildCommand>gfortran</buildCommand>
+				<buildArguments>--version</buildArguments>
+				<buildTarget/>
 				<stopOnError>true</stopOnError>
 				<useDefaultCommand>false</useDefaultCommand>
 				<runAllBuilders>true</runAllBuilders>
