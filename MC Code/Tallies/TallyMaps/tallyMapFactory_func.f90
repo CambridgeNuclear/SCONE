@@ -50,17 +50,21 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
       case('energyMap')
-        allocate(new, source = energyMap(dict) )
+        allocate(energyMap :: new)
+        call new % init(dict)
 
       case('spaceMap')
-        allocate(new, source = spaceMap(dict))
+        allocate(spaceMap :: new)
+        call new % init(dict)
 
       case('materialMap')
-        allocate(new, source = materialMap(dict))
+        allocate(materialMap :: new)
+        call new % init(dict)
 
      !*** NEW TALLY MAP TEMPLATE ***!
      !case('<newTallyMapName>')
-     !  allocate(new, source = <newTallyMapName>(dict) )
+     !  allocate(<newTallyMapName> :: new)
+     !  call new % init(dict)
      !
       case default
         print *, AVALIBLE_tallyMaps
