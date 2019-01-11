@@ -22,6 +22,9 @@ module energyMap_class
   !!
   !! Map that divides energy into number of discrete bins
   !! Returns idx = 0 for MG particles
+  !! Returns index 0 for elements outside division
+  !! NOTE: Behaviour of points exactly at the boundary between two bins is undefined.
+  !!       They can be in either of two bins.
   !!
   type, public,extends(tallyMap1D) :: energyMap
     private
@@ -128,7 +131,8 @@ contains
   end subroutine init
 
   !!
-  !! Return total number of bins in this division
+  !! Return total number of bins in this division along dimension D
+  !! For D=0 return all bins
   !!
   elemental function bins(self, D) result(N)
     class(energyMap), intent(in)    :: self

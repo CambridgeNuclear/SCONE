@@ -89,7 +89,7 @@ module tallyMap_inter
       import :: tallyMap, &
                 outputFile
       class(tallyMap), intent(in)      :: self
-      class(outpuTFile), intent(inout) :: out
+      class(outputFile), intent(inout) :: out
     end subroutine print
 
   end interface
