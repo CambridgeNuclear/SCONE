@@ -22,6 +22,26 @@ module scoreMemory_class
   !!   -> Easy copying and recombination of results for OpenMP shared memory parallelism
   !!   -> Easy, output format independent way to perform regression tests
   !!
+  !! For every bin index there are three position, BIN, CSUM, CSUM2. All are initialised to 0.
+  !! Function score accumulates value on BIN under given index
+  !! Function accumulate accumulates value on CSUM and value^2 on CSUM2 under given index
+  !! Function normalise multiplies all BINs under every index by a factor
+  !! Function closeBatch divides all values under BIN by a factor and adds the resulting value on
+  !!  CSUM and value^2 on CSUM2.
+  !!
+  !! Example use case:
+  !!
+  !!  do batches=1,20
+  !!    do hist=1,10
+  !!      call scoreMem % score(hist,1)        ! Score hist (1,10) in bin 1
+  !!      call scoreMem % accumulate(hist,2)   ! Accumulate hist in CSUMs of bin 2
+  !!    end do
+  !!    call scoreMem % normalise(factor)      ! Multiply total scores added since last closeBatch by factor
+  !!    call scoreMem % closeBatch(batchWgt)   ! Close batch with batchWgt
+  !!  end do
+  !!  call scoreMem % getResult(mean,STD,1) ! Get result from bin 1 with STD
+  !!  call scoreMem % getResult(mean,2,200) ! Get mean from bin 2 assuming 200 samples
+  !!
   !! NOTE: Following indexing is used in bins variable
   !!       bins(binIndex,binType) binType is BIN/CSUM/CSUM2
   type, public :: scoreMemory
@@ -36,9 +56,9 @@ module scoreMemory_class
     procedure :: kill
     generic   :: score      => score_defReal, score_shortInt, score_longInt
     generic   :: accumulate => accumulate_defReal, accumulate_shortInt, accumulate_longInt
+    generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
     procedure :: normalise
     procedure :: closeBatch
-    procedure :: getResult
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -47,6 +67,8 @@ module scoreMemory_class
     procedure, private :: accumulate_defReal
     procedure, private :: accumulate_shortInt
     procedure, private :: accumulate_longInt
+    procedure, private :: getResult_withSTD
+    procedure, private :: getResult_withoutSTD
 
   end type scoreMemory
 
@@ -199,10 +221,9 @@ contains
     real(defReal)                     :: inv_divisor
     character(100),parameter :: Here = 'closeBatch (scoreMemory.f90)'
 
-    inv_divisor = ONE/divisor
-
     ! Check input
     if( divisor == ZERO) call fatalError(Here,'Divisor is equal to 0!')
+    inv_divisor = ONE/divisor
 
     ! Increment cumulative sums
     self % bins(:,CSUM)  = self % bins(:,CSUM) + self % bins(:,BIN) * inv_divisor
@@ -217,23 +238,23 @@ contains
   end subroutine closeBatch
 
   !!
-  !! Load mean result and optionally Standard deviation into provided arguments
+  !! Load mean result and Standard deviation into provided arguments
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
-  subroutine getResult(self, mean, STD, idx, samples)
+  subroutine getResult_withSTD(self, mean, STD, idx, samples)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
-    real(defReal),intent(out),optional     :: STD
+    real(defReal),intent(out)              :: STD
     integer(shortInt), intent(in)          :: idx
     integer(shortInt), intent(in),optional :: samples
     integer(shortInt)                      :: N
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0 .and. idx > self % N) then
+    if( idx < 0 .or. idx > self % N) then
       mean = ZERO
-      if(present(STD)) STD = ZERO
+      STD = ZERO
       return
     end if
 
@@ -245,21 +266,50 @@ contains
     end if
 
     ! Calculate mean
-    inv_N   = ONE / N
     mean = self % bins(idx, CSUM) / N
 
     ! Calculate STD
-    if( present(STD)) then
-      if( N /= 1) then
-        inv_Nm1 = ONE / (N - 1)
-      else
-        inv_Nm1 = ONE
-      end if
-      STD = self % bins(idx, CSUM2) *inv_N * inv_Nm1 - mean * mean * inv_Nm1
-      STD = sqrt(STD)
+    inv_N   = ONE / N
+    if( N /= 1) then
+      inv_Nm1 = ONE / (N - 1)
+    else
+      inv_Nm1 = ONE
+    end if
+    STD = self % bins(idx, CSUM2) *inv_N * inv_Nm1 - mean * mean * inv_Nm1
+    STD = sqrt(STD)
 
+  end subroutine getResult_withSTD
+
+  !!
+  !! Load mean result provided argument
+  !! Load from bin indicated by idx
+  !! Returns 0 if index is invalid
+  !!
+  subroutine getResult_withoutSTD(self, mean, idx, samples)
+    class(scoreMemory), intent(in)         :: self
+    real(defReal), intent(out)             :: mean
+    integer(shortInt), intent(in)          :: idx
+    integer(shortInt), intent(in),optional :: samples
+    integer(shortInt)                      :: N
+    real(defReal)                          :: inv_N, inv_Nm1
+
+    !! Verify index. Return 0 if not present
+    if( idx < 0 .or. idx > self % N) then
+      mean = ZERO
+      return
     end if
 
-  end subroutine getResult
+    ! Check if # of samples is provided
+    if( present(samples)) then
+      N = samples
+    else
+      N = self % batchN
+    end if
+
+    ! Calculate mean
+    mean = self % bins(idx, CSUM) / N
+
+  end subroutine getResult_withoutSTD
+
 
 end module scoreMemory_class
