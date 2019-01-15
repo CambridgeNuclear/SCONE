@@ -1,13 +1,13 @@
 module tallyFilterSlot_class
 
   use numPrecision
-  use dictionary_class,  only : dictionary
-  use particle_class,    only : particleState
-  use tallyFilter_inter, only : tallyFilter
+  use dictionary_class,        only : dictionary
+  use particle_class,          only : particleState
+  use tallyFilter_inter,       only : tallyFilter
+  use tallyFilterFactory_func, only : new_tallyFilter
 
   implicit none
   private
-
 
   !!
   !! Container for polymorphic instances of tallyFilter
@@ -39,7 +39,8 @@ contains
     class(tallyFilterSlot), intent(inout) :: self
     class(dictionary), intent(in)         :: dict
 
-    !** Provide Content ** !
+    call self % kill()
+    call new_tallyFilter(self % slot, dict)
 
   end subroutine init
 

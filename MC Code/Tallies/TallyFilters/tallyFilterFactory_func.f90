@@ -29,7 +29,6 @@ contains
   !! Allocate new allocatable tallyFilter to a specific type
   !! If new is allocated it deallocates it
   !!
-  !!
   subroutine new_tallyFilter(new,dict)
     class(tallyFilter),allocatable, intent(inout) :: new
     class(dictionary), intent(in)                 :: dict
