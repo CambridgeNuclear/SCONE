@@ -21,11 +21,9 @@ module tallyClerk_inter
   !!
   type, public,abstract :: tallyClerk
     private
-    ! Location of the tallyClerk on scoreMemory
-    integer(longInt) :: memAdress = -1
 
   contains
-    !! File reports and check status
+    !!
     procedure :: reportInColl
     procedure :: reportOutColl
     procedure :: reportPath
@@ -33,17 +31,13 @@ module tallyClerk_inter
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+
     procedure :: isConverged
-
-    !! Assign memory and check memory id requested
-    procedure                  :: setMemAddress
-    procedure, non_overridable :: getMemAddress
-
 
     procedure(validReports), deferred :: validReports
     procedure(display), deferred      :: display
     procedure(init),deferred          :: init
-    procedure(print),deferred         :: print
+    procedure(print),deferred         :: print !*** Interface for this procedure will be defined shortly
 
   end type tallyClerk
 
@@ -153,7 +147,7 @@ contains
   !!
   !! Process history report
   !! ASSUMPTIONS:
-  !! Particle is associated with one of the fate codes in tallyCodes
+  !! **** FATE CODES NEED TO BE SPECIFIED
   !!
   subroutine reportHist(self,p)
     class(tallyClerk), intent(inout) :: self
@@ -202,28 +196,5 @@ contains
     isIt =.false.
 
   end function isConverged
-
-  !!
-  !! Set memory adress for the clerk
-  !!
-  subroutine setMemAddress(self, addr)
-    class(tallyClerk), intent(inout) :: self
-    integer(longInt), intent(in)     :: addr
-
-    self % memAdress = addr
-
-  end subroutine setMemAddress
-
-  !!
-  !! Return memory address of the clerk
-  !!
-  elemental function getMemAddress(self) result(addr)
-    class(tallyClerk), intent(in) :: self
-    integer(longInt)              :: addr
-
-    addr = self % memAdress
-
-  end function getMemAddress
-
 
 end module tallyClerk_inter
