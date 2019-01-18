@@ -2,6 +2,7 @@
 add_sources(./tallyClerk_inter.f90
             ./tallyClerkFactory_func.f90
             ./tallyClerkSlot_class.f90
+            ./collisionClerk_class.f90
              )
              
 #add_unit_tests(./Tests/scoreMemory_test.f90)

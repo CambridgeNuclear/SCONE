@@ -219,34 +219,37 @@ contains
   !!
   !! Perform convergance check in the Clerk
   !!
-  function isConverged(self) result(isIt)
+  function isConverged(self, mem) result(isIt)
     class(tallyClerkSlot), intent(in) :: self
+    type(scoreMemory), intent(inout)  :: mem
     logical(defBool)                  :: isIt
 
     ! Pass call to instance in the slot
-    isIt = self % slot % isConverged()
+    isIt = self % slot % isConverged(mem)
 
   end function isConverged
 
   !!
   !! Display convergance progress on the console
   !!
-  subroutine display(self)
+  subroutine display(self, mem)
     class(tallyClerkSlot), intent(in)  :: self
+    type(scoreMemory), intent(inout)   :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % display()
+    call self % slot % display(mem)
 
   end subroutine display
 
   !!
   !! Write contents of the clerk in the slot to output file
   !!
-  subroutine print(self,outFile)
+  subroutine print(self, outFile, mem)
     class(tallyClerkSlot), intent(in) :: self
     class(outputFile), intent(inout)  :: outFile
+    type(scoreMemory), intent(inout)  :: mem
 
-    call self % slot % print(outFile)
+    call self % slot % print(outFile, mem)
 
   end subroutine print
 
@@ -254,14 +257,14 @@ contains
   !! Return result for interaction with Physics Package
   !! from the clerk in the slot
   !!
-  pure subroutine getResult(self, res)
+  pure subroutine getResult(self, res, mem)
     class(tallyClerkSlot), intent(in)              :: self
     class(tallyResult), allocatable, intent(inout) :: res
+    type(scoreMemory), intent(inout)               :: mem
 
-    call self % slot % getResult(res)
+    call self % slot % getResult(res, mem)
 
   end subroutine getResult
-
 
   !!
   !! Copy RHS into slot of LHS

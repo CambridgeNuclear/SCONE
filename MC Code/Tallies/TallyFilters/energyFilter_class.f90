@@ -21,7 +21,7 @@ module energyFilter_class
     real(defReal) :: Emax
   contains
     procedure :: init
-    procedure :: filter
+    procedure :: isPass
 
   end type energyFilter
 
@@ -53,7 +53,7 @@ contains
   !!
   !! Returns true if energy value is between specified bounds
   !!
-  elemental function filter(self,state) result(passed)
+  elemental function isPass(self,state) result(passed)
     class(energyFilter), intent(in)  :: self
     class(particleState), intent(in) :: state
     logical(defBool)                 :: passed
@@ -69,6 +69,6 @@ contains
     E = state % E
     passed = (self % Emin <= E) .and. (E <= self % Emax)
 
-  end function filter
+  end function isPass
     
 end module energyFilter_class

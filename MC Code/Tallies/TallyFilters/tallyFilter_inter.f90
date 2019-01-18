@@ -17,7 +17,8 @@ module tallyFilter_inter
     private
   contains
     procedure(init),deferred   :: init
-    procedure(filter),deferred :: filter
+    procedure(isPass),deferred :: isPass
+    procedure                  :: isFail
   end type tallyFilter
 
   abstract interface
@@ -35,15 +36,29 @@ module tallyFilter_inter
     !! Return .true. if state passes filter test
     !! Return .false. otherwise or if test is undefined
     !!
-    elemental function filter(self, state) result(passed)
+    elemental function isPass(self, state) result(passed)
       import :: tallyFilter,  &
                 particleState,&
                 defBool
       class(tallyFilter), intent(in)   :: self
       class(particleState), intent(in) :: state
       logical(defBool)                 :: passed
-    end function filter
+    end function isPass
 
   end interface
+
+contains
+
+  !!
+  !! Shorthand for [.not.isPass ] for semantic clarity
+  !!
+  elemental function isFail(self, state) result(failed)
+    class(tallyFilter), intent(in)   :: self
+    class(particleState), intent(in) :: state
+    logical(defBool)                 :: failed
+
+    failed = .not. self % isPass(state)
+
+  end function isFail
 
 end module tallyFilter_inter

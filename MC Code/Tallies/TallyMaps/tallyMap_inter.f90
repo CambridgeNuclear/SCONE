@@ -18,12 +18,13 @@ module tallyMap_inter
     private
 
   contains
-    procedure(init),deferred        :: init        ! Initialise tallyMap from dictionary
-    procedure(bins),deferred        :: bins        ! Return number of bins along dimension D
-    procedure(dimensions),deferred  :: dimensions  ! Return number of dimensions
-    procedure(map),deferred         :: map         ! Map particle to a bin
-    procedure(getAxisName),deferred :: getAxisName ! Return character describing variable of devision
-    procedure(print),deferred       :: print       ! Print values associated with bins to outputfile
+    procedure(init),deferred        :: init          ! Initialise tallyMap from dictionary
+    procedure(bins),deferred        :: bins          ! Return number of bins along dimension D
+    procedure(dimensions),deferred  :: dimensions    ! Return number of dimensions
+    procedure                       :: binArrayShape ! Return a shape vector for a map
+    procedure(map),deferred         :: map           ! Map particle to a bin
+    procedure(getAxisName),deferred :: getAxisName   ! Return character describing variable of devision
+    procedure(print),deferred       :: print         ! Print values associated with bins to outputfile
   end type tallyMap
 
   abstract interface
@@ -93,4 +94,21 @@ module tallyMap_inter
     end subroutine print
 
   end interface
+
+contains
+
+  !!
+  !! Returns array of sizes in each dimension
+  !!
+  pure function binArrayShape(self) result(sh)
+    class(tallyMap), intent(in)                      :: self
+    integer(shortInt),dimension(self % dimensions()) :: sh
+    integer(shortInt)                                :: i
+
+    do i=1,self % dimensions()
+      sh(i) = self % bins(i)
+    end do
+
+  end function binArrayShape
+
 end module tallyMap_inter

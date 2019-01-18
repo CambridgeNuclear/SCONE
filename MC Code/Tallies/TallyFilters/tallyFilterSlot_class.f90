@@ -21,7 +21,7 @@ module tallyFilterSlot_class
   contains
     ! Implementation of Superclass interface
     procedure :: init
-    procedure :: filter
+    procedure :: isPass
 
     ! Class specific procedures
     procedure :: moveAllocFrom
@@ -47,14 +47,14 @@ contains
   !!
   !! Call filter inside the slot
   !!
-  elemental function filter(self, state) result(passed)
+  elemental function isPass(self, state) result(passed)
     class(tallyFilterSlot), intent(in) :: self
     class(particleState), intent(in)   :: state
     logical(defBool)                   :: passed
 
-    passed = self % slot % filter(state)
+    passed = self % slot % isPass(state)
 
-  end function filter
+  end function isPass
 
   !!
   !! Move allocation from allocatable RHS into slot

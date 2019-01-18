@@ -56,7 +56,6 @@ module tallyClerk_inter
     procedure :: isConverged
 
     ! Output procedures
-
     procedure(display), deferred      :: display
     procedure(print),deferred         :: print
     procedure                         :: getResult
@@ -84,15 +83,17 @@ module tallyClerk_inter
     !!
     !! Display convergance progress on the console
     !!
-    subroutine display(self)
-      import :: tallyClerk
-      class(tallyClerk), intent(in)  :: self
+    subroutine display(self, mem)
+      import :: tallyClerk, &
+                scoreMemory
+      class(tallyClerk), intent(in)    :: self
+      type(scoreMemory), intent(inout) :: mem
     end subroutine display
 
     !!
     !! Initialise tally clerk from a dictionary
     !!
-    subroutine init(self,dict,name)
+    subroutine init(self, dict, name)
       import :: tallyClerk, &
                 dictionary, &
                 nameLen
@@ -104,11 +105,13 @@ module tallyClerk_inter
     !!
     !! Write contents of the clerk to output file
     !!
-    subroutine print(self,outFile)
+    subroutine print(self, outFile, mem)
       import :: tallyClerk, &
-                outputFile
+                outputFile, &
+                scoreMemory
       class(tallyClerk), intent(in)    :: self
       class(outputFile), intent(inout) :: outFile
+      type(scoreMemory), intent(inout) :: mem
     end subroutine print
 
   end interface
@@ -220,9 +223,10 @@ contains
   !!
   !! Perform convergance check in the Clerk
   !!
-  function isConverged(self) result(isIt)
-    class(tallyClerk), intent(in) :: self
-    logical(defBool)              :: isIt
+  function isConverged(self, mem) result(isIt)
+    class(tallyClerk), intent(in)    :: self
+    type(scoreMemory), intent(inout) :: mem
+    logical(defBool)                 :: isIt
     character(100),parameter  :: Here = 'isConverged (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Convergence check is not implemented in the instance')
@@ -259,9 +263,10 @@ contains
   !! By default returns a null result
   !! Needs to be overriden in a subclass
   !!
-  pure subroutine getResult(self,res)
+  pure subroutine getResult(self, res, mem)
     class(tallyClerk), intent(in)                  :: self
     class(tallyResult),allocatable, intent(inout)  :: res
+    type(scoreMemory), intent(inout)               :: mem
 
     if(allocated(res)) deallocate(res)
     allocate(tallyResultEmpty :: res)

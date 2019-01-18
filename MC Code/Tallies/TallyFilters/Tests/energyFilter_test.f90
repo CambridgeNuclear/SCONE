@@ -66,31 +66,31 @@ contains
     ! Below Emin -> FALSE
     testE = E_MIN * E_Delta
     state % E = testE
-    filterRes = this % filter % filter(state)
+    filterRes = this % filter % isPass(state)
     @assertFalse(filterRes)
 
     ! Emin -> TRUE
     testE = E_MIN
     state % E = testE
-    filterRes = this % filter % filter(state)
+    filterRes = this % filter % isPass(state)
     @assertTrue(filterRes)
 
     ! Below E max -> TRUE
     testE = E_MAX * E_Delta
     state % E = testE
-    filterRes = this % filter % filter(state)
+    filterRes = this % filter % isPass(state)
     @assertTrue(filterRes)
 
     ! E max -> TRUE
     testE = E_MAX
     state % E = testE
-    filterRes = this % filter % filter(state)
+    filterRes = this % filter % isPass(state)
     @assertTrue(filterRes)
 
     ! Above Emax -> FALSE
     testE = E_MAX / E_Delta
     state % E = testE
-    filterRes = this % filter % filter(state)
+    filterRes = this % filter % isPass(state)
     @assertFalse(filterRes)
 
   end subroutine testFilter

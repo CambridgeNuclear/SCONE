@@ -1,10 +1,10 @@
 module tallyResponseSlot_class
 
   use numPrecision
-  use dictionary_class,     only : dictionary
-  use particle_class,       only : particle
-  use tallyResponse_inter,  only : tallyResponse
-  use tallyResponseFactory, only : new_tallyResponse
+  use dictionary_class,          only : dictionary
+  use particle_class,            only : particle
+  use tallyResponse_inter,       only : tallyResponse
+  use tallyResponseFactory_func, only : new_tallyResponse
 
   implicit none
   private
