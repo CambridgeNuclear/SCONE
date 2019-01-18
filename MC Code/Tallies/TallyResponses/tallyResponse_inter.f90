@@ -46,7 +46,7 @@ module tallyResponse_inter
                 defReal
       class(tallyResponse), intent(in) :: self
       class(particle), intent(in)      :: p
-      real(defReal)                    :: vale
+      real(defReal)                    :: val
     end function get
   end interface
     
