@@ -118,6 +118,7 @@ contains
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
+    real(defReal)                         :: scoreVal
 
     ! Get current particle state
     state = p
@@ -142,7 +143,8 @@ contains
 
     do i=1,self % width
       ! shortInt will be replace with long soon
-      call mem % score(self % response(i) % get(p), int(adrr + i,shortInt))
+      scoreVal = self % response(i) % get(p) * p % w ! TODO: ADD 1/totXS
+      call mem % score(scoreVal, int(adrr + i,shortInt))
     end do
 
   end subroutine reportInColl
