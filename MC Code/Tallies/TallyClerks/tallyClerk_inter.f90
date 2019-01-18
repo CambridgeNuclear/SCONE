@@ -8,24 +8,44 @@ module tallyClerk_inter
   use particleDungeon_class, only : particleDungeon
   use outputFile_class,      only : outputFile
 
+  use scoreMemory_class,     only : scoreMemory
+  use tallyResult_class,     only : tallyResult, tallyResultEmpty
+
   implicit none
   private
 
   !!
   !! Abstract interface for a single tallyClerk.
-  !! It recives reports from the admin and processed them into scores and estimates.
+  !! It recives reports from tallyAdmin and process them into scores on scoreMemory
+  !!
   !! Its responsibilites are as follows:
-  !! 1) Score some result by accepting a subset of all avalible reports
+  !! 1) Score some result on scoreMemory by accepting a subset of all avalible reports
   !! 2) Display implementation determined measure of convergance (usually some variance)
   !! 3) Can return information about reports it requires
+  !! 4) Can return a tallyResult object for interaction with Physics Package
+  !!
+  !! Every tally Clerk is allocated memory location on score memory
+  !! Every tally Clerk has a name
   !!
   type, public,abstract :: tallyClerk
     private
-    ! Location of the tallyClerk on scoreMemory
-    integer(longInt) :: memAdress = -1
+    integer(longInt)   :: memAdress = -1 ! Location of the tallyClerk on scoreMemory
+    character(nameLen) :: name           ! Name of the tallyClerk
 
   contains
-    !! File reports and check status
+    ! Procedures used during build
+    procedure(init),deferred          :: init
+    procedure(validReports), deferred :: validReports
+
+    ! Assign and get memory
+    procedure                  :: setMemAddress
+    procedure, non_overridable :: getMemAddress
+
+    ! Assign an get name
+    procedure                  :: setName
+    procedure, non_overridable :: getName
+
+    ! File reports and check status -> run-time procedures
     procedure :: reportInColl
     procedure :: reportOutColl
     procedure :: reportPath
@@ -35,17 +55,20 @@ module tallyClerk_inter
     procedure :: reportCycleEnd
     procedure :: isConverged
 
-    !! Assign memory and check memory id requested
-    procedure                  :: setMemAddress
-    procedure, non_overridable :: getMemAddress
+    ! Output procedures
 
-
-    procedure(validReports), deferred :: validReports
     procedure(display), deferred      :: display
-    procedure(init),deferred          :: init
     procedure(print),deferred         :: print
+    procedure                         :: getResult
 
   end type tallyClerk
+
+  !!
+  !! Extandable superclass procedures
+  !!
+  public :: setMemAddress
+  public :: setName
+
 
   abstract interface
     !!
@@ -88,7 +111,6 @@ module tallyClerk_inter
       class(outputFile), intent(inout) :: outFile
     end subroutine print
 
-
   end interface
 
 contains
@@ -96,9 +118,10 @@ contains
   !!
   !! Process incoming collision report
   !!
-  subroutine reportInColl(self,p)
+  subroutine reportInColl(self,p, mem)
     class(tallyClerk), intent(inout)      :: self
     class(particle), intent(in)           :: p
+    type(scoreMemory), intent(inout)      :: mem
     character(100),parameter    :: Here = 'reportInColl (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -109,11 +132,12 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self,p,MT,muL)
+  subroutine reportOutColl(self, p, MT, muL, mem)
     class(tallyClerk), intent(inout)      :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
+    type(scoreMemory), intent(inout)      :: mem
     character(100),parameter  :: Here = 'reportOutColl (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -125,10 +149,11 @@ contains
   !! ASSUMPTIONS:
   !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self,p,L)
+  subroutine reportPath(self, p, L, mem)
     class(tallyClerk), intent(inout)     :: self
     class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
+    type(scoreMemory), intent(inout)     :: mem
     character(100),parameter  :: Here = 'reportPath (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -141,9 +166,10 @@ contains
   !! Transition must be a straight line
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self,p)
+  subroutine reportTrans(self, p, mem)
     class(tallyClerk), intent(inout)     :: self
     class(particle), intent(in)          :: p
+    type(scoreMemory), intent(inout)     :: mem
     character(100),parameter  :: Here = 'reportTrans (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -155,9 +181,10 @@ contains
   !! ASSUMPTIONS:
   !! Particle is associated with one of the fate codes in tallyCodes
   !!
-  subroutine reportHist(self,p)
+  subroutine reportHist(self, p, mem)
     class(tallyClerk), intent(inout) :: self
     class(particle), intent(in)      :: p
+    type(scoreMemory), intent(inout) :: mem
     character(100),parameter  :: Here = 'reportHist (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -167,9 +194,10 @@ contains
   !!
   !! Process beggining of a cycle
   !!
-  subroutine reportCycleStart(self,start)
-    class(tallyClerk), intent(inout) :: self
-    class(particleDungeon), intent(in)   :: start
+  subroutine reportCycleStart(self, start, mem)
+    class(tallyClerk), intent(inout)    :: self
+    class(particleDungeon), intent(in)  :: start
+    type(scoreMemory), intent(inout)    :: mem
     character(100),parameter  :: Here = 'reportCycleStart (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -179,9 +207,10 @@ contains
   !!
   !! Process end of the cycle
   !!
-  subroutine reportCycleEnd(self,end)
-    class(tallyClerk), intent(inout) :: self
-    class(particleDungeon), intent(in)   :: end
+  subroutine reportCycleEnd(self, end, mem)
+    class(tallyClerk), intent(inout)   :: self
+    class(particleDungeon), intent(in) :: end
+    type(scoreMemory), intent(inout)   :: mem
     character(100),parameter  :: Here = 'reportCycleEnd (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')
@@ -206,7 +235,7 @@ contains
   !!
   !! Set memory adress for the clerk
   !!
-  subroutine setMemAddress(self, addr)
+  elemental subroutine setMemAddress(self, addr)
     class(tallyClerk), intent(inout) :: self
     integer(longInt), intent(in)     :: addr
 
@@ -225,5 +254,40 @@ contains
 
   end function getMemAddress
 
+  !!
+  !! Return result from the clerk for interaction with Physics Package
+  !! By default returns a null result
+  !! Needs to be overriden in a subclass
+  !!
+  pure subroutine getResult(self,res)
+    class(tallyClerk), intent(in)                  :: self
+    class(tallyResult),allocatable, intent(inout)  :: res
+
+    if(allocated(res)) deallocate(res)
+    allocate(tallyResultEmpty :: res)
+
+  end subroutine getResult
+
+  !!
+  !! Set name of the clerk
+  !!
+  elemental subroutine setName(self, name)
+    class(tallyClerk), intent(inout) :: self
+    character(nameLen), intent(in)   :: name
+
+    self % name = name
+
+  end subroutine setName
+
+  !!
+  !! Return name of the clerk
+  !!
+  elemental function getName(self) result(name)
+    class(tallyClerk), intent(in)  :: self
+    character(nameLen)             :: name
+
+    name = self % name
+
+  end function getName
 
 end module tallyClerk_inter

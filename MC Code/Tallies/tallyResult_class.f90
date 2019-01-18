@@ -13,7 +13,7 @@
 !! "knows" what kind of result to expect, so a specialised tallyResult for a particular output
 !! will perform much better in terms of clarity
 !!
-module tallyResults_class
+module tallyResult_class
 
   use numPrecision
 
@@ -46,4 +46,4 @@ module tallyResults_class
 
   end type tallyResultEmpty
 
-end module tallyResults_class
+end module tallyResult_class
