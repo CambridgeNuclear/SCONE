@@ -30,6 +30,8 @@ module asciiMATLAB_class
   !!
   !! Printer for ASCII MATLAB output file
   !!
+  !! NOTE: Should not check calls logic, which is responsibility of oputputFile class!
+  !!
   type, public,extends(asciiOutput) :: asciiMATLAB
     private
     ! State components
@@ -180,8 +182,8 @@ contains
   !! Name should alrady be provided by "startEntry"
   !!
   subroutine startArray(self,shape)
-    class(asciiMATLAB), intent(inout) :: self
-    integer(shortInt),dimension(:)    :: shape
+    class(asciiMATLAB), intent(inout)         :: self
+    integer(shortInt),dimension(:),intent(in) :: shape
     character(100), parameter :: Here ='startArray (asciiMATLAB_class.f90)'
 
     ! Check if state support acction

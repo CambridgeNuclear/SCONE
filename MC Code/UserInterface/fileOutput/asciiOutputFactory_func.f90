@@ -7,7 +7,8 @@ module asciiOutputFactory_func
   use asciiOutput_inter, only : asciiOutput
 
   ! Implementations
-  use asciiMATLAB_class, only : asciiMATLAB
+  use asciiMATLAB_class,  only : asciiMATLAB
+  use dummyPrinter_class, only : dummyPrinter
 
   implicit none
   private
@@ -17,7 +18,8 @@ module asciiOutputFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_asciiOutputs = [ 'asciiMATLAB']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_asciiOutputs = [ 'asciiMATLAB ',&
+                                                                         'dummyPrinter']
 
   public :: new_asciiOutput
 
@@ -36,6 +38,9 @@ contains
     select case(type)
       case('asciiMATLAB')
         allocate(new, source = asciiMATLAB() )
+
+      case('dummyPrinter')
+        allocate(new, source = dummyPrinter() )
 
       case default
         print *, AVALIBLE_asciiOutputs

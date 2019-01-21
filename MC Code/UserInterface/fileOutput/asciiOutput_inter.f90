@@ -97,8 +97,8 @@ module asciiOutput_inter
     subroutine startArray(self,shape)
       import :: asciiOutput, &
                 shortInt
-      class(asciiOutput), intent(inout) :: self
-      integer(shortInt),dimension(:)    :: shape
+      class(asciiOutput), intent(inout)         :: self
+      integer(shortInt),dimension(:),intent(in) :: shape
     end subroutine startArray
 
     !!

@@ -3,6 +3,7 @@ module outputFile_class
   use numPrecision
   use genericProcedures,       only : fatalError, numToChar
   use stack_class,             only : stackChar
+  use charTape_class,          only : charTape
   use asciiOutput_inter,       only : asciiOutput
   use asciiOutputFactory_func, only : new_asciiOutput
   use iso_fortran_env,         only : OUTPUT_UNIT
@@ -14,7 +15,7 @@ module outputFile_class
   character(*),parameter :: DEF_INT_FORMAT  = '(I12)'
 
   integer(shortInt), parameter :: NOT_ARRAY      = 0, &
-                                  UNDEF_ARRAY     = 1, &
+                                  UNDEF_ARRAY    = 1, &
                                   RES_ARRAY      = 2, &
                                   VAL_ARRAY_REAL = 3, &
                                   VAL_ARRAY_INT  = 4, &
@@ -39,6 +40,12 @@ module outputFile_class
   !! KEYWORDS AND SUB-BLOCK NAMES NEED TO BE UNIQUE WITHIN BLOCK!
   !! (***This rule may not be inforced in initial implementations-> requires "char set" )
   !!
+  !! OutputFile can be initialised with fatalErrors = .false.
+  !! In such case logic errors do not call fatalError, but just set noErrors to .false. and
+  !! log error messages on errorLog char tape (string).
+  !! Validity can than be verified with isValid and getErrorLog functions
+  !!
+  !!
   !! Output format is default(*) unless changed by the user (***this may change)
   !!
   !! Names of the arrays and block need to fit into nameLen
@@ -46,6 +53,12 @@ module outputFile_class
   type, public :: outputFile
     private
     class(asciiOutput),allocatable :: output
+    character(nameLen)             :: type
+
+    ! Error handling settings
+    logical(defBool) :: fatalErrors = .true. ! Enable fatalErrors on wrong logic
+    logical(defBool) :: noErrors    = .true. ! No errors were encountered
+    type(charTape)   :: errorLog             ! error messages separated by new line
 
     ! State variables
     integer(shortInt)  :: blockLevel    = 0  ! Current depth in nested blocks
@@ -67,6 +80,12 @@ module outputFile_class
     procedure :: init
     procedure :: writeToFile
     procedure :: writeToConsole
+    procedure :: reset
+
+    ! Error Handling
+    procedure :: logError
+    procedure :: isValid
+    procedure :: getErrorLog
 
     ! Block writing interface
     procedure :: startBlock
@@ -114,11 +133,18 @@ contains
   !!
   !! Initialise output file by providing format type
   !!
-  subroutine init(self,type)
-    class(outputFile), intent(inout) :: self
-    character(nameLen),intent(in)    :: type
+  subroutine init(self, type, fatalErrors)
+    class(outputFile), intent(inout)     :: self
+    character(*),intent(in)              :: type
+    logical(defBool),optional,intent(in) :: fatalErrors
 
-    allocate( self % output, source = new_asciiOutput(type))
+    self % type = type
+    allocate( self % output, source = new_asciiOutput(self % type))
+
+    ! Change fatalErrors setting
+    if(present(fatalErrors)) then
+      self % fatalErrors = fatalErrors
+    end if
 
   end subroutine init
 
@@ -161,6 +187,73 @@ contains
 
   end subroutine writeToConsole
 
+  !!
+  !! Discards all results and sets output file to an initialised state
+  !!
+  subroutine reset(self)
+    class(outputFile), intent(inout) :: self
+
+    ! Reallocate ascii output
+    deallocate(self % output)
+    allocate( self % output, source = new_asciiOutput(self % type))
+
+    ! Clean error log an reset flag
+    call self % errorLog % clean()
+    self % noErrors = .true.
+
+    ! Reset initial state
+    self % blockLevel = 0
+    self % arrayTop   = 0
+    self % arrayLimit = 0
+    self % arrayType  = NOT_ARRAY
+    self % current_block_name = ''
+    self % current_array_name = ''
+
+  end subroutine reset
+
+
+  !!
+  !! This subroutine specifies how to handle use errors (wrong call sequence)
+  !! It can cause fatal error or simply log the error on an error charTape and set flag
+  !! self % noErrors that indicates that output iscorrectly formated to .false.
+  !!
+  subroutine logError(self, where, what)
+    class(outputFile), intent(inout) :: self
+    character(*), intent(in)         :: where
+    character(*), intent(in)         :: what
+
+    if(self % fatalErrors) then ! Kill ran with fatalError
+      call fatalError(where, what)
+
+    else ! Set noErrors to false and log error
+      self % noErrors = .false.
+      call self % errorLog % append(where // ' ; ' // what // new_line(''))
+
+    end if
+
+  end subroutine logError
+
+  !!
+  !! Returns .true. if there were no errors. .false. otherwise
+  !!
+  function isValid(self) result(isIt)
+    class(outputFile), intent(in) :: self
+    logical(defBool)              :: isIt
+
+    isIt = self % noErrors
+
+  end function isValid
+
+  !!
+  !! Returns error log as a allocatable character
+  !!
+  function getErrorLog(self) result(errorLog)
+    class(outputFile), intent(in) :: self
+    character(:),allocatable      :: errorLog
+
+    errorLog = self % errorLog % expose()
+
+  end function getErrorLog
 
   !!
   !! Start new nested block with name: "name"
@@ -175,9 +268,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot begin new block: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot begin new block: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Update state
@@ -199,17 +292,19 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot exit from block: '//                &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot exit from block: '//                &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Check that is not in root block
-    if ( self % blockLevel == 0 ) call fatalError(Here,'Trying to exit from root block')
+    if ( self % blockLevel == 0 ) call self % logError(Here,'Trying to exit from root block')
 
-    ! Update state
-    self % blockLevel = self % blockLevel - 1
-    call self % block_name_stack % pop( self % current_block_name)
+    ! Update state. Protect against blockLevel == 0
+    if ( self % blockLevel > 0) then
+      self % blockLevel = self % blockLevel - 1
+      call self % block_name_stack % pop( self % current_block_name)
+    end if
 
     ! End block in output
     call self % output % endBlock()
@@ -231,9 +326,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot start new array: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot start new array: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! * Check whether shape is degenerate
@@ -262,10 +357,10 @@ contains
 
     ! Check that all entries for current array were given
     if(self % arrayTop /= self % arrayLimit) then
-      call fatalError(Here, 'Cannot close array: ' // trim(self % current_array_name) // &
-                            ' in block: ' // trim(self % current_block_name)         //  &
-                            ' Becouse only: '// numToChar(self % arrayTop)          //   &
-                            ' of '// numToChar(self % arrayLimit)//' were provided')
+      call self % logError(Here, 'Cannot close array: ' // trim(self % current_array_name) // &
+                                 ' in block: ' // trim(self % current_block_name)         //  &
+                                 ' Becouse only: '// numToChar(self % arrayTop)          //   &
+                                 ' of '// numToChar(self % arrayLimit)//' were provided')
     end if
 
     ! Update state
@@ -302,10 +397,10 @@ contains
     end if
 
     ! Check for writing into non-existant array, array of mixed elements or array overflow
-    if ( self % arrayType == NOT_ARRAY) call fatalError(Here,'Trying to add result without starting array')
-    if ( self % arrayType /= RES_ARRAY) call fatalError(Here,'Arrays with mixed content are not allowed')
+    if ( self % arrayType == NOT_ARRAY) call self % logError(Here,'Trying to add result without starting array')
+    if ( self % arrayType /= RES_ARRAY) call self % logError(Here,'Arrays with mixed content are not allowed')
     if ( self % arrayTop + 2 > self % arrayLimit) then
-      call fatalError(Here,'Array overflow. To many elements were provided')
+      call self % logError(Here,'Array overflow. To many elements were provided')
     end if
 
     ! Print value and std
@@ -328,7 +423,7 @@ contains
     character(100),parameter :: Here ='addResult_rank1 (outputFile_class.f90)'
 
     N = size(val)
-    if (N /= size(std)) call fatalError(Here,'val and std have diffrent size.')
+    if (N /= size(std)) call self % logError(Here,'val and std have diffrent size.')
 
     ! Add all individual entries
     do i=1,N
@@ -352,9 +447,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot print new entry: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot print new entry: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Print single result as a 2 element array
@@ -389,13 +484,13 @@ contains
 
     ! Check for writing into non-existant array, array of mixed elements or array overflow
     if ( self % arrayType == NOT_ARRAY) then
-      call fatalError(Here,'Trying to add result without starting array')
+      call self % logError(Here,'Trying to add result without starting array')
 
     else if ( self % arrayType /= VAL_ARRAY_REAL) then
-      call fatalError(Here,'Arrays with mixed content are not allowed')
+      call self % logError(Here,'Arrays with mixed content are not allowed')
 
     else if ( self % arrayTop + 1 > self % arrayLimit) then
-      call fatalError(Here,'Array overflow. To many elements were provided')
+      call self % logError(Here,'Array overflow. To many elements were provided')
 
     end if
 
@@ -436,9 +531,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot print new entry: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                               ' Cannot print new entry: '//name//          &
+                               ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Print single result as a 2 element array
@@ -491,9 +586,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot print new entry: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot print new entry: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Print single result as a 2 element array
@@ -525,13 +620,13 @@ contains
 
     ! Check for writing into non-existant array, array of mixed elements or array overflow
     if ( self % arrayType == NOT_ARRAY) then
-      call fatalError(Here,'Trying to add result without starting array')
+      call self % logError(Here,'Trying to add result without starting array')
 
     else if ( self % arrayType /= VAL_ARRAY_INT) then
-      call fatalError(Here,'Arrays with mixed content are not allowed')
+      call self % logError(Here,'Arrays with mixed content are not allowed')
 
     else if ( self % arrayTop + 1 > self % arrayLimit) then
-      call fatalError(Here,'Array overflow. To many elements were provided')
+      call self % logError(Here,'Array overflow. To many elements were provided')
 
     end if
 
@@ -572,9 +667,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot print new entry: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot print new entry: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Print single result as a 2 element array
@@ -606,13 +701,13 @@ contains
 
     ! Check for writing into non-existant array, array of mixed elements or array overflow
     if ( self % arrayType == NOT_ARRAY) then
-      call fatalError(Here,'Trying to add result without starting array')
+      call self % logError(Here,'Trying to add result without starting array')
 
     else if ( self % arrayType /= VAL_ARRAY_CHAR) then
-      call fatalError(Here,'Arrays with mixed content are not allowed')
+      call self % logError(Here,'Arrays with mixed content are not allowed')
 
     else if ( self % arrayTop + 1 > self % arrayLimit) then
-      call fatalError(Here,'Array overflow. To many elements were provided')
+      call self % logError(Here,'Array overflow. To many elements were provided')
 
     end if
 
@@ -653,9 +748,9 @@ contains
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
-      call fatalError(Here,'In block: '// self % current_block_name // &
-                          ' Cannot print new entry: '//name//          &
-                          ' Becouse is writing array: '// self % current_array_name)
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot print new entry: '//name//          &
+                                ' Becouse is writing array: '// self % current_array_name)
     end if
 
     ! Print single result as a 2 element array

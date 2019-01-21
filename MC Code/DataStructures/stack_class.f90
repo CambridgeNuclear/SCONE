@@ -20,6 +20,7 @@ module stack_class
     procedure :: pop      => pop_shortInt
     procedure :: isEmpty  => isEmpty_shortInt
     procedure :: size     => size_shortInt
+    procedure :: clean    => clean_shortInt
 
     procedure, private :: resize => resize_shortInt
   end type stackInt
@@ -36,6 +37,7 @@ module stack_class
     procedure :: pop      => pop_char
     procedure :: isEmpty  => isEmpty_char
     procedure :: size     => size_char
+    procedure :: clean    => clean_char
 
     procedure, private :: resize => resize_char
   end type stackChar
@@ -122,6 +124,17 @@ contains
     S = self % top
 
   end function size_shortInt
+
+  !!
+  !! Empty stack without deallocating memory
+  !!
+  subroutine clean_shortInt(self)
+    class(stackInt), intent(inout) :: self
+
+    self % top = 0
+
+  end subroutine clean_shortInt
+
     
   !!
   !! Increases size of the stack
@@ -230,6 +243,16 @@ contains
     S = self % top
 
   end function size_char
+
+  !!
+  !! Empty stack without deallocating memory
+  !!
+  subroutine clean_char(self)
+    class(stackChar), intent(inout) :: self
+
+    self % top = 0
+
+  end subroutine clean_char
 
   !!
   !! Increases size of the stack

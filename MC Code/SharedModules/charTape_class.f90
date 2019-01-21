@@ -23,6 +23,7 @@ module charTape_class
     procedure  :: expose
     procedure  :: cut
     procedure  :: length
+    procedure  :: clean
 
     procedure, private :: append_tape
     procedure, private :: append_char
@@ -52,6 +53,16 @@ contains
     L = self % end
 
   end function length
+
+  !!
+  !! Remove content without deallocation
+  !!
+  subroutine clean(self)
+    class(charTape), intent(inout) :: self
+
+    self % end = 0
+
+  end subroutine clean
 
   !!
   !! Cut N last characters from the tape
