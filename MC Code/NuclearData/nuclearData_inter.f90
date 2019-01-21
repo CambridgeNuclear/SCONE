@@ -3,6 +3,7 @@ module nuclearData_inter
   use numPrecision
   use dictionary_class, only : dictionary
 
+
   implicit none
   private
 
