@@ -3,6 +3,7 @@ module energyMap_test
   use pFUnit_mod
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
+  use outputFile_class,        only : outputFile
 
   use energyMap_class,       only : energyMap
 
@@ -193,4 +194,28 @@ contains
     @assertEqual(0,  this % map_unstruct % bins(-3),'Invalid Dimension')
 
   end subroutine testBinNumber
+
+  !!
+  !! Test correctness of print subroutine
+  !! Does not checks that values are correct, but that calls sequance is without errors
+  !!
+@Test
+  subroutine testPrint(this)
+    class(test_energyMap), intent(inout) :: this
+    type(outputFile)                     :: out
+
+    call out % init('dummyPrinter', fatalErrors = .false.)
+
+    call this % map_lin % print(out)
+    @assertTrue(out % isValid(),'Linear map case')
+
+    call this % map_log % print(out)
+    @assertTrue(out % isValid(),'Logarithmic map case')
+
+    call this % map_unstruct % print(out)
+    @assertTrue(out % isValid(),'Unstructured map case')
+
+  end subroutine testPrint
+
+
 end module energyMap_test

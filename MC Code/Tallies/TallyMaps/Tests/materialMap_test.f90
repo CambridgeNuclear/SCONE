@@ -4,6 +4,7 @@ module materialMap_test
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
   use nuclearDataRegistry_mod, only : build_NuclearData, kill_nuclearData
+  use outputFile_class,        only : outputFile
 
   use materialMap_class,       only : materialMap
 
@@ -146,6 +147,26 @@ contains
     @assertEqual(0, this % map_noUndef % bins(-2),'invalid dimension')
 
   end subroutine testNumberOfBinsInquiry
+
+  !!
+  !! Test correctness of print subroutine
+  !! Does not checks that values are correct, but that calls sequance is without errors
+  !!
+@Test
+  subroutine testPrint(this)
+    class(test_materialMap), intent(inout) :: this
+    type(outputFile)                     :: out
+
+    call out % init('dummyPrinter', fatalErrors = .false.)
+
+    call this % map_noUndef % print(out)
+    @assertTrue(out % isValid(),'For map with no undefined material bin: ')
+
+    call this % map_undef % print(out)
+    @assertTrue(out % isValid(),'For map with undefined material bin: ')
+
+  end subroutine testPrint
+
 
 
 end module materialMap_test

@@ -4,6 +4,7 @@ module spaceMap_test
   use pFUnit_mod
   use particle_class,       only : particleState
   use dictionary_class,     only : dictionary
+  use outputFile_class,     only : outputFile
   use spaceMap_class,       only : spaceMap
 
   implicit none
@@ -166,5 +167,25 @@ contains
     @assertEqual(0, this % map_unstruct % bins(-2),'Invalid dimension')
 
   end subroutine testBins
+
+  !!
+  !! Test correctness of print subroutine
+  !! Does not checks that values are correct, but that calls sequance is without errors
+  !!
+@Test(testParameters ={XdirParameter()})
+  subroutine testPrint(this)
+    class(test_spaceMap), intent(inout) :: this
+    type(outputFile)                     :: out
+
+    call out % init('dummyPrinter', fatalErrors = .false.)
+
+    call this % map_struct % print(out)
+    @assertTrue(out % isValid(),'For map with structured grid: ')
+
+    call this % map_unstruct % print(out)
+    @assertTrue(out % isValid(),'For map with unstructured grid: ')
+
+  end subroutine testPrint
+
 
 end module spaceMap_test
