@@ -13,6 +13,12 @@ module scoreMemory_class
   !! Size of the 2nd Dimension of bins
   integer(shortInt), parameter :: DIM2 = 3
 
+
+  !!
+
+  !!
+
+
   !!
   !! scoreMemory is a class that stores space for scores from tallies
   !! it is separate from tallyClerks and individual responses to allow:
@@ -21,13 +27,13 @@ module scoreMemory_class
   !!   -> Possibility of extention to tally covariance of selected tally bins
   !!   -> Easy copying and recombination of results for OpenMP shared memory parallelism
   !!   -> Easy, output format independent way to perform regression tests
+  !!   -> Easy handling of different batch sizes
   !!
   !! For every bin index there are three position, BIN, CSUM, CSUM2. All are initialised to 0.
   !! Function score accumulates value on BIN under given index
   !! Function accumulate accumulates value on CSUM and value^2 on CSUM2 under given index
-  !! Function normalise multiplies all BINs under every index by a factor
-  !! Function closeBatch divides all values under BIN by a factor and adds the resulting value on
-  !!  CSUM and value^2 on CSUM2.
+  !! Subroutine closeCycle, increments cycle counters and possibly closes batch by multiplying all
+  !!   scores by a normalisation factor and moving them on the cumulative sum.
   !!
   !! Example use case:
   !!
@@ -36,20 +42,25 @@ module scoreMemory_class
   !!      call scoreMem % score(hist,1)        ! Score hist (1,10) in bin 1
   !!      call scoreMem % accumulate(hist,2)   ! Accumulate hist in CSUMs of bin 2
   !!    end do
-  !!    call scoreMem % normalise(factor)      ! Multiply total scores added since last closeBatch by factor
-  !!    call scoreMem % closeBatch(batchWgt)   ! Close batch with batchWgt
+  !!    call scoreMem % closeCycle(ONE)        ! Close batch without normalisation (factor = ONE)
   !!  end do
+  !!
   !!  call scoreMem % getResult(mean,STD,1) ! Get result from bin 1 with STD
   !!  call scoreMem % getResult(mean,2,200) ! Get mean from bin 2 assuming 200 samples
   !!
-  !! NOTE: Following indexing is used in bins variable
-  !!       bins(binIndex,binType) binType is BIN/CSUM/CSUM2
+  !! NOTE:  Following indexing is used in bins class member
+  !!        bins(binIndex,binType) binType is BIN/CSUM/CSUM2
+  !! NOTE2: If batch size is not a denominator of cycles scored results accumulated
+  !!        in extra cycles are discarded in current implementation
+  !!
   type, public :: scoreMemory
       private
-      real(defReal),dimension(:,:),allocatable :: bins       !! Space for binning (2nd dim size is always 3!)
-      integer(shortInt)                        :: N = 0      !! Size of memory (number of bins)
-      integer(shortInt)                        :: id         !! Id of the tally
-      integer(shortInt)                        :: batchN = 0 !! Number of Batches
+      real(defReal),dimension(:,:),allocatable :: bins          !! Space for binning (2nd dim size is always 3!)
+      integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
+      integer(shortInt)                        :: id            !! Id of the tally
+      integer(shortInt)                        :: batchN = 0    !! Number of Batches
+      integer(shortInt)                        :: cycles = 0    !! Cycles counter
+      integer(shortInt)                        :: batchSize = 1 !! Batch interval sieze (in cycles)
   contains
     ! Interface procedures
     procedure :: init
@@ -57,8 +68,8 @@ module scoreMemory_class
     generic   :: score      => score_defReal, score_shortInt, score_longInt
     generic   :: accumulate => accumulate_defReal, accumulate_shortInt, accumulate_longInt
     generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
-    procedure :: normalise
-    procedure :: closeBatch
+    procedure :: closeCycle
+    procedure :: lastCycle
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -76,11 +87,14 @@ contains
 
   !!
   !! Allocate space for the bins given number of bins N
+  !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id )
-    class(scoreMemory), intent(inout) :: self
-    integer(shortInt), intent(in)     :: N
-    integer(shortInt), intent(in)     :: id
+  subroutine init(self, N, id, batchSize )
+    class(scoreMemory),intent(inout)      :: self
+    integer(longInt),intent(in)           :: N
+    integer(shortInt),intent(in)          :: id
+    integer(shortInt),optional,intent(in) :: batchSize
+    character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     ! Allocate space and zero all bins
     allocate( self % bins(N, DIM2))
@@ -91,6 +105,19 @@ contains
 
     ! Assign memory id
     self % id = id
+
+    ! Set batchN, cycles and batchSize to default values
+    self % batchN    = 0
+    self % cycles    = 0
+    self % batchSize = 1
+
+    if(present(batchSize)) then
+      if(batchSize > 0) then
+        self % batchSize = batchSize
+      else
+        call fatalError(Here,'Batch Size of: '// numToChar(batchSize) //' is invalid')
+      end if
+    end if
 
   end subroutine init
 
@@ -106,18 +133,17 @@ contains
 
   end subroutine kill
 
-
   !!
   !! Score a result on a given single bin under idx
   !!
   subroutine score_defReal(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
     character(100),parameter :: Here = 'score_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0 .or. idx > self % N) then
+    if( idx < 0_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -133,7 +159,7 @@ contains
   subroutine score_shortInt(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     integer(shortInt), intent(in)     :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
 
     call self % score_defReal(real(score, defReal), idx)
 
@@ -145,23 +171,23 @@ contains
   subroutine score_longInt(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     integer(longInt), intent(in)      :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
 
     call self % score_defReal(real(score, defReal), idx)
 
   end subroutine score_longInt
 
-  !!
+ !!
   !! Increment the result directly on cumulative sums
   !!
   subroutine accumulate_defReal(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
     character(100),parameter :: Here = 'accumulate_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0 .or. idx > self % N) then
+    if( idx < 0_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -178,7 +204,7 @@ contains
   subroutine accumulate_shortInt(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     integer(shortInt), intent(in)     :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
 
     call self % accumulate_defReal(real(score, defReal), idx)
 
@@ -190,52 +216,51 @@ contains
   subroutine accumulate_longInt(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     integer(longInt), intent(in)      :: score
-    integer(shortInt), intent(in)     :: idx
+    integer(longInt), intent(in)     :: idx
 
     call self % accumulate_defReal(real(score, defReal), idx)
 
   end subroutine accumulate_longInt
 
   !!
-  !! Multiply all scores by a given factor
-  !! Does not check for degeneate factor (-ve or 0)!
+  !! Close Cylce
+  !! Increments cycle counter and detects end-of-batch
+  !! When batch finishes it normalises all scores by the factor and moves them to CSUMs
   !!
-  subroutine normalise(self, factor)
+  subroutine closeCycle(self, normFactor)
     class(scoreMemory), intent(inout) :: self
-    real(defReal), intent(in)         :: factor
+    real(defReal),intent(in)          :: normFactor
 
-    ! Multiply all scores
-    self % bins(:,BIN) = self % bins(:,BIN) * factor
+    ! Increment Cycle Counter
+    self % cycles = self % cycles + 1
 
-  end subroutine normalise
+    if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
+      ! Normalise scores
+      self % bins(:,BIN) = self % bins(:,BIN) * normFactor
+
+      ! Increment cumulative sums
+      self % bins(:,CSUM)  = self % bins(:,CSUM) + self % bins(:,BIN)
+      self % bins(:,CSUM2) = self % bins(:,CSUM2) + self % bins(:,BIN) * self % bins(:,BIN)
+
+      ! Zero all score bins
+      self % bins(:,BIN) = ZERO
+
+      ! Increment batch counter
+      self % batchN = self % batchN + 1
+
+    end if
+  end subroutine closeCycle
 
   !!
-  !! Close batch
-  !! Move all scores to the cumulative sums
-  !! Scores are divided by a provided divisor
-  !! Score bins are zeroed
+  !! Return true if next closeCycle will close a batch
   !!
-  subroutine closeBatch(self, divisor)
-    class(scoreMemory), intent(inout) :: self
-    real(defReal), intent(in)         :: divisor
-    real(defReal)                     :: inv_divisor
-    character(100),parameter :: Here = 'closeBatch (scoreMemory.f90)'
+  function lastCycle(self) result(isIt)
+    class(scoreMemory), intent(in) :: self
+    logical(defBool)               :: isIt
 
-    ! Check input
-    if( divisor == ZERO) call fatalError(Here,'Divisor is equal to 0!')
-    inv_divisor = ONE/divisor
+    isIt =  mod(self % cycles + 1, self % batchSize) == 0
 
-    ! Increment cumulative sums
-    self % bins(:,CSUM)  = self % bins(:,CSUM) + self % bins(:,BIN) * inv_divisor
-    self % bins(:,CSUM2) = self % bins(:,CSUM2) + self % bins(:,BIN) * self % bins(:,BIN) * inv_divisor * inv_divisor
-
-    ! Zero all score bins
-    self % bins(:,BIN) = ZERO
-
-    ! Increment batch counter
-    self % batchN = self % batchN + 1
-
-  end subroutine closeBatch
+  end function lastCycle
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -246,13 +271,13 @@ contains
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
-    integer(shortInt), intent(in)          :: idx
+    integer(longInt), intent(in)          :: idx
     integer(shortInt), intent(in),optional :: samples
     integer(shortInt)                      :: N
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0 .or. idx > self % N) then
+    if( idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       STD = ZERO
       return
@@ -288,13 +313,13 @@ contains
   subroutine getResult_withoutSTD(self, mean, idx, samples)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
-    integer(shortInt), intent(in)          :: idx
+    integer(longInt), intent(in)           :: idx
     integer(shortInt), intent(in),optional :: samples
     integer(shortInt)                      :: N
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0 .or. idx > self % N) then
+    if( idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       return
     end if

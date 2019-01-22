@@ -120,137 +120,6 @@ contains
     end select
   end function newTest
 
-!  !!
-!  !! Returns an array of test parameters and expected results
-!  !! Assumes that two calls are made on each clerk with:
-!  !! matIdx = 1 wgt = 0.7
-!  !! matIdx = 6 wgt = 1.3
-!  !!
-!  subroutine getParameters(params, case)
-!    type(caseData),intent(inout) :: params
-!    integer(shortInt), intent(in):: case
-!    integer(shortInt)            :: i
-!    type(dictionary)             :: filterDict
-!    type(dictionary)             :: mapDict
-!    type(dictionary)             :: res1Dict
-!    type(dictionary)             :: res2Dict
-!    character(nameLen)           :: res1Name
-!    character(nameLen)           :: res2Name
-!    logical(defBool)             :: hasFilter
-!    logical(defBool)             :: hasMap
-!    logical(defBool)             :: has2Res
-!    integer(shortInt)            :: Nbins
-!    real(defReal)                :: score1, score2
-!
-!    ! Define filter dictionary
-!    call filterDict % init(3)
-!    call filterDict % store('type','testFilter')
-!    call filterDict % store('minIdx',5)
-!    call filterDict % store('maxIdx',7)
-!
-!    ! Define Map dictionary
-!    call mapDict % init(2)
-!    call mapDict % store('type','testMap')
-!    call mapDict % store('maxIdx',7)
-!
-!    ! Define 1st response dictionary and name
-!    res1Name = 'flux'
-!    call res1Dict % init(1)
-!    call res1Dict % store('type','fluxResponse')
-!
-!    ! Define 2nd response dictionary and name
-!    res2Name ='testResponse'
-!    call res2Dict % init(2)
-!    call res2Dict % store('type','testResponse')
-!    call res2Dict % store('value', 1.3_defReal)
-!
-!    ! Set logical flags
-!    hasFilter = .false.
-!    hasMap    = .false.
-!    has2Res   = .false.
-!
-!    i = case
-!    ! Change settings -> flip results
-!   !  if(mod(i-1,2) ==0)      hasFilter = .true.
-!   ! if(mod((i-1)/2,2) == 1) hasMap    = .true.
-!   ! if(mod((i-1)/4,2) == 1) has2Res   = .true.
-!
-!    ! Create clerks dictionary
-!    call params % dict % init(6)
-!    call params % dict % store('type','collisionClerk')
-!    call params % dict % store(res1Name, res1Dict)
-!    call params % dict % store(res2Name, res2Dict)
-!
-!    ! Store filter or map
-!    if(hasFilter) call params % dict % store('filter', filterDict)
-!    if(hasMap)    call params % dict % store('map', mapDict)
-!
-!    ! Store responses used
-!    if(has2Res) then
-!      call params % dict % store('response', [res1Name, res2Name])
-!    else
-!      call params % dict % store('response', [res1Name])
-!    end if
-!
-!    ! Determine number of bins
-!    Nbins = 1
-!    if(has2Res) Nbins = Nbins * 2
-!    if(hasMap)  Nbins = Nbins * 8
-!
-!    ! Allocate result arrays
-!    params % bins    = [(int(i,longInt), i=1,Nbins)]
-!    params % result = [(ZERO, i=1,Nbins)]
-!
-!    ! Set approperiate results (wgt * 1/totXs)
-!    score1 = 0.7_defReal / 0.3_defReal
-!    score2 = 1.3_defReal / 0.3_defReal
-!
-!    select case(i)
-!      case(1) ! Single Bin, both score to the same
-!        params % result(1) = score1 + score2
-!
-!      case(2) ! Single bin with filter
-!        params % result(1) = score1
-!
-!      case(3) ! Map without filter
-!        params % result(1) = score1
-!        params % result(6) = score2
-!
-!      case(4) ! Map with filter
-!        params % result(1) = score1
-!
-!      case(5) ! Single bin with 2nd Response
-!        params % result(1) = score1 + score2
-!        params % result(2) = score1 * 1.3_defReal + score2 * 1.3_defReal
-!
-!      case(6) ! Single bin with filter and 2nd Response
-!        params % result(1) = score1
-!        params % result(2) = score1 * 1.3_defReal
-!
-!      case(7) ! Map with 2nd response
-!        params % result(1)  = score1
-!        params % result(2)  = score1 * 1.3_defReal
-!        params % result(13) = score2
-!        params % result(14) = score2 * 1.3_defReal
-!
-!      case(8) ! Map with 2nd response and filter
-!        params % result(1)  = score1
-!        params % result(2)  = score1 * 1.3_defReal
-!
-!    end select
-!
-!    ! Construct approperiate case description
-!    params % case = 'Vanila case with: '
-!    if(hasFilter) params % case = params % case // ' Filter '
-!    if(hasMap) params % case = params % case // ' Map '
-!    if(has2Res) params % case = params % case // ' 2nd Response '
-!
-!
-!  end subroutine getParameters
-
-
-
-
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! PROPER TESTS BEGIN HERE
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -328,8 +197,8 @@ contains
     call clerk % init(clerkDict,'myClerk')
 
     ! Create score memory TODO: Use Clerk to provide size
-    call mem % init(size(this % bins), 1)
-    call clerk % setMemAddress(int(1,longInt))
+    call mem % init(int(size(this % bins),longInt), 1)
+    call clerk % setMemAddress(1_longInt)
 
     ! Build nuclear data
     allocate(nucData)
@@ -345,11 +214,11 @@ contains
     p % w = 1.3_defReal
     call clerk % reportInColl(p, mem)
 
-    call mem % closeBatch(ONE)
+    call mem % closeCycle(ONE)
 
     ! Verify results of scoring
     do i=1,size(this % bins)
-      call mem % getResult(res, int(this % bins(i)))
+      call mem % getResult(res, this % bins(i))
       @assertEqual(this % results(i), res, TOL, case // 'BIN : ' //numToChar(i) )
     end do
 

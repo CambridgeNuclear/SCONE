@@ -163,9 +163,9 @@ contains
     end associate
 
     do i=1,self % width
-      ! shortInt will be replace with long soon
       scoreVal = self % response(i) % get(p) * p % w *flx
-      call mem % score(scoreVal, int(adrr + i,shortInt))
+      call mem % score(scoreVal, adrr + i)
+
     end do
 
   end subroutine reportInColl
@@ -215,8 +215,7 @@ contains
 
     ! Print results to the file
     do i=1,product(resArrayShape)
-      ! TODO: Change interface of score memory to allow 64-bit adresses (longInt)
-      call mem % getResult(val, std, int(self % getMemAddress() - 1 + i,shortInt))
+      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
       call outFile % addResult(val,std)
 
     end do

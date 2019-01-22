@@ -1,6 +1,3 @@
-#add_subdirectory(TallyResponses)
-#add_subdirectory(TallyProc)
-
 add_subdirectory(TallyClerks)
 add_subdirectory(TallyFilters)
 add_subdirectory(TallyMaps)
