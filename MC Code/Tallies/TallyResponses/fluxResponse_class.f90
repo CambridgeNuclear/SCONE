@@ -11,7 +11,6 @@ module fluxResponse_class
   !!
   !! tallyResponse to score flux contribution
   !!  Always returns ONE
-  !!  Should be used only for testing really...
   !!
   type, public,extends(tallyResponse) :: fluxResponse
     private

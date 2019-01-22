@@ -299,6 +299,11 @@ contains
 
     self % maxSize = maxSize
 
+    ! Sometimes members are not set to their default values.
+    ! Ensure correctness here
+    self % dictLen = 0
+    self % stride  = defStride
+
     allocate(self % keywords(maxSize))
     allocate(self % entries(maxSize))
 
@@ -743,7 +748,6 @@ contains
     integer(shortInt)             :: idx
     class(dictionary),pointer     :: ptr
     character(100),parameter      :: Here='getDictPtr (dictionary_class.f90)'
-
 
     idx = linFind(self % keywords, keyword)
     call searchError(idx,Here)

@@ -4,6 +4,7 @@ module testMap_class
   use dictionary_class, only : dictionary
   use particle_class,   only : particleState
   use outputFile_class, only : outputFile
+  use tallyMap_inter,   only : tallyMap
 
   implicit none
   private
@@ -13,7 +14,7 @@ module testMap_class
   !! Very simple map used for testing of other components only
   !!   Given state it returns bin = matIdx or 0 if matIdx > maxIdx given in dictionary
   !!
-  type, public :: testMap
+  type, public,extends(tallyMap) :: testMap
     private
     integer(shortInt) :: maxIdx = 0
   contains

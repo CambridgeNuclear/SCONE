@@ -26,7 +26,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # FLAGS FOR CODE COVERAGE        
 # -coverage -Wno-surprising 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -coverage -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 
@@ -168,7 +168,7 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
 ###############################################################################
 # COMPILE SOLVERS 
-add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
+#add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${SRCS}) 
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${SRCS}) 

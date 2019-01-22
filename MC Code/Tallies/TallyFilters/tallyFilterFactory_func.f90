@@ -9,6 +9,7 @@ module tallyFilterFactory_func
 
   ! tallyFilter implementations
   use energyFilter_class,   only : energyFilter
+  use testFilter_class,     only : testFilter
 
 
   implicit none
@@ -46,6 +47,10 @@ contains
     select case(type)
       case('energyFilter')
         allocate(energyFilter :: new)
+        call new % init(dict)
+
+      case('testFilter')
+        allocate(testFilter :: new)
         call new % init(dict)
 
      !*** NEW TALLY MAP TEMPLATE ***!

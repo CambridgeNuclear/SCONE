@@ -99,12 +99,12 @@ contains
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % inCollClerks)
-      idx = self % inCollClerks(i)
-      call self % tallyClerks(idx) % reportInColl(p)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % inCollClerks)
+!      idx = self % inCollClerks(i)
+!      call self % tallyClerks(idx) % reportInColl(p)
+!
+!    end do
 
   end subroutine reportInColl
 
@@ -115,11 +115,11 @@ contains
     class(tallyAdminBase), intent(in) :: self
     integer(shortInt)                 :: i
 
-    ! Go through all clerks marked as part of the display
-    do i=1,size(self % displayList)
-      call self % tallyClerks(i) % display()
-
-    end do
+!    ! Go through all clerks marked as part of the display
+!    do i=1,size(self % displayList)
+!      call self % tallyClerks(i) % display()
+!
+!    end do
 
   end subroutine display
 
@@ -131,18 +131,18 @@ contains
     logical(defBool)                     :: isIt
     integer(shortInt)                    :: i,N
 
-    N = size( self % triggerList)
-
-    if( N > 0 ) then
-      isIt = self % tallyClerks(1) % isConverged()
-      do i = 2,N
-      isIt = isIt .and. self % tallyClerks(i) % isConverged()
-
-      end do
-    else
-      isIt = .false.
-
-    end if
+!    N = size( self % triggerList)
+!
+!    if( N > 0 ) then
+!      isIt = self % tallyClerks(1) % isConverged()
+!      do i = 2,N
+!      isIt = isIt .and. self % tallyClerks(i) % isConverged()
+!
+!      end do
+!    else
+!      isIt = .false.
+!
+!    end if
 
   end function isConverged
 
@@ -154,9 +154,9 @@ contains
     class(outputFile), intent(inout)     :: output
     integer(shortInt)                    :: i
 
-    do i=1,size(self % tallyClerks)
-      call self % tallyClerks(i) % print(output)
-    end do
+!    do i=1,size(self % tallyClerks)
+!      call self % tallyClerks(i) % print(output)
+!    end do
 
   end subroutine print
 
@@ -171,12 +171,12 @@ contains
     real(defReal), intent(in)             :: muL
     integer(shortInt)                     :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % outCollClerks)
-      idx = self % outCollClerks(i)
-      call self % tallyClerks(idx) % reportOutColl(p,MT,muL)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % outCollClerks)
+!      idx = self % outCollClerks(i)
+!      call self % tallyClerks(idx) % reportOutColl(p,MT,muL)
+!
+!    end do
 
   end subroutine reportOutColl
 
@@ -191,12 +191,12 @@ contains
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % pathClerks)
-      idx = self % pathClerks(i)
-      call self % tallyClerks(idx) % reportPath(p,L)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % pathClerks)
+!      idx = self % pathClerks(i)
+!      call self % tallyClerks(idx) % reportPath(p,L)
+!
+!    end do
 
   end subroutine reportPath
 
@@ -211,12 +211,12 @@ contains
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % transClerks)
-      idx = self % transClerks(i)
-      call self % tallyClerks(idx) % reportTrans(p)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % transClerks)
+!      idx = self % transClerks(i)
+!      call self % tallyClerks(idx) % reportTrans(p)
+!
+!    end do
 
   end subroutine reportTrans
 
@@ -229,12 +229,12 @@ contains
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % histClerks)
-      idx = self % histClerks(i)
-      call self % tallyClerks(idx) % reportHist(p)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % histClerks)
+!      idx = self % histClerks(i)
+!      call self % tallyClerks(idx) % reportHist(p)
+!
+!    end do
 
 
   end subroutine reportHist
@@ -247,12 +247,12 @@ contains
     class(particleDungeon), intent(in)   :: start
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % cycleStartClerks)
-      idx = self % cycleStartClerks(i)
-      call self % tallyClerks(idx) % reportCycleStart(start)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % cycleStartClerks)
+!      idx = self % cycleStartClerks(i)
+!      call self % tallyClerks(idx) % reportCycleStart(start)
+!
+!    end do
 
   end subroutine reportCycleStart
 
@@ -264,12 +264,12 @@ contains
     class(particleDungeon), intent(in)   :: end
     integer(shortInt)                    :: i, idx
 
-    ! Go through all clerks that request the report
-    do i=1,size(self % cycleEndClerks)
-      idx = self % cycleEndClerks(i)
-      call self % tallyClerks(idx) % reportCycleEnd(end)
-
-    end do
+!    ! Go through all clerks that request the report
+!    do i=1,size(self % cycleEndClerks)
+!      idx = self % cycleEndClerks(i)
+!      call self % tallyClerks(idx) % reportCycleEnd(end)
+!
+!    end do
 
   end subroutine reportCycleEnd
 
@@ -286,43 +286,43 @@ contains
     integer(shortInt)                           :: i
 
 
-    ! Deallocate
-    call self % kill()
-
-    ! Allocate contents
-    allocate(self % inCollClerks(0)     )
-    allocate(self % outCollClerks(0)    )
-    allocate(self % pathClerks(0)       )
-    allocate(self % transClerks(0)      )
-    allocate(self % histClerks(0)       )
-    allocate(self % cycleStartClerks(0) )
-    allocate(self % cycleEndClerks(0)   )
-
-    allocate(self% displayList(0)       )
-    allocate(self% triggerList(0)       )
-
-    allocate(self % tallyClerks(0))
-
-    ! Read all dictionaries
-    call dict % keysDict(clerks)
-
-    ! Load all dictionaries as clerks
-    do i=1,size(clerks)
-      ! Copy dictionary to local copy
-      call dict % get(locDict,clerks(i))
-
-      ! Check if it is part of the display
-      call locDict % getOrDefault(entry,'display','no')
-      partOfDisplay = charCmp(entry,'yes')
-
-      ! Check if it is part of the convergance triggers
-      call locDict % getOrDefault(entry,'trigger','no')
-      partOfTriggers = charCmp(entry,'yes')
-
-      ! Get new clerk from factory and store it ina aslot
-      call self % addTallyClerk( new_tallyClerk(locDict,clerks(i)),partOfDisplay,partOfTriggers)
-
-    end do
+!    ! Deallocate
+!    call self % kill()
+!
+!    ! Allocate contents
+!    allocate(self % inCollClerks(0)     )
+!    allocate(self % outCollClerks(0)    )
+!    allocate(self % pathClerks(0)       )
+!    allocate(self % transClerks(0)      )
+!    allocate(self % histClerks(0)       )
+!    allocate(self % cycleStartClerks(0) )
+!    allocate(self % cycleEndClerks(0)   )
+!
+!    allocate(self% displayList(0)       )
+!    allocate(self% triggerList(0)       )
+!
+!    allocate(self % tallyClerks(0))
+!
+!    ! Read all dictionaries
+!    call dict % keysDict(clerks)
+!
+!    ! Load all dictionaries as clerks
+!    do i=1,size(clerks)
+!      ! Copy dictionary to local copy
+!      call dict % get(locDict,clerks(i))
+!
+!      ! Check if it is part of the display
+!      call locDict % getOrDefault(entry,'display','no')
+!      partOfDisplay = charCmp(entry,'yes')
+!
+!      ! Check if it is part of the convergance triggers
+!      call locDict % getOrDefault(entry,'trigger','no')
+!      partOfTriggers = charCmp(entry,'yes')
+!
+!      ! Get new clerk from factory and store it ina aslot
+!      call self % addTallyClerk( new_tallyClerk(locDict,clerks(i)),partOfDisplay,partOfTriggers)
+!
+!    end do
 
 
   end subroutine init
@@ -341,36 +341,36 @@ contains
 
     character(100),parameter  :: Here = 'addTallyClerk (tallyAdminBase_class.f90)'
 
-    ! Check if provided clerk is a slot. Give error if it is
-    select type(clerk)
-      type is (tallyClerkSlot)
-        call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
-    end select
-
-    ! Check if the tallyAdminBase is initialised
-    if( .not. allocated(self % tallyClerks) ) then
-      call fatalError(Here,'tallyAdminBase is uninitialised')
-    end if
-
-    ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature
-    localSlot = clerk
-    self % tallyClerks = [self % tallyClerks, localSlot]
-
-    ! Obtain list of reports requested by the loaded clerk
-    N = size(self % tallyClerks)
-    reportCodes = self % tallyClerks(N) % validReports()
-
-    ! Append report sorting arrays with index of new tallyClerk
-    do i=1,size(reportCodes)
-      call self % addToReports( reportCodes(i), N )
-    end do
-
-    ! If clerk is partOfDisplay append displayList
-    if (partOfDisplay) self % displayList = [self % displayList, N ]
-
-    ! If clerk is partOfTriggers append triggerList
-    if (partOfTriggers) self % triggerList = [self % triggerList, N ]
-    if (partOfTriggers) self % checkConvergence = .true.
+!    ! Check if provided clerk is a slot. Give error if it is
+!    select type(clerk)
+!      type is (tallyClerkSlot)
+!        call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
+!    end select
+!
+!    ! Check if the tallyAdminBase is initialised
+!    if( .not. allocated(self % tallyClerks) ) then
+!      call fatalError(Here,'tallyAdminBase is uninitialised')
+!    end if
+!
+!    ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature
+!    localSlot = clerk
+!    self % tallyClerks = [self % tallyClerks, localSlot]
+!
+!    ! Obtain list of reports requested by the loaded clerk
+!    N = size(self % tallyClerks)
+!    reportCodes = self % tallyClerks(N) % validReports()
+!
+!    ! Append report sorting arrays with index of new tallyClerk
+!    do i=1,size(reportCodes)
+!      call self % addToReports( reportCodes(i), N )
+!    end do
+!
+!    ! If clerk is partOfDisplay append displayList
+!    if (partOfDisplay) self % displayList = [self % displayList, N ]
+!
+!    ! If clerk is partOfTriggers append triggerList
+!    if (partOfTriggers) self % triggerList = [self % triggerList, N ]
+!    if (partOfTriggers) self % checkConvergence = .true.
 
   end subroutine addTallyClerk
 
@@ -380,18 +380,18 @@ contains
   subroutine kill(self)
     class(tallyAdminBase), intent(inout) :: self
 
-    if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
-
-    if(allocated(self % displayList)) deallocate( self % displayList)
-    if(allocated(self % triggerList)) deallocate( self % triggerList)
-
-    if(allocated(self % inCollClerks))     deallocate( self % inCollClerks)
-    if(allocated(self % outCollClerks))    deallocate( self % outCollClerks )
-    if(allocated(self % pathClerks))       deallocate( self % pathClerks )
-    if(allocated(self % transClerks))      deallocate( self % transClerks )
-    if(allocated(self % histClerks))       deallocate( self % histClerks )
-    if(allocated(self % cycleStartClerks)) deallocate( self % cycleStartClerks )
-    if(allocated(self % cycleEndClerks))   deallocate( self % cycleEndClerks )
+!    if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
+!
+!    if(allocated(self % displayList)) deallocate( self % displayList)
+!    if(allocated(self % triggerList)) deallocate( self % triggerList)
+!
+!    if(allocated(self % inCollClerks))     deallocate( self % inCollClerks)
+!    if(allocated(self % outCollClerks))    deallocate( self % outCollClerks )
+!    if(allocated(self % pathClerks))       deallocate( self % pathClerks )
+!    if(allocated(self % transClerks))      deallocate( self % transClerks )
+!    if(allocated(self % histClerks))       deallocate( self % histClerks )
+!    if(allocated(self % cycleStartClerks)) deallocate( self % cycleStartClerks )
+!    if(allocated(self % cycleEndClerks))   deallocate( self % cycleEndClerks )
 
 
   end subroutine kill
@@ -405,31 +405,31 @@ contains
     integer(shortInt), intent(in)       :: idx
     character(100),parameter  :: Here='addToReports (tallyAdminBase_class.f90)'
 
-    select case(reportCode)
-      case(inColl_CODE)
-        self % inCollClerks = [self % inCollClerks, idx]
-
-      case(outColl_CODE)
-        self % outCollClerks = [ self % outCollClerks, idx]
-
-      case(path_CODE)
-        self % pathClerks = [ self % pathClerks, idx]
-
-      case(trans_CODE)
-        self % transClerks = [ self % transClerks, idx]
-
-      case(hist_CODE)
-        self % histClerks = [ self % histClerks, idx]
-
-      case(cycleStart_CODE)
-        self % cycleStartClerks = [ self % cycleStartClerks, idx]
-
-      case(cycleEnd_CODE)
-        self % cycleEndClerks = [ self % cycleEndClerks, idx]
-
-      case default
-        call fatalError(Here, 'Undefined reportCode')
-    end select
+!    select case(reportCode)
+!      case(inColl_CODE)
+!        self % inCollClerks = [self % inCollClerks, idx]
+!
+!      case(outColl_CODE)
+!        self % outCollClerks = [ self % outCollClerks, idx]
+!
+!      case(path_CODE)
+!        self % pathClerks = [ self % pathClerks, idx]
+!
+!      case(trans_CODE)
+!        self % transClerks = [ self % transClerks, idx]
+!
+!      case(hist_CODE)
+!        self % histClerks = [ self % histClerks, idx]
+!
+!      case(cycleStart_CODE)
+!        self % cycleStartClerks = [ self % cycleStartClerks, idx]
+!
+!      case(cycleEnd_CODE)
+!        self % cycleEndClerks = [ self % cycleEndClerks, idx]
+!
+!      case default
+!        call fatalError(Here, 'Undefined reportCode')
+!    end select
 
 
   end subroutine addToReports

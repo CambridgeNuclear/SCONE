@@ -8,7 +8,8 @@ module tallyResponseFactory_func
   use tallyResponse_inter,    only : tallyResponse
 
   ! tallyResponse implementations
-
+  use fluxResponse_class,     only : fluxResponse
+  use testResponse_class,     only : testResponse
 
   implicit none
   private
@@ -31,7 +32,7 @@ contains
   !!
   subroutine new_tallyResponse(new,dict)
     class(tallyResponse),allocatable, intent(inout) :: new
-    class(dictionary), intent(in)                 :: dict
+    class(dictionary), intent(in)                   :: dict
     character(nameLen)            :: type
     character(100),parameter      :: Here = 'new_tallyResponse (tallyResponseFactory_func.f90)'
 
@@ -44,6 +45,13 @@ contains
     ! Allocate approperiate subclass of tallyResponse
     ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
+      case('fluxResponse')
+        allocate(fluxResponse :: new)
+        call new % init(dict)
+
+      case('testResponse')
+        allocate(testResponse :: new)
+        call new % init(dict)
 
      !*** NEW TALLY MAP TEMPLATE ***!
      !case('<newtallyResponseName>')

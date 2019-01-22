@@ -11,6 +11,7 @@ module tallyMapFactory_func
   use energyMap_class,   only : energyMap
   use spaceMap_class,    only : spaceMap
   use materialMap_class, only : materialMap
+  use testMap_class,     only : testMap
 !  use matXsMap_class,    only : matXsMap
 
   implicit none
@@ -25,7 +26,8 @@ module tallyMapFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'energyMap  ',&
                                                                       'spaceMap   ',&
-                                                                      'materialMap']
+                                                                      'materialMap',&
+                                                                      'testMap    ']
 
 contains
 
@@ -59,6 +61,10 @@ contains
 
       case('materialMap')
         allocate(materialMap :: new)
+        call new % init(dict)
+
+      case('testMap')
+        allocate(testMap :: new)
         call new % init(dict)
 
      !*** NEW TALLY MAP TEMPLATE ***!
