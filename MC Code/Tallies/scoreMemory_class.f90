@@ -267,7 +267,7 @@ contains
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
-  subroutine getResult_withSTD(self, mean, STD, idx, samples)
+  elemental subroutine getResult_withSTD(self, mean, STD, idx, samples)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
@@ -310,7 +310,7 @@ contains
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
-  subroutine getResult_withoutSTD(self, mean, idx, samples)
+  elemental subroutine getResult_withoutSTD(self, mean, idx, samples)
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     integer(longInt), intent(in)           :: idx

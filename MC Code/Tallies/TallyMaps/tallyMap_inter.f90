@@ -41,7 +41,7 @@ module tallyMap_inter
 
     !!
     !! Return total number of bins in this division along Dimension D
-    !! If D==0 return sum of bin numbers for all dimensions
+    !! If D==0 returns total number of bins
     !!
     elemental function bins(self, D) result(N)
       import :: tallyMap, &

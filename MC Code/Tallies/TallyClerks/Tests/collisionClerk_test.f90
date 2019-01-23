@@ -76,7 +76,7 @@ contains
     ! Determine number of bins
     Nbins = 1
     if(tst % has2Res) Nbins = Nbins * 2
-    if(tst % hasMap)  Nbins = Nbins * 8
+    if(tst % hasMap)  Nbins = Nbins * 7
 
     ! Allocate result arrays
     tst % bins    = [(int(i,longInt), i=1,Nbins)]
@@ -221,6 +221,9 @@ contains
       call mem % getResult(res, this % bins(i))
       @assertEqual(this % results(i), res, TOL, case // 'BIN : ' //numToChar(i) )
     end do
+
+    ! Verify that size of memory returned is correct
+    @assertEqual(size(this % bins), clerk % getSize(), case // 'Memory size test:')
 
     ! Verify that output calls are correct
     call outF % init('dummyPrinter', fatalErrors = .false.)

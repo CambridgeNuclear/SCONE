@@ -36,6 +36,7 @@ module tallyClerk_inter
     ! Procedures used during build
     procedure(init),deferred          :: init
     procedure(validReports), deferred :: validReports
+    procedure(getSize),deferred       :: getSize
 
     ! Assign and get memory
     procedure                  :: setMemAddress
@@ -79,6 +80,16 @@ module tallyClerk_inter
       class(tallyClerk),intent(in)               :: self
       integer(shortInt),dimension(:),allocatable :: validCodes
     end function validReports
+
+    !!
+    !! Return required size of score memory for the Clerk
+    !!
+    elemental function getSize(self) result(S)
+      import :: tallyClerk, &
+                shortInt
+      class(tallyClerk), intent(in) :: self
+      integer(shortInt)             :: S
+    end function getSize
 
     !!
     !! Display convergance progress on the console

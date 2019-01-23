@@ -53,6 +53,7 @@ module collisionClerk_class
     ! Procedures used during build
     procedure  :: init
     procedure  :: validReports
+    procedure  :: getSize
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportInColl
@@ -112,6 +113,18 @@ contains
     validCodes = [inColl_CODE]
 
   end function validReports
+
+  !!
+  !! Return memory size of the clerk
+  !!
+  elemental function getSize(self) result(S)
+    class(collisionClerk), intent(in) :: self
+    integer(shortInt)                 :: S
+
+    S = size(self % response)
+    if(allocated(self % map)) S = S * self % map % bins(0)
+
+  end function getSize
 
   !!
   !! Process incoming collision report

@@ -27,6 +27,7 @@ module tallyClerkSlot_class
     ! Procedures used during build
     procedure :: init
     procedure :: validReports
+    procedure :: getSize
 
     ! Assign and get memory
     procedure :: setMemAddress
@@ -83,6 +84,17 @@ contains
     validCodes = self % slot % validReports()
 
   end function validReports
+
+  !!
+  !! Return memory size of the clerk in the slot
+  !!
+  elemental function getSize(self) result(S)
+    class(tallyClerkSlot), intent(in) :: self
+    integer(shortInt)                 :: S
+
+    S = self % slot % getSize()
+
+  end function getSize
 
   !!
   !! Set memory adress for the clerk slot and stored clerk
