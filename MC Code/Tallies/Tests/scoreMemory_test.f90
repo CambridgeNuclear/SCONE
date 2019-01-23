@@ -217,6 +217,29 @@ contains
     call mem % kill()
 
   end subroutine testLastCycle
+
+  !!
+  !! Test get score
+  !! Ignore test parametrisation
+  !!
+@Test(cases=[1])
+  subroutine testGetScore(this)
+    class(test_scoreMemory), intent(inout) :: this
+    type(scoreMemory)                      :: mem
+    real(defReal),parameter :: TOL = 1.0E-9
+
+    call mem % init(1_longInt, 1)
+
+    call mem % score(ONE,1_longInt)
+    call mem % score(ONE,1_longInt)
+    call mem % score(ONE,1_longInt)
+
+    @assertEqual(3*ONE, mem % getScore(1_longInt), TOL, 'Test getScore, valid bin:')
+    @assertEqual(ZERO, mem % getScore(0_longInt), TOL, 'Test getScore, not +ve bin:')
+    @assertEqual(ZERO, mem % getScore(2_longInt), TOL, 'Test getScore, too large bin:')
+
+  end subroutine testGetScore
+
 end module scoreMemory_test
 !! MATLAB SCRIPT USED TO GENERATE REFERENCE VALUES
 !clear

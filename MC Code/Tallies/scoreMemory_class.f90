@@ -68,6 +68,7 @@ module scoreMemory_class
     generic   :: score      => score_defReal, score_shortInt, score_longInt
     generic   :: accumulate => accumulate_defReal, accumulate_shortInt, accumulate_longInt
     generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
+    procedure :: getScore
     procedure :: closeCycle
     procedure :: lastCycle
 
@@ -336,5 +337,21 @@ contains
 
   end subroutine getResult_withoutSTD
 
+  !!
+  !! Obtain value of a score in a bin
+  !! Return ZERO for invalid bin address (idx)
+  !!
+  elemental function getScore(self, idx) result (score)
+    class(scoreMemory), intent(in) :: self
+    integer(longInt), intent(in)   :: idx
+    real(defReal)                  :: score
+
+    if(idx < 0_longInt .or. idx > self % N) then
+      score = ZERO
+    else
+      score = self % bins(idx, BIN)
+    end if
+
+  end function getScore
 
 end module scoreMemory_class

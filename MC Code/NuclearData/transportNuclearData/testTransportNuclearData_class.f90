@@ -3,7 +3,7 @@ module testTransportNuclearData_class
   use numPrecision
   use particle_class,             only : particle
   use dictionary_class,           only : dictionary
-  use xsMacroSet_class,           only : xsMacroSet_ptr
+  use xsMacroSet_class,           only : xsMacroSet_ptr, xsMacroSet
   use transportNuclearData_inter, only : transportNuclearData
 
   implicit none
@@ -12,12 +12,15 @@ module testTransportNuclearData_class
   !!
   !! Extreamly simple implementation of transportNuclearData
   !! Always returns a constant, given value of a XS
+  !! Can return a pointer to a xsMacroSet filled with values set in "build" subroutine
+  !! DOES NOT check for any consistency of XSs.
   !! Ignores matIdx
   !! Should be used for TESTING only
   !!
   type, public,extends(transportNuclearData) :: testTransportNuclearData
     private
-    real(defReal) :: xsVal = 0.0
+    real(defReal)            :: xsVal = 0.0
+    type(xsMacroSet),pointer :: macroXS => null()
   contains
     ! Class specific procedures
     procedure :: build
@@ -44,11 +47,47 @@ contains
   !!
   !! Build instance of testTransportNuclearData
   !!
-  subroutine build(self, xsVal)
+  subroutine build(self, xsVal, scatterXS, captureXS, fissionXS, nuFissionXS)
     class(testTransportNuclearData), intent(inout) :: self
     real(defReal), intent(in)                      :: xsVal
+    real(defReal), intent(in),optional             :: scatterXS
+    real(defReal), intent(in),optional             :: captureXS
+    real(defReal), intent(in),optional             :: fissionXS
+    real(defReal), intent(in),optional             :: nuFissionXS
 
     self % xsVal = xsVal
+
+    allocate(self % macroXS)
+    self % macroXS % totalXS = xsVal
+
+    ! Scattering
+    if(present(scatterXS)) then
+      self % macroXS % scatterXS = scatterXS
+    else
+      self % macroXS % scatterXS = xsVal
+    end if
+
+    ! Capture
+    if(present(captureXS)) then
+      self % macroXS % captureXS = captureXS
+    else
+      self % macroXS % captureXS = xsVal
+    end if
+
+    ! Fission
+    if(present(fissionXS)) then
+      self % macroXS % fissionXS = fissionXS
+    else
+      self % macroXS % fissionXS = xsVal
+    end if
+
+    ! nu*Fission
+    if(present(nuFissionXS)) then
+      self % macroXS % nuFissionXS = nuFissionXS
+    else
+      self % macroXS % nuFissionXS = xsVal
+    end if
+
 
   end subroutine build
 
@@ -107,13 +146,16 @@ contains
   end function getTotalMatXS_p
 
   !!
-  !! Return nothing
+  !! Point to local value package
   !!
   subroutine getMatMacroXS_p(self,macroXS,p,matIdx)
     class(testTransportNuclearData), intent(inout)  :: self
     type(xsMacroSet_ptr),intent(inout)              :: macroXS
     class(particle), intent(in)                     :: p
     integer(shortInt),intent(in)                    :: matIdx
+
+    macroXS = self % macroXS
+
   end subroutine getMatMacroXS_p
 
   !!
@@ -174,6 +216,9 @@ contains
   !!
   elemental subroutine kill(self)
     class(testTransportNuclearData), intent(inout) :: self
+
+    deallocate(self % macroXS)
+
   end subroutine kill
 
 end module testTransportNuclearData_class

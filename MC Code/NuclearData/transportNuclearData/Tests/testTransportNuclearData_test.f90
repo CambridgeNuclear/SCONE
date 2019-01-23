@@ -2,6 +2,7 @@ module testTransportNuclearData_test
 
   use numPrecision
   use testTransportNuclearData_class, only : testTransportNuclearData
+  use xsMacroSet_class,               only : xsMacroSet_ptr
   use particle_class,                 only : particle
   use pFUnit_mod
 
@@ -24,7 +25,11 @@ contains
   subroutine setUp(this)
     class(test_testTransportNuclearData), intent(inout) :: this
 
-    call this % nucData % build(2.0_defReal)
+    call this % nucData % build(2.0_defReal,              &
+                                scatterXS   = 3.0_defReal,&
+                                captureXS   = 4.0_defReal,&
+                                fissionXS   = 5.0_defReal,&
+                                nuFissionXS = 6.0_defReal)
 
   end subroutine setUp
 
@@ -33,6 +38,8 @@ contains
   !!
   subroutine tearDown(this)
     class(test_testTransportNuclearData), intent(inout) :: this
+
+    call this % nucData % kill()
 
   end subroutine tearDown
 
@@ -63,5 +70,39 @@ contains
     @assertEqual(2.0_defReal, xsVal, tol)
 
   end subroutine testGetXSs
+
+  !!
+  !! Test obtaining xsMacroSet
+  !!
+@Test
+  subroutine testMacroXsSet(this)
+    class(test_testTransportNuclearData), intent(inout) :: this
+    type(particle)                                      :: p
+    type(testTransportNuclearData)                      :: nucDat
+    type(xsMacroSet_ptr)                                :: XSs
+    real(defReal),parameter                             :: TOL = 1.0E-9
+
+    ! Get xsMacroSet ptr
+    call this % nucData % getMatMacroXS(XSs, p, 1)
+
+    @assertEqual(2.0_defReal,XSs % totalXS(), TOL)
+    @assertEqual(3.0_defReal,XSs % scatterXS(), TOL)
+    @assertEqual(4.0_defReal,XSs % captureXS(), TOL)
+    @assertEqual(5.0_defReal,XSs % fissionXS(), TOL)
+    @assertEqual(6.0_defReal,XSs % nuFissionXS(), TOL)
+
+    ! Check with diffrent initialisation
+    call nucDat % build(ONE)
+
+    call nucDat % getMatMacroXS(XSs, p, 1)
+    @assertEqual(ONE, XSs % totalXS(), TOL)
+    @assertEqual(ONE, XSs % scatterXS(), TOL)
+    @assertEqual(ONE, XSs % captureXS(), TOL)
+    @assertEqual(ONE, XSs % fissionXS(), TOL)
+    @assertEqual(ONE, XSs % nuFissionXS(), TOL)
+
+    call nucDat % kill()
+
+  end subroutine testMacroXsSet
 
 end module testTransportNuclearData_test
