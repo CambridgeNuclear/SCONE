@@ -7,6 +7,7 @@ add_subdirectory(TallyResponses)
 add_sources( ./tallyCodes.f90
              ./tallyAdminBase_class.f90
              ./tallyResult_class.f90
+             ./tallyAdmin_class.f90
              #./tallyInactiveAdmin_class.f90
              #./tallyActiveAdmin_class.f90 
              #./tallyTimeAdmin_class.f90

@@ -1,4 +1,4 @@
-module tallyAdminBase_class
+module tallyAdmin_class
 
   use numPrecision
   use tallyCodes
@@ -11,25 +11,10 @@ module tallyAdminBase_class
   use tallyClerkFactory_func, only : new_tallyClerk
   use outputFile_class,       only : outputFile
 
-
   implicit none
   private
-  !! **** MOST LIKLEY CHANGE INTERFACES FOR CLERKS TO INCLUDE FLUX FOR IN COLLISION AND PATH
-  !! **** PRECALCULATE FLUX HERE SO THERE IS NO NEED TO WARY ABOUT DYNAMIC TYPE OF XSDATA IN CLERKS
-  !!
-  !! Base class for the tallies black box.
-  !! Its responsibilities are as flolow:
-  !! 1) Accept events reports and routes then to individual tallyClerks
-  !! 2) Returns k-eff estimate for a current cycle
-  !! 3) Controls end of calculation
-  !! 4) Controls printing of calculation progress (to a console)
-  !! 5) Controls printing of result estimators to a file (filePath and file  Format)
-  !!
-  !! This class will be extended by inheritance to provide additional functionality
-  !! i.e. return mesh based weight windows based on fission matrix or similar
-  !!
-  !!
-  type, public:: tallyAdminBase
+
+  type, public :: tallyAdmin
     private
     logical(defBool), public :: checkConvergence = .false.
 
@@ -74,28 +59,15 @@ module tallyAdminBase_class
 
     procedure,private :: addToReports
 
-  end type tallyAdminBase
+  end type tallyAdmin
 
-
-  public :: reportInColl
-  public :: reportOutColl
-  public :: reportPath
-  public :: reportTrans
-  public :: reportHist
-  public :: reportCycleStart
-  public :: reportCycleEnd
-  public :: display
-  public :: isConverged
-  public :: init
-  public :: print
-  public :: kill
-    
 contains
+
   !!
   !! Process incoming collision report
   !!
   subroutine reportInColl(self,p)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
@@ -112,7 +84,7 @@ contains
   !! Display convergance progress of selected tallies on the console
   !!
   subroutine display(self)
-    class(tallyAdminBase), intent(in) :: self
+    class(tallyAdmin), intent(in) :: self
     integer(shortInt)                 :: i
 
 !    ! Go through all clerks marked as part of the display
@@ -127,7 +99,7 @@ contains
   !! Perform convergence check in selected clerks
   !!
   function isConverged(self) result(isIt)
-    class(tallyAdminBase), intent(in)    :: self
+    class(tallyAdmin), intent(in)    :: self
     logical(defBool)                     :: isIt
     integer(shortInt)                    :: i,N
 
@@ -150,7 +122,7 @@ contains
   !! Add all results to outputfile
   !!
   subroutine print(self,output)
-    class(tallyAdminBase), intent(in)    :: self
+    class(tallyAdmin), intent(in)    :: self
     class(outputFile), intent(inout)     :: output
     integer(shortInt)                    :: i
 
@@ -165,7 +137,7 @@ contains
   !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
   !!
   subroutine reportOutColl(self,p,MT,muL)
-    class(tallyAdminBase), intent(inout)  :: self
+    class(tallyAdmin), intent(inout)  :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
@@ -186,7 +158,7 @@ contains
   !! Pathlength must be contained within a single cell and material
   !!
   subroutine reportPath(self,p,L)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
@@ -207,7 +179,7 @@ contains
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
   subroutine reportTrans(self,p)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
@@ -225,7 +197,7 @@ contains
   !! ASSUMPTIONS:
   !!
   subroutine reportHist(self,p)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
@@ -243,7 +215,7 @@ contains
   !! Process beginning of a cycle
   !!
   subroutine reportCycleStart(self,start)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)   :: start
     integer(shortInt)                    :: i, idx
 
@@ -260,7 +232,7 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
     integer(shortInt)                    :: i, idx
 
@@ -274,16 +246,21 @@ contains
   end subroutine reportCycleEnd
 
   !!
-  !! Initialise tallyAdminBase form dictionary
+  !! Initialise tallyAdmin form dictionary
   !!
   subroutine init(self,dict)
-    class(tallyAdminBase), intent(inout)        :: self
+    class(tallyAdmin), intent(inout)        :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen),dimension(:),allocatable :: clerks
     type(dictionary)                            :: locDict
     character(nameLen)                          :: entry
     logical(defBool)                            :: partOfDisplay, partOfTriggers
     integer(shortInt)                           :: i
+
+    ! Clean itself
+    call self % kill()
+
+    ! Allocate report
 
 
 !    ! Deallocate
@@ -331,7 +308,7 @@ contains
   !! Attach new tally
   !!
   subroutine addTallyClerk(self, clerk, partOfDisplay, partOfTriggers)
-    class(tallyAdminBase), intent(inout)          :: self
+    class(tallyAdmin), intent(inout)          :: self
     class(tallyClerk), intent(in)                 :: clerk
     logical(defBool),intent(in)                   :: partOfDisplay
     logical(defBool),intent(in)                   :: partOfTriggers
@@ -339,7 +316,7 @@ contains
     integer(shortInt),dimension(:),allocatable    :: reportCodes
     integer(shortInt)                             :: N, i
 
-    character(100),parameter  :: Here = 'addTallyClerk (tallyAdminBase_class.f90)'
+    character(100),parameter  :: Here = 'addTallyClerk (tallyAdmin_class.f90)'
 
 !    ! Check if provided clerk is a slot. Give error if it is
 !    select type(clerk)
@@ -347,9 +324,9 @@ contains
 !        call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
 !    end select
 !
-!    ! Check if the tallyAdminBase is initialised
+!    ! Check if the tallyAdmin is initialised
 !    if( .not. allocated(self % tallyClerks) ) then
-!      call fatalError(Here,'tallyAdminBase is uninitialised')
+!      call fatalError(Here,'tallyAdmin is uninitialised')
 !    end if
 !
 !    ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature
@@ -378,7 +355,7 @@ contains
   !! Deallocates all content
   !!
   subroutine kill(self)
-    class(tallyAdminBase), intent(inout) :: self
+    class(tallyAdmin), intent(inout) :: self
 
 !    if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
 !
@@ -400,10 +377,10 @@ contains
   !! Append sorrting array identified with the code with tallyClerk idx
   !!
   subroutine addToReports(self,reportCode,idx)
-    class(tallyAdminBase),intent(inout) :: self
+    class(tallyAdmin),intent(inout) :: self
     integer(shortInt), intent(in)       :: reportCode
     integer(shortInt), intent(in)       :: idx
-    character(100),parameter  :: Here='addToReports (tallyAdminBase_class.f90)'
+    character(100),parameter  :: Here='addToReports (tallyAdmin_class.f90)'
 
 !    select case(reportCode)
 !      case(inColl_CODE)
@@ -431,7 +408,8 @@ contains
 !        call fatalError(Here, 'Undefined reportCode')
 !    end select
 
+
   end subroutine addToReports
 
-
-end module tallyAdminBase_class
+    
+end module tallyAdmin_class
