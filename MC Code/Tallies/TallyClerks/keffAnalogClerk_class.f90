@@ -141,7 +141,7 @@ contains
   !!
   subroutine display(self, mem)
     class(keffAnalogClerk), intent(in)  :: self
-    type(scoreMemory), intent(inout)    :: mem
+    type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: k, STD
 
     call mem % getResult(k, STD, self % getMemAddress())
@@ -157,7 +157,7 @@ contains
   subroutine print(self, outFile, mem)
     class(keffAnalogClerk), intent(in) :: self
     class(outputFile), intent(inout)   :: outFile
-    type(scoreMemory), intent(inout)   :: mem
+    type(scoreMemory), intent(in)      :: mem
     real(defReal)                      :: k, STD
     character(nameLen)                 :: name
 

@@ -4,36 +4,78 @@ module tallyAdmin_class
   use tallyCodes
   use genericProcedures,      only : fatalError, charCmp
   use dictionary_class,       only : dictionary
+  use dynArray_class,         only : dynIntArray
+  use charMap_class,          only : charMap
   use particle_class,         only : particle, phaseCoord
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk
   use tallyClerkSlot_class,   only : tallyClerkSlot
-  use tallyClerkFactory_func, only : new_tallyClerk
+  use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
 
   implicit none
   private
 
+
+  !! Parameters
+  integer(longInt), parameter :: NO_NORM = -17_longInt
+
+
+
+  !!
+  !! TallyAdmin is responsible for:
+  !!   1) Routing event reports to all tallyClerk that accept them
+  !!   2) Performing normalisation of results
+  !!   3) Printing selected results to screen to monitor calculation progress
+  !!   4) Returning tallyResult objects from selected clerks for interaction with
+  !!      Physics packages
+  !!   5) Printing all results to a file at the end of calculation
+  !!
+  !!
+  !! SAMPLE DICTIOANRY INPUT:
+  !!
+  !! mytallyAdmin {
+  !!   #display (clerk2 clerk1); #
+  !!   #norm    clerk3;          #       ! Clerk should be size 1 (first bin of clerk is normalised)
+  !!   #normVal 13.0;            #       ! Must be present if "norm" is present
+  !!   #batchSize   4;           #       ! Default value 1
+  !!   clerk1 { <clerk definition here> }
+  !!   clerk2 { <clerk definition here> }
+  !!   clerk3 { <clerk definition here> }
+  !!   clerk4 { <clerk definition here> }
+  !! }
+  !!
   type, public :: tallyAdmin
     private
-    logical(defBool), public :: checkConvergence = .false.
+    ! Normalisation data
+    integer(longInt)   :: normBinAddr  = NO_NORM
+    real(defReal)      :: normValue
+    character(nameLen) :: normClerkName
 
+    ! Clerks and clerks name map
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
+    type(charMap)                                 :: clerksNameMap
 
-    ! Lists of Clerks to be executed for each procedure
-    integer(shortInt),dimension(:),allocatable    :: inCollClerks
-    integer(shortInt),dimension(:),allocatable    :: outCollClerks
-    integer(shortInt),dimension(:),allocatable    :: pathClerks
-    integer(shortInt),dimension(:),allocatable    :: transClerks
-    integer(shortInt),dimension(:),allocatable    :: histClerks
-    integer(shortInt),dimension(:),allocatable    :: cycleStartClerks
-    integer(shortInt),dimension(:),allocatable    :: cycleEndClerks
+    ! Lists of Clerks to be executed for each report
+    type(dynIntArray)  :: inCollClerks
+    type(dynIntArray)  :: outCollClerks
+    type(dynIntArray)  :: pathClerks
+    type(dynIntArray)  :: transClerks
+    type(dynIntArray)  :: histClerks
+    type(dynIntArray)  :: cycleStartClerks
+    type(dynIntArray)  :: cycleEndClerks
 
     ! List of clerks to display
-    integer(shortInt), dimension(:),allocatable   :: displayList
-    integer(shortInt), dimension(:),allocatable   :: triggerList
+    type(dynIntArray)  :: displayList
 
+    ! Score memory
+    type(scoreMemory)  :: mem
   contains
+
+    ! Build procedures
+    procedure :: init
+    procedure :: kill
+
     ! Report Interface
     procedure :: reportInColl
     procedure :: reportOutColl
@@ -52,16 +94,164 @@ module tallyAdmin_class
     ! File writing procedures
     procedure :: print
 
-    ! Build procedures
-    procedure :: init
-    procedure :: addTallyClerk
-    procedure :: kill
-
     procedure,private :: addToReports
 
   end type tallyAdmin
 
 contains
+
+  !!
+  !! Initialise tallyAdmin form dictionary
+  !!
+  subroutine init(self,dict)
+    class(tallyAdmin), intent(inout)            :: self
+    class(dictionary), intent(in)               :: dict
+    character(nameLen),dimension(:),allocatable :: names
+    integer(shortInt)                           :: i, j, cyclesPerBatch
+    integer(longInt)                            :: memSize, memLoc
+    character(100), parameter :: Here ='init (tallyAdmin_class.f90)'
+
+    ! Clean itself
+    call self % kill()
+
+    ! Obtain clerks dictionary names
+    call dict % keysDict(names)
+
+    ! Allocate space for clekrs
+    allocate(self % tallyClerks(size(names)))
+
+    ! Load clerks into slots and clerk names into map
+    do i=1,size(names)
+      call self % tallyClerks(i) % init(dict % getDictPtr(names(i)), names(i))
+      call self % clerksNameMap % add(names(i),i)
+
+    end do
+
+    ! Register all clerks to recive their reports
+    do i=1,size(self % tallyClerks)
+      associate( reports => self % tallyClerks(i) % validReports() )
+        do j=1,size(reports)
+          call self % addToReports(reports(j), i)
+
+        end do
+      end associate
+    end do
+
+    ! Obtain names of clerks to display
+    if( dict % isPresent('display')) then
+      call dict % get(names,'display')
+    end if
+
+    ! Register all clerks to display
+    do i=1,size(names)
+      call self % displayList % add( self % clerksNameMap % get(names(i)))
+    end do
+
+    ! Read batching size
+    call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+
+    ! Initialise score memory
+    ! Calculate required size.
+    memSize = sum( self % tallyClerks % getSize() )
+    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+
+    ! Assign memory locations to the clerks
+    memLoc = 1
+    do i=1,size(self % tallyClerks)
+      call self % tallyClerks(i) % setMemAddress(memLoc)
+      memLoc = memLoc + self % tallyClerks(i) % getSize()
+
+    end do
+
+    ! Verify that final memLoc and memSize are consistant
+    if(memLoc - 1 /= memSize) then
+      call fatalError(Here, 'Memory addressing failed.')
+    end if
+
+    ! Read name of normalisation clerks if present
+    if(dict % isPresent('norm')) then
+      call dict % get(self % normClerkName,'norm')
+      call dict % get(self % normValue,'normVal')
+      i = self % clerksNameMap % get(self % normClerkName)
+      self % normBinAddr = self % tallyClerks(i) % getMemAddress()
+    end if
+
+  end subroutine init
+
+  !!
+  !! Deallocates all content
+  !!
+  subroutine kill(self)
+    class(tallyAdmin), intent(inout) :: self
+
+    ! Kill clerks slots
+    if(allocated(self % tallyClerks)) deallocate(self % tallyClerks)
+
+    ! Kill processing lists
+    call self % displayList % kill()
+
+    call self % inCollClerks % kill()
+    call self % outCollClerks % kill()
+    call self % pathClerks % kill()
+    call self % transClerks % kill()
+    call self % histClerks % kill()
+    call self % cycleStartClerks % kill()
+    call self % cycleEndClerks % kill()
+
+    ! Kill score memory
+    call self % mem % kill()
+
+  end subroutine kill
+
+  !!
+  !! Display convergance progress of selected tallies on the console
+  !!
+  subroutine display(self)
+    class(tallyAdmin), intent(in) :: self
+    integer(shortInt)             :: i
+    integer(shortInt)             :: idx
+
+    ! Go through all clerks marked as part of the display
+    do i=1,self % displayList % getSize()
+      idx = self % displayList % get(i)
+      call self % tallyClerks(idx) % display(self % mem)
+
+    end do
+
+  end subroutine display
+
+  !!
+  !! Perform convergence check in selected clerks
+  !! NOT IMPLEMENTED YET
+  !!
+  function isConverged(self) result(isIt)
+    class(tallyAdmin), intent(in)    :: self
+    logical(defBool)                 :: isIt
+    integer(shortInt)                :: i,N
+
+    isIt = .false.
+
+  end function isConverged
+
+  !!
+  !! Add all results to outputfile
+  !!
+  subroutine print(self,output)
+    class(tallyAdmin), intent(in)        :: self
+    class(outputFile), intent(inout)     :: output
+    integer(shortInt)                    :: i
+    character(nameLen)                   :: name
+
+    ! Print tallyAdmin settings
+    name = 'batchSize'
+    call output % printValue(self % mem % getBatchSize(), name)
+
+    ! Print Clerk results
+    do i=1,size(self % tallyClerks)
+      call self % tallyClerks(i) % print(output, self % mem)
+    end do
+
+  end subroutine print
 
   !!
   !! Process incoming collision report
@@ -71,84 +261,32 @@ contains
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % inCollClerks)
-!      idx = self % inCollClerks(i)
-!      call self % tallyClerks(idx) % reportInColl(p)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % inCollClerks % getSize()
+      idx = self % inCollClerks % get(i)
+      call self % tallyClerks(idx) % reportInColl(p, self % mem)
+
+    end do
 
   end subroutine reportInColl
-
-  !!
-  !! Display convergance progress of selected tallies on the console
-  !!
-  subroutine display(self)
-    class(tallyAdmin), intent(in) :: self
-    integer(shortInt)                 :: i
-
-!    ! Go through all clerks marked as part of the display
-!    do i=1,size(self % displayList)
-!      call self % tallyClerks(i) % display()
-!
-!    end do
-
-  end subroutine display
-
-  !!
-  !! Perform convergence check in selected clerks
-  !!
-  function isConverged(self) result(isIt)
-    class(tallyAdmin), intent(in)    :: self
-    logical(defBool)                     :: isIt
-    integer(shortInt)                    :: i,N
-
-!    N = size( self % triggerList)
-!
-!    if( N > 0 ) then
-!      isIt = self % tallyClerks(1) % isConverged()
-!      do i = 2,N
-!      isIt = isIt .and. self % tallyClerks(i) % isConverged()
-!
-!      end do
-!    else
-!      isIt = .false.
-!
-!    end if
-
-  end function isConverged
-
-  !!
-  !! Add all results to outputfile
-  !!
-  subroutine print(self,output)
-    class(tallyAdmin), intent(in)    :: self
-    class(outputFile), intent(inout)     :: output
-    integer(shortInt)                    :: i
-
-!    do i=1,size(self % tallyClerks)
-!      call self % tallyClerks(i) % print(output)
-!    end do
-
-  end subroutine print
 
   !!
   !! Process outgoing collision report
   !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
   !!
   subroutine reportOutColl(self,p,MT,muL)
-    class(tallyAdmin), intent(inout)  :: self
+    class(tallyAdmin), intent(inout)      :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     integer(shortInt)                     :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % outCollClerks)
-!      idx = self % outCollClerks(i)
-!      call self % tallyClerks(idx) % reportOutColl(p,MT,muL)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % outCollClerks % getSize()
+      idx = self % outCollClerks % get(i)
+      call self % tallyClerks(idx) % reportOutColl(p, MT, muL, self % mem)
+
+    end do
 
   end subroutine reportOutColl
 
@@ -158,17 +296,17 @@ contains
   !! Pathlength must be contained within a single cell and material
   !!
   subroutine reportPath(self,p,L)
-    class(tallyAdmin), intent(inout) :: self
+    class(tallyAdmin), intent(inout)     :: self
     class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % pathClerks)
-!      idx = self % pathClerks(i)
-!      call self % tallyClerks(idx) % reportPath(p,L)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % pathClerks % getSize()
+      idx = self % pathClerks % get(i)
+      call self % tallyClerks(idx) % reportPath(p, L, self % mem)
+
+    end do
 
   end subroutine reportPath
 
@@ -183,12 +321,12 @@ contains
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % transClerks)
-!      idx = self % transClerks(i)
-!      call self % tallyClerks(idx) % reportTrans(p)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % transClerks % getSize()
+      idx = self % transClerks % get(i)
+      call self % tallyClerks(idx) % reportTrans(p, self % mem)
+
+    end do
 
   end subroutine reportTrans
 
@@ -197,16 +335,16 @@ contains
   !! ASSUMPTIONS:
   !!
   subroutine reportHist(self,p)
-    class(tallyAdmin), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    integer(shortInt)                    :: i, idx
+    class(tallyAdmin), intent(inout)  :: self
+    class(particle), intent(in)       :: p
+    integer(shortInt)                 :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % histClerks)
-!      idx = self % histClerks(i)
-!      call self % tallyClerks(idx) % reportHist(p)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % histClerks % getSize()
+      idx = self % histClerks % get(i)
+      call self % tallyClerks(idx) % reportHist(p, self % mem)
+
+    end do
 
 
   end subroutine reportHist
@@ -215,16 +353,16 @@ contains
   !! Process beginning of a cycle
   !!
   subroutine reportCycleStart(self,start)
-    class(tallyAdmin), intent(inout) :: self
-    class(particleDungeon), intent(in)   :: start
-    integer(shortInt)                    :: i, idx
+    class(tallyAdmin), intent(inout)   :: self
+    class(particleDungeon), intent(in) :: start
+    integer(shortInt)                  :: i, idx
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % cycleStartClerks)
-!      idx = self % cycleStartClerks(i)
-!      call self % tallyClerks(idx) % reportCycleStart(start)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % cycleStartClerks % getSize()
+      idx = self % cycleStartClerks % get(i)
+      call self % tallyClerks(idx) % reportCycleStart(start, self % mem)
+
+    end do
 
   end subroutine reportCycleStart
 
@@ -232,182 +370,71 @@ contains
   !! Process end of the cycle
   !!
   subroutine reportCycleEnd(self,end)
-    class(tallyAdmin), intent(inout) :: self
-    class(particleDungeon), intent(in)   :: end
-    integer(shortInt)                    :: i, idx
+    class(tallyAdmin), intent(inout)   :: self
+    class(particleDungeon), intent(in) :: end
+    integer(shortInt)                  :: i, idx
+    real(defReal)                      :: normFactor, normScore
+    character(100), parameter :: Here ='reportCycleEnd (tallyAdmin)class.f90)'
 
-!    ! Go through all clerks that request the report
-!    do i=1,size(self % cycleEndClerks)
-!      idx = self % cycleEndClerks(i)
-!      call self % tallyClerks(idx) % reportCycleEnd(end)
-!
-!    end do
+    ! Go through all clerks that request the report
+    do i=1,self % cycleEndClerks % getSize()
+      idx = self % cycleEndClerks % get(i)
+      call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
+
+    end do
+
+    ! Calculate normalisation factor
+    if( self % normBInAddr /= NO_NORM ) then
+      normScore  = self % mem % getScore(self % normBinAddr)
+      if (normScore == ZERO) then
+        call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+
+      end if
+      normFactor = self % normValue / normScore
+
+    else
+      normFactor = ONE
+    end if
+
+    ! Close cycle multipling all scores by multiplication factor
+    call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
 
   !!
-  !! Initialise tallyAdmin form dictionary
-  !!
-  subroutine init(self,dict)
-    class(tallyAdmin), intent(inout)        :: self
-    class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: clerks
-    type(dictionary)                            :: locDict
-    character(nameLen)                          :: entry
-    logical(defBool)                            :: partOfDisplay, partOfTriggers
-    integer(shortInt)                           :: i
-
-    ! Clean itself
-    call self % kill()
-
-    ! Allocate report
-
-
-!    ! Deallocate
-!    call self % kill()
-!
-!    ! Allocate contents
-!    allocate(self % inCollClerks(0)     )
-!    allocate(self % outCollClerks(0)    )
-!    allocate(self % pathClerks(0)       )
-!    allocate(self % transClerks(0)      )
-!    allocate(self % histClerks(0)       )
-!    allocate(self % cycleStartClerks(0) )
-!    allocate(self % cycleEndClerks(0)   )
-!
-!    allocate(self% displayList(0)       )
-!    allocate(self% triggerList(0)       )
-!
-!    allocate(self % tallyClerks(0))
-!
-!    ! Read all dictionaries
-!    call dict % keysDict(clerks)
-!
-!    ! Load all dictionaries as clerks
-!    do i=1,size(clerks)
-!      ! Copy dictionary to local copy
-!      call dict % get(locDict,clerks(i))
-!
-!      ! Check if it is part of the display
-!      call locDict % getOrDefault(entry,'display','no')
-!      partOfDisplay = charCmp(entry,'yes')
-!
-!      ! Check if it is part of the convergance triggers
-!      call locDict % getOrDefault(entry,'trigger','no')
-!      partOfTriggers = charCmp(entry,'yes')
-!
-!      ! Get new clerk from factory and store it ina aslot
-!      call self % addTallyClerk( new_tallyClerk(locDict,clerks(i)),partOfDisplay,partOfTriggers)
-!
-!    end do
-
-
-  end subroutine init
-
-  !!
-  !! Attach new tally
-  !!
-  subroutine addTallyClerk(self, clerk, partOfDisplay, partOfTriggers)
-    class(tallyAdmin), intent(inout)          :: self
-    class(tallyClerk), intent(in)                 :: clerk
-    logical(defBool),intent(in)                   :: partOfDisplay
-    logical(defBool),intent(in)                   :: partOfTriggers
-    type(tallyClerkSlot)                          :: localSlot
-    integer(shortInt),dimension(:),allocatable    :: reportCodes
-    integer(shortInt)                             :: N, i
-
-    character(100),parameter  :: Here = 'addTallyClerk (tallyAdmin_class.f90)'
-
-!    ! Check if provided clerk is a slot. Give error if it is
-!    select type(clerk)
-!      type is (tallyClerkSlot)
-!        call fatalError(Here,'tallyCleakSlot was passed. It is forbidden to avoid nested slots.')
-!    end select
-!
-!    ! Check if the tallyAdmin is initialised
-!    if( .not. allocated(self % tallyClerks) ) then
-!      call fatalError(Here,'tallyAdmin is uninitialised')
-!    end if
-!
-!    ! Append tally Clerks. Automatic reallocation on assignment. F2008 feature
-!    localSlot = clerk
-!    self % tallyClerks = [self % tallyClerks, localSlot]
-!
-!    ! Obtain list of reports requested by the loaded clerk
-!    N = size(self % tallyClerks)
-!    reportCodes = self % tallyClerks(N) % validReports()
-!
-!    ! Append report sorting arrays with index of new tallyClerk
-!    do i=1,size(reportCodes)
-!      call self % addToReports( reportCodes(i), N )
-!    end do
-!
-!    ! If clerk is partOfDisplay append displayList
-!    if (partOfDisplay) self % displayList = [self % displayList, N ]
-!
-!    ! If clerk is partOfTriggers append triggerList
-!    if (partOfTriggers) self % triggerList = [self % triggerList, N ]
-!    if (partOfTriggers) self % checkConvergence = .true.
-
-  end subroutine addTallyClerk
-
-  !!
-  !! Deallocates all content
-  !!
-  subroutine kill(self)
-    class(tallyAdmin), intent(inout) :: self
-
-!    if(allocated(self % tallyClerks)) deallocate( self % tallyClerks )
-!
-!    if(allocated(self % displayList)) deallocate( self % displayList)
-!    if(allocated(self % triggerList)) deallocate( self % triggerList)
-!
-!    if(allocated(self % inCollClerks))     deallocate( self % inCollClerks)
-!    if(allocated(self % outCollClerks))    deallocate( self % outCollClerks )
-!    if(allocated(self % pathClerks))       deallocate( self % pathClerks )
-!    if(allocated(self % transClerks))      deallocate( self % transClerks )
-!    if(allocated(self % histClerks))       deallocate( self % histClerks )
-!    if(allocated(self % cycleStartClerks)) deallocate( self % cycleStartClerks )
-!    if(allocated(self % cycleEndClerks))   deallocate( self % cycleEndClerks )
-
-
-  end subroutine kill
-
-  !!
   !! Append sorrting array identified with the code with tallyClerk idx
   !!
-  subroutine addToReports(self,reportCode,idx)
+  subroutine addToReports(self, reportCode, idx)
     class(tallyAdmin),intent(inout) :: self
-    integer(shortInt), intent(in)       :: reportCode
-    integer(shortInt), intent(in)       :: idx
+    integer(shortInt), intent(in)   :: reportCode
+    integer(shortInt), intent(in)   :: idx
     character(100),parameter  :: Here='addToReports (tallyAdmin_class.f90)'
 
-!    select case(reportCode)
-!      case(inColl_CODE)
-!        self % inCollClerks = [self % inCollClerks, idx]
-!
-!      case(outColl_CODE)
-!        self % outCollClerks = [ self % outCollClerks, idx]
-!
-!      case(path_CODE)
-!        self % pathClerks = [ self % pathClerks, idx]
-!
-!      case(trans_CODE)
-!        self % transClerks = [ self % transClerks, idx]
-!
-!      case(hist_CODE)
-!        self % histClerks = [ self % histClerks, idx]
-!
-!      case(cycleStart_CODE)
-!        self % cycleStartClerks = [ self % cycleStartClerks, idx]
-!
-!      case(cycleEnd_CODE)
-!        self % cycleEndClerks = [ self % cycleEndClerks, idx]
-!
-!      case default
-!        call fatalError(Here, 'Undefined reportCode')
-!    end select
+    select case(reportCode)
+      case(inColl_CODE)
+        call self % inCollClerks % add(idx)
 
+      case(outColl_CODE)
+        call self % outCollClerks % add(idx)
+
+      case(path_CODE)
+        call self % pathClerks % add(idx)
+
+      case(trans_CODE)
+        call self % transClerks % add(idx)
+
+      case(hist_CODE)
+        call self % histClerks % add(idx)
+
+      case(cycleStart_CODE)
+        call self % cycleStartClerks % add(idx)
+
+      case(cycleEnd_CODE)
+        call self % cycleEndClerks % add(idx)
+
+      case default
+        call fatalError(Here, 'Undefined reportCode')
+    end select
 
   end subroutine addToReports
 

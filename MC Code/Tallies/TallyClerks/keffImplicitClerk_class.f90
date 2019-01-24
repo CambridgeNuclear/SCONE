@@ -251,7 +251,7 @@ contains
   !!
   subroutine display(self, mem)
     class(keffImplicitClerk), intent(in)  :: self
-    type(scoreMemory), intent(inout)      :: mem
+    type(scoreMemory), intent(in)         :: mem
     real(defReal)                         :: k, STD
 
     ! Get current k-eff estimate
@@ -268,7 +268,7 @@ contains
   subroutine print(self, outFile, mem)
     class(keffImplicitClerk), intent(in) :: self
     class(outputFile), intent(inout)     :: outFile
-    type(scoreMemory), intent(inout)     :: mem
+    type(scoreMemory), intent(in)        :: mem
     character(nameLen)                   :: name
     real(defReal)                        :: val, STD
     integer(longInt)                     :: addr

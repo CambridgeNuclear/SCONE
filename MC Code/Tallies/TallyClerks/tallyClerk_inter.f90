@@ -97,8 +97,8 @@ module tallyClerk_inter
     subroutine display(self, mem)
       import :: tallyClerk, &
                 scoreMemory
-      class(tallyClerk), intent(in)    :: self
-      type(scoreMemory), intent(inout) :: mem
+      class(tallyClerk), intent(in) :: self
+      type(scoreMemory), intent(in) :: mem
     end subroutine display
 
     !!
@@ -122,7 +122,7 @@ module tallyClerk_inter
                 scoreMemory
       class(tallyClerk), intent(in)    :: self
       class(outputFile), intent(inout) :: outFile
-      type(scoreMemory), intent(inout) :: mem
+      type(scoreMemory), intent(in)    :: mem
     end subroutine print
 
   end interface

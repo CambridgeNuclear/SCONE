@@ -245,8 +245,8 @@ contains
   !! Display convergance progress on the console
   !!
   subroutine display(self, mem)
-    class(tallyClerkSlot), intent(in)  :: self
-    type(scoreMemory), intent(inout)   :: mem
+    class(tallyClerkSlot), intent(in) :: self
+    type(scoreMemory), intent(in)     :: mem
 
     ! Pass call to instance in the slot
     call self % slot % display(mem)
@@ -259,7 +259,7 @@ contains
   subroutine print(self, outFile, mem)
     class(tallyClerkSlot), intent(in) :: self
     class(outputFile), intent(inout)  :: outFile
-    type(scoreMemory), intent(inout)  :: mem
+    type(scoreMemory), intent(in)     :: mem
 
     call self % slot % print(outFile, mem)
 

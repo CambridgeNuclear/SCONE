@@ -100,6 +100,9 @@ contains
     ! Initialise score memory
     call mem % init(7_longInt, 1, batchSize = this % batchSize)
 
+    ! Test getting batchSize
+    @assertEqual(this % batchSize, mem % getBatchSize(),'Test getBatchSize() :')
+
     ! Score in
     do i=1,10
       ! Score
@@ -204,6 +207,9 @@ contains
     integer(shortInt)                      :: i
 
     call mem % init(1_longInt, 1, batchSize = 8)
+
+    ! Test getting batchSize
+    @assertEqual(8, mem % getBatchSize(),'Test getBatchSize() :')
 
     do i=1,16
       if(i == 8 .or. i == 16) then

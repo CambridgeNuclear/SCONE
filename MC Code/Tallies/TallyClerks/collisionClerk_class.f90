@@ -188,7 +188,7 @@ contains
   !!
   subroutine display(self, mem)
     class(collisionClerk), intent(in)  :: self
-    type(scoreMemory), intent(inout)   :: mem
+    type(scoreMemory), intent(in)      :: mem
 
     print *, 'collisionClerk does not support display yet'
 
@@ -200,7 +200,7 @@ contains
   subroutine print(self, outFile, mem)
     class(collisionClerk), intent(in)          :: self
     class(outputFile), intent(inout)           :: outFile
-    type(scoreMemory), intent(inout)           :: mem
+    type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
     integer(shortInt)                          :: i
     integer(shortInt),dimension(:),allocatable :: resArrayShape

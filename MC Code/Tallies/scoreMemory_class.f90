@@ -71,6 +71,7 @@ module scoreMemory_class
     procedure :: getScore
     procedure :: closeCycle
     procedure :: lastCycle
+    procedure :: getBatchSize
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -262,6 +263,17 @@ contains
     isIt =  mod(self % cycles + 1, self % batchSize) == 0
 
   end function lastCycle
+
+  !!
+  !! Return batchSize
+  !!
+  pure function getBatchSize(self) result(S)
+    class(scoreMemory), intent(in) :: self
+    integer(shortInt)              :: S
+
+    S = self % batchSize
+
+  end function getBatchSize
 
   !!
   !! Load mean result and Standard deviation into provided arguments
