@@ -10,8 +10,10 @@ module tallyAdmin_class
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk
   use tallyClerkSlot_class,   only : tallyClerkSlot
+  use tallyResult_class,      only : tallyResult, tallyResultEmpty
   use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
+
 
   implicit none
   private
@@ -19,8 +21,6 @@ module tallyAdmin_class
 
   !! Parameters
   integer(longInt), parameter :: NO_NORM = -17_longInt
-
-
 
   !!
   !! TallyAdmin is responsible for:
@@ -31,6 +31,10 @@ module tallyAdmin_class
   !!      Physics packages
   !!   5) Printing all results to a file at the end of calculation
   !!
+  !! TallyAdmin can contain pointer to another tally admin (called attachment or atch).
+  !! All reports send to tallyAdmin are also processed by an attachment. This allows to create
+  !! linked lists of tallyAdmins. In predicted usage there should be at maximum 1 attachment
+  !! related to data required by a physics package for a calculation.
   !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
@@ -47,6 +51,9 @@ module tallyAdmin_class
   !!
   type, public :: tallyAdmin
     private
+    ! Attachment
+    type(tallyAdmin),pointer :: atch => null()  ! Pointer to tallyAdmin attachment
+
     ! Normalisation data
     integer(longInt)   :: normBinAddr  = NO_NORM
     real(defReal)      :: normValue
@@ -76,6 +83,11 @@ module tallyAdmin_class
     procedure :: init
     procedure :: kill
 
+    ! Attachment procedures
+    procedure :: push   ! Add attachment to the end of the list
+    procedure :: pop    ! Remove attachment from the end of the list
+    procedure :: getEnd ! Copy pointer to the end of the list
+
     ! Report Interface
     procedure :: reportInColl
     procedure :: reportOutColl
@@ -84,6 +96,9 @@ module tallyAdmin_class
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+
+    ! Interaction procedures
+    procedure :: getResult
 
     ! Display procedures
     procedure :: display
@@ -179,10 +194,17 @@ contains
   end subroutine init
 
   !!
-  !! Deallocates all content
+  !! Deallocates all content, returns to default values
   !!
-  subroutine kill(self)
+  recursive subroutine kill(self)
     class(tallyAdmin), intent(inout) :: self
+
+    ! Kill attchment
+    call self % atch % kill()
+
+    ! Return parameters to default
+    self % normBinAddr = NO_NORM
+    self % atch => null()
 
     ! Kill clerks slots
     if(allocated(self % tallyClerks)) deallocate(self % tallyClerks)
@@ -202,6 +224,62 @@ contains
     call self % mem % kill()
 
   end subroutine kill
+
+  !!
+  !! Add an attachment to the end of the list
+  !!
+  recursive subroutine push(self, atch)
+    class(tallyAdmin), intent(inout)      :: self
+    type(tallyAdmin), pointer, intent(in) :: atch
+
+    if(associated(self % atch)) then
+      call self % atch % push(atch)
+
+    else
+      self % atch => atch
+    end if
+
+  end subroutine push
+
+  !!
+  !! Remove attachment from the end of the list
+  !!
+  recursive subroutine pop(self, atch)
+    class(tallyAdmin), intent(inout)       :: self
+    type(tallyAdmin), pointer, intent(out) :: atch
+
+    if(.not. associated(self % atch)) then ! Single element list
+      atch => null()
+
+    elseif( associated(self % atch % atch)) then ! Go down the list
+      call self % atch % pop(atch)
+
+    else ! Remove last element
+      atch => self % atch
+      self % atch => null()
+
+    end if
+
+  end subroutine pop
+
+  !!
+  !! Get pointer to the end element in the list
+  !!
+  recursive function getEnd(self) result(atch)
+    class(tallyAdmin), intent(in)    :: self
+    type(tallyAdmin),pointer         :: atch
+
+    if(.not. associated(self % atch)) then
+      atch => null()
+
+    elseif( associated(self % atch % atch)) then
+      atch => self % atch % getEnd()
+
+    else
+      atch => self % atch
+
+    end if
+  end function getEnd
 
   !!
   !! Display convergance progress of selected tallies on the console
@@ -227,7 +305,7 @@ contains
   function isConverged(self) result(isIt)
     class(tallyAdmin), intent(in)    :: self
     logical(defBool)                 :: isIt
-    integer(shortInt)                :: i,N
+    !integer(shortInt)                :: i,N
 
     isIt = .false.
 
@@ -256,10 +334,15 @@ contains
   !!
   !! Process incoming collision report
   !!
-  subroutine reportInColl(self,p)
+  recursive subroutine reportInColl(self,p)
     class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportInColl(self % atch, p)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % inCollClerks % getSize()
@@ -274,12 +357,17 @@ contains
   !! Process outgoing collision report
   !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
   !!
-  subroutine reportOutColl(self,p,MT,muL)
+  recursive subroutine reportOutColl(self,p,MT,muL)
     class(tallyAdmin), intent(inout)      :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     integer(shortInt)                     :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportOutColl(self % atch, p, MT, muL)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % outCollClerks % getSize()
@@ -295,11 +383,16 @@ contains
   !! ASSUMPTIONS:
   !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self,p,L)
+  recursive subroutine reportPath(self,p,L)
     class(tallyAdmin), intent(inout)     :: self
     class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportPath(self % atch, p, L)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % pathClerks % getSize()
@@ -316,10 +409,15 @@ contains
   !! Transition must be a straight line
   !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self,p)
+  recursive subroutine reportTrans(self,p)
     class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)          :: p
     integer(shortInt)                    :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportTrans(self % atch, p)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % transClerks % getSize()
@@ -334,10 +432,15 @@ contains
   !! Process history report
   !! ASSUMPTIONS:
   !!
-  subroutine reportHist(self,p)
+  recursive subroutine reportHist(self,p)
     class(tallyAdmin), intent(inout)  :: self
     class(particle), intent(in)       :: p
     integer(shortInt)                 :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportHist(self % atch, p)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % histClerks % getSize()
@@ -352,10 +455,15 @@ contains
   !!
   !! Process beginning of a cycle
   !!
-  subroutine reportCycleStart(self,start)
+  recursive subroutine reportCycleStart(self,start)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: start
     integer(shortInt)                  :: i, idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportCycleStart(self % atch, start)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % cycleStartClerks % getSize()
@@ -369,12 +477,17 @@ contains
   !!
   !! Process end of the cycle
   !!
-  subroutine reportCycleEnd(self,end)
+  recursive subroutine reportCycleEnd(self,end)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: end
     integer(shortInt)                  :: i, idx
     real(defReal)                      :: normFactor, normScore
     character(100), parameter :: Here ='reportCycleEnd (tallyAdmin)class.f90)'
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportCycleEnd(self % atch, end)
+    end if
 
     ! Go through all clerks that request the report
     do i=1,self % cycleEndClerks % getSize()
@@ -400,6 +513,33 @@ contains
     call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Get result from the clerk defined by name
+  !! If the name is invalid return emptyResult
+  !!
+  pure subroutine getResult(self, res, name)
+    class(tallyAdmin), intent(in)                 :: self
+    class(tallyResult),allocatable, intent(inout) :: res
+    character(nameLen), intent(in)                :: name
+    integer(shortInt)                             :: idx
+    integer(shortInt),parameter                   :: NOT_PRESENT = -3
+
+    ! Deallocate if allocated result
+    if(allocated(res)) deallocate(res)
+
+    ! Find clerk index
+    idx = self % clerksNameMap % getOrDefault(name, NOT_PRESENT)
+
+    if(idx == NOT_PRESENT) then ! Return empty result
+      allocate(res, source = tallyResultEmpty() )
+
+    else ! Return result from the clerk named == name
+      call self % tallyClerks(idx) % getResult(res, self % mem)
+
+    end if
+
+  end subroutine getResult
 
   !!
   !! Append sorrting array identified with the code with tallyClerk idx

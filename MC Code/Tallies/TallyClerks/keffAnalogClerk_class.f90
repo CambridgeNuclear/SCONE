@@ -179,7 +179,7 @@ contains
   pure subroutine getResult(self, res, mem)
     class(keffAnalogClerk), intent(in)              :: self
     class(tallyResult), allocatable, intent(inout)  :: res
-    type(scoreMemory), intent(inout)                :: mem
+    type(scoreMemory), intent(in)                   :: mem
     real(defReal)                                   :: k, STD
 
     ! Get result value

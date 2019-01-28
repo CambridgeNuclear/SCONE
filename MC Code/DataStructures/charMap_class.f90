@@ -218,7 +218,7 @@ contains
   !! Retrive entry in the map
   !! If key is not present return val == default
   !!
-  function getOrDefault(self,key,default) result(val)
+  pure function getOrDefault(self,key,default) result(val)
     class(charMap), intent(in)     :: self
     character(nameLen), intent(in) :: key
     integer(shortInt), intent(in)  :: default

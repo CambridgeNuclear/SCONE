@@ -272,7 +272,7 @@ contains
   pure subroutine getResult(self, res, mem)
     class(tallyClerkSlot), intent(in)              :: self
     class(tallyResult), allocatable, intent(inout) :: res
-    type(scoreMemory), intent(inout)               :: mem
+    type(scoreMemory), intent(in)                  :: mem
 
     call self % slot % getResult(res, mem)
 

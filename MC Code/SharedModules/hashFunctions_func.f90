@@ -57,7 +57,7 @@ contains
   !!
   !!
   !!
-  subroutine FNV_1_shortInt(key,hash)
+  pure subroutine FNV_1_shortInt(key,hash)
     character(*),intent(in)         :: key
     integer(shortInt), intent(out)  :: hash
     integer(shortInt),parameter     :: FNV_prime  = 16777619_shortInt
@@ -65,7 +65,8 @@ contains
     integer(shortInt)               :: bajt, i
     character(100),parameter    :: Here ='FNV_1_shortInt (hashFunctions_func.f90)'
 
-    if(storage_size(hash) /= 32) call fatalError(Here,'hash int is not 32bit')
+    !! Hash functions should be pure -> Change error checking
+   ! if(storage_size(hash) /= 32) call fatalError(Here,'hash int is not 32bit')
 
     bajt = ichar(key(1:1),shortInt)
     hash = FNV_offset
@@ -93,7 +94,8 @@ contains
     integer(shortInt)            :: i
     character(100),parameter   :: Here ='FNV_1_longInt (hashFunctions_func.f90)'
 
-    if(storage_size(hash) /= 64) call fatalError(Here,'hash int is not 64bit')
+    !! Hash functions should be pure -> Change error checking
+    !if(storage_size(hash) /= 64) call fatalError(Here,'hash int is not 64bit')
 
     bajt = ichar(key(1:1),shortInt)
     hash = FNV_offset
