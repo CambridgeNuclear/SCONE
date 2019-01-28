@@ -170,7 +170,7 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
 ###############################################################################
 # COMPILE SOLVERS 
-#add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
+add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${SRCS}) 
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${SRCS}) 

@@ -25,31 +25,34 @@ contains
 
   !!
   !! Multiplicative Hash outlined in D. Knuth "The Art of Computer Programming"
+  !!
+  !! Implementation uses a 32-bit hash. To avoid complier warning associated with integer
+  !! overflow on multiplication a temporary integer of higher precision is used and
+  !! then converted to shortInt by ignoring higher bits.
+  !!
   !! Ratio was changed from the popular "golden ratio" to a value based on sphere
   !! maximum packing fraction in Euclidian geometry = pi/3/sqrt(2) [3180339487 for 32 bits]
   !! NOTE: Ratio was changed for fun -> no particular reason
+  !!
   !!
   pure function knuthHash(key,m) result(hash)
     integer(shortInt), intent(in) :: key
     integer(shortInt), intent(in) :: m
     integer(shortInt)             :: hash
-    integer(shortInt),parameter   :: prime = transfer(z'bd90211f',shortInt)
-    integer(shortInt)             :: N
-    character(100), parameter     :: Here='knuthHash (hashFunctions_func.f90)'
+    integer(shortInt)             :: m_loc
+    integer(shortInt),parameter   :: kin64 = selected_int_kind(18) ! Choose at least 60-bit integer
+    integer(kin64)                :: hash_loc
+    integer(kin64),parameter      :: prime = 3180339487_kin64
 
-    !! Get bit size of the integer
-    N = bit_size(key)
-
-    !! Hash functions should be pure -> Change error checking
-!    if(N /= 32) call fatalError(Here,'Implementation assumes 32 bit integer')
-!    if(m < 1 )  call fatalError(Here,'At least one bit of hash needs to be kept')
-!    if(m > N )  call fatalError(Here,'No more than 32 bits can be kept')
+    ! Constrain m to range 1-32
+    m_loc = max(1,m)
+    m_loc = min(32,m_loc)
 
     ! Calculate prime * key modulo word
-    hash = prime * key
+    hash_loc = modulo(prime * key, 4294967296_kin64)
 
     ! Keep m uppermost bits
-    hash = shiftr(hash,N-m)
+    hash = transfer(shiftr(hash_loc,32-m),shortInt)
 
   end function knuthHash
 
@@ -80,7 +83,6 @@ contains
     end do
 
   end subroutine FNV_1_shortInt
-
 
   !!
   !!

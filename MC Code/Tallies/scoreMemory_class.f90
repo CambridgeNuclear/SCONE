@@ -329,7 +329,6 @@ contains
     integer(longInt), intent(in)           :: idx
     integer(shortInt), intent(in),optional :: samples
     integer(shortInt)                      :: N
-    real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
     if( idx < 0_longInt .or. idx > self % N) then

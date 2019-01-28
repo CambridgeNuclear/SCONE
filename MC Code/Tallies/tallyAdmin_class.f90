@@ -14,7 +14,6 @@ module tallyAdmin_class
   use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
 
-
   implicit none
   private
 

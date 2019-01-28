@@ -12,9 +12,7 @@ module dummyPrinter_class
   !!
   !! Constructor
   !!
-  interface dummyPrinter
-    module procedure dummyPrinter_constructor
-  end interface
+  !! Is not needed. dymmyPrinter() default constructor is sufficient
 
   !!
   !! Printer for ASCII MATLAB output file
@@ -39,13 +37,6 @@ module dummyPrinter_class
   end type dummyPrinter
 
 contains
-
-  !!
-  !!
-  !!
-  function dummyPrinter_constructor() result (new)
-    type(dummyPrinter) :: new
-  end function dummyPrinter_constructor
 
   !!
   !! Write to a provided unit
