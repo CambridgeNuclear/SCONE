@@ -17,7 +17,7 @@ module transportOperatorDT_class
   use cellGeometry_inter,         only : cellGeometry
 
   ! Tally interface
-  use tallyAdminBase_class,       only : tallyAdminBase
+  use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
   use nuclearData_inter,          only : nuclearData

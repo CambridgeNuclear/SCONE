@@ -12,8 +12,6 @@ module collisionOperatorFactory_func
   use perMaterialCollisionOpMG_class, only : perMaterialCollisionOpMG
   use perNuclideCollisionOpCE_class,  only : perNuclideCollisionOpCE
 
-  ! Tally Interfaces
-  use tallyAdminBase_class,           only : tallyAdminBase
 
   implicit none
 

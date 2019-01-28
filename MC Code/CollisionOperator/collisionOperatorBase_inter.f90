@@ -12,7 +12,7 @@ module collisionOperatorBase_inter
   use nuclearData_inter,     only : nuclearData
 
   ! Tally interfaces
-  use tallyAdminBase_class,  only : tallyAdminBase
+  use tallyAdmin_class,      only : tallyAdmin
 
   implicit none
   private
@@ -31,7 +31,7 @@ module collisionOperatorBase_inter
   !!
   type, public,abstract :: collisionOperatorBase
     ! Part of the interface
-    class(tallyAdminBase), pointer :: tally
+    type(tallyAdmin), pointer :: tally
 
     !* Colision Operator Local variables. Used by all collision operators
     !* Should be protected (C++ terminology), but it cannot be implemented with Fortran.
