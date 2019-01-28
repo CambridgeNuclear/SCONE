@@ -118,4 +118,15 @@ contains
 
   end subroutine testUsage
 
+  !!
+  !! Test kill of unallocated array
+  !!
+@Test
+  subroutine testKillUnalloc()
+    type(dynIntArray) :: array
+
+    call array % kill()
+
+  end subroutine testKillUnalloc
+
 end module dynArray_test

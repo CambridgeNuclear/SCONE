@@ -199,7 +199,7 @@ contains
     class(tallyAdmin), intent(inout) :: self
 
     ! Kill attchment
-    call self % atch % kill()
+    if(associated(self % atch)) call self % atch % kill()
 
     ! Return parameters to default
     self % normBinAddr = NO_NORM
@@ -283,10 +283,15 @@ contains
   !!
   !! Display convergance progress of selected tallies on the console
   !!
-  subroutine display(self)
+  recursive subroutine display(self)
     class(tallyAdmin), intent(in) :: self
     integer(shortInt)             :: i
     integer(shortInt)             :: idx
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call display(self % atch)
+    end if
 
     ! Go through all clerks marked as part of the display
     do i=1,self % displayList % getSize()
@@ -520,15 +525,19 @@ contains
   pure subroutine getResult(self, res, name)
     class(tallyAdmin), intent(in)                 :: self
     class(tallyResult),allocatable, intent(inout) :: res
-    character(nameLen), intent(in)                :: name
+    character(*), intent(in)                      :: name
+    character(nameLen)                            :: name_loc
     integer(shortInt)                             :: idx
     integer(shortInt),parameter                   :: NOT_PRESENT = -3
 
     ! Deallocate if allocated result
     if(allocated(res)) deallocate(res)
 
+    ! Copy name to character with nameLen
+    name_loc = name
+
     ! Find clerk index
-    idx = self % clerksNameMap % getOrDefault(name, NOT_PRESENT)
+    idx = self % clerksNameMap % getOrDefault(name_loc, NOT_PRESENT)
 
     if(idx == NOT_PRESENT) then ! Return empty result
       allocate(res, source = tallyResultEmpty() )

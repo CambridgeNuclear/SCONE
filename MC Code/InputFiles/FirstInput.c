@@ -1,7 +1,7 @@
 type eigenPhysicsPackage; 
 
 //pop      100000; 
-pop      100000;
+pop      10000;
 active   500; 
 inactive 300; 
 //seed     -6574747;
@@ -20,13 +20,13 @@ inactiveTally { //clerk1 { type keffActiveClerk; display yes; }
 
 activeTally  { //clerk1 { type macroClerk; display no; map { type energyMap; grid log; min 1.0E-11; max 20.0; N 300; } }
                //clerk2 { type macroClerk; display no; map { type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20;} } 
-               clerk3 {type collProbClerk; display yes; materials (uo2 water); } 
-               clerk4 {type dancoffBellClerk; XSmat uo2; fuelMat (uo2); modMat (water); 
-		       Etop 0.02; 
-		       Elow 4.0E-6; 
+               //clerk3 {type collProbClerk; display yes; materials (uo2 water); }
+               //clerk4 {type dancoffBellClerk; XSmat uo2; fuelMat (uo2); modMat (water);
+		       //Etop 0.02;
+		       //Elow 4.0E-6;
 		    //  map { type energyMap; grid log; min 0.5E-3; max 0.7E-3; N 50;}  
-		      map { type matXsMap; grid log; min 0.2; max 6.0; N 50; mat uo2;} 
-	              }
+		      //map { type matXsMap; grid log; min 0.2; max 6.0; N 50; mat uo2;}
+	            //  }
 	      }
 
 geometry { 

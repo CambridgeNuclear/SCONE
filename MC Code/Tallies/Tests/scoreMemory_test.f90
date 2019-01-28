@@ -246,6 +246,18 @@ contains
 
   end subroutine testGetScore
 
+  !!
+  !! Test killing uninitialised scoreMemory
+  !!
+@Test(cases=[1])
+  subroutine testKillUnalloc(this)
+    class(test_scoreMemory), intent(inout) :: this
+    type(scoreMemory)                      :: mem
+
+    call mem % kill()
+
+  end subroutine testKillUnalloc
+
 end module scoreMemory_test
 !! MATLAB SCRIPT USED TO GENERATE REFERENCE VALUES
 !clear

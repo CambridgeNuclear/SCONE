@@ -28,11 +28,12 @@ module eigenPhysicsPackage_class
 
   ! Tallies
   use tallyCodes
-  use tallyInactiveAdmin_class,       only : tallyInactiveAdmin
-  use tallyActiveAdmin_class,         only : tallyActiveAdmin
+  use tallyAdmin_class,               only : tallyAdmin
+  use tallyResult_class,              only : tallyResult
+  use keffAnalogClerk_class,          only : keffResult
 
   ! Factories
-  use nuclearDataRegistry_mod,       only : build_NuclearData, getHandlePtr
+  use nuclearDataRegistry_mod,        only : build_NuclearData, getHandlePtr
   use geometryFactory_func,           only : new_cellGeometry_ptr
   use collisionOperatorFactory_func,  only : new_collisionOperator_ptr
   use transportOperatorFactory_func,  only : new_transportOperator_ptr
@@ -52,8 +53,10 @@ module eigenPhysicsPackage_class
     class(collisionOperatorBase), pointer  :: collOp        => null()
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
-    class(tallyInactiveAdmin),pointer      :: inactiveTally => null()
-    class(tallyActiveAdmin),pointer        :: activeTally   => null()
+    type(tallyAdmin),pointer               :: inactiveTally => null()
+    type(tallyAdmin),pointer               :: activeTally   => null()
+    type(tallyAdmin),pointer               :: inactiveAtch  => null()
+    type(tallyAdmin),pointer               :: activeAtch    => null()
 
     ! Settings
     integer(shortInt)  :: N_inactive
@@ -102,7 +105,9 @@ contains
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     integer(shortInt)                         :: i, Nstart, Nend
-    real(defReal) :: k_old, k_new
+    class(tallyResult),allocatable            :: res
+    real(defReal)                             :: k_old, k_new
+    character(100),parameter :: Here ='inactiveCycles (eigenPhysicsPackage_class.f90)'
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -165,9 +170,21 @@ contains
       self % nextCycle    => self % thisCycle
       self % thisCycle    => self % temp_dungeon
 
+      ! Obtain estimate of k_eff
+      call self % inactiveAtch % getResult(res,'keff')
+
+      select type(res)
+        class is(keffResult)
+          k_new = res % keff(1)
+
+        class default
+          call fatalError(Here, 'Invalid result has been returned')
+
+      end select
+
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
-      k_new = self % inactiveTally % keff()
+      !k_new = self % inactiveTally % keff()
 
       self % nextCycle % k_eff = k_new
 
@@ -187,7 +204,9 @@ contains
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
     integer(shortInt)                         :: i, Nstart, Nend
-    real(defReal) :: k_old, k_new
+    class(tallyResult),allocatable            :: res
+    real(defReal)                             :: k_old, k_new
+    character(100),parameter :: Here ='activeCycles (eigenPhysicsPackage_class.f90)'
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -251,9 +270,19 @@ contains
       self % nextCycle    => self % thisCycle
       self % thisCycle    => self % temp_dungeon
 
+      ! Obtain estimate of k_eff
+      call self % activeAtch % getResult(res,'keff')
+
+      select type(res)
+        type is(keffResult)
+          k_new = res % keff(1)
+        class default
+          call fatalError(Here, 'Invalid result has been returned')
+
+      end select
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
-      k_new = self % activeTally % keff()
+      !k_new = self % activeTally % keff()
 
       self % nextCycle % k_eff = k_new
 
@@ -363,6 +392,7 @@ contains
     class(eigenPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)          :: dict
     class(dictionary),pointer                 :: tempDict
+    type(dictionary)                          :: locDict1, locDict2
     integer(shortInt)                         :: seed_temp
     integer(longInt)                          :: seed
     character(10)                             :: time
@@ -439,12 +469,40 @@ contains
     allocate(self % activeTally)
     call self % activeTally % init(tempDict)
 
+    ! Initialise active and inactive tally attachments
 
-   ! call self % pRNG % init(768568_8)
-    !call self % pRNG % init(6585886547_8)
-    !call self % pRNG % init(67858567567_8)
-    !call self % pRNG % init(5764746_8)
-    !call self % pRNG % init(1346575219654672_8)
+    ! Inactive tally attachment
+    call locDict1 % init(2)
+    call locDict2 % init(2)
+
+    call locDict2 % store('type','keffAnalogClerk')
+    call locDict2 % store('display','yes')
+    call locDict1 % store('keff', locDict2)
+
+    allocate(self % inactiveAtch)
+    call self % inactiveAtch % init(locDict1)
+
+    call locDict2 % kill()
+    call locDict1 % kill()
+
+    ! Active tally attachment
+    call locDict1 % init(2)
+    call locDict2 % init(2)
+
+    call locDict2 % store('type','keffImplicitClerk')
+    call locDict2 % store('display','yes')
+    call locDict1 % store('keff', locDict2)
+
+    allocate(self % activeAtch)
+    call self % activeAtch % init(locDict1)
+
+    call locDict2 % kill()
+    call locDict1 % kill()
+
+    ! Attach attachments to result tallies
+    call self % inactiveTally % push(self % inactiveAtch)
+    call self % activeTally % push(self % activeAtch)
+
 
     call self % printSettings()
 

@@ -129,7 +129,7 @@ contains
   subroutine kill(self)
    class(scoreMemory), intent(inout) :: self
 
-   deallocate(self % bins)
+   if(allocated(self % bins)) deallocate(self % bins)
    self % N = 0
    self % batchN = 0
 

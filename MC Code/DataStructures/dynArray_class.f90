@@ -237,7 +237,7 @@ contains
     class(dynIntArray), intent(inout) :: self
 
     self % mySize = 0
-    deallocate(self % array)
+    if(allocated(self % array)) deallocate(self % array)
 
   end subroutine kill_shortInt
 

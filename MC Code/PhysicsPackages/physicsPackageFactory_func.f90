@@ -11,7 +11,7 @@ module physicsPackageFactory_func
   use physicsPackage_inter,      only : physicsPackage
 
   ! Implementations
-!  use eigenPhysicsPackage_class, only : eigenPhysicsPackage
+  use eigenPhysicsPackage_class, only : eigenPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -50,13 +50,13 @@ contains
     ! **** AT THE MOMENT ALLOCATE + SELECT TYPE + INIT is very unelegant implementation
     ! **** Will have to be improved
     select case(type)
-!      case('eigenPhysicsPackage')
-!        ! Allocate and initialise
-!        allocate( eigenPhysicsPackage :: new)
-!        select type(new)
-!          type is (eigenPhysicsPackage)
-!            call new % init(dict)
-!        end select
+      case('eigenPhysicsPackage')
+        ! Allocate and initialise
+        allocate( eigenPhysicsPackage :: new)
+        select type(new)
+          type is (eigenPhysicsPackage)
+            call new % init(dict)
+        end select
 !
 !      case('dynamPhysicsPackage')
 !        ! Allocate and initialise

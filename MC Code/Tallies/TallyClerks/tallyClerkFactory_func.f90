@@ -8,7 +8,9 @@ module tallyClerkFactory_func
   use tallyClerk_inter,    only : tallyClerk
 
   ! tallyClerk implementations
-
+  use keffAnalogClerk_class,   only : keffAnalogClerk
+  use keffImplicitClerk_class, only : keffImplicitClerk
+  use collisionClerk_class,    only : collisionClerk
 
   implicit none
   private
@@ -20,7 +22,9 @@ module tallyClerkFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ '']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk  ',&
+                                                                        'keffImplicitClerk',&
+                                                                        'collisionClerk   ']
 
 contains
 
@@ -44,6 +48,17 @@ contains
     ! Allocate approperiate subclass of tallyClerk
     ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
+     case('keffAnalogClerk')
+       allocate(keffAnalogClerk :: new)
+       call new % init(dict, name)
+
+     case('keffImplicitClerk')
+       allocate(keffImplicitClerk :: new)
+       call new % init(dict, name)
+
+     case('collisionClerk')
+       allocate(collisionClerk :: new)
+       call new % init(dict, name)
 
      !*** NEW TALLY MAP TEMPLATE ***!
      !case('<newtallyClerkName>')
