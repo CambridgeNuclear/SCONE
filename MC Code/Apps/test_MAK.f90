@@ -14,7 +14,7 @@ program test
   call build_NuclearData(dict % getDictPtr('nuclearData'))
 
   call dict % kill()
-  call kill_NuclearData()
+  !call kill_NuclearData()
 
 end program test
 

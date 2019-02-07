@@ -333,7 +333,7 @@ contains
       call self % fissionKinematics % init(ACE,N_fission)
 
       ! Read and allocate NU data
-      allocate(self % nuData, source = new_totalNu(ACE))
+      call new_totalNu(self % nuData, ACE)
 
     end if
 

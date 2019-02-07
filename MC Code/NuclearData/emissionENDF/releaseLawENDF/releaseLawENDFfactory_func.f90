@@ -18,7 +18,6 @@ module releaseLawENDFfactory_func
 
 
   public :: new_releaseLawENDF
-  public :: new_releaseLawENDF_ptr
   public :: new_totalNU
   public :: new_promptNU
   public :: new_delayedNU
@@ -26,15 +25,17 @@ module releaseLawENDFfactory_func
 contains
 
   !!
-  !! Returns an allocatable releaseLawENDF from aceCard and MT number
+  !! Allocates releaseLawENDF from aceCard and MT number
   !! aceCard can be in any poistion. Its position changes at output.
   !!
-  function new_releaseLawENDF(ACE,MT) result(new)
+  subroutine new_releaseLawENDF(new, ACE, MT)
     type(aceCard), intent(inout)      :: ACE
     integer(shortInt), intent(in)     :: MT
     class(releaseLawENDF),allocatable :: new
     integer(shortInt)                 :: TY
     character(100), parameter :: Here = 'new_releaseLawENDF ( releaseLawENDFfatory_func.f90)'
+
+    if(allocated(new)) deallocate(new)
 
     ! Read neutron Release (TY value)
     TY = ACE % neutronReleaseMT(MT)
@@ -44,36 +45,24 @@ contains
         call fatalError(Here,'TY > 100. Spetial energy dependent yield. Not supported yet')
 
       case(19) ! Fission
-        allocate(new, source = new_totalNu(ACE) )
+        call new_totalNu(new, ACE)
 
       case default ! Constant release. Need to convert integer to real
         allocate(new, source = constantRelease(real(TY,defReal)) )
 
     end select
-  end function new_releaseLawENDF
-
-
-  !!
-  !! Returns a pointer to allocated releaseLawENDF from aceCard and MT number
-  !!
-  function new_releaseLawENDF_ptr(ACE,MT) result(new)
-    type(aceCard), intent(inout)  :: ACE
-    integer(shortInt),intent(in)  :: MT
-    class(releaseLawENDF),pointer :: new
-
-    ! Allocate pointer and copy data from local allocatable
-    allocate(new, source = new_releaseLawENDF(ACE,MT))
-
-  end function new_releaseLawENDF_ptr
+  end subroutine new_releaseLawENDF
 
   !!
-  !! Returns allocated release law for total NU data
+  !! Allocates release law for total NU data
   !! If NU data does not exist returns errror
   !!
-  function new_totalNu(ACE) result(new)
-    type(aceCard), intent(inout)       :: ACE
-    class(releaseLawENDF), allocatable :: new
+  subroutine new_totalNu(new, ACE)
+    class(releaseLawENDF), allocatable,intent(inout) :: new
+    type(aceCard), intent(inout)                     :: ACE
     character(100), parameter :: Here = 'new_totalNu ( releaseLawENDFfatory_func.f90)'
+
+    if(allocated(new)) deallocate(new)
 
     ! Check if the data exists
     if(.not.ACE % hasNuTotal()) then
@@ -85,17 +74,19 @@ contains
     call ACE % setToNuTotal()
     call allocateNu(new,ACE)
 
-  end function new_totalNu
+  end subroutine new_totalNu
 
   !!
-  !! Returns allocated release law for prompt NU data
+  !! Allocates release law for prompt NU data
   !! If NU data does not exist returns errror
   !! If only single prompt/total NU is provided in ACE data it is assumed to be total
   !!
-  function new_promptNu(ACE) result(new)
-    type(aceCard), intent(inout)       :: ACE
-    class(releaseLawENDF), allocatable :: new
+  subroutine new_promptNu(new, ACE)
+    class(releaseLawENDF), allocatable, intent(inout) :: new
+    type(aceCard), intent(inout)                      :: ACE
     character(100), parameter :: Here = 'new_promptNu ( releaseLawENDFfatory_func.f90)'
+
+    if(allocated(new)) deallocate(new)
 
     ! Check if the data exists
     if(.not.ACE % hasNuPrompt()) then
@@ -107,16 +98,18 @@ contains
     call ACE % setToNuPrompt()
     call allocateNu(new,ACE)
 
-  end function new_promptNu
+  end subroutine new_promptNu
 
   !!
   !! Returns allocated release law for delayed NU data
   !! If NU data does not exist returns errror
   !!
-  function new_delayedNu(ACE) result(new)
-    type(aceCard), intent(inout)       :: ACE
-    class(releaseLawENDF), allocatable :: new
+  subroutine new_delayedNu(new, ACE)
+    class(releaseLawENDF), allocatable, intent(inout) :: new
+    type(aceCard), intent(inout)                      :: ACE
     character(100), parameter :: Here = 'new_delayedNu ( releaseLawENDFfatory_func.f90)'
+
+    if(allocated(new)) deallocate(new)
 
     ! Check if the data exists
     if(.not.ACE % hasNuDelayed()) then
@@ -128,12 +121,11 @@ contains
     call ACE % setToNuDelayed()
     call allocateNu(new,ACE)
 
-  end function new_delayedNu
+  end subroutine new_delayedNu
 
   !!
   !! Private subroutine to avoid code repeat
   !! accCard read head needs to be at the beggining of NU data block
-  !!
   !!
   subroutine allocateNu(new_nu,ACE)
     class(releaseLawENDF), allocatable, intent(inout) :: new_nu
