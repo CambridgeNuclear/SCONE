@@ -2,6 +2,7 @@ module noAngle_class
 
   use numPrecision
   use RNG_class,          only : RNG
+  use aceCard_class,      only : aceCard
   use angleLawENDF_inter, only : angleLawENDF
 
 
@@ -19,11 +20,26 @@ module noAngle_class
   type, public,extends(angleLawENDF) :: noAngle
     private
   contains
+    procedure :: init
     procedure :: sample
     procedure :: probabilityOf
   end type noAngle
 
 contains
+
+  !!
+  !! Initialise from aceCard and MT number
+  !!
+  subroutine init(self, ACE, MT)
+    class(noAngle), intent(inout)  :: self
+    class(aceCard), intent(inout)  :: ACE
+    integer(shortInt), intent(in)  :: MT
+
+    ! Do nothing
+    ! No initialisation is needed
+
+  end subroutine init
+
 
   !!
   !! Do not change direction

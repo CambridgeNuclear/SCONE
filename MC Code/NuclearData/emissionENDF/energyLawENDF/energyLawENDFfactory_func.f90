@@ -17,19 +17,18 @@ module energyLawENDFfactory_func
 
   ! Define public interface
   public :: new_energyLawENDF
-  public :: new_energyLawENDF_ptr
 
 contains
 
   !!
-  !! Returns an allocatable energyLawENDF from aceCard and MT number
+  !! Allocates a new energyLawENDF from aceCard and MT number
   !! aceCard can be in any poistion. Its position changes at output.
   !!
-  function new_energyLawENDF(ACE,MT) result(new)
-    type(aceCard), intent(inout)     :: ACE
-    integer(shortInt), intent(in)    :: MT
-    class(energyLawENDF),allocatable :: new
-    integer(shortInt)                :: LNW, LAW, loc
+  subroutine new_energyLawENDF(new, ACE, MT)
+    class(energyLawENDF),allocatable, intent(inout) :: new
+    type(aceCard), intent(inout)                    :: ACE
+    integer(shortInt), intent(in)                   :: MT
+    integer(shortInt)                               :: LNW, LAW, loc
     character(100),parameter :: Here='new_energyLawENDF (energyLawENDFfactory_func.f90)'
 
     ! Protect against reactions with no energy data (absorbtions and eleastic scattering)
@@ -79,20 +78,6 @@ contains
 
     end select
 
-  end function new_energyLawENDF
-
-  !!
-  !! Returns a pointer to allocated energyLawENDF from aceCard and MT number
-  !!
-  function new_energyLawENDF_ptr(ACE,MT) result(new)
-    type(aceCard), intent(inout)  :: ACE
-    integer(shortInt), intent(in) :: MT
-    class(energyLawENDF),pointer  :: new
-
-    ! Allocate pointer and copy data from local allocatable
-    allocate(new, source = new_energyLawENDF(ACE,MT))
-
-  end function new_energyLawENDF_ptr
-
+  end subroutine new_energyLawENDF
 
 end module energyLawENDFfactory_func

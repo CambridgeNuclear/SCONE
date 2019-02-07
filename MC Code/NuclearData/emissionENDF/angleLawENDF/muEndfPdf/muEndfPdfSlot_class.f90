@@ -1,12 +1,24 @@
 module muEndfPdfSlot_class
 
   use numPrecision
-  use RNG_class,       only : RNG
-  use muEndfPdf_inter, only : muEndfPdf
+  use genericProcedures, only : fatalError
+  use RNG_class,         only : RNG
+  use aceCard_class,     only : aceCard
+  use muEndfPdf_inter,   only : muEndfPdf
+
+  ! Implementations
+  use isotropicMu_class, only : isotropicMu
+  use equiBin32Mu_class, only : equiBin32Mu
+  use tabularMu_class,   only : tabularMu
 
   implicit none
   private
 
+  !!
+  !! Slot to store polymorphic instances of muEndfPdfSlot
+  !! This breaks rules of standard inter,slot,Factory SCONE pattern
+  !! because factory is included insied the slot (init subroutine)
+  !!
   type, public,extends(muEndfPdf) :: muEndfPdfSlot
     private
     class(muEndfPdf),allocatable :: slot
@@ -16,8 +28,7 @@ module muEndfPdfSlot_class
     procedure :: probabilityOf
 
     ! Define assignment
-    generic   :: assignment(=) => copy
-    procedure :: copy
+    procedure :: init
     procedure :: moveAllocFrom
 
   end type muEndfPdfSlot
@@ -50,19 +61,33 @@ contains
   end function probabilityOf
 
   !!
-  !! Copy RHS into slot of LHS
-  !! Be carefull about loading slots into slots
-  !! It will work by function call chain may hurt performance
+  !! Initialise slot to a specific type determined by type
   !!
-  subroutine copy(LHS,RHS)
-    class(muEndfPdfSlot), intent(inout) :: LHS
-    class(muEndfPdf), intent(in)        :: RHS
+  subroutine init(self, ACE, type)
+    class(muEndfPdfSlot), intent(inout) :: self
+    class(aceCard), intent(inout)       :: ACE
+    character(*), intent(in)            :: type
+    character(100), parameter :: Here ='init (muEndfPdfSlot_class.f90)'
 
-    if(allocated(LHS % slot)) deallocate (LHS % slot)
+    select case(type)
+      case('isotropicMu')
+        allocate(self % slot, source = isotropicMu())
 
-    allocate(LHS % slot, source = RHS)
+      case('equiBin32Mu')
+        allocate(self % slot, source = equiBin32Mu(ACE))
 
-  end subroutine copy
+      case('tabularMu')
+        allocate( self % slot, source = tabularMu(ACE))
+
+      case default
+        print '(A)','Available implementations:','isotropicMu', 'equiBin32Mu', 'tabularMu'
+        call fatalError(Here, 'Unrecognised type of muEndfPdf requested: ' // trim(type) )
+
+    end select
+
+
+  end subroutine init
+
 
   !!
   !! Move allocation from RHS to LHS slot

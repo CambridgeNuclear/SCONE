@@ -1,8 +1,11 @@
 module angleLawENDFslot_class
 
   use numPrecision
-  use angleLawENDF_inter, only : angleLawENDF
-  use RNG_class,          only : RNG
+  use angleLawENDF_inter,       only : angleLawENDF
+  use RNG_class,                only : RNG
+  use aceCard_class,            only : aceCard
+  use angleLawENDFFactory_func, only : new_angleLawENDF
+
 
   implicit none
   private
@@ -12,17 +15,29 @@ module angleLawENDFslot_class
     class(angleLawENDF),allocatable :: slot
   contains
     ! Duplicate interfacte of the superclass
+    procedure :: init
     procedure :: sample
     procedure :: probabilityOf
 
     ! Define assignment
-    generic   :: assignment(=) => copy
-    procedure :: copy
     procedure :: moveAllocFrom
 
   end type angleLawENDFslot
 
 contains
+
+  !!
+  !! Initialise from aceCard and MT number
+  !! Use factory to allocate contents of the slot
+  !!
+  subroutine init(self, ACE, MT)
+    class(angleLawENDFslot), intent(inout):: self
+    class(aceCard), intent(inout)         :: ACE
+    integer(shortInt), intent(in)         :: MT
+
+    call new_angleLawENDF(self % slot, ACE, MT)
+
+  end subroutine init
 
   !!
   !! Given collison energy and random number generator sample mu
@@ -48,21 +63,6 @@ contains
     prob = self % slot % probabilityOf(mu,E)
 
   end function probabilityOf
-
-  !!
-  !! Copy RHS into slot of LHS
-  !! Be carefull about loading slots into slots
-  !! It will work by function call chain may hurt performance
-  !!
-  subroutine copy(LHS,RHS)
-    class(angleLawENDFslot), intent(inout) :: LHS
-    class(angleLawENDF), intent(in)        :: RHS
-
-    if(allocated(LHS % slot)) deallocate (LHS % slot)
-
-    allocate(LHS % slot, source = RHS)
-
-  end subroutine copy
 
   !!
   !! Move allocation from RHS to LHS slot

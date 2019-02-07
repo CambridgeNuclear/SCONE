@@ -13,20 +13,22 @@ module correlatedLawENDFfactory_func
   private
 
   public :: new_correlatedLawENDF
-  public :: new_correlatedLawENDF_ptr
 
 contains
 
   !!
-  !! Returns an allocatable correlatedLawENDF from aceCard and MT number
+  !! Allocates a new  correlatedLawENDF from aceCard and MT number
   !! aceCard can be in any poistion. Its position changes at output.
   !!
-  function new_correlatedLawENDF(ACE,MT) result(new)
-    type(aceCard),intent(inout)          :: ACE
-    integer(shortInt), intent(in)        :: MT
-    class(correlatedLawENDF),allocatable :: new
-    integer(shortInt)                    :: LOCB,LNW,LAW,loc
+  subroutine new_correlatedLawENDF(new, ACE, MT)
+    class(correlatedLawENDF),allocatable, intent(inout) :: new
+    type(aceCard),intent(inout)                         :: ACE
+    integer(shortInt), intent(in)                       :: MT
+    integer(shortInt)                                   :: LOCB, LNW, LAW, loc
     character(100),parameter :: Here='new_correlatedLawENDF (correlatedLawENDFfactory_func.f90)'
+
+    ! Deallocate new if allocated
+    if(allocated(new)) deallocate(new)
 
     ! Verify that the energy law is indeed coreelated
     LOCB = ACE % LOCBforMT(MT)
@@ -65,19 +67,6 @@ contains
 
     end select
 
-  end function new_correlatedLawENDF
-
-  !!
-  !! Returns a pointer to allocated correlatedLawENDF from aceCard and MT number
-  !!
-  function new_correlatedLawENDF_ptr(ACE,MT) result(new)
-    type(aceCard), intent(inout)     :: ACE
-    integer(shortInt), intent(in)    :: MT
-    class(correlatedLawENDF),pointer :: new
-
-    ! Allocate pointer and copy data from local allocatable
-    allocate(new, source = new_correlatedLawENDF(ACE,MT))
-
-  end function new_correlatedLawENDF_ptr
+  end subroutine new_correlatedLawENDF
 
 end module correlatedLawENDFfactory_func

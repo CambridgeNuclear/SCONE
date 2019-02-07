@@ -3,12 +3,16 @@ module isotropicAngle_class
   use numPrecision
   use RNG_class,          only : RNG
   use angleLawENDF_inter, only : angleLawENDF
+  use aceCard_class,      only : aceCard
   use isotropicMu_class,  only : isotropicMu
 
 
   implicit none
   private
 
+  !!
+  !! Constructor
+  !!
   interface isotropicAngle
     module procedure new_isotropicAngle
   end interface
@@ -20,11 +24,25 @@ module isotropicAngle_class
     private
     type(isotropicMu)   :: muPdf
   contains
+    procedure :: init
     procedure :: sample
     procedure :: probabilityOf
   end type isotropicAngle
 
 contains
+
+  !!
+  !! Initialise from aceCard and MT number
+  !!
+  subroutine init(self, ACE, MT)
+    class(isotropicAngle), intent(inout):: self
+    class(aceCard), intent(inout)       :: ACE
+    integer(shortInt), intent(in)       :: MT
+
+    ! Do nothing
+    ! No initialisation is needed
+
+  end subroutine init
 
   !!
   !! Given collison energy and random number generator sample mu

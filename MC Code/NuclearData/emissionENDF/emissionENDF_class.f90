@@ -155,8 +155,8 @@ contains
       ! Capture Does not have LOCB. Thus build it here.
       ! Will be filled with placeholder LawENDF's
       self % correlated = .false.
-      allocate(self % muLaw, source = new_angleLawENDF(ACE,MT))
-      allocate(self % eLaw, source = new_energyLawENDF(ACE,MT))
+      call new_angleLawENDF(self % muLaw, ACE, MT)
+      call new_energyLawENDF(self % eLaw, ACE, MT)
       return
 
     end if
@@ -171,12 +171,12 @@ contains
     select case(LOCB)
       case(LOCB_CORRELATED)
         self % correlated = .true.
-        allocate(self % corrLaw, source = new_correlatedLawENDF(ACE,MT))
+        call new_correlatedLawENDF(self % corrLaw, ACE, MT)
 
       case default
         self % correlated = .false.
-        allocate(self % muLaw, source = new_angleLawENDF(ACE,MT))
-        allocate(self % eLaw, source = new_energyLawENDF(ACE,MT))
+        call new_angleLawENDF(self % muLaw, ACE, MT)
+        call new_energyLawENDF(self % eLaw, ACE, MT)
 
     end select
 

@@ -2,6 +2,7 @@ module isotropicMu_class
 
   use numPrecision
   use RNG_class,          only : RNG
+  use aceCard_class,      only : aceCard
   use muEndfPdf_inter,    only : muEndfPdf
 
   implicit none

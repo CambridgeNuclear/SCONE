@@ -30,11 +30,57 @@ module tabularAngle_class
       type(muEndfPdfSlot),dimension(:),allocatable  :: muEndfPdfs
     contains
       procedure :: init
+      procedure :: build
       procedure :: sample
       procedure :: probabilityOf
   end type tabularAngle
 
 contains
+
+  !!
+  !! Initialise from aceCard and MT number
+  !!
+  subroutine init(self, ACE, MT)
+    class(tabularAngle), intent(inout)             :: self
+    class(aceCard), intent(inout)                  :: ACE
+    integer(shortInt), intent(in)                  :: MT
+    real(defReal), dimension(:), allocatable       :: eGrid
+    integer(shortInt)                              :: N, i
+    integer(shortInt),dimension(:),allocatable     :: muLoc
+    type(muEndfPdfSlot),dimension(:), allocatable  :: muPdfs
+
+    ! Read initial information
+    N     = ACE % readInt()        ! Read size of the energy grid
+    eGrid = ACE % readRealArray(N) ! Read energy grid
+    muLoc = ACE % readIntArray(N)  ! Read mu pdf locators
+
+    ! Allocate space for angleLawENDFslots
+    allocate(muPdfs(N))
+
+    ! Build array of muPdfs
+    do i=1,size(muLoc)
+      select case(muLoc(i))
+        case(0) ! Isotropic mu pdf
+          call muPdfs(i) % init(ACE, 'isotropicMu')
+
+        case(1:) ! +ve -> 32 equiprobable bin distribution
+          call ACE % setToAnglePdf(muLoc(i))
+          call muPdfs(i) % init(ACE, 'equiBin32Mu')
+
+        case(:-1) ! -ve -> tabular pdf
+          call ACE % setToAnglePdf( abs(muLoc(i)))
+          call muPdfs(i) % init(ACE, 'tabularMu')  ! Explicity use CDF in ACE data
+
+        case default ! Clearly this should never happen. But codes surprise you...
+          call fatalError('new_tabularAngle_fromACE (tabularAngle_class.f90)','Impossible state. WTF?')
+
+      end select
+    end do
+
+    ! Initialise new tabularAngle
+    call self % build(eGrid, muPdfs)
+
+  end subroutine init
 
   !!
   !! Given collison energy and random number generator sample mu
@@ -92,7 +138,7 @@ contains
   !! Initialise from energy grid and array of corresponding mu PDFs at single energy
   !! NOTE : Content in muEndfPdfs slots will be deallocated (moved allocation)
   !!
-  subroutine init(self,eGrid,muEndfPdfs)
+  subroutine build(self, eGrid, muEndfPdfs)
     class(tabularAngle),intent(inout)                :: self
     real(defReal),dimension(:), intent(in)           :: eGrid
     type(muEndfPdfSlot),dimension(:), intent(inout)  :: muEndfPdfs
@@ -118,7 +164,7 @@ contains
 
     end do
 
-  end subroutine init
+  end subroutine build
 
   !!
   !! Constructor of tabularAngle
@@ -129,7 +175,7 @@ contains
     type(muEndfPdfSlot),dimension(:), intent(inout) :: muEndfPdfs
     type(tabularAngle)                              :: new
 
-    call new % init(eGrid,muEndfPdfs)
+    call new % build(eGrid, muEndfPdfs)
 
   end function new_tabularAngle
 
@@ -138,43 +184,11 @@ contains
   !! ACE head should be set to beegining of tabular mu data
   !!
   function new_tabularAngle_fromACE(ACE) result(new)
-    type(aceCard), intent(inout)                   :: ACE
-    type(tabularAngle)                             :: new
-    real(defReal), dimension(:), allocatable       :: eGrid
-    integer(shortInt)                              :: N, i
-    integer(shortInt),dimension(:),allocatable     :: muLoc
-    type(muEndfPdfSlot),dimension(:), allocatable  :: muPdfs
-    
-    ! Read initial information
-    N     = ACE % readInt()        ! Read size of the energy grid
-    eGrid = ACE % readRealArray(N) ! Read energy grid
-    muLoc = ACE % readIntArray(N)  ! Read mu pdf locators
+    class(aceCard), intent(inout)                   :: ACE
+    type(tabularAngle)                              :: new
 
-    ! Allocate space for angleLawENDFslots
-    allocate(muPdfs(N))
-
-    ! Build array of muPdfs
-    do i=1,size(muLoc)
-      select case(muLoc(i))
-        case(0) ! Isotropic mu pdf
-          muPdfs(i) = isotropicMu()
-
-        case(1:) ! +ve -> 32 equiprobable bin distribution
-          call ACE % setToAnglePdf(muLoc(i))
-          muPdfs(i) = equiBin32Mu(ACE)
-
-        case(:-1) ! -ve -> tabular pdf
-          call ACE % setToAnglePdf( abs(muLoc(i)))
-          muPdfs(i) = tabularMu(ACE) ! Explicity use CDF in ACE data
-
-        case default ! Clearly this should never happen. But codes surprise you...
-          call fatalError('new_tabularAngle_fromACE (tabularAngle_class.f90)','Impossible state. WTF?')
-
-      end select
-    end do
-
-    ! Initialise new tabularAngle
-    call new % init(eGrid, muPdfs)
+    ! Initialise new tabularAngle - dummy MT
+    call new % init(ACE, 1)
 
   end function new_tabularAngle_fromACE
 

@@ -1,7 +1,7 @@
 module muEndfPdf_inter
 
   use numPrecision
-  use RNG_class, only : RNG
+  use RNG_class,      only : RNG
 
   implicit none
   private

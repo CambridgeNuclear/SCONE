@@ -1,7 +1,8 @@
 module angleLawENDF_inter
 
   use numPrecision
-  use RNG_class, only : RNG
+  use RNG_class,     only : RNG
+  use aceCard_class, only : aceCard
 
   implicit none
   private
@@ -12,12 +13,25 @@ module angleLawENDF_inter
   type,abstract, public :: angleLawENDF
     private
   contains
+    procedure(init),deferred           :: init
     procedure(sample),deferred         :: sample
     procedure(probabilityOf),deferred  :: probabilityOf
   end type angleLawENDF
 
 
   abstract interface
+
+    !!
+    !! Initialise angular law from aceCard and MT number
+    !!
+    subroutine init(self, ACE, MT)
+      import :: angleLawENDF, &
+                aceCard, &
+                shortInt
+      class(angleLawENDF), intent(inout) :: self
+      class(aceCard), intent(inout)      :: ACE
+      integer(shortInt), intent(in)      :: MT
+    end subroutine init
 
     !!
     !! Given collison energy and random number generator sample mu

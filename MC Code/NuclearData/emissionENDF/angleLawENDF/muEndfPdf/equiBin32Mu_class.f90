@@ -29,10 +29,12 @@ module equiBin32Mu_class
     private
     real(defReal),dimension(33) :: boundaries
   contains
+    ! Superclass procedures
     procedure :: sample
     procedure :: probabilityOf
 
-    procedure,private :: init
+    ! Local procedures
+    procedure :: build
   end type equiBin32Mu
 
 contains
@@ -82,7 +84,7 @@ contains
   !!
   !! Initialise equiBin32Mu from array of bin boundaries
   !!
-  subroutine init(self,boundaries)
+  subroutine build(self,boundaries)
     class(equiBin32Mu), intent(inout)        :: self
     real(defReal), dimension(33), intent(in) :: boundaries
     character(100),parameter                 :: Here='init (equiBin32Mu_class.f90)'
@@ -96,7 +98,7 @@ contains
 
     self % boundaries = boundaries
 
-  end subroutine init
+  end subroutine build
 
   !!
   !! Constructor from array of bin boundaries
@@ -106,7 +108,7 @@ contains
     type(equiBin32Mu)                       :: new
 
     ! Allocate space and call initialisation procedure
-    call new % init(boundaries)
+    call new % build(boundaries)
 
   end function new_equiBin32Mu
 
@@ -123,7 +125,7 @@ contains
     boundaries = ACE % readRealArray(33)
 
     ! Allocate space and call initialisation procedure
-    call new % init(boundaries)
+    call new % build(boundaries)
 
   end function new_equiBin32Mu_fromACE
 
