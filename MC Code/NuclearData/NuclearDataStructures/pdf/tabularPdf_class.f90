@@ -30,6 +30,7 @@ module tabularPdf_class
     procedure :: sample
     procedure :: bounds
     procedure :: probabilityOf
+    procedure :: kill
 
     procedure, private :: initPdf
     procedure, private :: initCdf
@@ -40,14 +41,16 @@ contains
   !!
   !! Samples x given number r in <0;1>
   !! Does not check range of r
+  !! Optionaly return index of a sampled bin
   !!
-  function sample(self,r) result (x)
-    class(tabularPdf),intent(in) :: self
-    real(defReal),intent(in)     :: r    ! Random Number
-    real(defReal)                :: x
-    integer(shortInt)            :: idx
-    real(defReal)                :: f, delta, ci, pi
-    character(100),parameter     :: Here='sample (tabularPdf_class.f90)'
+  function sample(self, r, res_idx) result (x)
+    class(tabularPdf),intent(in)             :: self
+    real(defReal),intent(in)                 :: r    ! Random Number
+    integer(ShortInt), intent(out), optional :: res_idx
+    real(defReal)                            :: x
+    integer(shortInt)                        :: idx
+    real(defReal)                            :: f, delta, ci, pi
+    character(100),parameter :: Here='sample (tabularPdf_class.f90)'
 
     idx = linearSearch(self % cdf,r)
     call searchError(idx,Here)
@@ -77,13 +80,16 @@ contains
 
     end select
 
+    ! Returned the sampled index
+    if(present(res_idx)) res_idx = idx
+
   end function sample
 
   !!
   !! Subroutine assigns x(1) to x_min and x(N) to x_max
   !! Returns bounds of the probability distribution
   !!
-  subroutine bounds(self,x_min,x_max)
+  elemental subroutine bounds(self, x_min, x_max)
     class(tabularPdf), intent(in) :: self
     real(defReal), intent(out)    :: x_min
     real(defReal), intent(out)    :: x_max
@@ -116,13 +122,24 @@ contains
                             self % pdf(idx),  &
                             self % pdf(idx+1),&
                             x                 )
-
       case default
         call fatalError(Here,'Unknown interpolation flag')
 
     end select
 
   end function probabilityOf
+
+  !!
+  !! Release memory occupied by the table
+  !!
+  elemental subroutine kill(self)
+    class(tabularPdf), intent(inout) :: self
+
+    if(allocated(self % x))   deallocate(self % x)
+    if(allocated(self % pdf)) deallocate(self % pdf)
+    if(allocated(self % cdf)) deallocate(self % cdf)
+
+  end subroutine kill
 
   !!
   !! Initialise table using PDF only
@@ -148,8 +165,9 @@ contains
 
     self % x = x
     self % pdf = pdf
-    self % cdf = 0.0
+    allocate(self % cdf(size(pdf)))
 
+    ! Calculate CDF
     select case (flag)
       case(histogram)
         self % flag = histogram
