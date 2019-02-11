@@ -8,6 +8,7 @@ module correlatedLawENDFfactory_func
   ! Correlated Laws
   use correlatedLawENDF_inter, only : correlatedLawENDF
   use kalbach87_class,         only : kalbach87
+  use endfLaw61_class,         only : endfLaw61
 
   implicit none
   private
@@ -60,6 +61,9 @@ contains
     select case(LAW)
       case(kalbach87Formalism)
         allocate(new, source = kalbach87(ACE))
+
+      case(endfEnergyLaw61)
+        allocate(new, source = endfLaw61(ACE))
 
       case default
         print *, 'Energy Law Type :', LAW

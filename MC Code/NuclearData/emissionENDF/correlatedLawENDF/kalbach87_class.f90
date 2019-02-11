@@ -86,8 +86,6 @@ contains
 
     end if
     
-    if (E_min /= E_min_low) print *, ' HERE '
-
     ! Interpolate outgoing energy
     E_out = E_min *(ONE - factor) + factor * E_max
 

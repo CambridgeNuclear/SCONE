@@ -26,12 +26,17 @@ module tabularPdf_class
     real(defReal),dimension(:),allocatable       :: cdf
     integer(shortInt)                            :: flag            !Interpolation flag
   contains
+    !! Public interface
     generic   :: init          => initPdf, initCdf
+    generic   :: getInterF     => getInterF_withBin, getInterF_withoutBin
     procedure :: sample
     procedure :: bounds
     procedure :: probabilityOf
     procedure :: kill
 
+    !! Private procedures
+    procedure, private :: getInterF_withBin
+    procedure, private :: getInterF_withoutBin
     procedure, private :: initPdf
     procedure, private :: initCdf
 
@@ -80,7 +85,7 @@ contains
 
     end select
 
-    ! Returned the sampled index
+    ! Return the sampled index
     if(present(res_idx)) res_idx = idx
 
   end function sample
@@ -102,11 +107,12 @@ contains
   !!
   !! Returns probability of x
   !!
-  function probabilityOf(self,x) result (prob)
-    class(tabularPdf), intent(in) :: self
-    real(defReal), intent(in)     :: x
-    real(defReal)                 :: prob
-    integer(shortInt)             :: idx
+  function probabilityOf(self, x, res_idx) result (prob)
+    class(tabularPdf), intent(in)            :: self
+    real(defReal), intent(in)                :: x
+    integer(ShortInt), intent(out), optional :: res_idx
+    real(defReal)                            :: prob
+    integer(shortInt)                        :: idx
     character(100),parameter      :: Here='probabilityOf (tabularPdf_class.f90)'
 
     idx = linearSearch(self % x, x)
@@ -127,6 +133,9 @@ contains
 
     end select
 
+    ! Return the index
+    if(present(res_idx)) res_idx = idx
+
   end function probabilityOf
 
   !!
@@ -140,6 +149,36 @@ contains
     if(allocated(self % cdf)) deallocate(self % cdf)
 
   end subroutine kill
+
+  !!
+  !! Return interpolation factor for value x
+  !! If x is outside bounds behaviour is undefined
+  !!
+  elemental function getInterF_withoutBin(self, x) result(f)
+    class(tabularPdf), intent(in) :: self
+    real(defReal), intent(in)     :: x
+    real(defReal)                 :: f
+    integer(shortInt)             :: bin
+
+    bin = linearSearch(self % x, x)
+    f = self % getInterF_withBin(x, bin)
+
+  end function getInterF_withoutBin
+
+  !!
+  !! Return interpolation factor for value x, with bin number provided
+  !! DOES NOT check if the bin is correct
+  !!
+  elemental function getInterF_withBin(self, x, bin) result(f)
+    class(tabularPdf), intent(in) :: self
+    real(defReal), intent(in)     :: x
+    integer(shortInt), intent(in) :: bin
+    real(defReal)                 :: f
+
+    f = (x - self % x(bin)) / (self % x(bin + 1) - self % x(bin))
+
+  end function getInterF_withBin
+
 
   !!
   !! Initialise table using PDF only

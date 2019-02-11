@@ -161,5 +161,30 @@ contains
 
   end subroutine testSample
 
+  !!
+  !! Test inversion of CDF with bin
+  !!
+@Test
+  subroutine testSampleWithBin(this)
+    class(test_tabularPdf), intent(inout) :: this
+    real(defReal),parameter               :: TOL = 1.0E-9
+    integer(shortInt)                     :: bin
+
+    ! Linear PDFs
+    @assertEqual(2.5_defReal, this % pdf_lin % sample(0.5_defReal, bin), TOL)
+    @assertEqual(2, bin)
+
+    @assertEqual(3.367544468_defReal, this % pdf_lin_CDF % sample(0.9_defReal, bin), TOL)
+    @assertEqual(3, bin)
+
+    ! Histograms PDFs
+    @assertEqual(2.4_defReal, this % pdf_hist % sample(0.5_defReal, bin), TOL)
+    @assertEqual(2, bin)
+
+    @assertEqual(4.0_defReal, this % pdf_hist_CDF % sample(1.0_defReal, bin), TOL)
+    @assertEqual(3, bin)
+
+  end subroutine testSampleWithBin
+
 
 end module tabularPdf_test

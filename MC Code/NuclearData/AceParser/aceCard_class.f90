@@ -940,6 +940,7 @@ contains
   !!
   !! Sets head to position of a single energy law
   !! Position is supplied by addrr ( LNW in Table F-14 of Appendix F )
+  !!                               ( L,LC in Table F-14 l. of Appendix F )
   !!
   subroutine setToEnergyLaw(self,addr)
     class(aceCard), intent(inout) :: self

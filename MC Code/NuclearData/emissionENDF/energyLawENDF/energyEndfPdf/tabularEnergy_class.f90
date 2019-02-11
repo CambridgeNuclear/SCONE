@@ -29,12 +29,16 @@ module tabularEnergy_class
     procedure :: bounds
     procedure :: probabilityOf
 
-    generic           :: init          => init_withPDF, init_withCDF
-    generic           :: assignment(=) => assign_tabularEnergy
-    procedure,private :: init_withPDF
-    procedure,private :: init_withCDF
-    procedure,private :: assign_tabularEnergy
+    generic   :: init          => init_withPDF, init_withCDF, init_fromACE
+    generic   :: assignment(=) => assign_tabularEnergy
+    generic   :: getInterF     => getInterF_withBin, getInterF_withoutBin
 
+    procedure, private :: init_withPDF
+    procedure, private :: init_withCDF
+    procedure, private :: init_fromACE
+    procedure, private :: assign_tabularEnergy
+    procedure, private :: getInterF_withBin
+    procedure, private :: getInterF_withoutBin
   end type tabularEnergy
 
 contains
@@ -42,14 +46,15 @@ contains
   !!
   !! Sample outgoing energy given Random Number Generator
   !!
-  function sample(self,rand) result (E)
-    class(tabularEnergy), intent(in) :: self
-    class(RNG), intent(inout)        :: rand
-    real(defReal)                    :: E
-    real(defReal)                    :: r
+  function sample(self, rand, bin) result (E)
+    class(tabularEnergy), intent(in)         :: self
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt), intent(out), optional :: bin
+    real(defReal)                            :: E
+    real(defReal)                            :: r
 
     r = rand % get()
-    E = self % pdf % sample(r)
+    E = self % pdf % sample(r, bin)
 
   end function sample
 
@@ -68,10 +73,11 @@ contains
   !!
   !! Return probability that neutron was emitted with energy E
   !!
-  function probabilityOf(self,E) result(prob)
-    class(tabularEnergy), intent(in)   :: self
-    real(defReal), intent(in)          :: E
-    real(defReal)                      :: prob
+  function probabilityOf(self, E, bin) result(prob)
+    class(tabularEnergy), intent(in)         :: self
+    real(defReal), intent(in)                :: E
+    integer(shortInt), intent(out), optional :: bin
+    real(defReal)                            :: prob
 
     prob = self % pdf % probabilityOf(E)
 
@@ -110,6 +116,41 @@ contains
   end subroutine init_withCDF
 
   !!
+  !! Initialise tabularEnergy from ACE
+  !! Head of aceCard needs to be set to the beginning of energy pdf data
+  !! Uses the CDF in ACE data to initialise.
+  !!
+  subroutine init_fromACE(self, ACE)
+    class(tabularEnergy), intent(inout)     :: self
+    class(aceCard), intent(inout)           :: ACE
+    integer(shortInt)                       :: INTT
+    integer(shortInt)                       :: NP
+    real(defReal),dimension(:), allocatable :: eGrid
+    real(defReal),dimension(:), allocatable :: pdf
+    real(defReal),dimension(:), allocatable :: cdf
+    character(100),parameter :: Here = 'init_fromACE (tabularEnergy_class.f90)'
+
+    ! Read data from ACE card
+    INTT = ACE % readInt()
+
+    ! Call error if interpolation flag indicates photon lines
+    if( INTT > 10 ) then
+      call fatalError(Here,'INTT > 10. Discrete photons lines are not yet implemented')
+
+    end if
+
+    ! Read rest of the data
+    NP    = ACE % readInt()         ! Number of points
+    eGrid = ACE % readRealArray(NP) ! Energy Values
+    pdf   = ACE % readRealArray(NP) ! Probability density function
+    cdf   = ACE % readRealArray(NP) ! Cumulative distribution function
+
+    ! Initialise
+    call self % init(eGrid, pdf, cdf, INTT)
+
+  end subroutine init_fromACE
+
+  !!
   !! Assignment
   !!
   subroutine assign_tabularEnergy(LHS,RHS)
@@ -119,6 +160,33 @@ contains
     LHS % pdf = RHS % pdf
 
   end subroutine assign_tabularEnergy
+
+  !!
+  !! Return interpolation factor for energy value E
+  !! If E is outside bounds behaviour is undefined
+  !!
+  elemental function getInterF_withoutBin(self, E) result(f)
+    class(tabularEnergy), intent(in) :: self
+    real(defReal), intent(in)        :: E
+    real(defReal)                    :: f
+
+    f = self % pdf % getInterF(E)
+
+  end function getInterF_withoutBin
+
+  !!
+  !! Return interpolation factor for energy value E, with bin number provided
+  !! DOES NOT check if the bin is correct
+  !!
+  elemental function getInterF_withBin(self, E, bin) result(f)
+    class(tabularEnergy), intent(in) :: self
+    real(defReal), intent(in)        :: E
+    integer(shortInt), intent(in)    :: bin
+    real(defReal)                    :: f
+
+    f = self % pdf % getInterF(E, bin)
+
+  end function getInterF_withBin
 
   !!
   !! Constructor from PDF only
@@ -151,32 +219,11 @@ contains
   !! Uses the CDF in ACE data to initialise.
   !!
   function new_tabularEnergy_fromACE(ACE) result (new)
-    type(aceCard), intent(inout)            :: ACE
+    class(aceCard), intent(inout)            :: ACE
     type(tabularEnergy)                     :: new
-    integer(shortInt)                       :: INTT
-    integer(shortInt)                       :: NP
-    real(defReal),dimension(:), allocatable :: eGrid
-    real(defReal),dimension(:), allocatable :: pdf
-    real(defReal),dimension(:), allocatable :: cdf
-    character(100),parameter :: Here = 'new_tabularEnergyfromACE (tabularEnergy_class.f90)'
-
-    ! Read data from ACE card
-    INTT = ACE % readInt()
-
-    ! Call error if interpolation flag indicates photon lines
-    if( INTT > 10 ) then
-      call fatalError(Here,'INTT > 10. Discrete photons lines are not yet implemented')
-
-    end if
-
-    ! Read rest of the data
-    NP    = ACE % readInt()         ! Number of points
-    eGrid = ACE % readRealArray(NP) ! Energy Values
-    pdf   = ACE % readRealArray(NP) ! Probability density function
-    cdf   = ACE % readRealArray(NP) ! Cumulative distribution function
 
     ! Initialise
-    call new % init(eGrid,pdf,cdf,INTT)
+    call new % init_fromACE(ACE)
 
   end function new_tabularEnergy_fromACE
 

@@ -77,7 +77,7 @@ geometry {
 
       uni30 {id 30; type cellUniverse; origin (0.0 0.0 0.0); cells (1 2); }
  
-      uni31 {id 31; type pinUniverse; radii (0.3 0.0); fills (uo2 water); } 
+      uni31 {id 31; type pinUniverse; radii (0.3 0.31 0.0); fills (uo2 clad water); } 
  
   
       latUni 
@@ -137,10 +137,14 @@ materials {
       
     } 
 
-//    clad {
-//      temp 273;
-//      40090.03c 1.0;       
-//    }
+    clad {
+      temp 273;
+      40090.03c  2.224658E-02;
+      40091.03c  0.485144E-02;
+      40092.03c  0.741553E-02;
+      40094.03c  0.751498E-02;
+      40096.03c  0.121070E-02;     
+    }
     
     
     uo2 {  
