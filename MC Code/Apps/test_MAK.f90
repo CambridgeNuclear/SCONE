@@ -9,7 +9,7 @@ program test
 
   type(IOdictionary) :: dict
 
-  call dict % initFrom('./InputFiles/FirstInput.c')
+  call dict % initFrom('./InputFiles/FullLib.c')
 
   call build_NuclearData(dict % getDictPtr('nuclearData'))
 

@@ -9,6 +9,7 @@ module correlatedLawENDFfactory_func
   use correlatedLawENDF_inter, only : correlatedLawENDF
   use kalbach87_class,         only : kalbach87
   use endfLaw61_class,         only : endfLaw61
+  use nBodyPhaseSpace_class,   only : nBodyPhaseSpace
 
   implicit none
   private
@@ -26,6 +27,7 @@ contains
     type(aceCard),intent(inout)                         :: ACE
     integer(shortInt), intent(in)                       :: MT
     integer(shortInt)                                   :: LOCB, LNW, LAW, loc
+    real(defReal)                                       :: Q, A
     character(100),parameter :: Here='new_correlatedLawENDF (correlatedLawENDFfactory_func.f90)'
 
     ! Deallocate new if allocated
@@ -64,6 +66,12 @@ contains
 
       case(endfEnergyLaw61)
         allocate(new, source = endfLaw61(ACE))
+
+      case(nBodyPhaseSpaceDistribution)
+        !! Get Q & A value
+        Q = ACE % QforMT(MT)
+        A = ACE % AW
+        allocate(new, source = nBodyPhaseSpace(ACE, Q, A))
 
       case default
         print *, 'Energy Law Type :', LAW

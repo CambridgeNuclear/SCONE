@@ -1,10 +1,5 @@
 module maxwellEnergyPdf_class
-  !! Bundle of procedures to obtain samples and probabilities from maxwellian distribution
-  !! of energy.
-  !!
-  !! For Johnk's Theorem please refer to:
-  !! Devroye, L., 1986. Non-Uniform Random Variate Generation. 1st ed. New York: Springer-Verlag.
-  !!
+
 
   use numPrecision
   use genericProcedures, only : fatalError
@@ -13,6 +8,13 @@ module maxwellEnergyPdf_class
   implicit none
   private
 
+  !!
+  !! Bundle of procedures to obtain samples and probabilities from maxwellian distribution
+  !! of energy.
+  !!
+  !! For Johnk's Theorem please refer to:
+  !! Devroye, L., 1986. Non-Uniform Random Variate Generation. 1st ed. New York: Springer-Verlag.
+  !!
   type, public :: maxwellEnergyPdf
     private
   contains
@@ -24,11 +26,14 @@ module maxwellEnergyPdf_class
     procedure,private :: probabilityOf_withC
 
   end type maxwellEnergyPdf
+
 contains
 
-  function sample_Johnk(self,kT,rand) result (E)
+  !!
   !! Samples Maxwellian energy distribution ( gamma(3/2,1) distribution) using algorithms
   !! based on Johnk theorem. This is the MCNP, OpenMC and Serpent(?) approach.
+  !!
+  function sample_Johnk(self,kT,rand) result (E)
     class(maxwellEnergyPdf), intent(in) :: self
     real(defReal),intent(in)            :: kT
     class(RNG), intent(inout)           :: rand
@@ -63,9 +68,10 @@ contains
   end function sample_Johnk
 
 
-
-  function probabilityOf_full(self,E_out,kT) result(prob)
+  !!
   !! Returns probability of E_out.
+  !!
+  function probabilityOf_full(self,E_out,kT) result(prob)
     class(maxwellEnergyPdf), intent(in) :: self
     real(defReal), intent(in)           :: E_out
     real(defReal), intent(in)           :: kT

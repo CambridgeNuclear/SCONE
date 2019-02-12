@@ -6,4 +6,5 @@ add_sources( ./correlatedLawENDF_inter.f90
              ./correlatedPdfs/kalbachPdf_class.f90
              ./correlatedPdfs/law61Pdf_class.f90
              ./kalbach87_class.f90
-             ./endfLaw61_class.f90) 
+             ./endfLaw61_class.f90
+             ./nBodyPhaseSpace_class.f90) 
