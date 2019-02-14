@@ -12,11 +12,13 @@ module genericProcedures
     module procedure swap_shortInt
     module procedure swap_defReal
     module procedure swap_char_nameLen
+    module procedure swap_defReal_defReal
   end interface
 
   interface quickSort
     module procedure quickSort_shortInt
     module procedure quickSort_defReal
+    module procedure quickSort_defReal_defReal
   end interface
 
   interface hasDuplicates
@@ -878,6 +880,43 @@ module genericProcedures
   end subroutine quickSort_defReal
 
   !!
+  !! Quicksort for array1 and array2 of reals by array1
+  !! If size(array2) > size(array1) ignores extra elements (does not sort them)
+  !! If size(array1) > size(array2) behaviour is undefined.
+  !!
+  recursive subroutine quickSort_defReal_defReal(array1, array2)
+    real(defReal), dimension(:), intent(inout) :: array1
+    real(defReal), dimension(:), intent(inout) :: array2
+    integer(shortInt)                          :: i, maxSmall, pivot
+    character(100),parameter :: Here = 'quickSort_defReal_defReal (genericProcdures.f90)'
+
+    if(size(array1) /= size(array2)) then
+      call fatalError(Here,'Arrays have diffrent size!')
+    end if
+
+    if (size(array1) > 1 ) then
+      ! Set a pivot to the rightmost element
+      pivot = size(array1)
+
+      ! Move all elements <= pivot to the LHS of the pivot
+      ! Find position of the pivot in the array1 at the end (maxSmall)
+      maxSmall = 0
+      do i=1,size(array1)
+
+        if( array1(i) <= array1(pivot)) then
+          maxSmall = maxSmall + 1
+          call swap(array1(i), array2(i), array1(maxSmall), array2(maxSmall))
+        end if
+      end do
+
+      ! Recursivly sort the sub arrays divided by the pivot
+      call quickSort(array1(1:maxSmall-1), array2(1:maxSmall-1))
+      call quickSort(array1(maxSmall+1:size(array1)), array2(maxSmall+1:size(array1)))
+    end if
+
+  end subroutine quickSort_defReal_defReal
+
+  !!
   !! Swap two integers
   !! Use XOR to avoid extra space (which is completly unnecessary)
   !!
@@ -905,6 +944,30 @@ module genericProcedures
     r2 = temp
 
   end subroutine swap_defReal
+
+  !!
+  !! Swap two pair of reals
+  !!
+  elemental subroutine swap_defReal_defReal(r1_1, r1_2, r2_1, r2_2)
+    real(defReal), intent(inout) :: r1_1
+    real(defReal), intent(inout) :: r1_2
+    real(defReal), intent(inout) :: r2_1
+    real(defReal), intent(inout) :: r2_2
+    real(defReal)                :: temp1, temp2
+
+    ! Load first pair into temps
+    temp1 = r1_1
+    temp2 = r1_2
+
+    ! Assign values of 2nd pair to 1st pair
+    r1_1 = r2_1
+    r1_2 = r2_2
+
+    ! Assign values of 1st pair to 2nd pair
+    r2_1 = temp1
+    r2_2 = temp2
+
+  end subroutine swap_defReal_defReal
 
   !!
   !! Swap character of length nameLen

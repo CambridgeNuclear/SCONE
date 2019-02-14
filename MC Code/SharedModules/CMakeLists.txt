@@ -7,7 +7,10 @@ add_sources( ./genericProcedures.f90
              ./legendrePoly_func.f90
              ./vector_class.f90
              ./charTape_class.f90
-             ./grid_class.f90) 
+             ./grid_class.f90
+             ./statisticalTests_func.f90) 
              
-add_unit_tests( ./Tests/grid_test.f90)
+add_unit_tests( ./Tests/grid_test.f90
+                ./Tests/sort_test.f90
+                ./Tests/statisticalTests_test.f90)
  
