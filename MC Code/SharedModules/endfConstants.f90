@@ -120,7 +120,7 @@ module endfConstants
                                   continuousTabularDistribution = 4  ,&
                                   generalEvaporationSpectrum    = 5  ,&
                                   simpleMaxwellFissionSpectrum  = 7  ,&
-                                  evaporationSpectrum           = 9  ,&
+                                  evaporationEnergySpectrum     = 9  ,&
                                   energyDependentWattSpectrum   = 11 ,&
                                   tabularLinearFunctions        = 22 ,&
                                   ukLaw6                        = 24 ,&

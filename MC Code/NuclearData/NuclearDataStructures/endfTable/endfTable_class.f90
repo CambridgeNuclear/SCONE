@@ -35,6 +35,7 @@ module endfTable_class
   contains
     procedure :: at
     generic   :: init => initSimple, initInter
+    procedure :: kill
 
     procedure, private :: initSimple
     procedure, private :: initInter
@@ -125,6 +126,20 @@ contains
     end select
 
   end function at
+
+  !!
+  !! Deconstruct object
+  !!
+  elemental subroutine kill(self)
+    class(endfTable), intent(inout) :: self
+
+    if(allocated(self % x)) deallocate(self % x)
+    if(allocated(self % y)) deallocate(self % y)
+    if(allocated(self % bounds)) deallocate(self % bounds)
+    if(allocated(self % interENDF)) deallocate(self % interENDF)
+    self % nRegions = 0
+
+  end subroutine kill
 
 
   function newSimple_endfTable(x, y) result (new)
