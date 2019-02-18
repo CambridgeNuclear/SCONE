@@ -58,6 +58,12 @@ module genericProcedures
     module procedure isSorted_shortInt
   end interface
 
+  interface isDescending
+    module procedure isDescending_defReal
+    module procedure isDescending_shortInt
+  end interface
+
+
   interface numToChar
     module procedure numToChar_shortInt
     module procedure numToChar_longInt
@@ -664,6 +670,44 @@ module genericProcedures
     isIt = .true.
 
   end function isSorted_shortInt
+
+  !!
+  !! Function that check if the array is sorted in descending order (a(i) <= a(i-1) for all i).
+  !!
+  function isDescending_defReal(array) result (isIt)
+    real(defReal),dimension(:),intent(in) :: array
+    logical(defBool)                      :: isIt
+    integer(shortInt)                     :: i
+
+    do i=2,size(array)
+      if (array(i) > array(i-1)) then
+        isIt = .false.
+        return
+      end if
+    end do
+
+    isIt = .true.
+
+  end function isDescending_defReal
+
+  !!
+  !! Function that check if the array is sorted in descending order (a(i) <= a(i-1) for all i).
+  !!
+  function isDescending_shortInt(array) result (isIt)
+    integer(shortInt),dimension(:),intent(in) :: array
+    logical(defBool)                          :: isIt
+    integer(shortInt)                         :: i
+
+    do i=2,size(array)
+      if (array(i) > array(i-1)) then
+        isIt = .false.
+        return
+      end if
+    end do
+
+    isIt = .true.
+
+  end function isDescending_shortInt
 
   !!
   !! Convert shortInt to character

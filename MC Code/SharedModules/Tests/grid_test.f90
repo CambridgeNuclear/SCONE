@@ -241,4 +241,20 @@ contains
 
   end subroutine testSearch_unstruct
 
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!!Tests on all grids
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Test getting number of bins (size)
+  !!
+@Test
+  subroutine testGetSize(this)
+    class(test_grid), intent(inout) :: this
+
+    @assertEqual(17, this % linGrid % getSize())
+    @assertEqual(70, this % logGrid % getSize())
+    @assertEqual(8, this % unstructGrid % getSize())
+
+  end subroutine testGetSize
 end module grid_test

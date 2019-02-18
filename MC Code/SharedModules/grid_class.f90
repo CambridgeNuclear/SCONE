@@ -13,9 +13,12 @@ module grid_class
                                   LOGAR    = 2, &
                                   UNSTRUCT = 3
 
-
+  !!
+  !! Grid in ascending order (where bin 1 is the smallest)
+  !! Used to store spatial grids
+  !!
   type, public :: grid
-   ! private
+    private
     integer(shortInt)                      :: type = UNDEF
     real(defReal),dimension(:),allocatable :: bins
     real(defReal)                          :: step
@@ -29,6 +32,7 @@ module grid_class
     ! Access procedures
     procedure :: bin
     procedure :: search
+    procedure :: getSize
   end type grid
 
 contains
@@ -95,15 +99,15 @@ contains
   subroutine init_unstruct(self,bins)
     class(grid), intent(inout)             :: self
     real(defReal),dimension(:), intent(in) :: bins
-    character(100), parameter              :: Here = 'init_equalSpaced ( grid_class.f90)'
+    character(100), parameter              :: Here = 'init_unstruct ( grid_class.f90)'
 
     ! Check that grid is sorted
     if( .not.isSorted(bins)) call fatalError(Here,'Provided grid is not sorted')
+    if( size(bins) < 2) call fatalError(Here,'Empty array or array of size 1 was provided')
 
     ! Initialise
     self % bins = bins
     self % type = UNSTRUCT
-
 
   end subroutine init_unstruct
 
@@ -156,5 +160,22 @@ contains
     if(idx < 1 .or. idx >= size(self % bins)) idx = valueOutsideArray
 
   end function search
+
+  !!
+  !! Returns number of bins in the grid
+  !! Not that this is size(self % bins) - 1
+  !! Returns 0 for uninitialised array
+  !!
+  elemental function getSize(self) result(s)
+    class(grid), intent(in) :: self
+    integer(shortInt)       :: s
+
+    if(allocated(self % bins)) then
+      s = size(self % bins) -1
+    else
+      s = 0
+    end if
+
+  end function getSize
 
 end module grid_class

@@ -34,7 +34,7 @@ module collisionClerk_class
   !!   type collisionClerk;
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
-  !!   response (resName1 #resName2 ... #}
+  !!   response (resName1 #resName2 ... #)
   !!   resName1 { <tallyResponse definition> }
   !!   #resNamew { <tallyResponse definition #
   !! }
