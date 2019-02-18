@@ -1,7 +1,7 @@
 type eigenPhysicsPackage; 
 
 //pop      100000; 
-pop      10000;
+pop      5000;
 active   500; 
 inactive 300; 
 //seed     -6574747;
@@ -117,7 +117,7 @@ nuclearData {
   handles { 
      // mg1 isotropicMG;
      // mg2 transMG;
-     // mg3 P1MG; 
+      mg3 P1MG; 
      // ce1 byNucNoMT;
       ce2 byNucMT; 
   }
@@ -144,6 +144,7 @@ materials {
       40092.03c  0.741553E-02;
       40094.03c  0.751498E-02;
       40096.03c  0.121070E-02;     
+      xsFile ./InputFiles/WIMS69HS_12_1;
     }
     
     

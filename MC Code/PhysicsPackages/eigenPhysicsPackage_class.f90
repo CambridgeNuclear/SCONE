@@ -117,6 +117,9 @@ contains
     self % collOP % tally => self % inactiveTally
     self % transOP % tally => self % inactiveTally
 
+    ! Set initiial k-eff
+    k_new = ONE
+
     do i=1,self % N_inactive
       ! Send start of cycle report
       Nstart = self % thisCycle % popSize()
@@ -127,6 +130,9 @@ contains
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
         call self % geom % placeCoord(neutron % coords)
+
+        ! Set k-eff for normalisation in the particle
+        neutron % k_eff = k_new
 
           history: do
             call neutron % savePreHistory()
@@ -184,8 +190,6 @@ contains
 
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
-      !k_new = self % inactiveTally % keff()
-
       self % nextCycle % k_eff = k_new
 
       ! Display progress
@@ -216,6 +220,9 @@ contains
     self % collOP % tally => self % activeTally
     self % transOP % tally => self % activeTally
 
+    ! Set initiial k-eff
+    k_new = ONE
+
     do i=1,self % N_active
       ! Send start of cycle report
       Nstart = self % thisCycle % popSize()
@@ -226,6 +233,9 @@ contains
         ! Obtain paticle from current cycle dungeon
         call self % thisCycle % release(neutron)
         call self % geom % placeCoord(neutron % coords)
+
+        ! Set k-eff for normalisation in the particle
+        neutron % k_eff = k_new
 
           history: do
             call neutron % savePreHistory()
@@ -282,8 +292,6 @@ contains
       end select
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
-      !k_new = self % activeTally % keff()
-
       self % nextCycle % k_eff = k_new
 
       ! Display progress

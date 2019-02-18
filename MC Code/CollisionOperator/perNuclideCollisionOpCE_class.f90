@@ -118,7 +118,7 @@ contains
       ! Obtain required data
       wgt   = p % w
       nu    = self % xsData % releaseAt(self % E, N_fission, self % nucIdx)
-      k_eff = nextCycle % k_eff
+      k_eff = p % k_eff
       r1    = self % pRNG % get()
       call self % xsData % getMainNucXS(nuclideXss,self % E, self % nucIdx)
 

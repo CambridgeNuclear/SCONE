@@ -80,7 +80,7 @@ contains
       wgt    = p % w
       matIdx = self % matIdx
 
-      k_eff = nextCycle % k_eff
+      k_eff = p % k_eff
       r1    = self % pRNG % get()
 
       call self % xsData % getMatMacroXS(materialXS, self % G, matIdx)
