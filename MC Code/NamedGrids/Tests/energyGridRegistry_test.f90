@@ -79,7 +79,7 @@ contains
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
-  !!
+  !! Test getting user-defined grid and check that bins are as expected
   !!
 @Test
   subroutine testGettingUserDefinedGrid()
@@ -121,6 +121,32 @@ contains
   end subroutine testGettingUserDefinedGrid
 
   !!
+  !! Test getting predefined grids
+  !!
+@Test
+  subroutine testGettingPreDefined()
+    type(energyGrid)         :: myGrid
+    character(nameLen)       :: name
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! WIMS 69
+    name = 'wims69'
+    call get_energyGrid(myGrid, name)
+    @assertEqual(6.7340000000E-02_defReal, myGrid % bin(11), 6.7340000000E-02_defReal * TOL)
+
+    ! WIMS 172
+    name = 'wims172'
+    call get_energyGrid(myGrid, name)
+    @assertEqual(7.5239800000E-06_defReal, myGrid % bin(88), 7.5239800000E-06_defReal * TOL)
+
+    ! CASMO 40
+    name = 'casmo40'
+    call get_energyGrid(myGrid, name)
+    @assertEqual(1.1500000000E-06_defReal, myGrid % bin(23), 1.1500000000E-06_defReal * TOL)
+
+  end subroutine testGettingPreDefined
+
+  !!
   !! Test getting defined and undefined grid with error flag
   !!
 @Test
@@ -134,8 +160,13 @@ contains
     call get_energyGrid(myGrid,name, err = errV)
     @assertTrue(errV)
 
-    ! Existing grid
+    ! User-defined grid
     name = 'linGrid'
+    call get_energyGrid(myGrid,name, err = errV)
+    @assertFalse(errV)
+
+    ! Pre-defined grid
+    name = 'wims172'
     call get_energyGrid(myGrid,name, err = errV)
     @assertFalse(errV)
 

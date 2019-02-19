@@ -32,6 +32,7 @@
 module energyGridRegistry_mod
 
   use numPrecision
+  use preDefEnergyGrids
   use genericProcedures, only : fatalError, charCmp, isDescending
   use dictionary_class,  only : dictionary
   use energyGrid_class,  only : energyGrid
@@ -56,7 +57,8 @@ module energyGridRegistry_mod
 
   !! Names of predefined energy grids
   character(*),dimension(*),parameter :: PRE_DEF_NAMES = ['wims69 ',&
-                                                          'wims172']
+                                                          'wims172',&
+                                                          'casmo40']
 
   !! Misc. parameters
   real(defReal),parameter     :: GROWTH_RATIO = 1.2_defReal
@@ -78,10 +80,10 @@ contains
 
     ! Try to find the grid in the user-defined grids
     idx = nameMap % getOrDefault(name,-17)
+    if(present(err)) err = .false.
 
     if( idx /= -17) then
       eGrid = eGrids(idx)
-      if(present(err)) err = .false.
       return
 
     end if
@@ -89,16 +91,24 @@ contains
     ! Try to find grid in the pre-defined structures
     ! ADD A NEW PRE_DEFINED STRUCTURE HERE
     select case(name)
+      case('wims69')
+        call eGrid % init(wims69)
 
+      case('wims172')
+        call eGrid % init(wims172)
+
+      case('casmo40')
+        call eGrid % init(casmo40)
+
+      case default
+        if (present(err)) then
+          err = .true.
+        else
+          call fatalError(Here,'Grid '//name//' is undefined!')
+        end if
     end select
 
-    if (present(err)) then
-      err = .true.
 
-    else
-      call fatalError(Here,'Grid '//name//' is undefined!')
-
-    end if
 
   end subroutine get_energyGrid
 
