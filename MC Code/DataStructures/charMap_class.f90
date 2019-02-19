@@ -185,6 +185,11 @@ contains
     integer(shortInt)              :: idx
     character(100), parameter :: Here = 'get (charMap_class.f90)'
 
+    ! Give error if map is uninitialised (empty)
+    if( .not.allocated(self % map)) then
+      call fatalError(Here,'Target key: '// key // ' was not found. Map is empty')
+    end if
+
     ! Hash character key to integer
     call FNV_1(key,hash)
 
@@ -226,6 +231,12 @@ contains
     integer(shortInt)              :: hash
     integer(shortInt)              :: idx
     character(100), parameter :: Here = 'get (charMap_class.f90)'
+
+    ! Give default if map is uninitialised (empty)
+    if( .not.allocated(self % map)) then
+      val = default
+      return
+    end if
 
     ! Hash character key to integer
     call FNV_1(key,hash)

@@ -59,7 +59,7 @@ contains
     integer(shortInt), intent(in):: N
     integer(shortInt)            :: N_bar
     integer(shortInt)            :: nextPow2
-    character(100), parameter :: Here = 'init (maps_class.f90)'
+    character(100), parameter :: Here = 'init (intMap_class.f90)'
 
     if( N <= 0) call fatalError(Here,'Size needs to be +ve')
 
@@ -165,7 +165,12 @@ contains
     integer(shortInt), intent(in) :: key
     integer(shortInt)             :: val
     integer(shortInt)             :: hash
-    character(100), parameter :: Here = 'get (maps_class.f90)'
+    character(100), parameter :: Here = 'get (intMap_class.f90)'
+
+    ! Give error if map is uninitialised (empty)
+    if( .not.allocated(self % map)) then
+      call fatalError(Here,'Target key: '// numToChar(key) // ' was not found. Map is empty')
+    end if
 
     ! Calculate Hash
     hash = knuthHash(key, self % Nexp) + 1
@@ -200,6 +205,12 @@ contains
     integer(shortInt)             :: val
     integer(shortInt)             :: hash
 
+    ! Give default if map is uninitialised (empty)
+    if( .not.allocated(self % map)) then
+      val = default
+      return
+    end if
+
     ! Calculate Hash
     hash = knuthHash(key, self % Nexp) + 1
 
@@ -222,8 +233,6 @@ contains
     val = default
 
   end function getOrDefault
-
-
 
   !!
   !! Increase size of the map by factor of 2

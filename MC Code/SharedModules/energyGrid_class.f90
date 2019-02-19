@@ -29,12 +29,13 @@ module energyGrid_class
     private
     integer(shortInt)                      :: type = UNDEF
     real(defReal),dimension(:),allocatable :: bins
-    real(defReal)                          :: step
+    real(defReal)                          :: step = ZERO
   contains
     ! Initialisation procedures
     generic   :: init => init_equalSpaced, init_unstruct
     procedure :: init_equalSpaced
     procedure :: init_unstruct
+    procedure :: kill
 
     ! Access procedures
     procedure :: bin
@@ -119,6 +120,19 @@ contains
     self % type = UNSTRUCT
 
   end subroutine init_unstruct
+
+  !!
+  !! Kill grid. Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(energyGrid), intent(inout) :: self
+
+    if(allocated(self % bins)) deallocate(self % bins)
+    self % step = ZERO
+    self % type = UNDEF
+
+  end subroutine kill
+
 
   !!
   !! Return value of the bins uder idx (upper bin limit)

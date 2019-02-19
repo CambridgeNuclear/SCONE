@@ -171,4 +171,17 @@ contains
 
   end subroutine testGetLength
 
+  !!
+  !! Test getOrDefaoult from uninitialised map
+  !!
+@Test
+  subroutine testGetOrDefaultUninitialised(this)
+    class(test_intMap), intent(inout) :: this
+    type(intMap)                      :: locMap
+
+    @assertEqual(7, locMap % getOrDefault(3, 7))
+
+  end subroutine testGetOrDefaultUninitialised
+
+
 end module intMap_test

@@ -135,7 +135,7 @@ contains
     temp = this % map % getOrDefault(KEY7, default)
     @assertEqual(VAL7, temp)
 
-    ! Get default. (Yes I love Tolkien - MAK)
+    ! Get default.
     tempChar = 'this key is not present'
     @assertEqual(default, this % map % getOrDefault(tempChar, default))
 
@@ -170,5 +170,19 @@ contains
 
   end subroutine testGetLength
 
+  !!
+  !! Test getOrDefaoult from uninitialised map
+  !!
+@Test
+  subroutine testGetOrDefaultUninitialised(this)
+    class(test_charMap), intent(inout) :: this
+    character(nameLen)                 :: key
+    type(charMap)                      :: locMap
+
+
+    key = 'Key of admiral Dodanna'
+    @assertEqual(7, locMap % getOrDefault(key, 7))
+
+  end subroutine testGetOrDefaultUninitialised
 
 end module charMap_test

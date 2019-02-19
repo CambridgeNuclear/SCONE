@@ -55,7 +55,9 @@ contains
   subroutine tearDown(this)
     class(test_energyGrid), intent(inout) :: this
 
-    ! Do nothing *** TODO: Add kill later
+    call this % linGrid % kill()
+    call this % logGrid % kill()
+    call this % unstructGrid % kill()
 
   end subroutine tearDown
 
