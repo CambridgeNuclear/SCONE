@@ -88,9 +88,9 @@ module endfConstants
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
 
   ! Microscopic lumped reaction channels special MT numbers
-  integer(shortInt),parameter  :: anyScatter = -102, &
-                                  anyCapture = -201, &
-                                  anyFission = -118
+  integer(shortInt),parameter  :: anyScatter    = -102, &
+                                  anyCapture    = -201, &
+                                  anyFission    = -118
 
   ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
   integer(shortInt),parameter  :: macroTotal     = -1 ,&
@@ -99,9 +99,10 @@ module endfConstants
                                   macroFission   = -6 ,&
                                   macroNuFission = -7
 
-  ! List of Maje MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
+  ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
-                                  macroAbsorbtion = -21
+                                  macroAbsorbtion = -21 ,&
+                                  noInteraction   = -901
 
 
 

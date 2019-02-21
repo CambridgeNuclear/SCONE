@@ -92,7 +92,7 @@ module collisionOperatorBase_inter
     end subroutine init
   end interface
 
-  contains
+contains
 
     !!
     !! Generic flow of collision processing
