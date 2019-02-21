@@ -63,7 +63,7 @@ module collisionProcessor_inter
     private
   contains
     ! Master non-overridable procedures
-    procedure :: collide
+    procedure, non_overridable :: collide
 
     ! Extendable initialisation procedure
     procedure :: init

@@ -43,16 +43,19 @@ module neutronCEstd_class
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   #minEnergy <real>;#
-  !!   #maxEnergy <real>;#
+  !!   type            neutronCEstd;
+  !!   #minEnergy      <real>;#
+  !!   #maxEnergy      <real>;#
   !!   #energyTreshold <real>;#
-  !!   #massTreshold <real>;~
+  !!   #massTreshold   <real>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEstd
     private
-    class(perNuclideNuclearDataCE), pointer :: xsData => null() !! Nuclear Data block pointer
-    !! Settings
+    !! Nuclear Data block pointer -> public so it can be used by subclasses (protected member)
+    class(perNuclideNuclearDataCE), pointer,public :: xsData => null()
+
+    !! Settings - private
     real(defReal) :: minE
     real(defReal) :: maxE
     real(defReal) :: tresh_E
