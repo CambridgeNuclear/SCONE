@@ -11,16 +11,29 @@ module particle_class
   private
 
   !!
+  !! Particle types paramethers
+  !!
+  integer(shortInt), parameter,public :: P_NEUTRON = 2,&
+                                         P_PHOTON  = 3
+
+  !!
+  !! Public particle type procedures
+  !!
+  public :: verifyType
+  public :: printType
+
+  !!
   !! Particle compressed for storage
   !!
   type, public :: phaseCoord
-    real(defReal)              :: wgt  = 0.0     ! Particle weight
-    real(defReal),dimension(3) :: r    = 0.0     ! Global position
-    real(defReal),dimension(3) :: dir  = 0.0     ! Global direction
-    real(defReal)              :: E    = 0.0     ! Energy
-    integer(shortInt)          :: G    = 0       ! Energy group
-    logical(defBool)           :: isMG = .false. ! Is neutron multi-group
-    real(defReal)              :: time = 0.0     ! Particle time position
+    real(defReal)              :: wgt  = 0.0       ! Particle weight
+    real(defReal),dimension(3) :: r    = 0.0       ! Global position
+    real(defReal),dimension(3) :: dir  = 0.0       ! Global direction
+    real(defReal)              :: E    = 0.0       ! Energy
+    integer(shortInt)          :: G    = 0         ! Energy group
+    logical(defBool)           :: isMG = .false.   ! Is neutron multi-group
+    integer(shortInt)          :: type = P_NEUTRON ! Particle physical type
+    real(defReal)              :: time = 0.0       ! Particle time position
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_phaseCoord
@@ -71,11 +84,12 @@ module particle_class
     real(defReal)              :: time      ! Particle time point
 
     ! Particle flags
-    real(defReal)              :: w0        ! Particle initial weight (for implicit, variance reduction...)
+    real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
     real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
+    integer(shortInt)          :: type           ! Particle type
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -91,7 +105,7 @@ module particle_class
   contains
      ! Build procedures
     generic              :: build => buildCE, buildMG
-    generic              :: assignment(=) => particle_fromPhaseCoord, particle_fromParticleState
+    generic              :: assignment(=) => particle_fromPhaseCoord
 
     ! Inquiry about coordinates
     procedure            :: rLocal
@@ -125,11 +139,122 @@ module particle_class
     procedure,private                   :: buildCE
     procedure,private                   :: buildMG
     procedure,non_overridable,private   :: particle_fromPhaseCoord
-    procedure,non_overridable,private   :: particle_fromParticleState
 
   end type particle
 
 contains
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle build and assignment procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Initialise CE particle
+  !! Necessary arguments:
+  !!   r   -> Global Position
+  !!   dir -> Global direction
+  !!   E   -> Energy [MeV]
+  !!   w   -> particle weight
+  !! Optional arguments:
+  !!   t   -> particle time (default = 0.0)
+  !!   type-> particle type (default = P_NEUTRON)
+  !!
+  pure subroutine buildCE(self, r, dir, E, w, t, type)
+    class(particle), intent(inout)          :: self
+    real(defReal),dimension(3),intent(in)   :: r
+    real(defReal),dimension(3),intent(in)   :: dir
+    real(defReal),intent(in)                :: E
+    real(defReal),intent(in)                :: w
+    real(defReal),optional,intent(in)       :: t
+    integer(shortInt),intent(in),optional   :: type
+
+    call self % coords % init(r, dir)
+    self % E  = E
+    self % w  = w
+    self % w0 = w
+
+    self % isDead = .false.
+    self % isMG   = .false.
+
+    if(present(t)) then
+      self % time = t
+    else
+      self % time = ZERO
+    end if
+
+    if(present(type)) then
+      self % type = type
+    else
+      self % type = P_NEUTRON
+    end if
+
+  end subroutine buildCE
+
+  !!
+  !! Initialise MG particle
+  !! Necessary arguments:
+  !!   r   -> Global Position
+  !!   dir -> Global direction
+  !!   G   -> Energy Group
+  !!   w   -> particle weight
+  !! Optional arguments:
+  !!   t   -> particle time (default = 0.0)
+  !!   type-> particle type (default = P_NEUTRON)
+  !!
+  subroutine buildMG(self, r, dir, G, w, t, type)
+    class(particle), intent(inout)          :: self
+    real(defReal),dimension(3),intent(in)   :: r
+    real(defReal),dimension(3),intent(in)   :: dir
+    real(defReal),intent(in)                :: w
+    integer(shortInt),intent(in)            :: G
+    real(defReal),intent(in),optional       :: t
+    integer(shortInt),intent(in),optional   :: type
+
+    call self % coords % init(r, dir)
+    self % G  = G
+    self % w  = w
+    self % w0 = w
+
+    self % isDead = .false.
+    self % isMG   = .true.
+
+    if(present(t)) then
+      self % time = t
+    else
+      self % time = ZERO
+    end if
+
+    if(present(type)) then
+      self % type = type
+    else
+      self % type = P_NEUTRON
+    end if
+
+  end subroutine buildMG
+
+  !!
+  !! Copy phase coordinates into particle
+  !!
+  subroutine particle_fromPhaseCoord(LHS,RHS)
+    class(particle), intent(inout)  :: LHS
+    type(phaseCoord), intent(in)    :: RHS
+
+    LHS % w                     = RHS % wgt
+    LHS % w0                    = RHS % wgt
+    call LHS % takeAboveGeom()
+    LHS % coords % lvl(1) % r   = RHS % r
+    LHS % coords % lvl(1) % dir = RHS % dir
+    LHS % E                     = RHS % E
+    LHS % G                     = RHS % G
+    LHS % isMG                  = RHS % isMG
+    LHS % type                  = RHS % type
+    LHS % time                  = RHS % time
+
+  end subroutine particle_fromPhaseCoord
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle coordinates inquiry procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Return the position either at the deepest nested level or a specified level
@@ -252,16 +377,9 @@ contains
 
   end function matIdx
 
-  !!
-  !! Set Material index for testing purposes
-  !!
-  pure subroutine setMatIdx(self,matIdx)
-    class(particle), intent(inout) :: self
-    integer(shortInt), intent(in)  :: matIdx
-
-    self % coords % matIdx = matIdx
-
-  end subroutine setMatIdx
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle operations on coordinates procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Move the particle above the geometry
@@ -335,6 +453,21 @@ contains
   end subroutine takeAboveGeom
 
   !!
+  !! Set Material index for testing purposes
+  !!
+  pure subroutine setMatIdx(self,matIdx)
+    class(particle), intent(inout) :: self
+    integer(shortInt), intent(in)  :: matIdx
+
+    self % coords % matIdx = matIdx
+
+  end subroutine setMatIdx
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle save state procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
   !! Save state of the particle at the beginning of history
   !!
   subroutine savePreHistory(self)
@@ -374,6 +507,10 @@ contains
 
   end subroutine savePreCollision
 
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle debug procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
   !!
   !! Display state of a particle
   !!
@@ -386,6 +523,10 @@ contains
     print *, self % coords % matIdx
 
   end subroutine display_particle
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle state and phaseCoord procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Copy particle into phase coordinates
@@ -400,6 +541,7 @@ contains
     LHS % E    = RHS % E
     LHS % G    = RHS % G
     LHS % isMG = RHS % isMG
+    LHS % type = RHS % type
     LHS % time = RHS % time
 
   end subroutine phaseCoord_fromParticle
@@ -419,6 +561,7 @@ contains
     isEqual = isEqual .and. all(LHS % dir == RHS % dir)
     isEqual = isEqual .and. LHS % time == RHS % time
     isEqual = isEqual .and. LHS % isMG .eqv. RHS % isMG
+    isEqual = isEqual .and. LHS % type == RHS % type
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -463,56 +606,6 @@ contains
   end function equal_particleState
 
   !!
-  !! Copy phase coordinates into particle
-  !!
-  subroutine particle_fromPhaseCoord(LHS,RHS)
-    class(particle), intent(inout)  :: LHS
-    type(phaseCoord), intent(in)    :: RHS
-
-    LHS % w                     = RHS % wgt
-    LHS % w0                    = RHS % wgt
-    call LHS % takeAboveGeom()
-    LHS % coords % lvl(1) % r   = RHS % r
-    LHS % coords % lvl(1) % dir = RHS % dir
-    LHS % E                     = RHS % E
-    LHS % G                     = RHS % G
-    LHS % isMG                  = RHS % isMG
-    LHS % time                  = RHS % time
-
-  end subroutine particle_fromPhaseCoord
-
-  !!
-  !! Copy particleState into particle
-  !!
-  !! NOTE: THIS PROCEDURE IS A TRICK TO USE TALLY MAPS FOR PARTICLE STATES
-  !!       IT SHOULD BE REPLACED AT SOME POINT
-  !!
-  subroutine particle_fromParticleState(LHS,RHS)
-    class(particle), intent(inout)  :: LHS
-    type(particleState), intent(in) :: RHS
-
-    ! Copy phase coords
-    LHS % w                     = RHS % wgt
-    LHS % w0                    = RHS % wgt
-    call LHS % takeAboveGeom()
-    LHS % coords % lvl(1) % r   = RHS % r
-    LHS % coords % lvl(1) % dir = RHS % dir
-    LHS % E                     = RHS % E
-    LHS % G                     = RHS % G
-    LHS % isMG                  = RHS % isMG
-    LHS % time                  = RHS % time
-
-    ! Copy matIdx, cellIdx and uniqueID
-    LHS % coords % matIdx            = RHS % matIdx
-    LHS % coords % lvl(1) % cellIdx  = RHS % cellIdx
-
-    ! Fake Unique ID
-    LHS % coords % lvl(1) % uniRootID = 0
-    LHS % coords % lvl(1) % localID   = RHS % uniqueID
-
-  end subroutine particle_fromParticleState
-
-  !!
   !! Prints state of the phaseCoord
   !!
   subroutine display_phaseCoord(self)
@@ -522,68 +615,43 @@ contains
 
   end subroutine display_phaseCoord
 
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Misc Procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
   !!
-  !! Initialise CE particle
+  !! Returns .true. if the integer is valid particle type code
+  !! Returns .false. otherwise
   !!
-  !!   r   -> Global Position
-  !!   dir -> Global direction
-  !!   E   -> Energy [MeV]
-  !!   w   -> particle weight
-  !!   t   -> particle time
-  !!
-  subroutine buildCE(self,r,dir,E,w,t)
-    class(particle), intent(inout)          :: self
-    real(defReal),dimension(3),intent(in)   :: r, dir
-    real(defReal),intent(in)                :: E, w
-    real(defReal),optional,intent(in)       :: t
+  elemental function verifyType(type) result(isValid)
+    integer(shortInt), intent(in) :: type
+    logical(defBool)              :: isValid
 
-    call self % coords % init(r, dir)
-    self % E  = E
-    self % w  = w
-    self % w0 = w
+    isValid = .false.
 
-    self % isDead = .false.
-    self % isMG   = .false.
+    ! Check against particles types
+    isValid = isValid .or. type == P_NEUTRON
+    isValid = isValid .or. type == P_PHOTON
 
-    if(present(t)) then
-      self % time = t
-    else
-      self % time = ZERO
-    end if
-
-  end subroutine buildCE
+  end function verifyType
 
   !!
-  !! Initialise MG particle
+  !! Returns character with a description of particle type
   !!
-  !!   r   -> Global Position
-  !!   dir -> Global direction
-  !!   G   -> Energy Group
-  !!   w   -> particle weight
-  !!   t   -> particle time
-  !!
-  subroutine buildMG(self,r,dir,G,w,t)
-    class(particle), intent(inout)          :: self
-    real(defReal),dimension(3),intent(in)   :: r, dir
-    real(defReal),intent(in)                :: w
-    integer(shortInt),intent(in)            :: G
-    real(defReal),optional,intent(in)       :: t
+  elemental function printType(type) result(name)
+    integer(shortInt), intent(in) :: type
+    character(nameLen)            :: name
 
-    call self % coords % init(r, dir)
-    self % G  = G
-    self % w  = w
-    self % w0 = w
+    select case(type)
+      case(P_NEUTRON)
+        name = 'Neutron'
 
-    self % isDead = .false.
-    self % isMG   = .true.
+      case(P_PHOTON)
+        name = 'Photon'
 
-    if(present(t)) then
-      self % time = t
-    else
-      self % time = ZERO
-    end if
+      case default
+        name = 'INVALID PARTICLE TYPE'
 
-  end subroutine buildMG
-
+    end select
+  end function printType
 
 end module particle_class

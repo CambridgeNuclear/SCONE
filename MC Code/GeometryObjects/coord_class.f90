@@ -103,10 +103,12 @@ contains
   !! Initialise coordList.
   !! Upon execution coordList is above geometry
   !!
-  subroutine init(self,r,dir)
-    class(coordList), intent(out)           :: self
+  pure subroutine init(self, r, dir)
+    class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: dir
+
+    call self % takeAboveGeom()
 
     self % lvl(1) % r = r
     self % lvl(1) % dir = dir
@@ -117,7 +119,7 @@ contains
   !!
   !! Return true if coordinates List is placed in geometry
   !!
-  function isPlaced(self) result(isIt)
+  elemental function isPlaced(self) result(isIt)
     class(coordList), intent(in) :: self
     logical(defBool)             :: isIt
 
@@ -128,7 +130,7 @@ contains
   !!
   !! Return ture if coordinates are above geometry
   !!
-  function isAbove(self) result(isIt)
+  elemental function isAbove(self) result(isIt)
     class(coordList), intent(in) :: self
     logical(defBool)             :: isIt
 
@@ -139,7 +141,7 @@ contains
   !!
   !! Return true if coordinates are uninitialised
   !!
-  function isUninitialised(self)  result(isIt)
+  elemental function isUninitialised(self)  result(isIt)
     class(coordList), intent(in) :: self
     logical(defBool)             :: isIt
 
@@ -153,7 +155,7 @@ contains
   !! Apply provided offset
   !! Translational transformation is only supported
   !!
-  subroutine addLevel(self, offset, uniIdx, uniRootID)
+  pure subroutine addLevel(self, offset, uniIdx, uniRootID)
     class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: offset
     integer(shortInt), intent(in)           :: uniIdx
@@ -175,7 +177,7 @@ contains
   !! Changes state of the coordList to above the geometry
   !! Does not change position or direction at nesting level 1
   !!
-  subroutine takeAboveGeom(self)
+  elemental subroutine takeAboveGeom(self)
     class(coordList), intent(inout) :: self
 
     self % nesting  = 1
@@ -202,7 +204,7 @@ contains
   !! Move a point in above the geometry
   !! Takes the coordList above the geometry
   !!
-  subroutine moveGlobal(self, distance)
+  elemental subroutine moveGlobal(self, distance)
     class(coordList), intent(inout) :: self
     real(defReal), intent(in)       :: distance
 
@@ -234,7 +236,7 @@ contains
   !! Applies rotation vector to lower levels only if they are in a rotated geometry
   !! Otherwise, copies direction from the level above
   !!
-  subroutine rotate(self,mu,phi)
+  elemental subroutine rotate(self,mu,phi)
     class(coordList), intent(inout) :: self
     real(defReal), intent(in)       :: mu
     real(defReal), intent(in)       :: phi
@@ -259,7 +261,7 @@ contains
   !!
   !! Returns the index of the cell occupied at the lowest level
   !!
-  function cell(self)result(cellIdx)
+  elemental function cell(self)result(cellIdx)
     class(coordList), intent(in) :: self
     integer(shortInt)            :: cellIdx
 
@@ -272,7 +274,7 @@ contains
   !! Takes the coordinates above the geometry
   !! NOTE: Resets region index and material index !!!
   !!
-  subroutine assignPosition(self, r)
+  pure subroutine assignPosition(self, r)
     class(coordList), intent(inout)         :: self
     real(defReal), dimension(3), intent(in) :: r
 
@@ -311,7 +313,7 @@ contains
   !!
   !! Returns unique ID of the lowest level cell in geometry
   !!
-  function uniqueId(self) result(id)
+  elemental function uniqueId(self) result(id)
     class(coordList), intent(in) :: self
     integer(shortInt)            :: id
     integer(shortInt) :: n

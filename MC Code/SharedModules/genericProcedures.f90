@@ -755,9 +755,9 @@ module genericProcedures
   !!
   !! Subroutine takes a normilised direction vector dir and rotates it by cosine of a polar angle
   !! mu and azimuthal angle phi (in radians).
-  !! Procedure will produce incorrect results without error message if dir is not normalised
+  !! Procedure will produce incorrect results WITHOUT error message if dir is not normalised
   !!
-  function rotateVector(dir,mu,phi) result(newDir)
+  pure function rotateVector(dir, mu, phi) result(newDir)
     real(defReal), dimension(3), intent(in)    :: dir
     real(defReal), intent(in)                  :: mu
     real(defReal), intent(in)                  :: phi

@@ -1,6 +1,6 @@
 module particle_test
   use numPrecision
-  use particle_class, only : particle, phaseCoord, particleState
+  use particle_class, only : particle, phaseCoord, particleState, P_NEUTRON, P_PHOTON, verifyType
   use pFUnit_mod
 
   implicit none
@@ -40,9 +40,11 @@ contains
 
     ! Build MG particle
     call this % p_MG % build(r0, u0, G0, w0, t0)
+    this % p_MG % type = P_NEUTRON
 
     ! Build CE particle
     call this % p_CE % build(r0, u0, E0, w0)
+    this % p_CE % type = P_PHOTON
 
     ! Add 2 levels to the particles
     call this % p_MG % coords % addLevel(lev1_offset, lev1_uni, lev1_uniRoot)
@@ -371,6 +373,9 @@ contains
     @assertTrue(mg_p % isMG, 'isMG flag for MG. Particle from PhaseCoord')
     @assertFalse(ce_p % isMG, 'isMG flag for CE. Particle from PhaseCoord')
 
+   ! Compare Type
+   @assertEqual(P_PHOTON, ce_p % type, 'Type of particle has changed')
+   @assertEqual(P_NEUTRON, mg_p % type, 'Type of particle has changed')
   end subroutine testPhaseCoordAssignments
 
   !!
@@ -449,4 +454,17 @@ contains
     @assertTrue(isCorrect,'preCollision check MG')
 
   end subroutine testStateSaving
+
+  !!
+  !! Test type verification
+  !!
+@Test
+  subroutine testParticleTypeVerification(this)
+    class(test_particle), intent(inout) :: this
+
+    @assertTrue( verifyType(P_NEUTRON), 'Particle Neutron')
+    @assertTrue( verifyType(P_PHOTON), 'Particle Photon')
+    @assertFalse( verifyType(-876864), 'Invalid particle type parameter')
+
+  end subroutine testParticleTypeVerification
 end module particle_test
