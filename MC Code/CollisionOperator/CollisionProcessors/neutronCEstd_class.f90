@@ -9,6 +9,8 @@ module neutronCEstd_class
   ! Particle types
   use particle_class,                only : particle, phaseCoord, printType, P_NEUTRON
   use particleDungeon_class,         only : particleDungeon
+
+  ! Abstarct interface
   use collisionProcessor_inter,      only : collisionProcessor, collisionData ,init_super => init
 
   ! Nuclear Data
@@ -25,7 +27,7 @@ module neutronCEstd_class
   private
 
   !!
-  !! Standard (default) collision processor for CE neutrons
+  !! Standard (default) scalar collision processor for CE neutrons
   !!   -> Preforms implicit fission site generation
   !!   -> Preforms analog capture
   !!   -> Treats fission as capture (only implicit generation of 2nd-ary neutrons)
@@ -127,9 +129,9 @@ contains
     real(defReal)                        :: r
     character(100),parameter :: Here = 'sampleCollision (perNuclideCollisionOpCE_class.f90)'
 
-    ! Verify that particle is MG neutron
-    if( p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Supports only MG Neutron. Was given CE '//printType(p % type))
+    ! Verify that particle is CE neutron
+    if(p % isMG .or. p % type /= P_NEUTRON) then
+      call fatalError(Here, 'Supports only CE Neutron. Was given MG '//printType(p % type))
     end if
 
     ! Verify and load nuclear data pointer
@@ -201,21 +203,21 @@ contains
       wgt =  sign(w0, wgt)
 
       do i=1,n
-          call self % xsData % sampleMuEout(mu, E_out, p % E, p % pRNG, N_fission, collDat % nucIdx)
-          phi = TWO*PI * p % pRNG % get()
-          dir = rotateVector(dir, mu, phi)
+        call self % xsData % sampleMuEout(mu, E_out, p % E, p % pRNG, N_fission, collDat % nucIdx)
+        phi = TWO*PI * p % pRNG % get()
+        dir = rotateVector(dir, mu, phi)
 
-          if (E_out > self % maxE) E_out = self % maxE
-          ! Copy extra detail from parent particle (i.e. time, flags ect.)
-          pTemp       = p
+        if (E_out > self % maxE) E_out = self % maxE
+        ! Copy extra detail from parent particle (i.e. time, flags ect.)
+        pTemp       = p
 
-          ! Overwrite position, direction, energy and weight
-          pTemp % r   = r
-          pTemp % dir = dir
-          pTemp % E   = E_out
-          pTemp % wgt = wgt
+        ! Overwrite position, direction, energy and weight
+        pTemp % r   = r
+        pTemp % dir = dir
+        pTemp % E   = E_out
+        pTemp % wgt = wgt
 
-          call nextCycle % detain(pTemp)
+        call nextCycle % detain(pTemp)
       end do
     end if
 

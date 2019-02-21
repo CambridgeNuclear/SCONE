@@ -9,6 +9,7 @@ module collisionProcessorFactory_func
 
   ! Implementation
   use neutronCEstd_class, only : neutronCEstd
+  use neutronMGstd_class, only : neutronMGstd
 
   implicit none
   private
@@ -20,7 +21,8 @@ module collisionProcessorFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_collisionProcessors = [ 'neutronCEstd']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_collisionProcessors = [ 'neutronCEstd',&
+                                                                                'neutronMGstd']
 
 contains
 
@@ -44,6 +46,10 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW COLLISION PROCESSOR BELOW ***!
     select case(type)
       case('neutronCEstd')
+        allocate(neutronCEstd :: new)
+        call new % init(dict)
+
+      case('neutronMGstd')
         allocate(neutronCEstd :: new)
         call new % init(dict)
 
