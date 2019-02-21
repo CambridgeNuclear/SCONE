@@ -1,4 +1,4 @@
-module tallyFilterFactory_func
+module collisionProcessorFactory_func
 
   use numPrecision
   use genericProcedures, only : fatalError
