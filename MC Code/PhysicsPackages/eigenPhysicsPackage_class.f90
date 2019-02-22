@@ -167,7 +167,7 @@ contains
       call self % nextCycle % normSize(self % pop, neutron % pRNG)
 
       if(self % printSource == 1) then
-        call self % nextCycle % printSourceToFile(trim(self % outputFile)//'_source'//numToChar(i))
+        call self % nextCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
       ! Flip cycle dungeons

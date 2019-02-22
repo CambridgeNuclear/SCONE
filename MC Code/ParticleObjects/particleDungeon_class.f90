@@ -15,40 +15,78 @@ module particleDungeon_class
   !! Store: MONK and Serpent(?)
   !! Fission Bank: OpenMC and MCNP(?)
   !!
+  !! NOTE INCONSISTANT DEFINITIONS
+  !! ****
   !! For convinience it allows to store value of k-eff that can be retrieved to adjust fission site
-  !! generation rate during a calculation.
+  !! generation rate during a calculation. It is not currently used during normalisation but
+  !! is used by analog k-eff tally. It is necessary to clarify behaviour.
+  !! ****
   !!
   !! Technically not the whole particles are stored but only the key data defined in phaseCoord
   !!
-  !! Dungeon works like stack:
-  !! throw(particle)   -> adda a particle to the top
-  !! release(particle) -> removes a particle from the top
-  !! isEmpty()         -> returns .true. if there are no more particles
-  !! init(maxSize)     -> allocate space to store maximum of maxSize particles
-  !! normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
-  !! normSize(N)       -> normalise dungeon population so it contains N particles
+  !! Dungeon can work like stacks or arrays. Stack-like behaviour is not really thread safe
+  !! so it can be utilised when collecting and processing secondary particles in history
+  !! that should be processed during the course of one cycle. Array-like behaviour allows to
+  !! easily distribute particles among threads. As long as indices assign to diffrent threads
+  !! do not overlap, reading is thread-safe (I hope-MAK).
+  !!
+  !!
+  !! INTERFACE:
+  !!   Stack-like interface:
+  !!     detain(particle)   -> adda a particle to the top
+  !!     release(particle)  -> removes a particle from the top. Sets p % isDead = .false.
+  !!
+  !!   Array-like interface:
+  !!     replace(particle, i) -> overwrite prisoner data at index i
+  !!     copy(particle, i)    -> copy prisoner at index i. Sets p % isDead = .false.
+  !!
+  !!
+  !!   Misc procedures:
+  !!     isEmpty()         -> returns .true. if there are no more particles
+  !!     cleanPop()        -> kill or prisoners
+  !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
+  !!     normSize(N)       -> normalise dungeon population so it contains N particles
+  !!     printToFile(name) -> prints population in ASCII format to file "name"
+  !!
+  !!   Build procedures:
+  !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
+  !!     kill()            -> return to uninitialised state
   !!
   type, public :: particleDungeon
     private
-    real(defReal),public          :: k_eff = 1.0 ! k-eff for fission site generation rate normalisation
-    integer(shortInt)             :: pop         ! Current population size of the dungeon
-    real(defReal)                 :: popWgt      ! Current population weight
-    type(phaseCoord), dimension(:), allocatable :: prisoners  ! Data for the stored particles
+    real(defReal),public :: k_eff = ONE ! k-eff for fission site generation rate normalisation
+    integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
+
+    ! Storage space
+    type(phaseCoord), dimension(:), allocatable :: prisoners
 
   contains
+    !! Build procedures
     procedure  :: init
-    procedure  :: isEmpty
+    procedure  :: kill
+
+    !! Stack-like interface
     generic    :: detain  => detain_particle, detain_phaseCoord
     procedure  :: release
+
+    !! Array-like interface
+    generic    :: replace => replace_particle, replace_phaseCoord
+    procedure  :: copy
+
+    !! Misc Procedures
+    procedure  :: isEmpty
     procedure  :: normWeight
     procedure  :: normSize
+    procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
-    procedure  :: printSourceToFile
+    procedure  :: printToFile
 
     ! Private procedures
     procedure, private :: detain_particle
     procedure, private :: detain_phaseCoord
+    procedure, private :: replace_particle
+    procedure, private :: replace_phaseCoord
   end type particleDungeon
 
 
@@ -64,27 +102,40 @@ contains
     if(allocated(self % prisoners)) deallocate(self % prisoners)
     allocate(self % prisoners(maxSize))
     self % pop    = 0
-    self % popWgt = ZERO
+
 
   end subroutine init
+
+  !!
+  !! Deallocate memory and return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(particleDungeon), intent(inout) :: self
+
+    ! Reset settings
+    self % pop = 0
+
+    ! Deallocate memeory
+    if(allocated(self % prisoners)) deallocate(self % prisoners)
+
+  end subroutine kill
 
   !!
   !! Store particle in the dungeon
   !!
   subroutine detain_particle(self,p)
     class(particleDungeon), intent(inout) :: self
-    type(particle), intent(in)            :: p
+    class(particle), intent(in)           :: p
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
     ! Increase population and weight
     self % pop = self % pop +1
-    !self % popWgt = self % popWgt + p % w
 
     ! Check for population overflow
     if (self % pop > size(self % prisoners)) then
-      print *, self % pop
-      print *, size(self % prisoners)
-      call fatalError(Here,'Run out of space for particles')
+      call fatalError(Here,'Run out of space for particles.&
+                           & Max size:'//numToChar(size(self % prisoners)) //&
+                            ' Current population: ' // numToChar(self % pop))
     end if
 
     ! Load new particle
@@ -102,19 +153,102 @@ contains
 
     ! Increase population
     self % pop = self % pop +1
-    !self % popWgt = self % popWgt + p_phase % wgt
 
     ! Check for population overflow
     if (self % pop > size(self % prisoners)) then
-      print *, self % pop
-      print *, size(self % prisoners)
-      call fatalError(Here,'Run out of space for particles')
+      call fatalError(Here,'Run out of space for particles.&
+                           & Max size:'//numToChar(size(self % prisoners)) //&
+                            ' Current population: ' // numToChar(self % pop))
     end if
 
     ! Load new particle
     self % prisoners(self % pop) = p_phase
 
   end subroutine detain_phaseCoord
+
+  !!
+  !! Pop the particle from the top of the dungeon.
+  !! Makes particle alive at exit
+  !!
+  subroutine release(self, p)
+    class(particleDungeon), intent(inout) :: self
+    type(particle), intent(inout)         :: p
+    integer(shortInt)                     :: pop
+
+    ! Load data into the particle
+    pop = self % pop
+    p = self % prisoners(pop)
+    p % isDead = .false.
+
+    ! Decrease population
+    self % pop = self % pop - 1
+
+  end subroutine release
+
+  !!
+  !! Replace data of particle prisoner at the index idx with particle
+  !!
+  subroutine replace_particle(self, p, idx)
+    class(particleDungeon), intent(inout) :: self
+    class(particle), intent(in)           :: p
+    integer(shortInt), intent(in)         :: idx
+    character(100),parameter :: Here = 'relplace_particle (particleDungeon_class.f90)'
+
+    ! Protect agoinst out-of-bounds acces
+    if( idx <= 0 .or. idx > self % pop ) then
+      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+                           ' with particle population of: '// numToChar(self % pop))
+    end if
+
+    ! Load new particle
+    self % prisoners(idx) = p
+
+  end subroutine replace_particle
+
+  !!
+  !! Replace data of particle prisoner at the index idx with phaseCoords
+  !!
+  subroutine replace_phaseCoord(self, p, idx)
+    class(particleDungeon), intent(inout) :: self
+    type(phaseCoord), intent(in)          :: p
+    integer(shortInt), intent(in)         :: idx
+    character(100),parameter :: Here = 'relplace_phaseCoord (particleDungeon_class.f90)'
+
+    ! Protect agoinst out-of-bounds acces
+    if( idx <= 0 .or. idx > self % pop ) then
+      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+                           ' with particle population of: '// numToChar(self % pop))
+    end if
+
+    ! Load new particle
+    self % prisoners(idx) = p
+
+  end subroutine replace_phaseCoord
+
+
+  !!
+  !! Copy particle from a location inside the dungeon
+  !! Makes particle alive at exit
+  !! Gives fatalError if requested index is 0, -ve or above current population
+  !!
+  subroutine copy(self, p, idx)
+    class(particleDungeon), intent(inout) :: self
+    type(particle), intent(inout)         :: p
+    integer(shortInt), intent(in)         :: idx
+    character(100), parameter :: Here = 'copy (particleDungeon_class.f90)'
+
+    ! Protect agoinst out-of-bounds acces
+    if( idx <= 0 .or. idx > self % pop ) then
+      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+                           ' with particle population of: '// numToChar(self % pop))
+    end if
+
+    ! Load data into the particle
+    p = self % prisoners(idx)
+    p % isDead = .false.
+
+  end subroutine copy
+
 
   !!
   !! Returns .true. if dungeon is empty
@@ -126,26 +260,6 @@ contains
     isIt = (self % pop == 0)
 
   end function isEmpty
-
-
-  !!
-  !! Obtain the particle from the dungeon.
-  !!
-  subroutine release(self,p )
-    class(particleDungeon), intent(inout) :: self
-    type(particle), intent(inout)         :: p
-    integer(shortInt)                     :: pop
-
-    ! Load data into the particle
-    pop = self % pop
-
-    p = self % prisoners(pop)
-    p % isDead = .false.
-
-    ! Decrease population and weight
-    self % pop = self % pop - 1
-    !self % popWgt = self % popWgt - p % w
-  end subroutine release
 
   !!
   !! Normalise total weight of the particles in the dungeon to match provided value
@@ -194,10 +308,17 @@ contains
 
     end if
 
-    ! Recalculate weight
-    !self % popWgt = sum( self % prisoners(1:self % pop) % wgt )
-
   end subroutine normSize
+
+  !!
+  !! Kill or particles in the dungeon
+  !!
+  pure subroutine cleanPop(self)
+    class(particleDungeon), intent(inout) :: self
+
+    self % pop = 0
+
+  end subroutine cleanPop
 
   !!
   !! Returns number of neutrons in the dungeon
@@ -224,7 +345,7 @@ contains
   !! Prints the position of fission sites to a file
   !! Used initially for looking at clustering
   !!
-  subroutine printSourceToFile(self, name)
+  subroutine printToFile(self, name)
     class(particleDungeon), intent(in) :: self
     character(*), intent(in)           :: name
     character(256)                     :: filename
@@ -241,6 +362,6 @@ contains
     ! Close the file
     close(10)
 
-  end subroutine printSourceToFile
+  end subroutine printToFile
 
 end module particleDungeon_class
