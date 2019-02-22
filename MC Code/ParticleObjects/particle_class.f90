@@ -13,8 +13,8 @@ module particle_class
   !!
   !! Particle types paramethers
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 2,&
-                                         P_PHOTON  = 3
+  integer(shortInt), parameter,public :: P_NEUTRON = 1,&
+                                         P_PHOTON  = 2
 
   !!
   !! Public particle type procedures
@@ -134,6 +134,7 @@ module particle_class
 
     ! Debug procedures
     procedure            :: display => display_particle
+    procedure            :: typeToChar
 
     !! Private - Implementation specific procedures
     procedure,private                   :: buildCE
@@ -523,6 +524,25 @@ contains
     print *, self % coords % matIdx
 
   end subroutine display_particle
+
+  !!
+  !! Return character that describes the type of particle
+  !!
+  function typeToChar(self) result(c)
+    class(particle), intent(in) :: self
+    character(:), allocatable   :: c
+    character(2)                :: eType
+
+    if( self % isMG) then
+      eType = 'MG'
+    else
+      eType = 'CE'
+    end if
+
+    c = eType // ' ' // trim(printType( self % type))
+
+  end function typeToChar
+
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle state and phaseCoord procedures

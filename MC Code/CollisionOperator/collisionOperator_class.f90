@@ -1,367 +1,144 @@
 module collisionOperator_class
 
   use numPrecision
-  use endfConstants
-  use genericProcedures,      only : fatalError, rotateVector
-  use RNG_class,              only : RNG
-  use particle_class,         only : particle
-  use particleDungeon_class,  only : particleDungeon
-  use byNucNoMT_class,        only : byNucNoMT
+  use genericProcedures,     only : fatalError, numToChar
+  use dictionary_class,      only : dictionary
+  use particle_class,        only : particle, P_NEUTRON, P_PHOTON, printType
+  use particleDungeon_class, only : particleDungeon
 
-  ! Cross-section packages to interface with nuclear data
-  use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
- ! use xsMainCDF_class,        only : xsMainCDF
-  use xsMainSet_class,        only : xsMainSet_ptr
+  ! Tally interfaces
+  use tallyAdmin_class,      only : tallyAdmin
 
-  use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
-                                     asymptoticInelasticScatter
+  ! Collision Processors
+  use collisionProcessor_inter,       only : collisionProcessor
+  use collisionProcessorFactory_func, only : new_collisionProcessor
 
   implicit none
   private
 
   !!
-  !! ***** Eventual improvement
-  !! *** Define a common-block like type to contain all important data for collision procesing
-  !! ** Move all physic subroutines to "a library" in external module. Use the type to interface
-  !! * with it. Thus collision operators will become more higher level. Tell what you want to do
-  !! Do not tell how to do it!
+  !! Local parameters
   !!
-  !! Make xs  packages safe to use by introduction of safe_acces pointer wrapper to prohibit
-  !! deallocation an overriding the data
-  !!
-  real(defReal), parameter :: energyCutoff = 2.0E-11, energyMaximum = 20.0
+  integer(shortInt), parameter :: MAX_P_ID = max(P_NEUTRON, P_PHOTON)
+  integer(shortInt), parameter :: P_MG = 1, P_CE = 2
+  integer(shortInt), parameter :: UNDEF_PHYSICS = -1
+  integer(shortInt), parameter :: MAX_PHYSICS = 3
 
+
+  !!
+  !! Local helper type to store polymorphic collisionProcessors in an array
+  !!
+  type, private :: collProc
+    class(collisionProcessor), allocatable :: proc
+  end type collProc
+
+
+  !!
+  !! Scalar collision operator
+  !!  -> Maps particles of diffrent types to approperiate implementation
+  !!     of collision physics (collisionProcessor).
+  !!  -> Uses lookup table for to quickly map diffrent combination of physical(neutron, photon ...)
+  !!     and processing type (CE, MG) to approperiate physics.
+  !!  -> Can store up to 3 diffrent physics types
+  !!  -> Gives fatal error if particle type is not recognised or not-supported
+  !!
+  !! Sample dictionary input( provisional will change):
+  !!  collOpName {
+  !!    #neutronCE {<collisonProcessorDefinition>} #
+  !!    #neutronMG {<collisonProcessorDefinition>} #
+  !!  }
+  !!
   type, public :: collisionOperator
-   !* private ** DEBUG
-    class(byNucNoMT), pointer :: xsData => null()
-    class(RNG), pointer       :: locRNG => null()
+    private
+    type(collProc), dimension(MAX_PHYSICS)    :: physicsTable
+    integer(shortInt), dimension(2, MAX_P_ID) :: lookupTable = UNDEF_PHYSICS
+
   contains
-    procedure :: attachXsData
+    ! Build procedures
+    procedure :: init
+    procedure :: kill
+
+    ! Use procedures
     procedure :: collide
 
-    ! Private procedures
-    procedure :: performScattering
-    procedure :: performCapture
-    procedure :: performFission
-    procedure :: scatterFromFixed
-    procedure :: scatterFromMoving
-    procedure :: scatterInLAB
-    procedure :: createFissionSites
 
   end type collisionOperator
 
 contains
 
   !!
-  !! Initialise XS operator by providing pointer to XS data block
+  !! Initialise collision operator
   !!
-  subroutine attachXsData(self,xsData)
+  subroutine init(self, dict)
     class(collisionOperator), intent(inout) :: self
-    class(byNucNoMT),pointer, intent(in)    :: xsData
-    character(100), parameter               :: Here =' attachXsData (collisionOperator_class.f90)'
+    class(dictionary), intent(in)           :: dict
 
-    if(.not.associated(xsData)) call fatalError(Here,'Allocated xs data must be provided')
-
-    self % xsData => xsData
-
-  end subroutine attachXSData
-
-
-  !!
-  !! Subroutine to collide a neutron. Chooses collision nuclide and main reaction channel.
-  !! Calls approperiate procedure to change neutron state
-  !! Takes as an input two particleDungeons to ba able to add new particles for this or next Cycle
-  !!
-  subroutine collide(self,p,thisCycle,nextCycle)
-    class(collisionOperator), intent(inout) :: self
-    class(particle), intent(inout)           :: p
-    class(particleDungeon),intent(inout)     :: thisCycle
-    class(particleDungeon),intent(inout)     :: nextCycle
-    real(defReal)                           :: E
-    integer(shortInt)                       :: matIdx
-    integer(shortInt)                       :: nucIdx
-    integer(shortInt)                       :: MT
-    type(xsNucMacroSet_ptr)                 :: nucXSs
-    type(xsMainSet_ptr)                     :: microXss
-    real(defReal)                           :: r
-
-    ! Retrive Pointer to the random number generator
-    self % locRNG => p % pRNG
-
-    ! Load neutron energy and material
-    E = p % E
-    matIdx = p % matIdx
-
-    ! Select collision nuclide
-    call self % xsData % getNucMacroXs(nucXSs, E, matIdx)
-
-    r = self % locRNG % get()
-    nucIdx = nucXSs % invert(r)
-
-    ! Select Main reaction channel
-    call self % xsData % getMainNucXs(microXss, E, nucIdx)
-
-    r = self % locRNG % get()
-    MT = microXss % invert(r)
-
-    ! Generate fission sites if nuclide is fissile
-    if ( self % xsData % isFissileNuc(nucIdx)) then
-      call self % createFissionSites(nextCycle,p,nucIdx)
-
+    if(dict % isPresent('neutronCE')) then
+      call new_collisionProcessor(self % physicsTable(1) % proc, dict % getDictPtr('neutronCE'))
+      self % lookupTable(P_CE, P_NEUTRON) = 1
     end if
 
-    ! Call procedure to do reaction processing
-    select case (MT)
-      case(anyScatter)
-        call self % performScattering(p,nucIdx)
+    if(dict % isPresent('neutronMG')) then
+      call new_collisionProcessor(self % physicsTable(1) % proc, dict % getDictPtr('neutronMG'))
+      self % lookupTable(P_MG, P_NEUTRON) = 1
+    end if
 
-      case(anyCapture)
-        call self % performCapture(p,nucIdx)
-
-      case(anyFission)
-        call self % performFission(p,nucIdx)
-
-    end select
-
-    if (p % E < energyCutoff ) p % isDead = .true.
-
-  end subroutine collide
+  end subroutine init
 
   !!
-  !! Change particle state in scattering reaction
-  !! Critarion for Free-Gas vs Fixed Target scattering is taken directly from MCNP manual chapter 2
+  !! Clear collision operator. Return to uninitialised state
   !!
-  subroutine performScattering(self,p,nucIdx)
+  elemental subroutine kill(self)
     class(collisionOperator), intent(inout) :: self
-    class(particle), intent(inout)           :: p
-    integer(shortInt),intent(in)            :: nucIdx
-    integer(shortInt)                       :: MT
-    real(defReal)                           :: E          ! Pre-collision energy
-    real(defReal)                           :: kT, A      ! Target temperature[MeV] and mass [Mn]
-    real(defReal)                           :: muL        ! Cosine of scattering in LAB frame
+    integer(shortInt)                       :: i
 
-    ! Assign MT number -> only elastic scattering at this moment
-    MT = N_N_elastic
+    ! Set default to lookup table
+    self % lookupTable = UNDEF_PHYSICS
 
-    E = p % E
-
-    if (self % xsData % isInCMFrame(MT, nucIdx)) then
-      A =  self % xsData % getMass(nucIdx)
-      kT = self % xsData % getkT(nucIdx)
-
-      ! Apply criterion for Free-Gas vs Fixed Target scattering
-      if ((E > kT*400.0) .and. (A>1.0)) then
-        call self % scatterFromFixed(muL,p,E,A,MT,nucIdx)
-
-      else
-        call self % scatterFromMoving(muL,p,E,A,kT,MT,nucIdx)
-
+    ! Deallocate collision processors
+    do i=1,size(self % physicsTable)
+      if(allocated(self % physicsTable(i) % proc)) then
+        deallocate( self % physicsTable(i) % proc)
       end if
-
-    else
-      call self % scatterInLAB(muL,p,E,MT,nucIdx)
-
-    end if
-
-  end subroutine performScattering
-
-
-  !!
-  !! Subroutine to perform scattering in LAB frame
-  !! Returns mu -> cos of deflection angle in LAB frame
-  !!
-  subroutine scatterInLAB(self,mu,p,E,MT,nucIdx)
-    class(collisionOperator), intent(inout) :: self
-    real(defReal), intent(out)              :: mu    ! Returned deflection angle cos in LAB
-    class(particle), intent(inout)           :: p
-    real(defReal), intent(in)               :: E      ! Neutron energy
-    integer(shortInt),intent(in)            :: MT     ! Reaction MT number
-    integer(shortInt),intent(in)            :: nucIdx ! Target nuclide index
-    real(defReal)                           :: phi    ! Azimuthal scatter angle
-    real(defReal)                           :: E_out
-
-    ! Sample scattering angles and post-collision energy
-    call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, MT, nucIdx)
-    phi = 2*PI* self % locRNG % get()
-
-    ! Update neutron state
-    p % E = E_out
-    call p % rotate(mu,phi)
-
-  end subroutine scatterInLAB
-
-  !!
-  !! Subroutine to perform scattering from stationary target.
-  !! Returns mu -> cos of deflection angle in LAB frame
-  !!
-  subroutine scatterFromFixed(self,mu,p,E,A,MT,nucIdx)
-    class(collisionOperator), intent(inout) :: self
-    real(defReal), intent(out)              :: mu          ! Returned deflection angle cos in LAB
-    class(particle), intent(inout)           :: p
-    real(defReal), intent(in)               :: E           ! Neutron energy
-    real(defReal), intent(in)               :: A           ! Target weight
-    integer(shortInt),intent(in)            :: MT          ! Reaction MT number
-    integer(shortInt),intent(in)            :: nucIdx      ! Target nuclide index
-    real(defReal)                           :: phi
-    real(defReal)                           :: E_out
-    real(defReal)                           :: E_outCM
-    character(100),parameter       :: Here = 'scatterFromFixed (collisionOperator_class.f90)'
-
-    ! Sample mu and outgoing energy
-    call self % xsData % sampleMuEout(mu, E_outCM, E, self % locRNG, MT, nucIdx)
-
-    select case(MT)
-      case(N_N_elastic)
-        call asymptoticScatter(E_out,mu,A)
-
-      case default
-        call asymptoticInelasticScatter(E_out,mu,E_outCM,A)
-        !call fatalError(Here,'Unknown MT number')
-
-    end select
-
-    ! Sample azimuthal angle
-    phi = 2*PI * self % locRNG % get()
-
-    ! Update particle state
-    call p % rotate(mu,phi)
-    p % E = E_out
-
-  end subroutine scatterFromFixed
-
-
-  !!
-  !! Subroutine to perform scattering  from moving target
-  !! Returns mu -> cos of deflection angle in LAB
-  !!
-  subroutine scatterFromMoving(self,mu,p,E,A,kT,MT,nucIdx)
-    class(collisionOperator), intent(inout) :: self
-    real(defReal), intent(out)              :: mu
-    class(particle), intent(inout)          :: p
-    real(defReal), intent(in)               :: E            ! Neutron energy
-    real(defReal), intent(in)               :: A
-    real(defReal),intent(in)                :: kT           ! Target temperature
-    integer(shortInt),intent(in)            :: MT
-    integer(shortInt),intent(in)            :: nucIdx        ! Target nuclide index
-    real(defReal),dimension(3)              :: V_n           ! Neutron velocity (vector)
-    real(defReal)                           :: U_n           ! Neutron speed (scalar)
-    real(defReal),dimension(3)              :: dir_pre       ! Pre-collision direction
-    real(defReal),dimension(3)              :: dir_post      ! Post-collicion direction
-    real(defReal),dimension(3)              :: V_t, V_cm     ! Target and CM velocity
-    real(defReal)                           :: phi
-
-    ! Get neutron direction and velocity
-    dir_pre = p % dirGlobal()
-    V_n     = dir_pre * sqrt(E)
-
-    ! Sample velocity of target
-    V_t = targetVelocity_constXS(E, dir_pre, A, kT, self % locRNG)
-
-    ! Calculate Centre-of-Mass velocity
-    V_cm = (V_n + V_t *A)/(A+1)
-
-    ! Move Neutron velocity to CM frame, store speed and calculate new normalised direction
-    V_n = V_n - V_cm
-    U_n = norm2(V_n)
-    V_n = V_n / U_n
-
-    ! Sample mu and phi in CM frame
-    call self % xsData % sampleMu(mu, E, self % locRNG, MT, nucIdx)
-    phi = 2*PI*self % locRNG % get()
-
-    ! Obtain post collision speed
-    V_n = rotateVector(V_n,mu,phi) * U_n
-
-    ! Return to LAB frame
-    V_n = V_n + V_cm
-
-    ! Calculate new neutron speed and direction
-    U_n = norm2(V_n)
-    dir_post = V_n / U_n
-
-    ! Update particle state and calculate mu in LAB frame
-    p % E = U_n * U_n
-    call p % point(dir_post)
-    mu = dot_product(dir_pre,dir_post)
-
-  end subroutine scatterFromMoving
-
-
-
-
-  !!
-  !! Change particle state in capture reaction
-  !!
-  subroutine performCapture(self,p,nucIdx)
-    class(collisionOperator), intent(inout) :: self
-    type(particle), intent(inout)           :: p
-    integer(shortInt),intent(in)            :: nucIdx
-
-    p % isDead =.true.
-
-  end subroutine performCapture
-
-  !!
-  !! Change particle state in fission reaction
-  !!
-  subroutine performFission(self,p,nucIdx)
-    class(collisionOperator), intent(inout) :: self
-    type(particle), intent(inout)           :: p
-    integer(shortInt),intent(in)            :: nucIdx
-
-    p % isDead =.true.
-
-  end subroutine performFission
-
-  !!
-  !!
-  !!
-  subroutine createFissionSites(self,nextCycle,p,nucIdx)
-    class(collisionOperator), intent(inout)  :: self
-    type(particleDungeon), intent(inout)     :: nextCycle
-    type(particle), intent(in)               :: p
-    integer(shortInt), intent(in)            :: nucIdx
-    type(xsMainSet_ptr)                      :: nuclideXss
-    type(particle)                           :: pTemp
-    real(defReal),dimension(3)               :: r, dir
-    integer(shortInt)                        :: n, i
-    real(defReal)                            :: E, nu, wgt, r1, E_out, mu, phi
-    real(defReal)                            :: sig_fiss, sig_tot, k_eff
-
-    ! Obtain required data
-    E     = p % E
-    wgt   = p % w
-    nu    = self % xsData % releaseAt(E, N_fission, nucIdx)
-    k_eff = nextCycle % k_eff
-    r1    = self % locRNG % get()
-    call self % xsData % getMainNucXS(nuclideXss,E,nucIdx)
-
-    sig_fiss = nuclideXss % fission()
-    sig_tot  = nuclideXss % total()
-
-    r   = p % rGlobal()
-    dir = p % dirGlobal()
-
-    ! Sample number of fission sites generated
-    n = int(wgt * nu * sig_fiss/(sig_tot*k_eff) + r1, shortInt)
-
-    ! Throw new sites to the next cycle dungeon
-    wgt = 1.0
-    do i=1,n
-      call self % xsData % sampleMuEout(mu, E_out, E, self % locRNG, N_fission, nucIdx)
-      phi = 2*PI * self % locRNG % get()
-      dir = rotateVector(dir,mu,phi)
-
-      if (E_out > energyMaximum) E_out = energyMaximum
-
-      call pTemp % build(r,dir,E_out,wgt)
-      call nextCycle % throw(pTemp)
-
     end do
 
+  end subroutine kill
 
-  end subroutine createFissionSites
+  !!
+  !! Determine type of the particle and call approperiate collisionProcessor
+  !!
+  subroutine collide(self, p, tally, thisCycle, nextCycle)
+    class(collisionOperator), intent(inout) :: self
+    class(particle), intent(inout)           :: p
+    type(tallyAdmin), intent(inout)          :: tally
+    class(particleDungeon),intent(inout)     :: thisCycle
+    class(particleDungeon),intent(inout)     :: nextCycle
+    integer(shortInt)                        :: idx, procType
+    character(100), parameter :: Here = 'collide ( collisionOperator_class.f90)'
 
+    ! Select processing index with ternary expression
+    if(p % isMG) then
+      procType = P_MG
+    else
+      procType = P_CE
+    end if
 
+    ! Varify that type is valid
+    if( p % type <= 0 .or. p % type > MAX_P_ID) then
+      call fatalError(Here, 'Type of the particle is invalid: ' // numToChar(p % type))
+    end if
 
+    ! Get index
+    idx = self % lookupTable(procType, p % type)
+
+    ! Verify index
+    if(idx == UNDEF_PHYSICS) then
+      call fatalError(Here,'Physics is not defined for particle of type : '// p % typeToChar())
+    end if
+
+    ! Call physics
+    call self % physicsTable(idx) % proc % collide(p, tally, thisCycle, nextCycle)
+
+  end subroutine collide
+    
 end module collisionOperator_class
