@@ -194,7 +194,7 @@ contains
 
       ! Sample number of fission sites generated
       ! Support -ve weight particles
-      n = int(abs( (wgt * nu * sig_fiss) / (w0 * sig_tot * k_eff) + rand1), shortInt)
+      n = int(abs( (wgt * nu * sig_fiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
       !n = int(abs(wgt/w0) * nu * sig_fiss/(sig_tot*k_eff) + rand1, shortInt)
 
       ! Store new sites in the next cycle dungeon

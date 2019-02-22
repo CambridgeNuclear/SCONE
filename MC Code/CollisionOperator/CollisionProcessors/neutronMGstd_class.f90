@@ -140,7 +140,7 @@ contains
 
       ! Sample number of fission sites generated
       !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
-      n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff) + rand1), shortInt)
+      n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
 
       ! Store new sites in the next cycle dungeon
       wgt =  sign(w0, wgt)
