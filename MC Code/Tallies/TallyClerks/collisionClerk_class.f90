@@ -164,16 +164,15 @@ contains
     ! Check if it dynamic type is supported
     ! If it is obtain macroscopic XSs
     ! It it isn't throw error
-    associate (xsData => p % xsData)
-      select type(xsData)
-        class is (transportNuclearData)
-          flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+    select type(xsData => p % xsData)
+      class is (transportNuclearData)
+        flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
 
-        class default
-          call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
+      class default
+        call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
 
-      end select
-    end associate
+    end select
+
 
     do i=1,self % width
       scoreVal = self % response(i) % get(p) * p % w *flx

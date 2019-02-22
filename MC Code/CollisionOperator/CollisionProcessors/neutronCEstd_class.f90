@@ -135,16 +135,14 @@ contains
     end if
 
     ! Verify and load nuclear data pointer
-    associate ( xs => p % xsData)
-      select type(xs)
-        class is(perNuclideNuclearDataCE)
-          self % xsData => xs
+    select type(xs => p % xsData)
+      class is(perNuclideNuclearDataCE)
+        self % xsData => xs
 
-        class default
-          call fatalError(Here, 'Unsupported type of Nuclear Data interface. &
-                               & Only perNuclideNuclearDataCE is accepted')
-      end select
-    end associate
+      class default
+        call fatalError(Here, 'Unsupported type of Nuclear Data interface. &
+                             & Only perNuclideNuclearDataCE is accepted')
+    end select
 
     ! Select collision nuclide
     call self % xsData % getNucMacroXs(nucXSs, p % E, collDat % matIdx)

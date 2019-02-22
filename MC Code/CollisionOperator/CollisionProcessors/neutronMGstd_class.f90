@@ -88,16 +88,15 @@ contains
     end if
 
     ! Verify and load nuclear data pointer
-    associate ( xs => p % xsData)
-      select type(xs)
-        class is(perMaterialNuclearDataMG)
-          self % xsData => xs
+    select type(xs => p % xsData)
+      class is(perMaterialNuclearDataMG)
+        self % xsData => xs
 
-        class default
-          call fatalError(Here, 'Unsupported type of Nuclear Data interface. &
-                               & Only perMaterialNuclearDataMG is accepted')
-      end select
-    end associate
+      class default
+        call fatalError(Here, 'Unsupported type of Nuclear Data interface. &
+                             & Only perMaterialNuclearDataMG is accepted')
+    end select
+
 
     ! Select Main reaction channel
     call self % xsData % getMatMacroXS(materialXS, p % G, collDat % matIdx)
