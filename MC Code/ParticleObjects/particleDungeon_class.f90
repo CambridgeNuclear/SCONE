@@ -46,6 +46,7 @@ module particleDungeon_class
   !!     cleanPop()        -> kill or prisoners
   !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
   !!     normSize(N)       -> normalise dungeon population so it contains N particles
+  !!                          does not take ununiform weight of particles into account
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!
   !!   Build procedures:
@@ -278,6 +279,7 @@ contains
   !!
   !! Normalise total number of particles in the dungeon to match the provided number
   !! Randomly duplicate or remove particles to match the number
+  !! Does not take weight of a particle into account!
   !!
   subroutine normSize(self,N,rand)
     class(particleDungeon), intent(inout) :: self
@@ -285,6 +287,15 @@ contains
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP
     integer(shortInt)                     :: i, idx
+    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+
+    ! Protect against invalid N
+    if( N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greather then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
 
     ! Calculate excess particles to be removed
     excessP = self % pop - N
@@ -339,6 +350,7 @@ contains
     real(defReal)                      :: wgt
 
     wgt = sum( self % prisoners(1:self % pop) % wgt )
+
   end function popWeight
 
   !!
