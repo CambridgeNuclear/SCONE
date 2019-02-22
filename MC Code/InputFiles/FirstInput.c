@@ -7,7 +7,7 @@ inactive 300;
 //seed     -6574747;
 XSdata   ce2;
 
-collisionOperator { neutronCE {type neutronCEstd; minE 2.0E-11;} 
+collisionOperator { neutronCE {type neutronCEstd;} 
                     neutronMG {type neutronMGstd;} 
                   } 
 

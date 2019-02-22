@@ -72,8 +72,7 @@ module eigenPhysicsPackage_class
   contains
     procedure :: init
     procedure :: printSettings
-    procedure :: inactiveCycles
-    procedure :: activeCycles
+    procedure :: cycles
     procedure :: generateInitialState
     procedure :: collectResults
     procedure :: run
@@ -90,38 +89,40 @@ contains
     print *, "/\/\ EIGENVALUE CALCULATION /\/\" 
 
     call self % generateInitialState()
-    call self % inactiveCycles()
-    call self % activeCycles()
+    call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
+    call self % cycles(self % activeTally, self % activeAtch, self % N_active)
     call self % collectResults()
 
   end subroutine
 
-
   !!
-  !! Perform inactive cycles
   !!
-  subroutine inactiveCycles(self)
+  !!
+  subroutine cycles(self, tally, tallyAtch, N_cycles)
     class(eigenPhysicsPackage), intent(inout) :: self
-    type(particle)                            :: neutron
+    type(tallyAdmin), pointer,intent(inout)   :: tally
+    type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
+    integer(shortInt), intent(in)             :: N_cycles
     integer(shortInt)                         :: i, Nstart, Nend
     class(tallyResult),allocatable            :: res
+    type(particle)                            :: neutron
     real(defReal)                             :: k_old, k_new
-    character(100),parameter :: Here ='inactiveCycles (eigenPhysicsPackage_class.f90)'
+    character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
     neutron % pRNG   => self % pRNG
 
     ! Attach tally to operators
-    self % transOP % tally => self % inactiveTally
+    self % transOP % tally => tally
 
     ! Set initiial k-eff
     k_new = ONE
 
-    do i=1,self % N_inactive
+    do i=1,N_cycles
       ! Send start of cycle report
       Nstart = self % thisCycle % popSize()
-      call self % inactiveTally % reportCycleStart(self % thisCycle)
+      call tally % reportCycleStart(self % thisCycle)
 
       gen: do
 
@@ -140,16 +141,16 @@ contains
             ! Exit history and score leakage
             if(neutron % isDead) then
               neutron % fate = leak_FATE
-              call self % inactiveTally %  reportHist(neutron)
+              call tally %  reportHist(neutron)
               exit history
             end if
 
-            call self % collOp % collide(neutron, self % inactiveTally ,self % thisCycle, self % nextCycle)
+            call self % collOp % collide(neutron, tally ,self % thisCycle, self % nextCycle)
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
               neutron % fate = abs_FATE
-              call self % inactiveTally %  reportHist(neutron)
+              call tally %  reportHist(neutron)
               exit history
             end if
 
@@ -160,7 +161,7 @@ contains
 
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
-      call self % inactiveTally % reportCycleEnd(self % nextCycle)
+      call tally % reportCycleEnd(self % nextCycle)
 
       ! Normalise population
       call self % nextCycle % normSize(self % pop, neutron % pRNG)
@@ -175,7 +176,7 @@ contains
       self % thisCycle    => self % temp_dungeon
 
       ! Obtain estimate of k_eff
-      call self % inactiveAtch % getResult(res,'keff')
+      call tallyAtch % getResult(res,'keff')
 
       select type(res)
         class is(keffResult)
@@ -193,113 +194,14 @@ contains
       ! Display progress
       call printFishLineR(i)
       print *
-      print *, 'Cycle: ', i, ' of ', self % N_inactive,' Pop: ', Nstart, ' -> ',Nend
-      call self % inactiveTally % display()
+      print *, 'Cycle: ', i, ' of ', N_cycles,' Pop: ', Nstart, ' -> ',Nend
+      call tally % display()
     end do
-
-  end subroutine inactiveCycles
+  end subroutine cycles
 
   !!
-  !! Perform active cycles
   !!
-  subroutine activeCycles(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
-    type(particle)                            :: neutron
-    integer(shortInt)                         :: i, Nstart, Nend
-    class(tallyResult),allocatable            :: res
-    real(defReal)                             :: k_old, k_new
-    character(100),parameter :: Here ='activeCycles (eigenPhysicsPackage_class.f90)'
-
-    ! Attach nuclear data and RNG to neutron
-    neutron % xsData => self % nucData
-    neutron % pRNG   => self % pRNG
-
-    ! Attach tally to operators
-    self % transOP % tally => self % activeTally
-
-    ! Set initiial k-eff
-    k_new = ONE
-
-    do i=1,self % N_active
-      ! Send start of cycle report
-      Nstart = self % thisCycle % popSize()
-      call self % activeTally % reportCycleStart(self % thisCycle)
-
-      gen: do
-
-        ! Obtain paticle from current cycle dungeon
-        call self % thisCycle % release(neutron)
-        call self % geom % placeCoord(neutron % coords)
-
-        ! Set k-eff for normalisation in the particle
-        neutron % k_eff = k_new
-
-          history: do
-            call neutron % savePreHistory()
-            call self % transOp % transport(neutron)
-
-            ! Exit history and score leakage
-            if(neutron % isDead) then
-              neutron % fate = leak_FATE
-              call self % activeTally %  reportHist(neutron)
-              exit history
-            end if
-
-
-            call self % collOp % collide(neutron, self % activeTally, self % thisCycle, self % nextCycle)
-
-            ! Exit history and score absorbtion
-            if(neutron % isDead) then
-              neutron % fate = abs_FATE
-              call self % activeTally %  reportHist(neutron)
-              exit history
-            end if
-
-          end do history
-
-        if( self % thisCycle % isEmpty()) exit gen
-      end do gen
-
-      ! Send end of cycle report
-      Nend = self % nextCycle % popSize()
-      call self % activeTally % reportCycleEnd(self % nextCycle)
-
-      ! Normalise population
-      call self % nextCycle % normSize(self % pop, neutron % pRNG)
-
-      if(self % printSource == 1) then
-        call self % nextCycle % printSourceToFile&
-        (trim(self % outputFile)//'_source'//numToChar(self % N_inactive + i))
-      end if
-
-      ! Flip cycle dungeons
-      self % temp_dungeon => self % nextCycle
-      self % nextCycle    => self % thisCycle
-      self % thisCycle    => self % temp_dungeon
-
-      ! Obtain estimate of k_eff
-      call self % activeAtch % getResult(res,'keff')
-
-      select type(res)
-        type is(keffResult)
-          k_new = res % keff(1)
-        class default
-          call fatalError(Here, 'Invalid result has been returned')
-
-      end select
-      ! Load new k-eff estimate into next cycle dungeon
-      k_old = self % nextCycle % k_eff
-      self % nextCycle % k_eff = k_new
-
-      ! Display progress
-      call printFishLineR(i)
-      print *
-      print *, 'Cycle: ', i, ' of ', self % N_active,' Pop: ', Nstart, ' -> ',Nend
-      call self % activeTally % display()
-
-    end do
-  end subroutine activeCycles
-
+  !!
   subroutine generateInitialState(self)
     class(eigenPhysicsPackage), intent(inout) :: self
     type(particle)                            :: neutron
