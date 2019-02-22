@@ -26,7 +26,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # FLAGS FOR CODE COVERAGE        
 # -coverage -Wno-surprising 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -coverage -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 
@@ -120,18 +120,6 @@ endfunction(add_unit_tests)
 ###############################################################################
 # COLLECT ALL SOURCE AND TEST FILES 
 
-add_sources( ./DataStructures/dictionary_class.f90
-             ./DataStructures/IOdictionary_class.f90
-             ./DataStructures/intMap_class.f90
-             ./DataStructures/charMap_class.f90
-             ./DataStructures/stack_class.f90
-             ./DataStructures/dynArray_class.f90)
-             
-add_unit_tests( ./DataStructures/Tests/dictionary_test.f90
-                ./DataStructures/Tests/intMap_test.f90
-                ./DataStructures/Tests/charMap_test.f90
-                ./DataStructures/Tests/dynArray_test.f90)
-            
 # Include Nested Directories  
 add_subdirectory(SharedModules)    
 add_subdirectory(RandomNumbers)  
@@ -150,6 +138,20 @@ add_subdirectory(MOCObjects)
 add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
+
+add_sources( ./DataStructures/dictionary_class.f90
+             ./DataStructures/IOdictionary_class.f90
+             ./DataStructures/intMap_class.f90
+             ./DataStructures/charMap_class.f90
+             ./DataStructures/stack_class.f90
+             ./DataStructures/dynArray_class.f90)
+             
+add_unit_tests( ./DataStructures/Tests/dictionary_test.f90
+                ./DataStructures/Tests/intMap_test.f90
+                ./DataStructures/Tests/charMap_test.f90
+                ./DataStructures/Tests/dynArray_test.f90)
+            
+
 
 ###############################################################################
 # COPY GLOBAL PROPERTY  SRC_LIST TO VARIABLE SRCS  
