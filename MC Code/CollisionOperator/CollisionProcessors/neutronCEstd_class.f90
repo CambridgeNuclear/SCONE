@@ -127,7 +127,7 @@ contains
     type(xsNucMacroSet_ptr)              :: nucXSs
     type(xsMainSet_ptr)                  :: microXss
     real(defReal)                        :: r
-    character(100),parameter :: Here = 'sampleCollision (perNuclideCollisionOpCE_class.f90)'
+    character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
 
     ! Verify that particle is CE neutron
     if(p % isMG .or. p % type /= P_NEUTRON) then
@@ -231,7 +231,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     real(defReal)                        :: r
-    character(100), parameter   :: Here ='scatter (perNuclideCollisionOp_class.f90)'
+    character(100), parameter   :: Here ='scatter (neutronCEstd_class.f90)'
 
     ! Sample MT of scattering reaction. Replace lumped MT already in collDat
     r = p % pRNG % get()

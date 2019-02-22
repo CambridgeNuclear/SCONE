@@ -659,7 +659,7 @@ contains
   !!
   elemental function printType(type) result(name)
     integer(shortInt), intent(in) :: type
-    character(nameLen)            :: name
+    character(:),allocatable      :: name
 
     select case(type)
       case(P_NEUTRON)

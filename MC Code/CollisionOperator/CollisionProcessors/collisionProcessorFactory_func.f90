@@ -50,7 +50,7 @@ contains
         call new % init(dict)
 
       case('neutronMGstd')
-        allocate(neutronCEstd :: new)
+        allocate(neutronMGstd :: new)
         call new % init(dict)
 
      !*** NEW COLLISION PROCESSOR TEMPLATE ***!

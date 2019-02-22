@@ -26,7 +26,7 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 # FLAGS FOR CODE COVERAGE        
 # -coverage -Wno-surprising 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -coverage -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 

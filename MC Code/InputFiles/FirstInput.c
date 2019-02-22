@@ -7,8 +7,8 @@ inactive 300;
 //seed     -6574747;
 XSdata   ce2;
 
-collisionOperator { type perNuclideCollisionOpCE; 
-                   //type perMaterialCollisionOpMG; 
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
                   } 
 
 transportOperator { //type transportOperatorST;

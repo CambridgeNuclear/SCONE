@@ -79,8 +79,8 @@ contains
     end if
 
     if(dict % isPresent('neutronMG')) then
-      call new_collisionProcessor(self % physicsTable(1) % proc, dict % getDictPtr('neutronMG'))
-      self % lookupTable(P_MG, P_NEUTRON) = 1
+      call new_collisionProcessor(self % physicsTable(2) % proc, dict % getDictPtr('neutronMG'))
+      self % lookupTable(P_MG, P_NEUTRON) = 2
     end if
 
   end subroutine init

@@ -8,7 +8,7 @@ module eigenPhysicsPackage_class
   use outputFile_class,               only : outputFile
 
   ! Particle classes and Random number generator
-  use particle_class,                 only : particle, phaseCoord
+  use particle_class,                 only : particle, phaseCoord, P_NEUTRON
   use particleDungeon_class,          only : particleDungeon
   use RNG_class,                      only : RNG
 
@@ -23,7 +23,7 @@ module eigenPhysicsPackage_class
   use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Operators
-  use collisionOperatorBase_inter,    only : collisionOperatorBase
+  use collisionOperator_class,        only : collisionOperator
   use transportOperator_inter,        only : transportOperator
 
   ! Tallies
@@ -35,7 +35,6 @@ module eigenPhysicsPackage_class
   ! Factories
   use nuclearDataRegistry_mod,        only : build_NuclearData, getHandlePtr
   use geometryFactory_func,           only : new_cellGeometry_ptr
-  use collisionOperatorFactory_func,  only : new_collisionOperator_ptr
   use transportOperatorFactory_func,  only : new_transportOperator_ptr
 
   implicit none
@@ -50,7 +49,7 @@ module eigenPhysicsPackage_class
     class(nuclearData), pointer            :: nucData       => null()
     class(transportNuclearData), pointer   :: transNucData  => null()
     class(cellGeometry), pointer           :: geom          => null()
-    class(collisionOperatorBase), pointer  :: collOp        => null()
+    type(collisionOperator)                :: collOp
     class(transportOperator), pointer      :: transOp       => null()
     class(RNG), pointer                    :: pRNG          => null()
     type(tallyAdmin),pointer               :: inactiveTally => null()
@@ -114,7 +113,6 @@ contains
     neutron % pRNG   => self % pRNG
 
     ! Attach tally to operators
-    self % collOP % tally => self % inactiveTally
     self % transOP % tally => self % inactiveTally
 
     ! Set initiial k-eff
@@ -146,7 +144,7 @@ contains
               exit history
             end if
 
-            call self % collOp % collide(neutron, self % thisCycle, self % nextCycle)
+            call self % collOp % collide(neutron, self % inactiveTally ,self % thisCycle, self % nextCycle)
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
@@ -217,7 +215,6 @@ contains
     neutron % pRNG   => self % pRNG
 
     ! Attach tally to operators
-    self % collOP % tally => self % activeTally
     self % transOP % tally => self % activeTally
 
     ! Set initiial k-eff
@@ -249,7 +246,7 @@ contains
             end if
 
 
-            call self % collOp % collide(neutron, self % thisCycle, self % nextCycle)
+            call self % collOp % collide(neutron, self % activeTally, self % thisCycle, self % nextCycle)
 
             ! Exit history and score absorbtion
             if(neutron % isDead) then
@@ -348,6 +345,9 @@ contains
 
       ! Put material in neutron
       neutron % coords % matIdx = matIdx
+
+      ! Assign type of the particle
+      neutron % type = P_NEUTRON
 
       ! Generate and store fission site
       call self % transNucData % initFissionSite(neutron,r)
@@ -462,7 +462,7 @@ contains
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
-    self % collOp => new_collisionOperator_ptr(self % nucData, tempDict)
+    call self % collOp % init(tempDict)
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
