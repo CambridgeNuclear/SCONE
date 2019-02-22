@@ -12,5 +12,6 @@ add_sources( ./genericProcedures.f90
              
 add_unit_tests( ./Tests/grid_test.f90
                 ./Tests/sort_test.f90
-                ./Tests/statisticalTests_test.f90)
+                ./Tests/statisticalTests_test.f90
+                ./Tests/hashFunctions_test.f90)
  
