@@ -241,7 +241,7 @@ contains
       case(N_N_elastic)
         call self % elastic(p, collDat, thisCycle, nextCycle)
 
-      case(N_Nl1:N_Nl40, N_Ncont, N_Na, N_Np)
+      case(N_Nl1:N_Nl40, N_Ncont, N_Na, N_N3a, N_Np)
         call self % inelastic(p, collDat, thisCycle, nextCycle)
 
       case(N_2N, N_3N, N_4N)

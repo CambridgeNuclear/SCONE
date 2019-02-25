@@ -7,8 +7,9 @@ module transportOperatorST_class
 
   use genericProcedures,          only : fatalError
   use particle_class,             only : particle, phaseCoord
+  use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use rng_class,                  only : rng
+  use RNG_class,                  only : RNG
 
   ! Superclass
   use transportOperator_inter,    only : transportOperator
@@ -17,6 +18,7 @@ module transportOperatorST_class
   use cellGeometry_inter,         only : cellGeometry
 
   ! Tally interface
+  use tallyCodes
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
@@ -26,84 +28,55 @@ module transportOperatorST_class
   implicit none
   private
 
+  !!
+  !! Transport operator that moves a particle with delta tracking
+  !!
   type, public, extends(transportOperator) :: transportOperatorST
   contains
-    procedure :: init
-    procedure :: transport => surfaceTracking
+    procedure :: transit => surfaceTracking
   end type transportOperatorST
 
 contains
 
   !!
-  !! Initialise transportOperatorST
-  !!
-  subroutine init(self, nucData, geom, settings)
-    class(transportOperatorST), intent(inout) :: self
-    class(nuclearData), pointer, intent(in)   :: nucData
-    class(cellGeometry), pointer, intent(in)  :: geom
-    class(dictionary), optional, intent(in)   :: settings
-    character(100),parameter :: Here ='init (transportOperatorDT_class.f90)'
-
-    ! Check that nuclear data type is supported
-    select type(nucData)
-      class is (transportNuclearData)
-        self % nuclearData => nucData
-
-      class default
-        call fatalError(Here,'Class of provided nuclear data is not supported by transportOperator')
-
-    end select
-
-    ! Attach geometry
-    self % geom => geom
-
-    ! TO DO: include settings, e.g., variance reduction, majorant adjustment
-
-  end subroutine init
-
-  !!
   !! Performs surface tracking
   !!
-  subroutine surfaceTracking(self,p)
-    class(transportOperatorST), intent(in) :: self
-    class(particle), intent(inout)         :: p
-    logical(defBool)                       :: isColl
-    real(defReal)                          :: sigmaT, dist
-
-    ! Save pre-Transition state
-    call p % savePreTransition()
+  subroutine surfaceTracking(self, p, tally, thisCycle, nextCycle)
+    class(transportOperatorST), intent(inout) :: self
+    class(particle), intent(inout)            :: p
+    type(tallyAdmin), intent(inout)           :: tally
+    class(particleDungeon),intent(inout)      :: thisCycle
+    class(particleDungeon),intent(inout)      :: nextCycle
+    logical(defBool)                          :: isColl
+    real(defReal)                             :: sigmaT, dist
 
     STLoop: do
 
       ! Obtain the local cross-section
-      sigmaT = self % nuclearData % getTransXS(p, p % matIdx())
+      sigmaT = self % xsData % getTransXS(p, p % matIdx())
 
-      ! Sample particle flight distance
+      ! Sample particle flight distance to next collision
       dist = -log( p % pRNG % get()) / sigmaT
 
       ! Save state before movement
       call p % savePrePath()
 
-      ! Move to the next stop
+      ! Move to the next stop. NOTE: "move" resets dist to distanced moved!
       call self % geom % move(p % coords, dist, isColl)
 
-      ! Send tally report
-      call self % tally % reportPath(p, dist)
+      ! Send tally report for a path moved
+      call tally % reportPath(p, dist)
+
+      ! Kill particle if it has leaked
+      if( p % matIdx() == OUTSIDE_FILL) then
+        p % isDead = .true.
+        p % fate = LEAK_FATE
+      end if
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( isColl ) exit STLoop
+      if( isColl .or. p % isDead) exit STLoop
 
-      ! If particle has leaked exit
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % isDead = .true.
-        ! TODO: REPORT HISTORY END
-        exit STLoop
-      end if
     end do STLoop
-
-    ! Send transition report
-    call self % tally % reportTrans(p)
-
   end subroutine surfaceTracking
 
 end module transportOperatorST_class

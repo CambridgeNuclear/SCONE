@@ -15,7 +15,7 @@ module transportOperatorFactory_func
   use transportOperator_inter,          only : transportOperator
   use transportOperatorST_class,        only : transportOperatorST
   use transportOperatorDT_class,        only : transportOperatorDT
-  use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
+  !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
   implicit none
   private
@@ -26,20 +26,25 @@ module transportOperatorFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST', &
-                                                                         'transportOperatorDT', &
-                                                                         'dynamicTranspOperDT']
+                                                                         'transportOperatorDT']!, &
+                                                                       !  'dynamicTranspOperDT']
 
-  public :: new_transportOperator_ptr
+  public :: new_transportOperator
 
 contains
 
-  function new_transportOperator_ptr(nucData,geom,dict) result(new)
-    class(nuclearData),pointer,intent(in)  :: nucData
-    class(cellGeometry),pointer,intent(in) :: geom
-    class(dictionary), intent(in)          :: dict
-    class(transportOperator),pointer       :: new
-    character(nameLen)                     :: type
-    character(100),parameter :: Here = 'new_transportOperator_ptr (transportOperatorFactory_func.f90)'
+  !!
+  !! Allocate new allocatable transportOperator to a specific type
+  !! If new is allocated it deallocates it
+  !!
+  subroutine new_transportOperator(new, dict, geom)
+    class(transportOperator),allocatable, intent(inout):: new
+    class(dictionary), intent(in)                      :: dict
+    class(cellGeometry),pointer,intent(in)             :: geom
+    character(nameLen)                                 :: type
+    character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
+
+    if(allocated(new)) deallocate(new)
 
     ! Obtain string that specifies type to be built
     call dict % get(type,'type')
@@ -48,19 +53,16 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW TRANSPORT OPERATOR BELOW ***!
     select case(type)
       case('transportOperatorST')
-        ! Allocate and initialise
         allocate( transportOperatorST :: new)
-        call new % init(nucData, geom, dict)
+        call new % init(dict, geom)
 
       case('transportOperatorDT')
-        ! Allocate and initialise
         allocate( transportOperatorDT :: new)
-        call new % init(nucData, geom, dict)
+        call new % init(dict, geom)
 
-      case('dynamicTranspOperDT')
-        ! Allocate and initialise
-        allocate( transportOperatorDynamicDT :: new)
-        call new % init(nucData, geom, dict)
+!      case('dynamicTranspOperDT')
+!        allocate( transportOperatorDynamicDT :: new)
+!        call new % init(dict, geom)
 
       case default
         print *, AVALIBLE_transportOps
@@ -68,8 +70,7 @@ contains
 
     end select
 
-
-  end function new_transportOperator_ptr
+  end subroutine new_transportOperator
 
 
 end module transportOperatorFactory_func

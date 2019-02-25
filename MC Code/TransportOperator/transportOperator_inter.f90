@@ -2,8 +2,10 @@ module transportOperator_inter
 
   use numPrecision
   use universalVariables
+  use genericProcedures,          only : fatalError
 
   use particle_class,             only : particle
+  use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
 
   ! Geometry interfaces
@@ -20,48 +22,126 @@ module transportOperator_inter
   implicit none
   private
 
+
   !!
-  !! Abstract interface for all collision operators
+  !! This is an abstract interface for all types of transport processing
+  !!   -> This interface only deals with scalar processing of particle transport
+  !!   -> Assumes that particle moves without any external forces (assumes that particle
+  !!      moves along straight lines between colisions)
+  !!
+  !! Public interface:
+  !!   transport(p, tally, thisCycle, nextCycle) -> given particle, tally and particle dungeons
+  !!     for particles in this and next cycle performs movement of a particle in the geometry.
+  !!     Sends transistion report to the tally. Sends history report as well if particle dies.
+  !!   init(dict, geom) -> initialises transport operator from a dictionary and pointer to a
+  !!                       geometry
+  !!
+  !! Customisable procedures or transport actions
+  !!   transit(p, tally, thisCycle, nextCycle) -> implements movement from collision to collision
   !!
   type, abstract, public :: transportOperator
-    !! Components below are not part of the interface!
-    !! They are public ONLY to allow inheritance!
-    class(transportNuclearData), pointer :: nuclearData => null()  ! nuclear data
-    class(cellGeometry), pointer         :: geom        => null()  ! references the geometry for cell searching
-    type(tallyAdmin), pointer            :: tally       => null()  ! Tally to recive reports
+    !! Nuclear Data block pointer -> public so it can be used by subclasses (protected member)
+    class(transportNuclearData), pointer :: xsData => null()
+
+    !! Geometry pointer -> public so it can be used by subclasses (protected member)
+    class(cellGeometry), pointer         :: geom        => null()
+
   contains
-    procedure(transport), deferred :: transport
-    procedure(init),deferred       :: init
+    ! Public interface
+    procedure, non_overridable :: transport
+
+    ! Extentable initialisation and deconstruction procedure
+    procedure :: init
+    procedure :: kill
+
+    ! Customisable deferred procedures
+    procedure(transit), deferred :: transit
+
   end type transportOperator
 
-  abstract interface
+  ! Extandable procedures
+  public :: init
+  public :: kill
 
+
+  abstract interface
     !!
     !! Move particle from collision to collision
+    !!  Kill particle if needed
     !!
-    subroutine transport(self, p)
+    subroutine transit(self, p, tally, thisCycle, nextCycle)
       import :: transportOperator, &
-                particle
-      class(transportOperator), intent(in) :: self
-      class(particle), intent(inout)       :: p
-    end subroutine transport
-
-    !!
-    !! Connect transport operator to other blocks.
-    !! Each implementation checks if the geometry & nuclear data it gets it supports
-    !!
-    subroutine init(self,nucData,geom,settings)
-      import :: transportOperator, &
-                nuclearData, &
-                cellGeometry, &
-                dictionary
+                particle, &
+                tallyAdmin, &
+                particleDungeon
       class(transportOperator), intent(inout) :: self
-      class(nuclearData),pointer, intent(in)  :: nucData
-      class(cellGeometry),pointer, intent(in) :: geom
-      class(dictionary),optional,intent(in)   :: settings
-    end subroutine init
-
+      class(particle), intent(inout)          :: p
+      type(tallyAdmin), intent(inout)         :: tally
+      class(particleDungeon), intent(inout)   :: thisCycle
+      class(particleDungeon), intent(inout)   :: nextCycle
+    end subroutine transit
   end interface
+
+contains
+
+  !!
+  !! Master non-overridable subroutine to perform transport
+  !!  Performs everything common to all types of transport
+  !!
+  subroutine transport(self, p, tally, thisCycle, nextCycle)
+    class(transportOperator), intent(inout) :: self
+    class(particle), intent(inout)          :: p
+    type(tallyAdmin), intent(inout)         :: tally
+    class(particleDungeon), intent(inout)   :: thisCycle
+    class(particleDungeon), intent(inout)   :: nextCycle
+    character(100),parameter :: Here ='transport (transportOperator_inter.f90)'
+
+    ! Get nuclear data pointer form the particle
+    select type( xs => p % xsData )
+      class is (transportNuclearData)
+        self % xsData => xs
+
+      class default
+        call fatalError(Here, 'Was given xsData which is not transportNuclearData')
+    end select
+
+    ! Save pre-transition state
+    call p % savePreTransition()
+
+    ! Perform transit
+    call self % transit(p, tally, thisCycle, nextCycle)
+
+    ! Send history reports if particle died
+    if( p  % isDead) then
+      call tally % reportHist(p)
+    end if
+
+  end subroutine transport
+
+  !!
+  !! Initialise transport operator from dictionary and geometry
+  !!
+  subroutine init(self, dict, geom)
+    class(transportOperator), intent(inout)  :: self
+    class(dictionary), intent(in)            :: dict
+    class(cellGeometry), pointer, intent(in) :: geom
+
+    !! Store pointer to geometry
+    self % geom => geom
+
+  end subroutine init
+
+  !!
+  !! Free memory. Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(transportOperator), intent(inout) :: self
+
+    self % geom   => null()
+    self % xsData => null()
+
+  end subroutine kill
+
 
 end module transportOperator_inter
 

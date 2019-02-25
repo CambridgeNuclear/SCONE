@@ -35,7 +35,7 @@ module eigenPhysicsPackage_class
   ! Factories
   use nuclearDataRegistry_mod,        only : build_NuclearData, getHandlePtr
   use geometryFactory_func,           only : new_cellGeometry_ptr
-  use transportOperatorFactory_func,  only : new_transportOperator_ptr
+  use transportOperatorFactory_func,  only : new_transportOperator
 
   implicit none
   private
@@ -50,7 +50,7 @@ module eigenPhysicsPackage_class
     class(transportNuclearData), pointer   :: transNucData  => null()
     class(cellGeometry), pointer           :: geom          => null()
     type(collisionOperator)                :: collOp
-    class(transportOperator), pointer      :: transOp       => null()
+    class(transportOperator), allocatable  :: transOp
     class(RNG), pointer                    :: pRNG          => null()
     type(tallyAdmin),pointer               :: inactiveTally => null()
     type(tallyAdmin),pointer               :: activeTally   => null()
@@ -113,9 +113,6 @@ contains
     neutron % xsData => self % nucData
     neutron % pRNG   => self % pRNG
 
-    ! Attach tally to operators
-    self % transOP % tally => tally
-
     ! Set initiial k-eff
     k_new = ONE
 
@@ -136,14 +133,8 @@ contains
           history: do
             call neutron % savePreHistory()
 
-            call self % transOp % transport(neutron)
-
-            ! Exit history and score leakage
-            if(neutron % isDead) then
-              neutron % fate = leak_FATE
-              call tally %  reportHist(neutron)
-              exit history
-            end if
+            call self % transOp % transport(neutron, tally, self % thisCycle, self % nextCycle)
+            if(neutron % isDead) exit history
 
             call self % collOp % collide(neutron, tally ,self % thisCycle, self % nextCycle)
 
@@ -368,7 +359,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    self % transOp => new_transportOperator_ptr(self % nucData, self % geom, tempDict)
+    call new_transportOperator(self % transOp, tempDict, self % geom)
 
     ! Initialise active & inactive tally Admins
     tempDict => dict % getDictPtr('inactiveTally')
