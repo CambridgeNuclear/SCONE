@@ -12,6 +12,7 @@ module collisionProcessor_inter
   use nuclearData_inter,     only : nuclearData
 
   ! Tally interfaces
+  use tallyCodes
   use tallyAdmin_class,      only : tallyAdmin
 
   implicit none
@@ -43,7 +44,7 @@ module collisionProcessor_inter
   !! Public interface:
   !!   collide(p, tally, thisCycle, nextCycle) -> Given particle, tallyAdmin, and particleDungeons
   !!     for particles in this cycle, or next cycle performs particle collision. Sends pre and post
-  !!     collision events report to the tally admin.
+  !!     collision events report to the tally admin. Reports end of history if particle was absorbed.
   !!
   !!   init(dict) -> initialises collisionProcessor from a dictionary
   !!
@@ -151,6 +152,12 @@ contains
 
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)
+
+    ! Report end-of-history if particle was killed
+    if( p % isDead) then
+      p % fate = ABS_FATE
+      call tally % reportHist(p)
+    end if
 
   end subroutine collide
 

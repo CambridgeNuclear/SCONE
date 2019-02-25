@@ -130,21 +130,16 @@ contains
         ! Set k-eff for normalisation in the particle
         neutron % k_eff = k_new
 
-          history: do
-            call neutron % savePreHistory()
+        ! Save state
+        call neutron % savePreHistory()
 
+          ! Transport particle untill its death
+          history: do
             call self % transOp % transport(neutron, tally, self % thisCycle, self % nextCycle)
             if(neutron % isDead) exit history
 
             call self % collOp % collide(neutron, tally ,self % thisCycle, self % nextCycle)
-
-            ! Exit history and score absorbtion
-            if(neutron % isDead) then
-              neutron % fate = abs_FATE
-              call tally %  reportHist(neutron)
-              exit history
-            end if
-
+            if(neutron % isDead) exit history
           end do history
 
         if( self % thisCycle % isEmpty()) exit gen
