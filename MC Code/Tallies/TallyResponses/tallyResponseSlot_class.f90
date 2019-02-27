@@ -49,7 +49,7 @@ contains
   !! Get value of the response from the content of the slot
   !! If slot is unallocated (uninitialised) result is undefined (probably SEG ERROR)
   !!
-  elemental function get(self, p) result(value)
+  function get(self, p) result(value)
     class(tallyResponseSlot), intent(in) :: self
     class(particle), intent(in)          :: p
     real(defReal)                        :: value

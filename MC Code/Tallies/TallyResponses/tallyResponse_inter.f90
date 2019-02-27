@@ -40,7 +40,7 @@ module tallyResponse_inter
     !!
     !! Get value of response for particle p
     !!
-    elemental function get(self, p) result(val)
+    function get(self, p) result(val)
       import :: tallyResponse, &
                 particle, &
                 defReal

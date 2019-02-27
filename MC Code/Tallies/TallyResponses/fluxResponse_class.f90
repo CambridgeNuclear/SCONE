@@ -35,7 +35,7 @@ contains
   !!
   !! Get 1.0 (Response to score flux)
   !!
-  elemental function get(self, p) result(val)
+  function get(self, p) result(val)
     class(fluxResponse), intent(in) :: self
     class(particle), intent(in)     :: p
     real(defReal)                   :: val
