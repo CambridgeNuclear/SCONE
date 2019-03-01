@@ -90,7 +90,6 @@ contains
     call xsData % build(1.1_defReal, fissionXS = 1.1_defReal, nuFissionXS = 2.0_defReal)
     p % xsData => xsData
 
-
     ! Score some events
 
     call p % setMatIdx(2)

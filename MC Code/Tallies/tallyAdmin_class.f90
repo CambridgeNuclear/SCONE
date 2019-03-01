@@ -131,7 +131,7 @@ contains
     ! Obtain clerks dictionary names
     call dict % keysDict(names)
 
-    ! Allocate space for clekrs
+    ! Allocate space for clerks
     allocate(self % tallyClerks(size(names)))
 
     ! Load clerks into slots and clerk names into map
@@ -154,12 +154,12 @@ contains
     ! Obtain names of clerks to display
     if( dict % isPresent('display')) then
       call dict % get(names,'display')
-    end if
 
-    ! Register all clerks to display
-    do i=1,size(names)
-      call self % displayList % add( self % clerksNameMap % get(names(i)))
-    end do
+      ! Register all clerks to display
+      do i=1,size(names)
+        call self % displayList % add( self % clerksNameMap % get(names(i)))
+      end do
+    end if
 
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)

@@ -78,6 +78,9 @@ contains
     class(dictionary), intent(in)       :: dict
     character(nameLen), intent(in)      :: name
 
+    ! Assign name
+    call self % setName(name)
+
     ! Read map
     call new_tallyMap(self % map, dict % getDictPtr('map'))
 
@@ -176,7 +179,7 @@ contains
       ! Set address to the start of Fission Matrix and Power vector
       ! Decrease by 1 to get correct addres on the fisrt iteration of the loop
       addrPow = self % getMemAddress() - 1
-      addrFM  = addrPow + self % N -1
+      addrFM  = self % getMemAddress() + self % N -1
 
       ! Normalise and accumulate estimates
       do i=1,self % N

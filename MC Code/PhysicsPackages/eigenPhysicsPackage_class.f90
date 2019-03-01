@@ -273,6 +273,9 @@ contains
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
 
+    ! Print Active atachment
+    call self % activeAtch % print(out)
+
     call self % activeTally % print(out)
 
     path = trim(self % outputFile) // '.m'
@@ -372,8 +375,8 @@ contains
     call locDict2 % init(2)
 
     call locDict2 % store('type','keffAnalogClerk')
-    call locDict2 % store('display','yes')
     call locDict1 % store('keff', locDict2)
+    call locDict1 % store('display',['keff'])
 
     allocate(self % inactiveAtch)
     call self % inactiveAtch % init(locDict1)
@@ -386,8 +389,8 @@ contains
     call locDict2 % init(2)
 
     call locDict2 % store('type','keffImplicitClerk')
-    call locDict2 % store('display','yes')
     call locDict1 % store('keff', locDict2)
+    call locDict1 % store('display',['keff'])
 
     allocate(self % activeAtch)
     call self % activeAtch % init(locDict1)

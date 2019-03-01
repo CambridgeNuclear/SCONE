@@ -11,6 +11,7 @@ module tallyClerkFactory_func
   use keffAnalogClerk_class,   only : keffAnalogClerk
   use keffImplicitClerk_class, only : keffImplicitClerk
   use collisionClerk_class,    only : collisionClerk
+  use simpleFMClerk_class,     only : simpleFMClerk
 
   implicit none
   private
@@ -24,7 +25,8 @@ module tallyClerkFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk  ',&
                                                                         'keffImplicitClerk',&
-                                                                        'collisionClerk   ']
+                                                                        'collisionClerk   ',&
+                                                                        'simpleFMClerk    ']
 
 contains
 
@@ -58,6 +60,10 @@ contains
 
      case('collisionClerk')
        allocate(collisionClerk :: new)
+       call new % init(dict, name)
+
+     case('simpleFMClerk')
+       allocate(simpleFMClerk :: new)
        call new % init(dict, name)
 
      !*** NEW TALLY MAP TEMPLATE ***!
