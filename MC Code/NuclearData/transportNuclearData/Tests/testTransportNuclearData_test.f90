@@ -105,4 +105,19 @@ contains
 
   end subroutine testMacroXsSet
 
+  !!
+  !! Test isFissile
+  !!
+@Test
+  subroutine testIsFissile(this)
+    class(test_testTransportNuclearData), intent(inout) :: this
+    type(testTransportNuclearData)                      :: nucDat
+
+    @assertTrue(this % nucData % isFissileMat(1))
+    call nucDat % build(ONE, fissionXS = ZERO)
+    @assertFalse(nucDat % isFissileMat(1))
+
+    call nucDat % kill()
+  end subroutine testIsFissile
+
 end module testTransportNuclearData_test

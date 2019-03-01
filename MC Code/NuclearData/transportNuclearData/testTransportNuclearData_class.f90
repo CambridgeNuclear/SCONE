@@ -159,14 +159,14 @@ contains
   end subroutine getMatMacroXS_p
 
   !!
-  !! Return .false.
+  !! Return .true. if fissionXS  is not zero
   !!
   function isFissileMat(self,matIdx) result(isIt)
     class(testTransportNuclearData), intent(in) :: self
     integer(shortInt), intent(in)           :: matIdx
     logical(defBool)                        :: isIt
 
-    isIt = .false.
+    isIt = self % macroXS % fissionXS /= ZERO
 
   end function isFissileMat
 

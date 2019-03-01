@@ -68,7 +68,7 @@ contains
     tst % Ncycles   = 10 * tst % batchSize
 
     ! Generate a vector of 20 pseudo-random numbers in <0;1>
-    ! Generator is not sophisticated but rebust
+    ! Generator is not sophisticated but robust
     seed = 9294
     do i=1,200
       seed = mod(A * seed , M)
@@ -115,6 +115,9 @@ contains
         call mem % accumulate(int(this % scoresInt(j),longInt),6_longInt)
 
       end do
+      ! Close a single bin with diffrent normalisation
+      call mem % closeBin(1.2_defReal, 3_longInt)
+
       ! Close Cycle
       call mem % closeCycle(0.7_defReal)
 
@@ -140,9 +143,9 @@ contains
     call mem % getResult(res1, 3_longInt)
     call mem % getResult(res2, STD, 3_longInt)
 
-    @assertEqual(623.0_defReal, res1, TOL)
-    @assertEqual(623.0_defReal, res2, TOL)
-    @assertEqual(27.982494527829360_defReal, STD, TOL)
+    @assertEqual(1068.0_defReal, res1, TOL)
+    @assertEqual(1068.0_defReal, res2, TOL)
+    @assertEqual(47.969990619136050_defReal, STD, TOL)
 
     ! Get results from bin 4
     call mem % getResult(res1, 4_longInt, 200)

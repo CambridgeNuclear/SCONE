@@ -1,4 +1,4 @@
-module simpleFM_class
+module simpleFMClerk_class
 
   use numPrecision
   use tallyCodes
@@ -39,11 +39,11 @@ module simpleFM_class
   !! Sample dictionary input:
   !!
   !!  clerkName {
-  !!      type simpleFM;
+  !!      type simpleFMClerk;
   !!      map { <TallyMapDef> }
   !!  }
   !!
-  type, public, extends(tallyClerk) :: simpleFM
+  type, public, extends(tallyClerk) :: simpleFMClerk
     private
     !! Map defining the discretisation
     class(tallyMap), allocatable :: map
@@ -66,7 +66,7 @@ module simpleFM_class
 
     ! Deconstructor
     procedure  :: kill
-  end type simpleFM
+  end type simpleFMClerk
 
 contains
 
@@ -74,9 +74,9 @@ contains
   !! Initialise clerk from dictionary and name
   !!
   subroutine init(self, dict, name)
-    class(simpleFM), intent(inout) :: self
-    class(dictionary), intent(in)  :: dict
-    character(nameLen), intent(in) :: name
+    class(simpleFMClerk), intent(inout) :: self
+    class(dictionary), intent(in)       :: dict
+    character(nameLen), intent(in)      :: name
 
     ! Read map
     call new_tallyMap(self % map, dict % getDictPtr('map'))
@@ -93,7 +93,7 @@ contains
   !! Returns array of codes that represent diffrent reports
   !!
   function validReports(self) result(validCodes)
-    class(simpleFM),intent(in)                 :: self
+    class(simpleFMClerk),intent(in)            :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
     validCodes = [inColl_CODE, cycleEnd_Code]
@@ -104,8 +104,8 @@ contains
   !! Return memory size of the clerk
   !!
   elemental function getSize(self) result(S)
-    class(simpleFM), intent(in) :: self
-    integer(shortInt)           :: S
+    class(simpleFMClerk), intent(in) :: self
+    integer(shortInt)                :: S
 
     S = self % N + self % N * self % N
 
@@ -115,7 +115,7 @@ contains
   !! Process incoming collision report
   !!
   subroutine reportInColl(self, p, mem)
-    class(simpleFM), intent(inout)       :: self
+    class(simpleFMClerk), intent(inout)  :: self
     class(particle), intent(in)          :: p
     type(scoreMemory), intent(inout)     :: mem
     class(transportNuclearData), pointer :: xsDat
@@ -146,7 +146,7 @@ contains
     if(cIdx == 0) return
 
     ! Calculate fission neutron production
-    score = self % resp % get(p)
+    score = self % resp % get(p) * p % w / xsDat % getTotalMatXS(p, p % matIdx())
 
     ! Score neutron production in the collision bin
     addr =  self % getMemAddress() + cIdx - 1
@@ -165,12 +165,12 @@ contains
   !! Process cycle end
   !!
   subroutine reportCycleEnd(self, end, mem)
-    class(simpleFM), intent(inout)     :: self
-    class(particleDungeon), intent(in) :: end
-    type(scoreMemory), intent(inout)   :: mem
-    integer(shortInt)                  :: i, j
-    integer(longInt)                   :: addrFM, addrPow
-    real(defReal)                      :: normFactor
+    class(simpleFMClerk), intent(inout) :: self
+    class(particleDungeon), intent(in)  :: end
+    type(scoreMemory), intent(inout)    :: mem
+    integer(shortInt)                   :: i, j
+    integer(longInt)                    :: addrFM, addrPow
+    real(defReal)                       :: normFactor
 
     if(mem % lastCycle()) then
       ! Set address to the start of Fission Matrix and Power vector
@@ -200,10 +200,10 @@ contains
   !! Display convergance progress on the console
   !!
   subroutine display(self, mem)
-    class(simpleFM), intent(in)   :: self
-    type(scoreMemory), intent(in) :: mem
+    class(simpleFMClerk), intent(in) :: self
+    type(scoreMemory), intent(in)    :: mem
 
-    print *, 'simpleFM does not support display yet'
+    print *, 'simpleFMClerk does not support display yet'
 
   end subroutine display
 
@@ -211,13 +211,15 @@ contains
   !! Write contents of the clerk to output file
   !!
   subroutine print(self, outFile, mem)
-    class(simpleFM), intent(in)      :: self
+    class(simpleFMClerk), intent(in) :: self
     class(outputFile), intent(inout) :: outFile
     type(scoreMemory), intent(in)    :: mem
     integer(shortInt)                :: i
     integer(longInt)                 :: addr
     real(defReal)                    :: val, std
     character(nameLen)               :: name
+
+
     ! Begin block
     call outFile % startBlock(self % getName())
 
@@ -248,6 +250,7 @@ contains
       call mem % getResult(val, std, addr)
       call outFile % addResult(val, std)
     end do
+    call outFile % endArray()
 
     call outFile % endBlock()
 
@@ -257,7 +260,7 @@ contains
   !! Returns to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(simpleFM), intent(inout) :: self
+    class(simpleFMClerk), intent(inout) :: self
 
     if(allocated(self % map)) deallocate(self % map)
     self % N = 0
@@ -265,4 +268,4 @@ contains
 
   end subroutine kill
 
-end module simpleFM_class
+end module simpleFMClerk_class

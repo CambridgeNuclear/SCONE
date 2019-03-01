@@ -196,8 +196,8 @@ contains
     ! Build Clerk
     call clerk % init(clerkDict,'myClerk')
 
-    ! Create score memory TODO: Use Clerk to provide size
-    call mem % init(int(size(this % bins),longInt), 1)
+    ! Create score memory
+    call mem % init(int(clerk % getSize(), longInt) , 1)
     call clerk % setMemAddress(1_longInt)
 
     ! Build nuclear data
