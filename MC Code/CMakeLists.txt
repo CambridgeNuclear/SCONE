@@ -5,14 +5,13 @@ project(SCONE)
 
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
 
-
 ###############################################################################
 # CONFIGURE FORTRAN COMPILER 
 
 enable_language(Fortran) 
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
-set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE off)
 
 # Add compilers flags
 #
@@ -24,9 +23,9 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 #  across diffrent source files (and modules)  
 #
 # FLAGS FOR CODE COVERAGE        
-# -coverage -Wno-surprising 
+# -coverage 
 #
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+set(CMAKE_Fortran_FLAGS  "-std=f2008 -coverage -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 

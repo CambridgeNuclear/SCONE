@@ -15,11 +15,6 @@ module scoreMemory_class
 
 
   !!
-
-  !!
-
-
-  !!
   !! scoreMemory is a class that stores space for scores from tallies
   !! it is separate from tallyClerks and individual responses to allow:
   !!   -> Easy writing and (later) reading from file for archivisation of results
@@ -30,10 +25,35 @@ module scoreMemory_class
   !!   -> Easy handling of different batch sizes
   !!
   !! For every bin index there are three position, BIN, CSUM, CSUM2. All are initialised to 0.
-  !! Function score accumulates value on BIN under given index
-  !! Function accumulate accumulates value on CSUM and value^2 on CSUM2 under given index
-  !! Subroutine closeCycle, increments cycle counters and possibly closes batch by multiplying all
-  !!   scores by a normalisation factor and moving them on the cumulative sum.
+  !!
+  !! Interface:
+  !!     init(N,idBS): Initialise with integer size N and iteger id. Optional integer Batch Size.
+  !!
+  !!     kill(): Elemental. Return to uninitialised state.
+  !!
+  !!     score(score,idx): Score in the bin under idx. FatalError if idx is outside bounds. Score
+  !!         is defReal, shortInt or longInt
+  !!
+  !!     accumulate(score,idx): Accumulate result in cumulative sums in bin under idx. FatalError
+  !!         if idx is outside bounds. Score is defReal, shortInt or longInt.
+  !!
+  !!     getResult(mean, STD, idx, samples): Retrive mean value and standard deviation of the
+  !!         estimate under idx. Use optional samples to specify number of estimates used to
+  !!         evaluate mean and STD from default, which is number of batches in score memory.
+  !!         STD is optional.
+  !!
+  !!     getScore(idx): Return current value of score from bin under idx. FatalError if idx is
+  !!         outside bounds.
+  !!
+  !!     closeBin(normFactor,idx): Multiplies score under bin by normFactor and accumulates it in
+  !!         cumulative sums. Then sets the bin to zero.
+  !!
+  !!     closeCycle(normFactor): Multiplies all scores by normFactor and accumulates them in
+  !!         cumulative sums. Sets all scors to zero.
+  !!
+  !!     lastCycle(): Return true if the next call to closeCycle will close a batch.
+  !!
+  !!     getBatchSize(): Returns number of cycles that constitute a single batch.
   !!
   !! Example use case:
   !!
@@ -70,6 +90,7 @@ module scoreMemory_class
     generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
     procedure :: getScore
     procedure :: closeCycle
+    procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
 
@@ -252,6 +273,35 @@ contains
 
     end if
   end subroutine closeCycle
+
+  !!
+  !! Close Cycle
+  !! Multiplies score in bin under idx by normFactor, accumulates it and sets it to zero
+  !!
+  subroutine closeBin(self, normFactor, idx)
+    class(scoreMemory), intent(inout) :: self
+    real(defReal),intent(in)          :: normFactor
+    integer(longInt), intent(in)      :: idx
+    character(100),parameter :: Here = 'closeBin (scoreMemory_class.f90)'
+
+    ! Verify bounds for the index
+    if( idx < 0_longInt .or. idx > self % N) then
+      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
+                            & memory with size '//numToChar(self % N))
+    end if
+
+    ! Normalise score
+    self % bins(idx, BIN) = self % bins(idx, BIN) * normFactor
+
+    ! Increment cumulative sum
+    self % bins(idx,CSUM)  = self % bins(idx,CSUM) + self % bins(idx,BIN)
+    self % bins(idx,CSUM2) = self % bins(idx,CSUM2) + self % bins(idx,BIN) * self % bins(idx,BIN)
+
+    ! Zero the score
+    self % bins(idx,BIN) = ZERO
+
+  end subroutine closeBin
+
 
   !!
   !! Return true if next closeCycle will close a batch

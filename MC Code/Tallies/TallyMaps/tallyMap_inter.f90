@@ -13,6 +13,14 @@ module tallyMap_inter
   !!   Given particle it returns an index of the bin
   !!   Can return index 0, which means that event should not be scored
   !!
+  !! Interface:
+  !!   init(dict): initialises map from a dictionary
+  !!   bins(<int>): returns number of bins in dimension D. For D=0 returns number of all
+  !!       bins in a map.
+  !!   dimensions(): returns number of dimensions of a map.
+  !!   getAxisName(): returns character with the type of the map
+  !!   print(<outputFile>): prints information about the map to current block of the output file
+  !!   binArrayShape(): returns a shape vector of the map
   !!
   type, public,abstract :: tallyMap
     private

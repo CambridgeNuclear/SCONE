@@ -32,7 +32,9 @@ module macroResponse_class
     integer(shortInt) :: MT = 0
   contains
     procedure  :: init
+    procedure  :: build
     procedure  :: get
+    procedure  :: kill
   end type macroResponse
 
 contains
@@ -43,13 +45,27 @@ contains
   subroutine init(self, dict)
     class(macroResponse), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
+    integer(shortInt)                   :: MT
     character(100), parameter :: Here = 'init ( macroResponse_class.f90)'
 
     ! Load MT number
-    call dict % get(self % MT, 'MT')
+    call dict % get(MT, 'MT')
+
+    ! Build response
+    call self % build(MT)
+
+  end subroutine init
+
+  !!
+  !! Build macroResponse from MT number
+  !!
+  subroutine build(self, MT)
+    class(macroResponse), intent(inout) :: self
+    integer(shortInt), intent(in)       :: MT
+    character(100), parameter :: Here = 'build ( macroResponse_class.f90)'
 
     ! Check that MT number is valid
-    select case(self % MT)
+    select case(MT)
       case(macroTotal, macroCapture, macroFission, macroNuFission, macroAbsorbtion)
         ! Do nothing. MT is Valid
 
@@ -60,8 +76,10 @@ contains
         call fatalError(Here,'Unrecognised MT number: '// numToChar(self % MT))
     end select
 
+    ! Load MT
+    self % MT = MT
 
-  end subroutine init
+  end subroutine build
 
   !!
   !! Return response value
@@ -83,5 +101,15 @@ contains
 
     end select
   end function get
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(macroResponse), intent(inout) :: self
+
+    self % MT = 0
+
+  end subroutine kill
     
 end module macroResponse_class
