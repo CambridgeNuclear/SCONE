@@ -48,9 +48,9 @@ module particle_class
   !! Archived state of the particle used for tallying transitions, fission matrixes etc.
   !!
   type, public,extends(phaseCoord) :: particleState
-    integer(shortInt)  :: matIdx      ! Material index where particle is
-    integer(shortInt)  :: cellIdx     ! Cell idx at the lowest coord level
-    integer(shortInt)  :: uniqueID    ! Unique id at the lowest coord level
+    integer(shortInt)  :: matIdx   = -1   ! Material index where particle is
+    integer(shortInt)  :: cellIdx  = -1   ! Cell idx at the lowest coord level
+    integer(shortInt)  :: uniqueID = -1   ! Unique id at the lowest coord level
   contains
     generic    :: operator(.eq.) => equal_particleState
     procedure :: fromParticle    => particleState_fromParticle

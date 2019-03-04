@@ -46,9 +46,10 @@ module simpleFMClerk_class
   type, public, extends(tallyClerk) :: simpleFMClerk
     private
     !! Map defining the discretisation
-    class(tallyMap), allocatable :: map
-    type(macroResponse)          :: resp
-    integer(shortInt)            :: N = 0 !! Number of bins
+    class(tallyMap), allocatable           :: map
+    type(macroResponse)                    :: resp
+    real(defReal),dimension(:),allocatable :: startWgt
+    integer(shortInt)                      :: N = 0 !! Number of bins
 
   contains
     ! Procedures used during build
@@ -57,6 +58,7 @@ module simpleFMClerk_class
     procedure  :: getSize
 
     ! File reports and check status -> run-time procedures
+    procedure  :: reportCycleStart
     procedure  :: reportInColl
     procedure  :: reportCycleEnd
 
@@ -87,6 +89,9 @@ contains
     ! Read size of the map
     self % N = self % map % bins(0)
 
+    ! Allocate space for starting weights
+    allocate(self % startWgt(self % N))
+
     ! Initialise response
     call self % resp % build(macroNuFission)
 
@@ -99,7 +104,7 @@ contains
     class(simpleFMClerk),intent(in)            :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, cycleEnd_Code]
+    validCodes = [inColl_CODE, cycleStart_Code ,cycleEnd_Code]
 
   end function validReports
 
@@ -110,9 +115,33 @@ contains
     class(simpleFMClerk), intent(in) :: self
     integer(shortInt)                :: S
 
-    S = self % N + self % N * self % N
+    S = self % N * self % N
 
   end function getSize
+
+  !!
+  !! Process start of the cycle
+  !! Calculate starting weights in each bin
+  !!
+  !! NOTE: Currently map cannot use matIdx, cellIdx or uniqueID
+  !!
+  subroutine reportCycleStart(self, start, mem)
+    class(simpleFMClerk), intent(inout) :: self
+    class(particleDungeon), intent(in)  :: start
+    type(scoreMemory), intent(inout)    :: mem
+    integer(shortInt)                   :: idx, i
+
+    self % startWgt = ZERO
+
+    ! Loop through a population and calculate starting weight in each bin
+    do i=1,start % popSize()
+      associate( state => start % get(i) )
+        idx = self % map % map(state)
+        if(idx > 0) self % startWgt(idx) = self % startWgt(idx) + state % wgt
+      end associate
+    end do
+
+  end subroutine reportCycleStart
 
   !!
   !! Process incoming collision report
@@ -145,21 +174,14 @@ contains
     state = p
     cIdx = self % map % map(state)
 
-    ! Defend against invalid collision bin
-    if(cIdx == 0) return
+    ! Defend against invalid collision or starting bin
+    if(cIdx == 0 .or. sIdx == 0 ) return
 
     ! Calculate fission neutron production
     score = self % resp % get(p) * p % w / xsDat % getTotalMatXS(p, p % matIdx())
 
-    ! Score neutron production in the collision bin
-    addr =  self % getMemAddress() + cIdx - 1
-    call mem % score(score, addr)
-
-    ! Defend againt invalid starting bin
-    if(sIdx == 0) return
-
     ! Score element of the matrix
-    addr = self % getMemAddress() + self % N + (sIdx - 1) * self % N + cIdx - 1
+    addr = self % getMemAddress() + (sIdx - 1) * self % N + cIdx - 1
     call mem % score(score, addr)
 
   end subroutine reportInColl
@@ -172,20 +194,18 @@ contains
     class(particleDungeon), intent(in)  :: end
     type(scoreMemory), intent(inout)    :: mem
     integer(shortInt)                   :: i, j
-    integer(longInt)                    :: addrFM, addrPow
+    integer(longInt)                    :: addrFM
     real(defReal)                       :: normFactor
 
     if(mem % lastCycle()) then
-      ! Set address to the start of Fission Matrix and Power vector
+      ! Set address to the start of Fission Matrix
       ! Decrease by 1 to get correct addres on the fisrt iteration of the loop
-      addrPow = self % getMemAddress() - 1
-      addrFM  = self % getMemAddress() + self % N -1
+      addrFM  = self % getMemAddress() - 1
 
       ! Normalise and accumulate estimates
       do i=1,self % N
-        ! Calculate power normalisation
-        addrPow = addrPow + 1
-        normFactor = mem % getScore(addrPow)
+        ! Calculate normalisation factor
+        normFactor = self % startWgt(i)
         if(normFactor /= ZERO) normFactor = ONE / normFactor
 
         do j=1,self % N
@@ -195,7 +215,6 @@ contains
         end do
       end do
     end if
-
 
   end subroutine reportCycleEnd
 
@@ -222,29 +241,15 @@ contains
     real(defReal)                    :: val, std
     character(nameLen)               :: name
 
-
     ! Begin block
     call outFile % startBlock(self % getName())
 
     ! Print map information
     call self % map % print(outFile)
 
-    ! Print neutron production vector
-    name = 'prodVector'
-    addr = self % getMemAddress() - 1
-
-    call outFile % startArray(name, [self % N])
-
-    do i=1, self % N
-      addr = addr + 1
-      call mem % getResult(val, std, addr)
-      call outFile % addResult(val, std)
-    end do
-
-    call outFile % endArray()
-
     ! Print fission matrix
     name = 'FM'
+    addr = self % getMemAddress() - 1
 
     call outFile % startArray(name, [self % N, self % N])
 
@@ -266,6 +271,7 @@ contains
     class(simpleFMClerk), intent(inout) :: self
 
     if(allocated(self % map)) deallocate(self % map)
+    if(allocated(self % startWgt)) deallocate(self % startWgt)
     self % N = 0
     call self % resp % kill()
 

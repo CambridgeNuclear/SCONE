@@ -3,7 +3,7 @@ module simpleFMClerk_test
   use numPrecision
   use tallyResult_class,              only : tallyResult
   use simpleFMClerk_class,            only : simpleFMClerk
-  use particle_class,                 only : particle
+  use particle_class,                 only : particle, phaseCoord
   use particleDungeon_class,          only : particleDungeon
   use dictionary_class,               only : dictionary
   use scoreMemory_class,              only : scoreMemory
@@ -76,6 +76,7 @@ contains
     class(test_simpleFMClerk), intent(inout) :: this
     type(scoreMemory)                        :: mem
     type(particle)                           :: p
+    type(phaseCoord)                         :: phase
     type(particleDungeon)                    :: pop
     type(testTransportNuclearData),pointer   :: xsData
     real(defReal)                            :: val
@@ -89,6 +90,18 @@ contains
     allocate(xsData)
     call xsData % build(1.1_defReal, fissionXS = 1.1_defReal, nuFissionXS = 2.0_defReal)
     p % xsData => xsData
+
+    ! Crate dungeon of original events
+    ! One particle born in matIdx 1 and other in 2
+    call pop % init(3)
+
+    phase % wgt = ONE
+    !phase % matIdx = 2
+    call pop % detain(phase)
+
+    phase % wgt = ONE
+    !phase % matIdx = 1
+    call pop % detain(phase)
 
     ! Score some events
 
@@ -113,40 +126,31 @@ contains
     call mem % closeCycle(ONE)
 
     ! Verify results
-    ! Power Vector
-    call mem % getResult(val, 1_longInt)
-    @assertEqual(3.8181818181_defReal ,val, TOL)
-
-    call mem % getResult(val, 2_longInt)
-    @assertEqual(1.272727273_defReal ,val, TOL)
-
-    call mem % getResult(val, 3_longInt)
-    @assertEqual(0.0_defReal ,val, TOL)
 
     ! Fission matrix
     ! 1 -> 1 Transition
-    call mem % getResult(val, 4_longInt)
-    @assertEqual(0.47619048_defReal ,val, TOL)
+    call mem % getResult(val, 1_longInt)
+    @assertEqual(1.0_defReal ,val, TOL)
 
     ! 1 -> 2 Transition
-    call mem % getResult(val, 5_longInt)
+    call mem % getResult(val, 2_longInt)
     @assertEqual(ZERO, val, TOL)
 
     ! 1 -> 3 Transition
-    call mem % getResult(val, 6_longInt)
+    call mem % getResult(val, 3_longInt)
     @assertEqual(ZERO, val, TOL)
 
     ! 2 -> 1 Transition
-    call mem % getResult(val, 7_longInt)
-    @assertEqual(1.57142857_defReal, val, TOL)
+    call mem % getResult(val, 4_longInt)
+    @assertEqual(1.1_defReal, val, TOL)
 
     ! 2 -> 2 Transition
-    call mem % getResult(val, 8_longInt)
-    @assertEqual(1.0_defReal, val, TOL)
-
+    call mem % getResult(val, 5_longInt)
+    @assertEqual(0.7_defReal, val, TOL)
 
     ! Clean
     call xsData % kill()
+    call pop % kill()
     deallocate(xsData)
   end subroutine testSimpleUseCase
 

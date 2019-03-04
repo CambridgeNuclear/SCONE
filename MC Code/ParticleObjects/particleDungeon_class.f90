@@ -2,7 +2,7 @@ module particleDungeon_class
 
   use numPrecision
   use genericProcedures,     only : fatalError, numToChar
-  use particle_class,        only : particle, phaseCoord
+  use particle_class,        only : particle, phaseCoord, particleState
   use RNG_class,             only : RNG
 
   implicit none
@@ -38,8 +38,8 @@ module particleDungeon_class
   !!
   !!   Array-like interface:
   !!     replace(particle, i) -> overwrite prisoner data at index i
-  !!     copy(particle, i)    -> copy prisoner at index i. Sets p % isDead = .false.
-  !!
+  !!     copy(particle, i)    -> copy prisoner at index i into particle. Sets p % isDead = .false.
+  !!     get(i)               -> function returns particle state at index i
   !!
   !!   Misc procedures:
   !!     isEmpty()         -> returns .true. if there are no more particles
@@ -73,6 +73,7 @@ module particleDungeon_class
     !! Array-like interface
     generic    :: replace => replace_particle, replace_phaseCoord
     procedure  :: copy
+    procedure  :: get
 
     !! Misc Procedures
     procedure  :: isEmpty
@@ -233,9 +234,9 @@ contains
   !! Gives fatalError if requested index is 0, -ve or above current population
   !!
   subroutine copy(self, p, idx)
-    class(particleDungeon), intent(inout) :: self
-    type(particle), intent(inout)         :: p
-    integer(shortInt), intent(in)         :: idx
+    class(particleDungeon), intent(in) :: self
+    type(particle), intent(inout)      :: p
+    integer(shortInt), intent(in)      :: idx
     character(100), parameter :: Here = 'copy (particleDungeon_class.f90)'
 
     ! Protect agoinst out-of-bounds acces
@@ -250,6 +251,36 @@ contains
 
   end subroutine copy
 
+  !!
+  !! Return particleState from a location inside the dungeon
+  !! Gives fatalError if requested index is 0, -ve or above current population
+  !! NOTE:
+  !!  Upon exit from this procedures matIdx, cellIdx and uniqueID in state have undefined values!
+  !!  Will be fixed soon by a marger of phaseCoods and particleState
+  !!
+  function get(self, idx) result(state)
+    class(particleDungeon), intent(in) :: self
+    integer(shortInt), intent(in)      :: idx
+    type(particleState)                :: state
+    character(100), parameter :: Here = 'get (particleDungeon_class.f90)'
+
+    ! Protect agoinst out-of-bounds acces
+    if( idx <= 0 .or. idx > self % pop ) then
+      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+                           ' with particle population of: '// numToChar(self % pop))
+    end if
+
+    ! Explicit copy. Will be changed soon
+    state % wgt  = self % prisoners(idx) % wgt
+    state % r    = self % prisoners(idx) % r
+    state % dir  = self % prisoners(idx) % dir
+    state % E    = self % prisoners(idx) % E
+    state % G    = self % prisoners(idx) % G
+    state % isMG = self % prisoners(idx) % isMG
+    state % type = self % prisoners(idx) % type
+    state % time = self % prisoners(idx) % time
+
+  end function get
 
   !!
   !! Returns .true. if dungeon is empty
