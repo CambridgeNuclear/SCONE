@@ -3,7 +3,7 @@ module simpleFMClerk_test
   use numPrecision
   use tallyResult_class,              only : tallyResult
   use simpleFMClerk_class,            only : simpleFMClerk
-  use particle_class,                 only : particle, phaseCoord
+  use particle_class,                 only : particle, particleState
   use particleDungeon_class,          only : particleDungeon
   use dictionary_class,               only : dictionary
   use scoreMemory_class,              only : scoreMemory
@@ -76,7 +76,7 @@ contains
     class(test_simpleFMClerk), intent(inout) :: this
     type(scoreMemory)                        :: mem
     type(particle)                           :: p
-    type(phaseCoord)                         :: phase
+    type(particleState)                      :: phase
     type(particleDungeon)                    :: pop
     type(testTransportNuclearData),pointer   :: xsData
     real(defReal)                            :: val
@@ -96,12 +96,14 @@ contains
     call pop % init(3)
 
     phase % wgt = ONE
-    !phase % matIdx = 2
+    phase % matIdx = 2
     call pop % detain(phase)
 
     phase % wgt = ONE
-    !phase % matIdx = 1
+    phase % matIdx = 1
     call pop % detain(phase)
+
+    call this % clerk % reportCycleStart(pop, mem)
 
     ! Score some events
 
@@ -130,7 +132,7 @@ contains
     ! Fission matrix
     ! 1 -> 1 Transition
     call mem % getResult(val, 1_longInt)
-    @assertEqual(1.0_defReal ,val, TOL)
+    @assertEqual(1.818181818181_defReal ,val, TOL)
 
     ! 1 -> 2 Transition
     call mem % getResult(val, 2_longInt)
@@ -142,11 +144,11 @@ contains
 
     ! 2 -> 1 Transition
     call mem % getResult(val, 4_longInt)
-    @assertEqual(1.1_defReal, val, TOL)
+    @assertEqual(2.0_defReal, val, TOL)
 
     ! 2 -> 2 Transition
     call mem % getResult(val, 5_longInt)
-    @assertEqual(0.7_defReal, val, TOL)
+    @assertEqual(1.27272727272727_defReal, val, TOL)
 
     ! Clean
     call xsData % kill()
