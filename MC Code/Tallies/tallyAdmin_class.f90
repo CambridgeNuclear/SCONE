@@ -6,7 +6,7 @@ module tallyAdmin_class
   use dictionary_class,       only : dictionary
   use dynArray_class,         only : dynIntArray
   use charMap_class,          only : charMap
-  use particle_class,         only : particle, phaseCoord
+  use particle_class,         only : particle
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk
   use tallyClerkSlot_class,   only : tallyClerkSlot

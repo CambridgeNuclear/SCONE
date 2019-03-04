@@ -2,7 +2,7 @@ module particleDungeon_class
 
   use numPrecision
   use genericProcedures,     only : fatalError, numToChar
-  use particle_class,        only : particle, phaseCoord, particleState
+  use particle_class,        only : particle, particleState
   use RNG_class,             only : RNG
 
   implicit none
@@ -59,7 +59,7 @@ module particleDungeon_class
     integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
 
     ! Storage space
-    type(phaseCoord), dimension(:), allocatable :: prisoners
+    type(particleState), dimension(:), allocatable :: prisoners
 
   contains
     !! Build procedures
@@ -67,11 +67,11 @@ module particleDungeon_class
     procedure  :: kill
 
     !! Stack-like interface
-    generic    :: detain  => detain_particle, detain_phaseCoord
+    generic    :: detain  => detain_particle, detain_particleState
     procedure  :: release
 
     !! Array-like interface
-    generic    :: replace => replace_particle, replace_phaseCoord
+    generic    :: replace => replace_particle, replace_particleState
     procedure  :: copy
     procedure  :: get
 
@@ -86,9 +86,9 @@ module particleDungeon_class
 
     ! Private procedures
     procedure, private :: detain_particle
-    procedure, private :: detain_phaseCoord
+    procedure, private :: detain_particleState
     procedure, private :: replace_particle
-    procedure, private :: replace_phaseCoord
+    procedure, private :: replace_particleState
   end type particleDungeon
 
 
@@ -148,10 +148,10 @@ contains
   !!
   !! Store phaseCoord in the dungeon
   !!
-  subroutine detain_phaseCoord(self,p_phase)
+  subroutine detain_particleState(self,p_state)
     class(particleDungeon), intent(inout) :: self
-    type(phaseCoord), intent(in)          :: p_phase
-    character(100), parameter             :: Here = 'detain_phaseCoord (particleDungeon_class.f90)'
+    type(particleState), intent(in)       :: p_state
+    character(100), parameter    :: Here = 'detain_particleState (particleDungeon_class.f90)'
 
     ! Increase population
     self % pop = self % pop +1
@@ -164,9 +164,9 @@ contains
     end if
 
     ! Load new particle
-    self % prisoners(self % pop) = p_phase
+    self % prisoners(self % pop) = p_state
 
-  end subroutine detain_phaseCoord
+  end subroutine detain_particleState
 
   !!
   !! Pop the particle from the top of the dungeon.
@@ -210,11 +210,11 @@ contains
   !!
   !! Replace data of particle prisoner at the index idx with phaseCoords
   !!
-  subroutine replace_phaseCoord(self, p, idx)
+  subroutine replace_particleState(self, p, idx)
     class(particleDungeon), intent(inout) :: self
-    type(phaseCoord), intent(in)          :: p
+    type(particleState), intent(in)       :: p
     integer(shortInt), intent(in)         :: idx
-    character(100),parameter :: Here = 'relplace_phaseCoord (particleDungeon_class.f90)'
+    character(100),parameter :: Here = 'relplace_particleState (particleDungeon_class.f90)'
 
     ! Protect agoinst out-of-bounds acces
     if( idx <= 0 .or. idx > self % pop ) then
@@ -225,7 +225,7 @@ contains
     ! Load new particle
     self % prisoners(idx) = p
 
-  end subroutine replace_phaseCoord
+  end subroutine replace_particleState
 
 
   !!
@@ -254,9 +254,6 @@ contains
   !!
   !! Return particleState from a location inside the dungeon
   !! Gives fatalError if requested index is 0, -ve or above current population
-  !! NOTE:
-  !!  Upon exit from this procedures matIdx, cellIdx and uniqueID in state have undefined values!
-  !!  Will be fixed soon by a marger of phaseCoods and particleState
   !!
   function get(self, idx) result(state)
     class(particleDungeon), intent(in) :: self
@@ -271,14 +268,7 @@ contains
     end if
 
     ! Explicit copy. Will be changed soon
-    state % wgt  = self % prisoners(idx) % wgt
-    state % r    = self % prisoners(idx) % r
-    state % dir  = self % prisoners(idx) % dir
-    state % E    = self % prisoners(idx) % E
-    state % G    = self % prisoners(idx) % G
-    state % isMG = self % prisoners(idx) % isMG
-    state % type = self % prisoners(idx) % type
-    state % time = self % prisoners(idx) % time
+    state = self % prisoners(idx)
 
   end function get
 

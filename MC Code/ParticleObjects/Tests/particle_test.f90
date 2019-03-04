@@ -1,6 +1,6 @@
 module particle_test
   use numPrecision
-  use particle_class, only : particle, phaseCoord, particleState, P_NEUTRON, P_PHOTON, verifyType
+  use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, verifyType
   use pFUnit_mod
 
   implicit none
@@ -326,13 +326,13 @@ contains
   end subroutine testRotationProcedures
 
   !!
-  !! Test that assignments between particle and phaseCoords are correct
+  !! Test that assignments between particle and particleState are correct
   !!
 @test
-  subroutine testPhaseCoordAssignments(this)
+  subroutine testParticleStateAssignments(this)
     class(test_particle), intent(inout) :: this
-    type(phaseCoord)                    :: mg_coord
-    type(phaseCoord)                    :: ce_coord
+    type(particleState)                 :: mg_coord
+    type(particleState)                 :: ce_coord
     type(particle)                      :: mg_p
     type(particle)                      :: ce_p
 
@@ -373,28 +373,31 @@ contains
     @assertTrue(mg_p % isMG, 'isMG flag for MG. Particle from PhaseCoord')
     @assertFalse(ce_p % isMG, 'isMG flag for CE. Particle from PhaseCoord')
 
-   ! Compare Type
-   @assertEqual(P_PHOTON, ce_p % type, 'Type of particle has changed')
-   @assertEqual(P_NEUTRON, mg_p % type, 'Type of particle has changed')
-  end subroutine testPhaseCoordAssignments
+    ! Compare Type
+    @assertEqual(P_PHOTON, ce_p % type, 'Type of particle has changed')
+    @assertEqual(P_NEUTRON, mg_p % type, 'Type of particle has changed')
 
-  !!
-  !! Test that assignment between particle and particleState is correct
-  !!   DOES NOT RETEST ASSIGNMENT OF phaseCoords parts
-  !!
-@test
-  subroutine testParticleStateAssignment(this)
-    class(test_particle), intent(inout) :: this
-    type(particleState)                 :: state
+    ! Verify material, cell IDXs and unique ID
+    @assertEqual(7, mg_coord % matIdx, 'Material index')
+    @assertEqual(8, mg_coord% cellIdx, 'Cell index')
+    @assertEqual(34, mg_coord % uniqueID, 'Unique ID')
+  end subroutine testParticleStateAssignments
 
-    state = this % p_MG
-
-    ! Verify
-    @assertEqual(7, state % matIdx, 'Material index')
-    @assertEqual(8, state % cellIdx, 'Cell index')
-    @assertEqual(34, state % uniqueID, 'Unique ID')
-
-  end subroutine testParticleStateAssignment
+!  !!
+!  !! Test that assignment between particle and particleState is correct
+!  !!   DOES NOT RETEST ASSIGNMENT OF phaseCoords parts
+!  !!
+!@test
+!  subroutine testParticleStateAssignment(this)
+!    class(test_particle), intent(inout) :: this
+!    type(particleState)                 :: state
+!
+!    state = this % p_MG
+!
+!    ! Verify
+!
+!
+!  end subroutine testParticleStateAssignment
 
   !!
   !! Test state saving procedures

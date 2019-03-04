@@ -4,7 +4,7 @@ module keffAnalogClerk_class
   use tallyCodes
   use dictionary_class,      only : dictionary
   use genericProcedures,     only : fatalError
-  use particle_class,        only : particle, phaseCoord
+  use particle_class,        only : particle
   use particleDungeon_class, only : particleDungeon
   use outputFile_class,      only : outputFile
 

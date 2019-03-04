@@ -1,7 +1,7 @@
 module particleDungeon_test
   use numPrecision
   use RNG_class,             only : RNG
-  use particle_class,        only : particle, phaseCoord
+  use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
   use pFUnit_mod
 
@@ -16,7 +16,7 @@ contains
 @Test
   subroutine testStackInterface()
     type(particle)        :: p
-    type(phaseCoord)      :: phase
+    type(particleState)   :: phase
     type(particleDungeon) :: dungeon
     integer(shortInt)     :: i
 
@@ -75,7 +75,7 @@ contains
 @Test
   subroutine testArrayInterface
     type(particle)        :: p
-    type(phaseCoord)      :: phase
+    type(particleState)   :: phase
     type(particleDungeon) :: dungeon
     integer(shortInt)     :: i
 

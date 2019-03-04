@@ -5,7 +5,7 @@ module keffImplicitClerk_class
   use endfConstants
   use genericProcedures,          only : fatalError, charCmp
   use dictionary_class,           only : dictionary
-  use particle_class,             only : particle, phaseCoord
+  use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
 

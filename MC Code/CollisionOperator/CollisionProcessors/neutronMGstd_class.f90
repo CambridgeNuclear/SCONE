@@ -7,7 +7,7 @@ module neutronMGstd_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, phaseCoord, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstract interface
@@ -117,7 +117,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(xsMacroSet_ptr)                 :: materialXS
-    type(phaseCoord)                     :: pTemp
+    type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: G_out, n, i
     real(defReal)                        :: wgt, w0, rand1, mu, phi

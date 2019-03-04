@@ -7,7 +7,7 @@ module neutronCEstd_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, phaseCoord, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -168,7 +168,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(xsMainSet_ptr)                  :: nuclideXss
-    type(phaseCoord)                     :: pTemp
+    type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: nu, wgt, w0, rand1, E_out, mu, phi
@@ -206,6 +206,7 @@ contains
         dir = rotateVector(dir, mu, phi)
 
         if (E_out > self % maxE) E_out = self % maxE
+
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
         pTemp       = p
 

@@ -123,8 +123,6 @@ contains
   !! Process start of the cycle
   !! Calculate starting weights in each bin
   !!
-  !! NOTE: Currently map cannot use matIdx, cellIdx or uniqueID
-  !!
   subroutine reportCycleStart(self, start, mem)
     class(simpleFMClerk), intent(inout) :: self
     class(particleDungeon), intent(in)  :: start

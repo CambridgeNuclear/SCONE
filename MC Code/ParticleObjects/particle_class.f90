@@ -25,7 +25,7 @@ module particle_class
   !!
   !! Particle compressed for storage
   !!
-  type, public :: phaseCoord
+  type, public :: particleState
     real(defReal)              :: wgt  = 0.0       ! Particle weight
     real(defReal),dimension(3) :: r    = 0.0       ! Global position
     real(defReal),dimension(3) :: dir  = 0.0       ! Global direction
@@ -34,30 +34,30 @@ module particle_class
     logical(defBool)           :: isMG = .false.   ! Is neutron multi-group
     integer(shortInt)          :: type = P_NEUTRON ! Particle physical type
     real(defReal)              :: time = 0.0       ! Particle time position
+    integer(shortInt)          :: matIdx   = -1   ! Material index where particle is
+    integer(shortInt)          :: cellIdx  = -1   ! Cell idx at the lowest coord level
+    integer(shortInt)          :: uniqueID = -1   ! Unique id at the lowest coord level
   contains
     generic    :: assignment(=)  => fromParticle
-    generic    :: operator(.eq.) => equal_phaseCoord
-    procedure  :: display        => display_phaseCoord
-    procedure  :: fromParticle   => phaseCoord_fromParticle
-
-    ! Private procedures
-    procedure,private :: equal_phaseCoord
-  end type
-
-  !!
-  !! Archived state of the particle used for tallying transitions, fission matrixes etc.
-  !!
-  type, public,extends(phaseCoord) :: particleState
-    integer(shortInt)  :: matIdx   = -1   ! Material index where particle is
-    integer(shortInt)  :: cellIdx  = -1   ! Cell idx at the lowest coord level
-    integer(shortInt)  :: uniqueID = -1   ! Unique id at the lowest coord level
-  contains
     generic    :: operator(.eq.) => equal_particleState
-    procedure :: fromParticle    => particleState_fromParticle
+    procedure  :: display        => display_particleState
+    procedure  :: fromParticle   => particleState_fromParticle
 
     ! Private procedures
     procedure,private :: equal_particleState
-  end type
+  end type particleState
+
+!  !!
+!  !! Archived state of the particle used for tallying transitions, fission matrixes etc.
+!  !!
+!  type, public,extends(phaseCoord) ::
+!  contains
+!    generic    :: operator(.eq.) => equal_particleState
+!    procedure :: fromParticle    => particleState_fromParticle
+!
+!    ! Private procedures
+!    procedure,private :: equal_particleState
+!  end type
 
   !!
   !! This type represents particle
@@ -105,7 +105,7 @@ module particle_class
   contains
      ! Build procedures
     generic              :: build => buildCE, buildMG
-    generic              :: assignment(=) => particle_fromPhaseCoord
+    generic              :: assignment(=) => particle_fromParticleState
 
     ! Inquiry about coordinates
     procedure            :: rLocal
@@ -139,7 +139,7 @@ module particle_class
     !! Private - Implementation specific procedures
     procedure,private                   :: buildCE
     procedure,private                   :: buildMG
-    procedure,non_overridable,private   :: particle_fromPhaseCoord
+    procedure,non_overridable,private   :: particle_fromParticleState
 
   end type particle
 
@@ -236,9 +236,9 @@ contains
   !!
   !! Copy phase coordinates into particle
   !!
-  subroutine particle_fromPhaseCoord(LHS,RHS)
-    class(particle), intent(inout)  :: LHS
-    type(phaseCoord), intent(in)    :: RHS
+  subroutine particle_fromParticleState(LHS,RHS)
+    class(particle), intent(inout)   :: LHS
+    type(particleState), intent(in)  :: RHS
 
     LHS % w                     = RHS % wgt
     LHS % w0                    = RHS % wgt
@@ -251,7 +251,7 @@ contains
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
 
-  end subroutine particle_fromPhaseCoord
+  end subroutine particle_fromParticleState
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle coordinates inquiry procedures
@@ -517,7 +517,7 @@ contains
   !!
   subroutine display_particle(self)
     class(particle), intent(in) :: self
-    type(phaseCoord)            :: state
+    type(particleState)         :: state
 
     state = self
     call state % display()
@@ -551,9 +551,9 @@ contains
   !!
   !! Copy particle into phase coordinates
   !!
-  subroutine phaseCoord_fromParticle(LHS,RHS)
-    class(phaseCoord), intent(out)  :: LHS
-    class(particle), intent(in)      :: RHS
+  subroutine particleState_fromParticle(LHS,RHS)
+    class(particleState), intent(out)  :: LHS
+    class(particle), intent(in)        :: RHS
 
     LHS % wgt  = RHS % w
     LHS % r    = RHS % rGlobal()
@@ -564,15 +564,20 @@ contains
     LHS % type = RHS % type
     LHS % time = RHS % time
 
-  end subroutine phaseCoord_fromParticle
+    ! Save all indexes
+    LHS % matIdx   = RHS % coords % matIdx
+    LHS % uniqueID = RHS % coords % uniqueId()
+    LHS % cellIdx  = RHS % coords % cell()
+
+  end subroutine particleState_fromParticle
 
   !!
   !! Define equal operation on phase coordinates
   !!  Phase coords are equal if all their components are the same
   !!
-  function equal_phaseCoord(LHS,RHS) result(isEqual)
-    class(phaseCoord), intent(in) :: LHS
-    class(phaseCoord), intent(in) :: RHS
+  function equal_particleState(LHS,RHS) result(isEqual)
+    class(particleState), intent(in) :: LHS
+    class(particleState), intent(in) :: RHS
     logical(defBool)              :: isEqual
 
     isEqual = .true.
@@ -582,58 +587,51 @@ contains
     isEqual = isEqual .and. LHS % time == RHS % time
     isEqual = isEqual .and. LHS % isMG .eqv. RHS % isMG
     isEqual = isEqual .and. LHS % type == RHS % type
+    isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
+    isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
+    isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
     else
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
-  end function equal_phaseCoord
-
-  !!
-  !! Copy particle state into archive object
-  !!
-  subroutine particleState_fromParticle(LHS,RHS)
-    class(particleState), intent(out) :: LHS
-    class(particle), intent(in)       :: RHS
-
-    ! Call superclass procedure
-    call phaseCoord_fromParticle(LHS,RHS)
-
-    ! Save all indexes
-    LHS % matIdx   = RHS % coords % matIdx
-    LHS % uniqueID = RHS % coords % uniqueId()
-    LHS % cellIdx  = RHS % coords % cell()
-
-  end subroutine particleState_fromParticle
-
-  !!
-  !! Extend equality definition to particle state
-  !!
-  function equal_particleState(LHS,RHS) result(isEqual)
-    class(particleState), intent(in) :: LHS
-    type(particleState), intent(in)  :: RHS
-    logical(defBool)                 :: isEqual
-
-    ! Call superclass procedure
-    isEqual = equal_phaseCoord(LHS,RHS)
-
-    ! Check subclass components for equality
-    isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
-    isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
-    isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
-
   end function equal_particleState
+
+!  !!
+!  !! Copy particle state into archive object
+!  !!
+!  subroutine particleState_fromParticle(LHS,RHS)
+!    class(particleState), intent(out) :: LHS
+!    class(particle), intent(in)       :: RHS
+!
+!    ! Call superclass procedure
+!    call phaseCoord_fromParticle(LHS,RHS)
+!
+!  end subroutine particleState_fromParticle
+
+!  !!
+!  !! Extend equality definition to particle state
+!  !!
+!  function equal_particleState(LHS,RHS) result(isEqual)
+!    class(particleState), intent(in) :: LHS
+!    type(particleState), intent(in)  :: RHS
+!    logical(defBool)                 :: isEqual
+!
+!    ! Call superclass procedure
+!    isEqual = equal_phaseCoord(LHS,RHS)
+!
+!  end function equal_particleState
 
   !!
   !! Prints state of the phaseCoord
   !!
-  subroutine display_phaseCoord(self)
-    class(phaseCoord), intent(in) :: self
+  subroutine display_particleState(self)
+    class(particleState), intent(in) :: self
 
     print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
 
-  end subroutine display_phaseCoord
+  end subroutine display_particleState
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Misc Procedures

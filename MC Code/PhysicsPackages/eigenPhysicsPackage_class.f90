@@ -8,7 +8,7 @@ module eigenPhysicsPackage_class
   use outputFile_class,               only : outputFile
 
   ! Particle classes and Random number generator
-  use particle_class,                 only : particle, phaseCoord, P_NEUTRON
+  use particle_class,                 only : particle, P_NEUTRON
   use particleDungeon_class,          only : particleDungeon
   use RNG_class,                      only : RNG
 

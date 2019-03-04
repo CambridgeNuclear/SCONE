@@ -5,7 +5,7 @@ module collisionProcessor_inter
   use genericProcedures,     only : fatalError, numToChar
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
-  use particle_class,        only : particle, phaseCoord
+  use particle_class,        only : particle
   use particleDungeon_class, only : particleDungeon
 
   ! Nuclear Data interface

@@ -3,7 +3,7 @@ module tallyClerkSlot_class
   use numPrecision
   use genericProcedures,      only : fatalError
   use dictionary_class,       only : dictionary
-  use particle_class,         only : particle, phaseCoord
+  use particle_class,         only : particle
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk, setMemAddress_super => setMemAddress, &
                                                 setName_super       => setName

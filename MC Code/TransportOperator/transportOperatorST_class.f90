@@ -6,7 +6,7 @@ module transportOperatorST_class
   use universalVariables
 
   use genericProcedures,          only : fatalError
-  use particle_class,             only : particle, phaseCoord
+  use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use RNG_class,                  only : RNG
