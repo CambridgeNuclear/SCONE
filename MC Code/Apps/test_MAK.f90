@@ -1,39 +1,21 @@
 program test
   
   use numPrecision
-  use nuclearData_inter,          only : nuclearData
-  use transportNuclearData_inter, only : transportNuclearData
-
-  use testTransportNuclearData_class,      only : testTransportNuclearData
-  use byNucMT_class,              only : byNucMT
+  use RNG_class, only : RNG
 
 
   implicit none
-  class(nuclearData),pointer           :: xsDat   => null()
-  class(transportNuclearData),pointer  :: transND => null()
+  type(RNG)         :: rand1
+  integer(shortInt) :: i
 
-  type(testTransportNuclearData),pointer :: target1
-  type(byNucMT),pointer         :: target2
+  call rand1 % init(658758_longInt)
 
-
-  allocate(target1)
-  allocate(target2)
-
- ! call ptr(target1, xsDat)
-
-
-
-
-contains
-
-  subroutine ptr(a1, a2)
-    class(nuclearData),pointer :: a1
-    class(nuclearData),pointer :: a2
-
-    print *, extends_type_of(a2, a1)
-    a1 => a2
-
-  end subroutine
+  print '(B64)', huge(1_8)
+  print '(B64)', ibclr(huge(0_8),63)
+!  do i=1,1000
+!    print *, rand1 % get()
+!
+!  end do
 
 
 end program test

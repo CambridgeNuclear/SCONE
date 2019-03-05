@@ -120,8 +120,8 @@ endfunction(add_unit_tests)
 # COLLECT ALL SOURCE AND TEST FILES 
 
 # Include Nested Directories  
+add_subdirectory(RandomNumbers) 
 add_subdirectory(SharedModules)    
-add_subdirectory(RandomNumbers)  
 add_subdirectory(VTK)  
 add_subdirectory(ParticleObjects)  
 add_subdirectory(NamedGrids)
@@ -181,6 +181,7 @@ add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
 #add_executable(eigenvalue.out     ./Apps/eigenvalue.f90        ${SRCS})
 #add_executable(surfTests.f90       ./Apps/surfTests.f90      ${SRCS})
 #add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${SRCS})
+#add_executable(rand.out        ./Apps/produceRNG.f90 ${SRCS})
 add_executable(scone.out       ./Apps/scone.f90      ${SRCS})
 
 ###############################################################################
