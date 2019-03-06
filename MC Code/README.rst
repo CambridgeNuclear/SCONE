@@ -2,7 +2,7 @@
 SCONE
 *****
 
-SCONE (**S**\ tochastic **C**\ alculations **O**\ f **N**\ eutron Transport **E**\ quation) 
+SCONE (**S**\ tochastic **C**\ alculator **O**\ f **N**\ eutron Transport **E**\ quation) 
 is an attempt to create an Object-Oriented framework for Monte Carlo particle transport 
 calculations. Its primary goal is to support neutron transport problems in nuclear reactor 
 physics. Object-oriented structure was selected to allow for better modularity and 
