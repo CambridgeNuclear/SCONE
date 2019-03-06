@@ -2,7 +2,7 @@ module simpleFMClerk_test
 
   use numPrecision
   use tallyResult_class,              only : tallyResult
-  use simpleFMClerk_class,            only : simpleFMClerk
+  use simpleFMClerk_class,            only : simpleFMClerk, FMResult
   use particle_class,                 only : particle, particleState
   use particleDungeon_class,          only : particleDungeon
   use dictionary_class,               only : dictionary
@@ -80,6 +80,7 @@ contains
     type(particleDungeon)                    :: pop
     type(testTransportNuclearData),pointer   :: xsData
     real(defReal)                            :: val
+    class(tallyResult), allocatable          :: res
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! Create score memory
@@ -149,6 +150,58 @@ contains
     ! 2 -> 2 Transition
     call mem % getResult(val, 5_longInt)
     @assertEqual(1.27272727272727_defReal, val, TOL)
+
+
+    ! Verify run-time result
+    call this % clerk % getResult(res, mem)
+
+    select type(res)
+      class is (FMresult)
+        @assertEqual(3, res % N)
+
+        ! 1 -> 1 Transition
+        @assertEqual(1.818181818181_defReal ,res % FM(1,1,1) , TOL)
+
+        ! 1 -> 2 Transition
+        @assertEqual(ZERO, res  % FM(2,1,1), TOL)
+
+        ! 1 -> 3 Transition
+        @assertEqual(ZERO, res % FM(3,1,1), TOL)
+
+        ! 2 -> 1 Transition
+        @assertEqual(2.0_defReal, res % FM(1,2,1), TOL)
+
+        ! 2 -> 2 Transition
+        @assertEqual(1.27272727272727_defReal, res % FM(2,2,1), TOL)
+
+        ! Clean all entries
+        res % FM = ZERO
+
+      class default
+        @assertEqual(1,2)
+    end select
+
+    ! Get result again -> verify correcness of reallocation logic by code coverage
+    call this % clerk % getResult(res, mem)
+    select type(res)
+      class is (FMresult)
+        ! 1 -> 1 Transition
+        @assertEqual(1.818181818181_defReal ,res % FM(1,1,1) , TOL)
+
+        ! Change size of matrix
+        res % N = 2
+        deallocate(res % FM)
+        allocate(res % FM(2,2,1))
+
+    end select
+    ! Get result yet again. This time with wrong size
+    call this % clerk % getResult(res, mem)
+
+    select type(res)
+      class is (FMresult)
+        @assertEqual(3, res % N)
+        @assertEqual([3,3,2], shape(res % FM))
+    end select
 
     ! Clean
     call xsData % kill()

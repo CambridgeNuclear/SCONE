@@ -178,7 +178,7 @@ contains
 
     ! Can translate jump backwards to jump forwards due to periodicity of RNG
     ! For our settings period is M
-    if(k < 0) k = k + M-1
+    if(k < 0) k = k + M
 
     ! Unnecessary line. Sign bit of k is already 0
     k = iand(k + M, bitMask)

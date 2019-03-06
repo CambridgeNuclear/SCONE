@@ -12,6 +12,7 @@ module simpleFMClerk_class
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk
+  use tallyResult_class,          only : tallyResult
 
   ! Nuclear Data
   use transportNuclearData_inter, only : transportNuclearData
@@ -62,6 +63,9 @@ module simpleFMClerk_class
     procedure  :: reportInColl
     procedure  :: reportCycleEnd
 
+    ! Overwrite default run-time result procedure
+    procedure  :: getResult
+
     ! Output procedures
     procedure  :: display
     procedure  :: print
@@ -69,6 +73,18 @@ module simpleFMClerk_class
     ! Deconstructor
     procedure  :: kill
   end type simpleFMClerk
+
+  !!
+  !! Fission matrix result class
+  !!   Stored in column first order
+  !!    dim1 -> target bin
+  !!    dim2 -> orgin bin
+  !!    dim3 -> 1 is values; 2 is STDs
+  !!
+  type,public, extends( tallyResult) :: FMresult
+    integer(shortInt)                           :: N  = 0 ! Size of FM
+    real(defReal), dimension(:,:,:),allocatable :: FM  ! FM proper
+  end type FMResult
 
 contains
 
@@ -215,6 +231,64 @@ contains
     end if
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Return result from the clerk for interaction with Physics Package
+  !!  Returns FMresult defined in this module
+  !!   If res is already allocated to a FM of fitting size it reuses already allocated space
+  !!    This should improve performance when updating estimate of FM each cycle
+  !!
+  pure subroutine getResult(self, res, mem)
+    class(simpleFMClerk), intent(in)               :: self
+    class(tallyResult),allocatable, intent(inout)  :: res
+    type(scoreMemory), intent(in)                  :: mem
+    integer(shortInt)                              :: i, j
+    integer(longInt)                               :: addr
+    real(defReal)                                  :: val, STD
+
+    ! Allocate result to FMresult
+    ! Do not deallocate if already allocated to FMresult
+    ! Its not to nice -> clean up
+    if(allocated(res)) then
+      select type(res)
+        class is (FMresult)
+          ! Do nothing
+
+        class default ! Reallocate
+          deallocate(res)
+          allocate( FMresult :: res)
+     end select
+
+    else
+      allocate( FMresult :: res)
+
+    end if
+
+    ! Load data inti the FM
+    select type(res)
+      class is(FMresult)
+        ! Check size and reallocate space if needed
+        if( any(shape(res % FM) /= [self % N, self % N, 2])) then
+          if(allocated(res % FM)) deallocate(res % FM)
+          allocate(res % FM(self % N, self % N, 2))
+        end if
+
+        ! Set size of the FM
+        res % N = self % N
+
+        ! Load entries
+        addr = self % getMemAddress() - 1
+        do i = 1,self % N
+          do j=1, self % N
+            addr = addr + 1
+            call mem % getResult(val, STD, addr)
+            res % FM(j, i, 1) = val
+            res % FM(j, i, 2) = STD
+          end do
+        end do
+
+    end select
+  end subroutine getResult
 
   !!
   !! Display convergance progress on the console
