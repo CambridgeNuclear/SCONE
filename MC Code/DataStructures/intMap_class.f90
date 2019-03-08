@@ -192,6 +192,9 @@ contains
 
     call fatalError(Here,'Target key: '// numToChar(key) // ' was not found')
 
+    ! Avoid compier warning
+    val = huge(val)
+
   end function get
 
   !!

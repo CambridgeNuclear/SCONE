@@ -323,6 +323,7 @@ contains
 
       case default
         call fatalError(Here,'Unrecoginsed MT number')
+        nu = ZERO
 
     end select
 

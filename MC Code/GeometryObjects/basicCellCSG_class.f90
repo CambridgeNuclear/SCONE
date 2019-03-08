@@ -231,6 +231,7 @@ contains
 
       case default
         call fatalError(Here,'Target of plot must be material or uniqueID')
+        flag = -17 ! Avoid warning
     end select
 
     ! Paint the color matrix (loop over leftmost index first for better memory efficiency

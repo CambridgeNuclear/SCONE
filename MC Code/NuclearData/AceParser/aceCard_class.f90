@@ -174,11 +174,8 @@ contains
     character(*), intent(in)   :: Where
     integer(shortInt)          :: i
 
-    if ( isInteger(r) ) then
-      i = int(r,shortInt)
-    else
-      call fatalError(Where,' Tried to read real into integer variable')
-    end if
+    if (.not.isInteger(r)) call fatalError(Where,' Tried to read real into integer variable')
+    i = int(r,shortInt)
 
   end function real2Int_scalar
 
@@ -237,14 +234,13 @@ contains
         ! Set pointer to approperiate place in XSS
         ptr = self % JXS(1) + 3*N
 
-
       case('heatingNumber')
         ! Set pointer to approperiate place in XSS
         ptr = self % JXS(1) + 4*N
 
       case default
         call fatalError(Here,'Unrecognised request string: |' // request //'|')
-
+        ptr = 0
       end select
 
       ! Return data
@@ -598,13 +594,8 @@ contains
     integer(shortInt)          :: IE
     character(100), parameter  :: Here='firstIdxFiss (aceCard_class.f90)'
 
-    if(self % isFiss) then
-      IE = self % fissIE
-
-    else
-      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
-
-    end if
+    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    IE = self % fissIE
 
   end function firstIdxFiss
 
@@ -617,13 +608,8 @@ contains
     integer(shortInt)          :: N
     character(100), parameter  :: Here='numXsPointsFiss (aceCard_class.f90)'
 
-    if(self % isFiss) then
-      N = self % fissNE
-
-    else
-      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
-
-    end if
+    if(.not.self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    N = self % fissNE
 
   end function numXsPointsFiss
 
@@ -675,14 +661,8 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFiss) then
-      doesIt = (self % promptNUp /= unINIT)
-
-    else
-      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
-
-    end if
-
+    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    doesIt = (self % promptNUp /= unINIT)
 
   end function hasNuPrompt
 
@@ -696,14 +676,8 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFiss) then
-      doesIt = (self % totalNUp /= unINIT)
-
-    else
-      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
-
-    end if
-
+    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    doesIt = (self % totalNUp /= unINIT)
 
   end function hasNuTotal
 
@@ -716,14 +690,8 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(self % isFiss) then
-      doesIt = (self % delayNUp /= unINIT)
-
-    else
-      call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
-
-    end if
-
+    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    doesIt = (self % delayNUp /= unINIT)
 
   end function hasNuDelayed
 

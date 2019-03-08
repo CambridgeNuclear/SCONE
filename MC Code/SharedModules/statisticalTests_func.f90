@@ -37,6 +37,7 @@ contains
     ! Catch input with an empty array of samples
     if(size(sample1) == 0 .or. size(sample2) == 0) then
       D = 1
+      p = ONE
       return
     end if
 

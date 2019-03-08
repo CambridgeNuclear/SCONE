@@ -94,6 +94,7 @@ contains
       case(0)
         ! r < 0
         call fatalError(Here, 'Provided number to invert is -ve')
+        MT = huge(MT)
 
       case default
         ! r > 1 or wrong total xs
@@ -104,6 +105,7 @@ contains
           call fatalError(Here,'Total cross section must be too large')
 
         end if
+        MT = huge(MT)
 
     end select
   end function invert
@@ -126,6 +128,7 @@ contains
 
       case(macroEscatter)
         call fatalError(Here,'Current design of data does not provide macroscopic Elastic scatter')
+        xs = ZERO
 
       case(macroFission)
         xs = self % fissionXS
@@ -138,6 +141,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown macroscopic MT number: '//numToChar(MT))
+        xs = ZERO
 
     end select
   end function xsOf

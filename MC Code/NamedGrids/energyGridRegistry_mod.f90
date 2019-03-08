@@ -119,7 +119,7 @@ contains
   subroutine define_energyGrid(name, dict)
     character(nameLen), intent(in)            :: name
     class(dictionary), intent(in)             :: dict
-    integer(shortInt)                         :: idx, N, N_new
+    integer(shortInt)                         :: N, N_new
     type(energyGrid),dimension(:),allocatable :: tempGrid
     character(100), parameter :: Here = 'define_energyGrid (energyGridRegistry_mod.f90)'
 

@@ -71,6 +71,7 @@ contains
 
       case default
         call fatalError(Here,'Provided MT number does not match any reaction in the set')
+        xs = ZERO
 
     end select
     
@@ -118,7 +119,7 @@ contains
       case(0)
         ! r < 0
         call fatalError(Here, 'Provided number to invert is -ve')
-
+        MT = huge(MT)
       case default
         ! r > 1 or wrong total xs
         if (r > 1.0_defReal) then
@@ -128,6 +129,7 @@ contains
           call fatalError(Here,'Total cross section must be too large')
 
         end if
+        MT = huge(MT)
     end select
 
   end function invert

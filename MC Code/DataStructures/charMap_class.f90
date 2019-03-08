@@ -217,6 +217,9 @@ contains
 
     call fatalError(Here,'Target key: '// trim(key) // ' was not found')
 
+    ! Avoid compiler warning
+    val = 0
+
   end function get
 
   !!

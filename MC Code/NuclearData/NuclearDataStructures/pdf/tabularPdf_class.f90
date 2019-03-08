@@ -82,7 +82,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown interpolation flag')
-
+        x = -ONE
     end select
 
     ! Return the sampled index
@@ -130,6 +130,7 @@ contains
                             x                 )
       case default
         call fatalError(Here,'Unknown interpolation flag')
+        prob = -ONE
 
     end select
 

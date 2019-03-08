@@ -6,7 +6,6 @@ program test
 
   implicit none
   type(RNG)         :: rand1
-  integer(shortInt) :: i
 
   call rand1 % init(658758_longInt)
 

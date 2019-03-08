@@ -103,7 +103,8 @@ contains
     end do
 
     call fatalError(Here,'Scattering failed to invert')
-
+    ! Avoid warning
+    MT = huge(MT)
   end function invertScatter
 
   !!
@@ -206,6 +207,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown MT number')
+        nu = ZERO
 
     end select
 

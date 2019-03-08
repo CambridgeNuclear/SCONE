@@ -170,7 +170,7 @@ contains
 
       class default
         call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
-
+        flx = ZERO
     end select
 
 

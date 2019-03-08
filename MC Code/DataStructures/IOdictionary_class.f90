@@ -533,6 +533,8 @@ contains
     ! Identification failed for some reason. Give error
     call fatalError(Here,'Procedure failed to identify data entery type. Sorry...')
 
+    ! AVoid compier warning
+    dataType = huge(word)
   end function identifyData
 
 

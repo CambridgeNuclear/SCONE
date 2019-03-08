@@ -103,6 +103,7 @@ contains
     class(RNG), intent(inout)          :: rand
     real(defReal)                      :: G1, G2, r1, r2, r3, r4, r5, r6, Emax
     type(maxwellEnergyPdf)             :: maxwellPdf
+    character(100),parameter :: Here ='smaple (nBodyPhaseSpace_class.f90)'
 
     ! Sample mu
     mu = TWO * rand % get() - ONE
@@ -133,6 +134,9 @@ contains
         r6 = rand % get()
         G2 = -log(r1*r2*r3*r4) - cos(TWO*PI*r5) * cos(HALF*PI*r5) * log(r6)
 
+      case default ! Should never happen
+        call fatalError(Here,'Wrong number of 2nd-ary particles on run-time')
+        G2 = ZERO
     end select
 
     ! Calculate maximum energy
@@ -153,6 +157,7 @@ contains
     real(defReal)                      :: prob
     real(defReal)                      :: Emax
     real(defReal)                      :: C
+    character(100),parameter :: Here ='probabilityOf (nBodyPhaseSpace_class.f90)'
 
     ! Calculate maximum energy
     Emax = (self % Ap - ONE) / self % Ap * (E_in * self % A / (self % A + ONE) + self % Q)
@@ -170,6 +175,9 @@ contains
         C = 256.0/(14.0 * PI * Emax**5)
         prob = C * sqrt(E_out) * sqrt((Emax - E_out)**7)
 
+      case default ! Should never happen
+        call fatalError(Here,'Wrong number of 2nd-ary particles on run-time')
+        prob = ZERO
     end select
 
     ! Multiply by uniform probability of mu

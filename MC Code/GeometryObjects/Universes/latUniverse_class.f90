@@ -344,6 +344,9 @@ contains
       ! Find minimum distance and direction
       dist = INFINITY
 
+      ! Avoid compier warning
+      xDir = -7
+
       do i=1,maxDim
         ! Calculate distance to the boundary
         if ( u(i) /= ZERO) then

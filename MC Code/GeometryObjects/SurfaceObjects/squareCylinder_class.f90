@@ -342,6 +342,10 @@ contains
     t_near = -huge(t_near)
     t_far  =  huge(t_far)
 
+    ! Avoid warning. Initialise near and far axis indicies
+    near_ax = -7
+    far_ax = -7
+
     ! Intersection with 1st direction
     di = self % dirs(1)
     if (u % v(di) /= ZERO) then

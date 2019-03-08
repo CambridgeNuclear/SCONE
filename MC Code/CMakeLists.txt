@@ -25,7 +25,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 
 
 # Set core Fortran Compiler flags -> Will be used in all files 
-set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-surprising -Wno-unused-dummy-argument")
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Werror -Wall -Wno-surprising -Wno-unused-dummy-argument")
 
 # Add extra flags to global  
 if(COVERAGE)

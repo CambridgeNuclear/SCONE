@@ -122,6 +122,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown MT number')
+        isIt = .false.
 
     end select
 
@@ -151,6 +152,7 @@ contains
 
       case default
         call fatalError(Here,'Unknown MT number')
+        nu = ZERO
 
     end select
 

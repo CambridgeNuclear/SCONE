@@ -67,7 +67,7 @@ contains
     end do
 
     call fatalError(Here,'Provided number to invert cdf must be > 1 ')
-
+    mask = huge(mask)
   end function invert
 
   !!

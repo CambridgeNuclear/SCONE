@@ -152,12 +152,15 @@ contains
   !!
   !! Return the entire dynamic array as a static array
   !!
-  pure function expose_shortInt(self) result(res)
+  function expose_shortInt(self) result(res)
     class(dynIntArray), intent(in)              :: self
     integer(shortInt), dimension(self % mySize) :: res
+    character(100), parameter :: Here = 'expose_shortInt (dynArray_Class.f90)'
 
     if (allocated(self % array)) then
       res = self % array(1: self % mySize)
+    else
+      call fatalError(Here,'Array is not allocated')
     end if
 
   end function expose_shortInt
@@ -165,13 +168,17 @@ contains
   !!
   !! Return the entire dynamic array as a static array
   !!
-  pure function get_shortInt(self, idx) result(res)
+  function get_shortInt(self, idx) result(res)
     class(dynIntArray), intent(in)              :: self
     integer(shortInt), intent(in)               :: idx
     integer(shortInt)                           :: res
+    character(100), parameter :: Here = 'expose_shortInt (dynArray_Class.f90)'
 
     if (allocated(self % array)) then
       res = self % array(idx)
+    else
+      call fatalError(Here,'Array is not allocated')
+      res = ZERO
     end if
 
   end function get_shortInt
