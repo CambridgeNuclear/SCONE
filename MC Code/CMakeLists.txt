@@ -8,6 +8,10 @@ option(LTO "Enables link-time optimisation" ON)
 option(COVERAGE "Collect Coverage Info" OFF) 
  
 set(CMAKE_VERBOSE_MAKEFILE off)
+
+# Include local cmake modules. TODO: Test on WINDOWS!!! 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake") 
+
 ###############################################################################
 # CONFIGURE FORTRAN COMPILER 
 
@@ -16,13 +20,13 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 
 # Add compilers flags
 #
-# -Wno-surprising flag is enabled to suppress a buggy warning about final subroutine 
-# It should be periodicly removed to see if other surprising warining are not raised 
-# This buggy warning should be repaired in GCC 7.0 
+# -Wno-surprising flag is enabled to suppress a buggy warning about final
+# subroutine it should be periodicly removed to see if other surprising 
+# warining are not raised This buggy warning should be repaired in GCC 7.0 
 #
-# -flto (Link Time Optimisation) is SUPER important for performance. Allows to inline function 
-#  across diffrent source files (and modules)  
-
+# -flto (Link Time Optimisation) is SUPER important for performance. 
+#Allows to inline function across diffrent source files (and modules)  
+#
 
 # Set core Fortran Compiler flags -> Will be used in all files 
 set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Werror -Wall -Wno-surprising -Wno-unused-dummy-argument")
@@ -41,90 +45,21 @@ endif()
 # CHECK FOR DEPENDENCIES 
 
 # Dependencies for BUILD_TESTS
-
-
 if (BUILD_TESTS)
     # FIND PYTHON INTERPRETER 
     # Sets PYTHONINTERP_FOUND & PYTHON_EXECUTABLE
-    find_package(PythonInterp)
+    find_package(PythonInterp REQUIRED)
 
-    if(NOT PYTHONINTERP_FOUND) 
-      MESSAGE(FATAL_ERROR "pFUnit Requires Python to be present") 
-    endif()    
-
-    # BUILD AND INSTALL pFUnit
-    # Check if PFUNIT_INSTALL enviromental variable exists. If it does it means user uses her/his 
-    # installation of pFUnit. If enviromental variable does not exists download and install pFUnit from 
-    # SourceForge.
-    #
-    if(DEFINED ENV{PFUNIT_INSTALL}) 
-        set(PFUNIT_DIR $ENV{PFUNIT_INSTALL})
-        add_library( pFUnit STATIC IMPORTED ) 
-        set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_DIR}/lib/libpfunit.a)        
-    else()
-        MESSAGE(FATAL_ERROR "PFUNIT_INSTALL DIRECTORY MUST BE SET")     
-        include(ExternalProject)  
-
-       # SET CMAKE ARGUMENTS FOR pFUnit Compilation with CMAKE
-        set(pFUnit_CMAKE_ARGS
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/external/pFUnit
-            -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-            )
-
-        ExternalProject_Add(pFUnit 
-            PREFIX          ${PROJECT_BINARY_DIR}/external/pFUnit
-            GIT_REPOSITORY  https://git.code.sf.net/p/pfunit/code 
-            GIT_TAG         master
-            CMAKE_ARGS      ${pFUnit_CMAKE_ARGS}
-            )
-
-        # Point to directory with pFUnit MOD files and store pFUnit root directory
-        set(PFUNIT_DIR ${PROJECT_BINARY_DIR}/external/pFUnit)
-    endif()
+    find_package(PFUNIT REQUIRED) 
+    add_library(pFUnit STATIC IMPORTED)
+    set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_LIBRARIES}) 
+      
 endif()
-###############################################################################
-# DEFINE FUNCTION TO COLLECT ALL SOURCE FILES
-function(add_sources)
-  get_property(is_defined GLOBAL PROPERTY SRCS_LIST DEFINED)
-  if(NOT is_defined)
-    define_property(GLOBAL PROPERTY SRCS_LIST
-      BRIEF_DOCS "List of source files"
-      FULL_DOCS "List of source files to be compiled in one library")
-  endif()
-  # make absolute paths
-  set(SRCS)
-  foreach(s IN LISTS ARGN)
-    if(NOT IS_ABSOLUTE "${s}")
-      get_filename_component(s "${s}" ABSOLUTE)
-    endif()
-    list(APPEND SRCS "${s}")
-  endforeach()
-  # append to global list
-  set_property(GLOBAL APPEND PROPERTY SRCS_LIST "${SRCS}")  
-endfunction(add_sources)
 
 ###############################################################################
-# DEFINE FUNCTION TO COLLETC ALL UNIT TEST SOURCE FILES 
-function(add_unit_tests) 
-  get_property(is_defined GLOBAL PROPERTY UNIT_TEST_LIST DEFINED)
-  if(NOT is_defined)
-    define_property(GLOBAL PROPERTY UNIT_TEST_LIST
-      BRIEF_DOCS "List of all test files" 
-      FULL_DOCS "List of all pFUnit test suite files for preprocessing & compilation") 
-  endif()
-  # Make Absolute Paths 
-  set(TESTS)
-  foreach(t IN LISTS ARGN)
-    if(NOT IS_ABSOLUTE "${t}")
-      get_filename_component(t "${t}" ABSOLUTE)
-    endif()
-    list(APPEND TESTS "${t}")
-  endforeach()
-  # Append to Global List 
-  set_property(GLOBAL APPEND PROPERTY UNIT_TESTS_LIST "${TESTS}")    
-  
-endfunction(add_unit_tests) 
+# IMPORT FUNCTIONS TO COLLECT SOURCE FILES 
+include(add_sources) 
+include(add_unit_tests)
 
 ###############################################################################
 # COLLECT ALL SOURCE AND TEST FILES 
@@ -148,28 +83,15 @@ add_subdirectory(MOCObjects)
 add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
-
-add_sources( ./DataStructures/dictionary_class.f90
-             ./DataStructures/IOdictionary_class.f90
-             ./DataStructures/intMap_class.f90
-             ./DataStructures/charMap_class.f90
-             ./DataStructures/stack_class.f90
-             ./DataStructures/dynArray_class.f90)
-             
-add_unit_tests( ./DataStructures/Tests/dictionary_test.f90
-                ./DataStructures/Tests/intMap_test.f90
-                ./DataStructures/Tests/charMap_test.f90
-                ./DataStructures/Tests/dynArray_test.f90)
+add_subdirectory(DataStructures)
             
-
-
 ###############################################################################
-# COPY GLOBAL PROPERTY  SRC_LIST TO VARIABLE SRCS  
+# Compile SCONE static library 
+
+# Copy source files collected in add_sources to variable SRCS
 get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
-
-###############################################################################
-# Compile SCONE shared library 
+# Compile library 
 add_library(scone STATIC ${SRCS}) 
 target_compile_options(scone PRIVATE ${scone_extra_flags} )
 
@@ -194,49 +116,53 @@ target_link_libraries(scone.out scone)
 # COMPILE TESTS 
 if(BUILD_TESTS) 
 
-    # CREATE DIRECTORY IN BINARY_DIR FOR TEMPORARY FILES TO COMPILE TESTS  
-    file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
-    file(WRITE ${PROJECT_BINARY_DIR}/generated/testSuites.inc "")
+  # Create directory in binary_dir for temporary preprocessed test files 
+  file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
+  
+  # Create required test suites listing file  
+  file(WRITE ${PROJECT_BINARY_DIR}/generated/testSuites.inc "")
  
-    include_directories(
-        ${PROJECT_BINARY_DIR}/generated
-        ${PFUNIT_DIR}/mod
-        )
+  include_directories(
+      ${PROJECT_BINARY_DIR}/generated
+      ${PFUNIT_MOD}
+      )
 
 
-    # PREPROCESS COLLECTED TEST FILES FROM GLOBAL PROPERTY INTO VARIABLE
-    # COPY THE FILES TO THE BUILD FOLDER 
-    set(PREP_UNIT_TESTS)
-    get_property(UNIT_TESTS GLOBAL PROPERTY UNIT_TESTS_LIST)
+  # Preprocess collected test files from global property into variable 
+  # Copy files to the build folder 
+  set(PREP_UNIT_TESTS)
+  get_property(UNIT_TESTS GLOBAL PROPERTY UNIT_TESTS_LIST)
 
-    foreach(_testPath IN LISTS UNIT_TESTS)
-        # OBTAIN EXTENSION 
-        string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
+  foreach(_testPath IN LISTS UNIT_TESTS)
+    # OBTAIN EXTENSION 
+    string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
     
-        # REMOVE EXTENSION 
-        string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
+    # REMOVE EXTENSION 
+    string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
 
-        # OBTAIN FILE NAME WITHOUT EXTENSION 
-        string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
+    # OBTAIN FILE NAME WITHOUT EXTENSION 
+    string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
 
-        # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR 
-        add_custom_command(
-            OUTPUT ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
-            COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_DIR}/bin/pFUnitParser.py ${_testPath} ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
-            DEPENDS pFUnit ${_testPath}
-            COMMENT "Preprocessing test ${testName}"
-            VERBATIM
-            )
-        # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc 
-        set(PREP_UNIT_TESTS ${PREP_UNIT_TESTS} ${PROJECT_BINARY_DIR}/generated/${testName}${extension})   
-        file(APPEND ${PROJECT_BINARY_DIR}/generated/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")    
-    endforeach()
+    # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR 
+    add_custom_command(
+       OUTPUT ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
+       COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_PREPROC}/pFUnitParser.py ${_testPath} ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
+       DEPENDS pFUnit ${_testPath}
+       COMMENT "Preprocessing test ${testName}"
+       VERBATIM
+       )
+    # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc 
+    set(PREP_UNIT_TESTS ${PREP_UNIT_TESTS} ${PROJECT_BINARY_DIR}/generated/${testName}${extension})   
+    file(APPEND ${PROJECT_BINARY_DIR}/generated/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")    
+  endforeach()
 
 
-    add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS}) 
-    target_link_libraries(allTests pFUnit scone)  
+  add_executable(allTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_UNIT_TESTS}) 
+  target_link_libraries(allTests pFUnit scone)  
 
-    # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
-    # directives  
-    set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
+  # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
+  # directives  
+  # Select GNU compiler and Build Robust Test Suite 
+  set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
+  
 endif() 
