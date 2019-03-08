@@ -4,14 +4,15 @@ project(SCONE)
 # DEFINE COMPILATION OPTIONS 
 
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
-
+option(LTO "Enables link-time optimisation" ON) 
+option(COVERAGE "Collect Coverage Info" OFF) 
+ 
+set(CMAKE_VERBOSE_MAKEFILE off)
 ###############################################################################
 # CONFIGURE FORTRAN COMPILER 
 
 enable_language(Fortran) 
-
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
-set(CMAKE_VERBOSE_MAKEFILE off)
 
 # Add compilers flags
 #
@@ -21,11 +22,20 @@ set(CMAKE_VERBOSE_MAKEFILE off)
 #
 # -flto (Link Time Optimisation) is SUPER important for performance. Allows to inline function 
 #  across diffrent source files (and modules)  
-#
-# FLAGS FOR CODE COVERAGE        
-# -coverage 
-#
-set(CMAKE_Fortran_FLAGS  "-std=f2008 -coverage -pedantic -g -O3 -Wall -Wno-surprising -Wno-unused-dummy-argument -flto")   
+
+
+# Set core Fortran Compiler flags -> Will be used in all files 
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-surprising -Wno-unused-dummy-argument")
+
+# Add extra flags to global  
+if(COVERAGE)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -coverage")
+endif()
+  
+# Set extra flags for scone library 
+if(LTO)
+  list(APPEND scone_extra_flags "-flto" "-ffat-lto-objects")
+endif() 
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 
@@ -121,6 +131,7 @@ endfunction(add_unit_tests)
 
 # Include Nested Directories  
 add_subdirectory(RandomNumbers) 
+add_subdirectory(LinearAlgebra)
 add_subdirectory(SharedModules)    
 add_subdirectory(VTK)  
 add_subdirectory(ParticleObjects)  
@@ -157,22 +168,15 @@ add_unit_tests( ./DataStructures/Tests/dictionary_test.f90
 get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
 
-#foreach(s IN LISTS SRCS)
-#  file(RELATIVE_PATH rs "${CMAKE_CURRENT_SOURCE_DIR}" "${s}")
-#  string(REGEX REPLACE "r$" "" o "${CMAKE_CURRENT_BINARY_DIR}/${rs}")
-#  add_custom_command(
-#    OUTPUT "${o}"
-#    COMMAND ${CMAKE_COMMAND} -E copy "${s}" "${o}"
-#    DEPENDS "${s}"
-#    COMMENT "Creating ${o}"
-#    VERBATIM
-#    )
-#  list(APPEND PREP_SRCS ${o})
-#endforeach()
+###############################################################################
+# Compile SCONE shared library 
+add_library(scone STATIC ${SRCS}) 
+target_compile_options(scone PRIVATE ${scone_extra_flags} )
 
 ###############################################################################
 # COMPILE SOLVERS 
-add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
+add_executable(test.out ./Apps/test_MAK.f90)
+target_link_libraries(test.out scone)  
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${SRCS}) 
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${SRCS}) 
@@ -182,7 +186,9 @@ add_executable(test.out           ./Apps/test_MAK.f90          ${SRCS})
 #add_executable(surfTests.f90       ./Apps/surfTests.f90      ${SRCS})
 #add_executable(geomPrint.out       ./Apps/geomPrint.f90      ${SRCS})
 #add_executable(rand.out        ./Apps/produceRNG.f90 ${SRCS})
-add_executable(scone.out       ./Apps/scone.f90      ${SRCS})
+
+add_executable(scone.out ./Apps/scone.f90 )
+target_link_libraries(scone.out scone) 
 
 ###############################################################################
 # COMPILE TESTS 
@@ -227,8 +233,8 @@ if(BUILD_TESTS)
     endforeach()
 
 
-    add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS} ${SRCS}) 
-    target_link_libraries(allTests pFUnit)  
+    add_executable(allTests ${PFUNIT_DIR}/include/driver.F90  ${PREP_UNIT_TESTS}) 
+    target_link_libraries(allTests pFUnit scone)  
 
     # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
     # directives  
