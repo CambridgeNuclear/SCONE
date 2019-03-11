@@ -22,6 +22,7 @@ Prerequisites
 
   * gfortran 6.3 or higher 
 * CMake 3.0.0 or higher 
+* LAPACK and BLAS Library 
 * pFUnit framework if testing is to be enabled
 
   * pFUnit requires python to be installed  
@@ -57,6 +58,31 @@ Unit Testing Framework
 
      make install INSTALL_DIR=~/pFUnit
 
+LAPACK AND BLAS
+'''''''''''''''
+#. Download a version of LAPACK from `official website <http://www.netlib.org/lapack/>`_.
+
+#. In some directory on your filesystem extract the archive.
+
+#. Configure compilation with cmake by typing:: 
+
+     mkdir Build 
+     cd Build
+     cmake ./..
+
+#. If you don't have a root access on your machine or you want to install LAPACK to  a custom 
+   directory, use ccmake to change CMAKE_INSTALL_PREFIX. In Build directory type::
+   
+     ccmake ./..  
+     <Navigate to CMAKE_INSTALL_PREFIX and change it to your folder> 
+     Press [c] to configure 
+     Press [g] to generate and exit 
+     
+#. Now compile LAPACK and install by typing:: 
+
+     make 
+     make install 
+     
 SCONE itself
 ''''''''''''
 #. If you want to install with tests set PFUNIT_INSTALL environmental variable to directory in 
@@ -64,9 +90,10 @@ SCONE itself
    
      export PFUNIT_INSTALL=~/pFUnit    
 
-#. If PFUNIT_INSTALL is unset and tests are on, cmake will attempt to download, compile and install 
-   pFUnit into "external" folder in cmake build directory. This may take a long time so it is 
-   recommended that pFUnit is installed beforehand and environmental variable is set.  
+#. If your LAPACK installation is not in default system directories use LAPACK_INSTALL enviromental 
+   variable to help CMAKE find the library. e.g. :: 
+   
+     export LAPACK_INSTALL=~/LAPACK 
 
 #. Download the repositry. Run the following commands:: 
 

@@ -148,6 +148,7 @@ contains
     call getMem(mem)
 
     ! Associate workspace memory with different variables
+    ! Use pointers to change ranks
     st = 1
     A_t(1:N,1:N)  => workspace(st : st + N*N-1)
 

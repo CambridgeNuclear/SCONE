@@ -5,7 +5,7 @@ project(SCONE)
 
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
 option(LTO "Enables link-time optimisation" ON) 
-option(COVERAGE "Collect Coverage Info" ON) 
+option(COVERAGE "Collect Coverage Info" OFF) 
  
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -44,9 +44,11 @@ endif()
 ###############################################################################
 # CHECK FOR DEPENDENCIES 
 
-#find_package(LAPACK REQUIRED)
-#add_library(lapack SHARED IMPORTED)
-#set_property(TARGET lapack PROPERTY IMPORTED_LOCATION ${LAPACK_LIBRARIES})   
+# Add environmental variable to default search directories 
+list(APPEND CMAKE_PREFIX_PATH $ENV{LAPACK_INSTALL})
+
+find_package(LAPACK REQUIRED )
+
 
 # Dependencies for BUILD_TESTS
 if (BUILD_TESTS)
@@ -98,8 +100,7 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 # Compile library 
 add_library(scone STATIC ${SRCS}) 
 target_compile_options(scone PRIVATE ${scone_extra_flags} )
-target_link_libraries(scone  /home/mak60/LAPACK/lapack_install/lib64/liblapack.a
-                             /home/mak60/LAPACK/lapack_install/lib64/libblas.a  )
+target_link_libraries(scone  ${LAPACK_LIBRARIES} )
 
 ###############################################################################
 # COMPILE SOLVERS 
