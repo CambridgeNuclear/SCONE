@@ -1,0 +1,13 @@
+# Add Source Files to a global List 
+add_sources( ./dictionary_class.f90
+             ./IOdictionary_class.f90
+             ./intMap_class.f90
+             ./charMap_class.f90
+             ./stack_class.f90
+             ./dynArray_class.f90)
+             
+# Add Unit Tests to a global List 
+add_unit_tests( ./Tests/dictionary_test.f90
+                ./Tests/intMap_test.f90
+                ./Tests/charMap_test.f90
+                ./Tests/dynArray_test.f90)

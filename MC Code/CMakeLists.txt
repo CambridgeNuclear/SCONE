@@ -5,7 +5,7 @@ project(SCONE)
 
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
 option(LTO "Enables link-time optimisation" ON) 
-option(COVERAGE "Collect Coverage Info" OFF) 
+option(COVERAGE "Collect Coverage Info" ON) 
  
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -28,8 +28,8 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 #Allows to inline function across diffrent source files (and modules)  
 #
 
-# Set core Fortran Compiler flags -> Will be used in all files 
-set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Werror -Wall -Wno-surprising -Wno-unused-dummy-argument")
+# Set core Fortran Compiler flags -> Will be used in all files -Werror
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-surprising -Wno-unused-dummy-argument")
 
 # Add extra flags to global  
 if(COVERAGE)
@@ -43,6 +43,10 @@ endif()
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 
+
+#find_package(LAPACK REQUIRED)
+#add_library(lapack SHARED IMPORTED)
+#set_property(TARGET lapack PROPERTY IMPORTED_LOCATION ${LAPACK_LIBRARIES})   
 
 # Dependencies for BUILD_TESTS
 if (BUILD_TESTS)
@@ -94,11 +98,13 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 # Compile library 
 add_library(scone STATIC ${SRCS}) 
 target_compile_options(scone PRIVATE ${scone_extra_flags} )
+target_link_libraries(scone  /home/mak60/LAPACK/lapack_install/lib64/liblapack.a
+                             /home/mak60/LAPACK/lapack_install/lib64/libblas.a  )
 
 ###############################################################################
 # COMPILE SOLVERS 
 add_executable(test.out ./Apps/test_MAK.f90)
-target_link_libraries(test.out scone)  
+target_link_libraries(test.out scone )  
 #add_executable(eigenCE.out        ./Apps/eigenCE.f90           ${SRCS}) 
 #add_executable(eigenMG.out        ./Apps/eigenMG.f90           ${SRCS}) 
 #add_executable(test_init_geom.out ./Apps/test_init_geom.f90    ${SRCS}) 
@@ -110,7 +116,7 @@ target_link_libraries(test.out scone)
 #add_executable(rand.out        ./Apps/produceRNG.f90 ${SRCS})
 
 add_executable(scone.out ./Apps/scone.f90 )
-target_link_libraries(scone.out scone) 
+target_link_libraries(scone.out scone ) 
 
 ###############################################################################
 # COMPILE TESTS 
