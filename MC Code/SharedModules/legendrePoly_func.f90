@@ -33,12 +33,12 @@ contains
   !! Simple function to sample P1 Legendre PDF. Uses methods from Lux & Koblinger
   !!
   function sampleLegendre_P1(P1,rand) result(x)
-    real(defReal), intent(in)  :: P1
-    class(RNG), intent(inout)  :: rand
-    real(defReal)              :: x
-    real(defReal)              :: P1_loc
-    real(defReal)              :: threshold
-    integer(shortInt)          :: Low, Top, exec
+    real(defReal), intent(in)    :: P1
+    class(RNG), intent(inout)    :: rand
+    real(defReal)                :: x
+    real(defReal)                :: P1_loc
+    real(defReal)                :: threshold
+    integer(shortInt)            :: Low, Top, exec
     integer(shortInt), parameter :: UNIFORM = 1, LIN = 2, DELTA = 3
     character(100), parameter :: Here = 'sampleLegendre_P1 ( legendrePoly_func.f90)'
 
@@ -61,6 +61,10 @@ contains
 
     else
       call fatalError(Here,'P1 must have absolute value < 3.0')
+      ! Avoid warnings
+      threshold = ONE
+      Top = 0
+      Low = 0
 
     end if
 
@@ -82,6 +86,10 @@ contains
 
       case (DELTA)
         x = ONE
+
+      case default
+        call fatalError(Here,'This should never happen. WTF?')
+        x = ZERO
 
     end select
 

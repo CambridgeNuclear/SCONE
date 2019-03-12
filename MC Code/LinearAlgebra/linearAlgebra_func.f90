@@ -7,7 +7,7 @@ module linearAlgebra_func
 
   use numPrecision
   use genericProcedures, only : fatalError, numToChar
-  use iso_fortran_env, only : real64, int32
+  use iso_fortran_env,   only : real64, int32
 
   implicit none
   private
@@ -16,6 +16,7 @@ module linearAlgebra_func
 !! Public Module interface
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
   public :: eig
+  public :: solve
   public :: kill_linearAlgebra
 
 
@@ -47,7 +48,7 @@ module linearAlgebra_func
   !!                 if any eigenvectors are also requested. If LWORK = -1 optimal size query.
   !! INFO  [out]  -> Error flag. INFO = 0 for succesfull exectution
   !!
-  !! Note that the only difference in the dgeev and sgeev is kinf of the real arguments. Rest of
+  !! Note that the only difference in the dgeev and sgeev is kind of the real arguments. Rest of
   !! the definition is identical.
   !!
   interface lapack_geev
@@ -97,6 +98,67 @@ module linearAlgebra_func
     end subroutine sgeev
   end interface lapack_geev
 
+  !!
+  !! lapack_gesv
+  !! LAPACK General Matrix Linear Equation solver
+  !! For full documentation of these procedures refer to:
+  !! http://www.netlib.org/lapack/explore-html/index.html
+  !! (Just search the webpage for dgesv or sgesv and you will find a very clear doc)
+  !!
+  !! Solves AX=B, where each column of X and VB corresponds to Ax=b.
+  !! In outher words can solve for a number of vectors b simultaneously
+  !! Uses LU decomposition with Partial Pivoting
+  !!
+  !! Interface:
+  !! N    [in]    -> Number of linear equations to solve
+  !! NRHS [in]    -> Number of "Right-hand Sides"
+  !! A    [inout] -> On entry coefficient matrix A. On exit L and U factorisation: A=P*L*U
+  !! LDA  [in]    -> Leading size of A. LDA >= max(1,N). Must be N
+  !! IPIV [out]   -> Integer array of size(N). Pivot indices that define permulation matrix P;
+  !!                 row i of the matrix was interchanged with row IPIV(i).
+  !! B    [inout] -> Real LDB x NRHS array. On entry matrix B. On exit matrix X.
+  !! LDB  [in]    -> Leading dimension of matrix B. Must be N.
+  !! INFO [out]   -> Error flag. INFO = 0 for succesfull exectution
+  !!
+  !! Note that the only difference in the dgesv and sgesv is kind of the real arguments. Rest of
+  !! the definition is identical.
+  !!
+  interface lapack_gesv
+    !!
+    !! Double precision. 64-bit float
+    !!
+    subroutine dgesv(N, NRHS, A, LDA, IPIV, B, LDB, INFO)
+      use iso_fortran_env, only : real64, int32
+      implicit none
+      integer(int32), intent(in)                      :: N
+      integer(int32), intent(in)                      :: NRHS
+      integer(int32), intent(in)                      :: LDA
+      real(real64),dimension(LDA,N), intent(inout)    :: A
+      integer(int32),dimension(:), intent(out)        :: IPIV
+      integer(int32), intent(in)                      :: LDB
+      real(real64),dimension(LDB,NRHS), intent(inout) :: B
+      integer(int32), intent(out)                     :: INFO
+    end subroutine dgesv
+
+    !!
+    !! Single precision. 32-bit float
+    !!
+    subroutine sgesv(N, NRHS, A, LDA, IPIV, B, LDB, INFO)
+      use iso_fortran_env, only : real32, int32
+      implicit none
+      integer(int32), intent(in)                      :: N
+      integer(int32), intent(in)                      :: NRHS
+      integer(int32), intent(in)                      :: LDA
+      real(real32),dimension(LDA,N), intent(inout)    :: A
+      integer(int32),dimension(:), intent(out)        :: IPIV
+      integer(int32), intent(in)                      :: LDB
+      real(real32),dimension(LDB,NRHS), intent(inout) :: B
+      integer(int32), intent(out)                     :: INFO
+    end subroutine sgesv
+  end interface lapack_gesv
+
+
+
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Module VARIABLES
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -105,6 +167,67 @@ module linearAlgebra_func
   real(defReal),dimension(:),allocatable,target :: workspace
 
 contains
+
+  !!
+  !! Solves linear system of equations of the form Ax=b
+  !!
+  !! A - any NxN square real matrix
+  !! b - real vector of RHS of size N
+  !! x - resul vector of size N
+  !!
+  !! Gives fatalError if input is invalid or solution A is singular
+  !!
+  subroutine solve(A, x, b)
+    real(defReal),dimension(:,:),intent(in) :: A
+    real(defReal),dimension(:), intent(out) :: x
+    real(defReal),dimension(:), intent(in)  :: b
+    real(defReal),dimension(:,:),pointer    :: A_t, B_t
+    integer(shortInt),dimension(size(x))    :: pivot
+    integer(shortInt)                       :: N, mem, info
+    character(100),parameter :: Here='solve ( linearAlgebra_func.f90)'
+
+    ! Verify size of the inputs
+    N = size(A,1)
+    if(size(b) /= N) then
+      call fatalError(Here,'Invalid size of RHS vector b. It is not size N')
+
+    else if(size(x) /=N) then
+      call fatalError(Here,'Invallid size of result vector x. It is not size N')
+
+    else if ( any(shape(A) /= N)) then
+      call fatalError(Here,'Invalid shape of array A. Is not NxN')
+
+    end if
+
+    ! Calculate memory required and ensure that memory is avalible
+    mem = N*N + N
+    call getMem(mem)
+
+    ! Associate workspace memory with different variables
+    ! Use pointers to change ranks
+    A_t(1:N,1:N) => workspace(1:N*N)
+    B_t(1:N,1:1) => workspace(N*N+1 : N*N + N)
+
+    ! Copy input
+    A_t      = A
+    B_t(:,1) = b
+
+    ! Perform calculation
+    call lapack_gesv(N, 1, A_t, N, pivot, B_t, N, info)
+
+    if( info < 0) then
+      call fatalError(Here,'LINPACK procedure failed with error: '//numToChar(info))
+
+    else if(info > 0) then
+      call fatalError(Here,'LINPACK procedure failed. Matrix A is singular.')
+    end if
+
+    ! Copy the results out
+    x = B_t(:,1)
+
+  end subroutine solve
+
+
 
   !!
   !! Calculates real part of eigenvalues and
@@ -117,6 +240,8 @@ contains
   !! For +ve determinant matrix eigenvalues are in descending order
   !! For -ve determinant matrix eigenvalues are in ascending order
   !! Eigenvectors are normalised to Euclidean norm of 1.0
+  !!
+  !! Gives fatalError if input is invalid
   !!
   subroutine eig(k, V, A)
     real(defReal),dimension(:),intent(out)    :: k
