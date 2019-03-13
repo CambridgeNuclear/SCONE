@@ -85,4 +85,25 @@ contains
 
   end subroutine testLinSolve
 
+  !!
+  !! Test leinear solve of diagnosable singular matrix
+  !! Ax = b where A is singular
+  !!
+@Test
+  subroutine testLinSingularSolve()
+    real(defReal),dimension(3,3) :: A
+    real(defReal), dimension(3)  :: b
+    real(defReal), dimension(3)  :: x
+    real(defReal),parameter :: TOL = 1.0E-6_defReal
+
+    ! Set linear system
+    A(1,:) = [8.0_defReal, 1.0_defReal, 6.0_defReal]
+    A(2,:) = [3.0_defReal, 5.0_defReal, 7.0_defReal]
+    A(3,:) = [4.0_defReal, 9.0_defReal, 2.0_defReal]
+
+    b = [ 3.0_defReal, 2.0_defReal, 1.0_defReal]
+
+
+  end subroutine testLinSingularSolve
+
 end module linearAlgebra_test

@@ -6,6 +6,7 @@ project(SCONE)
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
 option(LTO "Enables link-time optimisation" ON) 
 option(COVERAGE "Collect Coverage Info" ON) 
+option(DEBUG "Enable extra run-time checks" ON) 
  
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -40,6 +41,11 @@ endif()
 if(LTO)
   list(APPEND scone_extra_flags "-flto" "-ffat-lto-objects")
 endif() 
+
+# Add Debugging flags to scone library
+if(DEBUG)
+  set(APPEND scone_extra_flags "-fcheck=bounds -fcheck=do -fcheck=mem -fcheck=pointer -Waliasing") 
+endif()
 
 ###############################################################################
 # CHECK FOR DEPENDENCIES 

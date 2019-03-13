@@ -232,7 +232,7 @@ contains
     j=1
     do i = 1,size(self % matData)
       ! Load material names for material i
-      withRepetition(j:j+self % matData(i) % numNuc) = self % matData(i) % nucNames
+      withRepetition(j:j+self % matData(i) % numNuc-1) = self % matData(i) % nucNames
       j = j + self % matData(i) % numNuc
     end do
 

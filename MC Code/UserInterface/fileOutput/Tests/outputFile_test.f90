@@ -16,7 +16,6 @@ module outputFile_test
   end type test_outputFile
 
 
-
 contains
 
   !!
@@ -47,6 +46,12 @@ contains
 @Test
   subroutine testBlockLogic(this)
     class(test_outputFile), intent(inout) :: this
+    character(nameLen)                    :: myBlock, myBlock2, nextBlock, myArray
+
+    myBlock = 'myBlock'
+    myBlock2 = 'myBlock2'
+    nextBlock = 'nextBlock'
+    myArray = 'myArray'
 
     ! Test for too early block closure
     call this % outFile % endBlock()
@@ -54,8 +59,8 @@ contains
     call this % outFile % reset()
 
     ! Test for to many block closures
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startBlock('2ndBlock')
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startBlock(myBlock2)
     call this % outFile % endBlock()
     call this % outFile % endBlock()
     call this % outFile % endBlock()
@@ -63,16 +68,16 @@ contains
     call this % outFile % reset()
 
     ! Try to close block from an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2,3])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2,3])
     call this % outFile % endBlock()
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Try to start block from an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2,3])
-    call this % outFile % startBlock('nextBlock')
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2,3])
+    call this % outFile % startBlock(nextBlock)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
@@ -86,33 +91,38 @@ contains
     class(test_outputFile), intent(inout) :: this
     character(nameLen), dimension(2) :: charArray
     character(nameLen)               :: name
+    character(nameLen)               :: myBlock, myArray, myArray2
+
+    myBlock = 'myBlock'
+    myArray = 'myArray'
+    myArray2 = 'myArray2'
 
     ! Start array in array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2,3])
-    call this % outFile % startArray('myArray2',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2,3])
+    call this % outFile % startArray(myArray2,[2])
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Change from result to value
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[3])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[3])
     call this % outFile % addResult(0.0_defReal, 1.0_defReal)
     call this % outFile % addValue(0.0_defReal)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Change type value in value array Real -> Int
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[3])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[3])
     call this % outFile % addValue(0.0_defReal)
     call this % outFile % addValue(0)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Change type value in value array Real -> Char
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[3])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[3])
     call this % outFile % addValue(0.0_defReal)
     name = 'jgvjj'
     call this % outFile % addValue(name)
@@ -120,16 +130,16 @@ contains
     call this % outFile % reset()
 
     ! Change type value in value array Int -> Real
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[3])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[3])
     call this % outFile % addValue(0)
     call this % outFile % addValue(0.0_defReal)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Array overflow defReal
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     call this % outFile % addValue(0.0_defReal)
     call this % outFile % addValue(0.0_defReal)
@@ -137,8 +147,8 @@ contains
     call this % outFile % reset()
 
     ! Array overflow shortInt
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0)
     call this % outFile % addValue(0)
     call this % outFile % addValue(0)
@@ -146,8 +156,8 @@ contains
     call this % outFile % reset()
 
     ! Array overflow longInt
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0_longInt)
     call this % outFile % addValue(0_longInt)
     call this % outFile % addValue(0_longInt)
@@ -156,8 +166,8 @@ contains
 
     ! Array overflow char
     name ='lkm'
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(name)
     call this % outFile % addValue(name)
     call this % outFile % addValue(name)
@@ -165,8 +175,8 @@ contains
     call this % outFile % reset()
 
     ! Array overflow Result
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addResult(0.0_defReal, 1.0_defReal)
     call this % outFile % addResult(0.0_defReal, 1.0_defReal)
     call this % outFile % addResult(0.0_defReal, 1.0_defReal)
@@ -174,16 +184,16 @@ contains
     call this % outFile % reset()
 
     ! Close array with too little entries provided
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     call this % outFile % endArray()
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Printing shortInt value inside an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     name ='myVal'
     call this % outFile % printValue(0, name)
@@ -191,8 +201,8 @@ contains
     call this % outFile % reset()
 
     ! Printing longInt value inside an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     name ='myVal'
     call this % outFile % printValue(0_longInt, name)
@@ -200,8 +210,8 @@ contains
     call this % outFile % reset()
 
     ! Printing defReal value inside an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     name ='myVal'
     call this % outFile % printValue(0.0_defReal, name)
@@ -211,8 +221,8 @@ contains
     ! Printing character value inside an array
     charArray(1) = 'sth'
     charArray(2) ='sth else'
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     name ='myVal'
     call this % outFile % printValue(charArray(1), name)
@@ -220,8 +230,8 @@ contains
     call this % outFile % reset()
 
     ! Printing result inside an array
-    call this % outFile % startBlock('myBlock')
-    call this % outFile % startArray('myArray',[2])
+    call this % outFile % startBlock(myBlock)
+    call this % outFile % startArray(myArray,[2])
     call this % outFile % addValue(0.0_defReal)
     name ='myVal'
     call this % outFile % printResult(0.0_defReal,1.0_defReal, name)
@@ -229,32 +239,32 @@ contains
     call this % outFile % reset()
 
     ! Add defReal value without starting an array
-    call this % outFile % startBlock('myBlock')
+    call this % outFile % startBlock(myBlock)
     call this % outFile % addValue(0.0_defReal)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Add shortInt value without starting an array
-    call this % outFile % startBlock('myBlock')
+    call this % outFile % startBlock(myBlock)
     call this % outFile % addValue(0)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Add longInt value without starting an array
-    call this % outFile % startBlock('myBlock')
+    call this % outFile % startBlock(myBlock)
     call this % outFile % addValue(0_longInt)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Add char value without starting an array
     name ='char value'
-    call this % outFile % startBlock('myBlock')
+    call this % outFile % startBlock(myBlock)
     call this % outFile % addValue(name)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
     ! Add result without starting an array
-    call this % outFile % startBlock('myBlock')
+    call this % outFile % startBlock(myBlock)
     call this % outFile % addResult(0.0_defReal, 0.0_defReal)
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()

@@ -17,6 +17,7 @@ module linearAlgebra_func
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
   public :: eig
   public :: solve
+  public :: singularSolve
   public :: kill_linearAlgebra
 
 
@@ -226,6 +227,81 @@ contains
     x = B_t(:,1)
 
   end subroutine solve
+
+  !!
+  !! Solves linear systems of equation through eigenvalue decomposition
+  !! System of the form Ax=b
+  !! Where A is a singular, almost symmetric matrix
+  !!
+  !! A - any NxN square real matrix
+  !! b - real vector of RHS of size N
+  !! x - resul vector of size N
+  !!
+  !! NOTE: It is necessary ti investiage validity of this further.
+  !!       Especially for degenerate matrixes
+  !!
+  subroutine singularSolve(A,x,b)
+    real(defReal),dimension(:,:), intent(in) :: A
+    real(defReal),dimension(:), intent(out)  :: x
+    real(defReal),dimension(:), intent(in)   :: b
+    real(defReal),dimension(:,:),pointer     :: A_t, Vl, Vr
+    real(defReal),dimension(:),pointer       :: Re, Im, Work
+    integer(shortInt)                        :: N, mem, st, info
+    character(100),parameter :: Here='singularSolve ( linearAlgebra_func.f90)'
+
+    ! Verify size of the inputs
+    N = size(A,1)
+    if(size(b) /= N) then
+      call fatalError(Here,'Invalid size of RHS vector b. It is not size N')
+
+    else if(size(x) /=N) then
+      call fatalError(Here,'Invallid size of result vector x. It is not size N')
+
+    else if ( any(shape(A) /= N)) then
+      call fatalError(Here,'Invalid shape of array A. Is not NxN')
+
+    end if
+
+    ! Calculate memory required and ensure that memory is avalible
+    ! Mem for: A    VR     VL    k    Work
+    mem    =  N*N + N*N + N*N + 2*N + 5*N
+    call getMem(mem)
+
+    ! Associate workspace memory with different variables
+    ! Use pointers to change ranks
+    st = 1
+    A_t(1:N,1:N)  => workspace(st : st + N*N-1)
+
+    st = st + N*N
+    Vr(1:N,1:N) => workspace(st : st + N*N-1)
+
+    st = st + N*N
+    Vl(1:1,1:N) => workspace(st : st + N*N-1)
+
+    st = st + N
+    Re   => workspace(st : st + N-1)
+
+    st = st + N
+    Im   => workspace(st : st + N-1)
+
+    st = st + N
+    Work => workspace(st : size(workspace))
+
+    ! Copy input
+    A_t = A
+
+    ! Perform calculation
+    call lapack_geev('V','V', N, A_t, N, Re, Im, Vl, N, Vr, N, Work, size(Work), info)
+
+    if (info /= 0) then
+      call fatalError(Here,'Eigenvalue decomposition has failed')
+    end if
+
+    ! Use fortran intrinsics instead of BLAS for now
+    x = matmul(Vr, b)/Re
+    x = matmul(Vl,x)
+
+  end subroutine singularSolve
 
 
 

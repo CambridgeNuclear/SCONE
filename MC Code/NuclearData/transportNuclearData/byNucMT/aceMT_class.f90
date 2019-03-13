@@ -279,20 +279,6 @@ contains
     ! Find size of energy grid
     Ngrid = size( self % energyGrid)
 
-    ! Load fission data if present
-    if (self % isFissile) then
-      ! First index on energy grid for which fission data is present
-      i = ACE % firstIdxFiss()
-
-      ! Number of consecutive eneteries for data
-      j = ACE % numXsPointsFiss()
-
-      ! Allocate adn load fission XSs
-      allocate(xsFission(Ngrid))
-      xsFission(i:i+j-1) = ACE % xsFiss()
-
-    end if
-
     ! Load data for all MT reactions
     call self % elasticScatter % init(ACE,N_N_elastic)
 
@@ -325,8 +311,27 @@ contains
     ! Allocate xsData
     allocate(self % xsData(size(self % energyGrid)))
 
+    ! Load fission data if present
+    if (self % isFissile) then
+      ! First index on energy grid for which fission data is present
+      i = ACE % firstIdxFiss()
+
+      ! Number of consecutive eneteries for data
+      j = ACE % numXsPointsFiss()
+
+      ! Allocate adn load fission XSs
+      allocate(xsFission(Ngrid))
+      xsFission = ZERO
+      xsFission(i:i+j-1) = ACE % xsFiss()
+
+    end if
+
     ! Move cross section data into xsEnergyPointType
-    call self % xsData % load (xsAnyScatter,xsCapture,xsFission)
+    if (self % isFissile) then
+      call self % xsData % load(xsAnyScatter, xsCapture, xsFission)
+    else
+      call self % xsData % load(xsAnyScatter, xsCapture)
+    end if
 
     ! Read elastic scattering angles
     call self % eScatterKinematics % init(ACE,N_N_elastic)

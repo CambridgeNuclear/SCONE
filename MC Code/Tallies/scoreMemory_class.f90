@@ -407,7 +407,7 @@ contains
     integer(longInt), intent(in)   :: idx
     real(defReal)                  :: score
 
-    if(idx < 0_longInt .or. idx > self % N) then
+    if(idx <= 0_longInt .or. idx > self % N) then
       score = ZERO
     else
       score = self % bins(idx, BIN)

@@ -138,7 +138,7 @@ contains
     type(testTransportNuclearData),pointer    :: nucData
     type(outputFile)                          :: outF
     type(dictionary)                          :: filterDict, mapDict, res1Dict, res2Dict, clerkDict
-    character(nameLen)                        :: res1Name, res2Name
+    character(nameLen)                        :: res1Name, res2Name, clerkName
     integer(shortInt)                         :: i
     real(defReal)                             :: res
     real(defReal), parameter :: TOL = 1.0E-9
@@ -194,7 +194,8 @@ contains
     end if
 
     ! Build Clerk
-    call clerk % init(clerkDict,'myClerk')
+    clerkName ='myClerk'
+    call clerk % init(clerkDict, clerkName)
 
     ! Create score memory
     call mem % init(int(clerk % getSize(), longInt) , 1)

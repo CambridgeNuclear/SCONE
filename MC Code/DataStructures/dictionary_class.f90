@@ -353,10 +353,11 @@ contains
   !!
   !! Finalisation Subroutine
   !!
-  subroutine final_dictionary(self)
+  recursive subroutine final_dictionary(self)
     type(dictionary),intent(inout) :: self
 
     call self % kill()
+
   end subroutine
 
 
@@ -1436,7 +1437,7 @@ contains
   !!
   !! Deallocates dictContent
   !!
-  subroutine kill_dictCont(self)
+  recursive subroutine kill_dictCont(self)
     class(dictContent), intent(inout) :: self
 
     ! Deallocate allocatable components

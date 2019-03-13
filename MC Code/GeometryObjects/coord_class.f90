@@ -265,7 +265,7 @@ contains
     class(coordList), intent(in) :: self
     integer(shortInt)            :: cellIdx
 
-    cellIdx = self % lvl(self % nesting) % cellIdx
+    cellIdx = self % lvl(max(self % nesting, 1)) % cellIdx
 
   end function cell
 
@@ -318,7 +318,7 @@ contains
     integer(shortInt)            :: id
     integer(shortInt) :: n
 
-    n = self % nesting
+    n = max(self % nesting, 1)
 
     id = self % lvl(n) % uniRootID + self % lvl(n) % localID
 

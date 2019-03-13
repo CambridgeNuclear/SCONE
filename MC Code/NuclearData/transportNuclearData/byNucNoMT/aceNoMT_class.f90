@@ -236,11 +236,12 @@ contains
 
     end if
 
-    ! Allocate xsData
-    allocate(self % xsData(size(self % energyGrid)))
-
     ! Move cross section data into xsEnergyPointType
-    call self % xsData % load (xsEScatter,xsCapture,xsFission)
+    if (self % isFissile) then
+      call self % xsData % load(xsEScatter, xsCapture, xsFission)
+    else
+      call self % xsData % load(xsEScatter, xsCapture)
+    end if
 
     ! Read elastic scattering angles
     call self % eScatterKinematics % init(ACE,N_N_elastic)
