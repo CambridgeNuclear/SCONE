@@ -1,6 +1,6 @@
 module linearAlgebra_test
   use numPrecision
-  use linearAlgebra_func, only : kill_linearAlgebra, eig, solve
+  use linearAlgebra_func, only : kill_linearAlgebra, eig, solve, solveAdjointProblem
   use pFUnit_mod
 
   implicit none
@@ -86,24 +86,28 @@ contains
   end subroutine testLinSolve
 
   !!
-  !! Test leinear solve of diagnosable singular matrix
-  !! Ax = b where A is singular
+  !! Test solution of a generalised adjoint system
   !!
 @Test
-  subroutine testLinSingularSolve()
-    real(defReal),dimension(3,3) :: A
-    real(defReal), dimension(3)  :: b
-    real(defReal), dimension(3)  :: x
+  subroutine testAdjointSolve()
+    real(defReal),dimension(2,2) :: A
+    real(defReal), dimension(2)  :: s
+    real(defReal), dimension(2)  :: x
+    real(defReal), dimension(2)  :: f
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
     ! Set linear system
-    A(1,:) = [8.0_defReal, 1.0_defReal, 6.0_defReal]
-    A(2,:) = [3.0_defReal, 5.0_defReal, 7.0_defReal]
-    A(3,:) = [4.0_defReal, 9.0_defReal, 2.0_defReal]
+    A(1,:) = [0.9_defReal,  0.1_defReal]
+    A(2,:) = [0.1_defReal, 0.9_defReal]
 
-    b = [ 3.0_defReal, 2.0_defReal, 1.0_defReal]
+    s = [ONE, -ONE] / sqrt(TWO)
+    f = [ONE, ONE] / sqrt(TWO)
 
+    call solveAdjointProblem(A, x, s, f)
 
-  end subroutine testLinSingularSolve
+    ! Verify solution
+    @assertEqual([ONE/sqrt(TWO), -ONE/sqrt(TWO)], x, TOL)
+
+  end subroutine testAdjointSolve
 
 end module linearAlgebra_test

@@ -30,7 +30,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 #
 
 # Set core Fortran Compiler flags -> Will be used in all files 
-set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Werror -Wall -Wno-surprising -Wno-unused-dummy-argument")
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic  -Wall -Werror -Wno-surprising -Wno-unused-dummy-argument")
 
 # Add extra flags to global  
 if(COVERAGE)
@@ -54,7 +54,7 @@ endif()
 list(APPEND CMAKE_PREFIX_PATH $ENV{LAPACK_INSTALL})
 
 find_package(LAPACK REQUIRED )
-
+message(STATUS ${LAPACK_LIBRARIES})
 
 # Dependencies for BUILD_TESTS
 if (BUILD_TESTS)
