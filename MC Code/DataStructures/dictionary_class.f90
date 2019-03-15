@@ -1,7 +1,8 @@
 module dictionary_class
 
   use numPrecision
-  use genericProcedures, only: linFind, searchError, fatalError, targetNotFound
+  use universalVariables, only : targetNotFound
+  use genericProcedures,  only : linFind, searchError, fatalError
 
   implicit none
   private
@@ -207,6 +208,7 @@ module dictionary_class
     procedure, private :: store_charArray
     procedure, private :: store_dict
 
+    procedure, private :: search
   end type dictionary
 
 contains
@@ -451,8 +453,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getReal (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     select case (self % entries(idx) % getType())
       case(numReal)
@@ -480,8 +481,7 @@ contains
     integer(shortInt)                                    :: idx
     character(100),parameter                             :: Here='getRealArray_alloc (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(allocated(value)) deallocate(value)
 
@@ -511,8 +511,7 @@ contains
     integer(shortInt)                                  :: idx, N
     character(100),parameter                           :: Here='getRealArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(associated(value)) deallocate(value)
 
@@ -546,8 +545,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getInt (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     select case (self % entries(idx) % getType())
       case(numInt)
@@ -572,8 +570,7 @@ contains
     integer(shortInt)                                        :: idx
     character(100),parameter                   :: Here='getIntArray_alloc (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(allocated(value)) deallocate(value)
 
@@ -601,8 +598,7 @@ contains
     integer(shortInt)                                        :: idx,N
     character(100),parameter                   :: Here='getIntArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(associated(value)) deallocate(value)
 
@@ -629,8 +625,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getChar (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     select case (self % entries(idx) % getType())
       case(word)
@@ -659,8 +654,7 @@ contains
     integer(shortInt)                                         :: idx
     character(100),parameter                    :: Here='getCharArray_alloc (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(allocated(value)) deallocate(value)
 
@@ -692,8 +686,7 @@ contains
     integer(shortInt)                                         :: idx
     character(100),parameter                       :: Here='getCharArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     if(associated(value)) deallocate(value)
 
@@ -726,8 +719,7 @@ contains
     integer(shortInt)               :: idx
     character(100),parameter        :: Here='getDict (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     select case (self % entries(idx) % getType())
       case(nestDict)
@@ -750,8 +742,7 @@ contains
     class(dictionary),pointer     :: ptr
     character(100),parameter      :: Here='getDictPtr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
-    call searchError(idx,Here)
+    idx = self % search(keyword, Here, fatal =.true.)
 
     select case (self % entries(idx) % getType())
       case(nestDict)
@@ -777,7 +768,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getOrDefault_real (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if (idx == targetNotFound) then
       value = default
@@ -811,7 +802,7 @@ contains
     integer(shortInt)                                    :: idx
     character(100),parameter         :: Here='getOrDefault_realArray_allocc (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
     if(allocated(value)) deallocate(value)
 
     if (idx == targetNotFound) then
@@ -846,7 +837,7 @@ contains
     integer(shortInt)                                  :: idx, N
     character(100),parameter            :: Here='getOrDefault_realArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if(associated(value)) deallocate(value)
 
@@ -887,7 +878,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getOrDefault_int (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if (idx == targetNotFound) then
       value = default
@@ -919,7 +910,7 @@ contains
     integer(shortInt)                                        :: idx
     character(100),parameter           :: Here='getOrDefault_intArray_alloc (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if(allocated(value)) deallocate(value)
 
@@ -953,7 +944,7 @@ contains
     integer(shortInt)                                        :: idx,N
     character(100),parameter             :: Here='getOrDefault_intArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if(associated(value)) deallocate(value)
 
@@ -989,7 +980,7 @@ contains
     integer(shortInt)              :: idx
     character(100),parameter       :: Here='getOrDefault_char (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     ! Check if default exceeds length of a value charcter
     if (len(default) > len(value) ) then
@@ -1031,7 +1022,7 @@ contains
     integer(shortInt)                                         :: idx
     character(100),parameter           :: Here='getOrDefault_charArray_alloc(dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if(allocated(value)) deallocate(value)
 
@@ -1075,7 +1066,7 @@ contains
     integer(shortInt)                                         :: idx
     character(100),parameter            :: Here='getOrDefault_charArray_ptr (dictionary_class.f90)'
 
-    idx = linFind(self % keywords, keyword)
+    idx = self % search(keyword, Here, fatal =.false.)
 
     if(associated(value)) deallocate(value)
 
@@ -1399,6 +1390,47 @@ contains
     self % entries(idx) % type = nestDict
 
   end subroutine store_dict
+
+  !!
+  !! Function to search for the bin associated with a keyword
+  !! Throws more redable error messages for failed searches
+  !!
+  !! Args:
+  !!   keyword -> character with keyword to be found
+  !!   where -> character string with location of faliure for clearer Error masseges
+  !!   fatal -> logical to control error behaviour. Optional with default = .true.
+  !!
+  !! Returns:
+  !!   Index of the bin associated with keyword.
+  !!
+  !! Errors:
+  !!   If fatal = .true. fatalError is thrown for failed searches
+  !!   If fatal = .false targetNotFound is returned into idx
+  !!
+  function search(self, keyword, where, fatal) result(idx)
+    class(dictionary), intent(in)        :: self
+    character(*), intent(in)             :: keyword
+    character(*), intent(in)             :: where
+    logical(defBool),optional,intent(in) :: fatal
+    integer(shortInt)                    :: idx
+    logical(defBool)                     :: fatal_loc
+
+    ! Select error behaviour
+    if(present(fatal)) then
+      fatal_loc = fatal
+    else
+      fatal_loc = .true.
+    end if
+
+    ! Search for bin index
+    ! NOTE: Returns targetNotFound for a failed search
+    idx = linFind(self % keywords, keyword)
+
+    if(idx == targetNotFound .and. fatal_loc) then
+      call fatalError(Where,'Keyword: '// trim(keyword) //' was requested but is not in the dictionary')
+    end if
+
+  end function search
 
   !!
   !! Copies dictContent
