@@ -169,7 +169,7 @@ contains
     integer(shortInt)                            :: i
 
     ! Load all dictionary names
-    call dict % keysDict(names)
+    call dict % keys(names,'dict')
 
     ! Load all dictionaries
     do i=1,size(names)

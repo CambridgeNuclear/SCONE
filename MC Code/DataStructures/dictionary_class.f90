@@ -100,7 +100,7 @@ module dictionary_class
     ! *** Note that dictionary is defined as pointer not allocatable
     ! *** This is becouse gfortran < 7.0 does not supports circular derived types with
     ! *** allocatable keyword. This line may change in a future
-    class(dictionary), pointer                  :: dict0_alloc => null()
+    type(dictionary), pointer                  :: dict0_alloc => null()
 
     ! dictContent type ID
     integer(shortInt)                           :: type = empty
@@ -181,13 +181,7 @@ module dictionary_class
     procedure,private :: getOrDefault_charArray_alloc
     procedure,private :: getOrDefault_charArray_ptr
 
-    procedure  :: keysReal
-    procedure  :: keysRealArray
-    procedure  :: keysInt
-    procedure  :: keysIntArray
-    procedure  :: keysChar
-    procedure  :: keysCharArray
-    procedure  :: keysDict
+    ! Keys inquiry procedures
     procedure  :: keys
 
     generic    :: assignment(=) => copy
@@ -1103,141 +1097,61 @@ contains
   end subroutine getOrDefault_charArray_ptr
 
   !!
-  !! Returns an array of all keywords associated with a real rank 0
-  !!
-  subroutine keysReal(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == numReal)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysReal
-
-  !!
-  !! Returns an array of all keywords associated with a real rank 1
-  !!
-  subroutine keysRealArray(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == arrReal)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysRealArray
-
-  !!
-  !! Returns an array of all keywords associated with an integer rank 0
-  !!
-  subroutine keysInt(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == numInt)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysInt
-
-  !!
-  !! Returns an array of all keywords associated with an integer rank 0
-  !!
-  subroutine keysIntArray(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == arrInt)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysIntArray
-
-  !!
-  !! Returns an array of all keywords associated with an character rank 0
-  !!
-  subroutine keysChar(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == word)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysChar
-
-  !!
-  !! Returns an array of all keywords associated with an character rank 1
-  !!
-  subroutine keysCharArray(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == arrWord)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysCharArray
-
-  !!
-  !! Returns an array of all keywords associated with a dictionary rank 0
-  !!
-  subroutine keysDict(self,keys)
-    class(dictionary), intent(in)                            :: self
-    character(nameLen),dimension(:), allocatable,intent(out) :: keys
-    logical(defBool),dimension(:),allocatable                :: mask
-    integer(shortInt)                                        :: L
-
-    L = self % dictLen
-    allocate( mask(L) )
-
-    mask = (self % entries(1:L) % getType() == nestDict)
-
-    keys = pack(self % keywords(1:L), mask)
-
-  end subroutine keysDict
-
-  !!
   !! Returns an array of all keywords
   !!
-  subroutine keys(self,keysArr)
+  !! Arg:
+  !!   keysArr -> allocatable array of nameLen long characters to store keys
+  !!              Will be reallocated if it was allocated
+  !!   type    -> optional character to specify type of keys to be returned
+  !!
+  !! Avalible types {'all','real','realArray','int','intArray','char','charArray','dict'}
+  !! Case sensitive! TODO: make case insensitive
+  !!
+  !! Errors:
+  !!   Will segment on uninitialised dictionary
+  !!   Will throw fatalError if type is unrecognised
+  !!
+  subroutine keys(self, keysArr, type)
     class(dictionary), intent(in)                            :: self
     character(nameLen),dimension(:), allocatable,intent(out) :: keysArr
+    character(*), optional, intent(in)                       :: type
+    logical(defBool),dimension(:),allocatable                :: mask
     integer(shortInt)                                        :: L
+    character(100),parameter :: Here = 'keys (dictionary_class.f90)'
 
+    !  Get current length of the dictionary
     L       = self % dictLen
-    keysArr = self % keywords(1:L)
+
+    ! Create mask of all types
+    allocate( mask(L) )
+    mask = .true.
+
+    if(present(type)) then
+      ! Create approperiate mask. I'm sorry it is so dirty - MAK
+      select case(trim(type))
+        case('all')
+          ! Do nothing
+        case('real')
+          mask = (self % entries(1:L) % getType() == numReal)
+        case('realArray')
+          mask = (self % entries(1:L) % getType() == arrReal)
+        case('int')
+          mask = (self % entries(1:L) % getType() == numInt)
+        case('intArray')
+          mask = (self % entries(1:L) % getType() == arrInt)
+        case('char')
+          mask = (self % entries(1:L) % getType() == word)
+        case('charArray')
+          mask = (self % entries(1:L) % getType() == arrWord)
+        case('dict')
+          mask = (self % entries(1:L) % getType() == nestDict)
+        case default
+          call fatalError(Here,'Unrecognised type of content type: '//type )
+      end select
+    end if
+
+    ! Return approperiate keys
+    keysArr = pack(self % keywords(1:L), mask)
 
   end subroutine keys
 

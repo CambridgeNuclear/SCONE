@@ -426,14 +426,14 @@ contains
 
     ! Obtain all keys arrays
     call this % dict % keys(tempAll)
-    call this % dict % keysReal(tempReal)
-    call this % dict % keysInt(tempInt)
-    call this % dict % keysChar(tempChar)
-    call this % dict % keysDict(tempDict)
+    call this % dict % keys(tempReal,'real')
+    call this % dict % keys(tempInt,'int')
+    call this % dict % keys(tempChar,'char')
+    call this % dict % keys(tempDict,'dict')
 
-    call this % dict % keysRealArray(tempRealArray)
-    call this % dict % keysIntArray(tempIntArray)
-    call this % dict % keysCharArray(tempCharArray)
+    call this % dict % keys(tempRealArray,'realArray')
+    call this % dict % keys(tempIntArray,'intArray')
+    call this % dict % keys(tempCharArray,'charArray')
 
     ! Verify keys for real
     keyword = 'myReal'

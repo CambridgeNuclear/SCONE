@@ -233,7 +233,7 @@ contains
     type(dictionary)                            :: tempDict
 
     ! Get all surfaces keys and number of surfaces
-    call surfDict % keysDict(keys)
+    call surfDict % keys(keys,'dict')
     N = size(keys)
 
     ! Initialise shelf
@@ -272,7 +272,7 @@ contains
     character(100), parameter :: Here = 'buildCells (csg_class.f90)'
 
     ! Get all cell keys and number of cells
-    call cellDict % keysDict(keys)
+    call cellDict % keys(keys,'dict')
     N = size(keys)
 
     ! Initialise shelf and map
@@ -340,7 +340,7 @@ contains
     integer(shortInt)                                  :: N, i
 
     ! Get all cell keys and number of cells
-    call uniDict % keysDict(keys)
+    call uniDict % keys(keys,'dict')
     N = size(keys)
 
     ! Initialise shelf and uniFills vector
