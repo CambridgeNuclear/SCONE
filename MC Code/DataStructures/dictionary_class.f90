@@ -749,12 +749,23 @@ contains
 
   end function getDictPtr
 
-
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
-  !! If keyword is associated with an integer it converts it to real
+  !! If keyword is not presents loads default into value
   !!
-  subroutine getOrDefault_real(self,value,keyword,default)
+  !! Args:
+  !!   value [out]  -> variable to store content
+  !!   keyword [in] -> keyword that specifies entry
+  !!   default [in] -> default value returned for a failed search
+  !!
+  !! Errors:
+  !!   Gives fatalError if keyword is present but type of value and entry does not match
+  !!
+  !! NOTE: We call get after the search again, which duplicates search. This reduces effciency
+  !!       but to be honest it is not significant at this stage. Clarity obtained by code
+  !!       reduction is more important
+  !!
+  subroutine getOrDefault_real(self, value, keyword, default)
     class(dictionary), intent(in)  :: self
     real(defReal),intent(inout)    :: value
     character(*),intent(in)        :: keyword
@@ -766,20 +777,9 @@ contains
 
     if (idx == targetNotFound) then
       value = default
-      return
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(numReal)
-        value = self % entries(idx) % real0_alloc
-
-      case(numInt)
-        value = real(self % entries(idx) % int0_alloc, defReal)
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
-
-    end select
 
   end subroutine getOrDefault_real
 
@@ -788,7 +788,9 @@ contains
   !! If keyword is associated with an integer it converts it to real
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_realArray_alloc(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_realArray_alloc(self, value, keyword, default)
     class(dictionary), intent(in)                        :: self
     real(defReal),dimension(:),allocatable,intent(inout) :: value
     character(*),intent(in)                              :: keyword
@@ -801,20 +803,9 @@ contains
 
     if (idx == targetNotFound) then
       value = default
-      return
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(arrReal)
-        value = self % entries(idx) % real1_alloc
-
-      case(arrInt)
-        value = real(self % entries(idx) % int1_alloc, defReal)
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
-
-    end select
 
   end subroutine getOrDefault_realArray_alloc
 
@@ -823,13 +814,15 @@ contains
   !! If keyword is associated with an integer it converts it to real
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_realArray_ptr(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_realArray_ptr(self, value, keyword, default)
     class(dictionary), intent(in)                      :: self
     real(defReal),dimension(:),pointer,intent(inout)   :: value
     character(*),intent(in)                            :: keyword
     real(defReal),dimension(:),intent(in)              :: default
-    integer(shortInt)                                  :: idx, N
-    character(100),parameter            :: Here='getOrDefault_realArray_ptr (dictionary_class.f90)'
+    integer(shortInt)                                  :: idx
+    character(100),parameter :: Here='getOrDefault_realArray_ptr (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.false.)
 
@@ -838,31 +831,18 @@ contains
     if (idx == targetNotFound) then
       allocate(value( size(default) ))
       value = default
-      return
+    else
+      call self % get(value, keyword)
 
     end if
-
-    select case (self % entries(idx) % getType())
-      case(arrReal)
-        N = size (self % entries(idx) % real1_alloc)
-        allocate(value(N))
-        value = self % entries(idx) % real1_alloc
-
-      case(arrInt)
-        N = size (self % entries(idx) % int1_alloc)
-        allocate(value(N))
-        value = real(self % entries(idx) % int1_alloc, defReal)
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
-
-    end select
 
   end subroutine getOrDefault_realArray_ptr
 
   !!
   !! Loads a integer rank 0 from a dictionary
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !!
+  !! For further details refer to doc of getOrDefault_real
   !!
   subroutine getOrDefault_int(self,value,keyword,default)
     class(dictionary), intent(in)  :: self
@@ -876,19 +856,9 @@ contains
 
     if (idx == targetNotFound) then
       value = default
-      return
-
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(numInt)
-        value = self % entries(idx) % int0_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
-
-    end select
-
   end subroutine getOrDefault_int
 
   !!
@@ -896,7 +866,9 @@ contains
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_intArray_alloc(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_intArray_alloc(self, value, keyword, default)
     class(dictionary), intent(in)                            :: self
     integer(shortInt),dimension(:),allocatable,intent(inout) :: value
     character(*),intent(in)                                  :: keyword
@@ -910,18 +882,9 @@ contains
 
     if (idx == targetNotFound) then
       value = default
-      return
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(arrInt)
-        value = self % entries(idx) % int1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
-
-    end select
-
   end subroutine getOrDefault_intArray_alloc
 
 
@@ -930,12 +893,14 @@ contains
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_intArray_ptr(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_intArray_ptr(self, value, keyword, default)
     class(dictionary), intent(in)                            :: self
     integer(shortInt),dimension(:),pointer,intent(inout)     :: value
     character(*),intent(in)                                  :: keyword
     integer(shortInt),dimension(:),intent(in)                :: default
-    integer(shortInt)                                        :: idx,N
+    integer(shortInt)                                        :: idx
     character(100),parameter             :: Here='getOrDefault_intArray_ptr (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.false.)
@@ -943,30 +908,20 @@ contains
     if(associated(value)) deallocate(value)
 
     if (idx == targetNotFound) then
-      allocate(value( size(default) ))
+      allocate(value(size(default)))
       value = default
-      return
-
+    else
+      call self % get(value, keyword)
     end if
-
-
-    select case (self % entries(idx) % getType())
-      case(arrInt)
-        N = size(self % entries(idx) % int1_alloc)
-        allocate(value(N))
-        value = self % entries(idx) % int1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
-
-    end select
 
   end subroutine getOrDefault_intArray_ptr
 
   !!
   !! Reads a character rank 0 from a dictionary
   !!
-  subroutine getOrDefault_char(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_char(self, value, keyword, default)
     class(dictionary), intent(in)  :: self
     character(*),intent(inout)     :: value
     character(*),intent(in)        :: keyword
@@ -976,30 +931,11 @@ contains
 
     idx = self % search(keyword, Here, fatal =.false.)
 
-    ! Check if default exceeds length of a value charcter
-    if (len(default) > len(value) ) then
-      call fatalError(Here,'Default character does not fit into value')
-    end if
-
     if (idx == targetNotFound) then
       value = default
-      return
-
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(word)
-        ! Check if the content character fits into value
-        if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
-        end if
-
-        value = self % entries(idx) % char0_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
-
-    end select
 
   end subroutine getOrDefault_char
 
@@ -1007,7 +943,9 @@ contains
   !! Reads a character rank 1 from a dictionary
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_charArray_alloc(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_charArray_alloc(self, value, keyword, default)
     class(dictionary), intent(in)                             :: self
     character(*),dimension(:),allocatable,intent(inout)       :: value
     character(*),intent(in)                                   :: keyword
@@ -1020,31 +958,12 @@ contains
 
     if(allocated(value)) deallocate(value)
 
-    ! Check if provided default character array exceeeds maximum character length
-    if (len(default) > len(value) ) then
-      call fatalError(Here,'Default character does not fit into value')
-    end if
-
     if (idx == targetNotFound) then
       loc_Char = default
       value = loc_Char
-      return
+    else
+      call self % get(value, keyword)
     end if
-
-    select case (self % entries(idx) % getType())
-      case(arrWord)
-        ! Check if the content character fits into value. Any is required becouse len_trim returns
-        ! an array
-        if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
-        end if
-
-        value = self % entries(idx) % char1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
-
-    end select
 
   end subroutine getOrDefault_charArray_alloc
 
@@ -1052,7 +971,9 @@ contains
   !! Reads a character rank 1 from a dictionary
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
-  subroutine getOrDefault_charArray_ptr(self,value,keyword,default)
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_charArray_ptr(self, value, keyword, default)
     class(dictionary), intent(in)                             :: self
     character(*),dimension(:),pointer,intent(inout)           :: value
     character(*),intent(in)                                   :: keyword
@@ -1064,36 +985,13 @@ contains
 
     if(associated(value)) deallocate(value)
 
-    ! Check if provided default character array exceeeds maximum character length
-    if (len(default) > len(value) ) then
-      call fatalError(Here,'Default character does not fit into value')
-    end if
-
     if (idx == targetNotFound) then
-      !loc_char = default
       allocate(value(size(default)))
       value = default
-      return
+    else
+      call self % get(value, keyword)
 
     end if
-
-    select case (self % entries(idx) % getType())
-      case(arrWord)
-        ! Check if the content character fits into value. Any is required becouse len_trim returns
-        ! an array
-        if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
-        end if
-
-        ! Use mold to approperiatly allocate the pointer
-        allocate(value ( size(self % entries(idx) % char1_alloc) ))
-        value = self % entries(idx) % char1_alloc
-
-      case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
-
-    end select
-
   end subroutine getOrDefault_charArray_ptr
 
   !!
