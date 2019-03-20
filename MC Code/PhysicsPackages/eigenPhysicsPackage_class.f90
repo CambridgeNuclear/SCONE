@@ -7,6 +7,10 @@ module eigenPhysicsPackage_class
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
 
+  ! Timers
+  use timer_mod,                      only : registerTimer, timerStart, timerStop, &
+                                             timerTime, timerReset, secToChar
+
   ! Particle classes and Random number generator
   use particle_class,                 only : particle, P_NEUTRON
   use particleDungeon_class,          only : particleDungeon
@@ -69,6 +73,9 @@ module eigenPhysicsPackage_class
     type(particleDungeon), pointer :: nextCycle    => null()
     type(particleDungeon), pointer :: temp_dungeon => null()
 
+    ! Timer bins
+    integer(shortInt) :: timerMain
+
   contains
     procedure :: init
     procedure :: printSettings
@@ -93,6 +100,9 @@ contains
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
     call self % collectResults()
 
+    print *
+    print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
+    print *
   end subroutine
 
   !!
@@ -107,7 +117,9 @@ contains
     class(tallyResult),allocatable            :: res
     type(particle)                            :: neutron
     real(defReal)                             :: k_old, k_new
+    real(defReal)                             :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
+
 
     ! Attach nuclear data and RNG to neutron
     neutron % xsData => self % nucData
@@ -116,7 +128,13 @@ contains
     ! Set initiial k-eff
     k_new = ONE
 
+
+    ! Reset and start timer
+    call timerReset(self % timerMain)
+    call timerStart(self % timerMain)
+
     do i=1,N_cycles
+
       ! Send start of cycle report
       Nstart = self % thisCycle % popSize()
       call tally % reportCycleStart(self % thisCycle)
@@ -177,10 +195,23 @@ contains
       k_old = self % nextCycle % k_eff
       self % nextCycle % k_eff = k_new
 
+      ! Calculate times
+      call timerStop(self % timerMain)
+      elapsed_T = timerTime(self % timerMain)
+
+      ! Predict time to end
+      end_T = real(N_cycles,defReal) * elapsed_T / i
+      T_toEnd = max(ZERO, end_T - elapsed_T)
+
+
       ! Display progress
       call printFishLineR(i)
       print *
-      print *, 'Cycle: ', i, ' of ', N_cycles,' Pop: ', Nstart, ' -> ',Nend
+      print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
+      print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
+      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+      print *, 'End time:     ', trim(secToChar(end_T))
+      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
   end subroutine cycles
@@ -309,6 +340,10 @@ contains
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
+
+    ! Register timer
+    self % timerMain = registerTimer('transportTime')
+
 
     ! Initialise RNG
     allocate(self % pRNG)
