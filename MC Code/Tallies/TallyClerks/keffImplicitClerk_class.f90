@@ -163,24 +163,27 @@ contains
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     type(scoreMemory), intent(inout)      :: mem
-    real(defReal)                         :: mult
+    real(defReal)                         :: score
 
-    ! Select weight multiplier
+    ! Select analog score
+    ! Assumes N_XNs are by implicit weight change
     select case(MT)
       case(N_2N)
-        mult = 1.0_defReal
+        score = 1.0_defReal * p % preCollision % wgt
       case(N_3N)
-        mult = 2.0_defReal
+        score = 2.0_defReal * p % preCollision % wgt
       case(N_4N)
-        mult = 3.0_defReal
+        score = 3.0_defReal * p % preCollision % wgt
+      case(macroAllScatter) ! Catch weight change for MG scattering
+        score = max(p % w - p % preCollision % wgt, ZERO)
       case default
-        mult = ZERO
+        score = ZERO
     end select
 
     ! Add to scattering production estimator
     ! Use pre collision weight
-    if (mult /= ZERO) then
-      call mem % score(p % preCollision % wgt * mult, self % getMemAddress() + SCATTER_PROD)
+    if (score > ZERO) then
+      call mem % score(score, self % getMemAddress() + SCATTER_PROD)
     end if
 
   end subroutine reportOutColl
