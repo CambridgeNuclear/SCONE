@@ -89,3 +89,76 @@ This is only required if the unit tests are to be build.
 #. Install pFUnit in any directory you have access to e.g. :: 
 
      make install INSTALL_DIR=~/pFUnit
+     
+LAPACK and BLAS
+'''''''''''''''
+#. Download a version of LAPACK from `official website <http://www.netlib.org/lapack/>`_.
+
+#. In some directory on your filesystem extract the archive.
+
+#. Configure compilation with cmake by typing:: 
+
+     mkdir Build 
+     cd Build
+     cmake ./..
+
+#. If you don't have a root access on your machine or you want to install LAPACK to  a custom 
+   directory, use ccmake to change CMAKE_INSTALL_PREFIX. In Build directory type::
+   
+     ccmake ./..  
+     <Navigate to CMAKE_INSTALL_PREFIX and change it to your folder> 
+     Press [c] to configure 
+     Press [g] to generate and exit 
+     
+#. Now compile LAPACK and install by typing:: 
+
+     make 
+     make install      
+     
+     
+Compiling SCONE
+'''''''''''''''
+
+#. If you want to install with tests set PFUNIT_INSTALL environmental variable to directory in 
+   which pFUnit was installed. e.g. :: 
+   
+     export PFUNIT_INSTALL=~/pFUnit    
+
+#. If your LAPACK installation is not in default system directories use LAPACK_INSTALL enviromental 
+   variable to help CMAKE find the library. e.g. :: 
+   
+     export LAPACK_INSTALL=~/LAPACK 
+
+#. Download the repositry. Run the following commands:: 
+
+     git clone https://Mikolaj_Adam_Kowalski@bitbucket.org/Mikolaj_Adam_Kowalski/scone.git  
+    
+#. Create build folder in the project directory(e.g. Debug):: 
+
+     cd ./cued-mc-code
+     mkdir Debug
+   
+#. Generate makefile with CMake and compile::
+
+     cmake -E chdir ./Debug cmake ./..
+     make -C Debug
+
+#. To switch off compilation of tests use the following commands:: 
+
+     cmake -E chdir ./Debug cmake ./.. -DBUILD_TESTS=OFF 
+     make -C Debug 
+
+#. Note that you can use ccmake utility to modify avalible options and regenerate your make file just 
+   type the following into your terminal and follow the instructions:: 
+
+     ccmake ./Debug     
+
+     
+Getting Started
+---------------
+Having an Integrated Development Enviroment (IDE) can significantly help with the development. 
+To develop SCONE we are using `Eclipse PTP <https://www.eclipse.org/ptp/downloads.php>`_. It contains 
+a decent Fortran editor and GUI support for git (Egit). Unfortunatly Eclipse lack an integrated 
+support for CMake, thus it is neccessary to create few workaround to use it.   
+
+*  **Ad Instructions on Setting up a new project**

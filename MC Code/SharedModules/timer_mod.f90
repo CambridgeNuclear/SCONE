@@ -7,6 +7,11 @@
 !! TODO: Make provisions for OpenMP safety.
 !!
 !!
+!! Private members:
+!!   timerNames -> array of names of different timers
+!!   timers     -> array of stopwatches
+!!   idx        -> index of the next avalible bin
+!!
 !! Interface:
 !!   stopWatch -> class that can be used to time elapsed time. See its docs for details
 !!   secToChar -> conversion function. Takes number of seconds as a real. Returns character
@@ -16,11 +21,6 @@
 !!   timerStop     -> Stop a defined timer
 !!   timerReset    -> Reset a defined timer
 !!   timerTime     -> Get total elapsed time in Seconds
-!!
-!! Private members:
-!!   timerNames -> array of names of different timers
-!!   timers     -> array of stopwatches
-!!   idx        -> index of the next avalible bin
 !!
 !!
 module timer_mod
@@ -46,7 +46,7 @@ module timer_mod
   !! procedures. Given the size of 64-bit int and only nano-second resolution of the
   !! system clock problems with an overflow are unlikley to happen
   !!
-  !! Members:
+  !! Private Members:
   !!  start_c   -> count on start
   !!  elapsed_c -> total accumulated time in clock counts
   !!
