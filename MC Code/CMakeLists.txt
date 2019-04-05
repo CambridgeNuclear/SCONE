@@ -143,6 +143,7 @@ if(BUILD_TESTS)
 
   # Preprocess collected test files from global property into variable 
   # Copy files to the build folder 
+  
   set(PREP_UNIT_TESTS)
   get_property(UNIT_TESTS GLOBAL PROPERTY UNIT_TESTS_LIST)
 
