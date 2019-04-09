@@ -144,7 +144,6 @@ contains
 
   end function new_maxwellSPectrum
     
-
   !!
   !! Constructor
   !! Multiple interpolation regions & interpolation schemes

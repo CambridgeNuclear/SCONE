@@ -104,6 +104,8 @@ contains
         E_out = self % laws(i) % sample(E_in, rand)
         return
       end if
+      ! Decrement roll value
+      r = r - prob
     end do
 
     ! Error message
