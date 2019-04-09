@@ -2,7 +2,7 @@ module energyLawENDFfactory_func
 
   use numPrecision
   use endfConstants
-  use genericProcedures,  only : fatalError
+  use genericProcedures,  only : fatalError, numToChar
   use aceCard_class,      only : aceCard
 
   ! Energy Laws
@@ -51,8 +51,8 @@ contains
 
     ! Give error if multiple laws are present
     if (LNW /= 0) then
-      call fatalError(Here,'Multiple energy laws for a single MT are not yet supported')
-
+      call fatalError(Here,'Multiple energy law for nuclide:' // trim(ACE % ZAID) //' MT:' &
+                            // numToChar(MT))
     end if
 
     ! Read energy Law type and location

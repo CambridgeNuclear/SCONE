@@ -8,5 +8,6 @@ add_sources( ./energyLawENDF_inter.f90
              ./noEnergy_class.f90
              ./maxwellSpectrum_class.f90
              ./levelScattering_class.f90
-             ./evaporationSpectrum_class.f90)
+             ./evaporationSpectrum_class.f90
+             ./multipleEnergyLaws_class.f90)
              

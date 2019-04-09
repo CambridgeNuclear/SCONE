@@ -68,12 +68,12 @@ contains
   !! Move allocation from RHS to LHS slot
   !!
   subroutine moveAllocFrom(LHS,RHS)
-    class(energyLawENDFslot), intent(inout) :: LHS
-    type(energyLawENDFslot), intent(inout)  :: RHS
+    class(energyLawENDFslot), intent(inout)         :: LHS
+    class(energyLawENDF),allocatable, intent(inout) :: RHS
 
     if(allocated(LHS % slot)) deallocate (LHS % slot)
 
-    call move_alloc(RHS % slot, LHS % slot)
+    call move_alloc(RHS, LHS % slot)
 
   end subroutine moveAllocFrom
     

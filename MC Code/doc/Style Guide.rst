@@ -71,6 +71,11 @@ Rules on code
    ``N`` for an integer or ``V`` for velocity or any other physical variable with obvious meaning. 
 
 #. We follow the rule that source code should not extend beyond the column 100. 
+
+#. When accessing components of derived types put space between % e.g. :: 
+
+     a = myType % type2 % func()  - OK 
+     a = myType%type2%func()      - WRONG  
    
 #. Always include ``numPrecision`` module in a source file and use parametrisation of the variables e.g. :: 
      
@@ -147,7 +152,8 @@ Rules on code
      !!                
      !! Errors:
      !!   Describe how does the procedure behaves for invalid arguments as well as under what 
-     !!   conditions it fails 
+     !!   conditions it fails. Describe only errors from execution of this function. DO NOT 
+     !!   include errors that may appear in procedures called by the function. 
      !!
      !! NOTE: Any important information you want to highlight 
      !!  
@@ -155,7 +161,14 @@ Rules on code
        Procedure Definition  
      end function 
 
-#. Try to follow the following pattern for the derived type(clas) description. Use the same format 
+#. Note that when giving errors information, errors from procedures called by the procedure we 
+   document should not be included in the *Errors:* section. This is becouse theese sub-procedures 
+   may change and any changes to their error bahaviour would, most likley, be not propagated to 
+   documentation of procedures that use them, rendering their documentation invalid. 
+   (**This point requires extra thought!**)   
+
+
+#. Try to follow the following pattern for the derived type(class) description. Use the same format 
    for the class-like modules (with _mod suffix) :: 
      
      !!
@@ -176,3 +189,6 @@ Rules on code
      type myType
        Type Definition 
      end type    
+     
+#. Try to have a look at the code you wrote and just try to make it look pretty. Try to go back to 
+   your code after some break and try to spot places that seem unclear or confusing and improve them. 
