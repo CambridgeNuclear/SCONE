@@ -1,7 +1,7 @@
 module levelScattering_class
 
   use numPrecision
-  use genericProcedures,   only : fatalError
+  use genericProcedures,   only : fatalError, numToChar
   use aceCard_class,       only : aceCard
   use RNG_class,           only : RNG
   use energyLawENDF_inter, only : energyLawENDF
@@ -21,9 +21,14 @@ module levelScattering_class
   !! Outgoing energy is a function of incident energy
   !! Description in MCNP Manual Appendix F TABLE F-14 b)
   !!
+  !! Private members:
+  !!   LDAT1 -> (A+1)/A * (-Q) which is +ve for endothermic scattering and -ve for
+  !!       exothermic scattering
+  !!   LDAT2 -> (A/(A+1))^2 must be in [0,1]
+  !!
   type, public,extends(energyLawENDF) :: levelScattering
     private
-    real(defReal) :: LDAT1 = ZERO ! (A+1)/A * abs(Q)
+    real(defReal) :: LDAT1 = ZERO
     real(defReal) :: LDAT2 = ZERO ! (A/(A+1))^2
   contains
     ! Interface procedures
@@ -72,7 +77,14 @@ contains
   end function probabilityOf
 
   !!
-  !! Initialise
+  !! Initialise level scattering
+  !!
+  !! Args:
+  !!   LDAT1 [in] -> real number
+  !!   LDAT2 [in] -> Value of (A/A+1)**2 in [0,1]
+  !!
+  !! Errors:
+  !!   Returns fatalError if LDAT2 is outside [0,1]
   !!
   subroutine init(self,LDAT1,LDAT2)
     class(levelScattering), intent(inout) :: self
@@ -81,9 +93,8 @@ contains
     character(100),parameter :: Here='init (levelScattering_class.f90)'
 
     ! Perform sanity checks
-    if( LDAT1 <  ZERO ) call fatalError(Here,'LDAT1 is -ve')
-    if( LDAT2 <  ZERO ) call fatalError(Here,'LDAT2 is -ve')
-    if( LDAT2 >= ONE  ) call fatalError(HEre,'LDAT2 is >= 1.0')
+    if( LDAT2 <  ZERO ) call fatalError(Here,'LDAT2 is -ve:' // numToChar(LDAT2))
+    if( LDAT2 >= ONE  ) call fatalError(HEre,'LDAT2 is >= 1.0:' // numToChar(LDAT2))
 
     ! Assign values
     self % LDAT1 = LDAT1
@@ -93,6 +104,7 @@ contains
 
   !!
   !! Constructor
+  !! See init for details
   !!
   function new_levelScattering(LDAT1,LDAT2) result(new)
     real(defReal), intent(in)             :: LDAT1
@@ -106,6 +118,13 @@ contains
 
   !!
   !! Constructor from ACE
+  !!
+  !! Args:
+  !!   ACE [inout] -> ACE card set to the beginning of data
+  !!
+  !! Errors:
+  !!   Will return invalid value without error if ACE card is set to
+  !!   wrong location.
   !!
   function new_levelScattering_fromACE(ACE) result(new)
     type(aceCard), intent(inout)          :: ACE

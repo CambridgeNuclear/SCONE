@@ -36,7 +36,7 @@ contains
     real(defReal),dimension(4), parameter :: E_Outs = [ 13.0_defReal, 18.0_defReal, 9.0_defReal, 13.0_defReal]
 
     ! Allocate space
-    call this % law % init(4)
+    call this % law % init(6)
 
     ! Load energy laws
     do i=1,4
@@ -92,7 +92,7 @@ contains
     type(RNG)                                     :: rand
     real(defReal)                                 :: E_in
     integer(shortInt)                             :: i
-    real(defReal)                                 :: mean, STD, C
+    real(defReal)                                 :: C1, C2, C3, Chi
 
     ! Initialise RNG
     call rand % init(17_longInt)
@@ -116,29 +116,20 @@ contains
     end do
 
     ! Preform some tests
-    ! We can count number of each type of E_out. We now that it follows
-    ! Binominal distribution so we know its mean and variance.
-    ! We can approximate binominal with normal dictribution and make shure that our result is
-    ! within 3*STD from the mean
+    ! We can count number of each type of E_out.
+    ! As the result we can apply Pearson's Chi-2 test
     !
+    C1 = real(count(samples == 13.0_defReal), defReal)
+    C2 = real(count(samples == 9.0_defReal), defReal)
+    C3 = real(count(samples == 18.0_defReal), defReal)
 
-    ! E_out = 13.0
-    C =real(count(samples == 13.0_defReal), defReal)
-    mean = 600.0_defReal
-    STD = sqrt(1200 * 0.25_defReal)
-    @assertEqual(mean, C, STD * 3)
+    Chi = (C1-600.0_defReal)**2/600_defReal + &
+          (C2-300.0_defReal)**2/300_defReal + &
+          (C3-300.0_defReal)**2/300_defReal
 
-    ! E_out = 9.0
-    C =real(count(samples == 9.0_defReal), defReal)
-    mean = 300.0_defReal
-    STD = sqrt(1200 * 0.25_defReal * 0.75_defReal)
-    @assertEqual(mean, C, STD * 3)
-
-    ! E_out = 18.0
-    C =real(count(samples == 18.0_defReal), defReal)
-    mean = 300.0_defReal
-    STD = sqrt(1200 * 0.25_defReal * 0.75_defReal)
-    @assertEqual(mean, C, STD * 3)
+    ! Value of 7.38 was chosen from 2-degree of freedom Chi-Sq distribution
+    ! To obtain 97.5% confidence interval
+    @assertGreaterThan(7.38_defReal, Chi)
 
   end subroutine testSampling
     
