@@ -6,7 +6,7 @@ module materialMap_class
   use intMap_class,            only : intMap
   use particle_class,          only : particleState
   use outputFile_class,        only : outputFile
-  use tallyMap1D_inter,        only : tallyMap1D
+  use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
 
 
   use nuclearDataRegistry_mod, only : getMatIdx, getMatName
@@ -24,23 +24,41 @@ module materialMap_class
   !!
   !! Map that divides based on the material a particle is in
   !!
+  !! Private Members:
+  !!   binMap -> intMap that maps matIdx to binIdx
+  !!   default -> binIdx for materials not in binMap
+  !!   Nbins -> Number of bins in the mape
+  !!   matIndices -> List of material indices in the mape
+  !!
+  !! Interface:
+  !!   tallyMap Interface
+  !!   build -> builds instance without dictionary
+  !!
+  !! Sample Dictionary Input:
+  !!   myMap {
+  !!     type materialMap;
+  !!     materials (mat1 mat2 mat3);
+  !!     # undefBin T; #
+  !!   }
+  !!
   type, public,extends(tallyMap1D) :: materialMap
     private
     type(intMap)                                  :: binMap
     integer(shortInt)                             :: default = 0
-    integer(shortInt)                             :: Nbins
+    integer(shortInt)                             :: Nbins   = 0
     integer(shortInt), dimension(:), allocatable  :: matIndices
 
   contains
     ! Superclass interface implementaction
-    procedure :: init        !! Initialise from dictionary
-    procedure :: bins        !! Return number of bins
-    procedure :: map         !! Map particle to a bin
-    procedure :: getAxisName !! Return character describing variable of devision
-    procedure :: print       !! Print values associated with bins to outputfile
+    procedure :: init
+    procedure :: bins
+    procedure :: map
+    procedure :: getAxisName
+    procedure :: print
+    procedure :: kill
 
     ! Class specific procedures
-    procedure :: build       !! Build from components (without dictionary)
+    procedure :: build
 
   end type materialMap
 
@@ -48,6 +66,15 @@ contains
 
   !!
   !! Build material map from components directly
+  !!
+  !! Args:
+  !!   materials [in] -> Array of material names to be included in the map
+  !!   trackRest [in] -> Logical. For TRUE makes extra bin for all materials not
+  !!     explicitly in the map.
+  !!
+  !! Erorrs:
+  !!   None from here. NuclearDataRegistry should give fatalError if material is given but
+  !!   not defined.
   !!
   subroutine build(self, materials, trackRest)
     class(materialMap), intent(inout)            :: self
@@ -85,6 +112,8 @@ contains
   !!
   !! Initialise material map from dictionary
   !!
+  !! See tallyMap for specification
+  !!
   subroutine init(self, dict)
     class(materialMap), intent(inout)           :: self
     class(dictionary), intent(in)               :: dict
@@ -114,6 +143,8 @@ contains
   !!
   !! Return total number of bins in this division
   !!
+  !! See tallyMap for specification
+  !!
   elemental function bins(self, D) result(N)
     class(materialMap), intent(in)  :: self
     integer(shortInt), intent(in)   :: D
@@ -130,6 +161,8 @@ contains
   !!
   !! Map particle to a single bin. Return 0 for particle out of division
   !!
+  !! See tallyMap for specification
+  !!
   elemental function map(self,state) result(idx)
     class(materialMap), intent(in)     :: self
     class(particleState), intent(in)   :: state
@@ -142,6 +175,8 @@ contains
   !!
   !! Return string that describes variable used to divide event space
   !!
+  !! See tallyMap for specification
+  !!
   function getAxisName(self) result(name)
     class(materialMap), intent(in)  :: self
     character(nameLen)              :: name
@@ -152,6 +187,8 @@ contains
 
   !!
   !! Add information about division axis to the output file
+  !!
+  !! See tallyMap for specification
   !!
   subroutine print(self,out)
     class(materialMap), intent(in)   :: self
@@ -185,6 +222,15 @@ contains
   !!
   !! Build new material Map from dictionary
   !!
+  !! Args:
+  !!   dict[in] -> input dictionary for the map
+  !!
+  !! Result:
+  !!   Initialised materialMap instance
+  !!
+  !! Errors:
+  !!   See init procedure.
+  !!
   function materialMap_fromDict(dict) result(new)
     class(dictionary), intent(in)               :: dict
     type(materialMap)                           :: new
@@ -192,5 +238,21 @@ contains
     call new % init(dict)
 
   end function materialMap_fromDict
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(materialMap), intent(inout) :: self
+
+    call kill_super(self)
+
+    call self % binMap % kill()
+    self % default = 0
+    self % Nbins = 0
+    deallocate(self % matIndices)
+
+  end subroutine kill
+
 
 end module materialMap_class

@@ -90,7 +90,7 @@ contains
   !!
   !! Kill intMap
   !!
-  subroutine kill(self)
+  elemental subroutine kill(self)
     class(intMap), intent(inout) :: self
 
     ! Deallocate space

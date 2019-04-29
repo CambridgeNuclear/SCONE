@@ -4,7 +4,7 @@ module testMap_class
   use dictionary_class, only : dictionary
   use particle_class,   only : particleState
   use outputFile_class, only : outputFile
-  use tallyMap_inter,   only : tallyMap
+  use tallyMap_inter,   only : tallyMap, kill_super => kill
 
   implicit none
   private
@@ -24,6 +24,7 @@ module testMap_class
     procedure :: map           ! Map particle to a bin
     procedure :: getAxisName   ! Return character describing variable of devision
     procedure :: print         ! Print values associated with bins to outputfile
+    procedure :: kill
 
   end type testMap
 
@@ -105,5 +106,15 @@ contains
     ! Do nothing for now
 
   end subroutine print
-    
+
+  !!
+  !! Kill testMap
+  !!
+  elemental subroutine kill(self)
+    class(testMap), intent(inout) :: self
+
+    call kill_super(self)
+    self % maxIdx = 0
+
+  end subroutine kill
 end module testMap_class

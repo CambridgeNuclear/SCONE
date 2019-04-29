@@ -39,6 +39,7 @@ contains
   subroutine tearDown(this)
     class(test_testMap), intent(inout) :: this
 
+    call this % map % kill()
 
   end subroutine tearDown
 

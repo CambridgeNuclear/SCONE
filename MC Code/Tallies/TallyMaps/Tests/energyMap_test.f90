@@ -77,6 +77,9 @@ contains
   subroutine tearDown(this)
     class(test_energyMap), intent(inout) :: this
 
+    call this % map_lin % kill()
+    call this % map_log % kill()
+    call this % map_unstruct % kill()
 
   end subroutine tearDown
 

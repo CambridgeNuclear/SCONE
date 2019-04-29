@@ -36,11 +36,11 @@ contains
   !! If new is allocated it deallocates it
   !!
   !!
-  subroutine new_tallyMap(new,dict)
+  subroutine new_tallyMap(new, dict)
     class(tallyMap),allocatable, intent(inout) :: new
     class(dictionary), intent(in)              :: dict
-    character(nameLen)            :: type
-    character(100),parameter      :: Here = 'new_tallyMap (tallyMapFactory_func.f90)'
+    character(nameLen)                         :: type
+    character(100),parameter                   :: Here = 'new_tallyMap (tallyMapFactory_func.f90)'
 
     ! Deallocate new if allocated
     if(allocated(new)) deallocate(new)

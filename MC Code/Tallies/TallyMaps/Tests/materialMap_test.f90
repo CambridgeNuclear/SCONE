@@ -84,6 +84,8 @@ contains
     class(test_materialMap), intent(inout) :: this
 
     call kill_nuclearData()
+    call this % map_noUndef % kill()
+    call this % map_Undef % kill()
 
   end subroutine tearDown
 

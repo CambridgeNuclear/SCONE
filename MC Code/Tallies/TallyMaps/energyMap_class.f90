@@ -7,7 +7,7 @@ module energyMap_class
   use grid_class,          only : grid
   use particle_class,      only : particleState
   use outputFile_class,    only : outputFile
-  use tallyMap1D_inter,    only : tallyMap1D
+  use tallyMap1D_inter,    only : tallyMap1D, kill_super => kill
 
   implicit none
   private
@@ -23,21 +23,46 @@ module energyMap_class
   !! Map that divides energy into number of discrete bins
   !! Returns idx = 0 for MG particles
   !! Returns index 0 for elements outside division
+  !!
+  !! Private Members:
+  !!   binBounds -> grid with bin boundaries
+  !!   N -> Integer number of bins in the map
+  !!
+  !! Interface:
+  !!   tallyMap interface
+  !!   build -> build instance of spaceMap without dictionary
+  !!
   !! NOTE: Behaviour of points exactly at the boundary between two bins is undefined.
   !!       They can be in either of two bins.
   !!
+  !! Sample Dictionary Input:
+  !!   structMap {
+  !!     type energyMap;
+  !!     grid log;
+  !!     min 1.0E-9;
+  !!     max 20.0;
+  !!     N 10;
+  !!   }
+  !!
+  !!   unstructMap {
+  !!     type energyMap;
+  !!     grid ustruct;
+  !!     bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0);
+  !!   }
+  !!
   type, public,extends(tallyMap1D) :: energyMap
     private
-    type(grid)        :: binBounds ! Bin grid
-    integer(shortInt) :: N         ! Number of Bins
+    type(grid)        :: binBounds
+    integer(shortInt) :: N = 0
 
   contains
     ! Superclass interface implementaction
-    procedure  :: init        ! Initialise from dictionary
-    procedure  :: bins        ! Return number of bins
-    procedure  :: map         ! Map particle to a bin
-    procedure  :: getAxisName ! Return character describing variable of devision
-    procedure  :: print       ! Print values associated with bins to outputfile
+    procedure  :: init
+    procedure  :: bins
+    procedure  :: map
+    procedure  :: getAxisName
+    procedure  :: print
+    procedure  :: kill
 
     ! Class specific procedures
     generic            :: build => build_fromGrid, build_structured
@@ -50,7 +75,13 @@ contains
   !!
   !! Build from explicit grid of bin boundaries
   !!
-  subroutine build_fromGrid(self,grid)
+  !! Args:
+  !!   grid [in] -> Array of sorted ascending defReal values
+  !!
+  !! Errors:
+  !!   None from here. Grid type is responsible for checking input consistency
+  !!
+  subroutine build_fromGrid(self, grid)
     class(energyMap), intent(inout)         :: self
     real(defReal), dimension(:), intent(in) :: grid
 
@@ -60,7 +91,16 @@ contains
   end subroutine build_fromGrid
 
   !!
-  !! Build from min and max value, number of bins and extrapolation
+  !! Build from min and max value, number of bins and direction
+  !!
+  !! Args:
+  !!   mini [in] -> minumum value on the grid
+  !!   maxi [in] -> maximum value on the grid
+  !!   N [in] -> Number of bins in the grid
+  !!   type [in] -> nameLen type of interpolation 'lin' or 'log'
+  !!
+  !! Errors:
+  !!   None from here. Grid type is responsible for checking input consistency
   !!
   subroutine build_structured(self, mini, maxi, N, type)
     class(energyMap), intent(inout) :: self
@@ -76,6 +116,8 @@ contains
 
   !!
   !! Initialise from dictionary
+  !!
+  !! See tallyMap for specification
   !!
   subroutine init(self, dict)
     class(energyMap), intent(inout)        :: self
@@ -134,6 +176,8 @@ contains
   !! Return total number of bins in this division along dimension D
   !! For D=0 return all bins
   !!
+  !! See tallyMap for specification
+  !!
   elemental function bins(self, D) result(N)
     class(energyMap), intent(in)    :: self
     integer(shortInt), intent(in)   :: D
@@ -149,6 +193,11 @@ contains
 
   !!
   !! Map particle to a single bin. Return 0 for particle out of division or MG
+  !!
+  !! See tallyMap for specification
+  !!
+  !! NOTE:
+  !!   Returns idx = 0 for MG particles
   !!
   elemental function map(self,state) result(idx)
     class(energyMap), intent(in)     :: self
@@ -170,6 +219,8 @@ contains
   !!
   !! Return string that describes variable used to divide event space
   !!
+  !! See tallyMap for specification
+  !!
   function getAxisName(self) result(name)
     class(energyMap), intent(in) :: self
     character(nameLen)              :: name
@@ -180,6 +231,8 @@ contains
 
   !!
   !! Add information about division axis to the output file
+  !!
+  !! See tallyMap for specification
   !!
   subroutine print(self,out)
     class(energyMap), intent(in)     :: self
@@ -208,6 +261,15 @@ contains
   !!
   !! Return instance of energyMap from dictionary
   !!
+  !! Args:
+  !!   dict[in] -> input dictionary for the map
+  !!
+  !! Result:
+  !!   Initialised energyMap instance
+  !!
+  !! Errors:
+  !!   See init procedure.
+  !!
   function energyMap_fromDict(dict) result(new)
     class(dictionary), intent(in)          :: dict
     type(energyMap)                        :: new
@@ -215,5 +277,19 @@ contains
     call new % init(dict)
 
   end function energyMap_fromDict
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(energyMap), intent(inout) :: self
+
+    call kill_super(self)
+
+    ! Kill local
+    call self % binBounds % kill()
+    self % N = 0
+
+  end subroutine kill
     
 end module energyMap_class
