@@ -10,4 +10,5 @@ add_sources( ./dictionary_class.f90
 add_unit_tests( ./Tests/dictionary_test.f90
                 ./Tests/intMap_test.f90
                 ./Tests/charMap_test.f90
-                ./Tests/dynArray_test.f90)
+                ./Tests/dynArray_test.f90
+                ./Tests/IOdictionary_test.f90)
