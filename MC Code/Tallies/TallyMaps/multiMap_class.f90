@@ -6,11 +6,19 @@ module multiMap_class
   use outputFile_class,  only : outputFile
   use particle_class,    only : particleState
 
-  use tallyMap_inter,     only : tallyMap
-  use tallyMapSlot_class, only : tallyMapSlot
+  use tallyMap_inter,         only : tallyMap
+  use tallyMap1D_inter,       only : tallyMap1D
+  use tallyMap1DFactory_func, only : new_tallyMap1D
 
   implicit none
   private
+
+  !!
+  !! Helper type to store polymorphic instances of 1D tallyMaps
+  !!
+  type map1D
+    class(tallyMap1D), allocatable :: slot
+  end type map1D
 
   !!
   !! Multi Dimensional Tally Map
@@ -18,7 +26,8 @@ module multiMap_class
   !! Combines arbitrary number of 1D maps into a single multidimensional map
   !!
   !! Private Members:
-  !!
+  !!   maps -> tallyMaps. Variation in column-major order. Leftmost fastest
+  !!   multi -> bin location multipliers. Stride of each change in a row.
   !! Interface:
   !!   See tallyMap
   !!
@@ -34,7 +43,8 @@ module multiMap_class
   !!
   type, public, extends(tallyMap) :: multiMap
     private
-    type(tallyMapSlot), dimension(:), allocatable :: maps
+    type(map1D), dimension(:), allocatable        :: maps
+    integer(shortInt), dimension(:), allocatable  :: multi
 
   contains
     procedure :: init
@@ -57,24 +67,28 @@ contains
     class(multiMap), intent(inout)                :: self
     class(dictionary), intent(in)                 :: dict
     character(nameLen), dimension(:), allocatable :: mapNames
-    integer(shortInt)                             :: i
-    character(100), parameter :: Here = 'init (multiMap_class.f90)'
+    integer(shortInt)                             :: i, mul
+!    character(100), parameter :: Here = 'init (multiMap_class.f90)'
 
     ! Read order of maps requested
     call dict % get(mapNames, 'maps')
 
     ! Allocate space
     allocate(self % maps(size(mapNames)))
+    allocate(self % multi(size(mapNames)))
 
     ! Build maps
     do i=1,size(self % maps)
-      call self % maps(i) % init( dict % getDictPtr(mapNames(i)))
+      call new_tallyMap1D( self % maps(i) % slot, dict % getDictPtr(mapNames(i)))
+
     end do
 
-    ! Verify that all maps are 1D
-    if(any(self % maps % dimensions() /= 1)) then
-      call fatalError(Here, 'Multidimensional maps are not allowed in multiMap!')
-    end if
+    ! Calculate multipliers
+    mul = 1
+    do i=1,size(self % maps)
+      self % multi(i) = mul
+      mul = mul * self % maps(i) % slot % bins(1)
+    end do
 
   end subroutine init
 
@@ -93,11 +107,11 @@ contains
       ! Perform multiplicative reduction over all dimensions
       N = 1
       do i = 1,size(self % maps)
-        N = N * self % maps(i) % bins(1)
+        N = N * self % maps(i) % slot % bins(1)
       end do
 
     else if(D <= size(self % maps)) then
-      N = self % maps(D) % bins(1)
+      N = self % maps(D) % slot % bins(1)
 
     else
       N = 0
@@ -137,12 +151,25 @@ contains
   !!
   !! See tallyMap for specification.
   !!
-  elemental function map(self,state) result(idx)
+  elemental function map(self, state) result(idx)
     class(multiMap), intent(in)      :: self
     class(particleState), intent(in) :: state
-    integer(shortInt)                :: idx
+    integer(shortInt)                :: idx, binIdx
+    integer(shortInt)                :: i
 
     idx = 1
+    do i=1,size(self % maps)
+      binIdx = self % maps(i) % slot % map(state)
+
+      ! Short-circuit evaluation if out-of division
+      if(binIdx == 0) then
+        idx = 0
+        return
+      end if
+
+      idx = idx + (binIdx-1) * self % multi(i)
+
+    end do
 
   end function map
 
@@ -162,14 +189,14 @@ contains
 
     call out % startArray(name, [size(self % maps)])
     do i = 1,size(self % maps)
-      call out % addValue( self % maps(i) % getAxisName() )
+      call out % addValue( self % maps(i) % slot % getAxisName() )
 
     end do
     call out % endArray()
 
     ! Print individual maps information
     do i = 1,size(self % maps)
-      call self % maps(i) % print(out)
+      call self % maps(i) % slot % print(out)
 
     end do
 
@@ -180,11 +207,18 @@ contains
   !!
   elemental subroutine kill(self)
     class(multiMap), intent(inout) :: self
+    integer(shortInt)              :: i
 
-    ! Kill individual maps
+    ! Kill maps
+    if(allocated(self % maps)) then
+      do i=1,size(self % maps)
+        call self % maps(i) % slot % kill()
+      end do
+      deallocate(self % maps)
+    end if
 
-    ! Free space
-    deallocate(self % maps)
+    ! Free rest of space space
+    if(allocated(self % multi)) deallocate(self % multi)
 
   end subroutine kill
 

@@ -1,6 +1,7 @@
 # Add Source Files to the global list 
 add_sources(./tallyMap_inter.f90
             ./tallyMap1D_inter.f90 
+            ./tallyMap1DFactory_func.f90
             ./tallyMapFactory_func.f90
             ./tallyMapSlot_class.f90
             ./testMap_class.f90

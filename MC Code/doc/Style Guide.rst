@@ -162,11 +162,11 @@ Rules on code
      end function 
 
 #. Note that when giving errors information, errors from procedures called by the procedure we 
-   document should not be included in the *Errors:* section. This is becouse theese sub-procedures 
+   document should not in general be included in the *Errors:* section. This is becouse these sub-procedures 
    may change and any changes to their error bahaviour would, most likley, be not propagated to 
-   documentation of procedures that use them, rendering their documentation invalid. 
-   (**This point requires extra thought!**)   
-
+   documentation of procedures that use them, rendering their documentation invalid. However it would 
+   be best to use common sense and indicate when a procedure is depending on errors given by the other 
+   procedure. Just try to make *Errors:* section informative. Use your best jugement. 
 
 #. Try to follow the following pattern for the derived type(class) description. Use the same format 
    for the class-like modules (with _mod suffix) :: 

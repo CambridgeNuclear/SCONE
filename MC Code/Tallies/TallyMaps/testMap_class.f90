@@ -4,7 +4,7 @@ module testMap_class
   use dictionary_class, only : dictionary
   use particle_class,   only : particleState
   use outputFile_class, only : outputFile
-  use tallyMap_inter,   only : tallyMap, kill_super => kill
+  use tallyMap1D_inter,   only : tallyMap1D, kill_super => kill
 
   implicit none
   private
@@ -14,13 +14,12 @@ module testMap_class
   !! Very simple map used for testing of other components only
   !!   Given state it returns bin = matIdx or 0 if matIdx > maxIdx given in dictionary
   !!
-  type, public,extends(tallyMap) :: testMap
+  type, public,extends(tallyMap1D) :: testMap
     private
     integer(shortInt) :: maxIdx = 0
   contains
     procedure :: init          ! Initialise tallyMap from dictionary
     procedure :: bins          ! Return number of bins along dimension D
-    procedure :: dimensions    ! Return number of dimensions
     procedure :: map           ! Map particle to a bin
     procedure :: getAxisName   ! Return character describing variable of devision
     procedure :: print         ! Print values associated with bins to outputfile
@@ -57,17 +56,6 @@ contains
     end if
 
   end function bins
-
-  !!
-  !! Return number of dimensions
-  !!
-  elemental function dimensions(self) result(D)
-    class(testMap), intent(in)     :: self
-    integer(shortInt)              :: D
-
-    D = 1
-
-  end function dimensions
 
   !!
   !! Map particle to a single bin. Return 0 for particle out of division
