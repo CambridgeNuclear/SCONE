@@ -19,7 +19,7 @@ module tallyMapFactory_func
 
 
   ! TallyMap implementations
-!  use multiMap_class,    only : multiMap
+  use multiMap_class,         only : multiMap
 
   implicit none
   private
@@ -67,7 +67,9 @@ contains
 
     else ! Check aginst multidimensional tallyMaps
       select case(type)
-
+        case('multiMap')
+          allocate( multiMap :: new)
+          call new % init(dict)
 
       end select
     end if
