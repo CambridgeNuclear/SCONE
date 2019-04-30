@@ -152,7 +152,7 @@ contains
     end do
 
     ! Loop over materials and load them into charMap (be carefull to preserve order).
-    call materialsDict % keysDict(names)
+    call materialsDict % keys(names,'dict')
     call matIndices % init(size(names))
     do i=1,size(names)
       call matIndices % add(names(i), i)

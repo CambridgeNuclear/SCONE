@@ -129,7 +129,7 @@ contains
     call self % kill()
 
     ! Obtain clerks dictionary names
-    call dict % keysDict(names)
+    call dict % keys(names,'dict')
 
     ! Allocate space for clerks
     allocate(self % tallyClerks(size(names)))

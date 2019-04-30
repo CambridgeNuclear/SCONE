@@ -61,7 +61,9 @@ module IOdictionary_class
 
   contains
     procedure :: initFrom
+    procedure :: initFromChar
     final     :: final_IOdictionary
+
   end type IOdictionary
 
 contains
@@ -82,7 +84,6 @@ contains
     deallocate(file)
 
     ! Create tab character and replace any tabs with blanks
-    !*** WORKS ON LINUX. BEWERE DIFFRENT TABS ON DIFFRENT OS
     tab = char(9)
     call replaceChar(tape,tab,' ')
 
@@ -94,6 +95,27 @@ contains
     call readDictionary(tape,self)
 
   end subroutine initFrom
+
+  subroutine initFromChar(self, tape)
+    class(IOdictionary), intent(inout) :: self
+    character(*), intent(in)           :: tape
+    character(:),allocatable           :: tape_loc
+    character(1)                       :: tab
+    character(100),parameter :: Here='initFrom (IOdictionary_class.f90)'
+
+    tab = char(9)
+    tape_loc = tape
+
+    call replaceChar(tape_loc,tab,' ')
+
+    call compressBlanks(tape_loc)
+
+    call checkBrackets(tape_loc,'(',')', Here, 'PlaceHolder')
+    call checkBrackets(tape_loc,'{','}', Here, 'PlaceHolder')
+
+    call readDictionary(tape_loc, self)
+
+  end subroutine initFromChar
 
 
 
