@@ -110,7 +110,7 @@ contains
         N = N * self % maps(i) % slot % bins(1)
       end do
 
-    else if(D <= size(self % maps)) then
+    else if( 0 < D .and. D <= size(self % maps) ) then
       N = self % maps(D) % slot % bins(1)
 
     else
