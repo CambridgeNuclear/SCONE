@@ -15,6 +15,8 @@ module pinUniverse_class
 
   !*** STAYS HERE ONLY PROVISIONALLY
   use nuclearData_inter, only : nuclearData
+  !***
+  use nuclearDataRegistry_mod, only : getMatIdx
 
   implicit none
   private
@@ -371,7 +373,7 @@ contains
         fill = -fill
 
       else
-        fill = materials % getIdx(tempName)
+        fill = getMatIdx(tempName)
 
       end if
 

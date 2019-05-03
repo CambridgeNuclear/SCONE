@@ -4,6 +4,7 @@
 module nuclearDataRegistry_mod
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
   use charMap_class,     only : charMap
@@ -191,7 +192,13 @@ contains
     integer(shortInt), parameter   :: NOT_FOUND = -huge(idx)
     character(100),parameter :: Here ='getMatIdx (nuclearDataRegistry_mod.f90)'
 
-    idx = matIndices % getOrDefault(matName, NOT_FOUND)
+    ! Find material index
+    if(matName == 'void') then
+      idx = VOID_MAT
+    else
+      idx = matIndices % getOrDefault(matName, NOT_FOUND)
+    end if
+
     if (idx == NOT_FOUND) then
       call fatalError(Here,'Material '// trim(matName) // ' is not defined')
 
@@ -230,7 +237,11 @@ contains
 
     end if
 
-    name = matNames(matIdx)
+    if (matIdx == VOID_MAT) then
+      name = 'void'
+    else
+      name = matNames(matIdx)
+    end if
 
   end function getMatName
 

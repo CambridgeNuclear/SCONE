@@ -11,8 +11,8 @@ collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} 
                   } 
 
-transportOperator { //type transportOperatorST;
-                     type transportOperatorDT;     
+transportOperator { type transportOperatorST;
+                    // type transportOperatorDT;     
                   } 
 
 inactiveTally { //clerk1 { type keffActiveClerk; display yes; } 
@@ -47,7 +47,7 @@ geometry {
     {
 
       fuel {id 1; surfaces (-2); filltype mat; mat uo2;  }
-      mod  {id 2; surfaces (2) ; filltype mat; mat water; }
+      mod  {id 2; surfaces (2) ; filltype mat; mat void; }
   
       topRight { id 10; surfaces ( 3  4 -1); filltype uni; universe 20 ;} 
       botRigth { id 11; surfaces ( 3 -4 -1); filltype uni; universe 21 ;}
@@ -77,7 +77,7 @@ geometry {
 
       uni30 {id 30; type cellUniverse; origin (0.0 0.0 0.0); cells (1 2); }
  
-      uni31 {id 31; type pinUniverse; radii (0.3 0.31 0.0); fills (uo2 clad water); } 
+      uni31 {id 31; type pinUniverse; radii (0.3 0.31 0.0); fills (uo2 void water); } 
  
   
       latUni 

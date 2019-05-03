@@ -8,7 +8,8 @@ module csg_class
   use coord_class,          only : coord
 
   ! Material Names interface
-  use nuclearData_inter,    only : nuclearData
+  use nuclearData_inter,       only : nuclearData
+  use nuclearDataRegistry_mod, only : getMatIdx
 
   ! Surfaces
   use surfaceFactory_func,  only : new_surface
@@ -300,7 +301,7 @@ contains
         case('mat')
           ! Load material name
           call tempDict % get(matName,'mat')
-          fill = materials % getIdx(matName)
+          fill = getMatIdx(matName)
           call fillMap % add(id, fill)
 
         case('outside')

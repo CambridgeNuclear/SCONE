@@ -62,6 +62,9 @@ contains
         return
       end if
 
+      ! Check for void
+      if( p % matIdx() == VOID_MAT) cycle DTLoop
+
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransXS(p, p % matIdx())
 

@@ -53,10 +53,13 @@ contains
     STLoop: do
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransXS(p, p % matIdx())
+      if( p % matIdx() == VOID_MAT) then
+        dist = INFINITY
 
-      ! Sample particle flight distance to next collision
-      dist = -log( p % pRNG % get()) / sigmaT
+      else
+        sigmaT = self % xsData % getTransXS(p, p % matIdx())
+        dist = -log( p % pRNG % get()) / sigmaT
+      end if
 
       ! Save state before movement
       call p % savePrePath()
