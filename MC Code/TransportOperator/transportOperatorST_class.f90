@@ -80,6 +80,9 @@ contains
       if( isColl .or. p % isDead) exit STLoop
 
     end do STLoop
+
+    call tally % reportTrans(p)
+
   end subroutine surfaceTracking
 
 end module transportOperatorST_class

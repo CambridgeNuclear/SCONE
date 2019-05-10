@@ -23,6 +23,9 @@ module energyFilter_class
     procedure :: init
     procedure :: isPass
 
+    !! Instance specific procedures
+    procedure :: build
+
   end type energyFilter
 
 contains
@@ -33,20 +36,13 @@ contains
   subroutine init(self,dict)
     class(energyFilter), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
-    real(defReal)                      :: temp
-    character(100), parameter :: Here = 'init (energyFilter_class.f90)'
+    real(defReal)                      :: E1, E2
 
     ! Get bounds
-    call dict % get(temp,'Emin')
-    self % Emin = temp
+    call dict % get(E1,'Emin')
+    call dict % get(E2,'Emax')
 
-    call dict % get(temp,'Emax')
-    self % Emax = temp
-
-    ! Verify bounds
-    if( self % Emax <= self % Emin) then
-      call fatalError(Here,'Emin='// numToChar(self % Emin) //' is larger or equal to Emax=' // numToChar(self % Emax))
-    end if
+    call self % build(E1, E2)
 
   end subroutine init
 
@@ -70,5 +66,31 @@ contains
     passed = (self % Emin <= E) .and. (E <= self % Emax)
 
   end function isPass
+
+  !!
+  !! Build energyFilter from components
+  !!
+  !! Args:
+  !!   Emin [in] -> minimum energy [MeV]
+  !!   Emax [in] -> maximum energy [MeV]
+  !!
+  !! Errors:
+  !!   fatalError if Emin > Emax
+  !!
+  subroutine build(self, Emin, Emax)
+    class(energyFilter), intent(inout) :: self
+    real(defReal), intent(in)          :: Emin
+    real(defReal), intent(in)          :: Emax
+    character(100), parameter :: Here = 'build (energyFilter_class.f90)'
+
+    self % Emin = Emin
+    self % Emax = Emax
+
+    ! Verify bounds
+    if( self % Emax <= self % Emin) then
+      call fatalError(Here,'Emin='// numToChar(self % Emin) //' is larger or equal to Emax=' // numToChar(self % Emax))
+    end if
+
+  end subroutine build
     
 end module energyFilter_class

@@ -12,6 +12,7 @@ module tallyClerkFactory_func
   use keffImplicitClerk_class, only : keffImplicitClerk
   use collisionClerk_class,    only : collisionClerk
   use simpleFMClerk_class,     only : simpleFMClerk
+  use dancoffBellClerk_class,  only : dancoffBellClerk
 
   implicit none
   private
@@ -26,7 +27,8 @@ module tallyClerkFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk  ',&
                                                                         'keffImplicitClerk',&
                                                                         'collisionClerk   ',&
-                                                                        'simpleFMClerk    ']
+                                                                        'simpleFMClerk    ',&
+                                                                        'dancoffBellClerk ']
 
 contains
 
@@ -64,6 +66,10 @@ contains
 
      case('simpleFMClerk')
        allocate(simpleFMClerk :: new)
+       call new % init(dict, name)
+
+     case('dancoffBellClerk')
+       allocate(dancoffBellClerk :: new)
        call new % init(dict, name)
 
      !*** NEW TALLY MAP TEMPLATE ***!

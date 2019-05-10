@@ -6,6 +6,7 @@ add_sources(./tallyClerk_inter.f90
             ./keffAnalogClerk_class.f90
             ./keffImplicitClerk_class.f90
             ./simpleFMClerk_class.f90
+            ./dancoffBellClerk_class.f90
              )
              
 add_unit_tests(./Tests/collisionClerk_test.f90

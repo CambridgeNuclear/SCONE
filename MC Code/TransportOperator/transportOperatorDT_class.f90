@@ -74,6 +74,7 @@ contains
 
     end do DTLoop
 
+    call tally % reportTrans(p)
   end subroutine deltaTracking
 
 
