@@ -655,7 +655,7 @@ contains
   !!
   !! Returns character with a description of particle type
   !!
-  elemental function printType(type) result(name)
+  pure function printType(type) result(name)
     integer(shortInt), intent(in) :: type
     character(:),allocatable      :: name
 

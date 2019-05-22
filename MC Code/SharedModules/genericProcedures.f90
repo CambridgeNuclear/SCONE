@@ -68,6 +68,8 @@ module genericProcedures
     module procedure numToChar_shortInt
     module procedure numToChar_longInt
     module procedure numToChar_defReal
+    module procedure numToChar_shortIntArray
+    module procedure numToChar_defRealArray
   end interface
 
   contains
@@ -713,7 +715,7 @@ module genericProcedures
   !! Convert shortInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
   !!
-  elemental function numToChar_shortInt(x) result(c)
+  function numToChar_shortInt(x) result(c)
     integer(shortInt),intent(in) :: x
     character(:), allocatable    :: c
     character(40)                :: tempChar
@@ -724,10 +726,34 @@ module genericProcedures
   end function numToChar_shortInt
 
   !!
+  !! Convert shortInt array to character
+  !!
+  function numToChar_shortIntArray(x) result(c)
+    integer(shortInt), dimension(:) ,intent(in) :: x
+    character(:), allocatable                   :: c
+    character(40)                               :: tempChar
+    integer(shortInt)                           :: i
+
+    c = ''
+    if(size(x) == 0) then
+      c = ''
+    else
+      write(tempChar,'(I0)') x(1)
+      c = trim(tempChar)
+    end if
+
+    do i=2,size(x)
+      write(tempChar,'(I0)') x(i)
+      c = c//' '//trim(tempChar)
+    end do
+
+  end function numToChar_shortIntArray
+
+  !!
   !! Convert longInt to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
   !!
-  elemental function numToChar_longInt(x) result(c)
+  function numToChar_longInt(x) result(c)
     integer(longInt),intent(in) :: x
     character(:), allocatable   :: c
     character(40)               :: tempChar
@@ -741,7 +767,7 @@ module genericProcedures
   !! Convert defReal to character
   !! TODO: tempChar should have a parametrised length - need to come up with a smart way of doing it!
   !!
-  elemental function numToChar_defReal(x) result(c)
+  function numToChar_defReal(x) result(c)
     real(defReal),intent(in)  :: x
     character(:), allocatable :: c
     character(40)             :: tempChar
@@ -751,6 +777,29 @@ module genericProcedures
 
   end function numToChar_defReal
 
+  !!
+  !! Convert defReal array to character
+  !!
+  function numToChar_defRealArray(x) result(c)
+    real(defReal), dimension(:),intent(in)  :: x
+    character(:), allocatable               :: c
+    character(40)                           :: tempChar
+    integer(shortInt)                       :: i
+
+    c = ''
+    if(size(x) == 0) then
+      c = ''
+    else
+      write(tempChar,*) x(1)
+      c = trim(tempChar)
+    end if
+
+    do i=2,size(x)
+      write(tempChar,*) x(i)
+      c = c//' '//trim(tempChar)
+    end do
+
+  end function numToChar_defRealArray
 
   !!
   !! Subroutine takes a normilised direction vector dir and rotates it by cosine of a polar angle
