@@ -1,0 +1,238 @@
+//
+// An Example of a SCONE input file (working on 29.05.2019) 
+//
+// A simple eigenvalue calculation of single MOX assembly based on: 
+// 
+//  C. Cavarec, J. Perron, D. Verwaerde, and J. West. “C5G7 Benchmark with Composi-
+//  tion.” Technical Report NEA-NSC-DOC–94-28, Nuclear Energy Agency of the OECD (NEA)
+//  (1994).
+//
+// Note: 
+//   Input file is free-form with the 500 maximum column restriction (shall be changed in future version to much higher value) 
+//   // and ! indicate a line comment. There are not multi-line comments as of yet. 
+//   Structure of the input file is a nested dictionary. Each entry into a dictionary can be:
+//     - integer         e.g. integer 1;  
+//     - integer Array   e.g. intArr (1 2 3);
+//     - real            e.g. real 4.3;   
+//     - real Array      e.g. realArr (4.3 1); 
+//     - word            e.g. word Horace; 
+//     - word Array      e.g. words (Non omnis moriar);
+//     - subdictionary   e.g. greeks { poet Homer; politician Pericles; hero Theseus;}
+//       NOTE THE LACK OF SEMI-COLON AT THE END OF DICTIONARY ENTRY!
+//
+//   At least one space is needed before an entry name (e.g. integer) and its value (e.g. 1) 
+//   Each entry name needs to be unique within a scope of a single dictionary 
+//   During reading all tabs and newline characters are converted into a single space 
+//   Behaviour with DOS newline characters was not tested. Will probably fail. Convert to unix with dos2unix utility! 
+//
+
+type eigenPhysicsPackage;            // Type of calculation. Only eigenvalue at this stage     
+
+pop      5000;       // Neutron population
+active   800;         // # of active cycles 
+inactive 300;         // # number of inactive cycles 
+XSdata ce;            // XS data used in calculation. Defined in ./nuclearData/handles 
+
+
+// collisionOperator subdictionary defines type of collision physics to be used 
+// for each type of particle (currently only neutronMG and neutronCE).
+// It is necessary to provide a "collisionProcessor" for each particle type. Which is an object that 
+// abstracts the processing of collision for a particle (this allows to customise physics for mixed populations). 
+// only neutronCEstd and neutronMGstd exist at the moment. 
+//
+collisionOperator { neutronCE {type neutronCEstd;}
+                    //neutronMG {type neutronMGstd;}  
+                  } 
+
+// transportOperator defines a collision to collision transition algorithms. 
+//   transportOperatorST -> pure surface tracking 
+//   transportOperatorDT -> pure delta-tracking 
+//
+transportOperator { //type transportOperatorST; 
+                   type transportOperatorDT; 
+                   } 
+
+//
+// inactiveTally defines tallies to be scored during inactive cycles. 
+// Currently it is impossible to move results from inactive tally to active tally (will be changed in the future) 
+//
+inactiveTally {} 
+
+
+//
+// Defines active tallies
+//
+activeTally {
+  //
+  // This tally scores reaction rates with collision estimator in each pinCell 
+  // Each type of tally has its own input structure. Proper documentation is not done yet, but each source 
+  // file defining a tally includes (or will include) a comment with a sample dictionary input.  
+  //
+  power {type collisionClerk; 
+         map {type multiMap;
+              maps (xmap ymap); 
+              xmap { type spaceMap; axis x; grid lin; min -10.71; max 10.71; N 17;} 
+              ymap { type spaceMap; axis y; grid lin; min -10.71; max 10.71; N 17;} 
+              }
+         response (fission); 
+         fission { type macroResponse; MT -6;} 
+         }
+  }
+         
+         
+//
+// Geometry is a standard CSG very similar to Serpent. 
+// Currently there is a limit on number of nesting levels (5). It is hardcoded but will probably be increased in the future. 
+// It can be easily changed in universalVariables.f90 
+// 
+// 
+//
+// Surfaces -> are defined to provide halfspaces for building cells. Enter invalid type and run a code to get a list of all 
+//             available surfaces. Surfaces must be unique! Two surfaces are different if they are of different type or at least 
+//             one of their corresponding definition parameters are different by at least 0.0001% 
+// Cells -> only simple cells are implemented. Cell is an intersection of number of half-spaces. Refer to surfaces with their ID. 
+// Universes -> Geometry is composed of nested universes. Each universe defines composition of an entire space. 
+//              Composition can be a material, a view into another universe (fill) or "outside".
+//              There must exist root universe. Only root universe can contain "outside" composition. 
+//              Root universe must be cellUniverse. Outside cell must be composed of a single surface halfspace!  
+//              Vaccum material has a reserved name void (case sensitive). 
+//
+geometry { 
+  type basicCellCSG;       // Type of geometry only basicCellCSG avalible for now 
+  boundary ( 1 1 1 1 0 0); // Boundary conditions x-max x-min y-max y-min z-max z-min. 0-vacuum 1-reflective 2-periodic  
+                           // Length of the string depends on the boundary surface. There can be only single boundary surface!  
+  surfaces { 
+    // Square cylinder alligned with z-axis 
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);} 
+  }
+  
+  cells { 
+    in  {id 1; surfaces ( -1); filltype uni; universe 10;} 
+    out {id 2; surfaces (1); filltype outside; } 
+  }
+  
+  universes { 
+    // root universe must be present and include a single outside region 
+    // to define cell universe just list cells it contains 
+    root { id 1; type cellUniverse; origin (0.0 0.0 0.0); cells ( 1 2); } 
+    
+    // Pin universes 
+    // Pin universe is a spatial universe composed of co-centric cylinders aligned with z-axis 
+    // To include a fill composition in fills use spatial syntax eg. u<12> for fill with universe 12. 
+    // Note that radii do not need to be sorted on input. 
+    // Radius of 0.0 is interpreted as a radius of infinity! 
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox70  void   clad   void   alClad water);}    
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox87  void   clad   void   alClad water);}           
+    pin21 {id 21; type pinUniverse; radii ( 0.3400 0.5400 0.0); fills (water clad water);}
+
+    // Lattices 
+    latMox {
+      id 10; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water;      // padding material. Each universe defines entire space. Outside the lattice everything 
+                         // is filled with the material given here
+      // Note that pins are filled from -ve x,y&z corner in order of row-column-layer                     
+      map ( 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); } 
+                                     
+  }
+  
+} 
+
+
+//
+// Nuclear data definitions 
+//
+nuclearData {
+  //
+  // Define all available types of nuclear data in a calculation  
+  // byNucMT   -> standard CE ACE data 
+  // byNucNoMT -> CE ACE Data with only simple reactions (capture, elastic scattering and fission) 
+  //
+  // All nuclear data types use the same materials subdictionary to be build 
+  // It is necessary for every material to be defined in every initialised nuclearData type  
+  //
+  handles { ce byNucMT;
+            //ce byNucNoMT;   
+  } 
+  
+  
+  materials { 
+    aceLibrary /home/mak60/myACE/JEF311.aceXS;  // path to XS Library file 
+    
+    water { 
+      temp 75675;              // temp entry is not used for now, but must be present 
+      1001.03c    6.700E-002;  // each entry is a name of ACE datacard and its atomic density in [1/barn-cm]                                                
+      8016.03c    3.350E-002;
+      5010.03c    5.560E-006;
+      5011.03c    2.224E-005; 
+      }
+    mox43 { 
+      temp 87476; 
+      92235.03c  5.00E-005;  
+      92238.03c  2.21E-002;
+      94238.03c  1.50E-005;
+      94239.03c  5.80E-004;
+      94240.03c  2.40E-004;
+      94241.03c  9.80E-005;
+      94242.03c  5.40E-005;
+      95241.03c  1.30E-005;
+       8016.03c  4.63E-002; } 
+     mox70 { 
+       temp 6786; 
+       92235.03c  5.00E-005; 
+       92238.03c  2.21E-002;
+       94238.03c  2.40E-005;
+       94239.03c  9.30E-004;
+       94240.03c  3.90E-004;
+       94241.03c  1.52E-004;
+       94242.03c  8.40E-005;
+       95241.03c  2.00E-005;
+        8016.03c  4.63E-002; } 
+     mox87 { 
+       temp 8765; 
+       92235.03c  5.00E-005;  
+       92238.03c  2.21E-002;
+       94238.03c  3.00E-005;
+       94239.03c  1.16E-003;
+       94240.03c  4.90E-004;
+       94241.03c  1.90E-004;
+       94242.03c  1.05E-004;
+       95241.03c  2.50E-005;
+        8016.03c  4.63E-002;       
+       } 
+     clad { 
+       temp 12345; 
+       40090.03c  2.21235E-002;
+       40091.03c  4.82460E-003;
+       40092.03c  7.37450E-003;
+       40094.03c  7.47340E-003;
+       40096.03c  1.20400E-003; } 
+     alClad {
+       temp 9876; 
+       13027.03c  6.00E-2; } 
+     }       
+} 
