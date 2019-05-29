@@ -8,6 +8,7 @@ module universalVariables
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
   integer(shortInt), parameter, public :: hardcoded_max_nest = 5
+  integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
 
   ! Define variables which are important for tracking neutrons in the geometry
   real(defReal), parameter, public :: INFINITY    = 2.0_defReal**63, &
@@ -48,9 +49,9 @@ module universalVariables
                                   targetNotFound    = -3
 
   ! Physical constants
-  real(defReal), parameter :: neutronMass = 939.5654133, &   ! Neutron mass in MeV/c^2
-                              lightSpeed  = 2.99792458e10, & ! Light speed in cm/s
-                              energyPerFission = 200         ! MeV
+  real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
+                              lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
+                              energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J

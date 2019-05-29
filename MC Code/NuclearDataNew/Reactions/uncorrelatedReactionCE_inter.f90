@@ -12,7 +12,7 @@ module uncorrelatedReactionCE_inter
   !! Reaction that produces secendary reaction that are uncorreleated with each other
   !!
   !! This means that all particles produced are sampled from the same distribution.
-  !! They are Indipendent and Identically Distributed.
+  !! They are Independent and Identically Distributed.
   !!
   !! Interface:
   !!   inCMframe       -> returns true if reaction is in Centre-Of-Mass frame
@@ -21,12 +21,17 @@ module uncorrelatedReactionCE_inter
   !!   releaseDelayed  -> return number (defReal) of particles produced on average with delay
   !!   sampleDelayRate -> sample and return delay rate [1/s] assuming exponential distribution
   !!     for the decay.
-  !!   sampleOutgoing  -> sample energy and the deflection of outgoing particle
+  !!   sampleOut       -> sample energy and the deflection of outgoing particle
   !!
   type, public, abstract, extends(reactionHandle) :: uncorrelatedReactionCE
     private
   contains
-
+    procedure(inCMframe),deferred       :: inCMframe
+    procedure(release),deferred         :: release
+    procedure(releasePrompt),deferred   :: releasePrompt
+    procedure(releaseDelayed),deferred  :: releaseDelayed
+    procedure(sampleDelayRate),deferred :: sampleDelayRate
+    procedure(sampleOut), deferred      :: sampleOut
   end type uncorrelatedReactionCE
 
 
@@ -115,12 +120,46 @@ module uncorrelatedReactionCE_inter
     !!   E [in]       -> Incident particle energy [MeV]
     !!   rand [inout] -> Random number generator for samples
     !!
+    !! Result:
+    !!   Time constant (lambda) of exponentialy distributed neutron emission delay in [1/s]
+    !!
+    !! Errors:
+    !!   If the reaction has no delayed emissions lambda = 0.0 is returned.
+    !!   If the reaction does not produce delayed emissions at a given energy,
+    !!   energy E is invalid (e.g. -ve) or outside bounds of stored data lambda = 0.0 is returned
+    !!
+    function sampleDelayRate(self, E, rand) result(lambda)
+      import :: defReal, uncorrelatedReactionCE, RNG
+      class(uncorrelatedReactionCE), intent(in) :: self
+      real(defReal), intent(in)                 :: E
+      class(RNG), intent(inout)                 :: rand
+    end function sampleDelayRate
 
-
+    !!
+    !! Sample outgoing particle
+    !!
+    !! Returns deflection from the incident direction and energy of an outgoing particle
+    !! Uses either LAB or Centre-of-Mass reference frame.
+    !!
+    !! Args:
+    !!   mu  [out]    -> cosine of polar deflection angle in [0;1]
+    !!   phi [out]    -> azimuthal deflection angle in [0;2*pi]
+    !!   E_out [out]  -> outgoing particle energy [MeV]
+    !!   E_in [in]    -> incident particle energy [MeV]
+    !!   rand [inout] -> Random number generator for samples
+    !!
+    !! Errors:
+    !!   If E_in is out of bounds or invalid (e.g.-ve) fatalError is returned
+    !!
+    subroutine sampleOut(self, mu, phi, E_out, E_in, rand)
+      import :: defReal, uncorrelatedReactionCE, RNG
+      class(uncorrelatedReactionCE), intent(in) :: self
+      real(defReal), intent(out)                :: mu
+      real(defReal), intent(out)                :: phi
+      real(defReal), intent(out)                :: E_out
+      real(defReal), intent(in)                 :: E_in
+      class(RNG), intent(inout)                 :: rand
+    end subroutine sampleOut
   end interface
-
-
-contains
-
 
 end module uncorrelatedReactionCE_inter
