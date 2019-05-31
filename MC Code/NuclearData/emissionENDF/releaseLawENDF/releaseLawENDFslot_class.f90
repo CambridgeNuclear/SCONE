@@ -11,8 +11,9 @@ module releaseLawENDFslot_class
     private
     class(releaseLawENDF), allocatable :: slot
   contains
-    ! Duplictae interface of the superclass
-    procedure releaseAt
+    ! Superclass interface
+    procedure :: releaseAt
+    procedure :: kill
 
     ! Define assignment
     generic   :: assignment(=) => copy
@@ -35,6 +36,18 @@ contains
 
   end function releaseAt
 
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(releaseLawENDFslot), intent(inout) :: self
+
+    if(allocated(self % slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+
+  end subroutine kill
 
   !!
   !! Copy RHS into slot of LHS

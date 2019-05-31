@@ -27,6 +27,7 @@ module isotropicAngle_class
     procedure :: init
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
   end type isotropicAngle
 
 contains
@@ -68,6 +69,16 @@ contains
     prob = self % muPdf % probabilityOf(mu)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(isotropicAngle), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine kill
 
   !!
   !! Constructor of isotropicAngle

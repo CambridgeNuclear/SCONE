@@ -34,6 +34,8 @@ module levelScattering_class
     ! Interface procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
+
     ! Instance procedures
     procedure :: init
   end type levelScattering
@@ -75,6 +77,17 @@ contains
 
     end if
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(levelScattering), intent(inout) :: self
+
+    self % LDAT1 = ZERO
+    self % LDAT2 = ZERO
+
+  end subroutine kill
 
   !!
   !! Initialise level scattering

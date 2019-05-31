@@ -26,6 +26,7 @@ module kalbachPdf_class
     procedure :: sample
     procedure :: bounds
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Initialisation procedures
     generic           :: init          => init_withPDF, init_withCDF
@@ -99,6 +100,17 @@ contains
     prob =  P_mu * P_Eout
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(kalbachPdf), intent(inout) :: self
+
+    call self % table % kill()
+
+  end subroutine kill
+
 
   !!
   !! Initialise with PDF only

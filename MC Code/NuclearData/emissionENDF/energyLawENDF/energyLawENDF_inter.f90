@@ -14,6 +14,7 @@ module energyLawEndf_inter
     contains
       procedure(sample),deferred        :: sample
       procedure(probabilityOf),deferred :: probabilityOf
+      procedure(kill),deferred          :: kill
   end type energyLawENDF
 
 
@@ -42,6 +43,14 @@ module energyLawEndf_inter
       real(defReal), intent(in)        :: E_out,E_in
       real(defReal)                    :: prob
     end function
+
+    !!
+    !! Return to uninitialised state
+    !!
+    elemental subroutine kill(self)
+      import :: energyLawEndf
+      class(energyLawEndf), intent(inout) :: self
+    end subroutine kill
 
   end interface
 end module energyLawEndf_inter

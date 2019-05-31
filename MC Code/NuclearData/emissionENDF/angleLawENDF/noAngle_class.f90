@@ -23,6 +23,7 @@ module noAngle_class
     procedure :: init
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
   end type noAngle
 
 contains
@@ -71,6 +72,16 @@ contains
     end if
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(noAngle), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine kill
 
   !!
   !! Constructor

@@ -28,6 +28,7 @@ module contTabularEnergy_class
   contains
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     procedure :: init
 
@@ -111,6 +112,22 @@ contains
     prob = interpolate(E_0, E_1, prob_0, prob_1, E_in)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(contTabularEnergy), intent(inout) :: self
+
+    if(allocated(self % eGrid)) deallocate(self % eGrid)
+
+    if(allocated(self % ePdfs)) then
+      call self % ePdfs % kill()
+      deallocate(self % ePdfs)
+    end if
+
+  end subroutine kill
+
 
   !!
   !! Initialise from energy grid and table of single energy probabilty distributions

@@ -50,10 +50,10 @@ module evaporationSpectrum_class
     ! Superclass procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Local procedures
     procedure :: init
-    procedure :: kill
 
   end type evaporationSpectrum
 

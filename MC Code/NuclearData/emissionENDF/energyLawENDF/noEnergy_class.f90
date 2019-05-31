@@ -20,6 +20,7 @@ module noEnergy_class
   contains
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
   end type noEnergy
 
 contains
@@ -54,6 +55,16 @@ contains
     end if
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(noEnergy), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine kill
 
   !!
   !! Constructor

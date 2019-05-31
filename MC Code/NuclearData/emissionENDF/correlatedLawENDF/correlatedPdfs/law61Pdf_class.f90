@@ -25,6 +25,7 @@ module law61Pdf_class
     procedure :: sample
     procedure :: probabilityOf
     procedure :: bounds
+    procedure :: kill
 
     !! Private procedures
     procedure, private :: init_fromACE
@@ -91,6 +92,21 @@ contains
     call self % ePdf % bounds(E_min, E_max)
 
   end subroutine bounds
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(law61Pdf), intent(inout) :: self
+
+    call self % ePdf % kill()
+    if(allocated(self % muPdfs)) then
+      call self % muPdfs % kill()
+      deallocate(self % muPdfs)
+    end if
+
+  end subroutine kill
+
 
   !!
   !! Initialise from ACE. Overwrite and extend superclass procedure

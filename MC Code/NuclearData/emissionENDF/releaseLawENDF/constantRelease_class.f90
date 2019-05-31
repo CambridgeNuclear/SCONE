@@ -16,10 +16,11 @@ module constantRelease_class
   !!
   type, public, extends(releaseLawENDF) :: constantRelease
       private
-      real(defReal) :: secondaryRelease = 1.0
+      real(defReal) :: secondaryRelease = ONE
     contains
       procedure :: init
       procedure :: releaseAt
+      procedure :: kill
   end type constantRelease
 
 contains
@@ -48,6 +49,16 @@ contains
     release = self % secondaryRelease
 
   end function releaseAt
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(constantRelease), intent(inout) :: self
+
+    self % secondaryRelease = ONE
+
+  end subroutine kill
 
   !!
   !! Constructor

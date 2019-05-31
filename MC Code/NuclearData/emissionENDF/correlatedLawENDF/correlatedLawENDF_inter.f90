@@ -14,6 +14,7 @@ module correlatedLawENDF_inter
     contains
       procedure(sample),deferred        :: sample
       procedure(probabilityOf),deferred :: probabilityOf
+      procedure(kill),deferred          :: kill
   end type correlatedLawENDF
 
   abstract interface
@@ -44,6 +45,15 @@ module correlatedLawENDF_inter
       real(defReal), intent(in)            :: E_in
       real(defReal)                        :: prob
     end function probabilityOf
+
+    !!
+    !! Return to uninitialised state
+    !!
+    elemental subroutine kill(self)
+      import :: correlatedLawENDF
+      class(correlatedLawENDF), intent(inout) :: self
+    end subroutine kill
+
   end interface
 
 end module correlatedLawENDF_inter

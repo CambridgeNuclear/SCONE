@@ -120,9 +120,6 @@ contains
   !!   Null is source is not of correlatedReactionCE class
   !!   Target points to source if source is correlatedReactionCE class
   !!
-  !! NOTE:
-  !!   If target is a unique reference to an object. Memory leak will be caused
-  !!
   pure function correlatedReactionCE_ptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     class(correlatedReactionCE), pointer       :: ptr

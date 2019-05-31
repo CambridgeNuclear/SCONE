@@ -28,6 +28,7 @@ module tabularEnergy_class
     procedure :: sample
     procedure :: bounds
     procedure :: probabilityOf
+    procedure :: kill
 
     generic   :: init          => init_withPDF, init_withCDF, init_fromACE
     generic   :: assignment(=) => assign_tabularEnergy
@@ -82,6 +83,16 @@ contains
     prob = self % pdf % probabilityOf(E)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(tabularEnergy), intent(inout) :: self
+
+    call self % pdf % kill()
+
+  end subroutine kill
 
   !!
   !! Initialise tabularEnergy with PDF only. Calculate CDF with PDF

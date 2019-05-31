@@ -73,14 +73,15 @@ module nBodyPhaseSpace_class
   !!
   type, public, extends(correlatedLawENDF) :: nBodyPhaseSpace
     private
-    integer(shortInt) :: N   ! Number of secondary particles
-    real(defReal)     :: Q   ! Q-value for the reaction
-    real(defReal)     :: Ap  ! Total mass ration for N-particles
-    real(defReal)     :: A   ! Target Atomic weight ratio
+    integer(shortInt) :: N   = 0   ! Number of secondary particles
+    real(defReal)     :: Q  = ZERO ! Q-value for the reaction
+    real(defReal)     :: Ap = ZERO ! Total mass ration for N-particles
+    real(defReal)     :: A  = ZERO ! Target Atomic weight ratio
   contains
     ! Interface implementation
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Public interface
     procedure :: init_fromACE
@@ -184,6 +185,21 @@ contains
     prob = HALF * prob
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(nBodyPhaseSpace), intent(inout) :: self
+
+    ! Set constants to initial values
+    self % N  = 0
+    self % Q  = ZERO
+    self % Ap = ZERO
+    self % A  = ZERO
+
+  end subroutine kill
+
 
   !!
   !! Checks if the objeck is valid

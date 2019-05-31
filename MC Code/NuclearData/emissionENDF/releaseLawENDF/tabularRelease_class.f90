@@ -26,8 +26,9 @@ module tabularRelease_class
     type(endfTable)  :: releaseTable
 
   contains
-    generic :: init => initSimple, initInter
+    generic   :: init => initSimple, initInter
     procedure :: releaseAt
+    procedure :: kill
 
     procedure,private :: initSimple
     procedure,private :: initInter
@@ -46,6 +47,16 @@ contains
     release = self % releaseTable % at(E_in)
 
   end function releaseAt
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(tabularRelease), intent(inout) :: self
+
+    call self % releaseTable % kill()
+
+  end subroutine kill
 
   !!
   !! Initialise without interpolation regions

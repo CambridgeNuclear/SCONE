@@ -29,13 +29,14 @@ module maxwellSpectrum_class
   !!
   type, public, extends(energyLawENDF) :: maxwellSpectrum
     private
-    type(maxwellEnergyPdf)    :: maxwellPdf ! Maxwell Energy pdf
-    type(endfTable)           :: T_of_E     ! "Temperature" as function of incident energy
-    real(defReal)             :: U          ! Restriction energy
+    type(maxwellEnergyPdf)    :: maxwellPdf  ! Maxwell Energy pdf
+    type(endfTable)           :: T_of_E      ! "Temperature" as function of incident energy
+    real(defReal)             :: U   = ZERO  ! Restriction energy
 
   contains
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     procedure :: init
 
@@ -95,6 +96,17 @@ contains
     prob = self % maxwellPdf % probabilityOf(E_out,T,C)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(maxwellSpectrum), intent(inout) :: self
+
+    call self % T_of_E % kill()
+    self % U = ZERO
+
+  end subroutine kill
 
   !!
   !! Initialise

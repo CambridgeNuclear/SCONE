@@ -7,11 +7,16 @@ module elasticNeutronScatter_class
   use dataDeck_inter,               only : dataDeck
   use aceCard_class,                only : aceCard
   use tabularAngle_class,           only : tabularAngle
+  use reactionHandle_inter,         only : reactionHandle
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE
-
 
   implicit none
   private
+
+  !!
+  !! Public pointer cast
+  !!
+  public :: elasticNeutronScatter_ptrCast
 
   !!
   !! Reaction type for Neutron Elastic Scattering
@@ -191,5 +196,30 @@ contains
     call self % angularData % init(ACE, N_N_ELASTIC)
 
   end subroutine buildFromACE
+
+  !!
+  !! Cast reactionHandle pointer to elasticNeutronScatter pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class reactionHandle
+  !!
+  !! Result:
+  !!   Null is source is not of elasticNeutronScatter type
+  !!   Target points to source if source is elasticNeutronScatter type
+  !!
+  pure function elasticNeutronScatter_ptrCast(source) result(ptr)
+    class(reactionHandle), pointer, intent(in) :: source
+    type(elasticNeutronScatter), pointer       :: ptr
+
+    select type(source)
+      type is(elasticNeutronScatter)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function elasticNeutronScatter_ptrCast
+
 
 end module elasticNeutronScatter_class

@@ -120,7 +120,7 @@ module reactionMG_inter
     !!   is returned
     !!
     function sampleDelayRate(self, G, rand) result(lambda)
-      import :: defReal, ,shortInt, reactionMG, RNG
+      import :: defReal, shortInt, reactionMG, RNG
       class(reactionMG), intent(in) :: self
       integer(shortInt), intent(in) :: G
       class(RNG), intent(inout)     :: rand
@@ -163,9 +163,6 @@ contains
   !! Result:
   !!   Null is source is not of reactionMG class
   !!   Target points to source if source is reactionMG class
-  !!
-  !! NOTE:
-  !!   If target is a unique reference to an object. Memory leak will be caused
   !!
   pure function reactionMG_ptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source

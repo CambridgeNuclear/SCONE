@@ -18,6 +18,7 @@ module angleLawENDFslot_class
     procedure :: init
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Define assignment
     procedure :: moveAllocFrom
@@ -63,6 +64,18 @@ contains
     prob = self % slot % probabilityOf(mu,E)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(angleLawENDFslot), intent(inout) :: self
+
+    if(allocated(self % slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+  end subroutine kill
 
   !!
   !! Move allocation from RHS to LHS slot

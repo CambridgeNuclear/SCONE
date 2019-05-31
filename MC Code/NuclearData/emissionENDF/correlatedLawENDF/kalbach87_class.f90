@@ -29,6 +29,7 @@ module kalbach87_class
   contains
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     procedure :: init
 
@@ -120,6 +121,22 @@ contains
     prob = interpolate(E_0, E_1, prob_0, prob_1, E_in)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(Self)
+    class(kalbach87), intent(inout) :: self
+
+    if(allocated(self % eGrid)) deallocate(self % eGrid)
+
+    if(allocated(self % pdfs)) then
+      call self % pdfs % kill()
+      deallocate(self % pdfs)
+    end if
+
+  end subroutine kill
+
 
   !!
   !! Initialise

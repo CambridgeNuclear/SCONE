@@ -179,9 +179,6 @@ contains
   !!   Null is source is not of uncorrelatedReactionCE class
   !!   Target points to source if source is uncorrelatedReactionCE class
   !!
-  !! NOTE:
-  !!   If target is a unique reference to an object. Memory leak will be caused
-  !!
   pure function uncorrelatedReactionCE_ptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     class(uncorrelatedReactionCE), pointer     :: ptr

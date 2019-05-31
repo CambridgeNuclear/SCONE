@@ -27,12 +27,13 @@ module kalbachTable_class
     real(defReal),dimension(:),allocatable       :: cdf
     real(defReal),dimension(:),allocatable       :: R
     real(defReal),dimension(:),allocatable       :: A
-    integer(shortInt)                            :: flag            !Interpolation flag
+    integer(shortInt)                            :: flag  = -2       !Interpolation flag
   contains
     generic   :: init          => initPdf, initCdf
     procedure :: sample
     procedure :: bounds
     procedure :: probabilityOf
+    procedure :: kill
 
     procedure :: initPdf
     procedure, private :: initCdf
@@ -143,6 +144,24 @@ contains
     end select
 
   end subroutine probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(kalbachTable), intent(inout) :: self
+
+    ! Deallocate table
+    if(allocated(self % x))   deallocate(self % x)
+    if(allocated(self % pdf)) deallocate(self % pdf)
+    if(allocated(self % cdf)) deallocate(self % cdf)
+    if(allocated(self % R))   deallocate(self % R)
+    if(allocated(self % A))   deallocate(self % A)
+
+    ! Set intepolation flag
+    self % flag = -2
+
+  end subroutine kill
 
 
   !!

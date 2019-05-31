@@ -22,6 +22,7 @@ module polynomialrelease_class
     contains
       procedure :: init
       procedure :: releaseAt
+      procedure :: kill
   end type polynomialRelease
 
 contains
@@ -54,6 +55,16 @@ contains
     end do
 
   end function releaseAt
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(polynomialRelease), intent(inout) :: self
+
+    if(allocated(self % coeffs)) deallocate(self % coeffs)
+
+  end subroutine kill
 
   !!
   !! Constructor

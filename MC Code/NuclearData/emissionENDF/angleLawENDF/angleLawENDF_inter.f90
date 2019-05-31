@@ -16,6 +16,7 @@ module angleLawENDF_inter
     procedure(init),deferred           :: init
     procedure(sample),deferred         :: sample
     procedure(probabilityOf),deferred  :: probabilityOf
+    procedure(kill),deferred           :: kill
   end type angleLawENDF
 
 
@@ -56,6 +57,15 @@ module angleLawENDF_inter
       real(defReal), intent(in)       :: E, mu
       real(defReal)                   :: prob
     end function probabilityOf
+
+    !!
+    !! Return to uninitialised state
+    !!
+    elemental subroutine kill(self)
+      import :: angleLawENDF
+      class(angleLawENDF), intent(inout) :: self
+    end subroutine kill
+
 
   end interface
     

@@ -14,6 +14,7 @@ module energyLawENDFslot_class
     ! Duplictae interface of the superclass
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Define assignment
     generic   :: assignment(=) => copy
@@ -48,6 +49,19 @@ contains
     prob = self % slot % probabilityOf(E_out,E_in)
 
   end function
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(energyLawENDFslot), intent(inout) :: self
+
+    if(allocated(self % slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+
+  end subroutine kill
 
   !!
   !! Copy RHS into slot of LHS

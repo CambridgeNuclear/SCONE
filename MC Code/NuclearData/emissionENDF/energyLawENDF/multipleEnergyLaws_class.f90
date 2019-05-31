@@ -21,8 +21,8 @@ module multipleEnergyLaws_class
   !!
   type, private :: tableWrap
     type(endfTable) :: table
-    real(defReal)   :: E_min
-    real(defReal)   :: E_max
+    real(defReal)   :: E_min = ZERO
+    real(defReal)   :: E_max = ZERO
   end type tableWrap
 
   !!
@@ -56,6 +56,7 @@ module multipleEnergyLaws_class
     ! Interface procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Instance procedures
     procedure :: init
@@ -64,7 +65,6 @@ module multipleEnergyLaws_class
   end type multipleEnergyLaws
 
 contains
-
 
   !!
   !! Sample outgoing energy
@@ -144,6 +144,25 @@ contains
     end do
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(multipleEnergyLaws), intent(inout) :: self
+
+    if(allocated(self % prob)) then
+      call self % prob % table % kill()
+      deallocate(self % prob)
+    end if
+
+    if(allocated(self % laws)) then
+      call self % laws % kill()
+      deallocate(self % laws)
+    end if
+
+  end subroutine kill
+
 
   !!
   !! Initialise multipleEnergyLaws

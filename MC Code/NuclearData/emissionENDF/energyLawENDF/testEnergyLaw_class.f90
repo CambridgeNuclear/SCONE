@@ -15,15 +15,16 @@ module testEnergyLaw_class
   !!   E_out -> value returned during sample procedure
   !!
   !! Interface:
-  !!   sample -> returns E_out
+  !!   sample        -> returns E_out
   !!   probabilityOf -> returns 1.0 if E_in == E_out (no floating point tolerance!)
   !!
   type, public,extends(energyLawENDF) :: testEnergyLaw
-    real(defReal) :: E_out
+    real(defReal) :: E_out = ZERO
   contains
     ! Interface procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
   end type testEnergyLaw
 
 contains
@@ -53,7 +54,7 @@ contains
   !!
   !! Args:
   !!   E_out [in] -> outgoing energy energy [MeV]
-  !!   E_in [in] -> incident energy [MeV]
+  !!   E_in [in]  -> incident energy [MeV]
   !!
   !! Returns:
   !!   Probability of transition in [0,1]
@@ -71,5 +72,14 @@ contains
 
   end function probabilityOf
 
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(testEnergyLaw), intent(inout) :: self
+
+    self % E_out = ZERO
+
+  end subroutine kill
     
 end module testEnergyLaw_class

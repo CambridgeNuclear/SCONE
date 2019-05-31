@@ -14,6 +14,7 @@ module correlatedLawENDFslot_class
     ! Duplicate interface of the superclass
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Define assignment
     generic   :: assignment(=) => copy
@@ -52,6 +53,18 @@ contains
 
   end function probabilityOf
 
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(Self)
+    class(correlatedLawENDFslot), intent(inout) :: self
+
+    if(allocated(self %slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+
+  end subroutine kill
 
   !!
   !! Copy RHS into slot of LHS
