@@ -26,6 +26,7 @@ module muEndfPdfSlot_class
     ! Duplicate interface of the superclass
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Define assignment
     procedure :: init
@@ -88,7 +89,6 @@ contains
 
   end subroutine init
 
-
   !!
   !! Move allocation from RHS to LHS slot
   !!
@@ -101,5 +101,19 @@ contains
     call move_alloc(RHS % slot, LHS % slot)
 
   end subroutine moveAllocFrom
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(muEndfPdfSlot), intent(inout) :: self
+
+    ! Kill slot if allocated
+    if(allocated(self % slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+
+  end subroutine kill
 
 end module muEndfPdfSlot_class

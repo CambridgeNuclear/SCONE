@@ -33,6 +33,7 @@ module tabularAngle_class
       procedure :: build
       procedure :: sample
       procedure :: probabilityOf
+      procedure :: kill
   end type tabularAngle
 
 contains
@@ -191,5 +192,21 @@ contains
     call new % init(ACE, 1)
 
   end function new_tabularAngle_fromACE
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(tabularAngle), intent(inout) :: self
+
+    ! Kill angular PDFs
+    if(allocated(self % muEndfPdfs)) call self % muEndfPdfs % kill()
+
+    ! Deallocate arrays
+    if(allocated(self % eGrid))      deallocate(self % eGrid)
+    if(allocated(self % muEndfPdfs)) deallocate(self % muEndfPdfs)
+
+
+  end subroutine kill
 
 end module tabularAngle_class

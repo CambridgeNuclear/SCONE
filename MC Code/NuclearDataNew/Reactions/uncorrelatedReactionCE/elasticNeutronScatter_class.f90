@@ -1,10 +1,12 @@
 module elasticNeutronScatter_class
 
   use numPrecision
-  use genericProcedures,            only : fatalError
+  use endfConstants
+  use genericProcedures,            only : fatalError, numToChar
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
   use aceCard_class,                only : aceCard
+  use tabularAngle_class,           only : tabularAngle
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE
 
 
@@ -19,9 +21,10 @@ module elasticNeutronScatter_class
   !! Interface:
   !!   uncorrelatedReactionCE interface
   !!   buildFromACE -> initialise object from ACE dataCard
+  !!
   type, public, extends(uncorrelatedReactionCE) :: elasticNeutronScatter
     private
-
+    type(tabularAngle) :: angularData
   contains
     !! Superclass interface
     procedure :: init
@@ -54,6 +57,13 @@ contains
     integer(shortInt), intent(in)               :: MT
     character(100), parameter :: Here = 'init (elasticNeutronScatter_class.f90)'
 
+    ! Catch MT numbers that are not elastic scattering
+    if( MT /= N_N_ELASTIC) then
+      call fatalError(Here,'Connot be build for reaction with MT:' //numToChar(MT)//&
+                           ' which is not scattering')
+    end if
+
+    ! Select buld procedure approperiate for given dataDeck
     select type(data)
       type is (aceCard)
         call self % buildFromACE(data)
@@ -72,7 +82,7 @@ contains
   elemental subroutine kill(self)
     class(elasticNeutronScatter), intent(inout) :: self
 
-    ! Nothing to do yet
+    call self % angularData % kill()
 
   end subroutine kill
 
@@ -159,9 +169,14 @@ contains
     real(defReal), intent(in)                :: E_in
     class(RNG), intent(inout)                :: rand
 
-    mu  = ONE
-    phi = ZERO
+    ! Set energy
     E_out = E_in
+
+    ! Sample mu
+    mu = self % angularData % sample(E_in, rand)
+
+    ! Sample phi
+    phi = rand % get() * TWO_PI
 
   end subroutine sampleOut
 
@@ -172,7 +187,8 @@ contains
     class(elasticNeutronScatter), intent(inout) :: self
     type(aceCard), intent(inout)                :: ACE
 
-    ! Write it
+    ! Initialise tabular angle
+    call self % angularData % init(ACE, N_N_ELASTIC)
 
   end subroutine buildFromACE
 

@@ -13,12 +13,13 @@ module numPrecision
 
 
   ! Usefull constants
-  real(defReal), public, parameter :: PI = 4.0 * atan(1.0_defReal), &
+  real(defReal), public, parameter :: PI = 4.0_defReal * atan(1.0_defReal), &
                                       SQRT2 = sqrt(2._defReal), &
                                       SQRT2_2 = sqrt(2._defReal)/2._defReal , &
                                       ZERO = 0._defReal, &
                                       ONE = 1.0_defReal, &
                                       TWO = 2.0_defReal, &
+                                      TWO_PI = TWO * PI, &
                                       HALF = 0.5_defReal
 
   real(defReal), public, parameter  :: floatTol = 1.0e-12 !*** Should be replaced

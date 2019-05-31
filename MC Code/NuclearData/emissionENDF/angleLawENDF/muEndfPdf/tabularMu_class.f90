@@ -23,13 +23,14 @@ module tabularMu_class
     private
     type(tabularPdf) :: pdf
   contains
+    ! Superclass procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     generic,private   :: init => init_withPDF, init_withCDF
     procedure,private :: init_withPDF
     procedure,private :: init_withCDF
-
 
   end type tabularMu
 
@@ -61,6 +62,16 @@ contains
     prob = self % pdf % probabilityOf(mu)
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(tabularMu), intent(inout) :: self
+
+    call self % pdf % kill()
+
+  end subroutine kill
 
   !!
   !! Initialise with PDF only

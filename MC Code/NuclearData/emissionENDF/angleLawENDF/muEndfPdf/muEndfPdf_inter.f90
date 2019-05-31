@@ -15,6 +15,7 @@ module muEndfPdf_inter
   contains
     procedure(sample), deferred        :: sample
     procedure(probabilityOf), deferred :: probabilityOf
+    procedure(kill),deferred           :: kill
   end type muEndfPdf
 
   abstract interface
@@ -42,6 +43,15 @@ module muEndfPdf_inter
       real(defReal), intent(in)     :: mu
       real(defReal)                 :: probability
     end function probabilityOf
+
+    !!
+    !! Return to uninitialised state
+    !!
+    elemental subroutine kill(self)
+      import :: muEndfPdf
+      class(muEndfPdf), intent(inout) :: self
+    end subroutine kill
+
   end interface
 
   !! *** OBSOLETE WILL BE REPLACED WITH SLOTS SOON

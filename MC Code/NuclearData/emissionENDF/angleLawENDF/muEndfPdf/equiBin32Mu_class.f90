@@ -27,11 +27,12 @@ module equiBin32Mu_class
   !!
   type, public,extends(muEndfPdf) :: equiBin32Mu
     private
-    real(defReal),dimension(33) :: boundaries
+    real(defReal),dimension(33) :: boundaries = ZERO
   contains
     ! Superclass procedures
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
 
     ! Local procedures
     procedure :: build
@@ -80,6 +81,17 @@ contains
     prob = ONE / 32.0 / binWidth
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(equiBin32Mu), intent(inout) :: self
+
+    self % boundaries = ZERO
+
+  end subroutine kill
+
 
   !!
   !! Initialise equiBin32Mu from array of bin boundaries

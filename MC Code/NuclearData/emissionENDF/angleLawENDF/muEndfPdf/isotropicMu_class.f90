@@ -21,6 +21,7 @@ module isotropicMu_class
   contains
     procedure :: sample
     procedure :: probabilityOf
+    procedure :: kill
   end type isotropicMu
 
 contains
@@ -49,6 +50,16 @@ contains
     probability = HALF
 
   end function probabilityOf
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(isotropicMu), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine kill
 
 
   !!
