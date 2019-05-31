@@ -2,6 +2,7 @@ module aceCard_class
 
   use numPrecision
   use endfConstants
+  use dataDeck_inter,    only : dataDeck
   use genericProcedures, only : fatalError, openToRead, isInteger, linFind,&
                                 targetNotFound, searchError
 
@@ -64,7 +65,7 @@ module aceCard_class
   !!
   !! Procedures for MT accept elastic scattering which has MT = N_N_elastic (from endfConstants)
   !!
-  type, public :: aceCard
+  type, public, extends(dataDeck) :: aceCard
     private
 
     ! Public Components
@@ -94,6 +95,9 @@ module aceCard_class
     real(defReal),dimension(:),allocatable,public :: XSS
 
   contains
+    ! Superclass procedures
+    procedure :: myType
+
     ! XSs directly from blocks
     procedure :: ESZblock            ! Returns ESZ block XS (see detailed description)
 
@@ -162,6 +166,18 @@ module aceCard_class
   end type aceCard
 
 contains
+  !!
+  !! Return String with type name
+  !!
+  !! See dataDeck_inter for details
+  !!
+  pure function myType(self) result(type)
+    class(aceCard), intent(in) :: self
+    character(:),allocatable :: type
+
+    type = 'aceCard_class'
+
+  end function myType
 
   !!
   !! Determines if the scalar real is integer. If it is converts it to shortInt.

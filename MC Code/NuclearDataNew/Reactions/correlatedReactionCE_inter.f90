@@ -9,6 +9,11 @@ module correlatedReactionCE_inter
   private
 
   !!
+  !! Public pointer cast
+  !!
+  public :: correlatedReactionCE_ptrCast
+
+  !!
   !! Outgoing particle sample data
   !!
   !! Helper type to group data for a single outgoing particle sample
@@ -102,5 +107,34 @@ module correlatedReactionCE_inter
       class(RNG), intent(inout)               :: rand
     end subroutine sampleOut
   end interface
+
+contains
+
+  !!
+  !! Cast reactionHandle pointer to correlatedReactionCE pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class reactionHandle
+  !!
+  !! Result:
+  !!   Null is source is not of correlatedReactionCE class
+  !!   Target points to source if source is correlatedReactionCE class
+  !!
+  !! NOTE:
+  !!   If target is a unique reference to an object. Memory leak will be caused
+  !!
+  pure function correlatedReactionCE_ptrCast(source) result(ptr)
+    class(reactionHandle), pointer, intent(in) :: source
+    class(correlatedReactionCE), pointer       :: ptr
+
+    select type(source)
+      class is(correlatedReactionCE)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function correlatedReactionCE_ptrCast
     
 end module correlatedReactionCE_inter

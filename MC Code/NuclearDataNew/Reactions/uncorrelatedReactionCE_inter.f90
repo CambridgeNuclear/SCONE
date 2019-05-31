@@ -7,6 +7,10 @@ module uncorrelatedReactionCE_inter
   implicit none
   private
 
+  !!
+  !! Public pointer cast
+  !!
+  public :: uncorrelatedReactionCE_ptrCast
 
   !!
   !! Reaction that produces secendary reaction that are uncorreleated with each other
@@ -133,6 +137,7 @@ module uncorrelatedReactionCE_inter
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(in)                 :: E
       class(RNG), intent(inout)                 :: rand
+      real(defReal)                             :: lambda
     end function sampleDelayRate
 
     !!
@@ -161,5 +166,34 @@ module uncorrelatedReactionCE_inter
       class(RNG), intent(inout)                 :: rand
     end subroutine sampleOut
   end interface
+
+contains
+
+  !!
+  !! Cast reactionHandle pointer to uncorrelatedReactionCE pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class reactionHandle
+  !!
+  !! Result:
+  !!   Null is source is not of uncorrelatedReactionCE class
+  !!   Target points to source if source is uncorrelatedReactionCE class
+  !!
+  !! NOTE:
+  !!   If target is a unique reference to an object. Memory leak will be caused
+  !!
+  pure function uncorrelatedReactionCE_ptrCast(source) result(ptr)
+    class(reactionHandle), pointer, intent(in) :: source
+    class(uncorrelatedReactionCE), pointer     :: ptr
+
+    select type(source)
+      class is(uncorrelatedReactionCE)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function uncorrelatedReactionCE_ptrCast
 
 end module uncorrelatedReactionCE_inter

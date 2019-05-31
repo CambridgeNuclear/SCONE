@@ -7,6 +7,12 @@ module reactionMG_inter
   implicit none
   private
 
+
+  !!
+  !! Public pointer cast
+  !!
+  public :: reactionMG_ptrCast
+
   !!
   !! Reaction that produces secendary particles in MG
   !!
@@ -145,5 +151,34 @@ module reactionMG_inter
       class(RNG), intent(inout)      :: rand
     end subroutine sampleOut
   end interface
+
+contains
+
+  !!
+  !! Cast reactionHandle pointer to reactionMG pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class reactionHandle
+  !!
+  !! Result:
+  !!   Null is source is not of reactionMG class
+  !!   Target points to source if source is reactionMG class
+  !!
+  !! NOTE:
+  !!   If target is a unique reference to an object. Memory leak will be caused
+  !!
+  pure function reactionMG_ptrCast(source) result(ptr)
+    class(reactionHandle), pointer, intent(in) :: source
+    class(reactionMG), pointer                 :: ptr
+
+    select type(source)
+      class is(reactionMG)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function reactionMG_ptrCast
 
 end module reactionMG_inter
