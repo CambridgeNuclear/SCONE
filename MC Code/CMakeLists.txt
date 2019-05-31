@@ -72,6 +72,7 @@ endif()
 # IMPORT FUNCTIONS TO COLLECT SOURCE FILES 
 include(add_sources) 
 include(add_unit_tests)
+include(add_integration_tests) 
 
 ###############################################################################
 # COLLECT ALL SOURCE AND TEST FILES 
@@ -127,7 +128,7 @@ add_executable(scone.out ./Apps/scone.f90 )
 target_link_libraries(scone.out scone ) 
 
 ###############################################################################
-# COMPILE TESTS 
+# COMPILE UNIT TESTS 
 if(BUILD_TESTS) 
 
   # Create directory in binary_dir for temporary preprocessed test files 
@@ -137,7 +138,6 @@ if(BUILD_TESTS)
   file(WRITE ${PROJECT_BINARY_DIR}/generated/testSuites.inc "")
  
   include_directories(
-      ${PROJECT_BINARY_DIR}/generated
       ${PFUNIT_MOD}
       )
 
@@ -172,12 +172,62 @@ if(BUILD_TESTS)
   endforeach()
 
 
-  add_executable(allTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_UNIT_TESTS}) 
-  target_link_libraries(allTests pFUnit scone)  
+  add_executable(unitTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_UNIT_TESTS}) 
+  target_link_libraries(unitTests pFUnit scone)  
+  target_include_directories(unitTests PUBLIC ${PROJECT_BINARY_DIR}/generated )
 
   # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
   # directives  
   # Select GNU compiler and Build Robust Test Suite 
-  set_target_properties(allTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
+  set_target_properties(unitTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
   
+###############################################################################
+# COMPILE INTEGRATION TESTS   
+  
+  # Create directory in binary_dir for temporary preprocessed test files 
+  file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generatedInt)
+  
+  # Create required test suites listing file  
+  file(WRITE ${PROJECT_BINARY_DIR}/generatedInt/testSuites.inc "")
+ 
+  # Preprocess collected test files from global property into variable 
+  # Copy files to the build folder 
+  
+  set(PREP_INTEGRATION_TESTS)
+  get_property(INTEGRATION_TESTS GLOBAL PROPERTY INTEGRATION_TESTS_LIST)
+
+  foreach(_testPath IN LISTS INTEGRATION_TESTS)
+    # OBTAIN EXTENSION 
+    string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
+    
+    # REMOVE EXTENSION 
+    string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
+
+    # OBTAIN FILE NAME WITHOUT EXTENSION 
+    string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
+
+    # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR 
+    add_custom_command(
+       OUTPUT ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension}
+       COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_PREPROC}/pFUnitParser.py ${_testPath} ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension}
+       DEPENDS pFUnit ${_testPath}
+       COMMENT "Preprocessing test ${testName}"
+       VERBATIM
+       )
+    # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc 
+    set(PREP_INTEGRATION_TESTS ${PREP_INTEGRATION_TESTS} ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension})   
+    file(APPEND ${PROJECT_BINARY_DIR}/generatedInt/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")    
+  endforeach()
+
+
+  add_executable(integrationTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_INTEGRATION_TESTS}) 
+  target_link_libraries(integrationTests pFUnit scone)  
+  target_include_directories(integrationTests PUBLIC ${PROJECT_BINARY_DIR}/generatedInt )
+
+
+  # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor 
+  # directives  
+  # Select GNU compiler and Build Robust Test Suite 
+  set_target_properties(integrationTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
+ 
 endif() 
