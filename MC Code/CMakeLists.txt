@@ -6,7 +6,7 @@ project(SCONE)
 option(BUILD_TESTS "If is set to ON will compile tests" ON)
 option(LTO "Enables link-time optimisation" ON) 
 option(COVERAGE "Collect Coverage Info" ON) 
-option(DEBUG "Enable extra run-time checks" ON) 
+option(DEBUG "Enable extra run-time checks" OFF) 
  
 set(CMAKE_VERBOSE_MAKEFILE off)
 

@@ -88,10 +88,10 @@ contains
     real(defReal),intent(in)        :: mu
     real(defReal),intent(in)        :: E_out
     real(defReal)                   :: prob
-    real(defReal)                   :: P_Eout,R,A, P_mu
+    real(defReal)                   :: P_Eout, R, A, P_mu
 
     ! Obtain Kalbach parameters and probability of E_out
-    call self % table % probabilityOf(E_out,P_Eout,R,A)
+    call self % table % probabilityOf(E_out, P_Eout, R, A)
 
     ! Calculate probability of mu
     P_mu = HALF * A/sinh(A)*(cosh(A*mu) + R*sinh(A*mu))

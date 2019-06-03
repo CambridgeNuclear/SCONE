@@ -242,11 +242,16 @@ contains
     real(defReal), intent(in)         :: E_in
     real(defReal)                     :: prob
 
-    if(self % correlated) then
-      prob = self % corrLaw % probabilityOf(mu, E_out, E_in)
+    ! Check range
+    if (abs(mu) <= ONE .and. E_out > ZERO) then
+      if(self % correlated) then
+        prob = self % corrLaw % probabilityOf(mu, E_out, E_in)
+      else
+        prob = self % muLaw % probabilityOf(mu, E_in)
+        prob = prob * self % eLaw % probabilityOf(E_out, E_in)
+      end if
     else
-      prob = self % muLaw % probabilityOf(mu, E_in)
-      prob = prob * self % eLaw % probabilityOf(E_out, E_in)
+      prob = ZERO
     end if
 
     ! Apply phi prob

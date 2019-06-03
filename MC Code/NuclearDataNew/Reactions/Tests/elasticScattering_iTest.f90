@@ -72,7 +72,9 @@ contains
     @assertEqual(0.7934733E-01_defReal, reaction % probOf(-0.3_defReal, 2.0_defReal, 8.9201_defReal, 8.9201_defReal), TOL)
 
     ! Test invalid angle aranges
-
+    @assertEqual(ZERO, reaction % probOf(1.1_defReal, 2.0_defReal, ONE, ONE), TOL)
+    @assertEqual(ZERO, reaction % probOf(0.7_defReal, -2.0_defReal, ONE, ONE), TOL)
+    @assertEqual(ZERO, reaction % probOf(0.7_defReal, 2.0_defReal, -ONE, -ONE), TOL)
 
     ! Clean
     call reaction % kill()

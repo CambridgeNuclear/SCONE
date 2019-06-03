@@ -199,8 +199,12 @@ contains
     real(defReal), intent(in)                :: E_in
     real(defReal)                            :: prob
 
-    ! Set mu prob
-    prob = self % angularData % probabilityOf(mu, E_in)
+    ! Check range and set mu prob
+    if (abs(mu) <= ONE .and. E_out > ZERO) then
+      prob = self % angularData % probabilityOf(mu, E_in)
+    else
+      prob = ZERO
+    end if
 
     ! Apply E_out prob -> delta distribution
     if( E_out /= E_in) prob = ZERO
@@ -213,8 +217,6 @@ contains
     end if
 
   end function probOf
-
-
 
   !!
   !! Build elasticNeutronScatter from ACE dataCard
