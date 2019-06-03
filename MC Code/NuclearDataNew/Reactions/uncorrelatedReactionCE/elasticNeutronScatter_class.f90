@@ -40,6 +40,7 @@ module elasticNeutronScatter_class
     procedure :: releaseDelayed
     procedure :: sampleDelayRate
     procedure :: sampleOut
+    procedure :: probOf
 
     !! Instance procedures
     procedure :: buildFromACE
@@ -186,11 +187,44 @@ contains
   end subroutine sampleOut
 
   !!
+  !! Return probability density of emission at given angle and energy
+  !!
+  !! See uncorrelatedReactionCE for details
+  !!
+  function probOf(self, mu, phi, E_out, E_in) result(prob)
+    class(elasticNeutronScatter), intent(in) :: self
+    real(defReal), intent(in)                :: mu
+    real(defReal), intent(in)                :: phi
+    real(defReal), intent(in)                :: E_out
+    real(defReal), intent(in)                :: E_in
+    real(defReal)                            :: prob
+
+    ! Set mu prob
+    prob = self % angularData % probabilityOf(mu, E_in)
+
+    ! Apply E_out prob -> delta distribution
+    if( E_out /= E_in) prob = ZERO
+
+    ! Apply phi prob
+    if (phi >= ZERO .and. phi <= TWO_PI) then
+      prob = prob /TWO_PI
+    else
+      prob = ZERO
+    end if
+
+  end function probOf
+
+
+
+  !!
   !! Build elasticNeutronScatter from ACE dataCard
   !!
   subroutine buildFromACE(self, ACE)
     class(elasticNeutronScatter), intent(inout) :: self
     type(aceCard), intent(inout)                :: ACE
+
+    ! Seat read head of ACE to elastic Scattering data
+    call ACE % setToAngleMT(N_N_ELASTIC)
 
     ! Initialise tabular angle
     call self % angularData % init(ACE, N_N_ELASTIC)

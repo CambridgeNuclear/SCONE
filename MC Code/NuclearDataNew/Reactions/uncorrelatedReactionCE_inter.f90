@@ -26,6 +26,7 @@ module uncorrelatedReactionCE_inter
   !!   sampleDelayRate -> sample and return delay rate [1/s] assuming exponential distribution
   !!     for the decay.
   !!   sampleOut       -> sample energy and the deflection of outgoing particle
+  !!   probOf          -> probability of emission at a given angle and energy
   !!
   type, public, abstract, extends(reactionHandle) :: uncorrelatedReactionCE
     private
@@ -36,6 +37,7 @@ module uncorrelatedReactionCE_inter
     procedure(releaseDelayed),deferred  :: releaseDelayed
     procedure(sampleDelayRate),deferred :: sampleDelayRate
     procedure(sampleOut), deferred      :: sampleOut
+    procedure(probOf),deferred          :: probOf
   end type uncorrelatedReactionCE
 
 
@@ -165,7 +167,37 @@ module uncorrelatedReactionCE_inter
       real(defReal), intent(in)                 :: E_in
       class(RNG), intent(inout)                 :: rand
     end subroutine sampleOut
+
+    !!
+    !! Return probability density of emission at given angle and energy
+    !!
+    !! Probably not going to be used in calculation schemes very much but
+    !! is very convinent for testing that the build resulted in correct
+    !! probability distrbutiuon being loded
+    !!
+    !! Args:
+    !!   mu    [in] -> outgoing cosine of polar deflection; mu in [0;1]
+    !!   phi   [in] -> outgoing angle of azimuthal deflection; phi in [0,2*pi]
+    !!   E_out [in] -> outgoing energy [MeV]
+    !!   E_in  [in] -> incident energy [MeV]
+    !!
+    !! Result:
+    !!   Value of probability distribution for the given arguments (must be +ve)
+    !!
+    !! Errors:
+    !!   For input arguments outside their range returns prob = 0.0
+    !!
+    function probOf(self, mu, phi, E_out, E_in) result(prob)
+      import :: defReal, uncorrelatedReactionCE
+      class(uncorrelatedReactionCE), intent(in) :: self
+      real(defReal), intent(in)                 :: mu
+      real(defReal), intent(in)                 :: phi
+      real(defReal), intent(in)                 :: E_out
+      real(defReal), intent(in)                 :: E_in
+      real(defReal)                             :: prob
+    end function probOf
   end interface
+
 
 contains
 

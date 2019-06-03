@@ -72,6 +72,7 @@ module neutronScatter_class
     procedure :: releaseDelayed
     procedure :: sampleDelayRate
     procedure :: sampleOut
+    procedure :: probOf
 
     !! Instance procedures
     procedure :: buildFromACE
@@ -229,6 +230,36 @@ contains
   end subroutine sampleOut
 
   !!
+  !! Return probability density of emission at given angle and energy
+  !!
+  !! See uncorrelatedReactionCE for details
+  !!
+  function probOf(self, mu, phi, E_out, E_in) result(prob)
+    class(neutronScatter), intent(in) :: self
+    real(defReal), intent(in)         :: mu
+    real(defReal), intent(in)         :: phi
+    real(defReal), intent(in)         :: E_out
+    real(defReal), intent(in)         :: E_in
+    real(defReal)                     :: prob
+
+    if(self % correlated) then
+      prob = self % corrLaw % probabilityOf(mu, E_out, E_in)
+    else
+      prob = self % muLaw % probabilityOf(mu, E_in)
+      prob = prob * self % eLaw % probabilityOf(E_out, E_in)
+    end if
+
+    ! Apply phi prob
+    if (phi >= ZERO .and. phi <= TWO_PI) then
+      prob = prob /TWO_PI
+    else
+      prob = ZERO
+    end if
+
+  end function probOf
+
+
+  !!
   !! Build neutronScatter from ACE dataCard
   !!
   !! Args:
@@ -308,6 +339,5 @@ contains
     end select
 
   end function neutronScatter_ptrCast
-
     
 end module neutronScatter_class
