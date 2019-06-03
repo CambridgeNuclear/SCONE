@@ -70,7 +70,7 @@ module uncorrelatedReactionCE_inter
     !! Errors:
     !!   If E is invalid (e.g. -ve) or outside of bounds of data table N = 0.0 is returned.
     !!
-    pure function release(self, E) result(N)
+    function release(self, E) result(N)
       import :: defReal, uncorrelatedReactionCE
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(in)                 :: E
@@ -89,7 +89,7 @@ module uncorrelatedReactionCE_inter
     !! Errors:
     !!   If E is invalid (e.g. -ve) or outside of bounds of data table N = 0.0 is returned.
     !!
-    pure function releasePrompt(self, E) result(N)
+    function releasePrompt(self, E) result(N)
       import :: defReal, uncorrelatedReactionCE
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(in)                 :: E
@@ -108,7 +108,7 @@ module uncorrelatedReactionCE_inter
     !! Errors:
     !!   If E is invalid (e.g. -ve) or outside of bounds of data table N = 0.0 is returned.
     !!
-    pure function releaseDelayed(self, E) result(N)
+    function releaseDelayed(self, E) result(N)
       import :: defReal, uncorrelatedReactionCE
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(in)                 :: E

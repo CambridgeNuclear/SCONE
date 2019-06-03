@@ -32,14 +32,14 @@ module endfConstants
   ! Example:  N_2N -> (n,2n)
   ! words indicate sum of relevant reactions e.g: (n,fission) is sum (n,f)+(n,nf)+(n,2nf)+(n3nf)
 
-  integer(shortInt), parameter :: N_total       = 1   ,&
-                                  N_N_elastic   = 2   ,&
-                                  N_N_inelastic = 4   ,&
-                                  N_anything    = 5   ,&
+  integer(shortInt), parameter :: N_TOTAL       = 1   ,&
+                                  N_N_ELASTIC   = 2   ,&
+                                  N_N_INELASTIC = 4   ,&
+                                  N_ANYTHING    = 5   ,&
                                   N_2Nd         = 11  ,&
                                   N_2N          = 16  ,&
                                   N_3N          = 17  ,&
-                                  N_fission     = 18  ,&
+                                  N_FISSION     = 18  ,&
                                   N_f           = 19  ,&
                                   N_Nf          = 20  ,&
                                   N_2Nf         = 21  ,&
@@ -47,7 +47,7 @@ module endfConstants
                                   N_N3a         = 23  ,&
                                   N_2Na         = 24  ,&
                                   N_3Na         = 25  ,&
-                                  N_absorbtion  = 27  ,&
+                                  N_ABSORBTION  = 27  ,&
                                   N_Np          = 28  ,&
                                   N_N2a         = 29  ,&
                                   N_2N2a        = 30  ,&
@@ -68,7 +68,7 @@ module endfConstants
                                   N_Nl40        = 90  ,&
                                   N_Ncont       = 91  ,&
                                   N_disap       = 101 ,&
-                                  N_gamma       = 102 ,&
+                                  N_GAMMA       = 102 ,&
                                   N_p           = 103 ,&
                                   N_d           = 104 ,&
                                   N_t           = 105 ,&
