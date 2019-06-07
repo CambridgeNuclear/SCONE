@@ -312,6 +312,8 @@ contains
   !!   dict [in] -> dictionary that contains data
   !!
   !! Errors:
+  !!   FatalError if number of groups is not +ve
+  !!   FatalError if P1 or scatteringMultiplicity does not match # of groups
   !!
   subroutine buildFromDict(self, dict)
     class(multiScatterMG), intent(inout)    :: self
