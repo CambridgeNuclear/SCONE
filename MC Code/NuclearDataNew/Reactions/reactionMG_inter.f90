@@ -124,6 +124,7 @@ module reactionMG_inter
       class(reactionMG), intent(in) :: self
       integer(shortInt), intent(in) :: G
       class(RNG), intent(inout)     :: rand
+      real(defReal)                 :: lambda
     end function sampleDelayRate
 
     !!

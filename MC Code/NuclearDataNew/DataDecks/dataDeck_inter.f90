@@ -30,7 +30,7 @@ module dataDeck_inter
     !! Return String with type name
     !!
     !! Returns:
-    !!   An allocatable character with type name without trailink blanks
+    !!   An allocatable character with type name without trailing blanks
     !!
     pure function myType(self) result(type)
       import :: dataDeck

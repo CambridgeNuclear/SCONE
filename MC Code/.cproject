@@ -18,7 +18,7 @@
 					<folderInfo id="photran.managedbuild.toolchain.gnu.fortran.exe.debug.1120601468.171381661" name="/" resourcePath="">
 						<toolChain id="photran.managedbuild.toolchain.gnu.fortran.exe.debug.2025217292" name="GCC Fortran" superClass="photran.managedbuild.toolchain.gnu.fortran.exe.debug">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="photran.managedbuild.target.gnu.platform.exe.debug.651435214" name="Debug Platform" osList="solaris,linux,hpux,aix,qnx" superClass="photran.managedbuild.target.gnu.platform.exe.debug"/>
-							<builder arguments="-C Debug" autoBuildTarget="" buildPath="" cleanBuildTarget="clean" command="make" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="de.marw.cdt.cmake.core.genmakebuilder.565939698" incrementalBuildTarget="" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="CMake Make Builder"/>
+							<builder arguments="-j3 -C Debug" autoBuildTarget="" buildPath="" cleanBuildTarget="clean" command="make" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="de.marw.cdt.cmake.core.genmakebuilder.565939698" incrementalBuildTarget="" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="CMake Make Builder"/>
 							<tool id="photran.managedbuild.tool.gnu.c.compiler.exe.debug.1249155781" name="GCC C Compiler" superClass="photran.managedbuild.tool.gnu.c.compiler.exe.debug">
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.300312614" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
