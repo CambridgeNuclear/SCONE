@@ -11,7 +11,7 @@ module correlatedReactionCE_inter
   !!
   !! Public pointer cast
   !!
-  public :: correlatedReactionCE_ptrCast
+  public :: correlatedReactionCE_CptrCast
 
   !!
   !! Outgoing particle sample data
@@ -120,7 +120,7 @@ contains
   !!   Null is source is not of correlatedReactionCE class
   !!   Target points to source if source is correlatedReactionCE class
   !!
-  pure function correlatedReactionCE_ptrCast(source) result(ptr)
+  pure function correlatedReactionCE_CptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     class(correlatedReactionCE), pointer       :: ptr
 
@@ -132,6 +132,6 @@ contains
         ptr => null()
     end select
 
-  end function correlatedReactionCE_ptrCast
+  end function correlatedReactionCE_CptrCast
     
 end module correlatedReactionCE_inter

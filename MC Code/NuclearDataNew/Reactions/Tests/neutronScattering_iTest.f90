@@ -4,8 +4,8 @@ module neutronScattering_iTest
   use endfConstants
   use RNG_class,                    only : RNG
   use reactionHandle_inter,         only : reactionHandle
-  use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_ptrCast
-  use neutronScatter_class,         only : neutronScatter, neutronScatter_ptrCast
+  use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
+  use neutronScatter_class,         only : neutronScatter, neutronScatter_TptrCast
   use aceCard_class,                only : aceCard
 
   use pFUnit_mod
@@ -41,11 +41,11 @@ contains
     scatterPtr => null()
 
     ! Uncorrelated Reaction cast
-    unCorrPtr => uncorrelatedReactionCE_ptrCast(reaction)
+    unCorrPtr => uncorrelatedReactionCE_CptrCast(reaction)
     @assertTrue(associated(unCorrPtr, reaction))
 
     ! Elastic Scattering type cast
-    scatterPtr => neutronScatter_ptrCast(reaction)
+    scatterPtr => neutronScatter_TptrCast(reaction)
     @assertTrue(associated(scatterPtr, reaction))
 
     ! Build ACE library

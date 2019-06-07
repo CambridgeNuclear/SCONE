@@ -10,7 +10,7 @@ module uncorrelatedReactionCE_inter
   !!
   !! Public pointer cast
   !!
-  public :: uncorrelatedReactionCE_ptrCast
+  public :: uncorrelatedReactionCE_CptrCast
 
   !!
   !! Reaction that produces secendary reaction that are uncorreleated with each other
@@ -211,7 +211,7 @@ contains
   !!   Null is source is not of uncorrelatedReactionCE class
   !!   Target points to source if source is uncorrelatedReactionCE class
   !!
-  pure function uncorrelatedReactionCE_ptrCast(source) result(ptr)
+  pure function uncorrelatedReactionCE_CptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     class(uncorrelatedReactionCE), pointer     :: ptr
 
@@ -223,6 +223,6 @@ contains
         ptr => null()
     end select
 
-  end function uncorrelatedReactionCE_ptrCast
+  end function uncorrelatedReactionCE_CptrCast
 
 end module uncorrelatedReactionCE_inter

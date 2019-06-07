@@ -6,8 +6,8 @@ module fissionMG_test
   use dictionary_class,     only : dictionary
   use dictDeck_class,       only : dictDeck
   use reactionHandle_inter, only : reactionHandle
-  use reactionMG_inter,     only : reactionMG, reactionMG_ptrCast
-  use fissionMG_class,      only : fissionMG, fissionMG_ptrCast
+  use reactionMG_inter,     only : reactionMG, reactionMG_CptrCast
+  use fissionMG_class,      only : fissionMG, fissionMG_TptrCast
   use pfUnit_mod
 
   implicit none
@@ -44,11 +44,11 @@ contains
     fissPtr => null()
 
     ! Uncorrelated Reaction cast
-    mgPtr => reactionMG_ptrCast(reaction)
+    mgPtr => reactionMG_CptrCast(reaction)
     @assertTrue(associated(mgPtr, reaction))
 
     ! Elastic Scattering type cast
-    fissPtr => fissionMG_ptrCast(reaction)
+    fissPtr => fissionMG_TptrCast(reaction)
     @assertTrue(associated(fissPtr, reaction))
 
     ! Build dictionary for input

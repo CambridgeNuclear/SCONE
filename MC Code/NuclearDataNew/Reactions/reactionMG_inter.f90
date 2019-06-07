@@ -11,7 +11,7 @@ module reactionMG_inter
   !!
   !! Public pointer cast
   !!
-  public :: reactionMG_ptrCast
+  public :: reactionMG_CptrCast
 
   !!
   !! Reaction that produces secendary particles in MG
@@ -165,7 +165,7 @@ contains
   !!   Null is source is not of reactionMG class
   !!   Target points to source if source is reactionMG class
   !!
-  pure function reactionMG_ptrCast(source) result(ptr)
+  pure function reactionMG_CptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     class(reactionMG), pointer                 :: ptr
 
@@ -177,6 +177,6 @@ contains
         ptr => null()
     end select
 
-  end function reactionMG_ptrCast
+  end function reactionMG_CptrCast
 
 end module reactionMG_inter

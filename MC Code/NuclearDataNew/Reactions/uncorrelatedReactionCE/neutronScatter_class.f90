@@ -28,7 +28,7 @@ module neutronScatter_class
   !!
   !! Public pointer cast
   !!
-  public :: neutronScatter_ptrCast
+  public :: neutronScatter_TptrCast
 
   !!
   !! Reaction Type for any neutron scattering
@@ -330,7 +330,7 @@ contains
   !!   Null is source is not of neutronScatter type
   !!   Target points to source if source is neutronScatter type
   !!
-  pure function neutronScatter_ptrCast(source) result(ptr)
+  pure function neutronScatter_TptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     type(neutronScatter), pointer       :: ptr
 
@@ -343,6 +343,6 @@ contains
 
     end select
 
-  end function neutronScatter_ptrCast
+  end function neutronScatter_TptrCast
     
 end module neutronScatter_class

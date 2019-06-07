@@ -16,7 +16,7 @@ module fissionMG_class
   !!
   !! Public pointer cast
   !!
-  public :: fissionMG_ptrCast
+  public :: fissionMG_TptrCast
 
   !!
   !! A special type of MG reaction that contains data related to fission
@@ -254,7 +254,7 @@ contains
   !!   Null is source is not of fissionMG type
   !!   Target points to source if source is fissionMG type
   !!
-  pure function fissionMG_ptrCast(source) result(ptr)
+  pure function fissionMG_TptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     type(fissionMG), pointer                   :: ptr
 
@@ -266,7 +266,7 @@ contains
         ptr => null()
     end select
 
-  end function fissionMG_ptrCast
+  end function fissionMG_TptrCast
 
 
 end module fissionMG_class

@@ -22,7 +22,7 @@ module fissionCE_class
   !!
   !! Public pointer cast
   !!
-  public :: fissionCE_ptrCast
+  public :: fissionCE_TptrCast
 
   !!
   !! Simple form of a fission reaction used in eigenvalue calculations
@@ -245,7 +245,7 @@ contains
   !!   Null is source is not of fissionCE type
   !!   Target points to source if source is fissionCE type
   !!
-  pure function fissionCE_ptrCast(source) result(ptr)
+  pure function fissionCE_TptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     type(fissionCE), pointer                   :: ptr
 
@@ -258,6 +258,6 @@ contains
 
     end select
 
-  end function fissionCE_ptrCast
+  end function fissionCE_TptrCast
 
 end module fissionCE_class

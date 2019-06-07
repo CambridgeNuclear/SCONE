@@ -16,7 +16,7 @@ module elasticNeutronScatter_class
   !!
   !! Public pointer cast
   !!
-  public :: elasticNeutronScatter_ptrCast
+  public :: elasticNeutronScatter_TptrCast
 
   !!
   !! Reaction type for Neutron Elastic Scattering
@@ -243,7 +243,7 @@ contains
   !!   Null is source is not of elasticNeutronScatter type
   !!   Target points to source if source is elasticNeutronScatter type
   !!
-  pure function elasticNeutronScatter_ptrCast(source) result(ptr)
+  pure function elasticNeutronScatter_TptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source
     type(elasticNeutronScatter), pointer       :: ptr
 
@@ -255,7 +255,7 @@ contains
         ptr => null()
     end select
 
-  end function elasticNeutronScatter_ptrCast
+  end function elasticNeutronScatter_TptrCast
 
 
 end module elasticNeutronScatter_class

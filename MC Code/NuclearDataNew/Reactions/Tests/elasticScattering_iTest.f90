@@ -4,8 +4,8 @@ module elasticScattering_iTest
   use endfConstants
   use RNG_class,                    only : RNG
   use reactionHandle_inter,         only : reactionHandle
-  use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_ptrCast
-  use elasticNeutronScatter_class,  only : elasticNeutronScatter, elasticNeutronScatter_ptrCast
+  use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
+  use elasticNeutronScatter_class,  only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use aceCard_class,                only : aceCard
   use pFUnit_mod
   implicit none
@@ -37,11 +37,11 @@ contains
     elasticScatterPtr => null()
 
     ! Uncorrelated Reaction cast
-    unCorrPtr => uncorrelatedReactionCE_ptrCast(reaction)
+    unCorrPtr => uncorrelatedReactionCE_CptrCast(reaction)
     @assertTrue(associated(unCorrPtr, reaction))
 
     ! Elastic Scattering type cast
-    elasticScatterPtr => elasticNeutronScatter_ptrCast(reaction)
+    elasticScatterPtr => elasticNeutronScatter_TptrCast(reaction)
     @assertTrue(associated(elasticScatterPtr, reaction))
 
     ! Build ACE library
