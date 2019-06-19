@@ -4,6 +4,11 @@ module nuclearDatabase_inter
   use particle_class, only : particle
   use charMap_class,  only : charMap
 
+  ! Nuclear Data Handles
+  use nuclideHandle_inter,  only : nuclideHandle
+  use materialHandle_inter, only : materialHandle
+  use reactionHandle_inter, only : reactionHandle
+
   implicit none
   private
 
@@ -117,6 +122,86 @@ module nuclearDatabase_inter
       class(nuclearDatabase), intent(in) :: self
       type(charMap), pointer             :: map
     end function matNamesMap
+
+    !!
+    !! Return pointer to material in a database
+    !!
+    !! Allows to retrive an access to material data for all databases types
+    !!
+    !! NOTE: This function can be used to inquire about the presence of matIdx in the database!
+    !!
+    !! Args:
+    !!   matIdx [in] -> material index of required material
+    !!
+    !! Result:
+    !!   Pointer to a material of class materialHandle
+    !!
+    !! Errors:
+    !!   Return null() pointer for invalid material index (not present in database)
+    !!
+    function getMaterial(self, matIdx) result(mat)
+      import :: nuclearDatabase, shortInt, materialHandle
+      class(nuclearDatabase), intent(in) :: self
+      integer(shortInt), intent(in)      :: matIdx
+      class(materialHandle), pointer     :: mat
+    end function getMaterial
+
+    !!
+    !! Return pointer to nuclide in a database
+    !!
+    !! Allows to retrive an access to nuclide data for all databases types
+    !! If database does not contain nuclides (e.g. MG data) just returns null() pointer
+    !!
+    !! NOTE: This function can be used to inquire abou the presence of nucIdx in the database!
+    !!
+    !! Args:
+    !!   nucIdx [in] -> nuclide index of required material
+    !!
+    !! Result:
+    !!   Pointer to a nuclide of class nuclideHandle
+    !!
+    !! Errors:
+    !!   Return null() pointer for invalid nuclide index (not present in database)
+    !!
+    function getNuclide(self, nucIdx) result(nuc)
+      import :: nuclearDatabase, shortInt, nuclideHandle
+      class(nuclearDatabase), intent(in) :: self
+      integer(shortInt), intent(in)      :: matIdx
+      class(nuclideHandle), pointer      :: nuc
+    end function getNuclide
+
+    !!
+    !! Return a pointer to a reaction
+    !!
+    !! Allows to retrive an access to reaction data for all databases types
+    !! Reactions can be associated either with nuclides or materials. Thus, there is ambiguity
+    !! whether material or nuclide should be asked to provide reaction data (using matIdx or nuIdx)
+    !!
+    !! This ambiguity is resolved by following convenction:
+    !!   if MT < 0 then reaction is associated with material: idx -> matIdx
+    !!   if MT > 0 then reaction is associated with nuclide: idx -> nucIdx
+    !!
+    !! NOTE: This function can be used to enquire abou the presence of data. If the data is
+    !!       not present null() pointer is always returned!
+    !!
+    !! Args:
+    !!   MT [in]  -> MT number (identifier) of the requested reaction
+    !!   idx [in] -> if MT < 0 matIdx; if MT > 0 nucIdx
+    !!
+    !! Result:
+    !!   Pointer to a reaction data of reactionHandle class
+    !!
+    !! Error:
+    !!   If MT and idx combination is either invalid or not present in the database then null()
+    !!   pointer is returned.
+    !!
+    function getReaction(self, MT, idx) result(reac)
+      import :: nuclearDatabase, shortInt, reactionHandle
+      class(nuclearDatabase), intent(in) :: self
+      integer(shortInt), intent(in)      :: MT
+      integer(shortInt), intent(in)      :: idx
+      class(reactionHandle),pointer      :: reac
+    end function getReaction
 
     !!
     !! Return to uninitialised state
