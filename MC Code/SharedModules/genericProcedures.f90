@@ -802,6 +802,44 @@ module genericProcedures
   end function numToChar_defRealArray
 
   !!
+  !! Convert character to an Integer
+  !!
+  !! Looks at first 20 places in the character and if they contain a valid integer
+  !! it performs conversion.
+  !!
+  !! E.G
+  !! '2' -> 2 OK!
+  !! '-003' -> -3 OK!
+  !! '  2E+03' -> FAIL!
+  !! ' 7 is Swell' -> FAIL!
+  !! '7                   A' -> 7 OK!
+  !!
+  !! Args:
+  !!   str [in]      -> character to convert
+  !!   error [inout] -> Optional. Set to .TRUE. if conversion has failed
+  !! Result:
+  !!   An integer contained within first 20 fields of str.
+  !! Error:
+  !!   Fortran Intrinsic error upon failed conversion Unless error is present.
+  !!   If error argument is present it is set to .TRUE. if conversion failed by any reason and
+  !!   the value of i becomes undefined
+  !!
+  function charToInt(str, error) result(i)
+    character(*), intent(in)                 :: str
+    logical(defBool),intent(inout), optional :: error
+    integer(shortInt)                        :: i
+    integer(shortInt)                        :: state
+
+    if(present(error)) then
+      read(str,'(I20)', IOSTAT=state) i
+      error = state /= 0
+    else
+      read(str,'(I20)') i
+    end if
+
+  end function charToInt
+
+  !!
   !! Subroutine takes a normilised direction vector dir and rotates it by cosine of a polar angle
   !! mu and azimuthal angle phi (in radians).
   !! Procedure will produce incorrect results WITHOUT error message if dir is not normalised

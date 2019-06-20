@@ -4,6 +4,7 @@ add_subdirectory(xsPackages)
 add_sources(./nuclearDatabase_inter.f90 
             ./materialHandle_inter.f90
             ./nuclideHandle_inter.f90
+            ./materialMenu_mod.f90
             ./Reactions/reactionHandle_inter.f90
             ./Reactions/uncorrelatedReactionCE_inter.f90
             ./Reactions/reactionMG_inter.f90
@@ -20,7 +21,8 @@ add_sources(./nuclearDatabase_inter.f90
 
 add_unit_tests(./Reactions/reactionMG/Tests/fissionMG_test.f90
                ./Reactions/reactionMG/Tests/multiScatterMG_test.f90
-               ./Reactions/reactionMG/Tests/multiScatterP1MG_test.f90) 
+               ./Reactions/reactionMG/Tests/multiScatterP1MG_test.f90
+               ./Tests/materialMenu_test.f90) 
 
             
 add_integration_tests(./Reactions/Tests/elasticScattering_iTest.f90

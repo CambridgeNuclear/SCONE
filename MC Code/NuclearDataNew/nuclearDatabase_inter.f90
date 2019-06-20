@@ -166,7 +166,7 @@ module nuclearDatabase_inter
     function getNuclide(self, nucIdx) result(nuc)
       import :: nuclearDatabase, shortInt, nuclideHandle
       class(nuclearDatabase), intent(in) :: self
-      integer(shortInt), intent(in)      :: matIdx
+      integer(shortInt), intent(in)      :: nucIdx
       class(nuclideHandle), pointer      :: nuc
     end function getNuclide
 
