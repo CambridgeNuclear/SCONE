@@ -5,7 +5,7 @@ module nuclideHandle_inter
   private
 
   !!
-  !! MNuclide Handle allows to interact with diffrent types of mnuclides
+  !! Nuclide Handle allows to interact with diffrent types of nuclides
   !!
   !! This is top abstract class for all mnuclides
   !! Diffrent types of nuclides like diffrent implementations of CE Neutron data
