@@ -19,6 +19,11 @@ module ceNeutronDatabase_inter
   private
 
   !!
+  !! Public Pointer Cast
+  !!
+  public ceNeutroNDatabase_CptrCast
+
+  !!
   !! An abstract base class for all nulcear databases that support CE Neutron
   !!
   !! Its primary goal is to contain CE Neutron caching logic so there is
@@ -50,6 +55,8 @@ module ceNeutronDatabase_inter
     !! ANY CHANGE in ceNeutronChache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
     !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
+    !!
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
@@ -69,6 +76,8 @@ module ceNeutronDatabase_inter
     !!
     !! ANY CHANGE in ceNeutronChache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
+    !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
     !!
     !! Args:
     !!   E [in]       -> required energy [MeV]
@@ -156,6 +165,30 @@ contains
     xs = majorantCache(1) % xs
 
   end function getMajorantXS
+
+  !!
+  !! Cast nuclearDatabase pointer to ceNeutronDatabase pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclearDatabase
+  !!
+  !! Result:
+  !!   Null is source is not of ceNuclearDatabase class
+  !!   Target points to source if source is ceNuclearDatabase class
+  !!
+  pure function ceNeutronDatabase_CptrCast(source) result(ptr)
+    class(nuclearDatabase), pointer, intent(in) :: source
+    class(ceNeutronDatabase), pointer           :: ptr
+
+    select type(source)
+      class is(ceNeutronDatabase)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function ceNeutronDatabase_CptrCast
 
     
 end module ceNeutronDatabase_inter
