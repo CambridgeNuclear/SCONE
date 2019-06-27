@@ -15,10 +15,15 @@ transportOperator { type transportOperatorST;
                     // type transportOperatorDT;     
                   } 
 
-inactiveTally { //clerk1 { type keffActiveClerk; display yes; } 
+inactiveTally { //clerk1 { type keffActiveClerk; display yes; }
+                SEClerkIn {type	shannonEntropyClerk;
+			   map { type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20 ;}
+			   cycles 300;}
+		comClerkIn {type centreOfMassClerk;
+			    cycles 300;}
               } 
 
-activeTally  { //clerk1 { type macroClerk; display no; map { type energyMap; grid log; min 1.0E-11; max 20.0; N 300; } }
+activeTally  { //clerk1type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20;} { type macroClerk; display no; map { type energyMap; grid log; min 1.0E-11; max 20.0; N 300; } }
                //clerk2 { type macroClerk; display no; map { type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20;} } 
                //clerk3 {type collProbClerk; display yes; materials (uo2 water); }
                //clerk4 {type dancoffBellClerk; XSmat uo2; fuelMat (uo2); modMat (water);
@@ -27,6 +32,13 @@ activeTally  { //clerk1 { type macroClerk; display no; map { type energyMap; gri
 		    //  map { type energyMap; grid log; min 0.5E-3; max 0.7E-3; N 50;}  
 		      //map { type matXsMap; grid log; min 0.2; max 6.0; N 50; mat uo2;}
 	            //  }
+		    //
+	       SEClerkA {type shannonEntropyClerk;
+		                                  map {type spaceMap; grid lin; axis x; min -10.0; max 10.0; N 20;}
+						  cycles 500;}
+	       comClerkA {type centreOfMassClerk;
+		          cycles 500;}
+
 	      }
 
 geometry { 
@@ -117,14 +129,14 @@ nuclearData {
   handles { 
      // mg1 isotropicMG;
      // mg2 transMG;
-      mg3 P1MG; 
+     // mg3 P1MG; 
      // ce1 byNucNoMT;
       ce2 byNucMT; 
   }
   
   
 materials { 
-    aceLibrary /home/mak60/myACE/JEF311.aceXS; 
+    aceLibrary /home/pmc55/myACE/JEF311.aceXS; 
     numberOfGroups 69; 
 
     water { 

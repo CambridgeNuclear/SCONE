@@ -46,9 +46,6 @@ module centreOfMassClerk_class
     ! File reports and check status -> run-time procedures
     procedure  :: reportCycleEnd
 
-    ! Overwrite default run-time result procedure
-    procedure  :: getResult
-
     ! Output procedures
     procedure  :: display
     procedure  :: print
@@ -71,7 +68,7 @@ contains
     call self % setName(name)
 
     ! Read number of cycles for which to track COM
-    call dict % get(self % maxCycles 'cycles')
+    call dict % get(self % maxCycles, 'cycles')
 
     ! Allocate space for storing value
     allocate(self % value(self % maxCycles, 3))
@@ -111,7 +108,7 @@ contains
     type(particleState)                       :: state
     integer(shortInt)                         :: i, cc
 
-    if (self % currentCycle < self % maxCycles)
+    if ((self % currentCycle) < (self % maxCycles)) then
 
       self % currentCycle = self % currentCycle + 1
       cc = self % currentCycle
@@ -119,11 +116,11 @@ contains
       ! Loop through population, scoring probabilities
       do i = 1,end % popSize()
         associate( state => end % get(i) )
-          self % value(cc) = self % value(cc) + state % wgt * state % r
+          self % value(cc,:) = self % value(cc,:) + state % wgt * state % r
         end associate
       end do
 
-      self % value(cc) = self % value(cc) / end % popWeight()
+      self % value(cc,:) = self % value(cc,:) / end % popWeight()
 
     end if
 

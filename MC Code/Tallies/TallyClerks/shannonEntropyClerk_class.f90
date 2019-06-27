@@ -55,9 +55,6 @@ module shannonEntropyClerk_class
     ! File reports and check status -> run-time procedures
     procedure  :: reportCycleEnd
 
-    ! Overwrite default run-time result procedure
-    procedure  :: getResult
-
     ! Output procedures
     procedure  :: display
     procedure  :: print
@@ -83,7 +80,7 @@ contains
     call new_tallyMap(self % map, dict % getDictPtr('map'))
 
     ! Read number of cycles for which to track entropy
-    call dict % get(self % maxCycles 'cycles')
+    call dict % get(self % maxCycles, 'cycles')
 
     ! Allocate space for storing entropy
     allocate(self % value(self % maxCycles))
@@ -128,10 +125,10 @@ contains
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
     type(particleState)                       :: state
-    integer(shortInt)                         :: i, j, cc
+    integer(shortInt)                         :: i, j, cc, idx
     real(defReal)                             :: totWgt, one_log2
 
-    if (self % currentCycle < self % maxCycles)
+    if (self % currentCycle < self % maxCycles) then
 
       self % currentCycle = self % currentCycle + 1
       cc = self % currentCycle
@@ -149,11 +146,11 @@ contains
 
       ! Loop through bins, summing entropy
       do j = 1,self % N
-        self % prob(idx) = self % prob(idx)/totWgt
-        if ((self % prob(idx) > ZERO) .AND. (self % prob(idx) < ONE))
-          self % value(cc) = self % value(cc) - self % prob(idx) * log(self % prob(idx)) * one_log2
+        self % prob(j) = self % prob(j)/totWgt
+        if ((self % prob(j) > ZERO) .AND. (self % prob(j) < ONE)) then
+          self % value(cc) = self % value(cc) - self % prob(j) * log(self % prob(j)) * one_log2
         end if
-        self % prob(idx) = ZERO
+        self % prob(j) = ZERO
       end do
 
     end if
@@ -205,7 +202,7 @@ contains
     class(shannonEntropyClerk), intent(inout) :: self
 
     if(allocated(self % map)) deallocate(self % map)
-    if(allocated(self % startWgt)) deallocate(self % prob)
+    if(allocated(self % prob)) deallocate(self % prob)
     if(allocated(self % value)) deallocate(self % value)
     self % N = 0
     self % currentCycle = 0

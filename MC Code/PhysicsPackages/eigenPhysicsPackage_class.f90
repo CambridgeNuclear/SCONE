@@ -304,7 +304,10 @@ contains
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
 
-    ! Print Active atachment
+    ! Print Inactive tally
+    call self % inactiveTally % print(out)
+
+    ! Print Active attachment
     call self % activeAtch % print(out)
 
     call self % activeTally % print(out)
