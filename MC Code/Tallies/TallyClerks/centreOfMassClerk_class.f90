@@ -155,21 +155,21 @@ contains
     call outFile % startBlock(self % getName())
 
     ! Print COM
-    name = 'COMx'
+    name = 'CoMx'
     call outFile % startArray(name, [self % maxCycles])
     do i=1,self % maxCycles
       call outFile % addValue(self % value(i,1))
     end do
     call outFile % endArray()
 
-    name = 'COMy'
+    name = 'CoMy'
     call outFile % startArray(name, [self % maxCycles])
     do i=1,self % maxCycles
       call outFile % addValue(self % value(i,2))
     end do
     call outFile % endArray()
 
-    name = 'COMz'
+    name = 'CoMz'
     call outFile % startArray(name, [self % maxCycles])
     do i=1,self % maxCycles
       call outFile % addValue(self % value(i,3))
