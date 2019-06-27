@@ -1,3 +1,4 @@
+.. _style-guide: 
 
 Style Guide (Draft)
 ===================
