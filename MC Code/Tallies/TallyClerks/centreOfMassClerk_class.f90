@@ -1,4 +1,4 @@
-module shannonEntropyClerk_class
+module centreOfMassClerk_class
 
   use numPrecision
   use tallyCodes
@@ -12,37 +12,28 @@ module shannonEntropyClerk_class
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk
 
-  ! Tally Maps
-  use tallyMap_inter,             only : tallyMap
-  use tallyMapFactory_func,       only : new_tallyMap
-
   implicit none
   private
 
   !!
-  !! Shannon entropy estimator
-  !! This is a prototype implementation of an implicit Shannon entropy estimator
-  !! Takes cycle end reports to generate cycle-wise entropy
+  !! Centre of Mass estimator
+  !! This is a prototype implementation of an implicit neutron COM
+  !! Takes cycle end reports to generate cycle-wise COM in three co-ordinates
   !! Contains only a single map for discretisation
-  !! Scores Shannon entropy for a user-specified number of cycles
   !!
   !! Notes:
-  !!    ->
+  !!    ->dim1 of value is cycle
+  !!    ->dim2 of value is dimension (x, y, z)
   !! Sample dictionary input:
   !!
   !!  clerkName {
-  !!      type shannonEntropyClerk;
-  !!      map { <TallyMapDef> };
+  !!      type comClerk;
   !!      cycles 900;
   !!  }
   !!
-  type, public, extends(tallyClerk) :: shannonEntropyClerk
+  type, public, extends(tallyClerk) :: centreOfMassClerk
     private
-    !! Map defining the discretisation
-    class(tallyMap), allocatable             :: map
-    real(defReal),dimension(:),allocatable   :: prob             !! probability of being in a given bin
-    real(defReal),dimension(:),allocatable   :: value            !! cycle-wise value of entropy
-    integer(shortInt)                        :: N = 0            !! Number of bins
+    real(defReal),dimension(:,:),allocatable :: value            !! cycle-wise COM value
     integer(shortInt)                        :: maxCycles = 0    !! Number of tally cycles
     integer(shortInt)                        :: currentCycle = 0 !! track current cycle
 
@@ -64,7 +55,7 @@ module shannonEntropyClerk_class
 
     ! Deconstructor
     procedure  :: kill
-  end type shannonEntropyClerk
+  end type centreOfMassClerk
 
 contains
 
@@ -72,29 +63,19 @@ contains
   !! Initialise clerk from dictionary and name
   !!
   subroutine init(self, dict, name)
-    class(shannonEntropyClerk), intent(inout) :: self
+    class(centreOfMassClerk), intent(inout)   :: self
     class(dictionary), intent(in)             :: dict
     character(nameLen), intent(in)            :: name
 
     ! Assign name
     call self % setName(name)
 
-    ! Read map
-    call new_tallyMap(self % map, dict % getDictPtr('map'))
-
-    ! Read number of cycles for which to track entropy
+    ! Read number of cycles for which to track COM
     call dict % get(self % maxCycles 'cycles')
 
-    ! Allocate space for storing entropy
-    allocate(self % value(self % maxCycles))
+    ! Allocate space for storing value
+    allocate(self % value(self % maxCycles, 3))
     self % value = ZERO
-
-    ! Read size of the map
-    self % N = self % map % bins(0)
-
-    ! Allocate space for storing probabilities
-    allocate(self % prob(self % N))
-    self % prob = ZERO
 
   end subroutine init
 
@@ -102,7 +83,7 @@ contains
   !! Returns array of codes that represent diffrent reports
   !!
   function validReports(self) result(validCodes)
-    class(shannonEntropyClerk),intent(in)      :: self
+    class(centreOfMassClerk),intent(in)        :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
     validCodes = [cycleEnd_Code]
@@ -113,10 +94,10 @@ contains
   !! Return memory size of the clerk
   !!
   elemental function getSize(self) result(S)
-    class(shannonEntropyClerk), intent(in) :: self
+    class(centreOfMassClerk), intent(in)   :: self
     integer(shortInt)                      :: S
 
-    S = self % N + self % maxCycles
+    S = 3*self % maxCycles
 
   end function getSize
 
@@ -124,12 +105,11 @@ contains
   !! Process cycle end
   !!
   subroutine reportCycleEnd(self, end, mem)
-    class(shannonEntropyClerk), intent(inout) :: self
+    class(centreOfMassClerk), intent(inout)   :: self
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
     type(particleState)                       :: state
-    integer(shortInt)                         :: i, j, cc
-    real(defReal)                             :: totWgt, one_log2
+    integer(shortInt)                         :: i, cc
 
     if (self % currentCycle < self % maxCycles)
 
@@ -139,22 +119,11 @@ contains
       ! Loop through population, scoring probabilities
       do i = 1,end % popSize()
         associate( state => end % get(i) )
-          idx = self % map % map(state)
-          if( idx > 0) self % prob(idx) = self % prob(idx) + state % wgt
+          self % value(cc) = self % value(cc) + state % wgt * state % r
         end associate
       end do
 
-      totWgt = end % popWeight()
-      one_log2 = ONE/log(TWO)
-
-      ! Loop through bins, summing entropy
-      do j = 1,self % N
-        self % prob(idx) = self % prob(idx)/totWgt
-        if ((self % prob(idx) > ZERO) .AND. (self % prob(idx) < ONE))
-          self % value(cc) = self % value(cc) - self % prob(idx) * log(self % prob(idx)) * one_log2
-        end if
-        self % prob(idx) = ZERO
-      end do
+      self % value(cc) = self % value(cc) / end % popWeight()
 
     end if
 
@@ -164,10 +133,10 @@ contains
   !! Display convergance progress on the console
   !!
   subroutine display(self, mem)
-    class(shannonEntropyClerk), intent(in) :: self
-    type(scoreMemory), intent(in)    :: mem
+    class(centreOfMassClerk), intent(in) :: self
+    type(scoreMemory), intent(in)        :: mem
 
-    print *, 'shannonEntropyClerk does not support display yet'
+    print *, 'centreOfMassClerk does not support display yet'
 
   end subroutine display
 
@@ -175,22 +144,35 @@ contains
   !! Write contents of the clerk to output file
   !!
   subroutine print(self, outFile, mem)
-    class(shannonEntropyClerk), intent(in) :: self
-    class(outputFile), intent(inout) :: outFile
-    type(scoreMemory), intent(in)    :: mem
-    integer(shortInt)                :: i
-    character(nameLen)               :: name
+    class(centreOfMassClerk), intent(in) :: self
+    class(outputFile), intent(inout)     :: outFile
+    type(scoreMemory), intent(in)        :: mem
+    integer(shortInt)                    :: i
+    real(defReal)                        :: val
+    character(nameLen)                   :: name
 
     ! Begin block
     call outFile % startBlock(self % getName())
 
-    ! Print entropy
-    name = 'shannonEntropy'
-
+    ! Print COM
+    name = 'COMx'
     call outFile % startArray(name, [self % maxCycles])
-
     do i=1,self % maxCycles
-      call outFile % addValue(self % value(i))
+      call outFile % addValue(self % value(i,1))
+    end do
+    call outFile % endArray()
+
+    name = 'COMy'
+    call outFile % startArray(name, [self % maxCycles])
+    do i=1,self % maxCycles
+      call outFile % addValue(self % value(i,2))
+    end do
+    call outFile % endArray()
+
+    name = 'COMz'
+    call outFile % startArray(name, [self % maxCycles])
+    do i=1,self % maxCycles
+      call outFile % addValue(self % value(i,3))
     end do
     call outFile % endArray()
 
@@ -202,15 +184,12 @@ contains
   !! Returns to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(shannonEntropyClerk), intent(inout) :: self
+    class(centreOfMassClerk), intent(inout) :: self
 
-    if(allocated(self % map)) deallocate(self % map)
-    if(allocated(self % startWgt)) deallocate(self % prob)
     if(allocated(self % value)) deallocate(self % value)
-    self % N = 0
     self % currentCycle = 0
     self % maxCycles = 0
 
   end subroutine kill
 
-end module shannonEntropyClerk_class
+end module centreOfMassClerk_class
