@@ -15,4 +15,5 @@ add_unit_tests(./Tests/collisionClerk_test.f90
                ./Tests/keffAnalogClerk_test.f90
                ./Tests/keffImplicitClerk_test.f90
                ./Tests/simpleFMClerk_test.f90
+	       ./Tests/shannonEntropyClerk_test.f90
                 )

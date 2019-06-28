@@ -39,12 +39,12 @@ module shannonEntropyClerk_class
   type, public, extends(tallyClerk) :: shannonEntropyClerk
     private
     !! Map defining the discretisation
-    class(tallyMap), allocatable             :: map
-    real(defReal),dimension(:),allocatable   :: prob             !! probability of being in a given bin
-    real(defReal),dimension(:),allocatable   :: value            !! cycle-wise value of entropy
-    integer(shortInt)                        :: N = 0            !! Number of bins
-    integer(shortInt)                        :: maxCycles = 0    !! Number of tally cycles
-    integer(shortInt)                        :: currentCycle = 0 !! track current cycle
+    class(tallyMap), allocatable                   :: map
+    real(defReal),dimension(:),allocatable         :: prob             !! probability of being in a given bin
+    real(defReal),dimension(:),allocatable, public :: value            !! cycle-wise value of entropy
+    integer(shortInt)                              :: N = 0            !! Number of bins
+    integer(shortInt)                              :: maxCycles = 0    !! Number of tally cycles
+    integer(shortInt)                              :: currentCycle = 0 !! track current cycle
 
   contains
     ! Procedures used during build
@@ -116,6 +116,7 @@ contains
     S = self % N + self % maxCycles
 
   end function getSize
+
 
   !!
   !! Process cycle end
