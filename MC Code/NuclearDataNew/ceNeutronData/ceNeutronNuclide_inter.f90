@@ -9,11 +9,19 @@ module ceNeutronNuclide_inter
 
   use neutronXsPackages_class, only : neutronMicroXSs
 
+  ! CE Neutron Interfaces
+  use ceNeutronDatabase_inter, only : ceNeutronDatabase
+
   ! Cache
   use ceNeutronCache_mod,    only : nuclideCache
 
   implicit none
   private
+
+  !!
+  !! Public Pointer Cast
+  !!
+  public ceNeutronNuclide_CptrCast
 
 
   !!
@@ -23,55 +31,41 @@ module ceNeutronNuclide_inter
   !! so there is no need to repeat it in every database type. Thus it will be easier to
   !! mantain and optimise.
   !!
+  !! Private Members
+  !!   nucIdx    -> nucIdx for this nuclide
+  !!   data      -> pointer to a database to request update of XSs
+  !!   fissile   -> flag that specifies if the nuclide is fissile
+  !!
   !! Interface:
   !!   nuclideHandle Interface
   !!   getTotalXS      -> Returns total XS for the nuclide
   !!   getMainXSs      -> Returns a XS package with main neutron XSs
-  !!   setNucIdx       -> set nuclide index for the nuclide
+  !!   set             -> set nucIdx, data pointer and isFissile flag
   !!   getNucIdx       -> get nuclide index of the nuclide
   !!   isFissile       -> Return .true. if nuclide can fission
   !!   invertInelastic -> Selects type of inelastic neutron scattering
   !!   xsOf            -> Returns microscopic XS given MT number
-  !!   updateMainXSs   -> update main XSs set for the nuclide on CE Neutron Cache
-  !!   updateTotalXS   -> update total XS for the nuclide on CE Neutron Cache
   !!
   type, public, abstract, extends(nuclideHandle) :: ceNeutronNuclide
     private
-    integer(shortInt) :: nucIdx = 0
+    integer(shortInt)                :: nucIdx = 0
+    class(ceNeutronDatabase),pointer :: data => null()
+    logical(defBool)                 :: fissile =.false.
   contains
 
     procedure, non_overridable :: getTotalXS
     procedure, non_overridable :: getMicroXSs
-    procedure, non_overridable :: setNucIdx
+    procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
+    procedure, non_overridable :: isFissile
 
     ! Procedures for specific implementations
-    procedure(isFissile),deferred       :: isFissile
     procedure(invertInelastic),deferred :: invertInelastic
     procedure(xsOf), deferred           :: xsOf
-    procedure(updateMicroXSs),deferred  :: updateMicroXSs
-    procedure(updateTotalXS),deferred   :: updateTotalXs
 
   end type ceNeutronNuclide
 
   abstract interface
-    !!
-    !! Return .true. if nuclide is fissile
-    !!
-    !! Args:
-    !!   None
-    !!
-    !! Result:
-    !!   .TRUE. if fissile, .FALSE. otherwise
-    !!
-    !! Errors:
-    !!   None
-    !!
-    pure function isFissile(self) result(isIt)
-      import :: ceNeutronNuclide, defBool
-      class(ceNeutronNuclide), intent(in) :: self
-      logical(defBool)                    :: isIt
-    end function isFissile
 
     !!
     !! Invert PDF of inelastic stattering
@@ -181,7 +175,9 @@ contains
     real(defReal)                       :: xs
 
     ! Check Cache and update if needed
-    if (nuclideCache(self % getNucIdx()) % E_tot /= E) call self % updateTotalXS(E, rand)
+    if (nuclideCache(self % getNucIdx()) % E_tot /= E) then
+      call self % data % updateTotalXS(E, self % nucIdx, rand)
+    end if
 
     xs = nuclideCache(self % getNucIdx()) % xss % total
 
@@ -205,25 +201,39 @@ contains
     class(RNG), intent(inout)           :: rand
 
     ! Check Cache and update if needed
-    if(nuclideCache(self % getNucIdx()) % E_tail /= E) call self % updateMicroXSs(E, rand)
+    if(nuclideCache(self % getNucIdx()) % E_tail /= E) then
+      call self % data % updateMicroXSs(E, self % nucIdx, rand)
+    end if
 
     xss = nuclideCache(self % getNucIdx()) % xss
 
   end subroutine getMicroXSs
 
   !!
-  !! Set nucIdx of the nuclide
+  !! Set nucIdx and pointer to a database
+  !!
+  !! All arguments are optional. Use with keyword association e.g.
+  !!   call nuc % set( isFissile=.false., nucIdx = 7)
+  !!
+  !! Use this pprocedure ONLY during build. NEVER during transport.
+  !! IT IS NOT THREAD SAFE!
   !!
   !! Args:
-  !!   nucIdx [in] -> nuclide index
+  !!   nucIdx [in]    -> nuclide index
+  !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
+  !!   isFissile [in] -> flag indicating whether fission data is present
   !!
-  elemental subroutine setNucIdx(self, nucIdx)
-    class(ceNeutronNuclide), intent(inout) :: self
-    integer(shortInt), intent(in)          :: nucIdx
+  subroutine set(self, nucIdx, database, fissile)
+    class(ceNeutronNuclide), intent(inout)                :: self
+    integer(shortInt), intent(in),optional                :: nucIdx
+    class(ceNeutronDatabase),pointer, optional,intent(in) :: database
+    logical(defBool),intent(in), optional                 :: fissile
 
-    self % nucIdx = nucIdx
+    if(present(nucIdx))    self % nucIdx  = nucIdx
+    if(present(database))  self % data    => database
+    if(present(fissile))   self % fissile = fissile
 
-  end subroutine setNucIdx
+  end subroutine set
 
   !!
   !! Get nuclide index
@@ -241,6 +251,50 @@ contains
     nucIdx = self % nucIdx
 
   end function getNucIdx
+
+  !!
+  !! Return .true. if nuclide is fissile
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   .TRUE. if fissile, .FALSE. otherwise
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function isFissile(self) result(isIt)
+    class(ceNeutronNuclide), intent(in) :: self
+    logical(defBool)                    :: isIt
+
+    isIt = self % fissile
+
+  end function isFissile
+
+  !!
+  !! Cast nuclideHandle pointer to ceNeutronNuclide pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclideHandle
+  !!
+  !! Result:
+  !!   Null is source is not of ceNeutronNuclide
+  !!   Pointer to source if source is ceNuclearDatabase class
+  !!
+  pure function ceNeutronNuclide_CptrCast(source) result(ptr)
+    class(nuclideHandle), pointer, intent(in) :: source
+    class(ceNeutronNuclide), pointer          :: ptr
+
+    select type(source)
+      class is(ceNeutronNuclide)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function ceNeutronNuclide_CptrCast
 
 
 end module ceNeutronNuclide_inter

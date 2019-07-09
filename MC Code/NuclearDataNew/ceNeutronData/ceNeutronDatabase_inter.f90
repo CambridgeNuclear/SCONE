@@ -21,7 +21,7 @@ module ceNeutronDatabase_inter
   !!
   !! Public Pointer Cast
   !!
-  public ceNeutroNDatabase_CptrCast
+  public ceNeutronDatabase_CptrCast
 
   !!
   !! An abstract base class for all nulcear databases that support CE Neutron
@@ -29,10 +29,16 @@ module ceNeutronDatabase_inter
   !! Its primary goal is to contain CE Neutron caching logic so there is
   !! no need to reproduce it in each database implementation.
   !!
+  !! It is also used by material and nuclide handles for CE Neutron data to order an
+  !! update of XSs on the cache
+  !!
   !! Interface:
   !!   nuclearDatabase Interface
   !!   updateTotalMatXS -> update Total Material XS on CE Neutron Cache
   !!   updateMajorantXS -> update Majorant XS on CE Neutron Cache
+  !!   updateMacroXSs   -> update Macroscopic XSs for a selected material
+  !!   updateTotalXS    -> update Total XS for a selected nuclide
+  !!   updateMicroXSs   -> update Microscopic XSs for a selected nuclide
   !!
   type, public, abstract, extends(nuclearDatabase) :: ceNeutronDatabase
 
@@ -45,6 +51,9 @@ module ceNeutronDatabase_inter
     ! Procedures implemented by a specific CE Neutron Database
     procedure(updateTotalMatXS),deferred :: updateTotalMatXS
     procedure(updateMajorantXS),deferred :: updateMajorantXS
+    procedure(updateMacroXSs),deferred   :: updateMacroXSs
+    procedure(updateTotalXS),deferred    :: updateTotalXS
+    procedure(updateMicroXSs),deferred   :: updateMicroXSs
   end type ceNeutronDatabase
 
   abstract interface
@@ -84,11 +93,77 @@ module ceNeutronDatabase_inter
     !!   rand [inout] -> random number generator
     !!
     subroutine updateMajorantXS(self, E, rand)
-      import :: ceNeutronDatabase, defReal, shortInt, RNG
+      import :: ceNeutronDatabase, defReal, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       class(RNG), intent(inout)            :: rand
     end subroutine updateMajorantXS
+
+    !!
+    !! Make sure that the macroscopic XSs for the material with matIdx are set
+    !! to energy E in ceNeutronCache
+    !!
+    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !!   E.G. Extra materials may be set to energy E as well
+    !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   matIdx [in]  -> material index that needs to be updated
+    !!   rand [inout] -> random number generator
+    !!
+    subroutine updateMacroXSs(self, E, matIdx, rand)
+      import :: ceNeutronDatabase, defReal, shortInt, RNG
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: matIdx
+      class(RNG), intent(inout)            :: rand
+    end subroutine updateMacroXSs
+
+    !!
+    !! Make sure that totalXS of nuclide with nucIdx is at energy E
+    !! in ceNeutronChache
+    !!
+    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !!   E.G. All nuclid XSs may be updated to energy E
+    !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   nucIdx [in]  -> material index that needs to be updated
+    !!   rand [inout] -> random number generator
+    !!
+    subroutine updateTotalXS(self, E, nucIdx, rand)
+      import :: ceNeutronDatabase, defReal, shortInt, RNG
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: nucIdx
+      class(RNG), intent(inout)            :: rand
+    end subroutine updateTotalXS
+
+    !!
+    !! Make sure that the microscopic XSs for the nuclide with nucIdx are set
+    !! to energy E in ceNeutronCache
+    !!
+    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !!   E.G. Extra nuclides may be set to energy E as well
+    !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   nucIdx [in]  -> material index that needs to be updated
+    !!   rand [inout] -> random number generator
+    !!
+    subroutine updateMicroXSs(self, E, nucIdx, rand)
+      import :: ceNeutronDatabase, defReal, shortInt, RNG
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: nucIdx
+      class(RNG), intent(inout)            :: rand
+    end subroutine updateMicroXSs
   end interface
 
 contains

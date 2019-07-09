@@ -24,6 +24,9 @@ module nuclearDatabase_inter
   !!   getTotalMatXS -> returns total Material XS fiven a particle
   !!   getMajorantXS -> returns majorant XS given particle and list of active materials
   !!   matNamesMap   -> returns pointer to map of material names to matIdx
+  !!   getMaterial   -> returns a pointer to a material handle for given matIdx
+  !!   getNuclide    -> returns a pointer to a nuclide handle for given nucIdx
+  !!   getReaction   -> returns a pointer to a reaction for given matidx or nucIdx and MT number
   !!   kill          -> return to uninitialised state, clean memory
   !!
   type, public,abstract :: nuclearDatabase
@@ -32,6 +35,9 @@ module nuclearDatabase_inter
     procedure(getTotalMatXS), deferred :: getTotalMatXS
     procedure(getMajorantXS), deferred :: getMajorantXS
     procedure(matNamesMap), deferred   :: matNamesMap
+    procedure(getMaterial), deferred   :: getMaterial
+    procedure(getNuclide), deferred    :: getNuclide
+    procedure(getReaction), deferred   :: getReaction
     procedure(kill), deferred          :: kill
   end type nuclearDatabase
 
