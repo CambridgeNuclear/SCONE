@@ -9,6 +9,11 @@
 !!   matCache      -> Array of cached data for materials
 !!   majorantCache -> Array of cached data for majorant XS
 !!
+!! NOTE:
+!!   Cache arrays are deliberatly not targets. This is becouse there should be no pointers to the
+!!   cache. Any update call can change energy of any value so it would not be possible that the
+!!   energy of XSs pointed by pointers would not change silently.
+!!
 module ceNeutronCache_mod
 
   use numPrecision

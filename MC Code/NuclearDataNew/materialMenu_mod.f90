@@ -72,7 +72,7 @@ module materialMenu_mod
   !!   }
   !!
   type, public :: materialItem
-    character(nameLen)                         :: name   =''
+    character(nameLen)                         :: name   = ''
     integer(shortInt)                          :: matIdx = 0
     real(defReal)                              :: T      = ZERO
     real(defReal),dimension(:),allocatable     :: dens

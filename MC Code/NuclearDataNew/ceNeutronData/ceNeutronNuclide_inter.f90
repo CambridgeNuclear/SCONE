@@ -5,15 +5,14 @@ module ceNeutronNuclide_inter
   use RNG_class,         only : RNG
 
   ! Nuclear Data Handles
-  use nuclideHandle_inter,   only : nuclideHandle
-
+  use nuclideHandle_inter,     only : nuclideHandle
   use neutronXsPackages_class, only : neutronMicroXSs
 
   ! CE Neutron Interfaces
   use ceNeutronDatabase_inter, only : ceNeutronDatabase
 
   ! Cache
-  use ceNeutronCache_mod,    only : nuclideCache
+  use ceNeutronCache_mod,      only : nuclideCache
 
   implicit none
   private
@@ -113,45 +112,6 @@ module ceNeutronNuclide_inter
 
     end function xsOf
 
-    !!
-    !! Ensure that microscopic cross-sections are up-to-date for energy E in ceNeutronCache
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
-    !! Assume that call to this procedure implies that data is NOT up-to-date
-    !!
-    !! Args:
-    !!   E [in]       -> required energy [MeV]
-    !!   rand [inout] -> Random Number Generator [MeV]
-    !!
-    !! Errors:
-    !!   fatalError if Energy is out-of-bounds for available data
-    !!
-    subroutine updateMicroXSs(self, E, rand)
-      import :: ceNeutronNuclide, defReal, RNG
-      class(ceNeutronNuclide), intent(in) :: self
-      real(defReal), intent(in)           :: E
-      class(RNG), intent(inout)           :: rand
-    end subroutine updateMicroXSs
-
-    !!
-    !! Ensure that total cross-section are up-to-date for energy E in ceNeutronCache
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
-    !! Assume that call to this procedure implies that data is NOT up-to-date
-    !!
-    !! Args:
-    !!   E [in]       -> required energy [MeV]
-    !!   rand [inout] -> Random Number Generator [MeV]
-    !!
-    !! Errors:
-    !!   fatalError if Energy is out-of-bounds for available data
-    !!
-    subroutine updateTotalXS(self, E, rand)
-      import :: ceNeutronNuclide, defReal, RNG
-      class(ceNeutronNuclide), intent(in) :: self
-      real(defReal), intent(in)           :: E
-      class(RNG), intent(inout)           :: rand
-    end subroutine updateTotalXS
-
-
   end interface
 contains
 
@@ -176,7 +136,7 @@ contains
 
     ! Check Cache and update if needed
     if (nuclideCache(self % getNucIdx()) % E_tot /= E) then
-      call self % data % updateTotalXS(E, self % nucIdx, rand)
+      call self % data % updateTotalNucXS(E, self % nucIdx, rand)
     end if
 
     xs = nuclideCache(self % getNucIdx()) % xss % total

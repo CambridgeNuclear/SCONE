@@ -52,7 +52,7 @@ module ceNeutronDatabase_inter
     procedure(updateTotalMatXS),deferred :: updateTotalMatXS
     procedure(updateMajorantXS),deferred :: updateMajorantXS
     procedure(updateMacroXSs),deferred   :: updateMacroXSs
-    procedure(updateTotalXS),deferred    :: updateTotalXS
+    procedure(updateTotalXS),deferred    :: updateTotalNucXS
     procedure(updateMicroXSs),deferred   :: updateMicroXSs
   end type ceNeutronDatabase
 
