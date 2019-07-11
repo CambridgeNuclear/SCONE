@@ -27,4 +27,5 @@ add_unit_tests(./Reactions/reactionMG/Tests/fissionMG_test.f90
             
 add_integration_tests(./Reactions/Tests/elasticScattering_iTest.f90
                       ./Reactions/Tests/neutronScattering_iTest.f90
-                      ./Reactions/Tests/fissionCE_iTest.f90) 
+                      ./Reactions/Tests/fissionCE_iTest.f90
+                      ./Tests/aceLibraryRead_iTest.f90) 

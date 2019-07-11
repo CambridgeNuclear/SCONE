@@ -1108,7 +1108,7 @@ contains
     integer(shortInt), intent(in)  :: lineNum
     integer(shortInt)              :: aceFile = 8
     character(pathLen)             :: localFilePath
-    integer(shortInt)              :: i
+    integer(shortInt)              :: i, xssLen
     character(13)                  :: skip
     character(100),parameter :: Here ='readFromFile (aceCard_class.f90)'
 
@@ -1157,9 +1157,26 @@ contains
     ! Read NXS, JXS and XSS data tables
     read(aceFile, '(8I9)') self % NXS
     read(aceFile, '(8I9)') self % JXS
-    if (allocated(self % XSS)) deallocate(self % XSS)
-    allocate(self % XSS(self % NXS(1)))
-    read(aceFile,*) self % XSS
+
+    ! Make an attempt to reuse the memory for XSS
+
+    ! Get current length of XSS array
+    if(allocated(self % XSS)) then
+      xssLen = size(self % XSS)
+    else
+      xssLen = 0
+    end if
+
+    if(self % NXS(1) > xssLen) then
+      if(allocated(self % XSS)) deallocate(self % XSS)
+      allocate(self % XSS(self % NXS(1)))
+    end if
+
+    ! Read XSS array
+    read(aceFile,*) self % XSS(1:self % NXS(1))
+
+    ! Make sure that MTdata is deallocated
+    if(allocated(self % MTdata)) deallocate(self % MTdata)
 
     ! Close input file
     close(aceFile)

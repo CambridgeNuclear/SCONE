@@ -2,7 +2,8 @@
 !! This module is a factory that produces aceCards for a given nuclide
 !!
 !! Library format:
-!!   '//' or '!' line comment indicators
+!!   '!' line comment indicators
+!!
 module aceLibrary_mod
 
   use numPrecision
@@ -10,6 +11,7 @@ module aceLibrary_mod
   use genericProcedures, only : fatalError, replaceChar, charToInt
   use charLib_func,      only : splitChar
   use charMap_class,     only : charMap
+  use aceCard_class,     only : aceCard
 
   implicit none
   private
@@ -43,11 +45,21 @@ module aceLibrary_mod
   character(pathLen)                  :: libFile
 
   public :: load
+  public :: new_neutronACE
+  public :: kill
 
 contains
 
   !!
   !! Load library from file
+  !!
+  !! Args:
+  !!   path [in] -> Path to library file. Should be absolute path for safety
+  !!
+  !! Erros:
+  !!   fatalError or Frotran intrinsic read  error if there are ill-formated lines in
+  !!     provided library file
+  !!   Fortran intrinsic error if the requested file does not exist
   !!
   subroutine load(path)
     character(*), intent(in) :: path
@@ -56,6 +68,9 @@ contains
     character(99)            :: errorMsg
     character(MAX_COL)       :: buffor
     character(100),parameter :: Here = 'load (aceLibrary_mod.f90)'
+
+    ! Clean
+    call kill()
 
     libFile = path
 
@@ -115,8 +130,10 @@ contains
       select case(entry(i) % ZAID(last:last))
         case ('c')
           entry(i) % TYPE = ACE_CE
+
         case default
           call fatalError(Here,'Unrecognised ACE CARD type: '// entry(i) % ZAID(last:last))
+
       end select
 
       ! Remove type information from the entry
@@ -128,10 +145,60 @@ contains
     end do
   end subroutine load
 
+  !!
+  !! Load new CE Neutron XSs data for a given ZAID
+  !!
+  !! Note ZAID is provided without MCNP suffix
+  !!   1001.03 -> will work
+  !!   1001.03c -> will NOT work
+  !!   1001.03d -> will NOT work
+  !!
+  !! Args:
+  !!   ACE [inout] -> ACE Card which will store the data
+  !!   ZAID [in]   -> Requested nuclide ZAID of the form ZZAAA.TT
+  !!
+  !! Errors:
+  !!   fatalError if ZAID is not present in the library
+  !!   fatalError if ZAID points to data which is not for CE Neutrons, that is does not have a
+  !!     MCNP 'c' suffix e.g. {1001.03c}
+  !!
+  subroutine new_neutronACE(ACE, ZAID)
+    class(aceCard), intent(inout)  :: ACE
+    character(nameLen), intent(in) :: ZAID
+    integer(shortInt)              :: idx
+    character(100), parameter :: Here = 'new_neutronACE (aceLibrary_mod.f90)'
+
+    ! Find index of the requested ZAID identifier
+    idx = map % getOrDefault(ZAID, -1)
+    if(idx == -1) then
+      call fatalError(Here, trim(ZAID) //" was not found in ACE library from: "//trim(libFile))
+    end if
+
+    ! Verify that type is correct
+    if( entry(idx) % type /= ACE_CE) then
+      call fatalError(Here,trim(ZAID)//" is not a ACE data with CE XSs.")
+    end if
+
+    ! Load data
+    call ACE % readFromFile(entry(idx) % path, entry(idx) % firstLine)
+
+  end subroutine new_neutronACE
+
+
+  !!
+  !! Returns module to uninitialised state
+  !!
+  subroutine kill()
+
+    if(allocated(entry)) deallocate(entry)
+    call map % kill()
+    libFile = ''
+
+  end subroutine kill
+
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Utility Functions
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-
 
   !!
   !! Perform preprocessing of a line
