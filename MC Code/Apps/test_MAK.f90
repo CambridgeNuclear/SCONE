@@ -1,12 +1,12 @@
 program test
   
   use numPrecision
-  use genericProcedures
-  use timer_mod
-
+  use aceLibrary_mod
 
   implicit none
- ! integer(shortInt) :: i
+
+  call load("./IntegrationTestFiles/JEF311.aceXs")
+
 
 end program test
 
