@@ -1,7 +1,7 @@
 module ceNeutronNuclide_inter
 
   use numPrecision
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
 
   ! Nuclear Data Handles
@@ -22,6 +22,10 @@ module ceNeutronNuclide_inter
   !!
   public ceNeutronNuclide_CptrCast
 
+  !!
+  !! Procedures to extend in subclasses
+  !!
+  public :: kill
 
   !!
   !! An abstract class that represents all CE Neutron Nuclide data
@@ -47,9 +51,11 @@ module ceNeutronNuclide_inter
   !!
   type, public, abstract, extends(nuclideHandle) :: ceNeutronNuclide
     private
-    integer(shortInt)                :: nucIdx = 0
-    class(ceNeutronDatabase),pointer :: data => null()
-    logical(defBool)                 :: fissile =.false.
+    integer(shortInt)                :: nucIdx  =  0
+    class(ceNeutronDatabase),pointer :: data    => null()
+    logical(defBool)                 :: fissile = .false.
+    real(defReal)                    :: mass    =  ZERO
+    real(defReal)                    :: kT      =  ZERO
   contains
 
     procedure, non_overridable :: getTotalXS
@@ -57,6 +63,7 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
+    procedure                  :: kill
 
     ! Procedures for specific implementations
     procedure(invertInelastic),deferred :: invertInelastic
@@ -83,8 +90,9 @@ module ceNeutronNuclide_inter
     !!   FatalError is energy E is out-of-bounds for avalible data.
     !!
     function invertInelastic(self, E, rand) result(MT)
-      import :: ceNeutronNuclide, RNG, shortInt
+      import :: ceNeutronNuclide, RNG, shortInt, defReal
       class(ceNeutronNuclide), intent(in) :: self
+      real(defReal), intent(in)           :: E
       class(RNG), intent(inout)           :: rand
       integer(shortInt)                   :: MT
     end function invertInelastic
@@ -181,17 +189,37 @@ contains
   !! Args:
   !!   nucIdx [in]    -> nuclide index
   !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
-  !!   isFissile [in] -> flag indicating whether fission data is present
+  !!   fissile [in] -> flag indicating whether fission data is present
+  !!   mass [in]      -> Mass of nuclide in neutron masses
+  !!   kT [in]        -> Temperature [MeV] of the data in the nuclide
   !!
-  subroutine set(self, nucIdx, database, fissile)
-    class(ceNeutronNuclide), intent(inout)                :: self
-    integer(shortInt), intent(in),optional                :: nucIdx
-    class(ceNeutronDatabase),pointer, optional,intent(in) :: database
-    logical(defBool),intent(in), optional                 :: fissile
+  !! Error:
+  !!   fatalError if kT <= 0.0
+  !!   fatalError if mass <= 0.0
+  !!
+  subroutine set(self, nucIdx, database, fissile, mass, kT)
+    class(ceNeutronNuclide), intent(inout)                  :: self
+    integer(shortInt), intent(in),optional                  :: nucIdx
+    class(ceNeutronDatabase), pointer, optional, intent(in) :: database
+    logical(defBool), intent(in), optional                  :: fissile
+    real(defReal), intent(in), optional                     :: mass
+    real(defReal), intent(in), optional                     :: kT
+    character(100), parameter :: Here = 'set (ceNuetronNuclide_inter.f90)'
 
     if(present(nucIdx))    self % nucIdx  = nucIdx
     if(present(database))  self % data    => database
     if(present(fissile))   self % fissile = fissile
+
+    if(present(mass)) then
+      if(mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
+      self % mass = mass
+    end if
+
+    if(present(kT)) then
+      if(kT <= ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
+      self % kT = kT
+    end if
+
 
   end subroutine set
 
@@ -256,5 +284,16 @@ contains
 
   end function ceNeutronNuclide_CptrCast
 
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(ceNeutronNuclide), intent(inout) :: self
+
+    self % nucIdx = 0
+    self % data => null()
+    self % fissile = .false.
+
+  end subroutine kill
 
 end module ceNeutronNuclide_inter

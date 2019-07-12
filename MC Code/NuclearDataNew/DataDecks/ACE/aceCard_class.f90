@@ -99,7 +99,9 @@ module aceCard_class
     procedure :: myType
 
     ! XSs directly from blocks
-    procedure :: ESZblock            ! Returns ESZ block XS (see detailed description)
+    procedure, non_overridable :: gridSize
+    procedure, non_overridable :: ESZ_XS
+    procedure :: ESZblock            ! Returns ESZ block XS (see detailed description) !*LAGACY
 
     ! Procedures to enquire about MT reaction and set read head to angle or energy data
     !
@@ -213,6 +215,76 @@ contains
     end if
 
   end function real2Int_array
+
+  !!
+  !! Returns size of the energy grid
+  !!
+  pure function gridSize(self)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: gridSize
+
+    gridSize = self % NXS(3)
+
+  end function gridSize
+
+  !!
+  !! Returns data from ESZ block
+  !!
+  !! Hopefully will not blow up the stack
+  !!
+  !! Following request can be delivered (CASE SENSITIVE):
+  !!  'energyGrid'   -> energy grid
+  !!  'totalXS'      -> total cross-section
+  !!  'absorptionXS' -> total absorbtion cross-section (without fission)
+  !!  'elasticXS'    -> elastic scattering cross-section
+  !!  'heatingNumber'-> average heating number
+  !!
+  !! Args:
+  !!   request [in] -> character with the XS request
+  !!
+  !! Error:
+  !!   fatalError if request is unrecognised
+  !!
+  function ESZ_XS(self, request) result(xs)
+    class(aceCard), intent(in)             :: self
+    character(*), intent(in)               :: request
+    real(defReal),dimension(self % NXS(3)) :: xs
+    integer(shortInt)                      :: ptr, N
+    character(100), parameter :: Here = 'ESZ_XS (aceCard_class.f90)'
+
+    ! Obtain size of the XS grid
+    N = self % NXS(3)
+
+    select case(request)
+      case('energyGrid')
+        ! Set pointer to approperiate place in XSS
+        ptr = self % JXS(1)
+
+      case('totalXS')
+        ! Set pointer to approperiate place in XSS
+        ptr = self % JXS(1) + N
+
+      case('absorptionXS')
+        ! Set pointer to approperiate place in XSS
+        ptr = self % JXS(1) + 2*N
+
+      case('elasticXS')
+        ! Set pointer to approperiate place in XSS
+        ptr = self % JXS(1) + 3*N
+
+      case('heatingNumber')
+        ! Set pointer to approperiate place in XSS
+        ptr = self % JXS(1) + 4*N
+
+      case default
+        call fatalError(Here,'Unrecognised request string: |' // request //'|')
+        ptr = 0
+      end select
+
+      ! Return data
+      xs = self % XSS(ptr : ptr + N-1)
+
+  end function ESZ_XS
 
   !!
   !! Returns data from ESZ block

@@ -140,7 +140,7 @@ contains
     class(neutronScatter), intent(in) :: self
     logical(defBool)                         :: isIt
 
-     isIt = .true.
+     isIt = self % cmFrame
 
   end function inCMframe
 
@@ -262,7 +262,6 @@ contains
     end if
 
   end function probOf
-
 
   !!
   !! Build neutronScatter from ACE dataCard
