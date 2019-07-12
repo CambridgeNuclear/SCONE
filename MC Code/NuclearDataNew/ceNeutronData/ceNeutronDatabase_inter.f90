@@ -34,6 +34,7 @@ module ceNeutronDatabase_inter
   !!
   !! Interface:
   !!   nuclearDatabase Interface
+  !!   energyBounds     -> return maximum and minimum energy
   !!   updateTotalMatXS -> update Total Material XS on CE Neutron Cache
   !!   updateMajorantXS -> update Majorant XS on CE Neutron Cache
   !!   updateMacroXSs   -> update Macroscopic XSs for a selected material
@@ -57,6 +58,26 @@ module ceNeutronDatabase_inter
   end type ceNeutronDatabase
 
   abstract interface
+    !!
+    !! Return energy bounds for data in the database
+    !!
+    !! E_min and E_max are minimun and maximumum energy such that data
+    !! for ALL nuclides if avalible
+    !!
+    !! Args:
+    !!   E_min [out] -> minimum value of energy [MeV]
+    !!   E_max [out] -> maximum value of energy [MeV]
+    !!
+    !! Errors:
+    !!   None
+    !!
+    subroutine energyBounds(self, E_min, E_max)
+      import :: ceNeutronDatabase, defReal
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(out)           :: E_min
+      real(defReal), intent(out)           :: E_max
+    end subroutine energyBounds
+
     !!
     !! Make sure that totalXS of material with matIdx is at energy E
     !! in ceNeutronChache
