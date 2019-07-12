@@ -8,11 +8,13 @@ module aceNeutronNuclide_class
   use stack_class,       only : stackInt
 
   ! Nuclear Data Interfaces
-  use ceNeutronDatabase_inter,     only : ceNeutronDatabase
-  use ceNeutronNuclide_inter,      only : ceNeutronNuclide, kill_super => kill
-  use elasticNeutronScatter_class, only : elasticNeutronScatter
-  use fissionCE_class,             only : fissionCE
-  use neutronScatter_class,        only : neutronScatter
+  use ceNeutronDatabase_inter,      only : ceNeutronDatabase
+  use ceNeutronNuclide_inter,       only : ceNeutronNuclide, kill_super => kill
+  use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE
+  use elasticNeutronScatter_class,  only : elasticNeutronScatter
+  use fissionCE_class,              only : fissionCE
+  use neutronScatter_class,         only : neutronScatter
+  use pureCapture_class,            only : pureCapture
 
   implicit none
   private
@@ -31,10 +33,10 @@ module aceNeutronNuclide_class
   !!
   !!
   type, public :: reactionMT
-    integer(shortInt)                      :: MT       = 0
-    integer(shortInt)                      :: firstIdx = 0
-    real(defReal),dimension(:),allocatable :: xs
-    type(neutronScatter)                   :: kinematics
+    integer(shortInt)                         :: MT       = 0
+    integer(shortInt)                         :: firstIdx = 0
+    real(defReal),dimension(:),allocatable    :: xs
+    class(uncorrelatedReactionCE),allocatable :: kinematics
   end type reactionMT
 
   !!
@@ -120,7 +122,7 @@ contains
     class(aceCard), intent(inout)                 :: ACE
     integer(shortInt), intent(in)                 :: nucIdx
     class(ceNeutronDatabase), pointer, intent(in) :: database
-    integer(shortInt)                             :: Ngrid, N, K, i
+    integer(shortInt)                             :: Ngrid, N, K, i, j, MT, bottom, top
     type(stackInt)                                :: scatterMT, absMT
 
     ! Reset nuclide just in case
@@ -150,7 +152,7 @@ contains
     self % mainData(:,ENERGY_GRID)  = ACE % ESZ_XS('energyGrid')
     self % mainData(:,TOTAL_XS)     = ACE % ESZ_XS('totalXS')
     self % mainData(:,ESCATTER_XS)  = ACE % ESZ_XS('elasticXS')
-    self % mainData(:,CAPTURE_XS)   = ACE % ESZ_XS('absorbtionXS')
+    self % mainData(:,CAPTURE_XS)   = ACE % ESZ_XS('absorptionXS')
 
     ! Get elastic kinematics
     call self % elasticScatter % init(ACE, N_N_ELASTIC)
@@ -170,19 +172,69 @@ contains
 
     ! Read data for MT reaction
 
-    ! Loop over all MT reactions and sort them to scattering and absorbtion stack
-    ! TODO: Add some provision for deactivation of custom MT reaction
+    ! Create a stack of MT reactions, devide them into ones that produce 2nd-ary
+    ! particlues and pure absorbtion
+    associate (MTs => ACE % getScatterMTs())
+      do i=1,size(MTs)
+        call scatterMT % push(MTs(i))
+      end do
+    end associate
 
+    associate (MTs => [ACE % getFissionMTs(), ACE % getCaptureMTs()])
+      do i=1,size(MTs)
+        call absMT % push(MTs(i))
+      end do
+    end associate
 
-    ! Get number of scattering reactions
-    ! Get total number of MT reactions
-    ! Create que of MT numbers
-    ! Load each MT Reaction one-by-one
+    ! Allocate space
+    allocate(self % MTdata(scatterMT % size() + absMT % size()))
 
+    ! Load scattering reactions
+    N = scatterMT % size()
+    self % nMT = N
+    do i =1,N
+      call scatterMT % pop(MT)
+      self % MTdata(i) % MT       = MT
+      self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
+      self % MTdata(i) % xs       = ACE % xsMT(MT)
 
+      allocate(neutronScatter :: self % MTdata(i) % kinematics)
+      call self % MTdata(i) % kinematics % init(ACE, MT)
+    end do
 
-    ! Recalculate Total XS
-    ! *** DO NOT FORGET TO CALCULATE TOTAL INELASTIC SCATTER *** !
+    ! Load capture reactions
+    K = absMT % size()
+    do i = N+1,K
+      call scatterMT % pop(MT)
+      self % MTdata(i) % MT       = MT
+      self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
+      self % MTdata(i) % xs       = ACE % xsMT(MT)
+
+      allocate(pureCapture :: self % MTdata(i) % kinematics)
+      call self % MTdata(i) % kinematics % init(ACE, MT)
+    end do
+
+    ! Calculate Inelastic scattering XS
+    do i=1,self % nMT
+      do j=1,size(self % mainData, 1)
+        ! Find bottom and Top of the grid
+        bottom = self % MTdata(i) % firstIdx
+        top    = size(self % MTdata(i) % xs)
+        if( j>= bottom .and. j <= top + bottom) then
+          self % mainData(j, IESCATTER_XS) = self % mainData(j, IESCATTER_XS) + &
+                                             self % MTdata(i) % xs(j-bottom)
+        end if
+      end do
+    end do
+
+    ! Recalculate totalXS
+    if(self % isFissile()) then
+      K = FISSION_XS
+    else
+      K = CAPTURE_XS
+    end if
+    self % mainData(:, TOTAL_XS) = sum(self % mainData(:,ESCATTER_XS:K))
+
 
   end subroutine init
     
