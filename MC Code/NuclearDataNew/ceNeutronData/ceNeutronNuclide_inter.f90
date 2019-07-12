@@ -63,6 +63,8 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
+    procedure, non_overridable :: getMass
+    procedure, non_overridable :: getkT
     procedure                  :: kill
 
     ! Procedures for specific implementations
@@ -259,6 +261,32 @@ contains
     isIt = self % fissile
 
   end function isFissile
+
+    !!
+    !! Return a mass of the nuclide
+    !!
+    !! See nuclideHandle documentation
+    !!
+    pure function getMass(self) result(M)
+      class(ceNeutronNuclide), intent(in) :: self
+      real(defReal)                       :: M
+
+      M = self % mass
+
+    end function getMass
+
+    !!
+    !! Return nuclide temperature
+    !!
+    !! See nuclideHandle documentation
+    !!
+    pure function getkT(self) result(kT)
+      class(ceNeutronNuclide), intent(in) :: self
+      real(defReal)                       :: kT
+
+      kT = self % kT
+
+    end function getkT
 
   !!
   !! Cast nuclideHandle pointer to ceNeutronNuclide pointer

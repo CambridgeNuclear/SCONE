@@ -381,8 +381,9 @@ contains
     logical(defBool),dimension(size(self % MTdata)) :: mask
     integer(shortInt),dimension(:),allocatable          :: MT
 
-    mask = self % MTdata % TY /= 19
+    mask = self % MTdata % TY == 19
     MT = pack(self % MTdata % MT, mask)
+
   end function getFissionMTs
 
   !!

@@ -25,8 +25,25 @@ contains
     ! Build nuclide
     call nuc % init(ACE, 1, database)
 
-
   end subroutine testACEnuclideO16
+
+
+  !!
+  !! Load and verify functions of aceNeutronNuclide initialised to U-233
+  !!
+@Test
+  subroutine testACEnuclideU233()
+    type(aceNeutronNuclide), target   :: nuc
+    type(aceCard)                     :: ACE
+    class(ceNeutronDatabase), pointer :: database => null()
+
+    ! Build ACE library
+    call ACE % readFromFile('./IntegrationTestFiles/92233JEF311.ace', 1)
+
+    ! Build nuclide
+    call nuc % init(ACE, 1, database)
+
+  end subroutine testACEnuclideU233
 
     
 end module aceNeutronNuclide_iTest

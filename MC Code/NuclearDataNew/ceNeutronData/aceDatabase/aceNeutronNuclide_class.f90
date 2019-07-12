@@ -2,7 +2,7 @@ module aceNeutronNuclide_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use aceCard_class,     only : aceCard
   use stack_class,       only : stackInt
@@ -41,9 +41,12 @@ module aceNeutronNuclide_class
 
   !!
   !! Doc Doc Docstring
+  !! IGNORES MT=5 (N_ANYTHING) in its current implementation !
+  !! IN JEF 3.1.1 It will Reduce accuracy of Tc99 collision processing
   !!
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
+    character(nameLen)                          :: ZAID    = ''
     real(defReal), dimension(:,:), allocatable  :: mainData
     type(reactionMT), dimension(:), allocatable :: MTdata
     integer(shortInt)                           :: nMT     = 0
@@ -59,6 +62,7 @@ module aceNeutronNuclide_class
     ! Local interface
     procedure :: init
     procedure :: kill
+    procedure :: display
 
   end type aceNeutronNuclide
 
@@ -128,6 +132,9 @@ contains
     ! Reset nuclide just in case
     call self % kill()
 
+    ! Load ACE ZAID
+    self % ZAID = ACE % ZAID
+
     ! Read key data into the superclass
     call self % set( fissile  = ACE % isFissile(), &
                      mass     = ACE % AW,          &
@@ -176,12 +183,14 @@ contains
     ! particlues and pure absorbtion
     associate (MTs => ACE % getScatterMTs())
       do i=1,size(MTs)
+        if (MTs(i) == N_ANYTHING) cycle
         call scatterMT % push(MTs(i))
       end do
     end associate
 
     associate (MTs => [ACE % getFissionMTs(), ACE % getCaptureMTs()])
       do i=1,size(MTs)
+        if(MTs(i) == N_FISSION) cycle ! MT=18 is already included with FIS block
         call absMT % push(MTs(i))
       end do
     end associate
@@ -204,8 +213,8 @@ contains
 
     ! Load capture reactions
     K = absMT % size()
-    do i = N+1,K
-      call scatterMT % pop(MT)
+    do i = N+1,N+K
+      call absMT % pop(MT)
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
       self % MTdata(i) % xs       = ACE % xsMT(MT)
@@ -235,7 +244,48 @@ contains
     end if
     self % mainData(:, TOTAL_XS) = sum(self % mainData(:,ESCATTER_XS:K))
 
-
   end subroutine init
-    
+
+  !!
+  !! A Procedure that displays information about the nuclide to the screen
+  !!
+  !! Prints:
+  !!   nucIdx; Size of Energy grid; Maximum and Minumum energy; Mass; Temperature; ACE ZAID;
+  !!   MT numbers used in tranposrt (active MTs) and not used in transport (inactiveMTs)
+  !!
+  !! NOTE: For Now Formatting is horrible. Can be used only for debug
+  !!       MT = 18 may appear as inactive MT but is included from FIS block !
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
+  !!
+  subroutine display(self)
+    class(aceNeutronNuclide), intent(in)  :: self
+    integer(shortInt)                     :: N, sMT, allMT
+    real(defReal)                         :: E_min, E_max, M, kT
+
+    ! Print Most relevant information
+    print *, repeat('#',40)
+    print '(A)', "Nuclide: " // trim(self % ZAID)
+
+    N = size(self % mainData,1)
+    E_min = self % mainData(1, ENERGY_GRID)
+    E_max = self % mainDATA(N, ENERGY_GRID)
+    M = self % getMass()
+    kT = self % getkT()
+    print '(A)', "Mass: " //numToChar(M) //" Temperature: "//numToChar(kT) //" [MeV]"
+    print '(A)', "Energy grid: " //numToChar(N)// " points from "// &
+                  numToChar(E_min)//" to "// numToChar(E_max) // " [MeV] "
+
+    ! Print MT information
+    sMT = self % nMT
+    allMT = size(self % MTdata)
+    print '(A)', "Active MTs: "  // numToChar(self % MTdata(1:sMT) % MT)
+    print '(A)', "Inactive MTs: "// numToChar(self % MTdata(sMT+1:allMT) % MT)
+    print '(A)', "This implementation ignores MT=5 (N,anything) !"
+
+  end subroutine display
 end module aceNeutronNuclide_class
