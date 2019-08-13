@@ -4,7 +4,8 @@ module materialMenu_test
   use dictionary_class,   only : dictionary
   use IOdictionary_class, only : IOdictionary
 
-  use materialMenu_mod,   only : init_menu => init, kill_menu => kill, nameMap, materialDefs, display
+  use materialMenu_mod,   only : init_menu => init, kill_menu => kill, nameMap, materialDefs, &
+                                              display, nMat, getMatPtr, materialItem
   use pFUnit_mod
 
   implicit none
@@ -30,11 +31,12 @@ contains
   !!
 @Test
   subroutine testMaterialMenu()
-    type(IOdictionary) :: matDict
-    type(dictionary)   :: emptyDict
-    integer(shortInt)  :: i1, i2, i
-    character(nameLen) :: name
-    real(defReal), parameter :: TOL = 1.0E-6_defReal
+    type(IOdictionary)         :: matDict
+    type(dictionary)           :: emptyDict
+    type(materialItem),pointer :: matPtr
+    integer(shortInt)          :: i1, i2, i
+    character(nameLen)         :: name
+    real(defReal), parameter   :: TOL = 1.0E-6_defReal
 
     ! Build from empty and see if anything crashes
     call emptyDict % init(1)
@@ -85,6 +87,19 @@ contains
     @assertEqual(100, materialDefs(i2) % nuclides(1) % Z)
     @assertEqual(253, materialDefs(i2) % nuclides(1) % A)
     @assertEqual(0,   materialDefs(i2) % nuclides(1) % T)
+
+    ! Get number of materials
+    @assertEqual(2, nMat())
+
+    ! Get pointer to material1
+    matPtr => getMatPtr(1)
+    @assertEqual('mat1', trim(matPtr % name))
+
+    ! Test writing nuclide info back to definition string
+    @assertEqual('1001.03', matPtr % nuclides(1) % toChar())
+
+    matPtr => getMatPtr(2)
+    @assertEqual('100253.00', matPtr % nuclides(1) % toChar())
 
     ! Clean
     call kill_menu()

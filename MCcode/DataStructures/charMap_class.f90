@@ -44,7 +44,8 @@ module charMap_class
   !! Private members:
   !!   Nexp -> Exponent of 2 for a size of the map = log2(N)
   !!   N    -> Current size of the space avalible
-  !!   Load -> Number of entries in the map
+  !!   Load -> Number of entries in the map (includes deleted elements)
+  !!   L    -> Number of entries in the map (without deleted elements)
   !!   map  -> Array of content
   !!
   !! Interface:
@@ -63,9 +64,10 @@ module charMap_class
   !!
   type, public :: charMap
    ! private
-    integer(shortInt)                        :: Nexp      ! Nexp = log2(N)
-    integer(shortInt)                        :: N     = 0 ! Current size of the map is a power of 2
-    integer(shortInt)                        :: Load  = 0 ! Number of occupied entries
+    integer(shortInt)                        :: Nexp
+    integer(shortInt)                        :: N     = 0
+    integer(shortInt)                        :: Load  = 0
+    integer(shortInt)                        :: L     = 0
     type(content), dimension(:), allocatable :: map
   contains
     procedure :: init
@@ -124,6 +126,7 @@ contains
 
     ! Allocate storage space
     self % Load = 0
+    self % L    = 0
     self % Nexp = nextPow2
     self % N    = 2**nextPow2
     allocate(self % map( self % N))
@@ -145,6 +148,7 @@ contains
     ! Set default values of parameters
     self % N    = 0
     self % Load = 0
+    self % L    = 0
 
   end subroutine kill
 
@@ -164,7 +168,7 @@ contains
     class(charMap), intent(in) :: self
     integer(shortInt)          :: L
 
-    L = self % Load
+    L = self % L
 
   end function length
 
@@ -226,7 +230,10 @@ contains
     end do
 
     ! Increment load if not overwriting existing entry
-    if (.not.sameEntry) self % Load = self % Load +1
+    if (.not.sameEntry) then
+      self % Load = self % Load +1
+      self % L = self % L +1
+    end if
 
     ! Load key and value
     self % map(idx) % key    = key
@@ -386,6 +393,7 @@ contains
       if( self % map(idx) % hash == hash) then
         if( self % map(idx) % key == key) then
           self % map(idx) % status = DELETED
+          self % L = self % L - 1
           return
         end if
       end if

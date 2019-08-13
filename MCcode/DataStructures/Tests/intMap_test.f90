@@ -293,6 +293,12 @@ contains
 
     @assertEqual(7, this % map % length())
 
+    ! Deleate some elements
+    call this % map % del(KEY1)
+    call this % map % del(KEY6)
+
+    @assertEqual(5, this % map % length())
+
   end subroutine testGetLength
 
   !!

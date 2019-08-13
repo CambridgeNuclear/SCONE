@@ -112,7 +112,7 @@ contains
   !! Args:
   !!   matIdx [in]    -> material index
   !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
-  !!   isFissile [in] -> flag indicating whether fission data is present
+  !!   fissile [in] -> flag indicating whether fission data is present
   !!
   subroutine set(self, matIdx, database, fissile)
     class(ceNeutronMaterial), intent(inout)               :: self

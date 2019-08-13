@@ -40,7 +40,8 @@ module materialMenu_mod
     integer(shortInt) :: A = -1
     integer(shortInt) :: T = -1
   contains
-    procedure :: init => init_nuclideInfo
+    procedure :: init   => init_nuclideInfo
+    procedure :: toChar => toChar_nuclideInfo
   end type nuclideInfo
 
 
@@ -91,6 +92,8 @@ module materialMenu_mod
   public :: init
   public :: kill
   public :: display
+  public :: getMatPtr
+  public :: nMat
 
 contains
 
@@ -338,6 +341,78 @@ contains
 
   end subroutine init_nuclideInfo
 
+  !!
+  !! Convert nuclide information to the definition character
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Character in format ZZAAA.TT that dscribes nuclide definition
+  !!
+  !! Errors:
+  !!   None
+  !!
+  elemental function toChar_nuclideInfo(self) result(str)
+    class(nuclideInfo), intent(in) :: self
+    character(nameLen)             :: str
+    character(3)                   :: ZZ
+    character(3)                   :: AAA
+    character(2)                   :: TT
 
+    write(ZZ, '(I3)')   self % Z
+    write(AAA,'(I3.3)') self % A
+    write(TT, '(I2.2)') self % T
+
+    str = trim(adjustl(ZZ)) // AAA // "." // TT
+
+  end function toChar_nuclideInfo
+
+  !!
+  !! Get pointer to a material definition under matIdx
+  !!
+  !! Args:
+  !!   matIdx [in] -> Index of the material
+  !!
+  !! Result:
+  !!   Pointer to a materialItem with the definition
+  !!
+  !! Errors:
+  !!   FatalError if matIdx does not correspond to any defined material
+  !!   FatalError if material definitions were not loaded
+  !!
+  function getMatPtr(matIdx) result(ptr)
+    integer(shortInt), intent(in) :: matIdx
+    type(materialItem), pointer   :: ptr
+    character(100), parameter :: Here = 'getMatPtr (materialMenu_mod.f90)'
+
+    ! Check if materialMenu is initialised
+    if(.not.allocated(materialDefs)) then
+      call fatalError(Here, "Material definitions were not loaded")
+    end if
+
+    ! Verify matIdx
+    if( matIdx <= 0 .or. matIdx > nMat()) then
+      call fatalError(Here,"matIdx: "//numToChar(matIdx)// &
+                           " does not correspond to any defined material")
+    end if
+
+    ! Attach pointer
+    ptr => materialDefs(matIdx)
+
+  end function getMatPtr
+
+
+  !!
+  !! Return number of materials
+  !!
+  !! Result:
+  !!   Number of defined materials
+  !!
+  pure function nMat() result(N)
+    integer(shortInt) :: N
+
+    N = size(materialDefs)
+  end function nMat
     
 end module materialMenu_mod

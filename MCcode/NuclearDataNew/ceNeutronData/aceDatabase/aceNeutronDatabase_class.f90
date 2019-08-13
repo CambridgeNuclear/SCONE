@@ -3,24 +3,41 @@ module aceNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary 
   use RNG_class,         only : RNG
   use charMap_class,     only : charMap 
 
   ! Nuclear Data Interfaces
-  use nuclearData_inter,            only : nuclearData
+  use nuclearDatabase_inter,        only : nuclearDatabase
   use materialHandle_inter,         only : materialHandle
   use nuclideHandle_inter,          only : nuclideHandle 
   use reactionHandle_inter,         only : reactionHandle
-  use ceNeutronDatabase_inter,      only : ceNeutronDatabase
+  use ceNeutronDatabase_inter,      only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use neutronXSPackages_class,      only : neutronMicroXSs
+  use ceNeutronMaterial_class,      only : ceNeutronMaterial
+
+  ! Material Menu
+  use materialMenu_mod,             only : materialItem, nuclideInfo, mm_nMat => nMat, &
+                                           mm_getMatPtr => getMatPtr
+
+  ! ACE CE Nuclear Data Objects
+  use aceLibrary_mod,               only : new_neutronAce, aceLib_load => load, aceLib_kill => kill
+  use aceCard_class,                only : aceCard
+  use aceNeutronNuclide_class,      only : aceNeutronNuclide
+
 
   ! CE NEUTRON CACHE
   use ceNeutronCache_mod,           only : nuclideCache
 
   implicit none
   private
+
+  !!
+  !! Public Pointer Cast
+  !!
+  public :: aceNeutronDatabase_TptrCast
+  public :: aceNeutronDatabase_CptrCast
 
   !!
   !! A CE Neutron Database based on ACE file format 
@@ -35,6 +52,8 @@ module aceNeutronDatabase_class
   !!   ceNeutronDatabase Interface
   !!   
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabase
+    type(aceNeutronNuclide),dimension(:),pointer :: nuclides  => null()
+    type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
 
   contains
     ! nuclearData Procedures 
@@ -65,6 +84,10 @@ contains
   !!
   elemental subroutine kill(self) 
     class(aceNeutronDatabase), intent(inout) :: self 
+
+    !! IMPLEMENT
+
+
   end subroutine kill
 
   !!
@@ -218,31 +241,154 @@ contains
   subroutine init(self, dict, ptr) 
     class(aceNeutronDatabase), target, intent(inout) :: self 
     class(dictionary), intent(in)                    :: dict 
-    class(nuclearData), pointer, intent(in)          :: ptr 
+    class(nuclearDatabase), pointer, intent(in)      :: ptr
+    type(materialItem), pointer                      :: mat
+    class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
+    type(charMap)                                    :: nucSet
+    type(aceCard)                                    :: ACE
+    character(pathLen)                               :: aceLibPath
+    integer(shortInt)                                :: i, j, envFlag, nucIdx
+    integer(shortInt)                                :: maxNuc
+    logical(defBool)                                 :: isFissileMat
+    integer(shortInt),dimension(:),allocatable       :: nucIdxs
+    integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
-    ! Verify pointer 
+    ! Verify pointer
+    if (.not.associated(ptr, self)) then
+      call fatalError(Here,"Pointer needs to be associated with the self")
+    end if
 
- !   if(.not.associated(ptr, self)) then
-   !   call fatalError(Here,"Pointer needs to be associated with the self")
- !   end if
+    ! Cast pointer to ceNeutronDatabase
+    ptr_ceDatabase => ceNeutronDatabase_CptrCast(ptr)
+    if(.not.associated(ptr_ceDatabase)) call fatalError(Here,"Should not happen. WTF?!")
 
-    ! Create list of all nuclides 
+    ! Create list of all nuclides. Loop over materials
+    ! Find maximum number of nuclides: maxNuc
+    maxNuc = 0
+    do i=1,mm_nMat()
+      mat => mm_getMatPtr(i)
+      maxNuc = max(maxNuc, size(mat % nuclides))
 
+      ! Add all nuclides in material to the map
+      do j=1,size(mat % nuclides)
+        call nucSet % add(mat % nuclides(j) % toChar(), IN_SET)
 
+      end do
+    end do
 
-    ! Build nuclide definitions 
+    ! Get path to ACE library
+    call dict % get(aceLibPath,'aceLibrary')
 
-    ! Build Material definitions 
+    if(aceLibPath == '$SCONE_ACE') then
+      ! Get Path from enviromental variable
+      call get_environment_variable("SCONE_ACE", aceLibPath, status = envFlag)
 
+      ! Process potential errors
+      if(envFlag == -1) then
+        call fatalError(Here,'$SCONE_ACE EnVar must have length smaller then: '//numToChar(pathLen))
 
+      else if(envFlag == 1) then
+        call fatalError(Here,"EnVar $SCONE_ACE does not exist! Need to point to ACE Library")
+
+      else if(envFlag == 2) then
+        call fatalError(Here,"Compiler does not support EnVariables. &
+                              &Replace $SCONE_ACE with path in input file!")
+      else if(envFlag /= 0) then
+        call fatalError(Here,"Impossible value of envFlag:"//numToChar(envFlag))
+
+      end if
+    end if
+
+    ! Load library
+    call aceLib_load(aceLibPath)
+
+    ! Build nuclide definitions
+    allocate(self % nuclides(nucSet % length()))
+    i = nucSet % begin()
+    nucIdx = 1
+    do while (i /= nucSet % end())
+      print '(A)', "Building: "// trim(nucSet % atKey(i))// " with index: " //numToChar(nucIdx)
+
+      call new_neutronACE(ACE, nucSet % atKey(i))
+      call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
+
+      ! Store nucIdx in the dictionary
+      call nucSet % add(nucSet % atKey(i), nucIdx)
+
+      nucIdx = nucIdx + 1
+    end do
+
+    ! Build Material definitions
+    allocate(self % materials(mm_nMat()))
+    allocate(nucIdxs(maxNuc))
+    do i=1,mm_nMat()
+      mat => mm_getMatPtr(i)
+
+      ! Load nuclide indices on storage space
+      isFissileMat = .false.
+      do j=1,size(mat % nuclides)
+        nucIdxs(j) = nucSet % get( mat % nuclides(j) % toChar())
+        isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
+      end do
+
+      ! Load data into material
+      call self % materials(i) % set( matIdx = i, &
+                                      database = ptr_ceDatabase, &
+                                      fissile = isFissileMat )
+      call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
+    end do
 
   end subroutine init 
 
 
+  !!
+  !! Cast nuclearDatabase pointer to aceNeutronDatabase type pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclearDatabase
+  !!
+  !! Result:
+  !!   Null if source is not of aceNeutronDatabase type
+  !!   Target points to source if source is aceNeutronDatabase type
+  !!
+  pure function aceNeutronDatabase_TptrCast(source) result(ptr)
+    class(nuclearDatabase), pointer, intent(in) :: source
+    type(aceNeutronDatabase), pointer           :: ptr
 
+    select type(source)
+      type is(aceNeutronDatabase)
+        ptr => source
 
+      class default
+        ptr => null()
+    end select
 
+  end function aceNeutronDatabase_TptrCast
+
+  !!
+  !! Cast nuclearDatabase pointer to aceNeutronDatabase class pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclearDatabase
+  !!
+  !! Result:
+  !!   Null if source is not of aceNeutronDatabase class
+  !!   Target points to source if source is aceNeutronDatabase class
+  !!
+  pure function aceNeutronDatabase_CptrCast(source) result(ptr)
+    class(nuclearDatabase), pointer, intent(in) :: source
+    class(aceNeutronDatabase), pointer          :: ptr
+
+    select type(source)
+      class is(aceNeutronDatabase)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function aceNeutronDatabase_CptrCast
 
 
 
