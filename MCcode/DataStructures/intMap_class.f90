@@ -31,11 +31,11 @@ module intMap_class
   !! Implemented as a hash table with open adressing
   !!
   !! NOTE: Following structure can be used to loop over entire map
-  !! i = map % begin()
-  !! do while (i == map % end())
-  !!   ! Access value with: map % atVal(i)
-  !!   ! Access key with: map % atKey(i)
-  !!   i = map % next(i)
+  !! it = map % begin()
+  !! do while (it == map % end())
+  !!   ! Access value with: map % atVal(it)
+  !!   ! Access key with: map % atKey(it)
+  !!   it = map % next(it)
   !! end do
   !!
   !! Private members:
@@ -219,7 +219,7 @@ contains
   end subroutine add
 
   !!
-  !! Retrive entry in the map
+  !! Retrieve entry in the map
   !!
   !! Arg:
   !!   key [in] -> Integer key to access value
@@ -268,10 +268,11 @@ contains
   end function get
 
   !!
-  !! Retrive entry in the map with default value
+  !! Retrieve entry in the map with default value
   !!
-  !! Arg:
-  !!   key [in] -> Integer key to access value
+  !! Args:
+  !!   key [in]     -> Integer key to access value
+  !!   default [in] -> Default value if key is not present 
   !!
   !! Result:
   !!   If key is present -> returns value under key
@@ -339,8 +340,8 @@ contains
     hash = knuthHash(key, self % Nexp) + 1
 
     ! Look for the entry
-    do while (self % map(hash) % status == TAKEN)
-      ! Exit if the entry with the same kay was found
+    do while (self % map(hash) % status /= EMPTY)
+      ! Exit if the entry with the same key was found
       if( self % map(hash) % key == key) then
         self % map(hash) % status = DELETED
         return
@@ -356,7 +357,7 @@ contains
   end subroutine del
 
   !!
-  !! Return index in array of the first Occupied element
+  !! Return index in array of the first occupied element
   !!
   !! Args:
   !!   None
@@ -537,6 +538,7 @@ contains
     ! Deallocate current storage and load new storage
     self % Nexp = tempMap % Nexp
     self % N    = tempMap % N
+    self % Load = tempMap % Load 
     call move_alloc(tempMap % map, self % map)
 
   end subroutine grow

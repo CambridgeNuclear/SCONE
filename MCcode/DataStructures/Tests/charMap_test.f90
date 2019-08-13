@@ -100,6 +100,30 @@ contains
   end subroutine testRetrieval
 
   !!
+  !! Test Retrivial with deletions
+  !!
+@Test
+  subroutine testRetrievalWithDel(this)
+    class(test_charMap), intent(inout) :: this
+    integer(shortInt)                  :: temp
+
+    ! Delate Elements
+    call this % map % del(KEY1)
+    call this % map % del(KEY2)
+    call this % map % del(KEY3)
+    call this % map % del(KEY4)
+    call this % map % del(KEY5)
+
+    ! Obtain some elements
+    temp = this % map % get(KEY6)
+    @assertEqual(VAL6, temp)
+
+    temp = this % map % get(KEY7)
+    @assertEqual(VAL7, temp)
+
+  end subroutine testRetrievalWithDel
+
+  !!
   !! Test getting entery with default for absent keys
   !!
 @Test
@@ -140,6 +164,108 @@ contains
     @assertEqual(default, this % map % getOrDefault(tempChar, default))
 
   end subroutine testGetOrDefault
+
+  !!
+  !! Test deletions
+  !!
+@Test
+  subroutine testDel(this)
+    class(test_charMap), intent(inout) :: this
+    integer(shortInt)                  :: temp
+
+    ! Before deletion
+    temp = this % map % get(KEY6)
+    @assertEqual(VAL6, temp)
+
+    call this % map % del(KEY6)
+
+    ! After deletion
+    temp = this % map % getOrDefault(KEY6, VAL1)
+    @assertEqual(VAL1, temp)
+
+  end subroutine testDel
+
+  !!
+  !! Test Looping over map
+  !!
+@Test
+  subroutine testLooping(this)
+    class(test_charMap), intent(inout)        :: this
+    integer(shortInt),dimension(6),parameter  :: VALS = [VAL1, VAL2, VAL3, VAL4, VAL5, VAL7]
+    character(nameLen),dimension(6),parameter :: KEYS = [KEY1, KEY2, KEY3, KEY4, KEY5, KEY7]
+    character(nameLen),dimension(6)           :: KEYS_PAST
+    integer(shortInt)                         :: counter, it, tVal
+    character(nameLen)                        :: tKey
+
+    ! Initialise parameters
+    KEYS_PAST = "This is not a Key. It's picture of a key!"
+    counter = 0
+
+    ! Delete Entry 6 from map
+    call this % map % del(KEY6)
+
+    ! Loop over remaining elements
+    it = this % map % begin()
+    do while( it /= this % map % end() )
+      tVal = this % map % atVal(it)
+      tKey = this % map % atKey(it)
+
+      @assertTrue(any(VALS == tVal),"Wrong Value")
+      @assertTrue(any(KEYS == tKey),"Wrong Key")
+
+      ! Make shure that KEY is not getting repeated
+      @assertFalse(any(KEYS_PAST(1:counter) == tKey),"Repeated KEY")
+      counter = counter + 1
+      KEYS_PAST(counter) = tKey
+
+      it = this % map % next(it)
+    end do
+
+    @assertEqual(6, counter)
+
+  end subroutine testLooping
+
+  !!
+  !! Test Looping Edge Cases
+  !!
+@Test
+  subroutine testLoopingEdgeCases(this)
+    class(test_charMap), intent(inout) :: this
+    type(charMap)                      :: locMap
+    integer(shortInt)                  :: it
+
+    ! Loop over uninitialised map
+    it = locMap % begin()
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+    ! Loop over empty map
+    call locMap % init(8)
+    it = locMap % begin()
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+    ! Loop over map with deleted elements
+    call locMap % add(KEY1,3)
+    call locMap % add(KEY2,3)
+    call locMap % add(KEY3,3)
+
+    call locMap % del(KEY1)
+    call locMap % del(KEY2)
+    call locMap % del(KEY3)
+
+    it = locMap % begin()
+    !print *, it, locMap % atKey(it), locMap % map(:) % status
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+  end subroutine testLoopingEdgeCases
 
   !!
   !! Test putting new entry under exoisting key
