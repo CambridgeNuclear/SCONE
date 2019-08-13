@@ -103,6 +103,30 @@ contains
   end subroutine testRetrieval
 
   !!
+  !! Test Retrivial with deletions
+  !!
+@Test
+  subroutine testRetrievalWithDel(this)
+    class(test_intMap), intent(inout) :: this
+    integer(shortInt)                 :: temp
+
+    ! Delate Elements
+    call this % map % del(KEY1)
+    call this % map % del(KEY2)
+    call this % map % del(KEY3)
+    call this % map % del(KEY4)
+    call this % map % del(KEY5)
+
+    ! Obtain some elements
+    temp = this % map % get(KEY6)
+    @assertEqual(VAL6, temp)
+
+    temp = this % map % get(KEY7)
+    @assertEqual(VAL7, temp)
+
+  end subroutine testRetrievalWithDel
+
+  !!
   !! Test getting entery with default for absent keys
   !!
 @Test
@@ -141,6 +165,106 @@ contains
     @assertEqual(default, this % map % getOrDefault(1973,default))
 
   end subroutine testGetOrDefault
+
+  !!
+  !! Test deletions
+  !!
+@Test
+  subroutine testDel(this)
+    class(test_intMap), intent(inout) :: this
+    integer(shortInt)                 :: temp
+
+    ! Before deletion
+    temp = this % map % get(KEY6)
+    @assertEqual(VAL6, temp)
+
+    call this % map % del(KEY6)
+
+    ! After deletion
+    temp = this % map % getOrDefault(KEY6, VAL1)
+    @assertEqual(VAL1, temp)
+
+  end subroutine testDel
+
+  !!
+  !! Test Looping over map
+  !!
+@Test
+  subroutine testLooping(this)
+    class(test_intMap), intent(inout) :: this
+    integer(shortInt),dimension(6),parameter :: VALS = [VAL1, VAL2, VAL3, VAL4, VAL5, VAL7]
+    integer(shortInt),dimension(6),parameter :: KEYS = [KEY1, KEY2, KEY3, KEY4, KEY5, KEY7]
+    integer(shortInt),dimension(6)           :: KEYS_PAST
+    integer(shortInt)                        :: counter, it, tVal, tKey
+
+    ! Initialise parameters
+    KEYS_PAST = 7
+    counter = 0
+
+    ! Delete Entry 6 from map
+    call this % map % del(KEY6)
+
+    ! Loop over remaining elements
+    it = this % map % begin()
+    do while( it /= this % map % end() )
+      tVal = this % map % atVal(it)
+      tKey = this % map % atKey(it)
+
+      @assertTrue(any(VALS == tVal),"Wrong Value")
+      @assertTrue(any(KEYS == tKey),"Wrong Key")
+
+      ! Make shure that KEY is not getting repeated
+      @assertFalse(any(KEYS_PAST(1:counter) == tKey),"Repeated KEY")
+      counter = counter + 1
+      KEYS_PAST(counter) = tKey
+
+      it = this % map % next(it)
+    end do
+
+    @assertEqual(6, counter)
+
+  end subroutine testLooping
+
+  !!
+  !! Test Looping Edge Cases
+  !!
+@Test
+  subroutine testLoopingEdgeCases(this)
+    class(test_intMap), intent(inout) :: this
+    type(intMap)                      :: locMap
+    integer(shortInt)                 :: it
+
+    ! Loop over uninitialised map
+    it = locMap % begin()
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+    ! Loop over empty map
+    call locMap % init(8)
+    it = locMap % begin()
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+    ! Loop over map with deleted elements
+    call locMap % add(1,3)
+    call locMap % add(2,3)
+    call locMap % add(7,3)
+
+    call locMap % del(1)
+    call locMap % del(2)
+    call locMap % del(7)
+
+    it = locMap % begin()
+    do while(it /= locMap % end())
+      @assertTrue(.false.,"Should not enter the loop")
+      it = locMap % next(it)
+    end do
+
+  end subroutine testLoopingEdgeCases
 
   !!
   !! Test putting new entry under exoisting key
@@ -182,6 +306,27 @@ contains
     @assertEqual(7, locMap % getOrDefault(3, 7))
 
   end subroutine testGetOrDefaultUninitialised
+
+  !!
+  !! Test getOrDefault from initialised but empty map
+  !!
+@Test
+  subroutine testGetOrDefaultEmpty(this)
+    class(test_intMap), intent(inout) :: this
+    type(intMap)                      :: locMap
+
+    ! Pure empty map
+    call locMap % init(2)
+    @assertEqual(7, locMap % getOrDefault(3, 7))
+
+    ! Map with deleted element
+    call locMap % add(3, 7)
+    call locMap % del(3)
+    call locMap % init(2)
+    @assertEqual(2, locMap % getOrDefault(3, 2))
+
+
+  end subroutine testGetOrDefaultEmpty
 
 
 end module intMap_test
