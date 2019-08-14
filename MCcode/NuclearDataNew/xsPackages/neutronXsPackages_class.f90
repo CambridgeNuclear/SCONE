@@ -22,6 +22,10 @@ module neutronXsPackages_class
   !!   fission          -> total Fission MT=18 Cross-section [1/cm]
   !!   nuFission        -> total average neutron production Cross-section [1/cm]
   !!
+  !!  Interface:
+  !!    clean -> Set all XSs to 0.0
+  !!    add   -> Add a nuclide microscopic XSs to macroscopic
+  !!
   type, public :: neutronMacroXSs
     real(defReal) :: total            = ZERO
     real(defReal) :: elasticScatter   = ZERO
@@ -29,6 +33,9 @@ module neutronXsPackages_class
     real(defReal) :: capture          = ZERO
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
+  contains
+    procedure :: clean => clean_neutronMacroXSs
+    procedure :: add   => add_neutronMacroXSs
   end type neutronMacroXSs
 
 
@@ -52,5 +59,57 @@ module neutronXsPackages_class
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
   end type neutronMicroXSs
+
+contains
+
+  !!
+  !! Clean neutron MacroXSs
+  !!
+  !! Sets all XSs to 0.0
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
+  !!
+  elemental subroutine clean_neutronMacroXSs(self)
+    class(neutronMacroXSs), intent(inout) :: self
+
+    self % total            = ZERO
+    self % elasticScatter   = ZERO
+    self % inelasticScatter = ZERO
+    self % capture          = ZERO
+    self % fission          = ZERO
+    self % nuFission        = ZERO
+
+  end subroutine clean_neutronMacroXSs
+
+  !!
+  !! Add nuclide XSs on Macroscopic XSs
+  !!
+  !! Takes microscopic XSs * density and adds them to neutronMacroXSs
+  !!
+  !! Args:
+  !!   micro [in] -> microscopic XSs
+  !!   dens  [in] -> nuclide density in [1/barn/cm]
+  !!
+  !! Errors:
+  !!   None
+  !!
+  elemental subroutine add_neutronMacroXSs(self, micro, dens)
+    class(neutronMacroXSs), intent(inout) :: self
+    type(neutronMicroXSs), intent(in)     :: micro
+    real(defReal), intent(in)             :: dens
+
+    self % total            = self % total            + dens * micro % total
+    self % elasticScatter   = self % elasticScatter   + dens * micro % elasticScatter
+    self % inelasticScatter = self % inelasticScatter + dens * micro % inelasticScatter
+    self % capture          = self % capture          + dens * micro % capture
+    self % fission          = self % fission          + dens * micro % fission
+    self % nuFission        = self % nuFission        + dens * micro % nuFission
+
+  end subroutine add_neutronMacroXSs
+
 
 end module neutronXsPackages_class

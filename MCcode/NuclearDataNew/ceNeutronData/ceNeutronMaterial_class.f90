@@ -39,7 +39,6 @@ module ceNeutronMaterial_class
   !!
   !!
   type, public ,extends(materialHandle) :: ceNeutronMaterial
-    private
     integer(shortInt)                            :: matIdx = 0
     class(ceNeutronDatabase), pointer            :: data => null()
     real(defReal), dimension(:), allocatable     :: dens

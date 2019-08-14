@@ -82,7 +82,7 @@ contains
          iostat = errorCode, &
          iomsg = errorMsg)
 
-    if(errorCode /= 0) call fatalError(Here, errorMsg)
+    if(errorCode /= 0) call fatalError(Here, "File Error: "//trim(adjustl(errorMsg)))
 
     ! Find number of entries in the library
     libLen = 0
@@ -143,6 +143,10 @@ contains
       call map % add(entry(i) % ZAID, i)
 
     end do
+
+    ! Clean up
+    close(library)
+
   end subroutine load
 
   !!

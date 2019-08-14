@@ -19,7 +19,7 @@ module aceNeutronDatabase_class
 
   ! Material Menu
   use materialMenu_mod,             only : materialItem, nuclideInfo, mm_nMat => nMat, &
-                                           mm_getMatPtr => getMatPtr
+                                           mm_getMatPtr => getMatPtr, mm_nameMap => nameMap
 
   ! ACE CE Nuclear Data Objects
   use aceLibrary_mod,               only : new_neutronAce, aceLib_load => load, aceLib_kill => kill
@@ -28,7 +28,10 @@ module aceNeutronDatabase_class
 
 
   ! CE NEUTRON CACHE
-  use ceNeutronCache_mod,           only : nuclideCache
+  use ceNeutronCache_mod,           only : cache_nuclideCache => nuclideCache, &
+                                           cache_materialCache => materialCache, &
+                                           cache_majorantCache => majorantCache, &
+                                           cache_init => init
 
   implicit none
   private
@@ -45,7 +48,9 @@ module aceNeutronDatabase_class
   !! For now the simplest possible implementation. 
   !!
   !! Public Members: 
-  !!
+  !!   nuclides  -> array of aceNeutronNuclides with data
+  !!   materials -> array of ceNeutronMaterials with data
+  !!   Ebounds   -> array with bottom (1) and top (2) energy bound
   !!
   !! Interface:
   !!   nuclearData Interface
@@ -54,7 +59,8 @@ module aceNeutronDatabase_class
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabase
     type(aceNeutronNuclide),dimension(:),pointer :: nuclides  => null()
     type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
-
+    real(defReal), dimension(2)                  :: Ebounds   = ZERO
+    integer(shortInt),dimension(:),allocatable   :: activeMat
   contains
     ! nuclearData Procedures 
     procedure :: kill
@@ -73,6 +79,7 @@ module aceNeutronDatabase_class
 
     ! This type procedures 
     procedure :: init      
+    procedure :: activate
   end type aceNeutronDatabase
 
 
@@ -85,8 +92,20 @@ contains
   elemental subroutine kill(self) 
     class(aceNeutronDatabase), intent(inout) :: self 
 
-    !! IMPLEMENT
+    ! Clean
+    if(associated(self % nuclides)) then
+      call self % nuclides % kill()
+      deallocate(self % nuclides)
+    end if
 
+    if(associated(self % materials)) then
+      call self % materials % kill()
+      deallocate(self % materials)
+    end if
+
+    self % EBounds = ZERO
+
+    if(allocated(self % activeMat)) deallocate(self % activeMat)
 
   end subroutine kill
 
@@ -99,7 +118,7 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     type(charMap), pointer                :: map
   
-    map => null()
+    map => mm_nameMap
 
   end function matNamesMap
 
@@ -113,7 +132,12 @@ contains
     integer(shortInt), intent(in)         :: matIdx
     class(materialHandle), pointer        :: mat
 
-    mat => null()
+    ! Check bounds and return
+    if( 1 <= matIdx .and. matIdx <= size(self % materials)) then
+      mat => self % materials(matIdx)
+    else
+      mat => null()
+    end if
 
   end function getMaterial
 
@@ -127,7 +151,12 @@ contains
     integer(shortInt), intent(in)         :: nucIdx
     class(nuclideHandle), pointer         :: nuc
   
-    nuc => null()
+    ! Check bounds and return
+    if( 1 <= nucIdx .and. nucIdx <= size(self % nuclides)) then
+      nuc => self % nuclides(nucIdx)
+    else
+      nuc => null()
+    end if
 
   end function getNuclide
 
@@ -141,8 +170,34 @@ contains
     integer(shortInt), intent(in)         :: MT
     integer(shortInt), intent(in)         :: idx
     class(reactionHandle),pointer         :: reac
+    integer(shortInt)                     :: idxMT
 
-    reac => null()
+    ! Catch case of invalid reaction
+    !   MT < 0 -> material reaction
+    !   MT = 0 -> does not exist
+    !   MT = 1 -> N_total has no reaction object
+    if ( MT <= 1 ) then
+      reac => null()
+      return
+    end if
+
+    ! Get nuclide reaction
+    if( MT == N_N_elastic) then
+      reac => self % nuclides(idx) % elasticScatter
+    else if ( MT == N_fission) then
+      reac => self % nuclides(idx) % fission
+    else
+      ! Find index of MT reaction
+      idxMT = self % nuclides(idx) % idxMT % getOrDefault(MT, 0)
+
+      ! See if the MT is present or not
+      if(idxMT == 0) then
+        reac => null()
+      else
+        reac => self % nuclides(idx) % MTdata(idxMT) % kinematics
+      end if
+    end if
+
 
   end function getReaction
 
@@ -157,8 +212,8 @@ contains
     real(defReal), intent(out)            :: E_min
     real(defReal), intent(out)            :: E_max
   
-    E_min = ONE
-    E_max = ONE
+    E_min = self % Ebounds(1)
+    E_max = self % Ebounds(2)
 
   end subroutine energyBounds
 
@@ -173,6 +228,31 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: i, nucIdx
+    real(defReal)                         :: dens
+
+    associate (mat => cache_materialCache(matIdx))
+      ! Set new energy
+      mat % E_tot  = E
+
+      ! Clean current total XS
+      mat % xss % total = ZERO
+
+      ! Construct total macro XS
+      do i = 1,size(self % materials(matIdx) % nuclides)
+        dens   = self % materials(matIdx) % dens(i)
+        nucIdx = self % materials(matIdx) % nuclides(i)
+
+        ! Update if needed
+        if(cache_nuclideCache(nucIdx) % E_tot /= E) then
+          call self % updateTotalNucXS(E, nucIdx, rand)
+        end if
+
+        ! Add microscopic XSs
+        mat % xss % total = mat % xss % total + dens * cache_nuclideCache(nucIdx) % xss % total
+      end do
+    end associate
+
   end subroutine updateTotalMatXS
 
   !!
@@ -185,6 +265,24 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: i, matIdx
+
+    associate (maj => cache_majorantCache(1) )
+      maj % E  = E
+      maj % xs = ZERO
+
+      do i=1,size(self % activeMat)
+        matIdx = self % activeMat(i)
+
+        ! Update if needed
+        if( cache_materialCache(matIdx) % E_tot /= E) then
+          call self % updateTotalMatXS(E, matIdx, rand)
+        end if
+
+        maj % xs = max(maj % xs, cache_materialCache(matIdx) % xss % total)
+      end do
+    end associate
+
   end subroutine updateMajorantXS
 
   !!
@@ -198,6 +296,32 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: i, nucIdx
+    real(defReal)                         :: dens
+
+    associate (mat => cache_materialCache(matIdx))
+      ! Set new energy
+      mat % E_tot  = E
+      mat % E_tail = E
+
+      ! Clean current xss
+      call mat % xss % clean()
+
+      ! Construct microscopic XSs
+      do i = 1,size(self % materials(matIdx) % nuclides)
+        dens   = self % materials(matIdx) % dens(i)
+        nucIdx = self % materials(matIdx) % nuclides(i)
+
+        ! Update if needed
+        if(cache_nuclideCache(nucIdx) % E_tail /= E) then
+          call self % updateMicroXSs(E, nucIdx, rand)
+        end if
+
+        ! Add microscopic XSs
+        call mat % xss % add(cache_nuclideCache(nucIdx) % xss, dens)
+      end do
+    end associate
+
   end subroutine updateMacroXSs
 
   !!
@@ -211,6 +335,9 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
+
+    call self % updateMicroXSs(E, nucIdx, rand)
+
   end subroutine updateTotalNucXS
 
   !!
@@ -224,6 +351,16 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
+
+    ! Verify if update is needed
+    associate (nucCache => cache_nuclideCache(nucIdx), &
+               nuc      => self % nuclides(nucIdx)     )
+      nucCache % E_tail = E
+      nucCache % E_tot  = E
+      call nuc % search(nucCache % idx, nucCache % f, E)
+      call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+    end associate
+
   end subroutine updateMicroXSs
 
   !!
@@ -238,10 +375,12 @@ contains
   !! Errors 
   !!   FatalError is ptr is not assosiated with self 
   !!
-  subroutine init(self, dict, ptr) 
+  subroutine init(self, dict, ptr, silent )
     class(aceNeutronDatabase), target, intent(inout) :: self 
     class(dictionary), intent(in)                    :: dict 
     class(nuclearDatabase), pointer, intent(in)      :: ptr
+    logical(defBool), optional, intent(in)           :: silent
+    logical(defBool)                                 :: loud
     type(materialItem), pointer                      :: mat
     class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
     type(charMap)                                    :: nucSet
@@ -253,6 +392,14 @@ contains
     integer(shortInt),dimension(:),allocatable       :: nucIdxs
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
+
+    ! Set build console output flag
+    if(present(silent)) then
+      loud = .not.silent
+    else
+      loud = .true.
+    end if
+
 
     ! Verify pointer
     if (.not.associated(ptr, self)) then
@@ -308,7 +455,9 @@ contains
     i = nucSet % begin()
     nucIdx = 1
     do while (i /= nucSet % end())
-      print '(A)', "Building: "// trim(nucSet % atKey(i))// " with index: " //numToChar(nucIdx)
+      if(loud) then
+        print '(A)', "Building: "// trim(nucSet % atKey(i))// " with index: " //numToChar(nucIdx)
+      end if
 
       call new_neutronACE(ACE, nucSet % atKey(i))
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
@@ -317,6 +466,7 @@ contains
       call nucSet % add(nucSet % atKey(i), nucIdx)
 
       nucIdx = nucIdx + 1
+      i = nucSet % next(i)
     end do
 
     ! Build Material definitions
@@ -339,8 +489,46 @@ contains
       call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
     end do
 
+    ! Calculate energy bounds
+    self % Ebounds(1) = self % nuclides(1) % eGrid(1)
+    j = size(self % nuclides(1) % eGrid)
+    self % Ebounds(2) = self % nuclides(1) % eGrid(j)
+
+    do i=2,size(self % nuclides)
+      self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
+      j = size(self % nuclides(i) % eGrid)
+      self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
+    end do
+
+    !! Clean up
+    call aceLib_kill()
+
   end subroutine init 
 
+  !!
+  !! Activate this nuclearDatabase
+  !!
+  !! The insatance of aceNeutronData will become the active ceNeutronData
+  !! Configures cache for its use
+  !!
+  !! Args:
+  !!   activeMat [in] -> Array of matIdx of materials active in the simulation
+  !!
+  !! Errors:
+  !!   fatalError if activeMat contains materials not defined in the instance
+  !!
+  subroutine activate(self, activeMat)
+    class(aceNeutronDatabase), intent(inout)    :: self
+    integer(shortInt), dimension(:), intent(in) :: activeMat
+
+    ! Load active materials
+    if(allocated(self % activeMat)) deallocate(self % activeMat)
+    self % activeMat = activeMat
+
+    ! Configure Cache
+    call cache_init(size( self % materials), size(self % nuclides))
+
+  end subroutine activate
 
   !!
   !! Cast nuclearDatabase pointer to aceNeutronDatabase type pointer
