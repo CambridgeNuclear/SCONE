@@ -34,6 +34,7 @@ module genericProcedures
   interface linFind
     module procedure linFind_Char
     module procedure linFind_defReal
+    module procedure linFind_defReal_withTOL
     module procedure linFind_shortInt
   end interface
 
@@ -395,6 +396,31 @@ module genericProcedures
     end do
     idx = targetNotFound
   end function linFind_defReal
+
+  !!
+  !! Searches linearly for the occurance of target in defRealArray.
+  !!
+  !! Uses relative tolerance of TOL
+  !!
+  !! Args:
+  !!   defRealArray [in] -> array to search
+  !!   target [in]       -> traget to search for
+  !!   tol [in]          -> relative tolerance (+ve)
+  !!
+  function linFind_defReal_withTOL(defRealArray, target, tol) result (idx)
+    real(defReal), dimension(:), intent(in)  :: defRealArray
+    real(defReal), intent(in)                :: target
+    real(defReal), intent(in)                :: tol
+    integer(shortInt)                        :: idx
+    real(defReal)                            :: inv_T
+
+    inv_T = ONE/target
+
+    do idx=1,size(defRealArray)
+      if (abs(defRealArray(idx) * inv_T - ONE) < tol) return
+    end do
+    idx = targetNotFound
+  end function linFind_defReal_withTOL
 
   !!
   !! Searches linearly for the occurance of target in shortIntArray. Following Errors can occur

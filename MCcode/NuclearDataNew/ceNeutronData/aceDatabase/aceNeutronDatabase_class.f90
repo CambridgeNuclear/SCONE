@@ -181,6 +181,12 @@ contains
       return
     end if
 
+    ! Detect invalid indes
+    if( idx < 1 .or. idx > size(self % nuclides)) then
+      reac => null()
+      return
+    end if
+
     ! Get nuclide reaction
     if( MT == N_N_elastic) then
       reac => self % nuclides(idx) % elasticScatter

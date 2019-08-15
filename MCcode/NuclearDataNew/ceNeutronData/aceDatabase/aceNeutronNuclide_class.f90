@@ -11,6 +11,7 @@ module aceNeutronNuclide_class
 
   ! Nuclear Data Interfaces
   use ceNeutronDatabase_inter,      only : ceNeutronDatabase
+  use nuclideHandle_inter,          only : nuclideHandle
   use ceNeutronNuclide_inter,       only : ceNeutronNuclide, kill_super => kill
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE
   use elasticNeutronScatter_class,  only : elasticNeutronScatter
@@ -24,6 +25,13 @@ module aceNeutronNuclide_class
 
   implicit none
   private
+
+  !!
+  !! Public Pointer Cast
+  !!
+  public aceNeutronNuclide_CptrCast
+  public aceNeutronNuclide_TptrCast
+
 
   ! Grid location parameters
   integer(shortInt), parameter :: TOTAL_XS      = 1
@@ -133,7 +141,7 @@ contains
     end if
 
     ! Get inelastic XS
-    XS = self % mainData(IESCATTER_XS, idx+1) * f + (1-f) * self % mainData(IESCATTER_XS, idx)
+    XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
 
     ! Invert
     XS = XS * rand % get()
@@ -304,7 +312,7 @@ contains
     real(defReal), intent(in)            :: f
     real(defReal)                        :: xs
 
-    xs = self % mainData(TOTAL_XS, idx+1) * f + (1-f) * self % mainData(TOTAL_XS, idx)
+    xs = self % mainData(TOTAL_XS, idx+1) * f + (ONE-f) * self % mainData(TOTAL_XS, idx)
 
   end function totalXS
 
@@ -330,14 +338,14 @@ contains
 
     associate (data => self % mainData(:,idx:idx+1))
 
-      xss % total            = data(TOTAL_XS, 2)     * f + (1-f) * data(TOTAL_XS, 1)
-      xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (1-f) * data(ESCATTER_XS, 1)
-      xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (1-f) * data(IESCATTER_XS, 1)
-      xss % capture          = data(CAPTURE_XS, 2)   * f + (1-f) * data(CAPTURE_XS, 1)
+      xss % total            = data(TOTAL_XS, 2)     * f + (ONE-f) * data(TOTAL_XS, 1)
+      xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (ONE-f) * data(ESCATTER_XS, 1)
+      xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if(self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (1-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (1-f) * data(NU_FISSION, 1)
+        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
@@ -546,5 +554,54 @@ contains
     print '(A)', "This implementation ignores MT=5 (N,anything) !"
 
   end subroutine display
+
+  !!
+  !! Cast nuclideHandle pointer to aceNeutronNuclide type pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclideHandle
+  !!
+  !! Result:
+  !!   Null is source is not of aceNeutronNuclide type
+  !!   Pointer to source if source is aceNuclearDatabase type
+  !!
+  pure function aceNeutronNuclide_TptrCast(source) result(ptr)
+    class(nuclideHandle), pointer, intent(in) :: source
+    type(aceNeutronNuclide), pointer          :: ptr
+
+    select type(source)
+      type is(aceNeutronNuclide)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function aceNeutronNuclide_TptrCast
+
+  !!
+  !! Cast nuclideHandle pointer to aceNeutronNuclide class pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclideHandle
+  !!
+  !! Result:
+  !!   Null is source is not of aceNeutronNuclide class
+  !!   Pointer to source if source is aceNuclearDatabase class
+  !!
+  pure function aceNeutronNuclide_CptrCast(source) result(ptr)
+    class(nuclideHandle), pointer, intent(in) :: source
+    class(aceNeutronNuclide), pointer         :: ptr
+
+    select type(source)
+      class is(aceNeutronNuclide)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function aceNeutronNuclide_CptrCast
+
 
 end module aceNeutronNuclide_class
