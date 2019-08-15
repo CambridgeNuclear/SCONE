@@ -21,7 +21,7 @@ module nuclideHandle_inter
   contains
     procedure(kill),    deferred :: kill
     procedure(getMass), deferred :: getMass
-    procedure(getkT),   deferred   :: getkT
+    procedure(getkT),   deferred :: getkT
   end type nuclideHandle
 
   abstract interface

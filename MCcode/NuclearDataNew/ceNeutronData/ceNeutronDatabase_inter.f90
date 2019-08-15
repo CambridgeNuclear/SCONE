@@ -45,9 +45,9 @@ module ceNeutronDatabase_inter
 
   contains
     ! nuclearDatabase Interface Implementation
-    procedure, non_overridable :: getTransMatXS
-    procedure, non_overridable :: getTotalMatXS
-    procedure, non_overridable :: getMajorantXS
+    procedure :: getTransMatXS
+    procedure :: getTotalMatXS
+    procedure :: getMajorantXS
 
     ! Procedures implemented by a specific CE Neutron Database
     procedure(updateTotalMatXS),deferred :: updateTotalMatXS

@@ -52,8 +52,7 @@ contains
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
 
-
-    ! Clean eeverything
+    ! Clean everything
     call mm_kill()
 
   end subroutine test_aceNeutronDatabase

@@ -63,8 +63,8 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
-    procedure, non_overridable :: getMass
-    procedure, non_overridable :: getkT
+    procedure                  :: getMass
+    procedure                  :: getkT
     procedure                  :: kill
 
     ! Procedures for specific implementations
