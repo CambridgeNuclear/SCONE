@@ -1,4 +1,5 @@
 add_subdirectory(ceNeutronData)
+add_subdirectory(mgNuclearData)
 add_subdirectory(xsPackages)
 
 add_sources(./nuclearDatabase_inter.f90 

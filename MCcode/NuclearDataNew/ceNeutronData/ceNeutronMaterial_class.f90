@@ -38,7 +38,7 @@ module ceNeutronMaterial_class
   !!   getMacroXSs -> return package of macroscopic XSs
   !!
   !!
-  type, public ,extends(materialHandle) :: ceNeutronMaterial
+  type, public, extends(materialHandle) :: ceNeutronMaterial
     integer(shortInt)                            :: matIdx = 0
     class(ceNeutronDatabase), pointer            :: data => null()
     real(defReal), dimension(:), allocatable     :: dens
@@ -100,10 +100,10 @@ contains
   end subroutine setComposition
 
   !!
-  !! Set matIdx and pointer to a database
+  !! Set matIdx, pointer to a database and fissile flag
   !!
   !! All arguments are optional. Use with keyword association e.g.
-  !!   call nuc % set( matIdx = 7)
+  !!   call mat % set( matIdx = 7)
   !!
   !! Use this procedure ONLY during build. NEVER during transport.
   !! IT IS NOT THREAD SAFE!
@@ -432,5 +432,5 @@ contains
 
   end subroutine kill
 
-    
+
 end module ceNeutronMaterial_class
