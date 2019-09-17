@@ -23,6 +23,8 @@ module mgNeutronMaterial_inter
   !!
   !! Abstract interface for all MG neutron Materials
   !!
+  !! Private Members:
+  !!   fissile -> flag set to .true. if material is fissile
   !!
   !! Interface:
   !!   materialHandle interface
@@ -30,6 +32,7 @@ module mgNeutronMaterial_inter
   !!   set       -> Sets fissile flag
   !!
   type, public, abstract, extends(materialHandle) :: mgNeutronMaterial
+    private
     logical(defBool) :: fissile = .false.
 
   contains
@@ -38,6 +41,7 @@ module mgNeutronMaterial_inter
 
     ! Local procedures
     procedure(getMacroXSs), deferred        :: getMacroXSs
+    procedure(getTotalXS), deferred         :: getTotalXS
     procedure, non_overridable              :: isFissile
     procedure                               :: set
 
@@ -66,7 +70,23 @@ module mgNeutronMaterial_inter
       class(RNG), intent(inout)            :: rand
     end subroutine getMacroXSs
 
-
+    !!
+    !! Return Macroscopic Total XS for the material
+    !!
+    !! Args:
+    !!   G [in]       -> Requested energygroup
+    !!   rand [inout] -> Random number generator
+    !!
+    !! Errors:
+    !!   fatalError if G is out-of-bounds for the stored data
+    !!
+    function getTotalXS(self, G, rand) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt, RNG
+      class(mgNeutronMaterial), intent(in) :: self
+      integer(shortInt), intent(in)        :: G
+      class(RNG), intent(inout)            :: rand
+      real(defReal)                        :: xs
+    end function getTotalXS
   end interface
 
 
