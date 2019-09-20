@@ -217,5 +217,5 @@ module nuclearDatabase_inter
       class(nuclearDatabase), intent(inout) :: self
     end subroutine kill
   end interface
-    
+
 end module nuclearDatabase_inter

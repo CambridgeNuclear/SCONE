@@ -21,6 +21,10 @@ module baseMgNeutronMaterial_class
   implicit none
   private
 
+  !!
+  !! Public Pointer Cast
+  !!
+
   ! Public data location parameters
   ! Use them if accessing data entries directly
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
@@ -28,7 +32,6 @@ module baseMgNeutronMaterial_class
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
   integer(shortInt), parameter, public :: FISSION_XS    = 4
   integer(shortInt), parameter, public :: NU_FISSION    = 5
-
 
   !!
   !! Basic type of MG material data
