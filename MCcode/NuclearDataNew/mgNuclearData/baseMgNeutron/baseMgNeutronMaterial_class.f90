@@ -24,6 +24,8 @@ module baseMgNeutronMaterial_class
   !!
   !! Public Pointer Cast
   !!
+  public :: baseMgNeutronMaterial_TptrCast
+  public :: baseMgNeutronMaterial_CptrCast
 
   ! Public data location parameters
   ! Use them if accessing data entries directly
@@ -58,12 +60,12 @@ module baseMgNeutronMaterial_class
   !!     -> numberOfGroups
   !!     -> capture [nGx1]
   !!     -> scatteringMultiplicity [nGxnG]
-  !!     -> scattering_P0 [nGxnG]
+  !!     -> P0 [nGxnG]
   !!   Optional entries:
   !!     -> fission [nGx1]
   !!     -> nu [nGx1]
   !!     -> chi [nGx1]
-  !!     -> scattering_P# [nGxnG]
+  !!     -> P# [nGxnG]
   !!
   type, public, extends(mgNeutronMaterial) :: baseMgNeutronMaterial
     real(defReal),dimension(:,:), allocatable :: data
@@ -289,6 +291,54 @@ contains
     end if
 
   end function nGroups
+
+  !!
+  !! Cast materialHandle pointer to baseMgNeutronMaterial type pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class materialHandle
+  !!
+  !! Result:
+  !!   Null if source is not of baseMgNeutronMaterial type
+  !!   Target points to source if source is baseMgNeutronMaterialtype
+  !!
+  pure function baseMgNeutronMaterial_TptrCast(source) result(ptr)
+    class(materialHandle), pointer, intent(in) :: source
+    type(baseMgNeutronMaterial), pointer           :: ptr
+
+    select type(source)
+      type is(baseMgNeutronMaterial)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function baseMgNeutronMaterial_TptrCast
+
+  !!
+  !! Cast materialHandle pointer to baseMgNeutronMaterial class pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class materialHandle
+  !!
+  !! Result:
+  !!   Null if source is not of baseMgNeutronMaterial class
+  !!   Target points to source if source is baseMgNeutronMaterial class
+  !!
+  pure function baseMgNeutronMaterial_CptrCast(source) result(ptr)
+    class(materialHandle), pointer, intent(in) :: source
+    class(baseMgNeutronMaterial), pointer          :: ptr
+
+    select type(source)
+      class is(baseMgNeutronMaterial)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function baseMgNeutronMaterial_CptrCast
 
 
 end module baseMgNeutronMaterial_class

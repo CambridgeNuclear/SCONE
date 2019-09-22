@@ -123,8 +123,13 @@ contains
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)                 :: p
     real(defReal)                               :: xs
+    integer(shortInt)                           :: i, idx
 
     xs = ZERO
+    do i=1,size(self % activeMats)
+      idx = self % activeMats(i)
+      xs = max(xs, self % getTotalMatXS(p, idx))
+    end do
 
   end function getMajorantXS
 
@@ -196,7 +201,12 @@ contains
     ! Select correct reaction
     select case(MT)
       case(macroFission)
-        reac => self % mats(idx) % fission
+        ! Point to null if material is not fissile
+        if (self % mats(idx) % isFissile()) then
+          reac => self % mats(idx) % fission
+        else
+          reac => null()
+        end if
 
       case(anyScatter)
         reac => self % mats(idx) % scatter
@@ -214,7 +224,11 @@ contains
   elemental subroutine kill(self)
     class(baseMgNeutronDatabase), intent(inout) :: self
 
-    if(associated(self % mats))      deallocate(self % mats)
+    if(associated(self % mats)) then
+      call self % mats % kill()
+      deallocate(self % mats)
+    end if
+
     if(allocated(self % activeMats)) deallocate (self % activeMats)
     self % nG = 0
 
@@ -272,7 +286,7 @@ contains
 
       ! Print status
       if(loud) then
-        print '(A)', "Building material:" // trim(matDef % name) // " From: " // trim(path)
+        print '(A)', "Building material: " // trim(matDef % name) // " From: " // trim(path)
       end if
 
       ! Load dictionary
@@ -288,7 +302,6 @@ contains
         call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
       end if
     end do
-
 
   end subroutine init
 
@@ -306,6 +319,9 @@ contains
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
 
+    if(allocated(self % activeMats)) deallocate(self % activeMats)
+    self % activeMats = activeMat
+
   end subroutine activate
 
   !!
@@ -321,7 +337,7 @@ contains
     class(baseMgNeutronDatabase), intent(in) :: self
     integer(shortInt)                        :: nG
 
-    nG = 0
+    nG = self % nG
 
   end function nGroups
 
