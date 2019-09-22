@@ -4,14 +4,14 @@ module aceNeutronDatabase_class
   use endfConstants
   use universalVariables
   use genericProcedures, only : fatalError, numToChar
-  use dictionary_class,  only : dictionary 
+  use dictionary_class,  only : dictionary
   use RNG_class,         only : RNG
-  use charMap_class,     only : charMap 
+  use charMap_class,     only : charMap
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,        only : nuclearDatabase
   use materialHandle_inter,         only : materialHandle
-  use nuclideHandle_inter,          only : nuclideHandle 
+  use nuclideHandle_inter,          only : nuclideHandle
   use reactionHandle_inter,         only : reactionHandle
   use ceNeutronDatabase_inter,      only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use neutronXSPackages_class,      only : neutronMicroXSs
@@ -43,11 +43,11 @@ module aceNeutronDatabase_class
   public :: aceNeutronDatabase_CptrCast
 
   !!
-  !! A CE Neutron Database based on ACE file format 
+  !! A CE Neutron Database based on ACE file format
   !!
-  !! For now the simplest possible implementation. 
+  !! For now the simplest possible implementation.
   !!
-  !! Public Members: 
+  !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
   !!   materials -> array of ceNeutronMaterials with data
   !!   Ebounds   -> array with bottom (1) and top (2) energy bound
@@ -55,42 +55,41 @@ module aceNeutronDatabase_class
   !! Interface:
   !!   nuclearData Interface
   !!   ceNeutronDatabase Interface
-  !!   
+  !!
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabase
     type(aceNeutronNuclide),dimension(:),pointer :: nuclides  => null()
     type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
     real(defReal), dimension(2)                  :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
   contains
-    ! nuclearData Procedures 
+    ! nuclearData Procedures
     procedure :: kill
-    procedure :: matNamesMap 
-    procedure :: getMaterial 
-    procedure :: getNuclide 
+    procedure :: matNamesMap
+    procedure :: getMaterial
+    procedure :: getNuclide
     procedure :: getReaction
+    procedure :: init
+    procedure :: activate
 
-    ! ceNeutronDatabase Procedures 
-    procedure :: energyBounds 
+    ! ceNeutronDatabase Procedures
+    procedure :: energyBounds
     procedure :: updateTotalMatXS
     procedure :: updateMajorantXS
     procedure :: updateMacroXSs
     procedure :: updateTotalNucXS
     procedure :: updateMicroXSs
 
-    ! This type procedures 
-    procedure :: init      
-    procedure :: activate
   end type aceNeutronDatabase
 
 
 
-contains 
+contains
 
   !!
-  !! Return to uninitialised state 
+  !! Return to uninitialised state
   !!
-  elemental subroutine kill(self) 
-    class(aceNeutronDatabase), intent(inout) :: self 
+  elemental subroutine kill(self)
+    class(aceNeutronDatabase), intent(inout) :: self
 
     ! Clean
     if(associated(self % nuclides)) then
@@ -112,12 +111,12 @@ contains
   !!
   !! Return pointer to material names map
   !!
-  !! See nuclearData_inter for  more details 
+  !! See nuclearData_inter for  more details
   !!
   function matNamesMap(self) result(map)
     class(aceNeutronDatabase), intent(in) :: self
     type(charMap), pointer                :: map
-  
+
     map => mm_nameMap
 
   end function matNamesMap
@@ -125,7 +124,7 @@ contains
   !!
   !! Return pointer to material in a database
   !!
-  !! See nuclearData_inter for  more details 
+  !! See nuclearData_inter for  more details
   !!
   function getMaterial(self, matIdx) result(mat)
     class(aceNeutronDatabase), intent(in) :: self
@@ -144,13 +143,13 @@ contains
   !!
   !! Return pointer to nuclide in a database
   !!
-  !! See nuclearData_inter for  more details 
+  !! See nuclearData_inter for  more details
   !!
   function getNuclide(self, nucIdx) result(nuc)
     class(aceNeutronDatabase), intent(in) :: self
     integer(shortInt), intent(in)         :: nucIdx
     class(nuclideHandle), pointer         :: nuc
-  
+
     ! Check bounds and return
     if( 1 <= nucIdx .and. nucIdx <= size(self % nuclides)) then
       nuc => self % nuclides(nucIdx)
@@ -163,7 +162,7 @@ contains
   !!
   !! Return a pointer to a reaction
   !!
-  !! See nuclearData_inter for  more details 
+  !! See nuclearData_inter for  more details
   !!
   function getReaction(self, MT, idx) result(reac)
     class(aceNeutronDatabase), intent(in) :: self
@@ -217,7 +216,7 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(out)            :: E_min
     real(defReal), intent(out)            :: E_max
-  
+
     E_min = self % Ebounds(1)
     E_max = self % Ebounds(2)
 
@@ -370,20 +369,13 @@ contains
   end subroutine updateMicroXSs
 
   !!
-  !! Initialise Database from dictionary and pointer to self 
+  !! Initialise Database from dictionary and pointer to self
   !!
-  !!
-  !! Args: 
-  !!   dict [in] -> Dictionary with the settings
-  !!   ptr  [in] -> Pointer to self (instance of the aceNeutronDatabase beeing build) 
-  !!     of type nuclearData 
-  !!
-  !! Errors 
-  !!   FatalError is ptr is not assosiated with self 
+  !! See nuclearDatabase documentation for details
   !!
   subroutine init(self, dict, ptr, silent )
-    class(aceNeutronDatabase), target, intent(inout) :: self 
-    class(dictionary), intent(in)                    :: dict 
+    class(aceNeutronDatabase), target, intent(inout) :: self
+    class(dictionary), intent(in)                    :: dict
     class(nuclearDatabase), pointer, intent(in)      :: ptr
     logical(defBool), optional, intent(in)           :: silent
     logical(defBool)                                 :: loud
@@ -509,19 +501,12 @@ contains
     !! Clean up
     call aceLib_kill()
 
-  end subroutine init 
+  end subroutine init
 
   !!
   !! Activate this nuclearDatabase
   !!
-  !! The insatance of aceNeutronData will become the active ceNeutronData
-  !! Configures cache for its use
-  !!
-  !! Args:
-  !!   activeMat [in] -> Array of matIdx of materials active in the simulation
-  !!
-  !! Errors:
-  !!   fatalError if activeMat contains materials not defined in the instance
+  !! See nuclearDatabase documentation for details
   !!
   subroutine activate(self, activeMat)
     class(aceNeutronDatabase), intent(inout)    :: self

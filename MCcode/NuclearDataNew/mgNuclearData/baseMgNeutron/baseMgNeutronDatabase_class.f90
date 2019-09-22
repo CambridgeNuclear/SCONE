@@ -56,10 +56,10 @@ module baseMgNeutronDatabase_class
     procedure :: getNuclide
     procedure :: getReaction
     procedure :: kill
-
-    ! Local interface
     procedure :: init
     procedure :: activate
+
+    ! Local interface
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -237,27 +237,19 @@ contains
   !!
   !! Initialise Database from dictionary and pointer to self
   !!
-  !!
-  !! Args:
-  !!   dict [in] -> Dictionary with the settings
-  !!   ptr  [in] -> Pointer to self (instance of the aceNeutronDatabase beeing build)
-  !!     of type nuclearData
-  !!   silent [in] ->
-  !!
-  !! Errors
-  !!   FatalError is ptr is not assosiated with self
+  !! See nuclearDatabase documentation for details
   !!
   subroutine init(self, dict, ptr, silent)
-    class(baseMgNeutronDatabase), intent(inout) :: self
-    class(dictionary), intent(in)               :: dict
-    class(nuclearDatabase), intent(in)          :: ptr
-    logical(defBool), intent(in), optional      :: silent
-    logical(defBool)                            :: loud
-    integer(shortInt)                           :: i, nMat
-    type(materialItem), pointer                 :: matDef
-    character(pathLen)                          :: path
-    character(nameLen)                          :: scatterKey
-    type(IOdictionary)                          :: tempDict
+    class(baseMgNeutronDatabase), target,intent(inout) :: self
+    class(dictionary), intent(in)                      :: dict
+    class(nuclearDatabase), pointer,intent(in)         :: ptr
+    logical(defBool), intent(in), optional             :: silent
+    logical(defBool)                                   :: loud
+    integer(shortInt)                                  :: i, nMat
+    type(materialItem), pointer                        :: matDef
+    character(pathLen)                                 :: path
+    character(nameLen)                                 :: scatterKey
+    type(IOdictionary)                                 :: tempDict
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -308,12 +300,7 @@ contains
   !!
   !! Activate this nuclearDatabase
   !!
-  !!
-  !! Args:
-  !!   activeMat [in] -> Array of matIdx of materials active in the simulation
-  !!
-  !! Errors:
-  !!   fatalError if activeMat contains materials not defined in the instance
+  !! See nuclearDatabase documentation for details
   !!
   subroutine activate(self, activeMat)
     class(baseMgNeutronDatabase), intent(inout) :: self

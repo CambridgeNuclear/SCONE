@@ -1,8 +1,9 @@
 module nuclearDatabase_inter
 
   use numPrecision
-  use particle_class, only : particle
-  use charMap_class,  only : charMap
+  use dictionary_class, only : dictionary
+  use particle_class,   only : particle
+  use charMap_class,    only : charMap
 
   ! Nuclear Data Handles
   use nuclideHandle_inter,  only : nuclideHandle
@@ -31,6 +32,8 @@ module nuclearDatabase_inter
   !!
   type, public,abstract :: nuclearDatabase
   contains
+    procedure(init), deferred          :: init
+    procedure(activate), deferred      :: activate
     procedure(getTransMatXS), deferred :: getTransMatXS
     procedure(getTotalMatXS), deferred :: getTotalMatXS
     procedure(getMajorantXS), deferred :: getMajorantXS
@@ -42,6 +45,41 @@ module nuclearDatabase_inter
   end type nuclearDatabase
 
   abstract interface
+    !!
+    !! Initialise Database from dictionary and pointer to self
+    !!
+    !! Args:
+    !!   dict   [in] -> Dictionary with the settings
+    !!   ptr    [in] -> Pointer to self (of class nuclearDatabase)
+    !!   silent [in] -> Optional. If set to .true. disables console output
+    !!
+    !! Errors
+    !!   FatalError is ptr is not assosiated with self
+    !!
+    subroutine init(self, dict, ptr, silent)
+      import :: nuclearDatabase, dictionary, defBool
+      class(nuclearDatabase), target, intent(inout) :: self
+      class(dictionary), intent(in)                 :: dict
+      class(nuclearDatabase), pointer, intent(in)   :: ptr
+      logical(defBool), optional, intent(in)        :: silent
+    end subroutine
+
+    !!
+    !! Activate this nuclearDatabase
+    !!
+    !! Will configure relevant cache(s) for the data
+    !!
+    !! Args:
+    !!   activeMat [in] -> Array of matIdx of materials active in the simulation
+    !!
+    !! Errors:
+    !!   fatalError if activeMat contains materials not defined in the instance
+    !!
+    subroutine activate(self, activeMat)
+      import :: nuclearDatabase, shortInt
+      class(nuclearDatabase), intent(inout)       :: self
+      integer(shortInt), dimension(:), intent(in) :: activeMat
+    end subroutine activate
 
     !!
     !! Return value of Material Transport XS for a particle
