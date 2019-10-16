@@ -5,7 +5,6 @@ module particle_class
   use genericProcedures
   use coord_class,       only : coordList
   use RNG_class,         only : RNG
-  use nuclearData_inter, only : nuclearData
 
   implicit none
   private
@@ -24,6 +23,24 @@ module particle_class
 
   !!
   !! Particle compressed for storage
+  !!
+  !! Public Members:
+  !!   wgt      -> Weight of the particle
+  !!   r        -> Global Position of the particle [cm]
+  !!   dir      -> Direction vector of the particle (normalised to 1.0)
+  !!   E        -> Energy of the particle [MeV]
+  !!   G        -> Energy Group of the particle
+  !!   isMG     -> True if particle uses MG data
+  !!   type     -> Physical Type of the particle (NEUTRON, PHOTON etc.)
+  !!   time     -> Position in time of the particle [s]
+  !!   matIdx   -> material Index in which particle is present
+  !!   cellIdx  -> Cell Index at the lowest level in which particle is present
+  !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
+  !!
+  !! Interface:
+  !!   assignemnt(=)  -> Build particleState from particle
+  !!   operator(.eq.) -> Return True if particle are exactly the same
+  !!   display        -> Print debug information about the state to the console
   !!
   type, public :: particleState
     real(defReal)              :: wgt  = 0.0       ! Particle weight
@@ -93,7 +110,6 @@ module particle_class
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
-    class(nuclearData),pointer :: xsData => null() ! Pointer to nuclear data
     real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
 
     ! Archived snapshots of previous states
@@ -108,14 +124,15 @@ module particle_class
     generic              :: assignment(=) => particle_fromParticleState
 
     ! Inquiry about coordinates
-    procedure            :: rLocal
-    procedure            :: rGlobal
-    procedure            :: dirLocal
-    procedure            :: dirGlobal
-    procedure            :: nesting
-    procedure            :: getCellIdx
-    procedure            :: getUniIdx
-    procedure            :: matIdx
+    procedure                  :: rLocal
+    procedure                  :: rGlobal
+    procedure                  :: dirLocal
+    procedure                  :: dirGlobal
+    procedure                  :: nesting
+    procedure                  :: getCellIdx
+    procedure                  :: getUniIdx
+    procedure                  :: matIdx
+    procedure, non_overridable :: getType
 
     ! Operations on coordinates
     procedure            :: moveGlobal
@@ -377,6 +394,30 @@ contains
     idx = self % coords % matIdx
 
   end function matIdx
+
+  !!
+  !! Return one of the particle Tpes defined in universal variables
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   P_NEUTRON_CE, P_NEUTRON_MG
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function getType(self) result(type)
+    class(particle), intent(in) :: self
+    integer(shortInt)           :: type
+
+    if (self % isMG) then
+      type = P_NEUTRON_MG
+    else
+      type = P_NEUTRON_CE
+    end if
+
+  end function getType
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures

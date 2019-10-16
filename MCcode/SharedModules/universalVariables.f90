@@ -43,10 +43,15 @@ module universalVariables
                                   Y_axis = 2 ,&
                                   Z_axis = 3
 
+  ! Particle Type Enumeration
+  integer(shortInt), parameter :: P_NEUTRON_CE = 1, &
+                                  P_NEUTRON_MG = 2
+
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&
                                   tooManyIter       = -2,&
-                                  targetNotFound    = -3
+                                  targetNotFound    = -3, &
+                                  NOT_FOUND         = -3
 
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2

@@ -6,6 +6,7 @@
 module neutronXsPackages_class
 
   use numPrecision
+  use endfConstants
 
   implicit none
   private
@@ -25,6 +26,7 @@ module neutronXsPackages_class
   !!  Interface:
   !!    clean -> Set all XSs to 0.0
   !!    add   -> Add a nuclide microscopic XSs to macroscopic
+  !!    get   -> Return XS by MT number
   !!
   type, public :: neutronMacroXSs
     real(defReal) :: total            = ZERO
@@ -36,6 +38,7 @@ module neutronXsPackages_class
   contains
     procedure :: clean => clean_neutronMacroXSs
     procedure :: add   => add_neutronMacroXSs
+    procedure :: get
   end type neutronMacroXSs
 
 
@@ -111,5 +114,47 @@ contains
 
   end subroutine add_neutronMacroXSs
 
+  !!
+  !! Return XSs by MT number
+  !!
+  !! Args:
+  !!   MT [in] -> Requested MT number
+  !!
+  !! Result:
+  !!   Value of the XS
+  !!
+  !! Errors:
+  !!   Returns 0.0 for invalid MT
+  !!
+  elemental function get(self, MT) result(xs)
+    class(neutronMacroXSs), intent(in) :: self
+    integer(shortInt), intent(in)      :: MT
+    real(defReal)                      :: xs
+
+     select case(MT)
+      case(macroTotal)
+        xs = self % total
+
+      case(macroCapture)
+        xs = self % capture
+
+      case(macroEscatter)
+        xs = self % elasticScatter
+
+      case(macroFission)
+        xs = self % fission
+
+      case(macroNuFission)
+        xs = self % nuFission
+
+      case(macroAbsorbtion)
+        xs = self % fission + self % capture
+
+      case default
+        xs = ZERO
+
+    end select
+
+  end function get
 
 end module neutronXsPackages_class

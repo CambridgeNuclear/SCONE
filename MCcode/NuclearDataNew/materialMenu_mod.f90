@@ -9,12 +9,22 @@
 !!   materialDefs -> array of material definitions of type materialItem
 !!   nameMap      -> Map that maps material name to matIdx
 !!
+!! Interface:
+!!   init      -> Load material definitions from a dictionary
+!!   kill      -> Return to uninitialised state
+!!   display   -> Display information about all defined materials to console
+!!   getMatPtr -> Return pointer to a detailed material information (materialItem)
+!!   nMat      -> Return number of materials
+!!   matName   -> Return material Name given Index
+!!   matIdx    -> Return material Index given Name
+!!
 module materialMenu_mod
 
   use numPrecision
-  use genericProcedures, only : fatalError, charToInt, numToChar
-  use charMap_class,     only : charMap
-  use dictionary_class,  only : dictionary
+  use universalVariables, only : NOT_FOUND
+  use genericProcedures,  only : fatalError, charToInt, numToChar
+  use charMap_class,      only : charMap
+  use dictionary_class,   only : dictionary
 
   implicit none
   private
@@ -94,6 +104,8 @@ module materialMenu_mod
   public :: display
   public :: getMatPtr
   public :: nMat
+  public :: matName
+  public :: matIdx
 
 contains
 
@@ -167,6 +179,52 @@ contains
     print '(A60)', repeat('<>',30)
 
   end subroutine display
+
+  !!
+  !! Return Material Name given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material Index
+  !!
+  !! Result:
+  !!   nameLen long character with material name
+  !!
+  !! Erorrs:
+  !!   If idx is -ve or larger then number of defined materials
+  !!   Empty string '' is returned as its name
+  !!
+  function matName(idx) result(name)
+    integer(shortInt), intent(in) :: idx
+    character(nameLen)            :: name
+
+    if( idx <= 0 .or. nMat() < idx) then
+      name = ''
+
+    else
+      name = materialDefs(idx) % name
+    end if
+
+  end function matName
+
+  !!
+  !! Return material index Given Name
+  !!
+  !! Args:
+  !!   name [in] -> material name
+  !!
+  !! Result:
+  !!   matIdx corresponding to name
+  !!
+  !! Error:
+  !!   If name does not correspond to any defined material NOT_FOUND is returned
+  !!
+  function matIdx(name) result(idx)
+    character(*), intent(in) :: name
+    integer(shortInt)        :: idx
+
+    idx = nameMap % getOrDefault(name, NOT_FOUND)
+
+  end function matIdx
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! TYPE PROCEDURES
@@ -414,5 +472,5 @@ contains
 
     N = size(materialDefs)
   end function nMat
-    
+
 end module materialMenu_mod

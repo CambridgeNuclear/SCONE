@@ -31,6 +31,7 @@
 !!   kill     -> Return to uninitialised state
 !!   getNeutronCE -> Get pointer to the active neutron CE Nuclear Database
 !!   getNeutronMG -> Get pointer to the active neutron MG Nuclear Database
+!!   get          -> Return pointer to active Nuclear Data given particle type
 !!
 !! Note:
 !!   To add new nuclearDatabase:
@@ -51,6 +52,7 @@
 module nuclearDataReg_mod
 
   use numPrecision
+  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG
   use genericProcedures,     only : fatalError, numToChar
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
@@ -93,6 +95,7 @@ module nuclearDataReg_mod
   public :: kill
   public :: getNeutronCE
   public :: getNeutronMG
+  public :: get
 
   !! Parameters
   character(nameLen), dimension(*), parameter :: AVAILABLE_NUCLEAR_DATABASES = &
@@ -422,6 +425,36 @@ contains
     ptr => active_mgNeutron
 
   end function getNeutronMG
+
+  !!
+  !! Return pointer to an active Nuclear Database given particle type
+  !!
+  !! Args:
+  !!   type [in] -> Particle type
+  !!
+  !! Result:
+  !!   nuclearDatabaseclass pointer
+  !!
+  !! Errors:
+  !!   If there is no active database returns NULL ptr
+  !!   If type is not recognised returns NULL ptr
+  !!
+  function get(type) result(ptr)
+    integer(shortInt), intent(in)   :: type
+    class(nuclearDatabase), pointer :: ptr
+
+    select case(type)
+      case(P_NEUTRON_CE)
+        ptr => getNeutronCE()
+
+      case(P_NEUTRON_MG)
+        ptr => getNeutronMG()
+
+      case default
+        ptr => null()
+    end select
+
+  end function get
 
   !!
   !! Allocates the database to a specified type

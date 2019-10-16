@@ -4,12 +4,18 @@ module macroResponse_class
   use endfConstants
   use genericProcedures,          only : fatalError, numToChar
   use dictionary_class,           only : dictionary
-  use particle_class,             only : particle
+  use particle_class,             only : particle, P_NEUTRON
   use tallyResponse_inter,        only : tallyResponse
 
-  ! Nuclear Data interface
-  use transportNuclearData_inter, only : transportNuclearData
-  use xsMacroSet_class,           only : xsMacroSet_ptr
+  ! Nuclear Data interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
+  use ceNeutronMaterial_class,    only : ceNeutronMaterial
+  use mgNeutronMaterial_inter,    only : mgNeutronMaterial
+  use neutronXsPackages_class,    only : neutronMacroXSs
+
+!  use transportNuclearData_inter, only : transportNuclearData
+!  use xsMacroSet_class,           only : xsMacroSet_ptr
 
 
   implicit none
@@ -89,17 +95,35 @@ contains
     class(macroResponse), intent(in) :: self
     class(particle), intent(in)      :: p
     real(defReal)                    :: val
-    type(xsMacroSet_ptr)             :: macroXSs
+    type(neutronMacroXSs)            :: xss
+    class(nuclearDatabase), pointer  :: data
 
-    select type(xs => p % xsData)
-      class is(transportNuclearData)
-        call xs % getMatMacroXS(macroXSs,p , p % matIdx())
-        val = macroXSs % xsOf(self % MT)
+    val = ZERO
 
-      class default
-        val = ZERO
+    ! Return 0.0 if particle is not neutron
+    if(p % type /= P_NEUTRON) return
+
+    ! Get pointer to active data
+    data => ndReg_get(p % getType())
+
+    ! Return 0.0 if there is no active data
+    if(.not.associated(data)) return
+
+    ! Get XSs
+    select type (mat => data % getMaterial(p % matIdx()))
+      class is(mgNeutronMaterial)
+        call mat % getMacroXSs(xss, p % G, p % pRNG)
+
+      class is(ceNeutronMaterial)
+        call mat % getMacroXSs(xss, p % E, p % pRNG)
+
+      class default ! Return if data is uknown
+        return
 
     end select
+
+    val = xss % get(self % MT)
+
   end function get
 
   !!
@@ -111,5 +135,5 @@ contains
     self % MT = 0
 
   end subroutine kill
-    
+
 end module macroResponse_class

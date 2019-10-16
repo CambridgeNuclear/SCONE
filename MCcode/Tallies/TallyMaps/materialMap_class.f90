@@ -8,8 +8,7 @@ module materialMap_class
   use outputFile_class,        only : outputFile
   use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
 
-
-  use nuclearDataRegistry_mod, only : getMatIdx, getMatName
+  use materialMenu_mod,        only : mm_matIdx => matIdx, mm_matName => matName
 
   implicit none
   private
@@ -91,7 +90,7 @@ contains
 
     ! Load material indices and bins
     do i=1,N
-      matIdx = getMatIdx(materials(i))
+      matIdx = mm_matIdx(materials(i))
       call self % binMap % add(matIdx, i)
       self % matIndices(i) = matIdx
 
@@ -203,7 +202,7 @@ contains
 
     ! Print material names
     do i=1,size(self % matIndices)
-      name = getMatName(self % matIndices(i))
+      name = mm_matName(self % matIndices(i))
       call out % addValue(name)
 
     end do
