@@ -17,6 +17,7 @@ module simpleFMClerk_class
   ! Nuclear Data
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
+  use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
 
   ! Tally Maps
   use tallyMap_inter,             only : tallyMap
@@ -165,24 +166,22 @@ contains
     class(simpleFMClerk), intent(inout)  :: self
     class(particle), intent(in)          :: p
     type(scoreMemory), intent(inout)     :: mem
-    class(transportNuclearData), pointer :: xsDat
     type(particleState)                  :: state
     integer(shortInt)                    :: sIdx, cIdx
     integer(longInt)                     :: addr
     real(defReal)                        :: score
     class(nuclearDatabase),pointer       :: xsData
+    class(neutronMaterial), pointer      :: mat
     character(100), parameter :: Here = 'reportInColl simpleFMClear_class.f90'
 
-    ! Get nuclear data or return if it is not transportNuclearData
-    select type(xs => p % xsData)
-      class is(transportNuclearData)
-        xsDat => xs
-      class default
-        return
-    end select
+    ! Get material or return if it is not a neutron
+    xsData => ndReg_get(p % getType())
+    mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
+
+    if(.not.associated(mat)) return
 
     ! Return if material is not fissile
-    if(.not.xsDat % isFissileMat(p % matIdx())) return
+    if(.not.mat % isFissile()) return
 
     ! Find starting index in the map
     sIdx = self % map % map( p % preHistory)
@@ -195,7 +194,7 @@ contains
     if(cIdx == 0 .or. sIdx == 0 ) return
 
     ! Calculate fission neutron production
-    score = self % resp % get(p) * p % w / xsDat % getTotalMatXS(p, p % matIdx())
+    score = self % resp % get(p) * p % w / xsData % getTotalMatXS(p, p % matIdx())
 
     ! Score element of the matrix
     addr = self % getMemAddress() + (sIdx - 1) * self % N + cIdx - 1

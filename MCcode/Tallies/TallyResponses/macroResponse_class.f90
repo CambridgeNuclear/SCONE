@@ -10,13 +10,8 @@ module macroResponse_class
   ! Nuclear Data interfaces
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
-  use ceNeutronMaterial_class,    only : ceNeutronMaterial
-  use mgNeutronMaterial_inter,    only : mgNeutronMaterial
+  use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
   use neutronXsPackages_class,    only : neutronMacroXSs
-
-!  use transportNuclearData_inter, only : transportNuclearData
-!  use xsMacroSet_class,           only : xsMacroSet_ptr
-
 
   implicit none
   private
@@ -97,6 +92,7 @@ contains
     real(defReal)                    :: val
     type(neutronMacroXSs)            :: xss
     class(nuclearDatabase), pointer  :: data
+    class(neutronMaterial), pointer  :: mat
     character(100), parameter :: Here ='get (macroResponse_class.f90)'
 
     val = ZERO
@@ -104,22 +100,14 @@ contains
     ! Return 0.0 if particle is not neutron
     if(p % type /= P_NEUTRON) return
 
-    ! Get pointer to active data
+    ! Get pointer to active material data
     data => ndReg_get(p % getType(), where = Here)
+    mat => neutronMaterial_CptrCast(data % getMaterial(p % matIdx()))
 
-    ! Get XSs
-    select type (mat => data % getMaterial(p % matIdx()))
-      class is(mgNeutronMaterial)
-        call mat % getMacroXSs(xss, p % G, p % pRNG)
+    ! Return if material is not a neutronMaterial
+    if(.not.associated(mat)) return
 
-      class is(ceNeutronMaterial)
-        call mat % getMacroXSs(xss, p % E, p % pRNG)
-
-      class default ! Return if data is uknown
-        return
-
-    end select
-
+    call mat % getMacroXSs(xss, p)
     val = xss % get(self % MT)
 
   end function get
