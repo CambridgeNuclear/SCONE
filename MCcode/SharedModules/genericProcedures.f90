@@ -1155,6 +1155,35 @@ module genericProcedures
   end function charCShift
 
   !!
+  !! Convert Particle Type to string
+  !!
+  !! Args:
+  !!   type [in] -> particle type
+  !!
+  !! Result:
+  !!   Allocatable String that describes what particle is this
+  !!
+  !! Errors:
+  !!   For unknown type prints "Unknown <int>" where int is number in type
+  !!
+  function printParticleType(type) result(str)
+    integer(shortInt), intent(in) :: type
+    character(:), allocatable     :: str
+
+    select case(type)
+      case(P_NEUTRON_CE)
+        str = "CE Neutron"
+
+      case(P_NEUTRON_MG)
+        str = "MG Neutron"
+
+      case default
+        str = "Unknown "// numToChar(type)
+    end select
+  end function printParticleType
+
+
+  !!
   !! Prints Scone ACII Header
   !!
   subroutine printStart()

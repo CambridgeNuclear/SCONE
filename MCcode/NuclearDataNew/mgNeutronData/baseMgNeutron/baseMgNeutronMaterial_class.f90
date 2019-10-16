@@ -75,7 +75,7 @@ module baseMgNeutronMaterial_class
   contains
     ! Superclass procedures
     procedure :: kill
-    procedure :: getMacroXSs
+    procedure :: getMacroXSs_byG
     procedure :: getTotalXS
 
     ! Local procedures
@@ -107,7 +107,7 @@ contains
   !!
   !! See mgNeutronMaterial documentation for more details
   !!
-  subroutine getMacroXSs(self, xss, G, rand)
+  subroutine getMacroXSs_byG(self, xss, G, rand)
     class(baseMgNeutronMaterial), intent(in) :: self
     type(neutronMacroXSs), intent(out)       :: xss
     integer(shortInt), intent(in)            :: G
@@ -134,7 +134,7 @@ contains
       xss % nuFission      = ZERO
     end if
 
-  end subroutine getMacroXSs
+  end subroutine getMacroXSs_byG
 
   !!
   !! Return Total XSs for energy group G

@@ -1,10 +1,12 @@
 module mgNeutronMaterial_inter
 
   use numPrecision
-  use RNG_class, only : RNG
+  use RNG_class,       only : RNG
+  use particle_class,  only : particle
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
+  use neutronMaterial_inter,   only : neutronMaterial
   use neutronXsPackages_class, only : neutronMacroXSs
 
   implicit none
@@ -28,21 +30,24 @@ module mgNeutronMaterial_inter
   !!
   !! Interface:
   !!   materialHandle interface
-  !!   isFissile -> return .true. if is a fissile material
-  !!   set       -> Sets fissile flag
+  !!   neutroNMaterial interface
+  !!   getMacroXSs -> Get macroscopic XSs directly from group number and RNG
+  !!   set         -> Sets fissile flag
   !!
-  type, public, abstract, extends(materialHandle) :: mgNeutronMaterial
+  type, public, abstract, extends(neutronMaterial) :: mgNeutronMaterial
     private
     logical(defBool) :: fissile = .false.
 
   contains
     ! Superclass procedures
     procedure :: kill
+    generic   :: getMacroXSs => getMacroXSs_byG
+    procedure :: getMacroXSs_byP
 
     ! Local procedures
-    procedure(getMacroXSs), deferred        :: getMacroXSs
+    procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
-    procedure, non_overridable              :: isFissile
+    procedure                               :: isFissile
     procedure                               :: set
 
   end type mgNeutronMaterial
@@ -62,13 +67,13 @@ module mgNeutronMaterial_inter
     !! Errors:
     !!   fatalError if G is out-of-bounds for the stored data
     !!
-    subroutine getMacroXSs(self, xss, G, rand)
+    subroutine getMacroXSs_byG(self, xss, G, rand)
       import :: mgNeutronMaterial, neutronMacroXSs, shortInt, RNG
       class(mgNeutronMaterial), intent(in) :: self
       type(neutronMacroXSs), intent(out)   :: xss
       integer(shortInt), intent(in)        :: G
       class(RNG), intent(inout)            :: rand
-    end subroutine getMacroXSs
+    end subroutine getMacroXSs_byG
 
     !!
     !! Return Macroscopic Total XS for the material
@@ -92,6 +97,26 @@ module mgNeutronMaterial_inter
 
 
 contains
+
+  !!
+  !! Return Macroscopic XSs for the material given particle
+  !!
+  !! See neutronMaterial_inter for details
+  !!
+  subroutine getMacroXSs_byP(self, xss, p)
+    class(mgNeutronMaterial), intent(in) :: self
+    type(neutronMacroXSs), intent(out)   :: xss
+    class(particle), intent(in)          :: p
+    character(100), parameter :: Here = 'getMacroXSs_byP (mgNeutronMateerial_inter.f90)'
+
+    if( p % isMG) then
+      call self % getMacroXSs(xss, p % G, p % pRNG)
+
+    else
+      call fatalError(Here, 'CE particle was given to MG data')
+
+    end if
+  end subroutine getMacroXSs_byP
 
   !!
   !! Return .true. if the MG material is fissile

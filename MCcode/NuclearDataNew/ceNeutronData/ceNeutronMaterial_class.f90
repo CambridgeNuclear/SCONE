@@ -3,9 +3,11 @@ module ceNeutronMaterial_class
   use numPrecision
   use genericProcedures, only : fatalError
   use RNG_class,         only : RNG
+  use particle_class,    only : particle
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
+  use neutronMaterial_inter,   only : neutronMaterial
   use neutronXsPackages_class, only : neutronMacroXSs
 
   ! CE Neutron Interfaces
@@ -35,10 +37,16 @@ module ceNeutronMaterial_class
   !!
   !! Interface:
   !!   materialHandle Interface
-  !!   getMacroXSs -> return package of macroscopic XSs
+  !!   getMacroXSs -> return package of macroscopic XSs directly from Energy and RNG
+  !!   set         -> Set data related to material by keyword association
+  !!   setComposition -> Set composition of material from densities and nucIdxs
+  !!   sampleNuclide  -> sample collision nuclide
+  !!   sampleFission  -> sample collision nuclide given that fission reaction has happened
+  !!   sampleScatter  -> sample collision nuclide given that Scattering has happened
+  !!   sampleScatterWithFission -> sample collision nuclide given ther scatter or fission has
+  !!     happened
   !!
-  !!
-  type, public, extends(materialHandle) :: ceNeutronMaterial
+  type, public, extends(neutronMaterial) :: ceNeutronMaterial
     integer(shortInt)                            :: matIdx = 0
     class(ceNeutronDatabase), pointer            :: data => null()
     real(defReal), dimension(:), allocatable     :: dens
@@ -46,22 +54,58 @@ module ceNeutronMaterial_class
     logical(defBool)                             :: fissile =.false.
 
   contains
+    ! Superclass procedures
+    procedure :: kill
+    generic   :: getMacroXSs => getMacroXSs_byE
+    procedure :: getMacroXSs_byP
+
     ! Local procedures
     procedure, non_overridable :: set
     procedure, non_overridable :: setComposition
-    procedure, non_overridable :: getMacroXSs
-    procedure, non_overridable :: isFissile
+    procedure, non_overridable :: getMacroXSs_byE
+    procedure                  :: isFissile
     procedure, non_overridable :: sampleNuclide
     procedure, non_overridable :: sampleFission
     procedure, non_overridable :: sampleScatter
     procedure, non_overridable :: sampleScatterWithFission
 
-
-    ! materialHandle interface
-    procedure :: kill
   end type ceNeutronMaterial
 
 contains
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(ceNeutronMaterial), intent(inout) :: self
+
+    self % matIdx  = 0
+    self % data    => null()
+    if(allocated(self % dens))     deallocate(self % dens )
+    if(allocated(self % nuclides)) deallocate (self % nuclides)
+    self % fissile = .false.
+
+  end subroutine kill
+
+  !!
+  !! Return Macroscopic XSs for the material given particle
+  !!
+  !! See neutronMaterial_inter for details
+  !!
+  subroutine getMacroXSs_byP(self, xss, p)
+    class(ceNeutronMaterial), intent(in) :: self
+    type(neutronMacroXSs), intent(out)   :: xss
+    class(particle), intent(in)          :: p
+    character(100), parameter :: Here = 'getMacroXSs_byP (ceNeutronMaterial_class.f90)'
+
+    if(.not.p % isMG) then
+      call self % getMacroXSs(xss, p % E, p % pRNG)
+
+    else
+      call fatalError(Here,'MG neutron given to CE data')
+
+    end if
+  end subroutine getMacroXSs_byP
 
   !!
   !! Set composition of the material in terms of nucIdx and atomic density
@@ -136,7 +180,7 @@ contains
   !! Errors:
   !!   fatalError if E is out-of-bounds for the stored data
   !!
-  subroutine getMacroXSs(self, xss, E, rand)
+  subroutine getMacroXSs_byE(self, xss, E, rand)
     class(ceNeutronMaterial), intent(in) :: self
     type(neutronMacroXSs), intent(out)   :: xss
     real(defReal), intent(in)            :: E
@@ -149,7 +193,7 @@ contains
 
     xss = materialCache(self % matIdx) % xss
 
-  end subroutine getMacroXSs
+  end subroutine getMacroXSs_byE
 
   !!
   !! Return .true. if nuclide is fissile
@@ -163,7 +207,7 @@ contains
   !! Errors:
   !!   None
   !!
-  pure function isFissile(self) result(isIt)
+  elemental function isFissile(self) result(isIt)
     class(ceNeutronMaterial), intent(in) :: self
     logical(defBool)                     :: isIt
 
@@ -421,16 +465,6 @@ contains
     end select
 
   end function ceNeutronMaterial_TptrCast
-
-
-
-  !!
-  !! Return to uninitialised state
-  !!
-  elemental subroutine kill(self)
-    class(ceNeutronMaterial), intent(inout) :: self
-
-  end subroutine kill
 
 
 end module ceNeutronMaterial_class

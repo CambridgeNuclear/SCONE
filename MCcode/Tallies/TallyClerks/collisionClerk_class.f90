@@ -8,7 +8,10 @@ module collisionClerk_class
   use outputFile_class,           only : outputFile
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk
-  use transportNuclearData_inter, only : transportNuclearData
+
+  ! Nuclear Data interface
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
 
   ! Tally Filters
   use tallyFilter_inter,          only : tallyFilter
@@ -137,6 +140,7 @@ contains
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flx
+    class(nuclearDatabase),pointer        :: xsData
     character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
 
     ! Get current particle state
@@ -161,19 +165,10 @@ contains
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Calculate flux sample 1/totXs
-    ! Check if it dynamic type is supported
-    ! If it is obtain macroscopic XSs
-    ! It it isn't throw error
-    select type(xsData => p % xsData)
-      class is (transportNuclearData)
-        flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+    xsData => ndReg_get(p % getType(), where = Here)
+    flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
 
-      class default
-        call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
-        flx = ZERO
-    end select
-
-
+    ! Append all bins
     do i=1,self % width
       scoreVal = self % response(i) % get(p) * p % w *flx
       call mem % score(scoreVal, adrr + i)

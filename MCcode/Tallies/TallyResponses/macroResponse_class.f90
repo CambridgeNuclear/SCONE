@@ -97,6 +97,7 @@ contains
     real(defReal)                    :: val
     type(neutronMacroXSs)            :: xss
     class(nuclearDatabase), pointer  :: data
+    character(100), parameter :: Here ='get (macroResponse_class.f90)'
 
     val = ZERO
 
@@ -104,10 +105,7 @@ contains
     if(p % type /= P_NEUTRON) return
 
     ! Get pointer to active data
-    data => ndReg_get(p % getType())
-
-    ! Return 0.0 if there is no active data
-    if(.not.associated(data)) return
+    data => ndReg_get(p % getType(), where = Here)
 
     ! Get XSs
     select type (mat => data % getMaterial(p % matIdx()))

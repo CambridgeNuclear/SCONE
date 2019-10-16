@@ -7,6 +7,7 @@ add_sources(./nuclearDatabase_inter.f90
             ./nuclideHandle_inter.f90
             ./materialMenu_mod.f90
             ./nuclearDataReg_mod.f90
+            ./neutronMaterial_inter.f90
             ./Reactions/reactionHandle_inter.f90
             ./Reactions/uncorrelatedReactionCE_inter.f90
             ./Reactions/reactionMG_inter.f90

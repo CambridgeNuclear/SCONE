@@ -15,7 +15,8 @@ module simpleFMClerk_class
   use tallyResult_class,          only : tallyResult
 
   ! Nuclear Data
-  use transportNuclearData_inter, only : transportNuclearData
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
 
   ! Tally Maps
   use tallyMap_inter,             only : tallyMap
@@ -169,6 +170,8 @@ contains
     integer(shortInt)                    :: sIdx, cIdx
     integer(longInt)                     :: addr
     real(defReal)                        :: score
+    class(nuclearDatabase),pointer       :: xsData
+    character(100), parameter :: Here = 'reportInColl simpleFMClear_class.f90'
 
     ! Get nuclear data or return if it is not transportNuclearData
     select type(xs => p % xsData)

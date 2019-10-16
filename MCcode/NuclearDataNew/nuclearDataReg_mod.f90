@@ -53,7 +53,7 @@ module nuclearDataReg_mod
 
   use numPrecision
   use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG
-  use genericProcedures,     only : fatalError, numToChar
+  use genericProcedures,     only : fatalError, numToChar, printParticleType
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
 
@@ -430,18 +430,20 @@ contains
   !! Return pointer to an active Nuclear Database given particle type
   !!
   !! Args:
-  !!   type [in] -> Particle type
+  !!   type [in]  -> Particle type
+  !!   where [in] -> Optional, Location of error message
   !!
   !! Result:
   !!   nuclearDatabaseclass pointer
   !!
   !! Errors:
-  !!   If there is no active database returns NULL ptr
-  !!   If type is not recognised returns NULL ptr
+  !!   fatalError if there no activa database or type is invalid
   !!
-  function get(type) result(ptr)
+  function get(type, where) result(ptr)
     integer(shortInt), intent(in)   :: type
     class(nuclearDatabase), pointer :: ptr
+    character(*),optional           :: where
+    character(100), parameter       :: Here = 'get (nuclearDataReg_mod.f90)'
 
     select case(type)
       case(P_NEUTRON_CE)
@@ -453,6 +455,15 @@ contains
       case default
         ptr => null()
     end select
+
+    ! Throw error if somthing went wrong
+    if(.not.associated(ptr) .and. present(where)) then
+      call fatalError(Where, "There is no data for particle: "//printParticleType(type))
+
+    else if(.not.associated(ptr)) then
+      call fatalError(Here, "There is no data for particle: "//printParticleType(type))
+
+    end if
 
   end function get
 

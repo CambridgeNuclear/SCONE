@@ -9,9 +9,14 @@ module keffImplicitClerk_class
   use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
 
-  use xsMacroSet_class,           only : xsMacroSet_ptr
-  use transportNuclearData_inter, only : transportNuclearData
+  ! Nuclear Data Interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
+  use ceNeutronMaterial_class,    only : ceNeutronMaterial
+  use mgNeutronMaterial_inter,    only : mgNeutronMaterial
+  use neutronXSPackages_class,    only : neutronMacroXSs
 
+  ! Tally Interfaces
   use scoreMemory_class,          only : scoreMemory
   use tallyResult_class,          only : tallyResult, tallyResultEmpty
   use tallyClerk_inter,           only : tallyClerk
@@ -120,27 +125,30 @@ contains
     class(keffImplicitClerk), intent(inout)  :: self
     class(particle), intent(in)              :: p
     type(scoreMemory), intent(inout)         :: mem
-    type(xsMacroSet_ptr)                     :: XSs
+    type(neutronMacroXSs)                    :: xss
+    class(nuclearDatabase),pointer           :: xsData
     real(defReal)                            :: totalXS, nuFissXS, absXS, flux
     real(defReal)                            :: s1, s2
     character(100), parameter  :: Here = 'reportInColl (keffActiveClerk_class.f90)'
 
-    ! Obtain XSs
-    ! Check if it dynamic type is supported
-    ! If it is obtain macroscopic XSs
-    ! It it isn't throw error
-    select type(xsData => p % xsData)
-      class is (transportNuclearData)
-        call xsData % getMatMacroXS(XSs, p, p % matIdx())
+    ! Obatin XSs
+    xsData => ndReg_get(p % getType(), where = Here)
+
+    select type( mat => xsData % getMaterial( p % matIdx()))
+      class is(ceNeutronMaterial)
+        call mat % getMacroXSs(xss, p % E, p % pRNG)
+
+      class is(mgNeutronMaterial)
+        call mat % getMacroXSs(xss, p % G, p % pRNG)
 
       class default
-        call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
+        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
 
     end select
 
-    totalXS  = XSs % totalXS()
-    nuFissXS = XSs % nuFissionXS()
-    absXS    = XSs % captureXS() + XSs % fissionXS()
+    totalXS  = xss % total
+    nuFissXS = xss % nuFission
+    absXS    = xss % capture + xss % fission
 
     ! Calculate flux and scores
     flux = p % w / totalXS
@@ -317,5 +325,5 @@ contains
 
   end subroutine getResult
 
-    
+
 end module keffImplicitClerk_class

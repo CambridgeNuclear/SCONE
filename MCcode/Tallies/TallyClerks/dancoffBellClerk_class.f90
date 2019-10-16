@@ -17,10 +17,9 @@ module dancoffBellClerk_class
   use energyFilter_class,         only : energyFilter
 
   ! Nuclear Data
-  use nuclearDataRegistry_mod,    only : getMatIdx
-  use transportNuclearData_inter, only : transportNuclearData
-
-
+  use materialMenu_mod,           only : mm_matIdx => matIdx
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
   private
@@ -120,11 +119,11 @@ contains
     allocate(modIdx(size(modNames)))
 
     do i = 1,size(fuelNames)
-      fuelIdx(i) = getMatIdx(fuelNames(i))
+      fuelIdx(i) = mm_matIdx(fuelNames(i))
     end do
 
     do i =1,size(modNames)
-      modIdx(i) = getMatIdx(modNames(i))
+      modIdx(i) = mm_matIdx(modNames(i))
     end do
 
     ! Check for overlaps
@@ -184,6 +183,7 @@ contains
     integer(shortInt)                      :: T_end, T_start
     real(defReal)                          :: w_end
     type(particleState)                    :: state
+    class(nuclearDatabase), pointer        :: xsData
     character(100),parameter :: Here = 'reportTrans (dancoffBellClerk_class.f90)'
 
     ! Find start material type; Exit if not fuel
@@ -204,21 +204,10 @@ contains
     ! Add to approperiate bins
     select case(T_end)
       case(MODERATOR)
-        ! Obtain XSs
-        ! Check if it dynamic type is supported
-        ! If it is obtain macroscopic XSs
-        ! It it isn't throw error
-        associate (xsData => p % xsData)
-          select type(xsData)
-            class is (transportNuclearData)
-              SigmaTot = xsData % getTotalMatXS(p, p % preTransition % matIdx)
-
-            class default
-              call fatalError(Here,'Dynamic type of XS data attached to particle is not transportNuclearData')
-              ! Avoid compiler warning
-              SigmaTot = ZERO
-          end select
-        end associate
+        ! Get XS
+        xsData => ndReg_get(p % getType())
+        if(.not.associated(xsData)) call fatalError(Here,'Missing nuclear data for: '//p %typeToChar())
+        SigmaTot = xsData % getTotalMatXS(p, p % preTransition % matIdx)
 
         call mem % score(w_end * SigmaTot, self % getMemAddress() + ESC_PROB_TOTXS)
 
