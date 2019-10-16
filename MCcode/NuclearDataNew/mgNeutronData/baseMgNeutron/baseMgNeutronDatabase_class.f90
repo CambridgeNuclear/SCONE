@@ -9,12 +9,13 @@ module baseMgNeutronDatabase_class
   use IOdictionary_class, only : IOdictionary
 
   ! Nuclear Data Interfaces
-  use nuclearDatabase_inter, only : nuclearDatabase
-  use materialHandle_inter,  only : materialHandle
-  use nuclideHandle_inter,   only : nuclideHandle
-  use reactionHandle_inter,  only : reactionHandle
-  use materialMenu_mod,      only : materialItem, mm_getMatPtr => getMatPtr, mm_nMat => nMat, &
-                                    mm_nameMap => nameMap
+  use nuclearDatabase_inter,   only : nuclearDatabase
+  use mgNeutronDatabase_inter, only : mgNeutronDatabase
+  use materialHandle_inter,    only : materialHandle
+  use nuclideHandle_inter,     only : nuclideHandle
+  use reactionHandle_inter,    only : reactionHandle
+  use materialMenu_mod,        only : materialItem, mm_getMatPtr => getMatPtr, mm_nMat => nMat, &
+                                      mm_nameMap => nameMap
 
   ! baseMgNeutron Objects
   use baseMgNeutronMaterial_class, only : baseMgNeutronMaterial
@@ -41,7 +42,7 @@ module baseMgNeutronDatabase_class
   !! Interface:
   !!   nuclearDatabase interface
   !!
-  type, public, extends(nuclearDatabase) :: baseMgNeutronDatabase
+  type, public, extends(mgNeutronDatabase) :: baseMgNeutronDatabase
     type(baseMgNeutronMaterial), dimension(:), pointer :: mats => null()
     integer(shortInt), dimension(:), allocatable       :: activeMats
     integer(shortInt)                                  :: nG = 0

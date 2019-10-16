@@ -117,7 +117,7 @@ nuclearData {
   handles { 
      // mg1 isotropicMG;
      // mg2 transMG;
-      mg3 P1MG; 
+     //  mg3 P1MG; 
      // ce1 byNucNoMT;
       ce2 byNucMT; 
   }

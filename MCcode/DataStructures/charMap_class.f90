@@ -35,10 +35,10 @@ module charMap_class
   !!
   !! NOTE: Following structure can be used to loop over entire map
   !! it = map % begin()
-  !! do while (it == map % end())
+  !! do while (it /= map % end())
   !!   ! Access value with: map % atVal(it)
   !!   ! Access key with: map % atKey(it)
-  !!   it = map % next(i)
+  !!   it = map % next(it)
   !! end do
   !!
   !! Private members:
@@ -593,5 +593,5 @@ contains
     call move_alloc(tempMap % map, self % map)
 
   end subroutine grow
-    
+
 end module charMap_class
