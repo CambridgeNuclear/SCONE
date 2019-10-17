@@ -39,6 +39,7 @@ module neutronXsPackages_class
     procedure :: clean => clean_neutronMacroXSs
     procedure :: add   => add_neutronMacroXSs
     procedure :: get
+    procedure :: invert => invert_macroXSs
   end type neutronMacroXSs
 
 
@@ -61,6 +62,8 @@ module neutronXsPackages_class
     real(defReal) :: capture          = ZERO
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
+  contains
+    procedure :: invert => invert_microXSs
   end type neutronMicroXSs
 
 contains
@@ -156,5 +159,126 @@ contains
     end select
 
   end function get
+
+  !!
+  !! Use a real r in <0;1> to sample reaction from Macroscopic XSs
+  !!
+  !! This function might be common thus is type-bound procedure for conveniance
+  !!
+  !! Args:
+  !!   r [in] -> Real number in <1;0>
+  !!
+  !! Result:
+  !!   One of the Macroscopic MT numbers
+  !!     elasticScatter   = macroEscatter
+  !!     inelasticScatter = macroIEscatter
+  !!     capture          = macroCapture
+  !!     fission          = macroFission
+  !!
+  !! Errors::
+  !!   If r < 0 then returns macroEscatter
+  !!   If r > 1 then returns macroFission
+  !!
+  elemental function invert_macroXSs(self, r) result(MT)
+    class(neutronMacroXSs), intent(in) :: self
+    real(defReal), intent(in)          :: r
+    integer(shortInt)                  :: MT
+    real(defReal)                      :: xs
+    integer(shortInt)                  :: C
+
+    ! Elastic Scattering
+    C = 1
+    xs = self % total * r - self % elasticScatter
+    if (xs > ZERO) C = C + 1
+
+    ! Inelastic Scattering
+    xs = xs - self % inelasticScatter
+    if(xs > ZERO) C = C + 1
+
+    ! Capture
+    xs = xs - self % capture
+    if(xs > ZERO) C = C + 1
+
+    ! Choose MT number
+    select case(C)
+      case(1)
+        MT = macroEScatter
+
+      case(2)
+        MT = macroIEscatter
+
+      case(3)
+        MT = macroCapture
+
+      case(4)
+        MT = macroFission
+
+      case default  ! Should never happen -> Avoid compiler error and return nonsense number
+        MT = huge(C)
+
+    end select
+
+  end function invert_macroXSs
+
+
+  !!
+  !! Use a real r in <0;1> to sample reaction from Microscopic XSs
+  !!
+  !! This function involves a bit of code so is written for conviniance
+  !!
+  !! Args:
+  !!   r [in] -> Real number in <0;1>
+  !!
+  !! Result:
+  !!   MT number of the reaction:
+  !!     elastic scatter   = N_N_elastic
+  !!     inelastic scatter = N_N_inelastic
+  !!     capture           = N_diasp
+  !!     fission           = N_FISSION
+  !!
+  !! Errors:
+  !!   If r < 0 then returns N_N_elastic
+  !!   if r > 1 then returns N_FISSION
+  !!
+  elemental function invert_microXSs(self, r) result(MT)
+    class(neutronMicroXSs), intent(in) :: self
+    real(defReal), intent(in)          :: r
+    integer(shortInt)                  :: MT
+    real(defReal)                      :: xs
+    integer(shortInt)                  :: C
+
+    ! Elastic Scattering
+    C = 1
+    xs = self % total * r - self % elasticScatter
+    if (xs > ZERO) C = C + 1
+
+    ! Inelastic Scattering
+    xs = xs - self % inelasticScatter
+    if(xs > ZERO) C = C + 1
+
+    ! Capture
+    xs = xs - self % capture
+    if(xs > ZERO) C = C + 1
+
+    ! Choose MT number
+    select case(C)
+      case(1)
+        MT = N_N_elastic
+
+      case(2)
+        MT = N_N_inelastic
+
+      case(3)
+        MT = N_disap
+
+      case(4)
+        MT = N_fission
+
+      case default  ! Should never happen -> Avoid compiler error and return nonsense number
+        MT = huge(C)
+    end select
+
+  end function invert_microXSs
+
 
 end module neutronXsPackages_class

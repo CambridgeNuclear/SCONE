@@ -96,6 +96,7 @@ module endfConstants
   integer(shortInt),parameter  :: macroTotal     = -1 ,&
                                   macroCapture   = -2 ,&
                                   macroEscatter  = -3 ,&
+                                  macroIEscatter = -4 ,&
                                   macroFission   = -6 ,&
                                   macroNuFission = -7
 

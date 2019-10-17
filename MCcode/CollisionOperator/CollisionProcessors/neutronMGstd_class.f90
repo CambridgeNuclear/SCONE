@@ -13,12 +13,25 @@ module neutronMGstd_class
   ! Abstract interface
   use collisionProcessor_inter,      only : collisionProcessor, collisionData ,init_super => init
 
+  ! Nuclear Data Interface
+  use nuclearDataReg_mod,            only : ndReg_getNeutronMG => getNeutronMG
+  use nuclearDatabase_inter,         only : nuclearDatabase
+  use mgNeutronDatabase_inter,       only : mgNeutronDatabase
+  use mgNeutronMaterial_inter,       only : mgNeutronMaterial, mgNeutronMaterial_CptrCast
+  use reactionHandle_inter,          only : reactionHandle
+  use multiScatterMG_class,          only : multiScatterMG, multiScatterMG_CptrCast
+  use fissionMG_class,               only : fissionMG, fissionMG_TptrCast
+
+  ! Cross section packages
+  use neutronXsPackages_class,       only : neutronMacroXSs
+
+
   ! Nuclear Data
-  use nuclearData_inter,              only : nuclearData
-  use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
+  !use nuclearData_inter,              only : nuclearData
+  !use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
 
   ! Cross-section packages to interface with nuclear data
-  use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
+  !use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
 
   implicit none
   private
@@ -40,7 +53,8 @@ module neutronMGstd_class
   !!
   type, public, extends(collisionProcessor) :: neutronMGstd
     private
-    class(perMaterialNuclearDataMG), pointer, public :: xsData => null()
+    class(mgNeutronDatabase), pointer, public :: xsData => null()
+    class(mgNeutronMaterial), pointer, public :: mat    => null()
   contains
     ! Initialisation procedure
     procedure :: init
@@ -48,7 +62,8 @@ module neutronMGstd_class
     ! Implementation of customisable procedures
     procedure :: sampleCollision
     procedure :: implicit
-    procedure :: scatter
+    procedure :: elastic
+    procedure :: inelastic
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
@@ -78,8 +93,8 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    type(neutronMacroXSs)                :: macroXSs
     real(defReal)                        :: r
-    type(xsMacroSet_ptr)                 :: materialXS
     character(100),parameter :: Here =' sampleCollision (neutronMGstd_class.f90)'
 
     ! Verify that particle is MG neutron
@@ -88,22 +103,18 @@ contains
     end if
 
     ! Verify and load nuclear data pointer
-    select type(xs => p % xsData)
-      class is(perMaterialNuclearDataMG)
-        self % xsData => xs
+    self % xsData => ndReg_getNeutronMG()
+    if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
 
-      class default
-        call fatalError(Here, 'Unsupported type of Nuclear Data interface. &
-                             & Only perMaterialNuclearDataMG is accepted')
-    end select
-
+    ! Get and verify material pointer
+    self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
 
     ! Select Main reaction channel
-    call self % xsData % getMatMacroXS(materialXS, p % G, collDat % matIdx)
-
+    call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
 
-    collDat % MT = materialXS % invert(r)
+    collDat % MT = macroXSs % invert(r)
 
   end subroutine sampleCollision
 
@@ -116,39 +127,45 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(xsMacroSet_ptr)                 :: materialXS
+    type(neutronMacroXSs)                :: macroXSs
+    type(fissionMG),pointer              :: fission
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: G_out, n, i
     real(defReal)                        :: wgt, w0, rand1, mu, phi
     real(defReal)                        :: sig_tot, k_eff, sig_nufiss
+    character(100),parameter :: Here = 'implicit (neutronMGstd_class.f90)'
 
-    if ( self % xsData % isFissileMat(collDat % matIdx)) then
+    if ( self % mat % isFissile()) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
       w0    = p % preHistory % wgt ! Starting weight
       k_eff = p % k_eff            ! k_eff for normalisation
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
-      call self % xsData % getMatMacroXS(materialXS, p % G, collDat % matIdx)
+      call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
 
-      sig_tot    = materialXS % totalXS()
-      sig_nuFiss = materialXS % nuFissionXS()
-
-      r   = p % rGlobal()
-      dir = p % dirGlobal()
+      sig_tot    = macroXSs % total
+      sig_nuFiss = macroXSs % nuFission
 
       ! Sample number of fission sites generated
       !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
       n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
 
+      ! Shortcut if no particles were samples
+      if (n < 1) return
+
+      ! Get Fission reaction object
+      fission => fissionMG_TptrCast( self % xsData % getReaction(macroFission, collDat % matIdx))
+      if (.not.associated(fission)) call fatalError(Here, 'Failed to getrive fissionMG reaction object')
+
       ! Store new sites in the next cycle dungeon
       wgt =  sign(w0, wgt)
+      r   = p % rGlobal()
 
       do i=1,n
-        call self % xsData % sampleMuGout(mu, G_out, p % G, p % pRNG, macroFission, collDat % matIdx)
-        phi = TWO*PI * p % pRNG % get()
-        dir = rotateVector(dir, mu, phi)
+        call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
+        dir = rotateVector(p % dirGlobal(), mu, phi)
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
         pTemp       = p
@@ -166,34 +183,53 @@ contains
   end subroutine implicit
 
   !!
-  !! Preform scattering
+  !! Elastic Scattering
   !!
-  subroutine scatter(self, p, collDat, thisCycle, nextCycle)
+  subroutine elastic(self, p , collDat, thisCycle, nextCycle)
     class(neutronMGstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+
+    ! Do nothing. Should not be called
+
+  end subroutine elastic
+
+  !!
+  !! Preform scattering
+  !!
+  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
+    class(neutronMGstd), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+    class(multiScatterMG),pointer        :: scatter
     integer(shortInt)                    :: G_out   ! Post-collision energy group
     real(defReal)                        :: phi     ! Azimuthal scatter angle
     real(defReal)                        :: w_mul   ! Weight multiplier
+    character(100),parameter :: Here = "inelastic (neutronMGstd_class.f90)"
 
     ! Assign MT number
-    collDat % MT = macroAllScatter
+    collDat % MT = macroIEscatter
+
+    ! Get Scatter object
+    scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
+    if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG neutron")
 
     ! Sample Mu and G_out
-    call self % xsData % sampleMuGout(collDat % muL, G_out, p % G, p % pRNG, collDat % MT, collDat % matIdx)
-    phi = TWO*PI * p % pRNG % get()
+    call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
 
     ! Read scattering multiplicity
-    w_mul = self % xsData % releaseAt(p % G, G_out, collDat % MT, collDat % matIdx)
+    w_mul = scatter % production(p % G, G_out)
 
     ! Update neutron state
     p % G = G_out
     p % w = p % w * w_mul
     call p % rotate(collDat % muL, phi)
 
-  end subroutine scatter
+  end subroutine inelastic
 
   !!
   !! Preform capture
@@ -236,5 +272,5 @@ contains
     ! Do nothing
 
   end subroutine cutoffs
-    
+
 end module neutronMGstd_class

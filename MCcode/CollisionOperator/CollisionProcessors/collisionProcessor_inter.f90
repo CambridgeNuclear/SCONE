@@ -8,9 +8,6 @@ module collisionProcessor_inter
   use particle_class,        only : particle
   use particleDungeon_class, only : particleDungeon
 
-  ! Nuclear Data interface
-  use nuclearData_inter,     only : nuclearData
-
   ! Tally interfaces
   use tallyCodes
   use tallyAdmin_class,      only : tallyAdmin
@@ -72,7 +69,8 @@ module collisionProcessor_inter
     ! Customisable deffered procedures
     procedure(collisionAction),deferred  :: sampleCollision
     procedure(collisionAction),deferred  :: implicit
-    procedure(collisionAction),deferred  :: scatter
+    procedure(collisionAction),deferred  :: elastic
+    procedure(collisionAction),deferred  :: inelastic
     procedure(collisionAction),deferred  :: capture
     procedure(collisionAction),deferred  :: fission
     procedure(collisionAction),deferred  :: cutoffs
@@ -130,13 +128,16 @@ contains
 
     ! Select physics to be processed based on MT number
     select case(collDat % MT)
-      case(anyScatter, macroAllScatter)
-        call self % scatter(p, collDat, thisCycle, nextCycle)
+      case(N_N_elastic, macroAllScatter)
+        call self % elastic(p, collDat, thisCycle, nextCycle)
 
-      case(anyCapture, macroCapture)
+      case(N_N_inelastic)
+        call self % inelastic(p, collDat, thisCycle, nextCycle)
+
+      case(N_DISAP, macroCapture)
         call self % capture(p, collDat, thisCycle, nextCycle)
 
-      case(anyFission, macroFission)
+      case(N_FISSION, macroFission)
         call self % fission(p, collDat, thisCycle, nextCycle)
 
       case(noInteraction)
