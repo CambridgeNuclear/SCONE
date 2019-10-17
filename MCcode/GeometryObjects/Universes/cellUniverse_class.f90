@@ -7,12 +7,10 @@ module cellUniverse_class
   use dictionary_class,  only : dictionary
   use coord_class,       only : coord
   use intMap_class,      only : intMap
+  use charMap_class,     only : charMap
   use surface_inter,     only : surfaceSlot, surfaceShelf
   use cell_class,        only : cell, cellShelf
   use universe_inter,    only : universe
-
-  !*** STAYS HERE ONLY PROVISIONALLY
-  use nuclearData_inter, only : nuclearData
 
   implicit none
   private
@@ -78,7 +76,6 @@ contains
   !!
   !! Returns an initialised instance of cell universe from dict and cellShelf
   !! Return fillVector as well. +ve entries are materials IDXs, -ve are fill universes IDs
-  !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
   !!
   function cellUniverse_fromDict(fillVector, dict, cShelf, sShelf, cellFillMap, materials) result (new)
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
@@ -86,7 +83,7 @@ contains
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(intMap), intent(in)                               :: cellFillMap
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     type(cellUniverse)                                     :: new
     real(defReal), dimension(:),allocatable                :: offset
     integer(shortInt)                                      :: id, i

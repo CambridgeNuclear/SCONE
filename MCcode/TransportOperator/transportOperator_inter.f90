@@ -15,8 +15,9 @@ module transportOperator_inter
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearData_inter,          only : nuclearData
-  use transportNuclearData_inter, only : transportNuclearData
+  use nuclearDataReg_mod,         only : ndReg_get => get
+  use nuclearDatabase_inter,      only : nuclearDatabase
+
 
 
   implicit none
@@ -41,7 +42,7 @@ module transportOperator_inter
   !!
   type, abstract, public :: transportOperator
     !! Nuclear Data block pointer -> public so it can be used by subclasses (protected member)
-    class(transportNuclearData), pointer :: xsData => null()
+    class(nuclearDatabase), pointer :: xsData => null()
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(cellGeometry), pointer         :: geom        => null()
@@ -97,13 +98,7 @@ contains
     character(100),parameter :: Here ='transport (transportOperator_inter.f90)'
 
     ! Get nuclear data pointer form the particle
-    select type( xs => p % xsData )
-      class is (transportNuclearData)
-        self % xsData => xs
-
-      class default
-        call fatalError(Here, 'Was given xsData which is not transportNuclearData')
-    end select
+    self % xsData => ndReg_get(p % getType())
 
     ! Save pre-transition state
     call p % savePreTransition()

@@ -6,9 +6,7 @@ module geometryFactory_func
   use numPrecision
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
-
-  ! Nuclear data interface
-  use nuclearData_inter,  only : nuclearData
+  use charMap_class,      only : charMap
 
   ! Abstract interfaces
   use geometry_inter,     only : geometry
@@ -41,7 +39,7 @@ contains
   !!
   function new_geometry_ptr(dict, materials) result(new)
     class(dictionary), intent(in)         :: dict
-    class(nuclearData), intent(in)        :: materials
+    type(charMap), intent(in)             :: materials
     class(geometry), pointer              :: new
     character(nameLen)                    :: type
     character(100),parameter :: Here = 'new_geometry_ptr (geometryFactory_func.f90)'
@@ -75,7 +73,7 @@ contains
   !!
   function new_cellGeometry_ptr(dict, materials) result(new)
     class(dictionary), intent(in)         :: dict
-    class(nuclearData), intent(in)        :: materials
+    type(charMap), intent(in)             :: materials
     class(cellGeometry), pointer          :: new
     class(geometry),pointer               :: temp
     character(100),parameter :: Here = 'new_cellGeometry_ptr (geometryFactory_func.f90)'

@@ -7,13 +7,12 @@ module latUniverse_class
   use dictionary_class,    only : dictionary
   use coord_class,         only : coord
   use intMap_class,        only : intMap
+  use charMap_class,       only : charMap
   use surface_inter,       only : surface, surfaceSlot, surfaceShelf
   use surfaceFactory_func, only : new_surface
   use cell_class,          only : cell, cellShelf
   use universe_inter,      only : universe
 
-  !*** STAYS HERE ONLY PROVISIONALLY
-  use nuclearData_inter, only : nuclearData
 
   implicit none
   private
@@ -171,7 +170,6 @@ contains
   !!
   !! Returns an initialised instance of a lattice universe
   !! Returns fillVector as well with +ve entries being materialIDXs and -ve fill universes IDs
-  !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
   !! *** TODO: IMPLEMENT MAP REPEAT FEATURE
   !!
   function latUniverse_fromDict(fillVector, dict, cShelf, sShelf, cellFillMap, materials) result (new)
@@ -180,7 +178,7 @@ contains
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(intMap), intent(in)                               :: cellFillMap
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     type(latUniverse)                                      :: new
     integer(shortInt)                                      :: id, maxDim
     integer(shortInt)                                      :: mapSize
@@ -220,7 +218,7 @@ contains
 
     ! Build fill vector
     fillVector = -fillVector
-    fillVector = [fillVector, materials % getIdx(padMat)]
+    fillVector = [fillVector, materials % get(padMat)]
 
   end function latUniverse_fromDict
 
@@ -453,5 +451,5 @@ contains
     offset = [ZERO, ZERO, ZERO]
 
   end function cellOffset
-    
+
 end module latUniverse_class

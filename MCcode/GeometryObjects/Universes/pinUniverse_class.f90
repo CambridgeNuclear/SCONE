@@ -6,6 +6,7 @@ module pinUniverse_class
   use vector_class,        only : vector
   use dictionary_class,    only : dictionary
   use intMap_class,        only : intMap
+  use charMap_class,       only : charMap
 
   use coord_class,         only : coord
   use surface_inter,       only : surface, surfaceSlot, surfaceShelf
@@ -13,10 +14,6 @@ module pinUniverse_class
   use cell_class,          only : cell, cellShelf
   use universe_inter,      only : universe
 
-  !*** STAYS HERE ONLY PROVISIONALLY
-  use nuclearData_inter, only : nuclearData
-  !***
-  use nuclearDataRegistry_mod, only : getMatIdx
 
   implicit none
   private
@@ -77,7 +74,7 @@ contains
     real(defReal), dimension(:), intent(in)                :: radii
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(cellShelf),intent(inout)                          :: cShelf
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     character(nameLen),dimension(size(radii))              :: names
     integer(shortInt)                                      :: N, i, idx
     character(100), parameter :: Here = 'init (pinUniverse_class.f90)'
@@ -143,7 +140,7 @@ contains
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(intMap), intent(in)                               :: cellFillMap
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     type(pinUniverse)                                      :: new
     integer(shortInt)                                      :: id
     character(nameLen),dimension(:),allocatable            :: keys
@@ -348,7 +345,7 @@ contains
     class(pinUniverse), intent(inout)                      :: self
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
     character(nameLen),dimension(:),intent(in)             :: matNames
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     integer(shortInt)                                      :: i, fill, L
     character(nameLen)                                     :: tempName
     character(100), parameter :: Here ='makeFillVector (pinUniverse_class.f90)'
@@ -373,7 +370,7 @@ contains
         fill = -fill
 
       else
-        fill = getMatIdx(tempName)
+        fill = materials % get(tempName)
 
       end if
 

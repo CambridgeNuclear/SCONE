@@ -4,6 +4,7 @@ module universeFactory_func
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
   use intMap_class,       only : intMap
+  use charMap_class,      only : charMap
 
   ! Surface and Cell Shelf
   use surface_inter,      only : surfaceShelf
@@ -17,8 +18,6 @@ module universeFactory_func
   use pinUniverse_class,  only : pinUniverse
   use latUniverse_class,  only : latUniverse
 
-  !*** STAYS HERE ONLY PROVISIONALLY
-  use nuclearData_inter,  only : nuclearData
 
   implicit none
   private
@@ -43,13 +42,13 @@ contains
   !! Returns allocatable universe form dictionary and surface & cell Shelfs
   !! Return fillVector as well. +ve entries are material Idxs, -ve are fill universes Ids
   !!
-  function new_universe(fillVector, dict, cShelf, sShelf, cellFillMap ,materials ) result(new)
+  function new_universe(fillVector, dict, cShelf, sShelf, cellFillMap, materials ) result(new)
     integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
     class(dictionary), intent(in)                          :: dict
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(intMap), intent(in)                               :: cellFillMap
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     class(universe),allocatable                            :: new
     character(nameLen)                                     :: type
     character(100),parameter          :: Here = 'new_universe (universeFactory_func.f90)'
@@ -91,7 +90,7 @@ contains
     type(cellShelf), intent(inout)                         :: cShelf
     type(surfaceShelf), intent(inout)                      :: sShelf
     type(intMap), intent(in)                               :: cellFillMap
-    class(nuclearData), intent(in)                         :: materials
+    type(charMap), intent(in)                              :: materials
     class(universe),pointer                                :: new
 
     ! Allocate pointer and copy data from local allocatable

@@ -5,11 +5,9 @@ module csg_class
   use genericProcedures,    only : fatalError, numToChar, targetNotFound, linFind, printStart
   use dictionary_class,     only : dictionary
   use intMap_class,         only : intMap
-  use coord_class,          only : coord
+  use charMap_class,        only : charMap
 
-  ! Material Names interface
-  use nuclearData_inter,       only : nuclearData
-  use nuclearDataRegistry_mod, only : getMatIdx
+  use coord_class,          only : coord
 
   ! Surfaces
   use surfaceFactory_func,  only : new_surface
@@ -111,7 +109,7 @@ contains
   subroutine init(self,dict, materials)
     class(csg), intent(inout)                  :: self
     class(dictionary), intent(in)              :: dict
-    class(nuclearData), intent(in)             :: materials
+    type(charMap), intent(in)                  :: materials
     type(dictionary)                           :: surfDict
     type(dictionary)                           :: cellDict
     type(dictionary)                           :: uniDict
@@ -264,7 +262,7 @@ contains
     class(csg), intent(inout)                   :: self
     type(intMap), intent(out)                   :: fillMap
     class(dictionary), intent(inout)            :: cellDict
-    class(nuclearData), intent(in)              :: materials
+    type(charMap), intent(in)                   :: materials
     character(nameLen),dimension(:),allocatable :: keys
     type(cell)                                  :: tempCell
     type(dictionary)                            :: tempDict
@@ -301,7 +299,7 @@ contains
         case('mat')
           ! Load material name
           call tempDict % get(matName,'mat')
-          fill = getMatIdx(matName)
+          fill = materials % get(matName)
           call fillMap % add(id, fill)
 
         case('outside')
@@ -334,7 +332,7 @@ contains
     type(uniFill),dimension(:),allocatable,intent(out) :: uniFills
     class(dictionary), intent(inout)                   :: uniDict
     type(intMap), intent(in)                           :: cellFillMap
-    class(nuclearData), intent(in)                     :: materials
+    type(charMap), intent(in)                          :: materials
     character(nameLen),dimension(:),allocatable        :: keys
     type(dictionary)                                   :: tempDict
     class(universe),allocatable                        :: tempUni

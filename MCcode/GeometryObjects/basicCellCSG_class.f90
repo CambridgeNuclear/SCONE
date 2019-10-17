@@ -5,10 +5,8 @@ module basicCellCSG_class
   use genericProcedures,  only : fatalError
   use vector_class,       only : vector
   use dictionary_class,   only : dictionary
+  use charMap_class,      only : charMap
 
-  ! Map of material names to material indexes
-  ! *** MAY be replaced with a char-int map later
-  use nuclearData_inter,  only : nuclearData
 
   ! Geometry modules
   use cellGeometry_inter, only : cellGeometry
@@ -58,7 +56,7 @@ contains
   subroutine init(self,dict, materials)
     class(basicCellCSG), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
-    class(nuclearData), intent(in)     :: materials
+    type(charMap), intent(in)          :: materials
 
     call self % geom % init(dict, materials)
 
@@ -111,7 +109,7 @@ contains
     ! Read matIdx and uniqueId
     matIdx   = coords % matIdx
     uniqueId = coords % uniqueID()
-    
+
   end subroutine whatIsAT
 
   !!

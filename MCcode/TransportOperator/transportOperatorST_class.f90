@@ -22,8 +22,7 @@ module transportOperatorST_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearData_inter,          only : nuclearData
-  use transportNuclearData_inter, only : transportNuclearData
+  use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
   private
@@ -57,7 +56,7 @@ contains
         dist = INFINITY
 
       else
-        sigmaT = self % xsData % getTransXS(p, p % matIdx())
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
         dist = -log( p % pRNG % get()) / sigmaT
       end if
 

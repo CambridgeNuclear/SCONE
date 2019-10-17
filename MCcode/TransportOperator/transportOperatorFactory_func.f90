@@ -8,7 +8,6 @@ module transportOperatorFactory_func
   use dictionary_class,  only : dictionary
 
   ! Nuclear Data an geometry interface
-  use nuclearData_inter,  only : nuclearData
   use cellGeometry_inter, only : cellGeometry
 
   ! Transport Operators

@@ -22,8 +22,7 @@ module transportOperatorDT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearData_inter,          only : nuclearData
-  use transportNuclearData_inter, only : transportNuclearData
+  use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
   private
@@ -66,7 +65,7 @@ contains
       if( p % matIdx() == VOID_MAT) cycle DTLoop
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransXS(p, p % matIdx())
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
