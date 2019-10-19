@@ -147,7 +147,7 @@ contains
     XS = XS * rand % get()
     do i=1,self % nMT
       ! Get index in MT reaction grid
-      idxT = idx - self % MTdata(i) % firstIdx
+      idxT = idx - self % MTdata(i) % firstIdx + 1
       if( idxT < 0 ) cycle
 
       ! Get top and bottom XS
@@ -155,7 +155,7 @@ contains
       bottomXS = self % MTdata(i) % xs(idxT)
 
       ! Decrement total inelastic and exit if sampling is finished
-      XS = XS - topXS * f - (1-f) * bottomXS
+      XS = XS - topXS * f - (ONE-f) * bottomXS
       if(XS <= ZERO) then
         MT = self % MTdata(i) % MT
         return
@@ -479,7 +479,7 @@ contains
         top    = size(self % MTdata(i) % xs)
         if( j>= bottom .and. j <= top + bottom) then
           self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
-                                             self % MTdata(i) % xs(j-bottom)
+                                             self % MTdata(i) % xs(j-bottom + 1)
         end if
       end do
     end do
@@ -508,7 +508,6 @@ contains
 
     ! TODO: Uncomment after shrinking is implemented in intMap
     !call self % idxMT % shrink()
-
 
   end subroutine init
 
