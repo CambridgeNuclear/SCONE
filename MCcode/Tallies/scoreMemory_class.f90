@@ -74,7 +74,7 @@ module scoreMemory_class
   !!        in extra cycles are discarded in current implementation
   !!
   type, public :: scoreMemory
-      private
+      !private
       real(defReal),dimension(:,:),allocatable :: bins          !! Space for binning (2nd dim size is always 3!)
       integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
       integer(shortInt)                        :: id            !! Id of the tally

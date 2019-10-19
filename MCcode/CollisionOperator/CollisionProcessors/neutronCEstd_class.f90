@@ -158,7 +158,7 @@ contains
     if(.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
 
     ! Verify and load material pointer
-    self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIDx()))
+    self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Select collision nuclide
@@ -195,7 +195,6 @@ contains
 
     ! Generate fission sites if nuclide is fissile
     if ( self % nuc % isFissile()) then
-
       ! Obtain required data
       wgt   = p % w                ! Current weight
       w0    = p % preHistory % wgt ! Starting weight
@@ -223,7 +222,7 @@ contains
 
       do i=1,n
         call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
-        dir = rotateVector(p % rGlobal(), mu, phi)
+        dir = rotateVector(p % dirGlobal(), mu, phi)
 
         if (E_out > self % maxE) E_out = self % maxE
 
@@ -450,7 +449,7 @@ contains
 
     ! Sample scattering angles and post-collision energy
     call reac % sampleOut(mu, phi, E_out, p % E, p % pRNG)
-    phi = TWO * PI * p % pRNG % get()
+    !phi = TWO * PI * p % pRNG % get()
 
     ! Update neutron state
     p % E = E_out
@@ -554,7 +553,6 @@ contains
     p % E = U_n * U_n
     call p % point(dir_post)
     collDat % muL = dot_product(dir_pre, dir_post)
-
   end subroutine scatterFromMoving
 
 

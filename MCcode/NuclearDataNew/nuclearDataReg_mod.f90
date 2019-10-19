@@ -31,7 +31,8 @@
 !!   kill     -> Return to uninitialised state
 !!   getNeutronCE -> Get pointer to the active neutron CE Nuclear Database
 !!   getNeutronMG -> Get pointer to the active neutron MG Nuclear Database
-!!   get          -> Return pointer to active Nuclear Data given particle type
+!!   get          -> Return pointer to active Nuclear Data given particle type or name
+!!   getMatNames  -> Returns pointer to charMap of material names and matIdx from materialMenu
 !!
 !! Note:
 !!   To add new nuclearDatabase:
@@ -61,7 +62,8 @@ module nuclearDataReg_mod
   use nuclearDatabase_inter,   only : nuclearDatabase
   use ceNeutronDatabase_inter, only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use mgNeutronDatabase_inter, only : mgNeutronDatabase, mgNeutronDatabase_CptrCast
-  use materialMenu_mod,        only : mm_init => init, mm_kill => kill
+  use materialMenu_mod,        only : mm_init => init, mm_kill => kill, mm_nMat => nMat,&
+                                      mm_nameMap => nameMap
 
   ! Implemented Nuclear Databases
   ! Neutron CE
@@ -96,14 +98,19 @@ module nuclearDataReg_mod
   public :: getNeutronCE
   public :: getNeutronMG
   public :: get
+  public :: getMatNames
+
+  !! Procedures grouped under name "get"
+  interface get
+    module procedure :: get_byType
+    module procedure :: get_byName
+  end interface
+
 
   !! Parameters
   character(nameLen), dimension(*), parameter :: AVAILABLE_NUCLEAR_DATABASES = &
                                                 ['aceNeutronDatabase   ', &
                                                  'baseMgNeutronDatabase']
-
-  integer(shortInt), public, parameter :: CE_NEUTRON = 1, &
-                                          MG_NEUTRON = 2
 
   !! Members
   type(ndBox),dimension(:),allocatable,target :: databases
@@ -169,7 +176,7 @@ contains
     ! Associate names with idx's in Map
     do i=1,size(databases)
       databases(i) % name = dataNames(i)
-      databases(i) % def  = dict % getDictPtr(dataNames(i)) ! Note deep copy
+      databases(i) % def  = handles % getDictPtr(dataNames(i)) ! Note deep copy
       call databaseNameMap % add(dataNames(i), i)
     end do
 
@@ -297,14 +304,14 @@ contains
     ! Register as active
     ! This is a bit of a messy code. Could be better. Blame me. - MAK
     select case(type)
-      case(CE_NEUTRON)
+      case(P_NEUTRON_CE)
         activeIdx_ceNeutron = idx
         active_ceNeutron => ceNeutronDatabase_CptrCast(ptr)
         if(.not.associated(active_ceNeutron)) then
           call fatalError(Here,trim(name)//' is not database for CE neutrons')
         end if
 
-      case(MG_NEUTRON)
+      case(P_NEUTRON_MG)
         activeIdx_mgNeutron = idx
         active_mgNeutron => mgNeutronDatabase_CptrCast(ptr)
         if(.not.associated(active_mgNeutron)) then
@@ -439,11 +446,11 @@ contains
   !! Errors:
   !!   fatalError if there no activa database or type is invalid
   !!
-  function get(type, where) result(ptr)
-    integer(shortInt), intent(in)   :: type
-    class(nuclearDatabase), pointer :: ptr
-    character(*),optional           :: where
-    character(100), parameter       :: Here = 'get (nuclearDataReg_mod.f90)'
+  function get_byType(type, where) result(ptr)
+    integer(shortInt), intent(in)     :: type
+    class(nuclearDatabase), pointer   :: ptr
+    character(*),optional, intent(in) :: where
+    character(100), parameter         :: Here = 'get_byType (nuclearDataReg_mod.f90)'
 
     select case(type)
       case(P_NEUTRON_CE)
@@ -465,7 +472,72 @@ contains
 
     end if
 
-  end function get
+  end function get_byType
+
+  !!
+  !! Return pointer to a Nuclear Databse given its name
+  !!
+  !! Args:
+  !!   name [in]  -> Name of the database
+  !!   where [in] -> Optional, Location of error message
+  !!
+  !! Result:
+  !!   nuclearDatabaseclass pointer
+  !!
+  !! Errors:
+  !!   fatalError if name is invalid
+  !!
+  function get_byName(name, where) result(ptr)
+    character(*), intent(in)         :: name
+    class(nuclearDatabase), pointer  :: ptr
+    character(*),optional,intent(in) :: where
+    character(nameLen)               :: name_loc
+    integer(shortInt)                :: idx
+    character(100), parameter        :: Here = 'get_byType (nuclearDataReg_mod.f90)'
+
+    name_loc = name
+    idx = databaseNameMap % getOrDefault(name_loc, -1)
+
+    if(idx == -1 .and. present(where)) then
+      call fatalError(where, name // " was not found among databases")
+      ptr => null() ! Avoid warning
+
+    else if (idx == -1) then
+      call fatalError(Here, name // " was not found among databases")
+      ptr => null() ! Avoid warning
+
+    else
+      ptr => databases(idx) % nd
+    end if
+
+  end function get_byName
+
+
+
+  !!
+  !! Return pointer to charMap of materialNames to matIdx from MaterialMenu
+  !!
+  !! It existis to hide the existance of materialMenu outside of nucleardata
+  !! and limit the interface to fewer modules
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Pointer to charMap with materialNames and matIdx
+  !!
+  !! Errors:
+  !!   fatalError if Material Menu was not yet initialised
+  !!
+  function getMatNames() result(ptr)
+    type(charMap), pointer :: ptr
+    character(100),parameter :: Here = 'getMatNames (nuclearDataReg_mod.f90)'
+
+    if (mm_nMat() == 0) call fatalError(Here, "Material Definitions are empty. Has Nuclear Data been initialised?")
+    ptr => mm_nameMap
+
+  end function getMatNames
+
 
   !!
   !! Allocates the database to a specified type

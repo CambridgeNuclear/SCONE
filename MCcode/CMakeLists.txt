@@ -3,7 +3,7 @@ project(SCONE)
 ##############################################################################
 # DEFINE COMPILATION OPTIONS 
 
-option(BUILD_TESTS "If is set to ON will compile tests" ON)
+option(BUILD_TESTS "If is set to ON will compile tests" OFF)
 option(LTO "Enables link-time optimisation" ON) 
 option(COVERAGE "Collect Coverage Info" ON) 
 option(DEBUG "Enable extra run-time checks" ON) 

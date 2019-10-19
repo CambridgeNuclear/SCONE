@@ -473,7 +473,7 @@ contains
 
     ! Calculate Inelastic scattering XS
     do i=1,self % nMT
-      do j=1,size(self % mainData, 1)
+      do j=1,size(self % mainData, 2)
         ! Find bottom and Top of the grid
         bottom = self % MTdata(i) % firstIdx
         top    = size(self % MTdata(i) % xs)

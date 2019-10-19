@@ -21,7 +21,7 @@
 module materialMenu_mod
 
   use numPrecision
-  use universalVariables, only : NOT_FOUND
+  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT
   use genericProcedures,  only : fatalError, charToInt, numToChar
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
@@ -122,6 +122,7 @@ contains
     class(dictionary),intent(in)                :: dict
     character(nameLen),dimension(:),allocatable :: matNames
     integer(shortInt)                           :: i
+    character(nameLen)                          :: temp
 
     ! Clean whatever may be alrady present
     call kill()
@@ -138,6 +139,13 @@ contains
       materialDefs(i) % matIdx = i
       call nameMap % add(matNames(i), i)
     end do
+
+    ! Add special Material keywords to thedictionary
+    temp = 'void'
+    call nameMap % add(temp, VOID_MAT)
+    temp = 'outside'
+    call nameMap % add(temp, OUTSIDE_MAT)
+
 
   end subroutine init
 
@@ -464,13 +472,24 @@ contains
   !!
   !! Return number of materials
   !!
+  !! Args:
+  !!   None
+  !!
   !! Result:
   !!   Number of defined materials
   !!
-  pure function nMat() result(N)
+  !! Errors:
+  !!   Return 0 if materialMenu was not yet loaded
+  !!
+  function nMat() result(N)
     integer(shortInt) :: N
 
-    N = size(materialDefs)
+    if(allocated(materialDefs)) then
+      N = size(materialDefs)
+    else
+      N = 0
+    end if
+
   end function nMat
 
 end module materialMenu_mod

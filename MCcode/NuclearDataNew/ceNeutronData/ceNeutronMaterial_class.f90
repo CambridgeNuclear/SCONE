@@ -252,7 +252,7 @@ contains
     do i=1,size(self % nuclides)
       nucIdx = self % nuclides(i)
       if(E /= nuclideCache(nucIdx) % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
-      xs = xs - nuclideCache(nucIdx) % xss % total
+      xs = xs - nuclideCache(nucIdx) % xss % total * self % dens(i)
       if(xs < ZERO) return
     end do
 
@@ -309,7 +309,7 @@ contains
     do i=1,size(self % nuclides)
       nucIdx = self % nuclides(i)
       if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
-      xs = xs - nuclideCache(nucIdx) % xss % nuFission
+      xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i)
       if(xs < ZERO) return
     end do
 
@@ -358,7 +358,7 @@ contains
       nucIdx = self % nuclides(i)
       if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
-                 nuclideCache(nucIdx) % xss % inelasticScatter )
+                 nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i)
       if(xs < ZERO) return
     end do
 
@@ -409,7 +409,7 @@ contains
       if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
-                 nuclideCache(nucIdx) % xss % fission )
+                 nuclideCache(nucIdx) % xss % fission ) * self % dens(i)
       if(xs < ZERO) return
     end do
 

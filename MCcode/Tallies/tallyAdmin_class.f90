@@ -586,5 +586,5 @@ contains
 
   end subroutine addToReports
 
-    
+
 end module tallyAdmin_class

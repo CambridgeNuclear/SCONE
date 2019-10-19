@@ -1,8 +1,9 @@
 module mgNeutronMaterial_inter
 
   use numPrecision
-  use RNG_class,       only : RNG
-  use particle_class,  only : particle
+  use genericProcedures, only : fatalError
+  use RNG_class,         only : RNG
+  use particle_class,    only : particle
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
