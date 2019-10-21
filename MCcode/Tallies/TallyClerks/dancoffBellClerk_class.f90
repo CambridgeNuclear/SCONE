@@ -12,13 +12,12 @@ module dancoffBellClerk_class
 
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
-  use tallyClerk_inter,           only : tallyClerk
+  use tallyClerk_inter,           only : tallyClerk, kill_super => kill
   use tallyResult_class,          only : tallyResult
   use energyFilter_class,         only : energyFilter
 
   ! Nuclear Data
   use materialMenu_mod,           only : mm_matIdx => matIdx
-  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -48,12 +47,11 @@ module dancoffBellClerk_class
   !! Where wgt_e is weight that escapes fuel regions and wgt_mod is weight that remains in fuel.
   !!
   !! Private members:
+  !!   materialSet -> IntMap that stores relevant matIdxs and designations (FUEL or MODERATOR)
+  !!   filter      -> Energy filter
   !!
   !! Interface:
   !!   tallyClerk interface
-  !!   Uses reportTrans; reportCycleEnd
-  !!   Returns no result from getResult
-  !!   Supports display
   !!
   !! Sample Input Dictionary:
   !!
@@ -91,6 +89,8 @@ contains
 
   !!
   !! Initialise clerk from dictionary and name
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
     class(dancoffBellClerk), intent(inout)      :: self
@@ -150,6 +150,8 @@ contains
   !!
   !! Returns array of codes that represent diffrent reports
   !!
+  !! See tallyClerk_inter for details
+  !!
   function validReports(self) result(validCodes)
     class(dancoffBellClerk),intent(in)         :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
@@ -161,6 +163,8 @@ contains
   !!
   !! Return memory size of the clerk
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental function getSize(self) result(S)
     class(dancoffBellClerk), intent(in) :: self
     integer(shortInt)                   :: S
@@ -171,19 +175,19 @@ contains
 
   !!
   !! Process transition report
-  !! ASSUMPTIONS:
-  !! Transition must be a straight line
-  !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self, p, mem)
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportTrans(self, p, xsData, mem)
     class(dancoffBellClerk), intent(inout) :: self
     class(particle), intent(in)            :: p
+    class(nuclearDatabase),intent(inout)   :: xsData
     type(scoreMemory), intent(inout)       :: mem
     real(defReal)                          :: SigmaTot
     integer(shortInt)                      :: T_end, T_start
     real(defReal)                          :: w_end
     type(particleState)                    :: state
-    class(nuclearDatabase), pointer        :: xsData
+
     character(100),parameter :: Here = 'reportTrans (dancoffBellClerk_class.f90)'
 
     ! Find start material type; Exit if not fuel
@@ -205,8 +209,6 @@ contains
     select case(T_end)
       case(MODERATOR)
         ! Get XS
-        xsData => ndReg_get(p % getType())
-        if(.not.associated(xsData)) call fatalError(Here,'Missing nuclear data for: '//p %typeToChar())
         SigmaTot = xsData % getTotalMatXS(p, p % preTransition % matIdx)
 
         call mem % score(w_end * SigmaTot, self % getMemAddress() + ESC_PROB_TOTXS)
@@ -223,6 +225,8 @@ contains
 
   !!
   !! Process end of the cycle
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleEnd(self, end, mem)
     class(dancoffBellClerk), intent(inout)  :: self
@@ -242,6 +246,8 @@ contains
   !!
   !! Display convergance progress on the console
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine display(self, mem)
     class(dancoffBellClerk), intent(in) :: self
     type(scoreMemory), intent(in)       :: mem
@@ -256,6 +262,8 @@ contains
 
   !!
   !! Write contents of the clerk to output file
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
     class(dancoffBellClerk), intent(in) :: self
@@ -280,10 +288,16 @@ contains
   !!
   !! Returns to uninitialised state
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental subroutine kill(self)
     class(dancoffBellClerk), intent(inout) :: self
 
-    ! Nothing to murder or kill... sadly
+    ! Superclass
+    call kill_super(self)
+
+    call self % materialSet % kill()
+    ! Kill filter whan available
 
   end subroutine kill
 

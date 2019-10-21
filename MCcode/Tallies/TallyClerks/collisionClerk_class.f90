@@ -7,10 +7,9 @@ module collisionClerk_class
   use particle_class,             only : particle, particleState
   use outputFile_class,           only : outputFile
   use scoreMemory_class,          only : scoreMemory
-  use tallyClerk_inter,           only : tallyClerk
+  use tallyClerk_inter,           only : tallyClerk, kill_super => kill
 
   ! Nuclear Data interface
-  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   ! Tally Filters
@@ -31,6 +30,15 @@ module collisionClerk_class
   !! Colision estimator of reaction rates
   !! Calculates flux weighted integral from collisions
   !!
+  !! Private Members:
+  !!   filter   -> Space to store tally Filter
+  !!   map      -> Space to store tally Map
+  !!   response -> Array of responses
+  !!   width    -> Number of responses (# of result bins for each map position)
+  !!
+  !! Interface
+  !!   tallyClerk Interface
+  !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
   !! myCollisionClerk {
@@ -50,11 +58,12 @@ module collisionClerk_class
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
     ! Usefull data
-    integer(shortInt)  :: width
+    integer(shortInt)  :: width = 0
 
   contains
     ! Procedures used during build
     procedure  :: init
+    procedure  :: kill
     procedure  :: validReports
     procedure  :: getSize
 
@@ -71,6 +80,8 @@ contains
 
   !!
   !! Initialise clerk from dictionary and name
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
     class(collisionClerk), intent(inout)        :: self
@@ -107,7 +118,38 @@ contains
   end subroutine init
 
   !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(collisioNClerk), intent(inout) :: self
+
+    ! Superclass
+    call kill_super(self)
+
+    ! Kill and deallocate filter
+    if(allocated(self % filter)) then
+      deallocate(self % filter)
+    end if
+
+    ! Kill and deallocate map
+    if(allocated(self % map)) then
+      call self % map % kill()
+      deallocate(self % map)
+    end if
+
+    ! Kill and deallocate responses
+    if(allocated(self % response)) then
+      deallocate(self % response)
+    end if
+
+    self % width = 0
+
+  end subroutine kill
+
+  !!
   !! Returns array of codes that represent diffrent reports
+  !!
+  !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
     class(collisionClerk),intent(in)           :: self
@@ -119,6 +161,8 @@ contains
 
   !!
   !! Return memory size of the clerk
+  !!
+  !! See tallyClerk_inter for details
   !!
   elemental function getSize(self) result(S)
     class(collisionClerk), intent(in) :: self
@@ -132,15 +176,17 @@ contains
   !!
   !! Process incoming collision report
   !!
-  subroutine reportInColl(self, p, mem)
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportInColl(self, p, xsData, mem)
     class(collisionClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
+    class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flx
-    class(nuclearDatabase),pointer        :: xsData
     character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
 
     ! Get current particle state
@@ -165,12 +211,11 @@ contains
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Calculate flux sample 1/totXs
-    xsData => ndReg_get(p % getType(), where = Here)
     flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
 
     ! Append all bins
     do i=1,self % width
-      scoreVal = self % response(i) % get(p) * p % w *flx
+      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
       call mem % score(scoreVal, adrr + i)
 
     end do
@@ -179,6 +224,8 @@ contains
 
   !!
   !! Display convergance progress on the console
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine display(self, mem)
     class(collisionClerk), intent(in)  :: self
@@ -190,6 +237,8 @@ contains
 
   !!
   !! Write contents of the clerk to output file
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
     class(collisionClerk), intent(in)          :: self

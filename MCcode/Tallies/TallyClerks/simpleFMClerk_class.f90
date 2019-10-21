@@ -11,11 +11,10 @@ module simpleFMClerk_class
 
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
-  use tallyClerk_inter,           only : tallyClerk
+  use tallyClerk_inter,           only : tallyClerk, kill_super => kill
   use tallyResult_class,          only : tallyResult
 
   ! Nuclear Data
-  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
   use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
 
@@ -31,6 +30,7 @@ module simpleFMClerk_class
 
   !!
   !! Simple 1-D fission matrix
+  !!
   !! This is a prototype implementation
   !! Uses collision estimator only
   !! Contains only a single map for discretisation
@@ -39,6 +39,16 @@ module simpleFMClerk_class
   !!    -> If collision particle has invalid nuclear data type collision is ignored
   !!    -> Collisions in non-fissile materials are ignored
   !!    -> FM is stored in column-major order [prodBin, startBin]
+  !!
+  !! Private Members:
+  !!   map      -> Map to divide phase-space into bins
+  !!   resp     -> Response for transfer function (nuFission by default)
+  !!   startWgt -> Starting Weigths in each bin
+  !!   N        -> Number of Bins
+  !!
+  !! Interface:
+  !!   tallyClerk Interface
+  !!
   !! Sample dictionary input:
   !!
   !!  clerkName {
@@ -93,6 +103,8 @@ contains
   !!
   !! Initialise clerk from dictionary and name
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine init(self, dict, name)
     class(simpleFMClerk), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
@@ -118,6 +130,8 @@ contains
   !!
   !! Returns array of codes that represent diffrent reports
   !!
+  !! See tallyClerk_inter for details
+  !!
   function validReports(self) result(validCodes)
     class(simpleFMClerk),intent(in)            :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
@@ -128,6 +142,8 @@ contains
 
   !!
   !! Return memory size of the clerk
+  !!
+  !! See tallyClerk_inter for details
   !!
   elemental function getSize(self) result(S)
     class(simpleFMClerk), intent(in) :: self
@@ -140,6 +156,8 @@ contains
   !!
   !! Process start of the cycle
   !! Calculate starting weights in each bin
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleStart(self, start, mem)
     class(simpleFMClerk), intent(inout) :: self
@@ -162,20 +180,21 @@ contains
   !!
   !! Process incoming collision report
   !!
-  subroutine reportInColl(self, p, mem)
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportInColl(self, p, xsData, mem)
     class(simpleFMClerk), intent(inout)  :: self
     class(particle), intent(in)          :: p
+    class(nuclearDatabase),intent(inout) :: xsData
     type(scoreMemory), intent(inout)     :: mem
     type(particleState)                  :: state
     integer(shortInt)                    :: sIdx, cIdx
     integer(longInt)                     :: addr
     real(defReal)                        :: score
-    class(nuclearDatabase),pointer       :: xsData
     class(neutronMaterial), pointer      :: mat
     character(100), parameter :: Here = 'reportInColl simpleFMClear_class.f90'
 
     ! Get material or return if it is not a neutron
-    xsData => ndReg_get(p % getType())
     mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
 
     if(.not.associated(mat)) return
@@ -194,7 +213,7 @@ contains
     if(cIdx == 0 .or. sIdx == 0 ) return
 
     ! Calculate fission neutron production
-    score = self % resp % get(p) * p % w / xsData % getTotalMatXS(p, p % matIdx())
+    score = self % resp % get(p, xsData) * p % w / xsData % getTotalMatXS(p, p % matIdx())
 
     ! Score element of the matrix
     addr = self % getMemAddress() + (sIdx - 1) * self % N + cIdx - 1
@@ -204,6 +223,8 @@ contains
 
   !!
   !! Process cycle end
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleEnd(self, end, mem)
     class(simpleFMClerk), intent(inout) :: self
@@ -239,6 +260,8 @@ contains
   !!  Returns FMresult defined in this module
   !!   If res is already allocated to a FM of fitting size it reuses already allocated space
   !!    This should improve performance when updating estimate of FM each cycle
+  !!
+  !! See tallyClerk_inter for details
   !!
   pure subroutine getResult(self, res, mem)
     class(simpleFMClerk), intent(in)               :: self
@@ -295,6 +318,8 @@ contains
   !!
   !! Display convergance progress on the console
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine display(self, mem)
     class(simpleFMClerk), intent(in) :: self
     type(scoreMemory), intent(in)    :: mem
@@ -305,6 +330,8 @@ contains
 
   !!
   !! Write contents of the clerk to output file
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
     class(simpleFMClerk), intent(in) :: self
@@ -341,8 +368,13 @@ contains
   !!
   !! Returns to uninitialised state
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental subroutine kill(self)
     class(simpleFMClerk), intent(inout) :: self
+
+    ! Call superclass
+    call kill_super(self)
 
     if(allocated(self % map)) deallocate(self % map)
     if(allocated(self % startWgt)) deallocate(self % startWgt)

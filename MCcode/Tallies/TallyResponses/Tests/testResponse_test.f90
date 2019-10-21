@@ -1,9 +1,10 @@
 module testResponse_test
 
   use numPrecision
-  use testResponse_class, only : testResponse
-  use particle_class,     only : particle
-  use dictionary_class,   only : dictionary
+  use testResponse_class,    only : testResponse
+  use particle_class,        only : particle
+  use dictionary_class,      only : dictionary
+  use nuclearDatabase_inter, only : nuclearDatabase
   use pFUnit_mod
 
   implicit none
@@ -52,8 +53,9 @@ contains
   subroutine testResponseing(this)
     class(test_testResponse), intent(inout) :: this
     type(particle)                          :: p
+    class(nuclearDatabase),pointer          :: xsData
 
-    @assertEqual(1.3_defReal, this % response % get(p), 1.0E-9_defReal)
+    @assertEqual(1.3_defReal, this % response % get(p, xsData), 1.0E-9_defReal)
 
   end subroutine testResponseing
 

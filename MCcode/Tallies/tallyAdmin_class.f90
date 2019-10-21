@@ -14,6 +14,10 @@ module tallyAdmin_class
   use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
 
+  ! Nuclear Data Interface
+  use nuclearDataReg_mod,     only : ndReg_get => get
+  use nuclearDatabase_inter,  only : nuclearDatabase
+
   implicit none
   private
 
@@ -34,6 +38,41 @@ module tallyAdmin_class
   !! All reports send to tallyAdmin are also processed by an attachment. This allows to create
   !! linked lists of tallyAdmins. In predicted usage there should be at maximum 1 attachment
   !! related to data required by a physics package for a calculation.
+  !!
+  !! Private Members:
+  !!   atch -> Pointer to an attachment tallyClerk (implements linked-list)
+  !!   normBinAddr   -> Address of a bin used for normalisation
+  !!   normValue     -> Target Value for normalisation
+  !!   normClerkName -> Name of a Clerk used for normalisation
+  !!   tallyClerks   -> Array of all defined tally Clerks
+  !!   clerksNameMap -> CharMap that maps Clerk Name to its index in tallyClerks
+  !!   inCollClerks     -> List of indices of all Clerks that require inCollReport
+  !!   outCollClerks    -> List of indices of all Clerks that require outCollReport
+  !!   pathClerks       -> List of indices of all Clerks that require pathReport
+  !!   transClerks      -> List of indices of all Clerks that require transReport
+  !!   histClerks       -> List of indices of all Clerks that require histReport
+  !!   cycleStartClerks -> List of indices of all Clerks that require cycleStartReport
+  !!   cycleEndClerks   -> List of indices of all Clerks that require cycleEndReport
+  !!   displayList      -> List of indices of all Clerks that are registered for display
+  !!   mem              -> Score Memory for all defined Clerks
+  !!
+  !! Interface:
+  !!   init   -> Initialise from dictionary
+  !!   kill   -> Return to uninitialised state
+  !!   push   -> Push new attachment to the end of the list
+  !!   pop    -> Remove attachment from the end of the list
+  !!   getEnd -> Returns pointer to the ned of the list (does not remove it like pop)
+  !!   reportInColl     -> Process pre-collision reports in all clerks
+  !!   reportOutColl    -> Process post-collision reports in all clerks
+  !!   reportPath       -> Process pathlength reports in all clerks
+  !!   reportTrans      -> Process transition reports in all clerks
+  !!   reportHist       -> Process History reports in all clerks
+  !!   reportCycleStart -> Process Start Of Cycle reports in all clerks
+  !!   reportCycleEnd   -> Process End of Cycle reports in all clerks
+  !!   getResult        -> Return tallyResult object from a named Clerk
+  !!   display     -> Call "display" on all Clerks registered to display
+  !!   isConverged -> Return .true. if all convergance targets have been reached
+  !!   print       -> Prints results to an output file object
   !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
@@ -116,6 +155,12 @@ contains
 
   !!
   !! Initialise tallyAdmin form dictionary
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary with definition
+  !!
+  !! Errors:
+  !!   fatalError if there are mistakes in definition
   !!
   subroutine init(self,dict)
     class(tallyAdmin), intent(inout)            :: self
@@ -206,7 +251,10 @@ contains
     self % atch => null()
 
     ! Kill clerks slots
-    if(allocated(self % tallyClerks)) deallocate(self % tallyClerks)
+    if(allocated(self % tallyClerks)) then
+      call self % tallyClerks % kill()
+      deallocate(self % tallyClerks)
+    end if
 
     ! Kill processing lists
     call self % displayList % kill()
@@ -227,6 +275,14 @@ contains
   !!
   !! Add an attachment to the end of the list
   !!
+  !! Args:
+  !!   atch [in] -> Pointer to TallyAdmin to add at the end of the list
+  !!
+  !! Errors:
+  !!   None
+  !!   (There is some danger of infinate recursion if null initialisation of self % atch fails
+  !!   for some reason. If that happens blame the compiler. Code is standard conforming)
+  !!
   recursive subroutine push(self, atch)
     class(tallyAdmin), intent(inout)      :: self
     type(tallyAdmin), pointer, intent(in) :: atch
@@ -242,6 +298,14 @@ contains
 
   !!
   !! Remove attachment from the end of the list
+  !!
+  !! Note that any content pointed to by atch on entry will be lost!
+  !!
+  !! Args:
+  !!   atch [out] -> Will be pointed to last element in linked list
+  !!
+  !! Errors:
+  !!   None
   !!
   recursive subroutine pop(self, atch)
     class(tallyAdmin), intent(inout)       :: self
@@ -264,6 +328,15 @@ contains
   !!
   !! Get pointer to the end element in the list
   !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Pointer to the attachment at the end of the linked-list
+  !!
+  !! Errors:
+  !!   None
+  !!
   recursive function getEnd(self) result(atch)
     class(tallyAdmin), intent(in)    :: self
     type(tallyAdmin),pointer         :: atch
@@ -282,6 +355,12 @@ contains
 
   !!
   !! Display convergance progress of selected tallies on the console
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
   !!
   recursive subroutine display(self)
     class(tallyAdmin), intent(in) :: self
@@ -304,7 +383,17 @@ contains
 
   !!
   !! Perform convergence check in selected clerks
+  !!
   !! NOT IMPLEMENTED YET
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   True is all convergance targets have been reached. False otherwise.
+  !!
+  !! Errors:
+  !!   None
   !!
   function isConverged(self) result(isIt)
     class(tallyAdmin), intent(in)    :: self
@@ -317,6 +406,12 @@ contains
 
   !!
   !! Add all results to outputfile
+  !!
+  !! Args:
+  !!   output [inout] -> Output file object
+  !!
+  !! Errors:
+  !!   None
   !!
   subroutine print(self,output)
     class(tallyAdmin), intent(in)        :: self
@@ -336,47 +431,76 @@ contains
   end subroutine print
 
   !!
-  !! Process incoming collision report
+  !! Process pre-collision report
   !!
-  recursive subroutine reportInColl(self,p)
+  !! Assumptions:
+  !!   Particle is provided just after transition. Before any implicit treatment.
+  !!
+  !! Args:
+  !!   p [in] -> Particle
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportInColl(self, p)
     class(tallyAdmin), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    integer(shortInt)                    :: i, idx
+    class(particle), intent(in)      :: p
+    integer(shortInt)                :: i, idx
+    class(nuclearDatabase),pointer   :: xsData
+    character(100), parameter :: Here = "reportInColl (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
       call reportInColl(self % atch, p)
     end if
 
+    ! Get Data
+    xsData => ndReg_get(p % getType(), where = Here)
+
     ! Go through all clerks that request the report
     do i=1,self % inCollClerks % getSize()
       idx = self % inCollClerks % get(i)
-      call self % tallyClerks(idx) % reportInColl(p, self % mem)
+      call self % tallyClerks(idx) % reportInColl(p, xsData, self % mem)
 
     end do
 
   end subroutine reportInColl
 
   !!
-  !! Process outgoing collision report
-  !! Assume that pre is AFTER any implicit treatment (i.e. implicit capture)
+  !! Process post-collision report
   !!
-  recursive subroutine reportOutColl(self,p,MT,muL)
+  !! Assumptions:
+  !!   PreCollision state in partice is set to just before this collision
+  !!
+  !! Args:
+  !!   p [in]   -> Particle
+  !!   MT [in]  -> MT number of the reaction particle has underwent
+  !!   muL [in] -> Cosine of the collision deflection angle in LAB frame
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportOutColl(self, p, MT, muL)
     class(tallyAdmin), intent(inout)      :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
     integer(shortInt)                     :: i, idx
+    class(nuclearDatabase),pointer        :: xsData
+    character(100), parameter :: Here = "reportOutColl (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
       call reportOutColl(self % atch, p, MT, muL)
     end if
 
+    ! Get Data
+    xsData => ndReg_get(p % getType(), where = Here)
+
     ! Go through all clerks that request the report
     do i=1,self % outCollClerks % getSize()
       idx = self % outCollClerks % get(i)
-      call self % tallyClerks(idx) % reportOutColl(p, MT, muL, self % mem)
+      call self % tallyClerks(idx) % reportOutColl(p, MT, muL, xsData, self % mem)
 
     end do
 
@@ -384,24 +508,38 @@ contains
 
   !!
   !! Process pathlength report
-  !! ASSUMPTIONS:
-  !! Pathlength must be contained within a single cell and material
   !!
-  recursive subroutine reportPath(self,p,L)
+  !! Assumptions:
+  !!   The entire path took place in a single material or unique cell
+  !!   Report is called before particle moves to a new material or unique cell
+  !!
+  !! Args:
+  !!   p [in] -> Particle
+  !!   L [in] -> Length of the Path [cm]
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportPath(self, p, L)
     class(tallyAdmin), intent(inout)     :: self
     class(particle), intent(in)          :: p
     real(defReal), intent(in)            :: L
     integer(shortInt)                    :: i, idx
+    class(nuclearDatabase),pointer       :: xsData
+    character(100), parameter :: Here = "reportPath (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
       call reportPath(self % atch, p, L)
     end if
 
+    ! Get Data
+    xsData => ndReg_get(p % getType(), where = Here)
+
     ! Go through all clerks that request the report
     do i=1,self % pathClerks % getSize()
       idx = self % pathClerks % get(i)
-      call self % tallyClerks(idx) % reportPath(p, L, self % mem)
+      call self % tallyClerks(idx) % reportPath(p, L, xsData, self % mem)
 
     end do
 
@@ -409,24 +547,35 @@ contains
 
   !!
   !! Process transition report
-  !! ASSUMPTIONS:
-  !! Transition must be a straight line
-  !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  recursive subroutine reportTrans(self,p)
+  !! Assumptions:
+  !!   TODO: Decide on the details of this report
+  !!
+  !! Args:
+  !!   p [in] -> Particle
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportTrans(self, p)
     class(tallyAdmin), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    integer(shortInt)                    :: i, idx
+    class(particle), intent(in)      :: p
+    integer(shortInt)                :: i, idx
+    class(nuclearDatabase),pointer   :: xsData
+    character(100), parameter :: Here = "reportTrans (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
       call reportTrans(self % atch, p)
     end if
 
+    ! Get Data
+    xsData => ndReg_get(p % getType(), where = Here)
+
     ! Go through all clerks that request the report
     do i=1,self % transClerks % getSize()
       idx = self % transClerks % get(i)
-      call self % tallyClerks(idx) % reportTrans(p, self % mem)
+      call self % tallyClerks(idx) % reportTrans(p, xsData, self % mem)
 
     end do
 
@@ -434,22 +583,35 @@ contains
 
   !!
   !! Process history report
-  !! ASSUMPTIONS:
   !!
-  recursive subroutine reportHist(self,p)
+  !! Assumptions:
+  !!   Particle has been killed and "fate" in the particle has been set.
+  !!
+  !! Args:
+  !!   p [in] -> Particle
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportHist(self, p)
     class(tallyAdmin), intent(inout)  :: self
     class(particle), intent(in)       :: p
     integer(shortInt)                 :: i, idx
+    class(nuclearDatabase),pointer    :: xsData
+    character(100), parameter :: Here = "reportHist (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
       call reportHist(self % atch, p)
     end if
 
+    ! Get Data
+    xsData => ndReg_get(p % getType(), where = Here)
+
     ! Go through all clerks that request the report
     do i=1,self % histClerks % getSize()
       idx = self % histClerks % get(i)
-      call self % tallyClerks(idx) % reportHist(p, self % mem)
+      call self % tallyClerks(idx) % reportHist(p, xsData, self % mem)
 
     end do
 
@@ -459,7 +621,18 @@ contains
   !!
   !! Process beginning of a cycle
   !!
-  recursive subroutine reportCycleStart(self,start)
+  !! Assumptions:
+  !!   No particle have been transported yet in the cycle.
+  !!   Report is called for the first time or after reportCycleEnd
+  !!   All normalisations and modifications have already been applied to the particleDungeoin
+  !!
+  !! Args:
+  !!   start [in] -> Particle Dungeon at the start of a cycle (after all normalisations)
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportCycleStart(self, start)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: start
     integer(shortInt)                  :: i, idx
@@ -480,6 +653,19 @@ contains
 
   !!
   !! Process end of the cycle
+  !!
+  !! Assumptions:
+  !!   All particles given in "reportCycleStart" have been already transported
+  !!   It is called after "reportCycleStart"
+  !!   No modification or normalisation was applied to "end" particle Dungeon
+  !!   "k_eff" member of end is set to criticality used to adjust fission source (implicit
+  !!     fission site generation)
+  !!
+  !! Args:
+  !!   end [in] -> Particle Dungeon at the end of a cycle (before any normalisations)
+  !!
+  !! Errors:
+  !!   None
   !!
   recursive subroutine reportCycleEnd(self,end)
     class(tallyAdmin), intent(inout)   :: self
@@ -520,7 +706,13 @@ contains
 
   !!
   !! Get result from the clerk defined by name
-  !! If the name is invalid return emptyResult
+  !!
+  !! Args:
+  !!   res [inout] -> Allocatable Tally Result
+  !!   name [in]   -> Name of the Clerk to get Result from
+  !!
+  !! Errors:
+  !!   If "name" is not present in the admin res is allocated to tallyResultEmpty
   !!
   pure subroutine getResult(self, res, name)
     class(tallyAdmin), intent(in)                 :: self
@@ -551,6 +743,15 @@ contains
 
   !!
   !! Append sorrting array identified with the code with tallyClerk idx
+  !!
+  !! Private helper subroutine
+  !!
+  !! Args:
+  !!   reportCode [in] -> One of the report codes from tallyCodes
+  !!   idx [in]        -> Clerk Index to add to approperiate List
+  !!
+  !! Errors:
+  !!   fatalError if tallyCode is invalid
   !!
   subroutine addToReports(self, reportCode, idx)
     class(tallyAdmin),intent(inout) :: self
@@ -585,6 +786,5 @@ contains
     end select
 
   end subroutine addToReports
-
 
 end module tallyAdmin_class

@@ -6,7 +6,7 @@ module collisionClerk_test
   use particle_class,                 only : particle
   use dictionary_class,               only : dictionary
   use scoreMemory_class,              only : scoreMemory
-  use testTransportNuclearData_class, only : testTransportNuclearData
+  use testNeutronDatabase_class,      only : testNeutronDatabase
   use outputFile_class,               only : outputFile
   use pFUnit_mod
 
@@ -135,7 +135,7 @@ contains
     type(collisionClerk)                      :: clerk
     type(scoreMemory)                         :: mem
     type(particle)                            :: p
-    type(testTransportNuclearData),pointer    :: nucData
+    type(testNeutronDatabase)                 :: nucData
     type(outputFile)                          :: outF
     type(dictionary)                          :: filterDict, mapDict, res1Dict, res2Dict, clerkDict
     character(nameLen)                        :: res1Name, res2Name, clerkName
@@ -202,18 +202,16 @@ contains
     call clerk % setMemAddress(1_longInt)
 
     ! Build nuclear data
-    allocate(nucData)
     call nucData % build(0.3_defReal)
-    p % xsData => nucData
 
     ! Perform scoring
     call p % setMatIdx(1)
     p % w = 0.7_defReal
-    call clerk % reportInColl(p, mem)
+    call clerk % reportInColl(p, nucData, mem)
 
     call p % setMatIdx(6)
     p % w = 1.3_defReal
-    call clerk % reportInColl(p, mem)
+    call clerk % reportInColl(p, nucData, mem)
 
     call mem % closeCycle(ONE)
 
@@ -233,7 +231,7 @@ contains
     @assertTrue(outF % isValid(), case)
 
     ! Clean up
-    deallocate(nucData)
+    call nucData % kill()
     call clerkDict % kill()
     call filterDict % kill()
     call mapDict % kill()

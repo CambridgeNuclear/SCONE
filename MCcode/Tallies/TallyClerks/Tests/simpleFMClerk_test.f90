@@ -3,11 +3,11 @@ module simpleFMClerk_test
   use numPrecision
   use tallyResult_class,              only : tallyResult
   use simpleFMClerk_class,            only : simpleFMClerk, FMResult
-  use particle_class,                 only : particle, particleState
+  use particle_class,                 only : particle, particleState, P_NEUTRON
   use particleDungeon_class,          only : particleDungeon
   use dictionary_class,               only : dictionary
   use scoreMemory_class,              only : scoreMemory
-  use testTransportNuclearData_class, only : testTransportNuclearData
+  use testNeutronDatabase_class,      only : testNeutronDatabase
   use outputFile_class,               only : outputFile
   use pFUnit_mod
 
@@ -78,7 +78,7 @@ contains
     type(particle)                           :: p
     type(particleState)                      :: phase
     type(particleDungeon)                    :: pop
-    type(testTransportNuclearData),pointer   :: xsData
+    type(testNeutronDatabase)                :: xsData
     real(defReal)                            :: val
     class(tallyResult), allocatable          :: res
     real(defReal), parameter :: TOL = 1.0E-7
@@ -88,9 +88,7 @@ contains
     call this % clerk % setMemAddress(1_longInt)
 
     ! Create test transport Nuclear Data
-    allocate(xsData)
     call xsData % build(1.1_defReal, fissionXS = 1.1_defReal, nuFissionXS = 2.0_defReal)
-    p % xsData => xsData
 
     ! Crate dungeon of original events
     ! One particle born in matIdx 1 and other in 2
@@ -107,21 +105,22 @@ contains
     call this % clerk % reportCycleStart(pop, mem)
 
     ! Score some events
+    p % type = P_NEUTRON
 
     call p % setMatIdx(2)
     p % w = 0.7
     p % preHistory % matIdx = 2
-    call this % clerk % reportInColl(p, mem)
+    call this % clerk % reportInColl(p, xsData, mem)
 
     call p % setMatIdx(1)
     p % w = 1.1
     p % preHistory % matIdx = 2
-    call this % clerk % reportInColl(p, mem)
+    call this % clerk % reportInColl(p, xsData, mem)
 
     call p % setMatIdx(1)
     p % w = 1.0
     p % preHistory % matIdx = 1
-    call this % clerk % reportInColl(p, mem)
+    call this % clerk % reportInColl(p, xsData, mem)
 
     call this % clerk % reportCycleEnd(pop, mem)
 
@@ -206,7 +205,7 @@ contains
     ! Clean
     call xsData % kill()
     call pop % kill()
-    deallocate(xsData)
+
   end subroutine testSimpleUseCase
 
 

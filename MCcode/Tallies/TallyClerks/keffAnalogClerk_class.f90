@@ -10,7 +10,7 @@ module keffAnalogClerk_class
 
   use scoreMemory_class,     only : scoreMemory
   use tallyResult_class,     only : tallyResult, tallyResultEmpty
-  use tallyClerk_inter,      only : tallyClerk
+  use tallyClerk_inter,      only : tallyClerk, kill_super => kill
 
   implicit none
   private
@@ -20,6 +20,10 @@ module keffAnalogClerk_class
   !! criticality by comparing population weight before and after transport cycle
   !! Assumes that constant to normalise fission site production is uniform in geometry
   !!
+  !! Private Members:
+  !!   startPopWgt -> Accululated total particle Statring weight over ALL previous cycles
+  !!   endPopWgt   -> Accululated total particle End weight over ALL previous cycles
+  !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
   !! myClerk {
@@ -28,11 +32,12 @@ module keffAnalogClerk_class
   !!
   type, public,extends(tallyClerk) :: keffAnalogClerk
     private
-    real(defReal) :: startPopWgt = ZERO ! Start of Generation Weight
-    real(defReal) :: endPopWgt   = ZERO ! End of generation Weight
+    real(defReal) :: startPopWgt = ZERO
+    real(defReal) :: endPopWgt   = ZERO
   contains
     ! Procedures used during build
     procedure :: init
+    procedure :: kill
     procedure :: validReports
     procedure :: getSize
 
@@ -49,6 +54,9 @@ module keffAnalogClerk_class
   !!
   !! k-eff result class
   !!
+  !! Public Members:
+  !!   keff -> Result, keff(1) is criticality, keff(2) is STD
+  !!
   type,public, extends(tallyResult) :: keffResult
     real(defReal), dimension(2) :: keff = [ONE, ZERO]
   end type keffResult
@@ -58,6 +66,8 @@ contains
 
   !!
   !! Initialise from dictionary and name
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
     class(keffAnalogClerk), intent(inout) :: self
@@ -75,7 +85,23 @@ contains
   end subroutine init
 
   !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(keffAnalogClerk), intent(inout) :: self
+
+    ! Superclass
+    call kill_super(self)
+
+    self % startPopWgt = ZERO
+    self % endPopWgt = ZERO
+
+  end subroutine kill
+
+  !!
   !! Returns array of codes that represent diffrent reports
+  !!
+  !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
     class(keffAnalogClerk),intent(in)           :: self
@@ -88,6 +114,8 @@ contains
   !!
   !! Return memory size of the clerk
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental function getSize(self) result(S)
     class(keffAnalogClerk), intent(in) :: self
     integer(shortInt)                  :: S
@@ -98,6 +126,8 @@ contains
 
   !!
   !! Process beginning of a cycle
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleStart(self, start, mem)
     class(keffAnalogClerk), intent(inout) :: self
@@ -112,6 +142,8 @@ contains
 
   !!
   !! Process end of the cycle
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleEnd(self, end, mem)
     class(keffAnalogClerk), intent(inout) :: self
@@ -139,6 +171,8 @@ contains
   !!
   !! Display convergance progress on the console
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine display(self, mem)
     class(keffAnalogClerk), intent(in)  :: self
     type(scoreMemory), intent(in)       :: mem
@@ -153,6 +187,8 @@ contains
 
   !!
   !! Write contents of the clerk in the slot to output file
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
     class(keffAnalogClerk), intent(in) :: self
@@ -176,6 +212,8 @@ contains
   !! Return result for interaction with Physics Package
   !! from the clerk in the slot
   !!
+  !! See tallyClerk_inter for details
+  !!
   pure subroutine getResult(self, res, mem)
     class(keffAnalogClerk), intent(in)              :: self
     class(tallyResult), allocatable, intent(inout)  :: res
@@ -188,5 +226,5 @@ contains
     allocate(res, source = keffResult([k, STD]))
 
   end subroutine getResult
-    
+
 end module keffAnalogClerk_class

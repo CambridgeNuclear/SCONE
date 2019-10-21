@@ -13,15 +13,15 @@ module keffImplicitClerk_test
   use outputFile_class,        only : outputFile
   use pFUnit_mod
 
-  use testTransportNuclearData_class, only : testTransportNuclearData
+  use testNeutronDatabase_class, only : testNeutronDatabase
 
   implicit none
 
 @testCase
   type, extends(TestCase) :: test_keffImplicitClerk
     private
-    type(keffImplicitClerk)                :: clerk
-    type(testTransportNuclearData),pointer :: nucData
+    type(keffImplicitClerk)   :: clerk
+    type(testNeutronDatabase) :: nucData
   contains
     procedure :: setUp
     procedure :: tearDown
@@ -41,10 +41,7 @@ contains
     call this % clerk % init(dict, name)
     call dict % kill()
 
-    allocate(this % nucData)
     call this % nucData % build(ONE, captureXS = 2.0_defReal, fissionXS = ONE, nuFissionXS = 3.0_defReal)
-
-
 
   end subroutine setUp
 
@@ -55,7 +52,6 @@ contains
     class(test_keffImplicitClerk), intent(inout) :: this
 
     call this % nucData % kill()
-    deallocate(this % nucData)
 
   end subroutine tearDown
 
@@ -83,20 +79,19 @@ contains
 
     ! Configure particle
     p % fate = leak_FATE
-    p % xsData => this % nucData
 
     !*** Start cycle 1
     ! Score implicit reaction rates
     p % w = 0.7_defReal
-    call this % clerk % reportInColl(p, mem)
+    call this % clerk % reportInColl(p, this % nucData, mem)
 
     ! Score analog production
     p % preCollision % wgt = 0.1_defReal
-    call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, mem)
+    call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, this % nucData, mem)
 
     ! Score leakage
     p % preHistory % wgt = 0.3_defReal
-    call this % clerk % reportHist(p, mem)
+    call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle
     call pit % detain(p)
@@ -107,15 +102,15 @@ contains
     !*** Start cycle 2
     ! Score implicit reaction rates
     p % w = 0.6_defReal
-    call this % clerk % reportInColl(p, mem)
+    call this % clerk % reportInColl(p, this % nucData, mem)
 
     ! Score analog production
     p % preCollision % wgt = 0.1_defReal
-    call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, mem)
+    call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, this % nucData, mem)
 
     ! Score leakage
     p % preHistory % wgt = 0.3_defReal
-    call this % clerk % reportHist(p, mem)
+    call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle
     call pit % detain(p)

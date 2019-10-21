@@ -1,9 +1,10 @@
 module fluxResponse_test
 
   use numPrecision
-  use fluxResponse_class, only : fluxResponse
-  use particle_class,     only : particle
-  use dictionary_class,   only : dictionary
+  use fluxResponse_class,    only : fluxResponse
+  use particle_class,        only : particle
+  use dictionary_class,      only : dictionary
+  use nuclearDatabase_inter, only : nuclearDatabase
   use pFUnit_mod
 
   implicit none
@@ -48,8 +49,9 @@ contains
   subroutine fluxResponseing(this)
     class(test_fluxResponse), intent(inout) :: this
     type(particle)                          :: p
+    class(nuclearDatabase),pointer          :: xsData
 
-    @assertEqual(ONE, this % response % get(p), 1.0E-9_defReal)
+    @assertEqual(ONE, this % response % get(p, xsData), 1.0E-9_defReal)
 
   end subroutine fluxResponseing
 

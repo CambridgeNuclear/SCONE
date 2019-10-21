@@ -191,7 +191,7 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 1)/1.1406745607419302_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 1)/5.2385980350330000E-002_defReal , TOL)
+    @assertEqual(ONE, data % getTransMatXS(p , 1)/6.539039844E-02_defReal , TOL)
 
 
     ! Total XS of UO2
@@ -199,14 +199,14 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 2)/4.4149556129495560_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 2)/0.18309406574915998_defReal , TOL)
+    @assertEqual(ONE, data % getTransMatXS(p , 2)/0.21869599644_defReal , TOL)
 
     ! Majorant
     p % E = 1.1E-6_defReal
     @assertEqual(ONE, data % getMajorantXS(p) /4.4149556129495560_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getMajorantXS(p)/0.18309406574915998_defReal , TOL)
+    @assertEqual(ONE, data % getMajorantXS(p)/0.21869599644_defReal , TOL)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting Macroscopic XSs
@@ -221,7 +221,14 @@ contains
 
     @assertEqual(ONE, 0.466713100775700_defReal/ macroXSs     % total, TOL)
     @assertEqual(ONE, 0.466710902790000_defReal/ macroXSs     % elasticScatter, TOL)
+    @assertEqual(ZERO, macroXSs % inelasticScatter, TOL)
     @assertEqual(ONE, 2.198066842597500e-06_defReal/ macroXSs % capture, TOL)
+
+    ! Water with some inelastic collisions
+    call mat % getMacroXSs(macroXss, 6.525_defReal, p % pRNG)
+
+    @assertEqual(ONE, macroXSs % inelasticScatter/1.903667536E-04_defReal, TOL)
+
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting energy bounds

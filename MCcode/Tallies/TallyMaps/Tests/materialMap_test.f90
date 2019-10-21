@@ -3,8 +3,11 @@ module materialMap_test
   use pFUnit_mod
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
-  use nuclearDataRegistry_mod, only : build_NuclearData, kill_nuclearData
+  use IOdictionary_class,      only : IOdictionary
   use outputFile_class,        only : outputFile
+
+  ! May not be ideal but there is a dependance on Global materialMenu
+  use materialMenu_mod,        only : mm_init => init, mm_kill => kill
 
   use materialMap_class,       only : materialMap
 
@@ -28,6 +31,15 @@ module materialMap_test
   character(*),dimension(*),parameter :: MAT_NAMES=['mat1','mat2','mat3','mat4','mat5']
   character(*),dimension(*),parameter :: MAT_IN_MAP =['mat2','mat3','mat5']
 
+  !!
+  !! Material Definitions
+  !!
+  character(*), parameter :: DICT_DEF = &
+  " mat1 { temp 17; composition {} } &
+  & mat2 { temp 17; composition {} } &
+  & mat3 { temp 17; composition {} } &
+  & mat4 { temp 17; composition {} } &
+  & mat5 { temp 17; composition {} } "
 
 
 
@@ -40,33 +52,33 @@ contains
     class(test_materialMap), intent(inout) :: this
     integer(shortInt)                 :: temp
     integer(shortInt)                 :: i
-    type(dictionary)                  :: dict, tempDict1, tempDict2, tempDict3
+    type(IOdictionary)                :: dict
     type(dictionary)                  :: mapDict1
 
-    ! Initialise dictionaries
-    call dict % init(6)
-    call tempDict1 % init(6)
-    call tempDict2 % init(6)
-    call tempDict3 % init(6)
-    call mapDict1 % init(2)
 
-    !*** Provisional -> allow registry without handles
-    call tempDict2 % store('myMat','datalessMaterials')
 
-    ! Store empty- handles dictionary
-    call dict % store('handles', tempDict2)
+!    !*** Provisional -> allow registry without handles
+!    call tempDict2 % store('myMat','datalessMaterials')
+!
+!    ! Store empty- handles dictionary
+!    call dict % store('handles', tempDict2)
+!
+!    ! Create materials dictionary of empty dictionaries
+!    do i=1,size(MAT_NAMES)
+!      call tempDict1 % store(MAT_NAMES(i), tempDict3)
+!
+!    end do
+!
+!    ! Store materials dictionary in nuclearData dict
+!    call dict % store('materials',tempDict1)
 
-    ! Create materials dictionary of empty dictionaries
-    do i=1,size(MAT_NAMES)
-      call tempDict1 % store(MAT_NAMES(i), tempDict3)
-
-    end do
-
-    ! Store materials dictionary in nuclearData dict
-    call dict % store('materials',tempDict1)
 
     ! Build nuclear data
-    call build_NuclearData(dict)
+    call dict % initFromChar(DICT_DEF)
+    call mm_init(dict)
+
+    ! Initialise dictionaries
+    call mapDict1 % init(2)
 
     ! Build material map definition
     call mapDict1 % store('materials', MAT_IN_MAP)
@@ -83,7 +95,7 @@ contains
   subroutine tearDown(this)
     class(test_materialMap), intent(inout) :: this
 
-    call kill_nuclearData()
+    call mm_kill()
     call this % map_noUndef % kill()
     call this % map_Undef % kill()
 

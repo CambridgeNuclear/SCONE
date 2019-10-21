@@ -6,11 +6,15 @@ module tallyClerkSlot_class
   use particle_class,         only : particle
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk, setMemAddress_super => setMemAddress, &
-                                                setName_super       => setName
+                                                 setName_super       => setName, &
+                                                 kill_super          => kill
   use tallyClerkFactory_func, only : new_tallyClerk
   use scoreMemory_class,      only : scoreMemory
   use outputFile_class,       only : outputFile
   use tallyResult_class,      only : tallyResult
+
+  ! Nuclear Data Interface
+  use nuclearDatabase_inter,  only : nuclearDatabase
 
   implicit none
   private
@@ -26,6 +30,7 @@ module tallyClerkSlot_class
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
     procedure :: init
+    procedure :: kill
     procedure :: validReports
     procedure :: getSize
 
@@ -63,6 +68,8 @@ contains
   !! Initialise from dictionary and name
   !! Build an instance in tallyClerkFactory and store it in the slot
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine init(self, dict, name)
     class(tallyClerkSlot), intent(inout) :: self
     class(dictionary), intent(in)        :: dict
@@ -74,7 +81,28 @@ contains
   end subroutine init
 
   !!
+  !! Return to Uninitialised State
+  !!
+  !! Deallocates contents of the slot as well
+  !!
+  elemental subroutine kill(self)
+    class(tallyClerkSlot), intent(inout) :: self
+
+    ! Superclass
+    call kill_super(self)
+
+    if(allocated(self % slot)) then
+      call self % slot % kill()
+      deallocate(self % slot)
+    end if
+
+  end subroutine kill
+
+
+  !!
   !! Returns array of codes that represent diffrent reports
+  !!
+  !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
     class(tallyClerkSlot),intent(in)           :: self
@@ -88,6 +116,8 @@ contains
   !!
   !! Return memory size of the clerk in the slot
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental function getSize(self) result(S)
     class(tallyClerkSlot), intent(in) :: self
     integer(shortInt)                 :: S
@@ -98,6 +128,8 @@ contains
 
   !!
   !! Set memory adress for the clerk slot and stored clerk
+  !!
+  !! See tallyClerk_inter for details
   !!
   elemental subroutine setMemAddress(self, addr)
     class(tallyClerkSLot), intent(inout) :: self
@@ -114,6 +146,8 @@ contains
   !!
   !! Set name for the clerk slot and stored clerk
   !!
+  !! See tallyClerk_inter for details
+  !!
   elemental subroutine setName(self, name)
     class(tallyClerkSlot), intent(inout) :: self
     character(nameLen), intent(in)       :: name
@@ -129,13 +163,16 @@ contains
   !!
   !! Process incoming collision report
   !!
-  subroutine reportInColl(self, p, mem)
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportInColl(self, p, xsData, mem)
     class(tallyClerkSlot), intent(inout)  :: self
     class(particle), intent(in)           :: p
+    class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportInColl(p, mem)
+    call self % slot % reportInColl(p, xsData, mem)
 
   end subroutine reportInColl
 
@@ -143,67 +180,74 @@ contains
   !!
   !! Process outgoing collision report
   !!
-  subroutine reportOutColl(self, p, MT, muL, mem)
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportOutColl(self, p, MT, muL, xsData, mem)
     class(tallyClerkSlot), intent(inout)  :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: MT
     real(defReal), intent(in)             :: muL
+    class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportOutColl(p, MT, muL, mem)
+    call self % slot % reportOutColl(p, MT, muL, xsData, mem)
 
   end subroutine reportOutColl
 
   !!
   !! Process pathlength report
-  !! ASSUMPTIONS:
-  !! Pathlength must be contained within a single cell and material
   !!
-  subroutine reportPath(self, p, L, mem)
-    class(tallyClerkSlot), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    real(defReal), intent(in)            :: L
-    type(scoreMemory), intent(inout)     :: mem
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportPath(self, p, L, xsData, mem)
+    class(tallyClerkSlot), intent(inout)  :: self
+    class(particle), intent(in)           :: p
+    real(defReal), intent(in)             :: L
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportPath(p, L, mem)
+    call self % slot % reportPath(p, L, xsData, mem)
 
   end subroutine reportPath
 
   !!
   !! Process transition report
-  !! ASSUMPTIONS:
-  !! Transition must be a straight line
-  !! Pre and Post direction is assumed the same (aligned with r_pre -> r_post vector)
   !!
-  subroutine reportTrans(self, p, mem)
-    class(tallyClerkSlot), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    type(scoreMemory), intent(inout)     :: mem
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportTrans(self, p, xsData, mem)
+    class(tallyClerkSlot), intent(inout)  :: self
+    class(particle), intent(in)           :: p
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportTrans(p, mem)
+    call self % slot % reportTrans(p, xsData, mem)
 
   end subroutine reportTrans
 
   !!
   !! Process history report
-  !! ASSUMPTIONS:
-  !! **** FATE CODES NEED TO BE SPECIFIED
   !!
-  subroutine reportHist(self, p, mem)
-    class(tallyClerkSlot), intent(inout) :: self
-    class(particle), intent(in)          :: p
-    type(scoreMemory), intent(inout)     :: mem
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportHist(self, p, xsData, mem)
+    class(tallyClerkSlot), intent(inout)  :: self
+    class(particle), intent(in)           :: p
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportHist(p, mem)
+    call self % slot % reportHist(p, xsData, mem)
 
   end subroutine reportHist
 
   !!
   !! Process beggining of a cycle
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine reportCycleStart(self, start, mem)
     class(tallyClerkSlot), intent(inout) :: self
@@ -218,6 +262,8 @@ contains
   !!
   !! Process end of the cycle
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine reportCycleEnd(self, end, mem)
     class(tallyClerkSlot), intent(inout) :: self
     class(particleDungeon), intent(in)   :: end
@@ -230,6 +276,8 @@ contains
 
   !!
   !! Perform convergance check in the Clerk
+  !!
+  !! See tallyClerk_inter for details
   !!
   function isConverged(self, mem) result(isIt)
     class(tallyClerkSlot), intent(in) :: self
@@ -244,6 +292,8 @@ contains
   !!
   !! Display convergance progress on the console
   !!
+  !! See tallyClerk_inter for details
+  !!
   subroutine display(self, mem)
     class(tallyClerkSlot), intent(in) :: self
     type(scoreMemory), intent(in)     :: mem
@@ -255,6 +305,8 @@ contains
 
   !!
   !! Write contents of the clerk in the slot to output file
+  !!
+  !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
     class(tallyClerkSlot), intent(in) :: self
@@ -268,6 +320,8 @@ contains
   !!
   !! Return result for interaction with Physics Package
   !! from the clerk in the slot
+  !!
+  !! See tallyClerk_inter for details
   !!
   pure subroutine getResult(self, res, mem)
     class(tallyClerkSlot), intent(in)              :: self
@@ -292,5 +346,5 @@ contains
     allocate(LHS % slot, source = RHS)
 
   end subroutine copy
-    
+
 end module tallyClerkSlot_class
