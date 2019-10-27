@@ -213,6 +213,10 @@ contains
       @assertTrue(any(VALS == tVal),"Wrong Value")
       @assertTrue(any(KEYS == tKey),"Wrong Key")
 
+      ! Change value and read it
+      call this % map % atSet(7, it)
+      @assertEqual(7, this % map % atVal(it), "Ups. Wrong Value after change")
+
       ! Make shure that KEY is not getting repeated
       @assertFalse(any(KEYS_PAST(1:counter) == tKey),"Repeated KEY")
       counter = counter + 1
