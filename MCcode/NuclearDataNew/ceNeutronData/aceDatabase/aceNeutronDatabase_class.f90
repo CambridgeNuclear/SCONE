@@ -461,8 +461,7 @@ contains
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
 
       ! Store nucIdx in the dictionary
-      call nucSet % add(nucSet % atKey(i), nucIdx)
-
+      call nucSet % atSet(nucIdx, i)
       nucIdx = nucIdx + 1
       i = nucSet % next(i)
     end do

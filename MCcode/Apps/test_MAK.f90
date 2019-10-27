@@ -1,32 +1,42 @@
 program test
 
   use numPrecision
-  use RNG_class,               only : RNG
-  use aceCard_class,           only : aceCard
-  use ceNeutronDatabase_inter, only : ceNeutronDatabase
-  use aceNeutronNuclide_class, only : aceNeutronNuclide
-  use neutronXsPackages_class, only : neutronMicroXSs
+  use charMap_class, only : charMap
 
   implicit none
-  type(aceNeutronNuclide), target   :: nuc
-  type(aceCard)                     :: ACE
-  class(ceNeutronDatabase), pointer :: database => null()
-  type(neutronMicroXSs) :: xss
-  type(RNG) :: R
-  integer(shortInt) :: idx
-  real(defReal) :: f
+    character(nameLen) :: temp
+    type(charMap)      :: map
+    integer(shortInt)  :: i
 
-  ! Build ACE library
-  call ACE % readFromFile('./IntegrationTestFiles/92233JEF311.ace', 1)
+    ! Load map
+    temp = '94239.03'
+    call map % add(temp, 1)
 
-  ! Build nuclide
-  call nuc % init(ACE, 1, database)
+    temp = '94240.03'
+    call map % add(temp, 2)
 
-  print *, size(nuc % MTData)
-  call nuc % search(idx, f, 5.0_defReal)
-  call nuc % microXSs(xss, idx, f)
+    temp = '94240.03'
+    call map % add(temp, 2)
 
-  print *, xss % total, xss % inelasticScatter, xss % fission
+    temp = '94241.03'
+    call map % add(temp, 3)
+
+    temp = '31000.03'
+    call map % add(temp, 4)
+
+    !! Print for debug
+    print *, map % map % key
+    print *, map % map % status
+
+    i = map % begin()
+    do while ( i /= map % end())
+
+      print *, i, map % atKey(i), map % atVal(i)
+
+      i = map % next(i)
+    end do
+
+    !print *,
 
 end program test
 

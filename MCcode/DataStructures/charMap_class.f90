@@ -20,7 +20,7 @@ module charMap_class
   !!
   type, private :: content
     integer(shortInt)  :: status = EMPTY
-    character(nameLen) :: key
+    character(nameLen) :: key    = ''
     integer(shortInt)  :: hash
     integer(shortInt)  :: val
   end type
@@ -34,6 +34,8 @@ module charMap_class
   !! Implementation is based on intMap
   !!
   !! NOTE: Following structure can be used to loop over entire map
+  !!       But note that you CANNOT modifay entries with "add" inside this loop.
+  !!       Use "atSet" instead
   !! it = map % begin()
   !! do while (it /= map % end())
   !!   ! Access value with: map % atVal(it)
@@ -58,6 +60,7 @@ module charMap_class
   !!   begin        -> Return index in array to first occupied element
   !!   atVal        -> Return value under index in array
   !!   atKey        -> Return key under index in array
+  !!   atSet        -> Set new value under index in array
   !!   next         -> Return index in array of the next occupied element
   !!   end          -> Return index in array for the last occupied element
   !!   kill         -> Return map to uninitialised state
@@ -79,6 +82,7 @@ module charMap_class
     procedure :: begin
     procedure :: atVal
     procedure :: atKey
+    procedure :: atSet
     procedure :: next
     procedure :: end
     procedure :: kill
@@ -177,6 +181,10 @@ contains
   !!
   !! If key is not present -> add new key and value
   !! If key is present -> change value under key to val
+  !!
+  !! Note:
+  !!   Adding new element may cause rehash even if the element is already present
+  !!   This may wreak havoc if it ware to happend during loop with "begin" "end" construct.
   !!
   !! Args:
   !!   key [in] -> Namelen-long character Key
@@ -500,6 +508,38 @@ contains
     key = self % map(idx) % key
 
   end function atKey
+
+  !!
+  !! Set new value under an index in an array
+  !!
+  !! It is used in looping when modification with "add" method
+  !! may cause rehash
+  !!
+  !! Args:
+  !!   val [in] -> New walue of entry under idx
+  !!   idx [in] -> Index in array to change data
+  !!
+  !! Errors:
+  !!   fatalError if element under idx is not TAKEN (EMPTY, DELETED or out of bounds)
+  !!
+  subroutine atSet(self, val, idx)
+    class(charMap), intent(inout) :: self
+    integer(shortInt), intent(in) :: val
+    integer(shortInt), intent(in) :: idx
+    character(100), parameter :: Here = 'atSet (charMap_class.f90)'
+
+    ! Check bounds and status
+    if (idx <= 0 .or. idx > self % N) then
+      call fatalError(Here, "Index is outside of bounds or map is uninitialised:" // numToChar(idx))
+
+    else if ( self % map(idx) % status /= TAKEN) then
+      call fatalError(Here, "Index refers to unoccupied entry:" // numToChar(idx))
+    end if
+
+    ! Change value
+    self % map(idx) % val = val
+
+  end subroutine atSet
 
   !!
   !! Find next TAKEN element following index idx
