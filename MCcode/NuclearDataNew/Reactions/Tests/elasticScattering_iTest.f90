@@ -55,7 +55,6 @@ contains
     @assertEqual(ONE,  reaction % release(7.0_defReal))
     @assertEqual(ONE,  reaction % releasePrompt(1.0E-6_defReal))
     @assertEqual(ZERO, reaction % releaseDelayed(1.5E-3_defReal))
-    @assertEqual(ZERO, reaction % sampleDelayRate(1.5E-3_defReal, rand))
 
     ! Varify probability distributions
     ! Isotropic range
@@ -81,5 +80,5 @@ contains
   end subroutine testElasticNeutronScatteringReaction
 
 
-    
+
 end module elasticScattering_iTest

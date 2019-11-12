@@ -48,7 +48,6 @@ module fissionCE_class
     procedure :: release
     procedure :: releasePrompt
     procedure :: releaseDelayed
-    procedure :: sampleDelayRate
     procedure :: sampleOut
     procedure :: probOf
 
@@ -131,7 +130,7 @@ contains
     N = self % nuBar % releaseAt(E)
 
   end function release
-    
+
   !!
   !! Returns number of particles produced on average instantly by the reaction
   !!
@@ -161,32 +160,18 @@ contains
   end function releaseDelayed
 
   !!
-  !! Sample the delay rate for the delayed particle
-  !!
-  !! See uncorrelatedReactionCE for details
-  !!
-  function sampleDelayRate(self, E, rand) result(lambda)
-    class(fissionCE), intent(in) :: self
-    real(defReal), intent(in)    :: E
-    class(RNG), intent(inout)    :: rand
-    real(defReal)                :: lambda
-
-    lambda = ZERO
-
-  end function sampleDelayRate
-
-  !!
   !! Sample outgoing particle
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand)
-    class(fissionCE), intent(in) :: self
-    real(defReal), intent(out)   :: mu
-    real(defReal), intent(out)   :: phi
-    real(defReal), intent(out)   :: E_out
-    real(defReal), intent(in)    :: E_in
-    class(RNG), intent(inout)    :: rand
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
+    class(fissionCE), intent(in)         :: self
+    real(defReal), intent(out)           :: mu
+    real(defReal), intent(out)           :: phi
+    real(defReal), intent(out)           :: E_out
+    real(defReal), intent(in)            :: E_in
+    class(RNG), intent(inout)            :: rand
+    real(defReal), intent(out), optional :: lambda
 
     ! Sample mu
     mu = TWO * rand % get() - ONE
@@ -196,6 +181,9 @@ contains
 
     ! Sample E_out
     E_out = self % eLaw % sample(E_in, rand)
+
+    ! Only prompt particles. Set delay
+    if(present(lambda)) lambda = huge(lambda)
 
   end subroutine sampleOut
 

@@ -23,8 +23,6 @@ module uncorrelatedReactionCE_inter
   !!   release         -> return number (defReal) of particles producerd on average
   !!   releasePrompt   -> return number (defReal) of particles produced on average without delay
   !!   releaseDelayed  -> return number (defReal) of particles produced on average with delay
-  !!   sampleDelayRate -> sample and return delay rate [1/s] assuming exponential distribution
-  !!     for the decay.
   !!   sampleOut       -> sample energy and the deflection of outgoing particle
   !!   probOf          -> probability of emission at a given angle and energy
   !!
@@ -35,7 +33,6 @@ module uncorrelatedReactionCE_inter
     procedure(release),deferred         :: release
     procedure(releasePrompt),deferred   :: releasePrompt
     procedure(releaseDelayed),deferred  :: releaseDelayed
-    procedure(sampleDelayRate),deferred :: sampleDelayRate
     procedure(sampleOut), deferred      :: sampleOut
     procedure(probOf),deferred          :: probOf
   end type uncorrelatedReactionCE
@@ -116,37 +113,16 @@ module uncorrelatedReactionCE_inter
     end function releaseDelayed
 
     !!
-    !! Sample the delay rate for the delayed particle
-    !!
-    !! Assumption is made that random delay rate and particle distribution is independent.
-    !! The delay rate assumes that the random neutron delay has exponential distribution
-    !! (like radioactive decay). Units are [1/s]
-    !!
-    !! Args:
-    !!   E [in]       -> Incident particle energy [MeV]
-    !!   rand [inout] -> Random number generator for samples
-    !!
-    !! Result:
-    !!   Time constant (lambda) of exponentialy distributed neutron emission delay in [1/s]
-    !!
-    !! Errors:
-    !!   If the reaction has no delayed emissions lambda = 0.0 is returned.
-    !!   If the reaction does not produce delayed emissions at a given energy,
-    !!   energy E is invalid (e.g. -ve) or outside bounds of stored data lambda = 0.0 is returned
-    !!
-    function sampleDelayRate(self, E, rand) result(lambda)
-      import :: defReal, uncorrelatedReactionCE, RNG
-      class(uncorrelatedReactionCE), intent(in) :: self
-      real(defReal), intent(in)                 :: E
-      class(RNG), intent(inout)                 :: rand
-      real(defReal)                             :: lambda
-    end function sampleDelayRate
-
-    !!
     !! Sample outgoing particle
     !!
     !! Returns deflection from the incident direction and energy of an outgoing particle
     !! Uses either LAB or Centre-of-Mass reference frame.
+    !!
+    !! Can sample from both the prompt and the delayed particles.
+    !! The delay rate assumes that the random neutron delay has exponential distribution
+    !! (like radioactive decay). Units are [1/s].
+    !! Delay rate of prompt particles is huge(defReal).
+    !!
     !!
     !! Args:
     !!   mu  [out]    -> cosine of polar deflection angle in [0;1]
@@ -154,11 +130,12 @@ module uncorrelatedReactionCE_inter
     !!   E_out [out]  -> outgoing particle energy [MeV]
     !!   E_in [in]    -> incident particle energy [MeV]
     !!   rand [inout] -> Random number generator for samples
+    !!   lambda [out] -> Optional. Delay rate of the emission [1/s]
     !!
     !! Errors:
     !!   If E_in is out of bounds or invalid (e.g.-ve) fatalError is returned
     !!
-    subroutine sampleOut(self, mu, phi, E_out, E_in, rand)
+    subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
       import :: defReal, uncorrelatedReactionCE, RNG
       class(uncorrelatedReactionCE), intent(in) :: self
       real(defReal), intent(out)                :: mu
@@ -166,6 +143,7 @@ module uncorrelatedReactionCE_inter
       real(defReal), intent(out)                :: E_out
       real(defReal), intent(in)                 :: E_in
       class(RNG), intent(inout)                 :: rand
+      real(defReal), intent(out),optional       :: lambda
     end subroutine sampleOut
 
     !!

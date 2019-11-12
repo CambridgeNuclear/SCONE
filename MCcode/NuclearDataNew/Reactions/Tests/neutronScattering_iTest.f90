@@ -59,13 +59,11 @@ contains
     @assertEqual(TWO,  reaction % release(7.0_defReal))
     @assertEqual(TWO,  reaction % releasePrompt(1.0E-6_defReal))
     @assertEqual(ZERO, reaction % releaseDelayed(1.5E-3_defReal))
-    @assertEqual(ZERO, reaction % sampleDelayRate(1.5E-3_defReal, rand))
-
 
     ! Clean
     call reaction % kill()
 
   end subroutine testNeutronScatteringReaction
 
-    
+
 end module neutronScattering_iTest

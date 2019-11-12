@@ -38,7 +38,6 @@ module pureCapture_class
     procedure :: release
     procedure :: releasePrompt
     procedure :: releaseDelayed
-    procedure :: sampleDelayRate
     procedure :: sampleOut
     procedure :: probOf
   end type pureCapture
@@ -127,36 +126,25 @@ contains
   end function releaseDelayed
 
   !!
-  !! Sample the delay rate for the delayed particle
-  !!
-  !! See uncorrelatedReactionCE for details
-  !!
-  function sampleDelayRate(self, E, rand) result(lambda)
-    class(pureCapture), intent(in) :: self
-    real(defReal), intent(in)                :: E
-    class(RNG), intent(inout)                :: rand
-    real(defReal)                            :: lambda
-
-    lambda = ZERO
-
-  end function sampleDelayRate
-
-  !!
   !! Sample outgoing particle
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand)
-    class(pureCapture), intent(in) :: self
-    real(defReal), intent(out)     :: mu
-    real(defReal), intent(out)     :: phi
-    real(defReal), intent(out)     :: E_out
-    real(defReal), intent(in)      :: E_in
-    class(RNG), intent(inout)      :: rand
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
+    class(pureCapture), intent(in)         :: self
+    real(defReal), intent(out)             :: mu
+    real(defReal), intent(out)             :: phi
+    real(defReal), intent(out)             :: E_out
+    real(defReal), intent(in)              :: E_in
+    class(RNG), intent(inout)              :: rand
+    real(defReal), intent(out), optional   :: lambda
 
     E_out = E_in
     mu = ONE
     phi = ZERO
+
+    ! Default to the prompt particle
+    if(present(lambda)) lambda = huge(lambda)
 
   end subroutine sampleOut
 
@@ -206,5 +194,5 @@ contains
   end function pureCapture_TptrCast
 
 
-    
+
 end module pureCapture_class

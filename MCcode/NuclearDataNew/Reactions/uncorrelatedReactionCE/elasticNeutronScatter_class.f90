@@ -38,7 +38,6 @@ module elasticNeutronScatter_class
     procedure :: release
     procedure :: releasePrompt
     procedure :: releaseDelayed
-    procedure :: sampleDelayRate
     procedure :: sampleOut
     procedure :: probOf
 
@@ -132,7 +131,7 @@ contains
     N = ONE
 
   end function releasePrompt
-    
+
   !!
   !! Returns number of particles produced on average by the reaction with delay
   !!
@@ -148,32 +147,18 @@ contains
   end function releaseDelayed
 
   !!
-  !! Sample the delay rate for the delayed particle
-  !!
-  !! See uncorrelatedReactionCE for details
-  !!
-  function sampleDelayRate(self, E, rand) result(lambda)
-    class(elasticNeutronScatter), intent(in) :: self
-    real(defReal), intent(in)                :: E
-    class(RNG), intent(inout)                :: rand
-    real(defReal)                            :: lambda
-
-    lambda = ZERO
-
-  end function sampleDelayRate
-
-  !!
   !! Sample outgoing particle
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  subroutine sampleOut(self, mu, phi, E_out, E_in, rand)
+  subroutine sampleOut(self, mu, phi, E_out, E_in, rand, lambda)
     class(elasticNeutronScatter), intent(in) :: self
     real(defReal), intent(out)               :: mu
     real(defReal), intent(out)               :: phi
     real(defReal), intent(out)               :: E_out
     real(defReal), intent(in)                :: E_in
     class(RNG), intent(inout)                :: rand
+    real(defReal), intent(out), optional     :: lambda
 
     ! Set energy
     E_out = E_in
@@ -183,6 +168,9 @@ contains
 
     ! Sample phi
     phi = rand % get() * TWO_PI
+
+    ! Only prompt particles. Set delay
+    if(present(lambda)) lambda = huge(lambda)
 
   end subroutine sampleOut
 

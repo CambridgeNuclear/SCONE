@@ -55,7 +55,6 @@ contains
     @assertEqual(ZERO, pureCapPtr % release(1.0_defReal))
     @assertEqual(ZERO, pureCapPtr % releasePrompt(2.0_defReal))
     @assertEqual(ZERO, pureCapPtr % releaseDelayed(2.0_defReal))
-    @assertEqual(ZERO, reaction % sampleDelayRate(1.5E-3_defReal, rand))
     @assertFalse(pureCapPtr % inCMframe())
 
     ! Verify probability distribution
@@ -76,5 +75,5 @@ contains
 
   end subroutine testPureCaptureReaction
 
-    
+
 end module pureCapture_test

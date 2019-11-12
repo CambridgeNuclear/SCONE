@@ -53,7 +53,6 @@ contains
     ! Test trivial functionality
     @assertFalse(reaction % inCMframe())
     @assertEqual(ZERO, reaction % releaseDelayed(1.3_defReal))
-    @assertEqual(ZERO, reaction % sampleDelayRate(1.3_defReal, rand))
 
     ! Test neutron release
     @assertEqual(2.65431_defReal, reaction % release(1.6_defReal), TOL)
