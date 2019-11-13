@@ -183,7 +183,7 @@ contains
     real(defReal), intent(in)    :: E
     real(defReal)                :: N
 
-    N = self % nuBarTotal % releaseAt(E)
+    N = self % release(E) - self % releaseDelayed(E)
 
   end function releasePrompt
 
@@ -192,12 +192,16 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  pure function releaseDelayed(self, E) result(N)
+  function releaseDelayed(self, E) result(N)
     class(fissionCE), intent(in) :: self
     real(defReal), intent(in)    :: E
     real(defReal)                :: N
 
-    N = ZERO
+    if(allocated(self % nuBarDelayed)) then
+      N = self % nuBarDelayed % releaseAt(E)
+    else
+      N = ZERO
+    end if
 
   end function releaseDelayed
 
@@ -214,6 +218,9 @@ contains
     real(defReal), intent(in)            :: E_in
     class(RNG), intent(inout)            :: rand
     real(defReal), intent(out), optional :: lambda
+    real(defReal)                        :: p_del, r1, r2
+    integer(shortInt)                    :: i, N
+    character(100),parameter :: Here = 'sample (fissionCE_class.f90)'
 
     ! Sample mu
     mu = TWO * rand % get() - ONE
@@ -224,9 +231,38 @@ contains
     ! Sample E_out
     E_out = self % eLawPrompt % sample(E_in, rand)
 
-    ! Only prompt particles. Set delay
-    if(present(lambda)) lambda = huge(lambda)
+    ! Calculate delayed emission probability
+    if(allocated(self % delayed)) then
+      p_del = self % releaseDelayed(E_in) / self % release(E_in)
+    else
+      p_del = ZERO
+    end if
 
+    r1 = rand % get()
+    if( r1 > p_del ) then ! Prompt emission
+      E_out = self % eLawPrompt % sample(E_in, rand)
+      if(present(lambda)) lambda = huge(lambda)
+
+    else ! Delayed emission
+      r2 = rand % get()
+
+      ! Loop over precursor groups
+      precursors: do i=1,size(self % delayed)
+        r2 = r2 - self % delayed(i) % prob % at(E_in)
+        if( r2 < ZERO) then
+          E_out = self % delayed(i) % eLaw % sample(E_in, rand)
+          if(present(lambda)) lambda = self % delayed(i) % lambda
+          return
+
+        end if
+      end do precursors
+
+      ! Sampling failed -> Choose top precursor group
+      N = size(self % delayed)
+      E_out = self % delayed(N) % eLaw % sample(E_in, rand)
+      if(present(lambda)) lambda = self % delayed(N) % lambda
+
+    end if
   end subroutine sampleOut
 
   !!
@@ -241,9 +277,31 @@ contains
     real(defReal), intent(in)                :: E_out
     real(defReal), intent(in)                :: E_in
     real(defReal)                            :: prob
+    real(defReal)                            :: p_delayed
+    integer(shortInt)                        :: i
 
     if(abs(mu) <= ONE .and. E_out > ZERO .and. phi <= TWO_PI .and. phi >= ZERO) then
-      prob = self % eLawPrompt % probabilityOf(E_out, E_in) / (TWO * TWO_PI)
+
+      ! Set delayed robability
+      if (allocated(self % delayed)) then
+        p_delayed = self % releaseDelayed(E_in) / self % release(E_in)
+      else
+        p_delayed = ZERO
+      end if
+
+      ! Delayed contribution
+      prob = ZERO
+      if(allocated(self % delayed)) then
+        do i=1,size(self % delayed)
+          prob = prob + p_delayed * self % delayed(i) % prob % at(E_in) *&
+                        self % delayed(i) % eLaw % probabilityOf(E_out, E_in)
+        end do
+      end if
+
+      ! Prompt contribution
+      prob = prob + self % eLawPrompt % probabilityOf(E_out, E_in) * (ONE - p_delayed)
+      prob = prob / (TWO * TWO_PI)
+
     else
       prob = ZERO
     end if

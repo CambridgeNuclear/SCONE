@@ -1,6 +1,7 @@
 module tabularPdf_class
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
                                 isSorted, numToChar
   use endfConstants
@@ -107,16 +108,32 @@ contains
   !!
   !! Returns probability of x
   !!
+  !! Args:
+  !!   x [in]        -> Value of x
+  !!   res_idx [out] -> Optional. Index of x in the probability grid
+  !!
+  !! Result:
+  !!   probability density at x
+  !!
+  !! Errors:
+  !!   If x is out of bounds returns 0.0
+  !!
   function probabilityOf(self, x, res_idx) result (prob)
     class(tabularPdf), intent(in)            :: self
     real(defReal), intent(in)                :: x
     integer(ShortInt), intent(out), optional :: res_idx
     real(defReal)                            :: prob
     integer(shortInt)                        :: idx
-    character(100),parameter      :: Here='probabilityOf (tabularPdf_class.f90)'
+    character(100),parameter :: Here = 'probabilityOf (tabularPdf_class.f90)'
 
     idx = linearSearch(self % x, x)
-    call searchError(idx,Here)
+    if (idx == valueOutsideArray) then
+      prob = ZERO
+      return
+
+    else if (idx <= 0) then
+      call fatalError(Here,'Search for value failed: '//numToChar(x))
+    end if
 
     select case (self % flag)
       case (histogram)

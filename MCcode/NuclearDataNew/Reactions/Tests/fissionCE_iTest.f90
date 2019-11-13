@@ -52,16 +52,17 @@ contains
 
     ! Test trivial functionality
     @assertFalse(reaction % inCMframe())
-    @assertEqual(ZERO, reaction % releaseDelayed(1.3_defReal))
 
     ! Test neutron release
     @assertEqual(2.65431_defReal, reaction % release(1.6_defReal), TOL)
     @assertEqual(5.147534_defReal, reaction % release(17.0_defReal), TOL)
-    @assertEqual(2.48771_defReal, reaction % releasePrompt(0.6E-6_defReal), TOL)
+    @assertEqual(2.48098_defReal, reaction % releasePrompt(0.6E-6_defReal), TOL)
+    @assertEqual(6.73E-3_defReal, reaction % releaseDelayed(0.6E-6_defReal), TOL)
+    @assertEqual(0.0041725_defReal, reaction % releaseDelayed(17.0_defReal), TOL)
 
     ! Test probability density
-    @assertEqual(0.1589722E-01_defReal, reaction % probOf(0.7_defReal, 2.0_defReal, 0.1404_defReal, 2.0_defReal), TOL)
-    @assertEqual(0.1587902E-01, reaction % probOf(0.7_defReal, 2.0_defReal, 2.48077_defReal, 14.0_defReal), TOL)
+    @assertEqual(0.1618843E-01_defReal, reaction % probOf(0.7_defReal, 2.0_defReal, 0.1404_defReal, 2.0_defReal), TOL)
+    @assertEqual(0.1586432E-01, reaction % probOf(0.7_defReal, 2.0_defReal, 2.48077_defReal, 14.0_defReal), TOL)
 
     ! Clean
     call reaction % kill()
