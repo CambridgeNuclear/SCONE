@@ -2,7 +2,7 @@ module tabularPdf_class
 
   use numPrecision
   use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
-                                isSorted
+                                isSorted, numToChar
   use endfConstants
 
   implicit none
@@ -10,7 +10,7 @@ module tabularPdf_class
 
   integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
                                   linLin     = tabPdfLinLin
-  real(defReal),parameter      :: tolerance = 1.0e-23
+  real(defReal),parameter      :: tolerance = 1.0e-8
 
   interface linearSearch
     module procedure linearFloorIdxClosed_Real
@@ -265,7 +265,7 @@ contains
     if( abs(cdf(1)) > tolerance ) call fatalError(Here,'Provided CDF does not begin with 0')
 
     if( abs(cdf(size(cdf))-1.0_defReal) > tolerance) then
-      call fatalError(Here,'Provided CDF does not end with 1')
+      call fatalError(Here,'Provided CDF does not end with 1:' // numToChar(cdf(size(cdf))))
     end if
 
     ! Initialise Data

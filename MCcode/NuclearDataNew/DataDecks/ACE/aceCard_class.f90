@@ -4,7 +4,7 @@ module aceCard_class
   use endfConstants
   use dataDeck_inter,    only : dataDeck
   use genericProcedures, only : fatalError, openToRead, isInteger, linFind,&
-                                targetNotFound, searchError
+                                targetNotFound, searchError, numToChar
 
   implicit none
   private
@@ -34,7 +34,7 @@ module aceCard_class
     integer(shortInt) :: XSp       = unINIT   ! Location of cross sections on XSS table
     integer(shortInt) :: LOCB      = unINIT   ! Raw ACE LOCB parameter from MCNP manual
     integer(shortInt) :: ANDp      = unINIT   ! Location of angular distribution data in XSS table
-    integer(shortInt) :: DLWp      = unINIT   ! Location of energy distribution data in XSS table
+    integer(shortInt) :: LOCC      = unINIT   ! Offset of energy distribution data in XSS table
     logical(defBool)  :: isotropic = .false.  ! Indicates isotropic scattering at all energies
     logical(defBool)  :: correl    = .false.  ! Correlated angle-energy scattering
   contains
@@ -121,6 +121,7 @@ module aceCard_class
     procedure :: LOCBforMT           ! Return LOCB for MT
     procedure :: setToAngleMT        ! Set head to beggining of angular for MT reaction
     procedure :: setToEnergyMT       ! Set head to energy for MT
+    procedure :: LOCCforMT           ! Get Offset of energy law for MT
 
     ! Procedures releted to Elastic Scattering
     procedure :: LOCBforEscatter     ! Return LOCB for Elastic Scattering
@@ -130,7 +131,8 @@ module aceCard_class
     procedure :: firstIdxFiss        ! Get first fission Idx
     procedure :: numXsPointsFiss     ! Get number of fission XS points
     procedure :: xsFiss              ! Get fission XS array
-    procedure :: isFissile           ! Returns tru if nuclide is fissile
+    procedure :: isFissile           ! Returns true if nuclide is fissile
+    procedure :: precursorGroups     ! Return number of precursor groups
 
     procedure :: hasNuPrompt         ! Is prompt NU present
     procedure :: hasNuTotal          ! Is total NU present
@@ -139,6 +141,9 @@ module aceCard_class
     procedure :: setToNuPrompt       ! Set head to prompt NU
     procedure :: setToNuTotal        ! Set head to total NU
     procedure :: setToNuDelayed      ! Set head to delayed Nu
+    procedure :: setToPrecursors     ! Set head to the precursors data
+    procedure :: setToPrecursorEnergy ! Set Head to energy distribution for a given precursor group
+    procedure :: LOCCforPrecursor    ! Return location of delayed fission spectrum relative to JXS(27)
 
     ! Procedures related to reading under head and head status
     !
@@ -155,6 +160,9 @@ module aceCard_class
 
     procedure :: setToAnglePdf       ! Sets head to single energy mu pdf. Adress relative to JXS(9)
     procedure :: setToEnergyLaw      ! Sets head to single energy law. Adress relative to JXS(11)
+
+    procedure :: getRootAddress      ! Get Root adress do diffrent blocks
+    procedure :: setRelativeTo       ! Sets to position given by root and offset (root + offset -1)
 
     ! Initialisation and display procedures
     procedure :: readFromFile
@@ -645,9 +653,40 @@ contains
     if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
                                                              & does not exist')
 
-    self % head = self % MTdata(idx) % DLWp
+    self % head = self % MTdata(idx) % LOCC + self % JXS(11) - 1
 
   end subroutine setToEnergyMT
+
+  !!
+  !! Returns LOCC paramter for energy law related to MT reaction
+  !!
+  !! LOCC is position relative to JXS(11)
+  !!
+  !! Args:
+  !!   MT [in] -> Requested MT number
+  !!
+  !! Errors:
+  !!   fatalError if requested MT is not present
+  !!
+  function LOCCforMT(self, MT) result(locc)
+    class(aceCard),intent(in)      :: self
+    integer(shortInt), intent(in)  :: MT
+    integer(shortInt)              :: locc
+    integer(shortInt)              :: idx
+    character(100), parameter :: Here = 'LOCCforMT (aceCard_class.f90)'
+
+       ! Special case for elastic scattering
+    if( MT == N_N_elastic) then
+      call fatalError(Here,'Elastic scattering has no energy law and LOCC')
+      return
+      locc = 0 ! Avoid Compiler Warning
+    end if
+
+    idx = self % getMTidx(MT)
+    locc = self % MTdata(idx) % LOCC
+
+  end function LOCCforMT
+
 
   !!
   !! Returns LOCB for elastic scattering
@@ -739,6 +778,24 @@ contains
     isIt = self % isFiss
 
   end function isFissile
+
+  !!
+  !! Return number of precursor groups
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of precursor groups (NXS(8))
+  !!
+  function precursorGroups(self) result(N)
+    class(aceCard), intent(in) :: self
+    integer(shortInt)          :: N
+
+    N = self % NXS(8)
+
+  end function precursorGroups
+
 
   !!
   !! Returns .true. if nuclide has NU prompt data
@@ -842,6 +899,160 @@ contains
     end if
 
   end subroutine setToNuDelayed
+
+  !!
+  !! Sets head to beginning of precursor data for delayed fission neutrons
+  !!
+  !!
+  !! Errors:
+  !!   fatalError if there is no data for precursors
+  !!
+  subroutine setToPrecursors(self)
+    class(aceCard), intent(inout) :: self
+    character(100), parameter :: Here = 'setToPrecursors (aceCard_class.f90)'
+
+    if(self % JXS(25) /= 0) then
+      self % head = self % JXS(25)
+
+    else
+      call fatalError(Here, 'Missing Fission Data. Cannot Locate Precursor PDF. JXS(25) == 0')
+
+    end if
+
+  end subroutine setToPrecursors
+
+  !!
+  !! Set Head of ACE Card to beginning of energy data for emission from
+  !! precursor group N
+  !!
+  !! Args:
+  !!   N [in] -> Precursor Group index
+  !!
+  !! Errors:
+  !!   fatalError if N is invalid [-ve, 0, or > NXS(8)]
+  !!
+  subroutine setToPrecursorEnergy(self, N)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: N
+    character(100),parameter :: Here = 'setToPrecursorEnergy (aceCard_class.f90)'
+
+    ! Validate N
+    if( N < 1) then
+      call fatalError(Here,trim(self % ZAID) //' Precursor group index must be non-negative. &
+                           & Was: '//numToChar(N))
+    else if( N > self % NXS(8)) then
+      call fatalError(Here,trim(self % ZAID) // 'N is to large. Was given' // numToChar(N) // &
+                           ' with only ' // numToChar(self % NXS(8)) // ' groups present')
+    end if
+
+    ! Set address
+    self % head = int(self % XSS(self % JXS(26) + N - 1) + self % JXS(27))
+
+  end subroutine setToPrecursorEnergy
+
+  !!
+  !! Return LOCC for a precursor group
+  !!
+  !! Args:
+  !!   N [in] -> Precursor group index
+  !!
+  !! Result:
+  !!   LOCC - loccation of enrgy LAW relative to JXS(27)
+  !!
+  !! Erros:
+  !!   fatalError if N is invalid [-ve, 0 or > NXS(8)]
+  !!
+  function LOCCforPrecursor(self, N) result(locc)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: N
+    integer(shortInt)             :: locc
+    character(100), parameter :: Here = 'LOCCforPrecursor (aceCard_class.f90)'
+
+    ! Check invalid N
+    if ( N < 1 .or. N > self % NXS(8)) then
+      call fatalError(Here, trim(self % ZAID)//' Invalid precursor group: '//numToChar(N))
+      locc = 0
+    end if
+
+    locc = real2Int(self % XSS(self % JXS(26) + N -1), Here)
+
+  end function LOCCforPrecursor
+
+  !!
+  !! Get address to a root for different blocks
+  !!
+  !! Allowed Blocks (Case Sensitive):
+  !!   'angleLaws'
+  !!   'energyLawsMT'
+  !!   'energyLawsPrecursors'
+  !!
+  !! Args:
+  !!   block [in] -> Character that specifies requested block
+  !!
+  !! Result:
+  !!   Address of the block on the XSS array
+  !!
+  !! Errors:
+  !!   fatalError if the block is unrecognised
+  !!
+  function getRootAddress(self, block) result(addr)
+    class(aceCard), intent(in) :: self
+    character(*), intent(in)   :: block
+    integer(shortInt)          :: addr
+    character(100), parameter :: Here = 'getRootAddress (aceCard_class.f90)'
+
+    select case(block)
+      case('angleLaws')
+        addr = self % JXS(9)
+
+      case('energyLawsMT')
+        addr = self % JXS(11)
+
+      case('energyLawsPrecursors')
+        addr = self % JXS(27)
+
+      case default
+        call fatalError(Here, 'Unrecognised block: '//block)
+        addr = 0
+    end select
+
+  end function getRootAddress
+
+  !!
+  !! Sets head to position given by Root and and offset
+  !!
+  !! Head = root + offset - 1
+  !!
+  !! Args:
+  !!   root   [in] -> Integer thet specifies the root
+  !!   offset [in] -> Integer that specifies an offset
+  !!
+  !! Errors:
+  !!   fatalError if the head is outside the bounds of XSS
+  !!   fatalError if root is outside the bounds of XSS
+  !!
+  subroutine setRelativeTo(self, root, offset)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: root
+    integer(shortInt), intent(in) :: offset
+    integer(shortInt)             :: pos
+    character(100), parameter :: Here = 'setRelativeTo (aceCard_class.f90)'
+
+    ! Validate root
+    if (root < 1 .or. root > self % NXS(1)) then
+      call fatalError(Here,trim(self % ZAID)//' root is outside bounds: '//numToChar(root))
+    end if
+
+    pos = root + offset - 1
+
+    ! Validate position
+    if(pos < 1 .or. pos > self % NXS(1)) then
+      call fatalError(Here,trim(self % ZAID)//' position reached outside the bounds')
+    end if
+
+    self % head = pos
+
+  end subroutine setRelativeTo
 
   !!
   !! Read single integer and advance read head
@@ -1108,10 +1319,8 @@ contains
 
     ! Read raw LOCC parameters (locators of energy distibutions on DLW block - MCNP manual)
     ptr = self % JXS(10)
-    self % MTdata(1:NMTs) % DLWp = real2Int( self % XSS(ptr : ptr+NMTs-1),Here )
+    self % MTdata(1:NMTs) % LOCC = real2Int( self % XSS(ptr : ptr+NMTs-1),Here )
 
-    ! Relate energy distributions pointers to XSS table
-    self % MTdata(1:NMTs) % DLWp = self % MTdata(1:NMTs) % DLWp + self % JXS(11) - 1
   end subroutine setMTdata
 
   !!
@@ -1288,7 +1497,7 @@ contains
     class(MTreaction),intent(in) :: self
 
     print *, self % MT, self % Q, self % TY, self % isCapture ,self % CMframe, self % IE, &
-             self % N_xs, self % XSp, self % LOCB, self % ANDp, self % DLWp, self % isotropic, self % correl
+             self % N_xs, self % XSp, self % LOCB, self % ANDp, self % LOCC, self % isotropic, self % correl
 
   end subroutine print_MTreaction
 

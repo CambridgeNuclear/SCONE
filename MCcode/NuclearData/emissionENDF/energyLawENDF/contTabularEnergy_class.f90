@@ -171,8 +171,9 @@ contains
   !! Head of aceCard needs to be set to the beginning of the data
   !! NOTE : Defining another init for ACE would help to avoid unnecesary reallocation of memory
   !!
-  function new_contTabularEnergy_fromACE(ACE) result(new)
+  function new_contTabularEnergy_fromACE(ACE, root) result(new)
     type(aceCard), intent(inout)                 :: ACE
+    integer(shortInt), intent(in)                :: root
     type(contTabularEnergy)                      :: new
     integer(shortInt)                            :: NR
     integer(shortInt)                            :: N, i
@@ -198,7 +199,7 @@ contains
 
     ! Loop over all locations and read PDF at the given energy
     do i=1,N
-      call ACE % setToEnergyLaw(locEne(i))
+      call ACE % setRelativeTo(root, locEne(i))
       ePdfs(i) = tabularEnergy(ACE)
     end do
 
