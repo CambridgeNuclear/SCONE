@@ -409,6 +409,7 @@ contains
     call self % elasticScatter % init(ACE, N_N_ELASTIC)
 
     if(self % isFissile()) then
+      ! Load fission data
       call self % fission % init(ACE, N_FISSION)
       N = ACE % firstIdxFiss()
       K = ACE % numXSPointsFiss()
@@ -419,9 +420,6 @@ contains
         self % mainData(NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
                                         self % fission % release(self % eGrid(i))
       end do
-
-      ! Load fission data
-      call self % fission % init(ACE, N_FISSION)
 
     end if
 
