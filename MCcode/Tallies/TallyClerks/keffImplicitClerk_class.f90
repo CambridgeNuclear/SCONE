@@ -247,7 +247,7 @@ contains
 
     if( p % fate == leak_FATE) then
       ! Obtain and score history weight
-      histWgt = p % preHistory % wgt
+      histWgt = p % w
 
       ! Score analog leakage
       call mem % score( histWgt, self % getMemAddress() + ANA_LEAK)
