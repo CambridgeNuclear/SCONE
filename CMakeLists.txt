@@ -86,7 +86,6 @@ add_subdirectory(ParticleObjects)
 add_subdirectory(NamedGrids)
 
 add_subdirectory(NuclearData)   
-add_subdirectory(NuclearDataNew)   
 add_subdirectory(GeometryObjects)  
 add_subdirectory(Tallies)
 
