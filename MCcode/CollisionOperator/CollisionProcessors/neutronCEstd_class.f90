@@ -189,7 +189,7 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: nu, wgt, w0, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
@@ -312,7 +312,6 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(elasticNeutronScatter),pointer  :: reac
-    integer(shortInt)                    :: MT, nucIdx
     character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
 
     ! Get reaction
@@ -349,7 +348,6 @@ contains
     type(collisionData), intent(inout)     :: collDat
     class(particleDungeon),intent(inout)   :: thisCycle
     class(particleDungeon),intent(inout)   :: nextCycle
-    integer(shortInt)                      :: MT, nucIdx
     class(uncorrelatedReactionCE), pointer :: reac
     character(100),parameter  :: Here =' inelastic (neutronCEstd_class.f90)'
 

@@ -125,7 +125,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)   :: tally
     type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
     integer(shortInt), intent(in)             :: N_cycles
-    integer(shortInt)                         :: i, Nstart, Nend,j
+    integer(shortInt)                         :: i, Nstart, Nend
     class(tallyResult),allocatable            :: res
     type(particle)                            :: neutron
     real(defReal)                             :: k_old, k_new
@@ -238,7 +238,7 @@ contains
     real(defReal),dimension(3)                :: rand
     class(neutronMaterial),pointer            :: mat
     type(fissionCE), pointer                  :: fissCE
-    type(fissionMG), pointer                  :: fissMG
+    !type(fissionMG), pointer                  :: fissMG
     real(defReal)                             :: mu, phi, E_out
     character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
 

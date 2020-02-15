@@ -90,7 +90,7 @@ contains
     call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, this % nucData, mem)
 
     ! Score leakage
-    p % preHistory % wgt = 0.3_defReal
+    p % w = 0.3_defReal
     call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle
@@ -109,7 +109,7 @@ contains
     call this % clerk % reportOutColl(p, N_2N, 0.5_defReal, this % nucData, mem)
 
     ! Score leakage
-    p % preHistory % wgt = 0.3_defReal
+    p % w = 0.3_defReal
     call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle

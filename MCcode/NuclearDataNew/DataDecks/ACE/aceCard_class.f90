@@ -678,8 +678,8 @@ contains
        ! Special case for elastic scattering
     if( MT == N_N_elastic) then
       call fatalError(Here,'Elastic scattering has no energy law and LOCC')
-      return
       locc = 0 ! Avoid Compiler Warning
+      return
     end if
 
     idx = self % getMTidx(MT)
