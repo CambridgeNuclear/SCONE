@@ -1,0 +1,102 @@
+type eigenPhysicsPackage; 
+
+//pop      200000;
+pop 20000;
+active   500; 
+inactive 300; 
+XSdata   ce;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorDT;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k_eff);
+                norm fiss;
+                normVal 100.0;
+                k_eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                        map {
+                          type multiMap;
+                          maps (ene mat); 
+                          ene {type energyMap; grid log; min 0.001; max 20; N 300;} 
+                          mat {type materialMap; materials (fuel ref);}
+                        }
+                        response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type basicCellCSG;
+    boundary (0 0 0 0 0 0);
+
+    surfaces
+    {
+      bound     { id 1; type sphere; origin (0.0 0.0 0.0); radius 4.5332; }  
+      reflector { id 2; type sphere; origin (0.0 0.0 0.0); radius 24.142; }
+    }
+
+
+    cells
+    {
+      out     { id 3; surfaces (2 ); filltype outside;      }
+      ref     { id 2; surfaces (-2 1); filltype mat; mat ref;}
+      inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type cellUniverse; 
+	  origin (0.0 0.0 0.0);
+	  cells ( 2 4 3); 
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ce { type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    numberOfGroups 69; 
+
+    fuel {  
+      temp       273; 
+      composition {
+        94239.03  0.036697; 
+        94240.03  0.0018700; 
+        94241.03  0.00011639; 
+        31000.03  0.0014755;
+      }   
+    }	 
+
+    ref {
+      temp 273; 
+      composition { 
+        92234.03 0.0000026438;
+        92235.03 0.0003461;
+        92238.03 0.047721; 
+      }
+    }
+
+} 
+  
+}
+  
+  
+  

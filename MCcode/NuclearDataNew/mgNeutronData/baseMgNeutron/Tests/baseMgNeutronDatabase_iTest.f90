@@ -141,7 +141,7 @@ contains
     @assertTrue(associated(reac), "Pointer fission reaction is wrong type or null")
 
     ! Get Scattering reaction and verify type
-    reac => multiScatterMG_TptrCast(database % getReaction(anyScatter, 1))
+    reac => multiScatterMG_TptrCast(database % getReaction(macroIEScatter, 1))
     @assertTrue(associated(reac), "Wrong type of scattering reaction")
 
     ! Get some invalid reactions
@@ -267,7 +267,7 @@ contains
     @assertTrue(associated(reac), "Pointer fission reaction is wrong type or null")
 
     ! Get Scattering reaction and verify type
-    reac => multiScatterP1MG_TptrCast(database % getReaction(anyScatter, 1))
+    reac => multiScatterP1MG_TptrCast(database % getReaction(macroIEScatter, 1))
     @assertTrue(associated(reac), "Wrong type of scattering reaction")
 
     ! Get some invalid reactions

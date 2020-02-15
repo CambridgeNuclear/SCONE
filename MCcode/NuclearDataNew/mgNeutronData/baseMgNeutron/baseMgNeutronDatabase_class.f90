@@ -209,7 +209,7 @@ contains
           reac => null()
         end if
 
-      case(anyScatter)
+      case(macroIEScatter)
         reac => self % mats(idx) % scatter
 
       case default

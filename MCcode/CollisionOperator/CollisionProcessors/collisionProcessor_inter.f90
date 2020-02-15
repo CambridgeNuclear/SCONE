@@ -131,7 +131,7 @@ contains
       case(N_N_elastic, macroAllScatter)
         call self % elastic(p, collDat, thisCycle, nextCycle)
 
-      case(N_N_inelastic)
+      case(N_N_inelastic, macroIEScatter)
         call self % inelastic(p, collDat, thisCycle, nextCycle)
 
       case(N_DISAP, macroCapture)

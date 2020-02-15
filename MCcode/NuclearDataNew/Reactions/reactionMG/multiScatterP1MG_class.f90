@@ -115,8 +115,10 @@ contains
     self % P1 = reshape(temp,[nG, nG])
 
     ! Normalise P1 coefficients
+    ! Also Multiply by the factor 3.0 according to the definition of Coefficients Legendre Series
+    ! f(x) = a_0 * P0(x) + 3 * a_1 * P1(x) + 5/2 * a_2 * P2(x) + ...
     where (self % P0 /= ZERO)
-      self % P1 = self % P1 / self % P0
+      self % P1 = self % P1 / self % P0 * 3.0_defReal
 
     elsewhere
       self % P1 = ZERO

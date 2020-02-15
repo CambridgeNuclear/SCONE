@@ -238,7 +238,8 @@ contains
     real(defReal),dimension(3)                :: rand
     class(neutronMaterial),pointer            :: mat
     type(fissionCE), pointer                  :: fissCE
-    !type(fissionMG), pointer                  :: fissMG
+    type(fissionMG), pointer                  :: fissMG
+    integer(shortInt)                         :: G_out
     real(defReal)                             :: mu, phi, E_out
     character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
 
@@ -294,7 +295,7 @@ contains
 
           ! Get reaction object
           fissCE => fissionCE_TptrCast(self % nucData % getReaction(N_FISSION, nucIdx))
-          if(.not.associated(fissCE)) call fatalError(Here, "Failed to get Fission Reaction Object")
+          if(.not.associated(fissCE)) call fatalError(Here, "Failed to get CE Fission Reaction Object")
 
           ! Get mu, phi, E_out
           call fissCE % sampleOut(mu, phi, E_out, 1.0E-6_defReal, self % pRNG)
@@ -306,7 +307,18 @@ contains
           neutron % isMG = .false.
 
         class is(mgNeutronMaterial)
-          call fatalError(Here, "Initial State for MG not yet implemented")
+          ! Get reaction object
+          fissMG => fissionMG_TptrCast(self % nucData % getReaction(macroFission, matIdx))
+          if(.not.associated(fissMG)) call fatalError(Here, "Failed to get MG Fission Reaction Object")
+
+          ! Get mu, phi, E_out
+          call fissMG % sampleOut(mu, phi, G_out, 1, self % pRNG)
+
+          ! Put Data into particle State
+          call neutron % teleport(r)
+          call neutron % point(rotateVector([ONE, ZERO, ZERO], mu, phi))
+          neutron % G = G_out
+          neutron % isMG = .true.
 
         class default
           call fatalError(Here, "Unrecognised type of the neutronMaterial")
