@@ -83,8 +83,8 @@ contains
     ! Test that normalisation of P1 coefficients is OK
     @assertEqual(ZERO, reaction % P1(2,2), TOL)
     @assertEqual(ZERO, reaction % P1(1,2), TOL)
-    @assertEqual(0.3846153846_defReal, reaction % P1(1,1), TOL)
-    @assertEqual(0.1428571429_defReal, reaction % P1(2,1), TOL)
+    @assertEqual(1.1538461538_defReal, reaction % P1(1,1), TOL)
+    @assertEqual(0.4285714287_defReal, reaction % P1(2,1), TOL)
 
     ! Clean memory
     call dictT % kill()
