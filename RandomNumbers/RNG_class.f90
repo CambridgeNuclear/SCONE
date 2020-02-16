@@ -41,6 +41,84 @@ module rng_class
   real(defReal), parameter  :: norm = ONE / 2.0_defReal**(63)
 
 
+  !!
+  !! Table of first 63 powers of g**2 modulo 2**63-1. Eg. pow_of_gsq[7] = (g**2)**7 mod (2**63-1)
+  !! This table is necessary to avoid some weird compiler bugs when trying to evaluate it in the
+  !! loop in the skip procedure. Hopefully this is only temporary fix.
+  !! (Bug found with gfortran 7.4.0 for Ubuntu)
+  !!
+  !! Following python 3 code was used to generate values:
+  !!   g = 2806196910506780709
+  !!   mask = 2 ** 63-1
+  !!   gsq = g
+  !!   for j in range(1,64):
+  !!       gsq = gsq * gsq & mask
+  !!       print("{0:d}_int64, &".format(gsq))
+  !!
+  integer(int64), dimension(63), parameter :: pow_of_gsq = [4118111548459160921_int64, &
+                                                            6263099103742179569_int64, &
+                                                            5434410004014125793_int64, &
+                                                            3900069298110130625_int64, &
+                                                            8552589605725332353_int64, &
+                                                            4382521690724632321_int64, &
+                                                            8098245642286861825_int64, &
+                                                            3081762755263208449_int64, &
+                                                            4715886749854480385_int64, &
+                                                            9194852612335759361_int64, &
+                                                             630364332432089089_int64, &
+                                                            3819912299005722625_int64, &
+                                                            2317658161965924353_int64, &
+                                                            3242832453844795393_int64, &
+                                                            7323085059694395393_int64, &
+                                                            4691091528248721409_int64, &
+                                                            1474375651484499969_int64, &
+                                                            5256648474781286401_int64, &
+                                                            5333366829226131457_int64, &
+                                                            3782071232388661249_int64, &
+                                                            7695608871087243265_int64, &
+                                                            6693711330559393793_int64, &
+                                                            6267513125222744065_int64, &
+                                                            2502132180570865665_int64, &
+                                                            1766176229062344705_int64, &
+                                                            9026744003516694529_int64, &
+                                                            3137566041182306305_int64, &
+                                                            1951676440088936449_int64, &
+                                                            5056274384784719873_int64, &
+                                                            5500862751142051841_int64, &
+                                                            1778353465429327873_int64, &
+                                                            3556706930858655745_int64, &
+                                                            7113413861717311489_int64, &
+                                                            5003455686579847169_int64, &
+                                                            783539336304918529_int64, &
+                                                            1567078672609837057_int64, &
+                                                            3134157345219674113_int64, &
+                                                            6268314690439348225_int64, &
+                                                            3313257344023920641_int64, &
+                                                            6626514688047841281_int64, &
+                                                            4029657339240906753_int64, &
+                                                            8059314678481813505_int64, &
+                                                            6895257320108851201_int64, &
+                                                            4567142603362926593_int64, &
+                                                            9134285206725853185_int64, &
+                                                            9045198376596930561_int64, &
+                                                            8867024716339085313_int64, &
+                                                            8510677395823394817_int64, &
+                                                            7797982754792013825_int64, &
+                                                            6372593472729251841_int64, &
+                                                            3521814908603727873_int64, &
+                                                            7043629817207455745_int64, &
+                                                            4863887597560135681_int64, &
+                                                            504403158265495553_int64, &
+                                                            1008806316530991105_int64, &
+                                                            2017612633061982209_int64, &
+                                                            4035225266123964417_int64, &
+                                                            8070450532247928833_int64, &
+                                                            6917529027641081857_int64, &
+                                                            4611686018427387905_int64, &
+                                                            1_int64, &
+                                                            1_int64, &
+                                                            1_int64]
+
 contains
 
   !!
@@ -163,42 +241,46 @@ contains
   !!       f -> L (L as defined above)
   !!
   subroutine skip(self, k)
-    class(rng)     :: self
-    integer(int64) :: k         ! number of places to skip
-    integer(int64) :: Gk        ! G**k (mod M)
-    integer(int64) :: Ck        ! c*(g**k-1)/(g-1) (mod M)
-    integer(int64) :: gSq_to_i  ! g_squared to power of i (g**(2**i))
-    integer(int64) :: L         ! Sum of geometric series as defined above
+      class(rng)     :: self
+      integer(int64) :: k         ! number of places to skip
+      integer(int64) :: Gk        ! G**k (mod M)
+      integer(int64) :: Ck        ! c*(g**k-1)/(g-1) (mod M)
+      integer(int64) :: gSq_to_i  ! g_squared to power of i (g**(2**i))
+      integer(int64) :: L         ! Sum of geometric series as defined above
+      integer(shortInt) :: i
 
-    ! Set initial values
-    Gk       = 1
-    Ck       = 0
-    gSq_to_i = g
-    L        = c
+      ! Set initial values
+      Gk       = 1
+      Ck       = 0
+      gSq_to_i = g
+      L        = c
 
-    ! Can translate jump backwards to jump forwards due to periodicity of RNG
-    ! For our settings period is M
-    if(k < 0) k = k + M
+      ! Can translate jump backwards to jump forwards due to periodicity of RNG
+      ! For our settings period is M
+      if(k < 0) k = k + M
 
-    ! Unnecessary line. Sign bit of k is already 0
-    k = iand(k + M, bitMask)
+      ! Unnecessary line. Sign bit of k is already 0
+      k = iand(k + M, bitMask)
+      i = 1
+      do while( k > 0)
+        if(iand(k, 1_int64)== 1) then ! Right-most bit is 1
+          Gk = iand(Gk * gSq_to_i, bitMask)     ! Add to Gk
+          Ck = iand(Ck * gSq_to_i, bitMask) ! Add to Ck
+          Ck = iand(Ck + L, bitMask)
 
-    do while( k > 0)
-      if(iand(k, 1_int64)== 1) then ! Right-most bit is 1
-        Gk = iand(Gk * gSq_to_i, bitMask)     ! Add to Gk
-        Ck = iand(Ck * gSq_to_i + L, bitMask) ! Add to Ck
+        end if
+        L = iand(L * (gSq_to_i+1), bitMask)           ! Calculate next value of L
+        !gSq_to_i = iand(gSq_to_i*gSq_to_i, bitMask)  ! Calculate next power of g**2
+        gSq_to_i = pow_of_gsq(i)                      ! Use tabulated values to avoid compiler bugs (Temporary)
+        k = ishft(k, -1)                              ! Right shift k by 1
+        i = i + 1
 
-      end if
+      end do
 
-      L = iand(L * (gSq_to_i+1), bitMask)           ! Calculate next value of L
-      gSq_to_i = iand(gSq_to_i * gSq_to_i, bitMask) ! Calculate next power of g**2
-      k = ishft(k, -1)                              ! Right shift k by 1
-    end do
+      ! Jump forward
+      self % rngSeed = iand(Gk * self % rngSeed + Ck, bitMask)
 
-    ! Jump forward
-    self % rngSeed = iand(Gk * self % rngSeed + Ck, bitMask)
-
-  end subroutine skip
+    end subroutine skip
 
   !!
   !! Return total number of psudo-random numbers generated

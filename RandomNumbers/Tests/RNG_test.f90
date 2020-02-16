@@ -49,7 +49,7 @@ contains
     !! Get initial random number
     r_start = rand1 % get()
 
-    !! Move forward by 13456 steps
+    !! Move forward by 13456757 steps
     N = 13456757
     do i=1,N
       r_end = rand1 % get()
