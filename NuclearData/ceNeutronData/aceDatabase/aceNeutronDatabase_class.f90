@@ -180,7 +180,7 @@ contains
       return
     end if
 
-    ! Detect invalid indes
+    ! Detect invalid indices
     if( idx < 1 .or. idx > size(self % nuclides)) then
       reac => null()
       return

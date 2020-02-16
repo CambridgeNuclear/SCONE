@@ -23,7 +23,7 @@ module aceNeutronDatabase_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = " & 
+  character(*),parameter :: MAT_INPUT_STR = " &
   water { temp 273;                           &
          composition {                        &
          1001.03 5.028E-02;                   &
@@ -38,8 +38,8 @@ module aceNeutronDatabase_iTest
         }"
 
   ! CE Neutron Database specification
-  character(*),parameter :: ACE_INPUT_STR = " & 
-  aceLibrary ./IntegrationTestFiles/testLib;    " 
+  character(*),parameter :: ACE_INPUT_STR = " &
+  aceLibrary ./IntegrationTestFiles/testLib;    "
 
 contains
 
@@ -62,6 +62,7 @@ contains
     type(neutronMicroXSs)            :: microXSs
     type(neutronMacroXSs)            :: macroXSs
     real(defReal)                    :: t1, t2
+    integer(shortInt)                :: i, H1, O16, U233
     real(defReal), parameter         :: TOL = 1.0E-6
 
     ! Prepare dictionaries
@@ -130,22 +131,37 @@ contains
     ! Test getting reactions
     reac => null()
 
+
+    ! Nuclides can have diffrent indexes if Hashes do not work correctly
+    ! Need to explicitly find which index correcponds to which nuclide
+    ! Usually will be the following
     ! Nuclides 1 -> O-16
     !          2 -> U-233
     !          3 -> H-1
+    do i=1,3
+      nuc2 => aceNeutronNuclide_TptrCast( data % getNuclide(i))
+      select case(trim(adjustl(nuc2 % ZAID)))
+        case('1001.03c')
+          H1 = i
+        case('8016.03c')
+          O16 = i
+        case('92233.03c')
+          U233 = i
+      end select
+    end do
 
     ! Get Invalid Reaction
-    @assertNotAssociated( data % getReaction(N_Nl(3), 3))
-    @assertNotAssociated( data % getReaction(macroEscatter, 1))
-    @assertNotAssociated( data % getReaction(N_total, 2))
+    @assertNotAssociated( data % getReaction(N_Nl(3), H1))
+    @assertNotAssociated( data % getReaction(macroEscatter, O16))
+    @assertNotAssociated( data % getReaction(N_total, U233))
     @assertNotAssociated( data % getReaction(N_N_elastic, 4))
     @assertNotAssociated( data % getReaction(N_N_elastic, -2))
     @assertNotAssociated( data % getReaction(N_N_elastic, 0))
 
     ! Get Valid Reaction
-    @assertAssociated( data % getReaction(N_fission, 2))
-    @assertAssociated( data % getReaction(N_N_elastic, 1))
-    @assertAssociated( data % getReaction(N_NL(3), 2))
+    @assertAssociated( data % getReaction(N_fission, U233))
+    @assertAssociated( data % getReaction(N_N_elastic, O16))
+    @assertAssociated( data % getReaction(N_NL(3), U233))
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Get material names dictionary
@@ -162,10 +178,9 @@ contains
      !
     ! SET UP as a regression test! Take values with the grain of salt!
     !
-    nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(3))
-
 
     ! H-1
+    nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(H1))
     @assertEqual(ONE, 20.765855864000002_defReal/ nuc % getTotalXS(1.1E-6_defReal, p % pRNG))
 
     call nuc % getMicroXSs(microXSs, 5.6E-3_defReal, p % pRNG)
