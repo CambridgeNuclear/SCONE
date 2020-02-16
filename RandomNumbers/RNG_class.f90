@@ -251,7 +251,7 @@ contains
       integer(shortInt)          :: i
 
       ! Set initial values
-      k        = k_in ! Make local copy
+      !k        = k_in ! Make local copy
       Gk       = 1
       Ck       = 0
       gSq_to_i = g
@@ -259,10 +259,21 @@ contains
 
       ! Can translate jump backwards to jump forwards due to periodicity of RNG
       ! For our settings period is M
-      if(k < 0) k = k + M
+      if (k_in >= 0) then
+        k = k_in
+      else
+        ! Line below Must be like that
+        ! It is fully standard conforming
+        ! k = k + M which is more elegant can brake under compiler optimisation
+        ! For example gfortran 8.3 with -O3
+        ! NOTE: This assumes that M is 64bit and huge gives 2^63-1 !
+        k = huge(M) - abs(k_in) + 1
+      end if
+
 
       ! Unnecessary line. Sign bit of k is already 0
       k = iand(k + M, bitMask)
+
       i = 1
       do while( k > 0)
         if(iand(k, 1_int64) == 1) then ! Right-most bit is 1
