@@ -92,7 +92,6 @@ add_subdirectory(Tallies)
 add_subdirectory(CollisionOperator)
 add_subdirectory(TransportOperator)
 
-add_subdirectory(MOCObjects) 
 add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
