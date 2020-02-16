@@ -70,12 +70,11 @@ contains
     integer(int32)              :: bajt
     integer(shortInt)           :: i
 
-    bajt = iachar(key(1:1), int32)
+    ! There is a problem in gfortran 8.3, where if the loop
+    ! starts from 2 (1st iteration is unrolled) incorrect code
+    ! is generated
     hash = FNV_offset
-    hash = hash * FNV_prime
-    hash = ieor(hash,bajt)
-
-    do i=2,len(key)
+    do i=1,len(key)
       bajt = iachar(key(i:i), int32)
       hash = hash * FNV_prime
       hash = ieor(hash,bajt)
@@ -110,5 +109,5 @@ contains
 !
 !  end subroutine FNV_1_int64
 
-    
+
 end module hashFunctions_func

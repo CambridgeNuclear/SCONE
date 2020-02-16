@@ -67,5 +67,5 @@ contains
 
   end subroutine testKnuthHash
 
-    
+
 end module hashFunctions_test
