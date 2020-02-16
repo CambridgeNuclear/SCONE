@@ -83,6 +83,7 @@ contains
     class(tallyResult), allocatable          :: res
     real(defReal), parameter :: TOL = 1.0E-7
 
+
     ! Create score memory
     call mem % init(int(this % clerk % getSize(), longInt) , 1, batchSize = 1)
     call this % clerk % setMemAddress(1_longInt)
@@ -149,7 +150,6 @@ contains
     ! 2 -> 2 Transition
     call mem % getResult(val, 5_longInt)
     @assertEqual(1.27272727272727_defReal, val, TOL)
-
 
     ! Verify run-time result
     call this % clerk % getResult(res, mem)

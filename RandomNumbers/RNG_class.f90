@@ -240,16 +240,18 @@ contains
   !!       h -> gSq_to_i (g**(2**i))
   !!       f -> L (L as defined above)
   !!
-  subroutine skip(self, k)
-      class(rng)     :: self
-      integer(int64) :: k         ! number of places to skip
-      integer(int64) :: Gk        ! G**k (mod M)
-      integer(int64) :: Ck        ! c*(g**k-1)/(g-1) (mod M)
-      integer(int64) :: gSq_to_i  ! g_squared to power of i (g**(2**i))
-      integer(int64) :: L         ! Sum of geometric series as defined above
-      integer(shortInt) :: i
+  subroutine skip(self, k_in)
+      class(rng),intent(inout)   :: self
+      integer(int64),intent(in)  :: k_in
+      integer(int64)             :: k         ! number of places to skip
+      integer(int64)             :: Gk        ! G**k (mod M)
+      integer(int64)             :: Ck        ! c*(g**k-1)/(g-1) (mod M)
+      integer(int64)             :: gSq_to_i  ! g_squared to power of i (g**(2**i))
+      integer(int64)             :: L         ! Sum of geometric series as defined above
+      integer(shortInt)          :: i
 
       ! Set initial values
+      k        = k_in ! Make local copy
       Gk       = 1
       Ck       = 0
       gSq_to_i = g
@@ -263,9 +265,9 @@ contains
       k = iand(k + M, bitMask)
       i = 1
       do while( k > 0)
-        if(iand(k, 1_int64)== 1) then ! Right-most bit is 1
-          Gk = iand(Gk * gSq_to_i, bitMask)     ! Add to Gk
-          Ck = iand(Ck * gSq_to_i, bitMask) ! Add to Ck
+        if(iand(k, 1_int64) == 1) then ! Right-most bit is 1
+          Gk = iand(Gk * gSq_to_i, bitMask)  ! Add to Gk
+          Ck = iand(Ck * gSq_to_i, bitMask)  ! Add to Ck
           Ck = iand(Ck + L, bitMask)
 
         end if
@@ -274,7 +276,6 @@ contains
         gSq_to_i = pow_of_gsq(i)                      ! Use tabulated values to avoid compiler bugs (Temporary)
         k = ishft(k, -1)                              ! Right shift k by 1
         i = i + 1
-
       end do
 
       ! Jump forward

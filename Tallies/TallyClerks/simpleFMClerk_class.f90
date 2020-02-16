@@ -293,8 +293,13 @@ contains
     select type(res)
       class is(FMresult)
         ! Check size and reallocate space if needed
-        if( any(shape(res % FM) /= [self % N, self % N, 2])) then
-          if(allocated(res % FM)) deallocate(res % FM)
+        ! This is horrible. Hove no time to polish. Blame me (MAK)
+        if (allocated(res % FM)) then
+          if( any(shape(res % FM) /= [self % N, self % N, 2])) then
+            deallocate(res % FM)
+            allocate(res % FM(self % N, self % N, 2))
+          end if
+        else
           allocate(res % FM(self % N, self % N, 2))
         end if
 
