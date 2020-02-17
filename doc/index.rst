@@ -47,7 +47,7 @@ author that the jam goes on top the cream.
    Dictionary Input
    Unit Testing
    Style Guide
-
+   Tutorials/index
 
 
 .. Indices and tables
