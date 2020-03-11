@@ -2,22 +2,23 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 pipelines:
-  default:
-    - step:
-        name: gfortran-6
-        image: mikolajkowalski/ubuntu-pfunit:6
-        script: # Will execute the following commands
-          - ./scripts/install_scone.sh 
-          - ./scripts/run_tests.sh
-    - step:
-        name: gfortran-7
-        image: mikolajkowalski/ubuntu-pfunit:7
-        script: # Will execute the following commands
-          - ./scripts/install_scone.sh 
-          - ./scripts/run_tests.sh
-    - step:
-        name: gfortran-8
-        image: mikolajkowalski/ubuntu-pfunit:8
-        script: # Will execute the following commands
-          - ./scripts/install_scone.sh 
-          - ./scripts/run_tests.sh
+  custom:
+    tests:
+      - step:
+          name: gfortran-6
+          image: mikolajkowalski/ubuntu-pfunit:6
+          script: # Will execute the following commands
+            - ./scripts/install_scone.sh 
+            - ./scripts/run_tests.sh
+      - step:
+          name: gfortran-7
+          image: mikolajkowalski/ubuntu-pfunit:7
+          script: # Will execute the following commands
+            - ./scripts/install_scone.sh 
+            - ./scripts/run_tests.sh
+      - step:
+          name: gfortran-8
+          image: mikolajkowalski/ubuntu-pfunit:8
+          script: # Will execute the following commands
+            - ./scripts/install_scone.sh 
+            - ./scripts/run_tests.sh
