@@ -1,6 +1,7 @@
 module charTape_class
 
   use numPrecision
+  use genericProcedures, only : fatalError, numToChar
 
   implicit none
   private
@@ -21,6 +22,9 @@ module charTape_class
   contains
     generic    :: append => append_tape, append_char
     procedure  :: expose
+    procedure  :: segment
+    procedure  :: scanFrom
+    procedure  :: get
     procedure  :: cut
     procedure  :: length
     procedure  :: clean
@@ -42,6 +46,109 @@ contains
     tape = self % tape(1:self % end)
 
   end function expose
+
+  !!
+  !! Wrapper around scan intrinsic procedure for charTape
+  !!
+  !! Args:
+  !!   start [in] -> Starting location for the search
+  !!   set [in] -> Set of chacracters to find
+  !!
+  !! Result:
+  !!   Location of the fisrs symbol in 'set' relative to start location
+  !!   Returns 0 if no symbol is found
+  !!
+  !! Errors:
+  !!   fatalError if start is not +ve or > then length
+  !!
+  function scanFrom(self, start, set) result(pos)
+    class(charTape), intent(in)   :: self
+    integer(shortInt), intent(in) :: start
+    integer(shortInt)             :: pos
+    character(*), intent(in)      :: set
+    character(100), parameter :: Here = 'scan (charTape_class.f90)'
+
+    ! Deal with errors
+    if(start <= 0) then
+      call fatalError(Here, 'Start cannot be -ve. Wa given: '//numToChar(start))
+    elseif(start > self % length()) then
+      call fatalError(Here,'Start: '//numToChar(start)//' is beyond length of tape: '//&
+                            numToChar(self % length()))
+    end if
+
+    ! Return result
+    pos = scan(self % tape(start:self % length()), set)
+
+  end function scanFrom
+
+  !!
+  !! Copy return a segment of a charTape
+  !!
+  !! Args:
+  !!   start [in] -> Starting location
+  !!   end [in]   -> Ending location
+  !!
+  !! Result:
+  !!   Character of length = end-start. Contains the section of the tape
+  !!
+  !! Errors:
+  !!   fatalError if start is 0 or 0-ve
+  !!   fatalErrror if end < start (Unless segments on creation of c with -ve len)
+  !!
+  function segment(self, start, end) result(c)
+    class(charTape), intent(in)   :: self
+    integer(shortInt), intent(in) :: start
+    integer(shortInt), intent(in) :: end
+    character(end-start + 1)      :: c
+    character(100), parameter :: Here = 'segment (charTape_class.f90)'
+
+    ! Process potential erros
+    if (start <= 0) then
+      call fatalError(Here, 'Start is not +ve: '//numToChar(start))
+    elseif (end < start) then
+      call fatalError(Here,'End: '//numToChar(end)//' is < to start: '//numToChar(start))
+    elseif (end > self % length()) then
+      call fatalError(Here,'End: '//numToChar(end)//' is beyond length of tape: '//&
+                            numToChar(self % length()))
+    end if
+
+    ! Return segment
+    c = self % tape(start:end)
+
+  end function segment
+
+
+  !!
+  !! Return character at poistion pos
+  !!
+  !! Args:
+  !!   pos [in] -> Integer. Position to get character from
+  !!
+  !! Result:
+  !!   Character at position pos
+  !!
+  !! Errors:
+  !!   fatalError if pos > length of the tape
+  !!   fatalError if pox <= 0
+  !!
+  function get(self, pos) result(c)
+    class(charTape), intent(in)   :: self
+    integer(shortInt), intent(in) :: pos
+    character(1)                  :: c
+    character(100), parameter :: Here ='get (charTape_class.f90)'
+
+     ! Error messages
+     if (pos <= 0) then
+       call fatalError(Here,'Position cannot be -ve. Was given '//numToChar(pos))
+     elseif (pos > self % length()) then
+       call fatalError(Here, 'Position: '//numToChar(pos)//&
+                             ' is larger then tape length: '//numToChar(self % length()))
+     end if
+
+     c = self % tape(pos:pos)
+
+  end function get
+
 
   !!
   !! Returns length of the string
@@ -148,5 +255,4 @@ contains
     end if
   end subroutine resize
 
-    
 end module charTape_class
