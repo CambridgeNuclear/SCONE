@@ -53,6 +53,7 @@ contains
   !! Args:
   !!   start [in] -> Starting location for the search
   !!   set [in] -> Set of chacracters to find
+  !!   end [in] -> Optional. End of a region to search
   !!
   !! Result:
   !!   Location of the fisrs symbol in 'set' relative to start location
@@ -61,23 +62,32 @@ contains
   !! Errors:
   !!   fatalError if start is not +ve or > then length
   !!
-  function scanFrom(self, start, set) result(pos)
-    class(charTape), intent(in)   :: self
-    integer(shortInt), intent(in) :: start
-    integer(shortInt)             :: pos
-    character(*), intent(in)      :: set
+  function scanFrom(self, start, set, end) result(pos)
+    class(charTape), intent(in)             :: self
+    integer(shortInt), intent(in)           :: start
+    character(*), intent(in)                :: set
+    integer(shortInt), optional, intent(in) :: end
+    integer(shortInt)                       :: pos
+    integer(shortInt)                       :: end_loc
     character(100), parameter :: Here = 'scan (charTape_class.f90)'
+
+    ! Set end of the search interval
+    if (present(end)) then
+      end_loc = min(end, self % length())
+    else
+      end_loc = self % length()
+    end if
 
     ! Deal with errors
     if(start <= 0) then
       call fatalError(Here, 'Start cannot be -ve. Wa given: '//numToChar(start))
-    elseif(start > self % length()) then
-      call fatalError(Here,'Start: '//numToChar(start)//' is beyond length of tape: '//&
-                            numToChar(self % length()))
+    elseif(start > end_loc) then
+      call fatalError(Here,'Start: '//numToChar(start)//' is beyond length of search interval: '//&
+                            numToChar(end_loc))
     end if
 
     ! Return result
-    pos = scan(self % tape(start:self % length()), set)
+    pos = scan(self % tape(start:end_loc), set)
 
   end function scanFrom
 
