@@ -13,13 +13,26 @@ module dictParser_func
   public :: charToDict
 
 
+  ! Parameters
   integer(shortInt), parameter :: MAX_COLUMN = 1000
   character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
-
   integer(shortInt), parameter :: CONV_INT = 1, CONV_REAL = 2, CONV_CHAR = 3, CONV_UDEF = 0
 
   !!
+  !! Psuedo dynamic type for reading entries
   !!
+  !! Can read INT, REAL and CHARACTER
+  !! Which one was read is indicated by type in {CONV_INT, CONV_REAL, CONV_CHAR}
+  !!
+  !! Public Members:
+  !!   i -> Value of the integer if type == CONV_INT
+  !!   r -> Value of the real if type == CONV_REAL
+  !!   c -> Contents of character if type == CONV_CHAR
+  !!   type -> Current type of the reader
+  !!
+  !! Interface:
+  !!   convert -> read contents of the pathLen-long character into
+  !!              i,r or c & set approperiate type
   !!
   type, private :: reader
     integer(shortInt)  :: i = 0
@@ -36,8 +49,27 @@ contains
   !!
   !! Reads contents of a file into dictionary
   !!
-  !! Follows the SCONE dictionary grammar
-  !!  TODO: Define grammar and tell here where one can find it
+  !! Follows the SCONE dictionary grammar see Documentation for more detailed explenation.
+  !!
+  !! Informal definition of the grammar follows here. In general leading and trailing spaces
+  !! are allowed for each <component>. When at least one space is REQUIRED it is marked with ' '
+  !!
+  !! <DICTIONARY> ::= <ITEM>+                           ! Dictionary consists of 1 or more ITEMS
+  !! <ITEM>       ::= <ENTRY>|<KEYWORD>{<DICTIONARY>}
+  !! <ENTRY>      ::= <KEYWORD>' '<CONTENT>;            ! At least 1 space in-between <keyword> & <content>
+  !! <CONTENT>    ::= <SINGLE_CONTENT>|(<LIST_CONTENT>)
+  !! <SINGLE_CONTENT> ::= Int|Real|Word
+  !! <LIST_CONTENT> ::= <IntList>|<realList>|<charList>
+  !! <IntList> ::= Space Separated Integers e.g.: 1 2   3
+  !! <realList> ::= Space separated Numbers e.g.: 1.0 2   3.0E+2
+  !! <charList> ::= Space separated not-numbers e.g.: 1.0\ word       char
+  !! <KEYWORD>  ::= Character string with len_trim < nameLen constant
+  !!
+  !! Important facts to note:
+  !!  1) Keywords are Case Sensitive keYwORD /= keyword
+  !!  2) No words can contain whitespaces: kkkk -> OK; kk kk -> NOT OK
+  !!  3) Format is free form but maximum column is set as a parameter to 1000
+  !!  4) Only 32bit Integers can be read 
   !!
   !! Args:
   !!   dict [inout] -> dictionary that will be filled with contents of a file. Can be both
@@ -46,6 +78,7 @@ contains
   !!
   !! Errors:
   !!   fatalError if file under filePath does not exist
+  !!   fatalError if file contains extra } symbols
   !!
   subroutine fileToDict(dict, filePath)
     class(dictionary), intent(inout) :: dict
@@ -115,7 +148,20 @@ contains
   end subroutine fileToDict
 
   !!
+  !! Reads contents of a char string into dictionary
   !!
+  !! Follows the SCONE dictionary grammar. See documentation and fileToDict for more details.
+  !! String is interpreted as a single line! Even when it contains NEWLINE Characters!
+  !! As a result no comments are allowed!
+  !!
+  !! Args:
+  !!   dict [inout] -> dictionary that will be filled with contents of a string. Can be both
+  !!                   initialised or uninitialised
+  !!   data [in]    -> Character String that contains the data
+  !!
+  !! Errors:
+  !!   fatalError if 'data' contains comment tokens ('//' & '!')
+  !!   fatalError if 'data' contains extra } tokens
   !!
   subroutine charToDict(dict, data)
     class(dictionary), intent(inout) :: dict
@@ -167,6 +213,8 @@ contains
   !!
   !! Finish parsing when dict end symbol '}' is encountered
   !!
+  !! This is recursive subroutine. Goes down a level whenever new subdictionary is encountered
+  !!
   !! Args:
   !!   dict [inout] -> Initialised dictionary to load content into
   !!   pos [inout]  -> Starting position. Set to ending position on return
@@ -174,6 +222,7 @@ contains
   !!
   !! Errors:
   !!   fatalError if was given a tape without ';' '{' or '}' characters
+  !!   fatalError if invalid syntax is encountered
   !!
   recursive subroutine parseDict(dict, pos, tape)
     class(dictionary), intent(inout) :: dict
@@ -258,6 +307,7 @@ contains
   !!
   !! Errors:
   !!   fatalError if start <= end
+  !!   fatalError if parsing fails due to wrong input
   !!
   subroutine readEntry(dict, start, end, tape)
     class(dictionary), intent(inout) :: dict
@@ -359,7 +409,14 @@ contains
   end subroutine readEntry
 
   !!
-  !! Read List
+  !! Read List Content of an entry
+  !!
+  !! Valid lists are:
+  !!   intList  -> contains only integers e.g. name (1 2 3);
+  !!   realList -> contains only integers and reals e.g. name (1.0 2 3 1.0E-70);
+  !!   charList -> contains only words (no numbers) e.g.:
+  !!               name (1.0/ char word); -> IS OK!
+  !!               name (1.0 char word);  -> IS NOT ALLOWED
   !!
   !! Args:
   !!   dict [inout] -> Initialise dictionary to load content into
@@ -367,6 +424,10 @@ contains
   !!   start [in]   -> Starting position on the tape
   !!   end [in]     -> Ending position on the tape
   !!   tape [in]    -> charTape with file contents
+  !!
+  !! Errors:
+  !!   fatalError if input syntax is incorrect
+  !!   fatalError if if list is not one of the valid types
   !!
   subroutine readList(dict, name, start, end, tape)
     class(dictionary), intent(inout) :: dict
@@ -550,6 +611,12 @@ contains
   !!
   !! Sets self % type to {CONV_INT, CONV_FLOAT, CONV_CHAR}
   !! loads value into approperite member {i, f, c}
+  !!
+  !! To identify entries uses 'read' Fortran data-transfer with following formats:
+  !!   INT  -> '(I80)'
+  !!   REAL -> '(ES.80.80)'
+  !!   CHAR -> If both INT & REAL return error during reading
+  !! The above assumes that pathLen=80
   !!
   !! Args:
   !!   buffer [in] -> pathLen long character with content to read
