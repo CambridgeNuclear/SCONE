@@ -10,6 +10,7 @@ module dictParser_func
 
   !! Public procedures
   public :: fileToDict
+  public :: charToDict
 
 
   integer(shortInt), parameter :: MAX_COLUMN = 1000
@@ -112,6 +113,52 @@ contains
     end if
 
   end subroutine fileToDict
+
+  !!
+  !!
+  !!
+  subroutine charToDict(dict, data)
+    class(dictionary), intent(inout) :: dict
+    character(*), intent(in)         :: data
+    character(len(data))             :: loc_data
+    type(charTape)                   :: file
+    integer(shortInt)                :: i, pos
+    character(100),parameter :: Here = 'charToDict (dictParser_func.f90)'
+
+    ! Check that data string has no comment
+    do i=1,size(cmtSigns)
+      if(index(data, trim(cmtSigns(i))) /= 0) then
+        call fatalError(Here, 'Detected line comment sign: '//trim(cmtSigns(i))//&
+                              ' Comments are nor allowes in dictionary made of character string')
+      end if
+    end do
+
+    ! Remove Blank characters that can cause confusion
+    loc_data = data
+    call replaceChar(loc_data,char(9),' ')        ! Change tabs to single space
+    call replaceChar(loc_data,new_line(' '), ' ') ! Replace New Line with space
+
+    ! Create document charTape
+    call file % append(loc_data)
+    call file % append('}' )
+
+    ! Reinitialise dictionary
+    call dict % kill()
+    call dict % init(5)
+
+    ! Parse
+    pos = 1
+    call parseDict(dict, pos, file)
+
+    ! Make sure there are no leftovers in the file
+    ! Remember that pos will be 1 over last '}'
+    if(pos-1 /= file % length()) then
+      call fatalError(Here,"Not entire string was read. It means that there must be an &
+                           &extra '}' bracket somwhere. ")
+    end if
+
+  end subroutine charToDict
+
 
 
   !!
