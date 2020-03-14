@@ -2,7 +2,8 @@ module multiMap_test
   use numPrecision
   use pFUnit_mod
   use particle_class,          only : particleState
-  use IOdictionary_class,      only : IOdictionary
+  use dictionary_class,        only : dictionary
+  use dictParser_func,         only : charToDict
   use multiMap_class,          only : multiMap
   use outputFile_class,        only : outputFile
   implicit none
@@ -24,7 +25,7 @@ contains
   !!
   subroutine setUp(this)
     class(test_multiMap), intent(inout) :: this
-    type(IOdictionary)                  :: tempDict
+    type(dictionary)                    :: tempDict
     character(*),parameter :: def = "                                       &
       type multiMap;                                                        &
       maps (map1 map2 map3);                                                &
@@ -33,7 +34,7 @@ contains
       map3 {type spaceMap; axis z; grid unstruct; bins (0.0 3.0 6.0); }     "
 
 
-    call tempDict % initFromChar(def)
+    call charToDict(tempDict, def)
     call this % map % init(tempDict)
 
     call tempDict % kill()

@@ -4,7 +4,7 @@ module baseMgNeutronDatabase_iTest
   use endfConstants
   use pFUnit_mod
   use dictionary_class,   only : dictionary
-  use IOdictionary_class, only : IOdictionary
+  use dictParser_func,    only : charToDict
   use particle_class,     only : particle
 
   ! Nuclear Data Objects & Interfaces
@@ -28,7 +28,7 @@ module baseMgNeutronDatabase_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = "   & 
+  character(*),parameter :: MAT_INPUT_STR = "   &
   mat1 { temp 273;                              &
          composition {                          &
          1001.03 5.028E-02;                     &
@@ -55,7 +55,7 @@ contains
     type(baseMgNeutronDatabase), target  :: database
     class(nuclearDatabase), pointer      :: data_ptr
     type(dictionary)                     :: databaseDef
-    type(IOdictionary)                   :: matMenuDict
+    type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
     type(neutronMacroXSs)                :: xss
     type(baseMgNeutronMaterial),pointer  :: mat
@@ -67,7 +67,7 @@ contains
     data_ptr => database
 
     ! Load materialMenu
-    call matMenuDict % initFromChar(MAT_INPUT_STR)
+    call charToDict(matMenuDict, MAT_INPUT_STR)
     call mm_init(matMenuDict )
 
     ! Build database
@@ -181,7 +181,7 @@ contains
     type(baseMgNeutronDatabase), target  :: database
     class(nuclearDatabase), pointer      :: data_ptr
     type(dictionary)                     :: databaseDef
-    type(IOdictionary)                   :: matMenuDict
+    type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
     type(neutronMacroXSs)                :: xss
     type(baseMgNeutronMaterial),pointer  :: mat
@@ -193,7 +193,7 @@ contains
     data_ptr => database
 
     ! Load materialMenu
-    call matMenuDict % initFromChar(MAT_INPUT_STR)
+    call charToDict(matMenuDict, MAT_INPUT_STR)
     call mm_init(matMenuDict )
 
     ! Build database

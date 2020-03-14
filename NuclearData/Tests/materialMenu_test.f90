@@ -2,7 +2,7 @@ module materialMenu_test
 
   use numPrecision
   use dictionary_class,   only : dictionary
-  use IOdictionary_class, only : IOdictionary
+  use dictParser_func,    only : charToDict
 
   use materialMenu_mod,   only : init_menu => init, kill_menu => kill, nameMap, materialDefs, &
                                               display, nMat, getMatPtr, materialItem
@@ -10,7 +10,7 @@ module materialMenu_test
 
   implicit none
 
-  character(*),parameter :: INPUT_STR = "     & 
+  character(*),parameter :: INPUT_STR = "     &
   mat1 { temp 273;                            &
          composition {                        &
          1001.03 12;                          &
@@ -31,7 +31,7 @@ contains
   !!
 @Test
   subroutine testMaterialMenu()
-    type(IOdictionary)         :: matDict
+    type(dictionary)           :: matDict
     type(dictionary)           :: emptyDict
     type(materialItem),pointer :: matPtr
     integer(shortInt)          :: i1, i2, i
@@ -44,7 +44,7 @@ contains
     call kill_menu()
 
     ! Build some real definitions
-    call matDict % initFromChar(INPUT_STR)
+    call charToDict(matDict, INPUT_STR)
     call init_menu(matDict)
 
     ! Check that materials are present in the nameMap
@@ -106,5 +106,5 @@ contains
 
   end subroutine testMaterialMenu
 
-    
+
 end module materialMenu_test

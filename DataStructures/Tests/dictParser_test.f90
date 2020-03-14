@@ -26,7 +26,7 @@ contains
                                        intArray (1 2 4 5);                      &
                                        realArray (1.1 2.2 3.4);                 &
                                        charArray (One element );                &
-                                       subDict { myInt 3; myReal 3.2; }         "
+                                       subDict { myInt 3; myReal 3.2; }"
 
 
     ! Create dictionary

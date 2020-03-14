@@ -3,13 +3,14 @@ program scone
   use numPrecision
   use genericProcedures,          only : printStart
   use commandLineUI,              only : getInputFile
-  use IOdictionary_class,         only : IOdictionary
+  use dictionary_class,           only : dictionary
+  use dictParser_func,            only : fileToDict
   use physicsPackage_inter,       only : physicsPackage
   use physicsPackageFactory_func, only : new_physicsPackage
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none
-  type(IOdictionary)                :: input
+  type(dictionary)                  :: input
   class(physicsPackage),allocatable :: core
   character(:),allocatable          :: inputPath
   integer(shortInt)                 :: timerIdx
@@ -24,7 +25,7 @@ program scone
 
   call printStart()
 
-  call input % initFrom(inputPath)
+  call fileToDict(input, inputPath)
 
   call timerStart(timerIdx)
 

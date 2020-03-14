@@ -3,7 +3,7 @@ module materialMap_test
   use pFUnit_mod
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
-  use IOdictionary_class,      only : IOdictionary
+  use dictParser_func,         only : charToDict
   use outputFile_class,        only : outputFile
 
   ! May not be ideal but there is a dependance on Global materialMenu
@@ -52,7 +52,7 @@ contains
     class(test_materialMap), intent(inout) :: this
     integer(shortInt)                 :: temp
     integer(shortInt)                 :: i
-    type(IOdictionary)                :: dict
+    type(dictionary)                  :: dict
     type(dictionary)                  :: mapDict1
 
 
@@ -74,7 +74,7 @@ contains
 
 
     ! Build nuclear data
-    call dict % initFromChar(DICT_DEF)
+    call charToDict(dict, DICT_DEF)
     call mm_init(dict)
 
     ! Initialise dictionaries

@@ -5,7 +5,7 @@ module aceNeutronDatabase_iTest
   use universalVariables
   use genericProcedures,        only : linFind
   use dictionary_class,         only : dictionary
-  use IOdictionary_class,       only : IOdictionary
+  use dictParser_func,          only : charToDict
   use charMap_class,            only : charMap
   use particle_class,           only : particle
   use aceNeutronDatabase_class, only : aceNeutronDatabase
@@ -50,8 +50,8 @@ contains
   subroutine test_aceNeutronDatabase()
     type(aceNeutronDatabase), target :: data
     class(nuclearDatabase), pointer  :: ptr
-    type(IOdictionary)               :: matDict
-    type(IOdictionary)               :: dataDict
+    type(dictionary)                 :: matDict
+    type(dictionary)                 :: dataDict
     type(ceNeutronMaterial),pointer  :: mat
     class(ceNeutronNuclide), pointer :: nuc
     type(aceNeutronNuclide), pointer :: nuc2
@@ -66,8 +66,8 @@ contains
     real(defReal), parameter         :: TOL = 1.0E-6
 
     ! Prepare dictionaries
-    call matDict % initFromChar(MAT_INPUT_STR)
-    call dataDict % initFromChar(ACE_INPUT_STR)
+    call charToDict(matDict, MAT_INPUT_STR)
+    call charToDict(dataDict, ACE_INPUT_STR)
 
     ! Build material menu
     call mm_init(matDict)

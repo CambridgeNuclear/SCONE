@@ -6,7 +6,7 @@ module baseMgNeutronDatabase_class
   use particle_class,     only : particle
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
-  use IOdictionary_class, only : IOdictionary
+  use dictParser_func,    only : fileToDict
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,   only : nuclearDatabase
@@ -250,7 +250,7 @@ contains
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
     character(nameLen)                                 :: scatterKey
-    type(IOdictionary)                                 :: tempDict
+    type(dictionary)                                   :: tempDict
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -283,7 +283,7 @@ contains
       end if
 
       ! Load dictionary
-      call tempDict % initFrom(path)
+      call fileToDict(tempDict, path)
       call self % mats(i) % init(tempDict, scatterKey)
 
     end do

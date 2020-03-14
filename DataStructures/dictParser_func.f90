@@ -140,7 +140,8 @@ contains
 
     ! Create document charTape
     call file % append(loc_data)
-    call file % append('}' )
+    ! parceDict does not like '}}' ending so add an extra space
+    call file % append(' }' )
 
     ! Reinitialise dictionary
     call dict % kill()
@@ -219,6 +220,8 @@ contains
           call parseDict(tempDict, fin, tape)
           call dict % store(name, tempDict)
           pos = fin
+          ! Kill dictionary before the next use
+          call tempDict % kill()
 
         case('}') ! End of dictionary
           ! Check that only blanks are present
