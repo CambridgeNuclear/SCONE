@@ -8,17 +8,30 @@ pipelines:
           name: gfortran-6
           image: mikolajkowalski/ubuntu-pfunit:6
           script: # Will execute the following commands
-            - ./scripts/install_scone.sh 
+            - ./scripts/install_scone.sh
             - ./scripts/run_tests.sh
       - step:
           name: gfortran-7
           image: mikolajkowalski/ubuntu-pfunit:7
           script: # Will execute the following commands
-            - ./scripts/install_scone.sh 
+            - ./scripts/install_scone.sh
             - ./scripts/run_tests.sh
       - step:
           name: gfortran-8
           image: mikolajkowalski/ubuntu-pfunit:8
           script: # Will execute the following commands
-            - ./scripts/install_scone.sh 
+            - ./scripts/install_scone.sh
             - ./scripts/run_tests.sh
+    cream_test:
+      - step:
+        name: Python-3.6
+        image: python:3.6-slim
+        script:
+          - ./scripts/install_cream.sh
+          - ./scripts/test_cream.sh
+      - step:
+        name: Python-3.6
+        image: python:3.7-slim
+        script:
+          - ./scripts/install_cream.sh
+          - ./scripts/test_cream.sh

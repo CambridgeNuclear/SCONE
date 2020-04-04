@@ -2830,4 +2830,91 @@ UCRL50400,Vol.6,Rev.5 DIST-DEC06                       20010927    600 1451    6
  0.000000+0 0.000000+0          0          0          0          0 60027  099999
  0.000000+0 0.000000+0          0          0          0          0 600 0  0    0
  0.000000+0 0.000000+0          0          0          0          0   0 0  0    0
+ 8.000000+3 15.8619530         -1          0          0          0 800 1451    1
+ 0.000000+0 0.000000+0          0          0          0          6 800 1451    2
+ 0.000000+0 0.000000+0          0          0          6          6 800 1451    3
+ 0.000000+0 0.000000+0          0          0         59          2 800 1451    4
+  8-O -  0 LLNL       Eval-Dec90 D.E.Cullen                        800 1451    5
+UCRL-50400,Vol.30     Dist-Nov01                                   800 1451    6
+----ENDF/B-VI         MATERIAL  100                                800 1451    7
+-----ATOMIC RELAXATION DATA                                        800 1451    8
+------ENDF-6 FORMAT                                                800 1451    9
+================================================================== 800 1451   10
+The Livermore Evaluated Atomic Data Library (EADL) in the          800 1451   11
+ENDF-6 Format. Translated from the Livermore ENDL format           800 1451   12
+to the ENDF-6 Format by Bob MacFarlane (Los Alamos).               800 1451   13
+================================================================== 800 1451   14
+  Contents                                                         800 1451   15
+================================================================== 800 1451   16
+  MF/MT    Description                                             800 1451   17
+================================================================== 800 1451   18
+  28/533   Atomic Relaxation Data for Electrons and Photons        800 1451   19
+================================================================== 800 1451   20
+  Warning                                                          800 1451   21
+================================================================== 800 1451   22
+  MF/MT combinations used to define ALL electron interaction data  800 1451   23
+  are newly defined MF/MT numbers for ENDF/B-VI that did not exist 800 1451   24
+  in earlier versions of ENDF/B.                                   800 1451   25
+================================================================== 800 1451   26
+  Definition of Data                                               800 1451   27
+================================================================== 800 1451   28
+  Atomic Relaxation Data for Electrons and Photons                 800 1451   29
+================================================================== 800 1451   30
+1) An atom can be ionized by a photon or an electron interaction.  800 1451   31
+2) The atomic relaxation data included here describes how a        800 1451   32
+   singly ionized atom returns to neutrality, by emitting photons  800 1451   33
+   (x-rays) and/or electrons (Auger, Coster-Kronig).               800 1451   34
+3) Data is given to define the transition probabilities between    800 1451   35
+   subshells for radiative (x-ray emission) and non-radiative      800 1451   36
+   (Auger, Coster-Kronig) transitions.                             800 1451   37
+4) The complete spectrum of emitted photons and electrons can be   800 1451   38
+   calculated using the data included here, e.g., see ref. 2,      800 1451   39
+   below, for am example of a computer code that analytically      800 1451   40
+   calculates these spectra.                                       800 1451   41
+================================================================== 800 1451   42
+  References                                                       800 1451   43
+================================================================== 800 1451   44
+1) S.T. Perkins, D.E. Cullen, etal., "Tables and Graphs of Atomic  800 1451   45
+   Subshell and Relaxation Data Derived from the LLNL Evaluated    800 1451   46
+   Atomic Data Library (EADL), Z = 1 - 100", UCRL-50400, Vol. 30,  800 1451   47
+   Lawrence Livermore National Laboratory (1991).                  800 1451   48
+2) D.E. Cullen "Program RELAX: A Code Designed to Calculate X-Ray  800 1451   49
+   and Electron Emission Spectra as Singly Charged Atoms Relax     800 1451   50
+   Back to Neutrality", UCRL-ID-110438, Lawrence Livermore         800 1451   51
+   National Laboratory (1992).                                     800 1451   52
+                                                                   800 1451   53
+  These are the primary references to the contents of this library 800 1451   54
+  and they contain a complete list of references to the sources    800 1451   55
+  of data used in this library, methods of evaluation, accuracy    800 1451   56
+  of the data, etc.                                                800 1451   57
+================================================================== 800 1451   58
+  History                                                          800 1451   59
+================================================================== 800 1451   60
+ (1) November, 1991 - Initial release in the ENDL format.          800 1451   61
+ (2) November, 2001 - Initial release in the ENDF-6 format.        800 1451   62
+================================================================== 800 1451   63
+                                1        451         65          0 800 1451   64
+                               28        533         17          0 800 1451   65
+                                                                   800 1  0   66
+                                                                   800 0  0   67
+ 8.000000+3 15.8619530          0          0          4          0 80028533   68
+ 1.000000+0 0.000000+0          0          0         54          8 80028533   69
+ 5.372800+2 2.000000+0 0.000000+0 0.000000+0 0.000000+0 0.000000+0 80028533   70
+ 3.000000+0 0.000000+0 5.230900+2 1.907680-3 0.000000+0 0.000000+0 80028533   71
+ 4.000000+0 0.000000+0 5.231300+2 3.800270-3 0.000000+0 0.000000+0 80028533   72
+ 2.000000+0 2.000000+0 4.788200+2 1.786440-1 0.000000+0 0.000000+0 80028533   73
+ 2.000000+0 3.000000+0 4.938600+2 1.162240-1 0.000000+0 0.000000+0 80028533   74
+ 2.000000+0 4.000000+0 4.939000+2 2.304180-1 0.000000+0 0.000000+0 80028533   75
+ 3.000000+0 3.000000+0 5.089000+2 1.108220-2 0.000000+0 0.000000+0 80028533   76
+ 3.000000+0 4.000000+0 5.089400+2 2.911150-1 0.000000+0 0.000000+0 80028533   77
+ 4.000000+0 4.000000+0 5.089800+2 1.668090-1 0.000000+0 0.000000+0 80028533   78
+ 2.000000+0 0.000000+0          0          0          6          0 80028533   79
+ 2.923000+1 2.000000+0 0.000000+0 0.000000+0 0.000000+0 0.000000+0 80028533   80
+ 3.000000+0 0.000000+0          0          0          6          0 80028533   81
+ 1.419000+1 1.330000+0 0.000000+0 0.000000+0 0.000000+0 0.000000+0 80028533   82
+ 4.000000+0 0.000000+0          0          0          6          0 80028533   83
+ 1.415000+1 2.670000+0 0.000000+0 0.000000+0 0.000000+0 0.000000+0 80028533   84
+                                                                   80028  0   85
+                                                                   800 0  0   86
+                                                                     0 0  0   87
  0.000000+0 0.000000+0          0          0          0          0  -1 0  0    0
