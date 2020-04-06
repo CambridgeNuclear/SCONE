@@ -30,7 +30,7 @@ pipelines:
             - ./scripts/install_cream.sh
             - ./scripts/test_cream.sh
       - step:
-          name: Python-3.6
+          name: Python-3.7
           image: python:3.7-slim
           script:
             - ./scripts/install_cream.sh
