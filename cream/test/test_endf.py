@@ -1,4 +1,4 @@
-import cream.ENDF as endf
+import cream.endf as endf
 from pytest import approx, raises
 
 def test_endf_float_conversions():
