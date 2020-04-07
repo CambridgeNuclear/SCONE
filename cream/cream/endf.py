@@ -193,6 +193,9 @@ class ENDFTape:
         st += "Opened File: " + self._handle.name
         return st
 
+    def __str__(self):
+        return self._handle.name
+
     def has(self, MAT, MF=None, MT=None):
         """ Enquire about contents of a tape
 

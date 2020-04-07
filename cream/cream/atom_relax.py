@@ -106,17 +106,19 @@ class AtomRelax:
         if not tape.has(MAT=MAT, MF=28, MT=533):
             msg = ('Could not find atomic relaxation data (MF=28, MT=533) for '
                    'the element with Z={1} on ENDFTape from '
-                   'file {}'.format(Z, tape.name))
+                   'file {}'.format(Z, tape))
             raise ValueError(msg)
 
         # Read data
         # Header
         tape.set_to(MAT=MAT, MF=28, MT=533)
         self._charge, _, _, _, self._subshellNum, _ = tape.readHEAD()
+        self._charge = int(self._charge/1000.0)
 
         # Subshell data
         for _ in range(self._subshellNum):
             ss, _, _, _, length, _, data = tape.readLIST()
+            ss = int(ss)
 
             # Change rank of the list so it is list of lists of length 6
             # if the ENDF is formatted correctly length of the list WILL BE
@@ -145,3 +147,68 @@ class AtomRelax:
                    'Check that number of subshells matches number of '
                    'provided lists'.format(tape.name, MAT))
             raise ValueError(msg)
+
+    def check(self, tol=1.0e-6):
+        """ Check consistency of the data
+
+        Raises exception if there are inconsistencies in the data
+
+        Args:
+            tol (float, optional): Absolute tolerance for summing fractional
+                probabilities to 1. Must be +ve. Default: 1.0E-6
+
+        Raises:
+            ValueError: Data is not consistant
+        """
+        eCount = 0
+
+        # Mismatch betwen number of subshells and sictionary entries
+        if self._subshellNum != len(self._subshells):
+            msg = ('Mismatch between number of subshells in the header: {} '
+                   'and subshells for which data was provided: {}'
+                   .format(self._subshellNum, len(self._subshells)))
+            raise ValueError
+
+        # Loope over all subshells
+        for ss, data in self._subshells.items():
+            # Count total number of electrons
+            eCount += data[1]
+
+            # Sum all transition probabilities
+            totProb = sum([trans[3] for trans in data[2]])
+
+            # Change to deviation. totProb may be 0.0 if there
+            # are no transitions
+            totProb -= 1.0 if totProb != 0.0 else 0.0
+            if abs(totProb) > tol:
+                msg = ('For subshell: {}({}) fractional probabilities do not'
+                       ' sum to within tolerance: {}. Deviation is: {}'
+                       .format(ss, ATOMIC_SUBSHELL[ss], tol, totProb))
+                raise ValueError(msg)
+
+            # Check that all transitions refer to present subshells
+            for trans in data[2]:
+                # Check electron origin for every transition
+                if trans[0] not in self._subshells:
+                    msg = ('Transition in subshell {}({}) from a subshell '
+                           '{}({}) which is not present in the data'
+                           .format(ss, ATOMIC_SUBSHELL[ss],
+                                   trans[0], ATOMIC_SUBSHELL[trans[0]]))
+                    raise ValueError(msg)
+
+                # Check 2-nd origin for non-radiative transition
+                if trans[1] != 0 and trans[1] not in self._subshells:
+                    msg = ('Transition in subshell {}({}) from a subshell '
+                           '{}({}) which is not present in the data'
+                           .format(ss, ATOMIC_SUBSHELL[ss],
+                                   trans[0], ATOMIC_SUBSHELL[trans[0]]))
+                    raise ValueError(msg)
+
+        # Verify number of electrons in ground state
+        if eCount != self._charge:
+            msg = ('Number of electrons in all subshells: {} does not match '
+                   'the chage of the element: {}'.format(eCount, self._charge))
+            raise ValueError(msg)
+
+
+
