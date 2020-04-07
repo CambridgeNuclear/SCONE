@@ -48,6 +48,7 @@ EL_Z = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8,
         'Cn': 112, 'Nh': 113, 'Fl': 114, 'Mc': 115, 'Lv': 116, 'Ts': 117,
         'Og': 118}
 
+Z_EL = dict([(name, idx) for idx, name in EL_Z.items()])
 
 class AtomRelax:
     """ Stores Atomic Relaxation Data
@@ -59,6 +60,12 @@ class AtomRelax:
         * Number of electrons in a subshell in ground state
         * List vacancy transisitions with associated probability and energy
             change for each subshell.
+
+    Note:
+        All subset information is stored in _subshell dictionary. Please note
+        that in general it may be unsorted. Be carefull when looping over all
+        subshells, becouse .items() may yield random sequence of subshell
+        indices. Use `sorted` function to sort.
     """
 
     def __init__(self):
@@ -73,10 +80,10 @@ class AtomRelax:
         string += '\tFrom: {}\n'.format(self._source)
         string += '{: <16}=\t{}\n'.format('\tElement', self._element)
         string += '{: <16}=\t{}\n'.format('\tZ', self._charge)
-        string += '{: <16}=\t{}\n'.format('\t# Subshells', self._charge)
+        string += '{: <16}=\t{}\n'.format('\t# Subshells', self._subshellNum)
         return string
 
-    def fromENDF(self, elem, tape):
+    def from_endf(self, elem, tape):
         """ Read Atomic Relaxation Data from ENDF
 
         Procedure uses variable names that originate from ENDF specification
@@ -102,6 +109,9 @@ class AtomRelax:
         Raises:
             ValueError: required data is not present on ENDFtape
         """
+        # Reinitialise
+        self.__init__()
+
         # Find element atomic number
         if isinstance(elem, str):
             Z = EL_Z.get(elem)
@@ -119,12 +129,12 @@ class AtomRelax:
         # Read data
         # Header
         tape.set_to(MAT=MAT, MF=28, MT=533)
-        self._charge, _, _, _, self._subshellNum, _ = tape.readHEAD()
+        self._charge, _, _, _, self._subshellNum, _ = tape.read_head()
         self._charge = int(self._charge/1000.0)
 
         # Subshell data
         for _ in range(self._subshellNum):
-            ss, _, _, _, length, _, data = tape.readLIST()
+            ss, _, _, _, length, _, data = tape.read_list()
 
             # Subshell idx must be integer
             ss = int(ss)
@@ -153,12 +163,15 @@ class AtomRelax:
             self._subshells[ss] = (EBI, ELN, trans)
 
         # For correctly formatted ENDF should be now at SEND record
-        if not tape.readSEND():
+        if not tape.read_send():
             msg = ('ENDF tape: {} may be ill formated. Reading of atomic '
                    'relaxation data for MAT: {} did not end with SEND record. '
                    'Check that number of subshells matches number of '
                    'provided lists'.format(tape.name, MAT))
             raise ValueError(msg)
+        # Load final Info
+        self._source = str(tape)
+        self._element = Z_EL[self._charge]
 
     def check(self, tol=1.0e-6):
         """ Check consistency of the data
@@ -179,7 +192,7 @@ class AtomRelax:
             msg = ('Mismatch between number of subshells in the header: {} '
                    'and subshells for which data was provided: {}'
                    .format(self._subshellNum, len(self._subshells)))
-            raise ValueError
+            raise ValueError(msg)
 
         # Loope over all subshells
         for ss, data in self._subshells.items():
@@ -222,7 +235,21 @@ class AtomRelax:
                    'the chage of the element: {}'.format(eCount, self._charge))
             raise ValueError(msg)
 
-    def printTrans(self):
+    def prune_energy(self, E_cut):
+        """ Clear transitions from a subshells with binding energy below E_min
+
+        Allows to remove needless transitions from subshells that are not
+        significant for photon transport problem.
+
+        Args:
+            E_cut (float): Cutoff energy [eV]. Transitions from
+                subshells with binding energy < E_cut will be removed
+        """
+        for ss, data in self._subshells.items():
+            if data[0] < E_cut:
+                self._subshells[ss] = (data[0], data[1], list())
+
+    def print_trans(self):
         """ Print transition data to string
 
         Should be consistent with a single element data required by Serpent
@@ -265,7 +292,7 @@ class AtomRelax:
                         st += '{:4d}{:4d}{:14.6E}{:14.6E}\n'.format(*trans)
         return st
 
-    def printGround(self):
+    def print_ground(self):
         """ Print ground state electron configuration to string
 
         Print single nuclide ground state info in Serpent/SCONE format

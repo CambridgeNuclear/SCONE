@@ -78,34 +78,34 @@ def test_endfTape():
     # Test HEAD, CONT, TEXT & DIR records
     # Read General Info Block
     tape.set_to(1122, 1, 451)
-    data = tape.readHEAD()
+    data = tape.read_head()
     assert (1.102200E+4, 2.180550E+1, 1, 0, 0, 0,) == data
-    data = tape.readCONT()
+    data = tape.read_cont()
     assert (0.0, 1.0, 0, 0, 0, 6) == data
-    data = tape.readCONT()
+    data = tape.read_cont()
     assert (1, 2.0E+7, 1, 0, 10, 7) == data
-    tape.readCONT()
+    tape.read_cont()
 
-    data = tape.readTEXT()
+    data = tape.read_text()
     ref = " 11-Na- 22 NEA        RCOM-JUN83 Scientific Co-ordination Group   "
     assert ref == data
-    assert not tape.readSEND()
-    assert not tape.readFEND()
-    assert not tape.readMEND()
+    assert not tape.read_send()
+    assert not tape.read_fend()
+    assert not tape.read_mend()
 
     # Skip to DIR Record
     for _ in range(80):
-        tape.readTEXT()
-    data = tape.readDIR()
+        tape.read_text()
+    data = tape.read_dir()
     assert (3, 22, 7, 0) == data
 
     #############################################
     # Test HEAD and LIST records
     # Read Relaxation
     tape.set_to(800, 28, 533)
-    data = tape.readHEAD()
+    data = tape.read_head()
     assert (8.0E+3, 15.8619530, 0, 0, 4, 0) == data
-    data = tape.readLIST()
+    data = tape.read_list()
     assert (1.0, 0.0, 0, 0, 54, 8) == data[0:6]
     assert [5.3728E+2, 2.0] == data[6][0:2]  # 1st Line Results
     assert [1.668090E-1, 0.0, 0.0] == data[6][51:54]
@@ -114,11 +114,11 @@ def test_endfTape():
     # TEST TAB2
     # Read Na-22 Elastic Scattering mu-distribution header
     tape.set_to(1122, 4, 2)
-    data = tape.readHEAD()
+    data = tape.read_head()
     assert (1.102200E+4, 2.180550E+1, 0, 1, 0, 0) == data
-    data = tape.readCONT()
+    data = tape.read_cont()
     assert (0.0, 2.18055E+1, 0, 2, 0, 0) == data
-    data = tape.readTAB2()
+    data = tape.read_tab2()
     assert (0.0, 0.0, 0, 0, 1, 57) == data[0:6]
     assert [57] == data[6]  # NBT
     assert [2] == data[7]  # INT
@@ -127,9 +127,9 @@ def test_endfTape():
     # TEST TAB1
     # Read Photointeraction Data. Pair Production XS
     tape.set_to(600, 23, 516)
-    data = tape.readHEAD()
+    data = tape.read_head()
     assert (6000.0, 1.190780E+1, 0, 0, 0, 0) == data
-    data = tape.readTAB1()
+    data = tape.read_tab1()
     assert (0.0, 0.0, 0, 0, 2, 126) == data[0:6]
     assert [2, 126] == data[6]
     assert [2, 5] == data[7]

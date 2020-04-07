@@ -7,23 +7,23 @@ def test_reading_data():
     # Load ENDF Tape
     tape = ENDFTape('./files/sample.endf')
     atom = AtomRelax()
-    atom.fromENDF(8, tape)
+    atom.from_endf(8, tape)
 
     # Load with ELement Symbol
     atom = AtomRelax()
-    atom.fromENDF('O', tape)
+    atom.from_endf('O', tape)
 
     # Try loading non-present data
     atom = AtomRelax()
     with raises(ValueError):
-        atom.fromENDF('Re', tape)
+        atom.from_endf('Re', tape)
 
 
 def test_repr():
     # Load ENDF Tape
     tape = ENDFTape('./files/sample.endf')
     atom = AtomRelax()
-    atom.fromENDF(8, tape)
+    atom.from_endf(8, tape)
     repr(atom)
 
 
@@ -31,7 +31,7 @@ def test_checking_data():
     # Load ENDF Tape
     tape = ENDFTape('./files/sample.endf')
     atom = AtomRelax()
-    atom.fromENDF(8, tape)
+    atom.from_endf(8, tape)
 
     # Basic check
     atom.check()
@@ -63,7 +63,7 @@ def test_print():
     # Load ENDF Tape
     tape = ENDFTape('./files/sample.endf')
     atom = AtomRelax()
-    atom.fromENDF(8, tape)
+    atom.from_endf(8, tape)
     Res1 = ('Element 8\n'
             'NSS 1\n'
             'SUBI 1\n'
@@ -84,5 +84,18 @@ def test_print():
             ' 2 29.230000\n'
             ' 1 14.190000\n'
             ' 3 14.150000\n')
-    assert Res1 == atom.printTrans()
-    assert Res2 == atom.printGround()
+    assert Res1 == atom.print_trans()
+    assert Res2 == atom.print_ground()
+
+
+def test_prune_energy():
+    # Load ENDF Tape
+    tape = ENDFTape('./files/sample.endf')
+    atom = AtomRelax()
+    atom.from_endf(8, tape)
+    Res1 = ('Element 8\n'
+            'NSS 0\n')
+    # Prune
+    atom.prune_energy(E_cut=5.4e+2)
+    atom.check()  # See if data is still consistant
+    assert Res1 == atom.print_trans()

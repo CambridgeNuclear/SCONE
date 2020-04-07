@@ -278,7 +278,7 @@ class ENDFTape:
         pos = self._lineMap.get(MAT).get(MF).get(MT)
         self._handle.seek(pos, 0)  # Rewind file to the location
 
-    def readSEND(self):
+    def read_send(self):
         """ Read SEND record.
 
         Result:
@@ -291,7 +291,7 @@ class ENDFTape:
 
         return (MAT != 0) and (MF != 0) and (MT == 0)
 
-    def readFEND(self):
+    def read_fend(self):
         """ Read FEND record
 
         Result:
@@ -304,7 +304,7 @@ class ENDFTape:
 
         return (MAT != 0) and (MF == 0) and (MT == 0)
 
-    def readMEND(self):
+    def read_mend(self):
         """ Read MEND record
 
         Result:
@@ -317,7 +317,7 @@ class ENDFTape:
 
         return (MAT == 0) and (MF == 0) and (MT == 0)
 
-    def readTEXT(self):
+    def read_text(self):
         """ Read TEXT record
 
         Result:
@@ -326,7 +326,7 @@ class ENDFTape:
         line = self._handle.readline()
         return line[0:66]
 
-    def readCONT(self):
+    def read_cont(self):
         """ Read CONT Record
 
         Result:
@@ -342,7 +342,7 @@ class ENDFTape:
                 endf2int(line[44:55]),
                 endf2int(line[55:66]))
 
-    def readHEAD(self):
+    def read_head(self):
         """ Read HEAD Record
 
         Has the same form as CONT
@@ -353,9 +353,9 @@ class ENDFTape:
                 AWR (float): Atomic Mass
                 L1, L2, N1, N2 (int):
         """
-        return self.readCONT()
+        return self.read_cont()
 
-    def readDIR(self):
+    def read_dir(self):
         """ Read DIR Record
 
         Result:
@@ -368,7 +368,7 @@ class ENDFTape:
                 endf2int(line[44:55]),
                 endf2int(line[55:66]))
 
-    def readLIST(self):
+    def read_list(self):
         """ Read LIST Record
 
         Result:
@@ -380,7 +380,7 @@ class ENDFTape:
                 list (list): List of floats
         """
         # Read first line
-        head = self.readCONT()
+        head = self.read_cont()
         NPL = head[4]
         lis = list()
         for i in range((NPL - 1)//6 + 1):
@@ -389,7 +389,7 @@ class ENDFTape:
             lis += list(map(endf2float, line[0:11*n].split()))
         return (*head, lis)
 
-    def readTAB1(self):
+    def read_tab1(self):
         """ Read TAB1 Record
 
         Result:
@@ -403,7 +403,7 @@ class ENDFTape:
                 x (list): List of floats. X-values in the table
                 y (list): List of floats. Y-values in the table
         """
-        data = self.readCONT()
+        data = self.read_cont()
         NR = data[4]
         NP = data[5]
 
@@ -429,7 +429,7 @@ class ENDFTape:
             y += nums[1::2]
         return (*data, NBT, INT, x, y)
 
-    def readTAB2(self):
+    def read_tab2(self):
         """ Read TAB2 record
 
         Result:
@@ -441,7 +441,7 @@ class ENDFTape:
                 NBT (list): List of integers. Location of interpolation regions
                 INT (list): List of integers. Interpolation flags
         """
-        data = self.readCONT()
+        data = self.read_cont()
         NR = data[4]
 
         # Read interpolation regions
