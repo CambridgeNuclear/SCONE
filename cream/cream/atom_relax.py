@@ -82,11 +82,18 @@ class AtomRelax:
         Procedure uses variable names that originate from ENDF specification
         in order to improve readibility note:
             EBI: Subshell binding energy [eV]
-            ELN: Number of electron in subshell for ground state
+            ELN: Average number of electron in subshell for ground state
             SUB_T: Target subshell for any transition
             SUB_T2: Subshell of electron emission for non-radiative transistion
             ETR: Energy of transition [eV]
             FTR: Fractional probability of transition
+
+        Note:
+            ELN can by a fraction e.g. 2.67. However this function
+            roudns it to nearest integer and stores all ELNs as ints!
+
+        TODO:
+            ELN rounding will have an issue with ELN = xx.50000!
 
         Args:
             elem (int,str): Element Z number (1, 13) or symbol ('H', 'U')
@@ -118,6 +125,8 @@ class AtomRelax:
         # Subshell data
         for _ in range(self._subshellNum):
             ss, _, _, _, length, _, data = tape.readLIST()
+
+            # Subshell idx must be integer
             ss = int(ss)
 
             # Change rank of the list so it is list of lists of length 6
@@ -129,9 +138,12 @@ class AtomRelax:
             # Read the special first line with binding energy
             # and electron number
             EBI, ELN, _, _, _, _ = data.pop(0)
-            trans = list()
+
+            # Round average number of electrons
+            ELN = round(ELN)
 
             # Read all transitions for subshell ss
+            trans = list()
             for line in data:
                 SUB_T = int(line[0])
                 SUB_T2 = int(line[1])
@@ -210,5 +222,65 @@ class AtomRelax:
                    'the chage of the element: {}'.format(eCount, self._charge))
             raise ValueError(msg)
 
+    def printTrans(self):
+        """ Print transition data to string
 
+        Should be consistent with a single element data required by Serpent
+        and SCONE
 
+        Result:
+            String in folllowing format:
+            "Element {Z}\n
+             NSS {number of subsehhls with transitions}\n
+             SUBI {subshell ID}\n
+             NTR {number of transistion}\n
+             EBI {binding energy [eV]}\n
+             ELN {number of electron on a subshell}\n
+             {SUB_T} {SUB_T2} {ETR} {FTR}\n
+             ...
+             SUBI {}\n
+             ..."
+             Please see fromENDF docstring for definition of SUB_T etc.
+
+        Note:
+            Does not print subshells that have no transitions
+
+        """
+        st = str()
+
+        # Calculate number of non-empty subshells
+        NSS = sum([len(data[2]) != 0 for ss, data in self._subshells.items()])
+
+        # Print header
+        st += 'Element {}\n'.format(int(self._charge))
+        st += 'NSS {}\n'.format(int(NSS))
+        if self._subshellNum != 0:
+            for ss, data in sorted(self._subshells.items()):
+                if len(data[2]) != 0:
+                    st += 'SUBI {}\n'.format(int(ss))
+                    st += 'SUBI {}\n'.format(len(data[2]))
+                    st += 'EBI {:14.6E}\n'.format(data[0])
+                    st += 'ELN {}\n'.format(int(data[1]))
+                    for trans in data[2]:
+                        st += '{:4d}{:4d}{:14.6E}{:14.6E}\n'.format(*trans)
+        return st
+
+    def printGround(self):
+        """ Print ground state electron configuration to string
+
+        Print single nuclide ground state info in Serpent/SCONE format
+
+        Result:
+            String in following format:
+            "Element {Z}\n
+             NSS {number of all subshells}\n
+             {ELN} {EBI}\n
+             ..."
+        """
+        st = str()
+        # Print header
+        st += 'Element {}\n'.format(int(self._charge))
+        st += 'NSS {}\n'.format(int(self._subshellNum))
+        for ss, data in sorted(self._subshells.items()):
+            st += '{:2d} {:7f}\n'.format(data[1], data[0])
+        return st
