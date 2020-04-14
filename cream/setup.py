@@ -24,7 +24,7 @@ kwargs = {
 
     # Depedencies
     'python_requires': '>=3.6',
-    # 'instal_requires': [],
+    'instal_requires': ['click'],
     'extras_require': {
             'test': ['pytest']
     }
