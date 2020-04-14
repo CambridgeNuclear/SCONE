@@ -1,7 +1,7 @@
-""" Nuclear Data Scripts
+""" Nuclear Data Scripts.
 
-This module is a collection of scripts to convert various nucler data formats
-
+This module is a collection of scripts to perform usefull nuclear data
+managment operations.
 """
 from cream.endf import ENDFTape
 from cream.atom_relax import AtomRelax, Z_EL
@@ -24,10 +24,10 @@ def read_relaxation(tapes):
     """ Read atomic relaxation data from a list of tapes
 
     Args:
-        tapes (list of ENDFTape): Search for atomic relaxation data
+        tapes (list of :obj:`ENDFTape`): Search for atomic relaxation data
 
     Result:
-        Dictionary of {MAT: AtomRelax} pairs
+        Dictionary of ``{MAT: AtomRelax}`` pairs
 
     Raises:
         ValueError: If in collection of materials multiple data for the same
@@ -56,9 +56,10 @@ def serpent_relaxation_lib(files, E_cut=1.0e3):
             transition data [eV]. Default=1.0e3
 
     Result:
-        (tuple): tuple containing:
-            (str) Relaxation data library
-            (str) Electronic ground state Library
+        2-element typle containing:
+
+        * (*str*): Relaxation data library.
+        * (*str*): Electronic ground state Library.
     """
     atoms = read_relaxation(read_endf_files(files))
 

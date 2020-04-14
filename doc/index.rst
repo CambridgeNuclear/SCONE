@@ -48,6 +48,7 @@ author that the jam goes on top the cream.
    Unit Testing
    Style Guide
    Tutorials/index
+   cream/index
 
 
 .. Indices and tables

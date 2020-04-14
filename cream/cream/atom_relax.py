@@ -1,17 +1,20 @@
-""" Atomic Relaxation Data
+""" Atomic Relaxation Data.
 
 This module contains classes and procedures related to storing and exporting
 atomic realaxation data to diffrent output formats.
 
 Attributes:
-    ATOMIC_SUBSHELL (dict): Dictionary that maps subshell index to subshell
-        type (e.g. K, L3 etc.). Taken from [1]
+    ATOMIC_SUBSHELL (dict): Maps subshell index to subshell type
+        (e.g. K, L3 etc.)[1].
+    SUBSHELL_IDX (dict): Maps subshell type (e.g. K, L3) to its index [1].
+    EL_Z (dict): Maps element symbol (e.g. O) to its atomic number.
+    Z_EL (dict): Maps atomic number Z to element symbol.
 
-
-[1] Perkins, S.T., and Cullen, D.E. ENDL type formats for the LLNL Evaluated
-    Atomic Data Library, EADL, for the Evaluated Electron Data Library, EEDL,
-    and for the Evaluated Photon Data Library, EPDL. United States: N. p.,
-    1994. Web. doi:10.2172/10172308.
+References:
+    [1] Perkins, S.T., and Cullen, D.E. ENDL type formats for the LLNL
+    Evaluated Atomic Data Library, EADL, for the Evaluated Electron Data
+    Library, EEDL, and for the Evaluated Photon Data Library, EPDL.
+    United States: N. p., 1994. Web. doi:10.2172/10172308.
 """
 from cream.endf import ENDFTape
 
@@ -50,22 +53,24 @@ EL_Z = {'H': 1, 'He': 2, 'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8,
 
 Z_EL = dict([(name, idx) for idx, name in EL_Z.items()])
 
+
 class AtomRelax:
     """ Stores Atomic Relaxation Data
 
-    Contains atomic relaxation data related to a single atom.
-    Atomic relaxation data consists of:
-        * Number of subshells
-        * Binding energy for a subshell
-        * Number of electrons in a subshell in ground state
-        * List vacancy transisitions with associated probability and energy
-            change for each subshell.
+    Contains atomic relaxation data related to a single atom, which encompases
+    the following:
+
+    * Number of subshells
+    * Binding energy for a subshell
+    * Number of electrons in a subshell in a ground state
+    * List of vacancy transisitions with associated probability and energy
+      change for each subshell.
 
     Note:
         All subset information is stored in _subshell dictionary. Please note
         that in general it may be unsorted. Be carefull when looping over all
         subshells, becouse .items() may yield random sequence of subshell
-        indices. Use `sorted` function to sort.
+        indices. Use ``sorted`` function to sort.
     """
 
     def __init__(self):
@@ -85,13 +90,16 @@ class AtomRelax:
 
     @property
     def source(self):
+        """ Path to file from which data was loaded
+        """
         return self._source
 
     def from_endf(self, elem, tape):
         """ Read Atomic Relaxation Data from ENDF
 
         Procedure uses variable names that originate from ENDF specification
-        in order to improve readibility note:
+        in order to improve readibility::
+
             EBI: Subshell binding energy [eV]
             ELN: Average number of electron in subshell for ground state
             SUB_T: Target subshell for any transition
@@ -100,11 +108,9 @@ class AtomRelax:
             FTR: Fractional probability of transition
 
         Note:
-            ELN can by a fraction e.g. 2.67. However this function
-            roudns it to nearest integer and stores all ELNs as ints!
-
-        TODO:
-            ELN rounding will have an issue with ELN = xx.50000!
+            ELN can by a fraction e.g. 2.67. In this function it is rounded
+            to the nearest integer. For xx.5 it will fail to preserve total
+            charge as all xx.5 will be rounded up.
 
         Args:
             elem (int,str): Element Z number (1, 13) or symbol ('H', 'U')
@@ -242,13 +248,13 @@ class AtomRelax:
             raise ValueError(msg)
 
     def prune_energy(self, E_cut):
-        """ Clear transitions from a subshells with binding energy below E_min
+        """ Remove transition data from subshells with low binding energy
 
-        Allows to remove needless transitions from subshells that are not
+        Removes needless transitions from subshells that are not
         significant for photon transport problem.
 
         Args:
-            E_cut (float): Cutoff energy [eV]. Transitions from
+            E_cut (float): Cutoff energy [eV]. Transition data from
                 subshells with binding energy < E_cut will be removed
         """
         for ss, data in self._subshells.items():
@@ -262,18 +268,19 @@ class AtomRelax:
         and SCONE
 
         Result:
-            String in folllowing format:
-            "Element {Z}\n
-             NSS {number of subsehhls with transitions}\n
-             SUBI {subshell ID}\n
-             NTR {number of transistion}\n
-             EBI {binding energy [eV]}\n
-             ELN {number of electron on a subshell}\n
-             {SUB_T} {SUB_T2} {ETR} {FTR}\n
-             ...
-             SUBI {}\n
-             ..."
-             Please see fromENDF docstring for definition of SUB_T etc.
+            String in folllowing format. See :func:`from_endf` for definition
+            of SUB_T etc.::
+
+                Element {Z}\\n
+                NSS {number of subsehhls with transitions}\\n
+                SUBI {subshell ID}\\n
+                NTR {number of transistion}\\n
+                EBI {binding energy [eV]}\\n
+                ELN {number of electron on a subshell}\\n
+                {SUB_T} {SUB_T2} {ETR} {FTR}\\n
+                ...
+                SUBI {}\\n
+                ...
 
         Note:
             Does not print subshells that have no transitions
@@ -304,11 +311,13 @@ class AtomRelax:
         Print single nuclide ground state info in Serpent/SCONE format
 
         Result:
-            String in following format:
-            "Element {Z}\n
-             NSS {number of all subshells}\n
-             {ELN} {EBI}\n
-             ..."
+            String in following format. ELN and EBI defined in
+            :func:`from_endf`::
+
+                Element {Z}\\n
+                NSS {number of all subshells}\\n
+                {ELN} {EBI}\\n
+                ...
         """
         st = str()
         # Print header

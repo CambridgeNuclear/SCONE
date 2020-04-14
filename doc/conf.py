@@ -24,9 +24,9 @@ copyright = '2019, M.A.Kowalski'
 author = 'M.A.Kowalski'
 
 # The short X.Y version
-version = ''
+version = '0.1.0'
 # The full version, including alpha/beta/rc tags
-release = ''
+release = 'alpha'
 
 
 # -- General configuration ---------------------------------------------------
@@ -40,7 +40,11 @@ release = ''
 # ones.
 extensions = [
     'sphinx.ext.imgmath',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
 ]
+# Napoleaon Settings
+napoleon_google_docstring=True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

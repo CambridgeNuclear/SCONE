@@ -114,31 +114,32 @@ class ENDFTape:
     numer are UNIQUE. There is no check if this is the case at the moment.
 
     For more information about ENDF-6 format. In particular documentation
-    of diffrent data records (HEAD, TAB1, ...) refer to:
-
-    A. Trkov, M. Herman, and D. A. Brown, ‘ENDF-6 formats manual’,
-    Data Formats and Procedures for the Evaluated Nuclear Data Files ENDF/B-VI
-    and ENDF/B-VII, National Nuclear Data Center Brookhaven National
-    Laboratory, Upton, NY, pp. 11973–5000, 2012.
+    of diffrent data records (HEAD, TAB1, ...) refer to [1].
 
     Example:
-        tape = ENDFTape(path)
-        if (tape.has(MAT=600, MF=2, MT=13)):
-            # Read data
-            data = tape.readHEAD()
-            # Do smth with data
-            data = tape.readTAB1()
-            ...
-        else:
-            raise ValueError('MAT 600, MF = 2 and MT=13 was not found')
+        You can us this class like this::
 
+            tape = ENDFTape(path)
+            if (tape.has(MAT=600, MF=2, MT=13)):
+                # Read data
+                data = tape.readHEAD()
+                # Do smth with data
+                data = tape.readTAB1()
+                ...
+                else:
+                    raise ValueError('MAT 600, MF = 2 and MT=13 was not found')
+
+    References:
+        [1] A. Trkov, M. Herman, and D. A. Brown, ‘ENDF-6 formats manual’,
+        Data Formats and Procedures for the Evaluated Nuclear Data Files
+        ENDF/B-VI and ENDF/B-VII, National Nuclear Data Center Brookhaven
+        National Laboratory, Upton, NY, pp. 11973–5000, 2012.
     """
     def __init__(self, path):
         """ Initialise ENDF file from path in filesystem
 
         Args:
             path (str): Path to the ENDF file
-
         """
         # Open file for reading
         self._handle = open(path)
@@ -215,7 +216,6 @@ class ENDFTape:
 
         Raises:
             ValueError: If MT is provided without MF
-
         """
         if MT is not None and MF is None:
             raise ValueError('MT was given without MF. You must define MF.')
@@ -237,7 +237,7 @@ class ENDFTape:
             MT (int, optional): Section ID in specific MF file e.g. 1
                 in MF=3 for total XS.
         Result:
-            Set of (MAT, MF, MT) tuples that match the pattern.
+            Set of ``(MAT, MF, MT)`` tuples that match the pattern.
             Empty set if no matches were found.
         """
         res = list()
@@ -330,9 +330,10 @@ class ENDFTape:
         """ Read CONT Record
 
         Result:
-            (tuple): tuple containing:
-                C1,C2 (float):
-                L1, L2, N1, N2 (float):
+            (tuple): tuple containing 6 elements:
+
+                * C1,C2 (float): Some floats
+                * L1, L2, N1, N2 (int): Some integers
         """
         line = self._handle.readline()
         return (endf2float(line[0:11]),
@@ -348,10 +349,11 @@ class ENDFTape:
         Has the same form as CONT
 
         Result:
-            (tuple): tuple containig:
-                ZA (float): ZZAAA ID of the nuclide e.g. 92238 for U-238
-                AWR (float): Atomic Mass
-                L1, L2, N1, N2 (int):
+            (tuple): tuple containig 6 elements:
+
+                * ZA (float): ZZAAA ID of the nuclide e.g. 92238 for U-238
+                * AWR (float): Atomic Mass
+                * L1, L2, N1, N2 (int): Some integers
         """
         return self.read_cont()
 
@@ -359,8 +361,7 @@ class ENDFTape:
         """ Read DIR Record
 
         Result:
-            (tuple): typle containing:
-                L1, L2, N1, N2 (int)
+            (tuple): tuple containing 4 integers ``(L1, L2, N1, N2)``
         """
         line = self._handle.readline()
         return (endf2int(line[22:33]),
@@ -372,12 +373,13 @@ class ENDFTape:
         """ Read LIST Record
 
         Result:
-            (tuple): tuple containing:
-                C1,C2 (float):
-                L1,L2 (int):
-                NPL (int): Number of elements in the list
-                N2 (int):
-                list (list): List of floats
+            (tuple): tuple containing 7-elements:
+
+                * C1,C2 (float):
+                * L1,L2 (int):
+                * NPL (int): Number of elements in the list
+                * N2 (int):
+                * list (list of float): Content of the list
         """
         # Read first line
         head = self.read_cont()
@@ -393,15 +395,16 @@ class ENDFTape:
         """ Read TAB1 Record
 
         Result:
-            (tuple): tuple containing:
-                C1, C2 (float):
-                L1, L2 (int):
-                NR (int): Number of diffrent interpolation regions
-                NP (int): Number of points in the table
-                NBT (list): List of integers. Interpolation region boundaries
-                INT (list): List of integers. Interpolation flags
-                x (list): List of floats. X-values in the table
-                y (list): List of floats. Y-values in the table
+            (tuple): tuple containing 10 elements:
+
+                * C1, C2 (float):
+                * L1, L2 (int):
+                * NR (int): Number of diffrent interpolation regions
+                * NP (int): Number of points in the table
+                * NBT (list of int): Interpolation region boundaries
+                * INT (list of int): Interpolation flags
+                * x (list of float): X-values in the table
+                * y (list of float): Y-values in the table
         """
         data = self.read_cont()
         NR = data[4]
@@ -433,13 +436,14 @@ class ENDFTape:
         """ Read TAB2 record
 
         Result:
-            (tuple): tuple containing:
-                C1,C2 (float):
-                L1,L2 (int):
-                NR (int): Number of interpolation regions in z-axis
-                NZ (int): Number of points on z-axis
-                NBT (list): List of integers. Location of interpolation regions
-                INT (list): List of integers. Interpolation flags
+            (tuple): tuple containing 8 elements:
+
+                * C1,C2 (float):
+                * L1,L2 (int):
+                * NR (int): Number of interpolation regions in z-axis
+                * NZ (int): Number of points on z-axis
+                * NBT (list of int): Location of interpolation regions
+                * INT (list of int): Interpolation flags
         """
         data = self.read_cont()
         NR = data[4]
