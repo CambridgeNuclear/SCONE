@@ -2,10 +2,11 @@ program scone
 
   use numPrecision
   use genericProcedures,          only : printStart
-  use commandLineUI,              only : getInputFile
+  use commandLineUI,              only : getInputFile, clOptionIsPresent
   use IOdictionary_class,         only : IOdictionary
   use physicsPackage_inter,       only : physicsPackage
   use physicsPackageFactory_func, only : new_physicsPackage
+  use vizPhysicsPackage_class
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none
@@ -28,7 +29,12 @@ program scone
 
   call timerStart(timerIdx)
 
-  allocate( core, source = new_physicsPackage(input))
+  if (clOptionIsPresent('plot')) then
+    allocate(vizPhysicsPackage :: core)
+    call core % init(input)
+  else
+    allocate( core, source = new_physicsPackage(input))
+  endif
 
   call core % run()
 

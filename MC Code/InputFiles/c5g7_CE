@@ -1,0 +1,261 @@
+type eigenPhysicsPackage; 
+
+pop      1000000;
+active   1500;
+inactive 300;
+
+
+MGstruct wims69;
+outputFile c5g7_CE; 
+XSdata ce; 
+
+
+
+boundSurface {id 17;  type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.08 10.08 0.0);} 
+
+collisionOperator { neutronCE {type neutronCEstd;}
+                    neutronMG {type neutronMGstd;} } 
+
+transportOperator { //type transportOperatorST; 
+                   type transportOperatorDT; 
+                   } 
+                   
+inactiveTally {} 
+
+activeTally {
+  norm totalPow;
+  normVal 1.0; 
+  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}} 
+  capture { type collisionClerk; response (cap); cap {type macroResponse; MT -2;} 
+              map {type materialMap; materials (alClad water);   } }
+              
+  ProdMap {type collisionClerk; 
+         map {type multiMap;
+              maps (xmap ymap); 
+              xmap { type spaceMap; axis x; grid unstruct; bins (-32.13  0.63 10.71); } 
+              ymap { type spaceMap; axis y; grid unstruct; bins (-10.71 -0.63 32.13); } 
+              }
+         response (Prod ); 
+         Prod { type macroResponse; MT -7;} 
+         }
+  ResMap {type collisionClerk; 
+         map {type multiMap;
+              maps (xmap ymap); 
+              xmap { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;} 
+              ymap { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;} 
+              }
+         response (fission capture); 
+         fission { type macroResponse; MT -6;} 
+         capture { type macroResponse; MT -2;} 
+         }
+           ResCapture { type collisionClerk; 
+		filter { type energyFilter; Emin 4.0E-6; Emax 9.118E-3; Gtop 15; Glow 27;}
+		map { type multiMap; 
+		maps (xmap ymap mmap);
+                 xmap { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;} 
+                 ymap { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;} 
+		 mmap { type materialMap; materials ( uox mox43 mox70 mox87 );} 
+		  }
+		response (cap);
+		cap { type macroResponse; MT -2;}
+		}
+   
+}
+
+// Visualisation dictionary
+viz {
+
+ vtkCell { 
+	type vtk;
+        width (64.26 64.26 1.0 );
+        corner (-32.13 -32.13 -0.5 );
+        vox (300 300 1);
+        what material;
+ }
+
+}
+
+geometry { 
+  type basicCellCSG; 
+  boundary ( 0 1 1 0 0 0); 
+
+  surfaces { 
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 0.0);} 
+  }
+  
+  cells { 
+    in  {id 1; surfaces ( -1); filltype uni; universe 1000;} 
+    out {id 2; surfaces (1); filltype outside; } 
+  }
+  
+  universes { 
+    root { id 1; type cellUniverse; origin (0.0 0.0 0.0); cells ( 1 2); } 
+    
+    // Pin universes 
+    pin11 { id 11; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (uox    void   clad   void   alClad water);}
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox43  void   clad   void   alClad water);}
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox70  void   clad   void   alClad water);}    
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+                                     fills (mox87  void   clad   void   alClad water);}           
+    pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
+    wpin  {id 601; type pinUniverse; radii (0.0); fills (refWater);} 
+
+    // Lattices 
+    latMox {
+      id 401; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 41 51 51 51 51 51 51 51 51 51 51 51 41 41 31
+        31 41 21 51 51 21 51 51 21 51 51 21 51 51 21 41 31
+        31 41 41 41 51 51 51 51 51 51 51 51 51 41 41 41 31
+        31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
+        31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
+        31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); } 
+     
+    latUox {
+      id 301;
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0); 
+      shape (17 17 0);
+      padMat water;
+      map ( 
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 11 11 21 11 11 21 11 11 21 11 11 11 11 11
+        11 11 11 21 11 11 11 11 11 11 11 11 11 21 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 21 11 11 21 11 11 21 11 11 21 11 11 21 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 21 11 11 21 11 11 21 11 11 21 11 11 21 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 21 11 11 21 11 11 21 11 11 21 11 11 21 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 21 11 11 11 11 11 11 11 11 11 21 11 11 11
+        11 11 11 11 11 21 11 11 21 11 11 21 11 11 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11
+        11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 ); }
+        
+    latConf {
+      id 1000; 
+      type latUniverse;
+      origin (0.0 0.0 0.0); 
+      pitch (21.42 21.42 0); 
+      shape (3 3 0); 
+      padMat refWater; 
+      map ( 601 601 601
+            401 301 601 
+            301 401 601 ); }
+    
+  }
+  
+} 
+
+
+nuclearData {
+  handles { ce byNucMT;} 
+  materials { 
+    aceLibrary /home/pmc55/myACE/JEF311.aceXS; 
+    
+    uox {
+      temp 676; 
+      92235.03c  8.650E-004;
+      92238.03c  2.225E-002;
+      8016.03c  4.622E-002;      
+    }
+    
+    water { 
+      temp 75675; 
+      1001.03c    6.700E-002;                                                  
+      8016.03c    3.350E-002;
+      5010.03c    5.560E-006;
+      5011.03c    2.224E-005; 
+      }
+        
+     clad { 
+       temp 12345; 
+       40090.03c  2.21235E-002;
+       40091.03c  4.82460E-003;
+       40092.03c  7.37450E-003;
+       40094.03c  7.47340E-003;
+       40096.03c  1.20400E-003; 
+     }
+
+     alClad {
+       temp 9876; 
+       13027.03c  6.00E-2; 
+      }
+      
+    mox43 { 
+      temp 87476; 
+      92235.03c  5.00E-005;  
+      92238.03c  2.21E-002;
+      94238.03c  1.50E-005;
+      94239.03c  5.80E-004;
+      94240.03c  2.40E-004;
+      94241.03c  9.80E-005;
+      94242.03c  5.40E-005;
+      95241.03c  1.30E-005;
+       8016.03c  4.63E-002;
+     } 
+
+     mox70 { 
+       temp 6786; 
+       92235.03c  5.00E-005; 
+       92238.03c  2.21E-002;
+       94238.03c  2.40E-005;
+       94239.03c  9.30E-004;
+       94240.03c  3.90E-004;
+       94241.03c  1.52E-004;
+       94242.03c  8.40E-005;
+       95241.03c  2.00E-005;
+        8016.03c  4.63E-002; 
+       }
+ 
+     mox87 { 
+       temp 8765; 
+       92235.03c  5.00E-005;  
+       92238.03c  2.21E-002;
+       94238.03c  3.00E-005;
+       94239.03c  1.16E-003;
+       94240.03c  4.90E-004;
+       94241.03c  1.90E-004;
+       94242.03c  1.05E-004;
+       95241.03c  2.50E-005;
+        8016.03c  4.63E-002;   
+       } 
+     
+    refWater { 
+      temp 75675; 
+      1001.03c    6.700E-002;                                                  
+      8016.03c    3.350E-002;
+      5010.03c    5.560E-006;
+      5011.03c    2.224E-005; 
+      }     
+     
+     
+}
+}
+
+
+

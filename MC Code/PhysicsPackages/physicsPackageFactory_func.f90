@@ -12,6 +12,7 @@ module physicsPackageFactory_func
 
   ! Implementations
   use eigenPhysicsPackage_class, only : eigenPhysicsPackage
+  use vizPhysicsPackage_class,   only : vizPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -23,6 +24,7 @@ module physicsPackageFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_physicsPackages = [ 'eigenPhysicsPackage',&
+                                                                            'vizPhysicsPackage  ',&
                                                                             'dynamPhysicsPackage']
 
   !!
@@ -65,6 +67,15 @@ contains
 !          type is (dynamPhysicsPackage)
 !            call new % init(dict)
 !        end select
+
+      
+      case('vizPhysicsPackage')
+        ! Allocate and initialise
+        allocate( vizPhysicsPackage :: new)
+        select type(new)
+          type is (vizPhysicsPackage)
+            call new % init(dict)
+        end select
 
       case default
         print *, AVALIBLE_physicsPackages

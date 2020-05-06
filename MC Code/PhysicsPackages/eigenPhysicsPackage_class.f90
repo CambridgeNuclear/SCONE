@@ -20,6 +20,7 @@ module eigenPhysicsPackage_class
   use physicsPackage_inter,           only : physicsPackage
 
   ! Geometry & Nuclear Data
+  use geometry_inter,                 only : geometry
   use cellGeometry_inter,             only : cellGeometry
   use nuclearData_inter,              only : nuclearData
   use transportNuclearData_inter,     only : transportNuclearData
@@ -40,6 +41,9 @@ module eigenPhysicsPackage_class
   use nuclearDataRegistry_mod,        only : build_NuclearData, getHandlePtr
   use geometryFactory_func,           only : new_cellGeometry_ptr
   use transportOperatorFactory_func,  only : new_transportOperator
+
+  ! Visualisation
+  use visualiser_class,               only : visualiser
 
   implicit none
   private
@@ -333,6 +337,8 @@ contains
     character(:),allocatable                  :: string
     character(nameLen)                        :: nucData
     class(nuclearData),pointer                :: nucData_ptr
+    type(visualiser)                          :: viz
+    class(geometry), pointer                  :: geom
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     ! Read calculation settings
@@ -388,6 +394,14 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     self % geom => new_cellGeometry_ptr(tempDict, self % nucData)
+
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "CONSTRUCTING VISUALISATION"
+      tempDict => dict % getDictPtr('viz')
+      geom => self % geom
+      call viz % init(geom, tempDict)
+    endif
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
