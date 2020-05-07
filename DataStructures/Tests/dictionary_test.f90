@@ -14,6 +14,7 @@ module dictionary_test
 
   !! Parameters
   real(defReal),parameter                  :: realVal     = 3.3_defReal
+  integer(shortInt),parameter              :: boolVal     = 1 
   integer(shortInt), parameter             :: intVal      = 1_shortInt
   character(nameLen),parameter             :: charNameLen = 'GoFortran_DownWithCpp'
   character(pathLen), parameter            :: charPathLen ='/home/KyloRen/VaderFanFic'
@@ -42,6 +43,7 @@ contains
     call this % dict % store('intArray', intArray)
     call this % dict % store('charNameLenArray', charNameLenArray)
     call this % dict % store('charPathLenArray', charPathLenArray)
+    call this % dict % store('myBool',boolVal)
 
     tempDict = this % dict
     call this % dict % store('nestedDict', tempDict)
@@ -149,6 +151,26 @@ contains
     @assertEqual(7_shortInt, temp, 'Get or Default Retrival Failed for Absent Keyword')
 
   end subroutine testGettingInt
+
+
+!!
+!! Test extracting logical Value
+!!
+@test
+  subroutine testGettingBool(this)
+    class(test_dictionary), intent(inout)    :: this
+    logical(defBool)                         :: temp
+
+    call this % dict % get(temp,'myBool')
+    @assertEqual(.TRUE., temp, 'Ordinary Retrival Failed')
+
+    call this % dict % getOrDefault(temp,'myBool',.FALSE.)
+    @assertEqual(.TRUE., temp, 'Get or Default Retrival Failed for Present Keyword')
+
+    call this % dict % getOrDefault(temp,'invalid', .FALSE.)
+    @assertEqual(.FALSE., temp, 'Get or Default Retrival Failed for Absent Keyword')
+
+  end subroutine testGettingBool
 
 !!
 !! Test extracting Integer Array

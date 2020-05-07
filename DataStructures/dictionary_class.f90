@@ -148,7 +148,8 @@ module dictionary_class
                          getChar_new,&
                          getCharArray_alloc_new,&
                          getCharArray_ptr_new,&
-                         getDict_new
+                         getDict_new,&
+                         getBool_new
 
     procedure,private :: getReal_new
     procedure,private :: getRealArray_alloc_new
@@ -160,6 +161,7 @@ module dictionary_class
     procedure,private :: getCharArray_alloc_new
     procedure,private :: getCharArray_ptr_new
     procedure,private :: getDict_new
+    procedure,private :: getBool_new
 
     generic :: getOrDefault => getOrDefault_real ,&
                                getOrDefault_realArray_alloc ,&
@@ -169,7 +171,8 @@ module dictionary_class
                                getOrDefault_intArray_ptr ,&
                                getOrDefault_char ,&
                                getOrDefault_charArray_alloc ,&
-                               getOrDefault_charArray_ptr
+                               getOrDefault_charArray_ptr, &
+                               getOrDefault_bool
 
     procedure,private :: getOrDefault_real
     procedure,private :: getOrDefault_realArray_alloc
@@ -180,6 +183,7 @@ module dictionary_class
     procedure,private :: getOrDefault_char
     procedure,private :: getOrDefault_charArray_alloc
     procedure,private :: getOrDefault_charArray_ptr
+    procedure,private :: getOrDefault_bool
 
     ! Keys inquiry procedures
     procedure  :: keys
@@ -749,6 +753,34 @@ contains
 
   end function getDictPtr
 
+
+  !!
+  !! Loads a boolean from a dictionary
+  !! If keyword is associated with an integer which is not 1 or 0, it returns an error
+  !!
+  subroutine getBool_new(self,value,keyword)
+    class(dictionary), intent(in)  :: self
+    logical(defBool),intent(inout) :: value
+    character(*),intent(in)        :: keyword
+    integer(shortInt)              :: idx, i
+    character(100),parameter       :: Here='getBool (dictionary_class.f90)'
+    
+    idx = self % search(keyword, Here, fatal =.true.)
+    select case (self % entries(idx) % getType())
+      case(numInt)
+        i = self % entries(idx) % int0_alloc
+        if (i == 1) then
+          value = .TRUE.
+        elseif (i == 0) then
+          value = .FALSE.
+        else
+          call fatalError(Here,'Entry under keyword ' // keyword // ' is neither 0 nor 1')
+        end if
+      case default
+        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an integer')
+    end select
+  end subroutine getBool_new
+
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
   !! If keyword is not presents loads default into value
@@ -993,6 +1025,25 @@ contains
 
     end if
   end subroutine getOrDefault_charArray_ptr
+
+  !!
+  !! Loads a logical from a dictionary
+  !!
+  subroutine getOrDefault_bool(self,value,keyword,default)
+    class(dictionary), intent(in)  :: self
+    logical(defBool),intent(inout) :: value
+    character(*),intent(in)        :: keyword
+    logical(defBool), intent(in)   :: default
+    integer(shortInt)              :: idx
+    character(100),parameter       :: Here='getOrDefault_bool(dictionary_class.f90)'
+
+    idx = self % search(keyword, Here, fatal =.false.)
+    if (idx == targetNotFound) then
+      value = default
+    else
+      call self % get(value, keyword)
+    end if
+  end subroutine getOrDefault_bool
 
   !!
   !! Returns an array of all keywords
