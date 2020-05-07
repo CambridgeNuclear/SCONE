@@ -55,6 +55,7 @@ module ceNeutronDatabase_inter
     procedure(updateMacroXSs),deferred   :: updateMacroXSs
     procedure(updateTotalXS),deferred    :: updateTotalNucXS
     procedure(updateMicroXSs),deferred   :: updateMicroXSs
+    procedure(energyBounds),deferred     :: energyBounds
   end type ceNeutronDatabase
 
   abstract interface

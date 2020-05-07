@@ -38,7 +38,7 @@ module eigenPhysicsPackage_class
   use mgNeutronMaterial_inter,        only : mgNeutronMaterial
   use fissionCE_class,                only : fissionCE, fissionCE_TptrCast
   use fissionMG_class,                only : fissionMG, fissionMG_TptrCast
-
+  use ceNeutronDatabase_inter,        only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
 
   ! Operators
   use collisionOperator_class,        only : collisionOperator
@@ -244,7 +244,8 @@ contains
     type(fissionCE), pointer                  :: fissCE
     type(fissionMG), pointer                  :: fissMG
     integer(shortInt)                         :: G_out
-    real(defReal)                             :: mu, phi, E_out
+    real(defReal)                             :: mu, phi, E_out, E_up, E_down
+    class(ceNeutronDatabase), pointer         :: neutronData
     character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
 
     ! Allocate and initialise particle Dungeons
@@ -294,6 +295,10 @@ contains
       ! Generate new fission site
       select type(mat)
         class is(ceNeutronMaterial)
+
+          neutronData => ceNeutronDatabase_CptrCast(self % nucData)
+          call neutronData % energyBounds(E_down, E_up)
+          
           ! Select nuclide
           nucIdx = mat % sampleFission(1.0E-6_defReal, self % pRNG)
 
@@ -309,6 +314,9 @@ contains
           call neutron % point(rotateVector([ONE, ZERO, ZERO], mu, phi))
           neutron % E = E_out
           neutron % isMG = .false.
+
+          ! Prevent particle energy above upper bound being sampled
+          if (neutron % E > E_up) neutron % E = E_up
 
         class is(mgNeutronMaterial)
           ! Get reaction object
