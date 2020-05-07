@@ -30,15 +30,6 @@ module neutronCEstd_class
   ! Cross-Section Packages
   use neutronXsPackages_class,       only : neutronMicroXSs
 
-
-  !use nuclearData_inter,             only : nuclearData
-  !use perNuclideNuclearDataCE_inter, only : perNuclideNuclearDataCE
-
-  ! Cross-section packages to interface with nuclear data
-  !use xsNucMacroSet_class,    only : xsNucMacroSet_ptr
-  !use xsMainSet_class,        only : xsMainSet_ptr
-  !use xsMacroSet_class,       only : xsMacroSet_ptr
-
   ! Scattering procedures
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
                                      asymptoticInelasticScatter
@@ -98,7 +89,6 @@ module neutronCEstd_class
     procedure :: cutoffs
 
     ! Local procedures
-   ! procedure,private :: N_XN
     procedure,private :: scatterFromFixed
     procedure,private :: scatterFromMoving
     procedure,private :: scatterInLAB
@@ -242,39 +232,6 @@ contains
   end subroutine implicit
 
   !!
-  !! Process scattering reaction
-  !!
-!  subroutine scatter(self, p, collDat, thisCycle, nextCycle)
-!    class(neutronCEstd), intent(inout)   :: self
-!    class(particle), intent(inout)       :: p
-!    type(collisionData), intent(inout)   :: collDat
-!    class(particleDungeon),intent(inout) :: thisCycle
-!    class(particleDungeon),intent(inout) :: nextCycle
-!    real(defReal)                        :: r
-!    character(100), parameter   :: Here ='scatter (neutronCEstd_class.f90)'
-!
-!    ! Sample MT of scattering reaction. Replace lumped MT already in collDat
-!    r = p % pRNG % get()
-!    collDat % MT = self % xsData % invertScattering(p % E, r, collDat % nucIdx )
-!
-!    select case(collDat % MT)
-!      case(N_N_elastic)
-!        call self % elastic(p, collDat, thisCycle, nextCycle)
-!
-!      case(N_Nl1:N_Nl40, N_Ncont, N_Na, N_N3a, N_Np)
-!        call self % inelastic(p, collDat, thisCycle, nextCycle)
-!
-!      case(N_2N, N_3N, N_4N)
-!        call self % N_XN(p, collDat, thisCycle, nextCycle)
-!
-!      case default
-!        call fatalError(Here,'Unrecognised scattering MT number: '//numToChar(collDat % MT))
-!
-!      end select
-!
-!  end subroutine scatter
-
-  !!
   !! Process capture reaction
   !!
   subroutine capture(self, p, collDat, thisCycle, nextCycle)
@@ -372,49 +329,6 @@ contains
   end subroutine inelastic
 
   !!
-  !! Process N_XN scattering
-  !!
-!  subroutine N_XN(self, p, collDat, thisCycle, nextCycle)
-!    class(neutronCEstd), intent(inout)   :: self
-!    class(particle), intent(inout)       :: p
-!    type(collisionData), intent(inout)   :: collDat
-!    class(particleDungeon),intent(inout) :: thisCycle
-!    class(particleDungeon),intent(inout) :: nextCycle
-!    integer(shortInt)                    :: MT, nucIdx
-!    character(100),parameter  :: Here =' N_XN (neutronCEstd_class.f90)'
-!
-!    ! Copy data for clarity
-!    MT     = collDat % MT
-!    nucIdx = collDat % nucIdx
-!
-!    ! Scatter particle
-!    if (self % xsData % isInCMFrame(MT, nucIdx)) then
-!      collDat % A =  self % xsData % getMass(nucIdx)
-!      call self % scatterFromFixed(p, collDat)
-!
-!    else
-!      call self % scatterInLAB(p, collDat)
-!
-!    end if
-!
-!    ! Change particle weight
-!    select case(MT)
-!      case(N_2N)
-!        p % w = p % w * 2.0_defReal
-!
-!      case(N_3N)
-!        p % w = p % w * 3.0_defReal
-!
-!      case(N_4N)
-!        p % w = p % w * 4.0_defReal
-!
-!      case default
-!        call fatalError(Here,'Unknown N_XN scattering. WTF?')
-!
-!    end select
-!  end subroutine N_XN
-
-  !!
   !! Apply cutoffs
   !!
   subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
@@ -447,7 +361,6 @@ contains
 
     ! Sample scattering angles and post-collision energy
     call reac % sampleOut(mu, phi, E_out, p % E, p % pRNG)
-    !phi = TWO * PI * p % pRNG % get()
 
     ! Update neutron state
     p % E = E_out
