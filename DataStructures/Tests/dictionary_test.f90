@@ -162,13 +162,13 @@ contains
     logical(defBool)                         :: temp
 
     call this % dict % get(temp,'myBool')
-    @assertEqual(.true., temp, 'Ordinary Retrival Failed')
+    @assertTrue(temp, 'Ordinary Retrival Failed')
 
     call this % dict % getOrDefault(temp,'myBool',.false.)
-    @assertEqual(.true., temp, 'Get or Default Retrival Failed for Present Keyword')
+    @assertTrue( temp, 'Get or Default Retrival Failed for Present Keyword')
 
     call this % dict % getOrDefault(temp,'invalid', .false.)
-    @assertEqual(.true., temp, 'Get or Default Retrival Failed for Absent Keyword')
+    @assertFalse(temp, 'Get or Default Retrival Failed for Absent Keyword')
 
   end subroutine testGettingBool
 
@@ -544,7 +544,7 @@ contains
     @assertEqual(1, this % dict % getSize('charNameLenArray'))
 
     ! Get length of the dictionary (number of entries)
-    @assertEqual(9, this % dict % length())
+    @assertEqual(10, this % dict % length())
 
   end subroutine testGetSize
 
