@@ -1,0 +1,8 @@
+# Ignore Python File created on exec/install
+__pycache__/
+cream.egg-info/
+*.pyc
+
+# Ignore all hidden files (except gitignore)
+.*
+!/.gitignore

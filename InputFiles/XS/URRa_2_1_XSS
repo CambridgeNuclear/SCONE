@@ -1,0 +1,25 @@
+// This XSS are for a URR-2-1-IN/SL Benchamrk Problem 
+// Source: A. Sood, R. A. Forster, and D. K. Parsons, 
+//        ‘Analytical Benchmark Test Set For Criticality Code Verification’
+//
+
+numberOfGroups 2; 
+
+capture (0.0010046 0.025788);
+fission (0.0010484 0.050632);
+nu      (2.5 2.5); 
+chi     (1.0 0.0); 
+ 
+scatteringMultiplicity ( 
+1.0 1.0 
+1.0 1.0  ); 
+
+P0 ( 
+ 0.62568 0.029227 
+ 0.0     2.443830
+); 
+
+P1 (
+  0.27459 0.0075737
+  0.0     0.83318
+); 

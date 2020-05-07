@@ -1,0 +1,77 @@
+type eigenPhysicsPackage; 
+
+pop      15000;
+active   500; 
+inactive 200; 
+XSdata   mg;
+dataType mg; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorDT;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  {  
+                norm    fiss; 
+                normVal 100;
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+	      }
+
+geometry { 
+    type basicCellCSG;
+    boundary (0 0 1 1 1 1);
+
+    surfaces
+    {
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth (9.4959 10.0 10.0); }  
+    }
+
+
+    cells
+    {
+      out     { id 3; surfaces (1 ); filltype outside;         }
+      inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type cellUniverse; 
+	  origin (0.0 0.0 0.0);
+	  cells ( 4 3); 
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ce { type aceNeutronDatabase; aceLibrary /home/mak60/Cases/U235_Compr/XSDAT/JEF311.aceXS;}
+     mg { type baseMgNeutronDatabase; PN P1;} 
+  }
+  
+  
+materials { 
+
+    fuel {  
+      temp       273; 
+      composition {
+        92235.03  0.037047; 
+      }   
+      xsFile ./XS/URRa_2_1_XSS;
+    }	 
+
+} 
+  
+}
+  
+  
+  
