@@ -162,13 +162,13 @@ contains
     logical(defBool)                         :: temp
 
     call this % dict % get(temp,'myBool')
-    @assertEqual(.TRUE., temp, 'Ordinary Retrival Failed')
+    @assertEqual(.true., temp, 'Ordinary Retrival Failed')
 
-    call this % dict % getOrDefault(temp,'myBool',.FALSE.)
-    @assertEqual(.TRUE., temp, 'Get or Default Retrival Failed for Present Keyword')
+    call this % dict % getOrDefault(temp,'myBool',.false.)
+    @assertEqual(.true., temp, 'Get or Default Retrival Failed for Present Keyword')
 
-    call this % dict % getOrDefault(temp,'invalid', .FALSE.)
-    @assertEqual(.FALSE., temp, 'Get or Default Retrival Failed for Absent Keyword')
+    call this % dict % getOrDefault(temp,'invalid', .false.)
+    @assertEqual(.true., temp, 'Get or Default Retrival Failed for Absent Keyword')
 
   end subroutine testGettingBool
 

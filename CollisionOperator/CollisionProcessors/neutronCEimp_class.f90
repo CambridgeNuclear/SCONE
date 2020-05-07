@@ -143,13 +143,13 @@ contains
     call dict % getOrDefault(self % tresh_A, 'massTreshold', 1.0_defReal)
 
     ! Obtain settings for variance reduction
-    call dict % getOrDefault(self % splitting,'split',.FALSE.)
-    call dict % getOrDefault(self % roulette,'roulette',.FALSE.)
+    call dict % getOrDefault(self % splitting,'split', .false.)
+    call dict % getOrDefault(self % roulette,'roulette', .false.)
     call dict % getOrDefault(self % minWgt,'minWgt',0.25_defReal)
     call dict % getOrDefault(self % maxWgt,'maxWgt',1.25_defReal)
     call dict % getOrDefault(self % avWgt,'avWgt',0.5_defReal)
-    call dict % getOrDefault(self % implicitAbsorption,'impAbs',.FALSE.)
-    call dict % getOrDefault(self % implicitSites,'impGen',.TRUE.)
+    call dict % getOrDefault(self % implicitAbsorption,'impAbs', .false.)
+    call dict % getOrDefault(self % implicitSites,'impGen', .true.)
 
     ! Verify settings
     if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
@@ -163,9 +163,9 @@ contains
               'Upper weight bound must be at least twice the lower weight bound')
     end if
     if (self % implicitAbsorption) then
-      if (.NOT. self % roulette) call fatalError(Here,&
+      if (.not.self % roulette) call fatalError(Here,&
          'Must use Russian roulette when using implicit absorption')
-      if (.NOT. self % implicitSites) call fatalError(Here,&
+      if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
     end if
 
@@ -231,7 +231,7 @@ contains
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
-    fiss_and_implicit = self % nuc % isFissile().AND.self % implicitSites
+    fiss_and_implicit = self % nuc % isFissile() .and. self % implicitSites
     if (fiss_and_implicit) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
@@ -279,7 +279,7 @@ contains
 
     ! Perform implicit absorption
     if (self % implicitAbsorption) then
-      if(.NOT.fiss_and_implicit) then
+      if(.not.fiss_and_implicit) then
         call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
       end if
       sig_scatter  = microXSs % elasticScatter + microXSs % inelasticScatter
@@ -328,7 +328,7 @@ contains
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff
     character(100),parameter             :: Here = 'fission (neutronCEstd_class.f90)'
 
-    if (.NOT.self % implicitSites) then
+    if (.not.self % implicitSites) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
       w0    = p % preHistory % wgt ! Starting weight
@@ -458,9 +458,9 @@ contains
 
     if (p % E < self % minE ) then
       p % isDead = .true.
-    elseif ((self % splitting).AND.(p % w > self % maxWgt)) then
+    elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
       call self % split(p, thisCycle)
-    elseif ((self % roulette).AND.(p % w < self % minWgt)) then
+    elseif ((self % roulette) .and. (p % w < self % minWgt)) then
       call self % russianRoulette(p)
     endif
 

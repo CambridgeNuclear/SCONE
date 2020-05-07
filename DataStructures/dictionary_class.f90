@@ -770,9 +770,9 @@ contains
       case(numInt)
         i = self % entries(idx) % int0_alloc
         if (i == 1) then
-          value = .TRUE.
+          value = .true.
         elseif (i == 0) then
-          value = .FALSE.
+          value = .false.
         else
           call fatalError(Here,'Entry under keyword ' // keyword // ' is neither 0 nor 1')
         end if
