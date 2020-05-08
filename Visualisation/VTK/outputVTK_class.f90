@@ -14,7 +14,6 @@ module outputVTK_class
   !!
   !! Object responsible for creating and outputting VTK files
   !!
-<<<<<<< HEAD
   !! Receives data sets and geometric information, generating a legacy VTK file
   !!
   !! Private members:
@@ -56,19 +55,6 @@ module outputVTK_class
     real(defReal), dimension(:,:,:,:), allocatable, private :: values  
     character(nameLen), dimension(:), allocatable, private  :: dataName
     logical(defBool), dimension(:), allocatable, private    :: dataReal
-=======
-  type, public :: outputVTK
-    logical(defBool)                               :: legacy = .true. ! Is it legacy VTK?
-    integer(shortInt), dimension(2)                :: version = [3,0] ! VTK version
-    real(defReal), dimension(3)                    :: corner          ! corner of the mesh
-    real(defReal), dimension(3)                    :: width           ! mesh cell width in each direction
-    integer(shortInt), dimension(3)                :: nVox            ! number of voxels
-    integer(shortInt)                              :: nCells          ! total number of mesh cells
-    integer(shortInt)                              :: nOutput         ! number of separate mesh data outputs
-    real(defReal), dimension(:,:,:,:), allocatable :: values          ! mesh values indexed by output number and mesh indices
-    character(nameLen), dimension(:), allocatable  :: dataName        ! name of the dataset
-    logical(defBool), dimension(:), allocatable    :: dataReal        ! is data real?(T) or int?(F)
->>>>>>> efd496aff79efebb831421c16c4671982a4edb31
   contains
     procedure :: init
     generic   :: addData => addDataInt,&
@@ -169,7 +155,7 @@ contains
       allocate(self % dataReal(1))
       self % dataReal(1) = .true.
 
-  else ! move previously allocated values into a temporary array
+    else ! move previously allocated values into a temporary array
       allocate(tempArray(self % nOutput, self % nVox(1), self % nVox(2), self % nVox(3)))
       tempArray(1:self % nOutput - 1, :, :, :) = self % values
       tempArray(self % nOutput, :, :, :) = newValues
@@ -217,8 +203,7 @@ contains
      call fatalError&
     (here,'Input array size does not agree with anticipated size')
     end if
-    s
-    elf % nOutput = self % nOutput + 1
+    self % nOutput = self % nOutput + 1
 
     ! If this is the first data set, simply copy the values in and be done
     if (self % nOutput == 1) then
