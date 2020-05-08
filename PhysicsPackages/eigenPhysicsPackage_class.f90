@@ -461,10 +461,13 @@ contains
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
-      print *, "CONSTRUCTING VISUALISATION"
+      print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       geom => self % geom
       call viz % init(geom, tempDict)
+      print *, "Constructing visualisation"
+      call viz % makeViz()
+      call viz % kill()
     endif
 
     ! Build collision operator

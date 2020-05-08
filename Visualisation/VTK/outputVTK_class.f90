@@ -5,7 +5,7 @@ module outputVTK_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures
+  use genericProcedures, only: fatalError
   use dictionary_class, only: dictionary
 
   implicit none
@@ -14,17 +14,47 @@ module outputVTK_class
   !!
   !! Object responsible for creating and outputting VTK files
   !!
-  type, public                                     :: outputVTK
-    logical(defBool)                               :: legacy = .TRUE. ! Is it legacy VTK?
-    integer(shortInt), dimension(2)                :: version = [3,0] ! VTK version
-    real(defReal), dimension(3)                    :: corner          ! corner of the mesh
-    real(defReal), dimension(3)                    :: width           ! mesh cell width in each direction
-    integer(shortInt), dimension(3)                :: nVox            ! number of voxels
-    integer(shortInt)                              :: nCells          ! total number of mesh cells
-    integer(shortInt)                              :: nOutput         ! number of separate mesh data outputs
-    real(defReal), dimension(:,:,:,:), allocatable :: values          ! mesh values indexed by output number and mesh indices
-    character(nameLen), dimension(:), allocatable  :: dataName        ! name of the dataset
-    logical(defBool), dimension(:), allocatable    :: dataReal        ! is data real?(T) or int?(F)
+  !! Receives data sets and geometric information, generating a legacy VTK file
+  !!
+  !! Private members:
+  !!   legacy   -> is it legacy VTK? May be used in future for different output format
+  !!   version  -> describes VTK version
+  !!   corner   -> corner of the geometry
+  !!   width    -> width of mesh in each direction
+  !!   nVox     -> number of voxels in each direction
+  !!   nCells   -> total number of voxels
+  !!   nOutput  -> number of separate outputs
+  !!   values   -> values contained in each voxel for each data set
+  !!   dataName -> name of each data set
+  !!   dataReal -> does a data set contain reals?(T) or ints?(F)
+  !!
+  !! Interface:
+  !!   init        -> initialises outputVTK
+  !!   addData     -> adds data to outputVTK, either real or int data
+  !!   addDataInt  -> adds integer data
+  !!   addDataReal -> adds real data
+  !!   output      -> outputs all data to a .vtk file
+  !!   kill        -> cleans up outputVTK
+  !!
+  !! Sample dictionary input:
+  !!   myVTKOutput{
+  !!     type vtk;
+  !!     corner (-1.2 -3.4 5.7);
+  !!     width (0.8 27 100.1);
+  !!     #what material;#
+  !!   }
+  !!
+  type, public                                              :: outputVTK
+    logical(defBool), private                               :: legacy = .TRUE. 
+    integer(shortInt), dimension(2), private                :: version = [3,0] 
+    real(defReal), dimension(3), private                    :: corner 
+    real(defReal), dimension(3), private                    :: width  
+    integer(shortInt), dimension(3), private                :: nVox   
+    integer(shortInt), private                              :: nCells 
+    integer(shortInt), private                              :: nOutput
+    real(defReal), dimension(:,:,:,:), allocatable, private :: values  
+    character(nameLen), dimension(:), allocatable, private  :: dataName
+    logical(defBool), dimension(:), allocatable, private    :: dataReal
   contains
     procedure :: init
     generic   :: addData => addDataInt,&
@@ -40,13 +70,26 @@ contains
   !!
   !! Initialise mesh output by providing mesh structure
   !!
+  !! Provides outputVTK with necessary info regarding voxel geometry
+  !! prior to providing any data sets
+  !!
+  !! Args:
+  !!   vtkDict [in] -> dictionary containing VTK file details
+  !!
+  !! Result:
+  !!   Initialised outputVTK, ready to receive data
+  !!
+  !! Errors:
+  !!   Will produce errors if geometry descriptors are not three dimensional
+  !!   or if the number of voxels are negative
+  !!
   subroutine init(self, vtkDict)
     class(outputVTK), intent(inout)              :: self
     class(dictionary), intent(in)                :: vtkDict
     real(defReal), dimension(:), allocatable     :: corner
     real(defReal), dimension(:), allocatable     :: width
     integer(shortInt), dimension(:), allocatable :: nVox
-    character(nameLen) :: here ='init, outputVTK_class.f90'
+    character(nameLen) :: here ='init (outputVTK_class.f90)'
 
     self % legacy = .TRUE.
     call vtkDict % get(corner,'corner')
@@ -57,13 +100,16 @@ contains
     self % nVox = nVox
     if (size(self % corner) .NE. 3) then
       call fatalError(here,'Voxel plot requires corner to have 3 values')
-    endif
+    end if
     if (size(self % width) .NE. 3) then
       call fatalError(here,'Voxel plot requires width to have 3 values')
-    endif
+    end if
     if (size(self % nVox) .NE. 3) then
       call fatalError(here,'Voxel plot requires vox to have 3 values')
-    endif
+    end if
+    if (any(self % nVox < 0)) then
+      call fatalError(here,'Number of voxels must be positive')
+    end if
     self % nCells = self % nVox(1) * self % nVox(2) * self % nVox(3)
     self % nOutput = 0
 
@@ -72,6 +118,18 @@ contains
   !!
   !! Add a new mesh data set to the object
   !!
+  !! Adds a new data set of real data to the file to be written
+  !!
+  !! Args:
+  !!   newValues [in] -> real values corresponding to different voxels
+  !!   newName [in]   -> name of the data set
+  !!
+  !! Result:
+  !!   New real data set added to VTK file to be written
+  !!
+  !! Errors:
+  !!   Will return an error if the newValues do not have the expected dimensions
+  !!
   subroutine addDataReal(self, newValues, newName)
     class(outputVTK), intent(inout)                :: self
     real(defReal), dimension(:,:,:), intent(in)    :: newValues
@@ -79,13 +137,13 @@ contains
     real(defReal), dimension(:,:,:,:), allocatable :: tempArray
     character(nameLen), dimension(:), allocatable  :: tempChar
     logical(defBool), dimension(:), allocatable    :: tempBool
-
+    character(pathLen) :: here ='addDataReal (outputVTK_class.f90)'
 
     ! Perform error checks on the size of the array provided
-    if ((size(newValues,1) /= self % nVox(1)) .OR. (size(newValues,2) /= self % nVox(2)) .OR. &
-    (size(newValues,3) /= self % nVox(3))) call fatalError&
-    ('addData, outputMesh','Input array size does not agree with anticipated size')
-
+    if( any(shape(newValues) /= self % nVox)) then
+     call fatalError&
+    (here,'Input array size does not agree with anticipated size')
+    end if
     self % nOutput = self % nOutput + 1
 
     ! If this is the first data set, simply copy the values in and be done
@@ -118,6 +176,18 @@ contains
   !!
   !! Add a new mesh data set to the object
   !!
+  !! Adds a new data set of int data to the file to be written
+  !!
+  !! Args:
+  !!   newValues [in] -> int values corresponding to different voxels
+  !!   newName [in]   -> name of the data set
+  !!
+  !! Result:
+  !!   New int data set added to VTK file to be written
+  !!
+  !! Errors:
+  !!   Will return an error if the newValues do not have the expected dimensions
+  !!
   subroutine addDataInt(self, newValues, newName)
     class(outputVTK), intent(inout)                 :: self
     integer(shortInt), dimension(:,:,:), intent(in) :: newValues
@@ -125,13 +195,13 @@ contains
     real(defReal), dimension(:,:,:,:), allocatable  :: tempArray
     character(nameLen), dimension(:), allocatable   :: tempChar
     logical(defBool), dimension(:), allocatable     :: tempBool
-
+    character(pathLen) :: here ='addDataInt (outputVTK_class.f90)'
 
     ! Perform error checks on the size of the array provided
-    if ((size(newValues,1) /= self % nVox(1)) .OR. (size(newValues,2) /= self % nVox(2)) .OR. &
-    (size(newValues,3) /= self % nVox(3))) call fatalError&
-    ('addData, outputMesh','Input array size does not agree with anticipated size')
-
+    if( any(shape(newValues) /= self % nVox)) then
+     call fatalError&
+    (here,'Input array size does not agree with anticipated size')
+    end if
     self % nOutput = self % nOutput + 1
 
     ! If this is the first data set, simply copy the values in and be done
@@ -163,46 +233,48 @@ contains
   !!
   !! Output all mesh data
   !!
+  !! Writes the .vtk file containing all provided data
+  !!
+  !! Args:
+  !!   name [in] -> name of the output file
+  !!
+  !! Result:
+  !!   A .vtk file containing all data contained by the outputVTK object
+  !!
   subroutine output(self, name)
     class(outputVTK), intent(in) :: self
     character(*), intent(in)     :: name
-    integer(shortInt)            :: i, j, k, l, stat
+    integer(shortInt)            :: l, stat, file
     character(256)               :: filename
 
     ! Append .vtk to filename
     filename = trim(name)//'.vtk'
 
     ! Check if file already exists - if so, delete it
-    open(unit = 10, iostat = stat, file = filename, status = 'old')
-    if (stat == 0) close(10, status = 'delete')
+    open(newunit = file, iostat = stat, file = filename)
+    if (stat == 0) close(file, status = 'delete')
 
     ! Open file to begin output
-    open(unit = 10, file = filename, status = 'new')
+    open(newunit = file, file = filename)
 
     ! Output file version and identifier  ' # vtk DataFile Version x.x
-    write(10,'(A,I0,A,I0)') '# vtk DataFile Version ',self %version(1),'.', self % version(2)
+    write(file,'(A,I0,A,I0)') '# vtk DataFile Version ',self %version(1),'.', self % version(2)
 
     ! Output header - string terminated by character (256 characters maximum)
-    write(10,'(A)') 'Voxel output file generated from the SCONE Monte Carlo code'
+    write(file,'(A)') 'Voxel output file generated from the SCONE Monte Carlo code'
 
     ! Output file format - either ASCII or BINARY
-    write(10,'(A)') 'ASCII'
+    write(file,'(A)') 'ASCII'
 
     ! Output dataset structure - describe geometry and topology of the dataset
     ! Here this follows the Structured Points standard
     ! Specify number of elements in each direction, specify an origin,
     ! and specify spacing in each direction
-    write(10,'(A)') 'DATASET STRUCTURED_POINTS'
-    write(10,'(A,A,A,A,A,A)') 'DIMENSIONS ',trim(numToChar(self % nVox(1))),' '&
-                       ,trim(numToChar(self % nVox(2))),' ',trim(numToChar(self % nVox(3)))
-
-    write(10,'(A,A,A,A,A,A)') 'ORIGIN ',trim(numToChar(self % corner(1))),' ',&
-                              trim(numToChar(self % corner(2))),' ',trim(numToChar(self % corner(3)))
-
-    write(10,'(A,A,A,A,A,A)') 'SPACING ',trim(numToChar(self % width(1))),' ',&
-                              trim(numToChar(self % width(2))),' ',trim(numToChar(self % width(3)))
-
-    write(10,'(A,A)') 'POINT_DATA ',numToChar(self % nCells)
+    write(file,'(A)') 'DATASET STRUCTURED_POINTS'
+    write(file,'(A,3I0)') 'DIMENSIONS ',self % nVox
+    write(file,'(A,3F0.0)') 'ORIGIN ',self % corner
+    write(file,'(A,3F0.0)') 'SPACING ',self % width
+    write(file,'(A,I0)') 'POINT_DATA ',self % nCells
 
     ! Output dataset attributes - begins with POINT_DATA or CELL_DATA followed by number of cells/points
     ! Other keyword/data combinations then define the dataset attribute values (scalar, vectors, tensors...)
@@ -211,30 +283,28 @@ contains
     ! Loop over each data set
 
     do l = 1, self % nOutput
-      write(10,'(A,A,A)') 'SCALARS ',trim(self % dataName(l)),' float 1'
+      write(file,'(A,A,A)') 'SCALARS ',trim(self % dataName(l)),' float 1'
 
       ! Possibility: construct and specify lookup table
-      write(10,'(A)') 'LOOKUP_TABLE default'
+      write(file,'(A)') 'LOOKUP_TABLE default'
 
-      do k = 1, self % nVox(3)
-        do j = 1, self % nVox(2)
-          do i = 1, self % nVox(1)
-            if (self % dataReal(l)) then
-              write(10,'(A)') numToChar(self % values(l,i,j,k))
-            else
-              write(10,'(A)') numToChar(int(self % values(l,i,j,k),shortInt))
-            endif
-          end do
-        end do
-      end do
-
+      if (self % dataReal(l)) then
+        write(file,'(F0.0)') self % values(l,:,:,:)
+      else
+        write(file,'(I0)') int(self % values(l,:,:,:),shortInt)
+      endif
     end do
 
     ! Close the file
-    close(10)
+    close(file)
 
   end subroutine output
 
+  !!
+  !! Kill outputVTK
+  !!
+  !! Cleans up contents of outputVTK
+  !!
   subroutine kill(self)
     class(outputVTK), intent(inout) :: self
 
