@@ -14,6 +14,7 @@ module outputVTK_class
   !!
   !! Object responsible for creating and outputting VTK files
   !!
+<<<<<<< HEAD
   !! Receives data sets and geometric information, generating a legacy VTK file
   !!
   !! Private members:
@@ -55,6 +56,19 @@ module outputVTK_class
     real(defReal), dimension(:,:,:,:), allocatable, private :: values  
     character(nameLen), dimension(:), allocatable, private  :: dataName
     logical(defBool), dimension(:), allocatable, private    :: dataReal
+=======
+  type, public :: outputVTK
+    logical(defBool)                               :: legacy = .true. ! Is it legacy VTK?
+    integer(shortInt), dimension(2)                :: version = [3,0] ! VTK version
+    real(defReal), dimension(3)                    :: corner          ! corner of the mesh
+    real(defReal), dimension(3)                    :: width           ! mesh cell width in each direction
+    integer(shortInt), dimension(3)                :: nVox            ! number of voxels
+    integer(shortInt)                              :: nCells          ! total number of mesh cells
+    integer(shortInt)                              :: nOutput         ! number of separate mesh data outputs
+    real(defReal), dimension(:,:,:,:), allocatable :: values          ! mesh values indexed by output number and mesh indices
+    character(nameLen), dimension(:), allocatable  :: dataName        ! name of the dataset
+    logical(defBool), dimension(:), allocatable    :: dataReal        ! is data real?(T) or int?(F)
+>>>>>>> efd496aff79efebb831421c16c4671982a4edb31
   contains
     procedure :: init
     generic   :: addData => addDataInt,&
@@ -89,9 +103,9 @@ contains
     real(defReal), dimension(:), allocatable     :: corner
     real(defReal), dimension(:), allocatable     :: width
     integer(shortInt), dimension(:), allocatable :: nVox
-    character(nameLen) :: here ='init (outputVTK_class.f90)'
+    character(100) :: here ='init (outputVTK_class.f90)'
 
-    self % legacy = .TRUE.
+    self % legacy = .true.
     call vtkDict % get(corner,'corner')
     self % corner = corner
     call vtkDict % get(width,'width')
@@ -137,7 +151,7 @@ contains
     real(defReal), dimension(:,:,:,:), allocatable :: tempArray
     character(nameLen), dimension(:), allocatable  :: tempChar
     logical(defBool), dimension(:), allocatable    :: tempBool
-    character(pathLen) :: here ='addDataReal (outputVTK_class.f90)'
+    character(100) :: here ='addDataReal (outputVTK_class.f90)'
 
     ! Perform error checks on the size of the array provided
     if( any(shape(newValues) /= self % nVox)) then
@@ -153,25 +167,26 @@ contains
       allocate(self % dataName(1))
       self % dataName(1) = newName
       allocate(self % dataReal(1))
-      self % dataReal(1) = .TRUE.
-    ! Otherwise, move previously allocated values into a temporary array
-    else
+      self % dataReal(1) = .true.
+
+  else ! move previously allocated values into a temporary array
       allocate(tempArray(self % nOutput, self % nVox(1), self % nVox(2), self % nVox(3)))
       tempArray(1:self % nOutput - 1, :, :, :) = self % values
       tempArray(self % nOutput, :, :, :) = newValues
       call move_alloc(tempArray, self % values)
+
       allocate(tempChar(self % nOutput))
       tempChar(1:self % nOutput - 1) = self % dataName
       tempChar(self % nOutput) = newName
       call move_alloc(tempChar, self % dataName)
+
       allocate(tempBool(self % nOutput))
       tempBool(1:self % nOutput - 1) = self % dataReal
-      tempBool(self % nOutput) = .TRUE.
+      tempBool(self % nOutput) = .true.
       call move_alloc(tempBool, self % dataReal)
     end if
 
   end subroutine addDataReal
-
 
   !!
   !! Add a new mesh data set to the object
@@ -202,30 +217,34 @@ contains
      call fatalError&
     (here,'Input array size does not agree with anticipated size')
     end if
-    self % nOutput = self % nOutput + 1
+    s
+    elf % nOutput = self % nOutput + 1
 
     ! If this is the first data set, simply copy the values in and be done
     if (self % nOutput == 1) then
       allocate(self % values(1, self % nVox(1), self % nVox(2), self % nVox(3)))
-      self % values(1,:,:,:) = real(newValues,defReal)
+      self % values(1,:,:,:) = real(newValues, defReal)
       allocate(self % dataName(1))
       self % dataName(1) = newName
       allocate(self % dataReal(1))
-      self % dataReal(1) = .FALSE.
-    ! Otherwise, move previously allocated values into a temporary array
-    else
+      self % dataReal(1) = .false.
+
+    else ! move previously allocated values into a temporary array
       allocate(tempArray(self % nOutput, self % nVox(1), self % nVox(2), self % nVox(3)))
       tempArray(1:self % nOutput - 1, :, :, :) = self % values
       tempArray(self % nOutput, :, :, :) = real(newValues,defReal)
       call move_alloc(tempArray, self % values)
+
       allocate(tempChar(self % nOutput))
       tempChar(1:self % nOutput - 1) = self % dataName
       tempChar(self % nOutput) = newName
       call move_alloc(tempChar, self % dataName)
+
       allocate(tempBool(self % nOutput))
       tempBool(1:self % nOutput - 1) = self % dataReal
-      tempBool(self % nOutput) = .FALSE.
+      tempBool(self % nOutput) = .false.
       call move_alloc(tempBool, self % dataReal)
+
     end if
 
   end subroutine addDataInt
@@ -305,11 +324,13 @@ contains
   !!
   !! Cleans up contents of outputVTK
   !!
-  subroutine kill(self)
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
     class(outputVTK), intent(inout) :: self
 
-    deallocate(self % values)
-    deallocate(self % dataName)
+    if(allocated(self % values))   deallocate(self % values)
+    if(allocated(self % dataName)) deallocate(self % dataName)
     self % nCells = 0
     self % nOutput = 0
 

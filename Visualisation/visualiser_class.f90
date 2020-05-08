@@ -1,5 +1,5 @@
 !!
-!! The visualiser object  
+!! The visualiser object
 !!
 module visualiser_class
 
@@ -116,8 +116,7 @@ contains
         case('vtk')
           call self % makeVTK(tempDict)
         case default
-          call fatalError(here,&
-           'Unrecognised visualisation - presently only accept vtk')
+          call fatalError(here, 'Unrecognised visualisation - presently only accept vtk')
       end select
 
     end do
@@ -140,7 +139,7 @@ contains
   !!   required vtk inputs
   !!
   subroutine makeVTK(self, dict)
-    class(visualiser), intent(inout)                :: self       
+    class(visualiser), intent(inout)                :: self
     class(dictionary), intent(in)                   :: dict
     type(outputVTK)                                 :: vtk
     integer(shortInt), dimension(:,:,:), allocatable:: voxelMat
@@ -152,33 +151,33 @@ contains
     character(nameLen) :: here ='makeVTK (visualiser_class.f90)'
 
     call vtk % init(dict)
-    
+
     ! Identify whether plotting 'material' or 'cellID'
     call dict % getOrDefault(what, 'what', 'material')
-    
+
     ! Obtain geometry data
     call dict % get(corner, 'corner')
     call dict % get(width, 'width')
     center = corner + width/TWO
     call dict % get(nVox, 'vox')
 
-    if (size(corner) .NE. 3) then
+    if (size(corner) /= 3) then
       call fatalError(here,'Voxel plot requires corner to have 3 values')
     endif
-    if (size(width) .NE. 3) then
+    if (size(width) /= 3) then
       call fatalError(here,'Voxel plot requires width to have 3 values')
     endif
-    if (size(nVox) .NE. 3) then
+    if (size(nVox) /= 3) then
       call fatalError(here,'Voxel plot requires vox to have 3 values')
     endif
-    allocate(voxelMat(nVox(1),nVox(2),nVox(3)))
+    allocate(voxelMat(nVox(1), nVox(2), nVox(3)))
 
     ! Have geometry obtain data
-    call self % geom % voxelPlot(voxelMat,what,center,width)
+    call self % geom % voxelPlot(voxelMat, what, center, width)
 
     ! In principle, can add multiple data sets to VTK - not done here yet
     ! VTK data set will use 'what' variable as a name
-    call vtk % addData(voxelMat,what)
+    call vtk % addData(voxelMat, what)
     call vtk % output(self % name)
     call vtk % kill()
 
@@ -202,4 +201,3 @@ contains
   end subroutine kill
 
 end module visualiser_class
-
