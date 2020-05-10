@@ -4,14 +4,15 @@
 module physicsPackageFactory_func
 
   use numPrecision
-  use genericProcedures,         only : fatalError
-  use dictionary_class,          only : dictionary
+  use genericProcedures,               only : fatalError
+  use dictionary_class,                only : dictionary
 
   ! Physics Package interface
-  use physicsPackage_inter,      only : physicsPackage
+  use physicsPackage_inter,            only : physicsPackage
 
   ! Implementations
-  use eigenPhysicsPackage_class, only : eigenPhysicsPackage
+  use eigenPhysicsPackage_class,       only : eigenPhysicsPackage
+  use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -22,8 +23,8 @@ module physicsPackageFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_physicsPackages = [ 'eigenPhysicsPackage',&
-                                                                            'dynamPhysicsPackage']
+  character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
+                                                                             'fixedSourcePhysicsPackage']
 
   !!
   !! Public interface
@@ -57,6 +58,14 @@ contains
           type is (eigenPhysicsPackage)
             call new % init(dict)
         end select
+
+      case('fixedSourcePhysicsPackage')
+        ! Allocate and initialise
+        allocate( fixedSourcePhysicsPackage :: new)
+        select type(new)
+          type is (fixedSourcePhysicsPackage)
+            call new % init(dict)
+        end select
 !
 !      case('dynamPhysicsPackage')
 !        ! Allocate and initialise
@@ -67,7 +76,7 @@ contains
 !        end select
 
       case default
-        print *, AVALIBLE_physicsPackages
+        print *, AVAILABLE_physicsPackages
         call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))
 
     end select

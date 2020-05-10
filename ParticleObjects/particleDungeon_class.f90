@@ -47,6 +47,7 @@ module particleDungeon_class
   !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
   !!     normSize(N)       -> normalise dungeon population so it contains N particles
   !!                          does not take ununiform weight of particles into account
+  !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!
   !!   Build procedures:
@@ -82,6 +83,7 @@ module particleDungeon_class
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
+    procedure  :: setSize
     procedure  :: printToFile
 
     ! Private procedures
@@ -90,7 +92,6 @@ module particleDungeon_class
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
   end type particleDungeon
-
 
 contains
 
@@ -104,7 +105,6 @@ contains
     if(allocated(self % prisoners)) deallocate(self % prisoners)
     allocate(self % prisoners(maxSize))
     self % pop    = 0
-
 
   end subroutine init
 
@@ -373,6 +373,22 @@ contains
     wgt = sum( self % prisoners(1:self % pop) % wgt )
 
   end function popWeight
+
+  !!
+  !! Set population to have a particular size
+  !! Used for ease of overwriting, e.g., when sampling from a source 
+  !!
+  subroutine setSize(self, n)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: n
+
+    self % pop = n
+    if (size(self % prisoners) < 3*n) then
+      deallocate(self % prisoners)
+      allocate(self % prisoners(3*n))
+    end if
+
+  end subroutine setSize
 
   !!
   !! Prints the position of fission sites to a file
