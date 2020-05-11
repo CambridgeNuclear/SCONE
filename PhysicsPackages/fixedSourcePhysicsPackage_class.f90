@@ -70,14 +70,14 @@ module fixedSourcePhysicsPackage_class
     type(tallyAdmin),pointer               :: tally   => null()
 
     ! Settings
-    integer(shortInt)  :: N_batches
+    integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
 
     ! Calculation components
-    type(particleDungeon), pointer :: thisBatch    => null()
+    type(particleDungeon), pointer :: thisCycle       => null()
     class(source), allocatable     :: fixedSource
 
     ! Timer bins
@@ -86,7 +86,7 @@ module fixedSourcePhysicsPackage_class
   contains
     procedure :: init
     procedure :: printSettings
-    procedure :: batches
+    procedure :: cycles
     procedure :: collectResults
     procedure :: run
     procedure :: kill
@@ -101,7 +101,7 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ FIXED SOURCE CALCULATION /\/\" 
 
-    call self % batches(self % tally, self % N_batches)
+    call self % cycles(self % tally, self % N_cycles)
     call self % collectResults()
 
     print *
@@ -112,14 +112,14 @@ contains
   !!
   !!
   !!
-  subroutine batches(self, tally, N_batches)
+  subroutine cycles(self, tally, N_cycles)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
-    integer(shortInt), intent(in)                   :: N_batches
+    integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
-    character(100),parameter :: Here ='batches (fixedSourcePhysicsPackage_class.f90)'
+    character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
 
     N = self % pop
 
@@ -130,19 +130,19 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do i=1,N_batches
+    do i=1,N_cycles
 
       ! Send start of cycle report
-      call self % fixedSource % generate(self % thisBatch, N)
+      call self % fixedSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
-        call self % thisBatch % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
-      call tally % reportCycleStart(self % thisBatch)
+      call tally % reportCycleStart(self % thisCycle)
 
       gen: do
         ! Obtain paticle from dungeon
-        call self % thisBatch % release(p)
+        call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
 
         ! Save state
@@ -150,38 +150,38 @@ contains
 
           ! Transport particle untill its death
           history: do
-            call self % transOp % transport(p, tally, self % thisBatch, self % thisBatch)
+            call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
 
-            call self % collOp % collide(p, tally ,self % thisBatch, self % thisBatch)
+            call self % collOp % collide(p, tally ,self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
           end do history
 
-        if( self % thisBatch % isEmpty()) exit gen
+        if( self % thisCycle % isEmpty()) exit gen
       end do gen
 
       ! Send end of cycle report
-      call tally % reportCycleEnd(self % thisBatch)
+      call tally % reportCycleEnd(self % thisCyce)
 
       ! Calculate times
       call timerStop(self % timerMain)
       elapsed_T = timerTime(self % timerMain)
 
       ! Predict time to end
-      end_T = real(N_batches,defReal) * elapsed_T / i
+      end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
 
       ! Display progress
       call printFishLineR(i)
       print *
-      print *, 'Batch: ', numToChar(i), ' of ', numToChar(N_batches)
+      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
-  end subroutine batches
+  end subroutine cycles
 
   !!
   !! Print calculation results to file
@@ -201,8 +201,8 @@ contains
     name = 'pop'
     call out % printValue(self % pop,name)
 
-    name = 'Batches'
-    call out % printValue(self % N_batches,name)
+    name = 'Source batches'
+    call out % printValue(self % N_cycles,name)
 
     ! Print tally
     call self % tally % print(out)
@@ -231,7 +231,7 @@ contains
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
-    call dict % get( self % N_batches,'batch')
+    call dict % get( self % N_cycles,'cycles')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
 
@@ -285,7 +285,7 @@ contains
 
     ! Read particle source definition
     tempDict => dict % getDictPtr('source')
-    call new_source(self % fixedSource, tempDict, self % geom, self % pRNG)
+    call new_source(self % fixedSource, tempDict, self % geom)
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
@@ -322,7 +322,7 @@ contains
 
     print *, repeat("<>",50)
     print *, "/\/\ FIXED SOURCE CALCULATION /\/\" 
-    print *, "Batches:          ", numToChar(self % N_batches)
+    print *, "Source batches:   ", numToChar(self % N_cycles)
     print *, "Population:       ", numToChar(self % pop)
     print *, "Initial RNG Seed: ", numToChar(self % pRNG % getSeed())
     print *

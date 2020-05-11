@@ -59,35 +59,42 @@ contains
 
     ! Identify which particle is used in the source
     ! Presently limited to neutron and photon
-    call dict % getOrDefault(type,'particle','n')
+    call dict % getOrDefault(type, 'particle' ,'neutron')
     select case(type)
-      case('n')
+      case('neutron')
         self % particleType = P_NEUTRON
 
-      case('p')
+      case('photon')
         self % particleType = P_PHOTON
 
       case default
-        call fatalError(Here,'Unrecognised particle type')
+        call fatalError(Here, 'Unrecognised particle type')
      
     end select
 
     ! Get position and check it's inside geometry
     call dict % get(self % r, 'r') 
-    if (size(self % r) .ne. 3) call fatalError(Here, &
-            'Source position must have three components')
-    call self % geom % whatIsAt(self % r,matIdx,uniqueID)
-    if (matIdx == OUTSIDE_MAT) call fatalError(Here,&
-            'Source has been placed outside geometry')
+    if (size(self % r) /= 3) then
+      call fatalError(Here, 'Source position must have three components')
+    end if
+
+    call self % geom % whatIsAt(self % r, matIdx, uniqueID)
+    if (matIdx == OUTSIDE_MAT) then
+      call fatalError(Here, 'Source has been placed outside geometry')
+    end if
 
     ! Get beam direction and normalise - otherwise, assume isotropic
     hasDir = dict % isPresent('dir')
     if (hasDir) then
+      
       call dict % get(self % dir, 'dir')
-      if (size(self % dir) .ne. 3) call fatalError(Here, &
-              'Source direction must have three components')
-      self % dir = self % dir/norm2(self % dir)
+      if (size(self % dir) /= 3) then
+        call fatalError(Here, 'Source direction must have three components')
+      end if
+
+      self % dir = self % dir / norm2(self % dir)
       self % isIsotropic = .false.
+
     else
       self % isIsotropic = .true.
     end if
@@ -109,10 +116,11 @@ contains
   !!
   !! Provide particle type
   !!
-  subroutine sampleType(self,p)
+  subroutine sampleType(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
-
+    class(RNG), pointer, intent(in)     :: rand 
+    
     p % type = self % particleType
 
   end subroutine sampleType
@@ -120,9 +128,10 @@ contains
   !!
   !! Provide particle position
   !!
-  subroutine samplePosition(self,p)
+  subroutine samplePosition(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
+    class(RNG), pointer, intent(in)     :: rand 
 
     p % r = self % r
 
@@ -131,19 +140,20 @@ contains
   !!
   !! Provide angle or sample if isotropic
   !!
-  subroutine sampleEnergyAngle(self,p)
+  subroutine sampleEnergyAngle(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
+    class(RNG), pointer, intent(in)     :: rand 
     real(defReal)                       :: r, phi, theta
 
     if (self % isIsotropic) then
       p % dir = self % dir
     else
-      r = self % rand % get()
-      phi = TWO *PI * r
-      r = self % rand % get()
-      theta = acos(1 - TWO*r)
-      p % dir = [cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta)]
+      r = rand % get()
+      phi = TWO * PI * r
+      r = rand % get()
+      theta = acos(1 - TWO * r)
+      p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
     end if
 
   end subroutine sampleEnergyAngle
@@ -152,9 +162,10 @@ contains
   !!
   !! Provide particle energy
   !!
-  subroutine sampleEnergy(self,p)
+  subroutine sampleEnergy(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
+    class(RNG), pointer, intent(in)     :: rand 
 
     if (self % isMG) then
       p % G = self % G
@@ -173,7 +184,6 @@ contains
     class(pointSource), intent(inout) :: self
 
     self % geom => null()
-    self % rand => null()
 
   end subroutine kill
 

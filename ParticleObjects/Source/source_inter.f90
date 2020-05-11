@@ -24,7 +24,6 @@ module source_inter
   !! Private members:
   !!   geom -> Pointer to the geometry to ensure source is inside and
   !!           for more complicated source distribution
-  !!   rand -> Pointer to RNG for sampling particles from different distributions
   !!
   !! Interface:
   !!   init              -> initialise the source
@@ -39,7 +38,6 @@ module source_inter
   type, public,abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
-    class(RNG), pointer, public            :: rand => null()
   contains
     procedure, non_overridable             :: generate
     procedure, non_overridable             :: sampleParticle
@@ -56,55 +54,61 @@ module source_inter
     !!
     !! Initialise source from dictionary
     !!
-    subroutine init(self, dict, geom, rand)
+    subroutine init(self, dict, geom)
       import :: source, &
                 dictionary, &
                 geometry, &
-                RNG
       class(source), intent(inout)         :: self
       class(dictionary), intent(in)        :: dict
       class(geometry), pointer, intent(in) :: geom
-      class(RNG), pointer, intent(in)      :: rand
     end subroutine init
 
     !!
     !! sample particle type
     !!
-    subroutine sampleType(self,p)
+    subroutine sampleType(self, p, rand)
       import :: source, &
-                particleState
+                particleState, &
+                RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
+      class(RNG), pointer, intent(in)     :: rand
     end subroutine sampleType
 
     !!
     !! sample particle position
     !!
-    subroutine samplePosition(self,p)
+    subroutine samplePosition(self, p, rand)
       import :: source, &
-                particleState
+                particleState, &
+                RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
+      class(RNG), pointer, intent(in)     :: rand
     end subroutine samplePosition
 
     !!
     !! sample particle energy
     !!
-    subroutine sampleEnergy(self,p)
+    subroutine sampleEnergy(self, p, rand)
       import :: source, &
-                particleState
+                particleState, &
+                RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
+      class(RNG), pointer, intent(in)     :: rand
     end subroutine sampleEnergy
     
     !!
     !! sample particle energy-angle
     !!
-    subroutine sampleEnergyAngle(self,p)
+    subroutine sampleEnergyAngle(self, p, rand)
       import :: source, &
-                particleState
+                particleState, &
+                RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
+      class(RNG), pointer, intent(in)     :: rand
     end subroutine sampleEnergyAngle
     
     !!
@@ -132,10 +136,11 @@ contains
     !! Result:
     !!   A dungeon populated with n particles sampled from the source
     !!
-    subroutine generate(self, dungeon, n)
+    subroutine generate(self, dungeon, n, rand)
       class(source), intent(inout)         :: self
       type(particleDungeon), intent(inout) :: dungeon
       integer(shortInt), intent(in)        :: n
+      class(RNG), pointer, intent(in)      :: rand
       type(particleState)                  :: p
       integer(shortInt)                    :: i
 
@@ -143,10 +148,10 @@ contains
       call dungeon % setSize(n)
 
       ! Generate n particles to populate dungeon
-      do i = 1,n
+      do i = 1, n
         p % wgt = ONE
         p % time = ZERO
-        call self % sampleParticle(p)
+        call self % sampleParticle(p, rand)
         call dungeon % replace(p, i)
       end do
 
@@ -167,14 +172,15 @@ contains
     !! Errors:
     !!   Errors may occur in substituent sampling procedures
     !!
-    subroutine sampleParticle(self, p)
+    subroutine sampleParticle(self, p, rand)
       class(source), intent(inout)       :: self
       type(particleState), intent(inout) :: p
+      class(RNG), pointer, intent(in)    :: rand
 
-      call self % sampleType(p)
-      call self % samplePosition(p)
-      call self % sampleEnergyAngle(p)
-      call self % sampleEnergy(p)
+      call self % sampleType(p, rand)
+      call self % samplePosition(p, rand)
+      call self % sampleEnergyAngle(p, rand)
+      call self % sampleEnergy(p, rand)
 
     end subroutine sampleParticle
 

@@ -13,9 +13,6 @@ module sourceFactory_func
   ! geometry
   use geometry_inter,    only : geometry
 
-  ! RNG
-  use RNG_class,         only : RNG
-
   implicit none
   private
 
@@ -34,11 +31,10 @@ contains
   !! Allocate new allocatable source to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_source(new, dict, geom, rand)
+  subroutine new_source(new, dict, geom)
     class(source),allocatable, intent(inout) :: new
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    class(RNG), pointer, intent(in)          :: rand
     character(nameLen)                       :: type
     character(100),parameter :: Here = 'new_source (sourceFactory_func.f90)'
 
@@ -53,7 +49,7 @@ contains
     select case(type)
      case('pointSource')
        allocate(pointSource :: new)
-       call new % init(dict, geom, rand)
+       call new % init(dict, geom)
 
      !*** NEW SOURCE TEMPLATE ***!
      !case('<newSourceName>')
