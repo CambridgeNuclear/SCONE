@@ -57,7 +57,7 @@ module source_inter
     subroutine init(self, dict, geom)
       import :: source, &
                 dictionary, &
-                geometry, &
+                geometry 
       class(source), intent(inout)         :: self
       class(dictionary), intent(in)        :: dict
       class(geometry), pointer, intent(in) :: geom
@@ -146,7 +146,7 @@ contains
 
       ! Set dungeon size to begin
       call dungeon % setSize(n)
-
+      
       ! Generate n particles to populate dungeon
       do i = 1, n
         p % wgt = ONE

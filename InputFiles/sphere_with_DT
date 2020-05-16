@@ -1,0 +1,120 @@
+type fixedSourcePhysicsPackage; 
+//type eigenPhysicsPackage; 
+pop 20000;
+
+// Eig
+active 200;
+inactive 100;
+
+// Fixed source
+cycles   200; 
+
+XSdata   ce;
+dataType ce; 
+seed 730121214;
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                  } 
+
+transportOperator { type transportOperatorDT;
+                  } 
+
+source {
+  type pointSource;
+  r (0 0 0);
+  particle neutron;
+  E 14.1;
+}
+tally  { 
+                k_eff { type keffImplicitClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                        map {
+                          type multiMap;
+                          maps (ene mat); 
+                          ene {type energyMap; grid log; min 0.001; max 20; N 300;} 
+                          mat {type materialMap; materials (fuel ref);}
+                        }
+                        response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+activeTally  { 
+                k_eff { type keffImplicitClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                        map {
+                          type multiMap;
+                          maps (ene mat); 
+                          ene {type energyMap; grid log; min 0.001; max 20; N 300;} 
+                          mat {type materialMap; materials (fuel ref);}
+                        }
+                        response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+inactiveTally {}
+
+geometry { 
+    type basicCellCSG;
+    boundary (0 0 0 0 0 0);
+
+    surfaces
+    {
+      hollow    { id 1; type sphere; origin (0.0 0.0 0.0); radius 0.5; }  
+      fuel      { id 2; type sphere; origin (0.0 0.0 0.0); radius 4; }
+    }
+
+
+    cells
+    {
+      out     { id 3; surfaces (2 ); filltype outside;      }
+      fuel     { id 2; surfaces (-2 1); filltype mat; mat fuel;}
+      inside  { id 4; surfaces (-1); filltype mat; mat ref;}
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type cellUniverse; 
+	  origin (0.0 0.0 0.0);
+	  cells ( 2 4 3); 
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ce { type aceNeutronDatabase; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+
+    fuel {  
+      temp       273; 
+      composition {
+        94239.03  0.026697; 
+        94240.03  0.0018700; 
+        94241.03  0.00011639; 
+        31000.03  0.0014755;
+      }   
+    }	 
+
+    ref {
+      temp 273; 
+      composition { 
+        1002.03  0.00001;
+        1003.03  0.00001;
+      }
+    }
+
+} 
+  
+}
+  
+  
+  

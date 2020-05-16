@@ -122,16 +122,17 @@ contains
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
 
     N = self % pop
-
+    
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
+    p % k_eff = ONE
 
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
-
+    
     do i=1,N_cycles
-
+      
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
@@ -152,8 +153,8 @@ contains
           history: do
             call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
-
-            call self % collOp % collide(p, tally ,self % thisCycle, self % thisCycle)
+            
+            call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
           end do history
 
@@ -161,7 +162,7 @@ contains
       end do gen
 
       ! Send end of cycle report
-      call tally % reportCycleEnd(self % thisCyce)
+      call tally % reportCycleEnd(self % thisCycle)
 
       ! Calculate times
       call timerStop(self % timerMain)
@@ -201,7 +202,7 @@ contains
     name = 'pop'
     call out % printValue(self % pop,name)
 
-    name = 'Source batches'
+    name = 'Source_batches'
     call out % printValue(self % N_cycles,name)
 
     ! Print tally
@@ -214,7 +215,7 @@ contains
 
 
   !!
-  !! Initialise from individual components and dictionaries for inactive and active tally
+  !! Initialise from individual components and dictionaries for source and tally
   !!
   subroutine init(self, dict)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
@@ -300,6 +301,10 @@ contains
     allocate(self % tally)
     call self % tally % init(tempDict)
 
+    ! Size particle dungeon
+    allocate(self % thisCycle)
+    call self % thisCycle % init(3 * self % pop)
+    
     call self % printSettings()
 
   end subroutine init
