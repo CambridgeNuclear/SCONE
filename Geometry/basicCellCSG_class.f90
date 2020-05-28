@@ -134,8 +134,8 @@ contains
     end where
 
     do i=1,3
-      bounds(2*(i-1) +1) = origin(1) - halfwidth(i)
-      bounds(2*(i-1) +2) = origin(1) + halfwidth(i)
+      bounds(2*(i-1) +1) = origin(i) - halfwidth(i)
+      bounds(2*(i-1) +2) = origin(i) + halfwidth(i)
     end do
 
 
