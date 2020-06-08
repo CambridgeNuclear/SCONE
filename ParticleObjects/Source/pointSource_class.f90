@@ -5,7 +5,7 @@ module pointSource_class
   use genericProcedures,  only: fatalError
   use particle_class,     only: particleState, P_NEUTRON, P_PHOTON
   use dictionary_class,   only: dictionary
-  use source_inter,       only: source, kill_super => kill
+  use configSource_inter, only: configSource, kill_super => kill
   use geometry_inter,     only: geometry
   use RNG_class,          only: RNG
 
@@ -45,7 +45,7 @@ module pointSource_class
   !!       #dir (2.0 1.0 0.0); #
   !!      }
   !!
-  type, public,extends(source) :: pointSource
+  type, public,extends(configSource) :: pointSource
     private
     real(defReal),dimension(3)  :: r            = ZERO
     real(defReal),dimension(3)  :: dir          = ZERO
@@ -151,7 +151,7 @@ contains
   !!
   !! Provide particle type
   !!
-  !! See source_inter for details.
+  !! See configSource_inter for details.
   !!
   subroutine sampleType(self, p, rand)
     class(pointSource), intent(inout)   :: self
@@ -165,7 +165,7 @@ contains
   !!
   !! Provide particle position
   !!
-  !! See source_inter for details.
+  !! See configSource_inter for details.
   !!
   subroutine samplePosition(self, p, rand)
     class(pointSource), intent(inout)   :: self
@@ -179,7 +179,7 @@ contains
   !!
   !! Provide angle or sample if isotropic
   !!
-  !! See source_inter for details.
+  !! See configSource_inter for details.
   !!
   !! Only isotropic/fixed direction. Does not sample energy.
   !!
@@ -204,7 +204,7 @@ contains
   !!
   !! Provide particle energy
   !!
-  !! See source_inter for details.
+  !! See configSource_inter for details.
   !!
   subroutine sampleEnergy(self, p, rand)
     class(pointSource), intent(inout)   :: self
@@ -224,9 +224,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  !! Cleans up geometry pointer
-  !!
-  subroutine kill(self)
+  elemental subroutine kill(self)
     class(pointSource), intent(inout) :: self
 
     ! Kill superclass
