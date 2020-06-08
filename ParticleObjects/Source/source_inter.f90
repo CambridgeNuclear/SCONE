@@ -11,15 +11,20 @@ module source_inter
   private
 
   !!
+  !! Extendable scource class procedures
+  !!
+  public :: kill 
+
+  !!
   !! Abstract interface of source for particles
   !!
   !! Source generates particles from specified distributions
   !! for, e.g., fixed source calcs. or to generate initial
   !! distribution for eigenvalue calcs
   !!
-  !! In the simplest cases, all sampling procedures can be done
-  !! by sampling from delta distributions, but this can be generalised
-  !! to more complex distributions
+  !! A single sample of a particle state is created by calling `sample****` procedures in order
+  !! given in `sampleParticle` function. Note that `sampleEnergyAngle` is called AFTER
+  !! `sampleEnergy`
   !!
   !! Private members:
   !!   geom -> Pointer to the geometry to ensure source is inside and
@@ -54,17 +59,27 @@ module source_inter
     !!
     !! Initialise source from dictionary
     !!
+    !! Args:
+    !!   dict [in] -> dict containing point source information
+    !!   geom [in] -> pointer to a geometry
+    !!
     subroutine init(self, dict, geom)
       import :: source, &
                 dictionary, &
-                geometry 
+                geometry
       class(source), intent(inout)         :: self
       class(dictionary), intent(in)        :: dict
       class(geometry), pointer, intent(in) :: geom
     end subroutine init
 
     !!
-    !! sample particle type
+    !! Sample Type of a particle
+    !!
+    !! Sets 'Type' in the particle p (e.g. P_NEUTRON)
+    !!
+    !! Inputs:
+    !!   p [inout] -> particle to be given a type
+    !!   rand [in] -> random number generator
     !!
     subroutine sampleType(self, p, rand)
       import :: source, &
@@ -72,11 +87,17 @@ module source_inter
                 RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
-      class(RNG), pointer, intent(in)     :: rand
+      class(RNG), intent(inout)           :: rand
     end subroutine sampleType
 
     !!
-    !! sample particle position
+    !! Sample particle position
+    !!
+    !! Sets position of the particle p
+    !!
+    !! Inputs:
+    !!   p [inout] -> particle to be given a position
+    !!   rand [in] -> random number generator
     !!
     subroutine samplePosition(self, p, rand)
       import :: source, &
@@ -84,11 +105,18 @@ module source_inter
                 RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
-      class(RNG), pointer, intent(in)     :: rand
+      class(RNG), intent(inout)           :: rand
     end subroutine samplePosition
 
     !!
-    !! sample particle energy
+    !! Sample particle Energy/Group
+    !!
+    !! Sets energy of a particle to a CE value or a MG index
+    !! Also sets 'isMG' flag to .true. or .false.
+    !!
+    !! Inputs:
+    !!   p [inout] -> particle to be given a position
+    !!   rand [in] -> random number generator
     !!
     subroutine sampleEnergy(self, p, rand)
       import :: source, &
@@ -96,11 +124,19 @@ module source_inter
                 RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
-      class(RNG), pointer, intent(in)     :: rand
+      class(RNG), intent(inout)           :: rand
     end subroutine sampleEnergy
-    
+
     !!
-    !! sample particle energy-angle
+    !! Sample particle Energy/Group and angle Angle
+    !!
+    !! Sets diraction of a particle together with its energy.
+    !! Sampling of energy is optional if Angle & Energy are uncorrelated
+    !! Is called after `sampleEnergy`, to overwrite value provided by that subroutine
+    !!
+    !! Inputs:
+    !!   p [inout] -> particle to be given a position
+    !!   rand [in] -> random number generator
     !!
     subroutine sampleEnergyAngle(self, p, rand)
       import :: source, &
@@ -108,16 +144,8 @@ module source_inter
                 RNG
       class(source), intent(inout)        :: self
       class(particleState), intent(inout) :: p
-      class(RNG), pointer, intent(in)     :: rand
+      class(RNG), intent(inout)           :: rand
     end subroutine sampleEnergyAngle
-    
-    !!
-    !! Deallocate memory used by source
-    !!
-    subroutine kill(self)
-      import :: source
-      class(source), intent(inout) :: self
-    end subroutine kill
 
   end interface
 
@@ -146,7 +174,7 @@ contains
 
       ! Set dungeon size to begin
       call dungeon % setSize(n)
-      
+
       ! Generate n particles to populate dungeon
       do i = 1, n
         p % wgt = ONE
@@ -183,5 +211,15 @@ contains
       call self % sampleEnergy(p, rand)
 
     end subroutine sampleParticle
+
+    !!
+    !! Return to uninitialised state
+    !!
+    subroutine kill(self)
+      class(source), intent(inout) :: self
+
+      self % geom => null()
+
+    end subroutine kill
 
 end module source_inter

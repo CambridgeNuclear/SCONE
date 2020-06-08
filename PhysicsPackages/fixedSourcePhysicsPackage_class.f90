@@ -99,7 +99,7 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
 
     print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\" 
+    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
 
     call self % cycles(self % tally, self % N_cycles)
     call self % collectResults()
@@ -122,7 +122,7 @@ contains
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
 
     N = self % pop
-    
+
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
     p % k_eff = ONE
@@ -130,9 +130,9 @@ contains
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
-    
+
     do i=1,N_cycles
-      
+
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
@@ -153,7 +153,7 @@ contains
           history: do
             call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
-            
+
             call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
           end do history
@@ -177,6 +177,7 @@ contains
       call printFishLineR(i)
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
+      print *, 'Pop:          ', numToChar(self % pop)
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
@@ -304,7 +305,7 @@ contains
     ! Size particle dungeon
     allocate(self % thisCycle)
     call self % thisCycle % init(3 * self % pop)
-    
+
     call self % printSettings()
 
   end subroutine init
@@ -326,10 +327,10 @@ contains
     class(fixedSourcePhysicsPackage), intent(in) :: self
 
     print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\" 
-    print *, "Source batches:   ", numToChar(self % N_cycles)
-    print *, "Population:       ", numToChar(self % pop)
-    print *, "Initial RNG Seed: ", numToChar(self % pRNG % getSeed())
+    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
+    print *, "Source batches:       ", numToChar(self % N_cycles)
+    print *, "Population per batch: ", numToChar(self % pop)
+    print *, "Initial RNG Seed:     ", numToChar(self % pRNG % getSeed())
     print *
     print *, repeat("<>",50)
   end subroutine printSettings

@@ -5,9 +5,9 @@ module pointSource_class
   use genericProcedures,  only: fatalError
   use particle_class,     only: particleState, P_NEUTRON, P_PHOTON
   use dictionary_class,   only: dictionary
-  use source_inter,       only: source
+  use source_inter,       only: source, kill_super => kill
   use geometry_inter,     only: geometry
-  use RNG_class,          only: RNG  
+  use RNG_class,          only: RNG
 
   implicit none
   private
@@ -15,7 +15,7 @@ module pointSource_class
   !!
   !! Class describing point-like particle sources
   !!
-  !! Generates a mono-energetic, mono-directional or isotropic particle 
+  !! Generates a mono-energetic, mono-directional or isotropic particle
   !! source from a single point in space, with particles of a single type
   !!
   !! Private members:
@@ -35,15 +35,25 @@ module pointSource_class
   !!   sampleEnergyAngle -> sample particle angle
   !!   kill              -> terminate source
   !!
+  !! Sample Dictionary Input:
+  !!   source {
+  !!       type pointSource;
+  !!       r (0.0 0.0 0.0);
+  !!       particle neutron;
+  !!       #E 14.1;            #
+  !!       #G 3;               #
+  !!       #dir (2.0 1.0 0.0); #
+  !!      }
+  !!
   type, public,extends(source) :: pointSource
     private
-    real(defReal),dimension(:), allocatable :: r
-    real(defReal),dimension(:), allocatable :: dir
-    real(defReal)                           :: E
-    integer(shortInt)                       :: G
-    integer(shortInt)                       :: particleType
-    logical(defBool)                        :: isMG = .false.
-    logical(defBool)                        :: isIsotropic
+    real(defReal),dimension(3)  :: r            = ZERO
+    real(defReal),dimension(3)  :: dir          = ZERO
+    real(defReal)               :: E            = ZERO
+    integer(shortInt)           :: G            = 0
+    integer(shortInt)           :: particleType = P_NEUTRON
+    logical(defBool)            :: isMG         = .false.
+    logical(defBool)            :: isIsotropic  = .false.
   contains
     procedure :: init
     procedure :: sampleType
@@ -56,18 +66,9 @@ module pointSource_class
 contains
 
   !!
-  !! Initialise point source
+  !! Initialise from dictionary
   !!
-  !! Read dictionary to obtain source information and provide
-  !! geometry to allow basic check
-  !!
-  !! Args:
-  !!   dict [in] -> dict containing point source information
-  !!   geom [in] -> pointer to geometry, used here only for checking
-  !!                that source is inside geometry
-  !!
-  !! Result:
-  !!   An initialised point source
+  !! See source_inter for details
   !!
   !! Errors:
   !!   - error if an unrecognised particle type is provided
@@ -77,12 +78,13 @@ contains
   !!   - error if neither energy type is specified
   !!
   subroutine init(self, dict, geom)
-    class(pointSource), intent(inout)    :: self
-    class(dictionary), intent(in)        :: dict
-    class(geometry), pointer, intent(in) :: geom
-    character(30)                        :: type
-    integer(shortInt)                    :: matIdx, uniqueID
-    logical(defBool)                     :: isCE, isMG, hasDir
+    class(pointSource), intent(inout)      :: self
+    class(dictionary), intent(in)          :: dict
+    class(geometry), pointer, intent(in)   :: geom
+    character(30)                          :: type
+    integer(shortInt)                      :: matIdx, uniqueID
+    logical(defBool)                       :: isCE, isMG
+    real(defReal),dimension(:),allocatable :: temp
     character(100), parameter :: Here = 'init (pointSource_class.f90)'
 
     ! Provide geometry info to source
@@ -100,14 +102,15 @@ contains
 
       case default
         call fatalError(Here, 'Unrecognised particle type')
-     
+
     end select
 
     ! Get position and check it's inside geometry
-    call dict % get(self % r, 'r') 
+    call dict % get(temp, 'r')
     if (size(self % r) /= 3) then
       call fatalError(Here, 'Source position must have three components')
     end if
+    self % r = temp
 
     call self % geom % whatIsAt(self % r, matIdx, uniqueID)
     if (matIdx == OUTSIDE_MAT) then
@@ -115,19 +118,15 @@ contains
     end if
 
     ! Get beam direction and normalise - otherwise, assume isotropic
-    hasDir = dict % isPresent('dir')
-    if (hasDir) then
-      
-      call dict % get(self % dir, 'dir')
+    self % isIsotropic = .not. dict % isPresent('dir')
+    if (.not. self % isIsotropic) then
+
+      call dict % get(temp, 'dir')
       if (size(self % dir) /= 3) then
         call fatalError(Here, 'Source direction must have three components')
       end if
-
+      self % dir = temp
       self % dir = self % dir / norm2(self % dir)
-      self % isIsotropic = .false.
-
-    else
-      self % isIsotropic = .true.
     end if
 
     ! Get particle energy/group
@@ -135,34 +134,30 @@ contains
     isMG = dict % isPresent('G')
     if (isCE .and. isMG) then
       call fatalError(Here, 'Source may be either continuous energy or MG, not both')
+
     elseif (isCE) then
       call dict % get(self % E, 'E')
-    elseif (isMG)
+
+    elseif (isMG) then
       call dict % get(self % G, 'G')
       self % isMG = .true.
+
     else
-      call fatalError(Here, 'Must specify source energy, either CE or MG')
+      call fatalError(Here, 'Must specify source energy, either Energy(E) or Group(G)')
     end if
- 
+
   end subroutine init
 
   !!
   !! Provide particle type
   !!
-  !! Particle type is fixed on initialisation, this routine simply passes the particle type
-  !!
-  !! Inputs:
-  !!   p [inout] -> particle to be given a type
-  !!   rand [in] -> pointer to random number generator
-  !!
-  !! Result:
-  !!   Particle is provided with a type
+  !! See source_inter for details.
   !!
   subroutine sampleType(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
-    class(RNG), pointer, intent(in)     :: rand 
-    
+    class(RNG), intent(inout)           :: rand
+
     p % type = self % particleType
 
   end subroutine sampleType
@@ -170,46 +165,33 @@ contains
   !!
   !! Provide particle position
   !!
-  !! Particle location is fixed on initialisation, this routine simply passes the location
-  !!
-  !! Inputs:
-  !!   p [inout] -> particle to be given a position
-  !!   rand [in] -> pointer to random number generator
-  !!
-  !! Result:
-  !!   Particle is provided with a position
+  !! See source_inter for details.
   !!
   subroutine samplePosition(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
-    class(RNG), pointer, intent(in)     :: rand 
+    class(RNG), intent(inout)           :: rand
 
     p % r = self % r
 
   end subroutine samplePosition
- 
+
   !!
   !! Provide angle or sample if isotropic
   !!
-  !! Particle direction is either fixed or isotropic
-  !! This subroutine either passes the direction or samples from the unit sphere
+  !! See source_inter for details.
   !!
-  !! Inputs:
-  !!   p [inout] -> particle to be given a direction
-  !!   rand [in] -> pointer to random number generator
-  !!
-  !! Result:
-  !!   Particle is provided with a direction
+  !! Only isotropic/fixed direction. Does not sample energy.
   !!
   subroutine sampleEnergyAngle(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
-    class(RNG), pointer, intent(in)     :: rand 
+    class(RNG), intent(inout)           :: rand
     real(defReal)                       :: r, phi, theta
-    
+
     if (self % isIsotropic) then
       r = rand % get()
-      phi = TWO * PI * r
+      phi = TWO_PI * r
       r = rand % get()
       theta = acos(1 - TWO * r)
       p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
@@ -219,24 +201,15 @@ contains
 
   end subroutine sampleEnergyAngle
 
-
   !!
   !! Provide particle energy
   !!
-  !! Particle energy is fixed - subroutine simply provides it
-  !! Applies to either CE or MG particles
-  !!
-  !! Inputs:
-  !!   p [inout] -> particle to be given an energy
-  !!   rand [in] -> pointer to random number generator
-  !!
-  !! Result:
-  !!   Particle is provided with an energy
+  !! See source_inter for details.
   !!
   subroutine sampleEnergy(self, p, rand)
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
-    class(RNG), pointer, intent(in)     :: rand 
+    class(RNG), intent(inout)           :: rand
 
     if (self % isMG) then
       p % G = self % G
@@ -249,14 +222,24 @@ contains
   end subroutine sampleEnergy
 
   !!
-  !! Terminate point source
+  !! Return to uninitialised state
   !!
   !! Cleans up geometry pointer
   !!
   subroutine kill(self)
     class(pointSource), intent(inout) :: self
 
-    self % geom => null()
+    ! Kill superclass
+    call kill_super(self)
+
+    ! Kill local components
+    self % r   = ZERO
+    self % dir = ZERO
+    self % E   = ZERO
+    self % G   = 0
+    self % particleType = P_NEUTRON
+    self % isMG         = .false.
+    self % isIsotropic  = .false.
 
   end subroutine kill
 
