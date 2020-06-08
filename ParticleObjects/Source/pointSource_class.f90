@@ -1,13 +1,13 @@
 module pointSource_class
 
   use numPrecision
-  use universalVariables, only: OUTSIDE_MAT
-  use genericProcedures,  only: fatalError
-  use particle_class,     only: particleState, P_NEUTRON, P_PHOTON
-  use dictionary_class,   only: dictionary
-  use configSource_inter, only: configSource, kill_super => kill
-  use geometry_inter,     only: geometry
-  use RNG_class,          only: RNG
+  use universalVariables, only : OUTSIDE_MAT
+  use genericProcedures,  only : fatalError
+  use particle_class,     only : particleState, P_NEUTRON, P_PHOTON
+  use dictionary_class,   only : dictionary
+  use configSource_inter, only : configSource, kill_super => kill
+  use geometry_inter,     only : geometry
+  use RNG_class,          only : RNG
 
   implicit none
   private

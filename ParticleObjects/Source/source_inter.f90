@@ -1,11 +1,11 @@
 module source_inter
 
   use numPrecision
-  use particle_class,        only: particleState
-  use particleDungeon_class, only: particleDungeon
-  use dictionary_class,      only: dictionary
-  use RNG_class,             only: RNG
-  use geometry_inter,        only: geometry
+  use particle_class,        only : particleState
+  use particleDungeon_class, only : particleDungeon
+  use dictionary_class,      only : dictionary
+  use RNG_class,             only : RNG
+  use geometry_inter,        only : geometry
 
   implicit none
   private

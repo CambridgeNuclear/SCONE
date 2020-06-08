@@ -8,7 +8,8 @@ module sourceFactory_func
   use source_inter,      only : source
 
   ! source implementations
-  use pointSource_class, only : pointSource
+  use pointSource_class,   only : pointSource
+  use fissionSource_class, only : fissionSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -23,7 +24,8 @@ module sourceFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource ']
+  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource  ',&
+                                                                     'fissionSource']
 
 contains
 
@@ -47,9 +49,13 @@ contains
     ! Allocate approperiate subclass of source
     ! *** ADD CASE STATEMENT FOR A NEW SOURCE BELOW ***!
     select case(type)
-     case('pointSource')
-       allocate(pointSource :: new)
-       call new % init(dict, geom)
+      case('pointSource')
+        allocate(pointSource :: new)
+        call new % init(dict, geom)
+
+      case('fissionSource')
+        allocate(fissionSource :: new)
+        call new % init(dict, geom)
 
      !*** NEW SOURCE TEMPLATE ***!
      !case('<newSourceName>')
