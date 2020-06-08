@@ -8,11 +8,11 @@ module tallyClerkFactory_func
   use tallyClerk_inter,    only : tallyClerk
 
   ! tallyClerk implementations
-  use keffAnalogClerk_class,   only : keffAnalogClerk
-  use keffImplicitClerk_class, only : keffImplicitClerk
-  use collisionClerk_class,    only : collisionClerk
-  use simpleFMClerk_class,     only : simpleFMClerk
-  use dancoffBellClerk_class,  only : dancoffBellClerk
+  use keffAnalogClerk_class,     only : keffAnalogClerk
+  use keffImplicitClerk_class,   only : keffImplicitClerk
+  use collisionClerk_class,      only : collisionClerk
+  use simpleFMClerk_class,       only : simpleFMClerk
+  use dancoffBellClerk_class,    only : dancoffBellClerk
 
   implicit none
   private
@@ -24,11 +24,11 @@ module tallyClerkFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk  ',&
-                                                                        'keffImplicitClerk',&
-                                                                        'collisionClerk   ',&
-                                                                        'simpleFMClerk    ',&
-                                                                        'dancoffBellClerk ']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk    ',&
+                                                                        'keffImplicitClerk  ',&
+                                                                        'collisionClerk     ',&
+                                                                        'simpleFMClerk      ',&
+                                                                        'dancoffBellClerk   ']
 
 contains
 

@@ -13,6 +13,7 @@ module physicsPackageFactory_func
   ! Implementations
   use eigenPhysicsPackage_class,       only : eigenPhysicsPackage
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
+  use vizPhysicsPackage_class,         only : vizPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -24,7 +25,8 @@ module physicsPackageFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
-                                                                             'fixedSourcePhysicsPackage']
+                                                                             'fixedSourcePhysicsPackage',&
+                                                                             'vizPhysicsPackage        ']
 
   !!
   !! Public interface
@@ -75,6 +77,15 @@ contains
 !            call new % init(dict)
 !        end select
 
+
+      case('vizPhysicsPackage')
+        ! Allocate and initialise
+        allocate( vizPhysicsPackage :: new)
+        select type(new)
+          type is (vizPhysicsPackage)
+            call new % init(dict)
+        end select
+
       case default
         print *, AVAILABLE_physicsPackages
         call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))
@@ -95,5 +106,5 @@ contains
     allocate( new, source = new_physicsPackage(dict) )
 
   end function new_physicsPackage_ptr
-    
+
 end module physicsPackageFactory_func

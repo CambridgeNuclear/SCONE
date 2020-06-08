@@ -21,6 +21,7 @@ module eigenPhysicsPackage_class
   use physicsPackage_inter,           only : physicsPackage
 
   ! Geometry
+  use geometry_inter,                 only : geometry
   use cellGeometry_inter,             only : cellGeometry
 
   ! Nuclear Data
@@ -52,6 +53,9 @@ module eigenPhysicsPackage_class
   ! Factories
   use geometryFactory_func,           only : new_cellGeometry_ptr
   use transportOperatorFactory_func,  only : new_transportOperator
+
+  ! Visualisation
+  use visualiser_class,               only : visualiser
 
   implicit none
   private
@@ -367,7 +371,10 @@ contains
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
 
-    ! Print Active atachment
+    ! Print Inactive tally
+    call self % inactiveTally % print(out)
+
+    ! Print Active attachment
     call self % activeAtch % print(out)
 
     call self % activeTally % print(out)
@@ -392,6 +399,8 @@ contains
     character(8)                              :: date
     character(:),allocatable                  :: string
     character(nameLen)                        :: nucData, energy
+    type(visualiser)                          :: viz
+    class(geometry), pointer                  :: geom
     integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
@@ -449,6 +458,17 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
     self % nucData => ndReg_get(self % particleType)
+
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
+      tempDict => dict % getDictPtr('viz')
+      geom => self % geom
+      call viz % init(geom, tempDict)
+      print *, "Constructing visualisation"
+      call viz % makeViz()
+      call viz % kill()
+    endif
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')

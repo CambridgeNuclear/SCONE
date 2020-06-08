@@ -81,7 +81,7 @@ include(add_integration_tests)
 add_subdirectory(RandomNumbers)
 add_subdirectory(LinearAlgebra)
 add_subdirectory(SharedModules)
-add_subdirectory(VTK)
+add_subdirectory(Visualisation)
 add_subdirectory(ParticleObjects)
 add_subdirectory(NamedGrids)
 

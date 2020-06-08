@@ -248,6 +248,7 @@ contains
     self % N  = ACE % readInt()
     self % Ap = ACE % readReal()
     self % Q  = Q
+    self % A  = A
 
     ! Varify correctness
     if(self % invalid(msg)) call fatalError(Here, msg)
