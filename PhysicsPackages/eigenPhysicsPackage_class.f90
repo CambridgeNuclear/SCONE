@@ -33,12 +33,10 @@ module eigenPhysicsPackage_class
                                              ndReg_get         => get ,&
                                              ndReg_getMatNames => getMatNames
   use nuclearDatabase_inter,          only : nuclearDatabase
-  use neutronMaterial_inter,          only : neutronMaterial, neutronMaterial_CptrCast
-  use ceNeutronMaterial_class,        only : ceNeutronMaterial
-  use mgNeutronMaterial_inter,        only : mgNeutronMaterial
-  use fissionCE_class,                only : fissionCE, fissionCE_TptrCast
-  use fissionMG_class,                only : fissionMG, fissionMG_TptrCast
-  use ceNeutronDatabase_inter,        only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
+
+  ! Sources
+  use source_inter,                   only : source
+  use sourceFactory_func,             only : new_source
 
   ! Operators
   use collisionOperator_class,        only : collisionOperator
@@ -70,11 +68,13 @@ module eigenPhysicsPackage_class
     class(cellGeometry), pointer           :: geom          => null()
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
+    class(source), allocatable             :: initSource
     class(RNG), pointer                    :: pRNG          => null()
     type(tallyAdmin),pointer               :: inactiveTally => null()
     type(tallyAdmin),pointer               :: activeTally   => null()
     type(tallyAdmin),pointer               :: inactiveAtch  => null()
     type(tallyAdmin),pointer               :: activeAtch    => null()
+
 
     ! Settings
     integer(shortInt)  :: N_inactive
@@ -109,7 +109,7 @@ contains
     class(eigenPhysicsPackage), intent(inout) :: self
 
     print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION /\/\" 
+    print *, "/\/\ EIGENVALUE CALCULATION /\/\"
 
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
@@ -234,115 +234,18 @@ contains
   !!
   subroutine generateInitialState(self)
     class(eigenPhysicsPackage), intent(inout) :: self
-    type(particle)                            :: neutron
-    integer(shortInt)                         :: i, matIdx, nucIdx ,dummy
-    real(defReal),dimension(6)                :: bounds
-    real(defReal),dimension(3)                :: top, bottom
-    real(defReal),dimension(3)                :: r
-    real(defReal),dimension(3)                :: rand
-    class(neutronMaterial),pointer            :: mat
-    type(fissionCE), pointer                  :: fissCE
-    type(fissionMG), pointer                  :: fissMG
-    integer(shortInt)                         :: G_out
-    real(defReal)                             :: mu, phi, E_out, E_up, E_down
-    class(ceNeutronDatabase), pointer         :: neutronData
     character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
 
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
 
-    call self % thisCycle % init(3*self % pop)
-    call self % nextCycle % init(3*self % pop)
+    call self % thisCycle % init(3 * self % pop)
+    call self % nextCycle % init(3 * self % pop)
 
-    ! Obtain bounds of the geometry
-    bounds = self % geom % bounds()
-
-    bottom = bounds([1,3,5])
-    top    = bounds([2,4,6])
-
-    ! Initialise iterator and attach RNG to neutron
-    i = 1
-
+    ! Generate initial surce
     print *, "GENERATING INITIAL FISSION SOURCE"
-    ! Loop over requested population
-    do while (i <= self % pop)
-      ! Sample position
-      rand(1) = self % pRNG % get()
-      rand(2) = self % pRNG % get()
-      rand(3) = self % pRNG % get()
-
-      r = (top - bottom) * rand + bottom
-
-      ! Find material under postision
-      call self % geom % whatIsAt(r,matIdx,dummy)
-
-      if(matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle
-      mat => neutronMaterial_CptrCast(self % nucData % getMaterial(matIdx))
-      if(.not.associated(mat)) call fatalError(Here, "Nuclear data is not for neutrons")
-
-      ! Resample position if material is not fissile
-      if( .not.mat % isFissile()) cycle
-
-      ! Put material in neutron
-      neutron % coords % matIdx = matIdx
-
-      ! Assign Constant Data to the particle
-      neutron % type = P_NEUTRON
-      neutron % time = ZERO
-      neutron % w = ONE
-
-      ! Generate new fission site
-      select type(mat)
-        class is(ceNeutronMaterial)
-
-          neutronData => ceNeutronDatabase_CptrCast(self % nucData)
-          call neutronData % energyBounds(E_down, E_up)
-          
-          ! Select nuclide
-          nucIdx = mat % sampleFission(1.0E-6_defReal, self % pRNG)
-
-          ! Get reaction object
-          fissCE => fissionCE_TptrCast(self % nucData % getReaction(N_FISSION, nucIdx))
-          if(.not.associated(fissCE)) call fatalError(Here, "Failed to get CE Fission Reaction Object")
-
-          ! Get mu, phi, E_out
-          call fissCE % sampleOut(mu, phi, E_out, 1.0E-6_defReal, self % pRNG)
-
-          ! Put Data into particle State
-          call neutron % teleport(r)
-          call neutron % point(rotateVector([ONE, ZERO, ZERO], mu, phi))
-          neutron % E = E_out
-          neutron % isMG = .false.
-
-          ! Prevent particle energy above upper bound being sampled
-          if (neutron % E > E_up) neutron % E = E_up
-
-        class is(mgNeutronMaterial)
-          ! Get reaction object
-          fissMG => fissionMG_TptrCast(self % nucData % getReaction(macroFission, matIdx))
-          if(.not.associated(fissMG)) call fatalError(Here, "Failed to get MG Fission Reaction Object")
-
-          ! Get mu, phi, E_out
-          call fissMG % sampleOut(mu, phi, G_out, 1, self % pRNG)
-
-          ! Put Data into particle State
-          call neutron % teleport(r)
-          call neutron % point(rotateVector([ONE, ZERO, ZERO], mu, phi))
-          neutron % G = G_out
-          neutron % isMG = .true.
-
-        class default
-          call fatalError(Here, "Unrecognised type of the neutronMaterial")
-
-      end select
-
-      ! Generate and store fission site
-      call self % thisCycle % detain(neutron)
-
-      ! Update iterator
-      i = i +1
-    end do
+    call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
     print *, "DONE!"
 
   end subroutine generateInitialState
@@ -487,8 +390,20 @@ contains
     allocate(self % activeTally)
     call self % activeTally % init(tempDict)
 
-    ! Initialise active and inactive tally attachments
+    ! Load Initial source
+    if (dict % isPresent('source')) then ! Load definition from file
+      call new_source(self % initSource, dict % getDictPtr('source'), self % geom)
 
+    else
+      call locDict1 % init(3)
+      call locDict1 % store('type', 'fissionSource')
+      call locDict1 % store('data', trim(energy))
+      call new_source(self % initSource, locDict1, self % geom)
+      call locDict1 % kill()
+
+    end if
+
+    ! Initialise active and inactive tally attachments
     ! Inactive tally attachment
     call locDict1 % init(2)
     call locDict2 % init(2)
@@ -543,7 +458,7 @@ contains
     class(eigenPhysicsPackage), intent(in) :: self
 
     print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\" 
+    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
     print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
     print *, "Active Cycles:      ", numToChar(self % N_active)
     print *, "Neutron Population: ", numToChar(self % pop)

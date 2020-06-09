@@ -14,6 +14,12 @@ collisionOperator { neutronCE {type neutronCEstd;}
 transportOperator { type transportOperatorDT;
                   } 
 
+// Use generic source definition to initialise initial population 
+// Here we introduce isotropic blast of thermal neutrons (immediate fissions) 
+// This avoid needless generation of particles in U-nat reflector 
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; } 
+
+
 inactiveTally {
               } 
 

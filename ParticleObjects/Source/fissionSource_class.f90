@@ -30,10 +30,10 @@ module fissionSource_class
   !! Places fission sites uniformly in regions with fissile material.
   !! Spectrum of the fission neutron is such as if it fission was caused by incdent
   !! neutron with CE energy E or MG with group G.
-  !! Angular distribution is isotropic. 
+  !! Angular distribution is isotropic.
   !!
   !! Private members:
-  !!   isMG   -> is the source multi-group?
+  !!   isMG   -> is the source multi-group? (default = .false.)
   !!   bottom -> Bottom corner (x_min, y_min, z_min)
   !!   top    -> Top corner (x_max, y_max, z_max)
   !!   E      -> Fission site energy [MeV] (default = 1.0E-6)
@@ -45,8 +45,9 @@ module fissionSource_class
   !! Sample Dictionary Input:
   !!   fission {
   !!     type fissionSource;
-  !!     #E 15.0; #
-  !!     #G 7;    #
+  !!     #data MG; #
+  !!     #E 15.0;  #
+  !!     #G 7;     #
   !!   }
   !!
   type, public,extends(source) :: fissionSource

@@ -82,19 +82,24 @@ contains
     ! Is empty result for uninitialised dungeon
     @assertTrue(dungeon % isEmpty())
 
-    ! Initialise
-    call dungeon % init(10)
+    ! Initialise to fixed size
+    call dungeon % setSize(2)
 
-    ! Is empty initialised. No particles stored
-    @assertTrue(dungeon % isEmpty())
-    @assertEqual(0, dungeon % popSize())
+    ! Is filled with random particles
+    @assertFalse(dungeon % isEmpty())
+    @assertEqual(2, dungeon % popSize())
+
+    ! Extend size
+    call dungeon % setSize(9)
+    @assertFalse(dungeon % isEmpty())
+    @assertEqual(9, dungeon % popSize())
 
     ! Store some particles with energy
     p % isMG = .false.
     p % E  = 8.6_defReal
 
     do i = 1,5
-      call dungeon % detain(p)
+      call dungeon % replace(p, i)
     end do
 
     ! Store some phase coordinates with energy
@@ -102,7 +107,7 @@ contains
     phase % E = 3.4_defReal
 
     do i = 1,4
-      call dungeon % detain(phase)
+      call dungeon % replace(phase, 5 + i)
     end do
 
     ! Verify size
@@ -134,6 +139,11 @@ contains
     ! Verify that population has not changed
     @assertFalse(dungeon % isEmpty())
     @assertEqual(9, dungeon % popSize())
+
+    ! Shrink size
+    call dungeon % setSize(2)
+    @assertFalse(dungeon % isEmpty())
+    @assertEqual(2, dungeon % popSize())
 
     ! Clean population
     call dungeon % cleanPop()

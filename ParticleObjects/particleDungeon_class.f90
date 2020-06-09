@@ -375,18 +375,40 @@ contains
   end function popWeight
 
   !!
-  !! Set population to have a particular size
-  !! Used for ease of overwriting, e.g., when sampling from a source 
+  !! Set size of the dungeon to n
+  !!
+  !! Sets population to arbitrary size n
+  !! All stored particles revert to default initialisation state
+  !!
+  !! Args:
+  !!   n [in] -> Requested size of the population
+  !!
+  !! Errors:
+  !!   fatalError if n is invalid (not +ve)
   !!
   subroutine setSize(self, n)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: n
+    character(100), parameter :: Here = 'setSize (particleDungeon_class.f90)'
 
+    if (n <= 0) call fatalError(Here, 'Requested population is not +ve: '//numToChar(n))
+
+    ! Set population
     self % pop = n
-    if (size(self % prisoners) < 3*n) then
-      deallocate(self % prisoners)
-      allocate(self % prisoners(3*n))
+
+    ! Make shure enough space is avaliable
+    if (allocated(self % prisoners)) then
+      if (size(self % prisoners) < n) then
+        deallocate(self % prisoners)
+        allocate(self % prisoners(n))
+      end if
+
+    else
+      allocate(self % prisoners(n))
     end if
+
+    ! Set known (default) state to all particles
+    call self % prisoners % kill()
 
   end subroutine setSize
 

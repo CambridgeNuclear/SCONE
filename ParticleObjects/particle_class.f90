@@ -43,22 +43,23 @@ module particle_class
   !!   display        -> Print debug information about the state to the console
   !!
   type, public :: particleState
-    real(defReal)              :: wgt  = 0.0       ! Particle weight
-    real(defReal),dimension(3) :: r    = 0.0       ! Global position
-    real(defReal),dimension(3) :: dir  = 0.0       ! Global direction
-    real(defReal)              :: E    = 0.0       ! Energy
-    integer(shortInt)          :: G    = 0         ! Energy group
-    logical(defBool)           :: isMG = .false.   ! Is neutron multi-group
-    integer(shortInt)          :: type = P_NEUTRON ! Particle physical type
-    real(defReal)              :: time = 0.0       ! Particle time position
-    integer(shortInt)          :: matIdx   = -1   ! Material index where particle is
-    integer(shortInt)          :: cellIdx  = -1   ! Cell idx at the lowest coord level
-    integer(shortInt)          :: uniqueID = -1   ! Unique id at the lowest coord level
+    real(defReal)              :: wgt  = ZERO       ! Particle weight
+    real(defReal),dimension(3) :: r    = ZERO       ! Global position
+    real(defReal),dimension(3) :: dir  = ZERO       ! Global direction
+    real(defReal)              :: E    = ZERO       ! Energy
+    integer(shortInt)          :: G    = 0          ! Energy group
+    logical(defBool)           :: isMG = .false.    ! Is neutron multi-group
+    integer(shortInt)          :: type = P_NEUTRON  ! Particle physical type
+    real(defReal)              :: time = ZERO       ! Particle time position
+    integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
+    integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
+    integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
     procedure  :: display        => display_particleState
     procedure  :: fromParticle   => particleState_fromParticle
+    procedure  :: kill           => kill_particleState
 
     ! Private procedures
     procedure,private :: equal_particleState
@@ -673,6 +674,27 @@ contains
     print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
 
   end subroutine display_particleState
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill_particleState(self)
+    class(particleState), intent(inout) :: self
+
+    self % wgt  = ZERO
+    self % r    = ZERO
+    self % dir  = ZERO
+    self % E    = ZERO
+    self % G    = 0
+    self % isMG = .false.
+    self % type = P_NEUTRON
+    self % time = ZERO
+    self % matIdx   = -1
+    self % cellIdx  = -1
+    self % uniqueID = -1
+
+  end subroutine kill_particleState
+
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Misc Procedures
