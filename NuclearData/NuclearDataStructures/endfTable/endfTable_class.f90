@@ -5,12 +5,17 @@ module endfTable_class
   use genericProcedures, only : endfInterpolate, interpolate,&
                                 fatalError, isSorted, numToChar, &
                                 ceilingSearch => linearCeilingIdxOpen_shortInt, &
-                                floorSearch   =>  linearFloorIdxClosed_Real
+                                floorSearch   =>  linearFloorIdxClosed_Real, &
+                                binarySearch
 
 
   implicit none
   private
 
+  !!
+  !! Public functions
+  !!
+  public :: endf_bin_integral
 
   !!
   !! Data table supporting the ENDF specification
@@ -160,7 +165,7 @@ contains
     ! Find index
     x_idx = floorSearch(self % x, x)
     if( x_idx < 0) then
-      call fatalError(Here,'Search of a grid failed with error code:' // numToChar(x_idx))
+      call fatalError(Here,'Search of grid failed with error code:' // numToChar(x_idx))
     end if
 
     ! Find top and bottom of a bin in x and y grid
@@ -187,6 +192,36 @@ contains
   end function at
 
   !!
+  !! Integrate
+  !!
+  !!
+  !!
+  function integral(self, x) result(int)
+    class(endfTable), intent(in)            :: self
+    real(defReal), dimension(:), intent(in) :: x
+    real(defReal), dimension(size(x))       :: int
+    integer(shortInt),dimension(size(x))    :: idxs
+    integer(shortInt)                       :: i, N
+    character(100), parameter :: Here = 'integral (endfTable_class.f90)'
+
+    ! Preconditions
+    if (.not.isSorted(x)) then
+      call fatalError(Here, 'Upper bounds of integration must be given as a sorted array!')
+    end if
+
+    ! Find indexes
+    N = size(x)
+    do i =1, N
+      idxs(i) = binarySearch(self % x, x(i))
+      if (idxs(i) <= 0) then
+        call fatalError(Here, 'Failed to find: '//numToChar(x(i))//' in the table grid')
+      end if
+
+    end do
+
+  end function integral
+
+  !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
@@ -199,5 +234,70 @@ contains
     self % nRegions = 0
 
   end subroutine kill
+
+  !!
+  !! Integrate ENDF bin
+  !!
+  !! Args:
+  !!   x_0 [in] -> Low value on x-grid
+  !!   x_1 [in] -> Top value on x-grid
+  !!   y_0 [in] -> Low value on y-gird
+  !!   y_1 [in] -> Top value on y-grid
+  !!   x [in]   -> Top of integration (must be in <x_0;x_1> interval)
+  !!   flag [in] -> ENDF interpolation flag
+  !!
+  !! Result:
+  !!   Value of integral of y(x) from x_0 to x.
+  !!   y(x) is linear under given interpolation (slope given by x_0, x_1, y_0, y_1)
+  !!
+  !! Error:
+  !!   If x is outside <x_0; x_1> will extrapolate function and return value
+  !!   of integral.
+  !!
+  function endf_bin_integral(x_0, x_1, y_0, y_1, x, flag) result(int)
+    real(defReal), intent(in)     :: x_0
+    real(defReal), intent(in)     :: x_1
+    real(defReal), intent(in)     :: y_0
+    real(defReal), intent(in)     :: y_1
+    real(defReal), intent(in)     :: x
+    integer(shortInt), intent(in) :: flag
+    real(defReal)                 :: int
+    real(defReal)                 :: f
+    character(100), parameter :: Here = 'endf_bin_integral (endfTable_class.f90)'
+
+    select case(flag)
+      case (histogramInterpolation)
+        int = (x - x_0) * y_0
+
+      case (linLinInterpolation)
+        f = (y_1 - y_0) / (x_1 - x_0)
+        int = (x - x_0) * (y_0 + f/TWO * (x - x_0))
+
+      case (logLinInterpolation)
+        f = (y_1 - y_0) / log(x_1/x_0)
+        int = (x - x_0) * y_0 + f * (x*(log(x/x_0) - ONE) + x_0 )
+
+      case (linLogInterpolation)
+        f = log(y_1/y_0) / (x_1 - x_0)
+        int = y_0/f * (exp((x - x_0)*f) - ONE)
+
+      case (loglogInterpolation)
+        f = log(y_1/y_0) / log(x_1/x_0)
+        if (abs(f + ONE) < 1.0E-10) then
+          ! Need to avoid division by almost 0
+          ! assume f == -1
+          int = y_0 * x_0 * log(x/x_0)
+
+        else
+          int = y_0/((f + ONE) * x_0**f) * (x**(f + ONE) - x_0**(f + ONE))
+
+        end if
+
+      case default
+        call fatalError(Here, 'Uknown interpolation flag: '//numToChar(flag))
+
+    end select
+
+  end function endf_bin_integral
 
 end module endfTable_class
