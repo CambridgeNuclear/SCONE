@@ -36,6 +36,8 @@ module endfTable_class
   !! Interface:
   !!   at   -> return y-value given x-value
   !!   init -> initialise from components
+  !!   intagral -> Integrate table from x_min to multiple values x
+  !!   reloadY -> Change values on y-axis keeping x & interpolation unchanged
   !!   kill -> return to uninitalised state
   !!
   type, public :: endfTable
@@ -50,6 +52,8 @@ module endfTable_class
 
   contains
     procedure :: at
+    procedure :: integral
+    procedure :: reloadY
     generic   :: init => initSimple, initInter
     procedure :: kill
 
@@ -192,33 +196,113 @@ contains
   end function at
 
   !!
-  !! Integrate
+  !! Change values in y-axis without any othe change
   !!
+  !! This subroutine is intended to eliminate memory reallocation
+  !! when ENDF table is used to work with data on 2D grid. It allows
+  !! to move table along 2nd dimension by reloading y-data.
   !!
+  !! Args:
+  !!   y [in] -> New values on y axis
   !!
-  function integral(self, x) result(int)
+  !! Error:
+  !!   FatalError if y does not match current size of the table
+  !!
+  subroutine reloadY(self, y)
+    class(endfTable), intent(inout)         :: self
+    real(defReal), dimension(:), intent(in) :: y
+    character(100), parameter :: Here = 'reload endfTable_class.f90'
+
+    if (.not.allocated(self % y)) then
+      call fatalError(Here, 'Cannot reload y-values on uninitialised table.')
+
+    else if (size(y) /= size(self % y)) then
+      call fatalError(Here, 'Given y-values have size: '//numToChar(size(y))//' which is diffrent &
+                            &from current size of the table '//numToChar(size(self % y)))
+    end if
+
+    self % y = y
+
+  end subroutine reloadY
+
+
+  !!
+  !! Integrate table from x_min to x
+  !!
+  !! x is given as array to allow integration of multiple points
+  !! at the same time and reduce required amount of computation
+  !!
+  !! Args:
+  !!   x [in] -> Sorted array of points in <x_min, x_max>
+  !!
+  !! Result:
+  !!   Array of definite integral values of table from x_min to corresponding x.
+  !!   For example, for x = [2] result is y = [a] a = /int_{x_min}^{2} y(t) dt
+  !!   where y(t) represents tabulated values.
+  !!
+  !! Error:
+  !!   fatalError if x is not sorted
+  !!   fatalError if any value of x is outside <x_min, x_max>
+  !!
+  function integral(self, x) result(y)
     class(endfTable), intent(in)            :: self
     real(defReal), dimension(:), intent(in) :: x
-    real(defReal), dimension(size(x))       :: int
-    integer(shortInt),dimension(size(x))    :: idxs
-    integer(shortInt)                       :: i, N
+    real(defReal), dimension(size(x))       :: y
+    integer(shortInt)                       :: i, flag, reg, val
+    real(defReal)                           :: x0, x1, y0, y1
+    real(defReal)                           :: csum
     character(100), parameter :: Here = 'integral (endfTable_class.f90)'
 
     ! Preconditions
     if (.not.isSorted(x)) then
       call fatalError(Here, 'Upper bounds of integration must be given as a sorted array!')
+
+    else if (x(size(x)) > self % x(size(self % x))) then
+      call fatalError(Here, 'Values beyond upper limit of the grid were requested')
+
+    else if (x(1) < self % x(1)) then
+      call fatalError(Here, 'Values below lower limit of the grid were requested')
+
     end if
 
-    ! Find indexes
-    N = size(x)
-    do i =1, N
-      idxs(i) = binarySearch(self % x, x(i))
-      if (idxs(i) <= 0) then
-        call fatalError(Here, 'Failed to find: '//numToChar(x(i))//' in the table grid')
+    ! Interpolate
+    ! reg -> current interpolation region pointer
+    ! val -> current place on x grid pointer
+    !
+    flag = linLinInterpolation
+    reg =  1
+    val = 1
+    csum = ZERO
+
+    do i = 2, size(self % x)
+      ! Get interpolation
+      if (allocated(self % bounds)) then
+        if (i > self % bounds(reg)) reg = reg + 1
+        flag = self % interEndf(reg)
+      end if
+
+      ! Get top and bottom of the bin
+      x1 = self % x(i)
+      x0 = self % x(i-1)
+      y1 = self % y(i)
+      y0 = self % y(i-1)
+
+      ! Interpolate requested values
+      ! Loop until valus cross into next bin. Don't forget your terminator...
+      ! Yes... I've looped over few extra arrays in 1st try...
+      do while (x(val) <= self % x(i) .and. val <= size(x))
+        y(val) = csum + endf_bin_integral(x0, x1, y0, y1, x(val), flag)
+        val = val + 1
+      end do
+
+      ! Increase csum
+      ! Need to allow two neighbouring bins having same value of x
+      ! In ENDF this is used to create tables with discontinuities
+      if ( x1 /= x0) then
+        csum = csum + endf_bin_integral(x0, x1, y0, y1, x1, flag)
       end if
 
     end do
-
   end function integral
 
   !!
@@ -283,7 +367,7 @@ contains
 
       case (loglogInterpolation)
         f = log(y_1/y_0) / log(x_1/x_0)
-        if (abs(f + ONE) < 1.0E-10) then
+        if (abs(f + ONE) < 1.0E-14) then
           ! Need to avoid division by almost 0
           ! assume f == -1
           int = y_0 * x_0 * log(x/x_0)
@@ -295,6 +379,7 @@ contains
 
       case default
         call fatalError(Here, 'Uknown interpolation flag: '//numToChar(flag))
+        int = ZERO ! Make Compiler happy
 
     end select
 
