@@ -290,10 +290,13 @@ contains
       ! Interpolate requested values
       ! Loop until valus cross into next bin. Don't forget your terminator...
       ! Yes... I've looped over few extra arrays in 1st try...
-      do while (x(val) <= self % x(i) .and. val <= size(x))
-        y(val) = csum + endf_bin_integral(x0, x1, y0, y1, x(val), flag)
-        val = val + 1
-      end do
+      if (val <= size(x)) then
+        do while (x(val) <= self % x(i))
+          y(val) = csum + endf_bin_integral(x0, x1, y0, y1, x(val), flag)
+          val = val + 1
+          if (val > size(x)) exit  
+        end do
+      end if
 
       ! Increase csum
       ! Need to allow two neighbouring bins having same value of x
