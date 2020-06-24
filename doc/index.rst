@@ -49,6 +49,7 @@ author that the jam goes on top the cream.
    Style Guide
    Tutorials/index
    cream/index
+   Geometry
 
 
 .. Indices and tables
