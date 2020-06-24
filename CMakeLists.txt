@@ -87,6 +87,7 @@ add_subdirectory(NamedGrids)
 
 add_subdirectory(NuclearData)
 add_subdirectory(Geometry)
+add_subdirectory(GeometryNew)
 add_subdirectory(Tallies)
 
 add_subdirectory(CollisionOperator)
