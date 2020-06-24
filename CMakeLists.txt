@@ -110,8 +110,8 @@ target_link_libraries(scone  ${LAPACK_LIBRARIES} )
 
 ###############################################################################
 # COMPILE SOLVERS
-add_executable(scone.out ./Apps/scone.f90 )
-target_link_libraries(scone.out scone )
+#add_executable(scone.out ./Apps/scone.f90 )
+#target_link_libraries(scone.out scone )
 
 ###############################################################################
 # COMPILE UNIT TESTS
