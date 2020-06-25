@@ -912,7 +912,7 @@ module genericProcedures
   !!
   !! Dot product for 3D vector
   !!
-  function dotProduct(a,b) result(x)
+  pure function dotProduct(a,b) result(x)
     real(defReal),dimension(3), intent(in) :: a,b
     real(defReal)                          :: x
 
@@ -923,7 +923,7 @@ module genericProcedures
   !!
   !! Cross product for 3D vectors
   !!
-  function crossProduct(a,b) result(c)
+  pure function crossProduct(a,b) result(c)
     real(defReal),dimension(3),intent(in) :: a,b
     real(defReal),dimension(3)            :: c
 

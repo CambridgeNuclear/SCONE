@@ -6,6 +6,7 @@ module surface_inter
   use dictionary_class,   only : dictionary
 
   implicit none
+  private
 
   !!
   !! Extandable superclass procedures
@@ -21,12 +22,17 @@ module surface_inter
   !! by first entry in BC string. Override relevant procedures in subclasses to change
   !! this behaviour!
   !!
+  !! Magnitide of surface tolerance is a property of the surface. By default it is
+  !! equal to SURF_TOL parameter.
+  !!
   !! Private Members:
   !!   surfId -> Surface ID for this surface
   !!
   !! Interface:
   !!   setId       -> Set surface ID
   !!   id          -> Return surface ID
+  !!   setTol      -> Set surface tolerance
+  !!   surfTol     -> Get value of surface tolerance
   !!   setBC       -> Load boundary conditions in surface-specific order
   !!   myType      -> Returns a string with surface type name
   !!   init        -> Initialise surface from a dictionary
@@ -42,11 +48,14 @@ module surface_inter
   type, public, abstract :: surface
     private
     integer(shortInt)  :: surfId = -1
+    real(defReal)      :: surf_tol = SURF_TOL
 
   contains
     ! Initialisation procedures
     procedure                        :: setId
     procedure                        :: id
+    procedure                        :: setTol
+    procedure, non_overridable       :: surfTol
     procedure                        :: setBC
     procedure(myType), deferred      :: myType
     procedure(init), deferred        :: init
@@ -54,15 +63,16 @@ module surface_inter
     procedure                        :: kill
 
     ! Runtime procedures
-    procedure                        :: halfspace
-    procedure(evaluate), deferred    :: evaluate
-    procedure(distance), deferred    :: distance
-    procedure(going), deferred       :: going
-    procedure(explicitBC), deferred  :: explicitBC
-    procedure(transformBC), deferred :: transformBC
+    procedure                     :: halfspace
+    procedure(evaluate), deferred :: evaluate
+    procedure(distance), deferred :: distance
+    procedure(going), deferred    :: going
+    procedure                     :: explicitBC
+    procedure                     :: transformBC
   end type surface
 
   abstract interface
+
     !!
     !! Return surface type name
     !!
@@ -222,6 +232,52 @@ contains
   end function id
 
   !!
+  !! Set surface tolerance
+  !!
+  !! Surface tolerance must be a property of the surface
+  !! so the SURF_TOL parameter may represent approximetly a width of
+  !! ambigous range
+  !!
+  !! By default is equal to SURF_TOL parameter
+  !!
+  !! Args:
+  !!   tol [in] -> +ve value of the surface tolaerance
+  !!
+  !! Errors:
+  !!   fatalError is tolaerance is not +ve
+  !!
+  subroutine setTol(self, tol)
+    class(surface), intent(inout) :: self
+    real(defReal), intent(in)     :: tol
+    character(100), parameter :: Here = 'setTol (surface_inter.f90)'
+
+    if (tol <= ZERO) then
+      call fatalError(Here, 'Tolerance for surface: '//self % myType()//' must be +ve is: '//&
+                             numToChar(tol))
+    end if
+
+    self % surf_tol = tol
+
+  end subroutine setTol
+
+  !!
+  !! Return value of the surface tolerance for the surface
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Value of the surface tolerance for the surface
+  !!
+  pure function surfTol(self) result(tol)
+    class(surface), intent(in) :: self
+    real(defReal)              :: tol
+
+    tol = self % surf_tol
+
+  end function surfTol
+
+  !!
   !! Set boundary conditions
   !!
   !! All surfaces support single vacuum BC for entire surface by default.
@@ -251,7 +307,7 @@ contains
                             numToChar(BC(1)))
     end if
 
-    call fatalError(Here,'Surface: ' // self % myType() // ' does not accept BCs')
+    ! Nothing to be done
 
   end subroutine setBC
 
@@ -262,6 +318,7 @@ contains
     class(surface), intent(inout) :: self
 
     self % surfId = -1
+    self % surf_tol = SURF_TOL
 
   end subroutine kill
 
@@ -294,7 +351,7 @@ contains
     hs = c > ZERO
 
     ! Apply surface tolarance
-    if (abs(c) < SURF_TOL) then
+    if (abs(c) < self % surfTol()) then
       hs = self % going(r, u)
     end if
 
