@@ -39,11 +39,11 @@ module universalVariables
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
                                   PERIODIC_BC   = 2
-                                  
+
   ! Integer indexes of cardinal directions
-  integer(shortInt), parameter :: X_axis = 1 ,&
-                                  Y_axis = 2 ,&
-                                  Z_axis = 3
+  integer(shortInt), parameter :: X_AXIS = 1 ,&
+                                  Y_AXIS = 2 ,&
+                                  Z_AXIS = 3
 
   ! Particle Type Enumeration
   integer(shortInt), parameter :: P_NEUTRON_CE = 1, &

@@ -18,7 +18,7 @@ module sphere_class
   !!
   !! F(r) = (r1-x0)^2 + (r2-y0)^2 + (r3-z0)^2  - R^2
   !!
-  !! Surface tolerance: 2 * R * SURF_TOL 
+  !! Surface tolerance: 2 * R * SURF_TOL
   !!
   !! Sample dictionary input:
   !!   sph { type sphere;
@@ -106,21 +106,21 @@ contains
     ! Set surface tolerance
     call self % setTol( TWO * self % r * SURF_TOL)
 
-   end subroutine init
+  end subroutine init
 
-   !!
-   !! Return axix-align bounding box for the surface
-   !!
-   !! See surface_inter for details
-   !!
-   pure function boundingBox(self) result(aabb)
-     class(sphere), intent(in)   :: self
-     real(defReal), dimension(6) :: aabb
+  !!
+  !! Return axix-align bounding box for the surface
+  !!
+  !! See surface_inter for details
+  !!
+  pure function boundingBox(self) result(aabb)
+    class(sphere), intent(in)   :: self
+    real(defReal), dimension(6) :: aabb
 
-     aabb(1:3) = self % origin - [self % r, self % r, self % r]
-     aabb(4:6) = self % origin + [self % r, self % r, self % r]
+    aabb(1:3) = self % origin - [self % r, self % r, self % r]
+    aabb(4:6) = self % origin + [self % r, self % r, self % r]
 
-   end function boundingBox
+  end function boundingBox
 
   !!
   !! Evaluate surface expression c = F(r)
