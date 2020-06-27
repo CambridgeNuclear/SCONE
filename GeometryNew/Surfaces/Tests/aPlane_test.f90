@@ -244,7 +244,7 @@ contains
   subroutine testDistance(this)
     class(test_aPlane), intent(inout) :: this
     integer(shortInt)                   :: a, p1, p2
-    real(defReal), dimension(3)         :: r, u
+    real(defReal), dimension(3)         :: r, u, u2
     real(defReal)                       :: ref
     real(defReal), parameter :: SQRT3 = sqrt(3.0_defReal)
     real(defReal), parameter :: TOL = 1.0E-7
@@ -275,6 +275,14 @@ contains
     ! -ve direction
     ref = 0.7_defReal * SQRT3
     @assertEqual(ref, this % surf % distance(r, -u), TOL * ref)
+
+    ! ** Parallel to plane
+    r = TWO
+    r(this % axis) = ZERO
+    u2 = ZERO
+    u2(this % axis) = ONE
+    u2 = cshift(u2, 1) ! Point to an orthogonal direction
+    @assertEqual(INF, this % surf % distance(r, u2))
 
   end subroutine testDistance
 

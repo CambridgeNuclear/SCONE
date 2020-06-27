@@ -1,8 +1,8 @@
-module aPlane_class
+module plane_class
 
   use numPrecision
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
-  use genericProcedures,  only : fatalError
+  use genericProcedures,  only : fatalError, dotProduct, numToChar
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -14,25 +14,24 @@ module aPlane_class
   !!
   !! Planes with a normal which is one of the principal axis (x,y or z)
   !!
-  !! F(r) = (r1 -a0)
+  !! F(r) = c1 * x + c2 * y + c3 * z - c4
   !!
   !! Surface tolerance: SURF_TOL
   !!
   !! Sample dictionary input:
-  !!  x { type xPlane; id 16; x0 3.0;}
-  !!  y { type yPlane; id 19, y0 -1.2;}
+  !!  pl { type plane; id 16; coeffs (1.0 2.0 1.0 0.0);}
   !!
   !! Private members:
-  !!   axis -> Axis indentifier
-  !!   a0   -> Offset. Position of the plane on the axis
+  !!   norm -> Normal vector (normalised) [c1, c2, c3]
+  !!   offset -> Offset, c4 (also normalised)
   !!
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: aPlane
+  type, public, extends(quadSurface) :: plane
     private
-    integer(shortInt) :: axis = -7
-    real(defReal)     :: a0   = ZERO
+    real(defReal), dimension(3) :: norm = ZERO
+    real(defReal)               :: offset = ZERO
   contains
     ! Superclass procedures
     procedure :: myType
@@ -42,7 +41,7 @@ module aPlane_class
     procedure :: distance
     procedure :: going
     procedure :: kill
-  end type aPlane
+  end type plane
 
 
 contains
@@ -53,84 +52,71 @@ contains
   !! See surface_inter for more details
   !!
   pure function myType(self) result(str)
-    class(aPlane), intent(in)  :: self
+    class(plane), intent(in)  :: self
     character(:), allocatable  :: str
 
-    select case(self % axis)
-      case(X_AXIS)
-        str = 'xPlane'
+    str = 'plane'
 
-      case(Y_AXIS)
-        str = 'yPlane'
-
-      case(Z_AXIS)
-        str = 'zPlane'
-
-      case default
-        str = 'unknown aPlane'
-
-    end select
   end function myType
 
   !!
-  !! Initialise aPlane from a dictionary
+  !! Initialise plane from a dictionary
   !!
   !! See surface_inter for more details
   !!
   !! Errors:
   !!   fatalError if id < 0.
+  !!   fatalError if is not a plane (coeffcients 1-3 are 0.0)
   !!
   subroutine init(self, dict)
-    class(aPlane), intent(inout)  :: self
-    class(dictionary), intent(in) :: dict
-    integer(shortInt)             :: id
-    character(nameLen)            :: type
-    character(100), parameter :: Here = 'init (aPlane_class.f90)'
+    class(plane), intent(inout)              :: self
+    class(dictionary), intent(in)            :: dict
+    integer(shortInt)                        :: id
+    real(defReal), dimension(:), allocatable :: coeffs
+    character(100), parameter :: Here = 'init (plane_class.f90)'
 
     ! Get from dictionary
     call dict % get(id, 'id')
-    call dict % get(type,'type')
+    call dict % get(coeffs,'coeffs')
 
     ! Check values
     if (id < 1) then
       call fatalError(Here,'Invalid surface id provided. ID must be > 1')
+
+    else if (size(coeffs) /= 4) then
+      call fatalError(Here, '4 plane coefficients must be given. There are: '//&
+                            numToChar(size(coeffs)))
+    else if (all(coeffs(1:3) == ZERO)) then
+      call fatalError(Here, 'Invalid plane normal. coefficients 1-3 are all 0.0.')
+
     end if
+
+    ! Normalise coefficients
+    coeffs = coeffs / norm2(coeffs(1:3))
 
     ! Load data
     call self % setID(id)
+    self % norm = coeffs(1:3)
+    self % offset = coeffs(4)
 
-    select case(type)
-      case('xPlane')
-        self % axis = X_AXIS
-        call dict % get(self % a0, 'x0')
 
-      case('yPlane')
-        self % axis = Y_AXIS
-        call dict % get(self % a0, 'y0')
-
-      case('zPlane')
-        self % axis = Z_AXIS
-        call dict % get(self % a0, 'z0')
-
-      case default
-        call fatalError(Here, 'Unknown type of axis plane: '//type)
-    end select
 
   end subroutine init
 
   !!
-  !! Return axix-align bounding box for the surface
+  !! Return axis-aligned bounding box for the surface
   !!
   !! See surface_inter for details
   !!
+  !! Always returns infinate box (even when aligned with some axis)
+  !!
   pure function boundingBox(self) result(aabb)
-    class(aPlane), intent(in)   :: self
+    class(plane), intent(in)   :: self
     real(defReal), dimension(6) :: aabb
 
     aabb(1:3) = -INF
     aabb(4:6) = INF
 
-    aabb([self % axis, self % axis + 3]) = self % a0
 
   end function boundingBox
 
@@ -140,11 +126,11 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(aPlane), intent(in)               :: self
+    class(plane), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
 
-    c = r(self % axis) - self % a0
+    c = dotProduct(r, self % norm) - self % offset
 
   end function evaluate
 
@@ -154,29 +140,30 @@ contains
   !!
   !! See surface_inter for details
   !!
+  !! Solve linear equaltion
+  !!   d*k + c = 0.0
+  !!
+  !!   k = F'(r) .dot. u = c1*u1 + c2*u2 +c3*u3
+  !!   c = F(r)
+  !!
   pure function distance(self, r, u) result(d)
-    class(aPlane), intent(in)              :: self
+    class(plane), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: d
-    real(defReal)                           :: ua, ra
+    real(defReal)                           :: k, c
 
-    ra = self % a0 - r(self % axis)
-    ua = u(self % axis)
+    k = dotProduct(u, self % norm)
+    c = self % evaluate(r)
 
-    if(abs(ra) < self % surfTol()) then ! Within surface tolerance
+    if ( k == ZERO .or. abs(c) < self % surfTol()) then ! Parallel or at the surface
       d = INF
 
-    else if (ua /= ZERO) then ! Normal case
-      d = ra/ua
-
-    else  ! Parallel to the plane
-      d = INF
+    else
+      d = -c/k
+      if (d <= ZERO .or. d > INF) d = INF
 
     end if
-
-    ! Cap the distance
-    if ( d <= ZERO .or. d > INF ) d = INF
 
   end function distance
 
@@ -186,19 +173,19 @@ contains
   !! See surface_inter for details
   !!
   pure function going(self, r, u) result(halfspace)
-    class(aPlane), intent(in)              :: self
+    class(plane), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal)                           :: ua
+    real(defReal)                           :: proj
 
-    ua = u(self % axis)
-    halfspace = ua > ZERO
+    proj = dotProduct(u, self % norm)
+    halfspace = proj > ZERO
 
     ! Special case of parallel direction
     ! Partilce stays in its current halfspace
-    if (ua == ZERO) then
-      halfspace = (r(self % axis) - self % a0) >= ZERO
+    if (proj == ZERO) then
+      halfspace = self % evaluate(r) >= ZERO
     end if
 
   end function going
@@ -207,16 +194,15 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(aPlane), intent(inout) :: self
+    class(plane), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
 
     ! Local
-    self % axis = -7
-    self % a0 = ZERO
+    self % norm = ZERO
+    self % offset = ZERO
 
   end subroutine kill
 
-
-end module aPlane_class
+end module plane_class

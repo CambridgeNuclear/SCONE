@@ -101,7 +101,7 @@ module surface_inter
     end subroutine init
 
     !!
-    !! Return bounding box
+    !! Return axis-aligned bounding box
     !!
     !! Note:
     !!   If bounding box is infinate in any axis its smalles value is -INF and highest INF

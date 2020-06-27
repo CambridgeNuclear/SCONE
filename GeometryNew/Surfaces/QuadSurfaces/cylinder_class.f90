@@ -149,7 +149,7 @@ contains
   end subroutine init
 
   !!
-  !! Return axix-align bounding box for the surface
+  !! Return axis-aligned bounding box for the surface
   !!
   !! See surface_inter for details
   !!
