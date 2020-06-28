@@ -201,16 +201,18 @@ contains
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! ** Outside the box
-    ! Note that point is in x-z plane (same as bottom of the box)
-    r = [-2.0_defReal, 0.000_defReal, 1.0_defReal]
+    r = [-2.0_defReal, 0.001_defReal, 1.0_defReal]
 
     ! Direct impact
     u = [ONE, ZERO, ZERO]
     ref = 2.0_defReal
     @assertEqual(ref, surf % distance(r, u), TOL*ref)
 
+    ! Moving away
+    @assertEqual(INF, surf % distance(r, -u))
+
     ! Miss
-    u = [ONE, -0.0001_defReal, ONE]
+    u = [ONE, -0.002_defReal, ONE]
     u = u /norm2(u)
     @assertEqual(INF, surf % distance(r, u))
 
@@ -220,11 +222,16 @@ contains
     ref = 2.0_defReal * SQRT2
     @assertEqual(ref, surf % distance(r, u), TOL*ref)
 
-    ! Corner skim
+    ! Corner skim [0.0, 0.0, 4.0]
     ! Use dirty values
-    r = [-2.0_defReal, 0.000_defReal, 1.0_defReal/3.0_defReal]
-    u = [TWO, ZERO, 3.0_defReal + 2.0_defReal/3.0_defReal]
+    r = [-2.7_defReal, -0.3_defReal, 1.0_defReal/3.0_defReal]
+    u = [2.7_defReal, 0.3_defReal, 3.0_defReal + 2.0_defReal/3.0_defReal]
     u = u /norm2(u)
+    @assertEqual(INF, surf % distance(r, u), TOL*ref)
+
+    ! Parallel
+    r = [-2.0_defReal, 0.000_defReal, 1.0_defReal]
+    u = [ONE, ZERO, ZERO]
     @assertEqual(INF, surf % distance(r, u), TOL*ref)
 
     ! ** At the surface
@@ -267,8 +274,13 @@ contains
     ! ** Corner
     ! * Particle is almost at the corner
     !   Either it is outside or can escape with a short movment in next step
+    !
+    ! Currently does not work for Y-position in plane (r(2) == ZERO)
+    ! See `distance` documentation in box_class
+    ! This comment applies to all cases in this test.  
+    !
     eps =  5.0_defReal * epsilon(eps)
-    r = [2.0_defReal-eps, 0.0_defReal, 4.0_defReal-eps]
+    r = [2.0_defReal-eps, eps, 4.0_defReal-eps]
     u = [HALF, ZERO, -ONE]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
@@ -289,7 +301,7 @@ contains
     end if
 
     ! Try asymertic corner
-    r = [2.0_defReal-TWO*eps, 0.0_defReal, 4.0_defReal-eps]
+    r = [2.0_defReal-TWO*eps, eps, 4.0_defReal-eps]
     u = [HALF, ZERO, -ONE]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
@@ -301,7 +313,7 @@ contains
 
     ! Asymetric corner position
     ! Try other direction
-    r = [2.0_defReal-eps, 0.0_defReal, 4.0_defReal-TWO*eps]
+    r = [2.0_defReal-eps, eps, 4.0_defReal-TWO*eps]
     u = [-ONE, ZERO, HALF]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)

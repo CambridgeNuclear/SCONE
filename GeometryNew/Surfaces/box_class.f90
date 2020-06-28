@@ -2,7 +2,7 @@ module box_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar
+  use genericProcedures,  only : fatalError, numToChar, swap
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 
@@ -155,6 +155,13 @@ contains
   !!      Otherwise either near or far will be the closest distance depending on whether
   !!      the particle is in or outside the box
   !!
+  !! NOTE: The algorithim as implemented may have some problems in the corners. If particle
+  !!  is EXACTLY (to the bit) in the corner, or it goes through corner while being PERFECTLY
+  !!  (again to the bit) in one of the planes
+  !!
+  !!  The reason for this is that a ray contained EXACTLY in one of the boundary planes
+  !!  may be assigned with an empty section (instead of infinate length).
+  !!
   pure function distance(self, r, u) result(d)
     class(box), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
@@ -163,6 +170,7 @@ contains
     real(defReal), dimension(3)             :: rb, a_near, a_far
     real(defReal)                           :: far, near, test_far, test_near
     integer(shortInt)                       :: ax
+    real(defReal), parameter :: FP_MISS_TOL = ONE + 10.0_defReal * epsilon(ONE)
 
     ! Transfrom to frame centered at the slab and choose
     ! nearest and furthest box vertex
@@ -180,14 +188,25 @@ contains
         test_near = (a_near(ax) - rb(ax)) / u(ax)
         test_far = (a_far(ax) - rb(ax)) / u(ax)
 
-        far = min(far, test_far)
-        near = max(near, test_near)
+      else  ! Line is either fully inside or fully outside
+
+        ! TODO: In current setup line may not inclusive of boundary planes i.e.
+        !   if either (a_near - r) or (a_far - r) is 0.0 then both INF may have the same sign
+        test_near = sign(INF, (a_near(ax) - rb(ax)))
+        test_far  = sign(INF, (a_far(ax) - rb(ax)))
+
+        ! If direction is -0.0 (intead of just 0.0) Order may be
+        ! wrong and it is necesaryto swap
+        if (test_near > test_far) call swap(test_near, test_far)
+
       end if
+      far = min(far, test_far)
+      near = max(near, test_near)
+
     end do
 
     ! Choose correct distance for different cases
-    ! TODO: Consider using FP comparison here (with tolerance < surface tolerance )
-    if (far <= near) then ! There is no intersection
+    if (far <= near * FP_MISS_TOL) then ! There is no intersection
       d = INF
 
     else if ( abs(self % evaluate(r)) < self % surfTol()) then ! Point at the surface
@@ -266,6 +285,7 @@ contains
     ! Local
     self % origin = ZERO
     self % halfwidth = ZERO
+    self % BC = VACUUM_BC
 
   end subroutine kill
 
