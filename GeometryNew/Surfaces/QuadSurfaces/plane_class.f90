@@ -172,6 +172,9 @@ contains
   !!
   !! See surface_inter for details
   !!
+  !! Note:
+  !!   For parallel direction halfspace is asigned by the sign of `evaluate` result.
+  !!
   pure function going(self, r, u) result(halfspace)
     class(plane), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
