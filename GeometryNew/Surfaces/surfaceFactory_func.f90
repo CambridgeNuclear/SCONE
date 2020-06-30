@@ -54,7 +54,7 @@ contains
   !! Result:
   !!   class(surface) pointer to an allocated instance of the surface
   !!
-  !! Error:
+  !! Errors:
   !!   fatalError if type of surface is unknown
   !!
   function new_surface_ptr(dict) result(new)
@@ -109,7 +109,7 @@ contains
   !!   dict [in] -> Dictionary with the surface definition
   !!
   !! Errors:
-  !!   fatalError is type of surface is unrecognised
+  !!   fatalError if type of surface is unrecognised
   !!
   subroutine new_surface(new, dict)
     class(surface), allocatable, intent(out) :: new
@@ -118,6 +118,7 @@ contains
 
     temp => new_surface_ptr(dict)
     allocate (new, source = temp)
+    call temp % kill()
     deallocate(temp)
 
   end subroutine new_surface

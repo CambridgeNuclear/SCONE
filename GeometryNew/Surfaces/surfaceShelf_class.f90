@@ -15,7 +15,7 @@ module surfaceShelf_class
   !!
   !! Public members:
   !!   name -> Name of the surface
-  !!   ptr  -> Pointer to a surface
+  !!   ptr  -> Pointer to the surface
   !!
   type :: surfaceBox
     character(nameLen)      :: name = ''
@@ -23,9 +23,9 @@ module surfaceShelf_class
   end type surfaceBox
 
   !!
-  !! Storage spaces for surfaces defined in the geometry
+  !! Storage space for surfaces defined in the geometry
   !!
-  !! Sample Dictionary input:
+  !! Sample dictionary input:
   !!   surfaces {
   !!    surf1 { <surface definition> }
   !!    surf2 { <surface definition> }
@@ -107,7 +107,7 @@ contains
   end subroutine init
 
   !!
-  !! Return pointer to a surface indicated by index
+  !! Return pointer to the surface indicated by index
   !!
   !! Args:
   !!   idx [in] -> Index of the surface
