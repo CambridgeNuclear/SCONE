@@ -27,7 +27,7 @@ module simpleCell_test
 contains
 
   !!
-  !! Build the surface
+  !! Build the cell
   !!
 @Before
   subroutine setUp()
@@ -106,7 +106,7 @@ contains
     r = [0.3_defReal, 0.4_defReal, 0.0_defReal]
     u = [-ONE, ZERO, ZERO]
     ref = 0.3_defReal
-    idx_ref = surfs % surfIdx(4)
+    idx_ref = surfs % getIdx(4)
     call cell % distance(d, idx, r, u)
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(idx_ref, idx)
@@ -114,7 +114,7 @@ contains
     ! Y-Plane hit
     u = [ZERO, -ONE, ZERO]
     ref = 0.4_defReal
-    idx_ref = surfs % surfIdx(99)
+    idx_ref = surfs % getIdx(99)
     call cell % distance(d, idx, r, u)
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(idx_ref, idx)
@@ -122,7 +122,7 @@ contains
     ! Sphere hit
     u = [ONE, ZERO, ZERO]
     ref = 1.659591794_defReal
-    idx_ref = surfs % surfIdx(13)
+    idx_ref = surfs % getIdx(13)
     call cell % distance(d, idx, r, u)
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(idx_ref, idx)

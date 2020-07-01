@@ -79,8 +79,8 @@ contains
 
     ! Load indexes & Pointers
     do i = 1, size(self % surfaces)
-      surfIdx = surfs % surfIdx( abs(surfIDs(i)))
-      self % surfaces(i) % ptr => surfs % surfPtr(surfIdx)
+      surfIdx = surfs % getIdx( abs(surfIDs(i)))
+      self % surfaces(i) % ptr => surfs % getPtr(surfIdx)
       self % surfaces(i) % surfIdx = sign(surfIdx, surfIDs(i))
     end do
 

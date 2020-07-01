@@ -38,10 +38,10 @@ module surfaceShelf_class
   !!   idMap -> Map between surface ID and corresponding index
   !!
   !! Interface:
-  !!   init -> Initialise from a dictionary
-  !!   surfPtr -> Return pointer to a surface given its index
-  !!   surfIdx -> Return index of a surface given its id
-  !!   surfID  -> Return id of a surface given its idx
+  !!   init    -> Initialise from a dictionary
+  !!   getPtr  -> Return pointer to a surface given its index
+  !!   getIdx  -> Return index of a surface given its id
+  !!   getID   -> Return id of a surface given its idx
   !!   kill    -> Return to uninitialised state
   !!
   !! NOTE: Becouse surfaces are stored as pointers, calling `kill` is crutial to prevent
@@ -54,9 +54,9 @@ module surfaceShelf_class
 
   contains
     procedure :: init
-    procedure :: surfPtr
-    procedure :: surfIdx
-    procedure :: surfId
+    procedure :: getPtr
+    procedure :: getIdx
+    procedure :: getId
     procedure :: kill
   end type surfaceShelf
 
@@ -118,7 +118,7 @@ contains
   !! Error:
   !!   fatalError is idx does not correspond to a surface (is out-of-bounds)
   !!
-  function surfPtr(self, idx) result (ptr)
+  function getPtr(self, idx) result (ptr)
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: idx
     class(surface), pointer         :: ptr
@@ -133,7 +133,7 @@ contains
     ! Return pointer
     ptr => self % surfaces(idx) % ptr
 
-  end function surfPtr
+  end function getPtr
 
   !!
   !! Return IDX of a surface with ID
@@ -147,7 +147,7 @@ contains
   !! Error:
   !!   fatalError if there is not surface with ID
   !!
-  function surfIdx(self, id) result(idx)
+  function getIdx(self, id) result(idx)
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: id
     integer(shortInt)               :: idx
@@ -160,7 +160,7 @@ contains
       call fatalError(Here, 'There is no surface with ID: '//numToChar(id))
     end if
 
-  end function surfIdx
+  end function getIdx
 
   !!
   !! Return ID of the surface with index
@@ -174,7 +174,7 @@ contains
   !! Error:
   !!   fatalError is idx does not correspond to a surface (is out-of-bounds)
   !!
-  function surfId(self, idx) result(id)
+  function getId(self, idx) result(id)
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: idx
     integer(shortInt)               :: id
@@ -188,7 +188,7 @@ contains
 
     id = self % surfaces(idx) % ptr % id()
 
-  end function surfId
+  end function getId
 
   !!
   !! Return to uninitialised state
@@ -204,7 +204,7 @@ contains
 
       deallocate(self % surfaces)
     end if
-    
+
     call self % idMap % kill()
 
   end subroutine kill

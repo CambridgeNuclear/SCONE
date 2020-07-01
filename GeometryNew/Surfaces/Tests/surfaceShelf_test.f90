@@ -55,18 +55,18 @@ contains
     integer(shortInt)       :: idx
 
     ! 1st Surface
-    idx = shelf % surfIdx(18)
-    ptr => shelf % surfPtr(idx)
+    idx = shelf % getIdx(18)
+    ptr => shelf % getPtr(idx)
     @assertEqual(18, ptr % id())
     @assertEqual('sphere', ptr % myType())
-    @assertEqual(18, shelf % surfId(idx))
+    @assertEqual(18, shelf % getId(idx))
 
     ! 2nd Surface
-    idx = shelf % surfIdx(1)
-    ptr => shelf % surfPtr(idx)
+    idx = shelf % getIdx(1)
+    ptr => shelf % getPtr(idx)
     @assertEqual(1, ptr % id())
     @assertEqual('zPlane', ptr % myType())
-    @assertEqual(1, shelf % surfId(idx))
+    @assertEqual(1, shelf % getId(idx))
 
   end subroutine testShelf
 
