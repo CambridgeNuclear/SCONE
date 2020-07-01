@@ -9,6 +9,7 @@ module cellFactory_func
   use cell_inter,         only : cell
 
   ! Cells
+  use simpleCell_class,   only : simpleCell
 
   implicit none
   private
@@ -16,7 +17,7 @@ module cellFactory_func
   ! ** ADD NAME OF NEW CELL TO THE LIST **!
   ! List that contains acceptable types of cells
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen), dimension(*), parameter :: AVAILABLE_CELL = ['']
+  character(nameLen), dimension(*), parameter :: AVAILABLE_CELL = ['simpleCell']
 
   ! Public Interface
   public :: new_cell_ptr
@@ -50,11 +51,14 @@ contains
     ! Allocate approperiate cell
     ! ** FOR NEW CELL ADD CASE STATEMENT HERE ** !
     select case (type)
+      case ('simpleCell')
+        allocate(simpleCell :: new)
+
       case default
         print '(A)', 'AVAILABLE CELLS: '
         print '(A)', AVAILABLE_CELL
         call fatalError(Here, 'Unrecognised type of a cell: '//trim(type))
-        
+
     end select
 
     ! Initialise cell
