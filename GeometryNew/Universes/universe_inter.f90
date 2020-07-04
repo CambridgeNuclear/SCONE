@@ -1,0 +1,402 @@
+module universe_inter
+
+  use numPrecision
+  use genericProcedures,  only : fatalError, numToChar, rotationMatrix, charToInt
+  use dictionary_class,   only : dictionary
+  use coord_class,        only : coord
+  use charMap_class,      only : charMap
+  use surfaceShelf_class, only : surfaceShelf
+  use cellShelf_class,    only : cellShelf
+
+  implicit none
+  private
+
+
+  ! Extandable methods
+  public :: kill
+
+  ! Universe utility functions
+  public :: charToFill
+
+  !!
+  !! Abstract interface for all universes
+  !!
+  !! Universe represents a subdivision of the entire space into local cells.
+  !!
+  !! Universe can be associated with:
+  !!   translation (by an offset)
+  !!   rotation (by Euler angles using ZXZ convention)
+  !!
+  !! Private Members:
+  !!   uniId   -> Id of the universe
+  !!   uniIdx  -> Index of the universe
+  !!   offset  -> Offset of the centre of the universe with respect to the higher universe
+  !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
+  !!   rot     -> rotation flag. True is universe is rotated
+  !!
+  !! Interface:
+  !!   id           -> Get Id of the universe
+  !!   setId        -> Set Id of the universe
+  !!   setIdx       -> Set index of the universe
+  !!   setTransfrom -> Set offset and/or rotation of the universe. Rotation angles are in [deg]
+  !!   init         -> Initialise universe and return fillArray with content of local cells.
+  !!     Requires surface/cell shelfs and map of material names to matIdxs
+  !!   kill         -> Return to uninitialised state
+  !!   enter        -> Generate new coord after entering a universe from higher level coord.
+  !!   findCell     -> Return local cell ID and cellIdx in cellShelf for a given position.
+  !!   dictance     -> Calculate the distance to the point where localID will change
+  !!   cross        -> Assuming point is at the boundary between local cells, find next local cell.
+  !!   cellOffset   -> Given coords with set localID, return cellOffset for that cell.
+  !!
+  type, public, abstract :: universe
+    private
+    integer(shortInt)             :: uniId  = 0
+    integer(shortInt)             :: uniIdx = 0
+    real(defReal), dimension(3)   :: offset = ZERO
+    real(defReal), dimension(3,3) :: rotMat = ZERO
+    logical(defBool)              :: rot    = .false.
+  contains
+    ! Build procedures
+    procedure, non_overridable :: id
+    procedure, non_overridable :: setId
+    procedure, non_overridable :: setIdx
+    procedure, non_overridable :: setTransform
+    procedure(init), deferred  :: init
+    procedure                  :: kill
+
+    ! Runtime procedures
+    procedure, non_overridable      :: enter
+    procedure(findCell), deferred   :: findCell
+    procedure(distance), deferred   :: distance
+    procedure(cross), deferred      :: cross
+    procedure(cellOffset), deferred :: cellOffset
+  end type universe
+
+  abstract interface
+
+    !!
+    !! Initialise Universe
+    !!
+    !! Must ruturn a fill array, that contains content in each local cell of the universe.
+    !! Array is indexed by local cell ID. Universe content is -uniID and material content
+    !! is +ve matIdx.
+    !!
+    !! Args:
+    !!   fill [out]    -> Fill array. Each position gives content for each local cell. Negative
+    !!     values are universe IDs (uniID). Positive are material indexes (matIdx)
+    !!   dict [in]     -> Dictionary with the universe definition
+    !!   cells [inout] -> Shelf with all user-defined cells
+    !!   surfs [inout] -> Shelf with all user-defined surfaces
+    !!   mats [in]     -> Map of material names to corresponding matIdx
+    !!
+    subroutine init(self, fill, dict, cells, surfs, mats)
+      import :: universe, defReal, dictionary, &
+                cellShelf, surfaceShelf, charMap
+      class(universe), intent(inout)                        :: self
+      real(defReal), dimension(:), allocatable, intent(out) :: fill
+      class(dictionary), intent(in)                         :: dict
+      type(cellShelf), intent(inout)                        :: cells
+      type(surfaceShelf), intent(inout)                     :: surfs
+      type(charMap), intent(in)                             :: mats
+    end subroutine init
+
+    !!
+    !! Find local cell ID given a point
+    !!
+    !! Given position and direction return localID for a cell and, if the cell is
+    !! also defined on a cellShelf, return its index (cellIdx). If it isn't set
+    !! cellIdx to 0.
+    !!
+    !! Args:
+    !!   localID [out] -> Local ID for the given point
+    !!   cellIdx [out] -> cellIdx in cellShelf, if the cell point is in is defined there.
+    !!     If the cell exists only in the universe return 0.
+    !!   r [in]        -> Position of a point
+    !!   u [in]        -> Normalised direaction (norm2(u) = 1.0)
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine findCell(self, localID, cellIdx, r, u)
+      import :: universe, shortInt, defReal
+      class(universe), intent(inout)          :: self
+      integer(shortInt), intent(out)          :: localID
+      integer(shortInt), intent(out)          :: cellIdx
+      real(defReal), dimension(3), intent(in) :: r
+      real(defReal), dimension(3), intent(in) :: u
+    end subroutine findCell
+
+    !!
+    !! Return distance to the next boundary between local cells in the universe
+    !!
+    !! In addition to distance surfIdx of the surface that will be crossed after a move by
+    !! the distance is also returned. If surfIdx > 0 it means that the surface is defined
+    !! on surfaceShelf with the index. If surfIdx < 0 it means that the surface is local to the
+    !! universe.
+    !!
+    !! The returned surfIdx is a hint for `cross` procedure, that may allow to speed up transition
+    !! processing.
+    !!
+    !! Args:
+    !!   d [out]       -> Distance to the next surface
+    !!   surfIdx [out] -> Index of the surface that will be crossed. If +ve than surface
+    !!     is defined on surfaceSHelf. If -ve surface is local to this univerese.
+    !!   coords [in]   -> Coordinates of the point inside the universe (after transformations
+    !!     and with localID already set)
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine distance(self, d, surfIdx, coords)
+      import :: universe, defReal, shortInt, coord
+      class(universe), intent(inout)          :: self
+      real(defReal), intent(out)              :: d
+      integer(shortInt), intent(out)          :: surfIdx
+      type(coord), intent(in)                 :: coords
+    end subroutine distance
+
+    !!
+    !! Cross between local cells
+    !!
+    !! Procedure assumes that the point is ON THE SURFACE between cells within under/overshoot as
+    !! a result of finate FP precision.
+    !!
+    !! Args:
+    !!   coords [inout] -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set). On exit localID will be changed
+    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is beeing
+    !!     crossed.
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine cross(self, coords, surfIdx)
+      import :: universe, coord, shortInt
+      class(universe), intent(inout) :: self
+      type(coord), intent(inout)     :: coords
+      integer(shortInt), intent(in)  :: surfIdx
+    end subroutine cross
+
+    !!
+    !! Return offset for the current cell
+    !!
+    !! Args:
+    !!   coords [in] -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set).
+    !!
+    !! Result:
+    !!   Cell offset 3D position vector. Offset is applied before entering a nested universe
+    !!   inside a local cell.
+    !!
+    function cellOffset(self, coords) result (offset)
+      import :: universe, coord, defReal
+      class(universe), intent(in) :: self
+      type(coord), intent(in)     :: coords
+      real(defReal), dimension(3) :: offset
+    end function cellOffset
+
+  end interface
+
+contains
+
+  !!
+  !! Set universe ID
+  !!
+  !! Args:
+  !!   id [in] -> Universe ID (id > 0)
+  !!
+  !! Errors:
+  !!   fatalError if ID is not +ve
+  !!
+  subroutine setId(self, id)
+    class(universe), intent(inout) :: self
+    integer(shortInt), intent(in)  :: id
+    character(100), parameter :: Here = 'setId (universe_inter.f90)'
+
+    if (id <= 0) then
+      call fatalError(Here, 'Id must be +ve. Is: '//numToChar(id))
+    end if
+
+    self % uniId = id
+
+  end subroutine setId
+
+  !!
+  !! Get universe ID
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   universe ID.
+  !!
+  elemental function id(self)
+    class(universe), intent(in) :: self
+    integer(shortInt)           :: id
+
+    id = self % uniID
+
+  end function id
+
+  !!
+  !! Set universe index
+  !!
+  !! Args:
+  !!   idx [in] -> Universe index (idx > 0)
+  !!
+  !! Errors:
+  !!   fatalError if index is not +ve.
+  !!
+  subroutine setIdx(self, idx)
+    class(universe), intent(inout) :: self
+    integer(shortInt), intent(in)  :: idx
+    character(100), parameter :: Here = 'setIdx (universe_inter.f90)'
+
+    if (idx <= 0) then
+      call fatalError(Here, 'Idx must be +ve. Is: '//numToChar(idx))
+    end if
+
+    self % uniIdx = idx
+
+  end subroutine setIdx
+
+  !!
+  !! Set universe offset & rotation
+  !!
+  !! Note that rotation is defined by Euler angles with ZXZ convention
+  !!
+  !! Args:
+  !!   offset [in]   -> Optional. 3D vector with the universe offset.
+  !!   rotation [in] -> Optional. 3D vector with Euler ZXZ rotation angles [deg]. {phi, theta, psi}
+  !!
+  subroutine setTransform(self, offset, rotation)
+    class(universe), intent(inout)                    :: self
+    real(defReal), dimension(3), intent(in), optional :: offset
+    real(defReal), dimension(3), intent(in), optional :: rotation
+
+    if (present(offset)) then
+      self % offset = offset
+
+    end if
+
+    if (present(rotation)) then
+      self % rot = .true.
+      call rotationMatrix(self % rotMat, rotation(1), rotation(2), rotation(3))
+
+    end if
+
+  end subroutine setTransform
+
+  !!
+  !! Enter from higher universe
+  !!
+  !! Sets:
+  !!   - New position (r)
+  !!   - New direction (dir)
+  !!   - Rotation infor (isRotated + rotMat)
+  !!   - Local cell (localID)
+  !!   - Cell info (cellIdx)
+  !!
+  !! Does not set uniRootID !
+  !!
+  !! Args:
+  !!   low [out] -> New coordinates for the level
+  !!   high [in] -> Coordinates in the higher universe
+  !!
+  !! Note: Self is intent(inout), but if a state of the universe is to be changed
+  !!   it is necessary to consider issues related to parallel calculations with shared
+  !!   memory.
+  !!
+  subroutine enter(self, low, high)
+    class(universe), intent(inout) :: self
+    type(coord), intent(out)       :: low
+    type(coord), intent(in)        :: high
+
+    ! Set position
+    low % r         = high % r - self % offset
+    low % dir       = high % dir
+    low % uniIdx    = self % uniIdx
+    low % isRotated = self % rot
+
+    if (low % isRotated) then
+      low % rotMat = self % rotMat
+      low % r = matmul(self % rotMat, low % r)
+      low % dir = matmul(self % rotMat, low % dir)
+    end if
+
+    ! Find cell
+    call self % findCell(low % localID, low % cellIdx, low % r, low % dir)
+
+  end subroutine enter
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(universe), intent(inout) :: self
+
+    self % uniIdx = 0
+    self % uniId  = 0
+    self % offset = ZERO
+    self % rotMat = ZERO
+    self % rot    = .false.
+
+  end subroutine kill
+
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Utility Functions
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Convert a string to correct fill entry
+  !!
+  !! Material have names which are strings.
+  !! Universes are identified by integer ID. Thus to refer to universe use
+  !!   name = u<7>  ! For universe with ID 7
+  !!   name = u<986> ! For universe with ID 986
+  !!   ...
+  !!
+  !! Args:
+  !!   name [in]  -> Character with the name of material or fill universe ID. Must not contain
+  !!     any blanks!
+  !!   mats [in]  -> Map of material names to matIdx
+  !!   where [in] -> Name of caller procedure for better error message
+  !!
+  !! Result:
+  !!   Filling. If material it is just matIdx. If universe it is -uniID (universe ID).
+  !!
+  function charToFill(name, mats, where) result(fill)
+    character(nameLen), intent(in) :: name
+    type(charMap), intent(in)      :: mats
+    character(*), intent(in)       :: where
+    integer(shortInt)              :: fill
+    character(nameLen)             :: str
+    integer(shortInt)              :: pos
+    logical(defBool)               :: err
+    integer(shortInt), parameter :: NOT_FOUND = -7
+
+    ! Identify if mat or universe
+    str = adjustl(name)
+    if (str(1:2) == 'u<') then
+      pos = index(str, '>', back=.true.)
+    else
+      pos = 0
+    end if
+
+    ! Convert to fill
+    if (pos /= 0) then
+      fill = charToInt(str(3:pos-1), error=err)
+      if (err) call fatalError(where, 'Failed to convert '//trim(str)//' to universe ID')
+      fill = -fill
+
+    else ! Convert to mat
+      fill = mats % getOrDefault(name, NOT_FOUND)
+      if (fill == NOT_FOUND) call fatalError(where, 'Unknown material: '//trim(name))
+    end if
+
+  end function charToFill
+
+end module universe_inter

@@ -12,16 +12,16 @@ module coord_class
   !!   -> norm2(dir) = 1
   !!   -> uniIdx & cellIdx > 0
   !!
-  !! *** NOTE will store coordinate rotations to reapply them
   !!
   type, public :: coord
-    real(defReal), dimension(3) :: r         = ZERO    ! position
-    real(defReal), dimension(3) :: dir       = ZERO    ! direction
-    logical(defBool)            :: isRotated = .FALSE. ! is the co-ordinate in a rotated reference frame?
-    integer(shortInt)           :: uniIdx    = 0       ! Index of the universe definition occupied
-    integer(shortInt)           :: uniRootID = 0       ! Unique ID = uniRootID + localID
-    integer(shortInt)           :: localID   = 0       ! ID of the cell occupied within local universe
-    integer(shortInt)           :: cellIdx   = 0       ! Index of a cell definition occupied
+    real(defReal), dimension(3)   :: r         = ZERO    ! position
+    real(defReal), dimension(3)   :: dir       = ZERO    ! direction
+    logical(defBool)              :: isRotated = .false. ! is the co-ordinate in a rotated reference frame?
+    real(defReal), dimension(3,3) :: rotMat    = ZERO 
+    integer(shortInt)             :: uniIdx    = 0       ! Index of the universe definition occupied
+    integer(shortInt)             :: uniRootID = 0       ! Unique ID = uniRootID + localID
+    integer(shortInt)             :: localID   = 0       ! ID of the cell occupied within local universe
+    integer(shortInt)             :: cellIdx   = 0       ! Index of a cell definition occupied
   contains
     procedure :: isValid => isValid_coord
     procedure :: display => display_coord
@@ -246,7 +246,7 @@ contains
     self % lvl(1) % dir = rotateVector(self % lvl(1) % dir, mu, phi)
 
     ! Propagate rotation to lower levels
-    do i = 2,self % nesting
+    do i = 2, self % nesting
       if (self % lvl(i) % isRotated) then
         self % lvl(i) % dir = rotateVector(self % lvl(i) % dir, mu, phi)
 
@@ -300,6 +300,7 @@ contains
     ! Propage the change to lower levels
     do i=2,self % nesting
       if(self % lvl(i) % isRotated) then
+        self % lvl(i) % dir = matmul(self % lvl(i) % rotMat, self % lvl(i-1) % dir)
         call fatalError(Here,'Rotated levels are not yet implemented')
 
       else
