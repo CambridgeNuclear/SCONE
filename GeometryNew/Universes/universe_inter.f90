@@ -24,13 +24,15 @@ module universe_inter
   !! Universe represents a subdivision of the entire space into local cells.
   !!
   !! Universe can be associated with:
-  !!   translation (by an offset)
+  !!   translation (to a new origin)
   !!   rotation (by Euler angles using ZXZ convention)
+  !!
+  !! Rotation is applied before translation to the origin.
   !!
   !! Private Members:
   !!   uniId   -> Id of the universe
   !!   uniIdx  -> Index of the universe
-  !!   offset  -> Offset of the centre of the universe with respect to the higher universe
+  !!   origin  -> Location of the origin of the univere co-ordinates in the frame of higher universe
   !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
   !!   rot     -> rotation flag. True is universe is rotated
   !!
@@ -38,7 +40,7 @@ module universe_inter
   !!   id           -> Get Id of the universe
   !!   setId        -> Set Id of the universe
   !!   setIdx       -> Set index of the universe
-  !!   setTransfrom -> Set offset and/or rotation of the universe. Rotation angles are in [deg]
+  !!   setTransfrom -> Set origin and/or rotation of the universe. Rotation angles are in [deg]
   !!   init         -> Initialise universe and return fillArray with content of local cells.
   !!     Requires surface/cell shelfs and map of material names to matIdxs
   !!   kill         -> Return to uninitialised state
@@ -52,7 +54,7 @@ module universe_inter
     private
     integer(shortInt)             :: uniId  = 0
     integer(shortInt)             :: uniIdx = 0
-    real(defReal), dimension(3)   :: offset = ZERO
+    real(defReal), dimension(3)   :: origin = ZERO
     real(defReal), dimension(3,3) :: rotMat = ZERO
     logical(defBool)              :: rot    = .false.
   contains
@@ -90,14 +92,14 @@ module universe_inter
     !!   mats [in]     -> Map of material names to corresponding matIdx
     !!
     subroutine init(self, fill, dict, cells, surfs, mats)
-      import :: universe, defReal, dictionary, &
+      import :: universe, shortInt, dictionary, &
                 cellShelf, surfaceShelf, charMap
-      class(universe), intent(inout)                        :: self
-      real(defReal), dimension(:), allocatable, intent(out) :: fill
-      class(dictionary), intent(in)                         :: dict
-      type(cellShelf), intent(inout)                        :: cells
-      type(surfaceShelf), intent(inout)                     :: surfs
-      type(charMap), intent(in)                             :: mats
+      class(universe), intent(inout)                            :: self
+      integer(shortInt), dimension(:), allocatable, intent(out) :: fill
+      class(dictionary), intent(in)                             :: dict
+      type(cellShelf), intent(inout)                            :: cells
+      type(surfaceShelf), intent(inout)                         :: surfs
+      type(charMap), intent(in)                                 :: mats
     end subroutine init
 
     !!
@@ -188,7 +190,7 @@ module universe_inter
     !!     local ID set).
     !!
     !! Result:
-    !!   Cell offset 3D position vector. Offset is applied before entering a nested universe
+    !!   Cell offset (3D position vector). Offset is applied before entering a nested universe
     !!   inside a local cell.
     !!
     function cellOffset(self, coords) result (offset)
@@ -264,28 +266,29 @@ contains
   end subroutine setIdx
 
   !!
-  !! Set universe offset & rotation
+  !! Set universe origin & rotation
   !!
   !! Note that rotation is defined by Euler angles with ZXZ convention
   !!
   !! Args:
-  !!   offset [in]   -> Optional. 3D vector with the universe offset.
+  !!   origin [in]   -> Optional. 3D vector with the universe origin.
   !!   rotation [in] -> Optional. 3D vector with Euler ZXZ rotation angles [deg]. {phi, theta, psi}
   !!
-  subroutine setTransform(self, offset, rotation)
+  subroutine setTransform(self, origin, rotation)
     class(universe), intent(inout)                    :: self
-    real(defReal), dimension(3), intent(in), optional :: offset
+    real(defReal), dimension(3), intent(in), optional :: origin
     real(defReal), dimension(3), intent(in), optional :: rotation
 
-    if (present(offset)) then
-      self % offset = offset
+    if (present(origin)) then
+      self % origin = origin
 
     end if
 
     if (present(rotation)) then
-      self % rot = .true.
-      call rotationMatrix(self % rotMat, rotation(1), rotation(2), rotation(3))
-
+      if (.not.all(rotation == ZERO)) then ! Do not add matrix if there is no rotation
+        self % rot = .true.
+        call rotationMatrix(self % rotMat, rotation(1), rotation(2), rotation(3))
+      end if
     end if
 
   end subroutine setTransform
@@ -316,7 +319,7 @@ contains
     type(coord), intent(in)        :: high
 
     ! Set position
-    low % r         = high % r - self % offset
+    low % r         = high % r
     low % dir       = high % dir
     low % uniIdx    = self % uniIdx
     low % isRotated = self % rot
@@ -326,6 +329,9 @@ contains
       low % r = matmul(self % rotMat, low % r)
       low % dir = matmul(self % rotMat, low % dir)
     end if
+
+    ! Translate
+    low % r = low % r - self % origin
 
     ! Find cell
     call self % findCell(low % localID, low % cellIdx, low % r, low % dir)
@@ -340,7 +346,7 @@ contains
 
     self % uniIdx = 0
     self % uniId  = 0
-    self % offset = ZERO
+    self % origin = ZERO
     self % rotMat = ZERO
     self % rot    = .false.
 

@@ -6,6 +6,11 @@ module universe_test
   implicit none
 
 
+  !!
+  !! Note that universe is abstract thus it canot be tested by itself
+  !!
+  !! Tests for universe non-overridable procedures are in cellUniverse_test
+  !!
 
 contains
 

@@ -136,6 +136,7 @@ contains
     real(defReal)                           :: test_d
 
     d = INF
+    surfIdx = 0 
 
     do i = 1, size(self % surfaces)
       test_d = self % surfaces(i) % ptr % distance(r, u)
