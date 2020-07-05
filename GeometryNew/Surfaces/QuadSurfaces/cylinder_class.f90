@@ -56,6 +56,9 @@ module cylinder_class
     procedure :: distance
     procedure :: going
     procedure :: kill
+
+    ! Local procedures
+    procedure :: build
   end type cylinder
 
 contains
@@ -99,54 +102,83 @@ contains
     integer(shortInt)                        :: id
     real(defReal), dimension(:), allocatable :: origin
     character(nameLen)                       :: name
+    real(defReal)                            :: r
     character(100), parameter :: Here = 'init (cylinder_class.f90)'
 
     ! Get from dictionary
     call dict % get(id, 'id')
-    call dict % get(self % r, 'radius')
+    call dict % get(r, 'radius')
     call dict % get(origin, 'origin')
+    call dict % get(name, 'type')
 
-     ! Check values
-    if (id < 1) then
-      call fatalError(Here,'Invalid surface id provided. ID must be > 1')
-
-    else if (size(origin) /= 3) then
+    ! Check origin size
+    if (size(origin) /= 3) then
       call fatalError(Here,'Origin needs to have size 3. Has: '//numToChar(size(origin)))
-
-    else if ( self % r <= ZERO) then
-      call fatalError(Here, 'Radius of cylinder must be +ve. Is: '//numToChar(self % r))
-
     end if
 
-    ! Select type of cylinder
-    call dict % get(name, 'type')
-    select case(name)
-      case('xCylinder')
-        self % axis = X_AXIS
-        self % plane = [Y_AXIS, Z_AXIS]
-
-      case('yCylinder')
-        self % axis = Y_AXIS
-        self % plane = [X_AXIS, Z_AXIS]
-
-      case('zCylinder')
-        self % axis = Z_AXIS
-        self % plane = [X_AXIS, Y_AXIS]
-
-      case default
-        call fatalError(Here, 'Uknown type of cylinder: '//name)
-
-    end select
-
-    ! Load data
-    self % r_sq = self % r * self % r
-    self % origin = origin
-    call self % setID(id)
-
-    ! Set surface tolerance
-    call self % setTol( TWO * self % r * SURF_TOL)
+    ! Build cylinder
+    call self % build(id, name, origin, r )
 
   end subroutine init
+
+  !!
+  !! Build cylinder from components
+  !!
+  !! Args:
+  !!   id [in] -> Surface ID
+  !!   type [in] -> Cylinder type {'xCylinder', 'yCylinder' or 'zCylinder'}
+  !!   origin [in] -> Cylinder origin
+  !!   radius [in] -> Cylinder radius
+  !!
+  !! Errors:
+  !!   fatalError if id or radius are -ve
+  !!
+  subroutine build(self, id, type, origin, radius)
+    class(cylinder), intent(inout)          :: self
+    integer(shortInt), intent(in)           :: id
+    character(*), intent(in)                :: type
+    real(defReal), dimension(3), intent(in) :: origin
+    real(defReal), intent(in)               :: radius
+    character(100), parameter :: Here = 'build (cylinder_class.f90)'
+
+    ! Check values
+   if (id < 1) then
+     call fatalError(Here,'Invalid surface id provided. ID must be > 1')
+
+   else if ( radius <= ZERO) then
+     call fatalError(Here, 'Radius of cylinder must be +ve. Is: '//numToChar(radius))
+
+   end if
+
+   ! Select type of cylinder
+   select case(type)
+     case('xCylinder')
+       self % axis = X_AXIS
+       self % plane = [Y_AXIS, Z_AXIS]
+
+     case('yCylinder')
+       self % axis = Y_AXIS
+       self % plane = [X_AXIS, Z_AXIS]
+
+     case('zCylinder')
+       self % axis = Z_AXIS
+       self % plane = [X_AXIS, Y_AXIS]
+
+     case default
+       call fatalError(Here, 'Uknown type of cylinder: '//type)
+
+   end select
+
+   ! Load data
+   self % r = radius
+   self % r_sq = radius * radius
+   self % origin = origin
+   call self % setID(id)
+
+   ! Set surface tolerance
+   call self % setTol( TWO * self % r * SURF_TOL)
+
+  end subroutine build
 
   !!
   !! Return axis-aligned bounding box for the surface
