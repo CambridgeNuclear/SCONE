@@ -81,7 +81,7 @@ contains
     call surfs % kill()
     call cells % kill()
     call mats % kill()
-    call uni % kill
+    call uni % kill()
 
   end subroutine clean
 
