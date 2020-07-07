@@ -396,6 +396,7 @@ contains
     if (pos /= 0) then
       fill = charToInt(str(3:pos-1), error=err)
       if (err) call fatalError(where, 'Failed to convert '//trim(str)//' to universe ID')
+      if (fill <= 0) call fatalError(where, 'Universe ID must be +ve is: '//numToChar(fill))
       fill = -fill
 
     else ! Convert to mat

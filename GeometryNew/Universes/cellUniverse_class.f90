@@ -52,7 +52,6 @@ module cellUniverse_class
   !!   universe interface
   !!
   type, public, extends(universe) :: cellUniverse
-    private
     type(localCell), dimension(:), allocatable :: cells
   contains
     ! Superclass procedures
