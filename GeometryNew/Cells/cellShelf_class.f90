@@ -52,7 +52,7 @@ module cellShelf_class
   !!   getFill -> Return content of the cell. If -ve it is universe ID. If +ve it is matIdx.
   !!   kill    -> Return to uninitialised state
   !!
-  !! NOTE: Becouse cells are stored as pointers, calling `kill` is crutial to prevent
+  !! NOTE: Becouse cells are stored as pointers, calling `kill` is crucial to prevent
   !!   memory leaks. TODO: Add `final` procedure here ?
   !!
   type, public :: cellShelf
@@ -80,7 +80,7 @@ contains
   !!   mats [in] -> Map of material names to matIdx
   !!
   !! Errors:
-  !!   fatalError if there are clashes in surface ID
+  !!   fatalError if there are clashes in cell ID
   !!
   subroutine init(self, dict, surfs, mats)
     class(cellShelf), intent(inout)               :: self
@@ -167,7 +167,7 @@ contains
     class(cellShelf), intent(in)  :: self
     integer(shortInt), intent(in) :: idx
     class(cell), pointer          :: ptr
-    character(100), parameter :: Here = 'cellPtr (cellShelf_class.f90)'
+    character(100), parameter :: Here = 'getPtr (cellShelf_class.f90)'
 
     ! Catch invalid idx
     if (idx < 1 .or. idx > size(self % cells)) then
@@ -197,7 +197,7 @@ contains
     integer(shortInt), intent(in)   :: id
     integer(shortInt)               :: idx
     integer(shortInt), parameter :: NOT_PRESENT = -7
-    character(100), parameter :: Here = 'cellIdx (cellShelf_class.f90)'
+    character(100), parameter :: Here = 'getIdx (cellShelf_class.f90)'
 
     idx = self % idMap % getOrDefault(id, NOT_PRESENT)
 
@@ -223,7 +223,7 @@ contains
     class(cellShelf), intent(in)  :: self
     integer(shortInt), intent(in) :: idx
     integer(shortInt)             :: id
-    character(100), parameter :: Here = 'cellID (cellShelf_class.f90)'
+    character(100), parameter :: Here = 'getId (cellShelf_class.f90)'
 
     ! Catch invalid idx
     if (idx < 1 .or. idx > size(self % cells)) then
@@ -250,7 +250,7 @@ contains
     integer(shortInt), intent(in)   :: idx
     integer(shortInt)               :: fill
     integer(shortInt), parameter :: NOT_PRESENT = -7
-    character(100), parameter :: Here = 'cellFill (cellShelf_class.f90)'
+    character(100), parameter :: Here = 'getFill (cellShelf_class.f90)'
 
     ! Catch invalid idx
     if (idx < 1 .or. idx > size(self % cells)) then

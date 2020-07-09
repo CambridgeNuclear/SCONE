@@ -122,7 +122,7 @@ contains
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: idx
     class(surface), pointer         :: ptr
-    character(100), parameter :: Here = 'surfPtr (surfaceShelf_class.f90)'
+    character(100), parameter :: Here = 'getPtr (surfaceShelf_class.f90)'
 
     ! Catch invalid idx
     if (idx < 1 .or. idx > size(self % surfaces)) then
@@ -152,7 +152,7 @@ contains
     integer(shortInt), intent(in)   :: id
     integer(shortInt)               :: idx
     integer(shortInt), parameter :: NOT_PRESENT = -7
-    character(100), parameter :: Here = 'surfIdx (surfaceShelf_class.f90)'
+    character(100), parameter :: Here = 'getIdx (surfaceShelf_class.f90)'
 
     idx = self % idMap % getOrDefault(id, NOT_PRESENT)
 
@@ -178,7 +178,7 @@ contains
     class(surfaceShelf), intent(in) :: self
     integer(shortInt), intent(in)   :: idx
     integer(shortInt)               :: id
-    character(100), parameter :: Here = 'surfID (surfaceShelf_class.f90)'
+    character(100), parameter :: Here = 'getID (surfaceShelf_class.f90)'
 
     ! Catch invalid idx
     if (idx < 1 .or. idx > size(self % surfaces)) then
