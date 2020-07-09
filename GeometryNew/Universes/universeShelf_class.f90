@@ -31,6 +31,13 @@ module universeShelf_class
   !!
   !! Storage space for universes defined in the geometry
   !!
+  !! Sample Dictionary Input:
+  !!   universes {
+  !!     uni1 { <universe definition>}
+  !!     uni2 { <universe definition>}
+  !!     ... 
+  !!   }
+  !!
   !! Private Members:
   !!   unis -> Array with pointers to different universes
   !!   idMap -> Map between uniId and uniIdx
