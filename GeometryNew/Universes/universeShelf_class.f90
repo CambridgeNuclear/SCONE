@@ -35,7 +35,7 @@ module universeShelf_class
   !!   universes {
   !!     uni1 { <universe definition>}
   !!     uni2 { <universe definition>}
-  !!     ... 
+  !!     ...
   !!   }
   !!
   !! Private Members:
@@ -43,11 +43,12 @@ module universeShelf_class
   !!   idMap -> Map between uniId and uniIdx
   !!
   !! Interface:
-  !!   init -> Initialise and build uniFills
-  !!   getPtr -> Get pointer to a universe given by its index
-  !!   getIdx -> Get uniIdx of a universe given by uniId
-  !!   getId  -> Get uniId of a universe given by uniIdx
-  !!   kill   -> Return to uninitialised state
+  !!   init    -> Initialise and build uniFills
+  !!   getPtr  -> Get pointer to a universe given by its index
+  !!   getIdx  -> Get uniIdx of a universe given by uniId
+  !!   getId   -> Get uniId of a universe given by uniIdx
+  !!   getSize -> Return the number of universes (max uniIdx)
+  !!   kill    -> Return to uninitialised state
   !!
   !! NOTE: Becoue universes are stored as pointers, calling `kill` is crucial
   !!   to prevent memory leaks. TODO: Add `final` procedure here?
@@ -61,6 +62,7 @@ module universeShelf_class
     procedure :: getPtr
     procedure :: getIdx
     procedure :: getId
+    procedure :: getSize
     procedure :: kill
   end type universeShelf
 
@@ -129,9 +131,10 @@ contains
 
     end do
 
+    ! Finish build
+    call fills % finishBuild(self % idMap)
+
   end subroutine init
-
-
 
   !!
   !! Return pointer to the universe indicated by idx
@@ -216,6 +219,23 @@ contains
     id = self % unis(idx) % ptr % id()
 
   end function getId
+
+  !!
+  !! Return size of the shelf
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of universes on the shelf
+  !!
+  elemental function getSize(self) result(N)
+    class(universeShelf), intent(in) :: self
+    integer(shortInt)                :: N
+
+    N = size(self % unis)
+
+  end function getSize
 
   !!
   !! Return to uninitialised state

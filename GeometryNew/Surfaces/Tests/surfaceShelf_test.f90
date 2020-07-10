@@ -68,6 +68,9 @@ contains
     @assertEqual('zPlane', ptr % myType())
     @assertEqual(1, shelf % getId(idx))
 
+    ! Test size
+    @assertEqual(3, shelf % getSize())
+
   end subroutine testShelf
 
 

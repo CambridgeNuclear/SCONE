@@ -40,7 +40,7 @@ contains
     type(uniFills)     :: fills
     type(dictionary)   :: dict
     character(nameLen) :: name
-    integer(shortInt)  :: idx
+    integer(shortInt)  :: idx, idx2, idx20
 
     ! Build materials
     name = 'water'
@@ -72,7 +72,9 @@ contains
 
     ! Fills in lattice universe
     idx = unis % getIdx(10)
-    @assertEqual([-2, -2, -20, -2, 3], fills % uni(idx) % fill )
+    idx2 = unis % getIdx(2)
+    idx20 = unis % getIdx(20)
+    @assertEqual([-idx2, -idx2, -idx20, -idx2, 3], fills % uni(idx) % fill )
 
   end subroutine set_up
 
@@ -114,6 +116,9 @@ contains
     ptr => unis % getPtr(idx)
     @assertEqual(1, ptr % id())
     @assertEqual(1, unis % getID(idx))
+
+    ! Test size
+    @assertEqual(5, unis % getSize())
 
   end subroutine test_get
 

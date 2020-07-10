@@ -50,6 +50,7 @@ module cellShelf_class
   !!   getIdx  -> Return index of a cell fivent its ID
   !!   getID   -> Return cell ID given its index
   !!   getFill -> Return content of the cell. If -ve it is universe ID. If +ve it is matIdx.
+  !!   getSize -> Return the number of cells (max cellIdx)
   !!   kill    -> Return to uninitialised state
   !!
   !! NOTE: Becouse cells are stored as pointers, calling `kill` is crucial to prevent
@@ -66,6 +67,7 @@ module cellShelf_class
     procedure :: getIdx
     procedure :: getID
     procedure :: getFill
+    procedure :: getSize
     procedure :: kill
   end type cellShelf
 
@@ -262,6 +264,23 @@ contains
     fill = self % fillMap % get(idx)
 
   end function getFill
+
+  !!
+  !! Return size of the shelf
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of cells on the shelf
+  !!
+  elemental function getSize(self) result(N)
+    class(cellShelf), intent(in) :: self
+    integer(shortInt)            :: N
+
+    N = size(self % cells)
+
+  end function getSize
 
   !!
   !! Return to uninitialised state

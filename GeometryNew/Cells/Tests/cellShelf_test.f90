@@ -98,6 +98,9 @@ contains
     @assertEqual(8, ptr % id())
     @assertEqual(8, cells % getID(idx))
 
+    ! Test size
+    @assertEqual(5, cells % getSize())
+
   end subroutine test_get
 
   !!

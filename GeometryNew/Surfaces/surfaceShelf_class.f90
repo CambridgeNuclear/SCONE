@@ -42,6 +42,7 @@ module surfaceShelf_class
   !!   getPtr  -> Return pointer to a surface given its index
   !!   getIdx  -> Return index of a surface given its id
   !!   getID   -> Return id of a surface given its idx
+  !!   getSize    -> Return the number of surfaces (max surfIdx)
   !!   kill    -> Return to uninitialised state
   !!
   !! NOTE: Becouse surfaces are stored as pointers, calling `kill` is crutial to prevent
@@ -57,6 +58,7 @@ module surfaceShelf_class
     procedure :: getPtr
     procedure :: getIdx
     procedure :: getId
+    procedure :: getSize
     procedure :: kill
   end type surfaceShelf
 
@@ -189,6 +191,23 @@ contains
     id = self % surfaces(idx) % ptr % id()
 
   end function getId
+
+  !!
+  !! Return size of the shelf
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of surfaces on the shelf
+  !!
+  elemental function getSize(self) result(N)
+    class(surfaceShelf), intent(in) :: self
+    integer(shortInt)               :: N
+
+    N = size(self % surfaces)
+
+  end function getSize
 
   !!
   !! Return to uninitialised state
