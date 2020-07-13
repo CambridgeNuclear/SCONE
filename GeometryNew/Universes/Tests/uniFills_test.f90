@@ -35,7 +35,7 @@ contains
     call map % add(3, 1)
 
     ! Uni id 7
-    fill = [-1001, -1002, -1003]
+    fill = [-1001, -1002, -1003, -1001]
     call geom % addUniverse(2, 2, fill)
     call map % add(7, 2)
 
@@ -173,5 +173,29 @@ contains
     @assertTrue(pos /= targetNotFound, 'Missing ID in unused universes')
 
   end subroutine test_unused_universes
+
+  !!
+  !! Test instances count
+  !!
+@Test
+  subroutine test_count_instances()
+    type(intMap) :: map
+    integer(shortInt) :: idx
+
+    ! Perform count
+    call geom % countInstances(map)
+
+    ! Verify absent -> ID 200 & 2001
+    @assertEqual(0, map % get(6))
+    @assertEqual(0, map % get(7))
+
+    ! Verfiy multiple instances -> ID 1001
+    @assertEqual(2, map % get(3))
+
+    ! Verify single instance
+    @assertEqual(1, map % get(1))
+    @assertEqual(1, map % get(2))
+
+  end subroutine test_count_instances
 
 end module uniFills_test

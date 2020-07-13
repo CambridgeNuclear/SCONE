@@ -7,8 +7,11 @@ module universalVariables
   ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
-  integer(shortInt), parameter, public :: hardcoded_max_nest = 5
+  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 5
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
+
+  ! Display information
+  integer(shortInt), parameter, public :: MAX_COL = 70 ! Maximum number of columns in console display
 
   ! Define variables which are important for tracking neutrons in the geometry
   real(defReal), parameter, public :: INFINITY    = 2.0_defReal**63, &

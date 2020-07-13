@@ -990,6 +990,25 @@ module genericProcedures
   end function crossProduct
 
   !!
+  !! Return true if key is in the array
+  !!
+  !! Args:
+  !!   array [in] -> Array of data
+  !!   key [in]   -> Required key
+  !!
+  !! Result:
+  !!   True if key is in array. False otherwise
+  !!
+  pure function isIn(array, key)
+    integer(shortInt), dimension(:), intent(in) :: array
+    integer(shortInt), intent(in)               :: key
+    logical(defBool)                            :: isIn
+
+    isIn =  targetNotFound /= linFind(array, key)
+
+  end function isIn
+
+  !!
   !! Returns true if array contains duplicates
   !!
   pure function hasDuplicates_shortInt(array) result(doesIt)

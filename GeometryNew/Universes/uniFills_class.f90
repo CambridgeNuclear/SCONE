@@ -67,12 +67,14 @@ module uniFills_class
     procedure :: maxNesting
     procedure :: nestedOutside
     procedure :: unusedUniverses
+    procedure :: countInstances
 
     ! Private procedures
     procedure, private :: isRepeated
     procedure, private :: countDepth
     procedure, private :: outsideBelow
     procedure, private :: collectUsed
+    procedure, private :: countInstancesBelow
 
   end type uniFills
 
@@ -357,6 +359,33 @@ contains
 
   end function unusedUniverses
 
+  !!
+  !! Get count of instances of diffrent universes in the geometry
+  !!
+  !! Args:
+  !!   map [out] -> Map of uniIdx to number of instances. If uniIdx is not present in the
+  !!     geometry, it is present in the map with value 0!
+  !!
+  subroutine countInstances(self, map)
+    class(uniFills), intent(in) :: self
+    type(intMap), intent(out)   :: map
+    integer(shortInt)           :: i
+    character(100), parameter :: Here = 'countInstances (uniFills_class.f90)'
+
+    ! Check that root is set
+    if (self % root == UNSET_ROOT) then
+      call fatalError(Here, 'Root universe has not been set.')
+    end if
+
+    ! Initialise map with all uniIdx and 0 count
+    do i = 1, size(self % uni)
+      call map % add(i, 0)
+    end do
+
+    ! Perform count via recursion
+    call self % countInstancesBelow(map, self % root)
+
+  end subroutine countInstances
 
   !!
   !! Return true if there are repetitions in geometry graph
@@ -523,5 +552,43 @@ contains
     end do
 
   end subroutine collectUsed
+
+  !!
+  !! Count instances of diffrent univeres in the current universe or below it
+  !!
+  !! Args:
+  !!   map [inout] -> Map of uniIdx to number of instances. Instances in the current universe
+  !!     and below it are added to existing values
+  !!   idx [in]    -> Index of the current universe
+  !!
+  recursive subroutine countInstancesBelow(self, map, idx)
+    class(uniFills), intent(in)   :: self
+    type(intMap), intent(inout)   :: map
+    integer(shortInt), intent(in) :: idx
+    integer(shortInt)             :: count, i, fill
+    character(100), parameter :: Here = 'countInstancesBelow (uniFills_class.f90)'
+
+    ! Check if index is valid
+    if (idx <= 0 .or. idx > size(self % uni)) then
+      call fatalError(Here, 'Universe index: '//numToChar(idx)//' is invalid must &
+                            &be in 1-'//numToChar(size(self % uni)))
+    end if
+
+    ! Add this instance
+    count = map % getOrDefault(idx, 0) + 1
+    call map % add(idx, count)
+
+    ! Loop over local cells and add nexted universes
+    do i = 1, size(self % uni(idx) % fill)
+      fill = self % uni(idx) % fill(i)
+
+      ! If fill is nested universe count it and its contents
+      if(fill < 0) then
+        call self % countInstancesBelow(map, abs(fill))
+      end if
+
+    end do
+
+  end subroutine countInstancesBelow
 
 end module uniFills_class
