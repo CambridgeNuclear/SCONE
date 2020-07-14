@@ -608,7 +608,7 @@ contains
 
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx
-    LHS % uniqueID = RHS % coords % uniqueId()
+    LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
 
   end subroutine particleState_fromParticle

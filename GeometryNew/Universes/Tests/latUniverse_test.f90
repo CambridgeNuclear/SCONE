@@ -108,20 +108,19 @@ contains
   !!
 @Test
   subroutine test_enter()
-    type(coord) :: old
     type(coord) :: new
-    real(defReal), dimension(3) :: r_ref, u_ref
+    real(defReal), dimension(3) :: r_ref, u_ref, r ,dir
     real(defReal), parameter :: TOL = 1.0E-7_defReal
 
     ! ** 3D universe
     ! Enter inside -> Away from surface
-    old % r = [1.0_defReal, 1.0_defReal, 0.5_defReal ]
-    old % dir = [ZERO, ZERO, ONE]
+    r = [1.0_defReal, 1.0_defReal, 0.5_defReal ]
+    dir = [ZERO, ZERO, ONE]
 
-    call uni1 % enter(new, old)
+    call uni1 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(8, new % uniIdx)
@@ -129,13 +128,13 @@ contains
     @assertEqual(0, new % cellIdx)
 
     ! Enter outside
-    old % r = [1.6_defReal, 0.5_defReal, 0.5_defReal ]
-    old % dir = [ZERO, ZERO, ONE]
+    r = [1.6_defReal, 0.5_defReal, 0.5_defReal ]
+    dir = [ZERO, ZERO, ONE]
 
-    call uni1 % enter(new, old)
+    call uni1 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(8, new % uniIdx)
@@ -143,14 +142,14 @@ contains
     @assertEqual(0, new % cellIdx)
 
     ! Enter in a corner
-    old % r = [-0.5_defReal, 0.0_defReal, 0.0_defReal ]
-    old % dir = [-ONE, ONE, -ONE]
-    old % dir = old % dir / norm2(old % dir)
+    r = [-0.5_defReal, 0.0_defReal, 0.0_defReal ]
+    dir = [-ONE, ONE, -ONE]
+    dir = dir / norm2(dir)
 
-    call uni1 % enter(new, old)
+    call uni1 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(8, new % uniIdx)
@@ -159,13 +158,13 @@ contains
 
     ! ** 2D Universe
     ! Enter inside -> Away from surface
-    old % r = [0.5_defReal, 0.5_defReal, 13.5_defReal ]
-    old % dir = [ZERO, ZERO, ONE]
+    r = [0.5_defReal, 0.5_defReal, 13.5_defReal ]
+    dir = [ZERO, ZERO, ONE]
 
-    call uni2 % enter(new, old)
+    call uni2 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(3, new % uniIdx)
@@ -173,13 +172,13 @@ contains
     @assertEqual(0, new % cellIdx)
 
     ! Enter outside
-    old % r = [1.6_defReal, 0.5_defReal, 0.5_defReal ]
-    old % dir = [ZERO, ZERO, ONE]
+    r = [1.6_defReal, 0.5_defReal, 0.5_defReal ]
+    dir = [ZERO, ZERO, ONE]
 
-    call uni2 % enter(new, old)
+    call uni2 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(3, new % uniIdx)
@@ -187,14 +186,14 @@ contains
     @assertEqual(0, new % cellIdx)
 
     ! Enter on a face
-    old % r = [0.0_defReal, 0.0_defReal, 0.0_defReal ]
-    old % dir = [-ONE, ONE, -ONE]
-    old % dir = old % dir / norm2(old % dir)
+    r = [0.0_defReal, 0.0_defReal, 0.0_defReal ]
+    dir = [-ONE, ONE, -ONE]
+    dir = dir / norm2(dir)
 
-    call uni2 % enter(new, old)
+    call uni2 % enter(new, r, dir)
 
-    r_ref = old % r
-    u_ref = old % dir
+    r_ref = r
+    u_ref = dir
     @assertEqual(r_ref, new % r, TOL )
     @assertEqual(u_ref, new % dir, TOL)
     @assertEqual(3, new % uniIdx)

@@ -93,31 +93,30 @@ contains
   !!
 @Test
   subroutine test_enter()
-    type(coord) :: old
     type(coord) :: new
-    real(defReal), dimension(3) :: r_ref, u_ref
+    real(defReal), dimension(3) :: r ,dir
     real(defReal), parameter :: TOL = 1.0E-7_defReal
 
     ! Enter inside
-    old % r = [1.0_defReal, -1.0_defReal, 1.0_defReal]
-    old % dir = [ONE, ZERO, ZERO]
+    r = [1.0_defReal, -1.0_defReal, 1.0_defReal]
+    dir = [ONE, ZERO, ZERO]
 
-    call uni % enter(new, old)
+    call uni % enter(new, r, dir)
 
-    @assertEqual(old % r, new % r, TOL)
-    @assertEqual(old % dir, new % dir, TOL)
+    @assertEqual(r,   new % r, TOL)
+    @assertEqual(dir, new % dir, TOL)
     @assertEqual(8, new % uniIdx)
     @assertEqual(0, new % cellIdx)
     @assertEqual(1, new % localID)
 
     ! Enter outside
-    old % r = [2.0_defReal, -2.0_defReal, 1.0_defReal]
-    old % dir = [ONE, ZERO, ZERO]
+    r = [2.0_defReal, -2.0_defReal, 1.0_defReal]
+    dir = [ONE, ZERO, ZERO]
 
-    call uni % enter(new, old)
+    call uni % enter(new, r, dir)
 
-    @assertEqual(old % r, new % r, TOL)
-    @assertEqual(old % dir, new % dir, TOL)
+    @assertEqual(r,   new % r, TOL)
+    @assertEqual(dir, new % dir, TOL)
     @assertEqual(8, new % uniIdx)
     @assertEqual(0, new % cellIdx)
     @assertEqual(2, new % localID)

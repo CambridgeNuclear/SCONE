@@ -57,6 +57,10 @@ contains
     this % p_MG % coords % matIdx = 7
     this % p_CE % coords % matIdx = 7
 
+    ! Set uniqueID
+    this % p_MG % coords % uniqueID = 34
+    this % p_CE % coords % uniqueID = 34
+
     ! NOTE: THIS MAY BREAK AT SOME POINT
     ! HAND SET SOME COORD PARAMETERS
     ! BREAKS ENCAPSULATION (It is broken anyway)
@@ -135,7 +139,7 @@ contains
     @assertEqual(ZERO, this % p_MG % timeMax, 'timeMax initialises to 0 by default')
 
   end subroutine correctInitialisation
-    
+
   !!
   !! Test access to positions
   !!

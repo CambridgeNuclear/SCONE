@@ -17,7 +17,7 @@ module coord_class
     real(defReal), dimension(3)   :: r         = ZERO    ! position
     real(defReal), dimension(3)   :: dir       = ZERO    ! direction
     logical(defBool)              :: isRotated = .false. ! is the co-ordinate in a rotated reference frame?
-    real(defReal), dimension(3,3) :: rotMat    = ZERO 
+    real(defReal), dimension(3,3) :: rotMat    = ZERO
     integer(shortInt)             :: uniIdx    = 0       ! Index of the universe definition occupied
     integer(shortInt)             :: uniRootID = 0       ! Unique ID = uniRootID + localID
     integer(shortInt)             :: localID   = 0       ! ID of the cell occupied within local universe
@@ -47,6 +47,7 @@ module coord_class
     integer(shortInt)                          :: nesting = 0      ! depth of co-ordinate nesting
     type(coord), dimension(hardcoded_max_nest) :: lvl              ! array of coords nested successively deeper
     integer(shortInt)                          :: matIdx = 0       ! index of the material occupied
+    integer(shortInt)                          :: uniqueId = 0
   contains
     ! Build procedures
     procedure :: init
@@ -66,7 +67,6 @@ module coord_class
     procedure :: cell
     procedure :: assignPosition
     procedure :: assignDirection
-    procedure :: uniqueId
 
   end type coordList
 
@@ -310,19 +310,5 @@ contains
     end do
 
   end subroutine assignDirection
-
-  !!
-  !! Returns unique ID of the lowest level cell in geometry
-  !!
-  elemental function uniqueId(self) result(id)
-    class(coordList), intent(in) :: self
-    integer(shortInt)            :: id
-    integer(shortInt) :: n
-
-    n = max(self % nesting, 1)
-
-    id = self % lvl(n) % uniRootID + self % lvl(n) % localID
-
-  end function uniqueId
 
 end module coord_class

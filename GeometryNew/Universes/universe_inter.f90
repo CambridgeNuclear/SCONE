@@ -46,7 +46,7 @@ module universe_inter
   !!   kill         -> Return to uninitialised state
   !!   enter        -> Generate new coord after entering a universe from higher level coord.
   !!   findCell     -> Return local cell ID and cellIdx in cellShelf for a given position.
-  !!   dictance     -> Calculate the distance to the point where localID will change
+  !!   distance     -> Calculate the distance to the point where localID will change
   !!   cross        -> Assuming point is at the boundary between local cells, find next local cell.
   !!   cellOffset   -> Given coords with set localID, return cellOffset for that cell.
   !!
@@ -304,37 +304,41 @@ contains
   !!   - Cell info (cellIdx)
   !!
   !! Does not set uniRootID !
+  !! Applies all transformation when entering new universe with exception of cellOffset
+  !! which needs to be applied to argument r outside this subroutine. 
   !!
   !! Args:
-  !!   low [out] -> New coordinates for the level
-  !!   high [in] -> Coordinates in the higher universe
+  !!   new [out] -> New coordinates for the level.
+  !!   r [in] -> Position affter cellOffset in upper univere is applied
+  !!   u [in] -> Normalised direction (norm2(u) = 1.0)
   !!
   !! Note: Self is intent(inout), but if a state of the universe is to be changed
   !!   it is necessary to consider issues related to parallel calculations with shared
   !!   memory.
   !!
-  subroutine enter(self, low, high)
-    class(universe), intent(inout) :: self
-    type(coord), intent(out)       :: low
-    type(coord), intent(in)        :: high
+  subroutine enter(self, new, r, u)
+    class(universe), intent(inout)          :: self
+    type(coord), intent(out)                :: new
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
 
-    ! Set position
-    low % r         = high % r
-    low % dir       = high % dir
-    low % uniIdx    = self % uniIdx
-    low % isRotated = self % rot
+    ! Set Info & Position
+    new % r   = r
+    new % dir = u
+    new % uniIdx    = self % uniIdx
+    new % isRotated = self % rot
 
-    if (low % isRotated) then
-      low % rotMat = self % rotMat
-      low % r = matmul(self % rotMat, low % r)
-      low % dir = matmul(self % rotMat, low % dir)
+    if (new % isRotated) then
+      new % rotMat = self % rotMat
+      new % r = matmul(self % rotMat, new % r)
+      new % dir = matmul(self % rotMat, new % dir)
     end if
 
     ! Translate
-    low % r = low % r - self % origin
+    new % r = new % r - self % origin
 
     ! Find cell
-    call self % findCell(low % localID, low % cellIdx, low % r, low % dir)
+    call self % findCell(new % localID, new % cellIdx, new % r, new % dir)
 
   end subroutine enter
 

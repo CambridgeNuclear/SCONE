@@ -92,7 +92,7 @@ contains
   subroutine init(self, fills, dict)
     class(geomGraph), intent(inout) :: self
     type(uniFills), intent(in)      :: fills
-    type(dictionary), intent(in)    :: dict
+    class(dictionary), intent(in)   :: dict
     character(nameLen)              :: type
     character(100), parameter :: Here = 'init (geomGraph_class.f90)'
 

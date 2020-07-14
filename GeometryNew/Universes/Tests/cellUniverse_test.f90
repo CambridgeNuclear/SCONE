@@ -106,16 +106,15 @@ contains
   !!
 @Test
   subroutine test_enter()
-    type(coord) :: old
     type(coord) :: new
-    real(defReal), dimension(3) :: r_ref, u_ref
+    real(defReal), dimension(3) :: r_ref, u_ref, r, dir
     real(defReal), parameter :: TOL = 1.0E-7_defReal
 
     ! ** Enter into local cell 1
-    old % r = [0.0_defReal, 0.0_defReal, 3.0_defReal ]
-    old % dir = [ZERO, ZERO, ONE]
+    r = [0.0_defReal, 0.0_defReal, 3.0_defReal ]
+    dir = [ZERO, ZERO, ONE]
 
-    call uni % enter(new, old)
+    call uni % enter(new, r, dir)
 
     ! Verify location
     r_ref = [1.0_defReal, 0.0_defReal, 0.0_defReal]
@@ -127,10 +126,10 @@ contains
     @assertEqual(cells % getIdx(1), new % cellIdx)
 
     ! ** Enter into local cell 2
-    old % r = [2.0_defReal, 0.0_defReal, 1.0_defReal]
-    old % dir = [ZERO, ONE, ZERO]
+    r = [2.0_defReal, 0.0_defReal, 1.0_defReal]
+    dir = [ZERO, ONE, ZERO]
 
-    call uni % enter(new, old)
+    call uni % enter(new, r, dir)
 
     ! Verify location
     r_ref = [-1.0_defReal, 0.0_defReal, 2.0_defReal]
@@ -142,10 +141,10 @@ contains
     @assertEqual(cells % getIdx(2), new % cellIdx)
 
     ! ** Enter into the UNDEFINED cell
-    old % r = [0.0_defReal, 0.0_defReal, 6.5_defReal]
-    old % dir = [ONE, ZERO, ZERO]
+    r = [0.0_defReal, 0.0_defReal, 6.5_defReal]
+    dir = [ONE, ZERO, ZERO]
 
-    call uni % enter(new, old)
+    call uni % enter(new, r, dir)
 
     ! Verify location
     r_ref = [4.5_defReal, 0.0_defReal, 0.0_defReal]
