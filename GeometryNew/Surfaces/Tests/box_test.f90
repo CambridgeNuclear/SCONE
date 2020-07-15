@@ -277,7 +277,7 @@ contains
     !
     ! Currently does not work for Y-position in plane (r(2) == ZERO)
     ! See `distance` documentation in box_class
-    ! This comment applies to all cases in this test.  
+    ! This comment applies to all cases in this test.
     !
     eps =  5.0_defReal * epsilon(eps)
     r = [2.0_defReal-eps, eps, 4.0_defReal-eps]
@@ -325,5 +325,26 @@ contains
 
   end subroutine testEdgeCases
 
+  !!
+  !! Test problematic cases
+  !!
+@Test
+  subroutine test_problems()
+    type(box)            :: b_surf
+    type(dictionary)     :: dict
+    real(defReal), dimension(3) :: r, u
+
+    call dict % init(5)
+    call dict % store('type','box')
+    call dict % store('id', 7)
+    call dict % store('origin', [ZERO, ZERO, ZERO])
+    call dict % store('halfwidth', [8.00_defReal, 1.26_defReal, 1.26_defReal])
+    call b_surf % init(dict)
+
+    r = [-7.59_defReal, 1.26_defReal, ZERO]
+    u = [ZERO, -ONE, ZERO]
+    @assertFalse(b_surf % halfspace(r, u))
+
+  end subroutine test_problems
 
 end module box_test

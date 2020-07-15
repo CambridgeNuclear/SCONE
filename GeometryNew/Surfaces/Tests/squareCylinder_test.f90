@@ -326,6 +326,10 @@ contains
     @assertTrue(this % surf % halfspace(r + eps*u, u2))
     @assertFalse(this % surf % halfspace(r - eps*u, u2))
 
+    ! At the surface in diffrent quadrant
+
+
+
   end subroutine testHalfspace
 
   !!
@@ -479,5 +483,33 @@ contains
     end if
 
   end subroutine testEdgeCases
+
+  !!
+  !! Test encountered problems
+  !!
+  !! Contains test related to bugs found at some point
+  !! TODO: Move some of this tests to main test procedures
+  !!
+@Test(cases=[1])
+  subroutine test_problems(this)
+    class(test_squareCylinder), intent(inout) :: this ! Ignore this
+    type(squareCylinder) :: surf
+    type(dictionary)     :: dict
+    real(defReal), dimension(3) :: r, u
+
+    call dict % init(5)
+    call dict % store('type','zSquareCylinder')
+    call dict % store('id', 7)
+    call dict % store('origin', [ZERO, ZERO, ZERO])
+    call dict % store('halfwidth', [8.00_defReal, 1.26_defReal, 0.0_defReal])
+    call surf % init(dict)
+
+    r = [-7.63_defReal, 1.26_defReal, ZERO]
+    u = [ZERO, -ONE, ZERO]
+    @assertFalse(surf % halfspace(r, u))
+
+  end subroutine test_problems
+
+
 
 end module squareCylinder_test

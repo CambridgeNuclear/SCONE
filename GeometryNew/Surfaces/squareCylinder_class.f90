@@ -298,18 +298,17 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal), dimension(2)             :: corner, rl, ul
+    real(defReal), dimension(2)             :: rl, ul
     integer(shortInt)                       :: maxCom
     real(defReal)                           :: proj
 
     ! Get position in the plane & direction
-    rl = r(self % plane)
+    rl = r(self % plane) - self % origin
     ul = u(self % plane)
 
     ! Find index of maximum component to identify axis
     ! of surface normal
-    corner = self % origin + sign(self % halfwidth, rl)
-    maxCom = maxloc(abs(rl) - corner, 1)
+    maxCom = maxloc(abs(rl) - self % halfwidth, 1)
 
     ! Projection of direction on the normal
     proj = ul(maxCom) * sign(ONE, rl(maxCom))
