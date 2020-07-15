@@ -149,27 +149,15 @@ contains
 
   end function isUninitialised
 
-
   !!
   !! Add another level of co-ordinates
   !! Apply provided offset
   !! Translational transformation is only supported
   !!
-  pure subroutine addLevel(self, offset, uniIdx, uniRootID)
-    class(coordList), intent(inout)         :: self
-    real(defReal), dimension(3), intent(in) :: offset
-    integer(shortInt), intent(in)           :: uniIdx
-    integer(shortInt), intent(in)           :: uniRootID
-    integer(shortInt)                       :: n
-    character(100),parameter :: Here ='addLevel (coord_class.f90)'
+  pure subroutine addLevel(self)
+    class(coordList), intent(inout) :: self
 
-    n = self % nesting + 1
-    self % nesting = n
-
-    self % lvl(n) % r         = self % lvl(n-1) % r - offset
-    self % lvl(n) % dir       = self % lvl(n-1) % dir
-    self % lvl(n) % uniIdx    = uniIdx
-    self % lvl(n) % uniRootID = uniRootID
+    self % nesting = self % nesting + 1
 
   end subroutine addLevel
 

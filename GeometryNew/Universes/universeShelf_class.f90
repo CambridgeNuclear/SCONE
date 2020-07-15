@@ -129,6 +129,9 @@ contains
       ! Store content info in fills
       call fills % addUniverse(i, id, fillInfo)
 
+      ! Load index infor into the universe
+      call self % unis(i) % ptr % setIdx(i)
+
     end do
 
     ! Finish build

@@ -305,7 +305,7 @@ contains
   !!
   !! Does not set uniRootID !
   !! Applies all transformation when entering new universe with exception of cellOffset
-  !! which needs to be applied to argument r outside this subroutine. 
+  !! which needs to be applied to argument r outside this subroutine.
   !!
   !! Args:
   !!   new [out] -> New coordinates for the level.
