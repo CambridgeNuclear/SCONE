@@ -70,7 +70,7 @@ contains
   !!   silent [in] -> Optional. Set to .true. to surpress console output (default .false.)
   !!
   !! Errors:
-  !!   fatalError if geometry definition is invalid 
+  !!   fatalError if geometry definition is invalid
   !!
   subroutine init(self, dict, mats, silent)
     class(csg), intent(inout)                    :: self
@@ -96,7 +96,7 @@ contains
     ! Print beggining
     if (loud) then
       print *, repeat('<>', MAX_COL/2)
-      print *, "/\/\ READING GEOMETRY REPRESENTATION /\/\"
+      print *, "/\/\ READING GEOMETRY /\/\"
     end if
 
     ! Build Surfaces
@@ -186,15 +186,15 @@ contains
     ! Print geometry information
     if (loud) then
       print *, "GEOMETRY INFORMATION "
-      print '(2X, 2A)', "Surfaces: ", numToChar(self % surfs % getSize())
-      print '(2X, 2A)', "Cells: ", numToChar(self % cells % getSize())
-      print '(2X, 2A)', "Universes: ", numToChar(self % unis % getSize())
+      print '(2X, 2A)', "Number of Surfaces: ", numToChar(self % surfs % getSize())
+      print '(2X, 2A)', "Number of Cells: ", numToChar(self % cells % getSize())
+      print '(2X, 2A)', "Number of Universes: ", numToChar(self % unis % getSize())
       print '(2X, 2A)', "Nesting Levels: ", numToChar(nesting)
       print '(2X, 2A)', "Unique Cells: ", numToChar(self % graph % uniqueCells)
       print '(2X, 2A)', "Unused universes (ID): ", numToChar(fills % unusedUniverses())
       print '(2X, 2A)', "Boundary Surface ID: ", numToChar(surf_ptr % id())
       print '(2X, 2A)', "Boundary Surface Type: ", surf_ptr % myType()
-      print '(2X, 2A)', "Boundary Contidions: ", numToChar(BC)
+      print '(2X, 2A)', "Boundary Conditions: ", numToChar(BC)
     end if
 
     ! Print End
