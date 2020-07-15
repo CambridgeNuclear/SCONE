@@ -1,6 +1,7 @@
 add_subdirectory(Surfaces)
 add_subdirectory(Cells)
 add_subdirectory(Universes)
+add_subdirectory(Fields)
 
 add_sources( ./csg_class.f90
              ./geomGraph_class.f90
