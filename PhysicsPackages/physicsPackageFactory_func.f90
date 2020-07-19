@@ -11,8 +11,8 @@ module physicsPackageFactory_func
   use physicsPackage_inter,            only : physicsPackage
 
   ! Implementations
-  !use eigenPhysicsPackage_class,       only : eigenPhysicsPackage
-  !use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
+  use eigenPhysicsPackage_class,       only : eigenPhysicsPackage
+  use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   !use vizPhysicsPackage_class,         only : vizPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
@@ -52,45 +52,45 @@ contains
     ! *** ADD CASE STATEMENT FOR A PHYSICS PACKAGE BELOW ***!
     ! **** AT THE MOMENT ALLOCATE + SELECT TYPE + INIT is very unelegant implementation
     ! **** Will have to be improved
-!     select case(type)
-!       case('eigenPhysicsPackage')
-!         ! Allocate and initialise
-!         allocate( eigenPhysicsPackage :: new)
-!         select type(new)
-!           type is (eigenPhysicsPackage)
-!             call new % init(dict)
-!         end select
+    select case(type)
+      case('eigenPhysicsPackage')
+        ! Allocate and initialise
+        allocate( eigenPhysicsPackage :: new)
+        select type(new)
+          type is (eigenPhysicsPackage)
+            call new % init(dict)
+        end select
+
+      case('fixedSourcePhysicsPackage')
+        ! Allocate and initialise
+        allocate( fixedSourcePhysicsPackage :: new)
+        select type(new)
+          type is (fixedSourcePhysicsPackage)
+            call new % init(dict)
+        end select
 !
-!       case('fixedSourcePhysicsPackage')
-!         ! Allocate and initialise
-!         allocate( fixedSourcePhysicsPackage :: new)
-!         select type(new)
-!           type is (fixedSourcePhysicsPackage)
-!             call new % init(dict)
-!         end select
-! !
-! !      case('dynamPhysicsPackage')
-! !        ! Allocate and initialise
-! !        allocate( dynamPhysicsPackage :: new)
-! !        select type(new)
-! !          type is (dynamPhysicsPackage)
-! !            call new % init(dict)
-! !        end select
-!
-!
-!       case('vizPhysicsPackage')
-!         ! Allocate and initialise
-!         allocate( vizPhysicsPackage :: new)
-!         select type(new)
-!           type is (vizPhysicsPackage)
-!             call new % init(dict)
-!         end select
-!
-!       case default
-!         print *, AVAILABLE_physicsPackages
-!         call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))
-!
-!     end select
+!      case('dynamPhysicsPackage')
+!        ! Allocate and initialise
+!        allocate( dynamPhysicsPackage :: new)
+!        select type(new)
+!          type is (dynamPhysicsPackage)
+!            call new % init(dict)
+!        end select
+
+
+      ! case('vizPhysicsPackage')
+      !   ! Allocate and initialise
+      !   allocate( vizPhysicsPackage :: new)
+      !   select type(new)
+      !     type is (vizPhysicsPackage)
+      !       call new % init(dict)
+      !   end select
+
+      case default
+        print *, AVAILABLE_physicsPackages
+        call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))
+
+    end select
 
   end function new_physicsPackage
 

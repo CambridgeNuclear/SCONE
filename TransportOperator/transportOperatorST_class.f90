@@ -15,7 +15,7 @@ module transportOperatorST_class
   use transportOperator_inter,    only : transportOperator
 
   ! Geometry interfaces
-  use cellGeometry_inter,         only : cellGeometry
+  use geometry_inter,             only : geometry
 
   ! Tally interface
   use tallyCodes
@@ -46,8 +46,8 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    logical(defBool)                          :: isColl
-    real(defReal)                             :: sigmaT, dist
+    integer(shortInt)                         :: event
+    real(defReal)                             :: sigmaT, dist, maxDist
 
     STLoop: do
 
@@ -63,11 +63,12 @@ contains
       ! Save state before movement
       call p % savePrePath()
 
-      ! Move to the next stop. NOTE: "move" resets dist to distanced moved!
-      call self % geom % move(p % coords, dist, isColl)
+      ! Move to the next stop.
+      maxDist = dist
+      call self % geom % move(p % coords, dist, event)
 
       ! Send tally report for a path moved
-      call tally % reportPath(p, dist)
+      call tally % reportPath(p, maxDist - dist)
 
       ! Kill particle if it has leaked
       if( p % matIdx() == OUTSIDE_FILL) then
@@ -76,7 +77,7 @@ contains
       end if
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( isColl .or. p % isDead) exit STLoop
+      if( event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
 

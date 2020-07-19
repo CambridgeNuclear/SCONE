@@ -9,8 +9,8 @@ dataType ce;
 collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} } 
 
-transportOperator { //type transportOperatorST; 
-                   type transportOperatorDT; 
+transportOperator { type transportOperatorST; 
+                   //type transportOperatorDT; 
                    } 
                    
 inactiveTally {} 
@@ -31,20 +31,21 @@ activeTally {
 } 
 
 geometry { 
-  type basicCellCSG; 
+  type geometryStd; 
   boundary ( 2 2 2 2 0 0); 
+  graph {type shrunk;}
 
   surfaces { 
     squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);} 
   }
   
   cells { 
-    in  {id 1; surfaces ( -1); filltype uni; universe 401;} 
-    out {id 2; surfaces (1); filltype outside; } 
+   // in  {id 1; surfaces ( -1); filltype uni; universe 401;} 
+   // out {id 2; surfaces (1); filltype outside; } 
   }
   
   universes { 
-    root { id 1; type cellUniverse; origin (0.0 0.0 0.0); cells ( 1 2); } 
+    root { id 1; type rootUniverse; border 1; fill u<401>; } 
     
     // Pin universes 
     pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
@@ -91,7 +92,7 @@ viz {
     type vtk;
     corner (-10.71 -10.71 -0.5);
     width (21.42 21.42 1.0);
-    vox (300 300 1);
+    vox (700 700 1);
   }
 } 
 

@@ -9,7 +9,8 @@ module transportOperator_inter
   use dictionary_class,           only : dictionary
 
   ! Geometry interfaces
-  use cellGeometry_inter,         only : cellGeometry
+  use geometryReg_mod,            only : gr_geomPtr => geomPtr
+  use geometry_inter,             only : geometry
 
   ! Tally interface
   use tallyAdmin_class,           only : tallyAdmin
@@ -45,7 +46,7 @@ module transportOperator_inter
     class(nuclearDatabase), pointer :: xsData => null()
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
-    class(cellGeometry), pointer         :: geom        => null()
+    class(geometry), pointer         :: geom        => null()
 
   contains
     ! Public interface
@@ -100,6 +101,9 @@ contains
     ! Get nuclear data pointer form the particle
     self % xsData => ndReg_get(p % getType())
 
+    ! Save geometry pointer
+    self % geom => gr_geomPtr(p % geomIdx)
+
     ! Save pre-transition state
     call p % savePreTransition()
 
@@ -116,13 +120,11 @@ contains
   !!
   !! Initialise transport operator from dictionary and geometry
   !!
-  subroutine init(self, dict, geom)
+  subroutine init(self, dict)
     class(transportOperator), intent(inout)  :: self
     class(dictionary), intent(in)            :: dict
-    class(cellGeometry), pointer, intent(in) :: geom
 
-    !! Store pointer to geometry
-    self % geom => geom
+    ! Do nothing
 
   end subroutine init
 
@@ -139,4 +141,3 @@ contains
 
 
 end module transportOperator_inter
-

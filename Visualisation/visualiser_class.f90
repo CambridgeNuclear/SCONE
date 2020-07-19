@@ -68,7 +68,7 @@ contains
   !!   Initialised visualiser
   !!
   subroutine init(self, geom, vizDict)
-    class(visualiser), intent(inout)        :: self       
+    class(visualiser), intent(inout)        :: self
     class(geometry), pointer, intent(inout) :: geom
     class(dictionary), intent(in)           :: vizDict
     character(:), allocatable               :: string
@@ -79,10 +79,10 @@ contains
 
     ! Point to geometry
     self % geom => geom
-    
+
     ! Store visualisation dictionary
     self % vizDict = vizDict
-  
+
   end subroutine init
 
   !!
@@ -98,7 +98,7 @@ contains
   !!   Returns an error if an unrecognised visualisation is requested
   !!
   subroutine makeViz(self)
-    class(visualiser), intent(inout)             :: self       
+    class(visualiser), intent(inout)             :: self
     class(dictionary), pointer                   :: tempDict
     character(nameLen),dimension(:), allocatable :: keysArr
     integer(shortInt)                            :: i
@@ -135,7 +135,7 @@ contains
   !!   A vtk visualisation
   !!
   !! Errors:
-  !!   Returns an error if there is an incorrect size for any of the 
+  !!   Returns an error if there is an incorrect size for any of the
   !!   required vtk inputs
   !!
   subroutine makeVTK(self, dict)
@@ -173,7 +173,7 @@ contains
     allocate(voxelMat(nVox(1), nVox(2), nVox(3)))
 
     ! Have geometry obtain data
-    call self % geom % voxelPlot(voxelMat, what, center, width)
+    call self % geom % voxelPlot(voxelMat, center, what, width)
 
     ! In principle, can add multiple data sets to VTK - not done here yet
     ! VTK data set will use 'what' variable as a name
@@ -192,7 +192,7 @@ contains
   !!   An empty visualiser object
   !!
   subroutine kill(self)
-    class(visualiser), intent(inout) :: self       
+    class(visualiser), intent(inout) :: self
 
     self % name =''
     self % geom => null()

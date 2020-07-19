@@ -10,7 +10,7 @@ collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} 
                   } 
 
-transportOperator { type transportOperatorDT;
+transportOperator { type transportOperatorST;
                   } 
 
 inactiveTally {
@@ -29,8 +29,9 @@ activeTally  {
 	      }
 
 geometry { 
-    type basicCellCSG;
+    type geometryStd;
     boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
 
     surfaces
     {
@@ -40,8 +41,8 @@ geometry {
 
     cells
     {
-      out     { id 3; surfaces (1 ); filltype outside;         }
-      inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
+     // out     { id 3; surfaces (1 ); filltype outside;         }
+     // inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
     }
 
     universes
@@ -50,9 +51,9 @@ geometry {
       root
       {
 	  id 1;
-	  type cellUniverse; 
-	  origin (0.0 0.0 0.0);
-	  cells ( 4 3); 
+	  type rootUniverse; 
+	  border 1;
+          fill fuel;
       }
     }   
 }
