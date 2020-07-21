@@ -389,7 +389,10 @@ contains
     ! Propagate rotation to lower levels
     do i = 2, self % nesting
       if (self % lvl(i) % isRotated) then
-        self % lvl(i) % dir = rotateVector(self % lvl(i) % dir, mu, phi)
+        ! Note that rotation must be performed with the matrix
+        ! Deflections by mu & phi depend on coordinates
+        ! Deflection by the same my & phi may be diffrent at diffrent, rotated levels! 
+        self % lvl(i) % dir = matmul(self % lvl(i) % rotMat, self % lvl(i-1) % dir)
 
       else
         self % lvl(i) % dir = self % lvl(i-1) % dir
