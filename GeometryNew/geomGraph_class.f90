@@ -110,7 +110,7 @@ contains
         print *, "AVAILABLE GEOMETRY GRAPH TYPES:"
         print *, 'shrunk'
         print *, 'extended'
-        call fatalError(Here, 'Unknown geoemtry graph type (unique cell generation &
+        call fatalError(Here, 'Unknown geometry graph type (unique cell generation &
                               &strategy): '//trim(type))
     end select
 
