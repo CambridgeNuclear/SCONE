@@ -45,6 +45,8 @@ module universeShelf_class
   !! Interface:
   !!   init    -> Initialise and build uniFills
   !!   getPtr  -> Get pointer to a universe given by its index
+  !!   getPtr_fast -> Get pointer to a universe without bounds checking. Should be used in
+  !!     speed-critical parts. 
   !!   getIdx  -> Get uniIdx of a universe given by uniId
   !!   getId   -> Get uniId of a universe given by uniIdx
   !!   getSize -> Return the number of universes (max uniIdx)
@@ -60,6 +62,7 @@ module universeShelf_class
   contains
     procedure :: init
     procedure :: getPtr
+    procedure :: getPtr_fast
     procedure :: getIdx
     procedure :: getId
     procedure :: getSize
@@ -140,7 +143,32 @@ contains
   end subroutine init
 
   !!
-  !! Return pointer to the universe indicated by idx
+  !! Return pointer to the universe indicated by idx (FAST) without bound check
+  !!
+  !! Args:
+  !!   idx [in] -> Index of the universe
+  !!
+  !! Result:
+  !!   Pointer to the universe under idx.
+  !!
+  !! Errors:
+  !!   Pointer will have undefined status if the idx is not valid (will point to some place
+  !!   it is unlikley it will be null so associated procedure may return true!)
+  !!
+  function getPtr_fast(self, idx) result(ptr)
+    class(universeShelf), intent(in) :: self
+    integer(shortInt), intent(in)    :: idx
+    class(universe), pointer         :: ptr
+
+    ptr => self % unis(idx) % ptr
+
+  end function getPtr_fast
+
+  !!
+  !! Return pointer to the universe indicated by idx (SLOW) with bound checking
+  !!
+  !! Slow access with bounds checking. To be used in non-performance
+  !! critical areas
   !!
   !! Args:
   !!   idx [in] -> Index of the universe
@@ -148,7 +176,7 @@ contains
   !! Result:
   !!   Pointer to the universe under index idx
   !!
-  !! Error:
+  !! Errors:
   !!   fatalError is idx does not correspond to a universe (is out-of-bounds)
   !!
   function getPtr(self, idx) result (ptr)
@@ -157,14 +185,14 @@ contains
     class(universe), pointer         :: ptr
     character(100), parameter :: Here = 'getPtr (universeShelf_class.f90)'
 
-    ! Catch invalid idx
-    if (idx < 1 .or. idx > size(self % unis)) then
-       call fatalError(Here, 'Requested index: '//numToChar(idx)//' is not valid. Must be between &
-                             &1 and '//numToChar(size(self % unis)))
-    end if
-
     ! Return pointer
-    ptr => self % unis(idx) % ptr
+    if (idx < 1 .or. idx > size(self % unis)) then
+         call fatalError(Here, 'Requested index: '//numToChar(idx)//' is not valid. Must be between &
+                               &1 and '//numToChar(size(self % unis)))
+    else
+      ptr => self % unis(idx) % ptr
+
+    end if
 
   end function getPtr
 

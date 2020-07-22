@@ -110,7 +110,7 @@ contains
     ! Enter root universe
     r = coords % lvl(1) % r
     dir = coords % lvl(1) % dir
-    uni => self % geom % unis % getPtr(self % geom % rootIdx)
+    uni => self % geom % unis % getPtr_fast(self % geom % rootIdx)
 
     call uni % enter(coords % lvl(1), r, dir)
 
@@ -229,7 +229,7 @@ contains
       maxDist = max(maxDist - dist, ZERO)
 
       ! Get universe and cross to the next cell
-      uni => self % geom % unis % getPtr(coords % lvl(level) % uniIdx)
+      uni => self % geom % unis % getPtr_fast(coords % lvl(level) % uniIdx)
       call uni % cross(coords % lvl(level), surfIdx)
 
       ! Get material
@@ -352,13 +352,13 @@ contains
         fill = abs(fill)
 
         ! Get current universe
-        uni => self % geom % unis % getPtr(coords % lvl(i) % uniIdx)
+        uni => self % geom % unis % getPtr_fast(coords % lvl(i) % uniIdx)
 
         ! Get cell offset
         offset = uni % cellOffset(coords % lvl(i))
 
         ! Get nested universe
-        uni => self % geom % unis % getPtr(fill)
+        uni => self % geom % unis % getPtr_fast(fill)
 
         ! Enter nested univers
         call coords % addLevel()
@@ -400,7 +400,7 @@ contains
     lvl = 0
     do l = 1, coords % nesting
       ! Get universe
-      uni => self % geom % unis % getPtr(coords % lvl(l) % uniIdx)
+      uni => self % geom % unis % getPtr_fast(coords % lvl(l) % uniIdx)
 
       ! Find distance
       call uni % distance(test_dist, test_idx, coords % lvl(l))
