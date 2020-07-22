@@ -337,31 +337,8 @@ contains
     class(latUniverse), intent(inout) :: self
     type(coord), intent(inout)        :: coords
     integer(shortInt), intent(in)     :: surfIdx
-    integer(shortInt)                 :: localID, cellIdx, ax, inc
 
-    ! Catch special case of entering from the background
-    if (surfIdx == OUTLINE_SURF) then
-      call self % findCell(localID, cellIdx, coords % r, coords % dir)
-      coords % localID = localID
-      return
-
-    end if
-
-    ! Cross to the next cell
-    ax = (1 - surfIdx) / 2
-    if (coords % dir(ax) < ZERO) then
-      inc = -1
-    else
-      inc = 1
-    end if
-
-    ! Increment localID
-    localID = coords % localID
-    localID = localID + inc * product(self % sizeN(1:ax-1))
-    if (localID < 0 .or. localID >= self % outLocalID) localID = self % outLocalID
-    coords % localID = localID
-
-    ! No need to change cellIdx. Should still be 0
+    call self % findCell(coords % localID, coords % cellIdx, coords % r, coords % dir)
 
   end subroutine cross
 

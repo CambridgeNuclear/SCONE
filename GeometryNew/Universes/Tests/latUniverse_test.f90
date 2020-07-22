@@ -316,7 +316,7 @@ contains
 
     ! *** 3D Lattice
     ! Cross inside
-    pos % r = [-1.0_defReal, 0.0_defReal, 0.5_defReal]
+    pos % r = [-1.0_defReal, 0.0_defReal, -0.5_defReal]
     pos % dir = [-ONE, ONE, -ONE]
     pos % dir = pos % dir / norm2(pos % dir)
     pos % uniIdx  = 8
@@ -336,6 +336,16 @@ contains
     call uni1 % cross(pos, -7)
 
     @assertEqual(6, pos % localID)
+
+    ! Cross to outside
+    pos % r   = [1.5_defReal, 1.0_defReal, -1.0_defReal]
+    pos % dir = [ONE, ZERO, ZERO]
+    pos % localID = 6
+
+    call uni1 % cross(pos, -2)
+
+    @assertEqual(13, pos % localID )
+
 
     ! *** 2D Lattice
     pos % r = [0.0_defReal, 0.0_defReal, 16.5_defReal]
