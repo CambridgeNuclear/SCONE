@@ -395,17 +395,18 @@ contains
     integer(shortInt), intent(in)               :: localID
     integer(shortInt), dimension(3), intent(in) :: sizeN
     integer(shortInt), dimension(3)             :: ijk
-    integer(shortInt)                           :: temp
+    integer(shortInt)                           :: temp, base
 
-    temp = localID
+    temp = localID - 1
 
-    ijk(1) = modulo(temp-1, sizeN(1)) + 1
-    temp = (temp - ijk(1)) / sizeN(1)
+    base = temp / sizeN(1)
+    ijk(1) = temp - sizeN(1) * base + 1
 
-    ijk(2) = modulo(temp, sizeN(2)) + 1
-    temp = (temp - ijk(2) + 1) / sizeN(2)
+    temp = base
+    base = temp / sizeN(2)
+    ijk(2) = temp - sizeN(2) * base + 1
 
-    ijk(3) = temp + 1
+    ijk(3) = base + 1
 
   end function get_ijk
 
