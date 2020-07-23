@@ -350,7 +350,7 @@ contains
 
         ! If robust verify matIdx in the mid point
         if (self % robust) then
-          r = r_pre + u_pre * HALF * (maxDist - dist)
+          r = r_pre + u_pre * HALF * dist
           call self % geom % whatIsAt(mat_mid, unique_mid, r, u_pre)
 
           if (matIdx /= mat_mid ) then
@@ -367,12 +367,14 @@ contains
 
         end if
 
-
         ! Score result
-        self % totDist = self % totDist + maxDist - dist
+        self % totDist = self % totDist + dist
         if (matIdx /= VOID_MAT) then
-          self % res(matIdx, SCORE) = self % res(matIdx, SCORE) + maxDist - dist
+          self % res(matIdx, SCORE) = self % res(matIdx, SCORE) + dist
         end if
+
+        ! Set to remaining distance
+        dist = maxDist - dist
       end do
 
       ! Kill the ray

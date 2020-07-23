@@ -47,7 +47,7 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist, maxDist
+    real(defReal)                             :: sigmaT, dist
 
     STLoop: do
 
@@ -64,11 +64,10 @@ contains
       call p % savePrePath()
 
       ! Move to the next stop.
-      maxDist = dist
       call self % geom % move(p % coords, dist, event)
 
       ! Send tally report for a path moved
-      call tally % reportPath(p, maxDist - dist)
+      call tally % reportPath(p, dist)
 
       ! Kill particle if it has leaked
       if( p % matIdx() == OUTSIDE_FILL) then

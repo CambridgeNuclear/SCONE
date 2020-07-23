@@ -144,7 +144,7 @@ contains
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(COLL_EV, event)
     @assertEqual(idx, coords % matIdx)
-    @assertEqual(0.0_defReal, maxDist, TOL)
+    @assertEqual(1.0_defReal, maxDist, TOL)
 
     ! Boundary Hit
     maxDist = 1.0_defReal
@@ -159,7 +159,7 @@ contains
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(BOUNDARY_EV, event)
     @assertEqual(idx, coords % matIdx)
-    @assertEqual(0.74_defReal, maxDist, TOL)
+    @assertEqual(0.26_defReal, maxDist, TOL)
 
     !*** Normal Movment (easy case)
     r = [-0.63_defReal, -0.63_defReal, 0.0_defReal]
@@ -195,7 +195,7 @@ contains
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(BOUNDARY_EV, event)
     @assertEqual(idx, coords % matIdx)
-    @assertEqual(0.87_defReal, maxDist, TOL)
+    @assertEqual(0.13_defReal, maxDist, TOL)
 
     ! Collision
     maxDist = 0.08_defReal
@@ -210,7 +210,7 @@ contains
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(COLL_EV, event)
     @assertEqual(idx, coords % matIdx)
-    @assertEqual(0.0_defReal, maxDist, TOL)
+    @assertEqual(0.08_defReal, maxDist, TOL)
 
     ! Kill geometry
     call geom % kill()

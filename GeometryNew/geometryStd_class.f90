@@ -207,13 +207,13 @@ contains
     if (maxDist < dist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
-      maxDist = ZERO
+      maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
 
     else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
       ! Move global to the boundary
       call coords % moveGlobal(dist)
       event = BOUNDARY_EV
-      maxDist = max(maxDist - dist, ZERO)
+      maxDist = dist
 
       ! Get boundary surface and apply BCs
       surf => self % geom % surfs % getPtr(self % geom % borderIdx)
@@ -226,7 +226,7 @@ contains
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV
-      maxDist = max(maxDist - dist, ZERO)
+      maxDist = dist
 
       ! Get universe and cross to the next cell
       uni => self % geom % unis % getPtr_fast(coords % lvl(level) % uniIdx)
@@ -265,14 +265,14 @@ contains
       ! Move above the geometry
       call coords % moveGlobal(maxDist)
       event = COLL_EV
-      maxDist = ZERO
+      maxDist = maxDist
 
     else
       ! Move to boundary and apply BC
       call coords % moveGlobal(dist)
       event = BOUNDARY_EV
       call surf % explicitBC(coords % lvl(1) % r, coords % lvl(1) % dir)
-      maxDist = max(maxDist - dist, ZERO)
+      maxDist = dist
 
     end if
 
