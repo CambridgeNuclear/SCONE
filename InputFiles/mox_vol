@@ -2,7 +2,7 @@ type rayVolPhysicsPackage;
 
 pop      20000;
 cycles   20; 
-mfp      2.3; 
+mfp      3.3; 
 abs_prob 0.01; 
 robust 0;   
            

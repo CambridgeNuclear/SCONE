@@ -12,10 +12,10 @@ module transportOperatorST_class
   use RNG_class,                  only : RNG
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry
+  use geometry_inter,             only : geometry, distCache
 
   ! Tally interface
   use tallyCodes
@@ -30,9 +30,14 @@ module transportOperatorST_class
   !!
   !! Transport operator that moves a particle with delta tracking
   !!
+  !! Sample Input Dictionary:
+  !!   trans { type transportOperatorST; cache 0;}
+  !!
   type, public, extends(transportOperator) :: transportOperatorST
+    logical(defBool)  :: cache = .true.
   contains
     procedure :: transit => surfaceTracking
+    procedure :: init
   end type transportOperatorST
 
 contains
@@ -48,6 +53,7 @@ contains
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
     real(defReal)                             :: sigmaT, dist
+    type(distCache)                           :: cache
 
     STLoop: do
 
@@ -64,7 +70,13 @@ contains
       call p % savePrePath()
 
       ! Move to the next stop.
-      call self % geom % move(p % coords, dist, event)
+      if (self % cache) then
+        call self % geom % move_withCache(p % coords, dist, event, cache)
+
+      else
+        call self % geom % move(p % coords, dist, event)
+
+      end if
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
@@ -83,5 +95,20 @@ contains
     call tally % reportTrans(p)
 
   end subroutine surfaceTracking
+
+  !!
+  !! Initialise surface operator from a dictionary
+  !!
+  !! See transportOperator_inter for details
+  !!
+  subroutine init(self, dict)
+    class(transportOperatorST), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
+
+    if (dict % isPresent('cache')) then
+      call dict % get(self % cache, 'cache')
+    end if
+
+  end subroutine init
 
 end module transportOperatorST_class
