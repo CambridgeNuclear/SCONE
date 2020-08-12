@@ -6,13 +6,31 @@ Installation
 Requirements
 ''''''''''''
 
-Following is required to compile SCONE:
+.. admonition:: Required
 
-* Cmake (>=3.0)
-* Fortran compiler, gfortran (>=6.3).
-* LAPACK and BLAS Libraries
-* pFUnit unit testing framework and Python interpreter
-* UNIX-like environment (e.g. Linux, MacOS or Cygwin in Windows)
+   Fortran Compiler
+     Currently SCONE requires gfortran (>=6.3). Support for other compilers is pending.
+
+   CMake
+     CMake cross-platform build system is used to run all configuration scripts. Version (>=3.0)
+     is required.
+
+
+   LAPACK and BLAS Libraries
+     For the moment, SCONE requires LAPACK and BLAS linear algebra libraries. However, they are
+     not used extensively in the code and this dependency will become optional or will be removed.
+
+   GNU/Linux operating system
+     In principle any UNIX-like operating system should support SCONE. However people have
+     experienced some significant run-time bugs when running on MacOS. Since we do not have
+     an access to a Mackintosh we were not able to identify the problem yet.
+
+.. admonition:: Optional
+
+   pFUnit 3 test framework and Python interpreter
+     Both the unit and the integration tests in SCONE use pFUnit framework. To run it requires a
+     python interpreter. Not that we use version 3.0 despite, newer 4.0 being available. This is
+     to retain support for gfortran in versions older then 8.3 (required by pFUnit 4.0).
 
 Getting gfortran
 ''''''''''''''''
@@ -20,19 +38,19 @@ To verify that you have gfortran available by typing::
 
     gfortran --version
 
-If it isn't or its version is too old you will need to get it. If you have root
+If you do not or its version is too old you will need to get it. If you have root
 access to your machine you can your package manager to install gfortran. On
 Debian/Ubuntu Linux a command like that will suffice::
 
    sudo apt-get install gfortran
 
-On other operating systems it might be significantly different. You will need to
+On other operating systems it might different. You will need to
 find information on how to use package manager in your Linux distribution.
 Pre-compiled gfortran packages can be found
 `here <https://gcc.gnu.org/wiki/GFortranBinaries>`_
 
 Without administrator privileges you may want to compile GCC from source.
-Of course that requires having some a C compiler.
+Of course that requires having a C compiler.
 
 #. Download the source code of GCC from one of the
    `mirrors <https://gcc.gnu.org/mirrors.html>`_
@@ -43,7 +61,10 @@ Of course that requires having some a C compiler.
       cd gcc-9.1.0
       ./contrib/download_prerequisites
 
-#. Now configure the compilation::
+#. Now configure the compilation. The command below is crude. We only set a `prefix` where
+   gcc will be installed after successful compilation and select languages (frontends) we want to
+   include. Documentation of the configure script is
+   `available <https://gcc.gnu.org/install/configure.html>`_ ::
 
       ./configure --prefix=/path/to/install --enable-languages=c,c++,fortran
 
@@ -65,7 +86,7 @@ Of course that requires having some a C compiler.
 
 Getting CMake
 '''''''''''''
-If you have root access to your machine use package manager to obtain latest
+If you have root access to your machine use package manager to obtain the latest
 version of CMake. If you don't you can follow the instructions.
 
 #. Download the installation shell script for Linux from the
@@ -158,7 +179,7 @@ Compiling SCONE
 
      git clone https://Your-Bitbucket-Name@bitbucket.org/Your-Bitbucket-Name/scone.git
 
-#. Create build folder in the project directory(e.g. Debug)::
+#. Create build folder in the project directory (e.g. Build)::
 
      cd ./scone
      mkdir Build
@@ -179,12 +200,39 @@ Compiling SCONE
 
      ccmake ./Build
 
+.. admonition:: CMake options
+
+   LTO
+     Enable link-time optimisation. It allows the compiler to perform extra optimisations between
+     different compilation units (modules in Fortran). It is crucial for performance in SCONE, since
+     it enables inlining of small type-bound procedures. Set to `ON` by default. To disable::
+
+       cmake .. -DLTO=OFF
+
+   COVERAGE
+     Collect code coverage information. If `ON` it allows to use `lcov` and `genhtml` to create
+     an HTML coverage report. It is `OFF` by default. Enable with::
+
+       cmake -DCOVERAGE=ON
+
+   BUILD_TESTS
+     Build unit and integration tests. It is `ON` by default. If enabled, the pFUnit must be
+     installed and PFUNIT_INSTALL set. To disable tests::
+
+       cmake -DBUILD_TESTS=OFF
+
+   DEBUG
+     Enable extra run-time checks available in the compiler. It is `OFF` by default. To enable::
+
+       cmake -DDEBUG=ON
+
+
 Run Tests to Verify
 '''''''''''''''''''
 
 If you compiled SCONE with tests enabled (you should by the way) you can now
 verify that it works correctly by running the automated test suites. You
-**must** to execute the following commands from ``scone`` directory. Some
+**must** execute the following commands from ``scone`` directory. Some
 integration tests use files in ``IntegrationTestFiles`` and have hard-coded
 relative paths. **Integration tests may fail if they are run from other
 directory**. Run::
@@ -201,12 +249,26 @@ least the following information:
 #. Operating System
 
 Unfortunately we do not have access to Intel Fortran compiler so we cannot test
-SCONE with it. We are looking forward to F18, but it does not yet support the
-object-oriented features of Fortran.
+SCONE with it. We are planning to add support for Flang soon.
 
 Obtaining Nuclear Data
 ''''''''''''''''''''''
 
-You need to contact one of the developers and we will guide you personally. Soon
-a Python script to generate appropriate library file from ACE files will be
-added to repository.
+SCONE requires ACE-formatted nuclear data. The JEFF-3.3 evaluation can be download from the
+OACD NEA `website <https://www.oecd-nea.org/dbdata/jeff/jeff33/>`__. In addition SCONE requires
+its own library file. An example of it is given in *IntegrationTestFiles/testLib*. Its format is::
+
+  ! This is a comment line
+  ! Each line needs to contain three entries
+  ! ZAID   Line Number   PATH
+  92233.03c  1       <absolute_path>/9233JEF33.ace
+  1001.03c   4069    <absolute_path>/1001JEF33.ace
+  ...
+
+`Line Number` is the line in the file at which a particular data card begins. Each line cannot
+contain more then a single entry. Each component must be space separated. Path can have only 100
+character and contain no spaces.
+
+Soon the format of the file will be changes to allow spaces in the path. Also the limitation on its
+length will be lifted. A script will be included in ``cream`` to generate the library file directly
+from the ACE files.

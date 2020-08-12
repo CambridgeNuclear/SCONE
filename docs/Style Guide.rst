@@ -30,7 +30,8 @@ Rules on files
 
 #. Module file name must have exactly the same name as the module it contains.
 
-#. Content of a module file must be clearly identified by its suffix:
+#. Content of a module file must be clearly identified by its suffix
+
      * ``_func`` contains a library of functions. (genericProcedures.f90 breaks it for now)
 
      * ``_inter`` contains and abstract class (abstract interface).
