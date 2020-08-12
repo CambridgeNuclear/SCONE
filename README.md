@@ -8,14 +8,16 @@ codes suitable for design calculations.
 
 ## Prerequisites
 Required
-- Cmake (>=3.0)
-- Fortran compiler, gfortran (>=6.3)
-- LAPACK and BLAS Libraries
-- GNU/Linux operating system
+
+* Cmake (>=3.0)
+* Fortran compiler, gfortran (>=6.3)
+* LAPACK and BLAS Libraries
+* GNU/Linux operating system
 
 Optional
-- pFUnit test framework
-- Python 3 interpreter
+
+* pFUnit test framework
+* Python 3 interpreter
 
 ## Installation
 Instructions are avaliable in the Sphinx documentation.
