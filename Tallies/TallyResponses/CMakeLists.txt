@@ -4,6 +4,7 @@ add_sources(./tallyResponse_inter.f90
             ./tallyResponseSlot_class.f90
             ./fluxResponse_class.f90
             ./macroResponse_class.f90
+            ./weightResponse_class.f90
             ./testResponse_class.f90
             )
 
