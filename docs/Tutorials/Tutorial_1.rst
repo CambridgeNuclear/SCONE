@@ -338,7 +338,7 @@ Commiting changes
    If we type it just like it is it will open a text editor in the console.
    Usually it will be vim. We need to prepare commit message. Use *Insert* or *i*
    key to  enter edit mode in vim. In the first line provide a basic explanation
-   for the changes e.g. *Created Tutorial Infrastructure*. Make sure it is
+   for the changes e.g. *Create Tutorial Infrastructure*. Make sure it is
    shorter then 50 columns. If you want to provide same extra information,
    leave 2nd line blank and write some extra text starting from the 3rd line.
    After you are finished use *Esc* key to exit from vim edit mode and type
