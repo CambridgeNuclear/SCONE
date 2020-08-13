@@ -9,6 +9,7 @@ add_sources(./tallyMap_inter.f90
             ./spaceMap_class.f90
             ./materialMap_class.f90
             ./multiMap_class.f90
+            ./weightMap_class.f90
  #           ./matXsMap_class.f90
             )
             
