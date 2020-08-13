@@ -3,6 +3,7 @@ add_sources(./tallyClerk_inter.f90
             ./tallyClerkFactory_func.f90
             ./tallyClerkSlot_class.f90
             ./collisionClerk_class.f90
+            ./trackClerk_class.f90
             ./keffAnalogClerk_class.f90
             ./keffImplicitClerk_class.f90
             ./simpleFMClerk_class.f90
