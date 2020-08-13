@@ -47,9 +47,6 @@ module transportOperator_inter
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(cellGeometry), pointer         :: geom        => null()
 
-    !! Variables for tracking alternatives
-    real(defReal)             :: cutoff
-
   contains
     ! Public interface
     procedure, non_overridable :: transport
@@ -127,8 +124,6 @@ contains
     !! Store pointer to geometry
     self % geom => geom
 
-    call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
-
   end subroutine init
 
   !!
@@ -144,4 +139,3 @@ contains
 
 
 end module transportOperator_inter
-

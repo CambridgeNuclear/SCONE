@@ -16,7 +16,7 @@ module transportOperatorHT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
   use cellGeometry_inter,         only : cellGeometry
@@ -31,13 +31,29 @@ module transportOperatorHT_class
   !! Transport operator that moves a particle with hybrid tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorHT
+    !! Cutoff threshold between ST and DT
+    real(defReal)             :: cutoff
   contains
+    procedure :: init
     procedure :: transit => tracking_selection
     procedure, private :: deltaTracking
     procedure, private :: surfaceTracking
   end type transportOperatorHT
 
 contains
+
+  subroutine init(self, dict, geom)
+    class(transportOperatorHT), intent(inout)  :: self
+    class(dictionary), intent(in)              :: dict
+    class(cellGeometry), pointer, intent(in)   :: geom
+
+    ! Initialise superclass
+    call init_super(self, dict, geom)
+
+    ! Initialise this class
+    call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
+
+  end subroutine init
 
   subroutine tracking_selection(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorHT), intent(inout)              :: self
@@ -58,11 +74,11 @@ contains
     ratio = sigmaT*majorant_inv
 
     ! Cut-off criterion to decide on tracking method
-      if (ratio > (1.0 - self % cutoff)) then
-        call deltaTracking(self, p, tally, thisCycle, nextCycle)
-      else
-        call surfaceTracking(self, p, tally, thisCycle, nextCycle)
-      end if
+    if (ratio > (ONE - self % cutoff)) then
+      call deltaTracking(self, p, tally, thisCycle, nextCycle)
+    else
+      call surfaceTracking(self, p, tally, thisCycle, nextCycle)
+    end if
 
   end subroutine tracking_selection
 
@@ -74,7 +90,7 @@ contains
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
-    character(100), parameter :: Here = 'deltaTracking (transportOIperatorDT_class.f90)'
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
@@ -97,11 +113,6 @@ contains
 
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
-      ! Protect Against Sillines
-      !if( sigmaT*majorant_inv < ZERO .or. ONE < sigmaT*majorant_inv) then
-      !  call fatalError(Here, "TotalXS/MajorantXS is silly: "//numToChar(sigmaT*majorant_inv))
-      !end if
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
