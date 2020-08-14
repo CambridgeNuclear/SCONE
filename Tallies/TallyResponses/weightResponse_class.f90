@@ -47,10 +47,13 @@ contains
   !!
   subroutine init(self, dict)
     class(weightResponse), intent(inout) :: self
-    class(dictionary), intent(in)       :: dict
+    class(dictionary), intent(in)        :: dict
+    character(100), parameter :: Here ='init (weightResponse_class.f90)'
 
     ! Get response moment to be calculated
     call dict % getOrDefault(self % moment, 'moment', 1)
+
+    if (self % moment < 0) call fatalError(Here, 'Moment must be bigger or equal zero.')
 
   end subroutine init
 
@@ -80,10 +83,8 @@ contains
     ! Return if material is not a neutronMaterial
     if(.not.associated(mat)) return
 
-    if (self % moment == 0 .and. p % w /= 0) then
+    if (self % moment .eq. 0) then
       val = xsData % getTotalMatXS(p, p % matIdx()) / (p % w)
-    else if (self % moment == 0 .and. p % w == 0) then
-      val = 0
     else
       val = xsData % getTotalMatXS(p, p % matIdx()) * ((p % w) ** (self % moment - 1))
     end if
