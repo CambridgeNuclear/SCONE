@@ -161,11 +161,8 @@ contains
         ! Initialise
         call self % build(bins)
 
-      case('predef')
-        call fatalError(Here,"Predefined weight grids are not yet implemented")
-
       case default
-        call fatalError(Here,"'grid' keyword must be: lin, log, usntruct or predef")
+        call fatalError(Here,"'grid' keyword must be: lin, log or usntruct")
 
     end select
 

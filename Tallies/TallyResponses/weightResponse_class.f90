@@ -29,7 +29,7 @@ module weightResponse_class
   !!
   type, public,extends(tallyResponse) :: weightResponse
     private
-    integer(ShortInt)    :: moment
+    integer(shortInt)    :: moment
   contains
     ! Superclass Procedures
     procedure  :: init
@@ -83,7 +83,7 @@ contains
     ! Return if material is not a neutronMaterial
     if(.not.associated(mat)) return
 
-    if (self % moment .eq. 0) then
+    if (self % moment == 0) then
       val = xsData % getTotalMatXS(p, p % matIdx()) / (p % w)
     else
       val = xsData % getTotalMatXS(p, p % matIdx()) * ((p % w) ** (self % moment - 1))
