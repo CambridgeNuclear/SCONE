@@ -15,6 +15,7 @@ add_sources(./tallyMap_inter.f90
             
 add_unit_tests(./Tests/materialMap_test.f90
                ./Tests/energyMap_test.f90
+               ./Tests/weightMap_test.f90
                ./Tests/spaceMap_test.f90
                ./Tests/testMap_test.f90
                ./Tests/multiMap_test.f90) 
