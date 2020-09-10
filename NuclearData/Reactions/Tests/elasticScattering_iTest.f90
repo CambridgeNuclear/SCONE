@@ -69,7 +69,7 @@ contains
     @assertEqual(0.1593337_defReal, reaction % probOf(0.75911_defReal, 2.0_defReal, 3.94_defReal, 3.94_defReal), TOL)
     @assertEqual(0.7934733E-01_defReal, reaction % probOf(-0.3_defReal, 2.0_defReal, 8.9201_defReal, 8.9201_defReal), TOL)
 
-    ! Test invalid angle aranges
+    ! Test invalid angle ranges
     @assertEqual(ZERO, reaction % probOf(1.1_defReal, 2.0_defReal, ONE, ONE), TOL)
     @assertEqual(ZERO, reaction % probOf(0.7_defReal, -2.0_defReal, ONE, ONE), TOL)
     @assertEqual(ZERO, reaction % probOf(0.7_defReal, 2.0_defReal, -ONE, -ONE), TOL)
@@ -79,6 +79,32 @@ contains
 
   end subroutine testElasticNeutronScatteringReaction
 
+  !!
+  !! Test elasticScattering for a data with LOCB == 0
+  !! Use Ta-126 from JEFF 3.1.1
+  !!
+  !! Does not test sampling
+  !!
+@Test
+  subroutine testElasticNeutronScattering_isotropic()
+    type(elasticNeutronScatter)  :: reaction
+    type(aceCard)                :: ACE
+    real(defReal),parameter :: TOL = 1.0E-6_defReal
 
+    ! Build ACE library
+    call ACE % readFromFile('./IntegrationTestFiles/52126JEF311.ace', 1)
+
+    ! Build reaction object
+    call reaction % init(ACE, N_N_ELASTIC)
+
+    ! Test probability distribution
+    @assertEqual(ONE/TWO/TWO_PI, reaction % probOf(0.5_defReal, 2.0_defReal, 6.7_defReal, 6.7_defReal), TOL)
+
+    ! Test invalid angle aranges
+    @assertEqual(ZERO, reaction % probOf(1.1_defReal, 2.0_defReal, ONE, ONE), TOL)
+    @assertEqual(ZERO, reaction % probOf(0.7_defReal, -2.0_defReal, ONE, ONE), TOL)
+    @assertEqual(ZERO, reaction % probOf(0.7_defReal, 2.0_defReal, -ONE, -ONE), TOL)
+
+  end subroutine testElasticNeutronScattering_isotropic
 
 end module elasticScattering_iTest
