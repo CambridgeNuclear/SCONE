@@ -1232,6 +1232,10 @@ contains
     integer(shortInt)            :: LOCB ! local LOCB
     character(100), parameter :: Here ='setMTdata (aceCard_class.f90)'
 
+    ! Clean Previous MT-related data
+    ! Necessary to ensure that reloading is correct
+    if(allocated(self % MTdata)) deallocate(self % MTdata)
+
     ! Get number of MT reaction
     NMT  = self % NXS(4)
     NMTs = self % NXS(5)
@@ -1332,6 +1336,16 @@ contains
     logical(defBool)              :: hasNoNuBlock
     integer(shortInt)             :: KNU          ! Pointer to prompt/total Nu data
     character(100), parameter :: Here ='setFissionData (aceCard_class.f90)'
+
+    ! Clean Previous fission-related data
+    ! Necessary to ensure that reloading is correct
+    self % isFiss    = .false.
+    self % fissIE    = unINIT
+    self % fissNE    = unINIT
+    self % fissXSp   = unINIT
+    self % promptNUp = unINIT
+    self % delayNUp  = unINIT
+    self % totalNUp  = unINIT
 
     ! Check is the nuclide is fissile
     self % isFiss = (self % JXS(21) /= 0)
@@ -1456,9 +1470,6 @@ contains
 
     ! Read XSS array
     read(aceFile,*) self % XSS(1:self % NXS(1))
-
-    ! Make sure that MTdata is deallocated
-    if(allocated(self % MTdata)) deallocate(self % MTdata)
 
     ! Close input file
     close(aceFile)
