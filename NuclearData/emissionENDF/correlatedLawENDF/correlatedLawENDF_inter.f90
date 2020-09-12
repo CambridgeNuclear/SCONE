@@ -9,6 +9,11 @@ module correlatedLawENDF_inter
   !!
   !! Abstract interface for objects containing correleated mu energy data
   !!
+  !! Interface:
+  !!   sample        -> Sample outgoing energy & angle
+  !!   probabilityOf -> Return propability density at outgoing the energy & angle
+  !!   kill          -> Return to uninitialised state
+  !!
   type, public,abstract :: correlatedLawENDF
     private
     contains
@@ -22,7 +27,16 @@ module correlatedLawENDF_inter
     !!
     !! Samples mu and E_out givent incident energy E_in and random nummber generator
     !!
-    subroutine sample(self,mu,E_out,E_in,rand)
+    !! Args:
+    !!   mu [out]     -> Cosing of polar deflection angle in <-1;1>
+    !!   E_out [out]  -> Outgoing energy [MeV]
+    !!   E_in [in]    -> Incident energy [Mev]
+    !!   rand [inout] -> Random number generator
+    !!
+    !! Error:
+    !!   fatalError if sampling fails for any reason
+    !!
+    subroutine sample(self, mu, E_out, E_in, rand)
       import :: correlatedLawENDF, &
                 defReal, &
                 RNG
@@ -34,9 +48,20 @@ module correlatedLawENDF_inter
     end subroutine
 
     !!
-    !! Returns probability that neutron was emmited at mu & E_out given incident energy E_in
+    !! Returns probability that neutron was emitted at mu & E_out given incident energy E_in
     !!
-    function probabilityOf(self,mu,E_out,E_in) result(prob)
+    !! Args:
+    !!   mu [in]     -> Cosing of polar deflection angle in <-1;1>
+    !!   E_out [in]  -> Outgoing energy [MeV]
+    !!   E_in [in]   -> Incident energy [Mev]
+    !!
+    !! Result:
+    !!   Probability density for outgoing mu & E_out from incident particle at E_in
+    !!
+    !! Errors:
+    !!   Returns 0.0 if outgoing values are out of range.
+    !!
+    function probabilityOf(self, mu, E_out, E_in) result(prob)
       import :: correlatedLawENDF, &
                 defReal
       class(correlatedLawENDF), intent(in) :: self
