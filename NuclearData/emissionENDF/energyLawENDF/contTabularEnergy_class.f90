@@ -49,7 +49,7 @@ module contTabularEnergy_class
     procedure :: probabilityOf
     procedure :: kill
 
-    ! Local procedures 
+    ! Local procedures
     procedure :: init
   end type contTabularEnergy
 
@@ -143,8 +143,8 @@ contains
     class(contTabularEnergy), intent(in) :: self
     real(defReal), intent(in)            :: E_out, E_in
     real(defReal)                        :: prob
-    integer(shortInt)                    :: idx
-    real(defReal)                        :: prob_1, prob_0, E_1, E_0
+    ! integer(shortInt)                    :: idx
+    ! real(defReal)                        :: prob_1, prob_0, E_1, E_0
     character(100),parameter             :: Here = 'probabilityOf (contTabularEnergy_class.f90)'
 
     call fatalError(Here, 'probabilityOf has not been implemented.')

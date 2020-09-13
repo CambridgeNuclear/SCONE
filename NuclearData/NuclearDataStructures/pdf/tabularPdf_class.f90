@@ -11,7 +11,7 @@ module tabularPdf_class
 
   integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
                                   linLin     = tabPdfLinLin
-  real(defReal),parameter      :: tolerance = 1.0e-8
+  real(defReal),parameter      :: TOL = 1.0e-6
 
   interface linearSearch
     module procedure linearFloorIdxClosed_Real
@@ -233,7 +233,7 @@ contains
           self % cdf(i) = pdf(i-1) * (x(i)-x(i-1)) + self % cdf(i-1)
         end do
 
-        if (abs(self % cdf(size(x))-1.0_defReal) > tolerance) then
+        if (abs(self % cdf(size(x))-1.0_defReal) > TOL) then
           call fatalError(Here,'Calculated CDF does not integrate to 1.0 within tolerance')
         end if
 
@@ -244,7 +244,7 @@ contains
           self % cdf(i) = 0.5 * (pdf(i)+pdf(i-1)) * (x(i)- x(i-1)) + self % cdf(i-1)
         end do
 
-        if (abs(self % cdf(size(x))-1.0_defReal) > tolerance) then
+        if (abs(self % cdf(size(x))-1.0_defReal) > TOL) then
           print *, self % x
           print *, self % pdf
           print *, self % cdf
@@ -255,6 +255,9 @@ contains
         call fatalError(Here, 'Unrecognised interpolation flag')
 
     end select
+
+    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table
+    self % cdf(size(self % cdf)) = ONE
 
   end subroutine initPdf
 
@@ -279,9 +282,9 @@ contains
     if ( any( pdf < 0.0 ))    call fatalError(Here,'Provided PDF contains -ve values')
     if ( any( cdf < 0.0 ))    call fatalError(Here,'Provided CDF contains -ve values')
 
-    if( abs(cdf(1)) > tolerance ) call fatalError(Here,'Provided CDF does not begin with 0')
+    if( abs(cdf(1)) > TOL ) call fatalError(Here,'Provided CDF does not begin with 0')
 
-    if( abs(cdf(size(cdf))-1.0_defReal) > tolerance) then
+    if( abs(cdf(size(cdf))-1.0_defReal) > TOL) then
       call fatalError(Here,'Provided CDF does not end with 1:' // numToChar(cdf(size(cdf))))
     end if
 
@@ -293,6 +296,9 @@ contains
     self % x   = x
     self % pdf = pdf
     self % cdf = cdf
+
+    ! Ensure that CDF ends with 1.0 to avoid random numbers sampled above the CDF table
+    self % cdf(size(cdf)) = ONE
 
     select case (flag)
       case(histogram)
