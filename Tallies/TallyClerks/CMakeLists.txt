@@ -11,6 +11,7 @@ add_sources(./tallyClerk_inter.f90
              )
              
 add_unit_tests(./Tests/collisionClerk_test.f90
+               ./Tests/trackClerk_test.f90
                ./Tests/keffAnalogClerk_test.f90
                ./Tests/keffImplicitClerk_test.f90
                ./Tests/simpleFMClerk_test.f90
