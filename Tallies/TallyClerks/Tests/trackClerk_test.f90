@@ -201,9 +201,6 @@ contains
     call mem % init(int(clerk % getSize(), longInt) , 1)
     call clerk % setMemAddress(1_longInt)
 
-    ! Build nuclear data
-    !call nucData % build(0.3_defReal)
-
     ! Set track lenght
     L = 0.3_defReal
 
