@@ -11,6 +11,7 @@ module tallyClerkFactory_func
   use keffAnalogClerk_class,     only : keffAnalogClerk
   use keffImplicitClerk_class,   only : keffImplicitClerk
   use collisionClerk_class,      only : collisionClerk
+  use trackClerk_class,          only : trackClerk
   use simpleFMClerk_class,       only : simpleFMClerk
   use dancoffBellClerk_class,    only : dancoffBellClerk
 
@@ -27,6 +28,7 @@ module tallyClerkFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk    ',&
                                                                         'keffImplicitClerk  ',&
                                                                         'collisionClerk     ',&
+                                                                        'trackClerk         ',&
                                                                         'simpleFMClerk      ',&
                                                                         'dancoffBellClerk   ']
 
@@ -62,6 +64,10 @@ contains
 
      case('collisionClerk')
        allocate(collisionClerk :: new)
+       call new % init(dict, name)
+
+     case('trackClerk')
+       allocate(trackClerk :: new)
        call new % init(dict, name)
 
      case('simpleFMClerk')
