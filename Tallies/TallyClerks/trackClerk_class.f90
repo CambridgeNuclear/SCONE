@@ -27,14 +27,17 @@ module trackClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
-  !! Calculates flux weighted integral from paticles travelled paths
+  !! Track length estimator of reaction rates
+  !! Calculates flux weighted integrals from paticles travelled paths
   !!
   !! Private Members:
   !!   filter   -> Space to store tally Filter
   !!   map      -> Space to store tally Map
   !!   response -> Array of responses
   !!   width    -> Number of responses (# of result bins for each map position)
+  !!
+  !! NOTE that maps and filters refer to the pre-transition particle state! This 
+  !! would lead to wrong results in case of spatial grids (e.g. a Cartesian x-y grid)
   !!
   !! Interface
   !!   tallyClerk Interface
@@ -191,7 +194,7 @@ contains
     real(defReal)                         :: scoreVal, flx
     character(100), parameter :: Here =' reportPath (trackClerk_class.f90)'
 
-    ! Get current particle state
+    ! Get pre-transition particle state
     state = p % prePath
 
     ! Check if within filter
