@@ -65,9 +65,9 @@ contains
     ! with error of about 1.0E-3 absolute, which is accaptable
     ! It was immposible to access polynomial representation directly, and there might be additional
     ! Issues due to tabular representation of the data.
-    @assertEqual(0.4257917E-01_defReal, reaction % probOf(0.7_defReal, 2.0_defReal, 0.36_defReal, 0.36_defReal), TOL)
-    @assertEqual(0.1593337_defReal, reaction % probOf(0.75911_defReal, 2.0_defReal, 3.94_defReal, 3.94_defReal), TOL)
-    @assertEqual(0.7934733E-01_defReal, reaction % probOf(-0.3_defReal, 2.0_defReal, 8.9201_defReal, 8.9201_defReal), TOL)
+    @assertEqual(0.4273399E-01_defReal, reaction % probOf(0.7_defReal, 2.0_defReal, 0.36_defReal, 0.36_defReal), TOL)
+    @assertEqual(0.1593347_defReal, reaction % probOf(0.75911_defReal, 2.0_defReal, 3.94_defReal, 3.94_defReal), TOL)
+    @assertEqual(0.7943654E-01_defReal, reaction % probOf(-0.3_defReal, 2.0_defReal, 8.9201_defReal, 8.9201_defReal), TOL)
 
     ! Test invalid angle ranges
     @assertEqual(ZERO, reaction % probOf(1.1_defReal, 2.0_defReal, ONE, ONE), TOL)
