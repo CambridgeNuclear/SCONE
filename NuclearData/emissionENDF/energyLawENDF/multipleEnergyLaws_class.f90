@@ -7,7 +7,6 @@ module multipleEnergyLaws_class
   use energyLawENDFSlot_class, only : energyLawENDFSlot
   use endfTable_class,         only : endfTable
 
-
   implicit none
   private
 
@@ -44,8 +43,9 @@ module multipleEnergyLaws_class
   !!   num -> Number of already loaded energy laws
   !!
   !! Interface:
-  !!   sample -> get outgoing energy given incident energy and random number
-  !!   probabilityOf -> given incident and outgoing energy returns probability
+  !!   energyLawENDF interface
+  !!   init   -> Initialise by setting aside space for N energy laws
+  !!   addLaw -> Add an energy law to the object
   !!
   type, public,extends(energyLawENDF) :: multipleEnergyLaws
     private
@@ -69,15 +69,7 @@ contains
   !!
   !! Sample outgoing energy
   !!
-  !! Args:
-  !!   E_in [in] -> incident energy [MeV]
-  !!   rand [inout] -> random number generator
-  !!
-  !! Returns:
-  !!   Outgoing energy [MeV]
-  !!
-  !! Errors:
-  !!   Gives fatalError if sampling fails to sample energy Law
+  !! See energylawENDF_inter for details
   !!
   function sample(self, E_in, rand) result (E_out)
     class(multipleEnergyLaws), intent(in) :: self
@@ -117,12 +109,7 @@ contains
   !!
   !! Return probability of transition
   !!
-  !! Args:
-  !!   E_out [in] -> outgoing energy energy [MeV]
-  !!   E_in [in] -> incident energy [MeV]
-  !!
-  !! Returns:
-  !!   Probability of transition in [0,1]
+  !! See energylawENDF_inter for details
   !!
   function probabilityOf(self,E_out,E_in) result (prob)
     class(multipleEnergyLaws), intent(in) :: self
@@ -263,7 +250,5 @@ contains
     call self % laws(self % num) % moveAllocFrom(law)
 
   end subroutine addLaw
-
-
 
 end module multipleEnergyLaws_class
