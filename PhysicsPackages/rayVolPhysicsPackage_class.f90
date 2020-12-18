@@ -14,7 +14,7 @@ module rayVolPhysicsPackage_class
 
   ! Geometry
   use coord_class,                    only : coordList
-  use geometry_inter,                 only : geometry
+  use geometry_inter,                 only : geometry, distCache
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx, gr_kill    => kill
 
@@ -58,6 +58,7 @@ module rayVolPhysicsPackage_class
   !!     pop 2000;      // Number of rays per cycle
   !!     cycles 100;    // Number of cycles
   !!     robust 1;      // 1 for true; 0 for false; Enable robust mode
+  !!     cache  1;      // 1 for treu; 0 for false; Enable distance caching
   !!     #seed 86868;#  // Optional RNG seed
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition. Requires material names only>}
@@ -71,7 +72,8 @@ module rayVolPhysicsPackage_class
   !!   mfp       -> Mean length of the ray segment
   !!   abs_prob  -> Ray absorption probability after every segment
   !!   N_cycles  -> Number of cycles
-  !!   robust    -> Flag to enable/diable robust mode
+  !!   robust    -> Flag to enable/disable robust mode
+  !!   cache     -> Flag to enable/disable distance caching
   !!   res       -> Array to accumulate total track length in each material. Contains
   !!     score (SCORE), cumulative sum over cycles (CSUM) and cumulative sume of squares over
   !!     cycles (CSUM2)
@@ -96,6 +98,7 @@ module rayVolPhysicsPackage_class
     integer(shortInt)  :: pop       = 0
     integer(shortInt)  :: N_cycles  = 0
     logical(defBool)   :: robust    = .false.
+    logical(defBool)   :: cache     = .false.
 
     ! Results space
     real(defReal), dimension(:,:), allocatable :: res
@@ -140,6 +143,7 @@ contains
     call dict % get(self % pop, 'pop')
     call dict % get(self % N_cycles, 'cycles')
     call dict % get(self % robust, 'robust')
+    call dict % get(self % cache, 'cache')
 
     ! Check settings
     if (self % mfp < ZERO) then
@@ -323,6 +327,7 @@ contains
     real(defReal)                              :: dist, mu, phi, maxDist, rn
     real(defReal), dimension(3)                :: r, r_pre, u_pre
     integer(shortInt)                          :: event, matIdx, uniqueId, mat_mid, unique_mid
+    type(distCache)                            :: cache_space
     character(100), parameter :: Here = 'trackRay (rayVolPhysicsPackage_class.f90)'
 
     ! Keep compiler happy
@@ -346,7 +351,13 @@ contains
         end if
 
         ! Move in geometry
-        call self % geom % move(coords, dist, event)
+        if (self % cache) then
+          call self % geom % move_withCache(coords, dist, event, cache_space)
+
+        else
+          call self % geom % move(coords, dist, event)
+
+        end if
 
         ! If robust verify matIdx in the mid point
         if (self % robust) then

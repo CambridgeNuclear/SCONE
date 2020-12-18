@@ -14,6 +14,7 @@ cycles    100;
 mfp       3.2; 
 abs_prob  0.005;
 robust 1; 
+cache 0; 
 
 geometry { 
   type geometryStd; 
