@@ -9,9 +9,10 @@ dataType ce;
 collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} } 
 
-transportOperator { //type transportOperatorST; 
+transportOperator { type transportOperatorST; 
                     cache 1; 
-                   type transportOperatorDT; 
+                   // type transportOperatorDT; 
+                   // type transportOperatorHT; 
                    } 
                    
 inactiveTally {} 
@@ -94,6 +95,15 @@ viz {
     corner (-10.71 -10.71 -0.5);
     width (21.42 21.42 1.0);
     vox (700 700 1);
+  }
+  bmp { 
+    type bmp; 
+    output img; 
+    what material; 
+    centre (0.0 0.0 0.0); 
+    //width (25.0 25.0); 
+    axis z; 
+    res (500 500); 
   }
 } 
 
