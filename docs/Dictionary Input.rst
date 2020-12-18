@@ -75,7 +75,7 @@ of SCONE dictionary grammar in BNF notation is::
     <dictionary>  ::= " "* <item>+ " "*
     <item>        ::= <entry> | <word> " "* "{" <dictionary> "}"
     <entry>       ::= <word> " "+ <content> " "* ";"
-    <content>     ::= <single> | "(" <list> ")"
+    <content>     ::= <single> | <list>
     <single>      ::= <int> | <real> | <word>
     <list>        ::= <intList> | <realList> | <wordList>
     <intList>     ::= (" "* <int> " "+)+

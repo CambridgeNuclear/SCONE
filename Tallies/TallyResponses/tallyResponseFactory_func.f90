@@ -10,6 +10,7 @@ module tallyResponseFactory_func
   ! tallyResponse implementations
   use fluxResponse_class,     only : fluxResponse
   use macroResponse_class,    only : macroResponse
+  use weightResponse_class,   only : weightResponse
   use testResponse_class,     only : testResponse
 
   implicit none
@@ -22,8 +23,9 @@ module tallyResponseFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyResponses = ['fluxResponse ',&
-                                                                          'macroResponse']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyResponses = ['fluxResponse  ',&
+                                                                          'macroResponse ',&
+                                                                          'weightResponse']
 
 contains
 
@@ -53,6 +55,10 @@ contains
 
       case('macroResponse')
         allocate(macroResponse :: new)
+        call new % init(dict)
+
+      case('weightResponse')
+        allocate(weightResponse :: new)
         call new % init(dict)
 
       case('testResponse')

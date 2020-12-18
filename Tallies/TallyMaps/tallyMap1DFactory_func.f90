@@ -28,6 +28,7 @@ module tallyMap1DFactory_func
   use energyMap_class,   only : energyMap
   use spaceMap_class,    only : spaceMap
   use materialMap_class, only : materialMap
+  use weightMap_class,   only : weightMap
   use testMap_class,     only : testMap
 !  use matXsMap_class,    only : matXsMap
 
@@ -46,6 +47,7 @@ module tallyMap1DFactory_func
   character(nameLen),dimension(*),parameter, public :: AVALIBLE_tallyMaps1D = [ 'energyMap  ',&
                                                                                 'spaceMap   ',&
                                                                                 'materialMap',&
+                                                                                'weightMap  ',&
                                                                                 'testMap    ']
 
 contains
@@ -87,6 +89,10 @@ contains
 
       case('materialMap')
         allocate(materialMap :: new)
+        call new % init(dict)
+
+      case('weightMap')
+        allocate(weightMap :: new)
         call new % init(dict)
 
       case('testMap')
