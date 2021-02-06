@@ -22,12 +22,12 @@ pipelines:
           script: # Will execute the following commands
             - ./scripts/install_scone.sh
             - ./scripts/run_tests.sh
-      - step:
-          name: gfortran-9
-          image: mikolajkowalski/ubuntu-pfunit:9
-          script: # Will execute the following commands
-            - ./scripts/install_scone.sh
-            - ./scripts/run_tests.sh
+#      - step:
+#          name: gfortran-9
+#          image: mikolajkowalski/ubuntu-pfunit:9
+#          script: # Will execute the following commands
+#            - ./scripts/install_scone.sh
+#            - ./scripts/run_tests.sh
     cream_test:
       - step:
           name: Python-3.6
