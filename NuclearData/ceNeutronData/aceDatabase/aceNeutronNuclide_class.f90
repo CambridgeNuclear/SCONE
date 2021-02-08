@@ -364,7 +364,7 @@ contains
   !!   database [in] -> pointer to ceNeutronDatabase to set XSs to cache
   !!
   !! Errors:
-  !!
+  !!   FatalError if ACE card has NU data but no fission MTs
   !!
   subroutine init(self, ACE, nucIdx, database)
     class(aceNeutronNuclide), intent(inout)       :: self
@@ -373,6 +373,7 @@ contains
     class(ceNeutronDatabase), pointer, intent(in) :: database
     integer(shortInt)                             :: Ngrid, N, K, i, j, MT, bottom, top
     type(stackInt)                                :: scatterMT, absMT
+    character(100), parameter :: Here = "init (aceNeutronNuclide_class.f90)"
 
     ! Reset nuclide just in case
     call self % kill()
@@ -409,15 +410,53 @@ contains
     ! Get elastic kinematics
     call self % elasticScatter % init(ACE, N_N_ELASTIC)
 
-    if(self % isFissile()) then
-      ! Load fission data
-      call self % fission % init(ACE, N_FISSION)
-      N = ACE % firstIdxFiss()
-      K = ACE % numXSPointsFiss()
-      self % mainData(FISSION_XS, N:N+K-1) = ACE % xsFiss()
+    ! Load Fission XS data
+    ! Set 'bottom' variable to the start index of fission data
+    if (self % isFissile()) then
+
+      if (ACE % hasFIS()) then
+        ! Generic fission reaction MT=18 is provided
+        ! Read XS from the FIS block in ACE card
+        N = ACE % firstIdxFiss()
+        bottom = N
+        K = ACE % numXSPointsFiss()
+        self % mainData(FISSION_XS, N:N+K-1) = ACE % xsFiss()
+
+      else
+        ! FIS block is missing, so MT=18 is unavaliable
+        ! Build fission XS as a sum of MT=19,20,21,38
+        ! if they are present in the ACE card
+        associate (fissMTs => ACE % getFissionMTs())
+
+          ! Perform sanity check
+          if (size(fissMTs) < 1) then
+            call fatalError(Here, ACE % ZAID//' seems to have NU data but no fission reactions &
+                                  &among its MT numbers')
+          end if
+
+          ! Get fission XS via summation
+          bottom = Ngrid + 1
+          do i = 1, size(fissMTs)
+            N = ACE % firstIdxMT(fissMTs(i))
+            bottom = min(bottom, N)
+            K = ACE % numXsPointsMT(fissMts(i))
+            self % mainData(FISSION_XS, N:N+K-1) = self % mainData(FISSION_XS, N:N+K-1) &
+                                                 + ACE % xsMT(fissMTs(i))
+          end do
+
+        end associate
+      end if
+
+      ! Build Fission reaction object
+      ! Again select between MT=18 and 19 based on presence of FIS block
+      if (ACE % hasFIS()) then
+        call self % fission % init(ACE, N_FISSION)
+      else
+        call self % fission % init(ACE, N_f)
+      end if
 
       ! Calculate nuFission
-      do i = N, K
+      do i = bottom, Ngrid
         self % mainData(NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
                                         self % fission % release(self % eGrid(i))
       end do

@@ -1,5 +1,6 @@
 # SCONE
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENCE)
+[![Documentation Status](https://readthedocs.org/projects/scone/badge/?version=latest)](https://scone.readthedocs.io/en/latest/?badge=latest)
 
 SCONE (**S**tochastic **C**alculator **O**f **N**eutron Transport **E**quation) is an object-oriented Monte Carlo
 particle transport code for reactor physics. It is intended as an accessible environment for

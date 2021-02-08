@@ -81,13 +81,14 @@ module aceCard_class
     type(MTreaction),dimension(:),allocatable  :: MTdata
 
     ! Fission related data
-    logical(defBool)  :: isFiss    = .false.    ! Flag is true if JXS(21) /= 0
-    integer(shortInt) :: fissIE    = unINIT     ! First energy grid index for fission XSs
-    integer(shortInt) :: fissNE    = unINIT     ! Number of fission XS points
-    integer(shortInt) :: fissXSp   = unINIT     ! Location of first fission xs point on XSS table
-    integer(shortInt) :: promptNUp = unINIT     ! Location of prompt NU data
-    integer(shortInt) :: delayNUp  = unINIT     ! Location of delay NU data
-    integer(shortInt) :: totalNUp  = unINIT     ! Location of total NU data
+    logical(defBool)  :: isFiss       = .false. ! Flag is true if JXS(2) /= 0
+    logical(defBool)  :: hasFISBlock  = .false. ! Flag is true if JXS(21) /= 0
+    integer(shortInt) :: fissIE       = unINIT  ! First energy grid index for fission XSs
+    integer(shortInt) :: fissNE       = unINIT  ! Number of fission XS points
+    integer(shortInt) :: fissXSp      = unINIT  ! Location of first fission xs point on XSS table
+    integer(shortInt) :: promptNUp    = unINIT  ! Location of prompt NU data
+    integer(shortInt) :: delayNUp     = unINIT  ! Location of delay NU data
+    integer(shortInt) :: totalNUp     = unINIT  ! Location of total NU data
 
     ! RAW ACE TABLES *** PUBLIC in DEBUG * WILL BE PRIVATE
     integer(shortInt),dimension(16),public        :: NXS
@@ -132,6 +133,7 @@ module aceCard_class
     procedure :: numXsPointsFiss     ! Get number of fission XS points
     procedure :: xsFiss              ! Get fission XS array
     procedure :: isFissile           ! Returns true if nuclide is fissile
+    procedure :: hasFIS              ! Returns true if card has FIS block
     procedure :: precursorGroups     ! Return number of precursor groups
 
     procedure :: hasNuPrompt         ! Is prompt NU present
@@ -780,6 +782,17 @@ contains
   end function isFissile
 
   !!
+  !! Return .true. if ACE card has FIS block
+  !!
+  function hasFIS(self) result(isIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: isIt
+
+    isIt = self % hasFISBlock
+
+  end function hasFIS
+
+  !!
   !! Return number of precursor groups
   !!
   !! Args:
@@ -1232,6 +1245,10 @@ contains
     integer(shortInt)            :: LOCB ! local LOCB
     character(100), parameter :: Here ='setMTdata (aceCard_class.f90)'
 
+    ! Clean Previous MT-related data
+    ! Necessary to ensure that reloading is correct
+    if(allocated(self % MTdata)) deallocate(self % MTdata)
+
     ! Get number of MT reaction
     NMT  = self % NXS(4)
     NMTs = self % NXS(5)
@@ -1329,31 +1346,35 @@ contains
   subroutine setFissionData(self)
     class(aceCard), intent(inout) :: self
     integer(shortInt)             :: ptr
-    logical(defBool)              :: hasNoNuBlock
     integer(shortInt)             :: KNU          ! Pointer to prompt/total Nu data
     character(100), parameter :: Here ='setFissionData (aceCard_class.f90)'
 
+    ! Clean Previous fission-related data
+    ! Necessary to ensure that reloading is correct
+    self % isFiss       = .false.
+    self % hasFISBlock  = .false.
+    self % fissIE       = unINIT
+    self % fissNE       = unINIT
+    self % fissXSp      = unINIT
+    self % promptNUp    = unINIT
+    self % delayNUp     = unINIT
+    self % totalNUp     = unINIT
+
     ! Check is the nuclide is fissile
-    self % isFiss = (self % JXS(21) /= 0)
+    self % isFiss = (self % JXS(2) /= 0)
+
+    ! Check if it has FIS block with XS
+    self % hasFISBlock = (self % JXS(21) /= 0)
+
+    ! Exit if nuclide is not fissile
+    if (.not.self % isFiss) return
 
     ! Read data releted to FIS block
-    if(self % isFiss) then
+    if (self % hasFisBlock) then
       ptr = self % JXS(21)
       self % fissIE  = real2Int( self % XSS(ptr),Here)
       self % fissNE  = real2Int( self % XSS(ptr+1),Here)
       self % fissXSp = self % JXS(21) + 2
-
-    end if
-
-    ! Check if NU data is provided
-    hasNoNuBlock = (self % JXS(2) == 0)
-
-    ! NU data can be provided even when nuclide is not marked fissle
-    if(self % isFiss .and. hasNoNuBlock) then
-      call fatalError(Here,'Nuclide is fissile but no NU data is provided. WTF?')
-
-    else if (hasNoNuBlock) then ! Leve the subroutine and do not process the NU data
-      return
 
     end if
 
@@ -1456,9 +1477,6 @@ contains
 
     ! Read XSS array
     read(aceFile,*) self % XSS(1:self % NXS(1))
-
-    ! Make sure that MTdata is deallocated
-    if(allocated(self % MTdata)) deallocate(self % MTdata)
 
     ! Close input file
     close(aceFile)

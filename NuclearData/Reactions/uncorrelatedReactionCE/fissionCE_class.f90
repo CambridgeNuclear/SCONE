@@ -45,6 +45,9 @@ module fissionCE_class
   !!
   !! Contains information about Fission reaction based on ACE format
   !!
+  !! Can use prompt energy spectrum based on either generic fission reaction (MT=18)
+  !! or based on 1st chance fission (MT=19).
+  !!
   !! Private Members:
   !!   nuBarTotal   -> Total (prompt & delayed) release table for incident energy [MeV]
   !!   eLawPrompt   -> Energy Law for the prompt fission neutrons
@@ -93,14 +96,14 @@ contains
     integer(shortInt), intent(in)   :: MT
     character(100),parameter :: Here ='init (fissionCE_class.f90)'
 
-    if( MT /= N_FISSION) then
-      call fatalError(Here,'fissionCE suports only MT=18. Was given: '//numToChar(MT))
+    if( MT /= N_FISSION .and. MT /= N_f) then
+      call fatalError(Here,'fissionCE suports only MT=18,19. Was given: '//numToChar(MT))
     end if
 
     ! Select buld procedure approperiate for given dataDeck
     select type(data)
       type is (aceCard)
-        call self % buildFromACE(data)
+        call self % buildFromACE(data, MT)
 
       class default
         call fatalError(Here,'Fission CE cannot be build from '//data % myType())
@@ -311,15 +314,20 @@ contains
   !!
   !! Build fissionCE from ACE dataCard
   !!
+  !! Provided MT will determine which energy spectrum is used.
+  !! Choice of MT has no effect on reading NU data.
+  !!
   !! Args:
   !!   ACE [inout] -> ACE Card with the data
+  !!   MT [in]     -> MT number for fission reaction. MT=18 or MT=19
   !!
   !! Errors:
   !!   fatalError if there is no NU data (JXS(2) == 0)
   !!
-  subroutine buildFromACE(self, ACE)
+  subroutine buildFromACE(self, ACE, MT)
     class(fissionCE), intent(inout)            :: self
     type(aceCard), intent(inout)               :: ACE
+    integer(shortInt), intent(in)              :: MT
     logical(defBool)                           :: withDelayed, onlyOneNu
     integer(shortInt)                          :: i, NR, N
     integer(shortInt),dimension(:),allocatable :: nrDat
@@ -342,7 +350,7 @@ contains
 
     ! Read basic data
     call new_totalNU(self % nuBarTotal, ACE)
-    call new_energyLawENDF(self % eLawPrompt, ACE, N_FISSION)
+    call new_energyLawENDF(self % eLawPrompt, ACE, MT)
 
     ! Read Delayed Data
     if(withDelayed) then

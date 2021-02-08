@@ -22,6 +22,18 @@ module elasticNeutronScatter_class
   !! Reaction type for Neutron Elastic Scattering
   !!
   !! Implements standard elastic neutron stattering
+  !! For conveniance can exist in two states: isotropic & anisotropic.
+  !! Data is assumed to be always in CoM-frame.
+  !!
+  !! NOTE:
+  !!   When building from ACE data don't be fooled by Appendix F of MCNP-4 manual.
+  !!   It is possible for LOCB for elastic scattering to be 0, which indicates isotropic
+  !!   scattering at all incident energies. Thus LOCB needs to be checked and `isotropic` flag
+  !!   set to a correct setting.
+  !!
+  !! Private Members:
+  !!   angularData -> tabularAngle type that holds the energy-dependant data
+  !!   isotropic   -> Flag, TRUE is scattering is isotropic at all incident energies
   !!
   !! Interface:
   !!   uncorrelatedReactionCE interface
@@ -30,6 +42,7 @@ module elasticNeutronScatter_class
   type, public, extends(uncorrelatedReactionCE) :: elasticNeutronScatter
     private
     type(tabularAngle) :: angularData
+    logical(defBool)   :: isotropic = .false.
   contains
     !! Superclass interface
     procedure :: init
@@ -88,6 +101,7 @@ contains
     class(elasticNeutronScatter), intent(inout) :: self
 
     call self % angularData % kill()
+    self % isotropic = .false.
 
   end subroutine kill
 
@@ -164,7 +178,13 @@ contains
     E_out = E_in
 
     ! Sample mu
-    mu = self % angularData % sample(E_in, rand)
+    if (self % isotropic) then
+      mu = TWO * rand % get() - ONE
+
+    else
+      mu = self % angularData % sample(E_in, rand)
+
+    end if
 
     ! Sample phi
     phi = rand % get() * TWO_PI
@@ -187,9 +207,16 @@ contains
     real(defReal), intent(in)                :: E_in
     real(defReal)                            :: prob
 
+    ! Catch isotropic case
+
     ! Check range and set mu prob
     if (abs(mu) <= ONE .and. E_out > ZERO) then
-      prob = self % angularData % probabilityOf(mu, E_in)
+      if (self % isotropic) then
+        prob = HALF
+      else
+        prob = self % angularData % probabilityOf(mu, E_in)
+      end if
+
     else
       prob = ZERO
     end if
@@ -213,12 +240,18 @@ contains
     class(elasticNeutronScatter), intent(inout) :: self
     type(aceCard), intent(inout)                :: ACE
 
-    ! Seat read head of ACE to elastic Scattering data
-    call ACE % setToAngleMT(N_N_ELASTIC)
+    ! Catch a case if LOCB==0 for elastic scattering
+    if (ACE % LOCBforMT(N_N_ELASTIC) == 0) then
+      self % isotropic = .true.
 
-    ! Initialise tabular angle
-    call self % angularData % init(ACE, N_N_ELASTIC)
+    else
+      ! Seat read head of ACE to elastic Scattering data
+      call ACE % setToAngleMT(N_N_ELASTIC)
 
+      ! Initialise tabular angle
+      call self % angularData % init(ACE, N_N_ELASTIC)
+
+    end if
   end subroutine buildFromACE
 
   !!
