@@ -91,6 +91,8 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real (defReal)    :: CPU_time_start
+    real (defReal)    :: CPU_time_end
 
   contains
     procedure :: init
@@ -254,13 +256,17 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(eigenPhysicsPackage), intent(in) :: self
-    type(outputFile)                       :: out
-    character(pathLen)                     :: path
-    character(nameLen)                     :: name
+    class(eigenPhysicsPackage), intent(inout) :: self
+    type(outputFile)                          :: out
+    character(pathLen)                        :: path
+    character(nameLen)                        :: name
 
     name = 'asciiMATLAB'
     call out % init(name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
 
     name = 'seed'
     call out % printValue(self % pRNG % getSeed(),name)
@@ -306,6 +312,8 @@ contains
     class(geometry), pointer                  :: geom
     integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
+
+    call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
