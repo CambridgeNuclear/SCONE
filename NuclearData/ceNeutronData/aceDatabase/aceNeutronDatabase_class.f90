@@ -341,7 +341,14 @@ contains
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
 
-    call self % updateMicroXSs(E, nucIdx, rand)
+    associate (nucCache => cache_nuclideCache(nucIdx), &
+               nuc      => self % nuclides(nucIdx)     )
+
+      nucCache % E_tot  = E
+      call nuc % search(nucCache % idx, nucCache % f, E)
+      nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+
+    end associate
 
   end subroutine updateTotalNucXS
 
@@ -356,14 +363,25 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
+    real(defReal)                         :: tot_temp
 
-    ! Verify if update is needed
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
+
+      ! In case the total XS hasn't been retrieved before (during tracking)
+      if (nucCache % E_tot /= E) then
+        nucCache % E_tot  = E
+        call nuc % search(nucCache % idx, nucCache % f, E)
+        nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+      end if
+
+      ! Save the total XS in a temporary variable
+      tot_temp = nucCache % xss % total
       nucCache % E_tail = E
-      nucCache % E_tot  = E
-      call nuc % search(nucCache % idx, nucCache % f, E)
+      ! Overwrites all the micro cross sections in cache
       call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+      nucCache % xss % total = tot_temp
+
     end associate
 
   end subroutine updateMicroXSs

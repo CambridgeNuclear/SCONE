@@ -318,6 +318,7 @@ contains
 
   !!
   !! Return interpolated neutronMicroXSs package for the given interpolation factor and index
+  !! The total cross section is calculated separatly, not to repeat its calculation twice
   !!
   !! Does not prefeorm any check for valid input!
   !!
@@ -338,7 +339,7 @@ contains
 
     associate (data => self % mainData(:,idx:idx+1))
 
-      xss % total            = data(TOTAL_XS, 2)     * f + (ONE-f) * data(TOTAL_XS, 1)
+      xss % total            = ZERO
       xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (ONE-f) * data(ESCATTER_XS, 1)
       xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
       xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
