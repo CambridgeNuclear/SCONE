@@ -1,5 +1,5 @@
 
-# Add Source Files to the global list 
+# Add Source Files to the global list
 add_sources( ./correlatedLawENDF_inter.f90
              ./correlatedLawENDFslot_class.f90
              ./correlatedLawENDFfactory_func.f90
@@ -7,4 +7,9 @@ add_sources( ./correlatedLawENDF_inter.f90
              ./correlatedPdfs/law61Pdf_class.f90
              ./kalbach87_class.f90
              ./endfLaw61_class.f90
-             ./nBodyPhaseSpace_class.f90) 
+             ./nBodyPhaseSpace_class.f90
+             ./multipleCorrelatedLaws_class.f90
+             ./testCorrelatedLaw_class.f90)
+
+
+add_unit_tests(./Tests/multipleCorrelatedLaws_test.f90)

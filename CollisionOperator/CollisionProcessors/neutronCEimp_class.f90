@@ -62,7 +62,7 @@ module neutronCEimp_class
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   type            neutronCEstd;
+  !!   type            neutronCEimp;
   !!   #minEnergy      <real>;#
   !!   #maxEnergy      <real>;#
   !!   #energyTreshold <real>;#
@@ -128,12 +128,12 @@ contains
   subroutine init(self, dict)
     class(neutronCEimp), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
-    character(100), parameter :: Here = 'init (neutronCEstd_class.f90)'
+    character(100), parameter :: Here = 'init (neutronCEimp_class.f90)'
 
     ! Call superclass
     call init_super(self, dict)
 
-    ! Read settings for neutronCEstd
+    ! Read settings for neutronCEimp
     ! Maximum and minimum energy
     call dict % getOrDefault(self % minE,'minEnergy',1.0E-11_defReal)
     call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
@@ -182,7 +182,7 @@ contains
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
     real(defReal)                        :: r
-    character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
+    character(100),parameter :: Here = 'sampleCollision (neutronCEimp_class.f90)'
 
     ! Verify that particle is CE neutron
     if(p % isMG .or. p % type /= P_NEUTRON) then
@@ -228,7 +228,7 @@ contains
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic
     logical(defBool)                     :: fiss_and_implicit
-    character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
+    character(100),parameter             :: Here = 'implicit (neutronCEimp_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
     fiss_and_implicit = self % nuc % isFissile() .and. self % implicitSites
@@ -325,8 +325,8 @@ contains
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff
-    character(100),parameter             :: Here = 'fission (neutronCEstd_class.f90)'
+    real(defReal)                        :: sig_nufiss, sig_fiss, k_eff
+    character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
     if (.not.self % implicitSites) then
       ! Obtain required data
@@ -337,11 +337,12 @@ contains
 
       call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
       sig_nufiss = microXSs % nuFission
-      sig_tot    = microXSs % total
+      sig_fiss   = microXSs % fission
 
       ! Sample number of fission sites generated
       ! Support -ve weight particles
-      n = int(abs( (wgt * sig_nufiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
+      ! Note change of denominator (sig_fiss) wrt implicit generation
+      n = int(abs( (wgt * sig_nufiss) / (w0 * sig_fiss * k_eff)) + rand1, shortInt)
 
       ! Shortcut particle generation if no particles were sampled
       if (n < 1) return
@@ -387,7 +388,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(elasticNeutronScatter),pointer  :: reac
-    character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
+    character(100),parameter :: Here = 'elastic (neutronCEimp_class.f90)'
 
     ! Get reaction
     reac => elasticNeutronScatter_TptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
@@ -424,7 +425,7 @@ contains
     class(particleDungeon),intent(inout)   :: thisCycle
     class(particleDungeon),intent(inout)   :: nextCycle
     class(uncorrelatedReactionCE), pointer :: reac
-    character(100),parameter  :: Here =' inelastic (neutronCEstd_class.f90)'
+    character(100),parameter  :: Here =' inelastic (neutronCEimp_class.f90)'
 
     ! Invert inelastic scattering and Get reaction
     collDat % MT = self % nuc % invertInelastic(p % E, p % pRNG)

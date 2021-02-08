@@ -36,7 +36,6 @@ contains
   !! Errors:
   !!   Allocated to noEnergy if MT is Elastic Scttering or Capture reaction
   !!
-  !!
   subroutine new_energyLawENDF(new, ACE, MT, delayed)
     class(energyLawENDF),allocatable, intent(inout) :: new
     type(aceCard), intent(inout)                    :: ACE
@@ -158,10 +157,10 @@ contains
   !!   LAW [in]    -> Integer indentifier of the ENDF law type
   !!   root [in]   -> Root location for this energy law data block (e.g. JXS(11))
   !!   offset [in] -> Location of the energy law relative to root
-  !!   ACE [inout] -> ACE Card with head set to the begining of data for law.
+  !!   ACE [inout] -> ACE Card with data
   !!
   !! Errors:
-  !!   Will crash if loc is set to incorrect location
+  !!   Will crash if root & offset point to an incorrect location
   !!
   subroutine buildENDFLaw(lawENDF, LAW, root, offset, ACE)
     class(energyLawENDF),allocatable, intent(inout) :: lawENDF
@@ -169,13 +168,12 @@ contains
     integer(shortInt), intent(in)                   :: root
     integer(shortInt), intent(in)                   :: offset
     type(aceCard), intent(inout)                    :: ACE
-    character(100),parameter :: Here='buildENDFLaw (energyLawENDFfactory_func.f90)'
+    character(100),parameter :: Here = 'buildENDFLaw (energyLawENDFfactory_func.f90)'
 
     ! Deallocate lawENDF if allocated
     if(allocated(lawENDF)) deallocate(lawENDF)
 
     ! Build approperiate energy Law
-    !call ACE % setToEnergyLaw(loc)
     call ACE % setRelativeTo(root, offset)
 
     ! Allocate new object
@@ -193,8 +191,8 @@ contains
         allocate(lawENDF, source = evaporationSpectrum(ACE))
 
       case default
-        print *, 'Energy Law Type :', LAW
-        call fatalError(Here,'Energy Law Type is not recognised, yet supported or is correlated')
+        call fatalError(Here,'Energy law type is not recognised or yet &
+                              &supported: '//numToChar(LAW))
 
     end select
 

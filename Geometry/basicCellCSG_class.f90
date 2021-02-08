@@ -337,7 +337,6 @@ contains
     if (maxDist < dist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       isColl = .true.
-      maxDist = ZERO
 
     else if (surfIdx == self % geom % boundaryIdx) then ! Crosses domain boundary
       ! Move global to the boundary
@@ -356,14 +355,14 @@ contains
       ! Return particle to geometry
       call self % placeCoord(coords)
       isColl = .false.
-      maxDist = max(maxDist - dist, ZERO)
+      maxDist = dist
 
     else ! Crosses cell to cell boundary
       ! Move to the boundary at "level"
       call coords % moveLocal(dist, level)
       uniIdx = coords % lvl(level) % uniIdx
       isColl = .false.
-      maxDist = max(maxDist - dist, ZERO)
+      maxDist = dist
 
       associate (g => self % geom)
 
@@ -517,7 +516,6 @@ contains
           surfIdx = sIdxTest
           level   = l
         end if
-
       end do
     end associate
   end subroutine closestDist

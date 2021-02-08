@@ -85,14 +85,13 @@ contains
   !! Move allocation from RHS to LHS slot
   !!
   subroutine moveAllocFrom(LHS,RHS)
-    class(correlatedLawENDFslot), intent(inout) :: LHS
-    type(correlatedLawENDFslot), intent(inout)  :: RHS
+    class(correlatedLawENDFslot), intent(inout)          :: LHS
+    class(correlatedLawENDF), allocatable, intent(inout) :: RHS
 
     if(allocated(LHS % slot)) deallocate (LHS % slot)
 
-    call move_alloc(RHS % slot, LHS % slot)
+    call move_alloc(RHS, LHS % slot)
 
   end subroutine moveAllocFrom
 
-    
 end module correlatedLawENDFslot_class
