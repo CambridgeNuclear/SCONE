@@ -191,10 +191,10 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(fixedSourcePhysicsPackage), intent(in) :: self
-    type(outputFile)                             :: out
-    character(pathLen)                           :: path
-    character(nameLen)                           :: name
+    class(fixedSourcePhysicsPackage), intent(inout) :: self
+    type(outputFile)                                :: out
+    character(pathLen)                              :: path
+    character(nameLen)                              :: name
 
     name = 'asciiMATLAB'
     call out % init(name)
