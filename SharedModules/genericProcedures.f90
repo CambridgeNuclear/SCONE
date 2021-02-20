@@ -75,14 +75,27 @@ module genericProcedures
 
   contains
 
-  pure function binaryFloorIdxClosed_Real(array,value) result(idx)
-    !! Performes binary search of an real sorted array and returns index of the largest element
-    !! smaller-or-equal to the requested value. For the value equalt to the largest element
-    !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
-    !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
-    !! paramether. Following errors can happen
-    !!   valueOutsideArray -> larger or smaller then array bounds
-    !!   tooManyIter       -> algorithm did not convarged in required number of iterations
+
+  !!
+  !! Binary search for the largest smaller-or-equal element in the array
+  !!
+  !! Finds a location of a value in a sorted array by a binary search. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of reals. Must be in increasing order (a_i <= a_j for j > i)
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Returns:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
+  !!   idx == tooManyIter if search fails to terminate
+  !!
+  pure function binaryFloorIdxClosed_Real(array, value) result(idx)
     real(defReal),dimension(:),intent(in) :: array
     real(defReal),intent(in)              :: value
     integer(shortInt)                     :: idx
@@ -119,12 +132,22 @@ module genericProcedures
   end function binaryFloorIdxClosed_Real
 
   !!
-  !! Performes linear search of an real sorted array and returns index of the largest
-  !! element smaller-or-equal to the requested value. For the value equal to the largest element
-  !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
-  !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
-  !! paramether. Following errors can happen
-  !!   valueOutsideArray -> larger or smaller then array bounds
+  !! Linear search for the largest smaller-or-equal element in the array
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of reals. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
   !!
   pure function linearFloorIdxClosed_Real(array,value) result (idx)
     real(defReal),dimension(:),intent(in) :: array
@@ -143,10 +166,22 @@ module genericProcedures
   end function linearFloorIdxClosed_Real
 
   !!
-  !! Performes linear search of an integer sorted array and returns index of the largest element,
-  !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
-  !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
-  !! for the value equal to the largest element it returns an error.
+  !! Linear search for the largest smaller-or-equal element in the array of integers
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of shortInts. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
   !!
   function linearFloorIdxClosed_shortInt(array,value) result(idx)
     integer(shortInt),dimension(:),intent(in) :: Array
@@ -166,11 +201,23 @@ module genericProcedures
   end function linearFloorIdxClosed_shortInt
 
   !!
-  !! Performes linear search of an integer sorted array and returns index of the smallest element,
-  !! which is greater-or-equal to the requested value. Returns errors for elements larger than
-  !! the upper bound of the array. Returns 1 for values smaller or equal to the lower bound of the
-  !! array. Following errors can happen:
-  !!   valueOutsideArray -> larger then the upper bound of array
+  !! Linear search for the smallest larger-or-equal element in an array of integers
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "ceiling" of the bin in which the value lies
+  !!
+  !! Search is "open" below the array i.e. for value <= a(1) returns 1.
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of shortInts. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "ceiling" in the array.
+  !!   If value <= a(a) returns 1.
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value > a(N)
   !!
   pure function linearCeilingIdxOpen_shortInt(array,value) result(idx)
     integer(shortInt),dimension(:),intent(in) :: Array
@@ -190,6 +237,12 @@ module genericProcedures
   !!
   !! Subroutine that checks whether there was an error during search and returns approperiate
   !! message.
+  !!
+  !! TODO: IT IS POINTLESS AND WILL BE REMOVED.
+  !! ERROR HANDLING FOR SEARCHES SHOULD BE DONE BY CLIENT
+  !!
+  !! Although it can be replaced by ERROR_CODE -> ERROR_MESSAGE translation function to
+  !! give nice strings instead of raw integers in the error messages... 
   !!
   subroutine searchError(idx,Here)
     integer(shortInt),intent(in)  :: idx
