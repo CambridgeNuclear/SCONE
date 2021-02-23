@@ -7,15 +7,15 @@ Overview
 ''''''''
 
 A number of terms is going to be introduced in this section (e.g. *surface tolerance*,
-*surface transparency*). These names are specific to SCONE. Similar concept can be found
-in other codes under different names.
+*surface transparency*). These names are specific to SCONE. However, very similar concepts
+can be found in other codes albeit under different names.
 
 Constructive Solid Geometry
 ---------------------------
 
-Constructive Solid Geometry (CSG) is a standard way to represent volumes in Monte Carlo Codes.
-Many better references that explain details of how it works are available [RefList], thus only a
-brief overview will be given here.
+Constructive Solid Geometry (CSG) is a standard way to represent volumes in Monte Carlo codes.
+Many better references that explain details of how it works are available [Salvat]_ [Briesmeister]_,
+thus only a brief overview will be given here.
 
 In principle, a surface can be represented by an equation :math:`0 = F(r)`. Thus, for any point in
 a geometry it is possible to evaluate :math:`F(r) = c`. Now *halfspaces* can be defined using the
@@ -23,18 +23,18 @@ sign of the *remainder* (:math:`c`) of the surface expression. Positive (+ve) ha
 to :math:`c > 0` and is considered an *outside* of the surface. Similarly, negative (-ve) halfspace
 is associated with :math:`c < 0` and is considered an *inside* of the surface. Clearly each surface
 subdivides the entire space into two halfpaces. Ideally there would be no need to consider a case
-of :math:`c = 0`, as the probability of finding a randomly placed point exactly at the surface it
-zero. However, if the movement of particles is explicitly tracked, often particles will need to be
-stopped exactly at the surface so new material can be determined and new distance to collision
-sampled. Thus, some extra methods to deal with the vicinity of the surface are required, which
-will be outlined later.
+of :math:`c = 0`, as the probability of finding a randomly placed point exactly at the surface is
+zero. However, in Monte Carlo transport simulations the movement of the particles is often explicitly
+resolved, which means that they need to be temporally stopped at the material interface in order
+to resample their flight distance. As a result, significant care must be taken to ensure
+a correct behaviour of the geometry implementation in the vicinity of surfaces (small :math:`c`).
 
 The binary subdivision of a whole space is rarely sufficient. More practical volumes can be defined
 with set expressions on the halfspaces. In other words, an almost arbitrary volume can be
 constructed by unions, intersections and complements (differences). A volume defined in such a way
 constitutes a *cell*. It is important to note that a cell does not have to be compact [*]_ due to
 the union operation, which can combine disjoint halfspaces. Computationally, it is easiest
-to deal with cells that are created by intersections only. As a result such cells are called
+to deal with cells that are created by intersections only. As a result, such cells are called
 *simple cells*. Cells that include other logical operations (unions, complements) will be called
 just *cells* or *full cells*.
 
@@ -46,37 +46,35 @@ just *cells* or *full cells*.
 Geometry as a Directed Acyclic Graph
 ------------------------------------
 
-With surfaces and cells, it is possible to subdivide the entire space into disjoint regions, which
-can be assigned with a material composition. It is important that all these cells are disjoint [*]_
-as any overlap would lead to ambiguity in the material composition inside a space that belongs to
-multiple cells. A complete subdivision of the entire space into cells with come content is called
-a *universe*. Since cells that are part of the universe may not be defined using the CSG
-representation, they are refereed to in SCONE as *local cells* to distinguish them from the CSG
-cells introduced in previous section.
+With surfaces and cells, it is possible to subdivide the entire space into disjoint regions.
+In SCONE we call such subdivision a *universe*. However, it is important to note that in principle
+this subdivision may be accomplished by other means that the CSG cells introduced in the previous
+section. Thus, to emphasise this difference, we call the cells that are part of a universe
+*local cells*. For some universes they might be CSG cells as well, but they do not have to.
 
-In principle, a single universe is sufficient to perform a simulation. However, such *single level*
-representations are cumbersome to define by a user and pose a difficulty for efficient particle
-tracking. Furthermore, practical problems are usually composed of a number of repeated structures.
-For example a PWR reactor is a collection of fuel assemblies with the same geometrical shape.
-In addition, each assembly is a similar collection of individual pin cells. It is possible to take
-advantage of such properties by using the concept of *universe nesting* (*nested universes* or
-*nesting*). Instead of filling a local cell with a material, it is possible to fill it with a
-*nested universe*, which is an independent, new subdivision of the entire space. Thus a cell with
-a *universe filling* becomes a portal (the cake is a lie!) into a new universe. Thus, it is
-possible that a particle is present in multiple universes simultaneously. Each of these universes
-is called a level. Thus, if nesting is used, we are dealing with a *multi-level geometry*.
-Furthermore, because each cell portal can be associated with a translation and rotation,
-coordinates on each level may be different.
+In principle, a single universe is sufficient to perform a simulation. Each local cell could be
+assigned with a material and that would be complete definition of a problem domain. Such
+*single level* representation might be sufficient for a number of problems. However, in
+the context of a reactor physics, where the problem geometry may be composed of literally tens of
+thousands individual fuel pins, the single level approach would be cumbersome to a user, error
+prone and often computationally inefficient. Fortunately, it is possible to take advantage of the
+repeated nature of the reactor problems via the concept of *universe nesting* (*nested universes* or
+*nesting*). Instead of filling a local cell in a universe with a material, it is possible to fill
+it with a *nested universe*, which is an independent, new subdivision of the entire space.
+Thus, a cell with a *universe filling* becomes a portal (the cake is a lie!) into a new universe.
+Consequently, it is possible that a particle is present in multiple universes simultaneously.
+Each of these universes is called a level. Thus, if nesting is used, we are dealing with a
+*multi-level geometry*. Furthermore, because each cell portal can be associated with a translation
+and rotation, coordinates on each level may be different.
 
 Universe nesting structure is a significantly different problem from the spatial subdivisions
-within a universe. It can be represented in the a independent of spatial information with a
-directed acyclic graph (DAG). Each universe can be considered a node in the graph with a
-transition (edge) associated with each local cell in that universe. Target of a transition is
-the content of the cell. If the cell is a portal, then the target is another universe node.
-Otherwise, if the cell is filled with a material, transition points to a node without any
-transitions of its own. Effectively, it can be though of as a universe filled entirely with
-a single material. Such *material node* is called a *sink* (since it cannot be escaped,
-it is terminal).
+within a universe. It can be represented with a directed acyclic graph (DAG).
+Each universe can be considered a node in the graph with a transition (edge) associated with each
+local cell in that universe. Target of a transition is the content of the cell. If the cell is a
+portal, then the target is another universe node. Otherwise, if the cell is filled with a material,
+transition points to a node without any transitions of its own. Effectively, it can be though of
+as a universe filled entirely with a single material. Such *material node* is called a *sink*
+(since it cannot be escaped, it is terminal).
 
 Multi-level geometry must begin with a single starting universe node, which is called a
 *root universe*. Now a point can be placed somewhere in this universe. This location is associated
@@ -96,7 +94,7 @@ would enter an infinite loop.
   A sample directed acyclic graph representing geometry structure for a simple problem composed
   of 2x2 lattice of pins.
 
-For illustration :ref:`Figure 1 <fig-DAGgeom>` shows a DAG structure of a very simple geometry
+For illustration, :ref:`Figure 1 <fig-DAGgeom>` shows a DAG structure of a very simple geometry
 composed of 2x2 lattice of pins. In SCONE, by definition, root universe is composed of two cells
 only. One corresponds to the inside of the calculation domain and the other to the outside. Below
 the root there is a lattice universe composed of five cells in total. Four cells are associated
@@ -128,33 +126,21 @@ does not distinguish individual grey pin cells. From its point of view it is jus
 pin that is present in three different places simultaneously. Clearly the solution would be
 to copy the grey pin universe to create separate sinks for each instances as shown in
 :ref:`Figure 2 <fig-Geomtree>`, which converts the DAG into a tree. This copy could be done
-"by hand" in an input file, however this is likely to be both error-prone and cumbersome to a user.
+"by hand" in an input file, however this is likely to be both error prone and cumbersome to a user.
 
 However, as mentioned earlier, spatial subdivision in a universe and representation of the nesting
 structure are different problems. It is significant, because the decomposition
 into a tree needs to be performed only from the point of view of the structure. All of the copied
-universes share the same description of the space subdivision despite bearing different content.
+universes share the same description of the spatial subdivision despite bearing different content.
 In general, description of space requires much more memory then the description of the content.
 Thus, a considerable amount of memory can be saved if the copied instances of the universe share the
 description of the spatial subdivision, because in many practical calculations the copied universes
-can number in tens of thousands.
+may number in thousands.
 
 The problem of assigning unique IDs to material cells can also be looked at from a slightly different
 perspective by noting that each cell instance corresponds to a unique path in the DAG between source
 (root universe) and the sink. Thus, the problem of a sink identity can be approached by counting
 (and enumerating) unique paths in the DAG between root (source) and a particular sink.
-
-.. [*] Things can get a bit weird when one is interested about the boundary surfaces between cells.
-      If cells are open, then surfaces would be undefined, without material composition. On the
-      other hand if cells were closed, composition of boundary surfaces would become ambiguous.
-      In ideal world of infinite numerical precision it wouldn't matter as the volume of the
-      surfaces in 3D space is always zero. In practical case with finite precision, membership
-      in a cell is dependent on both position and a direction (of the flight of a particle). Point
-      at the surface is contained in a cell if its direction is pointing into a cell (particle is
-      moving into the cell). Clearly this scheme can slightly change the effective volumes of
-      cells depending on the value of net particle current. In comparison to other inaccuracies
-      (e.g. nuclear data parameters) this is unlikely to be a problem.
-
 
 Membership at a surface
 -----------------------
@@ -192,8 +178,8 @@ and *co-ordinate transform*. Explicit treatment is more natural and general. In 
 tracking of the system boundary is performed. If a particle is to leak out of the system it is
 moved to the boundary and the type of boundary condition is checked. If it is vacuum BC, then a
 particle is removed from the calculation. If it isn't, any transformation of a particle state
-can be performed (reflection, albedo reflection or transition in periodic BCs) after which the
-distance to a collision may be resampled and tracking can proceed as normal.
+can be performed (reflection, albedo reflection or transition in a periodic BCs) after which the
+distance to a collision is resampled and tracking may proceed as normal.
 
 Co-ordinate transform treatment is more subtle and it is based on the observation that in
 the majority of problems, reflective and periodic BCs are introduced to convert a finite region
@@ -295,7 +281,7 @@ Universe Polymorphism
 ---------------------
 
 Geometry of a nuclear reactor is structured. It is a collection of a large number of repetitions
-of simple arrangements such as fuel pins and fuel assemblies. Furthermore these components are
+of simple arrangements such as fuel pins and fuel assemblies. Furthermore, these components are
 placed in a highly regular lattices. When reactor geometry is modelled in a MC code it is possible
 to use all this extra information about the structure to significantly accelerate geometry
 procedures. For example, in a Cartesian lattice with constant pitch it is possible to find a cell
@@ -313,27 +299,6 @@ Components
 
 This is a list of main components used in SCONE geometry implementation with their role
 (responsibility) and some extra comments.
-
-Structure Outline
------------------
-
-.. _fig-GeomObjects:
-
-.. figure:: Images/GeomStructureT.png
-  :scale: 70 %
-  :align: center
-
-  Sketch of the geometry class structure. Arrows are loosely based on UML. Open triangle indicates
-  inheritance, black diamond composition and open diamond aggregation (stores a pointer to
-  another class).
-
-:ref:`Figure 7 <fig-GeomObjects>` is the sketch of the structure of geometry in SCONE. All geometry
-and field instances are stored in the *geometry registry*. An instance of the geometry is composed
-of two main subcomponents. ``geomGraph`` represents the universe nesting structure.
-``geometryRepresentation`` (name to change) represents the spatial subdivisions. Furthermore, it
-contains the storage structures for polymorphic instances of surfaces, cells and universes (it is
-like an array but each entry can have a different subclass), which are called shelves. Note, that
-a pointer to a surface can be a part of both a call and a universe (same for cell in a universe).
 
 Coord & Coord List
 ------------------
@@ -582,3 +547,11 @@ Note:
 
   * The convention is that all ``matIdx`` are +ve. Thus, it is possible to use the sign bit to
     distinguish between material and universe fill stored in the same integer array.
+
+
+References
+''''''''''
+
+.. [Salvat] F. Salvat, "PENELOPE-2014: A Code System for Monte Carlo Simulation of Electron and Photon Transport",
+       NEA, NEA/NSC/DOC(2015)3, 2015.
+.. [Briesmeister] J. F. Briesmeister, "MCNP - A General Monte Carlo N-Particle Transport Code", LANL, LA-13709-M, 2000.
