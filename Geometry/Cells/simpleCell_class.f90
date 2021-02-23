@@ -108,6 +108,9 @@ contains
     integer(shortInt)                       :: i
     logical(defBool)                        :: halfspace, sense
 
+    ! Keep compiler happy (in immpossible case of cell with no surfaces)
+    isIt = .false.
+
     do i= 1, size(self % surfaces)
       sense = self % surfaces(i) % surfIdx > 0
       halfspace = self % surfaces(i) % ptr % halfspace(r, u)
@@ -136,7 +139,7 @@ contains
     real(defReal)                           :: test_d
 
     d = INF
-    surfIdx = 0 
+    surfIdx = 0
 
     do i = 1, size(self % surfaces)
       test_d = self % surfaces(i) % ptr % distance(r, u)
