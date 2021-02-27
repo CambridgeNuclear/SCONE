@@ -83,6 +83,7 @@ module eigenPhysicsPackage_class
     character(pathLen) :: outputFile
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
+    real(defReal)      :: keff_0
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -141,7 +142,7 @@ contains
     neutron % pRNG   => self % pRNG
 
     ! Set initiial k-eff
-    k_new = ONE
+    k_new = self % keff_0
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -347,6 +348,9 @@ contains
     end if
     seed = seed_temp
     call self % pRNG % init(seed)
+
+    ! Initial k_effective guess
+    call dict % getOrDefault(self % keff_0,'keff_0', ONE)
 
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)

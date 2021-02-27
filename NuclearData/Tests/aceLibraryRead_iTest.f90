@@ -39,10 +39,10 @@ contains
     @assertEqual('1001.03c', ACE % ZAID)
     @assertEqual(0.999170_defReal, ACE % AW, TOL)
     @assertEqual(2.5852E-08 , ACE % TZ ,TOL * 2.5852E-08)
-    @assertEqual(2, ACE % numMT())
+    @assertEqual(1, ACE % numMT())
 
 
   end subroutine testReadingACELibrary
 
-    
+
 end module aceLibraryRead_iTest
