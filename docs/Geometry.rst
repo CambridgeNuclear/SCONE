@@ -372,6 +372,7 @@ There are three types of movement in the geometry:
      crossing a boundary between regions with different materials or uniqueID. If the particle
      hits the domain boundary, boundary conditions are applied and the movement is stopped. It
      is also possible that a particle may become lost, as a result of errors in geometry handling.
+     *move* can utilise the experimental *distance caching* if the cache is provided in the call.
   #. **move global**: Movement with explicit tracking of the domain boundary. Particle moves up to
      a given distance "above" the geometry ignoring all changes in composition or unique ID.
      However, it will stop upon hitting the domain boundary (after BCs are applied).
@@ -538,6 +539,100 @@ instance of a material cell with a unique path in the graph is assigned with an 
 
 Defining a geometry
 '''''''''''''''''''
+
+It is probably best to discuss how to define a problem geometry in SCONE on an example.
+The sample problem consists of a single fuel rod with a square 'core'. The dictionary with its
+definition is given below and the visualisation is shown in :ref:`Figure 7 <fig-geometry>` ::
+
+  geometry {
+    type geometryStd;
+    boundary ( 1 1 2 2 0 0);
+    graph { type shrunk; }
+
+    surfaces {
+      squareBound { id 1; type box; origin (0.0 0.0 0.0); halfwidth (5.0 5.0 5.0);}
+      smallBound {id 2; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.3 0.3 0.0);}
+     }
+
+    cells {
+      inner {id 1; type simpleCell; surfaces (-2); filltype mat; material core;}
+      outer {id 3; type simpleCell; surfaces (2); filltype mat; material cover;}
+    }
+
+    universes {
+      root { id 1; type rootUniverse; border 1; fill u<10>;}
+
+      pin31 { id 10;
+              type pinUniverse;
+              origin (1.0 0.0 0.0); rotation (0.0 30.0 0.0);
+              radii (0.900 0.0 ); fills (u<11> water);
+            }
+
+      cellUni { id 11;
+                type cellUniverse;
+                cells (1 3);
+              }
+    }
+  }
+
+The definition of the geometry is specified in a sub-dictionary (in the main input file) called
+`geometry`, which must contain four additional sub-dictionaries: `graph`, `surfaces`,
+`cells` and `universes`. In addition, keywords `type` and `boundary` must be provided. The former
+specifies the type of the geometry to be build (only ``geometryStd`` is available at the moment),
+the latter contains a list of integers to specify boundary conditions (0-Vacuum, 1-Reflective,
+2-Periodic). The association between the integers and faces of a boundary surface depends on the
+surface type. Thus, check the documentation comment of a particular surface type for details.
+
+.. _fig-geometry:
+
+.. figure:: Images/x_cut.png
+  :scale: 30%
+  :align: center
+
+  Visualisation of the geometry. Plane is normal to x axis through point :math:`(1,0,0)`
+
+Meaning of each sub-dictionary is obvious. For extra details please refer to documentation comments
+of ``geomGraph``, ``surfaceShelf``, ``cellShelf`` and ``universeShelf`` types. Please remember
+that in `Sample dictionary input` section hashes (``#...#``) mark optional entries. It is also worth
+to note that when a material filling needs to be specified in a universe definitions, a nested
+universe can be placed there instead with the ``u<uni_id>`` syntax. The only exceptions are fillings
+of cells, where the filling type needs to be explicitly specified. The question that probably
+comes to your mind right now is "*what will happen if I name a material e.g. u<223>?*".
+The answer is that it will be interpreted as universe with id 233, without any warning.
+
+Unfortunately at the moment reference to different surfaces, universes and cells is made only by
+`id`, which must be a positive integer. Sadly, it significantly reduces the readability of an
+input file. The official excuse why it is the case is the usual `strings are messy in Fortran`.
+We will try to do better in the future...
+
+SCONE has a major restriction on a root universe (1st top level universe) in the geometry definition.
+It has to be of type ``rootUniverse``, which is composed of a single surface that separates
+the entire space into `inside` and `outside` region. In the example above this special universe is
+included in `universes` sub-dictionary under keyword `root`, which is a default. Different keyword
+may be used by providing the universe id by ``root`` entry in the `geometry` dictionary
+(see ``csg`` class for details ).
+
+The reason for this quirky requirement is the combination of the
+use of *body surfaces* (e.g. box) and support for both the co-ordinate transform and explicit
+boundary conditions. The co-ordinate transform treatment forces a requirement for the domain
+boundary to be composed of a single computational surface only (e.g. box). This, on the other hand,
+creates a problem in a case of a partial surface overlap with the boundary surface on the root level
+(e.g. where two boxes share a part of a face). Under this conditions it is possible for a particle
+to hit the non-boundary surface and after the cell crossing end up outside the domain. Since it does
+so without hitting the boundary surface explicitly, no boundary condition is applied and the
+particle always leaks. The easiest way to avoid this problem is to have a root universe defined
+with a single (boundary) surface.
+
+Further examples of working geometries are available in the `InputFiles` directory in the code
+repository. Also note that the maximum depth of the geometry in SCONE is hard-coded. If you want
+to create geometry deeper than allowed, change ``HARDCODED_MAX_NEST`` in ``UniversalVariables.f90``
+and recompile.
+
+.. note::
+  Refer to documentation comments for syntax and details
+    Do it since the details of the syntax required do define different surfaces, cells or universes
+    is provided only in the documentation comments of their respective classes (in
+    `Sample Input Dictionary` section). Information there will always be up-to-date.
 
 
 References
