@@ -297,30 +297,40 @@ problems.
 Components
 ''''''''''
 
-This is a list of main components used in SCONE geometry implementation with their role
-(responsibility) and some extra comments.
+This section is intended as a brief guide to the main components used in the SCONE geometry.
+Its purpose is to explain the logic and the intention behind why a particular component exists
+and what is its role.
 
 Coord & Coord List
 ------------------
 The purpose of the ``coords`` class in SCONE is to hold all the information related to a position
 of a particle in phase-space at a single level in the geometry. The ``coordList``, as the name
 suggests, is a list of ``coords``. It has a single entry for each level of the geometry. In addition
-it contains extra information about material composition and unique ID at the current position.
+it contains extra information about the material composition and the unique ID at the current position,
+which cannot be stored in ``coords`` since they are properties of a point in the domain, not of
+a point in a particular universe.
 
-**coords Responsibilities**:
+Furthermore ``coords``:
 
-  * Hold position (:math:`\bf{r}`) and direction (:math:`\bf{u}`) of the particle
-  * Contain informations about rotations of co-ordinate frame with respect to previous level
-  * Hold information about: local cell ID (``localID``); universe index (``uniIdx``); position
-    of the universe in graph representation of geometry structure (``uniRootID``)
+  #. contains information about rotations and translations of co-ordinate frame with respect to
+     the *previous* level in the geometry
+  #. holds necessary information about position of a particle in a given universe:
+     position (:math:`\bf{r}`), direction (:math:`\bf{u}`), local cell ID (``localID``),
+     universe index (``uniIdx``) and position of the universe in graph representation of geometry
+     structure (``uniRootID``)
+  #. (**NOT YET IMPLEMENTED**) holds *cookies* to allow universes to retain memory about a state.
+     These are: position in a lattice (``ijk``) and a general cookie (``mem``) which is an arbitrary
+     piece of memory stored as character. Such method is to allow universe to have some memory in
+     a thread-safe fashion.
 
-**coordList Responsibilities**:
 
-  * Contain current the number of levels occupied by the particle (``nesting``)
-  * Hold ``coords`` for each level in the geometry
-  * Hold material index (``matIdx``) and unique cell ID (``uniqueID``) for the current position of
-    the particle
-  * Hold a position of the particle in time
+Furthermore ``coordList``:
+
+  #. Contain current the number of levels occupied by the particle (``nesting``)
+  #. Hold material index (``matIdx``) and unique cell ID (``uniqueID``) for the current position of
+     the particle
+  #. Hold a position of the particle in time
+
 
 It is worth to note that the ``coordList`` can exist in three different states:
 
@@ -337,27 +347,24 @@ Geometry Registry
 -----------------
 
 Geometry registry is an object-like module (singleton) that manages the lifetime of different
-geometry and field definitions.
-
-**Responsibilities**:
-
-  #. Build all defined geometries and fields from dictionaries
-  #. Return a pointer to a geometry or a field specified by an index (``geomIdx`` or ``fieldIdx``)
+geometry and field definitions. A client code creates a geometry by providing the
+registry with a dictionary with its definition. Then it can be accessed from different places
+in the code via `geomPtr` function, which returns a pointer to initialised instance of the geometry.
+The same applies for a fields.
 
 Geometry
 --------
 
-Geometry is the primary interface for interaction with a geometry representation.
+Geometry is the primary interface for interaction with a geometry representation. It is intended to:
 
-**Responsibilities**:
-
-  #. Perform movement of a particle via ``coordList``
+  #. Perform movement of a particle. Note that what is actually moved in not the ``particle`` class,
+     but the ``coordList``.
   #. Return pixel/voxel plots of the geometry
   #. Return material/uniqueID at a given point in the geometry
   #. Initialise (put) ``coordList`` in the geometry
   #. Return axis-aligned bounding box (AABB) of the whole domain. If the box would
      stretch to infinity in some axis, width for that axis is assumed to be 0.
-  #. Return a pointer to a universe indicated by ``uniIdx``
+  #. (**NOT YET IMPLEMENTED**) Return a pointer to a universe indicated by ``uniIdx``
 
 There are three types of movement in the geometry:
 
@@ -377,53 +384,45 @@ Surface
 Surface exists to perform binary subdivision of the space into +ve and -ve halfspace. These
 halfspaces are used to define smaller volumes in the problem domain.
 
-SCONE, unlike many other Monte Carlo codes, does not limit the allowable surfaces to quadratic
-surfaces. More complicated shapes like boxes, truncated cylinders or parallelepiped are permitted.
-Each surface has an ID, which is a +ve integer and is used in geometry definitions in input file.
-Inside SCONE, a surface is identified by its index (``surfIdx``) different from its ID.
+SCONE, does not limit the allowable surfaces to quadratic surfaces. More complicated shapes like
+boxes, truncated cylinders or parallelepiped are permitted. Each surface has an ID, which is a
++ve integer and is used in geometry definitions in input file. Inside SCONE, a surface is
+identified by its index (``surfIdx``) different from its ID. Each surface:
 
-**Responsibilities**:
-
-  #. Determine a halfspace the particle is in (using *surface tolerance*)
-  #. Calculate a distance along the flight to the next crossing between -ve and +ve halfspaces
+  #. determines a halfspace the particle is in (using *surface tolerance*)
+  #. calculates a distance along the flight to the next crossing between -ve and +ve halfspaces
      taking *surface transparency* into account
-  #. Apply ordinary boundary conditions
-  #. Apply co-ordinate transform boundary conditions
-  #. Return axis-aligned bounding box (AABB), that fully encompasses a surface. If the box would
+  #. applies ordinary boundary conditions
+  #. applies co-ordinate transform boundary conditions
+  #. returns axis-aligned bounding box (AABB), that fully encompasses a surface. If the box would
      stretch to infinity in some axis, width for that axis is assumed to be 0.
 
-**Note that**:
-
-  * There is no check if the surface definitions are unique. Two surfaces that are exactly the same
-    but have different ID can be defined (however there is no reason to do that and it should be
-    avoided).
-  * It is possible that the magnitude of the *surface tolerance* may become a property of the
-    surface in the future.
+.. note::
+  #. There is no check if the surface definitions are unique. Two surfaces that are exactly the same
+     but have different ID can be defined (however there is no reason to do that and it should be
+     avoided).
+  #. Each surface has its own value of surface tolerance. The ``SURF_TOL`` constant is more of a
+     guideline really (surface tolerance of a surface aims to be as close to ``SURF_TOL`` as
+     reasonably practicable [pun intended]. But for many surfaces (e.g. ellipses) exact equality
+     would complicate code and hurt performance).
 
 Cell
 ----
 
 Cell exist as a separate objects only for convenience. They are intended to be used only by
-universes.
-
-Cell represents a volume of space. It may or may not use any surfaces for its definition.
-
-**Responsibilities**:
-
-  #. Calculate distance to the boundary of the cell given that a particle is inside the cell.
-  #. Determine if a particle is in the cell
-  #. Return AABB of the cell.
+universes. Cell as a class represents a volume of space. It may or may not use any surfaces for
+its definition.
 
 Universe
 --------
 
 Universe represents a complete subdivision of the space into a disjoint regions (called *local
 cells*), each assigned with a local ID. Furthermore, it is a part of the geometry interface and
-user code may (if required) interact with universes directly (pointer to a universe can be obtained
+client code may (if required) interact with universes directly (pointer to a universe can be obtained
 form geometry).
 
 Each universe may be associated with an offset and/or rotation, which is applied to the coordinates
-upon entering the universe from a higher level.
+upon *entering* the universe from a higher level.
 
 Each local cell in a universe can also have an offset, which is a translation applied to
 co-ordinates before entering a lower level universe through the local cell. Thus, the position
@@ -460,32 +459,22 @@ follow so called `x-convention <https://mathworld.wolfram.com/EulerAngles.html>`
 Note that the translation due to offset is performed before rotation. The *x-convention* for Euler
 angles is also called ZXZ because the 1st rotation (by :math:`\phi \in \left<0,2 \pi \right>`) is
 performed over the Z-axis. The 2nd rotation (by :math:`\theta \in \left<0,\pi \right>`) is around
-the rotated X-axis and the last rotation (by :math:`\psi \in \left<0,2 \pi \right>` ) is by the
+the rotated X-axis and the last rotation (by :math:`\psi \in \left<0,2 \pi \right>`) is by the
 rotated Z-axis.
 
-**Responsibilities**:
-
-  #. Enter the universe from a higher geometry level. Find local cell and apply any co-ordinate
-     transformations.
-  #. Find local cell in the universe given particle position & direction.
-  #. Calculate distance to the next boundary between local cells along a direction of a particle.
-  #. Given that a particle is at the boundary of a local cell, find ID of the next local cell.
-  #. Return an offset for a local cell.
-
-**Notes**:
-
-  * Procedures for: distance, finding local cell, performing crossing are passed with universe
-    with an intent `inout`, which means that they can modify a universe state. However, it can
-    cause problems in parallel calculations. Thus, under normal circumstances **these procedures
-    should not change the state of a universe**. If they do, it is responsibility of the programmer
-    to ensure that these modifications would work in parallel calculations.
-  * The procedure that calculates distance also returns a surface index, which is determined by
-    the universe. It is used to identify a surface, which is the next boundary along the particle
-    direction. Positive values of ``surfIdx`` indicate a surface that has been defined on
-    ``surfaceShelf``. Negative values indicate internal surfaces, that are defined only in the
-    universe. The value of the ``surfIdx`` provided in distance calculation is returned as an
-    input argument to the procedure that performs local cell crossings to potentially
-    accelerate/simplify it.
+.. note::
+  #. Procedures for: distance, finding local cell, performing crossing are passed with universe
+     with an intent `inout`, which means that they can modify a universe state. However, it can
+     cause problems in parallel calculations. Thus, under normal circumstances **these procedures
+     should not change the state of a universe**. If they do, it is responsibility of the programmer
+     to ensure that these modifications would work in parallel calculations.
+  #. The procedure that calculates distance also returns a surface index, which is determined by
+     the universe. It is used to identify a surface, which is the next boundary along the particle
+     direction. Positive values of ``surfIdx`` indicate a surface that has been defined on
+     ``surfaceShelf``. Negative values indicate internal surfaces, that are defined only in the
+     universe. The value of the ``surfIdx`` provided in distance calculation is returned as an
+     input argument to the procedure that performs local cell crossings to potentially
+     accelerate/simplify it.
 
 Hole Universe
 -------------
@@ -496,7 +485,6 @@ universe represents a geometrical set-up which is unfeasible to model with surfa
 However, it is still a subclass of ``universe`` so it must implement the distance & crossing
 procedures. Thus, if either of these procedures are called on a hole universe, execution is
 terminated with a fatal error.
-
 
 Fields
 ------
@@ -510,29 +498,25 @@ It is important to note that a field does not have to have physical interpretati
 a field should be used to represent target weight distribution for weight windows variance
 reduction.
 
-**Responsibilities**:
-
-  #. Given ``coordList`` return single vector or scalar associated with the point.
-
 Note that for now both the vector and scalar are real. Fields might be extended to complex
-numbers in the future.
+numbers in the future. Also fields have no implied representation. They can be just a single value
+in the entire space, they may be stored on a structured/unstructured mesh or some polynomial basis.
+The value of the field may also be completely independent of spatial co-ordinates and values might
+be assigned to regions by e.g. ``matIdx``.
 
 
-Geometry Graph
---------------
+Geom Graph
+----------
 
-As indicated in :ref:`previous section <DAG_GEOM>`, the structure of the universe nesting may be
+As indicated in :ref:`the previous section <DAG_GEOM>`, the structure of the universe nesting may be
 represented by a directed acyclic graph. In SCONE this representation is decoupled from the
 description of the spatial subdivision (via universes). ``geomGraph`` is meant to hold the graph
-of the universe nesting.
+of the universe nesting. It:
 
-**Responsibilities**:
-
-  #. Accept information about composition from universes during initialisation phase.
-  #. Check the validity of geometry structure
-  #. Change graph representation to support generation of unique cells
-  #. Given a position of a universe in the graph (``uniRootID``) and local
-     cell identifier (``localID``) return:
+  #. accepts information about composition from universes during initialisation phase.
+  #. checks the validity of geometry structure
+  #. given a position of a universe in the graph (``uniRootID``) and local
+     cell identifier (``localID``) it returns:
 
         * ``matIdx`` and ``uniqueID`` if the local cell contains material
         * ``uniIdx`` and new ``uniRootID`` if local cell contains a nested universe.
@@ -543,10 +527,17 @@ Geometry structure is considered valid if:
   #. There is no recurrence in the universe structure (is acyclic)
   #. Depth of the universe structure does not exceed the hardcoded limit (``MAX_GEOM_NEST``)
 
-Note:
 
-  * The convention is that all ``matIdx`` are +ve. Thus, it is possible to use the sign bit to
-    distinguish between material and universe fill stored in the same integer array.
+Currently ``geomGraph`` can be build as `shrunk` or `extended`. In `extended` configuration every
+instance of a material cell with a unique path in the graph is assigned with an its own ``uniqueID``.
+
+.. note::
+  The convention is that all ``matIdx`` are +ve. Thus, it is possible to use the sign bit to
+  distinguish between material and universe fill stored in the same integer array.
+
+
+Defining a geometry
+'''''''''''''''''''
 
 
 References
