@@ -256,6 +256,7 @@ contains
         ! Add microscopic XSs
         mat % xss % total = mat % xss % total + dens * cache_nuclideCache(nucIdx) % xss % total
       end do
+
     end associate
 
   end subroutine updateTotalMatXS
@@ -363,7 +364,6 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: tot_temp
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
@@ -372,15 +372,11 @@ contains
       if (nucCache % E_tot /= E) then
         nucCache % E_tot  = E
         call nuc % search(nucCache % idx, nucCache % f, E)
-        nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
       end if
 
-      ! Save the total XS in a temporary variable
-      tot_temp = nucCache % xss % total
       nucCache % E_tail = E
       ! Overwrites all the micro cross sections in cache
       call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
-      nucCache % xss % total = tot_temp
 
     end associate
 
