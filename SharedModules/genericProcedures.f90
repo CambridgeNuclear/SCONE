@@ -26,10 +26,19 @@ module genericProcedures
     module procedure hasDuplicates_defReal
   end interface
 
+  interface hasDuplicatesSorted
+    module procedure hasDuplicatesSorted_defReal
+  end interface
+
   interface removeDuplicates
     module procedure removeDuplicates_Char
     module procedure removeDuplicates_shortInt
+    module procedure removeDuplicates_Real
   end interface removeDuplicates
+
+  interface removeDuplicatesSorted
+    module procedure removeDuplicatesSorted_Real
+  end interface removeDuplicatesSorted
 
   interface linFind
     module procedure linFind_Char
@@ -40,6 +49,10 @@ module genericProcedures
 
   interface findDuplicates
     module procedure findDuplicates_Char
+  end interface
+
+  interface findDuplicatesSorted
+    module procedure findDuplicatesSorted_Real
   end interface
 
   interface binarySearch
@@ -64,13 +77,16 @@ module genericProcedures
     module procedure isDescending_shortInt
   end interface
 
-
   interface numToChar
     module procedure numToChar_shortInt
     module procedure numToChar_longInt
     module procedure numToChar_defReal
     module procedure numToChar_shortIntArray
     module procedure numToChar_defRealArray
+  end interface
+
+  interface concatenate
+    module procedure concatenateArrays_Real
   end interface
 
   contains
@@ -294,6 +310,38 @@ module genericProcedures
   end function removeDuplicates_shortInt
 
   !!
+  !! Removes duplicates from an unsorted realArray
+  !! Does not preserve the order
+  !!
+  function removeDuplicates_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)   :: realArray
+    real(defReal), dimension(:),allocatable   :: out
+    real(defReal), dimension(size(realArray)) :: array
+    real(defReal)                             :: test
+    integer(shortInt)                         :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    array(1) = realArray(1)    ! Copy first element
+    j = 2                     ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (any(array(1:j-1) == test)) cycle   ! Skip cycle if a duplicate is found
+        array(j) = test
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function removeDuplicates_Real
+
+  !!
   !! Function that removes duplicates from input character array. It returns array of equal or
   !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
   !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
@@ -327,6 +375,69 @@ module genericProcedures
         out = pack(charArray, unique)
     end if
   end function removeDuplicates_Char
+
+  !!
+  !! Removes duplicates from a sorted realArray
+  !! Preserves the order
+  !!
+  function removeDuplicatesSorted_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)   :: realArray
+    real(defReal), dimension(:),allocatable   :: out
+    real(defReal), dimension(size(realArray)) :: array
+    real(defReal)                             :: test
+    integer(shortInt)                         :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    array(1) = realArray(1)    ! Copy first element
+    j = 2                     ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (array(j-1) == test) cycle   ! Skip cycle if a duplicate is found
+        array(j) = test
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function removeDuplicatesSorted_Real
+
+  !!
+  !! Find duplicates from a sorted realArray
+  !! Returns an array with the index of the repeated element
+  !!
+  function findDuplicatesSorted_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)       :: realArray
+    integer(shortInt), dimension(:),allocatable   :: out
+    integer(shortInt), dimension(size(realArray)) :: array
+    real(defReal)                                 :: test
+    integer(shortInt)                             :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    j = 1                    ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (realArray(i-1) /= test) cycle   ! Skip cycle if a duplicate is not found
+        array(j) = i
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function findDuplicatesSorted_Real
 
   !!
   !! Function that finds duplicates in array of characters. Returns array that contains repeted
@@ -436,6 +547,22 @@ module genericProcedures
     end do
     idx = targetNotFound
   end function linFind_shortInt
+
+  !!
+  !! Given 2 arrays, it outputs a third array which is a concatenation of them
+  !!
+  function concatenateArrays_Real(array1,array2) result(out)
+    real(defReal),dimension(:),intent(in)              :: array1
+    real(defReal),dimension(:),intent(in)              :: array2
+    real(defReal),dimension(size(array1)+size(array2)) :: out
+    integer(shortInt)                                  :: N, M
+
+    N = size(array1)
+    M = size(array2)
+    out(1:N) = array1
+    out(N+1:N+M) = array2
+
+  end function concatenateArrays_Real
 
   !!
   !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
@@ -976,6 +1103,23 @@ module genericProcedures
     end do
 
   end function hasDuplicates_defReal
+
+  !!
+  !! Returns tue if array contains duplicates
+  !! Only for already sorted arrays
+  !!
+  pure function hasDuplicatesSorted_defReal(array) result(doesIt)
+    real(defReal), dimension(:), intent(in) :: array
+    logical(defBool)                        :: doesIt
+    integer(shortInt)                       :: i
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. array(i) == array(i-1)
+    end do
+
+  end function hasDuplicatesSorted_defReal
 
   !!
   !! Quicksort for integer array
