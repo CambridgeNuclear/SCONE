@@ -1,7 +1,7 @@
 module ceNeutronMaterial_class
 
   use numPrecision
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, binarySearch, numToChar
   use RNG_class,         only : RNG
   use particle_class,    only : particle
 
@@ -52,6 +52,9 @@ module ceNeutronMaterial_class
     real(defReal), dimension(:), allocatable     :: dens
     integer(shortInt), dimension(:), allocatable :: nuclides
     logical(defBool)                             :: fissile =.false.
+    real(defReal), dimension(:), allocatable     :: unionGrid
+    real(defReal), dimension(:), allocatable     :: totalXS
+    integer(shortInt),dimension(:,:),allocatable :: gridIdx
 
   contains
     ! Superclass procedures
@@ -68,6 +71,7 @@ module ceNeutronMaterial_class
     procedure, non_overridable :: sampleFission
     procedure, non_overridable :: sampleScatter
     procedure, non_overridable :: sampleScatterWithFission
+    procedure                  :: search
 
   end type ceNeutronMaterial
 
@@ -465,6 +469,41 @@ contains
     end select
 
   end function ceNeutronMaterial_TptrCast
+
+  !!
+  !! Search energy for grid and interpolation factor for energy E
+  !! Called only by aceNeutronDatabaseUni and UniIdx
+  !!
+  !! Interpolation factor definition:
+  !!   f = (E - E_low) / (E_top - E_low)
+  !!   E = E_top * f + E_low * (1-f)
+  !!
+  !! Args:
+  !!   idx [out] -> index of the bottom bin for energy E
+  !!   f   [out] -> value of the interpolation factor for energy E
+  !!   E   [in]  -> Energy to search for [MeV]
+  !!
+  !! Errors:
+  !!   If energy E is beyond range terminate with fatalError
+  !!
+  subroutine search(self, idx, f, E)
+    class(ceNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(out)       :: idx
+    real(defReal), intent(out)           :: f
+    real(defReal), intent(in)            :: E
+    character(100), parameter :: Here = 'search (ceNeutronMaterialUni_class.f90)'
+
+    idx = binarySearch(self % unionGrid, E)
+    if(idx <= 0) then
+      call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
+                           ' for material '//numToChar(self % matIdx))
+    end if
+
+    associate(E_top => self % unionGrid(idx + 1), E_low  => self % unionGrid(idx))
+      f = (E - E_low) / (E_top - E_low)
+    end associate
+
+  end subroutine search
 
 
 end module ceNeutronMaterial_class
