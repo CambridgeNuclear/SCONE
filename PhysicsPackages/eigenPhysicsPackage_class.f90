@@ -92,6 +92,7 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real (defReal)    :: time_transport = 0.0
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
 
@@ -230,6 +231,11 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
+
+    ! Load elapsed time
+    self % time_transport = self % time_transport + elapsed_T
+
+
   end subroutine cycles
 
   !!
@@ -265,10 +271,6 @@ contains
     name = 'asciiMATLAB'
     call out % init(name)
 
-    call cpu_time(self % CPU_time_end)
-    name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
-
     name = 'seed'
     call out % printValue(self % pRNG % getSeed(),name)
 
@@ -280,6 +282,13 @@ contains
 
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+
+    name = 'Total_Transport_Time'
+    call out % printValue(self % time_transport,name)
 
     ! Print Inactive tally
     call self % inactiveTally % print(out)
