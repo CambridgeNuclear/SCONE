@@ -1,384 +1,306 @@
 module pinUniverse_class
 
   use numPrecision
-  use universalVariables
-  use genericProcedures,   only : fatalError, hasDuplicates, linFind, targetNotFound, swap, numToChar
-  use vector_class,        only : vector
-  use dictionary_class,    only : dictionary
-  use intMap_class,        only : intMap
-  use charMap_class,       only : charMap
-
-  use coord_class,         only : coord
-  use surface_inter,       only : surface, surfaceSlot, surfaceShelf
-  use surfaceFactory_func, only : new_surface
-  use cell_class,          only : cell, cellShelf
-  use universe_inter,      only : universe
-
-
+  use universalVariables, only : INF, targetNotFound
+  use genericProcedures,  only : fatalError, numToChar, swap
+  use dictionary_class,   only : dictionary
+  use coord_class,        only : coord
+  use charMap_class,      only : charMap
+  use surfaceShelf_class, only : surfaceShelf
+  use cylinder_class,     only : cylinder
+  use cell_inter,         only : cell
+  use cellShelf_class,    only : cellShelf
+  use universe_inter,     only : universe, kill_super => kill, charToFill
   implicit none
   private
 
-  !!
-  !! Constructor
-  !!
-  interface pinUniverse
-    module procedure pinUniverse_fromDict
-  end interface
+  ! Parameters
+  ! Are public for use in unit tests
+  integer(shortInt), parameter, public :: MOVING_IN = -1, MOVING_OUT = -2
 
   !!
-  !! Small private type to group all data related to given annulus
+  !! Universe that represents a single pin
   !!
-  type, private :: annulus
-    integer(shortInt) :: cellIdx
-    integer(shortInt) :: surfIdx
-  end type annulus
-
+  !! Is composed from co-centring cylinders. Central cell has local ID 1 and the ID
+  !! increases with subsequent rings.
   !!
+  !! Sample Dictionary Input:
+  !!   pinUni {
+  !!     id 7;
+  !!     type pinUniverse;
+  !!     #origin (1.0 0.0 0.1);#
+  !!     #rotation (30.0 0.0 0.0);#
+  !!     radii (3.0 4.5 0.0 1.0 );
+  !!     fills (u<3> void clad u<4>);
+  !!   }
   !!
+  !!  There must be 0.0 entry, which indicates outermost annulus (infinate radius).
+  !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
+  !!  are sorted together with the `radii`. As a result, in the example, local cell 1 is
+  !!  filled with u<4>, cell 2 with u<3> etc.
   !!
-  type, public,extends(universe) :: pinUniverse
+  !! Public Members:
+  !!  r_sqr  -> Array of radius^2 for each annulus
+  !!  annuli -> Array of cylinder surfaces that represent diffrent annuli
+  !!
+  !! Interface:
+  !!   universe interface
+  !!
+  type, public, extends(universe) :: pinUniverse
     private
-    real(defReal), dimension(:), allocatable :: r
-    real(defReal), dimension(:), allocatable :: r2
-    type(annulus), dimension(:), allocatable :: data
-
-
+    real(defReal), dimension(:), allocatable  :: r_sq
+    type(cylinder), dimension(:), allocatable :: annuli
   contains
-    ! Build procedures
+    ! Superclass procedures
     procedure :: init
-    procedure :: cellIdx
-
-    ! Runtime procedures
+    procedure :: kill
     procedure :: findCell
     procedure :: distance
     procedure :: cross
     procedure :: cellOffset
-
-    ! Private procedures
-    procedure, private :: buildAnnuli
-    procedure, private :: makeFillVector
   end type pinUniverse
 
 contains
 
   !!
-  !! Initialise pinUniverse
-  !! use u<####> syntax for the universe fill
-  !! radius = 0.0 specifies outermost annulus !
+  !! Initialise Universe
   !!
-  subroutine init(self, fillVector, id, matNames, radii, sShelf, cShelf, materials)
-    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
-    class(pinUniverse), intent(inout)                      :: self
-    integer(shortInt), intent(in)                          :: id
-    character(nameLen),dimension(:),intent(in)             :: matNames
-    real(defReal), dimension(:), intent(in)                :: radii
-    type(surfaceShelf), intent(inout)                      :: sShelf
-    type(cellShelf),intent(inout)                          :: cShelf
-    type(charMap), intent(in)                              :: materials
-    character(nameLen),dimension(size(radii))              :: names
-    integer(shortInt)                                      :: N, i, idx
+  !! See universe_inter for details.
+  !!
+  !! Errors:
+  !!   fatalError for invalid input
+  !!
+  subroutine init(self, fill, dict, cells, surfs, mats)
+    class(pinUniverse), intent(inout)                        :: self
+    integer(shortInt), dimension(:), allocatable, intent(out) :: fill
+    class(dictionary), intent(in)                             :: dict
+    type(cellShelf), intent(inout)                            :: cells
+    type(surfaceShelf), intent(inout)                         :: surfs
+    type(charMap), intent(in)                                 :: mats
+    integer(shortInt)                             :: id, idx, N, i
+    real(defReal), dimension(:), allocatable      :: radii, temp
+    character(nameLen), dimension(:), allocatable :: fillNames
     character(100), parameter :: Here = 'init (pinUniverse_class.f90)'
 
-    ! Set id
+    ! Load basic data
+    call dict % get(id, 'id')
+    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
     call self % setId(id)
 
-    ! Check that radii are -ve and that matNames and radii are the same size
-    if (any (radii < ZERO)) call fatalError(Here,'-ve radii cannot be provided')
-    if (size(radii) /= size(matNames)) call fatalError(Here,'Size of matNames & radii does not match')
-    if (hasDuplicates(radii)) call fatalError(Here,'Duplicate values in annuli radii')
+    ! Load origin
+    if (dict % isPresent('origin')) then
+      call dict % get(temp, 'origin')
 
-    ! Load number of annuli
+      if (size(temp) /= 3) then
+        call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(size(temp)))
+      end if
+      call self % setTransform(origin=temp)
+
+    end if
+
+    ! Load rotation
+    if (dict % isPresent('rotation')) then
+      call dict % get(temp, 'rotation')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
+      end if
+      call self % setTransform(rotation=temp)
+    end if
+
+    ! Load radii and fill data
+    call dict % get(radii, 'radii')
+    call dict % get(fillNames, 'fills')
+
+    ! Check values
+    if (size(radii) /= size(fillNames)) then
+      call fatalError(Here, 'Size of radii and fills does not match')
+
+    else if (any(radii < ZERO)) then
+      call fatalError(Here, 'Found -ve value of radius.')
+
+    end if
+
+    ! Sort radii with selection sort
+    ! Start with value 0.0 that represents outermost element
+    ! Change 0.0 to infinity
     N = size(radii)
+    idx = minloc(radii, 1)
+    if (radii(idx) /= ZERO) call fatalError(Here, 'Did not found outermst element with radius 0.0.')
+    call swap( radii(idx), radii(N))
+    call swap( fillNames(idx), fillNames(N))
+    radii(N) = INF * 1.1_defReal
 
-    ! Allocate storage space and set offset to 0
-    call self % setOffset([ZERO, ZERO, ZERO])
-    self % r = radii
-    allocate(self % data(N))
-
-    ! Copy material names to local copy
-    names = matNames
-
-    ! Radii may not be in right order. Sort them together with corresponding material names
-
-    ! Start by processing the outermost element
-    idx = linFind(self % r, ZERO)
-    if(idx == targetNotFound) call fatalError(Here,'Outermost element with radius 0.0 was not found')
-
-    call swap( self % r(idx),    self % r(N))
-    call swap( names(idx), names(N))
-
-    ! Put the rest in the ascending order -> Selection sort for simplicity.
-    ! This is not performace critical (not yet at least)
     do i = N-1,1,-1
-      idx = maxloc( self % r(1:i), 1 )
-      call swap (self % r(idx), self % r(i))
-      call swap (names(idx), names(i) )
+      idx = maxloc(radii(1:i), 1)
+      call swap( radii(idx), radii(i))
+      call swap( fillNames(idx), fillNames(i))
     end do
 
-    ! Build surfaces and cells
-    call self % buildAnnuli(sShelf, cShelf)
+    ! Check for duplicate values of radii
+    do i = 1, N-1
+      if (radii(i) == radii(i+1)) then
+        call fatalError(Here, 'Duplicate value of radius: '//numToChar(radii(i)))
+      end if
+    end do
 
-    ! Create build vector
-    call self % makeFillVector(fillVector, matNames, materials)
+    ! Load data & Build cylinders
+    self % r_sq = radii * radii
 
-    ! Set outermost radius beyond INFINITY
-    self % r(size(self % r)) = 1.1 * INFINITY
+    allocate(self % annuli(N))
+    do i = 1, N
+      call self % annuli(i) % build(id=1, origin=[ZERO, ZERO, ZERO], &
+                                    type='zCylinder', radius=radii(i) )
+    end do
 
-    ! Store r2
-    self % r2 = self % r * self % r
+    ! Create fill array
+    allocate(fill(N))
+
+    do i = 1, N
+      fill(i) = charToFill(fillNames(i), mats, Here)
+    end do
+
 
   end subroutine init
 
   !!
-  !! Returns an initialised instance of a pin universe
-  !! Returns fillVector as well with +ve entries being materialIDXs and -ve fill universes IDs
-  !! Provisionally provide nuclearData *** REPLACE WITH CHAR-INT MAP LATER FOR DECOUPLING
+  !! Find local cell ID given a point
   !!
-  function pinUniverse_fromDict(fillVector, dict, cShelf, sShelf, cellFillMap, materials) result (new)
-    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
-    class(dictionary), intent(in)                          :: dict
-    type(cellShelf), intent(inout)                         :: cShelf
-    type(surfaceShelf), intent(inout)                      :: sShelf
-    type(intMap), intent(in)                               :: cellFillMap
-    type(charMap), intent(in)                              :: materials
-    type(pinUniverse)                                      :: new
-    integer(shortInt)                                      :: id
-    character(nameLen),dimension(:),allocatable            :: keys
-    real(defReal),dimension(:),allocatable                 :: radii
-
-    ! Read universe id and data
-    call dict % get(id,'id')
-    call dict % get(keys,'fills')
-    call dict % get(radii,'radii')
-
-    ! Initialise universe
-    call new % init(fillVector, id, keys, radii, sShelf, cShelf, materials)
-
-  end function pinUniverse_fromDict
-
+  !! See universe_inter for details.
   !!
-  !! Return cell index given localID of a cell
-  !!
-  function cellIdx(self,localId)
-    class(pinUniverse), intent(in) :: self
-    integer(shortInt), intent(in)  :: localID
-    integer(shortInt)              :: cellIdx
-    character(100), parameter :: Here = 'cellIdx (pinUniverse_class.f90)'
+  subroutine findCell(self, localID, cellIdx, r, u)
+    class(pinUniverse), intent(inout)       :: self
+    integer(shortInt), intent(out)          :: localID
+    integer(shortInt), intent(out)          :: cellIdx
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal)                           :: r_sq, mul
 
-    if (localID < 1 .or. localID > size(self % r)) then
-      call fatalError(Here,'Provided local ID ' // numToChar(localID) // ' is Not present')
+    r_sq = r(1)*r(1) + r(2)*r(2)
+    cellIdx = 0
+
+    ! Need to include surface tolerance. Determine multiplier by direction
+    if ( r(1)*u(1) + r(2)*u(2) >= ZERO) then
+      mul = -ONE
+    else
+      mul = ONE
     end if
 
-    cellIdx = self % data(localID) % cellIdx
-
-  end function cellIdx
-
-  !!
-  !! Using the coordinates it find a localID & cellIDx inside the universe
-  !! NOTE: ALONG WITH GENERAL CYLINDER THIS BREAKS ASSAMPTIONS ABOUT SURFACE TOLERANCE
-  !!
-  subroutine findCell(self, coords, cShelf, sShelf)
-    class(pinUniverse), intent(in) :: self
-    type(coord), intent(inout)     :: coords
-    type(cellShelf), intent(in)    :: cShelf
-    type(surfaceSHelf), intent(in) :: sShelf
-    real(defReal)                  :: r2
-    integer(shortInt)              :: idx, i
-
-    r2 = coords % r(1) * coords % r(1) + coords % r(2) * coords % r(2)
-
-    ! Do a counting search to find aproperiate ring
-    ! Avoids branching
-    idx = 1
-    do i=2,size(self %r)
-      if ( r2 > self % r2(i-1)) idx = idx +1
+    ! Find local cell
+    do localID = 1, size(self % r_sq)
+      if( r_sq < self % r_sq(localID) + mul * self % annuli(localID) % surfTol() ) return
 
     end do
-
-    coords % localID = idx
-    coords % cellIdx = self % data(idx) % cellIdx
+    ! If reached here localID = size(self % r_sq) + 1
 
   end subroutine findCell
 
   !!
-  !! Returns distance to the next cell boundary in the universe
-  !! Returns -1 if crossing is outward, returns -2 if crossing inward
+  !! Return distance to the next boundary between local cells in the universe
   !!
-  subroutine distance(self, dist, surfIdx, coords, cShelf, sShelf)
-    class(pinUniverse), intent(in) :: self
-    real(defReal), intent(out)     :: dist
-    integer(shortInt), intent(out) :: surfIdx
-    type(coord), intent(in)        :: coords
-    type(cellShelf), intent(in)    :: cShelf
-    type(surfaceShelf),intent(in)  :: sShelf
-    integer(shortInt)              :: cellIdx, localID
-    type(vector)                   :: r, u
-    character(100),parameter :: Here = 'distance (pinUniverse_class.f90)'
+  !! See universe_inter for details.
+  !!
+  !! Errors:
+  !!   fatalError is localID is invalid
+  !!
+  subroutine distance(self, d, surfIdx, coords)
+    class(pinUniverse), intent(inout)  :: self
+    real(defReal), intent(out)         :: d
+    integer(shortInt), intent(out)     :: surfIdx
+    type(coord), intent(in)            :: coords
+    real(defReal)                      :: d_out, d_in
+    integer(shortInt)                  :: id
+    character(100), parameter :: Here = 'distance (pinUniverse_class.f90)'
 
-    ! Get current cell from the coords
-    localID = coords % localID
-    cellIdx = coords % cellIdx
+    ! Get local id
+    id = coords % localID
 
-    ! Get position and direction
-    r = coords % r
-    u = coords % dir
-
-    ! Verify that cell Idx and localID agree
-    if (cellIdx /= self % data(localID) % cellIdx ) then
-      call fatalError(Here,'localID and cellIdx on coord clash with universe cellIDXs vector')
+    if (id < 1 .or. id > size(self % r_sq) + 1) then
+      call fatalError(Here, 'Invalid local ID: '//numToChar(id))
     end if
 
-    ! Obtain distance
-    call cShelf % shelf(cellIdx) % distance(dist, surfIdx, r, u, sShelf)
+    ! Outer distance
+    if (id > size(self % r_sq)) then
+      d_out = INF
 
-    ! Change surfIdx to -1 or -2
-    if( surfIdx == self % data(localID) % surfIdx) then
-      surfIdx = -1
     else
-      surfIdx = -2
+      d_out = self % annuli(id) % distance(coords % r, coords % dir)
+    end if
+
+    ! Inner distance
+    if (id == 1) then
+      d_in = INF
+    else
+      d_in = self % annuli(id-1) % distance(coords % r, coords % dir)
+    end if
+
+    ! Select distance and surface
+    if ( d_in < d_out) then
+      surfIdx = MOVING_IN
+      d = d_in
+
+    else
+      surfIdx = MOVING_OUT
+      d = d_out
     end if
 
   end subroutine distance
 
   !!
-  !! Perform crossing inside the universe from current cell to next cell
-  !! Assumes coords are at the surface being crossed (within surface_tol)
-  !! IT DOES NOT PERFORM CHECK IF THE ABOVE ASSUMPTION IS VALID! (Be careful - MAK)
+  !! Cross between local cells
   !!
-  subroutine cross(self, coords, surfIdx, cShelf, sShelf)
-    class(pinUniverse), intent(in) :: self
-    type(coord),intent(inout)      :: coords
-    integer(shortInt), intent(in)  :: surfIdx
-    type(cellShelf), intent(in)    :: cShelf
-    type(surfaceShelf), intent(in) :: sShelf
-    character(100),parameter :: Here = 'cross (pinUniverse_class.f90)'
+  !! See universe_inter for details.
+  !!
+  !! Errors:
+  !!   fatalError if surface from distance is not MOVING_IN or MOVING_OUT
+  !!
+  subroutine cross(self, coords, surfIdx)
+    class(pinUniverse), intent(inout) :: self
+    type(coord), intent(inout)         :: coords
+    integer(shortInt), intent(in)      :: surfIdx
+    character(100), parameter :: Here = 'cross (pinUniverse_class.f90)'
 
-    ! Find next local cell
-    select case(surfIdx)
-      case(-1)
-        coords % localID = coords % localID + 1
+    if (surfIdx == MOVING_IN) then
+      coords % localID = coords % localID - 1
 
-      case(-2)
-        coords % localID = coords % localID - 1
+    else if (surfIdx == MOVING_OUT) then
+      coords % localID = coords % localID + 1
 
-      case default
-        call fatalError(Here,'Unknown surface index')
+    else
+      call fatalError(Here, 'Unknown surface memento: '//numToChar(surfIdx))
 
-    end select
-
-    ! Load cellIdx
-    coords % cellIdx = self % data( coords % localID) % cellIdx
+    end if
 
   end subroutine cross
 
-
   !!
   !! Return offset for the current cell
-  !! This is used when going into nested universe
-  !! Total offset of the nested universe is :
-  !!  cellOffset + nestedUniverse % offset
   !!
-  !! Cell offset needs to be applied before envoing "enter" on the nested universe
+  !! See universe_inter for details.
   !!
-  function cellOffset(self,coords) result(offset)
+  function cellOffset(self, coords) result (offset)
     class(pinUniverse), intent(in) :: self
-    type(coord),intent(inout)      :: coords
-    real(defReal),dimension(3)     :: offset
+    type(coord), intent(in)         :: coords
+    real(defReal), dimension(3)     :: offset
 
-    offset = [0.0, 0.0, 0.0]
+    ! There is no cell offset
+    offset = ZERO
 
   end function cellOffset
 
   !!
-  !! Build all surfaces and cells that define pinUniverse
+  !! Return to uninitialised state
   !!
-  subroutine buildAnnuli(self, sShelf, cShelf)
-    class(pinUniverse), intent(inout)           :: self
-    type(surfaceShelf), intent(inout)           :: sShelf
-    type(cellShelf), intent(inout)              :: cShelf
-    type(dictionary)                            :: tempDict
-    class(surface),allocatable                  :: tempSurf
-    type(cell)                                  :: tempCell
-    integer(shortInt)                           :: cellId, i
-    integer(shortInt),dimension(size(self % r)) :: surfIDs
+  elemental subroutine kill(self)
+    class(pinUniverse), intent(inout) :: self
 
-    ! Build all surfaces
-    do i =1,size(self % r)
-      ! Initialise temporary dictionary
-      call tempDict % init(4,1)
+    ! Superclass
+    call kill_super(self)
 
-      ! Build approperiate surface
-      if (self % r(i) == ZERO ) then
-        call tempDict % store('type','infSurf')
-        call tempDict % store('id', 1 )
+    ! Kill local
+    if(allocated(self % r_sq)) deallocate(self % r_sq)
+    if(allocated(self % annuli)) deallocate(self % annuli)
 
-      else
-        call tempDict % store('type','zCylinder')
-        call tempDict % store('id',1)
-        call tempDict % store('origin',[ZERO, ZERO, ZERO])
-        call tempDict % store('radius', self % r(i))
-
-      end if
-
-      ! Put surface on the shelf
-      allocate(tempSurf, source = new_surface(tempDict))
-      call sShelf % getOrAdd(tempSurf, surfIDs(i), self % data(i) % surfIdx)
-      call tempDict % kill()
-    end do
-
-    ! Build innermost cell
-    call tempCell % init( [-surfIDs(1)], 1, sShelf)
-    call cShelf % getOrAdd(tempCell, cellId, self % data(1) % cellIdx)
-
-    ! Build rest of the cells
-    do i=2,size(self % r)
-      call tempCell % init([surfIDs(i-1), -surfIDs(i)], 1, sShelf)
-      call cShelf % getOrAdd(tempCell, cellId, self % data(i) % cellIdx)
-
-    end do
-  end subroutine buildAnnuli
-
-  !!
-  !! Translate material names to fillVector
-  !!
-  subroutine makeFillVector(self, fillVEctor, matNames ,materials)
-    class(pinUniverse), intent(inout)                      :: self
-    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
-    character(nameLen),dimension(:),intent(in)             :: matNames
-    type(charMap), intent(in)                              :: materials
-    integer(shortInt)                                      :: i, fill, L
-    character(nameLen)                                     :: tempName
-    character(100), parameter :: Here ='makeFillVector (pinUniverse_class.f90)'
-
-    ! Double check that size of radii match size of matNames
-    if( size(self % r) /= size(matNames)) call fatalError(Here,'matNames not matching self % r')
-
-    ! Allocate fill vector
-    allocate( fillVector( size(matNames)))
-
-    ! Loop over all matNames
-    do i=1, size(matNames)
-      ! Copy material name, adjust left and find length of name
-      tempName = adjustl(matNames(i))
-      L = len_trim(tempName)
-
-      ! Verify if name is a universe idd
-      if ( tempName(1:2) == 'u<' .and. tempName(L:L) == '>') then
-        ! Read universe id into fill
-        tempName = tempName(3:L-1)
-        read(tempName,*) fill
-        fill = -fill
-
-      else
-        fill = materials % get(tempName)
-
-      end if
-
-      ! Load fill into vector
-      fillVector(i) = fill
-
-    end do
-  end subroutine makeFillVector
-
+  end subroutine kill
 
 end module pinUniverse_class

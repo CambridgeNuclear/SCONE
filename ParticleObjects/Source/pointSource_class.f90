@@ -112,7 +112,7 @@ contains
     end if
     self % r = temp
 
-    call self % geom % whatIsAt(self % r, matIdx, uniqueID)
+    call self % geom % whatIsAt(matIdx, uniqueID, self % r)
     if (matIdx == OUTSIDE_MAT) then
       call fatalError(Here, 'Source has been placed outside geometry')
     end if

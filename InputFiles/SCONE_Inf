@@ -27,8 +27,9 @@ activeTally  {
 	      }
 
 geometry { 
-    type basicCellCSG;
+    type geometryStd;
     boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
 
     surfaces
     {
@@ -38,8 +39,6 @@ geometry {
 
     cells
     {
-      out     { id 3; surfaces (1 ); filltype outside;         }
-      inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
     }
 
     universes
@@ -48,9 +47,9 @@ geometry {
       root
       {
 	  id 1;
-	  type cellUniverse; 
-	  origin (0.0 0.0 0.0);
-	  cells ( 4 3); 
+	  type rootUniverse; 
+	  border 1;
+	  fill fuel; 
       }
     }   
 }

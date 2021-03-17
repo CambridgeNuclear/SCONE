@@ -7,7 +7,7 @@ program scone
   use dictParser_func,            only : fileToDict
   use physicsPackage_inter,       only : physicsPackage
   use physicsPackageFactory_func, only : new_physicsPackage
-  use vizPhysicsPackage_class
+  use vizPhysicsPackage_class,    only : vizPhysicsPackage
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none

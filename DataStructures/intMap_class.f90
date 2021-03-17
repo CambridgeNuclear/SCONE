@@ -32,7 +32,7 @@ module intMap_class
   !!
   !! NOTE: Following structure can be used to loop over entire map
   !! it = map % begin()
-  !! do while (it == map % end())
+  !! do while (it /= map % end())
   !!   ! Access value with: map % atVal(it)
   !!   ! Access key with: map % atKey(it)
   !!   it = map % next(it)

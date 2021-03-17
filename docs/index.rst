@@ -19,6 +19,7 @@ to quickly test their ideas.
    Dictionary Input
    Unit Testing
    Style Guide
+   Geometry
    Tutorials/index
    cream/index
 

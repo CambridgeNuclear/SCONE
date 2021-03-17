@@ -69,7 +69,7 @@ contains
   !!  1) Keywords are Case Sensitive keYwORD /= keyword
   !!  2) No words can contain whitespaces: kkkk -> OK; kk kk -> NOT OK
   !!  3) Format is free form but maximum column is set as a parameter to 1000
-  !!  4) Only 32bit Integers can be read 
+  !!  4) Only 32bit Integers can be read
   !!
   !! Args:
   !!   dict [inout] -> dictionary that will be filled with contents of a file. Can be both
