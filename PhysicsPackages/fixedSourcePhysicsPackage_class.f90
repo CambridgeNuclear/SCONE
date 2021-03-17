@@ -22,7 +22,9 @@ module fixedSourcePhysicsPackage_class
   use physicsPackage_inter,           only : physicsPackage
 
   ! Geometry
-  use cellGeometry_inter,             only : cellGeometry
+  use geometry_inter,                 only : geometry
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
+                                             gr_geomIdx  => geomIdx
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -49,7 +51,6 @@ module fixedSourcePhysicsPackage_class
   use tallyAdmin_class,               only : tallyAdmin
 
   ! Factories
-  use geometryFactory_func,           only : new_cellGeometry_ptr
   use transportOperatorFactory_func,  only : new_transportOperator
   use sourceFactory_func,             only : new_source
 
@@ -63,7 +64,8 @@ module fixedSourcePhysicsPackage_class
     private
     ! Building blocks
     class(nuclearDatabase), pointer        :: nucData => null()
-    class(cellGeometry), pointer           :: geom    => null()
+    class(geometry), pointer               :: geom    => null()
+    integer(shortInt)                      :: geomIdx = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
     class(RNG), pointer                    :: pRNG    => null()
@@ -126,6 +128,7 @@ contains
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
     p % k_eff = ONE
+    p % geomIdx = self % geomIdx
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -227,7 +230,7 @@ contains
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy
+    character(nameLen)                              :: nucData, energy, geomName
     integer(shortInt)                               :: i
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
@@ -279,7 +282,10 @@ contains
 
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
-    self % geom => new_cellGeometry_ptr(tempDict, ndReg_getMatNames())
+    geomName = 'fixedSourceGeom'
+    call gr_addGeom(geomName, tempDict)
+    self % geomIdx = gr_geomIdx(geomName)
+    self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
@@ -295,7 +301,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict, self % geom)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')

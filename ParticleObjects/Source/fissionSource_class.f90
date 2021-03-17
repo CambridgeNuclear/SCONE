@@ -100,8 +100,8 @@ contains
 
     ! Set bounding region
     bounds = self % geom % bounds()
-    self % bottom = bounds([1, 3, 5])
-    self % top    = bounds([2, 4, 6])
+    self % bottom = bounds(1:3)
+    self % top    = bounds(4:6)
 
   end subroutine init
 
@@ -148,7 +148,7 @@ contains
       r = (self % top - self % bottom) * rand3 + self % bottom
 
       ! Find material under position
-      call self % geom % whatIsAt(r, matIdx, uniqueID)
+      call self % geom % whatIsAt(matIdx, uniqueID, r)
 
       ! Reject if there is no material
       if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle rejection

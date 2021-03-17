@@ -47,15 +47,29 @@ contains
     this % p_CE % type = P_PHOTON
 
     ! Add 2 levels to the particles
-    call this % p_MG % coords % addLevel(lev1_offset, lev1_uni, lev1_uniRoot)
-    call this % p_CE % coords % addLevel(lev1_offset, lev1_uni, lev1_uniRoot)
+    call this % p_MG % coords % addLevel()
+    this % p_MG % coords % lvl(2) % r = r0 - lev1_offset
+    this % p_MG % coords % lvl(2) % dir = u0
 
-    call this % p_MG % coords % addLevel(lev2_offset, lev2_uni, lev2_uniRoot)
-    call this % p_CE % coords % addLevel(lev2_offset, lev2_uni, lev2_uniRoot)
+    call this % p_CE % coords % addLevel()
+    this % p_CE % coords % lvl(2) % r = r0 - lev1_offset
+    this % p_CE % coords % lvl(2) % dir = u0
+
+    call this % p_MG % coords % addLevel()
+    this % p_MG % coords % lvl(3) % r = r0 - lev1_offset - lev2_offset
+    this % p_MG % coords % lvl(3) % dir = u0
+
+    call this % p_CE % coords % addLevel()
+    this % p_CE % coords % lvl(3) % r = r0 - lev1_offset - lev2_offset
+    this % p_CE % coords % lvl(3) % dir = u0
 
     ! Set MatIdx
     this % p_MG % coords % matIdx = 7
     this % p_CE % coords % matIdx = 7
+
+    ! Set uniqueID
+    this % p_MG % coords % uniqueID = 34
+    this % p_CE % coords % uniqueID = 34
 
     ! NOTE: THIS MAY BREAK AT SOME POINT
     ! HAND SET SOME COORD PARAMETERS
@@ -73,16 +87,24 @@ contains
     this % p_CE % coords % lvl(1) % cellIdx   = 3
 
     ! Level 2
+    this % p_MG % coords % lvl(2) % uniIdx    = lev1_uni
+    this % p_MG % coords % lvl(2) % uniRootID = lev1_uniRoot
     this % p_MG % coords % lvl(2) % localID   = 4
     this % p_MG % coords % lvl(2) % cellIdx   = 2
 
+    this % p_CE % coords % lvl(2) % uniIdx    = lev1_uni
+    this % p_CE % coords % lvl(2) % uniRootID = lev1_uniRoot
     this % p_CE % coords % lvl(2) % localID   = 4
     this % p_CE % coords % lvl(2) % cellIdx   = 2
 
     ! Level 3
+    this % p_MG % coords % lvl(3) % uniIdx    = lev2_uni
+    this % p_MG % coords % lvl(3) % uniRootID = lev2_uniRoot
     this % p_MG % coords % lvl(3) % localID   = 2
     this % p_MG % coords % lvl(3) % cellIdx   = 8
 
+    this % p_CE % coords % lvl(3) % uniIdx    = lev2_uni
+    this % p_CE % coords % lvl(3) % uniRootID = lev2_uniRoot
     this % p_CE % coords % lvl(3) % localID   = 2
     this % p_CE % coords % lvl(3) % cellIdx   = 8
 
@@ -135,7 +157,7 @@ contains
     @assertEqual(ZERO, this % p_MG % timeMax, 'timeMax initialises to 0 by default')
 
   end subroutine correctInitialisation
-    
+
   !!
   !! Test access to positions
   !!

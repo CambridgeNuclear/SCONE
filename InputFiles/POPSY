@@ -11,7 +11,7 @@ collisionOperator { neutronCE {type neutronCEstd;}
                     neutronMG {type neutronMGstd;} 
                   } 
 
-transportOperator { type transportOperatorDT;
+transportOperator { type transportOperatorST;
                   } 
 
 // Use generic source definition to initialise initial population 
@@ -41,8 +41,9 @@ activeTally  {
 	      }
 
 geometry { 
-    type basicCellCSG;
+    type geometryStd;
     boundary (0 0 0 0 0 0);
+    graph { type shrunk;}
 
     surfaces
     {
@@ -53,20 +54,14 @@ geometry {
 
     cells
     {
-      out     { id 3; surfaces (2 ); filltype outside;      }
-      ref     { id 2; surfaces (-2 1); filltype mat; mat ref;}
-      inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
+      ref     { id 2; type simpleCell; surfaces ( 1); filltype mat; material ref;}
+      inside  { id 4; type simpleCell; surfaces (-1); filltype mat; material fuel;}
     }
 
     universes
     {
-
-      root
-      {
-	  id 1;
-	  type cellUniverse; 
-	  origin (0.0 0.0 0.0);
-	  cells ( 2 4 3); 
+     root { id 1; type rootUniverse; border 2; fill u<2>;}
+     geom { id 2; type cellUniverse; origin (0.0 0.0 0.0); cells ( 2 4); 
       }
     }   
 }

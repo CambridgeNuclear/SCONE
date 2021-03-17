@@ -149,7 +149,7 @@ contains
     ! Convert
     ! By elier check we can assert that sign-bit (most significant bit) is 0
     temp = num
-    do i = 1, 4
+    do i = 1, N
       str(i:i) = char(iand(temp, mask8), byte)
       temp = temp / 256
     end do

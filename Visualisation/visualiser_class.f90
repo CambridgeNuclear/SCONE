@@ -1,14 +1,13 @@
-!!
-!! The visualiser object
-!!
 module visualiser_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only: fatalError
-  use commandLineUI,     only: getInputFile
-  use dictionary_class,  only: dictionary
-  use geometry_inter,    only: geometry
+  use genericProcedures,  only : fatalError, numToChar
+  use hashFunctions_func, only : knuthHash
+  use imgBmp_func,        only : imgBmp_toFile
+  use commandLineUI,      only : getInputFile
+  use dictionary_class,   only : dictionary
+  use geometry_inter,     only : geometry
   use outputVTK_class
 
   implicit none
@@ -31,7 +30,6 @@ module visualiser_class
   !! Interface:
   !!   init    -> initialises visualiser
   !!   makeViz -> constructs requested visualisations
-  !!   makeVTK -> constructs VTK files
   !!   kill    -> cleans up visualiser
   !!
   !! Sample dictionary input:
@@ -40,6 +38,9 @@ module visualiser_class
   !!     #vizDict2{ <outputVTK> }#
   !!   }
   !!
+  !! NOTE: For details regarding contents of the vizDict dictionaries see the documentation
+  !!   of 'makeVTK' and 'makeBmpImg' functions
+  !!
   type, public :: visualiser
     character(nameLen), private       :: name
     class(geometry), pointer, private :: geom => null()
@@ -47,8 +48,9 @@ module visualiser_class
   contains
     procedure :: init
     procedure :: makeViz
-    procedure :: makeVTK
     procedure :: kill
+    procedure, private :: makeVTK
+    procedure, private :: makeBmpImg
   end type
 
 contains
@@ -68,7 +70,7 @@ contains
   !!   Initialised visualiser
   !!
   subroutine init(self, geom, vizDict)
-    class(visualiser), intent(inout)        :: self       
+    class(visualiser), intent(inout)        :: self
     class(geometry), pointer, intent(inout) :: geom
     class(dictionary), intent(in)           :: vizDict
     character(:), allocatable               :: string
@@ -79,10 +81,10 @@ contains
 
     ! Point to geometry
     self % geom => geom
-    
+
     ! Store visualisation dictionary
     self % vizDict = vizDict
-  
+
   end subroutine init
 
   !!
@@ -98,7 +100,7 @@ contains
   !!   Returns an error if an unrecognised visualisation is requested
   !!
   subroutine makeViz(self)
-    class(visualiser), intent(inout)             :: self       
+    class(visualiser), intent(inout)             :: self
     class(dictionary), pointer                   :: tempDict
     character(nameLen),dimension(:), allocatable :: keysArr
     integer(shortInt)                            :: i
@@ -115,8 +117,13 @@ contains
       select case(type)
         case('vtk')
           call self % makeVTK(tempDict)
+
+        case('bmp')
+          call self % makeBmpImg(tempDict)
+
         case default
           call fatalError(here, 'Unrecognised visualisation - presently only accept vtk')
+
       end select
 
     end do
@@ -131,12 +138,19 @@ contains
   !! Args:
   !!   dict [in] -> dictionary containing description of VTK file to be made
   !!
-  !! Result:
-  !!   A vtk visualisation
+  !! Sample input dictionary:
+  !!   VTK {
+  !!     type vtk;
+  !!     corner (-1.0 -1.0 -1.0);  // lower corner of the plot volume
+  !!     width  (2.0 2.0 2.0);     // width in each direction
+  !!     vox (300 300 300);        // Resolution in each direction
+  !!     #what uniqueId;#   // Plot target. 'material' or 'uniqueId'. Default: 'material'
+  !!   }
   !!
-  !! Errors:
-  !!   Returns an error if there is an incorrect size for any of the 
-  !!   required vtk inputs
+  !! TODO: VTK output is placed in a input filename appended by '.vtk' extension.
+  !!   This prevents multiple VTK visualistions (due to overriding). Might also become
+  !!   weird for input files with extension e.g. 'input.dat'.
+  !!   DEMAND USER TO GIVE OUTPUT NAME
   !!
   subroutine makeVTK(self, dict)
     class(visualiser), intent(inout)                :: self
@@ -173,7 +187,7 @@ contains
     allocate(voxelMat(nVox(1), nVox(2), nVox(3)))
 
     ! Have geometry obtain data
-    call self % geom % voxelPlot(voxelMat, what, center, width)
+    call self % geom % voxelPlot(voxelMat, center, what, width)
 
     ! In principle, can add multiple data sets to VTK - not done here yet
     ! VTK data set will use 'what' variable as a name
@@ -184,6 +198,120 @@ contains
   end subroutine makeVTK
 
   !!
+  !! Generate a BMP slice image of the geometry
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary with settings
+  !!
+  !! Sample dictionary input:
+  !!   bmp_img {
+  !!     type bmp;
+  !!     #what uniqueID;#      // Target of the plot. 'uniqueId' or 'material'. Default: 'material'
+  !!     output img;           // Name of output file without extension
+  !!     centre (0.0 0.0 0.0); // Coordinates of the centre of the plot
+  !!     axis x;               // Must be 'x', 'y' or 'z'
+  !!     res (300 300);        // Resolution of the image
+  !!     #width (1.0 2.0);#    // Width of the plot from the centre
+  !!   }
+  !!
+  !! NOTE: If 'width' is not given, the plot will extend to the bounds of the geometry.
+  !!   This may result in the provided centre beeing moved to the center of the geoemtry in the
+  !!   plot plane. However, the position on the plot axis will be unchanged.
+  !!
+  subroutine makeBmpImg(self, dict)
+    class(visualiser), intent(inout) :: self
+    class(dictionary), intent(in)    :: dict
+    real(defReal), dimension(3)      :: centre
+    real(defReal), dimension(2)      :: width
+    character(1)                     :: dir
+    character(nameLen)               :: tempChar
+    logical(defBool)                 :: useWidth
+    character(nameLen)               :: what, outputFile
+    real(defReal), dimension(:), allocatable       :: temp
+    integer(shortInt), dimension(:), allocatable   :: tempInt
+    integer(shortInt), dimension(:,:), allocatable :: img
+    character(100), parameter :: Here = 'makeBmpImg (visualiser_class.f90)'
+
+    ! Get plot parameters
+
+    ! Identify whether plotting 'material' or 'cellID'
+    call dict % getOrDefault(what, 'what', 'material')
+
+    ! Get name of the output file
+    call dict % get(outputFile, 'output')
+    outputFile = trim(outputFile) // '.bmp'
+
+    ! Central point
+    call dict % get(temp, 'centre')
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+
+    centre = temp
+
+    ! Axis
+    call dict % get(tempChar, 'axis')
+
+    if (len_trim(tempChar) /= 1) then
+      call fatalError(Here, "'axis' must be x,y or z. Not: "//tempChar)
+    end if
+
+    dir = tempChar(1:1)
+
+    ! Resolution
+    call dict % get(tempInt, 'res')
+
+    if (size(tempInt) /= 2) then
+      call fatalError(Here, "'res' must have size 2. Has: "//numToChar(size(tempInt)))
+    else if (any(tempInt <= 0)) then
+      call fatalError(Here, "Resolution must be +ve. There is 0 or -ve entry!")
+    end if
+
+    allocate(img(tempInt(1), tempInt(2)))
+
+    ! Optional width
+    useWidth = dict % isPresent('width')
+    if (useWidth) then
+      call dict % get(temp, 'width')
+
+      ! Check for errors
+      if (size(temp) /= 2) then
+        call fatalError(Here, "'width' must have size 2. Has: "//numToChar((size(temp))))
+      else if (any(temp <= ZERO)) then
+        call fatalError(Here, "'width' must be +ve. It isn't.")
+      end if
+
+      width = temp
+
+    end if
+
+    ! Get plot
+    if (useWidth) then
+      call self % geom % slicePlot(img, centre, dir, what, width)
+    else
+      call self % geom % slicePlot(img, centre, dir, what)
+    end if
+
+    ! Translate to an image
+    select case (what)
+      case ('material')
+        img = materialColor(img)
+
+      case ('uniqueID')
+        img = uniqueIDColor(img)
+
+      case default
+        call fatalError(Here, "Invalid request for plot target. Must be 'material' or 'uniqueID'&
+                             & is: "//what)
+    end select
+
+    ! Print image
+    call imgBmp_toFile(img, outputFile)
+
+  end subroutine makeBmpImg
+
+  !!
   !! Terminates visualiser
   !!
   !! Cleans up remnants of visualiser once it is no longer needed
@@ -192,12 +320,75 @@ contains
   !!   An empty visualiser object
   !!
   subroutine kill(self)
-    class(visualiser), intent(inout) :: self       
+    class(visualiser), intent(inout) :: self
 
     self % name =''
     self % geom => null()
     call self % vizDict % kill()
 
   end subroutine kill
+
+
+  !!
+  !! Convert matIdx to a 24bit color
+  !!
+  !! Special materials are associeted with special colors:
+  !!   OUTSIDE_MAT -> white (#ffffff)
+  !!   VOID_MAT    -> black (#000000)
+  !!   UNDEF_MAT   -> green (#00ff00)
+  !!
+  !! Args:
+  !!   matIdx [in] -> Value of the material index
+  !!
+  !! Result:
+  !!   A 24-bit color specifing the material
+  !!
+  elemental function materialColor(matIdx) result(color)
+    integer(shortInt), intent(in) :: matIdx
+    integer(shortInt)             :: color
+    integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
+    integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
+    integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
+
+    select case (matIdx)
+      case (OUTSIDE_MAT)
+        color = COL_OUTSIDE
+
+      case (VOID_MAT)
+        color = COL_VOID
+
+      case (UNDEF_MAT)
+        color = COL_UNDEF
+
+      case default
+        color = knuthHash(matIdx, 24)
+
+    end select
+
+  end function materialColor
+
+  !!
+  !! Convert uniqueID to 24bit color
+  !!
+  !! An elemental wrapper over Knuth Hash
+  !!
+  !! We use a hash function to scatter colors accross all available.
+  !! Knuth multiplicative hash is very good at scattering integer
+  !! sequences e.g. {1, 2, 3...}. Thus, it is ideal for a colormap.
+  !!
+  !! Args:
+  !!   uniqueID [in] -> Value of the uniqueID
+  !!
+  !! Result:
+  !!   A 24-bit color specifing the uniqueID
+  !!
+  elemental function uniqueIDColor(uniqueID) result(color)
+    integer(shortInt), intent(in) :: uniqueID
+    integer(shortInt)             :: color
+
+    color = knuthHash(uniqueID, 24)
+
+  end function uniqueIDColor
+
 
 end module visualiser_class

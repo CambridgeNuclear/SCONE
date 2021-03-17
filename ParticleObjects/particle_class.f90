@@ -112,6 +112,7 @@ module particle_class
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
     real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
+    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle 
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
@@ -608,7 +609,7 @@ contains
 
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx
-    LHS % uniqueID = RHS % coords % uniqueId()
+    LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
 
   end subroutine particleState_fromParticle

@@ -2,7 +2,7 @@ module vizPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,              only : fatalError 
+  use genericProcedures,              only : fatalError
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
 
@@ -15,16 +15,14 @@ module vizPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use cellGeometry_inter,             only : cellGeometry
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
+                                             gr_geomIdx  => geomIdx
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_getMatNames => getMatNames
   use nuclearDatabase_inter,          only : nuclearDatabase
-
-  ! Factories
-  use geometryFactory_func,           only : new_cellGeometry_ptr
 
   ! Visualisation
   use visualiser_class,               only : visualiser
@@ -38,8 +36,9 @@ module vizPhysicsPackage_class
   type, public,extends(physicsPackage) :: vizPhysicsPackage
     private
     ! Building blocks
-    class(cellGeometry), pointer :: geom => null()
-    type(visualiser)             :: viz
+    class(geometry), pointer :: geom => null()
+    integer(shortInt)        :: geomIdx = 0 
+    type(visualiser)         :: viz
 
     ! Settings
     character(pathLen) :: outputFile
@@ -76,6 +75,7 @@ contains
     class(dictionary), intent(inout)        :: dict
     class(dictionary),pointer               :: tempDict
     class(geometry), pointer                :: geom
+    character(nameLen)                      :: geomName
     character(100), parameter :: Here ='init (vizPhysicsPackage_class.f90)'
 
     ! Read outputfile path
@@ -89,7 +89,10 @@ contains
 
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
-    self % geom => new_cellGeometry_ptr(tempDict, ndReg_getMatNames())
+    geomName = 'visualGeom'
+    call gr_addGeom(geomName, tempDict)
+    self % geomIdx = gr_geomIdx(geomName)
+    self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Call visualisation
     if (dict % isPresent('viz')) then

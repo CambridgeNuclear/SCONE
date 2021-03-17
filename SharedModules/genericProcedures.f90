@@ -910,9 +910,65 @@ module genericProcedures
   end function rotateVector
 
   !!
+  !! Generate Euler rotation matrix using ZXZ convention
+  !!
+  !! Args:
+  !!   matrix [out] -> Space for the matrix dimension(3,3)
+  !!   phi [in] -> Initial rotation over Z axis [deg]. In 0 to 360.
+  !!   theta [in] -> 2nd rotation over tranfromed X' axis [deg]. In 0 to 180.
+  !!   psi [in] -> Final rotation over transformed Z' axis [deg]. In 0 to 360.
+  !!
+  !! Errors:
+  !!   fatalError if any angle is beyond its range
+  !!
+  subroutine rotationMatrix(matrix, phi, theta, psi)
+    real(defReal), dimension(3,3), intent(out) :: matrix
+    real(defReal), intent(in)                  :: phi
+    real(defReal), intent(in)                  :: theta
+    real(defReal), intent(in)                  :: psi
+    real(defReal) :: sin_phi, cos_phi, sin_t, cos_t, sin_psi, cos_psi, conv
+    character(100), parameter :: Here = 'rotationMatrix (genericProcedures.f90)'
+
+    ! Check input data
+    if (phi < ZERO .or. phi >= 360.0_defReal) then
+      call fatalError(Here, 'Angle phi must be in <0;360). Is: '//numToChar(phi))
+
+    else if (theta < ZERO .or. theta > 180.0_defReal) then
+      call fatalError(Here, 'Angle theta must be in <0;180>. Is: '//numToChar(theta))
+
+    else if (psi < ZERO .or. psi >= 360.0_defReal) then
+      call fatalError(Here, 'Angle psi must be in <0;180>. Is: '//numToChar(theta))
+
+    end if
+
+    ! Evaluate trigonometric functions
+    conv = TWO_PI / 360.0_defReal
+    sin_phi = sin(phi * conv)
+    cos_phi = cos(phi * conv)
+    sin_t   = sin(theta * conv)
+    cos_t   = cos(theta * conv)
+    sin_psi = sin(psi * conv)
+    cos_psi = cos(psi * conv)
+
+    ! Assign matrix elemets
+    matrix(1,1) = cos_psi * cos_phi - cos_t * sin_phi * sin_psi
+    matrix(1,2) = cos_psi * sin_phi + cos_t * cos_phi * sin_psi
+    matrix(1,3) = sin_psi * sin_phi
+
+    matrix(2,1) = -sin_psi * cos_phi - cos_t * sin_phi * cos_psi
+    matrix(2,2) = -sin_psi * sin_phi + cos_t * cos_phi * cos_psi
+    matrix(2,3) = cos_psi * sin_t
+
+    matrix(3,1) = sin_t * sin_phi
+    matrix(3,2) = -sin_t * cos_phi
+    matrix(3,3) = cos_t
+
+  end subroutine rotationMatrix
+
+  !!
   !! Dot product for 3D vector
   !!
-  function dotProduct(a,b) result(x)
+  pure function dotProduct(a,b) result(x)
     real(defReal),dimension(3), intent(in) :: a,b
     real(defReal)                          :: x
 
@@ -923,7 +979,7 @@ module genericProcedures
   !!
   !! Cross product for 3D vectors
   !!
-  function crossProduct(a,b) result(c)
+  pure function crossProduct(a,b) result(c)
     real(defReal),dimension(3),intent(in) :: a,b
     real(defReal),dimension(3)            :: c
 
@@ -932,6 +988,25 @@ module genericProcedures
          a(2)*b(1) - a(1)*b(2) ]
 
   end function crossProduct
+
+  !!
+  !! Return true if key is in the array
+  !!
+  !! Args:
+  !!   array [in] -> Array of data
+  !!   key [in]   -> Required key
+  !!
+  !! Result:
+  !!   True if key is in array. False otherwise
+  !!
+  pure function isIn(array, key)
+    integer(shortInt), dimension(:), intent(in) :: array
+    integer(shortInt), intent(in)               :: key
+    logical(defBool)                            :: isIn
+
+    isIn =  targetNotFound /= linFind(array, key)
+
+  end function isIn
 
   !!
   !! Returns true if array contains duplicates
