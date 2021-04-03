@@ -5,10 +5,16 @@ module aceNeutronNuclideUni_class
   ! Nuclear Data Interfaces
   use aceNeutronNuclide_class,      only : aceNeutronNuclide
   use neutronXSPackages_class,      only : neutronMicroXSs
+  use nuclideHandle_inter,          only : nuclideHandle
 
 
   implicit none
   private
+
+  !!
+  !! Public Pointer Cast
+  !!
+  public aceNeutronNuclideUni_TptrCast
 
 
   ! Grid location parameters
@@ -93,5 +99,29 @@ contains
     end associate
 
   end subroutine microXSs
+
+  !!
+  !! Cast nuclideHandle pointer to aceNeutronNuclideUni type pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class nuclideHandle
+  !!
+  !! Result:
+  !!   Null is source is not of aceNeutronNuclideUni type
+  !!   Pointer to source if source is aceNuclearDatabaseUni type
+  !!
+  pure function aceNeutronNuclideUni_TptrCast(source) result(ptr)
+    class(nuclideHandle), pointer, intent(in) :: source
+    type(aceNeutronNuclideUni), pointer       :: ptr
+
+    select type(source)
+    type is(aceNeutronNuclideUni)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function aceNeutronNuclideUni_TptrCast
 
 end module aceNeutronNuclideUni_class

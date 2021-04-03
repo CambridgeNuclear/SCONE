@@ -4,10 +4,16 @@ module ceNeutronMaterialUni_class
   use genericProcedures, only : fatalError, binarySearch, numToChar
 
   ! Nuclear Data Handles
-  use ceNeutronMaterial_class,   only : ceNeutronMaterial
+  use ceNeutronMaterial_class,  only : ceNeutronMaterial
+  use materialHandle_inter,     only : materialHandle
 
   implicit none
   private
+
+  !!
+  !! Public Pointer Cast
+  !!
+  public ceNeutronMaterialUni_TptrCast
 
   !!
   !! Extension of ceNeutronMaterial, used to write and read material-wise unionised energy grids.
@@ -62,6 +68,30 @@ contains
     end associate
 
   end subroutine search
+
+  !!
+  !! Cast materialHandle pointer to ceNeutronMaterialUni pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class materialHandle
+  !!
+  !! Result:
+  !!   Null is source is not of ceNeutronMaterialUni
+  !!   Pointer to source if source is ceNeutronMaterialUni class
+  !!
+  pure function ceNeutronMaterialUni_TptrCast(source) result(ptr)
+    class(materialHandle), pointer, intent(in) :: source
+    type(ceNeutronMaterialUni), pointer        :: ptr
+
+    select type(source)
+    type is(ceNeutronMaterialUni)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function ceNeutronMaterialUni_TptrCast
 
 
 end module ceNeutronMaterialUni_class
