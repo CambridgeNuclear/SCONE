@@ -16,7 +16,7 @@ module aceNeutronDatabaseUniIdx_class
   use reactionHandle_inter,         only : reactionHandle
   use ceNeutronDatabase_inter,      only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use neutronXSPackages_class,      only : neutronMicroXSs
-  use ceNeutronMaterial_class,      only : ceNeutronMaterial
+  use ceNeutronMaterialUni_class,   only : ceNeutronMaterialUni
 
   ! Material Menu
   use materialMenu_mod,             only : materialItem, nuclideInfo, mm_nMat => nMat, &
@@ -46,7 +46,17 @@ module aceNeutronDatabaseUniIdx_class
   !!
   !! A CE Neutron Database based on ACE file format
   !!
-  !! For now the simplest possible implementation.
+  !! As aceNeutronDatabaseUni, this Database builds unionised cross-section grids
+  !! per each material. Then, vectors that link the energy index in each unionised
+  !! grid to the corresponding nuclide energy grid index are constructed.
+  !!
+  !! This has similar performance of aceNeutronDatabaseUni, but with better
+  !! memory usage.
+  !!
+  !! Sample input:
+  !!   nuclearData {
+  !!   handles {
+  !!   ce {type aceNeutronDatabaseUniIdx; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
@@ -58,10 +68,10 @@ module aceNeutronDatabaseUniIdx_class
   !!   ceNeutronDatabase Interface
   !!
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabaseUniIdx
-    type(aceNeutronNuclide),dimension(:),pointer  :: nuclides  => null()
-    type(ceNeutronMaterial),dimension(:),pointer  :: materials => null()
-    real(defReal), dimension(2)                   :: Ebounds   = ZERO
-    integer(shortInt),dimension(:),allocatable    :: activeMat
+    type(aceNeutronNuclide),dimension(:),pointer    :: nuclides  => null()
+    type(ceNeutronMaterialUni),dimension(:),pointer :: materials => null()
+    real(defReal), dimension(2)                     :: Ebounds   = ZERO
+    integer(shortInt),dimension(:),allocatable      :: activeMat
   contains
     ! nuclearData Procedures
     procedure :: kill
@@ -253,6 +263,7 @@ contains
       matCache % xss % total = thisMat % totalXS(matCache % idx + 1) * matCache % f + &
                           (ONE - matCache % f) * thisMat % totalXS(matCache % idx)
 
+      ! Save the corresponding energy index in cache per each nuclide in the material
       do i = 1,size(thisMat % nuclides)
         nucIdx = thisMat % nuclides(i)
         associate (nucCache => cache_nuclideCache(nucIdx), &
@@ -538,15 +549,16 @@ contains
   end subroutine init
 
   !!
-  !!  Create the material unionised grid given the individual nuclides' grids
-  !!  It concatenates nuclides' energy grids, sort the grid and remove duplicate points
+  !! Create the material unionised grid given the individual nuclide grids.
   !!
-  !!  Args:
-  !!  mat [inout] -> pointer to material, its output includes the unionised grid
+  !! It concatenates nuclide energy grids, sort the grid and remove duplicate points.
+  !!
+  !! Args:
+  !!   mat [inout] -> pointer to material, its output includes the unionised grid
   !!
   subroutine unioniseEnergy(self,mat)
     class(aceNeutronDatabaseUniIdx),intent(inout) :: self
-    type(ceNeutronMaterial),pointer,intent(inout) :: mat
+    type(ceNeutronMaterialUni),intent(inout)      :: mat
     real(defReal),dimension(:),allocatable        :: tmp_grid
     integer(shortInt),dimension(:),allocatable    :: duplicatesIdx
     logical(defBool)                              :: doesIt
@@ -588,24 +600,27 @@ contains
   !! Interpolate nuclides XSs to match material unionised grids
   !!
   !! Args:
-  !! mat [in]    -> pointer to current material
-  !! nucIdx [in] -> index of the nuclise whose XSs are modified
+  !!   mat [in]    -> pointer to current material
+  !!   nucIdx [in] -> index of the nuclise whose XSs are modified
   !!
-  !! Errors:
-  !! Grids' boundaries have been breached
+  !! Fatal Errors:
+  !!   - Grid boundaries have been breached when expanding the nuclide enegy grids to match
+  !!     the material unionised one
+  !!   - Grid boundaries have been breached when interpolating the nuclide cross-section values
+  !!     that correspons to the added energy points
   !!
-  subroutine interpolateXSs(self,mat,nucIdx,nucNumber)
+  subroutine interpolateXSs(self,mat,nucIdx,nucNumber,unionData)
     class(aceNeutronDatabaseUniIdx),intent(inout) :: self
-    type(ceNeutronMaterial),pointer,intent(in)    :: mat
+    type(ceNeutronMaterialUni),intent(inout)      :: mat
     integer(shortInt),intent(in)                  :: nucIdx
     integer(shortInt),intent(in)                  :: nucNumber
+    real(defReal),dimension(:,:),intent(inout)    :: unionData
     real(defReal),dimension(:),allocatable        :: XS_low, XS_top
     real(defReal)                                 :: f, E_low, den
     integer(shortInt)                             :: h, k, E_idx
     character(100), parameter :: Here = 'interpolateXSs (aceNeutronDatabaseUniIdx_class.f90)'
 
     associate (nuc => self % nuclides(nucIdx))
-      allocate(nuc % unionData(size(nuc % mainData(:,1)),size(mat % unionGrid)))
 
       ! STEP 1
       ! Fill XS arrays with either the value corresponding to the energy, or zero
@@ -614,21 +629,21 @@ contains
 
         if (abs(nuc % eGrid(h)/mat % unionGrid(k) - ONE) < 1.0e-8) then
 
-          nuc % unionData(:,k) = nuc % mainData(:,h)
+          unionData(:,k) = nuc % mainData(:,h)
           if (h < size(nuc % eGrid)) then
             if (nuc % eGrid(h+1) == nuc % eGrid(h)) then
               h = h + 1
             end if
             h = h + 1
           else
-            nuc % unionData(:,k+1:size(mat % unionGrid)) = ZERO
+            unionData(:,k+1:size(mat % unionGrid)) = ZERO
             mat % gridIdx(nucNumber,k) = h-1
             mat % gridIdx(nucNumber,k+1:size(mat % unionGrid)) = h
             exit preLoop
           end if
 
         else
-          nuc % unionData(:,k) = ZERO
+          unionData(:,k) = ZERO
         end if
         ! Create double indexing matrix per each material, referring to nuclides' grids
         mat % gridIdx(nucNumber,k) = h - 1
@@ -651,7 +666,7 @@ contains
       ! Interpolate to fill all the values where XSs are ZERO
       fillLoop: do while (k <= size(mat % unionGrid))
 
-        do while (nuc % unionData(1,k) == ZERO)
+        do while (unionData(1,k) == ZERO)
           k = k + 1
           if (k > size(mat % unionGrid)) exit fillLoop
         end do
@@ -659,13 +674,13 @@ contains
         ! Get interpolation constants
         E_low = mat % unionGrid(h)
         den = (mat % unionGrid(k) - E_low)
-        XS_low = nuc % unionData(:, h)
-        XS_top = nuc % unionData(:, k)
+        XS_low = unionData(:, h)
+        XS_top = unionData(:, k)
 
         ! Perform interpolation
         do while (h < k-1)
           f = (mat % unionGrid(h+1) - E_low) / den
-          nuc % unionData(:, h+1) = XS_top * f + (ONE-f) * XS_low
+          unionData(:, h+1) = XS_top * f + (ONE-f) * XS_low
           h = h + 1
         end do
         h = k
@@ -690,7 +705,8 @@ contains
   !!
   subroutine unionise(self)
     class(aceNeutronDatabaseUniIdx),intent(inout) :: self
-    type(ceNeutronMaterial),pointer               :: mat
+    type(ceNeutronMaterialUni),pointer            :: mat
+    real(defReal),dimension(:,:),allocatable      :: unionData
     integer(shortInt)                             :: i, j, nucIdx
 
 
@@ -705,28 +721,24 @@ contains
       ! Uninise material energy grids
       call self % unioniseEnergy(mat)
 
-      ! Allocate memory for index matrix
+      ! Allocate memory for index matrix and TOTAL XS
       allocate(mat % gridIdx(size(mat % nuclides), size(mat % unionGrid)))
+      allocate(mat % totalXS(size(mat % unionGrid)))
+      mat % totalXS = ZERO
 
       ! Fill XS arrays with either the value corresponding to the energy, or zero
       nucLoop: do j=1,size(mat % nuclides)
         nucIdx = mat % nuclides(j)
+        allocate(unionData(size(self % nuclides(nucIdx) % mainData(:,1)),size(mat % unionGrid)))
 
         ! Interpolates the XSs of each nuclide to match the unionised grid
-        call self % interpolateXSs(mat,nucIdx,j)
+        call self % interpolateXSs(mat,nucIdx,j,unionData)
+
+        ! Precalculate TOTAL XS of each material
+        mat % totalXS =  mat % totalXS + mat % dens(j) * unionData(1,:)
+        deallocate(unionData)
 
       end do nucLoop
-
-      ! Precalculate TOTAL XS of each material
-      allocate(mat % totalXS(size(mat % unionGrid)))
-      mat % totalXS = ZERO
-
-      do j = 1,size(mat % nuclides)
-        nucIdx = mat % nuclides(j)
-        ! Add microscopic XSs
-        mat % totalXS =  mat % totalXS + mat % dens(j) * self % nuclides(nucIdx) % unionData(1,:)
-        deallocate(self % nuclides(nucIdx) % unionData)
-      end do
 
     end do matLoop
 

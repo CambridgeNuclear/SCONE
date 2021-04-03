@@ -47,6 +47,11 @@ module aceNeutronDatabase_class
   !!
   !! For now the simplest possible implementation.
   !!
+  !! Sample input:
+  !!   nuclearData {
+  !!   handles {
+  !!   ce {type aceNeutronDatabase; aceLibrary <nuclear data path> ;} } 
+  !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
   !!   materials -> array of ceNeutronMaterials with data

@@ -16,7 +16,7 @@ module aceNeutronDatabaseUni_class
   use reactionHandle_inter,         only : reactionHandle
   use ceNeutronDatabase_inter,      only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use neutronXSPackages_class,      only : neutronMicroXSs
-  use ceNeutronMaterial_class,      only : ceNeutronMaterial
+  use ceNeutronMaterialUni_class,   only : ceNeutronMaterialUni
 
   ! Material Menu
   use materialMenu_mod,             only : materialItem, nuclideInfo, mm_nMat => nMat, &
@@ -46,7 +46,17 @@ module aceNeutronDatabaseUni_class
   !!
   !! A CE Neutron Database based on ACE file format
   !!
-  !! For now the simplest possible implementation.
+  !! Differently from aceNeutronDatabase, this Database builds unionised cross-section
+  !! grids per each material. Then, the individual nuclide grids are expanded to match
+  !! the material grid.
+  !!
+  !! This limits the binary searches needed to retrieve cross-sections, as the energy index
+  !! for each nuclide in a material is retrieved only once and stored in cache.
+  !!
+  !! Sample input:
+  !!   nuclearData {
+  !!   handles {
+  !!   ce {type aceNeutronDatabaseUni; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
@@ -59,7 +69,7 @@ module aceNeutronDatabaseUni_class
   !!
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabaseUni
     type(aceNeutronNuclideUni),dimension(:),pointer :: nuclides  => null()
-    type(ceNeutronMaterial),dimension(:),pointer    :: materials => null()
+    type(ceNeutronMaterialUni),dimension(:),pointer :: materials => null()
     real(defReal), dimension(2)                     :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable      :: activeMat
   contains
@@ -528,19 +538,20 @@ contains
   end subroutine init
 
   !!
-  !!  Create the material unionised grid given the individual nuclides' grids
-  !!  It concatenates nuclides' energy grids, sort the grid and remove duplicate points
+  !! Create the material unionised grid given the individual nuclide grids.
   !!
-  !!  Args:
-  !!  mat [inout] -> pointer to material, its output includes the unionised grid
+  !! It concatenates nuclide energy grids, sort the grid and remove duplicate points.
+  !!
+  !! Args:
+  !!   mat [inout] -> pointer to material, its output includes the unionised grid
   !!
   subroutine unioniseEnergy(self,mat)
-    class(aceNeutronDatabaseUni),intent(inout)    :: self
-    type(ceNeutronMaterial),pointer,intent(inout) :: mat
-    real(defReal),dimension(:),allocatable        :: tmp_grid
-    integer(shortInt),dimension(:),allocatable    :: duplicatesIdx
-    logical(defBool)                              :: doesIt
-    integer(shortInt)                             :: i, j, nucIdx, E_idx
+    class(aceNeutronDatabaseUni),intent(inout) :: self
+    type(ceNeutronMaterialUni),intent(inout)   :: mat
+    real(defReal),dimension(:),allocatable     :: tmp_grid
+    integer(shortInt),dimension(:),allocatable :: duplicatesIdx
+    logical(defBool)                           :: doesIt
+    integer(shortInt)                          :: i, j, nucIdx, E_idx
 
     ! Initialise grid
     tmp_grid = self % nuclides(mat % nuclides(1)) % eGrid
@@ -578,19 +589,22 @@ contains
   !! Interpolate nuclides XSs to match material unionised grids
   !!
   !! Args:
-  !! mat [in]    -> pointer to current material
-  !! nucIdx [in] -> index of the nuclise whose XSs are modified
+  !!   mat [in]    -> pointer to current material
+  !!   nucIdx [in] -> index of the nuclise whose XSs are modified
   !!
-  !! Errors:
-  !! Grids' boundaries have been breached
+  !! Fatal Errors:
+  !!   - Grid boundaries have been breached when expanding the nuclide enegy grids to match
+  !!     the material unionised one
+  !!   - Grid boundaries have been breached when interpolating the nuclide cross-section values
+  !!     that correspons to the added energy points
   !!
   subroutine interpolateXSs(self,mat,nucIdx)
-    class(aceNeutronDatabaseUni),intent(inout)  :: self
-    type(ceNeutronMaterial),pointer,intent(in)  :: mat
-    integer(shortInt),intent(in)                :: nucIdx
-    real(defReal),dimension(:),allocatable      :: XS_low, XS_top
-    real(defReal)                               :: f, E_low, den
-    integer(shortInt)                           :: h, k, E_idx
+    class(aceNeutronDatabaseUni),intent(inout) :: self
+    type(ceNeutronMaterialUni),intent(in)      :: mat
+    integer(shortInt),intent(in)               :: nucIdx
+    real(defReal),dimension(:),allocatable     :: XS_low, XS_top
+    real(defReal)                              :: f, E_low, den
+    integer(shortInt)                          :: h, k, E_idx
     character(100), parameter :: Here = 'interpolateXSs (aceNeutronDatabaseUni_class.f90)'
 
     associate (nuc => self % nuclides(nucIdx))
@@ -670,9 +684,9 @@ contains
   !! precalculate the material total cross section.
   !!
   subroutine unionise(self)
-    class(aceNeutronDatabaseUni),intent(inout)  :: self
-    type(ceNeutronMaterial),pointer             :: mat
-    integer(shortInt)                           :: i, j, nucIdx
+    class(aceNeutronDatabaseUni),intent(inout) :: self
+    type(ceNeutronMaterialUni),pointer         :: mat
+    integer(shortInt)                          :: i, j, nucIdx
 
     ! Loop over all materials in database
     matLoop: do i=1,size(self % materials)
