@@ -90,7 +90,6 @@ module aceNeutronNuclide_class
     character(nameLen)                          :: ZAID    = ''
     real(defReal), dimension(:), allocatable    :: eGrid
     real(defReal), dimension(:,:), allocatable  :: mainData
-    real(defReal), dimension(:,:), allocatable  :: unionData
     type(reactionMT), dimension(:), allocatable :: MTdata
     integer(shortInt)                           :: nMT     = 0
     type(intMap)                                :: idxMT
