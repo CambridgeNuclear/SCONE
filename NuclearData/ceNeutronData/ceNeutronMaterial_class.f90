@@ -1,7 +1,7 @@
 module ceNeutronMaterial_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, binarySearch, numToChar
+  use genericProcedures, only : fatalError
   use RNG_class,         only : RNG
   use particle_class,    only : particle
 

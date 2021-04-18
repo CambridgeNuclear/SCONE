@@ -38,6 +38,7 @@ module aceNeutronNuclideUni_class
   !!   matIdx          -> Material the unionised grid referes to. Used by aceNeutronDatabaseUni
   !!
   !! Procedures:
+  !!   aceNeutronNuclide interface 
   !!   totalXS  -> return totalXS given index and interpolation factor
   !!   microXSs -> return interpolated ceNeutronMicroXSs package given index and inter. factor
   !!

@@ -284,7 +284,7 @@ contains
       maj % E  = E
       maj % xs = ZERO
 
-      do i=1,size(self % activeMat)
+      do i = 1, size(self % activeMat)
         matIdx = self % activeMat(i)
 
         ! Update if needed
@@ -321,7 +321,7 @@ contains
       call matCache % xss % clean()
 
       ! Construct microscopic XSs
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -406,7 +406,7 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine init(self, dict, ptr, silent )
+  subroutine init(self, dict, ptr, silent)
     class(aceNeutronDatabaseUni), target, intent(inout) :: self
     class(dictionary), intent(in)                       :: dict
     class(nuclearDatabase), pointer, intent(in)         :: ptr
@@ -444,12 +444,12 @@ contains
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     maxNuc = 0
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
 
       ! Add all nuclides in material to the map
-      do j=1,size(mat % nuclides)
+      do j = 1, size(mat % nuclides)
         call nucSet % add(mat % nuclides(j) % toChar(), IN_SET)
 
       end do
@@ -502,7 +502,7 @@ contains
     ! Build Material definitions
     allocate(self % materials(mm_nMat()))
     allocate(nucIdxs(maxNuc))
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
@@ -524,13 +524,13 @@ contains
     j = size(self % nuclides(1) % eGrid)
     self % Ebounds(2) = self % nuclides(1) % eGrid(j)
 
-    do i=2,size(self % nuclides)
+    do i = 2, size(self % nuclides)
       self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
     end do
 
-    call self % unionise()
+    call self % unionise(loud)
 
     !! Clean up
     call aceLib_kill()
@@ -557,7 +557,7 @@ contains
     tmp_grid = self % nuclides(mat % nuclides(1)) % eGrid
 
     ! Concatenate energy grids
-    do i=2,size(mat % nuclides)
+    do i = 2, size(mat % nuclides)
       nucIdx = mat % nuclides(i)
 
       ! Make sure that nuclide energy grid doesn't have repeated energies
@@ -566,15 +566,15 @@ contains
       if (doesIt) then
         duplicatesIdx = findDuplicatesSorted(self % nuclides(nucIdx) % eGrid)
 
-        do j=1,size(duplicatesIdx)
+        do j = 1, size(duplicatesIdx)
           E_idx = duplicatesIdx(j)
           self % nuclides(nucIdx) % eGrid(E_idx) = &
-          (1.0+100*floatTol) * self % nuclides(nucIdx) % eGrid(E_idx-1)
+          (ONE + 100.0*floatTol) * self % nuclides(nucIdx) % eGrid(E_idx-1)
         end do
 
       end if
       ! Add energy grid to temporary (unsorted) array
-      tmp_grid = concatenate(tmp_grid,self % nuclides(nucIdx) % eGrid)
+      tmp_grid = concatenate(tmp_grid, self % nuclides(nucIdx) % eGrid)
     end do
 
     ! Sort energies
@@ -592,11 +592,12 @@ contains
   !!   mat [in]    -> pointer to current material
   !!   nucIdx [in] -> index of the nuclise whose XSs are modified
   !!
-  !! Fatal Errors:
-  !!   - Grid boundaries have been breached when expanding the nuclide enegy grids to match
-  !!     the material unionised one
-  !!   - Grid boundaries have been breached when interpolating the nuclide cross-section values
-  !!     that correspons to the added energy points
+  !! Errors:
+  !!   fatalError if:
+  !!     - Grid boundaries have been breached when expanding the nuclide enegy grids to match
+  !!       the material unionised one
+  !!     - Grid boundaries have been breached when interpolating the nuclide cross-section values
+  !!       that correspons to the added energy points
   !!
   subroutine interpolateXSs(self,mat,nucIdx)
     class(aceNeutronDatabaseUni),intent(inout) :: self
@@ -613,7 +614,7 @@ contains
       ! STEP 1
       ! Fill XS arrays with either the value corresponding to the energy, or zero
       h = 1
-      preLoop: do k=1,size(mat % unionGrid)
+      preLoop: do k = 1, size(mat % unionGrid)
 
         if (abs(nuc % eGrid(h)/mat % unionGrid(k) - ONE) < 1.0e-8) then
           nuc % unionData(:,k) = nuc % mainData(:,h)
@@ -678,21 +679,28 @@ contains
 
   !!
   !! Unionise energy grid per material and generate XS
+  !!
   !! Each nuclides refers only to one material's energy grid. However, the XSs are
   !! interpolated per each material (unless the size of the grids of two materials are
   !! identical, which means that the same nuclides are repeated), which is needed to
   !! precalculate the material total cross section.
   !!
-  subroutine unionise(self)
+  !! Args:
+  !!   loud [in] -> If True print status messeges to the screen
+  !!
+  subroutine unionise(self, loud)
     class(aceNeutronDatabaseUni),intent(inout) :: self
+    logical(defBool), intent(in)               :: loud
     type(ceNeutronMaterialUni),pointer         :: mat
-    integer(shortInt)                          :: i, j, nucIdx
+    integer(shortInt)                          :: i, j, nucIdx, N_mat
 
     ! Loop over all materials in database
-    matLoop: do i=1,size(self % materials)
+    matLoop: do i = 1, size(self % materials)
 
-      print*, '...................................................................'
-      print*, 'Building energy grid for material '//numToChar(i)
+      if (loud) then
+        print *, repeat('.',60)
+        print *, 'Building energy grid for material '//numToChar(i)
+      end if
 
       mat => self % materials(i)
 
@@ -700,12 +708,13 @@ contains
       call self % unioniseEnergy(mat)
 
       ! Loop over all nuclides to interpolate cross sections
-      nucLoop: do j=1,size(mat % nuclides)
+      nucLoop: do j = 1, size(mat % nuclides)
         nucIdx = mat % nuclides(j)
 
         ! Check if the nuclide already has unionised XS related to another material
         if (self % nuclides(nucIdx) % matIdx /= 0) then
-          if (size(self % materials(self % nuclides(nucIdx) % matIdx) % unionGrid) .eq. size(mat % unionGrid)) then
+          N_mat = size(self % materials(self % nuclides(nucIdx) % matIdx) % unionGrid)
+          if (N_mat == size(mat % unionGrid)) then
             cycle nucLoop
           else
             deallocate(self % nuclides(nucIdx) % unionData)
@@ -714,7 +723,7 @@ contains
         self % nuclides(nucIdx) % matIdx = i
 
         ! Interpolates the XSs of each nuclide to match the unionised grid
-        call self % interpolateXSs(mat,nucIdx)
+        call self % interpolateXSs(mat, nucIdx)
 
       end do nucLoop
 

@@ -30,7 +30,7 @@ module ceNeutronMaterialUni_class
     real(defReal), dimension(:), allocatable     :: totalXS
     integer(shortInt),dimension(:,:),allocatable :: gridIdx
   contains
-    procedure,non_overridable :: search
+    procedure, non_overridable :: search
   end type ceNeutronMaterialUni
 
 contains
@@ -47,7 +47,7 @@ contains
   !!   f   [out] -> value of the interpolation factor for energy E
   !!   E   [in]  -> Energy to search for [MeV]
   !!
-  !! Fatal Errors:
+  !! Errors:
   !!   If energy E is beyond range terminate with fatalError
   !!
   subroutine search(self, idx, f, E)

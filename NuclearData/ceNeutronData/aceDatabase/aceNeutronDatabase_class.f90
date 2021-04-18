@@ -50,7 +50,7 @@ module aceNeutronDatabase_class
   !! Sample input:
   !!   nuclearData {
   !!   handles {
-  !!   ce {type aceNeutronDatabase; aceLibrary <nuclear data path> ;} } 
+  !!   ce {type aceNeutronDatabase; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
@@ -249,7 +249,7 @@ contains
       mat % xss % total = ZERO
 
       ! Construct total macro XS
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -282,7 +282,7 @@ contains
       maj % E  = E
       maj % xs = ZERO
 
-      do i=1,size(self % activeMat)
+      do i = 1, size(self % activeMat)
         matIdx = self % activeMat(i)
 
         ! Update if needed
@@ -319,7 +319,7 @@ contains
       call mat % xss % clean()
 
       ! Construct microscopic XSs
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -430,12 +430,12 @@ contains
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     maxNuc = 0
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
 
       ! Add all nuclides in material to the map
-      do j=1,size(mat % nuclides)
+      do j = 1, size(mat % nuclides)
         call nucSet % add(mat % nuclides(j) % toChar(), IN_SET)
 
       end do
@@ -488,12 +488,12 @@ contains
     ! Build Material definitions
     allocate(self % materials(mm_nMat()))
     allocate(nucIdxs(maxNuc))
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
       isFissileMat = .false.
-      do j=1,size(mat % nuclides)
+      do j = 1, size(mat % nuclides)
         nucIdxs(j) = nucSet % get( mat % nuclides(j) % toChar())
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
       end do
@@ -510,7 +510,7 @@ contains
     j = size(self % nuclides(1) % eGrid)
     self % Ebounds(2) = self % nuclides(1) % eGrid(j)
 
-    do i=2,size(self % nuclides)
+    do i = 2, size(self % nuclides)
       self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))

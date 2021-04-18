@@ -264,7 +264,7 @@ contains
                           (ONE - matCache % f) * thisMat % totalXS(matCache % idx)
 
       ! Save the corresponding energy index in cache per each nuclide in the material
-      do i = 1,size(thisMat % nuclides)
+      do i = 1, size(thisMat % nuclides)
         nucIdx = thisMat % nuclides(i)
         associate (nucCache => cache_nuclideCache(nucIdx), &
                    nuc      => self % nuclides(nucIdx)     )
@@ -273,10 +273,9 @@ contains
           nucCache % idx = thisMat % gridIdx (i, matCache % idx)
 
           if ((nucCache % idx == 0) .or. (nucCache % idx == size(nuc % eGrid))) then
-
             call fatalError (Here, "Index "//numToChar(nucCache % idx)//" out of range &
-            in energy grid of nuclide: "//numToChar(nucIdx)//" for energy "//numToChar(E))
-
+                                   &in energy grid of nuclide: "//numToChar(nucIdx)//" for &
+                                   &energy "//numToChar(E))
           end if
 
           associate(E_top => nuc % eGrid(nucCache % idx + 1), E_low  => nuc % eGrid(nucCache % idx))
@@ -306,7 +305,7 @@ contains
       maj % E  = E
       maj % xs = ZERO
 
-      do i=1,size(self % activeMat)
+      do i = 1, size(self % activeMat)
         matIdx = self % activeMat(i)
 
         ! Update if needed
@@ -343,7 +342,7 @@ contains
       call matCache % xss % clean()
 
       ! Construct microscopic XSs
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -455,7 +454,7 @@ contains
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     maxNuc = 0
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
 
@@ -513,7 +512,7 @@ contains
     ! Build Material definitions
     allocate(self % materials(mm_nMat()))
     allocate(nucIdxs(maxNuc))
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
@@ -535,13 +534,13 @@ contains
     j = size(self % nuclides(1) % eGrid)
     self % Ebounds(2) = self % nuclides(1) % eGrid(j)
 
-    do i=2,size(self % nuclides)
+    do i = 2, size(self % nuclides)
       self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
     end do
 
-    call self % unionise()
+    call self % unionise(loud)
 
     !! Clean up
     call aceLib_kill()
@@ -568,7 +567,7 @@ contains
     tmp_grid = self % nuclides(mat % nuclides(1)) % eGrid
 
     ! Concatenate energy grids
-    do i=2,size(mat % nuclides)
+    do i = 2, size(mat % nuclides)
       nucIdx = mat % nuclides(i)
 
       ! Make sure that nuclide energy grid doesn't have repeated energies
@@ -577,10 +576,10 @@ contains
       if (doesIt) then
         duplicatesIdx = findDuplicatesSorted(self % nuclides(nucIdx) % eGrid)
 
-        do j=1,size(duplicatesIdx)
+        do j = 1, size(duplicatesIdx)
           E_idx = duplicatesIdx(j)
           self % nuclides(nucIdx) % eGrid(E_idx) = &
-          (1.0+100*floatTol) * self % nuclides(nucIdx) % eGrid(E_idx-1)
+          (ONE + 100.0*floatTol) * self % nuclides(nucIdx) % eGrid(E_idx-1)
         end do
 
       end if
@@ -625,7 +624,7 @@ contains
       ! STEP 1
       ! Fill XS arrays with either the value corresponding to the energy, or zero
       h = 1
-      preLoop: do k=1,size(mat % unionGrid)
+      preLoop: do k = 1, size(mat % unionGrid)
 
         if (abs(nuc % eGrid(h)/mat % unionGrid(k) - ONE) < 1.0e-8) then
 
@@ -703,18 +702,23 @@ contains
   !!
   !! Unionise energy grid per material and generate XS
   !!
-  subroutine unionise(self)
+  !! Args:
+  !!   loud [in] -> If true print status messages to the screen
+  !!
+  subroutine unionise(self, loud)
     class(aceNeutronDatabaseUniIdx),intent(inout) :: self
+    logical(defBool), intent(in)                  :: loud
     type(ceNeutronMaterialUni),pointer            :: mat
     real(defReal),dimension(:,:),allocatable      :: unionData
     integer(shortInt)                             :: i, j, nucIdx
 
-
     ! UNIONISE MATERIAL ENERGY GRIDS
-    matLoop: do i=1,size(self % materials)
+    matLoop: do i = 1, size(self % materials)
 
-      print*, '...................................................................'
-      print*, 'Building energy grid for material '//numToChar(i)
+      if (loud) then
+        print *, repeat('.',60)
+        print *, 'Building energy grid for material '//numToChar(i)
+      end if
 
       mat => self % materials(i)
 
@@ -727,7 +731,7 @@ contains
       mat % totalXS = ZERO
 
       ! Fill XS arrays with either the value corresponding to the energy, or zero
-      nucLoop: do j=1,size(mat % nuclides)
+      nucLoop: do j = 1, size(mat % nuclides)
         nucIdx = mat % nuclides(j)
         allocate(unionData(size(self % nuclides(nucIdx) % mainData(:,1)),size(mat % unionGrid)))
 
