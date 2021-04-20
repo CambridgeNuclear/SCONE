@@ -84,6 +84,8 @@ module fixedSourcePhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real (defReal)     :: CPU_time_start
+    real (defReal)     :: CPU_time_end
 
   contains
     procedure :: init
@@ -192,10 +194,10 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(fixedSourcePhysicsPackage), intent(in) :: self
-    type(outputFile)                             :: out
-    character(pathLen)                           :: path
-    character(nameLen)                           :: name
+    class(fixedSourcePhysicsPackage), intent(inout) :: self
+    type(outputFile)                                :: out
+    character(pathLen)                              :: path
+    character(nameLen)                              :: name
 
     name = 'asciiMATLAB'
     call out % init(name)
@@ -208,6 +210,13 @@ contains
 
     name = 'Source_batches'
     call out % printValue(self % N_cycles,name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+
+    name = 'Transport_time'
+    call out % printValue(timerTime(self % timerMain),name)
 
     ! Print tally
     call self % tally % print(out)
@@ -233,6 +242,8 @@ contains
     character(nameLen)                              :: nucData, energy, geomName
     integer(shortInt)                               :: i
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
+
+    call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')

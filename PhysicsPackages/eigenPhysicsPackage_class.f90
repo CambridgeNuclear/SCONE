@@ -93,6 +93,9 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real (defReal)    :: time_transport = 0.0
+    real (defReal)    :: CPU_time_start
+    real (defReal)    :: CPU_time_end
 
   contains
     procedure :: init
@@ -232,6 +235,11 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
+
+    ! Load elapsed time
+    self % time_transport = self % time_transport + elapsed_T
+
+
   end subroutine cycles
 
   !!
@@ -259,10 +267,10 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(eigenPhysicsPackage), intent(in) :: self
-    type(outputFile)                       :: out
-    character(pathLen)                     :: path
-    character(nameLen)                     :: name
+    class(eigenPhysicsPackage), intent(inout) :: self
+    type(outputFile)                          :: out
+    character(pathLen)                        :: path
+    character(nameLen)                        :: name
 
     name = 'asciiMATLAB'
     call out % init(name)
@@ -278,6 +286,13 @@ contains
 
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+
+    name = 'Total_Transport_Time'
+    call out % printValue(self % time_transport,name)
 
     ! Print Inactive tally
     call self % inactiveTally % print(out)
@@ -310,6 +325,8 @@ contains
     type(visualiser)                          :: viz
     integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
+
+    call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
