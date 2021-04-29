@@ -15,7 +15,7 @@ module transportOperatorDT_class
   use transportOperator_inter,    only : transportOperator
 
   ! Geometry interfaces
-  use cellGeometry_inter,         only : cellGeometry
+  use geometry_inter,             only : geometry
 
   ! Tally interface
   use tallyCodes

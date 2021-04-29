@@ -7,9 +7,6 @@ module transportOperatorFactory_func
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
 
-  ! Nuclear Data an geometry interface
-  use cellGeometry_inter, only : cellGeometry
-
   ! Transport Operators
   use transportOperator_inter,          only : transportOperator
   use transportOperatorST_class,        only : transportOperatorST
@@ -38,10 +35,9 @@ contains
   !! Allocate new allocatable transportOperator to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_transportOperator(new, dict, geom)
+  subroutine new_transportOperator(new, dict)
     class(transportOperator),allocatable, intent(inout):: new
     class(dictionary), intent(in)                      :: dict
-    class(cellGeometry),pointer,intent(in)             :: geom
     character(nameLen)                                 :: type
     character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
 
@@ -55,15 +51,15 @@ contains
     select case(type)
       case('transportOperatorST')
         allocate( transportOperatorST :: new)
-        call new % init(dict, geom)
+        call new % init(dict)
 
       case('transportOperatorDT')
         allocate( transportOperatorDT :: new)
-        call new % init(dict, geom)
+        call new % init(dict)
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
-        call new % init(dict, geom)
+        call new % init(dict)
 
 !      case('dynamicTranspOperDT')
 !        allocate( transportOperatorDynamicDT :: new)

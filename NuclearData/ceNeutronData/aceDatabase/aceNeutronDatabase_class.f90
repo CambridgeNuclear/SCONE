@@ -47,6 +47,11 @@ module aceNeutronDatabase_class
   !!
   !! For now the simplest possible implementation.
   !!
+  !! Sample input:
+  !!   nuclearData {
+  !!   handles {
+  !!   ce {type aceNeutronDatabase; aceLibrary <nuclear data path> ;} }
+  !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
   !!   materials -> array of ceNeutronMaterials with data
@@ -244,7 +249,7 @@ contains
       mat % xss % total = ZERO
 
       ! Construct total macro XS
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -256,6 +261,7 @@ contains
         ! Add microscopic XSs
         mat % xss % total = mat % xss % total + dens * cache_nuclideCache(nucIdx) % xss % total
       end do
+
     end associate
 
   end subroutine updateTotalMatXS
@@ -276,7 +282,7 @@ contains
       maj % E  = E
       maj % xs = ZERO
 
-      do i=1,size(self % activeMat)
+      do i = 1, size(self % activeMat)
         matIdx = self % activeMat(i)
 
         ! Update if needed
@@ -313,7 +319,7 @@ contains
       call mat % xss % clean()
 
       ! Construct microscopic XSs
-      do i = 1,size(self % materials(matIdx) % nuclides)
+      do i = 1, size(self % materials(matIdx) % nuclides)
         dens   = self % materials(matIdx) % dens(i)
         nucIdx = self % materials(matIdx) % nuclides(i)
 
@@ -341,7 +347,14 @@ contains
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
 
-    call self % updateMicroXSs(E, nucIdx, rand)
+    associate (nucCache => cache_nuclideCache(nucIdx), &
+               nuc      => self % nuclides(nucIdx)     )
+
+      nucCache % E_tot  = E
+      call nuc % search(nucCache % idx, nucCache % f, E)
+      nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+
+    end associate
 
   end subroutine updateTotalNucXS
 
@@ -357,13 +370,19 @@ contains
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
 
-    ! Verify if update is needed
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
+
+      ! In case the total XS hasn't been retrieved before (during tracking)
+      if (nucCache % E_tot /= E) then
+        nucCache % E_tot  = E
+        call nuc % search(nucCache % idx, nucCache % f, E)
+      end if
+
       nucCache % E_tail = E
-      nucCache % E_tot  = E
-      call nuc % search(nucCache % idx, nucCache % f, E)
+      ! Overwrites all the micro cross sections in cache
       call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+
     end associate
 
   end subroutine updateMicroXSs
@@ -411,12 +430,12 @@ contains
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
     maxNuc = 0
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
 
       ! Add all nuclides in material to the map
-      do j=1,size(mat % nuclides)
+      do j = 1, size(mat % nuclides)
         call nucSet % add(mat % nuclides(j) % toChar(), IN_SET)
 
       end do
@@ -469,12 +488,12 @@ contains
     ! Build Material definitions
     allocate(self % materials(mm_nMat()))
     allocate(nucIdxs(maxNuc))
-    do i=1,mm_nMat()
+    do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
       isFissileMat = .false.
-      do j=1,size(mat % nuclides)
+      do j = 1, size(mat % nuclides)
         nucIdxs(j) = nucSet % get( mat % nuclides(j) % toChar())
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
       end do
@@ -491,7 +510,7 @@ contains
     j = size(self % nuclides(1) % eGrid)
     self % Ebounds(2) = self % nuclides(1) % eGrid(j)
 
-    do i=2,size(self % nuclides)
+    do i = 2, size(self % nuclides)
       self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))

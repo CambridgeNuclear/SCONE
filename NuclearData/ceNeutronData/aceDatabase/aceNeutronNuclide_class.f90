@@ -338,7 +338,7 @@ contains
 
     associate (data => self % mainData(:,idx:idx+1))
 
-      xss % total            = data(TOTAL_XS, 2)     * f + (ONE-f) * data(TOTAL_XS, 1)
+      xss % total            = data(TOTAL_XS, 2)  * f + (ONE-f) * data(TOTAL_XS, 1)
       xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (ONE-f) * data(ESCATTER_XS, 1)
       xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
       xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)

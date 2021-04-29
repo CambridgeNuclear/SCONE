@@ -19,7 +19,7 @@ module transportOperatorHT_class
   use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use cellGeometry_inter,         only : cellGeometry
+  use geometry_inter,             only : geometry
 
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
@@ -42,13 +42,12 @@ module transportOperatorHT_class
 
 contains
 
-  subroutine init(self, dict, geom)
-    class(transportOperatorHT), intent(inout)  :: self
-    class(dictionary), intent(in)              :: dict
-    class(cellGeometry), pointer, intent(in)   :: geom
+  subroutine init(self, dict)
+    class(transportOperatorHT), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
 
     ! Initialise superclass
-    call init_super(self, dict, geom)
+    call init_super(self, dict)
 
     ! Initialise this class
     call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
@@ -130,7 +129,7 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    logical(defBool)                          :: isColl
+    integer(shortInt)                         :: event
     real(defReal)                             :: sigmaT, dist
 
     STLoop: do
@@ -148,7 +147,7 @@ contains
       call p % savePrePath()
 
       ! Move to the next stop. NOTE: "move" resets dist to distanced moved!
-      call self % geom % move(p % coords, dist, isColl)
+      call self % geom % move(p % coords, dist, event)
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
@@ -160,7 +159,7 @@ contains
       end if
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( isColl .or. p % isDead) exit STLoop
+      if( event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
 

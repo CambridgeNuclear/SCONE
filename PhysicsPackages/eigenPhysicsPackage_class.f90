@@ -22,7 +22,8 @@ module eigenPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use cellGeometry_inter,             only : cellGeometry
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
+                                             gr_geomIdx  => geomIdx
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -49,7 +50,6 @@ module eigenPhysicsPackage_class
   use keffAnalogClerk_class,          only : keffResult
 
   ! Factories
-  use geometryFactory_func,           only : new_cellGeometry_ptr
   use transportOperatorFactory_func,  only : new_transportOperator
 
   ! Visualisation
@@ -65,7 +65,8 @@ module eigenPhysicsPackage_class
     private
     ! Building blocks
     class(nuclearDatabase), pointer        :: nucData       => null()
-    class(cellGeometry), pointer           :: geom          => null()
+    class(geometry), pointer               :: geom          => null()
+    integer(shortInt)                      :: geomIdx       = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
     class(source), allocatable             :: initSource
@@ -92,6 +93,9 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real (defReal)    :: time_transport = 0.0
+    real (defReal)    :: CPU_time_start
+    real (defReal)    :: CPU_time_end
 
   contains
     procedure :: init
@@ -140,6 +144,9 @@ contains
 
     ! Attach nuclear data and RNG to neutron
     neutron % pRNG   => self % pRNG
+
+    ! Set geometry
+    neutron % geomIdx = self % geomIdx
 
     ! Set initiial k-eff
     k_new = self % keff_0
@@ -228,6 +235,11 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
+
+    ! Load elapsed time
+    self % time_transport = self % time_transport + elapsed_T
+
+
   end subroutine cycles
 
   !!
@@ -255,10 +267,10 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(eigenPhysicsPackage), intent(in) :: self
-    type(outputFile)                       :: out
-    character(pathLen)                     :: path
-    character(nameLen)                     :: name
+    class(eigenPhysicsPackage), intent(inout) :: self
+    type(outputFile)                          :: out
+    character(pathLen)                        :: path
+    character(nameLen)                        :: name
 
     name = 'asciiMATLAB'
     call out % init(name)
@@ -274,6 +286,13 @@ contains
 
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
+
+    call cpu_time(self % CPU_time_end)
+    name = 'Total_CPU_Time'
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+
+    name = 'Total_Transport_Time'
+    call out % printValue(self % time_transport,name)
 
     ! Print Inactive tally
     call self % inactiveTally % print(out)
@@ -302,11 +321,12 @@ contains
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
-    character(nameLen)                        :: nucData, energy
+    character(nameLen)                        :: nucData, energy, geomName
     type(visualiser)                          :: viz
-    class(geometry), pointer                  :: geom
     integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
+
+    call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
@@ -360,7 +380,10 @@ contains
 
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
-    self % geom => new_cellGeometry_ptr(tempDict, ndReg_getMatNames())
+    geomName = 'eigenGeom'
+    call gr_addGeom(geomName, tempDict)
+    self % geomIdx = gr_geomIdx(geomName)
+    self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
@@ -370,8 +393,7 @@ contains
     if (dict % isPresent('viz')) then
       print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
-      geom => self % geom
-      call viz % init(geom, tempDict)
+      call viz % init(self % geom, tempDict)
       print *, "Constructing visualisation"
       call viz % makeViz()
       call viz % kill()
@@ -383,7 +405,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict, self % geom)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise active & inactive tally Admins
     tempDict => dict % getDictPtr('inactiveTally')

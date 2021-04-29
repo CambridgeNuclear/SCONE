@@ -1,199 +1,239 @@
 module universe_inter
 
   use numPrecision
-  use genericProcedures,  only : fatalError, linFind
-  use vector_class,       only : vector
+  use genericProcedures,  only : fatalError, numToChar, rotationMatrix, charToInt
+  use dictionary_class,   only : dictionary
   use coord_class,        only : coord
-  use surface_inter,      only : surfaceShelf
-  use cell_class,         only : cellShelf
+  use charMap_class,      only : charMap
+  use surfaceShelf_class, only : surfaceShelf
+  use cellShelf_class,    only : cellShelf
 
   implicit none
   private
 
-  !! Local Parameters
-  integer(shortInt),parameter    :: DEF_STRIDE = 20
+
+  ! Extandable methods
+  public :: kill
+
+  ! Universe utility functions
+  public :: charToFill
 
   !!
-  !! Universe is a collection of cells that spans the entire space
-  !! It allows to find cellIdx and localId based on coordinates
-  !! It determines distance to the next cell
-  !! It performs cell-to-cell crossings thus:
-  !!   -> special universes (pins, lattices) can use extra knowlage about likely neighbours
+  !! Abstract interface for all universes
+  !!
+  !! Universe represents a subdivision of the entire space into local cells.
+  !!
+  !! Universe can be associated with:
+  !!   translation (to a new origin)
+  !!   rotation (by Euler angles using ZXZ convention)
+  !!
+  !! Rotation is applied before translation to the origin.
+  !!
+  !! Private Members:
+  !!   uniId   -> Id of the universe
+  !!   uniIdx  -> Index of the universe
+  !!   origin  -> Location of the origin of the univere co-ordinates in the frame of higher universe
+  !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
+  !!   rot     -> rotation flag. True is universe is rotated
+  !!
+  !! Interface:
+  !!   id           -> Get Id of the universe
+  !!   setId        -> Set Id of the universe
+  !!   setIdx       -> Set index of the universe
+  !!   setTransfrom -> Set origin and/or rotation of the universe. Rotation angles are in [deg]
+  !!   init         -> Initialise universe and return fillArray with content of local cells.
+  !!     Requires surface/cell shelfs and map of material names to matIdxs
+  !!   kill         -> Return to uninitialised state
+  !!   enter        -> Generate new coord after entering a universe from higher level coord.
+  !!   findCell     -> Return local cell ID and cellIdx in cellShelf for a given position.
+  !!   distance     -> Calculate the distance to the point where localID will change
+  !!   cross        -> Assuming point is at the boundary between local cells, find next local cell.
+  !!   cellOffset   -> Given coords with set localID, return cellOffset for that cell.
   !!
   type, public, abstract :: universe
     private
-    integer(shortInt)          :: uniId
-    real(defReal),dimension(3) :: offset = ZERO
+    integer(shortInt)             :: uniId  = 0
+    integer(shortInt)             :: uniIdx = 0
+    real(defReal), dimension(3)   :: origin = ZERO
+    real(defReal), dimension(3,3) :: rotMat = ZERO
+    logical(defBool)              :: rot    = .false.
   contains
     ! Build procedures
-    procedure                      :: id
-    procedure                      :: setId
-    procedure                      :: setOffset
-    procedure(cellIdx), deferred   :: cellIdx
+    procedure, non_overridable :: id
+    procedure, non_overridable :: setId
+    procedure, non_overridable :: setIdx
+    procedure, non_overridable :: setTransform
+    procedure(init), deferred  :: init
+    procedure                  :: kill
 
     ! Runtime procedures
-    procedure                      :: enter
-    procedure(findCell),deferred   :: findCell
-    procedure(distance),deferred   :: distance
-    procedure(cross),deferred      :: cross
-    procedure(cellOffset),deferred :: cellOffset
-
+    procedure, non_overridable      :: enter
+    procedure(findCell), deferred   :: findCell
+    procedure(distance), deferred   :: distance
+    procedure(cross), deferred      :: cross
+    procedure(cellOffset), deferred :: cellOffset
   end type universe
 
-  !!
-  !! Slot to store diffrent polymorphic universes in the single array
-  !!
-  type,public,extends(universe) :: universeSlot
-    private
-    class(universe),allocatable :: slot
-  contains
-    ! Loading into slot
-    generic           :: assignment(=) => copy_slot
-    procedure         :: moveAllocFrom => moveAllocFrom_slot
-    procedure         :: load          => load_slot
-    procedure,private :: copy_slot
-
-    ! Build procedures
-    procedure :: id         => id_slot
-    procedure :: setId      => setId_slot
-    procedure :: setOffset  => setOffset_slot
-    procedure :: cellIdx    => cellIDx_slot
-
-    ! Run time procedures
-    procedure :: enter      => enter_slot
-    procedure :: findCell   => findCell_slot
-    procedure :: distance   => distance_slot
-    procedure :: cross      => cross_slot
-    procedure :: cellOffset => cellOffset_slot
-
-  end type universeSlot
-
-  !!
-  !! Stores number of universes
-  !! Public interface:
-  !!  shelf     -> array of universes
-  !!  add       -> adds a universe with unique id to Shelf
-  !!  getOrAdd  -> returns ID & Idx of provided universe, If it isn't present it adds it to the shelf
-  !!  getIdx    -> returns Idx of universe with ID. returns "targetNotFound" if ID is not present
-  !!  trimSize  -> Resizes array to contain no empty entries
-  !!  init      -> initialises with "maximum size" and "stride"
-  !!  kill      -> returns to uninitialised state
-  !!
-  type, public :: universeShelf
-    private
-    type(universeSlot),dimension(:),allocatable, public :: shelf
-    integer(shortInt)                                   :: Nmax   = 0
-    integer(shortInt)                                   :: N      = 0
-    integer(shortInt)                                   :: stride = DEF_STRIDE
-    integer(shortInt)                                   :: nextID = 1
-  contains
-    procedure :: init       => init_shelf
-    procedure :: kill       => kill_shelf
-    procedure :: trimSize   => trimSize_shelf
-    procedure :: size       => size_shelf
-
-    procedure :: add        => add_shelf
-    procedure :: getIdx     => getIdx_shelf
-
-    ! Private procedures
-    procedure, private :: grow    => grow_shelf
-    procedure, private :: resize  => resize_shelf
-
-  end type universeShelf
-
-
   abstract interface
-    !!
-    !! Given cell localID returtns cellIdx
-    !!
-    function cellIdx(self, localID)
-      import :: universe, &
-                shortInt
-      class(universe), intent(in)   :: self
-      integer(shortInt), intent(in) :: localID
-      integer(shortInt)             :: cellIdx
-    end function cellIdx
 
     !!
-    !! Using the coordinates it finds a localID & cellIDx inside the universe
+    !! Initialise Universe
     !!
-    subroutine findCell(self, coords, cShelf, sShelf)
-      import :: universe   ,&
-                coord      ,&
-                cellShelf  ,&
-                surfaceShelf
-      class(universe), intent(in)    :: self
-      type(coord),intent(inout)      :: coords
-      type(cellShelf), intent(in)    :: cShelf
-      type(surfaceShelf), intent(in) :: sShelf
+    !! Must ruturn a fill array, that contains content in each local cell of the universe.
+    !! Array is indexed by local cell ID. Universe content is -uniID and material content
+    !! is +ve matIdx.
+    !!
+    !! Args:
+    !!   fill [out]    -> Fill array. Each position gives content for each local cell. Negative
+    !!     values are universe IDs (uniID). Positive are material indexes (matIdx)
+    !!   dict [in]     -> Dictionary with the universe definition
+    !!   cells [inout] -> Shelf with all user-defined cells
+    !!   surfs [inout] -> Shelf with all user-defined surfaces
+    !!   mats [in]     -> Map of material names to corresponding matIdx
+    !!
+    subroutine init(self, fill, dict, cells, surfs, mats)
+      import :: universe, shortInt, dictionary, &
+                cellShelf, surfaceShelf, charMap
+      class(universe), intent(inout)                            :: self
+      integer(shortInt), dimension(:), allocatable, intent(out) :: fill
+      class(dictionary), intent(in)                             :: dict
+      type(cellShelf), intent(inout)                            :: cells
+      type(surfaceShelf), intent(inout)                         :: surfs
+      type(charMap), intent(in)                                 :: mats
+    end subroutine init
+
+    !!
+    !! Find local cell ID given a point
+    !!
+    !! Given position and direction return localID for a cell and, if the cell is
+    !! also defined on a cellShelf, return its index (cellIdx). If it isn't set
+    !! cellIdx to 0.
+    !!
+    !! Args:
+    !!   localID [out] -> Local ID for the given point
+    !!   cellIdx [out] -> cellIdx in cellShelf, if the cell point is in is defined there.
+    !!     If the cell exists only in the universe return 0.
+    !!   r [in]        -> Position of a point
+    !!   u [in]        -> Normalised direaction (norm2(u) = 1.0)
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine findCell(self, localID, cellIdx, r, u)
+      import :: universe, shortInt, defReal
+      class(universe), intent(inout)          :: self
+      integer(shortInt), intent(out)          :: localID
+      integer(shortInt), intent(out)          :: cellIdx
+      real(defReal), dimension(3), intent(in) :: r
+      real(defReal), dimension(3), intent(in) :: u
     end subroutine findCell
 
     !!
-    !! Returns distance to the next cell boundary in the universe
-    !! Returns surfIdx of the surface beeing X-ed
-    !! surfIdx can be < 0 (invalid)
-    !! Invalid surfIdx indicate a surface that is private to the universe(not present on sShelf)
-    !! Example of a private surface is face of a lattice cell
+    !! Return distance to the next boundary between local cells in the universe
     !!
-    subroutine distance(self, dist, surfIdx, coords ,cShelf, sShelf)
-      import :: universe    ,&
-                defReal     ,&
-                shortInt    ,&
-                coord       ,&
-                cellShelf   ,&
-                surfaceShelf
-      class(universe), intent(in)    :: self
-      real(defReal), intent(out)     :: dist
-      integer(shortInt), intent(out) :: surfIdx
-      type(coord), intent(in)        :: coords
-      type(cellShelf), intent(in)    :: cShelf
-      type(surfaceShelf),intent(in)  :: sShelf
+    !! In addition to distance surfIdx of the surface that will be crossed after a move by
+    !! the distance is also returned. If surfIdx > 0 it means that the surface is defined
+    !! on surfaceShelf with the index. If surfIdx < 0 it means that the surface is local to the
+    !! universe.
+    !!
+    !! The returned surfIdx is a hint for `cross` procedure, that may allow to speed up transition
+    !! processing.
+    !!
+    !! Args:
+    !!   d [out]       -> Distance to the next surface
+    !!   surfIdx [out] -> Index of the surface that will be crossed. If +ve than surface
+    !!     is defined on surfaceSHelf. If -ve surface is local to this univerese.
+    !!   coords [in]   -> Coordinates of the point inside the universe (after transformations
+    !!     and with localID already set)
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine distance(self, d, surfIdx, coords)
+      import :: universe, defReal, shortInt, coord
+      class(universe), intent(inout)          :: self
+      real(defReal), intent(out)              :: d
+      integer(shortInt), intent(out)          :: surfIdx
+      type(coord), intent(in)                 :: coords
     end subroutine distance
 
-
     !!
-    !! Perform crossing inside the universe from current cell to next cell
-    !! Assumes coords are at the surface being crossed (within surface_tol)
-    !! IT DOES NOT PERFORM CHECK IF THE ABOVE ASSUMPTION IS VALID! (Be careful - MAK)
+    !! Cross between local cells
     !!
-    subroutine cross(self, coords, surfIdx, cShelf, sShelf)
-      import :: universe   ,&
-                coord      ,&
-                shortInt   ,&
-                cellShelf  ,&
-                surfaceShelf
-      class(universe), intent(in)    :: self
-      type(coord),intent(inout)      :: coords
+    !! Procedure assumes that the point is ON THE SURFACE between cells within under/overshoot as
+    !! a result of finate FP precision.
+    !!
+    !! Args:
+    !!   coords [inout] -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set). On exit localID will be changed
+    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is beeing
+    !!     crossed.
+    !!
+    !! Note: Self is intent(inout), but if a state of the universe is to be changed
+    !!   it is necessary to consider issues related to parallel calculations with shared
+    !!   memory.
+    !!
+    subroutine cross(self, coords, surfIdx)
+      import :: universe, coord, shortInt
+      class(universe), intent(inout) :: self
+      type(coord), intent(inout)     :: coords
       integer(shortInt), intent(in)  :: surfIdx
-      type(cellShelf), intent(in)    :: cShelf
-      type(surfaceShelf), intent(in) :: sShelf
     end subroutine cross
 
     !!
     !! Return offset for the current cell
-    !! This is used when going into nested universe
-    !! Total offset of the nested universe is :
-    !!  cellOffset + nestedUniverse % offset
     !!
-    !! Cell offset needs to be applied before envoing "enter" on the nested universe
+    !! Args:
+    !!   coords [in] -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set).
     !!
-    function cellOffset(self,coords) result(offset)
-      import :: universe ,&
-                coord    ,&
-                defReal
-      class(universe), intent(in)    :: self
-      type(coord),intent(inout)      :: coords
-      real(defReal),dimension(3)     :: offset
+    !! Result:
+    !!   Cell offset (3D position vector). Offset is applied before entering a nested universe
+    !!   inside a local cell.
+    !!
+    function cellOffset(self, coords) result (offset)
+      import :: universe, coord, defReal
+      class(universe), intent(in) :: self
+      type(coord), intent(in)     :: coords
+      real(defReal), dimension(3) :: offset
     end function cellOffset
 
   end interface
 
 contains
-!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-!! universe procedures
-!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
   !!
-  !! Return id of the universe definition
+  !! Set universe ID
+  !!
+  !! Args:
+  !!   id [in] -> Universe ID (id > 0)
+  !!
+  !! Errors:
+  !!   fatalError if ID is not +ve
+  !!
+  subroutine setId(self, id)
+    class(universe), intent(inout) :: self
+    integer(shortInt), intent(in)  :: id
+    character(100), parameter :: Here = 'setId (universe_inter.f90)'
+
+    if (id <= 0) then
+      call fatalError(Here, 'Id must be +ve. Is: '//numToChar(id))
+    end if
+
+    self % uniId = id
+
+  end subroutine setId
+
+  !!
+  !! Get universe ID
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   universe ID.
   !!
   elemental function id(self)
     class(universe), intent(in) :: self
@@ -204,381 +244,170 @@ contains
   end function id
 
   !!
-  !! Set universe Id
+  !! Set universe index
   !!
-  elemental subroutine setId(self,id)
+  !! Args:
+  !!   idx [in] -> Universe index (idx > 0)
+  !!
+  !! Errors:
+  !!   fatalError if index is not +ve.
+  !!
+  subroutine setIdx(self, idx)
     class(universe), intent(inout) :: self
-    integer(shortInt),intent(in)   :: id
+    integer(shortInt), intent(in)  :: idx
+    character(100), parameter :: Here = 'setIdx (universe_inter.f90)'
 
-    self % uniId = id
+    if (idx <= 0) then
+      call fatalError(Here, 'Idx must be +ve. Is: '//numToChar(idx))
+    end if
 
-  end subroutine setId
+    self % uniIdx = idx
+
+  end subroutine setIdx
 
   !!
-  !! Set universe offset
+  !! Set universe origin & rotation
   !!
-  pure subroutine setOffset(self,offset)
-    class(universe), intent(inout)        :: self
-    real(defReal),dimension(3),intent(in) :: offset
-
-    self % offset = offset
-
-  end subroutine setOffset
-    
+  !! Note that rotation is defined by Euler angles with ZXZ convention
   !!
-  !! Enter universe
-  !! Apply co-ordinate transformation and find cell
-  !! Set localID and cellIdx in coords
+  !! Args:
+  !!   origin [in]   -> Optional. 3D vector with the universe origin.
+  !!   rotation [in] -> Optional. 3D vector with Euler ZXZ rotation angles [deg]. {phi, theta, psi}
   !!
-  subroutine enter(self, coords, cShelf, sShelf)
-    class(universe), intent(in)    :: self
-    type(coord),intent(inout)      :: coords
-    type(cellShelf), intent(in)    :: cShelf
-    type(surfaceShelf), intent(in) :: sShelf
+  subroutine setTransform(self, origin, rotation)
+    class(universe), intent(inout)                    :: self
+    real(defReal), dimension(3), intent(in), optional :: origin
+    real(defReal), dimension(3), intent(in), optional :: rotation
 
-    ! Transform coordinates
-    coords % r = coords % r - self % offset
+    if (present(origin)) then
+      self % origin = origin
+
+    end if
+
+    if (present(rotation)) then
+      if (.not.all(rotation == ZERO)) then ! Do not add matrix if there is no rotation
+        self % rot = .true.
+        call rotationMatrix(self % rotMat, rotation(1), rotation(2), rotation(3))
+      end if
+    end if
+
+  end subroutine setTransform
+
+  !!
+  !! Enter from higher universe
+  !!
+  !! Sets:
+  !!   - New position (r)
+  !!   - New direction (dir)
+  !!   - Rotation infor (isRotated + rotMat)
+  !!   - Local cell (localID)
+  !!   - Cell info (cellIdx)
+  !!
+  !! Does not set uniRootID !
+  !! Applies all transformation when entering new universe with exception of cellOffset
+  !! which needs to be applied to argument r outside this subroutine.
+  !!
+  !! Args:
+  !!   new [out] -> New coordinates for the level.
+  !!   r [in] -> Position affter cellOffset in upper univere is applied
+  !!   u [in] -> Normalised direction (norm2(u) = 1.0)
+  !!
+  !! Note: Self is intent(inout), but if a state of the universe is to be changed
+  !!   it is necessary to consider issues related to parallel calculations with shared
+  !!   memory.
+  !!
+  subroutine enter(self, new, r, u)
+    class(universe), intent(inout)          :: self
+    type(coord), intent(out)                :: new
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+
+    ! Set Info & Position
+    new % r   = r
+    new % dir = u
+    new % uniIdx    = self % uniIdx
+    new % isRotated = self % rot
+
+    if (new % isRotated) then
+      new % rotMat = self % rotMat
+      new % r = matmul(self % rotMat, new % r)
+      new % dir = matmul(self % rotMat, new % dir)
+    end if
+
+    ! Translate
+    new % r = new % r - self % origin
 
     ! Find cell
-    call self % findCell(coords, cShelf, sShelf)
+    call self % findCell(new % localID, new % cellIdx, new % r, new % dir)
 
   end subroutine enter
 
-!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-!! universeSlot procedures
-!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-
   !!
-  !! Load allocatable surface on RHS into LHS slot
-  !! Be carefull about loading slots into slots.
-  !! It will work but the chain will hurt performance
+  !! Return to uninitialised state
   !!
-  subroutine load_slot(LHS,RHS)
-    class(universeSlot), intent(inout)         :: LHS
-    class(universe),allocatable, intent(inout) :: RHS
+  elemental subroutine kill(self)
+    class(universe), intent(inout) :: self
 
-    if(allocated(LHS % slot)) deallocate (LHS % slot)
-    call move_alloc(RHS , LHS % slot)
+    self % uniIdx = 0
+    self % uniId  = 0
+    self % origin = ZERO
+    self % rotMat = ZERO
+    self % rot    = .false.
 
-    LHS % uniID  = LHS % slot % id()
-    LHS % offset = LHS % slot % offset
-
-  end subroutine load_slot
-
-  !!
-  !! Copy RHS into LHS
-  !! Be carefull about loading slots into slots.
-  !! It will work but the chain will hurt performance
-  !!
-  elemental subroutine copy_slot(LHS,RHS)
-    class(universeSlot),intent(inout) :: LHS
-    class(universe), intent(in)       :: RHS
-
-    if(allocated(LHS % slot)) deallocate (LHS % slot)
-    allocate(LHS % slot, source = RHS)
-
-    LHS % uniID  = LHS % slot % id()
-    LHS % offset = LHS % slot % offset
-
-  end subroutine copy_slot
-
-  !!
-  !! Move allocation from RHS slot into LHS slot
-  !!
-  elemental subroutine moveAllocFrom_slot(LHS,RHS)
-    class(universeSlot), intent(inout) :: LHS
-    class(universeSlot), intent(inout) :: RHS
-
-    if(allocated(LHS % slot)) deallocate (LHS % slot)
-    call move_alloc(RHS % slot, LHS % slot)
-
-    LHS % uniID  = LHS % slot % id()
-    LHS % offset = LHS % slot % offset
-
-  end subroutine moveAllocFrom_slot
-
-  !!
-  !! Get id of universe in the slot
-  !!
-  elemental function id_slot(self) result(id)
-    class(universeSlot), intent(in) :: self
-    integer(shortInt)               :: id
-
-    id = self % slot % id()
-
-  end function id_slot
-
-  !!
-  !! Set id of universe in the slot
-  !!
-  elemental subroutine setId_slot(self,id)
-    class(universeSlot), intent(inout) :: self
-    integer(shortInt),intent(in)       :: id
-
-    call self % slot % setId(id)
-    self % uniId = id
-
-  end subroutine setId_slot
-
-  !!
-  !! Set offset of universe in the slot
-  !!
-  pure subroutine setOffset_slot(self,offset)
-    class(universeSlot), intent(inout)    :: self
-    real(defReal),dimension(3),intent(in) :: offset
-
-    call self % slot % setOffset(offset)
-    self % offset = offset
-
-  end subroutine setOffset_slot
-
-  !!
-  !! Return cellIdx given local cellId
-  !!
-  function cellIdx_slot(self, localID)
-    class(universeSlot), intent(in) :: self
-    integer(shortInt), intent(in)   :: localID
-    integer(shortInt)               :: cellIdx_slot
-
-    cellIdx_slot = self % slot % cellIdx(localID)
-
-  end function cellIdx_slot
-
-  !!
-  !! Enter universe in the slot
-  !!
-  subroutine enter_slot(self, coords, cShelf, sShelf)
-    class(universeSlot), intent(in)  :: self
-    type(coord),intent(inout)        :: coords
-    type(cellShelf), intent(in)      :: cShelf
-    type(surfaceShelf), intent(in)   :: sShelf
-
-    call self % slot % enter(coords, cShelf, sShelf)
-
-  end subroutine enter_slot
-
-  !!
-  !! Find cell in the universe in the slot
-  !!
-  subroutine findCell_slot(self, coords, cShelf, sShelf)
-    class(universeSlot), intent(in)  :: self
-    type(coord),intent(inout)        :: coords
-    type(cellShelf), intent(in)      :: cShelf
-    type(surfaceShelf), intent(in)   :: sShelf
-
-    call self % slot % findCell(coords, cShelf, sShelf)
-
-  end subroutine findCell_slot
-
-  !!
-  !! Find distance to next cell in the universe in the slot
-  !!
-  subroutine distance_slot(self, dist, surfIdx, coords, cShelf, sShelf)
-    class(universeSlot), intent(in)  :: self
-    real(defReal), intent(out)       :: dist
-    integer(shortInt), intent(out)   :: surfIdx
-    type(coord), intent(in)          :: coords
-    type(cellShelf), intent(in)      :: cShelf
-    type(surfaceShelf),intent(in)    :: sShelf
-
-    call self % slot% distance(dist, surfIdx, coords, cShelf, sShelf)
-
-  end subroutine distance_slot
-
-  !!
-  !! Cross surface in the universe in the slot
-  !!
-  subroutine cross_slot(self, coords, surfIdx, cShelf, sShelf)
-    class(universeSlot), intent(in)  :: self
-    type(coord),intent(inout)        :: coords
-    integer(shortInt), intent(in)    :: surfIdx
-    type(cellShelf), intent(in)      :: cShelf
-    type(surfaceShelf), intent(in)   :: sShelf
-
-    call self % slot % cross(coords, surfIdx, cShelf, sShelf)
-
-  end subroutine cross_slot
-
-  !!
-  !! Give offset for current cell in the universe in the slot
-  !!
-  function cellOffset_slot(self,coords) result(offset)
-    class(universeSlot), intent(in) :: self
-    type(coord),intent(inout)       :: coords
-    real(defReal),dimension(3)      :: offset
-
-    offset = self % slot % cellOffset(coords)
-
-  end function cellOffset_slot
+  end subroutine kill
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-!! universeShelf procedures
+!! Utility Functions
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-  !!
-  !! Initialise shelf
-  !! Give initial size and optionaly stride to override default
-  !!
-  subroutine init_shelf(self,N,stride)
-    class(universeShelf), intent(inout)    :: self
-    integer(shortInt), intent(in)          :: N
-    integer(shortInt), optional,intent(in) :: stride
-
-    ! Return to uninitialised state
-    call self % kill()
-
-    ! Allocate storage space
-    allocate( self % shelf(N))
-
-    ! Assign constants
-    self % Nmax = N
-    if(present(stride)) self % stride = stride
-
-  end subroutine init_shelf
 
   !!
-  !! Deallocate storage space and returns shelf to uninitialised state
+  !! Convert a string to correct fill entry
   !!
-  subroutine kill_shelf(self)
-    class(universeShelf), intent(inout) :: self
-
-    if(allocated(self % shelf)) deallocate(self % shelf)
-    self % Nmax   = 0
-    self % N      = 0
-    self % stride = DEF_STRIDE
-    self % nextID = 1
-
-  end subroutine kill_shelf
-
+  !! Material have names which are strings.
+  !! Universes are identified by integer ID. Thus to refer to universe use
+  !!   name = u<7>  ! For universe with ID 7
+  !!   name = u<986> ! For universe with ID 986
+  !!   ...
   !!
-  !! Set shelf size to the number of stored entries
+  !! Args:
+  !!   name [in]  -> Character with the name of material or fill universe ID. Must not contain
+  !!     any blanks!
+  !!   mats [in]  -> Map of material names to matIdx
+  !!   where [in] -> Name of caller procedure for better error message
   !!
-  subroutine trimSize_shelf(self)
-    class(universeShelf), intent(inout) :: self
-
-    call self % resize(self % N)
-
-  end subroutine trimSize_shelf
-
+  !! Result:
+  !!   Filling. If material it is just matIdx. If universe it is -uniID (universe ID).
   !!
-  !! Returns current size of shelf filled with non-empty elements
-  !!
-  function size_shelf(self) result(N)
-    class(universeShelf), intent(in) :: self
-    integer(shortInt)                :: N
+  function charToFill(name, mats, where) result(fill)
+    character(nameLen), intent(in) :: name
+    type(charMap), intent(in)      :: mats
+    character(*), intent(in)       :: where
+    integer(shortInt)              :: fill
+    character(nameLen)             :: str
+    integer(shortInt)              :: pos
+    logical(defBool)               :: err
+    integer(shortInt), parameter :: NOT_FOUND = -7
 
-    N = self % N
-
-  end function size_shelf
-
-  !!
-  !! Adds an universe to the shelf
-  !! Universe needs to be initialised
-  !! Kills universe in the process
-  !! Throws error if univerese with the same id is already present
-  !! Returns uniIdx in the universeShelf
-  !!
-  subroutine add_shelf(self,newUni,uniIdx)
-    class(universeShelf), intent(inout)         :: self
-    class(universe), allocatable ,intent(inout) :: newUni
-    integer(shortInt), intent(out)              :: uniIdx
-    integer(shortInt)                           :: N
-    character(100),parameter :: Here = 'add_shelf (universe_inter.f90)'
-
-    if(.not.allocated(newUni )) then
-      call fatalError(Here, 'Provided universe to store was not initialised')
-    end if
-
-    ! Load surface counter for convenience
-    N = self % N
-
-    if( N == 0) then ! First surface is  being loaded
-      call self % shelf(1) % load(newUni)
-      uniIdx = 1
-
+    ! Identify if mat or universe
+    str = adjustl(name)
+    if (str(1:2) == 'u<') then
+      pos = index(str, '>', back=.true.)
     else
-      ! There are already surfaces present (need to check uniqueness)
-      associate ( storedUnis => self % shelf(1:N) )
-
-        if ( any( storedUnis % id() == newUni % id() )) then        ! ID is already present
-          print *, storedUnis % id()
-          print *, newUni % id()
-          call fatalError(Here,'Id is already present in the universe shelf')
-
-        end if
-      end associate
-
-      ! Load surface
-      call self % shelf(N+1) % load(newUni)
-      uniIdx = N +1
-
+      pos = 0
     end if
 
-    ! Increment surface counter
-    self % N = N + 1
+    ! Convert to fill
+    if (pos /= 0) then
+      fill = charToInt(str(3:pos-1), error=err)
+      if (err) call fatalError(where, 'Failed to convert '//trim(str)//' to universe ID')
+      if (fill <= 0) call fatalError(where, 'Universe ID must be +ve is: '//numToChar(fill))
+      fill = -fill
 
-    ! Grow storage if needed
-    call self % grow()
-
-  end subroutine add_shelf
-
-  !!
-  !! Return universe idx given universe ID
-  !! Returns "targetNotFound" if id is not present
-  !!
-  elemental function getIdx_shelf(self,id) result(idx)
-    class(universeShelf), intent(in) :: self
-    integer(shortInt), intent(in)    :: id
-    integer(shortInt)                :: idx
-
-    associate( storedUniss => self % shelf(1:self % N))
-      idx = linFind(storedUniss % id(), id)
-
-    end associate
-  end function getIdx_shelf
-
-  !!
-  !! Increases the size of the shelf by stride if N >= Nmax
-  !!
-  subroutine grow_shelf(self)
-    class(universeShelf), intent(inout) :: self
-    integer(shortInt)                   :: Nmax
-
-    ! Return if shelf does not need to grow
-    if ( self % N < self % Nmax) then
-      return
+    else ! Convert to mat
+      fill = mats % getOrDefault(name, NOT_FOUND)
+      if (fill == NOT_FOUND) call fatalError(where, 'Unknown material: '//trim(name))
     end if
 
-    ! Calculate new maximum size
-    Nmax = self % Nmax + self % stride
-    call self % resize(Nmax)
-
-  end subroutine grow_shelf
-
-  !!
-  !! Set size of the shelf to Nmax >= self % N
-  !!
-  subroutine resize_shelf(self,Nmax)
-    class(universeShelf), intent(inout)          :: self
-    integer(shortInt), intent(in)                :: Nmax
-    type(universeSlot),dimension(:),allocatable  :: tempShelf
-    character(100), parameter :: Here ='resize (cell_class.f90)'
-
-    if( Nmax < self % N) call fatalError(Here,'Resizeing to size smaller then number of entries')
-
-    ! Allocate new storage space
-    allocate(tempShelf(Nmax) )
-
-    ! Copy Old enteries without reallocation
-    associate ( new => tempShelf(1:self % N), &
-                old => self % shelf(1:self % N) )
-
-      call new % moveAllocFrom( old)
-    end associate
-
-    ! Replace shelf and update Nmax
-    call move_alloc(tempShelf, self % shelf)
-    self % Nmax = Nmax
-
-  end subroutine resize_shelf
+  end function charToFill
 
 end module universe_inter

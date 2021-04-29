@@ -55,8 +55,9 @@ activeTally  {
 inactiveTally {}
 
 geometry { 
-    type basicCellCSG;
+    type geometryStd;
     boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
 
     surfaces
     {
@@ -67,20 +68,21 @@ geometry {
 
     cells
     {
-      out     { id 3; surfaces (2 ); filltype outside;      }
-      fuel     { id 2; surfaces (-2 1); filltype mat; mat fuel;}
-      inside  { id 4; surfaces (-1); filltype mat; mat ref;}
+      fuel     { id 2; type simpleCell; surfaces ( 1); filltype mat; material fuel;}
+      inside   { id 4; type simpleCell; surfaces (-1); filltype mat; material ref;}
     }
 
     universes
     {
 
+      geom {id 2; type cellUniverse; cells (2 4);}
+
       root
       {
 	  id 1;
-	  type cellUniverse; 
-	  origin (0.0 0.0 0.0);
-	  cells ( 2 4 3); 
+	  type rootUniverse; 
+	  border 2;
+	  fill u<2>; 
       }
     }   
 }
@@ -88,7 +90,7 @@ geometry {
 nuclearData {
 
   handles { 
-     ce { type aceNeutronDatabase; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+     ce { type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
   }
   
   

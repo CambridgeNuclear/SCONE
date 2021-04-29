@@ -26,10 +26,19 @@ module genericProcedures
     module procedure hasDuplicates_defReal
   end interface
 
+  interface hasDuplicatesSorted
+    module procedure hasDuplicatesSorted_defReal
+  end interface
+
   interface removeDuplicates
     module procedure removeDuplicates_Char
     module procedure removeDuplicates_shortInt
+    module procedure removeDuplicates_Real
   end interface removeDuplicates
+
+  interface removeDuplicatesSorted
+    module procedure removeDuplicatesSorted_Real
+  end interface removeDuplicatesSorted
 
   interface linFind
     module procedure linFind_Char
@@ -40,6 +49,10 @@ module genericProcedures
 
   interface findDuplicates
     module procedure findDuplicates_Char
+  end interface
+
+  interface findDuplicatesSorted
+    module procedure findDuplicatesSorted_Real
   end interface
 
   interface binarySearch
@@ -64,7 +77,6 @@ module genericProcedures
     module procedure isDescending_shortInt
   end interface
 
-
   interface numToChar
     module procedure numToChar_shortInt
     module procedure numToChar_longInt
@@ -73,16 +85,33 @@ module genericProcedures
     module procedure numToChar_defRealArray
   end interface
 
+  interface concatenate
+    module procedure concatenateArrays_Real
+  end interface
+
   contains
 
-  pure function binaryFloorIdxClosed_Real(array,value) result(idx)
-    !! Performes binary search of an real sorted array and returns index of the largest element
-    !! smaller-or-equal to the requested value. For the value equalt to the largest element
-    !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
-    !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
-    !! paramether. Following errors can happen
-    !!   valueOutsideArray -> larger or smaller then array bounds
-    !!   tooManyIter       -> algorithm did not convarged in required number of iterations
+
+  !!
+  !! Binary search for the largest smaller-or-equal element in the array
+  !!
+  !! Finds a location of a value in a sorted array by a binary search. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of reals. Must be in increasing order (a_i <= a_j for j > i)
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Returns:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
+  !!   idx == tooManyIter if search fails to terminate
+  !!
+  pure function binaryFloorIdxClosed_Real(array, value) result(idx)
     real(defReal),dimension(:),intent(in) :: array
     real(defReal),intent(in)              :: value
     integer(shortInt)                     :: idx
@@ -119,12 +148,22 @@ module genericProcedures
   end function binaryFloorIdxClosed_Real
 
   !!
-  !! Performes linear search of an real sorted array and returns index of the largest
-  !! element smaller-or-equal to the requested value. For the value equal to the largest element
-  !! array(size(array)) it returns size(array)-1. For the value equal to the smallest element
-  !! it returns 1. It returns -ve index in case of an error. Specific value is defined as a
-  !! paramether. Following errors can happen
-  !!   valueOutsideArray -> larger or smaller then array bounds
+  !! Linear search for the largest smaller-or-equal element in the array
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of reals. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
   !!
   pure function linearFloorIdxClosed_Real(array,value) result (idx)
     real(defReal),dimension(:),intent(in) :: array
@@ -143,10 +182,22 @@ module genericProcedures
   end function linearFloorIdxClosed_Real
 
   !!
-  !! Performes linear search of an integer sorted array and returns index of the largest element,
-  !! which is smaller-or-equal to the requested value. Returns errors for emelents smaller and larger
-  !! than the bounds of the array. For the value equal to the smallest element it returns 1 and
-  !! for the value equal to the largest element it returns an error.
+  !! Linear search for the largest smaller-or-equal element in the array of integers
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "floor" of the bin in which value lies
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of shortInts. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "floor" in the array for the value.
+  !!   -> if value == a(N) returns N-1
+  !!   -> if value == a(1) returns 1
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value < a(1) .or. value > a(N)
   !!
   function linearFloorIdxClosed_shortInt(array,value) result(idx)
     integer(shortInt),dimension(:),intent(in) :: Array
@@ -166,11 +217,23 @@ module genericProcedures
   end function linearFloorIdxClosed_shortInt
 
   !!
-  !! Performes linear search of an integer sorted array and returns index of the smallest element,
-  !! which is greater-or-equal to the requested value. Returns errors for elements larger than
-  !! the upper bound of the array. Returns 1 for values smaller or equal to the lower bound of the
-  !! array. Following errors can happen:
-  !!   valueOutsideArray -> larger then the upper bound of array
+  !! Linear search for the smallest larger-or-equal element in an array of integers
+  !!
+  !! Finds a location of a value in a sorted array. Returns index of the
+  !! "ceiling" of the bin in which the value lies
+  !!
+  !! Search is "open" below the array i.e. for value <= a(1) returns 1.
+  !!
+  !! Args:
+  !!   array [in] -> Sorted array of shortInts. Must be in increasing order (a_i <= a_j for j > i).
+  !!   value [in] -> Value, which location is to be found.
+  !!
+  !! Result:
+  !!   Index of the "ceiling" in the array.
+  !!   If value <= a(a) returns 1.
+  !!
+  !! Errors:
+  !!   idx == valueOutideArray if value > a(N)
   !!
   pure function linearCeilingIdxOpen_shortInt(array,value) result(idx)
     integer(shortInt),dimension(:),intent(in) :: Array
@@ -190,6 +253,12 @@ module genericProcedures
   !!
   !! Subroutine that checks whether there was an error during search and returns approperiate
   !! message.
+  !!
+  !! TODO: IT IS POINTLESS AND WILL BE REMOVED.
+  !! ERROR HANDLING FOR SEARCHES SHOULD BE DONE BY CLIENT
+  !!
+  !! Although it can be replaced by ERROR_CODE -> ERROR_MESSAGE translation function to
+  !! give nice strings instead of raw integers in the error messages... 
   !!
   subroutine searchError(idx,Here)
     integer(shortInt),intent(in)  :: idx
@@ -294,6 +363,38 @@ module genericProcedures
   end function removeDuplicates_shortInt
 
   !!
+  !! Removes duplicates from an unsorted realArray
+  !! Does not preserve the order
+  !!
+  function removeDuplicates_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)   :: realArray
+    real(defReal), dimension(:),allocatable   :: out
+    real(defReal), dimension(size(realArray)) :: array
+    real(defReal)                             :: test
+    integer(shortInt)                         :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    array(1) = realArray(1)    ! Copy first element
+    j = 2                     ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (any(array(1:j-1) == test)) cycle   ! Skip cycle if a duplicate is found
+        array(j) = test
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function removeDuplicates_Real
+
+  !!
   !! Function that removes duplicates from input character array. It returns array of equal or
   !! smaller size. Unfortunatly Fortran requires output character to have specified length. Length
   !! of 100 is hardcoded at the moment. Function returns fatal error if input characters are of
@@ -327,6 +428,69 @@ module genericProcedures
         out = pack(charArray, unique)
     end if
   end function removeDuplicates_Char
+
+  !!
+  !! Removes duplicates from a sorted realArray
+  !! Preserves the order
+  !!
+  function removeDuplicatesSorted_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)   :: realArray
+    real(defReal), dimension(:),allocatable   :: out
+    real(defReal), dimension(size(realArray)) :: array
+    real(defReal)                             :: test
+    integer(shortInt)                         :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    array(1) = realArray(1)    ! Copy first element
+    j = 2                     ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (array(j-1) == test) cycle   ! Skip cycle if a duplicate is found
+        array(j) = test
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function removeDuplicatesSorted_Real
+
+  !!
+  !! Find duplicates from a sorted realArray
+  !! Returns an array with the index of the repeated element
+  !!
+  function findDuplicatesSorted_Real(realArray) result(out)
+    real(defReal), dimension(:), intent(in)       :: realArray
+    integer(shortInt), dimension(:),allocatable   :: out
+    integer(shortInt), dimension(size(realArray)) :: array
+    real(defReal)                                 :: test
+    integer(shortInt)                             :: i, j, N
+
+    N = size(realArray)
+
+    ! If provided array is of size 0, return size 0 array
+    if (N == 0 ) then
+      allocate(out(0))
+      return
+    end if
+
+    j = 1                    ! Set new empty index
+    do i=2,N
+      test = realArray(i)
+       if (realArray(i-1) /= test) cycle   ! Skip cycle if a duplicate is not found
+        array(j) = i
+        j = j + 1
+    end do
+
+    out = array(1:j-1)  ! Allocate output
+
+  end function findDuplicatesSorted_Real
 
   !!
   !! Function that finds duplicates in array of characters. Returns array that contains repeted
@@ -436,6 +600,22 @@ module genericProcedures
     end do
     idx = targetNotFound
   end function linFind_shortInt
+
+  !!
+  !! Given 2 arrays, it outputs a third array which is a concatenation of them
+  !!
+  function concatenateArrays_Real(array1,array2) result(out)
+    real(defReal),dimension(:),intent(in)              :: array1
+    real(defReal),dimension(:),intent(in)              :: array2
+    real(defReal),dimension(size(array1)+size(array2)) :: out
+    integer(shortInt)                                  :: N, M
+
+    N = size(array1)
+    M = size(array2)
+    out(1:N) = array1
+    out(N+1:N+M) = array2
+
+  end function concatenateArrays_Real
 
   !!
   !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
@@ -910,9 +1090,65 @@ module genericProcedures
   end function rotateVector
 
   !!
+  !! Generate Euler rotation matrix using ZXZ convention
+  !!
+  !! Args:
+  !!   matrix [out] -> Space for the matrix dimension(3,3)
+  !!   phi [in] -> Initial rotation over Z axis [deg]. In 0 to 360.
+  !!   theta [in] -> 2nd rotation over tranfromed X' axis [deg]. In 0 to 180.
+  !!   psi [in] -> Final rotation over transformed Z' axis [deg]. In 0 to 360.
+  !!
+  !! Errors:
+  !!   fatalError if any angle is beyond its range
+  !!
+  subroutine rotationMatrix(matrix, phi, theta, psi)
+    real(defReal), dimension(3,3), intent(out) :: matrix
+    real(defReal), intent(in)                  :: phi
+    real(defReal), intent(in)                  :: theta
+    real(defReal), intent(in)                  :: psi
+    real(defReal) :: sin_phi, cos_phi, sin_t, cos_t, sin_psi, cos_psi, conv
+    character(100), parameter :: Here = 'rotationMatrix (genericProcedures.f90)'
+
+    ! Check input data
+    if (phi < ZERO .or. phi >= 360.0_defReal) then
+      call fatalError(Here, 'Angle phi must be in <0;360). Is: '//numToChar(phi))
+
+    else if (theta < ZERO .or. theta > 180.0_defReal) then
+      call fatalError(Here, 'Angle theta must be in <0;180>. Is: '//numToChar(theta))
+
+    else if (psi < ZERO .or. psi >= 360.0_defReal) then
+      call fatalError(Here, 'Angle psi must be in <0;180>. Is: '//numToChar(theta))
+
+    end if
+
+    ! Evaluate trigonometric functions
+    conv = TWO_PI / 360.0_defReal
+    sin_phi = sin(phi * conv)
+    cos_phi = cos(phi * conv)
+    sin_t   = sin(theta * conv)
+    cos_t   = cos(theta * conv)
+    sin_psi = sin(psi * conv)
+    cos_psi = cos(psi * conv)
+
+    ! Assign matrix elemets
+    matrix(1,1) = cos_psi * cos_phi - cos_t * sin_phi * sin_psi
+    matrix(1,2) = cos_psi * sin_phi + cos_t * cos_phi * sin_psi
+    matrix(1,3) = sin_psi * sin_phi
+
+    matrix(2,1) = -sin_psi * cos_phi - cos_t * sin_phi * cos_psi
+    matrix(2,2) = -sin_psi * sin_phi + cos_t * cos_phi * cos_psi
+    matrix(2,3) = cos_psi * sin_t
+
+    matrix(3,1) = sin_t * sin_phi
+    matrix(3,2) = -sin_t * cos_phi
+    matrix(3,3) = cos_t
+
+  end subroutine rotationMatrix
+
+  !!
   !! Dot product for 3D vector
   !!
-  function dotProduct(a,b) result(x)
+  pure function dotProduct(a,b) result(x)
     real(defReal),dimension(3), intent(in) :: a,b
     real(defReal)                          :: x
 
@@ -923,7 +1159,7 @@ module genericProcedures
   !!
   !! Cross product for 3D vectors
   !!
-  function crossProduct(a,b) result(c)
+  pure function crossProduct(a,b) result(c)
     real(defReal),dimension(3),intent(in) :: a,b
     real(defReal),dimension(3)            :: c
 
@@ -932,6 +1168,25 @@ module genericProcedures
          a(2)*b(1) - a(1)*b(2) ]
 
   end function crossProduct
+
+  !!
+  !! Return true if key is in the array
+  !!
+  !! Args:
+  !!   array [in] -> Array of data
+  !!   key [in]   -> Required key
+  !!
+  !! Result:
+  !!   True if key is in array. False otherwise
+  !!
+  pure function isIn(array, key)
+    integer(shortInt), dimension(:), intent(in) :: array
+    integer(shortInt), intent(in)               :: key
+    logical(defBool)                            :: isIn
+
+    isIn =  targetNotFound /= linFind(array, key)
+
+  end function isIn
 
   !!
   !! Returns true if array contains duplicates
@@ -976,6 +1231,23 @@ module genericProcedures
     end do
 
   end function hasDuplicates_defReal
+
+  !!
+  !! Returns tue if array contains duplicates
+  !! Only for already sorted arrays
+  !!
+  pure function hasDuplicatesSorted_defReal(array) result(doesIt)
+    real(defReal), dimension(:), intent(in) :: array
+    logical(defBool)                        :: doesIt
+    integer(shortInt)                       :: i
+
+    ! Search through the array looking for duplicates
+    doesIt = .false.
+    do i=2,size(array)
+      doesIt = doesIt .or. array(i) == array(i-1)
+    end do
+
+  end function hasDuplicatesSorted_defReal
 
   !!
   !! Quicksort for integer array

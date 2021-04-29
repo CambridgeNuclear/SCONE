@@ -3,100 +3,120 @@ module universeFactory_func
   use numPrecision
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
-  use intMap_class,       only : intMap
   use charMap_class,      only : charMap
-
-  ! Surface and Cell Shelf
-  use surface_inter,      only : surfaceShelf
-  use cell_class,         only : cellShelf
+  use surfaceShelf_class, only : surfaceShelf
+  use cellShelf_class,    only : cellShelf
 
   ! Universe interface
-  use universe_inter,     only : universe
+  use universe_inter, only : universe
 
-  ! Universe implementations
+  ! Universes
+  use rootUniverse_class, only : rootUniverse
   use cellUniverse_class, only : cellUniverse
   use pinUniverse_class,  only : pinUniverse
   use latUniverse_class,  only : latUniverse
-
-
   implicit none
   private
 
-  ! Public functions to build new universe
-  public :: new_universe
+  ! ** ADD NAME OF NEW UNIVERSE TO THE LIST
+  ! List contains acceptable types of universe
+  ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
+  character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse',&
+                                                                  'cellUniverse',&
+                                                                  'pinUniverse ',&
+                                                                  'latUniverse ']
+
+  ! Public Interface
   public :: new_universe_ptr
-
-
-  ! *** ADD NAME OF A NEW UNIVERSE HERE ***!
-  ! List that contains all accaptable types of universes
-  ! It is printed if type was unrecognised
-  ! NOTE:
-  ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_universes = [ 'cellUniverse',&
-                                                                      'pinUniverse ',&
-                                                                      'latUniverse ']
+  public :: new_universe
 
 contains
 
   !!
-  !! Returns allocatable universe form dictionary and surface & cell Shelfs
-  !! Return fillVector as well. +ve entries are material Idxs, -ve are fill universes Ids
+  !! Point a pointer to a new instance of an allocated universe
   !!
-  function new_universe(fillVector, dict, cShelf, sShelf, cellFillMap, materials ) result(new)
-    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
-    class(dictionary), intent(in)                          :: dict
-    type(cellShelf), intent(inout)                         :: cShelf
-    type(surfaceShelf), intent(inout)                      :: sShelf
-    type(intMap), intent(in)                               :: cellFillMap
-    type(charMap), intent(in)                              :: materials
-    class(universe),allocatable                            :: new
-    character(nameLen)                                     :: type
-    character(100),parameter          :: Here = 'new_universe (universeFactory_func.f90)'
+  !! Args:
+  !!  ptr [out]     -> Pointer to the new universe
+  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  dict [in]     -> Dictionary with universe definition
+  !!  cells [inout] -> Shelf with defined cells
+  !!  surfs [inout] -> Shelf  with defined surfaces
+  !!  mats [in]     -> Map of material names to matIdx
+  !!
+  !! Errors:
+  !!   fatalError if type of universe is unknown
+  !!
+  subroutine new_universe_ptr(ptr, fill, dict, cells, surfs, mats)
+    class(universe), pointer, intent(out) :: ptr
+    integer(shortInt), dimension(:), allocatable, intent(out) :: fill
+    class(dictionary), intent(in)                             :: dict
+    type(cellShelf), intent(inout)                            :: cells
+    type(surfaceShelf), intent(inout)                         :: surfs
+    type(charMap), intent(in)                                 :: mats
+    character(nameLen)                                        :: type
+    character(100), parameter :: Here = 'new_universe_ptr (universeFactory_func.f90)'
 
-    ! Obtain string that specifies type to be built
-    call dict % get(type,'type')
+    ! Obtain type of the universe
+    call dict % get(type, 'type')
 
-    ! Allocate approperiate subclass of universe
-    ! *** ADD CASE STATEMENT FOR A NEW SURFACE BELOW ***!
-    select case(type)
-      case('cellUniverse')
-        allocate(new, source = cellUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
+    ! Allocate approperiate universe
+    ! ** FOR NEW UNIVERSE ADD CASE STATEMENT HERE ** !
+    select case (type)
+      case ('rootUniverse')
+        allocate(rootUniverse :: ptr)
 
-      case('pinUniverse')
-        allocate(new, source = pinUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
+      case ('cellUniverse')
+        allocate(cellUniverse :: ptr)
 
-      case('latUniverse')
-        allocate(new, source = latUniverse(fillVector, dict, cShelf, sShelf, cellFillMap,materials))
+      case ('pinUniverse')
+        allocate(pinUniverse :: ptr)
 
-     !*** NEW SURFACE TEMPLATE ***!
-     !case('<newSUrfaceName>')
-     !  allocate(new, source = <newSurfaceName>(dict) )
-     !
+      case ('latUniverse')
+        allocate(latUniverse :: ptr)
+
       case default
-        print *, AVALIBLE_universes
-        call fatalError(Here, 'Unrecognised type of universe: ' // trim(type))
+        print '(A)', 'AVAILABLE UNIVERSES: '
+        print '(A)', AVAILABLE_UNI
+        call fatalError(Here, 'Unrecognised type of an universe: '//trim(type))
 
     end select
 
-  end function new_universe
+    ! Initialise universe
+    call ptr % init(fill, dict, cells, surfs, mats )
+
+  end subroutine new_universe_ptr
 
   !!
-  !! Returns pointer to allocated universe from dictionary and surface & cell Shelfs
-  !! Return fillVector as well. +ve entries are material Idxs, -ve are fill universes Ids
+  !! Allocte an allocatable universe
   !!
-  function new_universe_ptr(fillVector,dict, cShelf, sShelf, cellFillMap ,materials) result(new)
-    integer(shortInt),dimension(:),allocatable,intent(out) :: fillVector
-    class(dictionary), intent(in)                          :: dict
-    type(cellShelf), intent(inout)                         :: cShelf
-    type(surfaceShelf), intent(inout)                      :: sShelf
-    type(intMap), intent(in)                               :: cellFillMap
-    type(charMap), intent(in)                              :: materials
-    class(universe),pointer                                :: new
+  !! Args:
+  !!  new [out]     -> Universe to be allocated
+  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  dict [in]     -> Dictionary with universe definition
+  !!  cells [inout] -> Shelf with defined cells
+  !!  surfs [inout] -> Shelf  with defined surfaces
+  !!  mats [in]     -> Map of material names to matIdx
+  !!
+  !! Errors:
+  !!   fatalError if type of universe is unknown
+  !!
+  subroutine new_universe(new, fill, dict, cells, surfs, mats)
+    class(universe), allocatable, intent(out)                 :: new
+    integer(shortInt), dimension(:), allocatable, intent(out) :: fill
+    class(dictionary), intent(in)                             :: dict
+    type(cellShelf), intent(inout)                            :: cells
+    type(surfaceShelf), intent(inout)                         :: surfs
+    type(charMap), intent(in)                                 :: mats
+    class(universe), pointer                                  :: temp
 
-    ! Allocate pointer and copy data from local allocatable
-    allocate( new, source = new_universe(fillVector ,dict, cShelf, sShelf, cellFillMap, materials) )
+    ! Allocate temporary
+    call new_universe_ptr(temp, fill, dict, cells, surfs, mats)
+    allocate(new, source = temp)
 
-  end function new_universe_ptr
+    ! Clean up
+    call temp % kill()
+    deallocate(temp)
 
+  end subroutine new_universe
 
 end module universeFactory_func
