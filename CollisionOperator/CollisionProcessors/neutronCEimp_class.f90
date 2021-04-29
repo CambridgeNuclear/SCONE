@@ -381,6 +381,8 @@ contains
   !!
   !! Process elastic scattering
   !!
+  !! All CE elastic scattering happens in the CM frame
+  !!
   subroutine elastic(self, p, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
@@ -395,21 +397,15 @@ contains
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
-    if (reac % inCMFrame()) then
-      collDat % A =  self % nuc % getMass()
-      collDat % kT = self % nuc % getkT()
+    collDat % A =  self % nuc % getMass()
+    collDat % kT = self % nuc % getkT()
 
-      ! Apply criterion for Free-Gas vs Fixed Target scattering
-      if ((p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)) then
-        call self % scatterFromFixed(p, collDat, reac)
-
-      else
-        call self % scatterFromMoving(p, collDat, reac)
-
-      end if
+    ! Apply criterion for Free-Gas vs Fixed Target scattering
+    if ((p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)) then
+      call self % scatterFromFixed(p, collDat, reac)
 
     else
-      call self % scatterInLAB(p, collDat, reac)
+      call self % scatterFromMoving(p, collDat, reac)
 
     end if
 
