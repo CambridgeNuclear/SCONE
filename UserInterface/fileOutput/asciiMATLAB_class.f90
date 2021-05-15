@@ -63,17 +63,17 @@ module asciiMATLAB_class
 
 contains
 
-  !!
-  !!
-  !!
+
   function asciiMATLAB_constructor() result (new)
     type(asciiMATLAB) :: new
   end function asciiMATLAB_constructor
 
   !!
-  !! Write to a provided unit
+  !! Print the output to the given unit
   !!
-  subroutine writeToFile(self,unit)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine writeToFile(self, unit)
     class(asciiMATLAB), intent(inout) :: self
     integer(shortInt), intent(in)     :: unit
     character(:),allocatable          :: form
@@ -87,7 +87,9 @@ contains
   !!
   !! Change state to writing new block with "name"
   !!
-  subroutine startBlock(self,name)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine startBlock(self, name)
     class(asciiMATLAB), intent(inout) :: self
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here ='startBlock (asciiMATLAB_class.f90)'
@@ -105,8 +107,9 @@ contains
   end subroutine startBlock
 
   !!
-  !! End top level block and return to previous block
-  !! Return error if this is called in root block
+  !! End current block
+  !!
+  !! See asciiOutput_inter for details
   !!
   subroutine endBlock(self)
     class(asciiMATLAB), intent(inout) :: self
@@ -136,9 +139,10 @@ contains
 
   !!
   !! Change state to writing a new entry
-  !! Can recive single value or array next
   !!
-  subroutine startEntry(self,name)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine startEntry(self, name)
     class(asciiMATLAB), intent(inout) :: self
     character(*), intent(in)          :: name
     character(100), parameter :: Here ='startEntry (asciiMATLAB_class.f90)'
@@ -157,8 +161,11 @@ contains
 
 
   end subroutine startEntry
-   !!
+
+  !!
   !! End writing a new entry
+  !!
+  !! See asciiOutput_inter for details
   !!
   subroutine endEntry(self)
     class(asciiMATLAB), intent(inout) :: self
@@ -178,10 +185,11 @@ contains
   end subroutine endEntry
 
   !!
-  !! Start writing array with shape & column-major order(leftmost index varies fastest)
-  !! Name should alrady be provided by "startEntry"
+  !! Start writing array with the given shape
   !!
-  subroutine startArray(self,shape)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine startArray(self, shape)
     class(asciiMATLAB), intent(inout)         :: self
     integer(shortInt),dimension(:),intent(in) :: shape
     character(100), parameter :: Here ='startArray (asciiMATLAB_class.f90)'
@@ -209,7 +217,9 @@ contains
   end subroutine startArray
 
   !!
-  !! End writing array
+  !! End writing the array
+  !!
+  !! See asciiOutput_inter for details
   !!
   subroutine endArray(self)
     class(asciiMATLAB), intent(inout) :: self
@@ -239,9 +249,11 @@ contains
   end subroutine endArray
 
   !!
-  !! Print val assuming it contains valid printed number with no leading or trailing blanks
+  !! Print numerical value
   !!
-  subroutine printNum(self,val)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine printNum(self, val)
     class(asciiMATLAB), intent(inout) :: self
     character(*),intent(in)           :: val
     character(100), parameter :: Here ='printNum (asciiMATLAB_class.f90)'
@@ -259,9 +271,11 @@ contains
   end subroutine printNum
 
   !!
-  !! Print val assuming it contains valid printed string with no leading or trailing blanks
+  !! Print character value
   !!
-  subroutine printChar(self,val)
+  !! See asciiOutput_inter for details
+  !!
+  subroutine printChar(self, val)
     class(asciiMATLAB), intent(inout) :: self
     character(*),intent(in)           :: val
     character(100), parameter :: Here ='printChar (asciiMATLAB_class.f90)'
@@ -277,5 +291,5 @@ contains
     end if
 
   end subroutine printChar
-    
+
 end module asciiMATLAB_class
