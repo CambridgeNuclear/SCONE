@@ -22,66 +22,33 @@ module outputFile_class
                                   VAL_ARRAY_CHAR = 5
 
   !!
-  !! Common interface for output files
+  !! Interface for the file output.
+  !!   It is used to allow easy swiching of output formats and
+  !!   to allow writing to multiple files simultaneously
   !!
-  !! Allows to support multiple output formats while providing a single interface (No need to
-  !! change code to alter/add an output format).
+  !! Output is stream-like and not thread safe.
+  !! Two kinds of outputs are allowed:
+  !!   1) value  -> character, shortInt, longInt or defReal
+  !!   2) result -> pair of defReals. 1st for result 2nd for STD
+  !! Output can be scalar or multidimensional array (for now no limit on rank)
+  !! Arrays are in column-major order (leftmost index varies fastest) (like in Fortran & Matlab)
   !!
-  !! NOTE:
-  !!   Is not thread safe. Avoid multiple threads writing to the same output file.
+  !! Output is divided into blocks, that can be nested.
+  !! Each block has an associated name execpt for root block that has no name.
+  !! Root block is opened at initialisation and closed at finalisation.
+  !! Each value or result (scalar or array) is associated with a "name" (keyword)
+  !! KEYWORDS AND SUB-BLOCK NAMES NEED TO BE UNIQUE WITHIN BLOCK!
+  !! (***This rule may not be inforced in initial implementations-> requires "char set" )
   !!
-  !! Output file:
-  !!  -> Consists of multiple nested block. Each block has a name with exception of the 1st, which
-  !!       is called root
-  !!  -> Each entry in a block (including sub-blocks) must have a unique name
-  !!  -> Each entry is either a raw "Name - Value" pair or an array
-  !!  -> Arrays can have unlimited rank (dimension), but values of the enteries must be given in a
-  !!     sequence in a COLUMN-MAJOR ORDER
-  !!  -> Arrays can store RESULTS, REALS, INTS or CHARACTERS.
-  !!  -> RESULT is a pair of reals. MEAN and STANDARD DEVIATION
+  !! OutputFile can be initialised with fatalErrors = .false.
+  !! In such case logic errors do not call fatalError, but just set noErrors to .false. and
+  !! log error messages on errorLog char tape (string).
+  !! Validity can than be verified with isValid and getErrorLog functions
   !!
-  !! Writing output:
-  !!  Is done by the a sequence of calls, which open block, start arrays, add values etc.
-  !!  OutputFile checks that the order and number of calls is correct. It also is responsible for
-  !!  handling errors.
   !!
-  !! Handling errors:
-  !!  If `fatalError` is true (default) then on wrong sequence of calls fatalError will be raised.
-  !!  Otherwise the flag `noErrors` will be set to false and error massege saved in the `errorLog`
+  !! Output format is default(*) unless changed by the user (***this may change)
   !!
-  !! Private Memebers:
-  !!   output      -> Output printer that determines the format
-  !!   type        -> Type of the output printer
-  !!   fatalErrors -> True (default) makes all errors fatal
-  !!   noErrors    -> True if no errors were encountered since initialisation
-  !!   errorLog    -> Log of all errors
-  !!   blockLevel  -> Current block level (0 is root)
-  !!   arrayTop    -> Counter of the number of elements given to the array since it start
-  !!   arrayLimit  -> The number of elements that needs to be given to the array
-  !!   arrayType   -> Type of the array currently written
-  !!   current_block_name -> Name of the current block
-  !!   current_block_name -> Name of the current array
-  !!   block_name_stack   -> Stack of previous block names
-  !!   shapeBuffer -> Saved shape of the current array
-  !!   real_format -> Format to convert real to char
-  !!   int_format -> Format to convert int to char
-  !!
-  !! Interface:
-  !!   init           -> Initialise the output file with format
-  !!   writeToFile    -> Write the output to a file
-  !!   writeToConsole -> Write the output to the console
-  !!   reset          -> Discard already written output.
-  !!   isValid        -> Return true if no errors were raised since initialisation
-  !!   getErrorLog    -> Get the error log
-  !!   startBlock     -> Start new block in the output
-  !!   endBlock       -> End the current block
-  !!   startArray     -> Start new array in the current block
-  !!   endArray       -> End array in the current block
-  !!   addValue       -> Add value REAL, INT or CHAR to the array
-  !!   addResult      -> Add MEAN-STANDARD DEVIATION pair to the array
-  !!   printValue     -> Add a NAME-VALUE pair to the current block
-  !!   printResult    -> Add a NAME - RESULT pair to the current block
-  !!   num2char       -> Convert a number to character
+  !! Names of the arrays and block need to fit into nameLen
   !!
   type, public :: outputFile
     private
@@ -116,9 +83,9 @@ module outputFile_class
     procedure :: reset
 
     ! Error Handling
-    procedure, private :: logError
-    procedure          :: isValid
-    procedure          :: getErrorLog
+    procedure :: logError
+    procedure :: isValid
+    procedure :: getErrorLog
 
     ! Block writing interface
     procedure :: startBlock
@@ -163,14 +130,8 @@ module outputFile_class
   end type outputFile
 
 contains
-
   !!
-  !! Initialise output file
-  !!
-  !! Args:
-  !!   type [in] -> Character to specify the format of the output file
-  !!   fatalErrors [in] -> Optional. Set on/off fatalErrors oninvalid use of output file.
-  !!                         Default is ON.
+  !! Initialise output file by providing format type
   !!
   subroutine init(self, type, fatalErrors)
     class(outputFile), intent(inout)     :: self
@@ -190,21 +151,13 @@ contains
   !!
   !! Dump collected results to file
   !!
-  !! Writes the output stored in memory to a file
-  !!
-  !! Args:
-  !!   file [in] -> Path to the output file
-  !!
-  !! Errors:
-  !!   fatalError if there is a problem opening the file.
-  !!
-  subroutine writeToFile(self, file)
+  subroutine writeToFile(self,file)
     class(outPutFile), intent(inout) :: self
     character(pathLen), intent(in)   :: file
     integer(shortInt)                :: unitNum
     integer(shortInt)                :: error
     character(99)                    :: errorMsg
-    character(100), parameter :: Here = 'writeToFile (outputFile_class.f90)'
+    character(100), parameter :: Here ='writeToFile ( outputFile_class.f90)'
 
     ! Open file to write
     open ( newunit   = unitNum, &
@@ -225,10 +178,7 @@ contains
   end subroutine writeToFile
 
   !!
-  !! Print output file to the console (default output)
-  !!
-  !! Args:
-  !!   None
+  !! Dump Collected Results to Console (default output)
   !!
   subroutine writeToConsole(self)
     class(outputFile), intent(inout) :: self
@@ -261,15 +211,11 @@ contains
 
   end subroutine reset
 
+
   !!
-  !! Handle an error.
-  !!
-  !! Raises a fatalError is fatalError is set TRUE. Else writes the error message to the log file
-  !! and changes the error flag to true.
-  !!
-  !! Args:
-  !!   where [in] -> Character. Location of the error
-  !!   what [in] -> Character. Description of the error.
+  !! This subroutine specifies how to handle use errors (wrong call sequence)
+  !! It can cause fatal error or simply log the error on an error charTape and set flag
+  !! self % noErrors that indicates that output iscorrectly formated to .false.
   !!
   subroutine logError(self, where, what)
     class(outputFile), intent(inout) :: self
@@ -290,10 +236,7 @@ contains
   !!
   !! Returns .true. if there were no errors. .false. otherwise
   !!
-  !! Args:
-  !!   None
-  !!
-  pure function isValid(self) result(isIt)
+  function isValid(self) result(isIt)
     class(outputFile), intent(in) :: self
     logical(defBool)              :: isIt
 
@@ -304,9 +247,6 @@ contains
   !!
   !! Returns error log as a allocatable character
   !!
-  !! Args:
-  !!   None
-  !!
   function getErrorLog(self) result(errorLog)
     class(outputFile), intent(in) :: self
     character(:),allocatable      :: errorLog
@@ -316,17 +256,9 @@ contains
   end function getErrorLog
 
   !!
-  !! Start new nested block
+  !! Start new nested block with name: "name"
   !!
-  !! Args:
-  !!  name [in] -> Name of the new block (must be unique)
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when writting an array
-  !!     -Block name was already defined in the current block
-  !!
-  subroutine startBlock(self, name)
+  subroutine startBlock(self,name)
     class(outputFile), intent(inout) :: self
     character(nameLen), intent(in)   :: name
     character(100), parameter :: Here ='startBlock (outputFile_class.f90)'
@@ -353,14 +285,6 @@ contains
 
   !!
   !! Exit from the current block.
-  !!
-  !! Args:
-  !!   None
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when writting an array
-  !!     -Tries to end the root block.
   !!
   subroutine endBlock(self)
     class(outputFile), intent(inout) :: self
@@ -389,20 +313,9 @@ contains
 
   !!
   !! Prepare for writing array. Store shape information
-  !!
   !! We don't know the type of content yet so we do not inform printer about shape
   !!
-  !! Args:
-  !!   name [in] -> Name of the array
-  !!   shape [in] -> Shape of the array e.g. [N,M] or [1,3,4]
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when writting another array
-  !!     -Name is alrady used in the current block
-  !!     -Shape is invalid
-  !!
-  subroutine startArray(self, name, shape)
+  subroutine startArray(self,name,shape)
     class(outputFile), intent(inout) :: self
     character(nameLen), intent(in)   :: name
     integer(shortInt),dimension(:)   :: shape
@@ -438,13 +351,6 @@ contains
   !!
   !! Finish writing current array
   !!
-  !! Args:
-  !!   None
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Array is closed before all elements are provided
-  !!
   subroutine endArray(self)
     class(outputFile), intent(inout) :: self
     character(100), parameter :: Here = 'endArray ( outputFile_class.f90)'
@@ -473,17 +379,7 @@ contains
   !!
   !! Add result to the array
   !!
-  !! Args:
-  !!   val [in] -> Mean value
-  !!   std [in] -> Associated standard deviation
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addResult_scalar(self, val, std)
+  subroutine addResult_scalar(self,val,std)
     class(outputFile), intent(inout) :: self
     real(defReal), intent(in)        :: val
     real(defReal), intent(in)        :: std
@@ -517,30 +413,20 @@ contains
   end subroutine addResult_scalar
 
   !!
-  !! Add results to the array
+  !! Add rank1 array of result to the array
   !!
-  !! Args:
-  !!   val [in] -> Array of mean valuse
-  !!   std [in] -> Associated standard deviations
-  !!
-  !! Erorrs:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addResult_rank1(self, val, std)
-    class(outputFile), intent(inout)         :: self
-    real(defReal), dimension(:), intent(in)  :: val
-    real(defReal), dimension(:), intent(in)  :: std
-    integer(shortInt)                        :: N, i
+  subroutine addResult_rank1(self,val,std)
+    class(outputFile), intent(inout)        :: self
+    real(defReal), dimension(:), intent(in) :: val
+    real(defReal), dimension(:),intent(in)  :: std
+    integer(shortInt)                       :: N, i
     character(100),parameter :: Here ='addResult_rank1 (outputFile_class.f90)'
 
     N = size(val)
     if (N /= size(std)) call self % logError(Here,'val and std have diffrent size.')
 
     ! Add all individual entries
-    do i = 1, N
+    do i=1,N
       call self % addResult_scalar(val(i),std(i))
     end do
 
@@ -549,17 +435,7 @@ contains
   !!
   !! Print complete single result entry
   !!
-  !! Args:
-  !!   val [in] -> Mean value
-  !!   std [in] -> Associated standard deviation
-  !!   name [in] -> Unique name of this results (within current block)
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when an array is open
-  !!     -Name is not unique
-  !!
-  subroutine printResult(self, val, std, name)
+  subroutine printResult(self,val,std,name)
     class(outputFile), intent(inout)  :: self
     real(defReal),intent(in)          :: val
     real(defReal),intent(in)          :: std
@@ -586,19 +462,11 @@ contains
 
   end subroutine printResult
 
+
   !!
-  !! Add real value to the array
+  !! Add value of defReal to the array
   !!
-  !! Args:
-  !!   val [in] -> the value
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_defReal_scalar(self, val)
+  subroutine addValue_defReal_scalar(self,val)
     class(outputFile), intent(inout) :: self
     real(defReal), intent(in)        :: val
     character(100),parameter :: Here ='addValue_defReal_scalar (outputFile_class.f90)'
@@ -635,18 +503,9 @@ contains
   end subroutine addValue_defReal_scalar
 
   !!
-  !! Add real values to the array
+  !! Add rank1 array of defReal to the array
   !!
-  !! Args:
-  !!   val [in] -> An array of values
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_defReal_rank1(self, val)
+  subroutine addValue_defReal_rank1(self,val)
     class(outputFile), intent(inout)        :: self
     real(defReal), dimension(:), intent(in) :: val
     integer(shortInt)                       ::  i
@@ -659,18 +518,9 @@ contains
   end subroutine addValue_defReal_rank1
 
   !!
-  !! Print real value to the block
+  !! Print complete single result entry
   !!
-  !! Args:
-  !!  val [in] -> The value
-  !!  name [in] -> Unique name of the value in the block
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when an array is open
-  !!     -Name is not unique in the block
-  !!
-  subroutine printValue_defReal(self, val, name)
+  subroutine printValue_defReal(self,val,name)
     class(outputFile), intent(inout)  :: self
     real(defReal),intent(in)          :: val
     character(nameLen), intent(in)    :: name
@@ -694,18 +544,9 @@ contains
   end subroutine printValue_defReal
 
   !!
-  !! Add short int value to the array
+  !! Add value of shortInt to the array
   !!
-  !! Args:
-  !!   val [in] -> the value
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_shortInt_scalar(self, val)
+  subroutine addValue_shortInt_scalar(self,val)
     class(outputFile), intent(inout) :: self
     integer(shortInt), intent(in)    :: val
     integer(longInt)                 :: val_t
@@ -717,18 +558,9 @@ contains
   end subroutine addValue_shortInt_scalar
 
   !!
-  !! Add short int values to the array
+  !! Add rank1 array of shortInt to the array
   !!
-  !! Args:
-  !!   val [in] -> An array of values
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_shortInt_rank1(self, val)
+  subroutine addValue_shortInt_rank1(self,val)
     class(outputFile), intent(inout)            :: self
     integer(shortInt), dimension(:), intent(in) :: val
     integer(shortInt)                           ::  i
@@ -741,18 +573,9 @@ contains
   end subroutine addValue_shortInt_rank1
 
   !!
-  !! Print short int value to the block
+  !! Print complete single result entry
   !!
-  !! Args:
-  !!  val [in] -> The value
-  !!  name [in] -> Unique name of the value in the block
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when an array is open
-  !!     -Name is not unique in the block
-  !!
-  subroutine printValue_shortInt(self, val, name)
+  subroutine printValue_shortInt(self,val,name)
     class(outputFile), intent(inout)  :: self
     integer(shortInt), intent(in)     :: val
     character(nameLen), intent(in)    :: name
@@ -775,19 +598,11 @@ contains
 
   end subroutine printValue_shortInt
 
+
   !!
-  !! Add long int value to the array
+  !! Add value of longInt to the array
   !!
-  !! Args:
-  !!   val [in] -> the value
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_longInt_scalar(self, val)
+  subroutine addValue_longInt_scalar(self,val)
     class(outputFile), intent(inout) :: self
     integer(longInt), intent(in)     :: val
     character(100),parameter :: Here ='addValue_longInt_scalar (outputFile_class.f90)'
@@ -824,18 +639,9 @@ contains
   end subroutine addValue_longInt_scalar
 
   !!
-  !! Add long int values to the array
+  !! Add rank1 array of shortInt to the array
   !!
-  !! Args:
-  !!   val [in] -> An array of values
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_longInt_rank1(self, val)
+  subroutine addValue_longInt_rank1(self,val)
     class(outputFile), intent(inout)            :: self
     integer(longInt), dimension(:), intent(in)  :: val
     integer(shortInt)                           ::  i
@@ -848,18 +654,9 @@ contains
   end subroutine addValue_longInt_rank1
 
   !!
-  !! Print long int value to the block
+  !! Print complete single result entry
   !!
-  !! Args:
-  !!  val [in] -> The value
-  !!  name [in] -> Unique name of the value in the block
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when an array is open
-  !!     -Name is not unique in the block
-  !!
-  subroutine printValue_longInt(self, val, name)
+  subroutine printValue_longInt(self,val,name)
     class(outputFile), intent(inout)  :: self
     integer(longInt), intent(in)      :: val
     character(nameLen), intent(in)    :: name
@@ -882,19 +679,11 @@ contains
 
   end subroutine printValue_longInt
 
+
   !!
-  !! Add character value to the array
+  !! Add value of longInt to the array
   !!
-  !! Args:
-  !!   val [in] -> the value
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_char_scalar(self, val)
+  subroutine addValue_char_scalar(self,val)
     class(outputFile), intent(inout) :: self
     character(*), intent(in)         :: val
     character(100),parameter :: Here ='addValue_char_scalar (outputFile_class.f90)'
@@ -931,18 +720,9 @@ contains
   end subroutine addValue_char_scalar
 
   !!
-  !! Add character values to the array
+  !! Add rank1 array of shortInt to the array
   !!
-  !! Args:
-  !!   val [in] -> An array of values
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called before an array is opened
-  !!     -Currently opened array has different type
-  !!     -To many entries are fed into the opened array
-  !!
-  subroutine addValue_char_rank1(self, val)
+  subroutine addValue_char_rank1(self,val)
     class(outputFile), intent(inout)            :: self
     character(*), dimension(:), intent(in)      :: val
     integer(shortInt)                           ::  i
@@ -955,18 +735,9 @@ contains
   end subroutine addValue_char_rank1
 
   !!
-  !! Print character value to the block
+  !! Print complete single result entry
   !!
-  !! Args:
-  !!  val [in] -> The value
-  !!  name [in] -> Unique name of the value in the block
-  !!
-  !! Errors:
-  !!   Calls logError if:
-  !!     -Called when an array is open
-  !!     -Name is not unique in the block
-  !!
-  subroutine printValue_char(self, val, name)
+  subroutine printValue_char(self,val,name)
     class(outputFile), intent(inout)  :: self
     character(*), intent(in)          :: val
     character(nameLen), intent(in)    :: name
@@ -992,10 +763,7 @@ contains
   !!
   !! Print defReal to character of length nameLen using format in self
   !!
-  !! Args:
-  !!   r [in] -> Real value
-  !!
-  function num2char_defReal(self, r) result(c)
+  function num2char_defReal(self,r) result(c)
     class(outputFile), intent(in) :: self
     real(defReal), intent(in)     :: r
     character(nameLen)            :: c
@@ -1009,10 +777,7 @@ contains
   !!
   !! Print shortInt to character of length nameLen using format in self
   !!
-  !! Args:
-  !!   i [in] -> Value of the integer
-  !!
-  function num2char_shortInt(self, i) result(c)
+  function num2char_shortInt(self,i) result(c)
     class(outputFile), intent(in) :: self
     integer(shortInt), intent(in) :: i
     character(nameLen)            :: c
@@ -1026,10 +791,7 @@ contains
   !!
   !! Print shortInt to character of length nameLen using format in self
   !!
-  !! Args:
-  !!   i [in] ->Value of the integer
-  !!
-  function num2char_longInt(self, i) result(c)
+  function num2char_longInt(self,i) result(c)
     class(outputFile), intent(in) :: self
     integer(longInt), intent(in)  :: i
     character(nameLen)            :: c
@@ -1039,5 +801,5 @@ contains
     c = adjustl(c)
 
   end function num2char_longInt
-
+    
 end module outputFile_class

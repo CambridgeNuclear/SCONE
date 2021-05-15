@@ -6,27 +6,25 @@ module asciiOutput_inter
   private
 
   !!
-  !! Abstract interface for output printers
+  !! Abstract interface for the printing output in stream fashion to an ASCII file
+  !!   It allows to swap diffrent printers to print to diffrent formats (i.e. MATLAB, CSV, JASON)
   !!
-  !! Allows stream-like output to multiple formats (e.g. MATLAB, CSV, JSON)
+  !! Output is divided into blocks, that can be nested.
+  !! Each block has an associated name execpt for root block that has no name.
+  !! Root block is opened at initialisation and closed at finalisation.
+  !! Each entry is associated with a "name" (keyword)
+  !!  Following functionality is provided:
+  !!    -> startBlock(name) - starts new block with the given name
+  !!    -> endBlock         - ends block (return error if trying to  end root block)
+  !!    -> startEntry(name) - start writing entry with name. Expect either array of single value
+  !!    -> endEntry         - end writing entry
+  !!    -> startArray(name,shape) - start writing array with given shape
+  !!    -> endArray               - end writing array
+  !!    -> print(char,mold)       - print char asuming it has the same type as mold(defReal, etc. )
   !!
-  !! They recive the sequence of calls from the `outputFile` and conver them to the output file.
-  !!
-  !! Printers do no error checking. It is responsibility of the `outputFile` to ensure that
-  !! the sequence is correct.
-  !!
-  !! NOTE:
-  !!  outputFile converts the numerical values to characters. Thus printer gets reals already as
-  !!  chars.
-  !!
-  !! Interface:
-  !!   writeToFile -> Print the output to the provided unit
-  !!   startBlock  -> Start new block
-  !!   endBlock    -> End a block
-  !!   startArray  -> Start array with a given shape
-  !!   endArray    -> End current array
-  !!   printNum    -> Print a number (given as character)
-  !!   printChar   -> Print a character
+  !! Assume that checks for name uniqueness are performed by the user class.
+  !! Assume that checks for mixed arrays are performed by the user class.
+  !! Printer should return errors if calls for ends are out of correct sequence
   !!
   type, public,abstract :: asciiOutput
     private
@@ -44,14 +42,10 @@ module asciiOutput_inter
 
 
   abstract interface
-
     !!
-    !! Print the output to the given unit
+    !! For now it prints to screen for debug
     !!
-    !! Args:
-    !!  unit [in] -> Unit number of the output
-    !!
-    subroutine writeToFile(self, unit)
+    subroutine writeToFile(self,unit)
       import :: asciiOutput, &
                 shortInt
       class(asciiOutput), intent(inout) :: self
@@ -61,10 +55,7 @@ module asciiOutput_inter
     !!
     !! Change state to writing new block with "name"
     !!
-    !! Args:
-    !!   name [in] -> Name of the new block
-    !!
-    subroutine startBlock(self, name)
+    subroutine startBlock(self,name)
       import :: asciiOutput, &
                 nameLen
       class(asciiOutput), intent(inout) :: self
@@ -72,7 +63,8 @@ module asciiOutput_inter
     end subroutine startBlock
 
     !!
-    !! End current block
+    !! End top level block and return to previous block
+    !! Return error if this is called in root block
     !!
     subroutine endBlock(self)
       import :: asciiOutput
@@ -81,13 +73,9 @@ module asciiOutput_inter
 
     !!
     !! Change state to writing a new entry
-    !!
     !! Can recive single value or array next
     !!
-    !! Args:
-    !!   name [in] -> name of the entry
-    !!
-    subroutine startEntry(self, name)
+    subroutine startEntry(self,name)
       import :: asciiOutput, &
                 nameLen
       class(asciiOutput), intent(inout) :: self
@@ -103,14 +91,10 @@ module asciiOutput_inter
     end subroutine endEntry
 
     !!
-    !! Start writing array with the given shape
-    !!
+    !! Start writing array with shape & column-major order(leftmost index varies fastest)
     !! Name should alrady be provided by "startEntry"
     !!
-    !! Args:
-    !!   shape [in] -> Shape of the array (in column-major order)
-    !!
-    subroutine startArray(self, shape)
+    subroutine startArray(self,shape)
       import :: asciiOutput, &
                 shortInt
       class(asciiOutput), intent(inout)         :: self
@@ -118,7 +102,7 @@ module asciiOutput_inter
     end subroutine startArray
 
     !!
-    !! End writing the array
+    !! End writing array
     !!
     subroutine endArray(self)
       import :: asciiOutput
@@ -126,28 +110,18 @@ module asciiOutput_inter
     end subroutine endArray
 
     !!
-    !! Print numerical value
+    !! Print val assuming it contains valid printed number with no leading or trailing blanks
     !!
-    !! Assume it contains valid number with NO leading or trailing blanks
-    !!
-    !! Args:
-    !!  val [in] -> A number converted to character
-    !!
-    subroutine printNum(self, val)
+    subroutine printNum(self,val)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val
     end subroutine printNum
 
     !!
-    !! Print character value
+    !! Print val assuming it contains valid printed string with no leading or trailing blanks
     !!
-    !! Assuming it contains NO leading or trailing blanks
-    !!
-    !! Args:
-    !!  val [in] -> Character value
-    !!
-    subroutine printChar(self, val)
+    subroutine printChar(self,val)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val

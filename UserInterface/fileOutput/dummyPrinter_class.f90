@@ -10,13 +10,14 @@ module dummyPrinter_class
   private
 
   !!
-  !! Dummy printer
+  !! Constructor
   !!
-  !! Accepts printer calls but does not produce output.
-  !! Used for testing.
+  !! Is not needed. dymmyPrinter() default constructor is sufficient
+
   !!
-  !! NOTE:
-  !!  Does not check calls sequence, which is responsibility of oputputFile class!
+  !! Printer for ASCII MATLAB output file
+  !!
+  !! NOTE: Should not check calls logic, which is responsibility of oputputFile class!
   !!
   type, public,extends(asciiOutput) :: dummyPrinter
     private
@@ -38,11 +39,9 @@ module dummyPrinter_class
 contains
 
   !!
-  !! Print the output to the given unit
+  !! Write to a provided unit
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine writeToFile(self, unit)
+  subroutine writeToFile(self,unit)
     class(dummyPrinter), intent(inout) :: self
     integer(shortInt), intent(in)      :: unit
 
@@ -52,18 +51,15 @@ contains
   !!
   !! Change state to writing new block with "name"
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine startBlock(self, name)
+  subroutine startBlock(self,name)
     class(dummyPrinter), intent(inout) :: self
     character(nameLen), intent(in)    :: name
 
   end subroutine startBlock
 
   !!
-  !! End current block
-  !!
-  !! See asciiOutput_inter for details
+  !! End top level block and return to previous block
+  !! Return error if this is called in root block
   !!
   subroutine endBlock(self)
     class(dummyPrinter), intent(inout) :: self
@@ -73,10 +69,9 @@ contains
 
   !!
   !! Change state to writing a new entry
+  !! Can recive single value or array next
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine startEntry(self, name)
+  subroutine startEntry(self,name)
     class(dummyPrinter), intent(inout) :: self
     character(*), intent(in)           :: name
 
@@ -86,28 +81,23 @@ contains
   !!
   !! End writing a new entry
   !!
-  !! See asciiOutput_inter for details
-  !!
   subroutine endEntry(self)
     class(dummyPrinter), intent(inout) :: self
 
   end subroutine endEntry
 
   !!
-  !! Start writing array with the given shape
+  !! Start writing array with shape & column-major order(leftmost index varies fastest)
+  !! Name should alrady be provided by "startEntry"
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine startArray(self, shape)
+  subroutine startArray(self,shape)
     class(dummyPrinter), intent(inout) :: self
     integer(shortInt),dimension(:),intent(in)     :: shape
 
   end subroutine startArray
 
   !!
-  !! End writing the array
-  !!
-  !! See asciiOutput_inter for details
+  !! End writing array
   !!
   subroutine endArray(self)
     class(dummyPrinter), intent(inout) :: self
@@ -116,11 +106,9 @@ contains
   end subroutine endArray
 
   !!
-  !! Print numerical value
+  !! Print val assuming it contains valid printed number with no leading or trailing blanks
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine printNum(self, val)
+  subroutine printNum(self,val)
     class(dummyPrinter), intent(inout) :: self
     character(*),intent(in)           :: val
 
@@ -128,14 +116,12 @@ contains
   end subroutine printNum
 
   !!
-  !! Print character value
+  !! Print val assuming it contains valid printed string with no leading or trailing blanks
   !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine printChar(self, val)
+  subroutine printChar(self,val)
     class(dummyPrinter), intent(inout) :: self
     character(*),intent(in)           :: val
 
   end subroutine printChar
-
+    
 end module dummyPrinter_class
