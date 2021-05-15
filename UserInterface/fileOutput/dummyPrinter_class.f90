@@ -22,6 +22,7 @@ module dummyPrinter_class
     private
 
   contains
+    procedure :: init
     procedure :: writeToFile
 
     procedure :: startBlock
@@ -36,6 +37,18 @@ module dummyPrinter_class
   end type dummyPrinter
 
 contains
+
+  !!
+  !! Initialise the printer
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  subroutine init(self)
+    class(dummyPrinter), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine init
 
   !!
   !! Print the output to the given unit

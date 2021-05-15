@@ -1,7 +1,7 @@
 module asciiMATLAB_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, numToChar
+  use genericProcedures, only : numToChar
   use stack_class,       only : stackChar
   use asciiOutput_inter, only : asciiOutput
   use charTape_class,    only : charTape
@@ -19,13 +19,6 @@ module asciiMATLAB_class
   integer(shortInt), parameter :: IN_BLOCK = 0, &
                                   IN_ENTRY = 1, &
                                   IN_ARRAY = 2
-
-  !!
-  !! Constructor
-  !!
-  interface asciiMATLAB
-    module procedure asciiMATLAB_constructor
-  end interface
 
   !!
   !! Printer for ASCII MATLAB output file
@@ -49,7 +42,10 @@ module asciiMATLAB_class
   !!   prefix         -> Current prefix for the block
   !!   shapeBuffer    -> Buffored shape of the current array
   !!
-  type, public,extends(asciiOutput) :: asciiMATLAB
+  !! Interface:
+  !!   asciiOutput Interface
+  !!
+  type, public, extends(asciiOutput) :: asciiMATLAB
     private
     ! State components
     integer(shortInt) :: state  = IN_BLOCK
@@ -64,6 +60,7 @@ module asciiMATLAB_class
     integer(shortInt), dimension(:), allocatable :: shapeBuffer
 
   contains
+    procedure :: init
     procedure :: writeToFile
 
     procedure :: startBlock
@@ -79,10 +76,17 @@ module asciiMATLAB_class
 
 contains
 
+  !!
+  !! Initialise the printer
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  subroutine init(self)
+    class(asciiMATLAB), intent(inout) :: self
 
-  function asciiMATLAB_constructor() result (new)
-    type(asciiMATLAB) :: new
-  end function asciiMATLAB_constructor
+    ! Nothing to do
+
+  end subroutine init
 
   !!
   !! Print the output to the given unit

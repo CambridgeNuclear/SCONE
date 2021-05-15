@@ -20,6 +20,7 @@ module asciiOutput_inter
   !!  chars.
   !!
   !! Interface:
+  !!   init        -> Initialise
   !!   writeToFile -> Print the output to the provided unit
   !!   startBlock  -> Start new block
   !!   endBlock    -> End a block
@@ -31,6 +32,7 @@ module asciiOutput_inter
   type, public,abstract :: asciiOutput
     private
   contains
+    procedure(init), deferred       :: init
     procedure(writeToFile),deferred :: writeToFile
     procedure(startBlock),deferred  :: startBlock
     procedure(endBlock),deferred    :: endBlock
@@ -44,6 +46,17 @@ module asciiOutput_inter
 
 
   abstract interface
+
+    !!
+    !! Initialise the printer
+    !!
+    !! Args:
+    !!  None
+    !!
+    subroutine init(self)
+      import :: asciiOutput
+      class(asciiOutput), intent(inout) :: self
+    end subroutine init 
 
     !!
     !! Print the output to the given unit
