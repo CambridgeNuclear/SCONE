@@ -30,7 +30,24 @@ module asciiMATLAB_class
   !!
   !! Printer for ASCII MATLAB output file
   !!
-  !! NOTE: Should not check calls logic, which is responsibility of oputputFile class!
+  !! Creates a computer-readable matalab ".m" file.
+  !! Despite beeing in ASCII it is not intended for human-readability:
+  !!  -> Each entry is a single line.
+  !!  -> Furthermore every array is printed as RANK 1 array and a reshape function.
+  !!
+  !! However the above scheme ensures quick reading by MATLAB [no reallocation of arrays.
+  !! Looking at you Serpent :P ]
+  !!
+  !! Each block is marked with a prefix in the variable name e.g.:
+  !!   BLOCK1_BLOCK2_Entry1 = reshape([1,2,3,4],2,2);
+  !!
+  !! Private members:
+  !!   state          -> Current state
+  !!   blockNameStack -> Names of all blocks to construct the prefix
+  !!   blockLevel     -> Current block level
+  !!   output         -> Character that contain the output
+  !!   prefix         -> Current prefix for the block
+  !!   shapeBuffer    -> Buffored shape of the current array
   !!
   type, public,extends(asciiOutput) :: asciiMATLAB
     private
@@ -44,8 +61,7 @@ module asciiMATLAB_class
 
     ! Buffers
     type(charTape) :: prefix
-  !  character(nameLen)                          :: prefix   = 'R'
-    integer(shortInt),dimension(:), allocatable :: shapeBuffer
+    integer(shortInt), dimension(:), allocatable :: shapeBuffer
 
   contains
     procedure :: writeToFile
@@ -78,7 +94,7 @@ contains
     integer(shortInt), intent(in)     :: unit
     character(:),allocatable          :: form
 
-    form = '(A'//numToChar(self % output % length())//')'
+    form = '(A' // numToChar(self % output % length()) // ')'
 
     write(unit,form) self % output % expose()
 
@@ -95,13 +111,13 @@ contains
     character(100), parameter :: Here ='startBlock (asciiMATLAB_class.f90)'
 
     ! Check if state support acction
-    if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
-      call fatalError(Here,'Cannot start writing new block inside entry or array')
-    end if
+    ! if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
+    !   call fatalError(Here,'Cannot start writing new block inside entry or array')
+    ! end if
 
     ! Update state - change current prefix
     call self % blockNameStack % push(name)
-    call self % prefix % append(trim(name)//'_')
+    call self % prefix % append(trim(name) // '_')
     self % blockLevel = self % blockLevel + 1
 
   end subroutine startBlock
@@ -117,21 +133,20 @@ contains
     integer(shortInt)                 :: N
     character(100), parameter :: Here ='endBlock (asciiMATLAB_class.f90)'
 
-
     ! Check if state support acction
-    if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
-      call fatalError(Here,'Cannot end writing new block inside entry or array')
-    end if
-
-    if ( self % blockLevel == 0) then
-      call fatalError(Here,'Cannot exit from root block')
-    end if
+    ! if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
+    !   call fatalError(Here,'Cannot end writing new block inside entry or array')
+    ! end if
+    !
+    ! if ( self % blockLevel == 0) then
+    !   call fatalError(Here,'Cannot exit from root block')
+    ! end if
 
     ! Update state - change current prefix
-    call self % blockNameStack % pop (temp)
+    call self % blockNameStack % pop(temp)
 
     ! Calculate how much prefix needs to be cut
-    N = len_trim(temp)+1
+    N = len_trim(temp) + 1
     call self % prefix % cut(N)
     self % blockLevel = self % blockLevel - 1
 
@@ -148,15 +163,15 @@ contains
     character(100), parameter :: Here ='startEntry (asciiMATLAB_class.f90)'
 
     ! Check if state support acction
-    if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
-      call fatalError(Here,'Cannot star writing new entry inside entry or array')
-    end if
+    ! if (self % state == IN_ENTRY .or. self % state == IN_ARRAY) then
+    !   call fatalError(Here,'Cannot star writing new entry inside entry or array')
+    ! end if
 
     ! Update state
     self % state = IN_ENTRY
 
     ! Write variable name with prefix
-    call self % output % append( trim(self % prefix % expose())//trim(name))
+    call self % output % append( trim(self % prefix % expose()) // trim(name))
     call self % output % append( ' = ')
 
 
@@ -172,15 +187,15 @@ contains
     character(100), parameter :: Here ='endEntry (asciiMATLAB_class.f90)'
 
     ! Check if state support acction
-    if (self % state == IN_BLOCK .or. self % state == IN_ARRAY) then
-      call fatalError(Here,'Cannot finish entry in block or array')
-    end if
+    ! if (self % state == IN_BLOCK .or. self % state == IN_ARRAY) then
+    !   call fatalError(Here,'Cannot finish entry in block or array')
+    ! end if
 
     ! Update state
     self % state = IN_BLOCK
 
     ! Write semicolon and newline
-    call self % output % append( ';'//NEWLINE)
+    call self % output % append( ';' // NEWLINE)
 
   end subroutine endEntry
 
@@ -195,9 +210,9 @@ contains
     character(100), parameter :: Here ='startArray (asciiMATLAB_class.f90)'
 
     ! Check if state support acction
-    if (self % state /= IN_ENTRY) then
-      call fatalError(Here,'Cannot finish entry in block or array')
-    end if
+    ! if (self % state /= IN_ENTRY) then
+    !   call fatalError(Here,'Cannot finish entry in block or array')
+    ! end if
 
     ! Update state
     self % state = IN_ARRAY
@@ -227,9 +242,9 @@ contains
     character(100), parameter :: Here ='endArray (asciiMATLAB_class.f90)'
 
     ! Check if state support acction
-    if (self % state /= IN_ARRAY) then
-      call fatalError(Here,'Cannot finish array inside an entry')
-    end if
+    ! if (self % state /= IN_ARRAY) then
+    !   call fatalError(Here,'Cannot finish array inside an entry')
+    ! end if
 
     ! Update state
     self % state = IN_ENTRY
@@ -241,7 +256,7 @@ contains
     ! Finish reshape function for higher rank arrays
     if( size(self % shapeBuffer) > 1) then
       do i=1,size(self % shapeBuffer)
-        call self % output % append(','// numToChar(self % shapeBuffer(i)))
+        call self % output % append(',' // numToChar(self % shapeBuffer(i)))
       end do
       call self % output % append(')')
     end if
@@ -264,8 +279,8 @@ contains
     else if( self % state == IN_ENTRY) then
       call self % output % append(val)
 
-    else
-      call fatalError(Here,'Cannot print number directly into block')
+    ! else
+    !   call fatalError(Here,'Cannot print number directly into block')
     end if
 
   end subroutine printNum
@@ -281,13 +296,13 @@ contains
     character(100), parameter :: Here ='printChar (asciiMATLAB_class.f90)'
 
     if(self % state == IN_ARRAY) then
-      call self % output % append(BRAKET_L//APOS//val//APOS//BRAKET_R //",")
+      call self % output % append(BRAKET_L // APOS // val // APOS // BRAKET_R // ",")
 
     else if( self % state == IN_ENTRY) then
-      call self % output % append(BRAKET_L//APOS//val//APOS//BRAKET_R )
+      call self % output % append(BRAKET_L // APOS // val // APOS // BRAKET_R )
 
-    else
-      call fatalError(Here,'Cannot print number directly into block')
+    ! else
+    !   call fatalError(Here,'Cannot print number directly into block')
     end if
 
   end subroutine printChar
