@@ -193,7 +193,8 @@ contains
   !! Writes the output stored in memory to a file
   !!
   !! Args:
-  !!   file [in] -> Path to the output file
+  !!   file [in] -> Path to the output file. Must be given WITHOUT extension
+  !!     Approperiate extension will recived from the printer
   !!
   !! Errors:
   !!   fatalError if there is a problem opening the file.
@@ -203,12 +204,15 @@ contains
     character(pathLen), intent(in)   :: file
     integer(shortInt)                :: unitNum
     integer(shortInt)                :: error
+    character(:), allocatable        :: file_loc
     character(99)                    :: errorMsg
     character(100), parameter :: Here = 'writeToFile (outputFile_class.f90)'
 
+    file_loc = trim(file) // "." // self % output % extension()
+
     ! Open file to write
     open ( newunit   = unitNum, &
-           file      = file   , &
+           file      = file_loc, &
            action    = 'write', &
            iostat    = error  , &
            iomsg     = errorMsg )
@@ -923,7 +927,7 @@ contains
     end if
 
     ! Print value and std
-    call self % output % printChar(val)
+    call self % output % printChar(trim(val))
 
     ! Update state
     self % arrayTop = self % arrayTop + 1

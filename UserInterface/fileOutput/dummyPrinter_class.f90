@@ -23,6 +23,7 @@ module dummyPrinter_class
 
   contains
     procedure :: init
+    procedure :: extension
     procedure :: writeToFile
 
     procedure :: startBlock
@@ -49,6 +50,19 @@ contains
     ! Nothing to do
 
   end subroutine init
+
+  !!
+  !! Return approperiate extension for the file
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  pure function extension(self) result(str)
+    class(dummyPrinter), intent(in) :: self
+    character(:), allocatable    :: str
+
+    str = ''
+
+  end function extension
 
   !!
   !! Print the output to the given unit

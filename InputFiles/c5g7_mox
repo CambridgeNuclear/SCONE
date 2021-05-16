@@ -1,72 +1,75 @@
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      20000;
 active   200;
 inactive 100;
-XSdata ce; 
+XSdata ce;
 dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;}
-                    neutronMG {type neutronMGstd;} } 
+// Specify output format default asciiMATLAB
+//outputFormat asciiJSON;
 
-transportOperator { type transportOperatorST; 
-                    cache 1; 
-                   // type transportOperatorDT; 
-                   // type transportOperatorHT; 
-                   } 
-                   
-inactiveTally {} 
+collisionOperator { neutronCE {type neutronCEstd;}
+                    neutronMG {type neutronMGstd;} }
+
+transportOperator { type transportOperatorST;
+                    cache 1;
+                   // type transportOperatorDT;
+                   // type transportOperatorHT;
+                   }
+
+inactiveTally {}
 
 activeTally {
   norm totalPow;
-  normVal 100.0; 
-  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}} 
-  ResMap {type collisionClerk; 
+  normVal 100.0;
+  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}}
+  ResMap {type collisionClerk;
          map {type multiMap;
-              maps (ene mat); 
-              ene { type energyMap; grid log; min 1.0E-11; max 20.0; N 300;} 
-              mat { type materialMap; materials (water mox87 mox70 mox43);} 
+              maps (ene mat);
+              ene { type energyMap; grid log; min 1.0E-11; max 20.0; N 300;}
+              mat { type materialMap; materials (water mox87 mox70 mox43);}
               }
-         response (flux); 
-         flux { type fluxResponse;} 
+         response (flux);
+         flux { type fluxResponse;}
          }
-} 
+}
 
-geometry { 
-  type geometryStd; 
-  boundary ( 2 2 2 2 0 0); 
+geometry {
+  type geometryStd;
+  boundary ( 2 2 2 2 0 0);
   graph {type shrunk;}
 
-  surfaces { 
-    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);} 
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
   }
-  
-  cells { 
-   // in  {id 1; surfaces ( -1); filltype uni; universe 401;} 
-   // out {id 2; surfaces (1); filltype outside; } 
+
+  cells {
+   // in  {id 1; surfaces ( -1); filltype uni; universe 401;}
+   // out {id 2; surfaces (1); filltype outside; }
   }
-  
-  universes { 
-    root { id 1; type rootUniverse; border 1; fill u<401>; } 
-    
-    // Pin universes 
-    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox43  void   clad   void   alClad water);}
-    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
-                                     fills (mox70  void   clad   void   alClad water);}    
-    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
-                                     fills (mox87  void   clad   void   alClad water);}           
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
     pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
 
-    // Lattices 
+    // Lattices
     latMox {
-      id 401; 
-      type latUniverse; 
-      origin (0.0 0.0 0.0); 
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
       pitch (1.26 1.26 0.0);
-      shape (17 17 0); 
-      padMat water; 
-      map ( 
+      shape (17 17 0);
+      padMat water;
+      map (
         31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
         31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
         31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
@@ -83,9 +86,9 @@ geometry {
         31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
         31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
         31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
-        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }  
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
   }
-  
+
 }
 
 
@@ -96,53 +99,53 @@ viz {
     width (21.42 21.42 1.0);
     vox (700 700 1);
   }
-  bmp { 
-    type bmp; 
-    output img; 
-    what material; 
-    centre (0.0 0.0 0.0); 
-    //width (25.0 25.0); 
-    axis z; 
-    res (500 500); 
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    //width (25.0 25.0);
+    axis z;
+    res (500 500);
   }
-} 
+}
 
 
 nuclearData {
-  handles { 
+  handles {
     ce {type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
-  } 
-  materials { 
+  }
+  materials {
     numberOfGroups 69;
-      
-    water { 
+
+    water {
       temp 75675;
-      composition { 
-      1001.03    6.700E-002;                                                  
+      composition {
+      1001.03    6.700E-002;
       8016.03    3.350E-002;
       5010.03    5.560E-006;
       5011.03    2.224E-005; }
       }
-        
-     clad { 
+
+     clad {
        temp 12345;
-       composition { 
+       composition {
        40090.03  2.21235E-002;
        40091.03  4.82460E-003;
        40092.03  7.37450E-003;
        40094.03  7.47340E-003;
-       40096.03  1.20400E-003;} 
+       40096.03  1.20400E-003;}
        }
      alClad {
-       temp 9876; 
-      composition { 
-      13027.03  6.00E-2;} 
+       temp 9876;
+      composition {
+      13027.03  6.00E-2;}
       }
-      
-    mox43 { 
-      temp 87476; 
+
+    mox43 {
+      temp 87476;
        composition {
-      92235.03  5.00E-005;  
+      92235.03  5.00E-005;
       92238.03  2.21E-002;
       94238.03  1.50E-005;
       94239.03  5.80E-004;
@@ -152,10 +155,10 @@ nuclearData {
       95241.03  1.30E-005;
        8016.03  4.63E-002; }
       }
-     mox70 { 
-       temp 6786; 
+     mox70 {
+       temp 6786;
        composition {
-       92235.03  5.00E-005; 
+       92235.03  5.00E-005;
        92238.03  2.21E-002;
        94238.03  2.40E-005;
        94239.03  9.30E-004;
@@ -164,11 +167,11 @@ nuclearData {
        94242.03  8.40E-005;
        95241.03  2.00E-005;
         8016.03  4.63E-002;}
-       } 
-     mox87 { 
-       temp 8765; 
+       }
+     mox87 {
+       temp 8765;
        composition {
-       92235.03  5.00E-005;  
+       92235.03  5.00E-005;
        92238.03  2.21E-002;
        94238.03  3.00E-005;
        94239.03  1.16E-003;
@@ -176,11 +179,8 @@ nuclearData {
        94241.03  1.90E-004;
        94242.03  1.05E-004;
        95241.03  2.50E-005;
-        8016.03  4.63E-002;}   
-       } 
-     
+        8016.03  4.63E-002;}
+       }
+
 }
 }
-
-
-

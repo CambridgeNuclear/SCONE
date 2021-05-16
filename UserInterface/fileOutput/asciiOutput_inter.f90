@@ -21,6 +21,7 @@ module asciiOutput_inter
   !!
   !! Interface:
   !!   init        -> Initialise
+  !!   extension   -> Return file extension approperiate for the format
   !!   writeToFile -> Print the output to the provided unit
   !!   startBlock  -> Start new block
   !!   endBlock    -> End a block
@@ -33,6 +34,7 @@ module asciiOutput_inter
     private
   contains
     procedure(init), deferred       :: init
+    procedure(extension), deferred  :: extension
     procedure(writeToFile),deferred :: writeToFile
     procedure(startBlock),deferred  :: startBlock
     procedure(endBlock),deferred    :: endBlock
@@ -56,7 +58,21 @@ module asciiOutput_inter
     subroutine init(self)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
-    end subroutine init 
+    end subroutine init
+
+    !!
+    !! Return approperiate extension for the file
+    !!
+    !! Must be without any "." Thus "exe" instead of ".exe"!
+    !!
+    !! Args:
+    !!   None
+    !!
+    pure function extension(self) result(str)
+      import :: asciiOutput
+      class(asciiOutput), intent(in) :: self
+      character(:), allocatable      :: str
+    end function extension
 
     !!
     !! Print the output to the given unit

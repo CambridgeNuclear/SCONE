@@ -49,6 +49,7 @@ module asciiJSON_class
 
   contains
     procedure :: init
+    procedure :: extension
     procedure :: writeToFile
 
     procedure :: startBlock
@@ -74,6 +75,19 @@ contains
     self % ind_lvl = 1
 
   end subroutine init
+
+  !!
+  !! Return approperiate extension for the file
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  pure function extension(self) result(str)
+    class(asciiJSON), intent(in) :: self
+    character(:), allocatable    :: str
+
+    str = 'json'
+
+  end function extension
 
   !!
   !! Print the output to the given unit

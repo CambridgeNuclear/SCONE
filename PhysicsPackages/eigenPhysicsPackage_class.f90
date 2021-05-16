@@ -82,6 +82,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: N_active
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
+    character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
@@ -269,11 +270,9 @@ contains
   subroutine collectResults(self)
     class(eigenPhysicsPackage), intent(inout) :: self
     type(outputFile)                          :: out
-    character(pathLen)                        :: path
     character(nameLen)                        :: name
 
-    name = 'asciiMATLAB'
-    call out % init(name)
+    call out % init(self % outputFormat)
 
     name = 'seed'
     call out % printValue(self % pRNG % getSeed(),name)
@@ -302,8 +301,7 @@ contains
 
     call self % activeTally % print(out)
 
-    path = trim(self % outputFile) // '.m'
-    call out % writeToFile(path)
+    call out % writeToFile(self % outputFile)
 
   end subroutine collectResults
 
@@ -322,6 +320,7 @@ contains
     character(8)                              :: date
     character(:),allocatable                  :: string
     character(nameLen)                        :: nucData, energy, geomName
+    type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
@@ -347,6 +346,11 @@ contains
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
+
+    ! Get output format and verify
+    ! Initialise output file before calculation (so mistake in format will be cought early)
+    call dict % getOrDefault(self % outputFormat, 'outputFormat', 'asciiMATLAB')
+    call test_out % init(self % outputFormat)
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')

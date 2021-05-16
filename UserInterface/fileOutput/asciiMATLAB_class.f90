@@ -61,6 +61,7 @@ module asciiMATLAB_class
 
   contains
     procedure :: init
+    procedure :: extension
     procedure :: writeToFile
 
     procedure :: startBlock
@@ -87,6 +88,19 @@ contains
     ! Nothing to do
 
   end subroutine init
+
+  !!
+  !! Return approperiate extension for the file
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  pure function extension(self) result(str)
+    class(asciiMATLAB), intent(in) :: self
+    character(:), allocatable      :: str
+
+    str = 'm'
+
+  end function extension
 
   !!
   !! Print the output to the given unit
