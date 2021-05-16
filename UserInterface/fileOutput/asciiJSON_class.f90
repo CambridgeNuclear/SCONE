@@ -46,6 +46,7 @@ module asciiJSON_class
     logical(defBool)                             :: in_array
     integer(shortInt)                            :: count = 0
 
+
   contains
     procedure :: init
     procedure :: writeToFile
@@ -86,9 +87,12 @@ contains
 
     ! Dirty fix
     ! Remove comma from the last entry by rewind
+    ! Need to check that the character is a comma to avoid removing { when there is an empty block
     ! TODO: Find better way. Will clash with any proper stream output
-    call self % output % cut(2)
-    call self % output % append(NEWLINE)
+    if (self % output % get(self % output % length() - 1) == ",") then
+      call self % output % cut(2)
+      call self % output % append(NEWLINE)
+    end if
 
     ! Close the file
     call self % output % append("}")
@@ -127,9 +131,12 @@ contains
 
     ! Dirty fix
     ! Remove comma from the last entry by rewind
+    ! Need to check that the character is a comma to avoid removing { when there is an empty block
     ! TODO: Find better way. Will clash with any proper stream output
-    call self % output % cut(2)
-    call self % output % append(NEWLINE)
+    if (self % output % get(self % output % length() - 1) == ",") then
+      call self % output % cut(2)
+      call self % output % append(NEWLINE)
+    end if
 
     ! Decrease and write indentation
     self % ind_lvl = self % ind_lvl - 1
