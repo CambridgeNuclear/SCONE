@@ -4,6 +4,7 @@ module outputFile_class
   use genericProcedures,       only : fatalError, numToChar
   use stack_class,             only : stackChar
   use charTape_class,          only : charTape
+  use charMap_class,           only : charMap
   use asciiOutput_inter,       only : asciiOutput
   use asciiOutputFactory_func, only : new_asciiOutput
   use iso_fortran_env,         only : OUTPUT_UNIT
@@ -20,6 +21,39 @@ module outputFile_class
                                   VAL_ARRAY_REAL = 3, &
                                   VAL_ARRAY_INT  = 4, &
                                   VAL_ARRAY_CHAR = 5
+
+
+  integer(shortInt), parameter :: IS_PRESENT = -1, NOT_PRESENT = -2
+
+  !!
+  !! Stack to store the dictionaries with occupied entries
+  !!
+  !! Note that blocks in outputFile are enumarated from 0
+  !! So index in stack is idx = blockLevel + 1
+  !!
+  !! Imlementation must be rebust to avoid segmentation errors if outut is used
+  !! in incorrect sequence (e.g. closing more blocks then were open)
+  !!
+  !! Interface
+  !!   init -> Initialise
+  !!   push -> Add new level. Grow stack if needed
+  !!   pop  -> Decrease stack size by 1
+  !!   add  -> Add new name at a level b_lvl
+  !!   isPresent -> True if name is already present at block level b_lvl
+  !!   kill -> Return to uninitialised state
+  !!
+  type, private :: charMapStack
+    private
+    integer(shortInt)                        :: lvl = 0
+    type(charMap), dimension(:), allocatable :: stack
+  contains
+    procedure :: init => init_charMapStack
+    procedure :: push => push_charMapStack
+    procedure :: pop  => pop_charMapStack
+    procedure :: add  => add_charMapStack
+    procedure :: isPresent => isPresent_charMapStack
+    procedure :: kill      => kill_charMapStack
+  end type charMapStack
 
   !!
   !! Common interface for output files
@@ -48,6 +82,11 @@ module outputFile_class
   !! Handling errors:
   !!  If `fatalError` is true (default) then on wrong sequence of calls fatalError will be raised.
   !!  Otherwise the flag `noErrors` will be set to false and error massege saved in the `errorLog`
+  !!
+  !! Repeated Names:
+  !!  If name in a block is repeted bahviour is governed by `logNameReuse` function. If `fatalError`
+  !!  is true, the nwarning message is produced. Otherwise error is logged in `errorLog` and
+  !!  `noErrors` flag set to FALSE.
   !!
   !! Private Memebers:
   !!   output      -> Output printer that determines the format
@@ -98,12 +137,13 @@ module outputFile_class
     integer(shortInt)  :: arrayTop      = 0  ! Number of elements written to array
     integer(shortInt)  :: arrayLimit    = 0  ! Maximum number of elements that can be written to array
     integer(shortInt)  :: arrayType     = NOT_ARRAY
-    character(nameLen) :: current_block_name =''
-    character(nameLen) :: current_array_name =''
+    character(nameLen) :: current_block_name = ''
+    character(nameLen) :: current_array_name = ''
     type(stackChar)    :: block_name_stack
 
     ! Buffors
     integer(shortInt),dimension(:), allocatable :: shapeBuffer
+    type(charMapStack)                          :: usedNames
 
     ! Formats
     character(nameLen) :: real_format = DEF_REAL_FORMAT
@@ -117,6 +157,7 @@ module outputFile_class
 
     ! Error Handling
     procedure, private :: logError
+    procedure, private :: logNameReuse
     procedure          :: isValid
     procedure          :: getErrorLog
 
@@ -179,6 +220,10 @@ contains
 
     self % type = type
     allocate( self % output, source = new_asciiOutput(self % type))
+
+    ! Initialise name stack
+    call self % usedNames % init()
+    call self % usedNames % push()
 
     ! Change fatalErrors setting
     if(present(fatalErrors)) then
@@ -263,6 +308,10 @@ contains
     self % current_block_name = ''
     self % current_array_name = ''
 
+    call self % usedNames % kill()
+    call self % usedNames % init()
+    call self % usedNames % push()
+
   end subroutine reset
 
   !!
@@ -290,6 +339,33 @@ contains
     end if
 
   end subroutine logError
+
+  !!
+  !! Deal with an event when entry name is resued in a block
+  !!
+  !! Currently is fatalError is TRUE -> Prints warning to the screen
+  !! If fatalError is False markes error flagto true and appends a log
+  !!
+  !! Args:
+  !!  name [in] -> Name that has been reused
+  !!
+  subroutine logNameReuse(self, name)
+    class(outputFile), intent(inout) :: self
+    character(nameLen), intent(in)   :: name
+    character(:), allocatable        :: msg
+
+    msg = "WARNING: Name " // trim(name) // " is used multiple times in block " // &
+           trim(self % current_block_name) // " || Output may not parse correctly!"
+
+    if (self % fatalErrors) then ! Print to screen
+      print *, msg
+
+    else ! log error
+      self % noErrors = .false.
+      call self % errorLog % append(msg)
+    end if
+
+  end subroutine logNameReuse
 
   !!
   !! Returns .true. if there were no errors. .false. otherwise
@@ -328,15 +404,19 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when writting an array
-  !!     -Block name was already defined in the current block
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine startBlock(self, name)
     class(outputFile), intent(inout) :: self
     character(nameLen), intent(in)   :: name
     character(100), parameter :: Here ='startBlock (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % push()
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -389,6 +469,9 @@ contains
     ! End block in output
     call self % output % endBlock()
 
+    ! Decrease name stack
+    call self % usedNames % pop()
+
   end subroutine endBlock
 
   !!
@@ -403,8 +486,8 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when writting another array
-  !!     -Name is alrady used in the current block
   !!     -Shape is invalid
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine startArray(self, name, shape)
     class(outputFile), intent(inout) :: self
@@ -412,8 +495,11 @@ contains
     integer(shortInt),dimension(:)   :: shape
     character(100), parameter :: Here ='startArray (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -422,7 +508,12 @@ contains
                                 ' Becouse is writing array: '// self % current_array_name)
     end if
 
-    ! * Check whether shape is degenerate
+    ! Check whether shape is degenerate
+    if (size(shape) == 0 .or. product(shape) == 0) then
+      call self % logError(Here,'In block: '// self % current_block_name // &
+                                ' Cannot start new array: '//name//          &
+                                ' Becouse the shape is degenerate')
+    end if
 
     ! Load shape information into buffer
     self % shapeBuffer = shape
@@ -561,7 +652,7 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when an array is open
-  !!     -Name is not unique
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine printResult(self, val, std, name)
     class(outputFile), intent(inout)  :: self
@@ -570,8 +661,11 @@ contains
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here = 'printResult (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -680,8 +774,11 @@ contains
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here = 'printValue_defReal (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -754,7 +851,7 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when an array is open
-  !!     -Name is not unique in the block
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine printValue_shortInt(self, val, name)
     class(outputFile), intent(inout)  :: self
@@ -762,8 +859,11 @@ contains
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here = 'printValue_shortInt (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -861,7 +961,7 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when an array is open
-  !!     -Name is not unique in the block
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine printValue_longInt(self, val, name)
     class(outputFile), intent(inout)  :: self
@@ -869,8 +969,11 @@ contains
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here = 'printValue_longInt (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -952,7 +1055,7 @@ contains
     integer(shortInt)                           ::  i
 
     ! Add all individual entries
-    do i=1,size(val)
+    do i = 1, size(val)
       call self % addValue_char_scalar(val(i))
     end do
 
@@ -968,7 +1071,7 @@ contains
   !! Errors:
   !!   Calls logError if:
   !!     -Called when an array is open
-  !!     -Name is not unique in the block
+  !!   Calls logNameReuse if name is not unique
   !!
   subroutine printValue_char(self, val, name)
     class(outputFile), intent(inout)  :: self
@@ -976,8 +1079,11 @@ contains
     character(nameLen), intent(in)    :: name
     character(100), parameter :: Here = 'printValue_char (outputFile_class.f90)'
 
-    !*** Check that name is unique in current block
-    !*** Add name to keywords occupied in current block
+    ! Check that name is unique in current block
+    if (self % usedNames % isPresent(name, self % blockLevel)) call self % logNameReuse(name)
+
+    ! Add name to keywords occupied in current block
+    call self % usedNames % add(name, self % blockLevel)
 
     ! Check that currently is not writing array
     if ( self % arrayType /= NOT_ARRAY) then
@@ -1043,5 +1149,131 @@ contains
     c = adjustl(c)
 
   end function num2char_longInt
+
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! charMapStack Procedures
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Initialise charMapStack to a initial size
+  !!
+  !! Args:
+  !!   None
+  !!
+  subroutine init_charMapStack(self)
+    class(charMapStack), intent(inout) :: self
+
+    ! In case of double initialisation
+    call self % kill()
+
+    allocate(self % stack(5))
+    self % lvl = 0
+
+  end subroutine init_charMapStack
+
+  !!
+  !! Add extra level to the stack
+  !!
+  !! Args:
+  !!  None
+  !!
+  subroutine push_charMapStack(self)
+    class(charMapStack), intent(inout)       :: self
+    type(charMap), dimension(:), allocatable :: temp
+    integer(shortInt)                        :: i
+
+    ! Increment level
+    self % lvl = self % lvl + 1
+
+    ! If run out of space grow the stack
+    if (self % lvl > size(self % stack)) then
+      allocate(temp(size(self % stack) * 2))
+      do i = 1,size(self % stack)
+        temp(i) = self % stack(i)
+      end do
+      call move_alloc(temp, self % stack)
+    end if
+
+  end subroutine push_charMapStack
+
+  !!
+  !! Remove top level from the stack
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   Poping empty stack does nothing!
+  !!
+  subroutine pop_charMapStack(self)
+    class(charMapStack), intent(inout) :: self
+
+    ! Clean dictionary
+    if (self % lvl > 0) then
+      call self % stack(self % lvl) % kill()
+      ! Decrement level
+      self % lvl = self % lvl - 1
+    end if
+
+  end subroutine pop_charMapStack
+
+  !!
+  !! Add new entery at the given block level
+  !!
+  !! Args:
+  !!   name [in]  -> Entry name
+  !!   b_lvl [in] -> Block level (idx = b_lvl + 1)
+  !!
+  !! Errors:
+  !!   Does nothing if b_lvl is out of range
+  !!
+  subroutine add_charMapStack(self, name, b_lvl)
+    class(charMapStack), intent(inout) :: self
+    character(nameLen), intent(in)     :: name
+    integer(shortInt), intent(in)      :: b_lvl
+
+    if (b_lvl >= 0 .and. b_lvl < self % lvl) then
+      call self % stack(b_lvl + 1) % add(name, IS_PRESENT)
+    end if
+
+  end subroutine add_charMapStack
+
+  !!
+  !! Check if the name is present at the given block lvl
+  !!
+  !! Args:
+  !!   name [in]  -> Entry name
+  !!   b_lvl [in] -> Block level (idx = b_lvl + 1)
+  !!
+  !! Result:
+  !!  True if it is. False otherwsie
+  !!
+  !! Errors:
+  !!   Returns FALSE is b_lvl is out of range
+  !!
+  function isPresent_charMapStack(self, name, b_lvl) result(isIt)
+    class(charMapStack), intent(inout) :: self
+    character(nameLen), intent(in)     :: name
+    integer(shortInt), intent(in)      :: b_lvl
+    logical(defBool)                   :: isIt
+
+    isIt = b_lvl >= 0 .and. b_lvl < self % lvl
+
+    if (isIt) then
+      isIt = IS_PRESENT == self % stack(b_lvl + 1) % getOrDefault(name, NOT_PRESENT)
+    end if
+
+  end function isPresent_charMapStack
+
+  !!
+  !! Return to uninitialised state
+  !!
+  subroutine kill_charMapStack(self)
+    class(charMapStack), intent(inout) :: self
+
+    if(allocated(self % stack)) deallocate(self % stack)
+    self % lvl = 0
+
+  end subroutine kill_charMapStack
 
 end module outputFile_class

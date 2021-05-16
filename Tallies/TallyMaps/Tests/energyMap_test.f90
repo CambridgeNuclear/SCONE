@@ -211,12 +211,15 @@ contains
 
     call this % map_lin % print(out)
     @assertTrue(out % isValid(),'Linear map case')
+    call out % reset()
 
     call this % map_log % print(out)
     @assertTrue(out % isValid(),'Logarithmic map case')
+    call out % reset()
 
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'Unstructured map case')
+    call out % reset() 
 
   end subroutine testPrint
 

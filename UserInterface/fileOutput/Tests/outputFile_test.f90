@@ -92,6 +92,7 @@ contains
     character(nameLen), dimension(2) :: charArray
     character(nameLen)               :: name
     character(nameLen)               :: myBlock, myArray, myArray2
+    integer(shortInt), dimension(:), allocatable :: temp_int
 
     myBlock = 'myBlock'
     myArray = 'myArray'
@@ -269,7 +270,96 @@ contains
     @assertFalse( this % outFile % isValid())
     call this % outFile % reset()
 
+    ! Create a degenerate arrays
+    allocate(temp_int(0))
+    call this % outFile % startArray(name, temp_int)
+    call this % outFile % endArray()
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % startArray(name, [2, 0, 7])
+    call this % outFile % endArray()
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
   end subroutine testArrayLogic
+
+  !!
+  !! Test Repeated Names
+  !!
+@Test
+  subroutine testRepeatedNames(this)
+    class(test_outputFile), intent(inout) :: this
+    character(nameLen)                    :: name
+
+    name = 'myKey'
+
+    ! Print ordinary values
+    call this % outFile % printResult(1.0_defReal, 0.5_defReal, name)
+    call this % outFile % printResult(1.0_defReal, 1.5_defReal, name)
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % printValue(1.0_defReal, name)
+    call this % outFile % printValue(2.0_defReal, name)
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % printValue(1, name)
+    call this % outFile % printValue(2, name)
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % printValue(1_longInt, name)
+    call this % outFile % printValue(2_longInt, name)
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % printValue("char", name)
+    call this % outFile % printValue("charizard", name)
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    ! Test with blocks & arrays
+    call this % outFile % startBlock(name)
+    call this % outFile % endBlock()
+    call this % outFile % startBlock(name)
+    call this % outFile % endBlock()
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+    call this % outFile % startBlock(name)
+    call this % outFile % endBlock()
+    call this % outFile % startArray(name, [1])
+    call this % outFile % addValue(1)
+    call this % outFile % endArray()
+    @assertFalse( this % outFile % isValid())
+    call this % outFile % reset()
+
+  end subroutine testRepeatedNames
+
+  !!
+  !! Test deep nested blocks
+  !!
+@Test
+  subroutine testNestedBlocks(this)
+    class(test_outputFile), intent(inout) :: this
+    character(nameLen)                    :: name
+    integer(shortInt)                     :: i
+
+    name = 'myKey'
+
+    do i = 1, 30
+      call this % outFile % startBlock(name)
+    end do
+    do i = 1, 30
+      call this % outFile % endBlock()
+    end do
+
+    @assertTrue( this % outFile % isValid())
+    call this % outFile % reset()
+
+  end subroutine testNestedBlocks
 
 
 end module outputFile_test

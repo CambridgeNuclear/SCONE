@@ -181,9 +181,11 @@ contains
 
     call this % map_struct % print(out)
     @assertTrue(out % isValid(),'For map with structured grid: ')
+    call out % reset()
 
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'For map with unstructured grid: ')
+    call out % reset() 
 
   end subroutine testPrint
 

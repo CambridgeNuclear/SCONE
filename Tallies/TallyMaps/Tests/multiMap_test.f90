@@ -122,6 +122,7 @@ contains
 
     call this % map % print(out)
     @assertTrue(out % isValid(),'Incorrect printing sequence: ')
+    call out % reset() 
 
   end subroutine testPrint
 
