@@ -1,6 +1,6 @@
 module linearAlgebra_test
   use numPrecision
-  use linearAlgebra_func, only : kill_linearAlgebra, eig, solve, solveAdjointProblem
+  use linearAlgebra_func, only : kill_linearAlgebra, eig, solve, invert, solveAdjointProblem
   use pFUnit_mod
 
   implicit none
@@ -84,6 +84,29 @@ contains
     @assertEqual([0.21666667_defReal, -0.03333333_defReal, 0.21666667_defReal],x,TOL)
 
   end subroutine testLinSolve
+
+  !!
+  !! Test linear solve of Ax=b
+  !!
+@Test
+  subroutine testLinInvert()
+    real(defReal),dimension(3,3) :: A
+    real(defReal),parameter :: TOL = 1.0E-6_defReal
+
+     !Set linear system
+    A(1,:) = [1.0_defReal, 2.0_defReal, 9.0_defReal]
+    A(2,:) = [4.0_defReal, 5.0_defReal, 6.0_defReal]
+    A(3,:) = [7.0_defReal, 8.0_defReal, 4.0_defReal]
+
+    ! Solve equation
+    call invert(A)
+
+    ! Verify results
+    @assertEqual([9.3333333_defReal, -21.3333333_defReal,  11.0_defReal], A(1,:), TOL)
+    @assertEqual([-8.6666667_defReal, 19.6666667_defReal, -10.0_defReal], A(2,:), TOL)
+    @assertEqual([ 1.0_defReal,      -2.0_defReal,         1.0_defReal ], A(3,:), TOL)
+
+  end subroutine testLinInvert
 
   !!
   !! Test solution of a generalised adjoint system

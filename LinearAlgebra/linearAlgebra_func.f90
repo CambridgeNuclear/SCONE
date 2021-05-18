@@ -17,6 +17,7 @@ module linearAlgebra_func
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
   public :: eig
   public :: solve
+  public :: invert
   public :: solveAdjointProblem
   public :: kill_linearAlgebra
 
@@ -115,7 +116,7 @@ module linearAlgebra_func
   !! NRHS [in]    -> Number of "Right-hand Sides"
   !! A    [inout] -> On entry coefficient matrix A. On exit L and U factorisation: A=P*L*U
   !! LDA  [in]    -> Leading size of A. LDA >= max(1,N). Must be N
-  !! IPIV [out]   -> Integer array of size(N). Pivot indices that define permulation matrix P;
+  !! IPIV [out]   -> Integer array of size(N). Pivot indices that define permutation matrix P;
   !!                 row i of the matrix was interchanged with row IPIV(i).
   !! B    [inout] -> Real LDB x NRHS array. On entry matrix B. On exit matrix X.
   !! LDB  [in]    -> Leading dimension of matrix B. Must be N.
@@ -135,7 +136,7 @@ module linearAlgebra_func
       integer(int32), intent(in)                      :: NRHS
       integer(int32), intent(in)                      :: LDA
       real(real64),dimension(LDA,N), intent(inout)    :: A
-      integer(int32),dimension(:), intent(out)        :: IPIV
+      integer(int32),dimension(N), intent(out)        :: IPIV
       integer(int32), intent(in)                      :: LDB
       real(real64),dimension(LDB,NRHS), intent(inout) :: B
       integer(int32), intent(out)                     :: INFO
@@ -151,13 +152,117 @@ module linearAlgebra_func
       integer(int32), intent(in)                      :: NRHS
       integer(int32), intent(in)                      :: LDA
       real(real32),dimension(LDA,N), intent(inout)    :: A
-      integer(int32),dimension(:), intent(out)        :: IPIV
+      integer(int32),dimension(N), intent(out)        :: IPIV
       integer(int32), intent(in)                      :: LDB
       real(real32),dimension(LDB,NRHS), intent(inout) :: B
       integer(int32), intent(out)                     :: INFO
     end subroutine sgesv
   end interface lapack_gesv
 
+  !!
+  !! lapack_getrf
+  !! LAPACK General Matrix Linear Equation solver
+  !! For full documentation of these procedures refer to:
+  !! http://www.netlib.org/lapack/explore-html/index.html
+  !! (Just search the webpage for dgesv or sgesv and you will find a very clear doc)
+  !!
+  !! Computes the LU factorization of a general m-by-n matrix.
+  !!
+  !! Interface:
+  !! M    [in]    -> Number of rows in the matrix A
+  !! N    [in]    -> Number of columns in the matrix A
+  !! A    [inout] -> On entry matrix A. On exit overwritten by L and U
+  !! LDA  [in]    -> Leading size of A. LDA >= max(1,N). Must be N
+  !! IPIV [out]   -> Integer array of size(N). Pivot indices that define permutation matrix P;
+  !!                 row i of the matrix was interchanged with row IPIV(i).
+  !! INFO [out]   -> Error flag. INFO = 0 for succesfull exectution
+  !!
+  !! Note that the only difference in the dgetrf and sgetrf is kind of the real arguments. Rest of
+  !! the definition is identical.
+  !!
+  interface lapack_getrf
+    !!
+    !! Double precision. 64-bit float
+    !!
+    subroutine dgetrf(M, N, A, LDA, IPIV, INFO)
+      use iso_fortran_env, only : real64, int32
+      implicit none
+      integer(int32), intent(in)                      :: M
+      integer(int32), intent(in)                      :: N
+      integer(int32), intent(in)                      :: LDA
+      real(real64),dimension(LDA,N), intent(inout)    :: A
+      integer(int32),dimension(N), intent(out)        :: IPIV
+      integer(int32), intent(out)                     :: INFO
+    end subroutine dgetrf
+
+    !!
+    !! Single precision. 32-bit float
+    !!
+    subroutine sgetrf(M, N, A, LDA, IPIV, INFO)
+      use iso_fortran_env, only : real32, int32
+      implicit none
+      integer(int32), intent(in)                      :: M
+      integer(int32), intent(in)                      :: N
+      integer(int32), intent(in)                      :: LDA
+      real(real32),dimension(LDA,N), intent(inout)    :: A
+      integer(int32),dimension(N), intent(out)        :: IPIV
+      integer(int32), intent(out)                     :: INFO
+    end subroutine sgetrf
+  end interface lapack_getrf
+
+  !!
+  !! lapack_getri
+  !! LAPACK General Matrix Linear Equation solver
+  !! For full documentation of these procedures refer to:
+  !! http://www.netlib.org/lapack/explore-html/index.html
+  !! (Just search the webpage for dgesv or sgesv and you will find a very clear doc)
+  !!
+  !! Computes the inverse of an LU-factored general matrix.
+  !!
+  !! Interface:
+  !! N    [in]    -> Integer. The order of matrix A.
+  !! A    [inout] ->  Factorization of the matrix A, as returned by getrf: A = P*L*U
+  !! LDA  [in]    -> Leading size of A. LDA >= max(1,N). Must be N
+  !! IPIV [out]   -> Integer array of size(N). Pivot indices that define permulation matrix P;
+  !!                 row i of the matrix was interchanged with row IPIV(i).
+  !! WORK  [out]  -> Work space. If LWORK = -1, on exit WORK(1) is size of optimal workspace
+  !! LWORK [in]   -> Size of workspace.
+  !! INFO [out]   -> Error flag. INFO = 0 for succesfull exectution
+  !!
+  !! Note that the only difference in the dgetri and sgetri is kind of the real arguments. Rest of
+  !! the definition is identical.
+  !!
+  interface lapack_getri
+    !!
+    !! Double precision. 64-bit float
+    !!
+    subroutine dgetri(N, A, LDA, IPIV, WORK, LWORK, INFO)
+      use iso_fortran_env, only : real64, int32
+      implicit none
+      integer(int32), intent(in)                       :: N
+      integer(int32), intent(in)                       :: LDA
+      real(real64),dimension(LDA,N), intent(inout)     :: A
+      integer(int32),dimension(N), intent(in)          :: IPIV
+      integer(int32),intent(in)                        :: LWORK
+      real(real64),dimension(max(1,LWORK)),intent(out) :: WORK
+      integer(int32), intent(out)                      :: INFO
+    end subroutine dgetri
+
+    !!
+    !! Single precision. 32-bit float
+    !!
+    subroutine sgetri(N, A, LDA, IPIV, WORK, LWORK, INFO)
+      use iso_fortran_env, only : real32, int32
+      implicit none
+      integer(int32), intent(in)                       :: N
+      integer(int32), intent(in)                       :: LDA
+      real(real32),dimension(LDA,N), intent(inout)     :: A
+      integer(int32),dimension(N), intent(in)          :: IPIV
+      integer(int32),intent(in)                        :: LWORK
+      real(real32),dimension(max(1,LWORK)),intent(out) :: WORK
+      integer(int32), intent(out)                      :: INFO
+    end subroutine sgetri
+  end interface lapack_getri
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! External BLAS Procedures interfaces
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -448,6 +553,66 @@ contains
     x = B_t(:,1)
 
   end subroutine solve
+
+  !!
+  !! Solves linear system of equations of the form Ax=b
+  !!
+  !! A - any NxN square real matrix
+  !! b - real vector of RHS of size N
+  !! x - resul vector of size N
+  !!
+  !! Gives fatalError if input is invalid or solution A is singular
+  !!
+  subroutine invert(A)
+    real(defReal),dimension(:,:),intent(inout) :: A
+    real(defReal),dimension(:,:),pointer       :: A_t
+    real(defReal),dimension(:),pointer         :: Work
+    integer(shortInt),dimension(size(A,1))     :: pivot
+    integer(shortInt)                          :: N, mem, info, info2
+    character(100),parameter :: Here='invert ( linearAlgebra_func.f90)'
+
+    ! Verify size of the inputs
+    N = size(A,1)
+
+    if ( any(shape(A) /= N)) then
+      call fatalError(Here,'Invalid shape of array A. Is not NxN')
+    end if
+
+    ! Calculate memory required and ensure that memory is avalible
+    mem = N*N + N*N
+    call getMem(mem)
+
+    ! Associate workspace memory with different variables
+    ! Use pointers to change ranks
+    A_t(1:N,1:N) => workspace(1 : N*N)
+    Work => workspace(N*N+1 : N*N*2)
+
+    ! Copy input
+    A_t  = A
+
+    ! Perform calculation
+    call lapack_getrf ( N, N, A_t, N, pivot , info )
+
+    if( info < 0) then
+      call fatalError(Here,'LINPACK getrf procedure failed with error: '//numToChar(info))
+
+    else if(info > 0) then
+      call fatalError(Here,'LINPACK getrf procedure failed. Matrix U is exactly singular.')
+    end if
+
+    call lapack_getri( N, A_t, N, pivot, Work, size(Work), info2 )
+
+    if( info2 < 0) then
+      call fatalError(Here,'LINPACK getri procedure failed with error: '//numToChar(info))
+
+    else if(info2 > 0) then
+      call fatalError(Here,'LINPACK getri procedure failed. Diagonal element of the factor U is zero, U is singular.')
+    end if
+
+    ! Copy the results out
+    A = A_t
+
+  end subroutine invert
 
   !!
   !! Solves a generalised adjoint problem for a GPT response
