@@ -240,7 +240,6 @@ contains
     character(8)                                    :: date
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
-    integer(shortInt)                               :: i
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -299,7 +298,7 @@ contains
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
-    call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
+    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
 
     ! Read particle source definition
