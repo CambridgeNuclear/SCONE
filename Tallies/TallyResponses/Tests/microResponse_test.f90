@@ -48,7 +48,7 @@ contains
     call dictMat3 % store('54135.03', 2.0_defReal)
 
     call dictMat2 % store('temp', 300.0_defReal)
-    call dictMat2 % store('composition',dictMat3)
+    call dictMat2 % store('composition', dictMat3)
 
     call dictMat1 % store('Xenon', dictMat2)
 
@@ -58,7 +58,7 @@ contains
     ! Set up responses
     ! Total
     call tempDict % init(3)
-    call tempDict % store('type','microResponse')
+    call tempDict % store('type', 'microResponse')
     call tempDict % store('MT', N_TOTAL)
     call tempDict % store('material', 'Xenon')
     call this % response_total % init(tempDict)
@@ -66,7 +66,7 @@ contains
 
     ! Capture
     call tempDict % init(3)
-    call tempDict % store('type','microResponse')
+    call tempDict % store('type', 'microResponse')
     call tempDict % store('MT', N_GAMMA)
     call tempDict % store('material', 'Xenon')
     call this % response_capture % init(tempDict)
@@ -74,7 +74,7 @@ contains
 
     ! Fission
     call tempDict % init(3)
-    call tempDict % store('type','microResponse')
+    call tempDict % store('type', 'microResponse')
     call tempDict % store('MT', N_FISSION)
     call tempDict % store('material', 'Xenon')
     call this % response_fission % init(tempDict)
@@ -82,7 +82,7 @@ contains
 
     ! nuFission
     call tempDict % init(3)
-    call tempDict % store('type','microResponse')
+    call tempDict % store('type', 'microResponse')
     call tempDict % store('MT', N_N_ELASTIC)
     call tempDict % store('material', 'Xenon')
     call this % response_eScatter % init(tempDict)
@@ -90,7 +90,7 @@ contains
 
     ! Absorbtion
     call tempDict % init(3)
-    call tempDict % store('type','microResponse')
+    call tempDict % store('type', 'microResponse')
     call tempDict % store('MT', N_ABSORPTION)
     call tempDict % store('material', 'Xenon')
     call this % response_absorbtion % init(tempDict)

@@ -12,6 +12,7 @@ module microResponse_class
   use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
   use neutronXsPackages_class,    only : neutronMacroXSs
 
+  ! Material interface
   use materialMenu_mod,           only : materialItem, matName, nMat, getMatPtr
 
   implicit none
@@ -20,10 +21,10 @@ module microResponse_class
 
   !!
   !! tallyResponse for scoring a single microscopicXSs
-  !!  Currently supports neutrons only
+  !!   Currently supports neutrons only
   !!
   !! Private Members:
-  !!   MT -> MT number of the microscopic reaction for weighting
+  !!   MT     -> MT number of the microscopic reaction for weighting
   !!   matIdx -> index of the material that contains (only) the nuclide wanted
   !!
   !!
@@ -38,7 +39,9 @@ module microResponse_class
   !!     material <matName>;
   !!  }
   !!
-  !! Note: the material <matName> must include only one nuclide. Its atomic density can be any.
+  !! Note:
+  !!   The material <matName> must include only one nuclide. Its atomic density
+  !!   can be any value.
   !!
   type, public,extends(tallyResponse) :: microResponse
     private
@@ -79,7 +82,7 @@ contains
     call dict % get(MT, 'MT')
     call dict % get(mName, 'material')
 
-    ! Find corresponsing material index
+    ! Find corresponding material index
     do i = 1,nMat()
       if (mName .eq. matName(i)) self % matIdx = i
     end do
