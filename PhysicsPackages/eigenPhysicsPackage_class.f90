@@ -294,12 +294,19 @@ contains
     call out % printValue(self % time_transport,name)
 
     ! Print Inactive tally
+    name = 'inactive'
+    call out % startBlock(name)
     call self % inactiveTally % print(out)
+    call out % endBlock()
 
     ! Print Active attachment
+    ! Is printed into the root block
     call self % activeAtch % print(out)
 
+    name = 'active'
+    call out % startBlock(name)
     call self % activeTally % print(out)
+    call out % endBlock()
 
     call out % writeToFile(self % outputFile)
 
