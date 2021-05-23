@@ -20,6 +20,7 @@ to quickly test their ideas.
    Unit Testing
    Style Guide
    Geometry
+   Output
    Tutorials/index
    cream/index
 
