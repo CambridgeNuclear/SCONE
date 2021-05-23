@@ -246,7 +246,7 @@ contains
   !!
   subroutine writeToFile(self, file)
     class(outPutFile), intent(inout) :: self
-    character(pathLen), intent(in)   :: file
+    character(*), intent(in)         :: file
     integer(shortInt)                :: unitNum
     integer(shortInt)                :: error
     character(:), allocatable        :: file_loc
