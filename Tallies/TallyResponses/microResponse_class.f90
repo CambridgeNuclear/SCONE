@@ -26,7 +26,7 @@ module microResponse_class
   !! Private Members:
   !!   MT     -> MT number of the microscopic reaction for weighting
   !!   matIdx -> index of the material that contains (only) the nuclide wanted
-  !!
+  !!   dens   -> atomic density of the nuclide
   !!
   !! Interface:
   !!   tallyResponse interface
@@ -40,8 +40,8 @@ module microResponse_class
   !!  }
   !!
   !! Note:
-  !!   The material <matName> must include only one nuclide. Its atomic density
-  !!   can be any value.
+  !!   The material <matName> must include only one nuclide. The final estimate
+  !!   is independent of the nuclide atomic density
   !!
   type, public,extends(tallyResponse) :: microResponse
     private
@@ -84,14 +84,14 @@ contains
 
     ! Find corresponding material index
     do i = 1,nMat()
-      if (mName .eq. matName(i)) self % matIdx = i
+      if (mName == matName(i)) self % matIdx = i
     end do
 
     ! Get pointer to the material
     mat => getMatPtr(self % matIdx)
 
     if (size(mat % dens) > 1) call fatalError(Here, 'Material '//trim(mName)//' &
-                                              has more than one nuclide' )
+                                              & has more than one nuclide' )
     self % dens = mat % dens(1)
 
     ! Build response

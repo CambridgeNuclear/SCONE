@@ -388,6 +388,9 @@ contains
   !!
   !! See geometry_inter for details
   !!
+  !! NOTE: This function assumes that usedMats from graph are sorted, and that
+  !!       VOID_MAT = huge(int)
+  !!
   function activeMats(self) result(matList)
     class(geometryStd), intent(in)               :: self
     integer(shortInt), dimension(:), allocatable :: matList
