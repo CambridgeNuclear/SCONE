@@ -41,7 +41,7 @@ module microResponse_class
   !!
   !! Note:
   !!   The material <matName> must include only one nuclide. The final estimate
-  !!   is independent of the nuclide atomic density
+  !!   is independent of the nuclide atomic density, which can be any value but zero.
   !!
   type, public,extends(tallyResponse) :: microResponse
     private
@@ -68,7 +68,8 @@ contains
   !! See tallyResponse_inter for details
   !!
   !! Errors:
-  !!  fatalError if the material contains more than one nuclide
+  !!   fatalError if the material contains more than one nuclide
+  !!   fatalError if the nuclide has density 0.0
   !!
   subroutine init(self, dict)
     class(microResponse), intent(inout) :: self
@@ -94,6 +95,8 @@ contains
                                               & has more than one nuclide' )
     self % dens = mat % dens(1)
 
+    if (self % dens == ZERO) call fatalError(Here, 'Density of material &
+                                             & '//trim(mName)//' cannot be 0' )
     ! Build response
     call self % build(MT)
 
