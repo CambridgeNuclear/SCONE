@@ -14,7 +14,7 @@ into multiple formats through a common interface.
 
 The structure of an output file is hierarchical. Its main component is the **block**, which is
 similar to a dictionary. Each block is composed from a number of entries. Each is a pair of a name
-together with come content. The content may be a **result**, **value**, **N-D array of results** or
+together with some content. The content may be a **result**, **value**, **N-D array of results** or
 **N-D array of values**. Value can be a **real**, **integer** or **character string**. Each result is
 a pair of reals that represent a mean value of an estimate and its associated statistical uncertainty.
 The initial block of output is called a *root block* and is not associated with any name in the output file.
