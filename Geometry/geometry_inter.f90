@@ -42,6 +42,7 @@ module geometry_inter
     procedure(move_withCache), deferred  :: move_withCache
     procedure(moveGlobal), deferred      :: moveGlobal
     procedure(teleport), deferred        :: teleport
+    procedure(activeMats), deferred      :: activeMats
 
     ! Common procedures
     procedure :: slicePlot
@@ -244,6 +245,22 @@ module geometry_inter
       type(coordList), intent(inout) :: coords
       real(defReal), intent(in)      :: dist
     end subroutine teleport
+
+    !!
+    !! Returns the list of active materials used in the geometry
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   Integer list with the IDs of the active materials. Void is not considered
+    !!   an active materials, even if it can be present in the geometry.
+    !!
+    function activeMats(self) result(matList)
+      import :: geometry, shortInt
+      class(geometry), intent(in)                  :: self
+      integer(shortInt), dimension(:), allocatable :: matList
+    end function activeMats
 
   end interface
 

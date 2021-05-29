@@ -47,7 +47,7 @@ module endfConstants
                                   N_N3a         = 23  ,&
                                   N_2Na         = 24  ,&
                                   N_3Na         = 25  ,&
-                                  N_ABSORBTION  = 27  ,&
+                                  N_ABSORPTION  = 27  ,&
                                   N_Np          = 28  ,&
                                   N_N2a         = 29  ,&
                                   N_2N2a        = 30  ,&

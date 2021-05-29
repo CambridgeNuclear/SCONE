@@ -10,6 +10,7 @@ module tallyResponseFactory_func
   ! tallyResponse implementations
   use fluxResponse_class,     only : fluxResponse
   use macroResponse_class,    only : macroResponse
+  use microResponse_class,    only : microResponse
   use weightResponse_class,   only : weightResponse
   use testResponse_class,     only : testResponse
 
@@ -25,6 +26,7 @@ module tallyResponseFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyResponses = ['fluxResponse  ',&
                                                                           'macroResponse ',&
+                                                                          'microResponse ',&
                                                                           'weightResponse']
 
 contains
@@ -55,6 +57,10 @@ contains
 
       case('macroResponse')
         allocate(macroResponse :: new)
+        call new % init(dict)
+
+      case('microResponse')
+        allocate(microResponse :: new)
         call new % init(dict)
 
       case('weightResponse')

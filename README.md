@@ -7,6 +7,8 @@ particle transport code for reactor physics. It is intended as an accessible env
 graduate students to test and develop their ideas before contributing them to more established
 codes suitable for design calculations.
 
+SCONE documentation is hosted at: <https://scone.readthedocs.io>
+
 ## Prerequisites
 Required
 

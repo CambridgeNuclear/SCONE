@@ -11,6 +11,9 @@ module geometryStd_class
   use universe_inter,     only : universe
   use surface_inter,      only : surface
 
+  ! Nuclear Data
+  use materialMenu_mod,   only : nMat
+
 
   implicit none
   private
@@ -53,6 +56,7 @@ module geometryStd_class
     procedure :: move_withCache
     procedure :: moveGlobal
     procedure :: teleport
+    procedure :: activeMats
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -378,6 +382,33 @@ contains
     end if
 
   end subroutine teleport
+
+  !!
+  !! Returns the list of active materials used in the geometry
+  !!
+  !! See geometry_inter for details
+  !!
+  !! NOTE: This function assumes that usedMats from graph are sorted, and that
+  !!       VOID_MAT = huge(int)
+  !!
+  function activeMats(self) result(matList)
+    class(geometryStd), intent(in)               :: self
+    integer(shortInt), dimension(:), allocatable :: matList
+    integer(shortInt)                            :: N, lastIdx
+
+    ! Takes the list of materials present in the geometry from geomGraph
+    N = size(self % geom % graph % usedMats)
+    lastIdx = self % geom % graph % usedMats(N)
+
+    ! Check if the last entry of the list is an actual material or void
+    if (lastIdx <= nMat()) then
+      matList = self % geom % graph % usedMats
+    else
+      ! If void is present in the geometry, it is excluded from the active materials list
+      matList = self % geom % graph % usedMats(1:N-1)
+    end if
+
+  end function activeMats
 
   !!
   !! Descend down the geometry structure untill material is reached

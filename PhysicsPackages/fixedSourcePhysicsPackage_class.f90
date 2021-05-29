@@ -303,7 +303,7 @@ contains
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
-    call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
+    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
 
     ! Read particle source definition

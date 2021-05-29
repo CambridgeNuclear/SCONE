@@ -329,7 +329,6 @@ contains
     character(nameLen)                        :: nucData, energy, geomName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
-    integer(shortInt)                         :: i
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -397,7 +396,7 @@ contains
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
-    call ndReg_activate(self % particleType, nucData, [(i, i=1, mm_nMat())])
+    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
