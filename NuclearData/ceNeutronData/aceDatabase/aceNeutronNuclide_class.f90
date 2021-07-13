@@ -19,6 +19,7 @@ module aceNeutronNuclide_class
   use neutronScatter_class,         only : neutronScatter
   use pureCapture_class,            only : pureCapture
   use neutronXSPackages_class,      only : neutronMicroXSs
+  use urrProbabilityTables_class,   only : urrProbabilityTables
 
   ! CE NEUTRON CACHE
   use ceNeutronCache_mod,           only : nuclideCache
@@ -97,6 +98,13 @@ module aceNeutronNuclide_class
     type(elasticNeutronScatter) :: elasticScatter
     type(fissionCE)             :: fission
 
+    ! URR probability tables
+    real(defReal), dimension(2) :: urrE
+    type(urrProbabilityTables)  :: probTab
+    logical(defBool)            :: hasProbTab = .false.
+    integer(shortInt)           :: IFF = 0
+
+
   contains
     ! Superclass Interface
     procedure :: invertInelastic
@@ -107,7 +115,9 @@ module aceNeutronNuclide_class
     procedure :: search
     procedure :: totalXS
     procedure :: microXSs
+    procedure :: getUrrXSs
     procedure :: init
+    procedure :: init_urr
     procedure :: display
 
   end type aceNeutronNuclide
@@ -355,6 +365,56 @@ contains
   end subroutine microXSs
 
   !!
+  !! Return neutronMicroXSs read from probability tables.
+  !!
+  !! NOTE: The IOA flag for other absorption cross sections is ignored.
+  !!       The total xs is not read from tabes, but calculated from the other xss.
+  !!
+  !! Does not prefeorm any check for valid input!
+  !!
+  !! Args:
+  !!   E [in]      -> Energy of ingoing neutron
+  !!   xi [in]     -> Random number
+  !!   xss [inout] -> XSs package to store interpolated values
+  !!
+  subroutine getUrrXSs(self, E, xi, xss)
+    class(aceNeutronNuclide), intent(in) :: self
+    real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: xi
+    type(neutronMicroXSs), intent(inout) :: xss
+    real(defReal), dimension(3)          :: val
+
+    ! Read tables
+    call self % probTab % sampleXSs(E, xi, val)
+
+    ! Check if multiplication factor is on
+    if (self % IFF == 1) then
+      val(1) = xss % elasticScatter * val(1)
+      val(2) = xss % capture * val(2)
+      val(3) = xss % fission * val(3)
+    end if
+
+    ! Check inelastic scattering flag
+    if (self % probTab % ILF < 0) xss % inelasticScatter = ZERO
+
+    xss % elasticScatter   = val(1)
+    xss % capture          = val(2)
+
+    if(self % isFissile()) then
+      xss % nuFission = xss % nuFission/xss % fission * val(3)
+      xss % fission   = val(3)
+    else
+      xss % fission   = ZERO
+      xss % nuFission = ZERO
+    end if
+
+    ! Calculate total from the other values
+    xss % total = xss % elasticScatter + xss % inelasticScatter + xss % capture + &
+                  xss % fission
+
+  end subroutine getUrrXSs
+
+  !!
   !! Initialise from an ACE Card
   !!
   !! Args:
@@ -547,6 +607,39 @@ contains
     !call self % idxMT % shrink()
 
   end subroutine init
+
+  !!
+  !! Initialise probability tables from ACE card
+  !!
+  !! Switches off tables for this nuclide if tables have some inconsistency
+  !!
+  !! Args:
+  !!   ACE [inout]   -> ACE card
+  !!
+  subroutine init_urr(self, ACE)
+    class(aceNeutronNuclide), intent(inout) :: self
+    class(aceCard), intent(inout)           :: ACE
+
+    ! Read in ACE if the nuclide has URR probability tables
+    self % hasProbTab = ACE % hasProbTab()
+
+    if (self % hasProbTab) then
+      ! Initialise probability tables
+      call self % probTab % init(ACE)
+      ! Check if probability tables were read correctly
+      if (allocated(self % probTab % eGrid)) then
+        self % urrE = self % probTab % getEbounds()
+        self % IFF = self % probTab % getIFF()
+      else
+        ! Something went wrong!
+        self % hasProbTab = .false.
+        self % urrE = ZERO
+      end if
+    else
+      self % urrE = ZERO
+    end if
+
+  end subroutine init_urr
 
   !!
   !! A Procedure that displays information about the nuclide to the screen

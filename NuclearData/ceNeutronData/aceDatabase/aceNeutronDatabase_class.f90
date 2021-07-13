@@ -3,7 +3,7 @@ module aceNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use genericProcedures, only : fatalError, numToChar
+  use genericProcedures, only : fatalError, numToChar, linFind
   use dictionary_class,  only : dictionary
   use RNG_class,         only : RNG
   use charMap_class,     only : charMap
@@ -31,6 +31,7 @@ module aceNeutronDatabase_class
   use ceNeutronCache_mod,           only : cache_nuclideCache => nuclideCache, &
                                            cache_materialCache => materialCache, &
                                            cache_majorantCache => majorantCache, &
+                                           cache_zaidCache => zaidCache, &
                                            cache_init => init
 
   implicit none
@@ -66,6 +67,11 @@ module aceNeutronDatabase_class
     type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
     real(defReal), dimension(2)                  :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
+
+    character(5),dimension(:),allocatable  :: zaid
+    integer(shortInt),dimension(:),allocatable   :: nucToZaid
+    logical(defBool)                             :: hasUrr
+
   contains
     ! nuclearData Procedures
     procedure :: kill
@@ -74,6 +80,7 @@ module aceNeutronDatabase_class
     procedure :: getNuclide
     procedure :: getReaction
     procedure :: init
+    procedure :: init_urr
     procedure :: activate
 
     ! ceNeutronDatabase Procedures
@@ -350,9 +357,13 @@ contains
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
-      nucCache % E_tot  = E
-      call nuc % search(nucCache % idx, nucCache % f, E)
-      nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+      if (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2)) then
+        call self % updateMicroXSs(E, nucIdx, rand)
+      else
+        nucCache % E_tot  = E
+        call nuc % search(nucCache % idx, nucCache % f, E)
+        nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+      end if
 
     end associate
 
@@ -373,15 +384,28 @@ contains
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
+      nucCache % E_tail = E
+
       ! In case the total XS hasn't been retrieved before (during tracking)
       if (nucCache % E_tot /= E) then
         nucCache % E_tot  = E
         call nuc % search(nucCache % idx, nucCache % f, E)
       end if
-
-      nucCache % E_tail = E
       ! Overwrites all the micro cross sections in cache
       call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+
+      ! Check if probability tables should be read
+      if (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2)) then
+        associate(zaidCache => cache_zaidCache(self % nucToZaid(nucIdx)))
+          if (zaidCache % E /= E) then
+          ! Save random number for temperature correlation
+            zaidCache % xi = rand % get()
+            zaidCache % E = E
+          end if
+        ! Overwrites all the micro cross sections in cache
+        call nuc % getUrrXSs(E, zaidCache % xi, nucCache % xss)
+        end associate
+      end if
 
     end associate
 
@@ -417,7 +441,6 @@ contains
       loud = .true.
     end if
 
-
     ! Verify pointer
     if (.not.associated(ptr, self)) then
       call fatalError(Here,"Pointer needs to be associated with the self")
@@ -443,6 +466,9 @@ contains
 
     ! Get path to ACE library
     call dict % get(aceLibPath,'aceLibrary')
+
+    ! Check if probability tables are on in the input file
+    call dict % getOrDefault(self % hasUrr, 'ures', .false.)
 
     if(aceLibPath == '$SCONE_ACE') then
       ! Get Path from enviromental variable
@@ -478,6 +504,9 @@ contains
 
       call new_neutronACE(ACE, nucSet % atKey(i))
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
+
+      ! Initialise probability tables
+      if (self % hasUrr) call self % nuclides(nucIdx) % init_urr(ACE)
 
       ! Store nucIdx in the dictionary
       call nucSet % atSet(nucIdx, i)
@@ -516,10 +545,52 @@ contains
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
     end do
 
+    if (self % hasUrr) then
+       call self % init_urr()
+    end if
+
     !! Clean up
     call aceLib_kill()
 
   end subroutine init
+
+  !!
+  !!  Create list of nuclides with same ZAID, but possibly different temperatures
+  !!
+  !!  NOTE: compares the first 5 letters of the ZAID.TT. It would be wrong with isotopes
+  !!        with Z > 99
+  !!
+  subroutine init_urr(self)
+    class(aceNeutronDatabase), intent(inout) :: self
+    integer(shortInt)                        :: i, j
+    character(5),dimension(:),allocatable    :: tmp
+    character(5)                             :: zaid
+    character(100), parameter :: Here = 'init_urr (aceNeutronDatabase_class.f90)'
+
+    ! Allocate and initialise temporary ZAID vector
+    allocate(tmp(size(self % nuclides)), self % nucToZaid(size(self % nuclides)))
+    tmp = 'CIAO'
+
+    j = 0
+    ! Loop over all nuclides
+    do i = 1,size(self % nuclides)
+      ! Get the ZAID without temperature -> only compares the first 5 letters of the ZAID.TT string
+      write(zaid,'(A5)') adjustl(self % nuclides(i) % ZAID)
+      ! Create ZAID list and mapping
+      if (.not. any(tmp == zaid)) then
+        j = j+1
+        tmp(j) = zaid
+        self % nucToZaid(i) = j
+      else
+        self % nucToZaid(i) = linFind(tmp, zaid)
+      end if
+    end do
+
+    allocate(self % zaid(j))
+    self % zaid = tmp(1:j)
+    deallocate(tmp)
+
+  end subroutine init_urr
 
   !!
   !! Activate this nuclearDatabase
@@ -535,7 +606,7 @@ contains
     self % activeMat = activeMat
 
     ! Configure Cache
-    call cache_init(size( self % materials), size(self % nuclides))
+    call cache_init(size( self % materials), size(self % nuclides), 1, size(self % zaid))
 
   end subroutine activate
 
