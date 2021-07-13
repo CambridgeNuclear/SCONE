@@ -216,6 +216,9 @@ contains
       k_old = self % nextCycle % k_eff
       self % nextCycle % k_eff = k_new
 
+      ! Used to normalise fission source of the first active cycle
+      self % keff_0 = k_new
+
       ! Calculate times
       call timerStop(self % timerMain)
       elapsed_T = timerTime(self % timerMain)
