@@ -148,7 +148,7 @@ contains
     ! Set geometry
     neutron % geomIdx = self % geomIdx
 
-    ! Set initiial k-eff
+    ! Set initial k-eff
     k_new = self % keff_0
 
     ! Reset and start timer

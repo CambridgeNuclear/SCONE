@@ -182,7 +182,7 @@ contains
 
   !!
   !! Constructoe of tabularAngle from ACE
-  !! ACE head should be set to beegining of tabular mu data
+  !! ACE head should be set to beginning of tabular mu data
   !!
   function new_tabularAngle_fromACE(ACE) result(new)
     class(aceCard), intent(inout)                   :: ACE
