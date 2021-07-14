@@ -19,6 +19,8 @@ module aceNeutronNuclide_class
   use neutronScatter_class,         only : neutronScatter
   use pureCapture_class,            only : pureCapture
   use neutronXSPackages_class,      only : neutronMicroXSs
+
+  ! Unresolved resonances treatment
   use urrProbabilityTables_class,   only : urrProbabilityTables
 
   ! CE NEUTRON CACHE
@@ -78,14 +80,21 @@ module aceNeutronNuclide_class
   !!   idxMT          -> intMap that maps MT -> index in MTdata array
   !!   elasticScatter -> reactionHandle with data for elastic scattering
   !!   fission        -> reactionHandle with fission data (may be uninitialised)
+  !!   urrE           -> energy boundaries of probability tables. It's zero if tables are off
+  !!   probTab        -> probability tables for ures
+  !!   hasProbTab     -> probability tables flag, it's false by default
+  !!   IFF            -> ures probability tables multiplication factor flag
   !!
   !! Interface:
   !!   ceNeutronNuclide Interface
-  !!   search   -> search energy grid and return index and interpolation factor
-  !!   totalXS  -> return totalXS given index and interpolation factor
-  !!   microXSs -> return interpolated ceNeutronMicroXSs package given index and inter. factor
-  !!   init     -> build nuclide from aceCard
-  !!   display  -> print information about the nuclide to the console
+  !!   search    -> search energy grid and return index and interpolation factor
+  !!   totalXS   -> return totalXS given index and interpolation factor
+  !!   microXSs  -> return interpolated ceNeutronMicroXSs package given index and inter. factor
+  !!   getUrrXSs -> return ceNeutronMicroXSs accounting for ures probability tables
+  !!   init      -> build nuclide from aceCard
+  !!   init_urr  -> build list and mapping of nuclides to maintain temperature correlation
+  !!                when reading ures probability tables
+  !!   display   -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
     character(nameLen)                          :: ZAID    = ''
@@ -303,7 +312,7 @@ contains
   !!
   !! Return value of the total XS given interpolation factor and index
   !!
-  !! Does not prefeorm any check for valid input!
+  !! Does not perform any check for valid input!
   !!
   !! Args:
   !!   idx [in] -> index of the bottom bin in nuclide Energy-Grid
@@ -329,7 +338,7 @@ contains
   !!
   !! Return interpolated neutronMicroXSs package for the given interpolation factor and index
   !!
-  !! Does not prefeorm any check for valid input!
+  !! Does not perform any check for valid input!
   !!
   !! Args:
   !!   xss [out] -> XSs package to store interpolated values
@@ -368,9 +377,9 @@ contains
   !! Return neutronMicroXSs read from probability tables.
   !!
   !! NOTE: The IOA flag for other absorption cross sections is ignored.
-  !!       The total xs is not read from tabes, but calculated from the other xss.
+  !!       The total xs is not read from tables, but calculated from the other xss.
   !!
-  !! Does not prefeorm any check for valid input!
+  !! Does not perform any check for valid input!
   !!
   !! Args:
   !!   E [in]      -> Energy of ingoing neutron
