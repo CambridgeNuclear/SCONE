@@ -46,12 +46,13 @@ module aceNeutronDatabase_class
   !!
   !! A CE Neutron Database based on ACE file format
   !!
-  !! For now the simplest possible implementation.
+  !! It's possible to use probability tables in the unresolved resonance range if
+  !! ures is included in the input file
   !!
   !! Sample input:
   !!   nuclearData {
   !!   handles {
-  !!   ce {type aceNeutronDatabase; aceLibrary <nuclear data path> ;} }
+  !!   ce {type aceNeutronDatabase; ures <1 or 0>; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
   !!   nuclides  -> array of aceNeutronNuclides with data
