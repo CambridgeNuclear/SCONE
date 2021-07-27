@@ -12,7 +12,7 @@ SCONE documentation is hosted at: <https://scone.readthedocs.io>
 ## Prerequisites
 Required
 
-* Cmake (>=3.0)
+* Cmake (>=3.10)
 * Fortran compiler, gfortran (>=6.3)
 * LAPACK and BLAS Libraries
 * GNU/Linux operating system

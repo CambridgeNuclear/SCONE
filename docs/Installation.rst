@@ -12,7 +12,7 @@ Requirements
      Currently SCONE requires gfortran (>=6.3). Support for other compilers is pending.
 
    CMake
-     CMake cross-platform build system is used to run all configuration scripts. Version (>=3.0)
+     CMake cross-platform build system is used to run all configuration scripts. Version (>=3.10)
      is required.
 
 
