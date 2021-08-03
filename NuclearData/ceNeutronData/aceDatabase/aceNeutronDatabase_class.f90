@@ -3,7 +3,7 @@ module aceNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use genericProcedures, only : fatalError, numToChar, linFind
+  use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
   use RNG_class,         only : RNG
   use charMap_class,     only : charMap
