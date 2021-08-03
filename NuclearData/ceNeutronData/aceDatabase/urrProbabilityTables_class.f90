@@ -215,12 +215,14 @@ contains
         print '(A)', "Probability table discarded because CDF is not sorted"
         call self % kill()
         return
-      elseif(self % table(i) % CDF(self % nTable) /= ONE) then
+      elseif (abs(self % table(i) % CDF(self % nTable) - ONE) > 1.0E-6_defReal) then
         print '(A)', "Probability table discarded because CDF does not end with 1.0 "
         call self % kill()
         return
-      elseif (self % table(i) % CDF(self % nTable) /= ONE .or. &
-              any(self % table(i) % tot < ZERO) .or. any(self % table(i) % el < ZERO) .or. &
+      elseif (self % table(i) % CDF(self % nTable) < ONE) then
+        ! Adjust CDF if it is within tolerance but smaller than 1 due to floating point error
+        self % table(i) % CDF(self % nTable) = ONE
+      elseif (any(self % table(i) % tot < ZERO) .or. any(self % table(i) % el < ZERO) .or. &
               any(self % table(i) % fiss < ZERO) .or. any(self % table(i) % capt < ZERO) ) then
         print '(A)', "Probability table discarded because negative cross-sections present "
         call self % kill()

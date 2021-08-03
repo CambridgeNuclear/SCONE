@@ -92,7 +92,7 @@ module ceNeutronCache_mod
   type(cacheMatDat), dimension(:), allocatable, public   :: materialCache
   type(cacheNucDat), dimension(:), allocatable, public   :: nuclideCache
   type(cacheMajorant), dimension(:), allocatable, public :: majorantCache
-  type(cacheZAID), dimension(:), allocatable, public :: zaidCache
+  type(cacheZAID), dimension(:), allocatable, public     :: zaidCache
 
   ! Public procedures
   public :: init
@@ -106,9 +106,10 @@ contains
   !! Initialise Cache to given space
   !!
   !! Args:
-  !!   Nmat [in] -> Number of materials
-  !!   Nnuc [in] -> Number of nuclides
-  !!   Nmaj [in] -> Optional. Number of majorant Xss (Default = 1)
+  !!   Nmat [in]  -> Number of materials
+  !!   Nnuc [in]  -> Number of nuclides
+  !!   Nmaj [in]  -> Optional. Number of majorant Xss (Default = 1)
+  !!   Nzaid [in] -> Optional. Number of nuclides with same ZAID
   !!
   !! Errors:
   !!   fatalError if Nmat, Nnuc or Nmaj is not a +ve value

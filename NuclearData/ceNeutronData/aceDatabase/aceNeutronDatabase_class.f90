@@ -58,6 +58,9 @@ module aceNeutronDatabase_class
   !!   nuclides  -> array of aceNeutronNuclides with data
   !!   materials -> array of ceNeutronMaterials with data
   !!   Ebounds   -> array with bottom (1) and top (2) energy bound
+  !!   activeMat -> array of materials present in the geometry
+  !!   nucToZaid -> map to link nuclide index to zaid index
+  !!   hasUrr    -> ures probability tables flag, it's false by default
   !!
   !! Interface:
   !!   nuclearData Interface
@@ -69,7 +72,6 @@ module aceNeutronDatabase_class
     real(defReal), dimension(2)                  :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
 
-    character(5),dimension(:),allocatable  :: zaid
     integer(shortInt),dimension(:),allocatable   :: nucToZaid
     logical(defBool)                             :: hasUrr
 
@@ -564,32 +566,33 @@ contains
   subroutine init_urr(self)
     class(aceNeutronDatabase), intent(inout) :: self
     integer(shortInt)                        :: i, j
-    character(5),dimension(:),allocatable    :: tmp
-    character(5)                             :: zaid
-    character(100), parameter :: Here = 'init_urr (aceNeutronDatabase_class.f90)'
+    character(nameLen)                       :: zaid
+    type(charMap)                            :: map
+    integer(shortInt), parameter :: BEGIN=1, NOT_PRESENT = -12
 
-    ! Allocate and initialise temporary ZAID vector
-    allocate(tmp(size(self % nuclides)), self % nucToZaid(size(self % nuclides)))
-    tmp = 'CIAO'
+    ! Allocate array to map ZAIDs
+    allocate(self % nucToZaid(size(self % nuclides)))
 
-    j = 0
+    ! Initialise ZAID map
+    write(zaid,'(A5)') adjustl(self % nuclides(1) % ZAID)
+
+    call map % add(zaid, BEGIN)
+    self % nucToZaid(1) = 1
+
+    j = 1
     ! Loop over all nuclides
-    do i = 1,size(self % nuclides)
+    do i = 2,size(self % nuclides)
       ! Get the ZAID without temperature -> only compares the first 5 letters of the ZAID.TT string
       write(zaid,'(A5)') adjustl(self % nuclides(i) % ZAID)
       ! Create ZAID list and mapping
-      if (.not. any(tmp == zaid)) then
+      if (map % getOrDefault(zaid, NOT_PRESENT) == NOT_PRESENT) then
         j = j+1
-        tmp(j) = zaid
+        call map % add(zaid,j)
         self % nucToZaid(i) = j
       else
-        self % nucToZaid(i) = linFind(tmp, zaid)
+        self % nucToZaid(i) = map % get(zaid)
       end if
     end do
-
-    allocate(self % zaid(j))
-    self % zaid = tmp(1:j)
-    deallocate(tmp)
 
   end subroutine init_urr
 
@@ -607,7 +610,11 @@ contains
     self % activeMat = activeMat
 
     ! Configure Cache
-    call cache_init(size( self % materials), size(self % nuclides), 1, size(self % zaid))
+    if (self % hasUrr) then
+      call cache_init(size( self % materials), size(self % nuclides), 1, maxval(self % nucToZaid))
+    else
+      call cache_init(size( self % materials), size(self % nuclides))
+    end if
 
   end subroutine activate
 

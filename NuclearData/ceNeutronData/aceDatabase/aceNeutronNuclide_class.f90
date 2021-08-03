@@ -376,8 +376,12 @@ contains
   !!
   !! Return neutronMicroXSs read from probability tables.
   !!
-  !! NOTE: The IOA flag for other absorption cross sections is ignored.
-  !!       The total xs is not read from tables, but calculated from the other xss.
+  !! NOTE: The IOA flag, read from the ACE files, indicates how to determine the cross
+  !!       section of 'other absorptions', i.e. all absorptions except for fission and (n,gamma).
+  !!       Its contribution is expected to be very small, so here it is ignored as done
+  !!       in Serpent and OpenMC as well.
+  !!
+  !! NOTE: The total xs is not read from tables, but calculated from the other xss.
   !!
   !! Does not perform any check for valid input!
   !!
