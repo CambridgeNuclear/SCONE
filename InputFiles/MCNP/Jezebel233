@@ -8,8 +8,8 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active   500; 
-inactive 20; 
+active   50; 
+inactive 10; 
 XSdata   ceData;
 dataType ce; 
 
@@ -46,10 +46,7 @@ geometry {
     }
 
 
-    cells
-    {
-      out     { type simpleCell; id 3; surfaces (1 ); filltype outside; }
-      inside  { type simpleCell; id 4; surfaces (-1); filltype mat; material fuel; }
+    cells {
     }
 
     universes
