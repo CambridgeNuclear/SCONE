@@ -1,0 +1,96 @@
+
+// MCNP benchmark case Flattop-Pu
+//
+// Pu sphere (to 4.5332cm radius) with uranium reflector (to 24.1420cm radius)
+// Benchmark k-eff = 1.0000 +/- 0.0014
+
+
+type eigenPhysicsPackage; 
+
+pop      100000;
+active   20; 
+inactive 10; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k-eff);
+                norm fiss;
+                normVal 100.0;
+                k-eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 4.5332; }
+      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 24.1420; }
+    }
+
+
+    cells
+    {
+      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material fuel; }
+      refl  { type simpleCell; id 4; surfaces (1 ); filltype mat; material reflector; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells ( 3  4); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    numberOfGroups 69;
+
+    fuel {  
+      temp       293; 
+      composition {
+        94239.03  3.6697E-2;
+        94240.03  1.8700E-3;
+        94241.03  1.1639E-4;
+        31000.03  1.4755E-3;
+      }
+    }
+    reflector {  
+      temp       293; 
+      composition {
+        92234.03  2.6438E-6;
+        92235.03  3.4610E-4;
+        92238.03  4.7721E-2;
+      }
+    }	 
+
+} 
+  
+}
+  
+  
+  
