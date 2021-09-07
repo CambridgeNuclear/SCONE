@@ -8,7 +8,7 @@
 
 type eigenPhysicsPackage; 
 
-pop      200000;
+pop      50000;
 active   20; 
 inactive 10; 
 XSdata   ceData;
@@ -90,7 +90,7 @@ materials {
         13027.03  5.9881E-2;
         14028.03  2.1790E-4;
         26056.03  1.0958E-4;
-        29063.03  5.1364-5;
+        29063.03  5.1364E-5;
         25055.03  1.4853E-5;
       }
     }	 
