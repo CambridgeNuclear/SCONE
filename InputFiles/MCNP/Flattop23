@@ -8,8 +8,8 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active   20; 
-inactive 10; 
+active   1000; 
+inactive 200; 
 XSdata   ceData;
 dataType ce; 
 

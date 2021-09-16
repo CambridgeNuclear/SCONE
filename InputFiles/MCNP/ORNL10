@@ -8,9 +8,9 @@
 
 type eigenPhysicsPackage; 
 
-pop      50000;
-active   20; 
-inactive 10; 
+pop      200000;
+active   1000; 
+inactive 200; 
 XSdata   ceData;
 dataType ce; 
 
@@ -88,9 +88,9 @@ materials {
       temp       293; 
       composition {
         13027.03  5.9881E-2;
-        14028.03  2.1790E-4;
-        26056.03  1.0958E-4;
-        29063.03  5.1364E-5;
+        14000.03  2.1790E-4;
+        26000.03  1.0958E-4;
+        29000.03  5.1364E-5;
         25055.03  1.4853E-5;
       }
     }	 

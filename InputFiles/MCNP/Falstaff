@@ -9,8 +9,8 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active   20; 
-inactive 10; 
+active   1000; 
+inactive 200; 
 XSdata   ceData;
 dataType ce; 
 
@@ -20,6 +20,8 @@ collisionOperator { neutronCE {type neutronCEstd;}
 
 transportOperator { type transportOperatorST;
                   } 
+
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
               } 
@@ -89,9 +91,9 @@ materials {
     steel {  
       temp       293; 
       composition {
-        26056.03  0.061248;
-        24052.03  0.016678;
-        28058.03  0.0090264;
+        26000.03  0.061248;
+        24000.03  0.016678;
+        28000.03  0.0090264;
       }
     }
     reflector {  
