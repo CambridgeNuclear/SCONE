@@ -175,9 +175,11 @@ contains
 
     call this % map_noUndef % print(out)
     @assertTrue(out % isValid(),'For map with no undefined material bin: ')
+    call out % reset()
 
     call this % map_undef % print(out)
     @assertTrue(out % isValid(),'For map with undefined material bin: ')
+    call out % reset() 
 
   end subroutine testPrint
 

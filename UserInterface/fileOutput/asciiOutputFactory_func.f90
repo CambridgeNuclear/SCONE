@@ -8,6 +8,7 @@ module asciiOutputFactory_func
 
   ! Implementations
   use asciiMATLAB_class,  only : asciiMATLAB
+  use asciiJSON_class,    only : asciiJSON
   use dummyPrinter_class, only : dummyPrinter
 
   implicit none
@@ -19,6 +20,7 @@ module asciiOutputFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_asciiOutputs = [ 'asciiMATLAB ',&
+                                                                         'asciiJSON   ',&
                                                                          'dummyPrinter']
 
   public :: new_asciiOutput
@@ -37,16 +39,22 @@ contains
     ! *** ADD CASE STATEMENT FOR A NEW ASCII OUTPUT BELOW ***!
     select case(type)
       case('asciiMATLAB')
-        allocate(new, source = asciiMATLAB() )
+        allocate(asciiMATLAB :: new)
+
+      case('asciiJSON')
+        allocate(asciiJSON :: new)
 
       case('dummyPrinter')
-        allocate(new, source = dummyPrinter() )
+        allocate(dummyPrinter :: new)
 
       case default
         print *, AVALIBLE_asciiOutputs
         call fatalError(Here, 'Unrecognised type of asciiOutput: ' // trim(type))
 
     end select
+
+    ! Initialise
+    call new % init()
 
   end function new_asciiOutput
 

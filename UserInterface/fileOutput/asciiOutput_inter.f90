@@ -6,29 +6,35 @@ module asciiOutput_inter
   private
 
   !!
-  !! Abstract interface for the printing output in stream fashion to an ASCII file
-  !!   It allows to swap diffrent printers to print to diffrent formats (i.e. MATLAB, CSV, JASON)
+  !! Abstract interface for output printers
   !!
-  !! Output is divided into blocks, that can be nested.
-  !! Each block has an associated name execpt for root block that has no name.
-  !! Root block is opened at initialisation and closed at finalisation.
-  !! Each entry is associated with a "name" (keyword)
-  !!  Following functionality is provided:
-  !!    -> startBlock(name) - starts new block with the given name
-  !!    -> endBlock         - ends block (return error if trying to  end root block)
-  !!    -> startEntry(name) - start writing entry with name. Expect either array of single value
-  !!    -> endEntry         - end writing entry
-  !!    -> startArray(name,shape) - start writing array with given shape
-  !!    -> endArray               - end writing array
-  !!    -> print(char,mold)       - print char asuming it has the same type as mold(defReal, etc. )
+  !! Allows stream-like output to multiple formats (e.g. MATLAB, CSV, JSON)
   !!
-  !! Assume that checks for name uniqueness are performed by the user class.
-  !! Assume that checks for mixed arrays are performed by the user class.
-  !! Printer should return errors if calls for ends are out of correct sequence
+  !! They recive the sequence of calls from the `outputFile` and conver them to the output file.
+  !!
+  !! Printers do no error checking. It is responsibility of the `outputFile` to ensure that
+  !! the sequence is correct.
+  !!
+  !! NOTE:
+  !!  outputFile converts the numerical values to characters. Thus printer gets reals already as
+  !!  chars.
+  !!
+  !! Interface:
+  !!   init        -> Initialise
+  !!   extension   -> Return file extension approperiate for the format
+  !!   writeToFile -> Print the output to the provided unit
+  !!   startBlock  -> Start new block
+  !!   endBlock    -> End a block
+  !!   startArray  -> Start array with a given shape
+  !!   endArray    -> End current array
+  !!   printNum    -> Print a number (given as character)
+  !!   printChar   -> Print a character
   !!
   type, public,abstract :: asciiOutput
     private
   contains
+    procedure(init), deferred       :: init
+    procedure(extension), deferred  :: extension
     procedure(writeToFile),deferred :: writeToFile
     procedure(startBlock),deferred  :: startBlock
     procedure(endBlock),deferred    :: endBlock
@@ -42,10 +48,39 @@ module asciiOutput_inter
 
 
   abstract interface
+
     !!
-    !! For now it prints to screen for debug
+    !! Initialise the printer
     !!
-    subroutine writeToFile(self,unit)
+    !! Args:
+    !!  None
+    !!
+    subroutine init(self)
+      import :: asciiOutput
+      class(asciiOutput), intent(inout) :: self
+    end subroutine init
+
+    !!
+    !! Return approperiate extension for the file
+    !!
+    !! Must be without any "." Thus "exe" instead of ".exe"!
+    !!
+    !! Args:
+    !!   None
+    !!
+    pure function extension(self) result(str)
+      import :: asciiOutput
+      class(asciiOutput), intent(in) :: self
+      character(:), allocatable      :: str
+    end function extension
+
+    !!
+    !! Print the output to the given unit
+    !!
+    !! Args:
+    !!  unit [in] -> Unit number of the output
+    !!
+    subroutine writeToFile(self, unit)
       import :: asciiOutput, &
                 shortInt
       class(asciiOutput), intent(inout) :: self
@@ -55,7 +90,10 @@ module asciiOutput_inter
     !!
     !! Change state to writing new block with "name"
     !!
-    subroutine startBlock(self,name)
+    !! Args:
+    !!   name [in] -> Name of the new block
+    !!
+    subroutine startBlock(self, name)
       import :: asciiOutput, &
                 nameLen
       class(asciiOutput), intent(inout) :: self
@@ -63,8 +101,7 @@ module asciiOutput_inter
     end subroutine startBlock
 
     !!
-    !! End top level block and return to previous block
-    !! Return error if this is called in root block
+    !! End current block
     !!
     subroutine endBlock(self)
       import :: asciiOutput
@@ -73,9 +110,13 @@ module asciiOutput_inter
 
     !!
     !! Change state to writing a new entry
+    !!
     !! Can recive single value or array next
     !!
-    subroutine startEntry(self,name)
+    !! Args:
+    !!   name [in] -> name of the entry
+    !!
+    subroutine startEntry(self, name)
       import :: asciiOutput, &
                 nameLen
       class(asciiOutput), intent(inout) :: self
@@ -91,10 +132,14 @@ module asciiOutput_inter
     end subroutine endEntry
 
     !!
-    !! Start writing array with shape & column-major order(leftmost index varies fastest)
+    !! Start writing array with the given shape
+    !!
     !! Name should alrady be provided by "startEntry"
     !!
-    subroutine startArray(self,shape)
+    !! Args:
+    !!   shape [in] -> Shape of the array (in column-major order)
+    !!
+    subroutine startArray(self, shape)
       import :: asciiOutput, &
                 shortInt
       class(asciiOutput), intent(inout)         :: self
@@ -102,7 +147,7 @@ module asciiOutput_inter
     end subroutine startArray
 
     !!
-    !! End writing array
+    !! End writing the array
     !!
     subroutine endArray(self)
       import :: asciiOutput
@@ -110,18 +155,28 @@ module asciiOutput_inter
     end subroutine endArray
 
     !!
-    !! Print val assuming it contains valid printed number with no leading or trailing blanks
+    !! Print numerical value
     !!
-    subroutine printNum(self,val)
+    !! Assume it contains valid number with NO leading or trailing blanks
+    !!
+    !! Args:
+    !!  val [in] -> A number converted to character
+    !!
+    subroutine printNum(self, val)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val
     end subroutine printNum
 
     !!
-    !! Print val assuming it contains valid printed string with no leading or trailing blanks
+    !! Print character value
     !!
-    subroutine printChar(self,val)
+    !! Assuming it contains NO leading or trailing blanks
+    !!
+    !! Args:
+    !!  val [in] -> Character value
+    !!
+    subroutine printChar(self, val)
       import :: asciiOutput
       class(asciiOutput), intent(inout) :: self
       character(*),intent(in)           :: val

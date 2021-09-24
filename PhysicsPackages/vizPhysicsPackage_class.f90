@@ -4,7 +4,6 @@ module vizPhysicsPackage_class
   use universalVariables
   use genericProcedures,              only : fatalError
   use dictionary_class,               only : dictionary
-  use outputFile_class,               only : outputFile
 
   ! Timers
   use timer_mod,                      only : registerTimer, timerStart, timerStop, &
@@ -37,11 +36,8 @@ module vizPhysicsPackage_class
     private
     ! Building blocks
     class(geometry), pointer :: geom => null()
-    integer(shortInt)        :: geomIdx = 0 
+    integer(shortInt)        :: geomIdx = 0
     type(visualiser)         :: viz
-
-    ! Settings
-    character(pathLen) :: outputFile
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -77,9 +73,6 @@ contains
     class(geometry), pointer                :: geom
     character(nameLen)                      :: geomName
     character(100), parameter :: Here ='init (vizPhysicsPackage_class.f90)'
-
-    ! Read outputfile path
-    call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')

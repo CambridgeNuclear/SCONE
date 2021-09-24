@@ -7,10 +7,12 @@ particle transport code for reactor physics. It is intended as an accessible env
 graduate students to test and develop their ideas before contributing them to more established
 codes suitable for design calculations.
 
+SCONE documentation is hosted at: <https://scone.readthedocs.io>
+
 ## Prerequisites
 Required
 
-* Cmake (>=3.0)
+* Cmake (>=3.10)
 * Fortran compiler, gfortran (>=6.3)
 * LAPACK and BLAS Libraries
 * GNU/Linux operating system
