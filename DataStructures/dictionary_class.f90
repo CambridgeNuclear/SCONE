@@ -747,7 +747,7 @@ contains
         ptr => self % entries(idx) % dict0_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
+        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a dictionary')
 
     end select
 
@@ -764,7 +764,7 @@ contains
     character(*),intent(in)        :: keyword
     integer(shortInt)              :: idx, i
     character(100),parameter       :: Here='getBool (dictionary_class.f90)'
-    
+
     idx = self % search(keyword, Here, fatal =.true.)
     select case (self % entries(idx) % getType())
       case(numInt)

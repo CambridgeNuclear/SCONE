@@ -8,6 +8,7 @@
 !!   nuclideCache  -> Array of cached data for nuclides
 !!   matCache      -> Array of cached data for materials
 !!   majorantCache -> Array of cached data for majorant XS
+!!   zaidCache     -> Array of cached data for ZAID numbers (used for URR probability tables)
 !!
 !! NOTE:
 !!   Cache arrays are deliberatly not targets. This is becouse there should be no pointers to the
@@ -75,10 +76,23 @@ module ceNeutronCache_mod
     real(defReal) :: xs
   end type cacheMajorant
 
+  !!
+  !! Structure that contains a ZAID random number for probability tables
+  !!
+  !! Public Members:
+  !!   E  -> energy of the majorant
+  !!   xi -> value of the random number
+  !!
+  type, public :: cacheZAID
+    real(defReal) :: E  = ZERO
+    real(defReal) :: xi = ZERO
+  end type cacheZAID
+
   ! MEMBERS OF THE MODULE ARE GIVEN HERE
   type(cacheMatDat), dimension(:), allocatable, public   :: materialCache
   type(cacheNucDat), dimension(:), allocatable, public   :: nuclideCache
   type(cacheMajorant), dimension(:), allocatable, public :: majorantCache
+  type(cacheZAID), dimension(:), allocatable, public     :: zaidCache
 
   ! Public procedures
   public :: init
@@ -92,17 +106,19 @@ contains
   !! Initialise Cache to given space
   !!
   !! Args:
-  !!   Nmat [in] -> Number of materials
-  !!   Nnuc [in] -> Number of nuclides
-  !!   Nmaj [in] -> Optional. Number of majorant Xss (Default = 1)
+  !!   Nmat [in]  -> Number of materials
+  !!   Nnuc [in]  -> Number of nuclides
+  !!   Nmaj [in]  -> Optional. Number of majorant Xss (Default = 1)
+  !!   Nzaid [in] -> Optional. Number of nuclides with same ZAID
   !!
   !! Errors:
   !!   fatalError if Nmat, Nnuc or Nmaj is not a +ve value
   !!
-  subroutine init(Nmat, Nnuc, Nmaj)
+  subroutine init(Nmat, Nnuc, Nmaj, Nzaid)
     integer(shortInt), intent(in)          :: Nmat
     integer(shortInt), intent(in)          :: Nnuc
     integer(shortInt),optional, intent(in) :: Nmaj
+    integer(shortInt),optional, intent(in) :: Nzaid
     integer(shortInt)                      :: Nloc
     character(100),parameter :: Here = 'init (ceNeutronCache_mod.f90)'
 
@@ -126,6 +142,14 @@ contains
     allocate(nuclideCache(Nnuc))
     allocate(majorantCache(Nloc))
 
+    if(present(Nzaid)) then
+      if (Nzaid > 0) then
+        allocate(zaidCache(Nzaid))
+      else
+        call fatalError(Here,'Number of zaids must be +ve! Not: '//numToChar(Nzaid))
+      end if
+    end if
+
   end subroutine init
 
   !!
@@ -135,6 +159,7 @@ contains
     if(allocated(materialCache)) deallocate (materialCache)
     if(allocated(nuclideCache))  deallocate (nuclideCache)
     if(allocated(majorantCache)) deallocate (majorantCache)
+    if(allocated(zaidCache)) deallocate (zaidCache)
   end subroutine kill
 
 

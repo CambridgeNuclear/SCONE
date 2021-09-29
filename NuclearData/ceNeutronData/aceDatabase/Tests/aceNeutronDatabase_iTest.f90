@@ -39,7 +39,7 @@ module aceNeutronDatabase_iTest
 
   ! CE Neutron Database specification
   character(*),parameter :: ACE_INPUT_STR = " &
-  aceLibrary ./IntegrationTestFiles/testLib;    "
+  aceLibrary ./IntegrationTestFiles/testLib; "
 
 contains
 
