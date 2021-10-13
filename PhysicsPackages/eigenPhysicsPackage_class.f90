@@ -149,7 +149,7 @@ contains
     ! Set geometry
     neutron % geomIdx = self % geomIdx
 
-    ! Set initiial k-eff
+    ! Set initial k-eff
     k_new = self % keff_0
 
     ! Reset and start timer
@@ -216,6 +216,9 @@ contains
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
       self % nextCycle % k_eff = k_new
+
+      ! Used to normalise fission source of the first active cycle
+      self % keff_0 = k_new
 
       ! Calculate times
       call timerStop(self % timerMain)

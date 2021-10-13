@@ -148,7 +148,6 @@ module aceCard_class
     procedure :: LOCCforPrecursor    ! Return location of delayed fission spectrum relative to JXS(27)
 
     ! Procedures related to reading under head and head status
-    !
     procedure :: readInt             ! Read int under head and advance
     procedure :: readReal            ! Read real under head and advance
     procedure :: readIntArray        ! Read N ints beginning under head and advance by N
@@ -165,6 +164,10 @@ module aceCard_class
 
     procedure :: getRootAddress      ! Get Root adress do diffrent blocks
     procedure :: setRelativeTo       ! Sets to position given by root and offset (root + offset -1)
+
+    ! Procedures related to probability tables
+    procedure :: hasProbTab          ! Returns true if the nuclide has URR probability tables
+    procedure :: setToProbTab        ! Set head to probability table data
 
     ! Initialisation and display procedures
     procedure :: readFromFile
@@ -1232,6 +1235,27 @@ contains
   end subroutine setToEnergyLaw
 
   !!
+  !! Returns .true. if nuclide has probability table data
+  !!
+  function hasProbTab(self) result(doesIt)
+    class(aceCard), intent(in) :: self
+    logical(defBool)           :: doesIt
+
+    doesIt = (self % JXS(23) /= 0)
+
+  end function hasProbTab
+
+  !!
+  !! Sets head to position of probability table data
+  !!
+  subroutine setToProbTab(self)
+    class(aceCard), intent(inout) :: self
+
+    self % head = self % JXS(23)
+
+  end subroutine setToProbTab
+
+  !!
   !! Load data for every MT reaction type
   !! NOTE: in ACE format reactions with no secondary neutrons are at the end of MT numbers list.
   !!       As the result it is safe to read data with MTdata(1:NMTs).
@@ -1367,7 +1391,7 @@ contains
     self % hasFISBlock = (self % JXS(21) /= 0)
 
     ! Exit if nuclide is not fissile
-    if (.not.self % isFiss) return
+    if (.not. self % isFiss) return
 
     ! Read data releted to FIS block
     if (self % hasFisBlock) then
@@ -1483,6 +1507,7 @@ contains
 
     call self % setMTdata()
     call self % setFissionData()
+
   end subroutine
 
   !!
