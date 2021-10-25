@@ -1,0 +1,203 @@
+
+// MCNP benchmark case Tinkertoy-2 (c-11)
+// Detailed in HEU-MET-FAST-026
+//
+// 
+// Benchmark k-eff = 1.0000 +/- 0.0038
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active   1000; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; } 
+
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k-eff);
+                norm fiss;
+                normVal 100.0;
+                k-eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      cylinder_surf { id 1; type zTruncCylinder; origin (0.0 0.0 0.0); halfwidth 5.3825; radius 5.742; }
+
+      rod_surf1 { id 21; type zCylinder; origin (0.0  4.2735 0.0); radius 0.254; }
+      rod_surf2 { id 22; type zCylinder; origin (0.0 -4.2735 0.0); radius 0.254; }
+
+     // Inside surface of paraffin reflector, containing cylinder lattice and air
+      inside_box { id 3; type box; origin (0.0 0.0 0.0); halfwidth (45.306 45.306 44.2275); }
+
+     // Box containing cylinder lattice
+      latt_box { id 4; type box; origin (0.0 0.0 0.0); halfwidth (35.946 35.946 34.8675); }
+
+     // Outside surface of paraffin reflector
+      outside_box { id 50; type box; origin (0.0 0.0 0.0); halfwidth (52.906 52.906 51.8275); }
+
+     // Paraffin gap surfaces (extending arbitrarily above and below)
+      gap1 { id 51; type box; origin (-30.204 0.0 0.0); halfwidth (0.254 45.306 52); }
+      gap2 { id 52; type box; origin (0.0 0.0 0.0);     halfwidth (0.254 45.306 52); }
+      gap3 { id 53; type box; origin (30.204 0.0 0.0);  halfwidth (0.254 45.306 52); }
+
+     // Surfaces defining room
+      outside_room      { id 60; type box; origin (52.07 -21.74 278.3775);  halfwidth (548.64 603.1 600.71);  }
+      inside_room_upper { id 61; type box; origin (105.41 -67.46 531.7375); halfwidth (449.58 496.42 356.87); }
+      inside_room_lower { id 62; type box; origin (105.41 -36.98 -8.0125);  halfwidth (449.58 465.94 182.88); }
+
+
+
+    }
+
+
+    cells
+    {
+     // Cells contained in cylinder universe: Uranium cylinder with steel rods, surrounded by air
+      cylinder_cell { id 11; type simpleCell; surfaces (-1 21 22); filltype mat; material fuel;  }
+      air_cell_cyl  { id 12; type simpleCell; surfaces ( 1 21 22); filltype mat; material air;   }
+      rod_cell1     { id 21; type simpleCell; surfaces (-21);      filltype mat; material steel; }
+      rod_cell2     { id 22; type simpleCell; surfaces (-22);      filltype mat; material steel; }
+
+
+     // Core cells
+      inside_cell { id 3; type simpleCell; surfaces (4 -3); filltype mat; material air; }     // Between lattice and paraffin reflector
+
+      latt_cell { id 4; type simpleCell; surfaces (-4); filltype uni; universe 4; }
+      
+      reflector_cell { id 50; type simpleCell; surfaces (3 -50 51 52 53); filltype mat; material paraffin; }
+
+
+     // Paraffin gap cells (extending arbitrarily above and below)
+      gap_cell1 { id 51; type simpleCell; surfaces (3 -50 -51); filltype mat; material air; }
+      gap_cell2 { id 52; type simpleCell; surfaces (3 -50 -52); filltype mat; material air; }
+      gap_cell3 { id 53; type simpleCell; surfaces (3 -50 -53); filltype mat; material air; }
+
+    // Room cells
+      air_cell_upper { id 61; type simpleCell; surfaces (-61);    filltype mat; material air;      }
+      air_cell_lower { id 62; type simpleCell; surfaces (50 -62); filltype mat; material air;      }
+      wall_cell      { id 63; type simpleCell; surfaces (61 62);  filltype mat; material concrete; }
+
+    }
+
+    universes
+    {
+
+      root { id 1; type rootUniverse; border 60; fill u<3>; }
+
+      cylinder { id 2; type cellUniverse; cells (11 12 21 22); }
+
+      geom { id 3; type cellUniverse; cells (3 4 50 51 52 53 61 62 63); }
+
+      latt {
+        id 4; type latUniverse; origin (0.0 0.0 0.0); pitch (30.204 30.204 29.485);
+        shape (3 3 3); padMat air;
+        map (
+          2 2 2  // Top layer
+          2 2 2
+          2 2 2
+          2 2 2  // Mid Layer
+          2 2 2
+          2 2 2
+          2 2 2  // Bottom layer
+          2 2 2
+          2 2 2 ); }
+
+
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    numberOfGroups 69;
+
+    fuel {  
+      temp       293; 
+      composition {
+        92234.03  4.8271E-4;
+        92235.03  4.4797E-2;
+        92236.03  9.5723E-5;
+        92238.03  2.6577E-3;
+      }
+    }
+
+    steel {  
+      temp       293; 
+      composition {
+        06012.03  3.1691E-4;  // C
+        25055.03  1.7321E-3;  // Mn
+        14028.03  1.6940E-3;  // Si
+        24052.03  1.6472E-2;  // Cr
+        26056.03  6.0360E-2;  // Fe
+        28058.03  6.4834E-3;  // Ni
+      }
+    }
+
+    concrete {  
+      temp       293; 
+      composition {
+        01001.03  1.4868E-2;  // H
+        06012.03  3.8144E-3;  // C
+        08016.03  4.1519E-2;  // O
+        11023.03  3.0400E-4;  // Na
+        12024.03  5.8700E-4;  // Mg
+        13027.03  7.3500E-4;  // Al
+        14028.03  6.0370E-3;  // Si
+        20040.03  1.1588E-2;  // Ca
+        26056.03  1.9680E-4;  // Fe
+      }
+    }
+
+   paraffin {  
+      temp       293; 
+      composition {
+        01001.03  8.2574E-2;  // H
+        06012.03  3.9699E-2;  // C
+      }
+    }
+
+    air {   // No data for air given, this composition taken from:
+            // https://www.researchgate.net/figure/contd-Atom-Densities-for-Basic-Materials-atom-barn-cm_tbl17_267562651
+      temp       293; 
+      composition {
+        07014.03  4.1985E-5;
+        08016.03  1.1263E-5;
+      }
+    }
+
+} 
+  
+}
+  
+  
+  
