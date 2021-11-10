@@ -6,6 +6,7 @@ module aceNeutronNuclide_class
   use genericProcedures, only : fatalError, numToChar, binarySearch
   use RNG_class,         only : RNG
   use aceCard_class,     only : aceCard
+  use aceSabCard_class,  only : aceSabCard
   use stack_class,       only : stackInt
   use intMap_class,      only : intMap
 
@@ -22,6 +23,9 @@ module aceNeutronNuclide_class
 
   ! Unresolved resonances treatment
   use urrProbabilityTables_class,   only : urrProbabilityTables
+
+  ! S(alpha,beta) data
+  use thermalScatteringData_class,  only : thermalData
 
   ! CE NEUTRON CACHE
   use ceNeutronCache_mod,           only : nuclideCache
@@ -108,11 +112,16 @@ module aceNeutronNuclide_class
     type(fissionCE)             :: fission
 
     ! URR probability tables
-    real(defReal), dimension(2) :: urrE
+    real(defReal), dimension(2) :: urrE = ZERO
     type(urrProbabilityTables)  :: probTab
     logical(defBool)            :: hasProbTab = .false.
     integer(shortInt)           :: IFF = 0
 
+    ! S(alpha,beta)
+    logical(defBool)            :: hasThData = .false.
+    type(thermalData)           :: thData
+    real(defReal), dimension(2) :: SabEl = ZERO
+    real(defReal), dimension(2) :: SabInel = ZERO
 
   contains
     ! Superclass Interface
@@ -125,8 +134,10 @@ module aceNeutronNuclide_class
     procedure :: totalXS
     procedure :: microXSs
     procedure :: getUrrXSs
+    procedure :: getThXSs
     procedure :: init
     procedure :: init_urr
+    procedure :: init_Sab
     procedure :: display
 
   end type aceNeutronNuclide
@@ -149,41 +160,44 @@ contains
     real(defReal)                        :: f, XS, topXS, bottomXS
     character(100), parameter :: Here = 'invertInelastic (aceNeutronNuclide_class.f90)'
 
-    ! Obtain bin index and interpolation factor
-    if (nuclideCache(self % getNucIdx()) % E_tot == E) then
-      idx = nuclideCache(self % getNucIdx()) % idx
-      f   = nuclideCache(self % getNucIdx()) % f
-
+    if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+      MT = 800
     else
-      call self % search(idx, f, E)
+      ! Obtain bin index and interpolation factor
+      if (nuclideCache(self % getNucIdx()) % E_tot == E) then
+        idx = nuclideCache(self % getNucIdx()) % idx
+        f   = nuclideCache(self % getNucIdx()) % f
+      else
+        call self % search(idx, f, E)
+      end if
+
+      ! Get inelastic XS
+      XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
+
+      ! Invert
+      XS = XS * rand % get()
+      do i=1,self % nMT
+        ! Get index in MT reaction grid
+        idxT = idx - self % MTdata(i) % firstIdx + 1
+        if( idxT < 0 ) cycle
+
+        ! Get top and bottom XS
+        topXS = self % MTdata(i) % xs(idxT+1)
+        bottomXS = self % MTdata(i) % xs(idxT)
+
+        ! Decrement total inelastic and exit if sampling is finished
+        XS = XS - topXS * f - (ONE-f) * bottomXS
+        if(XS <= ZERO) then
+          MT = self % MTdata(i) % MT
+          return
+        end if
+      end do
+
+      ! Sampling must have failed. Throw fatalError
+      call fatalError(Here,'Failed to invert inelastic scattering in nuclide '//trim(self % ZAID))
+      MT = 0
 
     end if
-
-    ! Get inelastic XS
-    XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
-
-    ! Invert
-    XS = XS * rand % get()
-    do i=1,self % nMT
-      ! Get index in MT reaction grid
-      idxT = idx - self % MTdata(i) % firstIdx + 1
-      if( idxT < 0 ) cycle
-
-      ! Get top and bottom XS
-      topXS = self % MTdata(i) % xs(idxT+1)
-      bottomXS = self % MTdata(i) % xs(idxT)
-
-      ! Decrement total inelastic and exit if sampling is finished
-      XS = XS - topXS * f - (ONE-f) * bottomXS
-      if(XS <= ZERO) then
-        MT = self % MTdata(i) % MT
-        return
-      end if
-    end do
-
-    ! Sampling must have failed. Throw fatalError
-    call fatalError(Here,'Failed to invert inelastic scattering in nuclide '//trim(self % ZAID))
-    MT = 0
 
   end function invertInelastic
 
@@ -374,6 +388,57 @@ contains
   end subroutine microXSs
 
   !!
+  !! Return interpolated neutronMicroXSs package for the given interpolation factor and index
+  !! including thermal scattering data
+  !!
+  !! Does not perform any check for valid input!
+  !!
+  !! It recalculates the total cross section given the partials
+  !!
+  !! Args:
+  !!   xss [out] -> XSs package to store interpolated values
+  !!   idx [in]  -> index of the bottom bin in nuclide Energy-Grid
+  !!   f [in]    -> interpolation factor in [0;1]
+  !!
+  !! Errors:
+  !!   Invalid idx beyond array bounds -> undefined behaviour
+  !!   Invalid f (outside [0;1]) -> incorrect value of XSs
+  !!
+  elemental subroutine getThXSs(self, xss, idx, f, E)
+    class(aceNeutronNuclide), intent(in) :: self
+    type(neutronMicroXSs), intent(out)   :: xss
+    integer(shortInt), intent(in)        :: idx
+    real(defReal), intent(in)            :: f
+    real(defReal), intent(in)            :: E
+
+    associate (data => self % mainData(:,idx:idx+1))
+
+      xss % capture = data(CAPTURE_XS, 2) * f + (ONE-f) * data(CAPTURE_XS, 1)
+
+      if(self % isFissile()) then
+        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+      else
+        xss % fission   = ZERO
+        xss % nuFission = ZERO
+      end if
+
+      call self % thData % getElXS(E, xss % elasticScatter)
+
+      if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+        call self % thData % getInelXS(E, xss % inelasticScatter)
+      else
+        xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      end if
+
+    end associate
+
+    xss % total = xss % elasticScatter + xss % inelasticScatter + xss % capture + &
+                  xss % fission
+
+  end subroutine getThXSs
+
+  !!
   !! Return neutronMicroXSs read from probability tables.
   !!
   !! NOTE: The IOA flag, read from the ACE files, indicates how to determine the cross
@@ -390,25 +455,46 @@ contains
   !!   xi [in]     -> Random number
   !!   xss [inout] -> XSs package to store interpolated values
   !!
-  subroutine getUrrXSs(self, E, xi, xss)
+  subroutine getUrrXSs(self, xss, idx, f, E, xi)
     class(aceNeutronNuclide), intent(in) :: self
+    type(neutronMicroXSs), intent(out)   :: xss
+    integer(shortInt), intent(in)        :: idx
+    real(defReal), intent(in)            :: f
     real(defReal), intent(in)            :: E
     real(defReal), intent(in)            :: xi
-    type(neutronMicroXSs), intent(inout) :: xss
     real(defReal), dimension(3)          :: val
 
     ! Read tables
     call self % probTab % sampleXSs(E, xi, val)
 
-    ! Check if multiplication factor is on
-    if (self % IFF == 1) then
-      val(1) = xss % elasticScatter * val(1)
-      val(2) = xss % capture * val(2)
-      val(3) = xss % fission * val(3)
-    end if
+    associate (data => self % mainData(:,idx:idx+1))
 
-    ! Check inelastic scattering flag
-    if (self % probTab % ILF < 0) xss % inelasticScatter = ZERO
+      if(self % isFissile()) then
+        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+      else
+        xss % fission   = ZERO
+        xss % nuFission = ZERO
+      end if
+
+      ! Check if multiplication factor is on
+      if (self % IFF == 1) then
+        xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (ONE-f) * data(ESCATTER_XS, 1)
+        xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
+
+        val(1) = xss % elasticScatter * val(1)
+        val(2) = xss % capture * val(2)
+        val(3) = xss % fission * val(3)
+      end if
+
+      ! Check inelastic scattering flag
+      if (self % probTab % ILF < 0) then
+        xss % inelasticScatter = ZERO
+      else
+        xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      end if
+
+    end associate
 
     xss % elasticScatter   = val(1)
     xss % capture          = val(2)
@@ -416,9 +502,6 @@ contains
     if(self % isFissile()) then
       xss % nuFission = xss % nuFission/xss % fission * val(3)
       xss % fission   = val(3)
-    else
-      xss % fission   = ZERO
-      xss % nuFission = ZERO
     end if
 
     ! Calculate total from the other values
@@ -653,6 +736,28 @@ contains
     end if
 
   end subroutine init_urr
+
+  !!
+  !! Initialise thermal scattering tables from ACE card
+  !!
+  !! Args:
+  !!   ACE [inout]   -> ACE S(a,b) card
+  !!
+  subroutine init_Sab(self, ACE)
+    class(aceNeutronNuclide), intent(inout) :: self
+    class(aceSabCard), intent(inout)        :: ACE
+    character(100), parameter :: Here = "init_Sab (aceNeutronNuclide_class.f90)"
+
+    call self % thData % init(ACE)
+    self % hasThData = .true.
+    self % SabInel = self % thData % getEbounds('inelastic')
+    self % SabEl = self % thData % getEbounds('elastic')
+
+    if (self % SabInel(1) < self % eGrid(1)) then
+      call fatalError(Here, 'S(a,b) low energy boundary is lower than nuclide first energy point')
+    end if
+
+  end subroutine init_Sab
 
   !!
   !! A Procedure that displays information about the nuclide to the screen
