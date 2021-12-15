@@ -1,5 +1,6 @@
 add_subdirectory(ceNeutronData)
 add_subdirectory(mgNeutronData)
+add_subdirectory(mgIMCData)
 add_subdirectory(testNeutronData)
 add_subdirectory(xsPackages)
 add_subdirectory(emissionENDF)

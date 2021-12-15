@@ -7,8 +7,8 @@ module mgIMCMaterial_inter
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
-  use neutronMaterial_inter,   only : neutronMaterial
-  use neutronXsPackages_class, only : neutronMacroXSs
+  use IMCMaterial_inter,   only : IMCMaterial
+  use IMCXsPackages_class, only : IMCMacroXSs
 
   implicit none
   private
@@ -24,16 +24,20 @@ module mgIMCMaterial_inter
   public :: kill
 
   !!
-  !! Abstract interface for all MG neutron Materials
-  !! 
+  !! Abstract interface for all MG IMC Materials
+  !!
+  !! Private Members:
+  !!   fissile -> flag set to .true. if material is fissile
   !!
   !! Interface:
   !!   materialHandle interface
   !!   neutroNMaterial interface
-  !!   getMacroXSs -> Get macroscopic XSs directly from group number and RNG 
+  !!   getMacroXSs -> Get macroscopic XSs directly from group number and RNG
+  !!   set         -> Sets fissile flag
   !!
-  type, public, abstract, extends(neutronMaterial) :: mgIMCMaterial
+  type, public, abstract, extends(IMCMaterial) :: mgIMCMaterial
     private
+    logical(defBool) :: fissile = .false.
 
   contains
     ! Superclass procedures
@@ -65,9 +69,9 @@ module mgIMCMaterial_inter
     !!   fatalError if G is out-of-bounds for the stored data
     !!
     subroutine getMacroXSs_byG(self, xss, G, rand)
-      import :: mgIMCMaterial, neutronMacroXSs, shortInt, RNG
+      import :: mgIMCMaterial, IMCMacroXSs, shortInt, RNG
       class(mgIMCMaterial), intent(in) :: self
-      type(neutronMacroXSs), intent(out)   :: xss
+      type(IMCMacroXSs), intent(out)   :: xss
       integer(shortInt), intent(in)        :: G
       class(RNG), intent(inout)            :: rand
     end subroutine getMacroXSs_byG
@@ -98,11 +102,11 @@ contains
   !!
   !! Return Macroscopic XSs for the material given particle
   !!
-  !! See neutronMaterial_inter for details
+  !! See IMCMaterial_inter for details
   !!
   subroutine getMacroXSs_byP(self, xss, p)
     class(mgIMCMaterial), intent(in) :: self
-    type(neutronMacroXSs), intent(out)   :: xss
+    type(IMCMacroXSs), intent(out)   :: xss
     class(particle), intent(in)          :: p
     character(100), parameter :: Here = 'getMacroXSs_byP (mgIMCMateerial_inter.f90)'
 
@@ -114,6 +118,50 @@ contains
 
     end if
   end subroutine getMacroXSs_byP
+
+  !!
+  !! Return .true. if the MG material is fissile
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
+  !!
+  elemental function isFissile(self) result(isIt)
+    class(mgIMCMaterial), intent(in) :: self
+    logical(defBool)                     :: isIt
+
+    isIt = self % fissile
+
+  end function isFissile
+
+  !!
+  !! Return to uninitialised state
+  !!
+  elemental subroutine kill(self)
+    class(mgIMCMaterial), intent(inout) :: self
+
+    self % fissile = .false.
+
+  end subroutine kill
+
+  !!
+  !! Set fissile flag
+  !!
+  !! All arguments are optional. Use with keyword association e.g.
+  !!   call mat % set( fissile = .true.)
+  !!
+  !! Args:
+  !!   fissile [in] -> flag indicating whether fission data is present
+  !!
+  subroutine set(self, fissile)
+    class(mgIMCMaterial), intent(inout) :: self
+    logical(defBool), intent(in), optional  :: fissile
+
+    if(present(fissile)) self % fissile = fissile
+
+  end subroutine set
 
   !!
   !! Cast materialHandle pointer to mgIMCMaterial pointer

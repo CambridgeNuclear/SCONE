@@ -1,4 +1,4 @@
-module baseMgNeutronDatabase_iTest
+module baseMgIMCDatabase_iTest
 
   use numPrecision
   use endfConstants
@@ -8,10 +8,10 @@ module baseMgNeutronDatabase_iTest
   use particle_class,     only : particle
 
   ! Nuclear Data Objects & Interfaces
-  use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase, baseMgNeutronDatabase_CptrCast, &
-                                          baseMgNeutronDatabase_TptrCast
-  use baseMgNeutronMaterial_class, only : baseMgNeutronMaterial, baseMgNeutronMaterial_CptrCast, &
-                                          baseMgNeutronMaterial_TptrCast
+  use baseMgIMCDatabase_class, only : baseMgIMCDatabase, baseMgIMCDatabase_CptrCast, &
+                                          baseMgIMCDatabase_TptrCast
+  use baseMgIMCMaterial_class, only : baseMgIMCMaterial, baseMgIMCMaterial_CptrCast, &
+                                          baseMgIMCMaterial_TptrCast
   use fissionMG_class,             only : fissionMG, fissionMG_TptrCast
   use multiScatterMG_class,        only : multiScatterMG, multiScatterMG_CptrCast, &
                                           multiScatterMG_TptrCast
@@ -20,7 +20,7 @@ module baseMgNeutronDatabase_iTest
   use nuclearDatabase_inter,       only : nuclearDatabase
   use materialHandle_inter,        only : materialHandle
   use nuclideHandle_inter,         only : nuclideHandle
-  use neutronXsPackages_class,     only : neutronMacroXSs
+  use IMCXsPackages_class,     only : IMCMacroXSs
   use reactionHandle_inter,        only : reactionHandle
 
 
@@ -48,18 +48,18 @@ module baseMgNeutronDatabase_iTest
 contains
 
   !!
-  !! Monster test to build and verify data in baseMgNeutronDatabase with P0 scattering
+  !! Monster test to build and verify data in baseMgIMCDatabase with P0 scattering
   !!
 @Test
-  subroutine testBaseMgNeutronDatabaseWithP0()
-    type(baseMgNeutronDatabase), target  :: database
+  subroutine testBaseMgIMCDatabaseWithP0()
+    type(baseMgIMCDatabase), target  :: database
     class(nuclearDatabase), pointer      :: data_ptr
     type(dictionary)                     :: databaseDef
     type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
-    type(neutronMacroXSs)                :: xss
-    type(baseMgNeutronMaterial),pointer  :: mat
-    class(baseMgNeutronMaterial),pointer :: matClass
+    type(IMCMacroXSs)                :: xss
+    type(baseMgIMCMaterial),pointer  :: mat
+    class(baseMgIMCMaterial),pointer :: matClass
     class(reactionHandle), pointer       :: reac
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
@@ -96,7 +96,7 @@ contains
 
 
     ! Get a material and verify macroXSS
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(2))
     @assertTrue(associated(mat), "Type Ptr Cast has failed")
     call mat % getMacroXSs(xss, 1, p % pRNG)
 
@@ -110,7 +110,7 @@ contains
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
 
-    matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
+    matClass => baseMgIMCMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
     call matClass % getMacroXSs(xss, 4, p % pRNG)
 
@@ -124,13 +124,13 @@ contains
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
 
     ! Get some invalid Materials
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(0))
     @assertFalse(associated(mat))
 
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(-2))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(-2))
     @assertFalse(associated(mat))
 
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(3))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(3))
     @assertFalse(associated(mat))
 
     ! Get Fission reaction and verify type
@@ -170,22 +170,22 @@ contains
     call matMenuDict % kill()
     call databaseDef % kill()
 
-  end subroutine testBaseMgNeutronDatabaseWithP0
+  end subroutine testBaseMgIMCDatabaseWithP0
 
   !!
-  !! Monster test to build and verify data in baseMgNeutronDatabase with P1 scattering
+  !! Monster test to build and verify data in baseMgIMCDatabase with P1 scattering
   !! *Copy and pasted from the above with only the type of scattering changed
   !!
 @Test
-  subroutine testBaseMgNeutronDatabaseWithP1()
-    type(baseMgNeutronDatabase), target  :: database
+  subroutine testBaseMgIMCDatabaseWithP1()
+    type(baseMgIMCDatabase), target  :: database
     class(nuclearDatabase), pointer      :: data_ptr
     type(dictionary)                     :: databaseDef
     type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
-    type(neutronMacroXSs)                :: xss
-    type(baseMgNeutronMaterial),pointer  :: mat
-    class(baseMgNeutronMaterial),pointer :: matClass
+    type(IMCMacroXSs)                :: xss
+    type(baseMgIMCMaterial),pointer  :: mat
+    class(baseMgIMCMaterial),pointer :: matClass
     class(reactionHandle), pointer       :: reac
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
@@ -222,7 +222,7 @@ contains
 
 
     ! Get a material and verify macroXSS
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(2))
     @assertTrue(associated(mat), "Type Ptr Cast has failed")
     call mat % getMacroXSs(xss, 1, p % pRNG)
 
@@ -236,7 +236,7 @@ contains
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
 
-    matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
+    matClass => baseMgIMCMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
     call matClass % getMacroXSs(xss, 4, p % pRNG)
 
@@ -250,13 +250,13 @@ contains
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
 
     ! Get some invalid Materials
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(0))
     @assertFalse(associated(mat))
 
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(-2))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(-2))
     @assertFalse(associated(mat))
 
-    mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(3))
+    mat => baseMgIMCMaterial_TptrCast(database % getMaterial(3))
     @assertFalse(associated(mat))
 
     ! Get Fission reaction and verify type
@@ -296,8 +296,8 @@ contains
     call matMenuDict % kill()
     call databaseDef % kill()
 
-  end subroutine testBaseMgNeutronDatabaseWithP1
+  end subroutine testBaseMgIMCDatabaseWithP1
 
 
 
-end module baseMgNeutronDatabase_iTest
+end module baseMgIMCDatabase_iTest

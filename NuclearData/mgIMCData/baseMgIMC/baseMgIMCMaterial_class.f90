@@ -10,10 +10,11 @@ module baseMgIMCMaterial_class
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter, only : mgIMCMaterial, kill_super => kill
-  use neutronXSPackages_class, only : neutronMacroXSs
+  use IMCXSPackages_class, only : IMCMacroXSs
 
   ! Reaction objects
   use reactionMG_inter,        only : reactionMG
+  use fissionMG_class,         only : fissionMG
   use multiScatterMG_class,    only : multiScatterMG
   use multiScatterP1MG_class,  only : multiScatterP1MG
 
@@ -31,12 +32,15 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
   integer(shortInt), parameter, public :: IESCATTER_XS  = 2
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
+  integer(shortInt), parameter, public :: FISSION_XS    = 4
+  integer(shortInt), parameter, public :: NU_FISSION    = 5
 
   !!
   !! Basic type of MG material data
   !!
   !! Stores MG data in a table.
-  !! Scattering reactions are lumped into single multiplicative scattering,
+  !! Fission is treated as a seperate reaction
+  !! All other scattering reactions are lumped into single multiplicative scattering,
   !! which is stored as INELASTIC scatering in macroXSs package! After all it is inelastic in
   !! the sense that outgoing group can change. Diffrent types of multiplicative scattering can be
   !! build. See doc of "init" procedure for details.
@@ -58,6 +62,7 @@ module baseMgIMCMaterial_class
   !!     -> scatteringMultiplicity [nGxnG]
   !!     -> P0 [nGxnG]
   !!   Optional entries:
+  !!     -> fission [nGx1]
   !!     -> nu [nGx1]
   !!     -> chi [nGx1]
   !!     -> P# [nGxnG]
@@ -65,6 +70,7 @@ module baseMgIMCMaterial_class
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
+    type(fissionMG), allocatable              :: fission
 
   contains
     ! Superclass procedures
@@ -92,6 +98,7 @@ contains
     ! Kill local content
     if(allocated(self % data))    deallocate(self % data)
     if(allocated(self % scatter)) deallocate(self % scatter)
+    if(allocated(self % fission)) deallocate(self % fission)
 
   end subroutine kill
 
@@ -102,7 +109,7 @@ contains
   !!
   subroutine getMacroXSs_byG(self, xss, G, rand)
     class(baseMgIMCMaterial), intent(in) :: self
-    type(neutronMacroXSs), intent(out)       :: xss
+    type(IMCMacroXSs), intent(out)       :: xss
     integer(shortInt), intent(in)            :: G
     class(RNG), intent(inout)                :: rand
     character(100), parameter :: Here = ' getMacroXSs (baseMgIMCMaterial_class.f90)'
@@ -119,6 +126,13 @@ contains
     xss % inelasticScatter = self % data(IESCATTER_XS, G)
     xss % capture          = self % data(CAPTURE_XS, G)
 
+    if(self % isFissile()) then
+      xss % fission        = self % data(FISSION_XS, G)
+      xss % nuFission      = self % data(NU_FISSION, G)
+    else
+      xss % fission        = ZERO
+      xss % nuFission      = ZERO
+    end if
 
   end subroutine getMacroXSs_byG
 
@@ -178,6 +192,8 @@ contains
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
+    ! Set fissile flag
+    call self % set(fissile = dict % isPresent('fission'))
 
     ! Build scattering reaction
     ! Prepare input deck
@@ -199,9 +215,17 @@ contains
     ! Initialise
     call self % scatter % init(deck, macroAllScatter)
 
+    ! Deal with fission
+    if(self % isFissile()) allocate(self % fission)
+    if(self % isFissile()) call self % fission % init(deck, macroFission)
 
     ! Allocate space for data
-    N = 3
+    if(self % isFissile()) then
+      N = 5
+    else
+      N = 3
+    end if
+
     allocate(self % data(N, nG))
 
     ! Load cross sections
@@ -219,10 +243,31 @@ contains
     end if
     self % data(IESCATTER_XS,:) = self % scatter % scatterXSs
 
+    ! Load Fission-data
+    if( self % isFissile()) then
+      ! Load Fission
+      call dict % get(temp, 'fission')
+      if(size(temp) /= nG) then
+        call fatalError(Here,'Fission XSs have wong size. Must be: ' &
+                            // numToChar(nG)//' is '//numToChar(size(temp)))
+      end if
+      self % data(FISSION_XS,:) = temp
+
+      ! Calculate nuFission
+      call dict % get(temp, 'nu')
+      if(size(temp) /= nG) then
+        call fatalError(Here,'Nu vector has wong size. Must be: ' &
+                            // numToChar(nG)//' is '//numToChar(size(temp)))
+      end if
+      self % data(NU_FISSION,:) = temp * self % data(FISSION_XS,:)
+    end if
 
     ! Calculate total XS
     do i =1,nG
-      self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i) 
+      self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
+      if(self % isFissile()) then
+        self % data(TOTAL_XS, i) = self % data(TOTAL_XS, i) + self % data(FISSION_XS, i)
+      end if
     end do
   end subroutine init
 

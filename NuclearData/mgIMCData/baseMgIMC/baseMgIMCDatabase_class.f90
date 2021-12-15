@@ -30,7 +30,7 @@ module baseMgIMCDatabase_class
   public :: baseMgIMCDatabase_CptrCast
 
   !!
-  !! Basic type of MG nuclear Data for neutrons
+  !! Basic type of MG nuclear Data for IMCs
   !!
   !! All materials in aproblem are baseMgMaterials. See its documentation for
   !! details on how the physics is handled
@@ -201,7 +201,14 @@ contains
 
     ! Select correct reaction
     select case(MT)
-     
+      case(macroFission)
+        ! Point to null if material is not fissile
+        if (self % mats(idx) % isFissile()) then
+          reac => self % mats(idx) % fission
+        else
+          reac => null()
+        end if
+
       case(macroIEScatter)
         reac => self % mats(idx) % scatter
 
