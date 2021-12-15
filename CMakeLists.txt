@@ -64,6 +64,9 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{LAPACK_INSTALL})
 find_package(LAPACK REQUIRED )
 message(STATUS ${LAPACK_LIBRARIES})
 
+set(BLAS_LIBS /home/ajb343/BLAS/BLAS-3.10.0/Build)
+find_package(BLAS REQUIRED)
+
 # Dependencies for BUILD_TESTS
 if (BUILD_TESTS)
     # FIND PYTHON INTERPRETER
@@ -104,6 +107,8 @@ add_subdirectory(UserInterface)
 
 add_subdirectory(PhysicsPackages)
 add_subdirectory(DataStructures)
+
+#add_subdirectory(BlackBody)
 
 ####################################################################################################
 # Compile SCONE static library
