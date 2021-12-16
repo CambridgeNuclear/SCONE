@@ -74,6 +74,9 @@ module nuclearDataReg_mod
   ! Neutron MG
   use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase
 
+  ! IMC MG
+  use baseMgIMCDatabase_class,     only : baseMgIMCDatabase
+
   implicit none
   private
 
@@ -113,6 +116,7 @@ module nuclearDataReg_mod
   character(nameLen), dimension(*), parameter :: AVAILABLE_NUCLEAR_DATABASES = &
                                                 ['aceNeutronDatabase      ', &
                                                  'baseMgNeutronDatabase   ', &
+                                                 'baseMgIMCDatabase       ', &
                                                  'aceNeutronDatabaseUni   ', &
                                                  'aceNeutronDatabaseUniIdx']
 
@@ -575,6 +579,9 @@ contains
 
       case('baseMgNeutronDatabase')
         allocate(baseMgNeutronDatabase :: database)
+
+      case('baseMgIMCDatabase')
+        allocate(baseMgIMCDatabase :: database)
 
       case('aceNeutronDatabaseUni')
         allocate(aceNeutronDatabaseUni :: database)
