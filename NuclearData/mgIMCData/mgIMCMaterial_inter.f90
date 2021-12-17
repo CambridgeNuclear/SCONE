@@ -7,7 +7,7 @@ module mgIMCMaterial_inter
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
-  use IMCMaterial_inter,   only : IMCMaterial
+  use IMCMaterial_inter,       only : IMCMaterial
   use IMCXsPackages_class, only : IMCMacroXSs
 
   implicit none
