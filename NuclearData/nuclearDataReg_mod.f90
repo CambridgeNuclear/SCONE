@@ -63,6 +63,7 @@ module nuclearDataReg_mod
   use nuclearDatabase_inter,   only : nuclearDatabase
   use ceNeutronDatabase_inter, only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use mgNeutronDatabase_inter, only : mgNeutronDatabase, mgNeutronDatabase_CptrCast
+  use mgIMCDatabase_inter,     only : mgIMCDatabase, mgIMCDatabase_CptrCast
   use materialMenu_mod,        only : mm_init => init, mm_kill => kill, mm_nMat => nMat,&
                                       mm_nameMap => nameMap
 
