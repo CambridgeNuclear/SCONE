@@ -1,8 +1,12 @@
 type eigenPhysicsPackage; 
 
-pop      200000;
-active   500; 
-inactive 20; 
+pop        10;
+active     5;
+inactive   2;
+
+//pop      200000;
+//active   500; 
+//inactive 20; 
 XSdata   ceData;
 dataType ce; 
 
@@ -61,7 +65,7 @@ geometry {
 nuclearData {
 
   handles { 
-     ceData { type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
+     ceData { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
   }
   
   
