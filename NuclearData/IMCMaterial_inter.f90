@@ -5,7 +5,7 @@ module IMCMaterial_inter
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
-  use IMCXsPackages_class, only : IMCMacroXSs
+  use IMCXsPackages_class,     only : IMCMacroXSs
 
   implicit none
   private
