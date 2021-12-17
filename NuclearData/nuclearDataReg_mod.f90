@@ -54,7 +54,7 @@
 module nuclearDataReg_mod
 
   use numPrecision
-  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG
+  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_IMC_MG
   use genericProcedures,     only : fatalError, numToChar, printParticleType
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
@@ -422,7 +422,7 @@ contains
     active_mgNeutron => null()
 
     ! MG IMC
-    activeIdx_mgMC      = 0
+    activeIdx_mgIMC     = 0
     active_mgIMC     => null()
 
   end subroutine kill

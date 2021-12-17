@@ -57,7 +57,8 @@ module universalVariables
 
   ! Particle Type Enumeration
   integer(shortInt), parameter :: P_NEUTRON_CE = 1, &
-                                  P_NEUTRON_MG = 2
+                                  P_NEUTRON_MG = 2, &
+                                  P_IMC_MG = 3
 
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&

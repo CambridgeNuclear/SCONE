@@ -404,7 +404,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   P_NEUTRON_CE, P_NEUTRON_MG
+  !!   P_NEUTRON_CE, P_NEUTRON_MG, P_IMC_MG
   !!
   !! Errors:
   !!   None
