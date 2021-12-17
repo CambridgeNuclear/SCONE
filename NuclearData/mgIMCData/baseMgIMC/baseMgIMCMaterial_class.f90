@@ -9,8 +9,8 @@ module baseMgIMCMaterial_class
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
-  use mgIMCMaterial_inter, only : mgIMCMaterial, kill_super => kill
-  use IMCXSPackages_class, only : IMCMacroXSs
+  use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
+  use IMCXSPackages_class,     only : IMCMacroXSs
 
   ! Reaction objects
   use reactionMG_inter,        only : reactionMG
@@ -71,6 +71,7 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
     type(fissionMG), allocatable              :: fission
+    real(defReal), allocatable                :: temperature
 
   contains
     ! Superclass procedures
@@ -96,9 +97,10 @@ contains
     call kill_super(self)
 
     ! Kill local content
-    if(allocated(self % data))    deallocate(self % data)
-    if(allocated(self % scatter)) deallocate(self % scatter)
-    if(allocated(self % fission)) deallocate(self % fission)
+    if(allocated(self % data))        deallocate(self % data)
+    if(allocated(self % scatter))     deallocate(self % scatter)
+    if(allocated(self % fission))     deallocate(self % fission)
+    if(allocated(self % temperature)) deallocate(self % temperature)
 
   end subroutine kill
 
@@ -142,7 +144,7 @@ contains
   !! See mgIMCMaterial documentationfor details
   !!
   function getTotalXS(self, G, rand) result(xs)
-    class(baseMgIMCMaterial), intent(in) :: self
+    class(baseMgIMCMaterial), intent(in)     :: self
     integer(shortInt), intent(in)            :: G
     class(RNG), intent(inout)                :: rand
     real(defReal)                            :: xs
@@ -179,7 +181,7 @@ contains
   !!     -> P1
   !!
   subroutine init(self, dict, scatterKey)
-    class(baseMgIMCMaterial), intent(inout) :: self
+    class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
     character(nameLen), intent(in)              :: scatterKey
     integer(shortInt)                           :: nG, N, i
@@ -269,6 +271,9 @@ contains
         self % data(TOTAL_XS, i) = self % data(TOTAL_XS, i) + self % data(FISSION_XS, i)
       end if
     end do
+
+    allocate(self % temperature)
+
   end subroutine init
 
   !!
