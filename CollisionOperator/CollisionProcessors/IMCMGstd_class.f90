@@ -20,7 +20,7 @@ module IMCMGstd_class
   use mgIMCMaterial_inter,           only : mgIMCMaterial, mgIMCMaterial_CptrCast
   use reactionHandle_inter,          only : reactionHandle
   use multiScatterMG_class,          only : multiScatterMG, multiScatterMG_CptrCast
-  use fissionMG_class,               only : fissionMG, fissionMG_TptrCast
+  !use fissionMG_class,               only : fissionMG, fissionMG_TptrCast
 
   ! Cross section packages
   use IMCXsPackages_class,       only : IMCMacroXSs
@@ -98,7 +98,7 @@ contains
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
     ! Verify that particle is MG NEUTRON
-    if( .not. p % isMG .or. p % type /= P_NEUTRON) then
+    if( .not. p % isMG .or. p % type /= P_NEUTRON) then             ! (not yet integrated new particle type)
       call fatalError(Here, 'Supports only MG NEUTRON. Was given CE '//printType(p % type))
     end if
 
@@ -128,7 +128,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(IMCMacroXSs)                :: macroXSs
-    type(fissionMG),pointer              :: fission
+    !type(fissionMG),pointer              :: fission
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: G_out, n, i
@@ -136,49 +136,49 @@ contains
     real(defReal)                        :: sig_tot, k_eff, sig_nufiss
     character(100),parameter :: Here = 'implicit (IMCMGstd_class.f90)'
 
-    if ( self % mat % isFissile()) then
+    !if ( self % mat % isFissile()) then
       ! Obtain required data
-      wgt   = p % w                ! Current weight
-      w0    = p % preHistory % wgt ! Starting weight
-      k_eff = p % k_eff            ! k_eff for normalisation
-      rand1 = p % pRNG % get()     ! Random number to sample sites
+    !  wgt   = p % w                ! Current weight
+    !  w0    = p % preHistory % wgt ! Starting weight
+    !  k_eff = p % k_eff            ! k_eff for normalisation
+    !  rand1 = p % pRNG % get()     ! Random number to sample sites
 
-      call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
+    !  call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
 
-      sig_tot    = macroXSs % total
-      sig_nuFiss = macroXSs % nuFission
+    !  sig_tot    = macroXSs % total
+    !  sig_nuFiss = macroXSs % nuFission
 
-      ! Sample number of fission sites generated
-      !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
-      n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
+    !  ! Sample number of fission sites generated
+    !  !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
+    !  n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
 
-      ! Shortcut if no particles were samples
-      if (n < 1) return
+    !  ! Shortcut if no particles were samples
+    !  if (n < 1) return
 
-      ! Get Fission reaction object
-      fission => fissionMG_TptrCast( self % xsData % getReaction(macroFission, collDat % matIdx))
-      if (.not.associated(fission)) call fatalError(Here, 'Failed to getrive fissionMG reaction object')
+    !  ! Get Fission reaction object
+    !  fission => fissionMG_TptrCast( self % xsData % getReaction(macroFission, collDat % matIdx))
+    !  if (.not.associated(fission)) call fatalError(Here, 'Failed to getrive fissionMG reaction object')
 
-      ! Store new sites in the next cycle dungeon
-      wgt =  sign(w0, wgt)
-      r   = p % rGlobal()
+    !  ! Store new sites in the next cycle dungeon
+    !  wgt =  sign(w0, wgt)
+    !  r   = p % rGlobal()
 
-      do i=1,n
-        call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
-        dir = rotateVector(p % dirGlobal(), mu, phi)
+    !  do i=1,n
+    !    call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
+    !    dir = rotateVector(p % dirGlobal(), mu, phi)
 
-        ! Copy extra detail from parent particle (i.e. time, flags ect.)
-        pTemp       = p
+    !    ! Copy extra detail from parent particle (i.e. time, flags ect.)
+    !    pTemp       = p
 
-        ! Overwrite position, direction, energy group and weight
-        pTemp % r   = r
-        pTemp % dir = dir
-        pTemp % G   = G_out
-        pTemp % wgt = wgt
+    !    ! Overwrite position, direction, energy group and weight
+    !    pTemp % r   = r
+    !    pTemp % dir = dir
+    !    pTemp % G   = G_out
+    !    pTemp % wgt = wgt
 
-        call nextCycle % detain(pTemp)
-      end do
-    end if
+    !    call nextCycle % detain(pTemp)
+    !  end do
+    !end if
 
   end subroutine implicit
 
@@ -255,7 +255,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    p % isDead = .true.
+  !  p % isDead = .true.
 
   end subroutine fission
 

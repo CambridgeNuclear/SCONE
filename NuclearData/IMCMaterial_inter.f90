@@ -30,7 +30,7 @@ module IMCMaterial_inter
     private
   contains
     generic                              :: getMacroXSs => getMacroXSs_byP
-    procedure(isFissile),       deferred :: isFissile
+    !procedure(isFissile),       deferred :: isFissile
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
   end type IMCMaterial
 
@@ -44,11 +44,11 @@ module IMCMaterial_inter
     !! Errors:
     !!   None
     !!
-    elemental function isFissile(self) result(isIt)
-      import :: IMCMaterial, defBool
-      class(IMCMaterial), intent(in) :: self
-      logical(defBool)                   :: isIt
-    end function isFissile
+    !elemental function isFissile(self) result(isIt)
+    !  import :: IMCMaterial, defBool
+    !  class(IMCMaterial), intent(in) :: self
+    !  logical(defBool)                   :: isIt
+    !end function isFissile
 
     !!
     !! Return Macroscopic XSs for the material given particle

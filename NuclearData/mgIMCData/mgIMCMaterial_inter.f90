@@ -37,7 +37,7 @@ module mgIMCMaterial_inter
   !!
   type, public, abstract, extends(IMCMaterial) :: mgIMCMaterial
     private
-    logical(defBool) :: fissile = .false.
+    !logical(defBool) :: fissile = .false.
 
   contains
     ! Superclass procedures
@@ -48,8 +48,8 @@ module mgIMCMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
-    procedure                               :: isFissile
-    procedure                               :: set
+    !procedure                               :: isFissile
+    !procedure                               :: set
 
   end type mgIMCMaterial
 
@@ -128,13 +128,13 @@ contains
   !! Errors:
   !!   None
   !!
-  elemental function isFissile(self) result(isIt)
-    class(mgIMCMaterial), intent(in) :: self
-    logical(defBool)                     :: isIt
+  !elemental function isFissile(self) result(isIt)
+  !  class(mgIMCMaterial), intent(in) :: self
+  !  logical(defBool)                     :: isIt
 
-    isIt = self % fissile
+  !  isIt = self % fissile
 
-  end function isFissile
+  !end function isFissile
 
   !!
   !! Return to uninitialised state
@@ -142,7 +142,7 @@ contains
   elemental subroutine kill(self)
     class(mgIMCMaterial), intent(inout) :: self
 
-    self % fissile = .false.
+    !self % fissile = .false.
 
   end subroutine kill
 
@@ -155,13 +155,13 @@ contains
   !! Args:
   !!   fissile [in] -> flag indicating whether fission data is present
   !!
-  subroutine set(self, fissile)
-    class(mgIMCMaterial), intent(inout) :: self
-    logical(defBool), intent(in), optional  :: fissile
+  !subroutine set(self, fissile)
+  !  class(mgIMCMaterial), intent(inout) :: self
+  !  logical(defBool), intent(in), optional  :: fissile
 
-    if(present(fissile)) self % fissile = fissile
+  !  if(present(fissile)) self % fissile = fissile
 
-  end subroutine set
+  !end subroutine set
 
   !!
   !! Cast materialHandle pointer to mgIMCMaterial pointer

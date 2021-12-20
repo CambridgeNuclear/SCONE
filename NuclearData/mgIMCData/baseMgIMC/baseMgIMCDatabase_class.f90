@@ -201,13 +201,13 @@ contains
 
     ! Select correct reaction
     select case(MT)
-      case(macroFission)
-        ! Point to null if material is not fissile
-        if (self % mats(idx) % isFissile()) then
-          reac => self % mats(idx) % fission
-        else
-          reac => null()
-        end if
+      !case(macroFission)
+      !  ! Point to null if material is not fissile
+      !  if (self % mats(idx) % isFissile()) then
+      !    reac => self % mats(idx) % fission
+      !  else
+      !    reac => null()
+      !  end if
 
       case(macroIEScatter)
         reac => self % mats(idx) % scatter
