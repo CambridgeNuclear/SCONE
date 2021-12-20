@@ -22,33 +22,17 @@ module IMCMaterial_inter
   !! tallying where one is not interested whether MG or CE data is used
   !!
   !! Interface:
-  !!   materialHandle interface
-  !!   isFissle    -> Return true if material is fissile
+  !!   materialHandle interface 
   !!   getMacroXSs -> Return Macroscopic XSs given particle with energy data
   !!
   type, public, abstract, extends(materialHandle) :: IMCMaterial
     private
   contains
     generic                              :: getMacroXSs => getMacroXSs_byP
-    !procedure(isFissile),       deferred :: isFissile
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
   end type IMCMaterial
 
   abstract interface
-    !!
-    !! Return .true. if the MG material is fissile
-    !!
-    !! Args:
-    !!   None
-    !!
-    !! Errors:
-    !!   None
-    !!
-    !elemental function isFissile(self) result(isIt)
-    !  import :: IMCMaterial, defBool
-    !  class(IMCMaterial), intent(in) :: self
-    !  logical(defBool)                   :: isIt
-    !end function isFissile
 
     !!
     !! Return Macroscopic XSs for the material given particle
@@ -63,8 +47,8 @@ module IMCMaterial_inter
     !!
     subroutine getMacroXSs_byP(self, xss, p)
       import :: IMCMaterial, particle, IMCMacroXSs
-      class(IMCMaterial), intent(in) :: self
-      type(IMCMacroXSs), intent(out) :: xss
+      class(IMCMaterial), intent(in)     :: self
+      type(IMCMacroXSs), intent(out)     :: xss
       class(particle), intent(in)        :: p
     end subroutine getMacroXSs_byP
 
@@ -85,7 +69,7 @@ contains
   !!
   pure function IMCMaterial_CptrCast(source) result(ptr)
     class(materialHandle), pointer, intent(in) :: source
-    class(IMCMaterial), pointer            :: ptr
+    class(IMCMaterial), pointer                :: ptr
 
     select type(source)
       class is(IMCMaterial)

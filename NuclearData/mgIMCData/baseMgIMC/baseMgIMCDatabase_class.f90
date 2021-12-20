@@ -10,7 +10,7 @@ module baseMgIMCDatabase_class
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,   only : nuclearDatabase
-  use mgIMCDatabase_inter, only : mgIMCDatabase
+  use mgIMCDatabase_inter,     only : mgIMCDatabase
   use materialHandle_inter,    only : materialHandle
   use nuclideHandle_inter,     only : nuclideHandle
   use reactionHandle_inter,    only : reactionHandle
@@ -43,7 +43,7 @@ module baseMgIMCDatabase_class
   !!   nuclearDatabase interface
   !!
   type, public, extends(mgIMCDatabase) :: baseMgIMCDatabase
-    type(baseMgIMCMaterial), dimension(:), pointer :: mats => null()
+    type(baseMgIMCMaterial), dimension(:), pointer     :: mats => null()
     integer(shortInt), dimension(:), allocatable       :: activeMats
     integer(shortInt)                                  :: nG = 0
 
@@ -83,7 +83,7 @@ contains
   !!   }
   !!
   function getTransMatXS(self, p, matIdx) result(xs)
-    class(baseMgIMCDatabase), intent(inout) :: self
+    class(baseMgIMCDatabase), intent(inout)     :: self
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
@@ -102,7 +102,7 @@ contains
   !!   if the value is invalid
   !!
   function getTotalMatXS(self, p, matIdx) result(xs)
-    class(baseMgIMCDatabase), intent(inout) :: self
+    class(baseMgIMCDatabase), intent(inout)     :: self
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
@@ -121,7 +121,7 @@ contains
   !!   if the value is invalid
   !!
   function getMajorantXS(self, p) result(xs)
-    class(baseMgIMCDatabase), intent(inout) :: self
+    class(baseMgIMCDatabase), intent(inout)     :: self
     class(particle), intent(in)                 :: p
     real(defReal)                               :: xs
     integer(shortInt)                           :: i, idx
@@ -140,7 +140,7 @@ contains
   !! See nuclearDatabase documentation for details
   !!
   function matNamesMap(self) result(map)
-    class(baseMgIMCDatabase), intent(in) :: self
+    class(baseMgIMCDatabase), intent(in)     :: self
     type(charMap), pointer                   :: map
 
     map => mm_nameMap
@@ -153,7 +153,7 @@ contains
   !! See nuclearDatabase documentation for details
   !!
   function getMaterial(self, matIdx) result(mat)
-    class(baseMgIMCDatabase), intent(in) :: self
+    class(baseMgIMCDatabase), intent(in)     :: self
     integer(shortInt), intent(in)            :: matIdx
     class(materialHandle), pointer           :: mat
 
@@ -174,7 +174,7 @@ contains
   !!   This database has no nucldie. Returns NULL always!
   !!
   function getNuclide(self, nucIdx) result(nuc)
-    class(baseMgIMCDatabase), intent(in) :: self
+    class(baseMgIMCDatabase), intent(in)     :: self
     integer(shortInt), intent(in)            :: nucIdx
     class(nuclideHandle), pointer            :: nuc
 
@@ -188,7 +188,7 @@ contains
   !! See nuclearDatabase documentation for details
   !!
   function getReaction(self, MT, idx) result(reac)
-    class(baseMgIMCDatabase), intent(in) :: self
+    class(baseMgIMCDatabase), intent(in)     :: self
     integer(shortInt), intent(in)            :: MT
     integer(shortInt), intent(in)            :: idx
     class(reactionHandle), pointer           :: reac
@@ -201,13 +201,6 @@ contains
 
     ! Select correct reaction
     select case(MT)
-      !case(macroFission)
-      !  ! Point to null if material is not fissile
-      !  if (self % mats(idx) % isFissile()) then
-      !    reac => self % mats(idx) % fission
-      !  else
-      !    reac => null()
-      !  end if
 
       case(macroIEScatter)
         reac => self % mats(idx) % scatter
@@ -241,7 +234,7 @@ contains
   !! See nuclearDatabase documentation for details
   !!
   subroutine init(self, dict, ptr, silent)
-    class(baseMgIMCDatabase), target,intent(inout) :: self
+    class(baseMgIMCDatabase), target,intent(inout)     :: self
     class(dictionary), intent(in)                      :: dict
     class(nuclearDatabase), pointer,intent(in)         :: ptr
     logical(defBool), intent(in), optional             :: silent
@@ -322,7 +315,7 @@ contains
   !!   None
   !!
   pure function nGroups(self) result(nG)
-    class(baseMgIMCDatabase), intent(in) :: self
+    class(baseMgIMCDatabase), intent(in)     :: self
     integer(shortInt)                        :: nG
 
     nG = self % nG
@@ -341,7 +334,7 @@ contains
   !!
   pure function baseMgIMCDatabase_TptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    type(baseMgIMCDatabase), pointer           :: ptr
+    type(baseMgIMCDatabase), pointer            :: ptr
 
     select type(source)
       type is(baseMgIMCDatabase)
@@ -365,7 +358,7 @@ contains
   !!
   pure function baseMgIMCDatabase_CptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    class(baseMgIMCDatabase), pointer          :: ptr
+    class(baseMgIMCDatabase), pointer           :: ptr
 
     select type(source)
       class is(baseMgIMCDatabase)

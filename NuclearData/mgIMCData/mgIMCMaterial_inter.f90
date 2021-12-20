@@ -8,7 +8,7 @@ module mgIMCMaterial_inter
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
   use IMCMaterial_inter,       only : IMCMaterial
-  use IMCXsPackages_class, only : IMCMacroXSs
+  use IMCXsPackages_class,     only : IMCMacroXSs
 
   implicit none
   private
@@ -26,18 +26,13 @@ module mgIMCMaterial_inter
   !!
   !! Abstract interface for all MG IMC Materials
   !!
-  !! Private Members:
-  !!   fissile -> flag set to .true. if material is fissile
-  !!
   !! Interface:
   !!   materialHandle interface
   !!   neutroNMaterial interface
   !!   getMacroXSs -> Get macroscopic XSs directly from group number and RNG
-  !!   set         -> Sets fissile flag
   !!
   type, public, abstract, extends(IMCMaterial) :: mgIMCMaterial
     private
-    !logical(defBool) :: fissile = .false.
 
   contains
     ! Superclass procedures
@@ -48,8 +43,6 @@ module mgIMCMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
-    !procedure                               :: isFissile
-    !procedure                               :: set
 
   end type mgIMCMaterial
 
@@ -70,8 +63,8 @@ module mgIMCMaterial_inter
     !!
     subroutine getMacroXSs_byG(self, xss, G, rand)
       import :: mgIMCMaterial, IMCMacroXSs, shortInt, RNG
-      class(mgIMCMaterial), intent(in) :: self
-      type(IMCMacroXSs), intent(out)   :: xss
+      class(mgIMCMaterial), intent(in)     :: self
+      type(IMCMacroXSs), intent(out)       :: xss
       integer(shortInt), intent(in)        :: G
       class(RNG), intent(inout)            :: rand
     end subroutine getMacroXSs_byG
@@ -88,7 +81,7 @@ module mgIMCMaterial_inter
     !!
     function getTotalXS(self, G, rand) result(xs)
       import :: mgIMCMaterial, defReal, shortInt, RNG
-      class(mgIMCMaterial), intent(in) :: self
+      class(mgIMCMaterial), intent(in)     :: self
       integer(shortInt), intent(in)        :: G
       class(RNG), intent(inout)            :: rand
       real(defReal)                        :: xs
@@ -105,8 +98,8 @@ contains
   !! See IMCMaterial_inter for details
   !!
   subroutine getMacroXSs_byP(self, xss, p)
-    class(mgIMCMaterial), intent(in) :: self
-    type(IMCMacroXSs), intent(out)   :: xss
+    class(mgIMCMaterial), intent(in)     :: self
+    type(IMCMacroXSs), intent(out)       :: xss
     class(particle), intent(in)          :: p
     character(100), parameter :: Here = 'getMacroXSs_byP (mgIMCMateerial_inter.f90)'
 
@@ -120,48 +113,12 @@ contains
   end subroutine getMacroXSs_byP
 
   !!
-  !! Return .true. if the MG material is fissile
-  !!
-  !! Args:
-  !!   None
-  !!
-  !! Errors:
-  !!   None
-  !!
-  !elemental function isFissile(self) result(isIt)
-  !  class(mgIMCMaterial), intent(in) :: self
-  !  logical(defBool)                     :: isIt
-
-  !  isIt = self % fissile
-
-  !end function isFissile
-
-  !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
     class(mgIMCMaterial), intent(inout) :: self
 
-    !self % fissile = .false.
-
   end subroutine kill
-
-  !!
-  !! Set fissile flag
-  !!
-  !! All arguments are optional. Use with keyword association e.g.
-  !!   call mat % set( fissile = .true.)
-  !!
-  !! Args:
-  !!   fissile [in] -> flag indicating whether fission data is present
-  !!
-  !subroutine set(self, fissile)
-  !  class(mgIMCMaterial), intent(inout) :: self
-  !  logical(defBool), intent(in), optional  :: fissile
-
-  !  if(present(fissile)) self % fissile = fissile
-
-  !end subroutine set
 
   !!
   !! Cast materialHandle pointer to mgIMCMaterial pointer
@@ -175,7 +132,7 @@ contains
   !!
   pure function mgIMCMaterial_CptrCast(source) result(ptr)
     class(materialHandle), pointer, intent(in) :: source
-    class(mgIMCMaterial), pointer          :: ptr
+    class(mgIMCMaterial), pointer              :: ptr
 
     select type(source)
       class is(mgIMCMaterial)

@@ -13,7 +13,7 @@
 !! Available ND TYPES:
 !!   CE_NEUTRON
 !!   MG_NEUTRON
-!!   MG_IMC
+!!   MG_PHOTON
 !!
 !! Private members:
 !!   databases           -> Array with defined databases (name, definition,
@@ -76,7 +76,7 @@ module nuclearDataReg_mod
   ! Neutron MG
   use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase
 
-  ! IMC MG
+  ! Photon MG
   use baseMgIMCDatabase_class,     only : baseMgIMCDatabase
 
   implicit none

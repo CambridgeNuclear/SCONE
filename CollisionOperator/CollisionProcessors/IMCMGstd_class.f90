@@ -20,10 +20,9 @@ module IMCMGstd_class
   use mgIMCMaterial_inter,           only : mgIMCMaterial, mgIMCMaterial_CptrCast
   use reactionHandle_inter,          only : reactionHandle
   use multiScatterMG_class,          only : multiScatterMG, multiScatterMG_CptrCast
-  !use fissionMG_class,               only : fissionMG, fissionMG_TptrCast
 
   ! Cross section packages
-  use IMCXsPackages_class,       only : IMCMacroXSs
+  use IMCXsPackages_class,           only : IMCMacroXSs
 
 
   ! Nuclear Data
@@ -75,7 +74,7 @@ contains
   !! Initialise from dictionary
   !!
   subroutine init(self, dict)
-    class(IMCMGstd), intent(inout) :: self
+    class(IMCMGstd), intent(inout)     :: self
     class(dictionary), intent(in)      :: dict
     character(100), parameter :: Here = 'init (IMCMGstd_class.f90)'
 
@@ -88,12 +87,12 @@ contains
   !! Samples collision without any implicit treatment
   !!
   subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(IMCMacroXSs)                :: macroXSs
+    type(IMCMacroXSs)                    :: macroXSs
     real(defReal)                        :: r
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
@@ -122,63 +121,13 @@ contains
   !! Preform implicit treatment
   !!
   subroutine implicit(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(IMCMacroXSs)                :: macroXSs
-    !type(fissionMG),pointer              :: fission
-    type(particleState)                  :: pTemp
-    real(defReal),dimension(3)           :: r, dir
-    integer(shortInt)                    :: G_out, n, i
-    real(defReal)                        :: wgt, w0, rand1, mu, phi
-    real(defReal)                        :: sig_tot, k_eff, sig_nufiss
-    character(100),parameter :: Here = 'implicit (IMCMGstd_class.f90)'
 
-    !if ( self % mat % isFissile()) then
-      ! Obtain required data
-    !  wgt   = p % w                ! Current weight
-    !  w0    = p % preHistory % wgt ! Starting weight
-    !  k_eff = p % k_eff            ! k_eff for normalisation
-    !  rand1 = p % pRNG % get()     ! Random number to sample sites
-
-    !  call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
-
-    !  sig_tot    = macroXSs % total
-    !  sig_nuFiss = macroXSs % nuFission
-
-    !  ! Sample number of fission sites generated
-    !  !n = int(wgt * sig_nuFiss/(sig_tot*k_eff) + r1, shortInt)
-    !  n = int(abs( (wgt * sig_nuFiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
-
-    !  ! Shortcut if no particles were samples
-    !  if (n < 1) return
-
-    !  ! Get Fission reaction object
-    !  fission => fissionMG_TptrCast( self % xsData % getReaction(macroFission, collDat % matIdx))
-    !  if (.not.associated(fission)) call fatalError(Here, 'Failed to getrive fissionMG reaction object')
-
-    !  ! Store new sites in the next cycle dungeon
-    !  wgt =  sign(w0, wgt)
-    !  r   = p % rGlobal()
-
-    !  do i=1,n
-    !    call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
-    !    dir = rotateVector(p % dirGlobal(), mu, phi)
-
-    !    ! Copy extra detail from parent particle (i.e. time, flags ect.)
-    !    pTemp       = p
-
-    !    ! Overwrite position, direction, energy group and weight
-    !    pTemp % r   = r
-    !    pTemp % dir = dir
-    !    pTemp % G   = G_out
-    !    pTemp % wgt = wgt
-
-    !    call nextCycle % detain(pTemp)
-    !  end do
-    !end if
+    ! Do nothing. Should not be called
 
   end subroutine implicit
 
@@ -186,7 +135,7 @@ contains
   !! Elastic Scattering
   !!
   subroutine elastic(self, p , collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -200,7 +149,7 @@ contains
   !! Preform scattering
   !!
   subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -235,7 +184,7 @@ contains
   !! Preform capture
   !!
   subroutine capture(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
@@ -249,13 +198,13 @@ contains
   !! Preform fission
   !!
   subroutine fission(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-  !  p % isDead = .true.
+    ! Do nothing. Should not be called
 
   end subroutine fission
 
@@ -263,7 +212,7 @@ contains
   !! Applay cutoffs or post-collision implicit treatment
   !!
   subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)   :: self
+    class(IMCMGstd), intent(inout)       :: self
     class(particle), intent(inout)       :: p
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle

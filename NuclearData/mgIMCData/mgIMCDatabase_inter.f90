@@ -35,7 +35,7 @@ contains
   !!
   pure function mgIMCDatabase_CptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    class(mgIMCDatabase), pointer           :: ptr
+    class(mgIMCDatabase), pointer               :: ptr
 
     select type(source)
       class is(mgIMCDatabase)
