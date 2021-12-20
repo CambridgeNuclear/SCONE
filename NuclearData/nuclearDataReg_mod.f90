@@ -54,7 +54,7 @@
 module nuclearDataReg_mod
 
   use numPrecision
-  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_IMC_MG
+  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG
   use genericProcedures,     only : fatalError, numToChar, printParticleType
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
@@ -332,8 +332,8 @@ contains
       !    call fatalError(Here,trim(name)//' is not database for MG neutrons')
       !  end if
 
-      !case(P_IMC_MG)
-        activeIdx_mgIMC = idx           ! Redirecting this to use mgIMCDatabase until figured out particle types
+      !case(P_PHOTON_MG)
+        activeIdx_mgIMC = idx               ! Redirecting this until figured out why neutrons are being used
         active_mgIMC => mgIMCDatabase_CptrCast(ptr)
         if(.not.associated(active_mgIMC)) then
           call fatalError(Here,trim(name)//' is not database for MG IMC')
@@ -510,8 +510,8 @@ contains
       case(P_NEUTRON_MG)
       !  ptr => getNeutronMG()
 
-      !case(P_IMC_MG)
-        ptr => getIMCMG()   ! Redirecting this to use IMC until figured out particle types
+      !case(P_PHOTON_MG)
+        ptr => getIMCMG()               ! Redirecting this until figured out why neutrons are being used
 
       case default
         ptr => null()
