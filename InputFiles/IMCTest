@@ -11,7 +11,7 @@ dataType   mg;
 
 
 collisionOperator {
-                    neutronMG {type neutronMGstd;} 
+                    IMCMG {type IMCMGstd;}
                   } 
 
 transportOperator { type transportOperatorDT;
