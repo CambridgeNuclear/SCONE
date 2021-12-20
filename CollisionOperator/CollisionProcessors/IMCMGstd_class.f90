@@ -7,7 +7,7 @@ module IMCMGstd_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_PHOTON
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstract interface
@@ -97,9 +97,9 @@ contains
     real(defReal)                        :: r
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
-    ! Verify that particle is MG NEUTRON
-    if( .not. p % isMG .or. p % type /= P_NEUTRON) then             ! (not yet integrated new particle type)
-      call fatalError(Here, 'Supports only MG NEUTRON. Was given CE '//printType(p % type))
+    ! Verify that particle is MG PHOTON
+    if( .not. p % isMG .or. p % type /= P_PHOTON) then
+      call fatalError(Here, 'Supports only MG PHOTON. Was given NEUTRON and/or CE '//printType(p % type))
     end if
 
     ! Verify and load nuclear data pointer
