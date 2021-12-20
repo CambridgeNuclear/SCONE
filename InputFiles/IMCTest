@@ -1,5 +1,5 @@
-//type fixedSourcePhysicsPackage; 
-type eigenPhysicsPackage;
+type fixedSourcePhysicsPackage; 
+//type eigenPhysicsPackage;
 
 pop        30;
 active     10;
@@ -11,27 +11,27 @@ dataType   mg;
 
 
 collisionOperator {
-                    IMCMG {type IMCMGstd;}
+                    photonMG {type IMCMGstd;}
                   } 
 
 transportOperator { type transportOperatorDT;
                   } 
 
 
-//source {
-//  type pointSource;
-//  r (0 0 0);
-//  particle photon;
-//  E 14.1;
-//}
+source {
+  type pointSource;
+  r (0 0 0);
+  particle photon;
+  G 1;
+}
 
 inactiveTally {
               } 
 
 activeTally  {  
-                norm    fiss; 
+                //norm    fiss; 
                 normVal 100;
-                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
                 flux { type collisionClerk; 
                        map { type energyMap; grid log; min 0.001; max 20; N 300;} 
                        response (flux); flux {type fluxResponse;}
@@ -40,10 +40,10 @@ activeTally  {
 
 tally  { 
         display (k-eff);
-        norm fiss;
+        //norm fiss;
         normVal 100.0;
         k-eff { type keffAnalogClerk;}
-        fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+        //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
         flux { type collisionClerk; 
                map { type energyMap; grid log; min 0.001; max 20; N 300;} 
                response (flux); flux {type fluxResponse;}
