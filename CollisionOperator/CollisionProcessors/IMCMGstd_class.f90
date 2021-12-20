@@ -23,7 +23,7 @@ module IMCMGstd_class
   use fissionMG_class,               only : fissionMG, fissionMG_TptrCast
 
   ! Cross section packages
-  use neutronXsPackages_class,       only : neutronMacroXSs
+  use IMCXsPackages_class,       only : IMCMacroXSs
 
 
   ! Nuclear Data
@@ -93,7 +93,7 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(neutronMacroXSs)                :: macroXSs
+    type(IMCMacroXSs)                :: macroXSs
     real(defReal)                        :: r
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
@@ -127,7 +127,7 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(neutronMacroXSs)                :: macroXSs
+    type(IMCMacroXSs)                :: macroXSs
     type(fissionMG),pointer              :: fission
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
