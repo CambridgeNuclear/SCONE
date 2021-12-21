@@ -1,5 +1,7 @@
-type fixedSourcePhysicsPackage; 
+//type fixedSourcePhysicsPackage; 
 //type eigenPhysicsPackage;
+
+type IMCPhysicsPackage;
 
 pop        30;
 active     10;
@@ -14,7 +16,8 @@ collisionOperator {
                     photonMG {type IMCMGstd;}
                   } 
 
-transportOperator { type transportOperatorDT;
+transportOperator {
+                    type transportOperatorDT;
                   } 
 
 
