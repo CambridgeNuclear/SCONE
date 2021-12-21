@@ -31,7 +31,7 @@ module particle_class
   !!   E        -> Energy of the particle [MeV]
   !!   G        -> Energy Group of the particle
   !!   isMG     -> True if particle uses MG data
-  !!   type     -> Physical Type of the particle (NEUTRON, PHOTON etc.)
+  !!   type     -> Physical Type of the particle (PHOTON, PHOTON etc.)
   !!   time     -> Position in time of the particle [s]
   !!   matIdx   -> material Index in which particle is present
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
@@ -49,7 +49,7 @@ module particle_class
     real(defReal)              :: E    = ZERO       ! Energy
     integer(shortInt)          :: G    = 0          ! Energy group
     logical(defBool)           :: isMG = .false.    ! Is neutron multi-group
-    integer(shortInt)          :: type = P_NEUTRON  ! Particle physical type
+    integer(shortInt)          :: type = P_PHOTON  ! Particle physical type
     real(defReal)              :: time = ZERO       ! Particle time position
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
@@ -177,7 +177,7 @@ contains
   !!   w   -> particle weight
   !! Optional arguments:
   !!   t   -> particle time (default = 0.0)
-  !!   type-> particle type (default = P_NEUTRON)
+  !!   type-> particle type (default = P_PHOTON)
   !!
   pure subroutine buildCE(self, r, dir, E, w, t, type)
     class(particle), intent(inout)          :: self
@@ -205,7 +205,7 @@ contains
     if(present(type)) then
       self % type = type
     else
-      self % type = P_NEUTRON
+      self % type = P_PHOTON
     end if
 
   end subroutine buildCE
@@ -219,7 +219,7 @@ contains
   !!   w   -> particle weight
   !! Optional arguments:
   !!   t   -> particle time (default = 0.0)
-  !!   type-> particle type (default = P_NEUTRON)
+  !!   type-> particle type (default = P_PHOTON)
   !!
   subroutine buildMG(self, r, dir, G, w, t, type)
     class(particle), intent(inout)          :: self
@@ -247,7 +247,7 @@ contains
     if(present(type)) then
       self % type = type
     else
-      self % type = P_NEUTRON
+      self % type = P_PHOTON
     end if
 
   end subroutine buildMG
@@ -404,7 +404,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   P_NEUTRON_CE, P_NEUTRON_MG, P_IMC_MG
+  !!   P_PHOTON_CE, P_PHOTON_MG, P_IMC_MG
   !!
   !! Errors:
   !!   None
@@ -414,9 +414,9 @@ contains
     integer(shortInt)           :: type
 
     if (self % isMG) then
-      type = P_NEUTRON_MG
+      type = P_PHOTON_MG
     else
-      type = P_NEUTRON_CE
+      !type = P_PHOTON_CE
     end if
 
   end function getType
@@ -688,7 +688,7 @@ contains
     self % E    = ZERO
     self % G    = 0
     self % isMG = .false.
-    self % type = P_NEUTRON
+    self % type = P_PHOTON
     self % time = ZERO
     self % matIdx   = -1
     self % cellIdx  = -1
@@ -711,7 +711,7 @@ contains
     isValid = .false.
 
     ! Check against particles types
-    isValid = isValid .or. type == P_NEUTRON
+    isValid = isValid .or. type == P_PHOTON
     isValid = isValid .or. type == P_PHOTON
 
   end function verifyType
