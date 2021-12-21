@@ -326,14 +326,14 @@ contains
         end if
 
       case(P_NEUTRON_MG)
-      !  activeIdx_mgNeutron = idx
-      !  active_mgNeutron => mgNeutronDatabase_CptrCast(ptr)
-      !  if(.not.associated(active_mgNeutron)) then
-      !    call fatalError(Here,trim(name)//' is not database for MG neutrons')
-      !  end if
+        activeIdx_mgNeutron = idx
+        active_mgNeutron => mgNeutronDatabase_CptrCast(ptr)
+        if(.not.associated(active_mgNeutron)) then
+          call fatalError(Here,trim(name)//' is not database for MG neutrons')
+        end if
 
-      !case(P_PHOTON_MG)
-        activeIdx_mgIMC = idx               ! Redirecting this until figured out why neutrons are being used
+      case(P_PHOTON_MG)
+        activeIdx_mgIMC = idx
         active_mgIMC => mgIMCDatabase_CptrCast(ptr)
         if(.not.associated(active_mgIMC)) then
           call fatalError(Here,trim(name)//' is not database for MG IMC')
@@ -508,10 +508,10 @@ contains
         ptr => getNeutronCE()
 
       case(P_NEUTRON_MG)
-      !  ptr => getNeutronMG()
+        ptr => getNeutronMG()
 
-      !case(P_PHOTON_MG)
-        ptr => getIMCMG()               ! Redirecting this until figured out why neutrons are being used
+      case(P_PHOTON_MG)
+        ptr => getIMCMG()
 
       case default
         ptr => null()
