@@ -15,7 +15,7 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
-!  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
+  use IMCPhysicsPackage_class,         only : IMCPhysicsPackage
 
   implicit none
   private
@@ -27,6 +27,7 @@ module physicsPackageFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
+                                                                             'IMCPhysicsPackage        ',&
                                                                              'vizPhysicsPackage        ',&
                                                                              'rayVolPhysicsPackage     ']
 
@@ -70,14 +71,14 @@ contains
           type is (fixedSourcePhysicsPackage)
             call new % init(dict)
         end select
-!
-!      case('dynamPhysicsPackage')
-!        ! Allocate and initialise
-!        allocate( dynamPhysicsPackage :: new)
-!        select type(new)
-!          type is (dynamPhysicsPackage)
-!            call new % init(dict)
-!        end select
+
+      case('IMCPhysicsPackage')
+        ! Allocate and initialise
+        allocate( IMCPhysicsPackage :: new)
+        select type(new)
+          type is (IMCPhysicsPackage)
+            call new % init(dict)
+        end select
 
 
       case('vizPhysicsPackage')
