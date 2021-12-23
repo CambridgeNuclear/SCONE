@@ -310,7 +310,7 @@ contains
 
     self % T = self % T + 1
 
-    print *, self % T
+    print *, "Updated material temperature:", int(self % T), "K"
 
   end subroutine updateTemp
 

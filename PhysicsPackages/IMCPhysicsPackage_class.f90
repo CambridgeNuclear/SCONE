@@ -177,10 +177,12 @@ contains
 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
 
-      call mat % updateTemp()
+      !call mat % updateTemp()
  
       ! Display progress
       call printFishLineR(i)
+      print *
+      call mat % updateTemp()
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
       print *, 'Pop:          ', numToChar(self % pop)
