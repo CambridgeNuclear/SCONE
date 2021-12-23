@@ -120,6 +120,7 @@ contains
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
 
     N = self % pop
@@ -174,7 +175,10 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
 
+      call mat % updateTemp()
+ 
       ! Display progress
       call printFishLineR(i)
       print *
