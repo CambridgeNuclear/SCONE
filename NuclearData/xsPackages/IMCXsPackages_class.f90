@@ -17,11 +17,8 @@ module IMCXsPackages_class
   !! Public Members:
   !!   total            -> total Cross-Section [1/cm]
   !!   elasticScatter   -> sum of MT=2 elastic IMC scattering [1/cm]
-  !!   inelasticScatter -> sum of all IMC producing reaction that are not elastic scattering
-  !!     or fission. [1/cm]
-  !!   capture          -> sum of all reactions without secendary IMCs excluding fission [1/cm]
-  !!   fission          -> total Fission MT=18 Cross-section [1/cm]
-  !!   nuFission        -> total average IMC production Cross-section [1/cm]
+  !!   inelasticScatter -> sum of all IMC producing reaction that are not elastic scattering [1/cm]
+  !!   capture          -> sum of all reactions without secondary photons [1/cm]
   !!
   !!  Interface:
   !!    clean -> Set all XSs to 0.0
@@ -33,8 +30,6 @@ module IMCXsPackages_class
     real(defReal) :: elasticScatter   = ZERO
     real(defReal) :: inelasticScatter = ZERO
     real(defReal) :: capture          = ZERO
-    real(defReal) :: fission          = ZERO
-    real(defReal) :: nuFission        = ZERO
   contains
     procedure :: clean => clean_IMCMacroXSs
     procedure :: add   => add_IMCMacroXSs
@@ -49,19 +44,14 @@ module IMCXsPackages_class
   !! Public Members:
   !!   total            -> total Cross-Section [barn]
   !!   elasticScatter   -> MT=2 elastic IMC scattering [barn]
-  !!   inelasticScatter -> all IMC producing reaction that are not elastic scattering
-  !!     or fission. [barn]
-  !!   capture          -> all reactions without secendary IMCs excluding fission [barn]
-  !!   fission          -> total Fission MT=18 Cross-section [barn]
-  !!   nuFission        -> total average IMC production Cross-section [barn]
+  !!   inelasticScatter -> all photon producing reaction that are not elastic scattering [barn]
+  !!   capture          -> all reactions without secendary photons [barn]
   !!
   type, public :: IMCMicroXSs
     real(defReal) :: total            = ZERO
     real(defReal) :: elasticScatter   = ZERO
     real(defReal) :: inelasticScatter = ZERO
     real(defReal) :: capture          = ZERO
-    real(defReal) :: fission          = ZERO
-    real(defReal) :: nuFission        = ZERO
   contains
     procedure :: invert => invert_microXSs
   end type IMCMicroXSs
@@ -86,8 +76,6 @@ contains
     self % elasticScatter   = ZERO
     self % inelasticScatter = ZERO
     self % capture          = ZERO
-    self % fission          = ZERO
-    self % nuFission        = ZERO
 
   end subroutine clean_IMCMacroXSs
 
@@ -112,8 +100,6 @@ contains
     self % elasticScatter   = self % elasticScatter   + dens * micro % elasticScatter
     self % inelasticScatter = self % inelasticScatter + dens * micro % inelasticScatter
     self % capture          = self % capture          + dens * micro % capture
-    self % fission          = self % fission          + dens * micro % fission
-    self % nuFission        = self % nuFission        + dens * micro % nuFission
 
   end subroutine add_IMCMacroXSs
 
@@ -144,14 +130,8 @@ contains
       case(macroEscatter)
         xs = self % elasticScatter
 
-      case(macroFission)
-        xs = self % fission
-
-      case(macroNuFission)
-        xs = self % nuFission
-
-      case(macroAbsorbtion)
-        xs = self % fission + self % capture
+      !case(macroAbsorbtion)
+      !  xs = self % fission + self % capture
 
       case default
         xs = ZERO
@@ -173,11 +153,9 @@ contains
   !!     elasticScatter   = macroEscatter
   !!     inelasticScatter = macroIEscatter
   !!     capture          = macroCapture
-  !!     fission          = macroFission
   !!
   !! Errors::
   !!   If r < 0 then returns macroEscatter
-  !!   If r > 1 then returns macroFission
   !!
   elemental function invert_macroXSs(self, r) result(MT)
     class(IMCMacroXSs), intent(in) :: self
@@ -210,9 +188,6 @@ contains
       case(3)
         MT = macroCapture
 
-      case(4)
-        MT = macroFission
-
       case default  ! Should never happen -> Avoid compiler error and return nonsense number
         MT = huge(C)
 
@@ -234,11 +209,9 @@ contains
   !!     elastic scatter   = N_N_elastic
   !!     inelastic scatter = N_N_inelastic
   !!     capture           = N_diasp
-  !!     fission           = N_FISSION
   !!
   !! Errors:
   !!   If r < 0 then returns N_N_elastic
-  !!   if r > 1 then returns N_FISSION
   !!
   elemental function invert_microXSs(self, r) result(MT)
     class(IMCMicroXSs), intent(in) :: self
@@ -270,9 +243,6 @@ contains
 
       case(3)
         MT = N_disap
-
-      case(4)
-        MT = N_fission
 
       case default  ! Should never happen -> Avoid compiler error and return nonsense number
         MT = huge(C)
