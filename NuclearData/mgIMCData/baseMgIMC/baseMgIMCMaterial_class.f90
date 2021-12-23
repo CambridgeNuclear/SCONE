@@ -65,7 +65,7 @@ module baseMgIMCMaterial_class
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
-    real(defReal), allocatable                :: temperature
+    real(defReal)                             :: T
 
   contains
     ! Superclass procedures
@@ -76,6 +76,7 @@ module baseMgIMCMaterial_class
     ! Local procedures
     procedure :: init
     procedure :: nGroups
+    procedure :: updateTemp
 
   end type baseMgIMCMaterial
 
@@ -93,7 +94,6 @@ contains
     ! Kill local content
     if(allocated(self % data))        deallocate(self % data)
     if(allocated(self % scatter))     deallocate(self % scatter)
-    if(allocated(self % temperature)) deallocate(self % temperature)
 
   end subroutine kill
 
@@ -224,7 +224,9 @@ contains
       self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
     end do
 
-    allocate(self % temperature)
+    self % T = 298
+
+    print *, self % T
 
   end subroutine init
 
@@ -296,6 +298,21 @@ contains
     end select
 
   end function baseMgIMCMaterial_CptrCast
+
+  !!
+  !! Update material temperature at each time step
+  !!
+  !! Args:
+  !!   None
+  !!
+  subroutine updateTemp(self)
+    class(baseMgIMCMaterial),intent(inout)    :: self
+
+    self % T = self % T + 1
+
+    print *, self % T
+
+  end subroutine updateTemp
 
 
 end module baseMgIMCMaterial_class

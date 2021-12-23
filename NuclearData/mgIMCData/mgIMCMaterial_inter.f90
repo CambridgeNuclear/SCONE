@@ -43,6 +43,7 @@ module mgIMCMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
+    procedure(updateTemp), deferred         :: updateTemp
 
   end type mgIMCMaterial
 
@@ -86,6 +87,18 @@ module mgIMCMaterial_inter
       class(RNG), intent(inout)            :: rand
       real(defReal)                        :: xs
     end function getTotalXS
+
+    !!
+    !! Update material temperature at each time step
+    !!
+    !! Args:
+    !!   None
+    !!
+    subroutine updateTemp(self)
+      import :: mgIMCMaterial
+      class(mgIMCMaterial), intent(inout) :: self
+    end subroutine updateTemp
+
   end interface
 
 

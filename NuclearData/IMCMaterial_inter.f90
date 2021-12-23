@@ -30,6 +30,7 @@ module IMCMaterial_inter
   contains
     generic                              :: getMacroXSs => getMacroXSs_byP
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
+    procedure(updateTemp), deferred      :: updateTemp
   end type IMCMaterial
 
   abstract interface
@@ -51,6 +52,17 @@ module IMCMaterial_inter
       type(IMCMacroXSs), intent(out)     :: xss
       class(particle), intent(in)        :: p
     end subroutine getMacroXSs_byP
+
+    !!
+    !! Update material temperature at each time step
+    !!
+    !! Args:
+    !!   None
+    !!
+    subroutine updateTemp(self)
+      import :: IMCMaterial
+      class(IMCMaterial), intent(inout)  :: self
+    end subroutine updateTemp
 
   end interface
 
