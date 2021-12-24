@@ -17,7 +17,7 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorDT;
+                    type transportOperatorIMC;
                   } 
 
 
