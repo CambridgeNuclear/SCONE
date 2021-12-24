@@ -56,8 +56,10 @@ module particleDungeon_class
   !!
   type, public :: particleDungeon
     private
-    real(defReal),public :: k_eff = ONE ! k-eff for fission site generation rate normalisation
-    integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
+    real(defReal),public     :: k_eff = ONE   ! k-eff for fission site generation rate normalisation
+    integer(shortInt)        :: pop = 0       ! Current population size of the dungeon
+    !integer(shortInt),public :: nTimeStep     ! Current time step - Only used in IMC calculations
+    real(defreal),public     :: endOfStepTime ! Time at end of current time step - only used in IMC calculations
 
     ! Storage space
     type(particleState), dimension(:), allocatable :: prisoners

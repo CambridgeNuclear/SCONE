@@ -80,7 +80,7 @@ module IMCPhysicsPackage_class
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle       => null()
     class(source), allocatable     :: IMCSource
-    integer(shortInt)              :: nTimeStep
+    !integer(shortInt)              :: nTimeStep
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -94,7 +94,6 @@ module IMCPhysicsPackage_class
     procedure :: collectResults
     procedure :: run
     procedure :: kill
-    !procedure :: endOfStepTime
 
   end type IMCPhysicsPackage
 
@@ -148,7 +147,7 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
-      self % nTimeStep = i 
+      self % thisCycle % endOfStepTime = i * self % timeStepSize 
 
       gen: do
         ! Obtain paticle from dungeon
@@ -368,12 +367,12 @@ contains
   !!
   !! Return time at end of current time step
   !!
-  function endOfStepTime(self) result(time)
-    implicit none
-    class(IMCPhysicsPackage), intent(in) :: self
-    real(defReal)                        :: time
-
-    time = self % timeStepSize * self % nTimeStep
-  end function endOfStepTime
+  !function endOfStepTime(self) result(time)
+  !  implicit none
+  !  class(IMCPhysicsPackage), intent(in) :: self
+  !  real(defReal)                        :: time
+  !
+  !  time = self % timeStepSize * self % nTimeStep
+  !end function endOfStepTime
 
 end module IMCPhysicsPackage_class
