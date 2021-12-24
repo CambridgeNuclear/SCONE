@@ -24,6 +24,8 @@ module transportOperatorIMC_class
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  !use IMCPhysicsPackage_class,    only : endOfStepTime      ! Gives compiler error?????
+
   implicit none
   private
 
@@ -44,7 +46,11 @@ contains
     class(particleDungeon), intent(inout)      :: thisCycle
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: majorant_inv, sigmaT, distance
+    real(defReal)                              :: dTime, dGeom, dColl
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)'
+
+    !dTime = lightSpeed * (timeStep * thisCycle % nTimeStep - p % time)
+    !dTime = lightSpeed * (endOfStepTime() - p % time)
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
