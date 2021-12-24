@@ -3,10 +3,9 @@
 
 type IMCPhysicsPackage;
 
-pop        30;
-active     10;
-inactive   5;
-cycles     10;
+pop            30;
+cycles         10;
+timeStepSize   1;
 
 XSdata     mg;
 dataType   mg; 
