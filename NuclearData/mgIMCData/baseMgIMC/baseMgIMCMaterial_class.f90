@@ -226,8 +226,6 @@ contains
 
     self % T = 298
 
-    print *, self % T
-
   end subroutine init
 
   !!
