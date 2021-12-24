@@ -51,6 +51,7 @@ module IMCPhysicsPackage_class
   use sourceFactory_func,             only : new_source
 
   implicit none
+
   private
 
   !!
@@ -69,6 +70,7 @@ module IMCPhysicsPackage_class
 
     ! Settings
     integer(shortInt)  :: N_cycles
+    real(defReal)      :: timeStepSize
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
@@ -78,6 +80,7 @@ module IMCPhysicsPackage_class
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle       => null()
     class(source), allocatable     :: IMCSource
+    integer(shortInt)              :: nTimeStep
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -91,6 +94,7 @@ module IMCPhysicsPackage_class
     procedure :: collectResults
     procedure :: run
     procedure :: kill
+    !procedure :: endOfStepTime
 
   end type IMCPhysicsPackage
 
@@ -144,6 +148,8 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
+      self % nTimeStep = i 
+
       gen: do
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
@@ -152,7 +158,7 @@ contains
         ! Save state
         call p % savePreHistory()
 
-          ! Transport particle untill its death
+          ! Transport particle until its death
           history: do
             call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
@@ -249,6 +255,7 @@ contains
     ! Read calculation settings
     call dict % get( self % pop,'pop')
     call dict % get( self % N_cycles,'cycles')
+    call dict % get( self % timeStepSize,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
 
@@ -357,5 +364,16 @@ contains
     print *
     print *, repeat("<>",50)
   end subroutine printSettings
+
+  !!
+  !! Return time at end of current time step
+  !!
+  function endOfStepTime(self) result(time)
+    implicit none
+    class(IMCPhysicsPackage), intent(in) :: self
+    real(defReal)                        :: time
+
+    time = self % timeStepSize * self % nTimeStep
+  end function endOfStepTime
 
 end module IMCPhysicsPackage_class
