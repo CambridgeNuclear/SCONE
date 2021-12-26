@@ -10,6 +10,7 @@ module transportOperatorIMC_class
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
+  use coord_class,                only : coordList
 
   ! Superclass
   use transportOperator_inter,    only : transportOperator
@@ -45,6 +46,8 @@ contains
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: majorant_inv, sigmaT, distance
     real(defReal)                              :: dTime, dGeom, dColl
+    integer(shortInt)                          :: event
+    type(coordList)                            :: p_coords
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     ! Get majornat XS inverse: 1/Sigma_majorant
@@ -57,13 +60,28 @@ contains
 
       ! Find distance to time boundary
       dTime = lightSpeed * (thisCycle % endOfStepTime - p % time)
+
       ! Find distance to cell boundary
-      ! dGeom = 
+      dGeom = 1000000
+      p_coords = p % coords
+      call self % geom % move_noCache(p % coords, dGeom, event)   ! Better way to do this?
+      p % coords = p_coords 
+
       ! Sample distance to collision
       dColl = -log( p % pRNG % get() ) / sigmaT
 
-      !print *, 'dTime =',dTime
-      !print *, 'dColl =',dColl
+
+      ! Find lowest value
+      if ( dTime < dGeom .and. dTime < dColl) then
+        print *, 'Time'
+      else if ( dGeom < dColl ) then
+        print *, 'Geom'
+      else
+        print *, 'Coll'
+      end if
+
+      !print *, 'dTime =', dTime, 'dGeom =', dGeom, 'dColl =', dColl
+
 
       distance = -log( p% pRNG % get() ) * majorant_inv
 

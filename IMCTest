@@ -5,7 +5,7 @@ type IMCPhysicsPackage;
 
 pop            3;
 cycles         10;
-timeStepSize   0.0000001;
+timeStepSize   0.000000000002;
 
 XSdata     mg;
 dataType   mg; 
@@ -59,7 +59,7 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 6.3849; }  
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 1; }  
     }
     cells {}
     universes
