@@ -45,14 +45,26 @@ contains
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: majorant_inv, sigmaT, distance
     real(defReal)                              :: dTime, dGeom, dColl
-    character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)'
-
-    dTime = lightSpeed * (thisCycle % endOfStepTime - p % time)
+    character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
     IMCLoop:do
+
+      ! Obtain the local cross-section
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+
+      ! Find distance to time boundary
+      dTime = lightSpeed * (thisCycle % endOfStepTime - p % time)
+      ! Find distance to cell boundary
+      ! dGeom = 
+      ! Sample distance to collision
+      dColl = -log( p % pRNG % get() ) / sigmaT
+
+      !print *, 'dTime =',dTime
+      !print *, 'dColl =',dColl
+
       distance = -log( p% pRNG % get() ) * majorant_inv
 
       ! Move partice in the geometry
