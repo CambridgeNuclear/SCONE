@@ -66,7 +66,7 @@ contains
         ! Move particle to end of time step location
         call self % geom % teleport(p % coords, dTime)
         p % fate = TIME_FATE
-        p % time = endOfStepTime
+        p % time = thisCycle % endOfStepTime
       end if
 
       ! If particle has leaked exit
