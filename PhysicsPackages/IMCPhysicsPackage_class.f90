@@ -161,6 +161,10 @@ contains
           history: do
             call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history
+            
+            if(p % fate == TIME_FATE) then
+                ! Store particle for use in next time step
+            end if
 
             call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
             if(p % isDead) exit history

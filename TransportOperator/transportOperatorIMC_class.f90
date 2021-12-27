@@ -1,5 +1,5 @@
 !!
-!! Transport operator for implicit Monte Carlo tracking
+!! Transport operator for implicit Monte Carlo scheme using delta tracking
 !!
 module transportOperatorIMC_class
   use numPrecision
@@ -10,7 +10,6 @@ module transportOperatorIMC_class
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
-  use coord_class,                only : coordList
 
   ! Superclass
   use transportOperator_inter,    only : transportOperator
@@ -44,10 +43,7 @@ contains
     type(tallyAdmin), intent(inout)            :: tally
     class(particleDungeon), intent(inout)      :: thisCycle
     class(particleDungeon), intent(inout)      :: nextCycle
-    real(defReal)                              :: majorant_inv, sigmaT, distance
-    real(defReal)                              :: dTime, dGeom, dColl
-    integer(shortInt)                          :: event
-    type(coordList)                            :: p_coords
+    real(defReal)                              :: majorant_inv, sigmaT, dTime, dColl
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     ! Get majornat XS inverse: 1/Sigma_majorant
@@ -55,38 +51,23 @@ contains
 
     IMCLoop:do
 
-      ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
       ! Find distance to time boundary
       dTime = lightSpeed * (thisCycle % endOfStepTime - p % time)
 
-      ! Find distance to cell boundary
-      dGeom = 1000000
-      p_coords = p % coords
-      call self % geom % move_noCache(p % coords, dGeom, event)   ! Better way to do this?
-      p % coords = p_coords 
+      ! Sample distance to move particle before potential collision
+      dColl = -log( p% pRNG % get() ) * majorant_inv
 
-      ! Sample distance to collision
-      dColl = -log( p % pRNG % get() ) / sigmaT
-
-
-      ! Find lowest value
-      if ( dTime < dGeom .and. dTime < dColl) then
-        print *, 'Time'
-      else if ( dGeom < dColl ) then
-        print *, 'Geom'
+      ! Determine which distance to move particle
+      if (dColl < dTime) then
+        ! Move partice to potential collision location
+        call self % geom % teleport(p % coords, dColl)
+        p % time = p % time + dColl / lightSpeed
       else
-        print *, 'Coll'
+        ! Move particle to end of time step location
+        call self % geom % teleport(p % coords, dTime)
+        p % fate = TIME_FATE
+        p % time = endOfStepTime
       end if
-
-      !print *, 'dTime =', dTime, 'dGeom =', dGeom, 'dColl =', dColl
-
-
-      distance = -log( p% pRNG % get() ) * majorant_inv
-
-      ! Move partice in the geometry
-      call self % geom % teleport(p % coords, distance)
 
       ! If particle has leaked exit
       if (p % matIdx() == OUTSIDE_FILL) then
@@ -94,6 +75,8 @@ contains
         p % isDead = .true.
         return
       end if
+
+      if (p % fate == TIME_FATE) exit IMCLoop
 
       ! Check for void
       if( p % matIdx() == VOID_MAT) cycle IMCLoop
