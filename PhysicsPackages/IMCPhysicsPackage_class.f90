@@ -79,6 +79,8 @@ module IMCPhysicsPackage_class
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle       => null()
+    type(particleDungeon), pointer :: nextCycle       => null()
+    type(particleDungeon), pointer :: tempDungeon     => null()
     class(source), allocatable     :: IMCSource
     !integer(shortInt)              :: nTimeStep
 
@@ -139,6 +141,10 @@ contains
 
     do i=1,N_cycles
 
+      ! Store photons remaining from previous cycle
+      self % tempDungeon = self % nextCycle
+      call self % nextCycle % cleanPop()
+
       ! Send start of cycle report
       call self % IMCSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
@@ -147,7 +153,8 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
-      self % thisCycle % endOfStepTime = i * self % timeStepSize 
+      self % thisCycle % endOfStepTime   = i * self % timeStepSize
+      self % tempDungeon % endOfStepTime = i * self % timeStepSize 
 
       gen: do
         ! Obtain paticle from dungeon
@@ -159,18 +166,30 @@ contains
 
           ! Transport particle until its death
           history: do
-            call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
+            call self % transOp % transport(p, tally, self % thisCycle, self % nextCycle)
             if(p % isDead) exit history
             
             if(p % fate == TIME_FATE) then
                 ! Store particle for use in next time step
+                call self % nextCycle % detain(p)
+                exit history
             end if
 
-            call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
+            call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
             if(p % isDead) exit history
+
           end do history
 
-        if( self % thisCycle % isEmpty()) exit gen
+        ! When both dungeons empty, exit
+        if( self % thisCycle % isEmpty() .and. self % tempDungeon % isEmpty()) exit gen
+
+        ! When source dungeon is emptied, switch to using particles remaining from previous cycle
+        if( self % thisCycle % isEmpty()) then
+          print *, "THIS CYCLE EMPTIED OF SOURCE >>> SWITCHING TO CENSUS PARTICLES"
+          self % thisCycle = self % tempDungeon
+          call self % tempDungeon % cleanPop()
+        end if
+
       end do gen
 
       ! Send end of cycle report
@@ -338,6 +357,10 @@ contains
     ! Size particle dungeon
     allocate(self % thisCycle)
     call self % thisCycle % init(3 * self % pop)
+    allocate(self % nextCycle)
+    call self % nextCycle % init(3 * self % pop)
+    allocate(self % tempDungeon)
+    call self % tempDungeon % init(3 * self % pop)
 
     call self % printSettings()
 
