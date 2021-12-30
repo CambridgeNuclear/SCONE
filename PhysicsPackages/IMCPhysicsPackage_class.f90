@@ -78,9 +78,9 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: particleType
 
     ! Calculation components
-    type(particleDungeon), pointer :: thisCycle       => null()
-    type(particleDungeon), pointer :: nextCycle       => null()
-    type(particleDungeon), pointer :: tempDungeon     => null()
+    type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
+    type(particleDungeon), allocatable :: nextCycle!       => null()        - Need to read up more to figure out correct usage
+    type(particleDungeon), allocatable :: tempDungeon!     => null()          e.g. using = instead of => for pointers
     class(source), allocatable     :: IMCSource
     !integer(shortInt)              :: nTimeStep
 
