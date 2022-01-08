@@ -75,6 +75,6 @@ module universalVariables
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
 
-  !real(defReal) :: timeStepSize
+  real(defReal) :: timeStepSize
 
 end module universalVariables

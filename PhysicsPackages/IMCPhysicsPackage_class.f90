@@ -70,7 +70,7 @@ module IMCPhysicsPackage_class
 
     ! Settings
     integer(shortInt)  :: N_cycles
-    real(defReal)      :: timeStepSize
+    !real(defReal)      :: timeStepSize
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
@@ -125,6 +125,7 @@ contains
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal)                                   :: fleck, emittedRad 
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
 
@@ -145,6 +146,12 @@ contains
       self % tempDungeon = self % nextCycle
       call self % nextCycle % cleanPop()
 
+      ! Calculate fleck factor
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
+      fleck = 1/(1+1*1*lightSpeed*timeStepSize)     ! Incomplete, need to add alpha and sigma_p
+      emittedRad = lightSpeed*timeStepSize*fleck*(mat % getRadEnergy())   ! Incomplete, need to * Volume of zone
+      print *, emittedRad
+
       ! Send start of cycle report
       call self % IMCSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
@@ -153,8 +160,8 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
-      self % thisCycle % endOfStepTime   = i * self % timeStepSize
-      self % tempDungeon % endOfStepTime = i * self % timeStepSize 
+      self % thisCycle % endOfStepTime   = i * timeStepSize
+      self % tempDungeon % endOfStepTime = i * timeStepSize 
 
       gen: do
         ! Obtain paticle from dungeon
@@ -203,7 +210,6 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
 
       !call mat % updateTemp()
  
@@ -277,7 +283,7 @@ contains
     ! Read calculation settings
     call dict % get( self % pop,'pop')
     call dict % get( self % N_cycles,'cycles')
-    call dict % get( self % timeStepSize,'timeStepSize')
+    call dict % get( timeStepSize,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
 
