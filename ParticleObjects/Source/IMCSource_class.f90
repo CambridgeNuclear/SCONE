@@ -147,7 +147,7 @@ contains
       p % E = mat % getEmittedRad() / 5 ! Currently fixed at 5 particles for simplicity
  
       ! Set Time
-      p % time = rand % get() * timeStepSize ! + Start of time step time
+      p % time = rand % get() * timeStepSize
 
 
       ! Exit the loop

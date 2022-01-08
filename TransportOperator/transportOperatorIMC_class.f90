@@ -52,7 +52,7 @@ contains
     IMCLoop:do
 
       ! Find distance to time boundary
-      dTime = lightSpeed * (thisCycle % endOfStepTime - p % time)
+      dTime = lightSpeed * (timeStepSize - p % time)
 
       ! Sample distance to move particle before potential collision
       dColl = -log( p% pRNG % get() ) * majorant_inv
@@ -66,7 +66,7 @@ contains
         ! Move particle to end of time step location
         call self % geom % teleport(p % coords, dTime)
         p % fate = TIME_FATE
-        p % time = thisCycle % endOfStepTime
+        p % time = ZERO
       end if
 
       ! If particle has leaked exit

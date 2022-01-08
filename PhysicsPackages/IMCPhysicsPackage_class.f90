@@ -159,9 +159,6 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
-      self % thisCycle % endOfStepTime   = i * timeStepSize
-      self % tempDungeon % endOfStepTime = i * timeStepSize 
-
       gen: do
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
