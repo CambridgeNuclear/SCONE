@@ -2,6 +2,7 @@ module baseMgIMCMaterial_class
 
   use numPrecision
   use endfConstants
+  use universalVariables
   use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
@@ -77,6 +78,7 @@ module baseMgIMCMaterial_class
     procedure :: init
     procedure :: nGroups
     procedure :: updateTemp
+    procedure :: getRadEnergy
 
   end type baseMgIMCMaterial
 
@@ -311,6 +313,17 @@ contains
     print *, "Updated material temperature:", int(self % T), "K"
 
   end subroutine updateTemp
+
+  !!
+  !! Return the equilibrium radiation energy density, U_r
+  !!
+  function getRadEnergy(self) result(radEnergy)
+    class(baseMgIMCMaterial),intent(inout)  :: self
+    real(defReal)                           :: radEnergy
+
+    radEnergy = radiationConstant * (self % T)**4
+
+  end function getRadEnergy
 
 
 end module baseMgIMCMaterial_class

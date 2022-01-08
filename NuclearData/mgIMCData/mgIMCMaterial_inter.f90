@@ -44,6 +44,7 @@ module mgIMCMaterial_inter
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
     procedure(updateTemp), deferred         :: updateTemp
+    procedure(getRadEnergy), deferred       :: getRadEnergy
 
   end type mgIMCMaterial
 
@@ -98,6 +99,15 @@ module mgIMCMaterial_inter
       import :: mgIMCMaterial
       class(mgIMCMaterial), intent(inout) :: self
     end subroutine updateTemp
+
+    !!
+    !! Return the equilibrium radiation energy density, U_r
+    !!
+    function getRadEnergy(self) result(radEnergy)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial), intent(inout) :: self
+      real(defReal)                       :: radEnergy
+    end function getRadEnergy
 
   end interface
 
