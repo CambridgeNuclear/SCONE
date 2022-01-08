@@ -78,7 +78,7 @@ module baseMgIMCMaterial_class
     procedure :: init
     procedure :: nGroups
     procedure :: updateTemp
-    procedure :: getRadEnergy
+    procedure :: getEmittedRad
 
   end type baseMgIMCMaterial
 
@@ -306,10 +306,9 @@ contains
   !!   None
   !!
   subroutine updateTemp(self)
-    class(baseMgIMCMaterial),intent(inout)    :: self
+    class(baseMgIMCMaterial),intent(inout)  :: self
 
     self % T = self % T + 1
-
     print *, "Updated material temperature:", int(self % T), "K"
 
   end subroutine updateTemp
@@ -317,13 +316,16 @@ contains
   !!
   !! Return the equilibrium radiation energy density, U_r
   !!
-  function getRadEnergy(self) result(radEnergy)
+  function getEmittedRad(self) result(emittedRad)
     class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal)                           :: radEnergy
+    real(defReal)                           :: U_r, fleck, emittedRad
 
-    radEnergy = radiationConstant * (self % T)**4
+    U_r = radiationConstant * (self % T)**4
 
-  end function getRadEnergy
+    fleck = 1/(1+1*1*lightSpeed*timeStepSize)     ! Incomplete, need to add alpha and sigma_p
+    emittedRad = lightSpeed*timeStepSize*fleck*U_r   ! Incomplete, need to * Volume of zone
+
+  end function getEmittedRad
 
 
 end module baseMgIMCMaterial_class

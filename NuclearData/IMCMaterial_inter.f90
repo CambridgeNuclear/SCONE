@@ -31,7 +31,7 @@ module IMCMaterial_inter
     generic                              :: getMacroXSs => getMacroXSs_byP
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
     procedure(updateTemp), deferred      :: updateTemp
-    procedure(getRadEnergy), deferred    :: getRadEnergy
+    procedure(getEmittedRad), deferred   :: getEmittedRad
   end type IMCMaterial
 
   abstract interface
@@ -68,11 +68,11 @@ module IMCMaterial_inter
     !!
     !! Return the equilibrium radiation energy density, U_r
     !!
-    function getRadEnergy(self) result(radEnergy)
+    function getEmittedRad(self) result(emittedRad)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout)  :: self
-      real(defReal)                      :: radEnergy
-    end function getRadEnergy
+      real(defReal)                      :: emittedRad
+    end function getEmittedRad
 
   end interface
 
