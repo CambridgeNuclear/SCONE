@@ -7,7 +7,7 @@ module IMCSource_class
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
 
-  use particle_class,          only : particleState, P_NEUTRON
+  use particle_class,          only : particleState, P_PHOTON
   use source_inter,            only : source, kill_super => kill
 
   use geometry_inter,          only : geometry
@@ -66,7 +66,7 @@ contains
   !! See source_inter for details
   !!
   subroutine init(self, dict, geom)
-    class(imcSource), intent(inout)      :: self
+    class(imcSource), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: type
@@ -75,10 +75,6 @@ contains
 
     ! Provide geometry info to source
     self % geom => geom
-
-    ! Select Required fission group/energy
-    call dict % getOrDefault(self % E, 'E', 1.0E-6_defReal)
-    call dict % getOrDefault(self % G, 'G', 1)
 
     ! Set bounding region
     bounds = self % geom % bounds()
@@ -93,14 +89,14 @@ contains
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(imcSource), intent(inout)  :: self
+    class(imcSource), intent(inout)      :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
     class(nuclearDatabase), pointer      :: nucData
-    class(IMCMaterial), pointer      :: mat
-    real(defReal), dimension(3)          :: r, rand3
-    real(defReal)                        :: mu, phi, E_out, E_up, E_down
-    integer(shortInt)                    :: matIdx, uniqueID, nucIdx, i, G_out
+    class(IMCMaterial), pointer          :: mat
+    real(defReal), dimension(3)          :: r, rand3, dir
+    real(defReal)                        :: mu, phi
+    integer(shortInt)                    :: matIdx, uniqueID, nucIdx, i
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
@@ -128,20 +124,28 @@ contains
       ! Reject if there is no material
       if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle rejection
 
-      mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))
+      mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))        ! Currently will only work as intended with 1 cell
       if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return IMC material.")
+
+      ! Sample Direction - chosen uniformly inside unit sphere
+      mu = 2 * rand % get() - 1
+      phi = rand % get() * 2*pi
+      dir(1) = mu
+      dir(2) = sqrt(1-mu**2) * cos(phi)
+      dir(3) = sqrt(1-mu**2) * sin(phi)
 
       ! Assign basic phase-space coordinates
       p % matIdx   = matIdx
       p % uniqueID = uniqueID
       p % wgt      = ONE
       p % time     = ZERO
-      p % type     = P_PHOTON_MG
+      p % type     = P_PHOTON
       p % r        = r
+      p % dir      = dir
 
       ! Set Energy
-
-
+      p % E = mat % getEmittedRad() / 5 ! Currently fixed at 5 particles for simplicity
+ 
       ! Set Time
       p % time = rand % get() * timeStepSize ! + Start of time step time
 
