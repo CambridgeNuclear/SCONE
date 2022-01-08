@@ -72,6 +72,7 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: N_cycles
     !real(defReal)      :: timeStepSize
     integer(shortInt)  :: pop
+    integer(shortInt)  :: inputPop  ! Stores pop given in input file for use in particle weightings
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -81,6 +82,7 @@ module IMCPhysicsPackage_class
     type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
     type(particleDungeon), allocatable :: nextCycle!       => null()        - Need to read up more to figure out correct usage
     type(particleDungeon), allocatable :: tempDungeon!     => null()          e.g. using = instead of => for pointers
+    class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
     !integer(shortInt)              :: nTimeStep
 
@@ -125,7 +127,6 @@ contains
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
-    real(defReal)                                   :: fleck, emittedRad 
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
 
@@ -146,14 +147,13 @@ contains
       self % tempDungeon = self % nextCycle
       call self % nextCycle % cleanPop()
 
-      ! Calculate fleck factor
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-      fleck = 1/(1+1*1*lightSpeed*timeStepSize)     ! Incomplete, need to add alpha and sigma_p
-      emittedRad = lightSpeed*timeStepSize*fleck*(mat % getRadEnergy())   ! Incomplete, need to * Volume of zone
-      print *, emittedRad
+      ! Generate IMC source
+      call self % IMCSource % generate(self % thisCycle, 5, p % pRNG)   ! Currently 5 particles for simplicity, change weighting in IMCSource_class when altering
+
+      call self % thisCycle % printToFile()
 
       ! Send start of cycle report
-      call self % IMCSource % generate(self % thisCycle, N, p % pRNG)
+      call self % inputSource % generate(self % thisCycle, N, p % pRNG)
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
@@ -167,6 +167,9 @@ contains
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
+
+        !! Source produces samples particle time within timestep, add current time to get absolute time
+        !p % time = p % time + i * timeStepSize
 
         ! Save state
         call p % savePreHistory()
@@ -211,6 +214,7 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
 
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
       !call mat % updateTemp()
  
       ! Display progress
@@ -281,11 +285,13 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
+    call dict % get( self % inputPop,'pop')
     call dict % get( self % N_cycles,'cycles')
     call dict % get( timeStepSize,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
+
+    self % pop = self % inputPop
 
     ! Process type of data
     select case(energy)
@@ -345,6 +351,8 @@ contains
 
     ! Read particle source definition
     tempDict => dict % getDictPtr('source')
+    call new_source(self % inputSource, tempDict, self % geom)
+    tempDict => dict % getDictPtr('imcSource')
     call new_source(self % IMCSource, tempDict, self % geom)
 
     ! Build collision operator
@@ -397,15 +405,5 @@ contains
     print *, repeat("<>",50)
   end subroutine printSettings
 
-  !!
-  !! Return time at end of current time step
-  !!
-  !function endOfStepTime(self) result(time)
-  !  implicit none
-  !  class(IMCPhysicsPackage), intent(in) :: self
-  !  real(defReal)                        :: time
-  !
-  !  time = self % timeStepSize * self % nTimeStep
-  !end function endOfStepTime
 
 end module IMCPhysicsPackage_class
