@@ -72,7 +72,6 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: N_cycles
     !real(defReal)      :: timeStepSize
     integer(shortInt)  :: pop
-    integer(shortInt)  :: inputPop  ! Stores pop given in input file for use in particle weightings
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -285,13 +284,11 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % inputPop,'pop')
+    call dict % get( self % pop,'pop')
     call dict % get( self % N_cycles,'cycles')
     call dict % get( timeStepSize,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
-
-    self % pop = self % inputPop
 
     ! Process type of data
     select case(energy)
