@@ -149,13 +149,13 @@ contains
       ! Generate IMC source
       call self % IMCSource % generate(self % thisCycle, 5, p % pRNG)   ! Currently 5 particles for simplicity, change weighting in IMCSource_class when altering
 
-      call self % thisCycle % printToFile()
+      !call self % thisCycle % printToFile()
 
       ! Send start of cycle report
-      call self % inputSource % generate(self % thisCycle, N, p % pRNG)
-      if(self % printSource == 1) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
-      end if
+      !call self % inputSource % generate(self % thisCycle, N, p % pRNG)
+      !if(self % printSource == 1) then
+      !  call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+      !end if
 
       call tally % reportCycleStart(self % thisCycle)
 

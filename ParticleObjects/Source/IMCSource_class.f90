@@ -76,6 +76,8 @@ contains
     ! Provide geometry info to source
     self % geom => geom
 
+    call dict % getOrDefault(self % G, 'G', 1)
+
     ! Set bounding region
     bounds = self % geom % bounds()
     self % bottom = bounds(1:3)
@@ -142,6 +144,8 @@ contains
       p % type     = P_PHOTON
       p % r        = r
       p % dir      = dir
+      p % G        = self % G
+      p % isMG     = .true.
 
       ! Set Energy
       p % E = mat % getEmittedRad() / 5 ! Currently fixed at 5 particles for simplicity
