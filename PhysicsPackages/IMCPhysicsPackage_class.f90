@@ -70,12 +70,12 @@ module IMCPhysicsPackage_class
 
     ! Settings
     integer(shortInt)  :: N_cycles
-    !real(defReal)      :: timeStepSize
     integer(shortInt)  :: pop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
+    integer(shortInt)  :: imcSourceN
 
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
@@ -83,7 +83,6 @@ module IMCPhysicsPackage_class
     type(particleDungeon), allocatable :: tempDungeon!     => null()          e.g. using = instead of => for pointers
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
-    !integer(shortInt)              :: nTimeStep
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -147,7 +146,7 @@ contains
       call self % nextCycle % cleanPop()
 
       ! Generate IMC source
-      call self % IMCSource % generate(self % thisCycle, 5, p % pRNG)   ! Currently 5 particles for simplicity, change weighting in IMCSource_class when altering
+      call self % IMCSource % generate(self % thisCycle, self % imcSourceN, p % pRNG)
 
       !call self % thisCycle % printToFile()
 
@@ -348,6 +347,7 @@ contains
     call new_source(self % inputSource, tempDict, self % geom)
     tempDict => dict % getDictPtr('imcSource')
     call new_source(self % IMCSource, tempDict, self % geom)
+    call tempDict % get(self % imcSourceN, 'nParticles')
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')

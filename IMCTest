@@ -27,7 +27,10 @@ source {
   G 1;
 }
 
-imcSource { type imcSource; }
+imcSource {
+            type imcSource; 
+            nParticles 1;
+          }
 
 inactiveTally {
               } 

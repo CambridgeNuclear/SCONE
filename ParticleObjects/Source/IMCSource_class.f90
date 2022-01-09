@@ -52,6 +52,7 @@ module IMCSource_class
     real(defReal), dimension(3) :: top    = ZERO
     real(defReal)               :: E      = ZERO
     integer(shortInt)           :: G      = 0
+    integer(shortInt)           :: nParticles = 10
   contains
     procedure :: init
     procedure :: sampleParticle
@@ -77,6 +78,7 @@ contains
     self % geom => geom
 
     call dict % getOrDefault(self % G, 'G', 1)
+    call dict % getOrDefault(self % nParticles, 'nParticles', 10)
 
     ! Set bounding region
     bounds = self % geom % bounds()
@@ -139,7 +141,7 @@ contains
       ! Assign basic phase-space coordinates
       p % matIdx   = matIdx
       p % uniqueID = uniqueID
-      p % wgt      = ONE
+      !p % wgt      = ONE
       p % time     = ZERO
       p % type     = P_PHOTON
       p % r        = r
@@ -147,8 +149,8 @@ contains
       p % G        = self % G
       p % isMG     = .true.
 
-      ! Set Energy
-      p % E = mat % getEmittedRad() / 5 ! Currently fixed at 5 particles for simplicity
+      ! Set Weight 
+      p % wgt = mat % getEmittedRad() / self % nParticles
  
       ! Set Time
       p % time = rand % get() * timeStepSize
@@ -174,6 +176,7 @@ contains
     self % top    = ZERO
     self % E      = ZERO
     self % G      = 0
+    self % nParticles = 10
 
   end subroutine kill
 
