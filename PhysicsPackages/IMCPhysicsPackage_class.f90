@@ -176,6 +176,7 @@ contains
             
             if(p % fate == TIME_FATE) then
                 ! Store particle for use in next time step
+                p % fate = 0
                 call self % nextCycle % detain(p)
                 exit history
             end if
