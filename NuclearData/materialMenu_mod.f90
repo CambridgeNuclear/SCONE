@@ -46,9 +46,11 @@ module materialMenu_mod
   !!   init -> build from a string
   !!
   type, public :: nuclideInfo
-    integer(shortInt) :: Z = -1
-    integer(shortInt) :: A = -1
-    integer(shortInt) :: T = -1
+    integer(shortInt)  :: Z = -1
+    integer(shortInt)  :: A = -1
+    integer(shortInt)  :: T = -1
+    logical(defBool)   :: hasSab = .false.
+    character(nameLen) :: file_Sab
   contains
     procedure :: init   => init_nuclideInfo
     procedure :: toChar => toChar_nuclideInfo
@@ -75,7 +77,7 @@ module materialMenu_mod
   !!   matDef {
   !!     temp 273;
   !!     composition {
-  !!       1001.03  5.028E-02;
+  !!       moder {nuclide 1001.03; dens 5.028E-02; file 'HinH20.03t'}
   !!       8016.03  2.505E-02;
   !!       5010.03  2.0E-005;
   !!     }
@@ -252,9 +254,9 @@ contains
     class(materialItem), intent(inout)          :: self
     character(nameLen),intent(in)               :: name
     class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: keys
+    character(nameLen),dimension(:),allocatable :: keys, moderKeys
     integer(shortInt)                           :: i
-    class(dictionary),pointer                   :: compDict
+    class(dictionary),pointer                   :: compDict, moderDict
 
     ! Return to initial state
     call self % kill()
@@ -273,8 +275,18 @@ contains
 
     ! Load definitions
     do i =1,size(keys)
+      ! Check is a nuclide has Sab tables. In that case it's a nested dictionary
+      if (keys(i) == 'moder') then
+        moderDict => compDict % getDictPtr('moder')
+        self % nuclides(i) % hasSab = .true.
+        call moderDict % keys(moderKeys)
+        call moderDict % get(self % dens(i), moderKeys(1))
+        call moderDict % get(self % nuclides(i) % file_Sab, moderKeys(2))
+        keys(i) = moderKeys(1)
+      else
+        call compDict % get(self % dens(i), keys(i))
+      end if
       call self % nuclides(i) % init(keys(i))
-      call compDict % get(self % dens(i), keys(i))
     end do
 
     ! Save dictionary
