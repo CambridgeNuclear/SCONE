@@ -43,7 +43,10 @@ contains
     E  = (1.0 + A*A + 2 *A*mu) *E_in * inv_Ap1 * inv_Ap1
 
     ! Find deflection angle in LAB
-    mu = mu + sqrt(E_in/E)* inv_Ap1
+    mu = (A*mu + 1)*sqrt(E_in/E)* inv_Ap1
+
+    ! Correct possible nuclear data shortcomings
+    if (mu > ONE) mu = ONE
 
   end subroutine asymptoticScatter
 
@@ -75,6 +78,9 @@ contains
 
     ! Find deflection angle in LAB
     mu = mu * sqrt(E_out/E) + sqrt(E_in/E)* inv_Ap1
+
+    ! Correct possible nuclear data shortcomings
+    if (mu > ONE) mu = ONE
 
   end subroutine asymptoticInelasticScatter
 
