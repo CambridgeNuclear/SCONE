@@ -37,6 +37,7 @@ module source_inter
     class(geometry), pointer, public       :: geom => null()
   contains
     procedure, non_overridable             :: generate
+    procedure, non_overridable             :: append
     procedure(sampleParticle), deferred    :: sampleParticle
     procedure(init), deferred              :: init
     procedure(kill), deferred              :: kill
@@ -111,6 +112,34 @@ contains
       end do
 
     end subroutine generate
+
+    !! Generate particles to populate a particleDungeon without overriding
+    !! particles already present
+    !!
+    !! Adds to a particle dungeon n particles, sampled
+    !! from the corresponding source distributions
+    !!
+    !! Args:
+    !!   dungeon [inout] -> particle dungeon to be populated
+    !!   n [in]          -> number of particles to place in dungeon
+    !!
+    !! Result:
+    !!   A dungeon populated with n particles sampled from the source
+    !!
+    subroutine append(self, dungeon, n, rand)
+      class(source), intent(inout)         :: self
+      type(particleDungeon), intent(inout) :: dungeon
+      integer(shortInt), intent(in)        :: n
+      class(RNG), intent(inout)            :: rand
+      integer(shortInt)                    :: i
+
+      ! Generate n particles to populate dungeon
+      do i = 1, n
+        call dungeon % detain(self % sampleParticle(rand))
+      end do
+
+    end subroutine append
+
 
     !!
     !! Return to uninitialised state

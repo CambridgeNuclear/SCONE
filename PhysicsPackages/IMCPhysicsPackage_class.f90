@@ -79,8 +79,7 @@ module IMCPhysicsPackage_class
 
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
-    type(particleDungeon), allocatable :: nextCycle!       => null()        - Need to read up more to figure out correct usage
-    type(particleDungeon), allocatable :: tempDungeon!     => null()          e.g. using = instead of => for pointers
+    type(particleDungeon), allocatable :: nextCycle!       => null()        - Need to read up more to figure out correct usage    e.g. using = instead of => for pointers
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
 
@@ -142,13 +141,14 @@ contains
     do i=1,N_cycles
 
       ! Store photons remaining from previous cycle
-      self % tempDungeon = self % nextCycle
+      self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
       ! Generate IMC source
-      call self % IMCSource % generate(self % thisCycle, self % imcSourceN, p % pRNG)
+      call self % IMCSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
 
-      !call self % thisCycle % printToFile()
+      ! Generate from input source
+      call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
 
       ! Send start of cycle report
       !call self % inputSource % generate(self % thisCycle, N, p % pRNG)
@@ -187,14 +187,7 @@ contains
           end do history
 
         ! When both dungeons empty, exit
-        if( self % thisCycle % isEmpty() .and. self % tempDungeon % isEmpty()) exit gen
-
-        ! When source dungeon is emptied, switch to using particles remaining from previous cycle
-        if( self % thisCycle % isEmpty()) then
-          print *, "THIS CYCLE EMPTIED OF SOURCE >>> SWITCHING TO CENSUS PARTICLES"
-          self % thisCycle = self % tempDungeon
-          call self % tempDungeon % cleanPop()
-        end if
+        if( self % thisCycle % isEmpty() ) exit gen
 
       end do gen
 
@@ -365,11 +358,9 @@ contains
 
     ! Size particle dungeon
     allocate(self % thisCycle)
-    call self % thisCycle % init(3 * self % pop)
+    call self % thisCycle % init(15 * self % pop)
     allocate(self % nextCycle)
-    call self % nextCycle % init(3 * self % pop)
-    allocate(self % tempDungeon)
-    call self % tempDungeon % init(3 * self % pop)
+    call self % nextCycle % init(10 * self % pop)
 
     call self % printSettings()
 

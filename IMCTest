@@ -3,9 +3,9 @@
 
 type IMCPhysicsPackage;
 
-pop            3;
+pop            5;
 cycles         10;
-timeStepSize   0.00000000003;
+timeStepSize   0.00000000005;
 
 XSdata     mg;
 dataType   mg; 
@@ -24,12 +24,12 @@ source {
   type pointSource;
   r (0 0 0);
   particle photon;
-  G 1;
+  G 2;
 }
 
 imcSource {
             type imcSource; 
-            nParticles 1;
+            nParticles 5;
           }
 
 inactiveTally {
