@@ -474,27 +474,27 @@ contains
     ! Print for each particle
     select case(prop)
       case('r')
-        do i = 1, nMax
+        do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % r)
         end do
 
       case('dir')
-        do i = 1, nMax
+        do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % dir)
         end do
 
       case('E')
-        do i = 1, nMax
+        do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % E)
         end do
 
       case('G')
-        do i = 1, nMax
+        do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % G)
         end do
 
       case('time')
-        do i = 1, nMax
+        do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % time)
         end do
 
