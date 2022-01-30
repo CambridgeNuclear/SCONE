@@ -30,7 +30,7 @@ module IMCMaterial_inter
   contains
     generic                              :: getMacroXSs => getMacroXSs_byP
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
-    procedure(updateTemp), deferred      :: updateTemp
+    procedure(updateMat), deferred       :: updateMat
     procedure(getEmittedRad), deferred   :: getEmittedRad
   end type IMCMaterial
 
@@ -60,10 +60,11 @@ module IMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateTemp(self)
-      import :: IMCMaterial
+    subroutine updateMat(self, deltaT)
+      import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout)  :: self
-    end subroutine updateTemp
+      real(defReal), intent(in)          :: deltaT
+    end subroutine updateMat
 
     !!
     !! Return the equilibrium radiation energy density, U_r

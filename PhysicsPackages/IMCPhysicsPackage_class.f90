@@ -213,12 +213,12 @@ contains
 
 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-      !call mat % updateTemp()
+      !call mat % updateMat(self % deltaT)
  
       ! Display progress
       call printFishLineR(i)
       print *
-      call mat % updateTemp()
+      call mat % updateMat(self % deltaT)
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
       print *, 'Pop:          ', numToChar(self % pop)
@@ -285,11 +285,9 @@ contains
     ! Read calculation settings
     call dict % get( self % pop,'pop')
     call dict % get( self % N_cycles,'cycles')
-    call dict % get( timeStepSize,'timeStepSize')
+    call dict % get( self % deltaT,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
-
-    self % deltaT = timeStepSize
 
     ! Process type of data
     select case(energy)

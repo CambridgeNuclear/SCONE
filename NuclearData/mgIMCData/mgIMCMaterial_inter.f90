@@ -43,7 +43,7 @@ module mgIMCMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
-    procedure(updateTemp), deferred         :: updateTemp
+    procedure(updateMat), deferred          :: updateMat
     procedure(getEmittedRad), deferred      :: getEmittedRad
 
   end type mgIMCMaterial
@@ -95,10 +95,11 @@ module mgIMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateTemp(self)
-      import :: mgIMCMaterial
+    subroutine updateMat(self, deltaT)
+      import :: mgIMCMaterial, defReal
       class(mgIMCMaterial), intent(inout) :: self
-    end subroutine updateTemp
+      real(defReal), intent(in)           :: deltaT
+    end subroutine updateMat
 
     !!
     !! Return the equilibrium radiation energy density, U_r

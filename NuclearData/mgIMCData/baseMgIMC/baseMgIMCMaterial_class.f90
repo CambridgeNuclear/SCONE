@@ -67,6 +67,8 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
     real(defReal)                             :: T
+    real(defReal)                             :: fleck
+    real(defReal)                             :: deltaT
 
   contains
     ! Superclass procedures
@@ -77,7 +79,7 @@ module baseMgIMCMaterial_class
     ! Local procedures
     procedure :: init
     procedure :: nGroups
-    procedure :: updateTemp
+    procedure :: updateMat
     procedure :: getEmittedRad
 
   end type baseMgIMCMaterial
@@ -300,30 +302,33 @@ contains
   end function baseMgIMCMaterial_CptrCast
 
   !!
-  !! Update material temperature at each time step
+  !! Update material properties at each time step
   !!
   !! Args:
-  !!   None
+  !!   delta T [in] -> Time step size
   !!
-  subroutine updateTemp(self)
+  subroutine updateMat(self, deltaT)
     class(baseMgIMCMaterial),intent(inout)  :: self
+    real(defReal), intent(in)               :: deltaT
 
     self % T = self % T + 1
     print *, "Updated material temperature:", int(self % T), "K"
 
-  end subroutine updateTemp
+    self % fleck = 1/(1+1*1*lightSpeed*deltaT)  ! Incomplete, need to add alpha and sigma_p
+    self % deltaT = deltaT  ! Store deltaT in material class for use in getEmittedRad, need to consider if possible to call updateMat before first cycle to set initially as getEmittedRad needs fleck and deltaT at start
+
+  end subroutine updateMat
 
   !!
   !! Return the equilibrium radiation energy density, U_r
   !!
   function getEmittedRad(self) result(emittedRad)
     class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal)                           :: U_r, fleck, emittedRad
+    real(defReal)                           :: U_r, emittedRad
 
     U_r = radiationConstant * (self % T)**4
 
-    fleck = 1/(1+1*1*lightSpeed*timeStepSize)     ! Incomplete, need to add alpha and sigma_p
-    emittedRad = lightSpeed*timeStepSize*fleck*U_r   ! Incomplete, need to * Volume of zone
+    emittedRad = lightSpeed* self % deltaT * self % fleck *U_r   ! Incomplete, need to * Volume of zone
 
   end function getEmittedRad
 
