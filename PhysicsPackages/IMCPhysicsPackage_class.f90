@@ -71,6 +71,7 @@ module IMCPhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
+    real(defReal)      :: deltaT
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -131,7 +132,7 @@ contains
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
-    p % k_eff = ONE
+    p % timeMax = self % deltaT
     p % geomIdx = self % geomIdx
 
     ! Reset and start timer
@@ -150,6 +151,8 @@ contains
       ! Generate from input source
       call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
 
+      call self % thisCycle % printToScreen('time', 20)
+
       ! Send start of cycle report
       !call self % inputSource % generate(self % thisCycle, N, p % pRNG)
       !if(self % printSource == 1) then
@@ -163,8 +166,14 @@ contains
         call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
 
-        !! Source produces samples particle time within timestep, add current time to get absolute time
-        !p % time = p % time + i * timeStepSize
+        ! Assign particle time
+        if( p % time /= self % deltaT ) then
+          ! If particle has just been sourced, t = 0 so sample uniformly within timestep
+          p % time = p % pRNG % get() * self % deltaT
+        else
+          ! If particle survived previous time step, reset time to 0
+          p % time = 0
+        end if
 
         ! Save state
         call p % savePreHistory()
@@ -186,7 +195,7 @@ contains
 
           end do history
 
-        ! When both dungeons empty, exit
+        ! When dungeon is empty, exit
         if( self % thisCycle % isEmpty() ) exit gen
 
       end do gen
@@ -279,6 +288,8 @@ contains
     call dict % get( timeStepSize,'timeStepSize')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
+
+    self % deltaT = timeStepSize
 
     ! Process type of data
     select case(energy)

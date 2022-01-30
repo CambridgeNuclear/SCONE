@@ -141,7 +141,6 @@ contains
       ! Assign basic phase-space coordinates
       p % matIdx   = matIdx
       p % uniqueID = uniqueID
-      !p % wgt      = ONE
       p % time     = ZERO
       p % type     = P_PHOTON
       p % r        = r
@@ -152,10 +151,6 @@ contains
       ! Set Weight 
       p % wgt = mat % getEmittedRad() / self % nParticles
  
-      ! Set Time
-      p % time = rand % get() * timeStepSize
-
-
       ! Exit the loop
       exit rejection
 

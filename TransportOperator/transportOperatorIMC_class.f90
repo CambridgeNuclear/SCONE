@@ -52,10 +52,10 @@ contains
     IMCLoop:do
 
       ! Find distance to time boundary
-      dTime = lightSpeed * (timeStepSize - p % time)
+      dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to move particle before potential collision
-      dColl = -log( p% pRNG % get() ) * majorant_inv
+      dColl = -log( p% pRNG % get() ) * majorant_inv * 0.8
 
       ! Determine which distance to move particle
       if (dColl < dTime) then
@@ -66,7 +66,7 @@ contains
         ! Move particle to end of time step location
         call self % geom % teleport(p % coords, dTime)
         p % fate = TIME_FATE
-        p % time = ZERO
+        p % time = p % timeMax
       end if
 
       ! If particle has leaked exit
@@ -91,7 +91,10 @@ contains
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT*majorant_inv) exit IMCLoop
+      if (p % pRNG % get() < sigmaT*majorant_inv) then
+        p % isDead = .true.
+        exit IMCLoop
+      end if
 
     end do IMCLoop
 
