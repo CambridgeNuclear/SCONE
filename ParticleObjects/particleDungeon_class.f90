@@ -87,6 +87,7 @@ module particleDungeon_class
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
+    procedure  :: printToScreen
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -439,5 +440,59 @@ contains
     close(10)
 
   end subroutine printToFile
+
+  subroutine printToScreen(self, prop, nMax)
+    class(particleDungeon), intent(in) :: self
+    character(*), intent(in)           :: prop
+    integer(shortInt), intent(in)      :: nMax
+    integer(shortInt)                  :: i,iMax
+    character(100), parameter :: Here = 'printToScreen (particleDungeon_class.f90)'
+
+    character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r   ',&
+                                                                       'dir ',&
+                                                                       'E   ',&
+                                                                       'G   ',&
+                                                                       'time' ]
+
+    print *, 'Number in dungeon =', self % pop
+
+    iMax = min(nMax, self % pop)
+
+    print *, '**          **',prop,'**          **'
+
+    select case(prop)
+      case('r')
+        do i = 1, nMax
+          print *, i,numToChar(self % prisoners(i) % r)
+        end do
+
+      case('dir')
+        do i = 1, nMax
+          print *, i,numToChar(self % prisoners(i) % dir)
+        end do
+
+      case('E')
+        do i = 1, nMax
+          print *, i,numToChar(self % prisoners(i) % E)
+        end do
+
+      case('G')
+        do i = 1, nMax
+          print *, i,numToChar(self % prisoners(i) % G)
+        end do
+
+      case('time')
+        do i = 1, nMax
+          print *, i,numToChar(self % prisoners(i) % time)
+        end do
+
+      case default
+        print *, AVAILABLE_props
+        call fatalError(Here, 'Unrecognised particle property : ' // trim(prop))
+
+    end select
+
+  end subroutine printToScreen
+    
 
 end module particleDungeon_class
