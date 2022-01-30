@@ -55,7 +55,7 @@ contains
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to move particle before potential collision
-      dColl = -log( p% pRNG % get() ) * majorant_inv * 0.8
+      dColl = -log( p% pRNG % get() ) * majorant_inv
 
       ! Determine which distance to move particle
       if (dColl < dTime) then
@@ -91,10 +91,7 @@ contains
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT*majorant_inv) then
-        p % isDead = .true.
-        exit IMCLoop
-      end if
+      if (p % pRNG % get() < sigmaT*majorant_inv) exit IMCLoop
 
     end do IMCLoop
 
