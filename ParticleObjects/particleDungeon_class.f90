@@ -441,6 +441,16 @@ contains
 
   end subroutine printToFile
 
+  !!
+  !! Prints given property of particles to screen
+  !!
+  !! Args:
+  !!   prop [in] -> Particle property to be displayed
+  !!   nMax [in] -> Maximum number of particles displayed
+  !!
+  !! Errors:
+  !!   fatalError if prop is invalid
+  !!
   subroutine printToScreen(self, prop, nMax)
     class(particleDungeon), intent(in) :: self
     character(*), intent(in)           :: prop
@@ -456,10 +466,12 @@ contains
 
     print *, 'Number in dungeon =', self % pop
 
+    ! Number of particles to be printed
     iMax = min(nMax, self % pop)
 
     print *, '**          **',prop,'**          **'
 
+    ! Print for each particle
     select case(prop)
       case('r')
         do i = 1, nMax
