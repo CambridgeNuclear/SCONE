@@ -45,6 +45,8 @@ module IMCPhysicsPackage_class
   ! Tallies
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
+  use tallyResult_class,              only : tallyResult, tallyResultEmpty
+  use imcWeightClerk_class,           only : imcWeightResult
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -67,6 +69,7 @@ module IMCPhysicsPackage_class
     class(transportOperator), allocatable  :: transOp
     class(RNG), pointer                    :: pRNG    => null()
     type(tallyAdmin),pointer               :: tally   => null()
+    type(tallyAdmin),pointer               :: imcWeightAtch => null()
 
     ! Settings
     integer(shortInt)  :: N_cycles
@@ -107,7 +110,7 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ IMC CALCULATION /\/\"
 
-    call self % cycles(self % tally, self % N_cycles)
+    call self % cycles(self % tally, self % imcWeightAtch, self % N_cycles)
     call self % collectResults()
 
     print *
@@ -118,15 +121,17 @@ contains
   !!
   !!
   !!
-  subroutine cycles(self, tally, N_cycles)
+  subroutine cycles(self, tally, tallyAtch, N_cycles)
     class(IMCPhysicsPackage), intent(inout)         :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
+    type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
+    class(tallyResult), allocatable                 :: tallyRes
 
     N = self % pop
 
@@ -197,6 +202,24 @@ contains
 
         ! When dungeon is empty, exit
         if( self % thisCycle % isEmpty() ) exit gen
+
+        call tallyAtch % getResult(tallyRes, 'imcWeightClerk')
+
+        select type(tallyRes)
+          class is(imcWeightResult)
+            print *, 'YAY'
+
+          class is(tallyResult)
+            print *, 'tallyResult'
+
+          class is(tallyResultEmpty)
+            print *, 'tallyResultEmpty'
+
+          class default
+            call fatalError(Here, 'Invalid result has been returned')
+        end select
+        !print *, tallyRes % imcWeight(1)
+        !call tally % display()
 
       end do gen
 
@@ -270,6 +293,7 @@ contains
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
+    type(dictionary)                                :: locDict1, locDict2
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -364,6 +388,19 @@ contains
     tempDict => dict % getDictPtr('tally')
     allocate(self % tally)
     call self % tally % init(tempDict)
+
+    ! Initialise imcWeight tally attachment
+    call locDict1 % init(2)
+    call locDict2 % init(2)
+
+    call locDict2 % store('type','imcWeightClerk')
+    call locDict1 % store('imcWeight', locDict2)
+    call locDict1 % store('display',['imcWeight'])
+
+    allocate(self % imcWeightAtch)
+    call self % imcWeightAtch % init(locDict1)
+
+    call self % tally % push(self % imcWeightAtch)
 
     ! Size particle dungeon
     allocate(self % thisCycle)
