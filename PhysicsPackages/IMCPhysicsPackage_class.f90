@@ -45,7 +45,7 @@ module IMCPhysicsPackage_class
   ! Tallies
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
-  use tallyResult_class,              only : tallyResult, tallyResultEmpty
+  use tallyResult_class,              only : tallyResult
   use imcWeightClerk_class,           only : imcWeightResult
 
   ! Factories
@@ -128,7 +128,7 @@ contains
     integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, test
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
@@ -156,7 +156,7 @@ contains
       ! Generate from input source
       call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
 
-      call self % thisCycle % printToScreen('time', 20)
+      !call self % thisCycle % printToScreen('time', 20)
 
       ! Send start of cycle report
       !call self % inputSource % generate(self % thisCycle, N, p % pRNG)
@@ -196,6 +196,9 @@ contains
             end if
 
             call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
+            !call tallyAtch % getResult(tallyRes, 'imcWeight')
+            !test = tallyRes % imcWeight
+            !print *, test
             if(p % isDead) exit history
 
           end do history
@@ -203,22 +206,18 @@ contains
         ! When dungeon is empty, exit
         if( self % thisCycle % isEmpty() ) exit gen
 
-        call tallyAtch % getResult(tallyRes, 'imcWeightClerk')
+        call tallyAtch % getResult(tallyRes, 'imcWeight')
 
         select type(tallyRes)
           class is(imcWeightResult)
-            print *, 'YAY'
-
-          class is(tallyResult)
-            print *, 'tallyResult'
-
-          class is(tallyResultEmpty)
-            print *, 'tallyResultEmpty'
+            test = tallyRes % imcWeight
+            print *, test
 
           class default
             call fatalError(Here, 'Invalid result has been returned')
         end select
-        !print *, tallyRes % imcWeight(1)
+
+        !print *, tallyRes % imcWeight (1)
         !call tally % display()
 
       end do gen

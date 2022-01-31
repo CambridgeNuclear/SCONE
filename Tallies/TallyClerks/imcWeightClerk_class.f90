@@ -218,11 +218,10 @@ contains
 
     ! Calculate bin address
     adrr = self % getMemAddress()! + self % width * (binIdx -1)  - 1
-    print *, adrr
     ! Append all bins
     !do i=1,self % width
     scoreVal = p % w
-    !print *, 'Scoring:',scoreVal
+    print *, 'Scoring:',scoreVal
     call mem % score(scoreVal, adrr)! + i)
 
     !end do
