@@ -36,11 +36,7 @@ module IMCMGstd_class
   private
 
   !!
-  !! Standard (default) scalar collision processor for MG IMCs
-  !!   -> Preforms implicit fission site generation
-  !!   -> Preforms analog capture
-  !!   -> Treats fission as capture (only implicit generation of 2nd-ary IMCs)
-  !!   -> Does not create secondary non-IMC projectiles
+  !! Standard (default) scalar collision processor for MG IMC
   !!
   !! Settings:
   !!  NONE
@@ -112,6 +108,14 @@ contains
     ! Select Main reaction channel
     call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
+
+    !if( r < self % mat % fleck ) then
+      ! Effective absoprtion
+
+    !else
+      ! Effective scattering
+
+    !end if
 
     collDat % MT = macroXSs % invert(r)
 
