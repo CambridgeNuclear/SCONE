@@ -37,7 +37,7 @@ inactiveTally {
 
 activeTally  {  
                 //norm    fiss; 
-                normVal 100;
+                //normVal 100;
                 //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
                 flux { type collisionClerk; 
                        map { type energyMap; grid log; min 0.001; max 20; N 300;} 
@@ -48,13 +48,13 @@ activeTally  {
 tally  { 
         //display (imcWeight);
         //norm fiss;
-        normVal 100.0;
+        //normVal 100.0;
         //k-eff { type keffAnalogClerk; response (flux); flux {type fluxResponse;} }
         //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
         //flux { type collisionClerk; 
-        //       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
-        //       response (flux); flux {type fluxResponse;}
-        //      }
+          //     map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+           //    response (flux); flux {type fluxResponse;}
+            //  }
         imcWeight { type imcWeightClerk;
                     map { type energyMap; grid log; min 0.001; max 20; N 300;}
                     //response (imc); imc {type fluxResponse;}

@@ -137,6 +137,7 @@ module tallyAdmin_class
 
     ! Interaction procedures
     procedure :: getResult
+    procedure :: reset
 
     ! Display procedures
     procedure :: display
@@ -740,6 +741,33 @@ contains
     end if
 
   end subroutine getResult
+
+  !!
+  !! Resets tally clerk count to 0
+  !!
+  subroutine reset(self, name)
+    class(tallyAdmin),intent(inout) :: self
+    character(*), intent(in)        :: name
+    character(nameLen)              :: name_loc
+    integer(shortInt)               :: idx
+    integer(shortInt),parameter     :: NOT_PRESENT = -3
+    integer(longInt)                :: addr
+    character(100),parameter  :: Here='reset (tallyAdmin_class.f90)'
+
+    name_loc = name
+
+    idx = self % clerksNameMap % getOrDefault(name_loc, NOT_PRESENT)
+
+    if(idx == NOT_PRESENT) then
+      call fatalError(Here, 'Tally clerk not present')
+    end if
+
+    addr = self % tallyClerks(idx) % getMemAddress()
+
+    call self % mem % reset(addr)
+
+  end subroutine reset
+
 
   !!
   !! Append sorrting array identified with the code with tallyClerk idx

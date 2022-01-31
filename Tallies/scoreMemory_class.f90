@@ -93,6 +93,7 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: reset
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -414,5 +415,18 @@ contains
     end if
 
   end function getScore
+
+  !!
+  !!
+  !!
+  subroutine reset(self,idx)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt), intent(in)      :: idx
+
+    self % bins(idx, :) = ZERO
+    print *, size(self % bins, 1)
+    print *, size(self % bins, 2) 
+
+  end subroutine reset
 
 end module scoreMemory_class

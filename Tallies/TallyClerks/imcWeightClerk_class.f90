@@ -72,7 +72,7 @@ module imcWeightClerk_class
     procedure  :: getSize
 
     ! File reports and check status -> run-time procedures
-    procedure  :: reportInColl
+    procedure  :: reportHist
 
     ! Output procedures
     procedure  :: display
@@ -164,7 +164,7 @@ contains
     class(imcWeightClerk),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE]
+    validCodes = [hist_CODE]
 
   end function validReports
 
@@ -187,7 +187,7 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportHist(self, p, xsData, mem)
     class(imcWeightClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
@@ -196,7 +196,7 @@ contains
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportInColl (imcWeightClerk_class.f90)'
+    character(100), parameter :: Here =' reportHist (imcWeightClerk_class.f90)'
 
     ! Get current particle state
     state = p
@@ -220,13 +220,15 @@ contains
     adrr = self % getMemAddress()! + self % width * (binIdx -1)  - 1
     ! Append all bins
     !do i=1,self % width
-    scoreVal = p % w
-    print *, 'Scoring:',scoreVal
-    call mem % score(scoreVal, adrr)! + i)
+    if( p % isDead ) then
+      scoreVal = p % w
+      print *, 'Scoring:',scoreVal
+      call mem % score(scoreVal, adrr)! + i)
+    end if
 
     !end do
 
-  end subroutine reportInColl
+  end subroutine reportHist
 
   !!
   !! Display convergance progress on the console

@@ -144,6 +144,9 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
+    mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
+    call mat % updateMat(self % deltaT)
+
     do i=1,N_cycles
 
       ! Store photons remaining from previous cycle
@@ -183,6 +186,8 @@ contains
         ! Save state
         call p % savePreHistory()
 
+        print *, '     NEW PARTICLE     Weight:', p % w
+
           ! Transport particle until its death
           history: do
             call self % transOp % transport(p, tally, self % thisCycle, self % nextCycle)
@@ -196,29 +201,13 @@ contains
             end if
 
             call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
-            !call tallyAtch % getResult(tallyRes, 'imcWeight')
-            !test = tallyRes % imcWeight
-            !print *, test
+
             if(p % isDead) exit history
 
           end do history
 
         ! When dungeon is empty, exit
         if( self % thisCycle % isEmpty() ) exit gen
-
-        call tallyAtch % getResult(tallyRes, 'imcWeight')
-
-        select type(tallyRes)
-          class is(imcWeightResult)
-            test = tallyRes % imcWeight
-            print *, test
-
-          class default
-            call fatalError(Here, 'Invalid result has been returned')
-        end select
-
-        !print *, tallyRes % imcWeight (1)
-        !call tally % display()
 
       end do gen
 
@@ -233,6 +222,18 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
+      call tallyAtch % getResult(tallyRes, 'imcWeight')
+
+      select type(tallyRes)
+        class is(imcWeightResult)
+          test = tallyRes % imcWeight
+          print *, '                                        TALLY:',test
+
+        class default
+          call fatalError(Here, 'Invalid result has been returned')
+      end select
+
+      call tallyAtch % reset('imcWeight')
 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
       !call mat % updateMat(self % deltaT)
