@@ -1,0 +1,101 @@
+
+// MCNP benchmark case BIG TEN
+//
+// Model with required benchmark k-eff is found in Appendix D.2 of IEU-MET-FAST-007
+//
+// Homogenised two-zone model, cylindrical core inside cylinder of depleted-uranium reflector
+// Benchmark k-eff = 0.9948 +/- 0.0013
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active   1000; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k-eff);
+                norm fiss;
+                normVal 100.0;
+                k-eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      core { id 1; type zTruncCylinder; origin (0.0 0.0 0.0); halfwidth 28.8169; radius 26.67; }
+
+      refl { id 2; type zTruncCylinder; origin (0.0 0.0 0.0); halfwidth 48.26;   radius 41.91; }
+    }
+
+
+    cells
+    {
+      core  { type simpleCell; id 1; surfaces (-1); filltype mat; material core; }
+
+      refl  { type simpleCell; id 2; surfaces (1);  filltype mat; material refl; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+
+      uni  { id 2; type cellUniverse; cells (1 2); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
+  }
+  
+  
+  materials { 
+    numberOfGroups 69;
+
+    core {  
+      temp       293; 
+      composition {
+        92234.03  4.8416E-5;
+        92235.03  4.8151E-3;
+        92236.03  1.7407E-5;
+        92238.03  4.3181E-2;
+      }
+    }
+    refl {  
+      temp       293; 
+      composition {
+        92234.03  2.8672E-7;
+        92235.03  1.0058E-4;
+        92236.03  1.1468E-6;
+        92238.03  4.7677E-2;
+      }
+    }
+  } 
+  
+}
+  
+  
+  

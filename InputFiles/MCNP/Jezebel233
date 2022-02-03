@@ -1,0 +1,90 @@
+
+// MCNP benchmark case Jezebel-233
+//
+// Bare U233 sphere, 5.9838cm radius
+// Benchmark k-eff = 1.0000 +/- 0.0010
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active   1000; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                    neutronMG {type neutronMGstd;} 
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k-eff);
+                norm fiss;
+                normVal 100.0;
+                k-eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 5.9838; }  
+    }
+
+
+    cells {
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type rootUniverse; 
+	  border 1;
+          fill fuel;
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    numberOfGroups 69;
+
+    fuel {  
+      temp       293; 
+      composition {
+        92233.03  0.046712;
+        92234.03  0.00059026;
+        92235.03  0.000014281;
+        92238.03  0.00028561;
+      }   
+    }	 
+
+} 
+  
+}
+  
+  
+  
