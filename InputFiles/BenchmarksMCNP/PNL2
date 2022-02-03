@@ -66,7 +66,7 @@ geometry {
 nuclearData {
 
   handles { 
-     ceData { type aceNeutronDatabase; ures 1; acelibrary /home/pmc55/myACE/JEF311.aceXS;}
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
   }
   
   
