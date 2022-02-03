@@ -1,0 +1,94 @@
+
+// MCNP benchmark case U233-MF-05(2)
+//
+// U233 sphere (to 4.5999cm radius) with uranium reflector (to 8.7960cm radius)
+// Benchmark k-eff = 1.0000 +/- 0.0030
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active   1000; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                     
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (k-eff);
+                norm fiss;
+                normVal 100.0;
+                k-eff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 4.5999; }
+      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 8.7960; }
+    }
+
+
+    cells
+    {
+      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material fuel; }
+      refl  { type simpleCell; id 4; surfaces (1 ); filltype mat; material reflector; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells ( 3  4); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; ures 1; acelibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    
+
+    fuel {  
+      temp       293; 
+      composition {
+        92233.03  0.047312;
+        92234.03  0.00052770;
+        92238.03  0.00033015;
+      }
+    }
+    reflector {  
+      temp       293; 
+      composition {
+        04009.03  0.11984;
+        08016.03  0.0013776;
+      }
+    }	 
+
+} 
+  
+}
+  
+  
+  
