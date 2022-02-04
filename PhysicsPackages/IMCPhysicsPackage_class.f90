@@ -186,7 +186,7 @@ contains
         ! Save state
         call p % savePreHistory()
 
-        print *, '     NEW PARTICLE     Weight:', p % w
+        !print *, '     NEW PARTICLE     Weight:', p % w
 
           ! Transport particle until its death
           history: do
@@ -227,7 +227,7 @@ contains
       select type(tallyRes)
         class is(imcWeightResult)
           test = tallyRes % imcWeight
-          print *, '                                        TALLY:',test
+          !print *, '                                        TALLY:',test*i
 
         class default
           call fatalError(Here, 'Invalid result has been returned')

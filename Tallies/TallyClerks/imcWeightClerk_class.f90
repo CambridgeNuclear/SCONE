@@ -222,7 +222,6 @@ contains
     !do i=1,self % width
     if( p % isDead ) then
       scoreVal = p % w
-      print *, 'Scoring:',scoreVal
       call mem % score(scoreVal, adrr)! + i)
     end if
 

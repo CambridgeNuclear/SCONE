@@ -424,8 +424,6 @@ contains
     integer(longInt), intent(in)      :: idx
 
     self % bins(idx, :) = ZERO
-    print *, size(self % bins, 1)
-    print *, size(self % bins, 2) 
 
   end subroutine reset
 
