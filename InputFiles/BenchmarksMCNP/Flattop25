@@ -2,13 +2,13 @@
 // MCNP benchmark case Flattop-25
 //
 // Highly enriched uranium (HEU) sphere (to 6.1156cm radius) with uranium reflector (to 24.1242 radius)
-// Benchmark k-eff = 1.0000 +/- 0.0030
+// Benchmark keff = 1.0000 +/- 0.0030
 
 
 type eigenPhysicsPackage; 
 
 pop      200000;
-active   1000; 
+active 100; 
 inactive 200; 
 XSdata   ceData;
 dataType ce; 
@@ -23,10 +23,10 @@ inactiveTally {
               } 
 
 activeTally  { 
-                display (k-eff);
+                display (keff);
                 norm fiss;
                 normVal 100.0;
-                k-eff { type keffAnalogClerk;}
+                keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
                 flux { type collisionClerk; 
                        map { type energyMap; grid log; min 0.001; max 20; N 300;} 
