@@ -89,7 +89,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(IMCMacroXSs)                    :: macroXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, fleck
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
     ! Verify that particle is MG PHOTON
@@ -109,15 +109,17 @@ contains
     call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
 
-    !if( r < self % mat % fleck ) then
+    fleck = self % mat % getFleck()
+
+    if( r < fleck ) then
       ! Effective absoprtion
-
-    !else
+      collDat % MT = macroCapture
+    else
       ! Effective scattering
+      collDat % MT = macroIEScatter
+    end if
 
-    !end if
-
-    collDat % MT = macroXSs % invert(r)
+    !collDat % MT = macroXSs % invert(r)
 
   end subroutine sampleCollision
 
@@ -165,7 +167,7 @@ contains
     character(100),parameter :: Here = "inelastic (IMCMGstd_class.f90)"
 
     ! Assign MT number
-    collDat % MT = macroIEscatter
+    collDat % MT = macroIEScatter
 
     ! Get Scatter object
     scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
@@ -177,7 +179,7 @@ contains
     ! Read scattering multiplicity
     w_mul = scatter % production(p % G, G_out)
 
-    ! Update IMC state
+    ! Update photon state
     p % G = G_out
     p % w = p % w * w_mul
     call p % rotate(collDat % muL, phi)
