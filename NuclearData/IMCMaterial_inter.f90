@@ -32,6 +32,7 @@ module IMCMaterial_inter
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
     procedure(updateMat), deferred       :: updateMat
     procedure(getEmittedRad), deferred   :: getEmittedRad
+    procedure(getFleck), deferred        :: getFleck
   end type IMCMaterial
 
   abstract interface
@@ -74,6 +75,15 @@ module IMCMaterial_inter
       class(IMCMaterial), intent(inout)  :: self
       real(defReal)                      :: emittedRad
     end function getEmittedRad
+
+    !!
+    !! Get Fleck factor of material
+    !!
+    function getFleck(self) result(fleck)
+      import :: IMCMaterial, defReal
+      class(IMCMaterial), intent(in) :: self
+      real(defReal)                    :: fleck
+    end function getFleck
 
   end interface
 

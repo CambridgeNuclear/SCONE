@@ -45,6 +45,7 @@ module mgIMCMaterial_inter
     procedure(getTotalXS), deferred         :: getTotalXS
     procedure(updateMat), deferred          :: updateMat
     procedure(getEmittedRad), deferred      :: getEmittedRad
+    procedure(getFleck), deferred           :: getFleck
 
   end type mgIMCMaterial
 
@@ -109,6 +110,16 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(inout) :: self
       real(defReal)                       :: emittedRad
     end function getEmittedRad
+
+    !!
+    !! Return Fleck factor
+    !!
+    function getFleck(self) result(fleck)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial), intent(in) :: self
+      real(defReal)                    :: fleck
+    end function getFleck
+
 
   end interface
 

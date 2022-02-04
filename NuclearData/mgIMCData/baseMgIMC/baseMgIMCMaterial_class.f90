@@ -81,6 +81,7 @@ module baseMgIMCMaterial_class
     procedure :: nGroups
     procedure :: updateMat
     procedure :: getEmittedRad
+    procedure :: getFleck
 
   end type baseMgIMCMaterial
 
@@ -331,6 +332,17 @@ contains
     emittedRad = lightSpeed* self % deltaT * self % fleck *U_r   ! Incomplete, need to * Volume of zone
 
   end function getEmittedRad
+
+  !!
+  !! Return the fleck factor of the material
+  !!
+  function getFleck(self) result(fleck)
+    class(baseMgIMCMaterial),intent(in) :: self
+    real(defReal)                       :: fleck
+
+    fleck = self % fleck
+
+  end function getFleck
 
 
 end module baseMgIMCMaterial_class
