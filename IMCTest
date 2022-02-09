@@ -102,7 +102,7 @@ nuclearData {
         94241.03  0.00011674; 
         31000.03  0.0013752;
       }
-      xsFile ./InputFiles/XS/URRa_2_1_XSS;   
+      xsFile ./InputFiles/XS/imcData;   
     }	 
 
 } 
