@@ -128,4 +128,35 @@ module poly_func
 
     end function poly_solve
 
+    !!
+    !! Gives output value y for y = f(x)
+    !!
+    !! Args:
+    !!   f -> Array defining polynomial
+    !!   x -> Point at which to evaluate
+    !!
+    function poly_eval(f, x) result(y)
+      real(defReal), dimension(:), intent(in) :: f
+      real(defReal), intent(in)               :: x
+      real(defReal)                           :: y
+      integer(shortInt)                       :: n, i
+      character(100), parameter               :: Here = "poly_eval (poly_func.f90)"
+
+      ! Check that array is of even size
+      if( modulo(size(f), 2) /= 0 ) then
+        call fatalError(Here, "Array size must be divisible by 2")
+      end if
+
+      n = size(f) / 2
+
+      y = 0
+      do i=1,n
+        y = y + f(i) * x ** f(i+n)
+      end do
+
+    end function poly_eval
+
+
+
+
 end module poly_func
