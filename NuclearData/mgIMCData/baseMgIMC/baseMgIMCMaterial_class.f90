@@ -7,6 +7,7 @@ module baseMgIMCMaterial_class
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
   use dictDeck_class,    only : dictDeck
+  use poly_func
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
@@ -65,12 +66,9 @@ module baseMgIMCMaterial_class
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
+    real(defReal),dimension(:), allocatable   :: cv, updateEqn
     class(multiScatterMG), allocatable        :: scatter
-    real(defReal)                             :: T
-    real(defReal)                             :: fleck
-    real(defReal)                             :: deltaT
-    real(defReal)                             :: sigmaP
-    real(defReal)                             :: matEnergy
+    real(defReal)                             :: T, fleck, deltaT, sigmaP, matEnergy, volume
 
   contains
     ! Superclass procedures
@@ -237,8 +235,18 @@ contains
 
     ! Set Planck opacity
     call dict % get(temp, 'sigmaP')
-
     self % sigmaP = temp(1)
+
+    ! Read heat capacity equation
+    call dict % get(temp, 'cv')
+    self % cv = temp
+
+    ! Build update equation
+    call poly_integrate(temp)
+    self % updateEqn = temp
+
+    ! Set volume -- Not yet set up, for now just set arbitrarily
+    self % volume = pi
 
   end subroutine init
 
@@ -320,14 +328,25 @@ contains
   subroutine updateMat(self, deltaT, tallyEnergy)
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: deltaT, tallyEnergy
+    real(defReal)                           :: energy
+    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
-    self % T = self % T + 1
-    print *, "Updated material temperature:", int(self % T), "K"
-
+    ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
+
+    energy = self % matEnergy / self % volume
+
+    ! Update material temperature
+    self % T = poly_solve(self % updateEqn, self % cv, self % T, energy)
+    print *, 'T_new =', self % T
+
+    if( self % T < 0 ) then
+     call fatalError(Here, "Temperature is negative")
+    end if
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
     self % deltaT = deltaT  ! Store deltaT in material class for use in getEmittedRad, need to consider if possible to call updateMat before first cycle to set initially as getEmittedRad needs fleck and deltaT at start
+
 
   end subroutine updateMat
 
