@@ -82,6 +82,7 @@ module baseMgIMCMaterial_class
     procedure :: updateMat
     procedure :: getEmittedRad
     procedure :: getFleck
+    procedure :: initProps
 
   end type baseMgIMCMaterial
 
@@ -325,9 +326,9 @@ contains
   !! Args:
   !!   delta T [in] -> Time step size
   !!
-  subroutine updateMat(self, deltaT, tallyEnergy)
+  subroutine updateMat(self, tallyEnergy)
     class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal), intent(in)               :: deltaT, tallyEnergy
+    real(defReal), intent(in)               :: tallyEnergy
     real(defReal)                           :: energy
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
@@ -335,6 +336,7 @@ contains
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
     energy = self % matEnergy / self % volume
+    print *, energy
 
     ! Update material temperature
     self % T = poly_solve(self % updateEqn, self % cv, self % T, energy)
@@ -344,9 +346,7 @@ contains
      call fatalError(Here, "Temperature is negative")
     end if
 
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
-    self % deltaT = deltaT  ! Store deltaT in material class for use in getEmittedRad, need to consider if possible to call updateMat before first cycle to set initially as getEmittedRad needs fleck and deltaT at start
-
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
 
   end subroutine updateMat
 
@@ -374,5 +374,24 @@ contains
 
   end function getFleck
 
+  !!
+  !! Store deltaT in material class and set initial material properties
+  !!
+  !! Can be called from physics package with required arguments, as init does not have access
+  !!  to deltaT
+  !!
+  !! Args:
+  !!   deltaT -> Time step size
+  !!
+  subroutine initProps(self, deltaT)
+    class(baseMgIMCMaterial),intent(inout) :: self
+    real(defReal), intent(in)              :: deltaT
+
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
+    self % deltaT = deltaT
+
+    self % matEnergy = poly_eval(self % updateEqn, self % T)
+
+  end subroutine initProps
 
 end module baseMgIMCMaterial_class

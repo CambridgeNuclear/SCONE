@@ -145,7 +145,7 @@ contains
     call timerStart(self % timerMain)
 
     mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-    call mat % updateMat(self % deltaT, ZERO)
+    call mat % initProps(self % deltaT)
 
     do i=1,N_cycles
 
@@ -234,7 +234,7 @@ contains
 
       ! Update material properties
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-      call mat % updateMat(self % deltaT, tallyEnergy)
+      call mat % updateMat(tallyEnergy)
 
       ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')

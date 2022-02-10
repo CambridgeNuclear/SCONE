@@ -46,6 +46,7 @@ module mgIMCMaterial_inter
     procedure(updateMat), deferred          :: updateMat
     procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
+    procedure(initProps), deferred          :: initProps
 
   end type mgIMCMaterial
 
@@ -96,10 +97,10 @@ module mgIMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateMat(self, deltaT, tallyEnergy)
+    subroutine updateMat(self, tallyEnergy)
       import :: mgIMCMaterial, defReal
       class(mgIMCMaterial), intent(inout) :: self
-      real(defReal), intent(in)           :: deltaT, tallyEnergy
+      real(defReal), intent(in)           :: tallyEnergy
     end subroutine updateMat
 
     !!
@@ -120,6 +121,20 @@ module mgIMCMaterial_inter
       real(defReal)                    :: fleck
     end function getFleck
 
+    !!
+    !! Store deltaT in material class and set initial material properties
+    !!
+    !! Can be called from physics package with required arguments, as init does not have access
+    !!  to deltaT
+    !!
+    !! Args:
+    !!   deltaT -> Time step size
+    !!
+    subroutine initProps(self, deltaT)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial),intent(inout) :: self
+      real(defReal), intent(in)          :: deltaT
+    end subroutine initProps
 
   end interface
 
