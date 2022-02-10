@@ -71,7 +71,7 @@ module poly_func
       real(defReal), dimension(:), intent(in) :: derivative
       real(defReal), intent(in)               :: x0
       real(defReal), intent(in), optional     :: const
-      real(defReal)                           :: x, x_old, f, f_dash, c
+      real(defReal)                           :: x, x_old, f, f_dash, c, tol
       integer(shortInt)                       :: i, j, m
       character(100), parameter               :: Here = "poly_solve (poly_func.f90)"
 
@@ -113,7 +113,8 @@ module poly_func
         x = x - f / f_dash
 
         ! Check for convergence
-        if( x == x_old ) exit iterate
+        tol = 0.0000000001
+        if( x > (1-tol)*x_old .and. x < (1+tol)*x_old ) exit iterate
 
         ! Call error if not converged
         if( i >= 1000 ) then
