@@ -70,6 +70,7 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: fleck
     real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
+    real(defReal)                             :: matEnergy
 
   contains
     ! Superclass procedures
@@ -230,8 +231,9 @@ contains
       self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
     end do
 
-    ! Set initial temperature
+    ! Set initial temperature and energy
     self % T = 298
+    self % matEnergy = 100
 
     ! Set Planck opacity
     call dict % get(temp, 'sigmaP')
@@ -315,12 +317,14 @@ contains
   !! Args:
   !!   delta T [in] -> Time step size
   !!
-  subroutine updateMat(self, deltaT)
+  subroutine updateMat(self, deltaT, tallyEnergy)
     class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal), intent(in)               :: deltaT
+    real(defReal), intent(in)               :: deltaT, tallyEnergy
 
     self % T = self % T + 1
     print *, "Updated material temperature:", int(self % T), "K"
+
+    self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
     self % deltaT = deltaT  ! Store deltaT in material class for use in getEmittedRad, need to consider if possible to call updateMat before first cycle to set initially as getEmittedRad needs fleck and deltaT at start

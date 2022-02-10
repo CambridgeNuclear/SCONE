@@ -128,7 +128,7 @@ contains
     integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, test
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
@@ -145,7 +145,7 @@ contains
     call timerStart(self % timerMain)
 
     mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-    call mat % updateMat(self % deltaT)
+    call mat % updateMat(self % deltaT, ZERO)
 
     do i=1,N_cycles
 
@@ -222,26 +222,28 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
+      ! Obtain energy deposited in zone from tally
       call tallyAtch % getResult(tallyRes, 'imcWeight')
 
       select type(tallyRes)
         class is(imcWeightResult)
-          test = tallyRes % imcWeight
-          !print *, '                                        TALLY:',test*i
+          tallyEnergy = tallyRes % imcWeight
 
         class default
           call fatalError(Here, 'Invalid result has been returned')
       end select
 
+      ! Update material properties
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
+      call mat % updateMat(self % deltaT, tallyEnergy)
+
+      ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')
 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-      !call mat % updateMat(self % deltaT)
- 
       ! Display progress
       call printFishLineR(i)
       print *
-      call mat % updateMat(self % deltaT)
+      !call mat % updateMat(self % deltaT)
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
       print *, 'Pop:          ', numToChar(self % pop)

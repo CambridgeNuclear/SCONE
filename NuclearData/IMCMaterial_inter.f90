@@ -61,10 +61,10 @@ module IMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateMat(self, deltaT)
+    subroutine updateMat(self, deltaT, tallyEnergy)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout)  :: self
-      real(defReal), intent(in)          :: deltaT
+      real(defReal), intent(in)          :: deltaT, tallyEnergy
     end subroutine updateMat
 
     !!
