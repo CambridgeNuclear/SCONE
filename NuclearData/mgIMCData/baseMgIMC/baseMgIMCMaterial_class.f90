@@ -329,17 +329,33 @@ contains
   subroutine updateMat(self, tallyEnergy)
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
-    real(defReal)                           :: energy
+    real(defReal)                           :: energy, const
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
+
+    ! Update material internal energy
+    print *, "matEnergy =", self % matEnergy
+    print *, "emittedRad =", self % getEmittedRad()
+    print *, "tallyEnergy =", tallyEnergy
+
+    ! Store previous material internal energy density, U_{m,n}/V
+    const = self % matEnergy / self % volume
 
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
+    ! New material internal energy density, U_{m,n+1}/V
     energy = self % matEnergy / self % volume
-    print *, energy
+    
+    !! Integration of dUm/dT = cv gives equation to be solved for T_{n+1}:
+    !!
+    !!      f(T_{n+1}) = U_{m,n+1} - U_{m,n} + f(T_n)
+    !!
+    !!   where f(T) is the indefinite integral of cv (stored in self % updateEqn)
+    !!
+    const = energy - const + poly_eval(self % updateEqn, self % T)
 
-    ! Update material temperature
-    self % T = poly_solve(self % updateEqn, self % cv, self % T, energy)
+    ! Update material temperature by solving f(T_{n+1}) = const
+    self % T = poly_solve(self % updateEqn, self % cv, self % T, const)
     print *, 'T_new =', self % T
 
     if( self % T < 0 ) then
@@ -351,7 +367,7 @@ contains
   end subroutine updateMat
 
   !!
-  !! Return the equilibrium radiation energy density, U_r
+  !! Return the energy to be emitted during time step, E_r
   !!
   function getEmittedRad(self) result(emittedRad)
     class(baseMgIMCMaterial),intent(inout)  :: self
@@ -359,7 +375,7 @@ contains
 
     U_r = radiationConstant * (self % T)**4
 
-    emittedRad = lightSpeed* self % deltaT * self % fleck *U_r   ! Incomplete, need to * Volume of zone
+    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % volume
 
   end function getEmittedRad
 

@@ -18,7 +18,8 @@ module poly_func
   contains
 
     !!
-    !! Integrates a simple polynomial given coefficients and exponents
+    !! Integrates a simple polynomial given coefficients and exponents,
+    !!  returning indefinite integral
     !!
     !! Args:
     !!   equation -> 1D array of n coefficients followed by n exponents
@@ -155,8 +156,5 @@ module poly_func
       end do
 
     end function poly_eval
-
-
-
 
 end module poly_func
