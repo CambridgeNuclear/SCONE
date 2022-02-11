@@ -257,7 +257,6 @@ contains
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
-
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       ! Normalise scores
       self % bins(:,BIN) = self % bins(:,BIN) * normFactor
@@ -424,6 +423,9 @@ contains
     integer(longInt), intent(in)      :: idx
 
     self % bins(idx, :) = ZERO
+
+    self % cycles = 0
+    self % batchN = 0
 
   end subroutine reset
 

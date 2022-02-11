@@ -227,7 +227,8 @@ contains
 
       select type(tallyRes)
         class is(imcWeightResult)
-          tallyEnergy = tallyRes % imcWeight * i
+          tallyEnergy = tallyRes % imcWeight
+          print *, "Tally =", tallyEnergy
         class default
           call fatalError(Here, 'Invalid result has been returned')
       end select
