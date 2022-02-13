@@ -80,6 +80,7 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
     integer(shortInt)  :: imcSourceN
+    logical(defBool)   :: sourceGiven = .false.
 
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
@@ -157,7 +158,9 @@ contains
       call self % IMCSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
 
       ! Generate from input source
-      call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
+      if( self % sourceGiven ) then
+        call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
+      end if
 
       !call self % thisCycle % printToScreen('time', 20)
 
@@ -228,7 +231,6 @@ contains
       select type(tallyRes)
         class is(imcWeightResult)
           tallyEnergy = tallyRes % imcWeight
-          print *, "Tally =", tallyEnergy
         class default
           call fatalError(Here, 'Invalid result has been returned')
       end select
@@ -372,8 +374,11 @@ contains
     self % nucData => ndReg_get(self % particleType)
 
     ! Read particle source definition
-    tempDict => dict % getDictPtr('source')
-    call new_source(self % inputSource, tempDict, self % geom)
+    if( dict % isPresent('source') ) then
+      tempDict => dict % getDictPtr('source')
+      call new_source(self % inputSource, tempDict, self % geom)
+      self % sourceGiven = .true.
+    end if
     tempDict => dict % getDictPtr('imcSource')
     call new_source(self % IMCSource, tempDict, self % geom)
     call tempDict % get(self % imcSourceN, 'nParticles')
