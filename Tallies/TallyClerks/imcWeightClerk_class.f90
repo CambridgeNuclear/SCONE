@@ -220,7 +220,7 @@ contains
     adrr = self % getMemAddress()! + self % width * (binIdx -1)  - 1
     ! Append all bins
     !do i=1,self % width
-    if( p % isDead ) then
+    if( p % isDead .and. p % fate /= LEAK_FATE ) then
       scoreVal = p % w
       call mem % score(scoreVal, adrr)! + i)
     end if
