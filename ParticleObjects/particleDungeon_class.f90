@@ -462,41 +462,48 @@ contains
                                                                        'dir ',&
                                                                        'E   ',&
                                                                        'G   ',&
-                                                                       'time' ]
+                                                                       'time',&
+                                                                       'pop ' ]
 
     print *, 'Number in dungeon =', self % pop
 
     ! Number of particles to be printed
     iMax = min(nMax, self % pop)
 
-    print *, '**          **',prop,'**          **'
-
     ! Print for each particle
     select case(prop)
       case('r')
+        print *, '**          ** Position **          **'
         do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % r)
         end do
 
       case('dir')
+        print *, '**          ** Direction **          **'
         do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % dir)
         end do
 
       case('E')
+        print *, '**          ** Energy **          **'
         do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % E)
         end do
 
       case('G')
+        print *, '**          ** Group **          **'
         do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % G)
         end do
 
       case('time')
+        print *, '**          ** Time **          **'
         do i = 1, iMax
           print *, i,numToChar(self % prisoners(i) % time)
         end do
+
+      case('pop')
+        ! Do nothing, pop already printed above
 
       case default
         print *, AVAILABLE_props
