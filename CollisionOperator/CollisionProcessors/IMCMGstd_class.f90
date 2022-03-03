@@ -162,27 +162,38 @@ contains
     class(particleDungeon),intent(inout) :: nextCycle
     class(multiScatterMG),pointer        :: scatter
     integer(shortInt)                    :: G_out   ! Post-collision energy group
-    real(defReal)                        :: phi     ! Azimuthal scatter angle
+    real(defReal)                        :: phi, mu     ! Azimuthal scatter angle
     real(defReal)                        :: w_mul   ! Weight multiplier
+    real(defReal), dimension(3)          :: dir
     character(100),parameter :: Here = "inelastic (IMCMGstd_class.f90)"
 
     ! Assign MT number
     collDat % MT = macroIEScatter
 
     ! Get Scatter object
-    scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
-    if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG IMC")
+    !scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
+    !if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG IMC")
 
     ! Sample Mu and G_out
-    call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
+    !call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
 
     ! Read scattering multiplicity
-    w_mul = scatter % production(p % G, G_out)
+    !w_mul = scatter % production(p % G, G_out)
 
     ! Update photon state
-    p % G = G_out
-    p % w = p % w * w_mul
-    call p % rotate(collDat % muL, phi)
+    !p % G = G_out
+    !p % w = p % w * w_mul
+    !call p % rotate(collDat % muL, phi)
+
+    ! Sample Direction - chosen uniformly inside unit sphere
+    mu = 2 * p % pRNG % get() - 1
+    phi = p % pRNG % get() * 2*pi
+    dir(1) = mu
+    dir(2) = sqrt(1-mu**2) * cos(phi)
+    dir(3) = sqrt(1-mu**2) * sin(phi)
+
+    !p % coords % dir = dir
+    call p % rotate(mu, phi)
 
   end subroutine inelastic
 
