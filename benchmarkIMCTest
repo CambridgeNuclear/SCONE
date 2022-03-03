@@ -3,8 +3,8 @@
 
 type IMCPhysicsPackage;
 
-pop            10000;
-cycles         10;
+pop            20000;
+cycles         20;
 timeStepSize   1;
 
 XSdata     mg;
@@ -26,10 +26,14 @@ transportOperator {
 //  particle photon;
 //  G 2;
 //}
+//source {
+ // type imcSource;
+  //nParticles 1000;
+//}
 
 imcSource {
             type imcSource; 
-            nParticles 10000;
+            nParticles 20000;
           }
 
 inactiveTally {
