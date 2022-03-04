@@ -15,6 +15,7 @@ module energyMap_test
     private
     type(energyMap) :: map_lin
     type(energyMap) :: map_log
+    type(energyMap) :: map_predef
     type(energyMap) :: map_unstruct
   contains
     procedure :: setUp
@@ -60,6 +61,14 @@ contains
     call this % map_log % init(tempDict)
     call tempDict % kill()
 
+    ! Build map predef
+    call tempDict % init(2)
+    call tempDict % store('grid','predef')
+    call tempDict % store('name', 'casmo23')
+
+    call this % map_predef % init(tempDict)
+    call tempDict % kill()
+
     ! Build map log
     call tempDict % init(2)
     call tempDict % store('grid','unstruct')
@@ -79,6 +88,7 @@ contains
 
     call this % map_lin % kill()
     call this % map_log % kill()
+    call this % map_predef % kill()
     call this % map_unstruct % kill()
 
   end subroutine tearDown
@@ -128,6 +138,28 @@ contains
   end subroutine testLogGrid
 
   !!
+  !! Test Predefined grid
+  !!
+@Test
+  subroutine testPredefGrid(this)
+    class(test_energyMap), intent(inout) :: this
+    real(defReal),dimension(6),parameter :: E = [0.0445008907555061_defReal,   &
+                                                 1.79747463687278e-07_defReal, &
+                                                 1.64204055725811e-05_defReal, &
+                                                 2.34083673923110e-07_defReal, &
+                                                 5.98486350302033e-07_defReal, &
+                                                 20.00000000000000000_defReal]
+    integer(shortInt),dimension(6),parameter :: RES_IDX = [16, 4, 13, 4, 6, 0]
+    integer(shortInt),dimension(6)           :: idx
+    type(particleState),dimension(6)         :: states
+
+    states % E = E
+    idx = this % map_predef % map(states)
+    @assertEqual(RES_IDX, idx)
+
+  end subroutine testPredefGrid
+
+  !!
   !! Test Unstruct grid
   !!
 @Test
@@ -164,11 +196,15 @@ contains
     idx = this % map_lin % map(state)
     @assertEqual(0, idx,'Linear energy Map')
 
-    ! Log enertgMap
+    ! Log energyMap
     idx = this % map_log % map(state)
     @assertEqual(0, idx,'Log energy Map')
 
-    ! Unstructured energy map
+    ! Predef energyMap
+    idx = this % map_predef % map(state)
+    @assertEqual(0, idx,'Predef energy Map')
+
+    ! Unstructured energyMap
     idx = this % map_unstruct % map(state)
     @assertEqual(0, idx,'Unstructured energy Map')
 
@@ -190,6 +226,11 @@ contains
     @assertEqual(20, this % map_log % bins(1),'1st Dimension')
     @assertEqual(20, this % map_log % bins(0),'All bins')
     @assertEqual(0,  this % map_log % bins(-3),'Invalid Dimension')
+
+    ! Predef energyMap
+    @assertEqual(23, this % map_predef % bins(1),'1st Dimension')
+    @assertEqual(23, this % map_predef % bins(0),'All bins')
+    @assertEqual(0,  this % map_predef % bins(-3),'Invalid Dimension')
 
     ! Unstructured energyMap
     @assertEqual(25, this % map_unstruct % bins(1),'1st Dimension')
@@ -217,9 +258,13 @@ contains
     @assertTrue(out % isValid(),'Logarithmic map case')
     call out % reset()
 
+    call this % map_predef % print(out)
+    @assertTrue(out % isValid(),'Predefined map case')
+    call out % reset()
+
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'Unstructured map case')
-    call out % reset() 
+    call out % reset()
 
   end subroutine testPrint
 
