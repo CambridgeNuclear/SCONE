@@ -1,0 +1,228 @@
+
+// MCNP benchmark case IEU-MF-03
+//
+// This input file is for the detailed version of the benchmark case, there is also
+//  a simplified version with a single layer
+//
+// Spherical geometry consisting of 10 layers of uranium
+// Benchmark keff = 1.0000 +/- 0.0017
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active 100; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                     
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (keff);
+                norm fiss;
+                normVal 100.0;
+                keff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      layer1  { id 1;  type sphere; origin ( 0.0  0.0  0.0); radius 2.000;  }
+      layer2  { id 2;  type sphere; origin ( 0.0  0.0  0.0); radius 6.000;  }
+      layer3  { id 3;  type sphere; origin ( 0.0  0.0  0.0); radius 7.550;  }
+      layer4  { id 4;  type sphere; origin ( 0.0  0.0  0.0); radius 9.150;  }
+      layer5  { id 5;  type sphere; origin ( 0.0  0.0  0.0); radius 11.00;  }
+      layer6  { id 6;  type sphere; origin ( 0.0  0.0  0.0); radius 12.25;  }
+      layer7  { id 7;  type sphere; origin ( 0.0  0.0  0.0); radius 13.25;  }
+      layer8  { id 8;  type sphere; origin ( 0.0  0.0  0.0); radius 14.00;  }
+      layer9  { id 9;  type sphere; origin ( 0.0  0.0  0.0); radius 15.00;  }
+      layer10 { id 10; type sphere; origin ( 0.0  0.0  0.0); radius 15.324; }
+
+    }
+
+
+    cells
+    {
+      layer1  { type simpleCell; id 1;  surfaces (-1);   filltype mat; material layer1;  }
+      layer2  { type simpleCell; id 2;  surfaces (1 -2); filltype mat; material layer2;  }
+      layer3  { type simpleCell; id 3;  surfaces (2 -3); filltype mat; material layer3;  }
+      layer4  { type simpleCell; id 4;  surfaces (3 -4); filltype mat; material layer4;  }
+      layer5  { type simpleCell; id 5;  surfaces (4 -5); filltype mat; material layer5;  }
+      layer6  { type simpleCell; id 6;  surfaces (5 -6); filltype mat; material layer6;  }
+      layer7  { type simpleCell; id 7;  surfaces (6 -7); filltype mat; material layer7;  }
+      layer8  { type simpleCell; id 8;  surfaces (7 -8); filltype mat; material layer8;  }
+      layer9  { type simpleCell; id 9;  surfaces (8 -9); filltype mat; material layer9;  }
+      layer10 { type simpleCell; id 10; surfaces (9);    filltype mat; material layer10; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 10; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9 10); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+  materials { 
+    
+
+    layer1 {
+      temp       293;
+      composition {
+        92234.03  1.2743E-4;
+        92235.03  1.7093E-2;
+        92238.03  2.9308E-2;
+        6012.03  5.5181E-4;
+        26056.03  2.5713E-4;
+        74184.03  6.0083E-6;
+        29063.03  1.2183E-3;
+        28058.03  1.3191E-3;
+      }
+    }
+    layer2 {
+      temp       293;
+      composition {
+        92234.03  1.5814E-4;
+        92235.03  1.7321E-2;
+        92238.03  2.9785E-2;
+        6012.03  4.6687E-4;
+        26056.03  1.6066E-4;
+        74184.03  1.2200E-5;
+        29063.03  1.6315E-4;
+        28058.03  1.7665E-4;
+      }
+    }
+    layer3 {
+      temp       293;
+      composition {
+        92234.03  1.5677E-4;
+        92235.03  1.7194E-2;
+        92238.03  2.9508E-2;
+        6012.03  3.7026E-4;
+        26056.03  1.5926E-4;
+        74184.03  1.2095E-5;
+        29063.03  2.7440E-4;
+        28058.03  2.9710E-4;
+      }
+    }
+    layer4 {
+      temp       293;
+      composition {
+        92234.03  1.5581E-4;
+        92235.03  1.7174E-2;
+        92238.03  2.9235E-2;
+        6012.03  5.5201E-4;
+        26056.03  1.5829E-4;
+        74184.03  1.2021E-5;
+        29063.03  2.0893E-4;
+        28058.03  2.2621E-4;
+      }
+    }
+    layer5 {
+      temp       293;
+      composition {
+        92234.03  1.3256E-4;
+        92235.03  1.7141E-2;
+        92238.03  2.9417E-2;
+        6012.03  7.3802E-4;
+        26056.03  1.1904E-4;
+        74184.03  1.2054E-5;
+        29063.03  1.9423E-4;
+        28058.03  2.1030E-4;
+      }
+    }
+    layer6 {
+      temp       293;
+      composition {
+        92234.03  1.6004E-4;
+        92235.03  1.7121E-2;
+        92238.03  2.9159E-2;
+        6012.03  5.5031E-4;
+        26056.03  9.8630E-5;
+        74184.03  5.9920E-6;
+        29063.03  3.3673E-4;
+        28058.03  3.6459E-4;
+      }
+    }    
+    layer7 {
+      temp       293;
+      composition {
+        92234.03  1.7235E-4;
+        92235.03  1.6958E-2;
+        92238.03  2.8806E-2;
+        6012.03  9.0767E-4;
+        26056.03  9.7607E-5;
+        74184.03  1.1860E-5;
+        29063.03  3.5934E-4;
+        28058.03  3.8907E-4;
+      }
+    }
+    layer8 {
+      temp       293;
+      composition {
+        92234.03  1.4729E-4;
+        92235.03  1.6779E-2;
+        92238.03  2.8482E-2;
+        6012.03  6.2781E-4;
+        26056.03  9.6445E-5;
+        74184.03  5.8593E-6;
+        29063.03  3.8989E-4;
+        28058.03  4.2215E-4;
+      }
+    }
+    layer9 {
+      temp       293;
+      composition {
+        92234.03  1.4996E-4;
+        92235.03  1.7018E-2;
+        92238.03  2.9013E-2;
+        6012.03  1.3697E-3;
+        26056.03  1.3748E-4;
+        74184.03  1.1931E-5;
+        29063.03  4.0157E-4;
+        28058.03  4.3479E-4;
+        }
+    }
+    layer10 {
+      temp       293;
+      composition {
+        92234.03  1.3891E-4;
+        92235.03  1.6796E-2;
+        92238.03  2.8748E-2;
+        6012.03  6.3157E-4;
+        26056.03  7.7618E-5;
+        74184.03  5.8944E-6;
+        29063.03  1.4389E-3;
+        28058.03  1.5579E-3;
+      }
+    }
+} 
+  
+}
+  
+  
+  

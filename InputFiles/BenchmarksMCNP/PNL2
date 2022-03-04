@@ -1,0 +1,95 @@
+
+// MCNP benchmark case PNL-2
+//
+// Bare solution sphere, 19.5064cm radius
+// Benchmark keff = 1.0000 +/- 0.0065
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active 100; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                     
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (keff);
+                norm fiss;
+                normVal 100.0;
+                keff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 19.5064; }  
+    }
+
+
+    cells
+    {
+    }
+
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type rootUniverse; 
+	  border 1;
+          fill solution;
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    
+
+    solution {  
+      temp       293; 
+      composition {
+        94238.03  2.6153E-8;
+        94239.03  4.1249E-4;
+        94240.03  2.0181E-5;
+        94241.03  1.2181E-6;
+        94242.03  3.8579E-8;
+        07014.03  4.7228E-3;
+        01001.03  5.4160E-2;
+        08016.03  3.9755E-2;
+      }   
+    }	 
+
+} 
+  
+}
+  
+  
+  
