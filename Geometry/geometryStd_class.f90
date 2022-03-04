@@ -388,8 +388,7 @@ contains
   !!
   !! See geometry_inter for details
   !!
-  !! NOTE: This function assumes that usedMats from graph are sorted, and that
-  !!       VOID_MAT = huge(int)
+  !! NOTE: This function uses VOID_MAT and UNDEF_MAT from universalVariables
   !!
   function activeMats(self) result(matList)
     class(geometryStd), intent(in)               :: self
@@ -401,11 +400,15 @@ contains
     lastIdx = self % geom % graph % usedMats(N)
 
     ! Check if the last entry of the list is an actual material or void
-    if (lastIdx <= nMat()) then
-      matList = self % geom % graph % usedMats
-    else
-      ! If void is present in the geometry, it is excluded from the active materials list
+    if (lastIdx == VOID_MAT) then
+      N = N - 1
+      lastIdx = self % geom % graph % usedMats(N)
+    end if
+    ! Check if the last entry of the list is an undefined material
+    if (lastIdx == UNDEF_MAT) then
       matList = self % geom % graph % usedMats(1:N-1)
+    else
+      matList = self % geom % graph % usedMats(1:N)
     end if
 
   end function activeMats

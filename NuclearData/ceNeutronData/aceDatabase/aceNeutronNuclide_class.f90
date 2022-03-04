@@ -20,6 +20,9 @@ module aceNeutronNuclide_class
   use pureCapture_class,            only : pureCapture
   use neutronXSPackages_class,      only : neutronMicroXSs
 
+  ! Unresolved resonances treatment
+  use urrProbabilityTables_class,   only : urrProbabilityTables
+
   ! CE NEUTRON CACHE
   use ceNeutronCache_mod,           only : nuclideCache
 
@@ -77,14 +80,21 @@ module aceNeutronNuclide_class
   !!   idxMT          -> intMap that maps MT -> index in MTdata array
   !!   elasticScatter -> reactionHandle with data for elastic scattering
   !!   fission        -> reactionHandle with fission data (may be uninitialised)
+  !!   urrE           -> energy boundaries of probability tables. It's zero if tables are off
+  !!   probTab        -> probability tables for ures
+  !!   hasProbTab     -> probability tables flag, it's false by default
+  !!   IFF            -> ures probability tables multiplication factor flag
   !!
   !! Interface:
   !!   ceNeutronNuclide Interface
-  !!   search   -> search energy grid and return index and interpolation factor
-  !!   totalXS  -> return totalXS given index and interpolation factor
-  !!   microXSs -> return interpolated ceNeutronMicroXSs package given index and inter. factor
-  !!   init     -> build nuclide from aceCard
-  !!   display  -> print information about the nuclide to the console
+  !!   search    -> search energy grid and return index and interpolation factor
+  !!   totalXS   -> return totalXS given index and interpolation factor
+  !!   microXSs  -> return interpolated ceNeutronMicroXSs package given index and inter. factor
+  !!   getUrrXSs -> return ceNeutronMicroXSs accounting for ures probability tables
+  !!   init      -> build nuclide from aceCard
+  !!   init_urr  -> build list and mapping of nuclides to maintain temperature correlation
+  !!                when reading ures probability tables
+  !!   display   -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
     character(nameLen)                          :: ZAID    = ''
@@ -97,6 +107,13 @@ module aceNeutronNuclide_class
     type(elasticNeutronScatter) :: elasticScatter
     type(fissionCE)             :: fission
 
+    ! URR probability tables
+    real(defReal), dimension(2) :: urrE
+    type(urrProbabilityTables)  :: probTab
+    logical(defBool)            :: hasProbTab = .false.
+    integer(shortInt)           :: IFF = 0
+
+
   contains
     ! Superclass Interface
     procedure :: invertInelastic
@@ -107,7 +124,9 @@ module aceNeutronNuclide_class
     procedure :: search
     procedure :: totalXS
     procedure :: microXSs
+    procedure :: getUrrXSs
     procedure :: init
+    procedure :: init_urr
     procedure :: display
 
   end type aceNeutronNuclide
@@ -293,7 +312,7 @@ contains
   !!
   !! Return value of the total XS given interpolation factor and index
   !!
-  !! Does not prefeorm any check for valid input!
+  !! Does not perform any check for valid input!
   !!
   !! Args:
   !!   idx [in] -> index of the bottom bin in nuclide Energy-Grid
@@ -319,7 +338,7 @@ contains
   !!
   !! Return interpolated neutronMicroXSs package for the given interpolation factor and index
   !!
-  !! Does not prefeorm any check for valid input!
+  !! Does not perform any check for valid input!
   !!
   !! Args:
   !!   xss [out] -> XSs package to store interpolated values
@@ -353,6 +372,60 @@ contains
     end associate
 
   end subroutine microXSs
+
+  !!
+  !! Return neutronMicroXSs read from probability tables.
+  !!
+  !! NOTE: The IOA flag, read from the ACE files, indicates how to determine the cross
+  !!       section of 'other absorptions', i.e. all absorptions except for fission and (n,gamma).
+  !!       Its contribution is expected to be very small, so here it is ignored as done
+  !!       in Serpent and OpenMC as well.
+  !!
+  !! NOTE: The total xs is not read from tables, but calculated from the other xss.
+  !!
+  !! Does not perform any check for valid input!
+  !!
+  !! Args:
+  !!   E [in]      -> Energy of ingoing neutron
+  !!   xi [in]     -> Random number
+  !!   xss [inout] -> XSs package to store interpolated values
+  !!
+  subroutine getUrrXSs(self, E, xi, xss)
+    class(aceNeutronNuclide), intent(in) :: self
+    real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: xi
+    type(neutronMicroXSs), intent(inout) :: xss
+    real(defReal), dimension(3)          :: val
+
+    ! Read tables
+    call self % probTab % sampleXSs(E, xi, val)
+
+    ! Check if multiplication factor is on
+    if (self % IFF == 1) then
+      val(1) = xss % elasticScatter * val(1)
+      val(2) = xss % capture * val(2)
+      val(3) = xss % fission * val(3)
+    end if
+
+    ! Check inelastic scattering flag
+    if (self % probTab % ILF < 0) xss % inelasticScatter = ZERO
+
+    xss % elasticScatter   = val(1)
+    xss % capture          = val(2)
+
+    if(self % isFissile()) then
+      xss % nuFission = xss % nuFission/xss % fission * val(3)
+      xss % fission   = val(3)
+    else
+      xss % fission   = ZERO
+      xss % nuFission = ZERO
+    end if
+
+    ! Calculate total from the other values
+    xss % total = xss % elasticScatter + xss % inelasticScatter + xss % capture + &
+                  xss % fission
+
+  end subroutine getUrrXSs
 
   !!
   !! Initialise from an ACE Card
@@ -547,6 +620,39 @@ contains
     !call self % idxMT % shrink()
 
   end subroutine init
+
+  !!
+  !! Initialise probability tables from ACE card
+  !!
+  !! Switches off tables for this nuclide if tables have some inconsistency
+  !!
+  !! Args:
+  !!   ACE [inout]   -> ACE card
+  !!
+  subroutine init_urr(self, ACE)
+    class(aceNeutronNuclide), intent(inout) :: self
+    class(aceCard), intent(inout)           :: ACE
+
+    ! Read in ACE if the nuclide has URR probability tables
+    self % hasProbTab = ACE % hasProbTab()
+
+    if (self % hasProbTab) then
+      ! Initialise probability tables
+      call self % probTab % init(ACE)
+      ! Check if probability tables were read correctly
+      if (allocated(self % probTab % eGrid)) then
+        self % urrE = self % probTab % getEbounds()
+        self % IFF = self % probTab % getIFF()
+      else
+        ! Something went wrong!
+        self % hasProbTab = .false.
+        self % urrE = ZERO
+      end if
+    else
+      self % urrE = ZERO
+    end if
+
+  end subroutine init_urr
 
   !!
   !! A Procedure that displays information about the nuclide to the screen

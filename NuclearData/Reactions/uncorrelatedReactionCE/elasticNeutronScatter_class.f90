@@ -62,7 +62,7 @@ module elasticNeutronScatter_class
 contains
 
   !!
-  !! Initialsie
+  !! Initialise
   !!
   !! See reactionHandle for details
   !!

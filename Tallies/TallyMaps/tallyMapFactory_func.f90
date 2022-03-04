@@ -20,6 +20,7 @@ module tallyMapFactory_func
 
   ! TallyMap implementations
   use multiMap_class,         only : multiMap
+  use sphericalMap_class,     only : sphericalMap
 
   implicit none
   private
@@ -32,7 +33,8 @@ module tallyMapFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'multiMap']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'multiMap    ', &
+                                                                      'sphericalMap']
 
 
 contains
@@ -69,6 +71,10 @@ contains
       select case(type)
         case('multiMap')
           allocate( multiMap :: new)
+          call new % init(dict)
+
+        case('sphericalMap')
+          allocate( sphericalMap :: new)
           call new % init(dict)
 
       end select
