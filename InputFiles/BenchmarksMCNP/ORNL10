@@ -1,0 +1,103 @@
+
+// MCNP benchmark case ORNL-10
+//
+// Uranyl-nitrate solution (to 61.011cm radius) contained in aluminium
+//  spherical shell (to 61.786cm radius)
+// Benchmark keff = 1.0015 +/- 0.0026
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active 100; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                     
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (keff);
+                norm fiss;
+                normVal 100.0;
+                keff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 61.011; }
+      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 61.786; }
+    }
+
+
+    cells
+    {
+      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material solution; }
+      shell  { type simpleCell; id 4; surfaces (1 ); filltype mat; material shell; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells ( 3  4); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+materials { 
+    
+
+    solution {  
+      temp       293; 
+      composition {
+        92233.03  3.9124E-9;
+        92234.03  4.0905E-7;
+        92235.03  3.6157E-5;
+        92236.03  2.0858E-7;
+        92238.03  1.9878E-6;
+        07014.03  1.1212E-4;
+        01001.03  6.6409E-2;
+        08016.03  3.3601E-2;
+      }
+    }
+    shell {  
+      temp       293; 
+      composition {
+        13027.03  5.9881E-2;
+        14000.03  2.1790E-4;
+        26000.03  1.0958E-4;
+        29000.03  5.1364E-5;
+        25055.03  1.4853E-5;
+      }
+    }	 
+
+} 
+  
+}
+  
+  
+  
