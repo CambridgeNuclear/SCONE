@@ -105,7 +105,6 @@ contains
     class(centreOfMassClerk), intent(inout)   :: self
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
-    type(particleState)                       :: state
     integer(shortInt)                         :: i, cc
 
     if ((self % currentCycle) < (self % maxCycles)) then
@@ -145,7 +144,6 @@ contains
     class(outputFile), intent(inout)     :: outFile
     type(scoreMemory), intent(in)        :: mem
     integer(shortInt)                    :: i
-    real(defReal)                        :: val
     character(nameLen)                   :: name
 
     ! Begin block

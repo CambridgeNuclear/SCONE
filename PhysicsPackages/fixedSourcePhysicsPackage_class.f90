@@ -239,7 +239,6 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    integer(shortInt)                               :: i
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
