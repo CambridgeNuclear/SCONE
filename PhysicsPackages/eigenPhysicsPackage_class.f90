@@ -177,7 +177,6 @@ contains
 
       nParticles = self % thisCycle % popSize()
 
-      !!$omp parallel do firstprivate(buffer, collOp, pRNG, neutron) lastprivate(buffer, collOp, pRNG, neutron)
       !$omp parallel do
       gen: do n = 1, nParticles
 
