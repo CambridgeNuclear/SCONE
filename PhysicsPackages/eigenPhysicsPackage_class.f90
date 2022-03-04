@@ -86,6 +86,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
+    integer(shortInt)  :: bufferSize
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -135,21 +136,33 @@ contains
     type(tallyAdmin), pointer,intent(inout)   :: tally
     type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
     integer(shortInt), intent(in)             :: N_cycles
-    integer(shortInt)                         :: i, Nstart, Nend
+    type(particleDungeon), save               :: buffer
+    integer(shortInt)                         :: i, n, Nstart, Nend, nParticles
     class(tallyResult),allocatable            :: res
-    type(particle)                            :: neutron
+    type(collisionOperator), save             :: collOp
+    type(RNG), target, save                   :: pRNG     
+    type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
+    !$omp threadprivate(neutron, buffer, collOp, pRNG)
 
+    !$omp parallel
+    ! Create particle buffer
+    call buffer % init(self % bufferSize)
+    
+    ! Create RNG which can be thread private
+    pRNG = self % pRNG
 
-    ! Attach nuclear data and RNG to neutron
-    neutron % pRNG   => self % pRNG
-
-    ! Set geometry
+    ! Initialise neutron
     neutron % geomIdx = self % geomIdx
+    neutron % pRNG => pRNG
+    
+    ! Create a collision operator which can be made thread private
+    collOp = self % collOp
+    !$omp end parallel
 
-    ! Set initiial k-eff
+    ! Set initial k-eff
     k_new = self % keff_0
 
     ! Reset and start timer
@@ -162,29 +175,47 @@ contains
       Nstart = self % thisCycle % popSize()
       call tally % reportCycleStart(self % thisCycle)
 
-      gen: do
-        ! Obtain paticle from current cycle dungeon
+      nParticles = self % thisCycle % popSize()
+
+      !!$omp parallel do firstprivate(buffer, collOp, pRNG, neutron) lastprivate(buffer, collOp, pRNG, neutron)
+      !$omp parallel do
+      gen: do n = 1, nParticles
+
+        call neutron % pRNG % setSeed( (i-1) * 3 * self % pop + n )
+        
+        ! Obtain particle current cycle dungeon 
         call self % thisCycle % release(neutron)
-        call self % geom % placeCoord(neutron % coords)
 
-        ! Set k-eff for normalisation in the particle
-        neutron % k_eff = k_new
+        bufferLoop: do
+          call self % geom % placeCoord(neutron % coords)
 
-        ! Save state
-        call neutron % savePreHistory()
+          ! Set k-eff for normalisation in the particle
+          neutron % k_eff = k_new
+
+          ! Save state
+          call neutron % savePreHistory()
 
           ! Transport particle untill its death
           history: do
-            call self % transOp % transport(neutron, tally, self % thisCycle, self % nextCycle)
+            call self % transOp % transport(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
 
-            call self % collOp % collide(neutron, tally ,self % thisCycle, self % nextCycle)
+            call collOp % collide(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
           end do history
+        
+          ! Clear out buffer
+          if (buffer % isEmpty()) then
+            exit bufferLoop
+          else
+            call buffer % release(neutron)
+          end if
 
-        if( self % thisCycle % isEmpty()) exit gen
+        end do bufferLoop
+      
       end do gen
-
+      !$omp end parallel do
+      
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
@@ -253,7 +284,6 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-
     call self % thisCycle % init(3 * self % pop)
     call self % nextCycle % init(3 * self % pop)
 
@@ -339,6 +369,9 @@ contains
     call dict % get( self % N_active,'active')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
+
+    ! Parallel buffer size
+    call dict % getOrDefault( self % bufferSize, 'buffer', 10)
 
     ! Process type of data
     select case(energy)

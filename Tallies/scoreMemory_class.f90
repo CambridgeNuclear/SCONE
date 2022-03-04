@@ -172,6 +172,7 @@ contains
     end if
 
     ! Add the score
+    !$omp atomic
     self % bins(idx, BIN) = self % bins(idx, BIN) + score
 
   end subroutine score_defReal

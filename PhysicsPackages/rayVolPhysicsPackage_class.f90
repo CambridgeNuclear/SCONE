@@ -224,8 +224,14 @@ contains
     real(defReal), dimension(3)         :: r, u
     real(defReal)                       :: mu, phi
     integer(shortInt)                   :: gen, ray, matIdx, uniqueId, i
+    type(RNG), save                     :: pRNG
     real(defReal)                       :: elapsed_T, end_T, T_toEnd, av_speed, cycle_T
     character(100), parameter :: Here = 'cycles (rayVolPhysicsPackage_class.f90)'
+    !$omp threadprivate(pRNG)
+
+    !$omp parallel
+    pRNG = rand
+    !$omp end parallel
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -239,7 +245,11 @@ contains
 
     ! Perform clculation
     do gen = 1, self % N_cycles
+      !$omp parallel do private(r, u, mu, phi, i, rand3, matIdx, uniqueID, coords)
       do ray = 1, self % pop
+
+        ! Set seed
+        call pRNG % setSeed( (gen-1) * 100 * self % pop + ray )
 
         ! Find starting point that is inside the geometry
         i = 0
@@ -248,9 +258,9 @@ contains
         u = rotateVector([ONE, ZERO, ZERO], mu, phi)
 
         rejection : do
-          rand3(1) = rand % get()
-          rand3(2) = rand % get()
-          rand3(3) = rand % get()
+          rand3(1) = pRNG % get()
+          rand3(2) = pRNG % get()
+          rand3(3) = pRNG % get()
           r = bottom + (top - bottom) * rand3
 
           ! Exit if point is inside the geometry
@@ -266,9 +276,10 @@ contains
         ! Place in the geometry & process the ray
         call coords % init(r, u)
         call self % geom % placeCoord(coords)
-        call self % trackRay(coords, rand)
+        call self % trackRay(coords, pRNG)
 
       end do
+      !$omp end parallel do
 
       ! Calculate times
       call timerStop(self % timerMain)
@@ -379,8 +390,10 @@ contains
         end if
 
         ! Score result
+        !$omp atomic
         self % totDist = self % totDist + dist
         if (matIdx /= VOID_MAT) then
+          !$omp atomic
           self % res(matIdx, SCORE) = self % res(matIdx, SCORE) + dist
         end if
 
@@ -389,7 +402,7 @@ contains
       end do
 
       ! Kill the ray
-      rn = self % rand % get()
+      rn = rand % get()
       if (self % abs_prob > rn .or. coords % matIdx == OUTSIDE_MAT) exit hist
 
       ! Scatter the ray

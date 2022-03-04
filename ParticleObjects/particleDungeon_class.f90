@@ -130,6 +130,7 @@ contains
     class(particle), intent(in)           :: p
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
+    !$omp critical
     ! Increase population and weight
     self % pop = self % pop +1
 
@@ -142,6 +143,7 @@ contains
 
     ! Load new particle
     self % prisoners(self % pop) = p
+    !$omp end critical
 
   end subroutine detain_particle
 
@@ -154,6 +156,7 @@ contains
     character(100), parameter    :: Here = 'detain_particleState (particleDungeon_class.f90)'
 
     ! Increase population
+    !$omp critical
     self % pop = self % pop +1
 
     ! Check for population overflow
@@ -165,6 +168,7 @@ contains
 
     ! Load new particle
     self % prisoners(self % pop) = p_state
+    !$omp end critical
 
   end subroutine detain_particleState
 
@@ -177,6 +181,7 @@ contains
     type(particle), intent(inout)         :: p
     integer(shortInt)                     :: pop
 
+    !$omp critical
     ! Load data into the particle
     pop = self % pop
     p = self % prisoners(pop)
@@ -184,6 +189,7 @@ contains
 
     ! Decrease population
     self % pop = self % pop - 1
+    !$omp end critical
 
   end subroutine release
 
