@@ -249,7 +249,7 @@ contains
       do ray = 1, self % pop
 
         ! Set seed
-        call pRNG % setSeed( (gen-1) * 100 * self % pop + ray )
+        call pRNG % stride( (gen-1) * self % pop + ray )
 
         ! Find starting point that is inside the geometry
         i = 0

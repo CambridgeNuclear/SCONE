@@ -107,6 +107,8 @@ contains
       call dungeon % setSize(n)
 
       ! Generate n particles to populate dungeon
+      ! TODO: advance the rand after source generation!
+      !       This should prevent reusing RNs during transport
       !$omp parallel
       pRand = rand
       !$omp do private(pRand)

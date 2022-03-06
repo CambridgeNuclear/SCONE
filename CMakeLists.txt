@@ -138,10 +138,6 @@ endif()
 add_executable(scone.out ./Apps/scone.f90 )
 target_link_libraries(scone.out scone )
 
-# Temporaty app to test OMP components 
-add_executable(omp_app ./Apps/omp_app.f90 )
-target_link_libraries(omp_app scone )
-
 ####################################################################################################
 # COMPILE UNIT TESTS
 if(BUILD_TESTS)

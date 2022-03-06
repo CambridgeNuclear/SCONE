@@ -177,14 +177,15 @@ contains
 
       nParticles = self % thisCycle % popSize()
 
-      !$omp parallel do
+      !$omp parallel do copyin(pRNG)
       gen: do n = 1, nParticles
 
-        call neutron % pRNG % setSeed( (i-1) * 3 * self % pop + n )
+        ! TODO: Further work to ensure reproducibility!
+        call neutron % pRNG % stride(n)
         
         ! Obtain particle current cycle dungeon 
-        call self % thisCycle % release(neutron)
-
+        call self % thisCycle % copy(neutron, n)
+        
         bufferLoop: do
           call self % geom % placeCoord(neutron % coords)
 
@@ -215,12 +216,18 @@ contains
       end do gen
       !$omp end parallel do
       
+      call self % thisCycle % cleanPop() 
+      
+      ! Update RNG
+      call self % pRNG % stride(self % pop + 1)
+      pRNG = self % pRNG
+
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
 
       ! Normalise population
-      call self % nextCycle % normSize(self % pop, neutron % pRNG)
+      call self % nextCycle % normSize(self % pop, pRNG)
 
       if(self % printSource == 1) then
         call self % nextCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))

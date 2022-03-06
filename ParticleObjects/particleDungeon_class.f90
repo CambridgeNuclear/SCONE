@@ -128,23 +128,25 @@ contains
   subroutine detain_particle(self,p)
     class(particleDungeon), intent(inout) :: self
     class(particle), intent(in)           :: p
+    integer(shortInt)                     :: pop
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
     !$omp critical
     ! Increase population and weight
     self % pop = self % pop +1
-
+    pop = self % pop
+    !$omp end critical
+    
     ! Check for population overflow
-    if (self % pop > size(self % prisoners)) then
+    if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-
+    
     ! Load new particle
-    self % prisoners(self % pop) = p
-    !$omp end critical
-
+    self % prisoners(pop) = p
+    
   end subroutine detain_particle
 
   !!
@@ -153,22 +155,24 @@ contains
   subroutine detain_particleState(self,p_state)
     class(particleDungeon), intent(inout) :: self
     type(particleState), intent(in)       :: p_state
+    integer(shortInt)                     :: pop
     character(100), parameter    :: Here = 'detain_particleState (particleDungeon_class.f90)'
 
     ! Increase population
     !$omp critical
     self % pop = self % pop +1
-
+    pop = self % pop
+    !$omp end critical
+    
     ! Check for population overflow
-    if (self % pop > size(self % prisoners)) then
+    if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-
+   
     ! Load new particle
-    self % prisoners(self % pop) = p_state
-    !$omp end critical
+    self % prisoners(pop) = p_state 
 
   end subroutine detain_particleState
 
@@ -182,14 +186,14 @@ contains
     integer(shortInt)                     :: pop
 
     !$omp critical
-    ! Load data into the particle
-    pop = self % pop
-    p = self % prisoners(pop)
-    p % isDead = .false.
-
     ! Decrease population
+    pop = self % pop
     self % pop = self % pop - 1
     !$omp end critical
+    
+    ! Load data into the particle
+    p = self % prisoners(pop)
+    p % isDead = .false.
 
   end subroutine release
 

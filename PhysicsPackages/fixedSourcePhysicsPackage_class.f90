@@ -163,10 +163,12 @@ contains
       
       call tally % reportCycleStart(self % thisCycle)
       
-      !$omp parallel do
+      !$omp parallel do copyin(pRNG)
       gen: do n = 1, nParticles
         
-        call p % pRNG % setSeed( (i-1) * 3 * self % pop + n )
+        ! TODO: Further work to ensure reproducibility!
+        p % pRNG => pRNG
+        call p % pRNG % stride(n)
         
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
@@ -199,6 +201,10 @@ contains
       end do gen
       !$omp end parallel do
 
+      ! Update RNG
+      call self % pRNG % stride(self % pop)
+      pRNG = self % pRNG
+      
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
