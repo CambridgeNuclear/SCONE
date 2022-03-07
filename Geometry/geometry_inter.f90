@@ -122,7 +122,7 @@ module geometry_inter
     !! Result:
     !!   Size 6 array [x_min, y_min, z_min, x_max, y_max, z_max] with locations of
     !!   the lower and the high corner of the axis aligned bounding box.
-    !!   If geometry is infinate in a given axis direction * then *_min = *_max = ZERO
+    !!   If geometry is infinite in a given axis direction * then *_min = *_max = ZERO
     !!
     function bounds(self)
       import :: geometry, defReal
@@ -353,6 +353,7 @@ contains
     corner = low - HALF * step
     point(ax) = corner(ax)
 
+    !$omp parallel do firstprivate(point) private(matIdx, uniqueID)
     do j = 1, size(img, 2)
       point(plane(2)) = corner(plane(2)) + step(plane(2)) * j
 
@@ -371,6 +372,7 @@ contains
 
       end do
     end do
+    !$omp end parallel do
 
   end subroutine slicePlot
 

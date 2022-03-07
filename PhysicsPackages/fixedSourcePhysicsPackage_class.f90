@@ -78,6 +78,7 @@ module fixedSourcePhysicsPackage_class
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
+    integer(shortInt)  :: bufferSize
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle       => null()
@@ -121,52 +122,89 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, N
-    type(particle)                                  :: p
+    integer(shortInt)                               :: i, n, nParticles
+    type(particle), save                            :: p
+    type(particleDungeon), save                     :: buffer
+    type(collisionOperator), save                   :: collOp
+    type(RNG), target, save                         :: pRNG     
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
+    !$omp threadprivate(p, buffer, collOp, pRNG)
+    
+    !$omp parallel
+    ! Create particle buffer
+    call buffer % init(self % bufferSize)
+    
+    ! Create RNG which can be thread private
+    pRNG = self % pRNG
 
-    N = self % pop
-
-    ! Attach nuclear data and RNG to particle
-    p % pRNG   => self % pRNG
-    p % k_eff = ONE
+    ! Initialise neutron
     p % geomIdx = self % geomIdx
+    p % pRNG => pRNG
+    p % k_eff = ONE
+
+    ! Create a collision operator which can be made thread private
+    collOp = self % collOp
+    !$omp end parallel
+    
+    nParticles = self % pop
 
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
     do i=1,N_cycles
-
+      
       ! Send start of cycle report
-      call self % fixedSource % generate(self % thisCycle, N, p % pRNG)
+      call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
-
+      
       call tally % reportCycleStart(self % thisCycle)
-
-      gen: do
+      
+      !$omp parallel do copyin(pRNG)
+      gen: do n = 1, nParticles
+        
+        ! TODO: Further work to ensure reproducibility!
+        p % pRNG => pRNG
+        call p % pRNG % stride(n)
+        
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
-        call self % geom % placeCoord(p % coords)
 
-        ! Save state
-        call p % savePreHistory()
+        bufferLoop: do
+
+          call self % geom % placeCoord(p % coords)
+
+          ! Save state
+          call p % savePreHistory()
 
           ! Transport particle untill its death
           history: do
-            call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
+            call self % transOp % transport(p, tally, buffer, buffer)
             if(p % isDead) exit history
 
-            call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
+            call collOp % collide(p, tally, buffer, buffer)
             if(p % isDead) exit history
           end do history
 
-        if( self % thisCycle % isEmpty()) exit gen
-      end do gen
+          ! Clear out buffer
+          if (buffer % isEmpty()) then
+            exit bufferLoop
+          else
+            call buffer % release(p)
+          end if
 
+        end do bufferLoop
+
+      end do gen
+      !$omp end parallel do
+
+      ! Update RNG
+      call self % pRNG % stride(self % pop)
+      pRNG = self % pRNG
+      
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
@@ -267,6 +305,9 @@ contains
     call dict % getOrDefault(self % outputFormat, 'outputFormat', 'asciiMATLAB')
     call test_out % init(self % outputFormat)
 
+    ! Parallel buffer size
+    call dict % getOrDefault( self % bufferSize, 'buffer', 10)
+    
     ! Register timer
     self % timerMain = registerTimer('transportTime')
 
@@ -325,7 +366,7 @@ contains
     ! Size particle dungeon
     allocate(self % thisCycle)
     call self % thisCycle % init(3 * self % pop)
-
+    
     call self % printSettings()
 
   end subroutine init

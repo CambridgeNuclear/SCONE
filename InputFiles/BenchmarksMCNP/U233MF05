@@ -20,6 +20,8 @@ collisionOperator { neutronCE {type neutronCEstd;}
 transportOperator { type transportOperatorST;
                   } 
 
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
+
 inactiveTally {
               } 
 
