@@ -95,7 +95,7 @@ contains
   !!
   !! Return the boundary values of the energy grid
   !!
-  function getEbounds(self,request) result(eBounds)
+  function getEbounds(self, request) result(eBounds)
     class(thermalData), intent(in) :: self
     character(*), intent(in)       :: request
     real(defReal), dimension(2)    :: eBounds
@@ -152,7 +152,7 @@ contains
       f = (E - E_low) / (E_top - E_low)
     end associate
 
-    val = self % inelastic % xs(idx + 1)*f + (ONE-f) * self % inelastic % xs(idx)
+    val = self % inelastic % xs(idx + 1) * f + (ONE-f) * self % inelastic % xs(idx)
 
   end subroutine getInelXS
 

@@ -199,7 +199,7 @@ contains
     real(defReal)     :: E_min_low, E_max_low
     real(defReal)     :: E_min_up, E_max_up
     real(defReal)     :: E_min, E_max
-    real(defReal)     :: E1, E2, rho, ri, eps
+    real(defReal)     :: E1, E2, f, ri, eps
     real(defReal)     :: mu_ljk, mu1, mu2, mu3, muLeft, muRight
     integer(shortInt) :: l1, l2, l, j, k
     character(100), parameter :: Here = 'sampleOut(thermalScatterInelastic_class)'
@@ -212,21 +212,21 @@ contains
     E1 = self % eIn(l1)
     E2 = self % eIn(l2)
 
-    rho = (E_in - E1)/(E2 - E1)
+    f = (E_in - E1)/(E2 - E1)
 
     if ( .not. self % isInelContinuous) then
       j = binarySearch(self % CDF, rand % get())
       E_min = self % eOut(l1) % array(j)
       E_max = self % eOut(l2) % array(j)
 
-      E_out = E_min + rho * (E_max - E_min)
+      E_out = E_min + f * (E_max - E_min)
 
       ! Considering a uniform distribution for the angular bins
       k = floor(self % N_muOut * rand % get()) + 1
       mu2 = self % muMatrices(l1) % muOut(j, k)
       mu3 = self % muMatrices(l2) % muOut(j, k)
 
-      mu = mu2 + rho * (mu3 - mu2)
+      mu = mu2 + f * (mu3 - mu2)
 
     else
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -235,10 +235,10 @@ contains
       call self % eOutPdf(l2) % bounds(E_min_up,  E_max_up )
 
       ! Calculate interpolated bounds
-      E_min = E_min_low * (ONE - rho) + rho * E_min_up
-      E_max = E_max_low * (ONE - rho) + rho * E_max_up
+      E_min = E_min_low * (ONE - f) + f * E_min_up
+      E_max = E_max_low * (ONE - f) + f * E_max_up
 
-      if(rand % get() < rho) then
+      if(rand % get() < f) then
         l = l2
         E_out = self % eOutPdf(l) % sample(rand, j)
         ri = (E_out - E_min_up)/(E_max_up - E_min_up)
@@ -257,19 +257,19 @@ contains
       mu1 = mu_ljk + eps * (self % muMatrices(l) % muOut(j + 1, k) - mu_ljk)
 
       ! Smearing the outgoing angular distribution
-      if (k /= 1 .and. k /= self % N_muOut) then
-        mu2 = self % muMatrices(l) % muOut(j, k - 1)
-        mu3 = self % muMatrices(l) % muOut(j + 1, k - 1)
-        muLeft = mu2 + eps * (mu3 - mu2)
-        mu2 = self % muMatrices(l) % muOut(j, k + 1)
-        mu3 = self % muMatrices(l) % muOut(j + 3, k + 1)
-        muRight = mu2 + eps * (mu3 - mu2)
-        mu = mu1 + min((mu1 - muLeft),(mu1 + muRight))*(rand % get() - 0.5_defReal)
-        if (mu > ONE .or. mu < -ONE) mu = mu1
-      else
-        mu = mu1
-      end if
-
+!      if (k /= 1 .and. k /= self % N_muOut) then
+!        mu2 = self % muMatrices(l) % muOut(j, k - 1)
+!        mu3 = self % muMatrices(l) % muOut(j + 1, k - 1)
+!        muLeft = mu2 + eps * (mu3 - mu2)
+!        mu2 = self % muMatrices(l) % muOut(j, k + 1)
+!        mu3 = self % muMatrices(l) % muOut(j + 3, k + 1)
+!        muRight = mu2 + eps * (mu3 - mu2)
+!        mu = mu1 + min((mu1 - muLeft),(mu1 + muRight))*(rand % get() - 0.5_defReal)
+!        if (mu > ONE .or. mu < -ONE) mu = mu1
+!      else
+!        mu = mu1
+!      end if
+      mu = mu1
       if (mu > ONE .or. mu < -ONE) mu = mu_ljk
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     end if
@@ -311,7 +311,7 @@ contains
     call ACE % setToInelasticOut()
 
     if (.not. self % isInelContinuous) then
-    self % N_muOut = ACE % inelOutMu() + 1
+      self % N_muOut = ACE % inelOutMu() + 1
       Nout = ACE % inelOutE()
 
       allocate(self % eOut(Nin), self % muMatrices(Nin), &
