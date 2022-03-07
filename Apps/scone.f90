@@ -2,7 +2,8 @@ program scone
 
   use numPrecision
   use genericProcedures,          only : printStart
-  use commandLineUI,              only : getInputFile, clOptionIsPresent, addClOption
+  use openmp_func,                only : ompSetNumThreads
+  use commandLineUI,              only : getInputFile, clOptionIsPresent, addClOption, getFromCL
   use dictionary_class,           only : dictionary
   use dictParser_func,            only : fileToDict
   use physicsPackage_inter,       only : physicsPackage
@@ -15,13 +16,26 @@ program scone
   class(physicsPackage),allocatable :: core
   character(:),allocatable          :: inputPath
   integer(shortInt)                 :: timerIdx
+  integer(shortInt)                 :: cores
 
   ! Add command line options here
-  call addClOption('--plot',0,['int'],&
+  call addClOption('--plot', 0, ['int'],&
           'Executes geometry plotting specified by a viz dict in the input file')
+#ifdef _OPENMP
+  call addClOption('--omp', 1, ['int'], &
+          'Number of OpenMP threads in a parallel calculation')
+#endif
 
   ! Get path to input file
   call getInputFile(inputPath)
+
+  ! Set Number of threads
+  if (clOptionIsPresent('--omp')) then
+    call getFromCL(cores, '--omp', 1)
+  else
+    cores = 1
+  end if
+  call ompSetNumThreads(cores)
 
   ! Register timer
   timerIdx = registerTimer('Main Timer')

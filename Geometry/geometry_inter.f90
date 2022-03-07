@@ -353,6 +353,7 @@ contains
     corner = low - HALF * step
     point(ax) = corner(ax)
 
+    !$omp parallel do firstprivate(point) private(matIdx, uniqueID)
     do j = 1, size(img, 2)
       point(plane(2)) = corner(plane(2)) + step(plane(2)) * j
 
@@ -371,6 +372,7 @@ contains
 
       end do
     end do
+    !$omp end parallel do
 
   end subroutine slicePlot
 

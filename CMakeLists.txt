@@ -11,6 +11,7 @@ option(BUILD_TESTS "If is set to ON will compile tests" ON)
 option(LTO         "Enables link-time optimisation"     ON)
 option(COVERAGE    "Collect Coverage Info"              OFF)
 option(DEBUG       "Enable extra run-time checks"       OFF)
+option(OPENMP      "Enable parallelism with OpenMP"     ON)
 
 # Include local cmake modules. TODO: Test on WINDOWS!!!
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -52,6 +53,18 @@ if(LTO)
       message(FATAL_ERROR "LTO was requested but it is not supported by the compiler. "
                           "Use -DLTO=FALSE option to disable LTO. Error message: <${lto_error}>")
   endif()
+endif()
+
+# Set up OpenMP
+if(OPENMP)
+  find_package(OpenMP)
+
+  if(NOT OpenMP_Fortran_FOUND)
+    message(STATUS "<><><><><><><><><><><><><><><><><><><><><><><><><><>")
+    message(FATAL_ERROR "It seems that the Fortran compiler does not support OpanMP"
+                       "Use -DOPENMP=OFF to disable")
+  endif()
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${OpenMP_Fortran_FLAGS}")
 endif()
 
 
@@ -246,8 +259,10 @@ message(STATUS "  Unit Tests:                 " ${BUILD_TESTS})
 message(STATUS "  Link-time optimisation:     " ${LTO})
 message(STATUS "  Code coverage logging:      " ${COVERAGE})
 message(STATUS "  Extra runtime debug checks: " ${DEBUG})
+message(STATUS "  OpenMP parallelism:         " ${OPENMP})
 message(STATUS "  Fortran compiler:     " ${CMAKE_Fortran_COMPILER})
 message(STATUS "  Compiler version:     " ${CMAKE_Fortran_COMPILER_VERSION})
+message(STATUS "  OpenMP version:       " ${OpenMP_CXX_VERSION})
 message(STATUS "  Global Fortran flags: " ${CMAKE_Fortran_FLAGS})
 message(STATUS "  SCONE library flags:  " "${scone_extra_flags}")
 message(STATUS " <*))))><  <*))))><  <*))))><  <*))))><  <*))))><  <*))))>< ")
