@@ -144,7 +144,6 @@ contains
     allocate(materialCache(Nmat))
     allocate(nuclideCache(Nnuc))
     allocate(majorantCache(Nloc))
-    !$omp end parallel
 
     if(present(Nzaid)) then
       if (Nzaid > 0) then
@@ -153,6 +152,7 @@ contains
         call fatalError(Here,'Number of zaids must be +ve! Not: '//numToChar(Nzaid))
       end if
     end if
+    !$omp end parallel
 
   end subroutine init
 
