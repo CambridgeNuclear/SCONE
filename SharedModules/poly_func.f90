@@ -14,6 +14,8 @@ module poly_func
   !!                        - Currently gives error for input exponent of -1
   !!   poly_solve     -> Solves polynomial using Newton-Raphson method
   !!
+  !!   poly_eval      -> Evaluates polynomial at given value
+  !!
 
   contains
 

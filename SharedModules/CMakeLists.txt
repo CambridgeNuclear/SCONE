@@ -21,5 +21,6 @@ add_unit_tests( ./Tests/grid_test.f90
                 ./Tests/hashFunctions_test.f90
                 ./Tests/timer_test.f90
                 ./Tests/conversions_test.f90
-                ./Tests/charLib_test.f90)
+                ./Tests/charLib_test.f90
+                ./Tests/poly_func_test.f90)
  
