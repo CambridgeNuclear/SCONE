@@ -1,7 +1,7 @@
 module source_inter
 
   use numPrecision
-  use particle_class,        only : particleState
+  use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
@@ -35,9 +35,11 @@ module source_inter
   type, public,abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
+    integer(shortInt), dimension(:), allocatable, public :: matPops
   contains
     procedure, non_overridable             :: generate
     procedure, non_overridable             :: append
+    procedure, non_overridable             :: appendIMC
     procedure(sampleParticle), deferred    :: sampleParticle
     procedure(init), deferred              :: init
     procedure(kill), deferred              :: kill
@@ -113,6 +115,7 @@ contains
 
     end subroutine generate
 
+    !!
     !! Generate particles to populate a particleDungeon without overriding
     !! particles already present
     !!
@@ -140,6 +143,41 @@ contains
 
     end subroutine append
 
+    !!
+    !!
+    !!
+    subroutine appendIMC(self, dungeon, n, rand)
+      class(source), intent(inout)         :: self
+      type(particleDungeon), intent(inout) :: dungeon
+      type(particleDungeon)                :: tempDungeon
+      type(particle)                       :: p
+      integer(shortInt), intent(in)        :: n
+      class(RNG), intent(inout)            :: rand
+      integer(shortInt)                    :: i
+      real(defReal)                        :: normFactor
+
+      ! Reset particle population counters
+      do i = 1, size( self % matPops )
+        self % matPops(i) = 0
+      end do
+
+      ! Set temporary dungeon size
+      call tempDungeon % setSize(n)
+
+      ! Generate n particles to populate temporary dungeon
+      do i = 1, n
+        call tempDungeon % detain(self % sampleParticle(rand))
+      end do
+
+      ! Loop through again and add to input dungeon, normalising energies based on material
+      do i = 1, n
+        call tempDungeon % release(p)
+        ! Normalise
+        normFactor = self % matPops( p % matIdx() )
+        p % w = p % w / normFactor
+      end do        
+
+    end subroutine appendIMC
 
     !!
     !! Return to uninitialised state

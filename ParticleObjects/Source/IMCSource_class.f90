@@ -8,6 +8,7 @@ module IMCSource_class
   use RNG_class,               only : RNG
 
   use particle_class,          only : particleState, P_PHOTON
+  use particleDungeon_class,   only : particleDungeon
   use source_inter,            only : source, kill_super => kill
 
   use geometry_inter,          only : geometry
@@ -15,6 +16,7 @@ module IMCSource_class
   use nuclearDataReg_mod,      only : ndReg_getIMCMG => getIMCMG
   use nuclearDatabase_inter,   only : nuclearDatabase
   use mgIMCDatabase_inter,     only : mgIMCDatabase
+  use materialMenu_mod,        only : MMnMat => nMat
 
   implicit none
   private
@@ -72,6 +74,7 @@ contains
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: type
     real(defReal), dimension(6)              :: bounds
+    integer(shortInt)                        :: i, n
     character(100), parameter :: Here = 'init (imcSource_class.f90)'
 
     ! Provide geometry info to source
@@ -84,6 +87,13 @@ contains
     bounds = self % geom % bounds()
     self % bottom = bounds(1:3)
     self % top    = bounds(4:6)
+
+    ! Initialise array to store numbers of particles
+    n = MMnMat()
+    allocate( self % matPops(n) )
+    do i=1, n
+      self % matPops(i) = 0
+    end do
 
   end subroutine init
 
@@ -128,7 +138,8 @@ contains
       ! Reject if there is no material
       if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle rejection
 
-      mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))        ! Currently will only work as intended with 1 cell
+      ! Point to material
+      mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))
       if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return IMC material.")
 
       ! Sample Direction - chosen uniformly inside unit sphere
@@ -148,9 +159,12 @@ contains
       p % G        = self % G
       p % isMG     = .true.
 
-      ! Set Weight 
-      p % wgt = mat % getEmittedRad() / self % nParticles
- 
+      ! Set weight to be equal to total emitted radiation from material
+      p % wgt = mat % getEmittedRad()
+
+      ! Increase counter of number of particles in material in order to normalise later
+      self % matPops(matIdx) = self % matPops(matIdx) + 1
+
       ! Exit the loop
       exit rejection
 
