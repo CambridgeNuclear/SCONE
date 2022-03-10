@@ -461,13 +461,14 @@ contains
     real(defReal)                          :: totSum
     character(100), parameter :: Here = 'printToScreen (particleDungeon_class.f90)'
 
-    character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r   ',&
-                                                                       'dir ',&
-                                                                       'E   ',&
-                                                                       'G   ',&
-                                                                       'wgt ',&
-                                                                       'time',&
-                                                                       'pop ']
+    character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r     ',&
+                                                                       'dir   ',&
+                                                                       'matIdx',&
+                                                                       'E     ',&
+                                                                       'G     ',&
+                                                                       'wgt   ',&
+                                                                       'time  ',&
+                                                                       'pop   ']
 
     ! Reset sum variable
     totSum = 0
@@ -501,6 +502,17 @@ contains
           end do
         else
           call fatalError(Here, 'p % dir is not a scalar quantity')
+        end if
+
+      case('matIdx')
+        if( totBool .eqv. .false. ) then
+          print *, '**          ** matIdx **          **'
+          ! Print for each particle
+          do i = 1, iMax
+            print *, i,numToChar(self % prisoners(i) % matIdx)
+          end do
+        else
+          call fatalError(Here, 'p % matIdx not suitable for cumulative sum')
         end if
 
       case('E')
