@@ -166,7 +166,7 @@ contains
 
       ! Generate n particles to populate temporary dungeon
       do i = 1, n
-        call tempDungeon % detain(self % sampleParticle(rand))
+        call tempDungeon % replace(self % sampleParticle(rand), i)
       end do
 
       ! Loop through again and add to input dungeon, normalising energies based on material
@@ -175,6 +175,7 @@ contains
         ! Normalise
         normFactor = self % matPops( p % matIdx() )
         p % w = p % w / normFactor
+        call dungeon % detain(p)
       end do        
 
     end subroutine appendIMC
