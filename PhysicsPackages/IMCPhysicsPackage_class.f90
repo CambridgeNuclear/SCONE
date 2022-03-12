@@ -239,15 +239,6 @@ contains
           call fatalError(Here, 'Invalid result has been returned')
       end select
 
-      ! Update material properties
-      do j=1, mm_nMat()
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        print *, ''
-        print *, "Material update:  ", mm_matName(j)
-        call mat % updateMat(tallyEnergy)
-      end do
-      print *, ''
-
       ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')
 
@@ -262,6 +253,16 @@ contains
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
+
+      ! Update material properties
+      do j=1, mm_nMat()
+        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        print *
+        print *, "Material update:  ", mm_matName(j)
+        call mat % updateMat(tallyEnergy)
+      end do
+      print *
+
     end do
   end subroutine cycles
 
