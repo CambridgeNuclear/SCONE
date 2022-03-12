@@ -6,6 +6,7 @@ module source_inter
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
   use geometry_inter,        only : geometry
+  use genericProcedures,    only : fatalError
 
   implicit none
   private
@@ -144,7 +145,19 @@ contains
     end subroutine append
 
     !!
+    !! Generate n particles to populate a particleDungeon without overriding
+    !! particles already present. Unlike 'append' subroutine above, this is
+    !! specific to IMCSource_class and is needed for multiregion functionality,
+    !! the number of particles sampled in each matIdx is tallied and used to normalise
+    !! each particle weight, so that the total energy emitted in each region is as
+    !! required
     !!
+    !! Args:
+    !!   dungeon [inout] -> particle dungeon to be populated
+    !!   n [in]          -> number of particles to place in dungeon
+    !!
+    !! Result:
+    !!   A dungeon populated with n particles sampled from the source
     !!
     subroutine appendIMC(self, dungeon, n, rand)
       class(source), intent(inout)         :: self
@@ -155,6 +168,7 @@ contains
       class(RNG), intent(inout)            :: rand
       integer(shortInt)                    :: i
       real(defReal)                        :: normFactor
+      character(100), parameter            :: Here = "appendIMC (source_inter.f90)"
 
       ! Reset particle population counters
       do i = 1, size( self % matPops )
@@ -169,13 +183,28 @@ contains
         call tempDungeon % replace(self % sampleParticle(rand), i)
       end do
 
+      ! Call error if any region contains no generated particles
+      if ( minval(self % matPops) == 0 ) then
+        ! Currently will lead to energy imbalance as mat energy will be reduced by emittedRad but
+        !  no particles will be carrying it, possible to modify code to maintain energy balance
+        call fatalError(Here, "Not all regions emitted particles, use more particles")
+      end if
+
       ! Loop through again and add to input dungeon, normalising energies based on material
       do i = 1, n
+
         call tempDungeon % release(p)
+
+        ! Place inside geometry to set matIdx, for some reason resets when released from dungeon
+        call self % geom % placeCoord( p % coords )
+
         ! Normalise
-        normFactor = self % matPops( p % matIdx() )
+        normFactor = self % matPops( p % coords % matIdx )
         p % w = p % w / normFactor
+
+        ! Add to input dungeon
         call dungeon % detain(p)
+
       end do        
 
     end subroutine appendIMC

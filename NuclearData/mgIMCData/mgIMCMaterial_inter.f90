@@ -130,10 +130,10 @@ module mgIMCMaterial_inter
     !! Args:
     !!   deltaT -> Time step size
     !!
-    subroutine initProps(self, deltaT)
+    subroutine initProps(self, deltaT, T)
       import :: mgIMCMaterial, defReal
       class(mgIMCMaterial),intent(inout) :: self
-      real(defReal), intent(in)          :: deltaT
+      real(defReal), intent(in)          :: deltaT, T
     end subroutine initProps
 
   end interface

@@ -176,7 +176,7 @@ contains
     class(dictionary),target, intent(in)        :: dict
     character(nameLen), intent(in)              :: scatterKey
     integer(shortInt)                           :: nG, N, i
-    real(defReal), dimension(:), allocatable    :: temp
+    real(defReal), dimension(:), allocatable    :: temp, temp2
     type(dictDeck)                              :: deck
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
@@ -231,12 +231,12 @@ contains
     end do
 
     ! Set initial temperature and energy
-    self % T = 298
-    self % matEnergy = 100
+    !self % T = 298
+    !self % matEnergy = 1000
 
     ! Set Planck opacity
-    call dict % get(temp, 'sigmaP')
-    self % sigmaP = temp(1)
+    call dict % get(temp2, 'sigmaP')
+    self % sigmaP = temp2(1)
 
     ! Read heat capacity equation
     call dict % get(temp, 'cv')
@@ -247,7 +247,7 @@ contains
     self % updateEqn = temp
 
     ! Set volume -- Not yet set up, for now just set arbitrarily
-    self % volume = pi
+    self % volume = pi 
 
   end subroutine init
 
@@ -332,8 +332,8 @@ contains
     real(defReal)                           :: energy, const
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
-    ! Update material internal energy
-    print *, "matEnergy =", self % matEnergy
+    ! Print energies
+    print *, "matEnergy at start of timestep =", self % matEnergy
     print *, "emittedRad =", self % getEmittedRad()
     print *, "tallyEnergy =", tallyEnergy
 
@@ -342,6 +342,9 @@ contains
 
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
+
+    ! Print energy
+    print *, "matEnergy at end of timestep =", self % matEnergy
 
     ! New material internal energy density, U_{m,n+1}/V
     energy = self % matEnergy / self % volume
@@ -352,10 +355,10 @@ contains
     !!
     !!   where f(T) is the indefinite integral of cv (stored in self % updateEqn)
     !!
-    const = energy - const + poly_eval(self % updateEqn, self % T)
+    !const = energy - const + poly_eval(self % updateEqn, self % T)
 
     ! Update material temperature by solving f(T_{n+1}) = const
-    self % T = poly_solve(self % updateEqn, self % cv, self % T, const)
+    self % T = poly_solve(self % updateEqn, self % cv, self % T, energy)  !! Using energy and const give save result, const not necessary
     print *, 'T_new =', self % T
 
     if( self % T < 0 ) then
@@ -363,6 +366,12 @@ contains
     end if
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
+
+    !print *, 'fleck =', self % fleck
+    !print *, 'a =', radiationConstant
+    !print *, 'c =', lightSpeed
+    !print *, 'V =', self % volume
+    !print *, 'sigmaP=', self % sigmaP
 
   end subroutine updateMat
 
@@ -399,13 +408,15 @@ contains
   !! Args:
   !!   deltaT -> Time step size
   !!
-  subroutine initProps(self, deltaT)
+  subroutine initProps(self, deltaT, T)
     class(baseMgIMCMaterial),intent(inout) :: self
-    real(defReal), intent(in)              :: deltaT
+    real(defReal), intent(in)              :: deltaT, T
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
     self % deltaT = deltaT
 
+    !self % matEnergy = poly_eval(self % updateEqn, self % T)
+    self % T = T
     self % matEnergy = poly_eval(self % updateEqn, self % T)
 
   end subroutine initProps

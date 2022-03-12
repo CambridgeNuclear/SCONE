@@ -27,7 +27,8 @@ module IMCPhysicsPackage_class
                                              gr_geomIdx  => geomIdx
 
   ! Nuclear Data
-  use materialMenu_mod,               only : mm_nMat           => nMat
+  use materialMenu_mod,               only : mm_nMat           => nMat ,&
+                                             mm_matName        => matName
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -127,7 +128,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, N
+    integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, tallyEnergy
     class(IMCMaterial), pointer                     :: mat
@@ -145,8 +146,17 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-    call mat % initProps(self % deltaT)
+    ! Attach initial properties to material classes
+    do j=1, mm_nMat()
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+      call mat % initProps(self % deltaT, ONE*j)
+      print *, mm_matName(j)
+    end do
+
+    ! Generate initial source distribution
+    if( self % sourceGiven ) then
+      call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
+    end if
 
     do i=1,N_cycles
 
@@ -155,20 +165,16 @@ contains
       call self % nextCycle % cleanPop()
 
       ! Generate IMC source
-      call self % IMCSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
+      call self % IMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
         call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
       end if
 
-      !call self % thisCycle % printToScreen('time', 20)
-
-      ! Send start of cycle report
-      !call self % inputSource % generate(self % thisCycle, N, p % pRNG)
-      !if(self % printSource == 1) then
-      !  call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
-      !end if
+      if(self % printSource == 1) then
+        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+      end if
 
       call tally % reportCycleStart(self % thisCycle)
 
@@ -188,8 +194,6 @@ contains
 
         ! Save state
         call p % savePreHistory()
-
-        !print *, '     NEW PARTICLE     Weight:', p % w
 
           ! Transport particle until its death
           history: do
@@ -236,8 +240,11 @@ contains
       end select
 
       ! Update material properties
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(1))
-      call mat % updateMat(tallyEnergy)
+      do j=1, mm_nMat()
+        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        print *, "Material update:  ", mm_matName(j)
+        call mat % updateMat(tallyEnergy)
+      end do
 
       ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')
