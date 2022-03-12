@@ -333,6 +333,7 @@ contains
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
     ! Print energies
+    print *, "T_old =", self % T
     print *, "matEnergy at start of timestep =", self % matEnergy
     print *, "emittedRad =", self % getEmittedRad()
     print *, "tallyEnergy =", tallyEnergy
