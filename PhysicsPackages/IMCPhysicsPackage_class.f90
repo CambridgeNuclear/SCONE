@@ -242,9 +242,11 @@ contains
       ! Update material properties
       do j=1, mm_nMat()
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        print *, ''
         print *, "Material update:  ", mm_matName(j)
         call mat % updateMat(tallyEnergy)
       end do
+      print *, ''
 
       ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')
