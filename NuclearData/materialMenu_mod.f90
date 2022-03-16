@@ -16,6 +16,7 @@
 !!   getMatPtr -> Return pointer to a detailed material information (materialItem)
 !!   nMat      -> Return number of materials
 !!   matName   -> Return material Name given Index
+!!   matTemp   -> Return material Temperature given Index
 !!   matIdx    -> Return material Index given Name
 !!
 module materialMenu_mod
@@ -105,6 +106,7 @@ module materialMenu_mod
   public :: getMatPtr
   public :: nMat
   public :: matName
+  public :: matTemp
   public :: matIdx
 
 contains
@@ -213,6 +215,32 @@ contains
     end if
 
   end function matName
+
+  !!
+  !! Return starting temperature of materal given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material Index
+  !!
+  !! Result:
+  !!   Temperature of material as given in input file
+  !!
+  !! Erorrs:
+  !!   If idx is -ve or larger then number of defined materials
+  !!   0 is returned as its temperature
+  !!
+  function matTemp(idx) result(temp)
+    integer(shortInt), intent(in) :: idx
+    real(defReal)                 :: temp
+
+    if( idx <= 0 .or. nMat() < idx) then
+      temp = 0
+
+    else
+      temp = materialDefs(idx) % T
+    end if
+
+  end function matTemp
 
   !!
   !! Return material index Given Name
