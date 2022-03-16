@@ -3,9 +3,9 @@
 
 type IMCPhysicsPackage;
 
-pop            5;
-cycles         10;
-timeStepSize   0.00000000005;
+pop            10000;
+cycles         5;
+timeStepSize   0.1;
 
 XSdata     mg;
 dataType   mg; 
@@ -20,45 +20,26 @@ transportOperator {
                   } 
 
 
-source {
-  type pointSource;
-  r (0 0 0);
-  particle photon;
-  G 2;
-}
+//source {
+ // type pointSource;
+ // r (0 0 0);
+ // particle photon;
+ // G 1;
+//}
 
 imcSource {
             type imcSource; 
-            nParticles 5;
+            nParticles 10000;
           }
 
-inactiveTally {
-              } 
+inactiveTally {} 
 
-activeTally  {  
-                //norm    fiss; 
-                //normVal 100;
-                //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
-                       response (flux); flux {type fluxResponse;}
-                     } 
-	      }
+activeTally  {}
 
-tally  { 
-        //display (imcWeight);
-        //norm fiss;
-        //normVal 100.0;
-        //k-eff { type keffAnalogClerk; response (flux); flux {type fluxResponse;} }
-        //fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-        //flux { type collisionClerk; 
-          //     map { type energyMap; grid log; min 0.001; max 20; N 300;} 
-           //    response (flux); flux {type fluxResponse;}
-            //  }
-        imcWeight { type imcWeightClerk;
-                    map { type energyMap; grid log; min 0.001; max 20; N 300;}
-                    //response (imc); imc {type fluxResponse;}
-                   } 
+tally  {
+        //imcWeight { type imcWeightClerk;
+         //           map { type materialMap; materials ( mat1 mat2 ); }
+          //         } 
 	   }
 
 geometry { 
@@ -68,19 +49,18 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 1; }  
+      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 1;  }
+      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 1.26; }
     }
-    cells {}
+    cells
+    {
+      inner_cell { id 1; type simpleCell; surfaces (-1); filltype mat; material mat1; }
+      outer_cell { id 2; type simpleCell; surfaces ( 1); filltype mat; material mat2; }
+    }
     universes
     {
-
-      root
-      {
-	  id 1;
-	  type rootUniverse; 
-	  border 1;
-          fill fuel;
-      }
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+      cell { id 2; type cellUniverse; cells ( 1 2 ); }
     }   
 }
 
@@ -94,16 +74,12 @@ nuclearData {
   
   materials { 
 
-    fuel {  
+    mat1 {  
       temp       273; 
-      composition {
-        94239.03  0.037047; 
-        94240.03  0.0017512; 
-        94241.03  0.00011674; 
-        31000.03  0.0013752;
-      }
-      xsFile ./InputFiles/XS/imcData;   
-    }	 
+      composition {}
+      xsFile ./InputFiles/XS/imcData; 
+    }
+    mat2 { temp 273; composition {} xsFile ./InputFiles/XS/imcData; }
 
 } 
   

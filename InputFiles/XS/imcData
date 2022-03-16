@@ -3,25 +3,24 @@
 //        ‘Analytical Benchmark Test Set For Criticality Code Verification’
 //
 
-numberOfGroups 2; 
+numberOfGroups 1; 
 
-capture (0.0010046 0.025788);
+capture (1.0);
  
 scatteringMultiplicity ( 
-1.0 1.0 
-1.0 1.0  ); 
+0.0
+); 
 
 P0 ( 
- 0.62568 0.029227 
- 0.0     2.443830
+ 0.0
 );
 
 sigmaP (
- 0.5
+ 1.0
 );
 
 cv (
- 3.0 1.5 7.0
- 1.0 2.0 6.0
+ 4.0
+ 3.0
 );
 

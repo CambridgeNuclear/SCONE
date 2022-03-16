@@ -11,6 +11,7 @@ module imcWeightClerk_class
 
   ! Nuclear Data interface
   use nuclearDatabase_inter,      only : nuclearDatabase
+  use materialMenu_mod,           only : mm_nMat => nMat
 
   ! Tally Filters
   use tallyFilter_inter,          only : tallyFilter
@@ -19,6 +20,7 @@ module imcWeightClerk_class
   ! Tally Maps
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
+  use materialMap_class,          only : materialMap
 
   ! Tally Responses
   use tallyResponseSlot_class,    only : tallyResponseSlot
@@ -61,8 +63,9 @@ module imcWeightClerk_class
     class(tallyMap), allocatable                     :: map
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
-    ! Usefull data
+    ! Useful data
     integer(shortInt)  :: width = 0
+    integer(shortInt)  :: nMat
 
   contains
     ! Procedures used during build
@@ -81,8 +84,8 @@ module imcWeightClerk_class
 
   end type imcWeightClerk
 
-  type,public, extends(tallyResult) :: imcWeightResult
-    real(defReal)                   :: imcWeight = ZERO
+  type,public, extends(tallyResult)           :: imcWeightResult
+    real(defReal), dimension(:), allocatable  :: imcWeight
   end type imcWeightResult
 
 contains
@@ -111,6 +114,9 @@ contains
     if( dict % isPresent('map')) then
       call new_tallyMap(self % map, dict % getDictPtr('map'))
     end if
+
+    ! Store number of materials
+    self % nMat = mm_nMat()
 
     ! Get names of response dictionaries
     !call dict % get(responseNames,'response')
@@ -210,22 +216,20 @@ contains
     if(allocated(self % map)) then
       binIdx = self % map % map(state)
     else
-      binIdx = 1
+      binIdx = 1 !p % matIdx()
     end if
 
     ! Return if invalid bin index
     if (binIdx == 0) return
 
     ! Calculate bin address
-    adrr = self % getMemAddress()! + self % width * (binIdx -1)  - 1
-    ! Append all bins
-    !do i=1,self % width
+    adrr = self % getMemAddress() + binIdx - 1
+
+    ! Append to required bin
     if( p % isDead .and. p % fate /= LEAK_FATE ) then
       scoreVal = p % w
-      call mem % score(scoreVal, adrr)! + i)
+      call mem % score(scoreVal, adrr)
     end if
-
-    !end do
 
   end subroutine reportHist
 
@@ -298,10 +302,16 @@ contains
     class(imcWeightClerk), intent(in)               :: self
     class(tallyResult), allocatable, intent(inout)  :: res
     type(scoreMemory), intent(in)                   :: mem
-    real(defReal)                                   :: w, STD
+    real(defReal), dimension(:), allocatable        :: w
+    integer(shortInt)                               :: i, N
 
-    ! Get result value
-    call mem % getResult(w, STD, self % getMemAddress())
+    N = self % nMat
+    allocate( w(N) )
+
+    ! Get result value for each material
+    do i = 1, N 
+      call mem % getResult(w(i), self % getMemAddress()+i-1)
+    end do
 
     allocate(res, source = imcWeightResult(w))
 

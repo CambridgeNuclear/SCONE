@@ -82,6 +82,7 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: particleType
     integer(shortInt)  :: imcSourceN
     logical(defBool)   :: sourceGiven = .false.
+    integer(shortInt)  :: nMat
 
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
@@ -130,7 +131,8 @@ contains
     integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, tallyEnergy
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
@@ -147,11 +149,13 @@ contains
     call timerStart(self % timerMain)
 
     ! Attach initial properties to material classes
-    do j=1, mm_nMat()
+    do j=1, self % nMat 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
       call mat % initProps(self % deltaT, ONE*j)
       print *, mm_matName(j)
     end do
+
+    allocate(tallyEnergy(self % nMat))
 
     ! Generate initial source distribution
     if( self % sourceGiven ) then
@@ -229,23 +233,9 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
-      ! Obtain energy deposited in zone from tally
-      call tallyAtch % getResult(tallyRes, 'imcWeight')
-
-      select type(tallyRes)
-        class is(imcWeightResult)
-          tallyEnergy = tallyRes % imcWeight
-        class default
-          call fatalError(Here, 'Invalid result has been returned')
-      end select
-
-      ! Reset tally for next cycle
-      call tallyAtch % reset('imcWeight')
-
       ! Display progress
       call printFishLineR(i)
       print *
-      !call mat % updateMat(self % deltaT)
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
       print *, 'Pop:          ', numToChar(self % pop)
@@ -254,16 +244,32 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
 
+      ! Obtain energy deposition tally results
+      call tallyAtch % getResult(tallyRes, 'imcWeight')
+
+      select type(tallyRes)
+        class is(imcWeightResult)
+          do j = 1, self % nMat
+            tallyEnergy(j) = tallyRes % imcWeight(j)
+          end do
+        class default
+          call fatalError(Here, 'Invalid result has been returned')
+      end select
+
       ! Update material properties
-      do j=1, mm_nMat()
+      do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
         print *
         print *, "Material update:  ", mm_matName(j)
-        call mat % updateMat(tallyEnergy)
+        call mat % updateMat(tallyEnergy(j))
       end do
       print *
 
+      ! Reset tally for next cycle
+      call tallyAtch % reset('imcWeight')
+
     end do
+
   end subroutine cycles
 
   !!
@@ -307,7 +313,7 @@ contains
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2
+    type(dictionary)                                :: locDict1, locDict2, locDict3
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -316,6 +322,7 @@ contains
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
+    character(nameLen), dimension(:), allocatable   :: mats
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -406,13 +413,25 @@ contains
     allocate(self % tally)
     call self % tally % init(tempDict)
 
-    ! Initialise imcWeight tally attachment
-    call locDict1 % init(2)
-    call locDict2 % init(2)
+    ! Store number of materials
+    self % nMat = mm_nMat()
 
+    ! Create array of material names
+    allocate(mats(self % nMat))
+    do i=1, self % nMat
+      mats(i) = mm_matName(i)
+    end do
+
+    ! Initialise imcWeight tally attachment
+    call locDict1 % init(1)
+    call locDict2 % init(2)
+    call locDict3 % init(2)
+
+    call locDict3 % store('type','materialMap')
+    call locDict3 % store('materials', [mats])
     call locDict2 % store('type','imcWeightClerk')
+    call locDict2 % store('map', locDict3)
     call locDict1 % store('imcWeight', locDict2)
-    call locDict1 % store('display',['imcWeight'])
 
     allocate(self % imcWeightAtch)
     call self % imcWeightAtch % init(locDict1)
