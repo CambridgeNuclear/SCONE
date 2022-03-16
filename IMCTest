@@ -3,8 +3,8 @@
 
 type IMCPhysicsPackage;
 
-pop            10000;
-cycles         5;
+pop            20000;
+cycles         100;
 timeStepSize   0.1;
 
 XSdata     mg;
@@ -37,20 +37,18 @@ inactiveTally {}
 activeTally  {}
 
 tally  {
-        //imcWeight { type imcWeightClerk;
-         //           map { type materialMap; materials ( mat1 mat2 ); }
-          //         } 
 	   }
 
 geometry { 
     type geometryStd;
-    boundary (0 0 0 0 0 0);
+    boundary (1 1 1 1 1 1);
     graph {type shrunk;}
 
     surfaces
     {
       inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 1;  }
-      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 1.26; }
+      outer { id 2; type box;    origin ( 0.0  0.0  0.0); halfwidth ( 1 1 1); }
+      //outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 1.26; }
     }
     cells
     {
@@ -75,11 +73,12 @@ nuclearData {
   materials { 
 
     mat1 {  
-      temp       273; 
+      temp       1; 
       composition {}
-      xsFile ./InputFiles/XS/imcData; 
+      xsFile ./InputFiles/XS/imcData;
+      volume 4.18879; 
     }
-    mat2 { temp 273; composition {} xsFile ./InputFiles/XS/imcData; }
+    mat2 { temp 5; composition {} xsFile ./InputFiles/XS/imcData; volume 3.81121; }
 
 } 
   

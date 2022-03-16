@@ -246,9 +246,6 @@ contains
     call poly_integrate(temp)
     self % updateEqn = temp
 
-    ! Set volume -- Not yet set up, for now just set arbitrarily
-    self % volume = pi 
-
   end subroutine init
 
   !!
@@ -409,14 +406,20 @@ contains
   !! Args:
   !!   deltaT -> Time step size
   !!
-  subroutine initProps(self, deltaT, T)
+  !! Errors:
+  !!   fatalError if material volume <= 0
+  !!
+  subroutine initProps(self, deltaT, T, V)
     class(baseMgIMCMaterial),intent(inout) :: self
-    real(defReal), intent(in)              :: deltaT, T
+    real(defReal), intent(in)              :: deltaT, T, V
+    character(100), parameter  :: Here = 'initProps (baseMgIMCMaterial_class.f90)'
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
     self % deltaT = deltaT
+    self % volume = V
 
-    !self % matEnergy = poly_eval(self % updateEqn, self % T)
+    if(self % volume <= 0) call fatalError(Here, 'Invalid material volume given')
+
     self % T = T
     self % matEnergy = poly_eval(self % updateEqn, self % T)
 

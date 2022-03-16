@@ -17,6 +17,7 @@
 !!   nMat      -> Return number of materials
 !!   matName   -> Return material Name given Index
 !!   matTemp   -> Return material Temperature given Index
+!!   matVol    -> Return material Volume given Index
 !!   matIdx    -> Return material Index given Name
 !!
 module materialMenu_mod
@@ -63,6 +64,7 @@ module materialMenu_mod
   !!   name      -> name of material
   !!   matIdx    -> material index of the material
   !!   T         -> material temperature [K]
+  !!   V         -> volume of material zone, currently used in IMC calculations
   !!   dens      -> vector of densities [1/barn/cm]
   !!   nuclides  -> associated vector of nuclide types
   !!   extraInfo -> dictionary with extra keywords
@@ -87,6 +89,7 @@ module materialMenu_mod
     character(nameLen)                         :: name   = ''
     integer(shortInt)                          :: matIdx = 0
     real(defReal)                              :: T      = ZERO
+    real(defReal)                              :: V      = ZERO
     real(defReal),dimension(:),allocatable     :: dens
     type(nuclideInfo),dimension(:),allocatable :: nuclides
     type(dictionary)                           :: extraInfo
@@ -107,6 +110,7 @@ module materialMenu_mod
   public :: nMat
   public :: matName
   public :: matTemp
+  public :: matVol
   public :: matIdx
 
 contains
@@ -243,6 +247,32 @@ contains
   end function matTemp
 
   !!
+  !! Return volume of materal given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material Index
+  !!
+  !! Result:
+  !!   Volume of material as given in input file
+  !!
+  !! Erorrs:
+  !!   If idx is -ve or larger then number of defined materials
+  !!   0 is returned as its volume
+  !!
+  function matVol(idx) result(vol)
+    integer(shortInt), intent(in) :: idx
+    real(defReal)                 :: vol
+
+    if( idx <= 0 .or. nMat() < idx) then
+      vol = 0
+
+    else
+      vol = materialDefs(idx) % V
+    end if
+
+  end function matVol
+
+  !!
   !! Return material index Given Name
   !!
   !! Args:
@@ -290,6 +320,7 @@ contains
     ! Load easy components c
     self % name = name
     call dict % get(self % T,'temp')
+    call dict % getOrDefault(self % V, 'volume', ZERO)
 
     ! Get composition dictionary and load composition
     compDict => dict % getDictPtr('composition')

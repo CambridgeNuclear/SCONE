@@ -29,7 +29,8 @@ module IMCPhysicsPackage_class
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
                                              mm_matName        => matName ,&
-                                             mm_matTemp        => matTemp
+                                             mm_matTemp        => matTemp ,&
+                                             mm_matVol         => matVol
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -152,7 +153,7 @@ contains
     ! Attach initial properties to material classes
     do j=1, self % nMat 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      call mat % initProps(self % deltaT, mm_matTemp(j))
+      call mat % initProps(self % deltaT, mm_matTemp(j), mm_matVol(j))
     end do
 
     allocate(tallyEnergy(self % nMat))
