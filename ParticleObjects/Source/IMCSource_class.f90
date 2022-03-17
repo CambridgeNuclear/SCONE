@@ -122,8 +122,8 @@ contains
       ! Protect against infinite loop
       i = i +1
       if ( i > 200) then
-        call fatalError(Here, 'Infinite loop in sampling of fission sites. Please check that&
-                              & defined volume contains fissile material.')
+        call fatalError(Here, '200 particles in a row sampled in void or outside material.&
+                             & Check that geometry is as intended')
       end if
 
       ! Sample Position
