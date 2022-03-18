@@ -100,7 +100,7 @@ contains
     eBounds = C12 % thData % getEbounds('elastic')
 
     @assertEqual(1.000E-11_defReal, eBounds(1), TOL)
-    @assertEqual(20.0_defReal,  eBounds(2), TOL)
+    @assertEqual(4.9000E-06,  eBounds(2), TOL)
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test sampling from tables
@@ -115,9 +115,18 @@ contains
 !    @assertEqual(ZERO, val, TOL)
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
-    ! Test getting XSs
+    ! Test Getting material XSs
+    ! water
 
-    ! U-235
+    call p % build([ZERO, ZERO, ZERO], [ONE, ZERO, ZERO], 1.0E-6_defReal, ONE)
+
+    ! Total XS of water
+    p % E = 1.8E-6_defReal
+    @assertEqual(ONE, data % getTotalMatXS(p , 1) / 0.0459700882_defReal , TOL)
+
+    !<><><><><><><><><><><><><><><><><><><><><><><><>
+    ! Test getting XSs
+    ! H-1
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(2))
     nuclideCache(2) % E_tot = ONE
     nuclideCache(2) % needsSabInel = .true.

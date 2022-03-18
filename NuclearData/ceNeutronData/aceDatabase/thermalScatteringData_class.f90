@@ -100,7 +100,7 @@ contains
     character(*), intent(in)       :: request
     real(defReal), dimension(2)    :: eBounds
     real(defReal)                  :: E1, E2
-    integer(shortInt)              :: N1
+    integer(shortInt)              :: N1, N2
     character(100), parameter :: Here = 'getEbounds (thermalScatteringTables_class.f90)'
 
     select case(request)
@@ -114,7 +114,9 @@ contains
 
         if (self % hasElastic) then
           E1 = 1.0E-11_defReal
-          E2 = 20.0_defReal
+          N1 = size(self % elastic % eGrid)
+          N2 = size(self % inelastic % eGrid)
+          E2 = max(self % elastic % eGrid(N1),self % inelastic % eGrid(N2))
         else
           E1 = ZERO
           E2 = ZERO
@@ -177,7 +179,11 @@ contains
       if (E < self % elastic % eGrid(1)) then
         val = ZERO
       elseif (E > self % elastic % eGrid(N)) then
-        val = self % elastic % xs(N)/E
+        if (self % isCoherent) then
+          val = self % elastic % xs(N)/E
+        else
+          val = ZERO
+        end if
       else
         ! Get energy indexes
         idx = binarySearch(self % elastic % eGrid, E)

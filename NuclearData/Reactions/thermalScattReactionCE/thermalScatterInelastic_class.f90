@@ -196,12 +196,10 @@ contains
     real(defReal), intent(in)             :: E_in
     class(RNG), intent(inout)             :: rand
     real(defReal), intent(out), optional  :: lambda
-    real(defReal)     :: E_min_low, E_max_low
-    real(defReal)     :: E_min_up, E_max_up
     real(defReal)     :: E_min, E_max
-    real(defReal)     :: E1, E2, f, ri, eps
+    real(defReal)     :: E1, E2, f, eps
     real(defReal)     :: mu_ljk, mu1, mu2, mu3, muLeft, muRight
-    integer(shortInt) :: l1, l2, l, j, k
+    integer(shortInt) :: l1, l2, l, j, k, i
     character(100), parameter :: Here = 'sampleOut(thermalScatterInelastic_class)'
 
     ! Get energy indexes
@@ -215,6 +213,7 @@ contains
     f = (E_in - E1)/(E2 - E1)
 
     if ( .not. self % isInelContinuous) then
+      ! Discrete treatment
       j = binarySearch(self % CDF, rand % get())
       E_min = self % eOut(l1) % array(j)
       E_max = self % eOut(l2) % array(j)
@@ -229,60 +228,62 @@ contains
       mu = mu2 + f * (mu3 - mu2)
 
     else
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! Calculate energy boundaries
-      call self % eOutPdf(l1) % bounds(E_min_low, E_max_low)
-      call self % eOutPdf(l2) % bounds(E_min_up,  E_max_up )
-
-      ! Calculate interpolated bounds
-      E_min = E_min_low * (ONE - f) + f * E_min_up
-      E_max = E_max_low * (ONE - f) + f * E_max_up
-
-      if(rand % get() < f) then
+      ! Continuous treatment
+      ! Choose index from ingoing energy grid
+      if (f > HALF) then
         l = l2
-        E_out = self % eOutPdf(l) % sample(rand, j)
-        ri = (E_out - E_min_up)/(E_max_up - E_min_up)
       else
         l = l1
-        E_out = self % eOutPdf(l) % sample(rand, j)
-        ri = (E_out - E_min_low)/(E_max_low - E_min_low)
       end if
 
-      eps = self % eOutPdf(l) % getInterF(E_out, j)
-      E_out = E_min + ri*(E_max - E_min)
+      ! Sampling loop
+      sample: do i = 1, 100
 
-      ! Sampling the outgoing angle
-      k = floor(self % N_muOut * rand % get()) + 1
-      mu_ljk = self % muMatrices(l) % muOut(j, k)
-      mu1 = mu_ljk + eps * (self % muMatrices(l) % muOut(j + 1, k) - mu_ljk)
+        ! Sample outgoing energy
+        E_out = self % eOutPdf(l) % sample(rand, j, eps)
 
-      ! Smearing the outgoing angular distribution
-!      if (k /= 1 .and. k /= self % N_muOut) then
-!        mu2 = self % muMatrices(l) % muOut(j, k - 1)
-!        mu3 = self % muMatrices(l) % muOut(j + 1, k - 1)
-!        muLeft = mu2 + eps * (mu3 - mu2)
-!        mu2 = self % muMatrices(l) % muOut(j, k + 1)
-!        mu3 = self % muMatrices(l) % muOut(j + 3, k + 1)
-!        muRight = mu2 + eps * (mu3 - mu2)
-!        mu = mu1 + min((mu1 - muLeft),(mu1 + muRight))*(rand % get() - 0.5_defReal)
-!        if (mu > ONE .or. mu < -ONE) mu = mu1
-!      else
-!        mu = mu1
-!      end if
-      mu = mu1
-      if (mu > ONE .or. mu < -ONE) mu = mu_ljk
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        ! Adjust outgoing energy
+        if (E_out < self % eIn(l) * HALF) then
+          E_out = E_out * TWO * E_in / self % eIn(l) - E_out
+        else
+          E_out = E_out + E_in - self % eIn(l)
+        end if
+
+        ! Sampling the outgoing angle
+        k = floor(self % N_muOut * rand % get()) + 1
+        mu_ljk = self % muMatrices(l) % muOut(j, k)
+        mu1 = mu_ljk + eps * (self % muMatrices(l) % muOut(j + 1, k) - mu_ljk)
+
+        ! Smearing the outgoing angular distribution
+        if (k == 1) then
+          muLeft = - ONE - (mu1 + ONE)
+        else
+          mu2 = self % muMatrices(l) % muOut(j, k - 1)
+          mu3 = self % muMatrices(l) % muOut(j + 1, k - 1)
+          muLeft = mu2 + eps * (mu3 - mu2)
+        end if
+
+        if (k == self % N_muOut) then
+          muRight = ONE + (ONE - mu1)
+        else
+          mu2 = self % muMatrices(l) % muOut(j, k + 1)
+          mu3 = self % muMatrices(l) % muOut(j + 1, k + 1)
+          muRight = mu2 + eps * (mu3 - mu2)
+        end if
+
+        mu = mu1 + min(mu1 - muLeft, muRight - mu1) * (rand % get() - HALF)
+
+        ! Check if the angle is valid
+        if (mu <= ONE .and. mu >= - ONE) exit sample
+
+      end do sample
+
+      if (i == 100) call fatalError(Here,'Failed to find angle: '//numToChar(mu))
+
     end if
 
     if (E_out > 20.0 .or. E_out <= ZERO) then
       call fatalError(Here,'Failed to find energy: '//numToChar(E_out))
-    end if
-
-    if (.not. E_out == E_out ) print*, E_out, E_min, E_max, ri, j
-
-    if (mu > ONE .or. mu < -ONE) then
-      print*, self % N_muOut, k, j, eps, mu_ljk, mu1, mu2, mu3, muLeft, muRight
-      call fatalError(Here,'Failed to get angle'//numToChar(mu))
     end if
 
     ! Sample phi
@@ -338,20 +339,24 @@ contains
 
       do i = 1, Nin
 
-        allocate(self % muMatrices(i) % muOut(Eout(i), self % N_muOut), &
-        Etmp(Eout(i)), PDFtmp(Eout(i)), CDFtmp(Eout(i)+1))
+        allocate(self % muMatrices(i) % muOut(Eout(i) + 1, self % N_muOut), &
+        Etmp(Eout(i)+1), PDFtmp(Eout(i)+1), CDFtmp(Eout(i)+1))
 
         call ACE % setRelativeTo(loc(i), 1)
+        Etmp(1) = ZERO
+        PDFtmp(1) = ZERO
         CDFtmp(1) = ZERO
-        do j = 1, Eout(i)
+        self % muMatrices(i) % muOut(1,:) = ZERO
+        do j = 2, Eout(i) + 1
           Etmp(j) = ACE % readReal()
           PDFtmp(j) = ACE % readReal()
-          CDFtmp(j+1) = ACE % readReal()
+          CDFtmp(j) = ACE % readReal()
           self % muMatrices(i) % muOut(j,:) = ACE % readRealArray(self % N_muOut)
         end do
 
-        PDFtmp(Eout(i)) = ZERO
-        self % eOutPdf(i) = tabularEnergy(Etmp, PDFtmp, CDFtmp(1:Eout(i)), 2)
+        self % muMatrices(i) % muOut(1,:) = self % muMatrices(i) % muOut(2,:)
+        PDFtmp(Eout(i)+1) = ZERO
+        self % eOutPdf(i) = tabularEnergy(Etmp, PDFtmp, CDFtmp, 2)
 
         deallocate(Etmp, PDFtmp, CDFtmp)
 

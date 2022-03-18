@@ -186,7 +186,7 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     integer(shortInt), intent(in)         :: MT
     integer(shortInt), intent(in)         :: idx
-    class(reactionHandle),pointer         :: reac
+    class(reactionHandle), pointer        :: reac
     integer(shortInt)                     :: idxMT
 
     ! Catch case of invalid reaction
@@ -348,6 +348,7 @@ contains
         ! Add microscopic XSs
         call mat % xss % add(cache_nuclideCache(nucIdx) % xss, dens)
       end do
+
     end associate
 
   end subroutine updateMacroXSs

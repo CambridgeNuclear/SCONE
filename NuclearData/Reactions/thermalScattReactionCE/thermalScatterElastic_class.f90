@@ -23,6 +23,7 @@ module thermalScatterElastic_class
   type, public, extends(uncorrelatedReactionCE) :: thElasticScatter
     private
     real(defReal), dimension(:), allocatable   :: eIn
+    real(defReal), dimension(:), allocatable   :: pValues
     real(defReal), dimension(:,:), allocatable :: muMatrix
     logical(defBool)   :: elasticTable
     integer(shortInt)  :: N_muOut
@@ -147,57 +148,89 @@ contains
     real(defReal), intent(in)                :: E_in
     class(RNG), intent(inout)                :: rand
     real(defReal), intent(out), optional     :: lambda
-    real(defReal)        :: E1, E2, rho, mu_lk, mu1, mu2, mu3, muLeft, muRight
-    integer(shortInt)    :: l1, l2, k
+    real(defReal), dimension(:), allocatable :: prob
+    real(defReal)        :: E1, E2, f, mu_l1k, mu1, mu2, mu3, muLeft, muRight, r
+    integer(shortInt)    :: l1, l2, k, i
     character(100), parameter :: Here = 'sampleOut(thermalScatterElastic_class)'
 
     ! Set energy
     E_out = E_in
 
-    if (self % elasticTable .and. E_in < self % eIn(size(self % eIn))) then
+    if (self % elasticTable) then
 
       ! Get energy indexes
-      l1 = binarySearch(self % eIn, E_in)
+      if (E_in > self % eIn(size(self % eIn))) then
+        l1 = size(self % eIn) - 1
+      else
+        l1 = binarySearch(self % eIn, E_in)
+      end if
+
       l2 = l1 + 1
 
       ! Get energy values
       E1 = self % eIn(l1)
       E2 = self % eIn(l2)
-      rho = (E_in - E1)/(E2 - E1)
+      f = (E_in - E1)/(E2 - E1)
 
-      ! Sample the outgoing angle
-      k = floor(self % N_muOut * rand % get()) + 1
-      mu_lk = self % muMatrix(l1,k)
-      mu1 = mu_lk + rho * (self % muMatrix(l2,k) - mu_lk)
+      ! Sampling loop
+      sample: do i = 1, 100
 
-      ! Smearing the outgoing angular distribution
-      if (k /= 1 .and. k /= self % N_muOut) then
-        mu2 = self % muMatrix(l1, k - 1)
-        mu3 = self % muMatrix(l2, k - 1)
-        muLeft = mu2 + rho * (mu3 - mu2)
-        mu2 = self % muMatrix(l1, k + 1)
-        mu3 = self % muMatrix(l2, k + 1)
-        muRight = mu2 + rho * (mu3 - mu2)
-        mu = mu1 + min((mu1 - muLeft),(mu1 + muRight))*(rand % get() - 0.5_defReal)
-        if (mu > ONE .or. mu < -ONE) mu = mu1
-      else
-        mu = mu1
-      end if
+        ! Sample the outgoing angle
+        k = floor(self % N_muOut * rand % get()) + 1
+        mu_l1k = self % muMatrix(l1,k)
+        mu1 = mu_l1k + f * (self % muMatrix(l2,k) - mu_l1k)
+
+        ! Smearing the outgoing angular distribution
+        if (k == 1) then
+          muLeft = - ONE - (mu1 + ONE)
+        else
+          mu2 = self % muMatrix(l1, k - 1)
+          mu3 = self % muMatrix(l2, k - 1)
+          muLeft = mu2 + f * (mu3 - mu2)
+        end if
+
+        if (k == self % N_muOut) then
+          muRight = ONE + (ONE - mu1)
+        else
+          mu2 = self % muMatrix(l1, k + 1)
+          mu3 = self % muMatrix(l2, k + 1)
+          muRight = mu2 + f * (mu3 - mu2)
+        end if
+
+        mu = mu1 + min(mu1 - muLeft, muRight - mu1) * (rand % get() - HALF)
+
+        ! Check if the angle is valid
+        if (mu <= ONE .and. mu >= - ONE) exit sample
+
+      end do sample
+
+      if (i == 100) call fatalError(Here,'Failed to find angle: '//numToChar(mu))
 
     else
-      if (E_in >= self % eIn(size(self % eIn))) then
-        E1 = self % eIn(size(self % eIn))
+
+      ! Get energy indexes
+      if (E_in > self % eIn(size(self % eIn))) then
+        l1 = size(self % eIn) - 1
       else
-        ! Get energy indexes
         l1 = binarySearch(self % eIn, E_in)
-        E1 = self % eIn(l1)
       end if
-      mu = 1 - E1/E_in
 
-    end if
+      l2 = l1 + 1
 
-    if (mu > ONE .or. mu < -ONE) then
-      call fatalError(Here,'Failed to get angle'//numToChar(mu))
+      ! Sample a Bragg edge at a smaller energy than E_in
+      prob = self % pValues(1:l2)
+      prob(1) = ZERO
+      r = rand % get() * prob(l2)
+      k = binarySearch(prob, r)
+
+      E2 = self % eIn(k)
+      ! Compute angle
+      mu = ZERO !1 - TWO * E2/E_in
+
+      if (abs(mu) > ONE) then
+        print*, l2, r, k, E2, E_in
+        call fatalError(Here,'Failed to get angle'//numToChar(mu))
+      end if
     end if
 
     ! Sample phi
@@ -234,17 +267,20 @@ contains
     integer(shortInt)                      :: Nin, i
     character(100), parameter :: Here = 'buildFromACE (thElasticScatt_class.f90)'
 
-    Nin = ACE % inelasticEnergies()
+    ! Get scattering grids
     self % eIn = ACE % ESZ_elastic('energyGrid')
+    self % Pvalues = ACE % ESZ_elastic('Pvalues')
 
     self % elasticTable = ACE % hasITCA()
 
+    ! Get outgoing angle distributions
     if (self % elasticTable) then
 
+      Nin = ACE % elasticEnergies()
       self % N_muOut = ACE % elOutMu()
-      call ACE % setToElasticOut()
       allocate(self % muMatrix(Nin, self % N_muOut))
 
+      call ACE % setToElasticOut()
       do i = 1, Nin
         self % muMatrix(i,:) = ACE % readIntArray(Nin)
       end do
