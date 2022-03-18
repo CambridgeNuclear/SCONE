@@ -8,10 +8,11 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active 100; 
+active 400; 
 inactive 200; 
 XSdata   ceData;
 dataType ce; 
+outputFile LEUST02 ;
 
 collisionOperator { neutronCE {type neutronCEstd;} 
                      
@@ -63,7 +64,7 @@ geometry {
 nuclearData {
 
   handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/vr339/SCONE/myACE/JEF311.aceXS;}
   }
   
   
@@ -78,7 +79,7 @@ nuclearData {
         92238.03  1.1828E-3;
         09019.03  2.4893E-3;
         08016.03  3.3331E-2;
-        01001.03  6.1683E-2;
+        moder {1001.03  6.1683E-2; file h-h2o.40 ; }
       }
     }
     aluminium {  
