@@ -118,7 +118,7 @@ contains
   end subroutine kill
 
   !!
-  !! Returns number of particles produced on average by the fission
+  !! Returns number of particles produced on average by the scatter
   !!
   !! See reactionMG documentation for details
   !!
@@ -281,8 +281,8 @@ contains
   !! Return average production for scattering from G_in to G_out
   !!
   !! Args:
-  !!   G_out [in] -> Incident energy group
-  !!   G_in  [in]  -> Outgoing energy group
+  !!   G_in [in] -> Incident energy group
+  !!   G_out  [in]  -> Outgoing energy group
   !!
   !! Result:
   !!   Average particle production for transition from G_in to G_out
@@ -290,15 +290,16 @@ contains
   !! Error:
   !!   If either G_out or G_in is out of bounds returns 0.0
   !!
-  elemental function production(self, G_out, G_in) result (prod)
+  elemental function production(self, G_in, G_out) result (prod)
     class(multiScatterMG), intent(in) :: self
-    integer(shortInt), intent(in)     :: G_out
     integer(shortInt), intent(in)     :: G_in
+    integer(shortInt), intent(in)     :: G_out
     real(defReal)                     :: prod
 
     ! Check range
     if( min(G_out, G_in) > 0 .and. max(G_out,G_in) <=  size(self % scatterXSs)) then
       prod = self % prod(G_out, G_in)
+
     else
       prod = ZERO
     end if
@@ -340,6 +341,7 @@ contains
       call fatalError(Here,'Invalid size of scatteringMultiplicity. Expected: '//numToChar(nG**2)//&
                            ' got: '//numToChar(size(temp)))
     end if
+
     self % prod = reshape(temp,[nG, nG])
 
     ! Calculate P0 total scattering XSs
@@ -395,5 +397,5 @@ contains
     end select
 
   end function multiScatterMG_CptrCast
-    
+
 end module multiScatterMG_class
