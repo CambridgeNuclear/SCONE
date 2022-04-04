@@ -65,8 +65,8 @@ contains
   pure subroutine FNV_1_int32(key, hash)
     character(*),intent(in)     :: key
     integer(int32), intent(out) :: hash
-    integer(int32),parameter    :: FNV_prime  = 16777619_shortInt
-    integer(int32),parameter    :: FNV_offset = transfer(z'811c9dc5',int32)
+    integer(int32),parameter    :: FNV_prime  = 16777619_int32
+    integer(int32),parameter    :: FNV_offset = int(z'811c9dc5',int32)
     integer(int32)              :: bajt
     integer(shortInt)           :: i
 
