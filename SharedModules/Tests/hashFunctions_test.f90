@@ -17,11 +17,11 @@ contains
 
     ! Test for short int
     call FNV_1('All hail gfortran!', hashVal1)
-    hashResult1 = int(z'03deced0', shortInt)
+    hashResult1 = 64933584_shortInt !int(z'03deced0', shortInt)
     @assertEqual(hashResult1, hashVal1)
 
     call FNV_1('MY HASH IS BROKEN', hashVal1)
-    hashResult1 = int(z'867ff812', shortInt)
+    hashResult1 = -2038433774_shortInt !int(z'867ff812', shortInt)
     @assertEqual(hashResult1, hashVal1)
 
   end subroutine testFNV1
