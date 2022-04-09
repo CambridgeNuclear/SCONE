@@ -86,7 +86,8 @@ contains
     character(nameLen), dimension(:), intent(in) :: materials
     integer(shortInt), intent(in)                :: idx
     integer(shortInt)                            :: N, j, matIdx, isThere
-    character(100), parameter :: Here = 'build (homogMatMap_class.f90)'
+    integer(shortInt), parameter :: PRESENT = 1
+    character(100), parameter    :: Here = 'build (homogMatMap_class.f90)'
 
     ! Find number of materials to bin
     N = size(materials)
@@ -98,14 +99,14 @@ contains
     do j = 1,N
 
       matIdx = mm_matIdx(materials(j))
-      call self % binMap(idx) % add(matIdx, 1)
+      call self % binMap(idx) % add(matIdx, PRESENT)
 
       ! Check if a material was included twice
       isThere = self % matIndices % getOrDefault( matIdx, self % default)
       if (isThere == 1) then
         call fatalError(Here, 'Material '//materials(j)//' was included twice')
       else
-        call self % matIndices % add(matIdx, 1)
+        call self % matIndices % add(matIdx, PRESENT)
       end if
 
     end do
@@ -118,11 +119,12 @@ contains
   !! See tallyMap for specification
   !!
   subroutine init(self, dict)
-    class(homogMatMap), intent(inout)           :: self
-    class(dictionary), intent(in)               :: dict
-    integer(shortInt)                           :: N, i
-    character(nameLen)                          :: undefined
-    character(nameLen),dimension(:),allocatable :: binNames, matNames
+    class(homogMatMap), intent(inout)             :: self
+    class(dictionary), intent(in)                 :: dict
+    integer(shortInt)                             :: N, i
+    character(nameLen)                            :: undefined
+    character(nameLen), dimension(:), allocatable :: binNames, matNames
+    character(100), parameter :: Here = 'init (homogMatMap_class.f90)'
 
     ! Get bin names list
     call dict % get(binNames, 'bins')
@@ -139,14 +141,17 @@ contains
     call dict % getOrDefault(undefined, 'undefBin', 'false')
 
     ! Set default and number of bins
-    select case(undefined)
+    select case (undefined)
       case('yes','y','true','TRUE','T')
         self % Nbins   = N + 1
         self % default = N + 1
 
-      case default
+      case('no', 'n', 'false', 'FALSE', 'F')
         self % Nbins   = N
         self % default = 0
+        
+      case default
+        call fatalError(Here, undefined//' is an unrecognised entry!')
     end select
 
     do i = 1,N

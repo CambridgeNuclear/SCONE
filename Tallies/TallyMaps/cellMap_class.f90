@@ -1,7 +1,7 @@
 module cellMap_class
 
   use numPrecision
-  use genericProcedures,       only : numToChar
+  use genericProcedures,       only : fatalError, numToChar
   use dictionary_class,        only : dictionary
   use intMap_class,            only : intMap
   use particle_class,          only : particleState
@@ -20,6 +20,7 @@ module cellMap_class
 
   !!
   !! Map that divides based on the cell a particle is in
+  !! NOTE: the cell ID here is the one used in the input file
   !!
   !! Private Members:
   !!   binMap -> intMap that maps cellIdx to binIdx
@@ -79,7 +80,7 @@ contains
     logical(defBool), intent(in)                :: trackRest
     integer(shortInt)                           :: N, i
 
-    ! Find number of materials to bin
+    ! Find number of cells to bin
     N = size(cells)
 
     ! Allocate space in map and cellIndices
@@ -106,7 +107,7 @@ contains
   end subroutine build
 
   !!
-  !! Initialise material map from dictionary
+  !! Initialise cell map from dictionary
   !!
   !! See tallyMap for specification
   !!
@@ -116,19 +117,23 @@ contains
     integer(shortInt),dimension(:),allocatable :: cellIDs
     character(nameLen)                         :: undefined
     logical(defBool)                           :: trackUndefined
+    character(100), parameter :: Here = 'init (cellMap_class.f90)'
 
-    ! Get material names list
+    ! Get cell names list
     call dict % get(cellIDs, 'cells')
 
     ! Get setting for undefined tracking
     call dict % getOrDefault(undefined, 'undefBin', 'false')
 
-    select case(undefined)
+    select case (undefined)
       case('yes','y','true','TRUE','T')
         trackUndefined = .true.
 
-      case default
+      case('no', 'n', 'false', 'FALSE', 'F')
         trackUndefined = .false.
+
+      case default
+        call fatalError(Here, undefined//' is an unrecognised entry!')
     end select
 
     ! Initialise Map
@@ -197,7 +202,7 @@ contains
 
     call out % startArray(name,[1,self % Nbins])
 
-    ! Print material names
+    ! Print cell indexes
     do i=1,size(self % cellIndices)
       call out % addValue(numToChar(self % cellIndices(i)))
 
