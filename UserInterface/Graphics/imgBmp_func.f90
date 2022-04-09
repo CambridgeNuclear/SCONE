@@ -171,11 +171,10 @@ contains
     integer(shortInt), intent(in) :: N
     integer(shortInt), intent(in) :: offset
     character(14, byte)           :: str
-    character(1, byte)            :: mold
 
     ! Print file type
-    str(1:1) = transfer(z'42', mold)
-    str(2:2) = transfer(z'4D', mold)
+    str(1:1) = char(int(z'42'))
+    str(2:2) = char(int(z'4D'))
 
     ! Print size
     str(3:6) = intToByte(N, 4)
