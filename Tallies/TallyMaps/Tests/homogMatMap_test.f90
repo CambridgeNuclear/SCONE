@@ -1,4 +1,4 @@
-module homoMatMap_test
+module homogMatMap_test
   use numPrecision
   use pFUnit_mod
   use particle_class,          only : particleState
@@ -172,4 +172,4 @@ contains
 
 
 
-end module homoMatMap_test
+end module homogMatMap_test

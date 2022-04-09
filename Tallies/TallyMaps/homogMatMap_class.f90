@@ -270,9 +270,10 @@ contains
 
     call kill_super(self)
 
-    do i = 1, self % Nbins
+    do i = 1, size(self % binMap)
       call self % binMap(i) % kill()
     end do
+    deallocate(self % binMap)
 
     self % default = 0
     self % Nbins = 0
