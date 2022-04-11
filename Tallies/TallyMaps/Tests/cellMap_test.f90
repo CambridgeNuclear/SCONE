@@ -34,8 +34,6 @@ contains
   !!
   subroutine setUp(this)
     class(test_cellMap), intent(inout) :: this
-    integer(shortInt)                  :: temp
-    integer(shortInt)                  :: i
     type(dictionary)                   :: dict
     type(dictionary)                   :: mapDict1
 
