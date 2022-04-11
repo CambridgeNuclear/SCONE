@@ -149,7 +149,7 @@ contains
       case('no', 'n', 'false', 'FALSE', 'F')
         self % Nbins   = N
         self % default = 0
-        
+
       case default
         call fatalError(Here, undefined//' is an unrecognised entry!')
     end select
@@ -192,7 +192,7 @@ contains
     class(particleState), intent(in)   :: state
     integer(shortInt)                  :: idx, isThere
 
-    do idx = 1,self % Nbins
+    do idx = 1,size(self % binMap)
       isThere = self % binMap(idx) % getOrDefault( state % matIdx, self % default)
       if (isThere == 1) return
     end do
