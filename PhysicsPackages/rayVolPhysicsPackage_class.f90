@@ -295,7 +295,7 @@ contains
 
       ! Display progress
       call printFishLineR(gen)
-      print *,
+      print *
       print *, 'Cycle: ', numToChar(gen), ' of ', numToChar(self % N_cycles)
       print *, 'Pop: ', numToChar(self % pop)
       print '(A, ES12.5)', ' Av. Ray speed: [m/s]: ', av_speed
@@ -434,7 +434,7 @@ contains
     V_SD = self % ray_speed(2) / self % N_cycles - V**2
     V_SD = ONE/(self % N_cycles - 1) * sqrt(V_SD)
 
-    print *,
+    print *
     print '(A, ES12.5, A, ES12.5)', " Ray speed [m/s]: ", V, " +/- ", V_SD
     print *, "RELATIVE VOLUME FOR MATERIALS: "
     do i = 1, mm_nMat()

@@ -79,8 +79,8 @@ contains
 
     ! Test getting Group-To-Group production
     @assertEqual(1.1_defReal, reaction % production(1,1), TOL)
-    @assertEqual(1.05_defReal, reaction % production(2,1), TOL)
-    @assertEqual(ONE, reaction % production (1,2), TOL)
+    @assertEqual(ONE, reaction % production(2,1), TOL)
+    @assertEqual(1.05_defReal, reaction % production(1,2), TOL)
 
     ! Clean memory
     call dictT % kill()
@@ -88,5 +88,5 @@ contains
 
   end subroutine multiplicative_scattering_test
 
-    
+
 end module multiScatterMG_test

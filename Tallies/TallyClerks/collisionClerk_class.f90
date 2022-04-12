@@ -57,7 +57,7 @@ module collisionClerk_class
     class(tallyMap), allocatable                     :: map
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
-    ! Usefull data
+    ! Useful data
     integer(shortInt)  :: width = 0
 
   contains
