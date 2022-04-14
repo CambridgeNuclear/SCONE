@@ -27,6 +27,10 @@ module neutronCEimp_class
   use neutronScatter_class,          only : neutronScatter, neutronScatter_TptrCast
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
 
+  ! Geometry
+  use geometryReg_mod,               only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use weightWindowsField_class,      only : weightWindowsField, weightWindowsField_TptrCast
+
   ! Cross-Section Packages
   use neutronXsPackages_class,       only : neutronMicroXSs
 
@@ -92,10 +96,13 @@ module neutronCEimp_class
     real(defReal) :: tresh_E
     real(defReal) :: tresh_A
     ! Variance reduction options
+    logical(defBool) :: weightWindows
     logical(defBool) :: splitting
     logical(defBool) :: roulette
     logical(defBool) :: implicitAbsorption ! Prevents particles dying through capture
     logical(defBool) :: implicitSites ! Generates fission sites on every fissile collision
+
+    type(weightWindowsField), pointer :: weightWindowsMap
 
   contains
     ! Initialisation procedure
@@ -128,6 +135,8 @@ contains
   subroutine init(self, dict)
     class(neutronCEimp), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
+    integer(shortInt)                  :: idx
+    character(nameLen)                 :: name
     character(100), parameter :: Here = 'init (neutronCEimp_class.f90)'
 
     ! Call superclass
@@ -143,6 +152,7 @@ contains
     call dict % getOrDefault(self % tresh_A, 'massTreshold', 1.0_defReal)
 
     ! Obtain settings for variance reduction
+    call dict % getOrDefault(self % weightWindows,'weightWs', .false.)
     call dict % getOrDefault(self % splitting,'split', .false.)
     call dict % getOrDefault(self % roulette,'roulette', .false.)
     call dict % getOrDefault(self % minWgt,'minWgt',0.25_defReal)
@@ -167,6 +177,12 @@ contains
          'Must use Russian roulette when using implicit absorption')
       if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
+    end if
+
+    if (self % weightWindows) then
+      name = 'WeightWindows'
+      idx = gr_fieldIdx(name)
+      self % weightWindowsMap => weightWindowsField_TptrCast(gr_fieldPtr(idx))
     end if
 
   end subroutine init
@@ -452,28 +468,46 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    real(defReal), dimension(3)          :: val
+    real(defReal)                        :: minWgt, maxWgt, avWgt
 
-    if (p % E < self % minE ) then
+    if (p % E < self % minE) then
       p % isDead = .true.
+
     elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
-      call self % split(p, thisCycle)
+      call self % split(p, thisCycle, self % maxWgt)
+
     elseif ((self % roulette) .and. (p % w < self % minWgt)) then
-      call self % russianRoulette(p)
-    endif
+      call self % russianRoulette(p, self % avWgt)
+
+    elseif (self % weightWindows) then
+      val = self % weightWindowsMap % at(p)
+      minWgt = val(1)
+      maxWgt = val(2)
+      avWgt  = val(3)
+
+      if ((p % w > maxWgt) .and. (maxWgt /= ZERO)) then
+        call self % split(p, thisCycle, maxWgt)
+      elseif (p % w < minWgt) then
+        call self % russianRoulette(p, avWgt)
+      end if
+
+    end if
 
   end subroutine cutoffs
 
   !!
   !! Perform Russian roulette on a particle
   !!
-  subroutine russianRoulette(self, p)
+  subroutine russianRoulette(self, p, avWgt)
     class(neutronCEimp), intent(inout) :: self
     class(particle), intent(inout)     :: p
+    real(defReal), intent(in)          :: avWgt
 
-    if (p % pRNG % get() < (ONE - p % w/self % avWgt)) then
+    if (p % pRNG % get() < (ONE - p % w/avWgt)) then
       p % isDead = .true.
     else
-      p % w = self % avWgt
+      p % w = avWgt
     end if
 
   end subroutine russianRoulette
@@ -481,15 +515,27 @@ contains
   !!
   !! Split particle which has too large a weight
   !!
-  subroutine split(self, p, thisCycle)
+  subroutine split(self, p, thisCycle, maxWgt)
     class(neutronCEimp), intent(inout)    :: self
     class(particle), intent(inout)        :: p
     class(particleDungeon), intent(inout) :: thisCycle
-    integer(shortInt)                     :: mult,i
+    real(defReal), intent(in)             :: maxWgt
+    integer(shortInt)                     :: mult, n, i
+    real(defReal)                         :: prob
 
     ! This value must be at least 2
-    mult = ceiling(p % w/self % maxWgt)
+    n = floor(p % w/maxWgt)
+    prob = p % w/maxWgt - n
+
+    if (p % pRNG % get() < prob) then
+      mult = n + 1
+    else
+      mult = n
+    end if
+
     p % w = p % w/mult
+
+    if (mult == 1) return
 
     ! Add split particle's to the dungeon
     do i = 1,mult-1

@@ -24,7 +24,7 @@ module fixedSourcePhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+                                             gr_geomIdx  => geomIdx, gr_addField => addField
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -126,15 +126,15 @@ contains
     type(particle), save                            :: p
     type(particleDungeon), save                     :: buffer
     type(collisionOperator), save                   :: collOp
-    type(RNG), target, save                         :: pRNG     
+    type(RNG), target, save                         :: pRNG
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
     !$omp threadprivate(p, buffer, collOp, pRNG)
-    
+
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
+
     ! Create RNG which can be thread private
     pRNG = self % pRNG
 
@@ -146,7 +146,7 @@ contains
     ! Create a collision operator which can be made thread private
     collOp = self % collOp
     !$omp end parallel
-    
+
     nParticles = self % pop
 
     ! Reset and start timer
@@ -154,22 +154,22 @@ contains
     call timerStart(self % timerMain)
 
     do i=1,N_cycles
-      
+
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
-      
+
       call tally % reportCycleStart(self % thisCycle)
-      
+
       !$omp parallel do copyin(pRNG)
       gen: do n = 1, nParticles
-        
+
         ! TODO: Further work to ensure reproducibility!
         p % pRNG => pRNG
         call p % pRNG % stride(n)
-        
+
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
 
@@ -204,7 +204,7 @@ contains
       ! Update RNG
       call self % pRNG % stride(self % pop)
       pRNG = self % pRNG
-      
+
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
@@ -275,7 +275,7 @@ contains
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy, geomName
+    character(nameLen)                              :: nucData, energy, geomName, fieldName
     type(outputFile)                                :: test_out
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
@@ -307,7 +307,7 @@ contains
 
     ! Parallel buffer size
     call dict % getOrDefault( self % bufferSize, 'buffer', 10)
-    
+
     ! Register timer
     self % timerMain = registerTimer('transportTime')
 
@@ -357,6 +357,12 @@ contains
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
     call new_transportOperator(self % transOp, tempDict)
+
+    if (dict % isPresent('varianceReduction')) then
+      tempDict => dict % getDictPtr('varianceReduction')
+      fieldName = 'WeightWindows'
+      call gr_addField(fieldName, tempDict)
+    end if
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')
