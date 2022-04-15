@@ -437,6 +437,13 @@ contains
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
+    ! Read vaiance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      tempDict => dict % getDictPtr('varianceReduction')
+      fieldName = 'WeightWindows'
+      call gr_addField(fieldName, tempDict)
+    end if
+
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
@@ -458,13 +465,6 @@ contains
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
     call new_transportOperator(self % transOp, tempDict)
-
-    ! Read vaiance reduction option as a geometry field
-    if (dict % isPresent('varianceReduction')) then
-      tempDict => dict % getDictPtr('varianceReduction')
-      fieldName = 'WeightWindows'
-      call gr_addField(fieldName, tempDict)
-    end if
 
     ! Initialise active & inactive tally Admins
     tempDict => dict % getDictPtr('inactiveTally')
