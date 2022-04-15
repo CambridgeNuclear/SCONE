@@ -477,15 +477,8 @@ contains
 
     if (p % E < self % minE) then
       p % isDead = .true.
-    ! Splitting with fixed threshold
-    elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
-      call self % split(p, thisCycle, self % maxWgt)
-    ! Roulette with fixed threshold and survival weight
-    elseif ((self % roulette) .and. (p % w < self % minWgt)) then
-      call self % russianRoulette(p, self % avWgt)
     ! Weight Windows treatment
     elseif (self % weightWindows) then
-
       val = self % weightWindowsMap % at(p)
       minWgt = val(1)
       maxWgt = val(2)
@@ -497,6 +490,12 @@ contains
         call self % russianRoulette(p, avWgt)
       end if
 
+    ! Splitting with fixed threshold
+    elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
+      call self % split(p, thisCycle, self % maxWgt)
+    ! Roulette with fixed threshold and survival weight
+    elseif ((self % roulette) .and. (p % w < self % minWgt)) then
+      call self % russianRoulette(p, self % avWgt)
     end if
 
   end subroutine cutoffs
