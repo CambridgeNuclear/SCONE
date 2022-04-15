@@ -23,7 +23,7 @@ module eigenPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+                                             gr_geomIdx  => geomIdx, gr_addField => addField
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -140,7 +140,7 @@ contains
     integer(shortInt)                         :: i, n, Nstart, Nend, nParticles
     class(tallyResult),allocatable            :: res
     type(collisionOperator), save             :: collOp
-    type(RNG), target, save                   :: pRNG     
+    type(RNG), target, save                   :: pRNG
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
@@ -150,14 +150,14 @@ contains
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
+
     ! Create RNG which can be thread private
     pRNG = self % pRNG
 
     ! Initialise neutron
     neutron % geomIdx = self % geomIdx
     neutron % pRNG => pRNG
-    
+
     ! Create a collision operator which can be made thread private
     collOp = self % collOp
     !$omp end parallel
@@ -365,7 +365,7 @@ contains
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
-    character(nameLen)                        :: nucData, energy, geomName
+    character(nameLen)                        :: nucData, energy, geomName, fieldName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
@@ -458,6 +458,13 @@ contains
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
     call new_transportOperator(self % transOp, tempDict)
+
+    ! Read vaiance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      tempDict => dict % getDictPtr('varianceReduction')
+      fieldName = 'WeightWindows'
+      call gr_addField(fieldName, tempDict)
+    end if
 
     ! Initialise active & inactive tally Admins
     tempDict => dict % getDictPtr('inactiveTally')
