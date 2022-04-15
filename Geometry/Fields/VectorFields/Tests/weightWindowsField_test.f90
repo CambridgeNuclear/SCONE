@@ -28,7 +28,7 @@ module weightWindowsField_test
 contains
 
   !!
-  !! Sets up test_intMap object we can use in a number of tests
+  !! Sets up test_weightWindows object we can use in a number of tests
   !!
   subroutine setUp(this)
     class(test_weightWindows), intent(inout) :: this
@@ -41,7 +41,7 @@ contains
   end subroutine setUp
 
   !!
-  !! Kills test_intMap object we can use in a number of tests
+  !! Kills test_weightWindows object
   !!
   subroutine tearDown(this)
     class(test_weightWindows), intent(inout) :: this
@@ -69,6 +69,15 @@ contains
 
     bins = this % wwField % at(p)
     EXPECTED_BINS = [0.4, 1.5, 0.8]
+
+    @assertEqual(EXPECTED_BINS,bins)
+
+    p % isMG = .false.
+    p % coords % lvl(1) % r = [-0.5, 7.0, 0.0]
+    p % E = 10.0
+
+    bins = this % wwField % at(p)
+    EXPECTED_BINS = ZERO
 
     @assertEqual(EXPECTED_BINS,bins)
 

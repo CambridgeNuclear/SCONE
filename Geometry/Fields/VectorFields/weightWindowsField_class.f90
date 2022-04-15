@@ -21,15 +21,21 @@ module weightWindowsField_class
   public :: weightWindowsField_TptrCast
 
   !!
-  !! Uniform Vector Field
+  !! Weight Windows Vector Field
   !!
-  !! Always returns the same value
+  !! Returns a vector with lower, upper and survival weight
   !!
   !! Sample Dictionary Input:
-  !!   field { type uniformVectorField; value (3.0 1.0 0.3);}
+  !!   varianceReduction { type weightWindowsField; file /home/WWfile.txt ;}
   !!
   !! Public Members:
-  !!   val -> Value of the field
+  !!   net ->  map that lays over the geometry. Can be any type of Tally Map; it can
+  !!           also include undefined bins if weight windows values are given
+  !!   N   ->  total number of map bins
+  !!   lowerW ->  array with the weight windows lower weights;
+  !!   upperW ->  array with the weight windows upper weights;
+  !!   constSurvival ->  constant to be multiplied to lower weight for getting
+  !!                     roulette survival weight
   !!
   !! Interface:
   !!   vectorField interface
@@ -67,13 +73,16 @@ contains
     ! Load dictionary
     call fileToDict(dict2, path)
 
+    ! Initialise overlay map
     call new_tallyMap(self % net, dict2 % getDictPtr('map'))
     self % N = self % net % bins(ALL)
 
+    ! Read weight values from file
     call dict2 % get(self % constSurvival, 'constSurvival')
     call dict2 % get(self % lowerW, 'wLower')
     call dict2 % get(self % upperW, 'wUpper')
 
+    ! Check data consistency
     if (size(self % lowerW) /= self % N) then
       call fatalError(Here, 'Size of weight window net does not match the map provided')
     end if
@@ -99,7 +108,7 @@ contains
   end subroutine kill
 
   !!
-  !! Get value of the scalar field at the co-ordinate point
+  !! Get value of the vector field given the phase-space location of a particle
   !!
   !! See vectorField_inter for details
   !!
@@ -113,10 +122,14 @@ contains
     ! Get current particle state
     state = p
 
+    ! Read map bin index
     binIdx = self % net % map(state)
 
     ! Return if invalid bin index
-    if (binIdx == 0) return
+    if (binIdx == 0) then
+      val = ZERO
+      return
+    end if
 
     val(1) = self % lowerW(binIdx)
     val(2) = self % upperW(binIdx)
@@ -125,14 +138,14 @@ contains
   end function at
 
   !!
-  !! Cast field pointer to uniformVectorField pointer
+  !! Cast field pointer to weightWindowsField pointer
   !!
   !! Args:
   !!   source [in] -> source pointer of class field
   !!
   !! Result:
-  !!   Null is source is not of uniformVectorField
-  !!   Pointer to source if source is uniformVectorField type
+  !!   Null is source is not of weightWindowsField
+  !!   Pointer to source if source is weightWindowsField type
   !!
   pure function weightWindowsField_TptrCast(source) result(ptr)
     class(field), pointer, intent(in) :: source

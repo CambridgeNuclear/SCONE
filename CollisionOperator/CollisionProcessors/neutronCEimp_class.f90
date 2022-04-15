@@ -56,7 +56,8 @@ module neutronCEimp_class
   !!  avgWgt  -> weight of a particle on surviving splitting (optional)
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
-  !!  splitting -> splits particles above certain weight (on by default)
+  !!  weightWs  -> uses a weight windows field (off by default)
+  !!  splitting -> splits particles above certain weight (off by default)
   !!  roulette  -> roulettes particles below certain weight (off by defautl)
   !!  tresh_E -> Energy treshold for explicit treatment of target nuclide movement [-].
   !!             Target movment is sampled if neutron energy E < kT * tresh_E where
@@ -78,6 +79,7 @@ module neutronCEimp_class
   !!   #avgWgt         <real>;#
   !!   #impAbs         <logical>;#
   !!   #impGen         <logical>;#
+  !!   #weightWs       <logical>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEimp
@@ -172,6 +174,7 @@ contains
       if (self % maxWgt < 2 * self % minWgt) call fatalError(Here,&
               'Upper weight bound must be at least twice the lower weight bound')
     end if
+
     if (self % implicitAbsorption) then
       if (.not.self % roulette) call fatalError(Here,&
          'Must use Russian roulette when using implicit absorption')
@@ -179,6 +182,7 @@ contains
          'Must generate fission sites implicitly when using implicit absorption')
     end if
 
+    ! Sets up the weight windows field
     if (self % weightWindows) then
       name = 'WeightWindows'
       idx = gr_fieldIdx(name)
@@ -473,14 +477,15 @@ contains
 
     if (p % E < self % minE) then
       p % isDead = .true.
-
+    ! Splitting with fixed threshold
     elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
       call self % split(p, thisCycle, self % maxWgt)
-
+    ! Roulette with fixed threshold and survival weight
     elseif ((self % roulette) .and. (p % w < self % minWgt)) then
       call self % russianRoulette(p, self % avWgt)
-
+    ! Weight Windows treatment
     elseif (self % weightWindows) then
+
       val = self % weightWindowsMap % at(p)
       minWgt = val(1)
       maxWgt = val(2)

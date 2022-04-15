@@ -358,6 +358,7 @@ contains
     tempDict => dict % getDictPtr('transportOperator')
     call new_transportOperator(self % transOp, tempDict)
 
+    ! Read vaiance reduction option as a geometry field
     if (dict % isPresent('varianceReduction')) then
       tempDict => dict % getDictPtr('varianceReduction')
       fieldName = 'WeightWindows'
