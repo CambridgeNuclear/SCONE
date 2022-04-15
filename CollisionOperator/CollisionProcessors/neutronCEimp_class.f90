@@ -537,9 +537,9 @@ contains
       mult = n
     end if
 
-    p % w = p % w/mult
-
     if (mult == 1) return
+
+    p % w = p % w/mult
 
     ! Add split particle's to the dungeon
     do i = 1,mult-1
