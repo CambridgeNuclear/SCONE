@@ -23,7 +23,6 @@ module neutronCEimp_class
   ! Nuclear reactions
   use reactionHandle_inter,          only : reactionHandle
   use uncorrelatedReactionCE_inter,  only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
-  use elasticNeutronScatter_class,   only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use neutronScatter_class,          only : neutronScatter, neutronScatter_TptrCast
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
 
@@ -384,29 +383,32 @@ contains
   !! All CE elastic scattering happens in the CM frame
   !!
   subroutine elastic(self, p, collDat, thisCycle, nextCycle)
-    class(neutronCEimp), intent(inout)   :: self
-    class(particle), intent(inout)       :: p
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    type(elasticNeutronScatter),pointer  :: reac
+    class(neutronCEimp), intent(inout)     :: self
+    class(particle), intent(inout)         :: p
+    type(collisionData), intent(inout)     :: collDat
+    class(particleDungeon),intent(inout)   :: thisCycle
+    class(particleDungeon),intent(inout)   :: nextCycle
+    class(uncorrelatedReactionCE), pointer :: reac
+    logical(defBool)                       :: isFixed
     character(100),parameter :: Here = 'elastic (neutronCEimp_class.f90)'
 
     ! Get reaction
-    reac => elasticNeutronScatter_TptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
     collDat % kT = self % nuc % getkT()
 
-    ! Apply criterion for Free-Gas vs Fixed Target scattering
-    if ((p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)) then
-      call self % scatterFromFixed(p, collDat, reac)
+    isFixed = (p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)
 
+    ! Apply criterion for Free-Gas vs Fixed Target scattering
+    if (.not. reac % inCMFrame()) then
+      call self % scatterInLAB(p, collDat, reac)
+    elseif (isFixed) then
+      call self % scatterFromFixed(p, collDat, reac)
     else
       call self % scatterFromMoving(p, collDat, reac)
-
     end if
 
   end subroutine elastic
@@ -432,10 +434,8 @@ contains
     if (reac % inCMFrame()) then
       collDat % A =  self % nuc % getMass()
       call self % scatterFromFixed(p, collDat, reac)
-
     else
       call self % scatterInLAB(p, collDat, reac)
-
     end if
 
     ! Apply weigth change
@@ -572,7 +572,7 @@ contains
     class(neutronCEimp), intent(inout)         :: self
     class(particle), intent(inout)             :: p
     type(collisionData),intent(inout)          :: collDat
-    type(elasticNeutronScatter), intent(in)    :: reac
+    class(uncorrelatedReactionCE), intent(in)  :: reac
     integer(shortInt)                          :: MT, nucIdx
     real(defReal)                              :: A, kT, mu
     real(defReal),dimension(3)                 :: V_n           ! Neutron velocity (vector)

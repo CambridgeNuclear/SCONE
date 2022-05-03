@@ -89,7 +89,7 @@ contains
     class(thElasticScatter), intent(in) :: self
     logical(defBool)                    :: isIt
 
-     isIt = .true.
+     isIt = .false.
 
   end function inCMframe
 
@@ -225,7 +225,7 @@ contains
 
       E2 = self % eIn(k)
       ! Compute angle
-      mu = ZERO !1 - TWO * E2/E_in
+      mu = 1 - TWO * E2/E_in
 
       if (abs(mu) > ONE) then
         print*, l2, r, k, E2, E_in
