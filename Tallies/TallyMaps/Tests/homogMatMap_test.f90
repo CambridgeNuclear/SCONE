@@ -1,4 +1,4 @@
-module materialMap_test
+module homogMatMap_test
   use numPrecision
   use pFUnit_mod
   use particle_class,          only : particleState
@@ -9,27 +9,29 @@ module materialMap_test
   ! May not be ideal but there is a dependance on Global materialMenu
   use materialMenu_mod,        only : mm_init => init, mm_kill => kill
 
-  use materialMap_class,       only : materialMap
+  use homogMatMap_class,       only : homogMatMap
 
   implicit none
 
 
 @testCase
-  type, extends(TestCase) :: test_materialMap
+  type, extends(TestCase) :: test_homogMatMap
     private
-    type(materialMap),allocatable :: map_noUndef
-    type(materialMap),allocatable :: map_Undef
+    type(homogMatMap),allocatable :: map_noUndef
+    type(homogMatMap),allocatable :: map_Undef
   contains
     procedure :: setUp
     procedure :: tearDown
-  end type test_materialMap
+  end type test_homogMatMap
 
 
   !!
   !! Test parameters
   !!
-  character(*),dimension(*),parameter :: MAT_NAMES=['mat1','mat2','mat3','mat4','mat5']
-  character(*),dimension(*),parameter :: MAT_IN_MAP =['mat2','mat3','mat5']
+  character(*), dimension(*), parameter :: BIN_NAMES   = ['bin1','bin2','bin3']
+  character(*), dimension(*), parameter :: MAT_IN_BIN1 = ['mat3','mat4']
+  character(*), dimension(*), parameter :: MAT_IN_BIN2 = ['mat1']
+  character(*), dimension(*), parameter :: MAT_IN_BIN3 = ['mat5']
 
   !!
   !! Material Definitions
@@ -49,41 +51,26 @@ contains
   !! Sets up test_intMap object we can use in a number of tests
   !!
   subroutine setUp(this)
-    class(test_materialMap), intent(inout) :: this
+    class(test_homogMatMap), intent(inout) :: this
     type(dictionary)                  :: dict
     type(dictionary)                  :: mapDict1
-
-
-
-!    !*** Provisional -> allow registry without handles
-!    call tempDict2 % store('myMat','datalessMaterials')
-!
-!    ! Store empty- handles dictionary
-!    call dict % store('handles', tempDict2)
-!
-!    ! Create materials dictionary of empty dictionaries
-!    do i=1,size(MAT_NAMES)
-!      call tempDict1 % store(MAT_NAMES(i), tempDict3)
-!
-!    end do
-!
-!    ! Store materials dictionary in nuclearData dict
-!    call dict % store('materials',tempDict1)
-
 
     ! Build nuclear data
     call charToDict(dict, DICT_DEF)
     call mm_init(dict)
 
     ! Initialise dictionaries
-    call mapDict1 % init(2)
+    call mapDict1 % init(5)
 
     ! Build material map definition
-    call mapDict1 % store('materials', MAT_IN_MAP)
-    allocate(this % map_noUndef, source = materialMap(mapDict1))
+    call mapDict1 % store('bins', BIN_NAMES)
+    call mapDict1 % store(BIN_NAMES(1), MAT_IN_BIN1)
+    call mapDict1 % store(BIN_NAMES(2), MAT_IN_BIN2)
+    call mapDict1 % store(BIN_NAMES(3), MAT_IN_BIN3)
+    allocate(this % map_noUndef, source = homogMatMap(mapDict1))
 
     call mapDict1 % store('undefBin','true')
-    allocate(this % map_undef, source = materialMap(mapDict1))
+    allocate(this % map_undef, source = homogMatMap(mapDict1))
 
   end subroutine setUp
 
@@ -91,7 +78,7 @@ contains
   !! Kills test_intMap object we can use in a number of tests
   !!
   subroutine tearDown(this)
-    class(test_materialMap), intent(inout) :: this
+    class(test_homogMatMap), intent(inout) :: this
 
     call mm_kill()
     call this % map_noUndef % kill()
@@ -108,13 +95,13 @@ contains
   !!
 @Test
   subroutine testMappingNoUndefined(this)
-    class(test_materialMap), intent(inout)   :: this
+    class(test_homogMatMap), intent(inout)   :: this
     type(particleState)                      :: state
     integer(shortInt)                        :: i
-    integer(shortInt),dimension(5)           :: bins
-    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [0, 1, 2, 0, 3]
+    integer(shortInt),dimension(6)           :: bins
+    integer(shortInt),dimension(6),parameter :: EXPECTED_BINS = [2, 0, 1, 1, 3, 0]
 
-    do i=1,5
+    do i = 1,6
       state % matIdx = i
       bins(i) = this % map_noUndef % map(state)
     end do
@@ -129,13 +116,13 @@ contains
   !!
 @Test
   subroutine testMappingUndefined(this)
-    class(test_materialMap), intent(inout)   :: this
+    class(test_homogMatMap), intent(inout)   :: this
     type(particleState)                      :: state
     integer(shortInt)                        :: i
-    integer(shortInt),dimension(5)           :: bins
-    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [4, 1, 2, 4, 3]
+    integer(shortInt),dimension(6)           :: bins
+    integer(shortInt),dimension(6),parameter :: EXPECTED_BINS = [2, 4, 1, 1, 3, 4]
 
-    do i=1,5
+    do i = 1,6
       state % matIdx = i
       bins(i) = this % map_undef % map(state)
     end do
@@ -150,10 +137,10 @@ contains
   !!
 @Test
   subroutine testNumberOfBinsInquiry(this)
-    class(test_materialMap), intent(inout) :: this
+    class(test_homogMatMap), intent(inout) :: this
 
-    @assertEqual(3, this % map_noUndef % bins(1),'materialMap without undefined bin')
-    @assertEqual(4, this % map_undef % bins(1),'materialMap with undefined bin')
+    @assertEqual(3, this % map_noUndef % bins(1), 'homogMatMap without undefined bin')
+    @assertEqual(4, this % map_undef % bins(1),   'homogMatMap with undefined bin')
     @assertEqual(3, this % map_noUndef % bins(0), 'Number of all bins')
     @assertEqual(0, this % map_noUndef % bins(2), 'higher dimension')
     @assertEqual(0, this % map_noUndef % bins(-2),'invalid dimension')
@@ -166,8 +153,8 @@ contains
   !!
 @Test
   subroutine testPrint(this)
-    class(test_materialMap), intent(inout) :: this
-    type(outputFile)                     :: out
+    class(test_homogMatMap), intent(inout) :: this
+    type(outputFile)                       :: out
 
     call out % init('dummyPrinter', fatalErrors = .false.)
 
@@ -183,4 +170,4 @@ contains
 
 
 
-end module materialMap_test
+end module homogMatMap_test

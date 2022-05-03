@@ -62,11 +62,17 @@ contains
   !! Prime and offset taken from:
   !!   http://www.isthe.com/chongo/tech/comp/fnv/index.html
   !!
+  !! Note:
+  !!   Since we cannot have unsigned integer we need to set the bits to signed integer.
+  !!   To avoid compiler warnings the conversion was done externally.
+  !!
+  !! TODO: Hash functions should be offloaded to C
+  !!
   pure subroutine FNV_1_int32(key, hash)
     character(*),intent(in)     :: key
     integer(int32), intent(out) :: hash
-    integer(int32),parameter    :: FNV_prime  = 16777619_shortInt
-    integer(int32),parameter    :: FNV_offset = transfer(z'811c9dc5',int32)
+    integer(int32),parameter    :: FNV_prime  = 16777619_int32
+    integer(int32),parameter    :: FNV_offset =  -2128831035_int32 !int(z'811c9dc5',int32)
     integer(int32)              :: bajt
     integer(shortInt)           :: i
 
