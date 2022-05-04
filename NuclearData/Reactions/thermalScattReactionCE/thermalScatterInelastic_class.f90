@@ -178,8 +178,8 @@ contains
     real(defReal), intent(in)             :: E_in
     real(defReal)                         :: prob
 
-    prob = ZERO
-
+    ! Not implemented yet
+    prob = TWO
 
   end function probOf
 

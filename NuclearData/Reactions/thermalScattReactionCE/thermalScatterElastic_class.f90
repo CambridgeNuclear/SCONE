@@ -228,7 +228,6 @@ contains
       mu = 1 - TWO * E2/E_in
 
       if (abs(mu) > ONE) then
-        print*, l2, r, k, E2, E_in
         call fatalError(Here,'Failed to get angle'//numToChar(mu))
       end if
     end if
@@ -254,7 +253,8 @@ contains
     real(defReal), intent(in)           :: E_in
     real(defReal)                       :: prob
 
-    prob = ONE
+    ! Not implemented yet
+    prob = TWO
 
   end function probOf
 
