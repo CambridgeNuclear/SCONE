@@ -1,14 +1,12 @@
-module materialMap_class
+module cellMap_class
 
   use numPrecision
-  use genericProcedures,       only : fatalError
+  use genericProcedures,       only : fatalError, numToChar
   use dictionary_class,        only : dictionary
   use intMap_class,            only : intMap
   use particle_class,          only : particleState
   use outputFile_class,        only : outputFile
   use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
-
-  use materialMenu_mod,        only : mm_matIdx => matIdx, mm_matName => matName
 
   implicit none
   private
@@ -16,18 +14,19 @@ module materialMap_class
   !!
   !! Constructor
   !!
-  interface materialMap
-    module procedure materialMap_fromDict
+  interface cellMap
+    module procedure cellMap_fromDict
   end interface
 
   !!
-  !! Map that divides based on the material a particle is in
+  !! Map that divides based on the cell a particle is in
+  !! NOTE: the cell ID here is the one used in the input file
   !!
   !! Private Members:
-  !!   binMap -> intMap that maps matIdx to binIdx
-  !!   default -> binIdx for materials not in binMap
+  !!   binMap -> intMap that maps cellIdx to binIdx
+  !!   default -> binIdx for cells not in binMap
   !!   Nbins -> Number of bins in the map
-  !!   matIndices -> List of material indices in the map
+  !!   cellIndices -> List of cell indices in the map
   !!
   !! Interface:
   !!   tallyMap Interface
@@ -35,17 +34,17 @@ module materialMap_class
   !!
   !! Sample Dictionary Input:
   !!   myMap {
-  !!     type materialMap;
-  !!     materials (mat1 mat2 mat3);
+  !!     type cellMap;
+  !!     cells (cell1 cell2);
   !!     # undefBin T; #
   !!   }
   !!
-  type, public,extends(tallyMap1D) :: materialMap
+  type, public,extends(tallyMap1D) :: cellMap
     private
     type(intMap)                                  :: binMap
     integer(shortInt)                             :: default = 0
     integer(shortInt)                             :: Nbins   = 0
-    integer(shortInt), dimension(:), allocatable  :: matIndices
+    integer(shortInt), dimension(:), allocatable  :: cellIndices
 
   contains
     ! Superclass interface implementaction
@@ -59,40 +58,39 @@ module materialMap_class
     ! Class specific procedures
     procedure :: build
 
-  end type materialMap
+  end type cellMap
 
 contains
 
   !!
-  !! Build material map from components directly
+  !! Build cell map from components directly
   !!
   !! Args:
-  !!   materials [in] -> Array of material names to be included in the map
-  !!   trackRest [in] -> Logical. For TRUE makes extra bin for all materials not
+  !!   cells [in]     -> Array of cell IDs to be included in the map
+  !!   trackRest [in] -> Logical. For TRUE makes extra bin for all cells not
   !!     explicitly in the map.
   !!
   !! Erorrs:
-  !!   None from here. NuclearDataRegistry should give fatalError if material is given but
+  !!   None from here. Geometry should give fatalError if a cell is given but
   !!   not defined.
   !!
-  subroutine build(self, materials, trackRest)
-    class(materialMap), intent(inout)            :: self
-    character(nameLen), dimension(:), intent(in) :: materials
-    logical(defBool),intent(in)                  :: trackRest
-    integer(shortInt)                            :: N, i, matIdx
+  subroutine build(self, cells, trackRest)
+    class(cellMap), intent(inout)               :: self
+    integer(shortInt), dimension(:), intent(in) :: cells
+    logical(defBool), intent(in)                :: trackRest
+    integer(shortInt)                           :: N, i
 
-    ! Find number of materials to bin
-    N = size(materials)
+    ! Find number of cells to bin
+    N = size(cells)
 
-    ! Allocate space in map and matIndices
+    ! Allocate space in map and cellIndices
     call self % binMap % init(N)
-    allocate(self % matIndices(N))
+    allocate(self % cellIndices(N))
 
-    ! Load material indices and bins
+    ! Load cell indices and bins
     do i=1,N
-      matIdx = mm_matIdx(materials(i))
-      call self % binMap % add(matIdx, i)
-      self % matIndices(i) = matIdx
+      call self % binMap % add(cells(i), i)
+      self % cellIndices(i) = cells(i)
 
     end do
 
@@ -109,20 +107,20 @@ contains
   end subroutine build
 
   !!
-  !! Initialise material map from dictionary
+  !! Initialise cell map from dictionary
   !!
   !! See tallyMap for specification
   !!
   subroutine init(self, dict)
-    class(materialMap), intent(inout)           :: self
-    class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: matNames
-    character(nameLen)                          :: undefined
-    logical(defBool)                            :: trackUndefined
-    character(100), parameter :: Here = 'init (materialMap_class.f90)'
+    class(cellMap), intent(inout)              :: self
+    class(dictionary), intent(in)              :: dict
+    integer(shortInt),dimension(:),allocatable :: cellIDs
+    character(nameLen)                         :: undefined
+    logical(defBool)                           :: trackUndefined
+    character(100), parameter :: Here = 'init (cellMap_class.f90)'
 
-    ! Get material names list
-    call dict % get(matNames, 'materials')
+    ! Get cell names list
+    call dict % get(cellIDs, 'cells')
 
     ! Get setting for undefined tracking
     call dict % getOrDefault(undefined, 'undefBin', 'false')
@@ -139,7 +137,7 @@ contains
     end select
 
     ! Initialise Map
-    call self % build(matNames, trackUndefined)
+    call self % build(cellIDs, trackUndefined)
 
   end subroutine init
 
@@ -149,9 +147,9 @@ contains
   !! See tallyMap for specification
   !!
   elemental function bins(self, D) result(N)
-    class(materialMap), intent(in)  :: self
-    integer(shortInt), intent(in)   :: D
-    integer(shortInt)               :: N
+    class(cellMap), intent(in)    :: self
+    integer(shortInt), intent(in) :: D
+    integer(shortInt)             :: N
 
     if (D == 1 .or. D == 0) then
       N = self % Nbins
@@ -167,11 +165,11 @@ contains
   !! See tallyMap for specification
   !!
   elemental function map(self,state) result(idx)
-    class(materialMap), intent(in)     :: self
-    class(particleState), intent(in)   :: state
-    integer(shortInt)                  :: idx
+    class(cellMap), intent(in)       :: self
+    class(particleState), intent(in) :: state
+    integer(shortInt)                :: idx
 
-    idx = self % binMap % getOrDefault( state % matIdx, self % default)
+    idx = self % binMap % getOrDefault( state % cellIdx, self % default)
 
   end function map
 
@@ -181,10 +179,10 @@ contains
   !! See tallyMap for specification
   !!
   function getAxisName(self) result(name)
-    class(materialMap), intent(in)  :: self
-    character(nameLen)              :: name
+    class(cellMap), intent(in)  :: self
+    character(nameLen)          :: name
 
-    name = 'Material'
+    name = 'Cell'
 
   end function getAxisName
 
@@ -194,7 +192,7 @@ contains
   !! See tallyMap for specification
   !!
   subroutine print(self,out)
-    class(materialMap), intent(in)   :: self
+    class(cellMap), intent(in)       :: self
     class(outputFile), intent(inout) :: out
     character(nameLen)               :: name
     integer(shortInt)                :: i
@@ -204,14 +202,14 @@ contains
 
     call out % startArray(name,[1,self % Nbins])
 
-    ! Print material names
-    do i=1,size(self % matIndices)
-      name = mm_matName(self % matIndices(i))
-      call out % addValue(name)
+    ! Print cell indexes
+    do i=1,size(self % cellIndices)
+      call out % addValue(numToChar(self % cellIndices(i)))
+
     end do
 
     ! Print 'undefined'
-    if ( self % Nbins > size(self % matIndices)) then
+    if ( self % Nbins > size(self % cellIndices)) then
       name = 'undefined'
       call out % addValue(name)
 
@@ -222,39 +220,38 @@ contains
   end subroutine print
 
   !!
-  !! Build new material Map from dictionary
+  !! Build new cell Map from dictionary
   !!
   !! Args:
   !!   dict[in] -> input dictionary for the map
   !!
   !! Result:
-  !!   Initialised materialMap instance
+  !!   Initialised cellMap instance
   !!
   !! Errors:
   !!   See init procedure.
   !!
-  function materialMap_fromDict(dict) result(new)
-    class(dictionary), intent(in)               :: dict
-    type(materialMap)                           :: new
+  function cellMap_fromDict(dict) result(new)
+    class(dictionary), intent(in)   :: dict
+    type(cellMap)                   :: new
 
     call new % init(dict)
 
-  end function materialMap_fromDict
+  end function cellMap_fromDict
 
   !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(materialMap), intent(inout) :: self
+    class(cellMap), intent(inout) :: self
 
     call kill_super(self)
 
     call self % binMap % kill()
     self % default = 0
     self % Nbins = 0
-    deallocate(self % matIndices)
 
   end subroutine kill
 
 
-end module materialMap_class
+end module cellMap_class
