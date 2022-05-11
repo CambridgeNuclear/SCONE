@@ -54,10 +54,10 @@ module ceNeutronCache_mod
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
   !!   xss    -> Cached Cross-Sections values
-  !!   matNeedsSab  -> Flag that tells the database if the material the nuclide is in
-  !!               needs thermal scattering data
-  !!   thisNeedsSab -> Flag that tells the database if this nuclide
-  !!               needs thermal scattering data
+  !!   needsSabInel -> Flag that tells if the nuclide is using thermal inelastic
+  !!                   scattering data
+  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic 
+  !!                   scattering data
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO

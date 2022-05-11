@@ -24,8 +24,7 @@ module thermalScatteringData_class
   !!
   !! Public type for cross sections and energy/angle distributions
   !!
-  !! Reads the tables from the nuclide's ACE card. For now it doesn't do elastic
-  !! scattering!!!!!
+  !! Reads the tables from the nuclide's ACE card.
   !!
   !! Public Members:
   !!   eGrid  -> Energy grid
@@ -76,10 +75,10 @@ contains
     end select
 
     allocate(thInelasticScatter :: self % inelasticOut)
-    call self % inelasticOut % init(data,800)
+    call self % inelasticOut % init(data, N_N_ThermINEL)
     if (self % hasElastic) then
       allocate(thElasticScatter :: self % elasticOut)
-      call self % elasticOut % init(data,900)
+      call self % elasticOut % init(data, N_N_ThermEL)
     end if
 
   end subroutine init
@@ -205,7 +204,7 @@ contains
   end subroutine getElXS
 
   !!
-  !! Build urrProbabilityTables from ACE dataCard
+  !! Build thermalScatteringData from ACE dataCard
   !!
   !! If the CDF is not sorted, the CDF doesn't end with one or there are negative
   !! cross sections, the tables are switched off for that nuclide

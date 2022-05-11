@@ -160,8 +160,10 @@ contains
     real(defReal)                        :: f, XS, topXS, bottomXS
     character(100), parameter :: Here = 'invertInelastic (aceNeutronNuclide_class.f90)'
 
+    ! Check if it's thermal inelastic scattering or not
     if (nuclideCache(self % getNucIdx()) % needsSabInel) then
-      MT = 800
+      MT = N_N_ThermINEL
+
     else
       ! Obtain bin index and interpolation factor
       if (nuclideCache(self % getNucIdx()) % E_tot == E) then

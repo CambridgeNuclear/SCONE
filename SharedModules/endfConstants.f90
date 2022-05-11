@@ -82,7 +82,10 @@ module endfConstants
                                   N_d2a         = 114 ,&
                                   N_pd          = 115 ,&
                                   N_pt          = 116 ,&
-                                  N_da          = 117
+                                  N_da          = 117 ,&
+                                  ! SCONE's fake MT for thermal inelastic scattering
+                                  N_N_ThermINEL = 800 ,&
+                                  N_N_ThermEL   = 900
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]

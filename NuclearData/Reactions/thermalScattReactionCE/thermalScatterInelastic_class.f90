@@ -295,7 +295,7 @@ contains
   end subroutine sampleOut
 
   !!
-  !! Build elasticNeutronScatter from ACE dataCard
+  !! Build inelasticNeutronScatter from ACE dataCard
   !!
   subroutine buildFromACE(self, ACE)
     class(thInelasticScatter), intent(inout)      :: self
@@ -373,8 +373,8 @@ contains
   !!   source [in]    -> source pointer of class reactionHandle
   !!
   !! Result:
-  !!   Null is source is not of elasticNeutronScatter type
-  !!   Target points to source if source is elasticNeutronScatter type
+  !!   Null is source is not of inelasticNeutronScatter type
+  !!   Target points to source if source is inelasticNeutronScatter type
   !!
   pure function thermalScatterInelastic_TptrCast(source) result(ptr)
     class(reactionHandle), pointer, intent(in) :: source

@@ -213,7 +213,7 @@ contains
       end if
     else if ( MT == N_fission) then
       reac => self % nuclides(idx) % fission
-    else if (MT == 800) then
+    else if (MT == N_N_ThermINEL) then
       reac => self % nuclides(idx) % thData % inelasticOut
     else
       ! Find index of MT reaction
@@ -256,7 +256,6 @@ contains
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: i, nucIdx
     real(defReal)                         :: dens
-    integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
 
     associate (mat => cache_materialCache(matIdx))
       ! Set new energy
