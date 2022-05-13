@@ -210,8 +210,8 @@ contains
 
     allocate(self % data(N, nG))
 
-    ! Load cross sections
-    call dict % get(temp, 'capture')
+    ! Load cross sections - Loads 'sigmaP' in place of 'capture' so that existing functions to get cross section instead get sigmaP
+    call dict % get(temp, 'sigmaP')
     if(size(temp) /= nG) then
       call fatalError(Here,'Capture XSs have wong size. Must be: ' &
                           // numToChar(nG)//' is '//numToChar(size(temp)))
