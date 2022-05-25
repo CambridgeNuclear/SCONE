@@ -1,0 +1,85 @@
+
+type IMCPhysicsPackage;
+
+pop            10000;
+cycles         30;
+timeStepSize   1;
+
+XSdata     mg;
+dataType   mg; 
+
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorIMC;
+                  } 
+
+
+source {
+  type surfaceSource;
+  shape square;
+  size 1;
+  axis x;
+  pos 0;
+  T 1;
+  nParticles 10000;
+  dir 1;
+  deltat 1;
+  particle photon;
+}
+
+imcSource {
+            type imcSource; 
+            nParticles 10000;
+          }
+
+inactiveTally {} 
+
+activeTally  {}
+
+tally  {
+	   }
+
+geometry { 
+    type geometryStd;
+    boundary (0 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      box { id 1; type box; origin ( 0.5  0.0  0.0); halfwidth ( 0.5 0.5 0.5); }
+    }
+
+    cells {}
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 1; fill mat; }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     mg       { type baseMgIMCDatabase; PN P0;}
+  }
+  
+  
+  materials { 
+
+    mat {  
+      temp       0.00001; 
+      composition {}
+      xsFile ./dataFiles/imcData;
+      volume 1;
+    } 
+
+} 
+  
+}
+  
+  
+  

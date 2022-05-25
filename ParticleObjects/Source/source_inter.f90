@@ -147,8 +147,8 @@ contains
     !!
     !! Generate n particles to populate a particleDungeon without overriding
     !! particles already present. Unlike 'append' subroutine above, this is
-    !! specific to IMCSource_class and is needed for multiregion functionality,
-    !! the number of particles sampled in each matIdx is tallied and used to normalise
+    !! specific to IMCSource_class and is needed for multiregion functionality.
+    !! The number of particles sampled in each matIdx is tallied and used to normalise
     !! each particle weight, so that the total energy emitted in each region is as
     !! required
     !!

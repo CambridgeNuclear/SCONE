@@ -11,6 +11,7 @@ module sourceFactory_func
   use pointSource_class,   only : pointSource
   use fissionSource_class, only : fissionSource
   use IMCSource_class,     only : imcSource
+  use surfaceSource_class, only : surfaceSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -27,7 +28,8 @@ module sourceFactory_func
   ! For now  it is necessary to adjust trailing blanks so all entries have the same length
   character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource  ',&
                                                                      'fissionSource',&
-                                                                     'imcSource    ']
+                                                                     'imcSource    ',&
+                                                                     'surfaceSource']
 
 contains
 
@@ -61,6 +63,10 @@ contains
 
       case('imcSource')
         allocate(imcSource :: new)
+        call new % init(dict, geom)
+
+      case('surfaceSource')
+        allocate(surfaceSource :: new)
         call new % init(dict, geom)
 
      !*** NEW SOURCE TEMPLATE ***!

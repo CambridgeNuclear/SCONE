@@ -134,7 +134,8 @@ contains
     call self % sampleEnergyAngle(p, rand)
     call self % sampleEnergy(p, rand)
     p % time = ZERO
-    p % wgt  = ONE
+
+    if (p % wgt  == ZERO) p % wgt = ONE
 
   end function sampleParticle
 
