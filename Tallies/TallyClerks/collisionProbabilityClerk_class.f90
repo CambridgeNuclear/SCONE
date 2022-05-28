@@ -37,8 +37,12 @@ module collisionProbabilityClerk_class
   !! file and allowing different responses to be fed to the clerk on initialisation.
   !!
   !! Notes:
+  !!    -> The resulting collision probability matrix will account for regions outside
+  !!       of the provided map, corresponding to the first index of the matrix.
+  !!    -> This should be used with caution when there is a vacuum boundary: the particle
+  !!       will never 'collide' there and so CP becomes a bit ambiguous.
   !!    -> If collision particle has invalid nuclear data type collision is ignored
-  !!    -> CPM is stored in column-major order [prodBin, startBin]
+  !!    -> CPM is stored in column-major order [prodBin, startBin].
   !!    -> CPs are only non-zero within an energy group. It may be more efficient to
   !!       define a slightly different CPClerk which has a separate map for energy.
   !!       With a fine energy and space discretisation, a large sparse matrix will be 
@@ -182,6 +186,8 @@ contains
     if(.not.associated(mat)) return
 
     ! Find starting index in the map
+    ! It is important that preCollision is not changed by a collisionProcessor
+    !before the particle is fed to the tally, otherwise results will be meaningless
     sIdx = self % map % map( p % preCollision)
 
     ! Find collision index in the map
