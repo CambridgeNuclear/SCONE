@@ -18,15 +18,9 @@ module aceSabCard_class
     module procedure real2Int_array
   end interface
 
-  integer(shortInt), parameter :: unINIT = -17 ! Value of uninitialised integer in this module
-
   !!
-  !! ACE DATA CARD PARSER FOR A SINGLE NUCLIDE (e.g. 92238.03c)
-  !!
-  !!
-  !! Please note that header of the ACE DATA CARD is stored in public components of type(aceCard)
-  !!
-  !! Procedures for MT accept elastic scattering which has MT = N_N_elastic (from endfConstants)
+  !! S(a,b) ACE DATA CARD PARSER FOR A SINGLE NUCLIDE
+  !! Data are read from thermal scattering ACE files (e.g. h-h2o.43t)
   !!
   type, public, extends(dataDeck) :: aceSabCard
     private
@@ -40,46 +34,45 @@ module aceSabCard_class
     character(10),public      :: HM   = ' '  ! 10 character MAT indentifier
 
     ! Private Components
-    integer(shortInt)                          :: head = 0    ! Current read location on XSS
+    integer(shortInt)         :: head = 0    ! Current read location on XSS
 
     ! RAW ACE TABLES *** PUBLIC in DEBUG * WILL BE PRIVATE
-    integer(shortInt),dimension(16),public        :: NXS
-    integer(shortInt),dimension(32),public        :: JXS
-    real(defReal),dimension(:),allocatable,public :: XSS
+    integer(shortInt),dimension(16)        :: NXS
+    integer(shortInt),dimension(32)        :: JXS
+    real(defReal),dimension(:),allocatable :: XSS
 
-    ! Flags
-    logical(defBool)    :: hasElasticXs
-    logical(defBool)    :: elIsCoherent
-
+    ! Elastic scattering flags
+    logical(defBool)    :: hasElasticXs = .false. ! True if there are elastic scattering data
+    logical(defBool)    :: elIsCoherent = .false. ! True if elastic scattering is coherent
 
     ! Sampling parameters
-    integer(shortInt)   :: inelOutgoingE
-    integer(shortInt)   :: elOutgoingMu
-    real(defReal),dimension(:),allocatable     :: inelCDF
+    integer(shortInt)   :: inelOutgoingE   ! Number of inelastic outgoing energies
+    integer(shortInt)   :: elOutgoingMu    ! Number of elastic outgoing cosines
+    real(defReal),dimension(:),allocatable :: inelCDF ! CDF for inelastic scattering outgoing energy
 
   contains
     ! Superclass procedures
     procedure :: myType
 
     ! Output cross sections and energy info
-    procedure :: ESZ_elastic
-    procedure :: ESZ_inelastic
-    procedure :: elasticEnergies
-    procedure :: inelasticEnergies
-    procedure :: isCoherent
-    procedure :: isInelContinuous
-    procedure :: getCDF
-    procedure :: inelOutE
-    procedure :: inelOutMu
-    procedure :: elOutMu
-    procedure :: hasElastic
-    procedure :: hasITCA
+    procedure :: ESZ_elastic       ! Returns elastic energy grid or xss on request
+    procedure :: ESZ_inelastic     ! Returns inelastic energy grid or xss on request
+    procedure :: elasticEnergies   ! Returns number of elastic ingoing energies
+    procedure :: inelasticEnergies ! Returns number of inelastic ingoing energies
+    procedure :: isCoherent        ! Returns true if elastic scattering is coherent
+    procedure :: isInelContinuous  ! Returns true if inelastic scattering is continuous
+    procedure :: getCDF            ! Returns CDF for inelastic scattering outgoing energy
+    procedure :: inelOutE          ! Returns number of inelastic outgoing energies
+    procedure :: inelOutMu         ! Returns number of inelastic outgoing cosines
+    procedure :: elOutMu           ! Returns number of elastic outgoing cosines
+    procedure :: hasElastic        ! Returns true if there are elastic scattering xs data
+    procedure :: hasITCA           ! Returns true if there are elastic scattering outgoing tabular data
 
     ! Procedures to set head
-    procedure :: setToElastic
-    procedure :: setToInelastic
-    procedure :: setToElasticOut
-    procedure :: setToInelasticOut
+    procedure :: setToElastic      ! Set head to inelastic energy data (JXS(1)+1)
+    procedure :: setToInelastic    ! Set head to inelastic energy data (JXS(1)+1)
+    procedure :: setToElasticOut   ! Set head to elastic outgoing laws (JXS(6))
+    procedure :: setToInelasticOut ! Set head to inelastic outgoing laws (JXS(3))
 
     ! Procedures related to reading under head and head status
     !
@@ -89,7 +82,7 @@ module aceSabCard_class
     procedure :: readRealArray       ! Read N ints beginning under head and advance by N
 
     procedure :: advanceHead         ! Move head by an integer +ve forward -ve backward
-    procedure :: setRelativeTo
+    procedure :: setRelativeTo       ! Sets to position given by root and offset (root + offset -1)
 
     ! Initialisation procedure
     procedure :: readFromFile
@@ -101,6 +94,7 @@ module aceSabCard_class
   end type aceSabCard
 
 contains
+
   !!
   !! Return String with type name
   !!
@@ -152,14 +146,12 @@ contains
   !!
   !! Returns data from ESZ block
   !!
-  !! Hopefully will not blow up the stack
-  !!
   !! Following request can be delivered (CASE SENSITIVE):
-  !!  'energyGrid'   -> energy grid
-  !!  'Pvalues'      -> table entry. It has different meaning if scattering is coherent or incoherent
+  !!  'energyGrid' -> energy grid
+  !!  'Pvalues'    -> table entry. It has different meaning if scattering is coherent or incoherent
   !!
   !! Args:
-  !!   request [in] -> character with the XS request
+  !!   request [in] -> character with the request
   !!
   !! Error:
   !!   fatalError if request is unrecognised
@@ -176,11 +168,11 @@ contains
 
     select case(request)
       case('energyGrid')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(4) + 1
 
       case('Pvalues')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(4) + N + 1
 
       case default
@@ -196,14 +188,12 @@ contains
   !!
   !! Returns data from ESZ block
   !!
-  !! Hopefully will not blow up the stack
-  !!
   !! Following request can be delivered (CASE SENSITIVE):
   !!  'energyGrid'   -> energy grid
   !!  'inelasticXS'      -> inelastic cross section
   !!
   !! Args:
-  !!   request [in] -> character with the XS request
+  !!   request [in] -> character with the request
   !!
   !! Error:
   !!   fatalError if request is unrecognised
@@ -236,7 +226,6 @@ contains
     array = self % XSS(ptr : ptr + N-1)
 
   end function ESZ_inelastic
-
 
   !!
   !! Return number of elastic scattering ingoing energies groups
@@ -274,7 +263,9 @@ contains
 
   !!
   !! Sets read head to beginning of elastic scattering energies
-  !! Returns error is nuclide doesn't have data for elastic scattering
+  !!
+  !! Errors:
+  !!  fatalerror is nuclide doesn't have data for elastic scattering
   !!
   subroutine setToElastic(self)
     class(aceSabCard), intent(inout) :: self
@@ -282,10 +273,8 @@ contains
 
     if(self % hasElasticXs) then
       self % head = self % JXS(4) + 1
-
     else
       call fatalError(Here,'Elastic cross sections are not present!')
-
     end if
 
   end subroutine setToElastic
@@ -301,14 +290,20 @@ contains
   end subroutine setToInelastic
 
   !!
-  !! Sets read head to beginning of elastic scattering energies
-  !! Returns error is nuclide doesn't have data for elastic scattering
+  !! Sets read head to beginning of elastic scattering outgoing data
+  !!
+  !! Errors:
+  !!  fatalerror is nuclide doesn't have data for elastic scattering
   !!
   subroutine setToElasticOut(self)
     class(aceSabCard), intent(inout) :: self
-    character(100),parameter :: Here ='setToElastic (aceSabCard_class.f90)'
+    character(100),parameter :: Here ='setToElasticOut (aceSabCard_class.f90)'
 
-    self % head = self % JXS(6)
+    if(self % hasElasticXs) then
+      self % head = self % JXS(6)
+    else
+      call fatalError(Here,'Elastic cross sections are not present!')
+    end if
 
   end subroutine setToElasticOut
 
@@ -323,7 +318,7 @@ contains
   end subroutine setToInelasticOut
 
   !!
-  !!
+  !! Returns true if elastic scattering is coherent
   !!
   pure  function isCoherent(self) result(isIt)
     class(aceSabCard), intent(in) :: self
@@ -334,7 +329,7 @@ contains
   end function isCoherent
 
   !!
-  !!
+  !! Returns true if elastic scattering xs data are present
   !!
   pure  function hasElastic(self) result(hasIt)
     class(aceSabCard), intent(in) :: self
@@ -345,7 +340,7 @@ contains
   end function hasElastic
 
   !!
-  !!
+  !! Returns true if a tabular distribution for elastic outgoing angles is present
   !!
   pure  function hasITCA(self) result(doesIt)
     class(aceSabCard), intent(in) :: self
@@ -356,7 +351,8 @@ contains
   end function hasITCA
 
   !!
-  !!
+  !! Returns true if continuous treatment is used to sample outgoing angles
+  !! and energies for inelastic scattering
   !!
   pure  function isInelContinuous(self) result(isIt)
     class(aceSabCard), intent(in) :: self
@@ -368,7 +364,7 @@ contains
   end function isInelContinuous
 
   !!
-  !!
+  !! Returns the inelastic scattering CDF to sample the outgoing energy
   !!
   pure  function getCDF(self) result(CDF)
     class(aceSabCard), intent(in) :: self
@@ -379,7 +375,7 @@ contains
   end function getCDF
 
   !!
-  !!
+  !! Returns the number of inelastic scattering outgoing energies
   !!
   pure  function inelOutE(self) result(N)
     class(aceSabCard), intent(in) :: self
@@ -390,7 +386,7 @@ contains
   end function inelOutE
 
   !!
-  !!
+  !! Returns the number of inelastic scattering outgoing angles
   !!
   pure  function inelOutMu(self) result(N)
     class(aceSabCard), intent(in) :: self
@@ -401,7 +397,7 @@ contains
   end function inelOutMu
 
   !!
-  !!
+  !! Returns the number of elastic scattering outgoing angles
   !!
   pure  function elOutMu(self) result(N)
     class(aceSabCard), intent(in) :: self
@@ -414,7 +410,10 @@ contains
 
   !!
   !! Read single integer and advance read head
-  !! Return error if under head is not integer
+  !!
+  !! Errors:
+  !!  fatalerror if head is negative
+  !!  fatalerror if any content under head is not an integer
   !!
   function readInt(self) result(i)
     class(aceSabCard), intent(inout) :: self
@@ -422,7 +421,7 @@ contains
     character(100),parameter :: Here ='readInt (aceSabCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     i = real2Int(self % XSS(self % head),Here)
@@ -453,7 +452,10 @@ contains
 
   !!
   !! Read array of N integers and advance read head by N
-  !! Return error if any content under head is not an integer
+  !!
+  !! Errors:
+  !!  fatalerror if head is negative
+  !!  fatalerror if any content under head is not an integer
   !!
   function readIntArray(self,N) result(i)
     class(aceSabCard), intent(inout)  :: self
@@ -463,7 +465,7 @@ contains
     character(100),parameter :: Here ='readIntArray (aceSabCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     ptr = self % head
@@ -546,20 +548,23 @@ contains
   end subroutine setRelativeTo
 
   !!
-  !! Load data for every MT reaction type
-  !! NOTE: in ACE format reactions with no secondary neutrons are at the end of MT numbers list.
-  !!       As the result it is safe to read data with MTdata(1:NMTs).
+  !! Load data for thermal inelastic scattering
+  !! Builds the CDF for the outgoing energy according to the NXS(7) index
+  !!
+  !! Errors
+  !!  fatalerror if NXS(7) value is not recognised
   !!
   subroutine setInelastic(self)
     class(aceSabCard),intent(inout) :: self
     integer(shortInt)               :: i
     character(100), parameter :: Here ='setInelastic (aceSabCard_class.f90)'
 
+    ! Read number of inelastic outgoing energies
     self % inelOutgoingE = self % NXS(4)
 
     if (allocated(self % inelCDF)) deallocate(self % inelCDF)
     allocate(self % inelCDF(self % inelOutgoingE + 1))
-    ! Initialise the CDF to one everywhere
+    ! Initialise the CDF to zero everywhere
     self % inelCDF = ZERO
 
     select case(self % NXS(7))
@@ -570,7 +575,7 @@ contains
         end do
 
       case(1)
-        ! Fill up the vector with a skewed distribution
+        ! Fill up the vector with a skewed distribution, described in ACE file format
         self % inelCDF(2) = ONE
         self % inelCDF(3) = 5.0_defReal
         do i = 4,(self % inelOutgoingE - 1)
@@ -581,6 +586,7 @@ contains
 
       case(2)
 
+        ! Only sets the last CDF value to one to avoid fatalerror
         self % inelCDF(self % inelOutgoingE + 1) = ONE
 
       case default
@@ -595,7 +601,7 @@ contains
   end subroutine setInelastic
 
   !!
-  !! Loads data related to fission
+  !! Loads data related for elastic scattering
   !!
   subroutine setElastic(self)
     class(aceSabCard), intent(inout) :: self
@@ -611,7 +617,7 @@ contains
   end subroutine setElastic
 
   !!
-  !! Read ACE card from dile in provided filePath that beggins at provided lineNum
+  !! Read ACE card from file in provided filePath that begins at provided lineNum
   !!
   subroutine readFromFile(self,filePath,lineNum)
     class(aceSabCard), intent(inout)  :: self
