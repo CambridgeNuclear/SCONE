@@ -18,14 +18,16 @@ module thermalScatteringData_iTest
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR =        &
   & "water { temp 1;                               &
+  &       moder {1001.03 h-h2o.49; }               &
   &       composition {                            &
-  &       moder { 1001.03 2.0E-3; file h-h2o.49 ;} &
+  &       1001.03  2.0E-3;                         &
   &       8016.03  1.0E-3;                         &
   &                   }                            &
   &      }                                         &
   &  graphite { temp 1;                                &
+  &          moder {6012.06  grph30.46;}               &
   &          composition {                             &
-  &          moder { 6012.06 2.0E-3; file grph30.46 ;} &
+  &          6012.06 2.0E-3;                           &
   &                       }                            &
   &            }"
 

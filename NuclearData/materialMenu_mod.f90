@@ -76,13 +76,18 @@ module materialMenu_mod
   !!
   !!   matDef {
   !!     temp 273;
+  !!     moder {1001.03 h-h2o.43;}
   !!     composition {
-  !!       moder {nuclide 1001.03; dens 5.028E-02; file 'HinH20.03t'}
+  !!       1001.03  5.028E-02;
   !!       8016.03  2.505E-02;
   !!       5010.03  2.0E-005;
   !!     }
   !!     xsFile /home/uberMoffTarkin/XS/mat1.xs;
   !!   }
+  !!
+  !! NOTE: the moder dictionary is optional, necessary only if S(a,b) thermal scattering
+  !!       data are used. If some nuclides are included in moder but not in composition,
+  !!       those are ignored.
   !!
   type, public :: materialItem
     character(nameLen)                         :: name   = ''
@@ -257,6 +262,7 @@ contains
     character(nameLen),dimension(:),allocatable :: keys, moderKeys
     integer(shortInt)                           :: i
     class(dictionary),pointer                   :: compDict, moderDict
+    logical(defBool)                            :: hasSab
 
     ! Return to initial state
     call self % kill()
@@ -273,19 +279,24 @@ contains
     allocate(self % nuclides(size(keys)))
     allocate(self % dens(size(keys)))
 
+    hasSab = .false.
+    ! Check if S(a,b) files are specified
+    if (dict % isPresent('moder')) then
+      moderDict => dict % getDictPtr('moder')
+      call moderDict % keys(moderKeys)
+      hasSab = .true.
+    end if
+
     ! Load definitions
     do i =1,size(keys)
-      ! Check if a nuclide has Sab tables. In that case it's a nested dictionary
-      if (keys(i) == 'moder') then
-        moderDict => compDict % getDictPtr('moder')
+      ! Check if S(a,b) is on and required for that nuclide
+      if (hasSab .and. moderDict % isPresent(keys(i))) then
         self % nuclides(i) % hasSab = .true.
-        call moderDict % keys(moderKeys)
-        call moderDict % get(self % dens(i), moderKeys(1))
-        call moderDict % get(self % nuclides(i) % file_Sab, moderKeys(2))
-        keys(i) = moderKeys(1)
-      else
-        call compDict % get(self % dens(i), keys(i))
+        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
       end if
+
+      ! Initialise the nuclides
+      call compDict % get(self % dens(i), keys(i))
       call self % nuclides(i) % init(keys(i))
     end do
 
