@@ -176,11 +176,12 @@ contains
     class(aceCard), intent(inout)  :: ACE
     character(nameLen), intent(in) :: ZAID
     integer(shortInt)              :: idx
+    integer(shortInt), parameter     :: NOT_FOUND = -1
     character(100), parameter :: Here = 'new_neutronACE (aceLibrary_mod.f90)'
 
     ! Find index of the requested ZAID identifier
-    idx = map % getOrDefault(ZAID, -1)
-    if(idx == -1) then
+    idx = map % getOrDefault(ZAID, NOT_FOUND)
+    if(idx == NOT_FOUND) then
       call fatalError(Here, trim(ZAID) //" was not found in ACE library from: "//trim(libFile))
     end if
 
@@ -213,11 +214,12 @@ contains
     class(aceSabCard), intent(inout) :: ACE
     character(nameLen), intent(in)   :: file
     integer(shortInt)                :: idx
+    integer(shortInt), parameter     :: NOT_FOUND = -1
     character(100), parameter :: Here = 'new_moderACE (aceLibrary_mod.f90)'
 
     ! Find index of the requested ZAID identifier
-    idx = map % getOrDefault(file, -1)
-    if(idx == -1) then
+    idx = map % getOrDefault(file, NOT_FOUND)
+    if (idx == NOT_FOUND) then
       call fatalError(Here, trim(file) //" was not found in ACE library from: "//trim(libFile))
     end if
 

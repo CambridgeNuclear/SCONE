@@ -29,25 +29,25 @@ module thermalScatterInelastic_class
   end type dataArray
 
   !!
-  !! Reaction type for Neutron Elastic Scattering
+  !! Reaction type for Neutron Thermal Inelastic Scattering with S(a,b) tables
   !!
-  !! Implements standard elastic neutron stattering
-  !! For conveniance can exist in two states: isotropic & anisotropic.
-  !! Data is assumed to be always in CoM-frame.
+  !! Implements two outgoing scattering laws: discrete and continuous tables. Continuous
+  !! tables are implemented from library ENDF/B-VIII.0 on.
   !!
-  !! NOTE:
-  !!   When building from ACE data don't be fooled by Appendix F of MCNP-4 manual.
-  !!   It is possible for LOCB for elastic scattering to be 0, which indicates isotropic
-  !!   scattering at all incident energies. Thus LOCB needs to be checked and `isotropic` flag
-  !!   set to a correct setting.
+  !! Data is always in lab-frame.
   !!
   !! Private Members:
-  !!   angularData -> tabularAngle type that holds the energy-dependant data
-  !!   isotropic   -> Flag, TRUE is scattering is isotropic at all incident energies
+  !!   eIn        -> ingoing energy grid
+  !!   CDF        -> CDF for outgoing energy distribution
+  !!   eOutPdf    -> continuous tabular energy endf law
+  !!   eOut       -> array of outgoing energies arrays (which might have different lengths)
+  !!   muMatrices -> array of outgoing angles/energies matrices (which might have different sizes)
+  !!   isInelContinuous -> flag about continuous tabular format
+  !!   N_muOut    -> number of cosine bins
   !!
   !! Interface:
   !!   uncorrelatedReactionCE interface
-  !!   buildFromACE -> initialise object from ACE dataCard
+  !!   buildFromACE -> initialise object from ACE Sab dataCard
   !!
   type, public, extends(uncorrelatedReactionCE) :: thInelasticScatter
     private
@@ -56,7 +56,7 @@ module thermalScatterInelastic_class
     type(tabularEnergy),dimension(:),allocatable   :: eOutPdf
     type(dataArray), dimension(:), allocatable     :: eOut
     type(angularMatrix), dimension(:), allocatable :: muMatrices
-    logical(defBool)   :: isInelContinuous
+    logical(defBool)   :: isInelContinuous = .false.
     integer(shortInt)  :: N_muOut
   contains
     !! Superclass interface
@@ -107,6 +107,15 @@ contains
   !!
   elemental subroutine kill(self)
     class(thInelasticScatter), intent(inout) :: self
+
+    self % N_muOut = 0
+    self % isInelContinuous = .false.
+
+    if(allocated(self % eOut))    deallocate(self % eOut)
+    if(allocated(self % CDF))     deallocate(self % CDF)
+    if(allocated(self % eOutPdf)) deallocate(self % eOutPdf)
+    deallocate(self % eIn)
+    deallocate(self % muMatrices)
 
   end subroutine kill
 
@@ -167,6 +176,7 @@ contains
 
   !!
   !! Return probability density of emission at given angle and energy
+  !! NOT IMPLEMENTED: raises fatal error if called
   !!
   !! See uncorrelatedReactionCE for details
   !!
@@ -177,9 +187,12 @@ contains
     real(defReal), intent(in)             :: E_out
     real(defReal), intent(in)             :: E_in
     real(defReal)                         :: prob
+    character(100), parameter :: Here = 'probOf (thermalScatterInelastic_class.f90)'
 
+    ! Avoid compiler warnings
+    prob = ONE
     ! Not implemented yet
-    prob = TWO
+    call fatalError(Here,'This function is not implemented')
 
   end function probOf
 
@@ -297,6 +310,8 @@ contains
   !!
   !! Build inelasticNeutronScatter from ACE dataCard
   !!
+  !! See uncorrelatedReactionCE for details
+  !!
   subroutine buildFromACE(self, ACE)
     class(thInelasticScatter), intent(inout)      :: self
     type(aceSabCard), intent(inout)               :: ACE
@@ -305,22 +320,27 @@ contains
     integer(shortInt)                             :: i, j, Nin, Nout
     character(100), parameter :: Here = 'buildFromACE (thInelasticScatt_class.f90)'
 
+    ! Initialise flags from ACE file
     Nin = ACE % inelasticEnergies()
     self % eIn = ACE % ESZ_inelastic('energyGrid')
     self % isInelContinuous = ACE % isInelContinuous()
 
     call ACE % setToInelasticOut()
 
+    ! Initialise distributions for discrete format
     if (.not. self % isInelContinuous) then
       self % N_muOut = ACE % inelOutMu() + 1
       Nout = ACE % inelOutE()
 
       allocate(self % eOut(Nin), self % muMatrices(Nin), &
                 Etmp(Nout), self % CDF(Nout + 1))
-      self % CDF = ACE % getCDF()
 
+      ! Get CDF distribution built in the ACE file
+      self % CDF = ACE % getCDF()
+      ! Loop over ingoing energies
       do i = 1, Nin
         allocate(self % muMatrices(i) % muOut(Nout, self % N_muOut))
+        ! Loop over outgoing energies
         do j = 1, Nout
           Etmp(j) = ACE % readReal()
           self % muMatrices(i) % muOut(j,:) = ACE % readRealArray(self % N_muOut)
@@ -329,24 +349,26 @@ contains
         self % eOut(i) % array = Etmp(1:Nout)
       end do
 
-    else
+    else ! Initialise continuous treatment
 
       self % N_muOut = ACE % inelOutMu() - 1
       allocate(self % eOutPdf(Nin), self % muMatrices(Nin))
 
       loc = ACE % readIntArray(Nin)
       Eout = ACE % readIntArray(Nin)
-
+      ! Loop over ingoing energies
       do i = 1, Nin
 
         allocate(self % muMatrices(i) % muOut(Eout(i) + 1, self % N_muOut), &
         Etmp(Eout(i)+1), PDFtmp(Eout(i)+1), CDFtmp(Eout(i)+1))
 
         call ACE % setRelativeTo(loc(i), 1)
+        ! Make sure initial values are zero
         Etmp(1) = ZERO
         PDFtmp(1) = ZERO
         CDFtmp(1) = ZERO
         self % muMatrices(i) % muOut(1,:) = ZERO
+        ! loop over outgoing energies
         do j = 2, Eout(i) + 1
           Etmp(j) = ACE % readReal()
           PDFtmp(j) = ACE % readReal()
@@ -356,6 +378,7 @@ contains
 
         self % muMatrices(i) % muOut(1,:) = self % muMatrices(i) % muOut(2,:)
         PDFtmp(Eout(i)+1) = ZERO
+        ! Use tabular energy class, which includes checks on CDF distribution
         self % eOutPdf(i) = tabularEnergy(Etmp, PDFtmp, CDFtmp, 2)
 
         deallocate(Etmp, PDFtmp, CDFtmp)

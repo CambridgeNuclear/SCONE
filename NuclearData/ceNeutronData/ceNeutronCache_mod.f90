@@ -56,8 +56,10 @@ module ceNeutronCache_mod
   !!   xss    -> Cached Cross-Sections values
   !!   needsSabInel -> Flag that tells if the nuclide is using thermal inelastic
   !!                   scattering data
-  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic 
+  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic
   !!                   scattering data
+  !!   needsUrr     -> Flag that tells if the nuclide is using unresolved resonance
+  !!                   probability tables
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -68,6 +70,7 @@ module ceNeutronCache_mod
     type(neutronMicroXSs) :: xss
     logical(defBool)      :: needsSabInel = .false.
     logical(defBool)      :: needsSabEl = .false.
+    logical(defBool)      :: needsUrr = .false.
   end type cacheNucDat
 
   !!

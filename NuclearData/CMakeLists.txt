@@ -20,13 +20,13 @@ add_sources(./nuclearDatabase_inter.f90
             ./Reactions/uncorrelatedReactionCE/fissionCE_class.f90
             ./Reactions/uncorrelatedReactionCE/pureCapture_class.f90
             ./Reactions/thermalScattReactionCE/thermalScatterInelastic_class.f90
-	    ./Reactions/thermalScattReactionCE/thermalScatterElastic_class.f90
+	          ./Reactions/thermalScattReactionCE/thermalScatterElastic_class.f90
             ./Reactions/reactionMG/fissionMG_class.f90
             ./Reactions/reactionMG/multiScatterMG_class.f90
             ./Reactions/reactionMG/multiScatterP1MG_class.f90
             ./DataDecks/dataDeck_inter.f90
             ./DataDecks/ACE/aceCard_class.f90
-	    ./DataDecks/ACE/aceSabCard_class.f90
+	          ./DataDecks/ACE/aceSabCard_class.f90
             ./DataDecks/dictDeck_class.f90)
 
 add_unit_tests(./Reactions/reactionMG/Tests/fissionMG_test.f90

@@ -275,7 +275,7 @@ contains
 
     ! Load definitions
     do i =1,size(keys)
-      ! Check is a nuclide has Sab tables. In that case it's a nested dictionary
+      ! Check if a nuclide has Sab tables. In that case it's a nested dictionary
       if (keys(i) == 'moder') then
         moderDict => compDict % getDictPtr('moder')
         self % nuclides(i) % hasSab = .true.

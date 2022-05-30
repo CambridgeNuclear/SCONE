@@ -10,23 +10,23 @@ module urrProbabilityTables_iTest
   use aceNeutronNuclide_class,  only : aceNeutronNuclide, aceNeutronNuclide_CptrCast
   use neutronXSPackages_class,  only : neutronMicroXSs
   use materialMenu_mod,         only : mm_init => init
-  use ceNeutronCache_mod,       only : zaidCache
+  use ceNeutronCache_mod,       only : zaidCache, nuclideCache
   use pFUnit_mod
 
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = " &
-  uo2  { temp 1;                              &
-          composition {                       &
-          92235.03 1.0E-3;                    &
-          8016.03  2.0E-3;                    &
-          }                                   &
-        }"
+  character(*),parameter :: MAT_INPUT_STR = &
+  & " uo2  { temp 1;           &
+  &        composition {       &
+  &        92235.03 1.0E-3;    &
+  &        8016.03  2.0E-3;    &
+  &        }                   &
+  &      }"
 
   ! CE Neutron Database specification
-  character(*),parameter :: ACE_INPUT_STR = " &
-  aceLibrary ./IntegrationTestFiles/testLib; ures 1 ;"
+  character(*),parameter :: ACE_INPUT_STR = &
+  & "aceLibrary ./IntegrationTestFiles/testLib; ures 1 ;"
 
 contains
 
@@ -100,6 +100,8 @@ contains
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(1))
     zaidCache(1) % E = 9.1E-3_defReal
     zaidCache(1) % xi = 0.347_defReal
+    nuclideCache(1) % E_tot = ONE
+    nuclideCache(1) % needsUrr = .true.
 
     call nuc % getMicroXSs(microXSs, 9.1E-3_defReal, p % pRNG)
 

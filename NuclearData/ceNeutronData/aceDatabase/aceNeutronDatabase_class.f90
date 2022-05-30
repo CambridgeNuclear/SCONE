@@ -363,23 +363,19 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
-    logical(defBool)                      :: needsUrr, needsSab
+    logical(defBool)                      :: needsSab
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
-      needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
-      nucCache % needsSabInel = .false.
-      nucCache % needsSabEl = .false.
+      ! Check if the nuclide needs ures probability tables at this energy
+      nucCache % needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
       ! Check if the nuclide needs S(a,b) at this energy
-      if (nuc % hasThData) then
-        nucCache % needsSabEl = (E >= nuc % SabEl(1) .and. E < nuc % SabEl(2))
-        nucCache % needsSabInel = (E >= nuc % SabInel(1) .and. E < nuc % SabInel(2))
-      end if
-
+      nucCache % needsSabEl = (nuc % hasThData .and. E >= nuc % SabEl(1) .and. E < nuc % SabEl(2))
+      nucCache % needsSabInel = (nuc % hasThData .and. E >= nuc % SabInel(1) .and. E < nuc % SabInel(2))
       needsSab = (nucCache % needsSabEl .or. nucCache % needsSabInel)
 
-      if (needsUrr .or. needsSab) then
+      if (nucCache % needsUrr .or. needsSab) then
         call self % updateMicroXSs(E, nucIdx, rand)
       else
         nucCache % E_tot  = E
@@ -402,13 +398,11 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
-    logical(defBool)                      :: needsUrr
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
       nucCache % E_tail = E
-      needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
 
       ! In case the total XS hasn't been retrieved before (during tracking)
       if (nucCache % E_tot /= E) then
@@ -418,7 +412,7 @@ contains
 
       ! Overwrites all the micro cross sections in cache
       ! Check if probability tables should be read
-      if (needsUrr) then
+      if (nucCache % needsUrr) then
         associate(zaidCache => cache_zaidCache(self % nucToZaid(nucIdx)))
           if (zaidCache % E /= E) then
             ! Save random number for temperature correlation

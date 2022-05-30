@@ -16,22 +16,22 @@ module thermalScatteringData_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = "      &
-  water { temp 1;                                  &
-         composition {                             &
-         moder { 1001.03 2.0E-3; file h-h2o.49 ;}  &
-         8016.03  1.0E-3;                          &
-                     }                             &
-        }                                          &
-  graphite { temp 1;                                  &
-            composition {                             &
-            moder { 6012.06 2.0E-3; file grph30.46 ;} &
-                         }                            &
-              }"
+  character(*),parameter :: MAT_INPUT_STR =        &
+  & "water { temp 1;                               &
+  &       composition {                            &
+  &       moder { 1001.03 2.0E-3; file h-h2o.49 ;} &
+  &       8016.03  1.0E-3;                         &
+  &                   }                            &
+  &      }                                         &
+  &  graphite { temp 1;                                &
+  &          composition {                             &
+  &          moder { 6012.06 2.0E-3; file grph30.46 ;} &
+  &                       }                            &
+  &            }"
 
   ! CE Neutron Database specification
-  character(*),parameter :: ACE_INPUT_STR = " &
-  aceLibrary ./IntegrationTestFiles/testLib; "
+  character(*),parameter :: ACE_INPUT_STR = &
+  & "aceLibrary ./IntegrationTestFiles/testLib; "
 
 contains
 
@@ -105,14 +105,11 @@ contains
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test sampling from tables
 
-    call H1 % thData % getInelXS(1.8E-6_defReal,val)
+    val = H1 % thData % getInelXS(1.8E-6_defReal)
     @assertEqual(21.018654322_defReal, val, TOL)
 
-    call H1 % thData % getElXS(1.8E-6_defReal,val)
+    val = H1 % thData % getElXS(1.8E-6_defReal)
     @assertEqual(ZERO, val, TOL)
-
-!    call C12 % thData % getElXS(1.8E-6_defReal,val)
-!    @assertEqual(ZERO, val, TOL)
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test Getting material XSs

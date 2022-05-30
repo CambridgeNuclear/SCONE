@@ -22,13 +22,26 @@ module thermalScatteringData_class
   end type scatteringTable
 
   !!
-  !! Public type for cross sections and energy/angle distributions
-  !!
-  !! Reads the tables from the nuclide's ACE card.
+  !! Public type for thermal scattering cross sections and energy/angle distributions
+  !! Reads the tables from the nuclide's S(a,b) ACE card.
+  !! NOTE: when S(a,b) tables are on for inelastic scattering only, the elastic scattering
+  !!       cross section must be set to zero
   !!
   !! Public Members:
-  !!   eGrid  -> Energy grid
+  !!   inelasticOut -> reaction handle for inelastic scattering
+  !!   elasticOut   -> reaction handle for elastic scattering
+  !!   inelastic    -> tables for inelastic scattering
+  !!   elastic      -> tables for elastic scattering
+  !!   hasElastic   -> flag that indicates if elastic scattering is on
+  !!   isCoherent   -> flag that indicates if elastic scatter is coherent or incoherent
   !!
+  !! Class Procedures:
+  !!   init         -> initialises scattering tables
+  !!   kill         -> returns to uninitialised state
+  !!   getEbounds   -> returns energy grid boundaries for a required reaction
+  !!   getInelXS    -> returns inelastic scattering xs
+  !!   getElXS      -> returns elastic scattering xs
+  !!   buildFromACE -> build data from ACE card
   !!
   type, public :: thermalData
     class(uncorrelatedReactionCE), allocatable :: inelasticOut
@@ -36,7 +49,7 @@ module thermalScatteringData_class
     type(scatteringTable)  :: inelastic
     type(scatteringTable)  :: elastic
     logical(defBool)       :: hasElastic = .false.
-    logical(defBool)       :: isCoherent
+    logical(defBool)       :: isCoherent = .false.
 
   contains
 
@@ -74,8 +87,11 @@ contains
         call fatalError(Here,'Thermal scattering data cannot be build from '//data % myType())
     end select
 
+    ! initalise inelastic scattering
     allocate(thInelasticScatter :: self % inelasticOut)
     call self % inelasticOut % init(data, N_N_ThermINEL)
+
+    ! initialise elastic scattering if data is present
     if (self % hasElastic) then
       allocate(thElasticScatter :: self % elasticOut)
       call self % elasticOut % init(data, N_N_ThermEL)
@@ -89,10 +105,27 @@ contains
   elemental subroutine kill(self)
     class(thermalData), intent(inout) :: self
 
+    self % hasElastic = .false.
+    self % isCoherent = .false.
+
+    call self % inelasticOut % kill()
+    call self % elasticOut % kill()
+
+    deallocate(self % inelastic % eGrid)
+    deallocate(self % inelastic % xs)
+    if(allocated(self % elastic % eGrid)) deallocate(self % elastic % eGrid)
+    if(allocated(self % elastic % xs)) deallocate(self % elastic % xs)
+
   end subroutine kill
 
   !!
-  !! Return the boundary values of the energy grid
+  !! Return the boundary values of the energy grid. Called only during initialisation
+  !!
+  !! Args:
+  !!   request [in] -> string characterising which scattering reaction is required
+  !!
+  !! Errors:
+  !! fatalerror if string other than 'inelastic' or 'elastic' is used
   !!
   function getEbounds(self, request) result(eBounds)
     class(thermalData), intent(in) :: self
@@ -115,6 +148,8 @@ contains
           E1 = 1.0E-11_defReal
           N1 = size(self % elastic % eGrid)
           N2 = size(self % inelastic % eGrid)
+          ! Needed because if S(a,b) inelastic scattering data is present and
+          ! elastic data is not, the elastic xs must be set to zero
           E2 = max(self % elastic % eGrid(N1),self % inelastic % eGrid(N2))
         else
           E1 = ZERO
@@ -126,22 +161,20 @@ contains
 
     end select
 
-    eBounds = (/E1,E2/)
+    eBounds = [E1, E2]
 
   end function getEbounds
 
   !!
-  !! Calculate inelastic cross section
+  !! Calculate inelastic cross section, returns cross section values
   !!
   !! Args:
   !!   E [in]    -> Energy of ingoing neutron
-  !!   xi [in]   -> Random number
-  !!   val [out] -> Interpolated values from tables
   !!
-  pure subroutine getInelXS(self, E, val)
+  pure function getInelXS(self, E) result(val)
     class(thermalData), intent(in) :: self
     real(defReal), intent(in)      :: E
-    real(defReal), intent(out)     :: val
+    real(defReal)                  :: val
     real(defReal)                  :: f
     integer(shortInt)              :: idx
 
@@ -155,59 +188,65 @@ contains
 
     val = self % inelastic % xs(idx + 1) * f + (ONE-f) * self % inelastic % xs(idx)
 
-  end subroutine getInelXS
+  end function getInelXS
 
   !!
-  !! Calculate elastic cross section
+  !! Calculate elastic cross section, returns cross section values
+  !! It's called when S(a,b) tablea are switched on, even if there's no thermal
+  !! elastic scattering
   !!
   !! Args:
   !!   E [in]    -> Energy of ingoing neutron
-  !!   xi [in]   -> Random number
-  !!   val [out] -> Interpolated values from tables
   !!
-  pure subroutine getElXS(self, E, val)
+  pure function getElXS(self, E) result(val)
     class(thermalData), intent(in) :: self
     real(defReal), intent(in)      :: E
-    real(defReal), intent(out)     :: val
+    real(defReal)                  :: val
     real(defReal)                  :: f
     integer(shortInt)              :: idx, N
 
-    if (self % hasElastic) then
-      N = size(self % elastic % eGrid)
-
-      if (E < self % elastic % eGrid(1)) then
-        val = ZERO
-      elseif (E > self % elastic % eGrid(N)) then
-        if (self % isCoherent) then
-          val = self % elastic % xs(N)/E
-        else
-          val = ZERO
-        end if
-      else
-        ! Get energy indexes
-        idx = binarySearch(self % elastic % eGrid, E)
-        if (self % isCoherent) then
-          val = self % elastic % xs(idx)/E
-        else
-          associate(E_top => self % elastic % eGrid(idx + 1), &
-                    E_low  => self % elastic % eGrid(idx))
-            f = (E - E_low) / (E_top - E_low)
-          end associate
-          val = self % elastic % xs(idx + 1)*f + (ONE-f) * self % elastic % xs(idx)
-        end if
-      end if
-
-    else
+    ! Cross section is set to zero if the elastic scattering flag is false
+    ! and if energy values is lower than the nuclide energy grid first value
+    if (.not. self % hasElastic) then
       val = ZERO
+      return
+    elseif (E < self % elastic % eGrid(1)) then
+      val = ZERO
+      return
     end if
 
-  end subroutine getElXS
+    ! Retrieve energy grid size
+    N = size(self % elastic % eGrid)
+
+    ! Coherent elastic scattering
+    if (self % isCoherent) then
+
+      if (E > self % elastic % eGrid(N)) then
+        val = self % elastic % xs(N)/E
+      else
+        idx = binarySearch(self % elastic % eGrid, E)
+        val = self % elastic % xs(idx)/E
+      end if
+
+    else  ! Incoherent elastic scattering
+
+      if (E > self % elastic % eGrid(N)) then
+        val = ZERO
+      else
+        idx = binarySearch(self % elastic % eGrid, E)
+        associate(E_top => self % elastic % eGrid(idx + 1), &
+                  E_low  => self % elastic % eGrid(idx))
+          f = (E - E_low) / (E_top - E_low)
+        end associate
+        val = self % elastic % xs(idx + 1)*f + (ONE-f) * self % elastic % xs(idx)
+      end if
+
+    end if
+
+  end function getElXS
 
   !!
   !! Build thermalScatteringData from ACE dataCard
-  !!
-  !! If the CDF is not sorted, the CDF doesn't end with one or there are negative
-  !! cross sections, the tables are switched off for that nuclide
   !!
   !! Args:
   !!   ACE [inout] -> ACE card
@@ -220,8 +259,10 @@ contains
     self % inelastic % eGrid = ACE % ESZ_inelastic('energyGrid')
     self % inelastic % xs = ACE % ESZ_inelastic('inelasticXS')
 
+    ! Check if elastic scattering data is present
     self % hasElastic = ACE % hasElastic()
 
+    ! Initialise elastic scattering
     if (self % hasElastic) then
       self % elastic % eGrid = ACE % ESZ_elastic('energyGrid')
       self % elastic % xs = ACE % ESZ_elastic('Pvalues')

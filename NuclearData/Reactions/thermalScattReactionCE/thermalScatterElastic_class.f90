@@ -18,14 +18,31 @@ module thermalScatterElastic_class
   public :: thermalScatterElastic_TptrCast
 
   !!
+  !! Reaction type for Neutron Thermal Elastic Scattering with S(a,b) tables
   !!
+  !! The outgoing energy is always the same as the ingong energy. The angles can
+  !! be either tabulated or calculated after sampling a Bragg edge:
+  !! https://docs.openmc.org/en/stable/methods/neutron_physics.html#outgoing-angle-for-coherent-elastic-scattering
+  !!
+  !! Data is always in lab-frame.
+  !!
+  !! Private Members:
+  !!   eIn          -> ingoing energy grid
+  !!   pValues      -> values from ACE file - could be xss or data to be processed to obtain xss
+  !!   muMatrix     -> outgoing angles matrix
+  !!   elasticTable -> flag about whether angular data are tabulate or not
+  !!   N_muOut      -> number of outgoing angle cosines
+  !!
+  !! Interface:
+  !!   uncorrelatedReactionCE interface
+  !!   buildFromACE -> initialise object from ACE Sab dataCard
   !!
   type, public, extends(uncorrelatedReactionCE) :: thElasticScatter
     private
     real(defReal), dimension(:), allocatable   :: eIn
     real(defReal), dimension(:), allocatable   :: pValues
     real(defReal), dimension(:,:), allocatable :: muMatrix
-    logical(defBool)   :: elasticTable
+    logical(defBool)   :: elasticTable = .false.
     integer(shortInt)  :: N_muOut
   contains
     !! Superclass interface
@@ -77,6 +94,13 @@ contains
   !!
   elemental subroutine kill(self)
     class(thElasticScatter), intent(inout) :: self
+
+    self % N_muOut = 0
+    self % elasticTable = .false.
+
+    if(allocated(self % muMatrix)) deallocate(self % muMatrix)
+    deallocate(self % eIn)
+    deallocate(self % pValues)
 
   end subroutine kill
 
@@ -242,6 +266,7 @@ contains
 
   !!
   !! Return probability density of emission at given angle and energy
+  !! NOT IMPLEMENTED: raises fatal error if called
   !!
   !! See uncorrelatedReactionCE for details
   !!
@@ -252,9 +277,12 @@ contains
     real(defReal), intent(in)           :: E_out
     real(defReal), intent(in)           :: E_in
     real(defReal)                       :: prob
+    character(100), parameter :: Here = 'probOf (thermalScatterElastic_class.f90)'
 
+    ! Avoid compiler warnings
+    prob = ONE
     ! Not implemented yet
-    prob = TWO
+    call fatalError(Here,'This function is not implemented')
 
   end function probOf
 
@@ -271,9 +299,10 @@ contains
     self % eIn = ACE % ESZ_elastic('energyGrid')
     self % Pvalues = ACE % ESZ_elastic('Pvalues')
 
+    ! Check if outgoing distribution is tabulated
     self % elasticTable = ACE % hasITCA()
 
-    ! Get outgoing angle distributions
+    ! Get tabulated outgoing angle distributions
     if (self % elasticTable) then
 
       Nin = ACE % elasticEnergies()
