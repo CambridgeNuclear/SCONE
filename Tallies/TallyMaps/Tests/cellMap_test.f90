@@ -6,6 +6,7 @@ module cellMap_test
   use dictParser_func,     only : charToDict
   use outputFile_class,    only : outputFile
   use cellMap_class,       only : cellMap
+  use geometryReg_mod,     only : geometries, gr_addGeom => addGeom
 
   implicit none
 
@@ -34,8 +35,11 @@ contains
   !!
   subroutine setUp(this)
     class(test_cellMap), intent(inout) :: this
-    type(dictionary)                   :: dict
-    type(dictionary)                   :: mapDict1
+    type(dictionary)                   :: dict, mapDict1
+
+    call dict % init(1)
+    call dict % store('type','geometryStd')
+    call gr_addGeom('geom', dict)
 
     ! Initialise dictionaries
     call mapDict1 % init(2)

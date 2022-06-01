@@ -7,6 +7,10 @@ module cellMap_class
   use particle_class,          only : particleState
   use outputFile_class,        only : outputFile
   use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
+  ! Geometry
+  use geometryStd_class,       only : geometryStd, geometryStd_CptrCast
+  use geometry_inter,          only : geometry
+  use geometryReg_mod,         only : geomPtr
 
   implicit none
   private
@@ -20,7 +24,12 @@ module cellMap_class
 
   !!
   !! Map that divides based on the cell a particle is in
-  !! NOTE: the cell ID here is the one used in the input file
+  !! NOTE: the cell ID must be converted from the IDs in the input file
+  !!       to the uniqueIDs.
+  !! --------------------------- IMPORTANT ----------------------------
+  !! NOTE: The assumption is that there is ONLY ONE geometry in geometryReg,
+  !!       and that that geometry is geometryStd
+  !! ------------------------------------------------------------------
   !!
   !! Private Members:
   !!   binMap -> intMap that maps cellIdx to binIdx
@@ -78,7 +87,9 @@ contains
     class(cellMap), intent(inout)               :: self
     integer(shortInt), dimension(:), intent(in) :: cells
     logical(defBool), intent(in)                :: trackRest
-    integer(shortInt)                           :: N, i
+    integer(shortInt)                           :: N, i, ID
+    class(geometry), pointer                    :: geom
+    class(geometryStd), pointer                 :: geomStd
 
     ! Find number of cells to bin
     N = size(cells)
@@ -87,11 +98,17 @@ contains
     call self % binMap % init(N)
     allocate(self % cellIndices(N))
 
+    ! Get pointer to geometry
+    ! ASSUMES THERE IS ONLY ONE GEOMETRY, AND THAT IT IS STD
+    geom => geomPtr(1)
+    geomStd => geometryStd_CptrCast(geom)
+
     ! Load cell indices and bins
     do i=1,N
-      call self % binMap % add(cells(i), i)
+      ! Get unique cell IDs
+      ID = geomStd % geom % cells % getIdx(cells(i))
+      call self % binMap % add(ID, i)
       self % cellIndices(i) = cells(i)
-
     end do
 
     ! Set default and number of bins
