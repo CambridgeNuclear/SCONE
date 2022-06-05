@@ -3,10 +3,13 @@ module geometryStd_iTest
   use numPrecision
   use universalVariables
   use dictionary_class,  only : dictionary
+  use dictParser_func,   only : charToDict
   use charMap_class,     only : charMap
   use dictParser_func,   only : fileToDict
   use coord_class,       only : coordList
+  use geometry_inter,    only : geometry
   use geometryStd_class, only : geometryStd
+  use visualiser_class,  only : visualiser
   use pFUnit_mod
 
   implicit none
@@ -19,7 +22,7 @@ contains
   !!
 @Test
   subroutine test_lattice_geom()
-    type(geometryStd)           :: geom
+    class(geometryStd), target, allocatable   :: geom
     character(*), parameter     :: path = './IntegrationTestFiles/Geometry/test_lat'
     type(charMap)               :: mats
     integer(shortInt)           :: i, idx, matIdx, uniqueID, event
@@ -32,8 +35,11 @@ contains
     integer(shortInt), dimension(10,10)           :: img
     real(defReal), dimension(6)                   :: aabb
     real(defReal)                                 :: maxDist
+    class(geometry), pointer                      :: geomP
+    type(visualiser)                              :: viz
+    type(dictionary)                              :: vizDict
     real(defReal), parameter :: TOL = 1.0E-7_defReal
-
+    
     ! Load dictionary
     call fileToDict(dict, path)
 
@@ -44,10 +50,11 @@ contains
     do i = 1, size(keys)
       call mats % add(keys(i), i)
     end do
-
+    
     ! Build geometry
+    allocate(geom)
     call geom % init(dict, mats, silent=.true.)
-
+    
     ! Get material at few locations
     name = 'water'
     idx = mats % get(name)
@@ -66,7 +73,7 @@ contains
     u = [ZERO, ZERO, ONE]
     call coords % init(r, u)
     call geom % placeCoord(coords)
-
+    
     ! Verify positions
     @assertEqual(r, coords % lvl(1) % r, TOL)
     @assertEqual(r, coords % lvl(2) % r, TOL)
@@ -77,9 +84,14 @@ contains
     @assertEqual(u, coords % lvl(2) % dir, TOL)
     @assertEqual(u, coords % lvl(3) % dir, TOL)
 
+    ! Construct visualiser and verify slice plotting
+    geomP => geom
+    call charToDict(vizDict, ' ')
+    call viz % init(geomP, vizDict, 'test')
+    
     ! Slice plot -> Material
-    call geom % slicePlot(img, [ZERO, ZERO, ZERO], 'z', 'material')
-
+    call viz % slicePlot(img, [ZERO, ZERO, ZERO], 'z', 'material')
+    
     ! Verify some pixels
     name = 'water'
     idx = mats % get(name)
@@ -96,10 +108,10 @@ contains
 
     ! Slice plot -> UniqueID
     r = [-0.63_defReal, -0.63_defReal, 0.0_defReal]
-    call geom % slicePlot(img, r, 'z', 'uniqueID', [1.26_defReal, 1.26_defReal])
+    call viz % slicePlot(img, r, 'z', 'uniqueID', [1.26_defReal, 1.26_defReal])
 
     ! Verify some pixels
-    ! Note that this test depends on universe leyout order in gromGraph
+    ! Note that this test depends on universe layout order in geomGraph
     ! If it changes this test fill fail
     @assertEqual(2, img(5,5))
     @assertEqual(3, img(1,1))
@@ -125,7 +137,7 @@ contains
     @assertEqual(r_ref, coords % lvl(1) % r, TOL)
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(idx, coords % matIdx)
-
+    
     !*** Test global movement
     r = [ZERO, ZERO, ZERO]
     u = [ZERO, -ONE, ZERO]
@@ -222,7 +234,7 @@ contains
   !!
 @Test
   subroutine test_tilted_cylinder()
-    type(geometryStd)           :: geom
+    class(geometryStd), target, allocatable   :: geom
     character(*), parameter     :: path = './IntegrationTestFiles/Geometry/test_cyl'
     type(charMap)               :: mats
     integer(shortInt)           :: idxW, idxF, i
@@ -232,7 +244,10 @@ contains
     character(nameLen), dimension(:), allocatable :: keys
     integer(shortInt), dimension(20,20)    :: img
     integer(shortInt), dimension(20,20,20) :: img3
-    real(defReal), dimension(3)          :: r
+    class(geometry), pointer    :: geomP
+    type(visualiser)            :: viz
+    type(dictionary)            :: vizDict
+    real(defReal), dimension(3) :: r
 
     ! Load dictionary
     call fileToDict(dict, path)
@@ -246,6 +261,7 @@ contains
     end do
 
     ! Build geometry
+    allocate(geom)
     call geom % init(dict, mats, silent=.true.)
 
     ! Get fuel and water index
@@ -254,21 +270,26 @@ contains
 
     name = 'mox43'
     idxF = mats % get(name)
+    
+    ! Construct visualiser and verify slice plotting
+    geomP => geom
+    call charToDict(vizDict, ' ')
+    call viz % init(geomP, vizDict, 'test')
 
     !*** Test slice normal to x & y
     ! X-axis at 1.0
     r = [1.0_defReal, 0.0_defReal, 0.0_defReal]
-    call geom % slicePlot(img, r, 'x', 'material')
+    call viz % slicePlot(img, r, 'x', 'material')
 
     ! Test some pixels
     @assertEqual(idxW, img(8, 11))
     @assertEqual(idxW, img(17, 3))
     @assertEqual(idxF, img(10, 10))
     @assertEqual(idxF, img(18, 1))
-
+    
     ! Y-axis at 3.0
     r = [0.0_defReal, 3.0_defReal, 0.0_defReal]
-    call geom % slicePlot(img, r, 'y', 'material')
+    call viz % slicePlot(img, r, 'y', 'material')
 
     @assertEqual(idxW, img(15, 1))
     @assertEqual(idxW, img(13, 4))
@@ -278,17 +299,17 @@ contains
     !*** Test voxel plot
     ! Full plot
     ! Value of r is irrelevant
-    call geom % voxelPlot(img3, r, 'material')
+    call viz % voxelPlot(img3, r, 'material')
 
     ! Checksome against 2D plot
     r = [0.0_defReal, 2.75_defReal, 0.0_defReal]
-    call geom % slicePlot(img, r, 'y', 'material')
+    call viz % slicePlot(img, r, 'y', 'material')
 
     @assertEqual(img, img3(:,16,:))
 
     ! Small box all inside fuel
     r = [ 1.0_defReal, 0.0_defReal, 0.0_defReal]
-    call geom % voxelPlot(img3, r, 'material', [0.5_defReal, 0.5_defReal, 0.5_defReal])
+    call viz % voxelPlot(img3, r, 'material', [0.5_defReal, 0.5_defReal, 0.5_defReal])
 
     @assertEqual(idxF, img3)
 

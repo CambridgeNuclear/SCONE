@@ -126,9 +126,10 @@ contains
   !!
   !! See physicsPackage_inter for details
   !!
-  subroutine init(self,dict)
+  subroutine init(self,dict,loud)
     class(rayVolPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)           :: dict
+    logical(defBool), intent(in), optional     :: loud
     integer(shortInt)                          :: seed_temp
     integer(longInt)                           :: seed
     character(10)                              :: time
@@ -137,6 +138,12 @@ contains
     class(dictionary),pointer                  :: tempDict
     character(nameLen)                         :: geomName
     character(100), parameter :: Here = 'init (rayVolPhysicsPackage_class.f90)'
+
+    if (present(loud)) then
+      self % loud = loud
+    else
+      self % loud = .true.
+    end if
 
     ! Load settings
     call dict % get(self % mfp, 'mfp')
@@ -198,9 +205,9 @@ contains
   subroutine run(self)
     class(rayVolPhysicsPackage), intent(inout) :: self
 
-    call self % printSettings()
+    if (self % loud) call self % printSettings()
     call self % cycles(self % rand)
-    call self % printResults()
+    if (self % loud) call self % printResults()
 
   end subroutine run
 
@@ -295,14 +302,16 @@ contains
       av_speed = self % totDist / cycle_T * 1.0E-3_defReal
 
       ! Display progress
-      call printFishLineR(gen)
-      print *
-      print *, 'Cycle: ', numToChar(gen), ' of ', numToChar(self % N_cycles)
-      print *, 'Pop: ', numToChar(self % pop)
-      print '(A, ES12.5)', ' Av. Ray speed: [m/s]: ', av_speed
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      if (self % loud) then
+        call printFishLineR(gen)
+        print *
+        print *, 'Cycle: ', numToChar(gen), ' of ', numToChar(self % N_cycles)
+        print *, 'Pop: ', numToChar(self % pop)
+        print '(A, ES12.5)', ' Av. Ray speed: [m/s]: ', av_speed
+        print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+        print *, 'End time:     ', trim(secToChar(end_T))
+        print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      end if
 
       ! Process scores
       self % res(:, SCORE) = self % res(:, SCORE) / self % totDist

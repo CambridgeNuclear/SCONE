@@ -740,7 +740,7 @@ contains
     !$omp end parallel do
 
     ! Calculate normalisation factor
-    if( self % normBInAddr /= NO_NORM ) then
+    if( self % normBinAddr /= NO_NORM ) then
       normScore  = self % mem % getScore(self % normBinAddr)
       if (normScore == ZERO) then
         call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')

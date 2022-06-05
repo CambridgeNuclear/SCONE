@@ -30,23 +30,23 @@ module geometry_inter
   type, public, abstract :: geometry
   contains
     ! Generic procedures
-    generic :: move  => move_noCache, move_withCache
+    generic :: move  => move_noCache, move_withCache, moveRay_withCache, moveRay_noCache
 
     ! Deferred procedures
-    procedure(init), deferred            :: init
-    procedure(kill), deferred            :: kill
-    procedure(placeCoord), deferred      :: placeCoord
-    procedure(whatIsAt), deferred        :: whatIsAt
-    procedure(bounds), deferred          :: bounds
-    procedure(move_noCache), deferred    :: move_noCache
-    procedure(move_withCache), deferred  :: move_withCache
-    procedure(moveGlobal), deferred      :: moveGlobal
-    procedure(teleport), deferred        :: teleport
-    procedure(activeMats), deferred      :: activeMats
+    procedure(init), deferred              :: init
+    procedure(kill), deferred              :: kill
+    procedure(placeCoord), deferred        :: placeCoord
+    procedure(whatIsAt), deferred          :: whatIsAt
+    procedure(bounds), deferred            :: bounds
+    procedure(move_noCache), deferred      :: move_noCache
+    procedure(move_withCache), deferred    :: move_withCache
+    procedure(moveRay_noCache), deferred   :: moveRay_noCache
+    procedure(moveRay_withCache), deferred :: moveRay_withCache
+    procedure(moveGlobal), deferred        :: moveGlobal
+    procedure(teleport), deferred          :: teleport
+    procedure(activeMats), deferred        :: activeMats
+    procedure(numberOfCells), deferred     :: numberOfCells
 
-    ! Common procedures
-    procedure :: slicePlot
-    procedure :: voxelplot
   end type geometry
 
   abstract interface
@@ -133,13 +133,13 @@ module geometry_inter
     !!
     !! Given coordinates placed in the geometry move point through the geometry
     !!
-    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes
+    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes.
     !! When particle hits boundary, boundary conditions are applied before returning.
     !!
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
@@ -164,7 +164,7 @@ module geometry_inter
     !!
     !! Given coordinates placed in the geometry move point through the geometry
     !!
-    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes
+    !! Move by up to maxDist stopping at domain boundary or until matIdx or uniqueID changes.
     !! When particle hits boundary, boundary conditions are applied before returning.
     !!
     !! Use distance cache to avoid needless recalculation of the next crossing at
@@ -173,12 +173,12 @@ module geometry_inter
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
     !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDict [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -197,6 +197,47 @@ module geometry_inter
     end subroutine move_withCache
 
     !!
+    !! Move, but ensuring that vacuum boundaries are treated as reflective and communicating
+    !! a vacuum strike back.
+    !! This is implemented for handling Random Ray/MoC problems where rays are not terminated
+    !! as they strike a vacuum boundary, but are instead reflected.
+    !!
+    !! Identical in interface to move, with the exception that a flag is included
+    !! for identifying a vacuum boundary hit:
+    !!
+    !! hitVacuum [out] -> false if a vacuum was not hit, true if it was.
+    !!
+    subroutine moveRay_noCache(self, coords, maxDist, event, hitVacuum)
+      import :: geometry, coordList, defReal, shortInt, defBool
+      class(geometry), intent(in)    :: self
+      type(coordList), intent(inout) :: coords
+      real(defReal), intent(inout)   :: maxDist
+      integer(shortInt), intent(out) :: event
+      logical(defBool), intent(out)  :: hitVacuum
+    end subroutine moveRay_noCache
+
+    !!
+    !! Move, but ensuring that vacuum boundaries are treated as reflective and communicating
+    !! a vacuum strike back.
+    !! This is implemented for handling Random Ray/MoC problems where rays are not terminated
+    !! as they strike a vacuum boundary, but are instead reflected.
+    !!
+    !! Identical in interface to move_withCache, with the exception that a flag is included
+    !! for identifying a vacuum boundary hit:
+    !!
+    !! hitVacuum [out] -> false if a vacuum was not hit, true if it was.
+    !!
+    subroutine moveRay_withCache(self, coords, maxDist, event, cache, hitVacuum)
+      import :: geometry, coordList, defReal, shortInt, distCache, defBool
+      class(geometry), intent(in)    :: self
+      type(coordList), intent(inout) :: coords
+      real(defReal), intent(inout)   :: maxDist
+      integer(shortInt), intent(out) :: event
+      type(distCache), intent(inout) :: cache
+      logical(defBool), intent(out)  :: hitVacuum
+    end subroutine moveRay_withCache
+
+    !!
     !! Move a particle in the top (global) level in the geometry
     !!
     !! Move up to maxDist or untill domain boundary is hit, in which case applies boundary
@@ -207,7 +248,7 @@ module geometry_inter
     !!   BOUNDARY_EV  -> Particle hit domain boundary
     !!
     !! Args:
-    !!   coords [inout] -> Initialised (but not necesserly placed) coordList for a particle to be
+    !!   coords [inout] -> Initialised (but not necessarily placed) coordList for a particle to be
     !!     moved. Will become placed on exit.
     !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
@@ -232,9 +273,9 @@ module geometry_inter
     !! applied and movement continious untill full distance is reached.
     !!
     !! Args:
-    !!   coords [inout] -> Initialised (but not necesserly placed) coordList for a particle to be
-    !!     moved. Will become placed on exit.
-    !!   dist [in] -> Distance by which move the particle
+    !!   coords [inout] -> Initialised (but not necessarily placed) coordList for a particle to be
+    !!   moved. Will become placed on exit.
+    !!   dist [in] -> Distance by which to move the particle
     !!
     !! Errors:
     !!   If maxDist < 0.0 behaviour is unspecified
@@ -262,168 +303,23 @@ module geometry_inter
       integer(shortInt), dimension(:), allocatable :: matList
     end function activeMats
 
+    !!
+    !! Returns the number of unique cells present in the geometry
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   Integer of the number of unique (material containing) cells in the geometry.
+    !!
+    function numberOfCells(self) result(n)
+      import :: geometry, shortInt
+      class(geometry), intent(in) :: self
+      integer(shortInt)           :: n
+    end function numberOfCells
+
   end interface
 
 contains
-
-  !!
-  !! Produce a 2D plot of the geometry
-  !!
-  !! Resolution is determined by a size of provided output matrix
-  !! By default plot plane is normal to z-axis, witch width determined by bounds of the
-  !! geometry.
-  !!
-  !! Args:
-  !!   img [out]   -> Rank 2 matrix. It is effectively a bitmap image
-  !!   centre [in] -> Location of the centre of the image
-  !!   dir [in]    -> Axis normal to plot plane. In {'x','y','z'}
-  !!   what [in]   -> What to plot 'material' or 'uniqueID'
-  !!   width [in]  -> Optional. Width of the plot in both directions. Direction lower in
-  !!     sequence {x,y,z} is given first.
-  !!
-  subroutine slicePlot(self, img, centre, dir, what, width)
-    class(geometry), intent(in)                       :: self
-    integer(shortInt), dimension(:,:), intent(out)    :: img
-    real(defReal), dimension(3), intent(in)           :: centre
-    character(1), intent(in)                          :: dir
-    character(*), intent(in)                          :: what
-    real(defReal), dimension(2), optional, intent(in) :: width
-    real(defReal), dimension(3)     :: low, top , step, point, corner
-    real(defReal), dimension(6)     :: aabb
-    integer(shortInt), dimension(2) :: plane
-    integer(shortInt)               :: ax, i, j, matIdx, uniqueID
-    logical(defBool)                :: printMat
-    character(100), parameter :: Here = 'slicePlot (geometry_inter.f90)'
-
-    ! Select plane of the plot
-    select case (dir)
-      case ('x')
-        ax = X_AXIS
-        plane = [Y_AXIS, Z_AXIS]
-
-      case ('y')
-        ax = Y_AXIS
-        plane = [X_AXIS, Z_AXIS]
-
-      case ('z')
-        ax = Z_AXIS
-        plane = [X_AXIS, Y_AXIS]
-
-      case default
-        call fatalError(Here, 'Unknown normal axis: '//dir)
-        ax = X_AXIS
-        plane = 0 ! Make compiler happy
-    end select
-
-    ! Find lower and upper corner of the plot
-    if (present(width)) then
-      low(plane) = centre(plane) - width * HALF
-      top(plane) = centre(plane) + width * HALF
-      low(ax) = centre(ax)
-      top(ax) = centre(ax)
-
-    else
-      aabb = self % bounds()
-      low = aabb(1:3)
-      top = aabb(4:6)
-      low(ax) = centre(ax)
-      top(ax) = centre(ax)
-
-    end if
-
-    ! Calculate step size in all directions
-    step(ax) = ZERO
-    step(plane) = (top(plane) - low(plane)) / shape(img)
-
-    ! Select what to print
-    select case (what)
-      case ('material')
-        printMat = .true.
-
-      case('uniqueID')
-        printMat = .false.
-
-      case default
-        call fatalError(Here, 'Target of plot must be material or uniqueID. Not: '//trim(what))
-        printMat = .false. ! Make compiler happy
-
-    end select
-
-    ! Print the image
-    corner = low - HALF * step
-    point(ax) = corner(ax)
-
-    !$omp parallel do firstprivate(point) private(matIdx, uniqueID)
-    do j = 1, size(img, 2)
-      point(plane(2)) = corner(plane(2)) + step(plane(2)) * j
-
-      do i = 1, size(img, 1)
-        point(plane(1)) = corner(plane(1)) + step(plane(1)) * i
-
-        ! Find material and paint image
-        call self % whatIsAt(matIdx, uniqueID, point)
-
-        ! Paint the pixel
-        if (printMat) then
-          img(i, j) = matIdx
-        else
-          img(i, j) = uniqueID
-        end if
-
-      end do
-    end do
-    !$omp end parallel do
-
-  end subroutine slicePlot
-
-  !!
-  !! Produce a 3D Voxel plot of the geometry
-  !!
-  !! Resolution is determined by a size of provided output matrix
-  !! By default, bounds of the plot correspond to the bounds of the geometry
-  !!
-  !! Args:
-  !!   img [out] -> Rank 3 matrix, It is effectively a 3D bitmap
-  !!   centre [in] -> Location of the centre of the image
-  !!   what [in]   -> What to plot 'material' or 'uniqueID'
-  !!   width [in]  -> Optional. Width of the plot in all directions.
-  !!
-  subroutine voxelPlot(self, img, centre, what, width)
-    class(geometry), intent(in)                       :: self
-    integer(shortInt), dimension(:,:,:), intent(out)  :: img
-    real(defReal), dimension(3), intent(in)           :: centre
-    character(*), intent(in)                          :: what
-    real(defReal), dimension(3), optional, intent(in) :: width
-    real(defReal), dimension(3)                       :: width_l, centre_l, point
-    real(defReal), dimension(6)                       :: aabb
-    real(defReal)                                     :: stepZ
-    integer(shortInt)                                 :: i
-
-    ! Get local value of width and centre
-    if (present(width)) then
-      width_l = width
-      centre_l = centre
-
-    else
-      aabb = self % bounds()
-      centre_l = (aabb(1:3) + aabb(4:6)) * HALF
-      width_l  = aabb(4:6) - aabb(1:3)
-
-    end if
-
-    ! Calculate step in z direction
-    stepZ = width_l(3) / size(img, 3)
-
-    ! Build voxel plot from multiple slice plots
-    point = centre_l
-    point(3) = centre_l(3) - width_l(3) * HALF - stepZ * HALF
-    do i = 1, size(img, 3)
-      point(3) = point(3) + stepZ
-      call self % slicePlot(img(:,:,i), point, 'z', what, width_l(1:2))
-
-    end do
-
-  end subroutine voxelPlot
-
 
 end module geometry_inter
