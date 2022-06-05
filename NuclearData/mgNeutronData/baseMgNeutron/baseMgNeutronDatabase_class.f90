@@ -49,6 +49,9 @@ module baseMgNeutronDatabase_class
 
   contains
     ! Superclass Interface
+    procedure :: nGroups
+
+    ! Local interface
     procedure :: getTransMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
@@ -59,9 +62,6 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
-
-    ! Local interface
-    procedure :: nGroups
 
   end type baseMgNeutronDatabase
 
@@ -323,7 +323,7 @@ contains
   !!
   pure function nGroups(self) result(nG)
     class(baseMgNeutronDatabase), intent(in) :: self
-    integer(shortInt)                        :: nG
+    integer(shortInt), intent(out)           :: nG
 
     nG = self % nG
 

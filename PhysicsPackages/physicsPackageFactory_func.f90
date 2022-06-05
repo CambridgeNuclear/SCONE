@@ -15,6 +15,7 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
+  use randomRayPhysicsPackage_class,   only : randomRayPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -28,6 +29,7 @@ module physicsPackageFactory_func
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
                                                                              'vizPhysicsPackage        ',&
+                                                                             'randomRayPhysicsPackage  ',&
                                                                              'rayVolPhysicsPackage     ']
 
   !!
@@ -87,6 +89,11 @@ contains
           type is (vizPhysicsPackage)
             call new % init(dict)
         end select
+
+      case('randomRayPhysicsPackage')
+        ! Allocate and initialise
+        allocate( randomRayPhysicsPackage :: new)
+        call new % init(dict)
 
       case('rayVolPhysicsPackage')
         ! Allocate and initialise

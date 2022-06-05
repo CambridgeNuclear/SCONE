@@ -48,6 +48,12 @@ module mgNeutronMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
+    procedure(getAllTotalXS), deferred      :: getAllTotalXS
+    procedure(getAllNuFissionXS), deferred  :: getAllNuFissionXS
+    procedure(getAllChi), deferred          :: getAllChi
+    procedure(getScatterOut), deferred      :: getScatterOut
+    procedure(getScatterIn), deferred       :: getScatterIn
+    procedure(getScatterMatrix), deferred   :: getScatterMatrix
     procedure                               :: isFissile
     procedure                               :: set
 
@@ -93,9 +99,102 @@ module mgNeutronMaterial_inter
       class(RNG), intent(inout)            :: rand
       real(defReal)                        :: xs
     end function getTotalXS
+
+    !!
+    !! Return Macroscopic Total XS in all groups for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   xs -> an array of total XSs
+    !!
+    function getAllTotalXS(self) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)     :: self
+      real(defReal), dimension(:), intent(out) :: xs
+    end function getAllTotalXS
+
+    !!
+    !! Return Macroscopic nu*Fission XS in all groups for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   xs -> an array of nuSigmaF XSs
+    !!
+    function getAllNuFissionXS(self) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)     :: self
+      real(defReal), dimension(:), intent(out) :: xs
+    end function getAllNuFissionXS
+
+    !!
+    !! Return fission spectrum (chi) in all groups for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   chi -> an array of fission spectrum values
+    !!
+    function getAllChi(self) result(chi)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)     :: self
+      real(defReal), dimension(:), intent(out) :: chi
+    end function getAllChi
+
+    !!
+    !! Return Macroscopic Scatter XSs for ingoing energy g
+    !! for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   xs -> vector of scatter*production XSs
+    !!
+    function getScatterOut(self,g) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)       :: self
+      integer(shortInt), intent(in)              :: g
+      real(defReal), dimension(:), intent(out)   :: xs
+    end function getScatterOut
+
+    !!
+    !! Return Macroscopic Scatter XSs for outgoing energy g
+    !! for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   xs -> vector of scatter*production XSs
+    !!
+    function getScatterOut(self,g) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)       :: self
+      integer(shortInt), intent(in)              :: g
+      real(defReal), dimension(:), intent(out)   :: xs
+    end function getScatterOut
+
+    !!
+    !! Return Macroscopic Scatter XS matrix for the material
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   xs -> matrix of scatter*production XSs
+    !!
+    function getScatterMatrix(self) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt
+      class(mgNeutronMaterial), intent(in)       :: self
+      real(defReal), dimension(:,:), intent(out) :: xs
+    end function getScatterMatrix
+
   end interface
-
-
 
 contains
 

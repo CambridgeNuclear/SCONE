@@ -30,19 +30,21 @@ module geometry_inter
   type, public, abstract :: geometry
   contains
     ! Generic procedures
-    generic :: move  => move_noCache, move_withCache
+    generic :: move  => move_noCache, move_withCache, moveRay_withCache
 
     ! Deferred procedures
-    procedure(init), deferred            :: init
-    procedure(kill), deferred            :: kill
-    procedure(placeCoord), deferred      :: placeCoord
-    procedure(whatIsAt), deferred        :: whatIsAt
-    procedure(bounds), deferred          :: bounds
-    procedure(move_noCache), deferred    :: move_noCache
-    procedure(move_withCache), deferred  :: move_withCache
-    procedure(moveGlobal), deferred      :: moveGlobal
-    procedure(teleport), deferred        :: teleport
-    procedure(activeMats), deferred      :: activeMats
+    procedure(init), deferred              :: init
+    procedure(kill), deferred              :: kill
+    procedure(placeCoord), deferred        :: placeCoord
+    procedure(whatIsAt), deferred          :: whatIsAt
+    procedure(bounds), deferred            :: bounds
+    procedure(move_noCache), deferred      :: move_noCache
+    procedure(move_withCache), deferred    :: move_withCache
+    procedure(moveRay_withCache), deferred :: moveRay_withCache
+    procedure(moveGlobal), deferred        :: moveGlobal
+    procedure(teleport), deferred          :: teleport
+    procedure(activeMats), deferred        :: activeMats
+    procedure(numberOfCells), deferred     :: numberOfCells
 
     ! Common procedures
     procedure :: slicePlot
@@ -133,13 +135,13 @@ module geometry_inter
     !!
     !! Given coordinates placed in the geometry move point through the geometry
     !!
-    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes
+    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes.
     !! When particle hits boundary, boundary conditions are applied before returning.
     !!
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
@@ -164,7 +166,7 @@ module geometry_inter
     !!
     !! Given coordinates placed in the geometry move point through the geometry
     !!
-    !! Move by up to maxDist stopping at domain boundary or untill matIdx or uniqueID changes
+    !! Move by up to maxDist stopping at domain boundary or until matIdx or uniqueID changes.
     !! When particle hits boundary, boundary conditions are applied before returning.
     !!
     !! Use distance cache to avoid needless recalculation of the next crossing at
@@ -173,12 +175,12 @@ module geometry_inter
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
     !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDict [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -197,6 +199,27 @@ module geometry_inter
     end subroutine move_withCache
 
     !!
+    !! Move, but ensuring that vacuum boundaries are treated as reflective and communicating
+    !! a vacuum strike back.
+    !! This is implemented for handling Random Ray/MoC problems where rays are not terminated
+    !! as they strike a vacuum boundary, but are instead reflected.
+    !!
+    !! Identical in interface to move_withCache, with the exception that a flag is included
+    !! for identifying a vacuum boundary hit:
+    !!
+    !! hitVacuum [out] -> false if a vacuum was not hit, true if it was.
+    !!
+    subroutine moveRay_withCache(self, coords, maxDist, event, cache, hitVacuum)
+      import :: geometry, coordList, defReal, shortInt, distCache, defBool
+      class(geometry), intent(in)    :: self
+      type(coordList), intent(inout) :: coords
+      real(defReal), intent(inout)   :: maxDist
+      integer(shortInt), intent(out) :: event
+      type(distCache), intent(inout) :: cache
+      logical(defBool), intent(out)  :: hitVacuum
+    end subroutine moveRay_withCache
+
+    !!
     !! Move a particle in the top (global) level in the geometry
     !!
     !! Move up to maxDist or untill domain boundary is hit, in which case applies boundary
@@ -207,7 +230,7 @@ module geometry_inter
     !!   BOUNDARY_EV  -> Particle hit domain boundary
     !!
     !! Args:
-    !!   coords [inout] -> Initialised (but not necesserly placed) coordList for a particle to be
+    !!   coords [inout] -> Initialised (but not necessarily placed) coordList for a particle to be
     !!     moved. Will become placed on exit.
     !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
@@ -232,9 +255,9 @@ module geometry_inter
     !! applied and movement continious untill full distance is reached.
     !!
     !! Args:
-    !!   coords [inout] -> Initialised (but not necesserly placed) coordList for a particle to be
-    !!     moved. Will become placed on exit.
-    !!   dist [in] -> Distance by which move the particle
+    !!   coords [inout] -> Initialised (but not necessarily placed) coordList for a particle to be
+    !!   moved. Will become placed on exit.
+    !!   dist [in] -> Distance by which to move the particle
     !!
     !! Errors:
     !!   If maxDist < 0.0 behaviour is unspecified
@@ -261,6 +284,21 @@ module geometry_inter
       class(geometry), intent(in)                  :: self
       integer(shortInt), dimension(:), allocatable :: matList
     end function activeMats
+
+    !!
+    !! Returns the number of unique cells present in the geometry
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   Integer of the number of unique (material containing) cells in the geometry.
+    !!
+    function numberOfCells(self) result(n)
+      import :: geometry, shortInt
+      class(geometry), intent(in)    :: self
+      integer(shortInt), intent(out) :: n
+    end function numberOfCells
 
   end interface
 

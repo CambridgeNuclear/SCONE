@@ -71,12 +71,19 @@ module baseMgNeutronMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
     type(fissionMG), allocatable              :: fission
+    integer(shortInt)                         :: nG
 
   contains
     ! Superclass procedures
     procedure :: kill
     procedure :: getMacroXSs_byG
     procedure :: getTotalXS
+    procedure :: getAllTotalXS
+    procedure :: getAllNuFissionXS
+    procedure :: getAllChi
+    procedure :: getScatterOut
+    procedure :: getScatterIn
+    procedure :: getScatterMatrix
 
     ! Local procedures
     procedure :: init
@@ -158,6 +165,86 @@ contains
 
   end function getTotalXS
 
+  !!
+  !! Return Total XSs in all energy groups
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getAllTotalXS(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in)          :: self
+    real(defReal), dimension(self % nG), intent(out)  :: xs
+
+    xs = self % data(TOTAL_XS, :)
+
+  end function getAllTotalXS
+
+  !!
+  !! Return nuFission XSs in all energy groups
+  !!
+  !! See mgNeutronMaterial documentation for details
+  !!
+  function getAllNuFissionXS(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in)          :: self
+    real(defReal), dimension(self % nG), intent(out)  :: xs
+
+    xs = self % data(NU_FISSION, :)
+
+  end function getAllNuFissionXS
+
+  !!
+  !! Return chi in all energy groups
+  !! This might be a slightly cheeky means of accessing it...
+  !!
+  !! See mgNeutronMaterial documentation for details
+  !!
+  function getAllChi(self) result(chi)
+    class(baseMgNeutronMaterial), intent(in)          :: self
+    real(defReal), dimension(self % nG), intent(out)  :: chi
+
+    chi = self % fission % data(:,2)
+
+  end function getAllChi
+
+  !!
+  !! Return outgoing scatter XSs for a given ingoing group
+  !!
+  !! See mgNeutronMaterial documentation for details
+  !!
+  function getScatterOut(self,g) result(xs)
+    class(baseMgNeutronMaterial), intent(in)          :: self
+    integer(shortInt), intent(in)                     :: g
+    real(defReal), dimension(self % nG), intent(out)  :: xs
+
+    xs = self % scatter % P0(:,g) * self % scatter % prod(:,g)
+
+  end function getScatterOut
+
+  !!
+  !! Return ingoing scatter XSs for a given outgoing group
+  !!
+  !! See mgNeutronMaterial documentation for details
+  !!
+  function getScatterIn(self,g) result(xs)
+    class(baseMgNeutronMaterial), intent(in)          :: self
+    integer(shortInt), intent(in)                     :: g
+    real(defReal), dimension(self % nG), intent(out)  :: xs
+
+    xs = self % scatter % P0(g,:) * self % scatter % prod(g,:)
+
+  end function getScatterIn
+
+  !!
+  !! Return scatter XS matrix 
+  !!
+  !! See mgNeutronMaterial documentation for details
+  !!
+  function getScatterMatrix(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in)    :: self
+    real(defReal), dimension(:,:), intent(out)  :: xs
+
+    xs = self % scatter % P0 * self % scatter % prod
+
+  end function getScatterMatrix
 
   !!
   !! Initialise Base MG Neutron Material fromdictionary
@@ -191,6 +278,7 @@ contains
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
+    self % nG = nG
 
     ! Set fissile flag
     call self % set(fissile = dict % isPresent('fission'))
@@ -285,7 +373,7 @@ contains
     integer(shortInt)                        :: nG
 
     if(allocated(self % data)) then
-      nG = size(self % data,2)
+      nG = self % nG
     else
       nG = 0
     end if

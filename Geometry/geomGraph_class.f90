@@ -51,26 +51,32 @@ module geomGraph_class
   !!   array       -> Array with graph data
   !!   uniqueCells -> Number of uniqueCells in the structure
   !!   usedMats    -> Sorted list of matIdxs which are used in the geometry
+  !!   isExtended  -> Logical stating whether or not the graph is extended
   !!
   !! Interface:
-  !!   init -> Build fron uniFills and dictionary definition
-  !!   getFill -> Get filling invormation at location given by uniRootIr & localID
-  !!   kill -> Return to uninitialised state
+  !!   init          -> Build fron uniFills and dictionary definition
+  !!   getFill       -> Get filling invormation at location given by uniRootIr & localID
+  !!   getMatFromUID -> Get material ID given a cell unique ID
+  !!   kill          -> Return to uninitialised state
   !!
   type, public :: geomGraph
     type(location), dimension(:), allocatable    :: array
     integer(shortInt)                            :: uniqueCells = 0
     integer(shortInt), dimension(:), allocatable :: usedMats
+    integer(shortInt), dimension(:), allocatable :: matsByCell
+    logical(defBool)                             :: isExtended = .FALSE.
 
   contains
     procedure :: init
     procedure :: getFill
+    procedure :: getMatFromUID
     procedure :: kill
 
     ! Private procedures
     procedure, private :: buildShrunk
     procedure, private :: buildExtended
     procedure, private :: setUniqueIDs
+    procedure, private :: buildMatArrayByCell
   end type geomGraph
 
 contains
@@ -145,7 +151,27 @@ contains
     id = self % array(uniRootId + localID -1) % id
 
   end subroutine getFill
+  
+  !!
+  !! Given a valid unique ID, returns a material index.
+  !! No checks, so make sure not to feed something incorrect...
+  !!
+  !! Args:
+  !!   ID     -> uniqueID of a cell
+  !!
+  !! Result:
+  !!   matIdx -> material index of the cell's contents
+  !!
+  !!
+  pure function getMatFromUID(self, ID) result(matIdx)
+    class(geomGraph), intent(in)   :: self
+    integer(shortInt), intent(in)  :: ID
+    integer(shortInt), intent(out) :: matIdx
 
+    matIdx = self % matsByCell(ID)
+
+  end function getMatFromUID
+  
   !!
   !! Return to uninitialised state
   !!
@@ -229,6 +255,8 @@ contains
     ! Set unique IDs -> Enumerate sinks
     call self % setUniqueIDs()
 
+    call buildMatArrayByCell()
+
   end subroutine buildShrunk
 
   !!
@@ -291,6 +319,10 @@ contains
     ! Set unique IDs -> Enumerate sinks
     call self % setUniqueIDs()
 
+    self % isExtended = .TRUE.
+
+    call buildMatArrayByCell()
+
   end subroutine buildExtended
 
   !!
@@ -343,6 +375,27 @@ contains
     call quickSort(self % usedMats)
 
   end subroutine setUniqueIDs
+
+  !!
+  !! Builds an array of material indices corresponding to cell uniqueIDs.
+  !! This allows for more quickly finding matIdxs given a unique ID.
+  !!
+  subroutine buildMatArrayByCell
+    class(geomGraph), intent(inout) :: self
+    integer(shortInt)               :: i, cells, fill
+
+    allocate(self % matsByCell, self % uniqueCells)
+    
+    cells = 0
+    do i = 1, size(self % array)
+      fill = self % array(i) % idx
+      if (fill > 0) then ! It is material filling
+        cells = cells + 1
+        self % matsByCell(cell) = fill
+      end if
+    end do
+
+  end subroutine buildMatArrayByCell
 
   !!
   !! Put universe data on the array

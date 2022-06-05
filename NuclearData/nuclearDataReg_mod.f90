@@ -419,13 +419,13 @@ contains
   end function getNeutronCE
 
   !!
-  !! Return pointer to an active Neutron CE Database
+  !! Return pointer to an active Neutron MG Database
   !!
   !! Args:
   !!   None
   !!
   !! Result:
-  !!   ceNeutronDatabase class pointer
+  !!   mgNeutronDatabase class pointer
   !!
   !! Errors:
   !!   If there is no active database returns NULL ptr
