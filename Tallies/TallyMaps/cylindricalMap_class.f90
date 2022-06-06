@@ -1,4 +1,4 @@
-module sphericalMap_class
+module cylindricalMap_class
 
   use numPrecision
   use universalVariables, only : valueOutsideArray
@@ -14,10 +14,11 @@ module sphericalMap_class
 
 
   !!
-  !! Divides space into a mesh in spherical co-ordinates
+  !! Divides space into a mesh in cylindrical co-ordinates
   !!
   !! TODO:
   !!   Implement polar & azimuthal subdivision
+  !!   Add unstructured grid boundaries
   !!
   !! Interface:
   !!   tallyMap interface
@@ -27,21 +28,27 @@ module sphericalMap_class
   !!   particle can end-up in either of the two
   !!
   !! Sample Dictionary Input:
-  !!  sphericalMap {
-  !!    type sphericalMap;
-  !!    #origin (1.0 0.0 0.0);# // Optional. Default (0 0 0)
-  !!    grid lin;
+  !!  cylindricalMap {
+  !!    type cylindricalMap;
+  !!    #origin (1.0 0.0);# // Optional. Default (0 0)
+  !!    rGrid lin;
   !!    #Rmin 2.0;#  // Optional. Default 0.0
   !!    Rmax  10.0;
-  !!    N 10;
+  !!    rN 10;
+  !!    #zGrid lin; // Optional
+  !!    Zmin 2.0;
+  !!    Zmax  10.0;
+  !!    zN 10;
   !!    }
   !!
   !!
-  type, public, extends (tallyMap) :: sphericalMap
+  type, public, extends (tallyMap) :: cylindricalMap
     private
-    real(defReal), dimension(3) :: origin = ZERO
+    real(defReal), dimension(2) :: origin = ZERO
     type(grid)                  :: rBounds
-    integer(shortInt)           :: N = 0
+    type(grid)                  :: zBounds
+    integer(shortInt)           :: rN = 0
+    integer(shortInt)           :: zN = 0
   contains
     ! Superclass
     procedure :: init
@@ -51,7 +58,7 @@ module sphericalMap_class
     procedure :: map
     procedure :: print
     procedure :: kill
-  end type sphericalMap
+  end type cylindricalMap
 
 contains
 
@@ -61,31 +68,31 @@ contains
   !! See tallyMap for specification.
   !!
   subroutine init(self, dict)
-    class(sphericalMap), intent(inout)       :: self
+    class(cylindricalMap), intent(inout)     :: self
     class(dictionary), intent(in)            :: dict
     real(defReal), dimension(:), allocatable :: temp, grid
     character(nameLen)                       :: type
-    real(defReal)                            :: Rmin, Rmax, vol
+    real(defReal)                            :: Rmin, Rmax, Zmin, Zmax, vol
     integer(shortInt)                        :: i
     character(100), parameter :: Here = 'init (sphericalmap_class.f90)'
 
     ! Check & load origin
-    call dict % getOrDefault(temp, 'origin', [ZERO, ZERO, ZERO])
+    call dict % getOrDefault(temp, 'origin', [ZERO, ZERO])
 
-    if (size(temp) /= 3) then
-      call fatalError(Here, 'Expected 3 values for origin. Got: ' // numToChar(size(temp)))
+    if (size(temp) /= 2) then
+      call fatalError(Here, 'Expected 2 values for origin. Got: ' // numToChar(size(temp)))
     end if
     self % origin = temp
 
-    ! Load grid information
-    if (.not.dict % isPresent('grid')) call fatalError(Here, 'Keyword grid must be present')
-    call dict % get(type, 'grid')
+    ! Load radial grid information
+    if (.not.dict % isPresent('rGrid')) call fatalError(Here, 'Keyword rGrid must be present')
+    call dict % get(type, 'rGrid')
 
     select case(type)
       case('lin')
         call dict % getOrDefault(Rmin, 'Rmin', ZERO)
         call dict % get(Rmax, 'Rmax')
-        call dict % get(self % N, 'N')
+        call dict % get(self % rN, 'N')
 
         ! Check that minimum radius is OK
         if (Rmin < ZERO) then
@@ -93,21 +100,21 @@ contains
         end if
 
         ! Build grid
-        call self % rBounds % init(Rmin, Rmax, self % N, type)
+        call self % rBounds % init(Rmin, Rmax, self % rN, type)
 
       case('unstruct')
 
         call dict % get(grid,'bins')
 
         ! Initialise
-        self % N = size(grid) - 1
+        self % rN = size(grid) - 1
         call self % rBounds % init(grid)
 
       case('equivolume')
 
         call dict % getOrDefault(Rmin, 'Rmin', ZERO)
         call dict % get(Rmax, 'Rmax')
-        call dict % get(self % N, 'N')
+        call dict % get(self % rN, 'N')
 
         ! Check that minimum radius is OK
         if (Rmin < ZERO) then
@@ -115,21 +122,42 @@ contains
         end if
 
         ! Calculate volume
-        vol = (Rmax**3 - Rmin**3) /self % N
+        vol = (Rmax**2 - Rmin**2) /self % rN
 
-        allocate(grid(self % N + 1))
+        allocate(grid(self % rN + 1))
         ! Calculate grid boundaries
         grid(1) = Rmin
         do i = 2,size(grid)
-          grid(i) = (vol + grid(i-1)**3)**(ONE/3.0_defReal)
+          grid(i) = sqrt(vol + grid(i-1)**2)
         end do
 
         call self % rBounds % init(grid)
 
       case default
-        call fatalError(Here, "'grid' can take only values of: lin")
+        call fatalError(Here, "'rGrid' can take only values of: lin")
 
     end select
+
+    ! Load axial grid information
+    if (dict % isPresent('zGrid')) then
+
+      call dict % get(type, 'zGrid')
+
+      select case(type)
+        case('lin')
+          call dict % get(Zmin, 'Zmin')
+          call dict % get(Zmax, 'Zmax')
+          call dict % get(self % zN, 'N')
+
+          ! Build grid
+          call self % zBounds % init(Zmin, Zmax, self % zN, type)
+
+        case default
+          call fatalError(Here, "'zGrid' can take only values of: lin")
+
+        end select
+
+      end if
 
   end subroutine init
 
@@ -139,12 +167,13 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function bins(self, D) result(N)
-    class(sphericalMap), intent(in) :: self
-    integer(shortInt), intent(in)   :: D
-    integer(shortInt)               :: N
+    class(cylindricalMap), intent(in) :: self
+    integer(shortInt), intent(in)     :: D
+    integer(shortInt)                 :: N
 
     if (D == 1 .or. D == 0) then
-      N = self % N
+      N = self % rN
+      if (self % zN /= 0) N = N * self % zN
     else
       N = 0
     end if
@@ -157,7 +186,7 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function dimensions(self) result(D)
-    class(sphericalMap), intent(in)    :: self
+    class(cylindricalMap), intent(in)  :: self
     integer(shortInt)                  :: D
 
     D = 1
@@ -170,10 +199,10 @@ contains
   !! See tallyMap for specification
   !!
   function getAxisName(self) result(name)
-    class(sphericalMap), intent(in) :: self
+    class(cylindricalMap), intent(in) :: self
     character(nameLen)          :: name
 
-    name ='sphericalMap'
+    name ='cylindricalMap'
 
   end function getAxisName
 
@@ -183,17 +212,33 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function map(self, state) result(idx)
-    class(sphericalMap), intent(in)  :: self
-    class(particleState), intent(in) :: state
-    integer(shortInt)                :: idx
-    real(defReal)                    :: r
+    class(cylindricalMap), intent(in) :: self
+    class(particleState), intent(in)  :: state
+    integer(shortInt)                 :: idx, zIdx
+    real(defReal)                     :: r
 
     ! Calculate the distance from the origin
-    r = norm2(state % r - self % origin)
+    r = norm2(state % r(1:2) - self % origin)
 
     ! Search and return 0 if r is out-of-bounds
     idx = self % rBounds % search(r)
-    if (idx == valueOutsideArray) idx = 0
+
+    if (idx == valueOutsideArray) then
+      idx = 0
+      return
+    end if
+
+    ! Return if there is no axial dimension
+    if (self % zN == 0) return
+
+    ! Search along the axial dimension
+    zIdx = self % zBounds % search(state % r(3))
+    if (zIdx == valueOutsideArray) then
+      idx = 0
+      return
+    end if
+
+    idx = self % rN * (zIdx - 1) + idx
 
   end function map
 
@@ -203,16 +248,16 @@ contains
   !! See tallyMap for specification.
   !!
   subroutine print(self,out)
-    class(sphericalMap), intent(in)  :: self
+    class(cylindricalMap), intent(in)  :: self
     class(outputFile), intent(inout) :: out
     character(nameLen)               :: name
     integer(shortInt)                :: i
 
     ! Name the array
-    name = trim(self % getAxisName()) //'Bounds'
+    name = trim(self % getAxisName()) //'radialBounds'
 
-    call out % startArray(name, [2,self % N])
-    do i = 1, self % N
+    call out % startArray(name, [2,self % rN])
+    do i = 1, self % rN
       ! Print lower bin boundary
       call out % addValue(self % rBounds % bin(i))
 
@@ -222,20 +267,38 @@ contains
     end do
     call out % endArray()
 
+    ! Add axial dimension if present
+    if (self % zN /= 0) then
+      name = trim(self % getAxisName()) //'axialBounds'
+
+      call out % startArray(name, [2,self % zN])
+      do i = 1, self % zN
+        ! Print lower bin boundary
+        call out % addValue(self % zBounds % bin(i))
+
+        ! Print upper bin boundar
+        call out % addValue(self % zBounds % bin(i + 1))
+
+      end do
+      call out % endArray()
+    end if
+
   end subroutine print
 
   !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(sphericalMap), intent(inout) :: self
+    class(cylindricalMap), intent(inout) :: self
 
     call kill_super(self)
 
     self % origin = ZERO
     call self % rBounds % kill()
-    self % N = 0
+    call self % zBounds % kill()
+    self % rN = 0
+    self % zN = 0
 
   end subroutine kill
 
-end module sphericalMap_class
+end module cylindricalMap_class

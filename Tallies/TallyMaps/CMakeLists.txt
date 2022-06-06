@@ -13,6 +13,7 @@ add_sources(./tallyMap_inter.f90
             ./weightMap_class.f90
             ./sphericalMap_class.f90
             ./cellMap_class.f90
+            ./cylindricalMap_class.f90
  #          ./matXsMap_class.f90
             )
 
