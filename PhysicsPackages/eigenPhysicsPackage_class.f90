@@ -22,8 +22,9 @@ module eigenPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx, gr_addField => addField
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom   => addGeom, &
+                                             gr_geomIdx  => geomIdx, gr_addField  => addField, &
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -87,6 +88,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
     integer(shortInt)  :: bufferSize
+    logical(defBool)   :: UFS = .false.
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -145,6 +147,7 @@ contains
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
+    class(field), pointer                     :: UFSfield
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
@@ -225,6 +228,11 @@ contains
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
+
+      if (self % UFS) then
+        UFSfield => gr_fieldPtr(gr_fieldIdx('UFS'))
+        call UFSfield % updateMap(self % nextCycle)
+      end if
 
       ! Normalise population
       call self % nextCycle % normSize(self % pop, pRNG)
@@ -439,6 +447,7 @@ contains
 
     ! Read uniform fission site option as a geometry field
     if (dict % isPresent('uniformFissionSites')) then
+      self % UFS = .true.
       tempDict => dict % getDictPtr('uniformFissionSites')
       fieldName = 'UFS'
       call gr_addField(fieldName, tempDict)
