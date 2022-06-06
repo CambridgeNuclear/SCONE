@@ -23,7 +23,7 @@ module eigenPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+                                             gr_geomIdx  => geomIdx, gr_addField => addField
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -141,7 +141,7 @@ contains
     class(tallyResult),allocatable            :: res
     type(collisionOperator), save             :: collOp
     class(transportOperator),allocatable,save :: transOp
-    type(RNG), target, save                   :: pRNG     
+    type(RNG), target, save                   :: pRNG
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
@@ -151,10 +151,10 @@ contains
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
+
     ! Initialise neutron
     neutron % geomIdx = self % geomIdx
-    
+
     ! Create a collision + transport operator which can be made thread private
     collOp = self % collOp
     transOp = self % transOp
@@ -183,10 +183,10 @@ contains
         pRNG = self % pRNG
         neutron % pRNG => pRNG
         call neutron % pRNG % stride(n)
-        
-        ! Obtain particle current cycle dungeon 
+
+        ! Obtain particle current cycle dungeon
         call self % thisCycle % copy(neutron, n)
-        
+
         bufferLoop: do
           call self % geom % placeCoord(neutron % coords)
 
@@ -204,7 +204,7 @@ contains
             call collOp % collide(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
           end do history
-        
+
           ! Clear out buffer
           if (buffer % isEmpty()) then
             exit bufferLoop
@@ -213,12 +213,12 @@ contains
           end if
 
         end do bufferLoop
-      
+
       end do gen
       !$omp end parallel do
-      
-      call self % thisCycle % cleanPop() 
-      
+
+      call self % thisCycle % cleanPop()
+
       ! Update RNG
       call self % pRNG % stride(self % pop + 1)
 
@@ -365,7 +365,7 @@ contains
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
-    character(nameLen)                        :: nucData, energy, geomName
+    character(nameLen)                        :: nucData, energy, geomName, fieldName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
@@ -436,6 +436,13 @@ contains
     call gr_addGeom(geomName, tempDict)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
+
+    ! Read uniform fission site option as a geometry field
+    if (dict % isPresent('uniformFissionSites')) then
+      tempDict => dict % getDictPtr('uniformFissionSites')
+      fieldName = 'UFS'
+      call gr_addField(fieldName, tempDict)
+    end if
 
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())

@@ -122,7 +122,6 @@ contains
       silent_l = .false.
     end if
 
-
     ! Get free index
     idx = geometryNameMap % getOrDefault(name, NOT_PRESENT)
 
