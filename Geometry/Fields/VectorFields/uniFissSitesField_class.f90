@@ -73,7 +73,7 @@ contains
     call new_tallyMap(self % net, dict % getDictPtr('map'))
     self % N = self % net % bins(ALL)
 
-    allocate(self % sourceFraction(self % N), self % buildSource(self % N),self % weights(self % N))
+    allocate(self % sourceFraction(self % N), self % buildSource(self % N))
     self % sourceFraction = ONE/self % N
     self % buildSource = ZERO
 

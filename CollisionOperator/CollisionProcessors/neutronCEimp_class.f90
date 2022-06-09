@@ -346,7 +346,7 @@ contains
     type(neutronMicroXSs)                :: microXSs
     type(fissionCE), pointer             :: fiss
     type(particleState)                  :: pTemp
-    real(defReal),dimension(3)           :: r, dir
+    real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, rand1, E_out, mu, phi
     real(defReal)                        :: sig_nufiss, sig_fiss, k_eff
