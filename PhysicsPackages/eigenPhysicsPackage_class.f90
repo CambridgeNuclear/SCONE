@@ -25,6 +25,8 @@ module eigenPhysicsPackage_class
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom   => addGeom, &
                                              gr_geomIdx  => geomIdx, gr_addField  => addField, &
                                              gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use field_inter,                    only : field
+  use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -147,7 +149,9 @@ contains
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
-    class(field), pointer                     :: UFSfield
+    character(nameLen)                        :: UFSname
+    class(field), pointer                     :: field
+    class(uniFissSitesField), pointer         :: UFSfield
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
@@ -230,8 +234,10 @@ contains
       call tally % reportCycleEnd(self % nextCycle)
 
       if (self % UFS) then
-        UFSfield => gr_fieldPtr(gr_fieldIdx('UFS'))
-        call UFSfield % updateMap(self % nextCycle)
+        UFSname = 'UFS'
+        field => gr_fieldPtr(gr_fieldIdx(UFSname))
+        UFSfield => uniFissSitesField_TptrCast(field)
+        call UFSfield % updateMap()
       end if
 
       ! Normalise population
@@ -388,7 +394,7 @@ contains
     call dict % get( energy, 'dataType')
 
     ! Parallel buffer size
-    call dict % getOrDefault( self % bufferSize, 'buffer', 10)
+    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
 
     ! Process type of data
     select case(energy)
