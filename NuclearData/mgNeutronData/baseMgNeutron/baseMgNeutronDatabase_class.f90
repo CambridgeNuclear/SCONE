@@ -323,7 +323,7 @@ contains
   !!
   pure function nGroups(self) result(nG)
     class(baseMgNeutronDatabase), intent(in) :: self
-    integer(shortInt), intent(out)           :: nG
+    integer(shortInt)                        :: nG
 
     nG = self % nG
 

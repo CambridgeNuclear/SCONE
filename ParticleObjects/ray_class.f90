@@ -34,12 +34,13 @@ module ray_class
 
     ! Ray tracking data
     real(defReal), dimension(:), allocatable :: flux               ! Angular flux in all energy groups
-    real(defReal)                            :: distance = ZERO    ! Total distance that the ray has traversed
+    real(defReal)                            :: length   = ZERO    ! Total distance that the ray has traversed
     logical(defBool)                         :: isActive = .FALSE. ! Is the ray scoring to scalar flux? 
 
   contains
      ! Build procedures
     procedure                  :: build 
+    procedure                  :: kill
 
     ! Inquiry about coordinates
     procedure                  :: rLocal
@@ -90,7 +91,11 @@ contains
 
     if (ng < 1) call fatalError(Here,'Must have one or more energy groups')
 
-    if (.NOT. allocated(self % flux)) allocate(self % flux, self % ng)
+    if (.NOT. allocated(self % flux)) allocate(self % flux(self % ng))
+
+    self % length   = ZERO
+    self % flux     = ZERO
+    self % isActive = .FALSE.
 
   end subroutine build
 
@@ -102,7 +107,7 @@ contains
 
     if (allocated(self % flux)) deallocate(self % flux)
     self % ng = 0
-    self % distance = ZERO
+    self % length = ZERO
     self % isActive = .FALSE.
     call self % coords % kill()
 
@@ -173,7 +178,7 @@ contains
   end function dirGlobal
 
   !!
-  !! Return the lowest nesting level of the particle
+  !! Return the lowest nesting level of the ray
   !!
   function nesting(self) result(n)
     class(ray), intent(in)      :: self
@@ -326,14 +331,14 @@ contains
   !!
   !! Display state of a ray
   !!
-  subroutine display_ray(self)
-    class(particle), intent(in) :: self
+  subroutine display(self)
+    class(ray), intent(in) :: self
 
     if (allocated(self % flux)) print *, self % flux
     print *, self % ng
     print *, self % coords % matIdx
 
-  end subroutine display_ray
+  end subroutine display
 
 
 end module ray_class

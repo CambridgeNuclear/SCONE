@@ -41,6 +41,9 @@ module plane_class
     procedure :: distance
     procedure :: going
     procedure :: kill
+    
+    ! Local procedure
+    procedure :: build
   end type plane
 
 
@@ -99,9 +102,34 @@ contains
     self % norm = coeffs(1:3)
     self % offset = coeffs(4)
 
-
-
   end subroutine init
+
+  !!
+  !! Build plane from components
+  !!
+  !! Args:
+  !!   id [in] -> Surface ID
+  !!   norm [in]   -> normal vector of plane (normalised if not already)
+  !!   offset [in] -> offset of plane
+  !!
+  !! Errors:
+  !!   fatalError if id or radius are -ve
+  !!
+  subroutine build(self, id, norm, offset)
+    class(plane), intent(inout)              :: self
+    integer(shortInt), intent(in)            :: id
+    real(defReal), dimension(:), intent(in)  :: norm 
+    real(defReal), intent(in)                :: offset
+    character(100), parameter :: Here = 'build (plane_class.f90)'
+
+    if (id < 1) call fatalError(Here,'Invalid surface id provided. ID must be > 1')
+
+    call self % setID(id)
+
+    self % norm = norm / norm2(norm)
+    self % offset = offset
+
+  end subroutine build
 
   !!
   !! Return axis-aligned bounding box for the surface

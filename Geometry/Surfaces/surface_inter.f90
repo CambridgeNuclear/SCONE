@@ -392,6 +392,7 @@ contains
     class(surface), intent(in)                 :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(out)              :: hitVacuum
     character(100), parameter :: Here = 'explicitRayBC (surface_inter.f90)'
 
     call fatalError(Here,'The boundary surface has not implemented ray handling!')

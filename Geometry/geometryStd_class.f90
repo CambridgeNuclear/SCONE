@@ -56,11 +56,12 @@ module geometryStd_class
     procedure :: bounds
     procedure :: move_noCache
     procedure :: move_withCache
+    procedure :: moveRay_noCache
     procedure :: moveRay_withCache
     procedure :: moveGlobal
     procedure :: teleport
     procedure :: activeMats
-    procedure :: presentCells
+    procedure :: numberOfCells
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -269,6 +270,8 @@ contains
     character(100), parameter :: Here = 'move_withCache (geometryStd_class.f90)'
 
     if (.not.coords % isPlaced()) then
+      print *, coords % lvl(1) % r
+      print *, coords % lvl(1) % dir
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
 
@@ -313,6 +316,72 @@ contains
     end if
 
   end subroutine move_withCache
+  
+  !!
+  !! Given coordinates placed in the geometry move point through the geometry
+  !!
+  !! See geometry_inter for details
+  !!
+  !! Uses explicit BC while treating vacuum boundaries as reflective
+  !!
+  subroutine moveRay_noCache(self, coords, maxDist, event, hitVacuum)
+    class(geometryStd), intent(in) :: self
+    type(coordList), intent(inout) :: coords
+    real(defReal), intent(inout)   :: maxDist
+    integer(shortInt), intent(out) :: event
+    logical(defBool), intent(out)  :: hitVacuum
+    integer(shortInt)              :: surfIdx, level
+    real(defReal)                  :: dist
+    class(surface), pointer        :: surf
+    class(universe), pointer       :: uni
+    character(100), parameter :: Here = 'moveRay_noCache (geometryStd_class.f90)'
+
+    hitVacuum = .FALSE.
+
+    if (.not.coords % isPlaced()) then
+      print *, coords % lvl(1) % r
+      print *, coords % lvl(1) % dir
+      call fatalError(Here, 'Coordinate list is not placed in the geometry')
+    end if
+
+    ! Find distance to the next surface
+    call self % closestDist(dist, surfIdx, level, coords)
+
+    if (maxDist < dist) then ! Moves within cell
+      call coords % moveLocal(maxDist, coords % nesting)
+      event = COLL_EV
+      maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
+
+    else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
+      ! Move global to the boundary
+      call coords % moveGlobal(dist)
+      event = BOUNDARY_EV
+      maxDist = dist
+
+      ! Get boundary surface and apply BCs
+      surf => self % geom % surfs % getPtr(self % geom % borderIdx)
+      call surf % explicitRayBC(coords % lvl(1) % r, coords % lvl(1) % dir, hitVacuum)
+
+      ! Place back in geometry
+      call self % placeCoord(coords)
+
+    else ! Crosses to diffrent local cell
+      ! Move to boundary at hit level
+      call coords % moveLocal(dist, level)
+      event = CROSS_EV
+      maxDist = dist
+
+      ! Get universe and cross to the next cell
+      uni => self % geom % unis % getPtr_fast(coords % lvl(level) % uniIdx)
+      call uni % cross(coords % lvl(level), surfIdx)
+
+      ! Get material
+      call self % diveToMat(coords, level)
+
+    end if
+
+  end subroutine moveRay_noCache
+
 
   !!
   !! Given coordinates placed in the geometry move point through the geometry
@@ -337,6 +406,8 @@ contains
     hitVacuum = .FALSE.
 
     if (.not.coords % isPlaced()) then
+      print *, coords % lvl(1) % r
+      print *, coords % lvl(1) % dir
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
 
@@ -492,7 +563,7 @@ contains
   !!
   function numberOfCells(self) result(n)
     class(geometryStd), intent(in) :: self
-    integer(shortInt), intent(out) :: n
+    integer(shortInt)              :: n
 
     ! Takes the number of cells from geomGraph
     n = self % geom % graph % uniqueCells

@@ -78,12 +78,9 @@ module baseMgNeutronMaterial_class
     procedure :: kill
     procedure :: getMacroXSs_byG
     procedure :: getTotalXS
-    procedure :: getAllTotalXS
-    procedure :: getAllNuFissionXS
-    procedure :: getAllChi
-    procedure :: getScatterOut
-    procedure :: getScatterIn
-    procedure :: getScatterMatrix
+    procedure :: getNuFissionXS
+    procedure :: getChi
+    procedure :: getScatterXS
 
     ! Local procedures
     procedure :: init
@@ -166,85 +163,77 @@ contains
   end function getTotalXS
 
   !!
-  !! Return Total XSs in all energy groups
+  !! Return NuFission XS for energy group G
   !!
   !! See mgNeutronMaterial documentationfor details
   !!
-  function getAllTotalXS(self) result(xs)
-    class(baseMgNeutronMaterial), intent(in)          :: self
-    real(defReal), dimension(self % nG), intent(out)  :: xs
+  function getNuFissionXS(self, G, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getNuFissionXS (baseMgNeutronMaterial_class.f90)'
 
-    xs = self % data(TOTAL_XS, :)
+    ! Verify bounds
+    if(G < 1 .or. self % nGroups() < G) then
+      call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                           ' Data has only: ' // numToChar(self % nGroups()))
+      xs = ZERO ! Avoid warning
+    end if
+    xs = self % data(NU_FISSION, G)
 
-  end function getAllTotalXS
-
-  !!
-  !! Return nuFission XSs in all energy groups
-  !!
-  !! See mgNeutronMaterial documentation for details
-  !!
-  function getAllNuFissionXS(self) result(xs)
-    class(baseMgNeutronMaterial), intent(in)          :: self
-    real(defReal), dimension(self % nG), intent(out)  :: xs
-
-    xs = self % data(NU_FISSION, :)
-
-  end function getAllNuFissionXS
+  end function getNuFissionXS
 
   !!
-  !! Return chi in all energy groups
-  !! This might be a slightly cheeky means of accessing it...
+  !! Return chi for energy group G
   !!
-  !! See mgNeutronMaterial documentation for details
+  !! See mgNeutronMaterial documentationfor details
   !!
-  function getAllChi(self) result(chi)
-    class(baseMgNeutronMaterial), intent(in)          :: self
-    real(defReal), dimension(self % nG), intent(out)  :: chi
+  function getChi(self, G, rand) result(chi)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: chi
+    character(100), parameter :: Here = ' getChi (baseMgNeutronMaterial_class.f90)'
 
-    chi = self % fission % data(:,2)
+    if (self % isFissile()) then
+      ! Verify bounds
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        chi = ZERO ! Avoid warning
+      end if
+    
+      chi = self % fission % data(G,2)
+    else
+      chi = ZERO
+    end if
 
-  end function getAllChi
-
-  !!
-  !! Return outgoing scatter XSs for a given ingoing group
-  !!
-  !! See mgNeutronMaterial documentation for details
-  !!
-  function getScatterOut(self,g) result(xs)
-    class(baseMgNeutronMaterial), intent(in)          :: self
-    integer(shortInt), intent(in)                     :: g
-    real(defReal), dimension(self % nG), intent(out)  :: xs
-
-    xs = self % scatter % P0(:,g) * self % scatter % prod(:,g)
-
-  end function getScatterOut
-
-  !!
-  !! Return ingoing scatter XSs for a given outgoing group
-  !!
-  !! See mgNeutronMaterial documentation for details
-  !!
-  function getScatterIn(self,g) result(xs)
-    class(baseMgNeutronMaterial), intent(in)          :: self
-    integer(shortInt), intent(in)                     :: g
-    real(defReal), dimension(self % nG), intent(out)  :: xs
-
-    xs = self % scatter % P0(g,:) * self % scatter % prod(g,:)
-
-  end function getScatterIn
+  end function getChi
 
   !!
-  !! Return scatter XS matrix 
+  !! Return scatter XS for incoming energy group Gin and outgoing group Gout
   !!
-  !! See mgNeutronMaterial documentation for details
+  !! See mgNeutronMaterial documentationfor details
   !!
-  function getScatterMatrix(self) result(xs)
-    class(baseMgNeutronMaterial), intent(in)    :: self
-    real(defReal), dimension(:,:), intent(out)  :: xs
+  function getScatterXS(self, Gin, Gout, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: Gin
+    integer(shortInt), intent(in)            :: Gout
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getScatterXS (baseMgNeutronMaterial_class.f90)'
 
-    xs = self % scatter % P0 * self % scatter % prod
+    ! Verify bounds
+    if(Gin < 1 .or. self % nGroups() < Gin .or. Gout < 1 .or. self % nGroups() < Gout) then
+      call fatalError(Here,'Invalid group numbers: '//numToChar(Gin)//' and '//numToChar(Gout) &
+                           //' Data has only: ' // numToChar(self % nGroups()))
+      xs = ZERO ! Avoid warning
+    end if
+    xs = self % scatter % P0(Gout,Gin) * self % scatter % prod(Gout,Gin)
+  
+  end function getScatterXS
 
-  end function getScatterMatrix
 
   !!
   !! Initialise Base MG Neutron Material fromdictionary

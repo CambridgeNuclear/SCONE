@@ -67,6 +67,7 @@ module squareCylinder_class
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
+    procedure :: explicitRayBC
     procedure :: transformBC
   end type squareCylinder
 
@@ -447,7 +448,7 @@ contains
     logical(defBool), intent(out)              :: hitVacuum
     integer(shortInt)                          :: ax, bc, i
     real(defReal)                              :: r0
-    character(100), parameter :: Here = 'explicitBC (squareCylinder_class.f90)'
+    character(100), parameter :: Here = 'explicitRayBC (squareCylinder_class.f90)'
 
     hitVacuum = .FALSE.
 
@@ -491,7 +492,7 @@ contains
       end select
     end do axis
 
-  end subroutine explicitBC
+  end subroutine explicitRayBC
 
   !!
   !! Apply co-ordinate transform BC

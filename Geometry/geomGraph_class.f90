@@ -166,7 +166,7 @@ contains
   pure function getMatFromUID(self, ID) result(matIdx)
     class(geomGraph), intent(in)   :: self
     integer(shortInt), intent(in)  :: ID
-    integer(shortInt), intent(out) :: matIdx
+    integer(shortInt)              :: matIdx
 
     matIdx = self % matsByCell(ID)
 
@@ -255,7 +255,7 @@ contains
     ! Set unique IDs -> Enumerate sinks
     call self % setUniqueIDs()
 
-    call buildMatArrayByCell()
+    call self % buildMatArrayByCell()
 
   end subroutine buildShrunk
 
@@ -321,7 +321,7 @@ contains
 
     self % isExtended = .TRUE.
 
-    call buildMatArrayByCell()
+    call self % buildMatArrayByCell()
 
   end subroutine buildExtended
 
@@ -380,18 +380,18 @@ contains
   !! Builds an array of material indices corresponding to cell uniqueIDs.
   !! This allows for more quickly finding matIdxs given a unique ID.
   !!
-  subroutine buildMatArrayByCell
+  subroutine buildMatArrayByCell(self)
     class(geomGraph), intent(inout) :: self
     integer(shortInt)               :: i, cells, fill
 
-    allocate(self % matsByCell, self % uniqueCells)
+    allocate(self % matsByCell(self % uniqueCells))
     
     cells = 0
     do i = 1, size(self % array)
       fill = self % array(i) % idx
       if (fill > 0) then ! It is material filling
         cells = cells + 1
-        self % matsByCell(cell) = fill
+        self % matsByCell(cells) = fill
       end if
     end do
 

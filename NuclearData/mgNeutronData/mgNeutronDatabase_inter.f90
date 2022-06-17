@@ -1,5 +1,6 @@
 module mgNeutronDatabase_inter
 
+  use numPrecision
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
 
@@ -36,8 +37,8 @@ module mgNeutronDatabase_inter
     !!
     pure function nGroups(self) result(ng)
       import :: mgNeutronDatabase, shortInt
-      class(mgNeutronDatabse), intent(in):: self
-      integer(shortInt), intent(out)     :: ng
+      class(mgNeutronDatabase), intent(in) :: self
+      integer(shortInt)                    :: ng
     end function nGroups
 
 
