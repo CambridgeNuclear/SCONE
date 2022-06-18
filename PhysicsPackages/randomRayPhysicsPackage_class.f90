@@ -163,6 +163,7 @@ module randomRayPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    integer(shortInt) :: timerTransport
     real (defReal)    :: time_transport = ZERO
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
@@ -382,10 +383,12 @@ contains
     type(ray), save                               :: r
     type(RNG), target, save                       :: pRNG
     real(defReal)                                 :: hitRate
-    real(defReal)                                 :: elapsed_T, end_T, T_toEnd, cycle_T
+    real(defReal)                                 :: elapsed_T, end_T, T_toEnd, transport_T
     logical(defBool)                              :: stoppingCriterion, isActive
     integer(shortInt)                             :: i, itInac, itAct, it
-    !$omp threadprivate(pRNG, r)
+    integer(longInt), save                        :: ints
+    integer(longInt)                              :: integrations
+    !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -426,8 +429,13 @@ contains
       it = itInac + itAct
 
       call self % calculateSources()
+    
+      ! Reset and start transport timer
+      call timerReset(self % timerTransport)
+      call timerStart(self % timerTransport)
+      integrations = 0
       
-      !$omp parallel do schedule(dynamic) 
+      !$omp parallel do schedule(dynamic) reduction(+: integrations)
       do i = 1, self % pop
 
         ! Set seed
@@ -439,10 +447,13 @@ contains
         call self % initialiseRay(r)
 
         ! Transport ray until termination criterion met
-        call self % transportSweep(r)
+        call self % transportSweep(r,ints)
+        integrations = integrations + ints
 
       end do
       !$omp end parallel do
+      
+      call timerStop(self % timerTransport)
 
       ! Update RNG on master thread
       call self % rand % stride(self % pop + 1)
@@ -482,8 +493,9 @@ contains
 
       ! Calculate times
       call timerStop(self % timerMain)
-      cycle_T = timerTime(self % timerMain) - elapsed_T
       elapsed_T = timerTime(self % timerMain)
+      transport_T = timerTime(self % timerTransport)
+      self % time_transport = self % time_transport + transport_T
 
       ! Predict time to end
       end_T = real(self % active + self % inactive, defReal) * elapsed_T / it
@@ -498,11 +510,13 @@ contains
       else
         print *,'Inactive iterations'
       end if
-      print *, 'Cell hit rate: ', numToChar(hitRate)
-      print *, 'keff: ', self % keff
+      print *, 'Cell hit rate: ', trim(numToChar(hitRate))
+      print *, 'keff: ', trim(numToChar(self % keff))
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      print *, 'Time per integration (ns): ', &
+              trim(numToChar(transport_T*10**9/(self % nG * integrations)))
 
     end do
 
@@ -638,11 +652,13 @@ contains
 
   !!
   !! Moves ray through geometry, updating angular flux and
-  !! scoring scalar flux and volume
+  !! scoring scalar flux and volume.
+  !! Records the number of integrations/ray movements.
   !!
-  subroutine transportSweep(self, r)
+  subroutine transportSweep(self, r, ints)
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), intent(inout)                      :: r
+    integer(longInt), intent(out)                 :: ints
     integer(shortInt)                             :: matIdx, g, cIdx, idx
     real(defReal)                                 :: attenuate, length, delta, total
     logical(defBool)                              :: hitVacuum
@@ -650,6 +666,7 @@ contains
     class(baseMgNeutronMaterial), pointer         :: mat
     class(materialHandle), pointer                :: matPtr
     
+    ints = 0
     do while (r % length < self % termination)
 
       ! Get material and cell the ray is moving through
@@ -669,6 +686,8 @@ contains
       ! Move ray
       call self % moveRayCache(r, length, hitVacuum, cache)
       !call self % moveRay(r, length, hitVacuum) ! For debugging
+
+      ints = ints + 1
  
       do g = 1, self % nG
         

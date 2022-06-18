@@ -193,8 +193,8 @@ contains
 
     ! Build the planes, rotated at angle theta from the line x = 0
     do i = 1, self % nAz/2
-      self % normals(i,1) = -cos(self % theta(i)) 
-      self % normals(i,2) = sin(self % theta(i))
+      self % normals(i,1) = -sin(self % theta(i)) 
+      self % normals(i,2) = cos(self % theta(i))
       call self % planes(i) % build(id=1, &
               norm = [self % normals(i,1), self % normals(i,2), ZERO], offset=ZERO)
     end do

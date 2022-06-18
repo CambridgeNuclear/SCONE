@@ -378,7 +378,7 @@ contains
     @assertEqual(MOVING_OUT, idx)
 
     ! At boundary between cell 4 and 1
-    eps = HALF * SURF_TOL
+    eps = 1.1*SURF_TOL
     pos % r   = [SQRT2_2, -SQRT2_2, ZERO]
     pos % dir = [-SQRT2_2, -SQRT2_2, ZERO]
     pos % r   = pos % r + eps * pos % dir
