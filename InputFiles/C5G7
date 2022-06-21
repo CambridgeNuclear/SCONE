@@ -1,0 +1,200 @@
+type eigenPhysicsPackage; 
+
+pop      12000;
+active   20;
+inactive 300;
+XSdata   mg; 
+dataType mg;
+outputFile C5G7_MG_2D ;
+
+collisionOperator { neutronMG {type neutronMGstd; } } 
+
+transportOperator { type transportOperatorST;  } 
+                   
+inactiveTally { shannonAxial { type shannonEntropyClerk;
+				map {  type spaceMap;  	axis z; 	grid lin; 	min -190.0; max 190.0; N 20;  }  cycles 300;  } 
+					} 
+
+activeTally {
+} 
+
+geometry { 
+  type geometryStd; 
+  // ( -x, +x, -y, +y, -z, +z)
+  boundary ( 1 0 0 1 1 1); 
+  graph {type extended;}
+
+  surfaces { 
+             Domain          { id 3; type box; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 32.13);}  	
+  }
+  
+  cells {  }
+  
+  universes { 
+    	root { id 1000; type rootUniverse; border 3; fill u<100>; }  
+    
+    // Pin universes 
+    //pin1 { id 1; type pinUniverse; radii (0.5400  0.0  );  fills (UO2    water);}
+    //pin2 { id 2; type pinUniverse; radii (0.5400  0.0  );  fills (GT     water);}
+    //pin3 { id 3; type pinUniverse; radii (0.5400  0.0  );  fills (mox43  water);}
+    //pin4 { id 4; type pinUniverse; radii (0.5400  0.0  );  fills (mox7   water);}    
+    //pin5 { id 5; type pinUniverse; radii (0.5400  0.0  );  fills (mox87  water);}           
+    //pin6 { id 6; type pinUniverse; radii (0.5400  0.0  );  fills (FC     water);}
+    pin1 { id 1; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (UO2 UO2 UO2 water water water);}
+    pin2 { id 2; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (GT GT GT water water water);}
+    pin3 { id 3; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox43 mox43 mox43 water water water);}
+    pin4 { id 4; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox7 mox7 mox7 water water water);}    
+    pin5 { id 5; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox87 mox87 mox87 water water  water);}           
+    pin6 { id 6; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (FC FC FC water water water);}
+
+    // Infinite moderator
+    pin30 { id 30; type pinUniverse; radii (0.0); fills (water);}      
+
+// Lattices
+latUO2{
+      id 10; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 6 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+);
+}
+
+latMOX{
+      id 20; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 6 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3   
+);
+}
+
+latCore
+{
+  id 100;
+  type latUniverse; 
+  origin (0.0 0.0 0.0); 
+  pitch (21.42 21.42 0.0);
+  shape (3 3 0); 
+  padMat water; 
+  map ( 
+10 20 30
+20 10 30
+30 30 30
+);
+}
+		
+} 
+
+}
+
+viz {
+  bmp1 { 
+    type bmp; 
+    output C5G7_xy; 
+    what uniqueID; 
+    centre (0.0 0.0 10.0); 
+    axis z; 
+    res (1000 1000);  }
+//  myVTK {
+//    type vtk;
+//    what uniqueID; 
+//    corner (-32.13 -32.13 -214.1);
+//    width (64.26 64.26 428.2);
+//    vox (700 700 50);
+//  }
+} 
+
+
+nuclearData {
+  handles { 
+    mg { type baseMgNeutronDatabase; PN P0;} 
+  } 
+  materials { 
+    numberOfGroups 7;
+      
+    water { 
+      temp 300;
+      xsFile ./XS_C5G7/moder;
+      composition { } 
+   }
+
+    mox43 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX43;
+       composition {  }
+   }
+	  
+    mox7 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX7;
+       composition { }
+    } 
+		
+    mox87 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX87;
+       composition { }
+    } 
+		
+    UO2 {
+       temp 300; 
+       xsFile ./XS_C5G7/UO2;
+	composition { }
+    }
+
+    FC {
+       temp 300; 
+       xsFile ./XS_C5G7/FC;
+	composition { }
+    }
+    
+    GT {
+       temp 300; 
+       xsFile ./XS_C5G7/GT;
+	composition { }
+    }
+	   
+}
+}
+
+
