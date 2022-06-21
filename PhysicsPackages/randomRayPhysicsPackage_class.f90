@@ -32,6 +32,9 @@ module randomRayPhysicsPackage_class
   use mgNeutronDatabase_inter,        only : mgNeutronDatabase
   use baseMgNeutronDatabase_class,    only : baseMgNeutronDatabase
   use baseMgNeutronMaterial_class,    only : baseMgNeutronMaterial, baseMgNeutronMaterial_CptrCast
+  
+  ! Visualisation
+  use visualiser_class,               only : visualiser
 
   ! Random ray
   use ray_class,                      only : ray
@@ -145,6 +148,8 @@ module randomRayPhysicsPackage_class
     !real(defReal)      :: eps         = ZERO
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
+    logical(defBool)   :: plotResults = .FALSE.
+    type(visualiser)   :: viz
 
     ! Results space
     real(defReal)                                :: keff
@@ -324,6 +329,27 @@ contains
       self % bottom = aabb(1:3)
       self % top    = aabb(4:6)
     end associate
+    
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
+      tempDict => dict % getDictPtr('viz')
+      call self % viz % init(geom, tempDict)
+      print *, "Constructing visualisation"
+      call self % viz % makeViz()
+      call self % viz % kill()
+    endif
+    
+    ! Check for results plotting and initialise VTK
+    call dict % getOrDefault(self % plotResults,'plot',.FALSE.)
+    if (self % plotResults) then
+      ! Initialise a visualiser to be used when results are available
+      print *, "Initialising results visualiser"
+      tempDict => dict % getDictPtr('viz')
+      call self % viz % init(geom, tempDict)
+      print *, "Constructing geometry visualisation"
+      call self % viz % initVTK()
+    end if
 
     ! Store number of cells in geometry for convenience
     self % nCells = self % geom % numberOfCells()
@@ -965,8 +991,11 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(outputFile)                              :: out
     character(nameLen)                            :: name
-    integer(shortInt)                             :: g, cIdx, idx
+    integer(shortInt)                             :: g, cIdx
+    integer(shortInt), save                       :: idx
     integer(shortInt),dimension(:),allocatable    :: resArrayShape
+    real(defReal), dimension(:), allocatable      :: groupFlux
+    !$omp threadprivate(idx)
 
     call out % init(self % outputFormat)
     
@@ -1021,7 +1050,7 @@ contains
 
     ! Print fluxes
     resArrayShape = [size(self % volume)]
-    do g = 1, self % ng
+    do g = 1, self % nG
       name = 'flux_g'//numToChar(g)
       call out % startBlock(name)
       call out % startArray(name, resArrayShape)
@@ -1034,6 +1063,32 @@ contains
     end do
 
     call out % writeToFile(self % outputFile)
+
+    ! Send all fluxes and stds to VTK
+    if (self % plotResults) then
+      allocate(groupFlux(self % nCells))
+      do g = 1, self % nG
+        name = 'flux_g'//numToChar(g)
+        !$omp parallel do
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          groupFlux(cIdx) = self % fluxScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g = 1, self % nG
+        name = 'std_g'//numToChar(g)
+        !$omp parallel do
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          groupFlux(cIdx) = self % fluxScores(idx,2)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      call self % viz % finaliseVTK
+    end if
 
   end subroutine printResults
 
@@ -1081,9 +1136,10 @@ contains
   subroutine kill(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
 
-    ! Clean Nuclear Data & Geometries
+    ! Clean Nuclear Data, Geometry and visualisation
     call gr_kill()
     call ndreg_kill()
+    call self % viz % kill()
 
     ! Clean contents
     self % geom    => null()

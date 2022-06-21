@@ -49,10 +49,10 @@ module outputVTK_class
     integer(shortInt), dimension(2), private                :: version = [3,0] 
     real(defReal), dimension(3), private                    :: corner 
     real(defReal), dimension(3), private                    :: width  
-    integer(shortInt), dimension(3), private                :: nVox   
+    integer(shortInt), dimension(3)                         :: nVox   
     integer(shortInt), private                              :: nCells 
     integer(shortInt), private                              :: nOutput
-    real(defReal), dimension(:,:,:,:), allocatable, private :: values  
+    real(defReal), dimension(:,:,:,:), allocatable          :: values  
     character(nameLen), dimension(:), allocatable, private  :: dataName
     logical(defBool), dimension(:), allocatable, private    :: dataReal
   contains

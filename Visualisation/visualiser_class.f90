@@ -45,6 +45,7 @@ module visualiser_class
     character(nameLen), private       :: name
     class(geometry), pointer, private :: geom => null()
     type(dictionary), private         :: vizDict
+    type(outputVTK), private          :: vtk
   contains
     procedure :: init
     procedure :: makeViz
@@ -54,6 +55,9 @@ module visualiser_class
     procedure, private :: makeVTK
     procedure, private :: makeBmpImg
     procedure, private :: viewVector
+    procedure :: initVTK
+    procedure :: addVTKData
+    procedure :: finaliseVTK
   end type
 
 contains
@@ -199,6 +203,125 @@ contains
     call vtk % kill()
 
   end subroutine makeVTK
+
+  !!
+  !! Initialise a VTK output with data addition after
+  !!
+  !! Creates the VTK file corresponding to the contents of vizDict but does not
+  !! output it. Allows more complex fields to be plotted, e.g., based on results.
+  !! Accepts the first VTK dictionary it finds.
+  !!
+  !! VTK dictionary is the standard dictionary used above.
+  !!
+  !! TODO: VTK output is placed in a input filename appended by '.vtk' extension.
+  !!   This prevents multiple VTK visualistions (due to overriding). Might also become
+  !!   weird for input files with extension e.g. 'input.dat'.
+  !!   DEMAND USER TO GIVE OUTPUT NAME
+  !!
+  subroutine initVTK(self)
+    class(visualiser), intent(inout)                :: self
+    character(nameLen),dimension(:), allocatable    :: keysArr
+    integer(shortInt)                               :: i
+    character(nameLen)                              :: vizType
+    logical(defBool)                                :: vtkFound
+    class(dictionary), pointer                      :: dict
+    integer(shortInt), dimension(:,:,:), allocatable:: voxelMat
+    real(defReal), dimension(:), allocatable        :: corner  ! corner of the mesh
+    real(defReal), dimension(:), allocatable        :: center  ! center of the mesh
+    real(defReal), dimension(:), allocatable        :: width   ! corner of the mesh
+    integer(shortInt), dimension(:), allocatable    :: nVox    ! number of mesh voxels
+    character(nameLen)                              :: what
+    character(nameLen) :: here ='initVTK (visualiser_class.f90)'
+    
+    ! Loop through each sub-dictionary and generate visualisation
+    ! (if the visualisation method is available)
+    call self % vizDict % keys(keysArr,'dict')
+    vtkFound = .FALSE.
+    do i=1,size(keysArr)
+      dict => self % vizDict % getDictPtr(keysArr(i))
+      call dict % get(vizType,'type')
+      if (vizType == 'vtk') then
+        vtkFound = .TRUE.
+        exit
+      end if
+    end do
+
+    if (.NOT. vtkFound) call fatalError(Here,'No VTK data provided in dictionary')
+
+    call self % vtk % init(dict)
+
+    ! Identify whether plotting 'material' or 'cellID'
+    call dict % getOrDefault(what, 'what', 'material')
+
+    ! Obtain geometry data
+    call dict % get(corner, 'corner')
+    call dict % get(width, 'width')
+    center = corner + width/TWO
+    call dict % get(nVox, 'vox')
+
+    if (size(corner) /= 3) then
+      call fatalError(here,'Voxel plot requires corner to have 3 values')
+    endif
+    if (size(width) /= 3) then
+      call fatalError(here,'Voxel plot requires width to have 3 values')
+    endif
+    if (size(nVox) /= 3) then
+      call fatalError(here,'Voxel plot requires vox to have 3 values')
+    endif
+    allocate(voxelMat(nVox(1), nVox(2), nVox(3)))
+
+    ! Have geometry obtain data
+    call self % voxelPlot(voxelMat, center, what, width)
+
+    ! VTK data set will use 'what' variable as a name
+    call self % vtk % addData(voxelMat, what)
+
+  end subroutine initVTK
+
+  !!
+  !! Output an already constructed VTK and clean up
+  !!
+  subroutine finaliseVTK(self)
+    class(visualiser), intent(inout) :: self
+
+    call self % vtk % output(self % name)
+    call self % vtk % kill()
+
+  end subroutine finaliseVTK
+
+  !!
+  !! Add additional data to a VTK file based on an array of values.
+  !! The array index will correspond to either the material or uniqueID at
+  !! a given position in the geometry.
+  !!
+  !! Assumes the VTK has already been initialised and uses the first VTK
+  !! set of values, i.e., index 1, to check which values to add.
+  !!
+  subroutine addVTKData(self,dataArray, dataName)
+    class(visualiser), intent(inout)             :: self
+    real(defReal), dimension(:), intent(in)      :: dataArray
+    character(nameLen), intent(in)               :: dataName
+    integer(shortInt)                            :: i
+    integer(shortInt), save                      :: j, k
+    real(defReal), dimension(:,:,:), allocatable :: values
+    integer(shortInt), dimension(3)              :: nVox
+    !$omp threadprivate(j, k)
+
+    nVox = self % vtk % nVox
+    allocate(values(nVox(1),nVox(2),nVox(3)))
+    !$omp parallel do
+    do i = 1, self % vtk % nVox(1)
+      do j = 1, self % vtk % nVox(2)
+        do k = 1, self % vtk % nVox(3)
+          values(i,j,k) = dataArray(int(self % vtk % values(1,i,j,k)))
+        end do
+      end do
+    end do
+    !$omp end parallel do
+
+    call self % vtk % addDataReal(values, dataName)
+
+  end subroutine addVTKData
 
   !!
   !! Generate a BMP slice image of the geometry
@@ -610,6 +733,29 @@ contains
     call self % vizDict % kill()
 
   end subroutine kill
+
+  !!
+  !! !!!INCOMPLETE!!!
+  !! Convert real value to a 24bit color
+  !!
+  !! Args:
+  !!   val [in]    -> Scalar value to be converted
+  !!   minVal [in] -> Minimum scalar value in color range
+  !!   maxVal [in] -> Maximum scalar value in color range
+  !!
+  !! Result:
+  !!   A 24-bit color corresponding to the values position
+  !!   in the given range
+  !!
+  elemental function scalarColor(val, minVal, maxVal) result(color)
+    integer(shortInt), intent(in) :: val
+    integer(shortInt), intent(in) :: minVal
+    integer(shortInt), intent(in) :: maxVal
+    integer(shortInt)             :: color
+
+    color = 1
+
+  end function scalarColor
 
 
   !!
