@@ -81,6 +81,7 @@ module randomRayPhysicsPackage_class
   !!     eps 1e-5;           // RMS error on scalar fluxes below which simulation concludes
   !!     !NOT YET SUPPORTED!
   !!     #seed 86868;#       // Optional RNG seed
+  !!     #cache 1;#          // Optionally use distance caching to accelerate ray tracing
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
   !!   }
@@ -101,6 +102,7 @@ module randomRayPhysicsPackage_class
   !!   pop         -> Number of rays to track per cycle
   !!   inactive    -> Number of inactive cycles to perform
   !!   active      -> Number of active cycles to perform
+  !!   cache       -> Logical check whether to use distance caching
   !!   !NOT YET SUPPORTED!
   !!   criterionA  -> Should active cycles terminate on some convergence criterion?
   !!   criterionI  -> SHould inactive cycles terminate on some convergence criterion?
@@ -146,6 +148,7 @@ module randomRayPhysicsPackage_class
     !integer(shortInt)  :: accum       = 0
     !real(defReal)      :: std         = ZERO
     !real(defReal)      :: eps         = ZERO
+    logical(defBool)   :: cache       = .FALSE.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .FALSE.
@@ -240,6 +243,9 @@ contains
     !  call dict % get(self % std, 'std')
     !end if
     
+    ! Perform distance caching?
+    call dict % getOrDefault(self % cache, 'cache', .FALSE.)
+
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
@@ -710,8 +716,18 @@ contains
       end if
           
       ! Move ray
-      call self % moveRayCache(r, length, hitVacuum, cache)
-      !call self % moveRay(r, length, hitVacuum) ! For debugging
+      ! Use distance caching or standard ray tracing
+      ! Distance caching seems a little bit more unstable
+      ! due to FP error accumulation, but is faster.
+      ! This can be fixed by resetting the cache after X number
+      ! of distance calculations.
+      if (mod(ints,500_longInt) == 0)  cache % lvl = 0
+
+      if (self % cache) then
+        call self % moveRayCache(r, length, hitVacuum, cache)
+      else
+        call self % moveRay(r, length, hitVacuum)
+      end if
 
       ints = ints + 1
  
@@ -1126,6 +1142,7 @@ contains
     print *,
     print *, "Number of cells in the geometry: "// numToChar(self % nCells)
     print *, "Number of energy groups: "// numToChar(self % nG)
+    if (self % cache) print *, "Accelerated with distance caching"
     print *, repeat("<>", MAX_COL/2)
 
   end subroutine printSettings
@@ -1157,6 +1174,7 @@ contains
     self % pop         = 0
     self % inactive    = 0
     self % active      = 0
+    self % cache       = .FALSE.
     !self % criterionA  = .FALSE.
     !self % criterionI  = .FALSE.
     !self % accum       = 0
