@@ -126,25 +126,23 @@ contains
     type(particle), save                            :: p
     type(particleDungeon), save                     :: buffer
     type(collisionOperator), save                   :: collOp
+    class(transportOperator), allocatable, save     :: transOp
     type(RNG), target, save                         :: pRNG     
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
-    !$omp threadprivate(p, buffer, collOp, pRNG)
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG)
     
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
-    ! Create RNG which can be thread private
-    pRNG = self % pRNG
 
     ! Initialise neutron
     p % geomIdx = self % geomIdx
-    p % pRNG => pRNG
     p % k_eff = ONE
 
-    ! Create a collision operator which can be made thread private
+    ! Create a collision + transport operator which can be made thread private
     collOp = self % collOp
+    transOp = self % transOp
     !$omp end parallel
     
     nParticles = self % pop
@@ -163,10 +161,12 @@ contains
       
       call tally % reportCycleStart(self % thisCycle)
       
-      !$omp parallel do copyin(pRNG)
+      !$omp parallel do copyin(pRNG) schedule(dynamic)
       gen: do n = 1, nParticles
         
         ! TODO: Further work to ensure reproducibility!
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
         p % pRNG => pRNG
         call p % pRNG % stride(n)
         
@@ -182,7 +182,7 @@ contains
 
           ! Transport particle untill its death
           history: do
-            call self % transOp % transport(p, tally, buffer, buffer)
+            call transOp % transport(p, tally, buffer, buffer)
             if(p % isDead) exit history
 
             call collOp % collide(p, tally, buffer, buffer)
@@ -203,7 +203,6 @@ contains
 
       ! Update RNG
       call self % pRNG % stride(self % pop)
-      pRNG = self % pRNG
       
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)

@@ -30,7 +30,7 @@ module geometry_inter
   type, public, abstract :: geometry
   contains
     ! Generic procedures
-    generic :: move  => move_noCache, move_withCache, moveRay_withCache
+    generic :: move  => move_noCache, move_withCache, moveRay_withCache, moveRay_noCache
 
     ! Deferred procedures
     procedure(init), deferred              :: init
