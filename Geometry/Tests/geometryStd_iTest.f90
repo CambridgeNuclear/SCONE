@@ -39,7 +39,7 @@ contains
     type(visualiser)                              :: viz
     type(dictionary)                              :: vizDict
     real(defReal), parameter :: TOL = 1.0E-7_defReal
-
+    
     ! Load dictionary
     call fileToDict(dict, path)
 
@@ -50,10 +50,11 @@ contains
     do i = 1, size(keys)
       call mats % add(keys(i), i)
     end do
-
+    
     ! Build geometry
+    allocate(geom)
     call geom % init(dict, mats, silent=.true.)
-
+    
     ! Get material at few locations
     name = 'water'
     idx = mats % get(name)
@@ -72,7 +73,7 @@ contains
     u = [ZERO, ZERO, ONE]
     call coords % init(r, u)
     call geom % placeCoord(coords)
-
+    
     ! Verify positions
     @assertEqual(r, coords % lvl(1) % r, TOL)
     @assertEqual(r, coords % lvl(2) % r, TOL)
@@ -87,10 +88,10 @@ contains
     geomP => geom
     call charToDict(vizDict, ' ')
     call viz % init(geomP, vizDict)
-
+    
     ! Slice plot -> Material
     call viz % slicePlot(img, [ZERO, ZERO, ZERO], 'z', 'material')
-
+    
     ! Verify some pixels
     name = 'water'
     idx = mats % get(name)
@@ -136,7 +137,7 @@ contains
     @assertEqual(r_ref, coords % lvl(1) % r, TOL)
     @assertEqual(u_ref, coords % lvl(1) % dir, TOL)
     @assertEqual(idx, coords % matIdx)
-
+    
     !*** Test global movement
     r = [ZERO, ZERO, ZERO]
     u = [ZERO, -ONE, ZERO]
@@ -260,6 +261,7 @@ contains
     end do
 
     ! Build geometry
+    allocate(geom)
     call geom % init(dict, mats, silent=.true.)
 
     ! Get fuel and water index
