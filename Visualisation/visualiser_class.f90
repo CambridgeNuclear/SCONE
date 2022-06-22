@@ -54,7 +54,6 @@ module visualiser_class
     procedure :: kill
     procedure, private :: makeVTK
     procedure, private :: makeBmpImg
-    procedure, private :: viewVector
     procedure :: initVTK
     procedure :: addVTKData
     procedure :: finaliseVTK
@@ -164,9 +163,10 @@ contains
     class(dictionary), intent(in)                   :: dict
     type(outputVTK)                                 :: vtk
     integer(shortInt), dimension(:,:,:), allocatable:: voxelMat
-    real(defReal), dimension(:), allocatable        :: corner  ! corner of the mesh
-    real(defReal), dimension(:), allocatable        :: center  ! center of the mesh
-    real(defReal), dimension(:), allocatable        :: width   ! corner of the mesh
+    real(defReal), dimension(3)                     :: corner  ! corner of the mesh
+    real(defReal), dimension(3)                     :: center  ! center of the mesh
+    real(defReal), dimension(3)                     :: width   ! corner of the mesh
+    real(defReal), dimension(:), allocatable        :: temp    ! temporary allocatable vector
     integer(shortInt), dimension(:), allocatable    :: nVox    ! number of mesh voxels
     character(nameLen)                              :: what
     character(nameLen) :: here ='makeVTK (visualiser_class.f90)'
@@ -177,8 +177,18 @@ contains
     call dict % getOrDefault(what, 'what', 'material')
 
     ! Obtain geometry data
-    call dict % get(corner, 'corner')
-    call dict % get(width, 'width')
+    call dict % get(temp, 'corner')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    corner = temp
+
+    call dict % get(temp, 'width')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'width' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    width  = temp
+
     center = corner + width/TWO
     call dict % get(nVox, 'vox')
 
@@ -226,9 +236,10 @@ contains
     logical(defBool)                                :: vtkFound
     class(dictionary), pointer                      :: dict
     integer(shortInt), dimension(:,:,:), allocatable:: voxelMat
-    real(defReal), dimension(:), allocatable        :: corner  ! corner of the mesh
-    real(defReal), dimension(:), allocatable        :: center  ! center of the mesh
-    real(defReal), dimension(:), allocatable        :: width   ! corner of the mesh
+    real(defReal), dimension(3)                     :: corner  ! corner of the mesh
+    real(defReal), dimension(3)                     :: center  ! center of the mesh
+    real(defReal), dimension(3)                     :: width   ! corner of the mesh
+    real(defReal), dimension(:), allocatable        :: temp    ! temporary vector
     integer(shortInt), dimension(:), allocatable    :: nVox    ! number of mesh voxels
     character(nameLen)                              :: what
     character(nameLen) :: here ='initVTK (visualiser_class.f90)'
@@ -254,8 +265,18 @@ contains
     call dict % getOrDefault(what, 'what', 'material')
 
     ! Obtain geometry data
-    call dict % get(corner, 'corner')
-    call dict % get(width, 'width')
+    call dict % get(temp, 'corner')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    corner = temp
+
+    call dict % get(temp, 'width')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'width' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    width  = temp
+
     center = corner + width/TWO
     call dict % get(nVox, 'vox')
 
@@ -438,126 +459,6 @@ contains
   end subroutine makeBmpImg
   
   !!
-  !! Generate a BMP slice image of a vector of values (indexed by cell ID)
-  !! plotted across the geometry
-  !!
-  !! Args:
-  !!   dict [in] -> Dictionary with settings
-  !!   vec  [in] -> Vector of values at cell IDs
-  !!
-  !! Sample dictionary input:
-  !!   bmp_img {
-  !!     output img;           // Name of output file without extension
-  !!     centre (0.0 0.0 0.0); // Coordinates of the centre of the plot
-  !!     axis x;               // Must be 'x', 'y' or 'z'
-  !!     res (300 300);        // Resolution of the image
-  !!     #width (1.0 2.0);#    // Width of the plot from the centre
-  !!   }
-  !!
-  !! NOTE: If 'width' is not given, the plot will extend to the bounds of the geometry.
-  !!   This may result in the provided centre beeing moved to the center of the geoemtry in the
-  !!   plot plane. However, the position on the plot axis will be unchanged.
-  !!
-  subroutine viewVector(self, dict, vec)
-    class(visualiser), intent(inout)        :: self
-    class(dictionary), intent(in)           :: dict
-    real(defReal), dimension(:), intent(in) :: vec
-    real(defReal), dimension(3)             :: centre
-    real(defReal), dimension(2)             :: width
-    character(1)                            :: dir
-    character(nameLen)                      :: tempChar
-    logical(defBool)                        :: useWidth
-    character(nameLen)                      :: what, outputFile
-    real(defReal), dimension(:), allocatable       :: temp
-    integer(shortInt), dimension(:), allocatable   :: tempInt
-    integer(shortInt), dimension(:,:), allocatable :: img
-    real(defReal), dimension(:,:), allocatable     :: imgReal
-    real(defReal)                                  :: val, minEl, maxEl
-    integer(shortInt)                              :: i, j
-    character(100), parameter :: Here = 'viewVector (visualiser_class.f90)'
-
-    ! Get plot parameters
-
-    ! Get name of the output file
-    call dict % get(outputFile, 'output')
-    outputFile = trim(outputFile) // '.bmp'
-
-    ! Central point
-    call dict % get(temp, 'centre')
-
-    if (size(temp) /= 3) then
-      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
-    end if
-
-    centre = temp
-
-    ! Axis
-    call dict % get(tempChar, 'axis')
-
-    if (len_trim(tempChar) /= 1) then
-      call fatalError(Here, "'axis' must be x,y or z. Not: "//tempChar)
-    end if
-
-    dir = tempChar(1:1)
-
-    ! Resolution
-    call dict % get(tempInt, 'res')
-
-    if (size(tempInt) /= 2) then
-      call fatalError(Here, "'res' must have size 2. Has: "//numToChar(size(tempInt)))
-    else if (any(tempInt <= 0)) then
-      call fatalError(Here, "Resolution must be +ve. There is 0 or -ve entry!")
-    end if
-
-    allocate(img(tempInt(1), tempInt(2)))
-
-    ! Optional width
-    useWidth = dict % isPresent('width')
-    if (useWidth) then
-      call dict % get(temp, 'width')
-
-      ! Check for errors
-      if (size(temp) /= 2) then
-        call fatalError(Here, "'width' must have size 2. Has: "//numToChar((size(temp))))
-      else if (any(temp <= ZERO)) then
-        call fatalError(Here, "'width' must be +ve. It isn't.")
-      end if
-
-      width = temp
-
-    end if
-
-    ! Get plot
-    if (useWidth) then
-      call self % slicePlot(img, centre, dir, what, width)
-    else
-      call self % slicePlot(img, centre, dir, what)
-    end if
-
-    ! Translate cell IDs to scalar values from the vector
-    ! Create a real image
-    allocate(imgReal(tempInt(1), tempInt(2)))
-    
-    ! Place value and find maximum and minimum values appearing to create color scaling
-    maxEl = -INFINITY
-    minEl = INFINITY
-    do i = 1, tempInt(1)
-      do j = 1, tempInt(2)
-        val = vec(img(i,j))
-        imgReal(i,j) = val
-        if (val < minEl) minEl = val
-        if (val > maxEl) maxEl = val
-      end do
-    end do
-
-    ! Convert real values to bits on a color scale
-
-    ! Print image
-    call imgBmp_toFile(img, outputFile)
-
-  end subroutine viewVector
-
-  !!
   !! Produce a 2D plot of the geometry
   !!
   !! Resolution is determined by a size of provided output matrix
@@ -733,30 +634,6 @@ contains
     call self % vizDict % kill()
 
   end subroutine kill
-
-  !!
-  !! !!!INCOMPLETE!!!
-  !! Convert real value to a 24bit color
-  !!
-  !! Args:
-  !!   val [in]    -> Scalar value to be converted
-  !!   minVal [in] -> Minimum scalar value in color range
-  !!   maxVal [in] -> Maximum scalar value in color range
-  !!
-  !! Result:
-  !!   A 24-bit color corresponding to the values position
-  !!   in the given range
-  !!
-  elemental function scalarColor(val, minVal, maxVal) result(color)
-    integer(shortInt), intent(in) :: val
-    integer(shortInt), intent(in) :: minVal
-    integer(shortInt), intent(in) :: maxVal
-    integer(shortInt)             :: color
-
-    color = 1
-
-  end function scalarColor
-
 
   !!
   !! Convert matIdx to a 24bit color
