@@ -5,14 +5,14 @@ active   20;
 inactive 300;
 XSdata   mg; 
 dataType mg;
-outputFile C5G7_MG_2D ;
+outputFile C5G7_MGMC_2D ;
 
 collisionOperator { neutronMG {type neutronMGstd; } } 
 
 transportOperator { type transportOperatorST;  } 
                    
-inactiveTally { shannonAxial { type shannonEntropyClerk;
-				map {  type spaceMap;  	axis z; 	grid lin; 	min -190.0; max 190.0; N 20;  }  cycles 300;  } 
+inactiveTally {
+	  } 
 					} 
 
 activeTally {

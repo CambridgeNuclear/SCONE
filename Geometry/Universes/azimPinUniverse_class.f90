@@ -26,11 +26,14 @@ module azimPinUniverse_class
   !! Universe that represents a single pin
   !! A version of the pinUniverse which is equi-azimuthally divided.
   !!
-  !! Is composed from co-centring cylinders. Central cell has local ID 1 and the ID
-  !! increases with subsequent rings.
+  !! Is composed from co-centring cylinders divided azimuthally by planes. 
+  !! In the most central cylinder and first azimuthal segment, the cell will
+  !! have an ID of 1. This increases by 1 while proceeding across azimuthal
+  !! segments. Proceeding radially outwards, the ID is incremented by the 
+  !! number of azimuthal regions.
   !!
   !! Sample Dictionary Input:
-  !!   pinUni {
+  !!   azimPinUni {
   !!     id 7;
   !!     type azimPinUniverse;
   !!     #naz 4#
@@ -42,21 +45,23 @@ module azimPinUniverse_class
   !!
   !!  naz corresponds to the number of azimuthal regions produced. Must be a multiple
   !!  of 2.
-  !!  Takes origin at 0 degrees, i.e., the centre of the first azimuthal slices.
+  !!  Takes origin at 0 degrees, i.e., the centre of the first azimuthal slice.
   !!  There must be 0.0 entry, which indicates outermost annulus (infinite radius).
   !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
-  !!  are sorted together with the `radii`. As a result, in the example, local cell 1 is
-  !!  filled with u<4>, cell 2 with u<3> etc.
+  !!  are sorted together with the `radii`. As a result, in the example, local cells 1 to 4
+  !!  are filled with u<4>, cell 5 to 8 with u<3> etc.
   !!
   !!  !!!!!
-  !!  Just for the moment, there are no azimuthally different fills. This will be remedied!!
+  !!  TODO: Just for the moment, there are no azimuthally different fills. This should be remedied!
   !!  !!!!!
   !!
   !! Public Members:
-  !!  nAz    -> Number of azimuthal regions
-  !!  r_sqr  -> Array of radius^2 for each annulus
-  !!  theta  -> Array of azimuthal boundary angles in radians. 
-  !!  annuli -> Array of cylinder surfaces that represent diffrent annuli
+  !!  nAz     -> Number of azimuthal regions
+  !!  r_sqr   -> Array of radius^2 for each annulus
+  !!  theta   -> Array of azimuthal boundary angles in radians. 
+  !!  annuli  -> Array of cylinder surfaces that represent diffrent annuli
+  !!  planes  -> Array of planes for providing azimuthal division
+  !!  normals -> Array of plane normals for convenience
   !!
   !! Interface:
   !!   universe interface
