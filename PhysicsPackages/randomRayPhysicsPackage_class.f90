@@ -36,8 +36,15 @@ module randomRayPhysicsPackage_class
   ! Visualisation
   use visualiser_class,               only : visualiser
 
+  ! Tally map for fission rate
+  use tallyMap_inter,                 only : tallyMap
+  use tallyMapFactory_func,           only : new_tallyMap
+
   ! Random ray
   use ray_class,                      only : ray
+
+  ! Particle state (just for easier output)
+  use particle_class,                 only : particleState
 
   implicit none
   private
@@ -56,10 +63,10 @@ module randomRayPhysicsPackage_class
   !!
   !! Both inactive and active cycles occur, as in Monte Carlo. These can be terminated
   !! after a specified number of iterations or on reaching some chosen convergence
-  !! criterion.
+  !! criterion (though the latter hasn't been implemented yet).
   !!
   !! Calculates relative volume of diffrent materials in the problem by performing
-  !! random ray tracing in the geometry. The volume is normalised that the total domain
+  !! random ray tracing in the geometry. The volume is normalised such that the total domain
   !! volume is 1.0.
   !!
   !! IMPORTANT N.B.: Geometry type must be extended! If shrunk, results may be dubious!
@@ -70,18 +77,16 @@ module randomRayPhysicsPackage_class
   !! Sample Input Dictionary:
   !!   PP {
   !!     type randomRayPhysicsPackage;
-  !!     dead 10;            // Dead length where rays do not score to scalar fluxes
-  !!     termination 100;    // Length a ray travels before it is terminated
-  !!     rays 1000;          // Number of rays to sample per iteration
-  !!     inactive 100;       // Number of convergence cycles (would use accum and std otherwise)
-  !!     active 200;         // Number of scoring cycles (would use eps otherwise)
-  !!     !NOT YET SUPPORTED!
-  !!     accum 15;           // Accumulation cycles for exiting inactive cycles and estimating keff std
-  !!     std 30;             // Standard deviation below which inactive cycles are exited
-  !!     eps 1e-5;           // RMS error on scalar fluxes below which simulation concludes
-  !!     !NOT YET SUPPORTED!
-  !!     #seed 86868;#       // Optional RNG seed
-  !!     #cache 1;#          // Optionally use distance caching to accelerate ray tracing
+  !!     dead 10;              // Dead length where rays do not score to scalar fluxes
+  !!     termination 100;      // Length a ray travels before it is terminated
+  !!     rays 1000;            // Number of rays to sample per iteration
+  !!     inactive 100;         // Number of convergence cycles (would use accum and std otherwise)
+  !!     active 200;           // Number of scoring cycles (would use eps otherwise)
+  !!     #seed 86868;#         // Optional RNG seed
+  !!     #cache 1;#            // Optionally use distance caching to accelerate ray tracing
+  !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
+  !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
+  !!
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
   !!   }
@@ -96,6 +101,7 @@ module randomRayPhysicsPackage_class
   !!   mgData      -> MG database. Calculation obviously cannot be run in CE.
   !!   nG          -> Number of energy groups, kept for convenience.
   !!   nCells      -> Number of unique cells in the geometry, kept for convenience.
+  !!   lengthPerIt -> Distance all rays travel in a single iteration - for convenience.
   !!
   !!   termination -> Distance a ray can travel before it is terminated
   !!   dead        -> Distance a ray must travel before it becomes active
@@ -103,13 +109,13 @@ module randomRayPhysicsPackage_class
   !!   inactive    -> Number of inactive cycles to perform
   !!   active      -> Number of active cycles to perform
   !!   cache       -> Logical check whether to use distance caching
-  !!   !NOT YET SUPPORTED!
-  !!   criterionA  -> Should active cycles terminate on some convergence criterion?
-  !!   criterionI  -> SHould inactive cycles terminate on some convergence criterion?
-  !!   accum       -> Number of cycles over which to accumulate keff in a moving window
-  !!   std         -> Standard deviation tolerance criterion for terminating inactive
-  !!   eps         -> RMS tolerance criterion for terminating active
-  !!   !NOT YET SUPPORTED!
+  !!   cache       -> Perform distance caching?
+  !!   outputFile  -> Output file name
+  !!   outputFormat-> Output file format
+  !!   plotResults -> Plot results?
+  !!   viz         -> Output visualiser
+  !!   mapFission  -> Output fission rates across a given map?
+  !!   resultsMap  -> The map across which to output fission rate results
   !!
   !!   keff        -> Estimated value of keff
   !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
@@ -120,6 +126,8 @@ module randomRayPhysicsPackage_class
   !!   source      -> Array of neutron source values of length = nG * nCells
   !!   volume      -> Array of stochastically estimated cell volumes of length = nCells
   !!   cellHit     -> Array tracking whether given cells have been hit during tracking
+  !!   cellFound   -> Array tracking whether a cell was ever found
+  !!   cellPos     -> Array of cell positions, populated once they are found
   !!
   !! Interface:
   !!   physicsPackage interface
@@ -143,16 +151,13 @@ module randomRayPhysicsPackage_class
     integer(shortInt)  :: pop         = 0
     integer(shortInt)  :: inactive    = 0
     integer(shortInt)  :: active      = 0
-    !logical(defBool)   :: criterionA  = .FALSE.
-    !logical(defBool)   :: criterionI  = .FALSE.
-    !integer(shortInt)  :: accum       = 0
-    !real(defReal)      :: std         = ZERO
-    !real(defReal)      :: eps         = ZERO
     logical(defBool)   :: cache       = .FALSE.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .FALSE.
     type(visualiser)   :: viz
+    logical(defBool)   :: mapFission  = .FALSE.
+    class(tallyMap), allocatable :: resultsMap
 
     ! Results space
     real(defReal)                                :: keff
@@ -196,6 +201,7 @@ module randomRayPhysicsPackage_class
     procedure, private :: finaliseFluxAndKeffScores
     procedure, private :: printResults
     procedure, private :: printSettings
+
   end type randomRayPhysicsPackage
 
 contains
@@ -227,21 +233,8 @@ contains
     call dict % get(self % termination, 'termination')
     call dict % get(self % dead, 'dead')
     call dict % get(self % pop, 'pop')
-    !call dict % get(self % accum, 'accum')
-    !if (dict % isPresent('active')) then
     call dict % get(self % active, 'active')
-    !  self % eps = ZERO
-    !  self % criterionA = .FALSE.
-    !else
-    !  call dict % get(self % eps, 'eps')
-    !end if
-    !if (dict % isPresent('inactive')) then
     call dict % get(self % inactive, 'inactive')
-    !  self % std = ZERO
-    !  self % criterionI = .FALSE.
-    !else
-    !  call dict % get(self % std, 'std')
-    !end if
     
     ! Perform distance caching?
     call dict % getOrDefault(self % cache, 'cache', .FALSE.)
@@ -257,9 +250,6 @@ contains
     ! Check settings
     if (self % termination <= ZERO) call fatalError(Here, 'Ray termination distance (termination) is less than or equal to zero.')
     if (self % pop < 1) call fatalError(Here, 'Must have 1 or more rays (pop).')
-    !if (self % accum < 1) call fatalError('Must have 1 or more accumulation cycles (accum).')
-    !if (self % std < ZERO) call fatalError('Convergence standard deviation (std) cannot be less than zero.')
-    !if (self % eps < ZERO) call fatalError('RMS tolerance (eps) cannot be less than zero.')
 
     ! Dead length can be less than zero but will be reset to zero if so
     if (self % dead < ZERO) then
@@ -270,6 +260,16 @@ contains
     ! Ensure termination length is longer than dead length
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
+
+    ! Check whether there is a map for outputting fission rates
+    ! If so, read and initialise the map to be used
+    if (dict % isPresent('fissionMap')) then
+      self % mapFission = .TRUE.
+      tempDict => dict % getDictPtr('fissionMap')
+      call new_tallyMap(self % resultsMap, tempDict)
+    else
+      self % mapFission = .FALSE.
+    end if
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')
@@ -1006,11 +1006,15 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(outputFile)                              :: out
     character(nameLen)                            :: name
-    integer(shortInt)                             :: g, cIdx
-    integer(shortInt), save                       :: idx
+    integer(shortInt)                             :: cIdx
+    integer(shortInt), save                       :: idx, matIdx, i, g
+    real(defReal), save                           :: vol, SigmaF
+    type(particleState), save                     :: s
     integer(shortInt),dimension(:),allocatable    :: resArrayShape
-    real(defReal), dimension(:), allocatable      :: groupFlux
-    !$omp threadprivate(idx)
+    real(defReal), dimension(:), allocatable      :: groupFlux, fiss, fissSTD
+    class(baseMgNeutronMaterial), pointer, save   :: mat
+    class(materialHandle), pointer, save          :: matPtr
+    !$omp threadprivate(idx, matIdx, i, mat, matPtr, vol, s, SigmaF, g)
 
     call out % init(self % outputFormat)
     
@@ -1077,6 +1081,55 @@ contains
       call out % endBlock()
     end do
 
+    ! Send fission rates to map output
+    if (self % mapFission) then
+      resArrayShape = self % resultsMap % binArrayShape()
+      allocate(fiss(self % resultsMap % bins(0)))
+      allocate(fissSTD(self % resultsMap % bins(0)))
+      fiss    = ZERO
+      fissSTD = ZERO
+
+      ! Find whether cells are in map and sum their contributions
+      !$omp parallel do reduction(+: fiss, fissSTD)
+      do cIdx = 1, self % nCells
+        
+        ! Identify material
+        matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
+        matPtr => self % mgData % getMaterial(matIdx)
+        mat    => baseMgNeutronMaterial_CptrCast(matPtr)
+        vol    =  self % volume(cIdx)
+
+        ! Fudge a particle state to search tally map
+        s % r = self % cellPos(cIdx,:)
+        i = self % resultsMap % map(s)
+
+        if (i > 0) then
+          do g = 1, self % nG
+            SigmaF = mat % getFissionXS(g, self % rand)
+            idx = (cIdx - 1)* self % nG + g
+            fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
+            ! Is this correct? Also neglects uncertainty in volume - assumed small.
+            fissSTD(i) = fissSTD(i) + vol * self % fluxScores(idx,2) * SigmaF
+          end do
+        end if
+
+      end do
+      !$omp end parallel do
+
+      name = 'fissionRate'
+      call out % startBlock(name)
+      call out % startArray(name, resArrayShape)
+      ! Add all map elements to results
+      do idx = 1, self % resultsMap % bins(0)
+        call out % addResult(fiss(idx), fissSTD(idx))
+      end do
+      call out % endArray()
+      call out % endBlock()
+      
+      ! Output tally map
+      call self % resultsMap % print(out)
+    end if
+
     call out % writeToFile(self % outputFile)
 
     ! Send all fluxes and stds to VTK
@@ -1105,6 +1158,7 @@ contains
       call self % viz % finaliseVTK
     end if
 
+
   end subroutine printResults
 
   !!
@@ -1118,21 +1172,10 @@ contains
 
     print *, repeat("<>", MAX_COL/2)
     print *, "/\/\ RANDOM RAY EIGENVALUE CALCULATION /\/\"
-    !if (self % criterionI) then
-    !  print *, "Using convergence criterion for inactive"
-    !  print *, "Accumulates k over ",numToChar(self % accum),&
-    !          " cycles to reach a std. dev. of ",numToChar(self % std)
-    !else
     print *, "Using "//numToChar(self % inactive)// " iterations for "&
               //"the inactive cycles"
-    !end if
-    !if (self % criterionA) then
-    !  print *, "Using convergence criterion for active"
-    !  print *, "Compares RMS within a tolerance of ",numToChar(self % eps)
-    !else
     print *, "Using "//numToChar(self % active)// " iterations for "&
               //"the active cycles"
-    !end if
     print *, 
     print *, "Rays per cycle: "// numToChar(self % pop)
     print *, "Ray dead length: "//numToChar(self % dead)
@@ -1174,11 +1217,8 @@ contains
     self % inactive    = 0
     self % active      = 0
     self % cache       = .FALSE.
-    !self % criterionA  = .FALSE.
-    !self % criterionI  = .FALSE.
-    !self % accum       = 0
-    !self % std         = ZERO
-    !self % eps         = ZERO
+    self % mapFission  = .FALSE.
+    self % plotResults = .FALSE.
 
     self % keff        = ZERO
     self % keffScore   = ZERO
@@ -1189,6 +1229,10 @@ contains
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % cellHit)) deallocate(self % cellHit)
+    if(allocated(self % resultsMap)) then
+      call self % resultsMap % kill()
+      deallocate(self % resultsMap)
+    end if
 
   end subroutine kill
 

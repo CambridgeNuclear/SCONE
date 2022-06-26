@@ -49,6 +49,7 @@ module mgNeutronMaterial_inter
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
     procedure(getNuFissionXS), deferred     :: getNuFissionXS
+    procedure(getFissionXS), deferred       :: getFissionXS
     procedure(getChi), deferred             :: getChi
     procedure(getScatterXS), deferred       :: getScatterXS
     procedure                               :: isFissile
@@ -117,6 +118,27 @@ module mgNeutronMaterial_inter
       class(RNG), intent(inout)            :: rand
       real(defReal)                        :: xs
     end function getNuFissionXS
+
+    !!
+    !! Return Macroscopic Fission XS in a given group for the material
+    !!
+    !! Args:
+    !!   G [in]       -> Requested energygroup
+    !!   rand [inout] -> Random number generator
+    !!
+    !! Result:
+    !!   xs -> nuSigmaF value
+    !!
+    !! Errors:
+    !!   fatalError if G is out-of-bounds for the stored data
+    !!
+    function getFissionXS(self, G, rand) result(xs)
+      import :: mgNeutronMaterial, defReal, shortInt, RNG
+      class(mgNeutronMaterial), intent(in) :: self
+      integer(shortInt), intent(in)        :: G
+      class(RNG), intent(inout)            :: rand
+      real(defReal)                        :: xs
+    end function getFissionXS
 
     !!
     !! Return fission spectrum (chi) in a given group for the material

@@ -79,6 +79,7 @@ module baseMgNeutronMaterial_class
     procedure :: getMacroXSs_byG
     procedure :: getTotalXS
     procedure :: getNuFissionXS
+    procedure :: getFissionXS
     procedure :: getChi
     procedure :: getScatterXS
 
@@ -175,14 +176,44 @@ contains
     character(100), parameter :: Here = ' getNuFissionXS (baseMgNeutronMaterial_class.f90)'
 
     ! Verify bounds
-    if(G < 1 .or. self % nGroups() < G) then
-      call fatalError(Here,'Invalid group number: '//numToChar(G)// &
-                           ' Data has only: ' // numToChar(self % nGroups()))
-      xs = ZERO ! Avoid warning
+    if (self % isFissile()) then
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        xs = ZERO ! Avoid warning
+      end if
+      xs = self % data(NU_FISSION, G)
+    else
+      xs = ZERO
     end if
-    xs = self % data(NU_FISSION, G)
 
   end function getNuFissionXS
+
+  !!
+  !! Return Fission XS for energy group G
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getFissionXS(self, G, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getFissionXS (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if (self % isFissile()) then
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        xs = ZERO ! Avoid warning
+      end if
+      xs = self % data(FISSION_XS, G)
+    else
+      xs = ZERO
+    end if
+
+  end function getFissionXS
 
   !!
   !! Return chi for energy group G
