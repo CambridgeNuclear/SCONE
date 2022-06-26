@@ -140,26 +140,24 @@ contains
     integer(shortInt)                         :: i, n, Nstart, Nend, nParticles
     class(tallyResult),allocatable            :: res
     type(collisionOperator), save             :: collOp
+    class(transportOperator),allocatable,save :: transOp
     type(RNG), target, save                   :: pRNG     
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
-    !$omp threadprivate(neutron, buffer, collOp, pRNG)
+    !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
     
-    ! Create RNG which can be thread private
-    pRNG = self % pRNG
-
     ! Initialise neutron
     neutron % geomIdx = self % geomIdx
-    neutron % pRNG => pRNG
     
-    ! Create a collision operator which can be made thread private
+    ! Create a collision + transport operator which can be made thread private
     collOp = self % collOp
+    transOp = self % transOp
     !$omp end parallel
 
     ! Set initial k-eff
@@ -177,10 +175,13 @@ contains
 
       nParticles = self % thisCycle % popSize()
 
-      !$omp parallel do copyin(pRNG)
+      !$omp parallel do schedule(dynamic)
       gen: do n = 1, nParticles
 
         ! TODO: Further work to ensure reproducibility!
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
+        neutron % pRNG => pRNG
         call neutron % pRNG % stride(n)
         
         ! Obtain particle current cycle dungeon 
@@ -197,7 +198,7 @@ contains
 
           ! Transport particle untill its death
           history: do
-            call self % transOp % transport(neutron, tally, buffer, self % nextCycle)
+            call transOp % transport(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
 
             call collOp % collide(neutron, tally, buffer, self % nextCycle)
@@ -220,7 +221,6 @@ contains
       
       ! Update RNG
       call self % pRNG % stride(self % pop + 1)
-      pRNG = self % pRNG
 
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
