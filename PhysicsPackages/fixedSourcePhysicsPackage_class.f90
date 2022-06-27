@@ -135,7 +135,7 @@ contains
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-
+    
     ! Initialise neutron
     p % geomIdx = self % geomIdx
     p % k_eff = ONE
@@ -161,7 +161,7 @@ contains
       
       call tally % reportCycleStart(self % thisCycle)
       
-      !$omp parallel do copyin(pRNG) schedule(dynamic)
+      !$omp parallel do schedule(dynamic)
       gen: do n = 1, nParticles
         
         ! TODO: Further work to ensure reproducibility!
