@@ -272,7 +272,8 @@ contains
     end if
 
     ! Register timer
-    self % timerMain = registerTimer('transportTime')
+    self % timerMain = registerTimer('simulationTime')
+    self % timerTransport = registerTimer('transportTime')
 
     ! Initialise RNG
     if( dict % isPresent('seed')) then
@@ -846,7 +847,7 @@ contains
           ! Input index
           idx0 = self % nG * (cIdx - 1) + gIn
 
-          scatterXS = mat % getScatterXS(gIn, g, self % rand)
+          scatterXS = mat % getScatterProdXS(gIn, g, self % rand)
           nuFission = mat % getNuFissionXS(gIn, self % rand)
 
           fission = fission + self % prevFlux(idx0) * nuFission
@@ -1204,6 +1205,7 @@ contains
     self % geom    => null()
     self % geomIdx = 0
     self % timerMain = 0
+    self % timerTransport = 0
 
     self % top       = ZERO
     self % bottom    = ZERO

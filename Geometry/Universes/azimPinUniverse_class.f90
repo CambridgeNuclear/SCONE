@@ -36,7 +36,7 @@ module azimPinUniverse_class
   !!   azimPinUni {
   !!     id 7;
   !!     type azimPinUniverse;
-  !!     #naz 4#
+  !!     naz 4;
   !!     #origin (1.0 0.0 0.1);#
   !!     #rotation (30.0 0.0 0.0);#
   !!     radii (3.0 4.5 0.0 1.0 );
@@ -206,17 +206,12 @@ contains
 
     ! Create fill array
     allocate(fill(self % nAz * N))
-    !allocate(fill(N))
 
-    !do i = 1, N
-    !    fill(i) = charToFill(fillNames(i), mats, Here)
-    !end do
     do i = 1, N
       do j = 1, self % nAz
         fill((i-1)*self % nAz + j) = charToFill(fillNames(i), mats, Here)
       end do
     end do
-
 
   end subroutine init
 

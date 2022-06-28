@@ -81,7 +81,7 @@ module baseMgNeutronMaterial_class
     procedure :: getNuFissionXS
     procedure :: getFissionXS
     procedure :: getChi
-    procedure :: getScatterXS
+    procedure :: getScatterProdXS
 
     ! Local procedures
     procedure :: init
@@ -243,11 +243,11 @@ contains
   end function getChi
 
   !!
-  !! Return scatter XS for incoming energy group Gin and outgoing group Gout
+  !! Return scatter production XS for incoming energy group Gin and outgoing group Gout
   !!
   !! See mgNeutronMaterial documentationfor details
   !!
-  function getScatterXS(self, Gin, Gout, rand) result(xs)
+  function getScatterProdXS(self, Gin, Gout, rand) result(xs)
     class(baseMgNeutronMaterial), intent(in) :: self
     integer(shortInt), intent(in)            :: Gin
     integer(shortInt), intent(in)            :: Gout
@@ -263,7 +263,7 @@ contains
     end if
     xs = self % scatter % P0(Gout,Gin) * self % scatter % prod(Gout,Gin)
   
-  end function getScatterXS
+  end function getScatterProdXS
 
 
   !!

@@ -196,7 +196,6 @@ module geometry_inter
       type(distCache), intent(inout) :: cache
     end subroutine move_withCache
 
-
     !!
     !! Move, but ensuring that vacuum boundaries are treated as reflective and communicating
     !! a vacuum strike back.
@@ -216,6 +215,7 @@ module geometry_inter
       integer(shortInt), intent(out) :: event
       logical(defBool), intent(out)  :: hitVacuum
     end subroutine moveRay_noCache
+
     !!
     !! Move, but ensuring that vacuum boundaries are treated as reflective and communicating
     !! a vacuum strike back.

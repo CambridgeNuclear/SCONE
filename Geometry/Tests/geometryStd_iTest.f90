@@ -111,7 +111,7 @@ contains
     call viz % slicePlot(img, r, 'z', 'uniqueID', [1.26_defReal, 1.26_defReal])
 
     ! Verify some pixels
-    ! Note that this test depends on universe leyout order in geomGraph
+    ! Note that this test depends on universe layout order in geomGraph
     ! If it changes this test fill fail
     @assertEqual(2, img(5,5))
     @assertEqual(3, img(1,1))

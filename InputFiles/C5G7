@@ -182,12 +182,14 @@ nuclearData {
 	composition { }
     }
 
+    // Fission chamber
     FC {
        temp 300; 
        xsFile ./XS_C5G7/FC;
 	composition { }
     }
     
+    // Guide tube
     GT {
        temp 300; 
        xsFile ./XS_C5G7/GT;
