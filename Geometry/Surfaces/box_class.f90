@@ -299,7 +299,7 @@ contains
     class(box), intent(inout)                   :: self
     integer(shortInt), dimension(:), intent(in) :: BC
     integer(shortInt)                           :: i
-    character(100),parameter :: Here = 'setBC (box_inter.f90)'
+    character(100),parameter :: Here = 'setBC (box_class.f90)'
 
     if(size(BC) < 6) call fatalError(Here,'Wrong size of BC string. Must be at least 6')
 
