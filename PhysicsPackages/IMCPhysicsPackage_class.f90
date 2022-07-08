@@ -133,11 +133,21 @@ contains
     integer(shortInt), intent(in)                   :: N_cycles
     integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
+    logical(defBool)                                :: printUpdates
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
+
+    ! Set whether or not to print energy and temperature updates of each material
+    !   Printed from updateMat (baseMgIMCMaterial_class.f90), 7 lines of text
+    !   per material so recommend to only print when low number of materials
+    if (self % nMat <= 5) then
+      printUpdates = .True.
+    else
+      printUpdates = .False.
+    end if
 
     N = self % pop
 
@@ -159,9 +169,9 @@ contains
     allocate(tallyEnergy(self % nMat))
 
     ! Generate initial source distribution
-    if( self % sourceGiven ) then
-      call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
-    end if
+    !if( self % sourceGiven ) then
+    !  call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
+    !end if
 
     do i=1,N_cycles
 
@@ -169,8 +179,18 @@ contains
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
-      ! Generate IMC source
-      call self % IMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
+
+      ! Check that there are regions of non-zero temperature by summing mat temperatures
+      sumT = 0
+      do j=1, self % nMat
+        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        sumT = sumT + mat % getTemp()
+      end do
+
+      ! Generate IMC source, only if there are regions with non-zero temperature
+      if(sumT > 0) then
+        call self % IMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
+      end if
 
       ! Generate from input source
       if( self % sourceGiven ) then
@@ -239,7 +259,7 @@ contains
       print *
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % pop)
+      print *, 'Pop:          ', numToChar(self % nextCycle % getSize())
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
@@ -260,14 +280,18 @@ contains
       ! Update material properties
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        print *
-        print *, "Material update:  ", mm_matName(j)
-        call mat % updateMat(tallyEnergy(j))
+        if (printUpdates .eqv. .True.) then
+          print *
+          print *, "Material update:  ", mm_matName(j)
+        end if
+        call mat % updateMat(tallyEnergy(j), printUpdates)
       end do
       print *
 
       ! Reset tally for next cycle
       call tallyAtch % reset('imcWeight')
+
+      print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
 
     end do
 

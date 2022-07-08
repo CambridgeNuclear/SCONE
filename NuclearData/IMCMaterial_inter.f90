@@ -2,6 +2,7 @@ module IMCMaterial_inter
 
   use numPrecision
   use particle_class,       only : particle
+  use RNG_class,            only : RNG
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
@@ -34,6 +35,8 @@ module IMCMaterial_inter
     procedure(getEmittedRad), deferred   :: getEmittedRad
     procedure(getFleck), deferred        :: getFleck
     procedure(initProps), deferred       :: initProps
+    procedure(isBlackBody), deferred     :: isBlackBody
+    procedure(getTemp), deferred         :: getTemp
   end type IMCMaterial
 
   abstract interface
@@ -62,18 +65,20 @@ module IMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateMat(self, tallyEnergy)
-      import :: IMCMaterial, defReal
-      class(IMCMaterial), intent(inout)  :: self
-      real(defReal), intent(in)          :: tallyEnergy
+    subroutine updateMat(self, tallyEnergy, printUpdate)
+      import :: IMCMaterial, defReal, defBool
+      class(IMCMaterial), intent(inout)      :: self
+      real(defReal), intent(in)              :: tallyEnergy
+      logical(defBool), intent(in), optional :: printUpdate
     end subroutine updateMat
 
     !!
     !! Return the equilibrium radiation energy density, U_r
     !!
     function getEmittedRad(self) result(emittedRad)
-      import :: IMCMaterial, defReal
+      import :: IMCMaterial, defReal, RNG
       class(IMCMaterial), intent(inout)  :: self
+      !class(RNG), intent(inout)          :: rand
       real(defReal)                      :: emittedRad
     end function getEmittedRad
 
@@ -83,7 +88,7 @@ module IMCMaterial_inter
     function getFleck(self) result(fleck)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(in) :: self
-      real(defReal)                    :: fleck
+      real(defReal)                  :: fleck
     end function getFleck
 
     !!
@@ -100,6 +105,18 @@ module IMCMaterial_inter
       class(IMCMaterial),intent(inout) :: self
       real(defReal), intent(in)        :: deltaT, T, V
     end subroutine initProps
+
+    function isBlackBody(self) result(bool)
+      import :: IMCMaterial, defReal, defBool
+      class(IMCMaterial), intent(inout) :: self
+      logical(defBool)                  :: bool
+    end function isBlackBody
+
+    function getTemp(self) result(temp)
+      import :: IMCMaterial, defReal
+      class(IMCMaterial), intent(inout) :: self
+      real(defReal)                     :: temp
+    end function getTemp
 
   end interface
 

@@ -66,7 +66,7 @@ module baseMgIMCMaterial_class
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
-    real(defReal),dimension(:), allocatable   :: cv, updateEqn
+    real(defReal),dimension(:), allocatable   :: cv, updateEqn, sigmaEqn
     class(multiScatterMG), allocatable        :: scatter
     real(defReal)                             :: T, fleck, deltaT, sigmaP, matEnergy, volume
 
@@ -83,6 +83,8 @@ module baseMgIMCMaterial_class
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: initProps
+    procedure :: isBlackBody
+    procedure :: getTemp
 
   end type baseMgIMCMaterial
 
@@ -176,7 +178,7 @@ contains
     class(dictionary),target, intent(in)        :: dict
     character(nameLen), intent(in)              :: scatterKey
     integer(shortInt)                           :: nG, N, i
-    real(defReal), dimension(:), allocatable    :: temp, temp2
+    real(defReal), dimension(:), allocatable    :: temp
     type(dictDeck)                              :: deck
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
@@ -210,14 +212,6 @@ contains
 
     allocate(self % data(N, nG))
 
-    ! Load cross sections - Loads 'sigmaP' in place of 'capture' so that existing functions to get cross section instead get sigmaP
-    call dict % get(temp, 'sigmaP')
-    if(size(temp) /= nG) then
-      call fatalError(Here,'Capture XSs have wong size. Must be: ' &
-                          // numToChar(nG)//' is '//numToChar(size(temp)))
-    end if
-    self % data(CAPTURE_XS,:) = temp
-
     ! Extract values of scattering XS
     if(size(self % scatter % scatterXSs) /= nG) then
       call fatalError(Here, 'Somthing went wrong. Inconsistant # of groups in material and reaction&
@@ -230,13 +224,9 @@ contains
       self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
     end do
 
-    ! Set initial temperature and energy
-    !self % T = 298
-    !self % matEnergy = 1000
-
-    ! Set Planck opacity
-    call dict % get(temp2, 'sigmaP')
-    self % sigmaP = temp2(1)
+    ! Read Planck opacity equation
+    call dict % get(temp, 'sigmaP')
+    self % sigmaEqn = temp
 
     ! Read heat capacity equation
     call dict % get(temp, 'cv')
@@ -323,29 +313,31 @@ contains
   !! Args:
   !!   delta T [in] -> Time step size
   !!
-  subroutine updateMat(self, tallyEnergy)
+  subroutine updateMat(self, tallyEnergy, printUpdate)
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
-    real(defReal)                           :: energy, const
+    logical(defBool), intent(in), optional  :: printUpdate
+    real(defReal)                           :: energyDens, prev
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
-    ! Print energies
-    print *, "T_old =", self % T
-    print *, "matEnergy at start of timestep =", self % matEnergy
-    print *, "emittedRad =", self % getEmittedRad()
-    print *, "tallyEnergy =", tallyEnergy
+    ! Print current properties
+    if (present(printUpdate)) then
+      if (printUpdate .eqv. .True.) then
+        print *, "  T_old =                         ", self % T
+        print *, "  matEnergy at start of timestep =", self % matEnergy
+        print *, "  emittedRad =                    ", self % getEmittedRad()
+        print *, "  tallyEnergy =                   ", tallyEnergy
+      end if
+    end if
 
     ! Store previous material internal energy density, U_{m,n}/V
-    const = self % matEnergy / self % volume
+    prev = self % matEnergy / self % volume
 
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
-    ! Print energy
-    print *, "matEnergy at end of timestep =", self % matEnergy
-
     ! New material internal energy density, U_{m,n+1}/V
-    energy = self % matEnergy / self % volume
+    energyDens = self % matEnergy / self % volume
     
     !! Integration of dUm/dT = cv gives equation to be solved for T_{n+1}:
     !!
@@ -356,8 +348,24 @@ contains
     !const = energy - const + poly_eval(self % updateEqn, self % T)
 
     ! Update material temperature by solving f(T_{n+1}) = const
-    self % T = poly_solve(self % updateEqn, self % cv, self % T, energy)  !! Using energy and const give save result, const not necessary
-    print *, 'T_new =', self % T
+    if ( energyDens /= prev ) then
+      self % T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)  !! Using energy and const give save result, const not necessary
+    end if
+
+    ! Print updated properties 
+    if (present(printUpdate)) then
+      if(printUpdate .eqv. .True.) then
+        print *, "  matEnergy at end of timestep =  ", self % matEnergy
+        print *, "  T_new =                         ", self % T
+      end if
+    end if
+
+
+    ! Update sigmaP
+    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
+      ! Also need these lines because cross section functions still use this instead of sigmaP
+    self % data(CAPTURE_XS,:) = self % sigmaP
+    self % data(TOTAL_XS,:) = self % sigmaP
 
     if( self % T < 0 ) then
      call fatalError(Here, "Temperature is negative")
@@ -365,11 +373,11 @@ contains
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
 
-    !print *, 'fleck =', self % fleck
+    !print *, 'fleck_new =', self % fleck
     !print *, 'a =', radiationConstant
     !print *, 'c =', lightSpeed
     !print *, 'V =', self % volume
-    !print *, 'sigmaP=', self % sigmaP
+    !print *, 'sigmaP_new =', self % sigmaP
 
   end subroutine updateMat
 
@@ -414,15 +422,35 @@ contains
     real(defReal), intent(in)              :: deltaT, T, V
     character(100), parameter  :: Here = 'initProps (baseMgIMCMaterial_class.f90)'
 
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
-    self % deltaT = deltaT
     self % volume = V
-
     if(self % volume <= 0) call fatalError(Here, 'Invalid material volume given')
 
     self % T = T
-    self % matEnergy = poly_eval(self % updateEqn, self % T)
+    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % volume
+
+    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
+    self % data(CAPTURE_XS,:) = self % sigmaP
+    self % data(TOTAL_XS,:) = self % sigmaP
+
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
+    self % deltaT = deltaT
 
   end subroutine initProps
+
+  function isBlackBody(self) result(bool)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    logical(defBool)                        :: bool
+
+    ! Incomplete
+
+  end function isBlackBody
+
+  function getTemp(self) result(temp)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal)                           :: temp
+
+    temp = self % T
+
+  end function getTemp
 
 end module baseMgIMCMaterial_class

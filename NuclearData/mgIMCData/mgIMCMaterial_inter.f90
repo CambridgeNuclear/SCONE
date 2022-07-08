@@ -47,6 +47,8 @@ module mgIMCMaterial_inter
     procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
     procedure(initProps), deferred          :: initProps
+    procedure(isBlackBody), deferred        :: isBlackBody
+    procedure(getTemp), deferred            :: getTemp
 
   end type mgIMCMaterial
 
@@ -97,18 +99,20 @@ module mgIMCMaterial_inter
     !! Args:
     !!   None
     !!
-    subroutine updateMat(self, tallyEnergy)
-      import :: mgIMCMaterial, defReal
-      class(mgIMCMaterial), intent(inout) :: self
-      real(defReal), intent(in)           :: tallyEnergy
+    subroutine updateMat(self, tallyEnergy, printUpdate)
+      import :: mgIMCMaterial, defReal, defBool
+      class(mgIMCMaterial), intent(inout)    :: self
+      real(defReal), intent(in)              :: tallyEnergy
+      logical(defBool), intent(in), optional :: printUpdate
     end subroutine updateMat
 
     !!
     !! Return the equilibrium radiation energy density, U_r
     !!
     function getEmittedRad(self) result(emittedRad)
-      import :: mgIMCMaterial, defReal
+      import :: mgIMCMaterial, defReal, RNG
       class(mgIMCMaterial), intent(inout) :: self
+      !class(RNG), intent(inout)           :: rand
       real(defReal)                       :: emittedRad
     end function getEmittedRad
 
@@ -135,6 +139,19 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial),intent(inout) :: self
       real(defReal), intent(in)          :: deltaT, T, V
     end subroutine initProps
+
+    function isBlackBody(self) result(bool)
+      import :: mgIMCMaterial, defReal, defBool
+      class(mgIMCMaterial), intent(inout) :: self
+      logical(defBool)                    :: bool
+    end function isBlackBody
+
+    function getTemp(self) result(temp)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial), intent(inout) :: self
+      real(defReal)                       :: temp
+    end function getTemp
+
 
   end interface
 
