@@ -1,0 +1,103 @@
+
+type IMCPhysicsPackage;
+
+pop            200000;
+cycles         51;
+timeStepSize   0.1;
+
+XSdata     mg;
+dataType   mg; 
+
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorIMC;
+                  } 
+
+//source {
+//  type surfaceSource;
+//  shape square;
+//  size 1;
+//  axis x;
+//  pos -1.5;
+//  T 1;
+//  nParticles 20000;
+//  dir 1;
+//  deltat 0.1;
+//  particle photon;
+//}
+
+imcSource {
+            type imcSource; 
+            nParticles 50000;
+          }
+
+inactiveTally {} 
+
+activeTally  {}
+
+tally  {
+	   }
+
+geometry { 
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      sep1   { id 1; type xPlane; x0 -0.5; }
+      sep2   { id 2; type xPlane; x0  0.5; }
+      outer  { id 3; type box; origin ( 0.0  0.0  0.0); halfwidth ( 1.5 0.5 0.5); }
+    }
+    cells
+    {
+      cell1 { id 1; type simpleCell; surfaces (  -1); filltype mat; material mat1; }
+      cell2 { id 2; type simpleCell; surfaces (1 -2); filltype mat; material mat2; }
+      cell3 { id 3; type simpleCell; surfaces (   2); filltype mat; material mat3; }
+    }
+    universes
+    {
+      root { id 1; type rootUniverse; border 3; fill u<2>; }
+      cell { id 2; type cellUniverse; cells ( 1 2 3); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     mg       { type baseMgIMCDatabase; PN P0;}
+  }
+  
+  
+  materials { 
+
+    mat1 {  
+      temp   1; 
+      composition {}
+      xsFile ./dataFiles/imcData;
+      volume 1; 
+    }
+    mat2 {
+      temp   0;
+      composition {}
+      xsFile ./dataFiles/imcData;
+      volume 1;
+    }
+    mat3 {
+      temp   0;
+      composition {}
+      xsFile ./dataFiles/imcData;
+      volume 1;
+    }
+
+
+} 
+  
+}
+  
+  
+  

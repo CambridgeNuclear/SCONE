@@ -5,7 +5,7 @@
 
 numberOfGroups 1; 
 
-capture (1.0);
+capture (0.0);
  
 scatteringMultiplicity ( 
 0.0
@@ -16,12 +16,12 @@ P0 (
 );
 
 sigmaP (
- 1.0
- 0.0
+ 1
+ 0
 );
 
 cv (
- 4.0
- 3.0
+ 4
+ 3
 );
 

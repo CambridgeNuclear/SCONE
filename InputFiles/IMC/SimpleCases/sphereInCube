@@ -2,7 +2,7 @@
 type IMCPhysicsPackage;
 
 pop            20000;
-cycles         100;
+cycles         500;
 timeStepSize   0.1;
 
 XSdata     mg;
@@ -19,7 +19,7 @@ transportOperator {
 
 imcSource {
             type imcSource; 
-            nParticles 10000;
+            nParticles 100;
           }
 
 inactiveTally {} 

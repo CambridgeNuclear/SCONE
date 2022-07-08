@@ -1,11 +1,9 @@
-//type fixedSourcePhysicsPackage; 
-//type eigenPhysicsPackage;
 
 type IMCPhysicsPackage;
 
-pop            20000;
-cycles         100;
-timeStepSize   0.1;
+pop            50000;
+cycles         31;
+timeStepSize   1;
 
 XSdata     mg;
 dataType   mg; 
@@ -29,7 +27,7 @@ transportOperator {
 
 imcSource {
             type imcSource; 
-            nParticles 10000;
+            nParticles 50000;
           }
 
 inactiveTally {} 
@@ -46,26 +44,24 @@ geometry {
 
     surfaces
     {
-      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 1;  }
-      outer { id 2; type box;    origin ( 0.0  0.0  0.0); halfwidth ( 1 1 1); }
-      //outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 1.26; }
+      sep   { id 1; type xPlane; x0 0.0; }
+      outer { id 2; type box; origin ( 0.0  0.0  0.0); halfwidth ( 1 0.5 0.5); }
     }
     cells
     {
-      inner_cell { id 1; type simpleCell; surfaces (-1); filltype mat; material mat1; }
-      outer_cell { id 2; type simpleCell; surfaces ( 1); filltype mat; material mat2; }
+      cell1 { id 1; type simpleCell; surfaces (-1); filltype mat; material mat1; }
+      cell2 { id 2; type simpleCell; surfaces ( 1); filltype mat; material mat2; }
     }
     universes
     {
       root { id 1; type rootUniverse; border 2; fill u<2>; }
       cell { id 2; type cellUniverse; cells ( 1 2 ); }
-    }   
+    }
 }
 
 nuclearData {
 
   handles { 
-     //ce     { type aceNeutronDatabase; aceLibrary /home/ajb343/myACE/JEF311.aceXS;}
      mg       { type baseMgIMCDatabase; PN P0;}
   }
   
@@ -75,10 +71,15 @@ nuclearData {
     mat1 {  
       temp       1; 
       composition {}
-      xsFile ./InputFiles/XS/imcData;
-      volume 4.18879; 
+      xsFile ./dataFiles/imcData;
+      volume 1; 
     }
-    mat2 { temp 5; composition {} xsFile ./InputFiles/XS/imcData; volume 3.81121; }
+    mat2 {
+      temp 0;
+      composition {}
+      xsFile ./dataFiles/imcData2;
+      volume 1;
+    }
 
 } 
   
