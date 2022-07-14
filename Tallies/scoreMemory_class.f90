@@ -81,7 +81,7 @@ module scoreMemory_class
       real(defReal),dimension(:,:),allocatable :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
       real(defReal),dimension(:,:),allocatable :: parallelBins  !! Space for scoring for different threads
       integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
-      integer(shortInt)                        :: nThreads      !! Number of threads used for parallelBins
+      integer(shortInt)                        :: nThreads = 0  !! Number of threads used for parallelBins
       integer(shortInt)                        :: id            !! Id of the tally
       integer(shortInt)                        :: batchN = 0    !! Number of Batches
       integer(shortInt)                        :: cycles = 0    !! Cycles counter
@@ -162,6 +162,7 @@ contains
    if(allocated(self % bins)) deallocate(self % bins)
    if(allocated(self % parallelBins)) deallocate(self % parallelBins)
    self % N = 0
+   self % nThreads = 0
    self % batchN = 0
 
   end subroutine kill
