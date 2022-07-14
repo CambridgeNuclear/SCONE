@@ -50,7 +50,7 @@ module randomRayPhysicsPackage_class
   private
 
   ! Parameter for when to skip a tiny volume
-  real(defReal), parameter :: volume_tolerance = 1.0E-10
+  real(defReal), parameter :: volume_tolerance = 1.0E-15
 
   !!
   !! Physics package to perform The Random Ray Method (TRRM) eigenvalue calculations
@@ -113,6 +113,9 @@ module randomRayPhysicsPackage_class
   !!   outputFile  -> Output file name
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
+  !!   printFluxes -> Print fluxes?
+  !!   printVolume -> Print volumes?
+  !!   printCells  -> Print cell positions?
   !!   viz         -> Output visualiser
   !!   mapFission  -> Output fission rates across a given map?
   !!   resultsMap  -> The map across which to output fission rate results
@@ -155,6 +158,9 @@ module randomRayPhysicsPackage_class
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .FALSE.
+    logical(defBool)   :: printFlux   = .FALSE.
+    logical(defBool)   :: printVolume = .FALSE.
+    logical(defBool)   :: printCells  = .FALSE.
     type(visualiser)   :: viz
     logical(defBool)   :: mapFission  = .FALSE.
     class(tallyMap), allocatable :: resultsMap
@@ -238,6 +244,15 @@ contains
     
     ! Perform distance caching?
     call dict % getOrDefault(self % cache, 'cache', .FALSE.)
+
+    ! Print fluxes?
+    call dict % getOrDefault(self % printFlux, 'printFlux', .FALSE.)
+
+    ! Print volumes?
+    call dict % getOrDefault(self % printVolume, 'printVolume', .FALSE.)
+
+    ! Print cell positions?
+    call dict % getOrDefault(self % printCells, 'printCells', .FALSE.)
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -420,7 +435,7 @@ contains
     logical(defBool)                              :: stoppingCriterion, isActive
     integer(shortInt)                             :: i, itInac, itAct, it
     integer(longInt), save                        :: ints
-    integer(longInt)                              :: integrations
+    integer(longInt)                              :: intersections
     !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
@@ -466,9 +481,9 @@ contains
       ! Reset and start transport timer
       call timerReset(self % timerTransport)
       call timerStart(self % timerTransport)
-      integrations = 0
+      intersections = 0
       
-      !$omp parallel do schedule(dynamic) reduction(+: integrations)
+      !$omp parallel do schedule(dynamic) reduction(+: intersections)
       do i = 1, self % pop
 
         ! Set seed
@@ -481,7 +496,7 @@ contains
 
         ! Transport ray until termination criterion met
         call self % transportSweep(r,ints)
-        integrations = integrations + ints
+        intersections = intersections + ints
 
       end do
       !$omp end parallel do
@@ -506,18 +521,9 @@ contains
 
       ! Evaluate stopping criterion for active or inactive iterations
       if (isActive) then
-        !if (self % criterionA) then
-        !  rms = self % calculateRMS()
-        !  stopping_criterion = rms > self % eps
-        !else
         stoppingCriterion = (itAct < self % active)
-        !end if
       else
-        !if (self % criterionI) then
-        !  isActive = ((it >= self % accum) .AND. (kStd < self % std))
-        !else
         isActive = (itInac >= self % inactive)
-        !end if
       end if
 
       ! Set previous iteration flux to scalar flux
@@ -549,7 +555,7 @@ contains
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       print *, 'Time per integration (ns): ', &
-              trim(numToChar(transport_T*10**9/(self % nG * integrations)))
+              trim(numToChar(transport_T*10**9/(self % nG * intersections)))
 
     end do
 
@@ -1007,7 +1013,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(outputFile)                              :: out
     character(nameLen)                            :: name
-    integer(shortInt)                             :: cIdx
+    integer(shortInt)                             :: cIdx, g1
     integer(shortInt), save                       :: idx, matIdx, i, g
     real(defReal), save                           :: vol, SigmaF
     type(particleState), save                     :: s
@@ -1045,42 +1051,48 @@ contains
     call out % endBlock()
 
     ! Print cell volumes
-    name = 'volume'
-    call out % startBlock(name)
-    resArrayShape = [size(self % volume)]
-    call out % startArray(name, resArrayShape)
-    do cIdx = 1, self % nCells
-      call out % addResult(self % volume(cIdx), ZERO)
-    end do
-    call out % endArray()
-    call out % endBlock()
-
-    ! Print cell positions
-    name = 'position'
-    call out % startBlock(name)
-    resArrayShape = [size(self % cellPos)]
-    call out % startArray(name, resArrayShape)
-    do cIdx = 1, self % nCells
-      call out % addResult(self % cellPos(cIdx,1), ZERO)
-      call out % addResult(self % cellPos(cIdx,2), ZERO)
-      call out % addResult(self % cellPos(cIdx,3), ZERO)
-    end do
-    call out % endArray()
-    call out % endBlock()
-
-    ! Print fluxes
-    resArrayShape = [size(self % volume)]
-    do g = 1, self % nG
-      name = 'flux_g'//numToChar(g)
+    if (self % printVolume) then
+      name = 'volume'
       call out % startBlock(name)
+      resArrayShape = [size(self % volume)]
       call out % startArray(name, resArrayShape)
       do cIdx = 1, self % nCells
-        idx = (cIdx - 1)* self % nG + g
-        call out % addResult(self % fluxScores(idx,1), self % fluxScores(idx,2))
+        call out % addResult(self % volume(cIdx), ZERO)
       end do
       call out % endArray()
       call out % endBlock()
-    end do
+    end if
+
+    ! Print cell positions
+    if (self % printCells) then
+      name = 'position'
+      call out % startBlock(name)
+      resArrayShape = [size(self % cellPos)]
+      call out % startArray(name, resArrayShape)
+      do cIdx = 1, self % nCells
+        call out % addResult(self % cellPos(cIdx,1), ZERO)
+        call out % addResult(self % cellPos(cIdx,2), ZERO)
+        call out % addResult(self % cellPos(cIdx,3), ZERO)
+      end do
+      call out % endArray()
+      call out % endBlock()
+    end if
+
+    ! Print fluxes
+    if (self % printFlux) then
+      resArrayShape = [size(self % volume)]
+      do g = 1, self % nG
+        name = 'flux_g'//numToChar(g)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % fluxScores(idx,1), self % fluxScores(idx,2))
+        end do
+        call out % endArray()
+        call out % endBlock()
+      end do
+    end if
 
     ! Send fission rates to map output
     if (self % mapFission) then
@@ -1099,6 +1111,8 @@ contains
         matPtr => self % mgData % getMaterial(matIdx)
         mat    => baseMgNeutronMaterial_CptrCast(matPtr)
         vol    =  self % volume(cIdx)
+
+        if (vol < volume_tolerance) cycle
 
         ! Fudge a particle state to search tally map
         s % r = self % cellPos(cIdx,:)
@@ -1136,21 +1150,21 @@ contains
     ! Send all fluxes and stds to VTK
     if (self % plotResults) then
       allocate(groupFlux(self % nCells))
-      do g = 1, self % nG
-        name = 'flux_g'//numToChar(g)
-        !$omp parallel do
+      do g1 = 1, self % nG
+        name = 'flux_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
-          idx = (cIdx - 1)* self % nG + g
+          idx = (cIdx - 1)* self % nG + g1
           groupFlux(cIdx) = self % fluxScores(idx,1)
         end do
         !$omp end parallel do
         call self % viz % addVTKData(groupFlux,name)
       end do
-      do g = 1, self % nG
-        name = 'std_g'//numToChar(g)
-        !$omp parallel do
+      do g1 = 1, self % nG
+        name = 'std_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
-          idx = (cIdx - 1)* self % nG + g
+          idx = (cIdx - 1)* self % nG + g1
           groupFlux(cIdx) = self % fluxScores(idx,2)
         end do
         !$omp end parallel do
@@ -1177,12 +1191,12 @@ contains
               //"the inactive cycles"
     print *, "Using "//numToChar(self % active)// " iterations for "&
               //"the active cycles"
-    print *, 
+    print * 
     print *, "Rays per cycle: "// numToChar(self % pop)
     print *, "Ray dead length: "//numToChar(self % dead)
     print *, "Ray termination length: "//numToChar(self % termination)
     print *, "Initial RNG Seed:   "// numToChar(self % rand % getSeed())
-    print *,
+    print *
     print *, "Number of cells in the geometry: "// numToChar(self % nCells)
     print *, "Number of energy groups: "// numToChar(self % nG)
     if (self % cache) print *, "Accelerated with distance caching"
@@ -1221,6 +1235,9 @@ contains
     self % cache       = .FALSE.
     self % mapFission  = .FALSE.
     self % plotResults = .FALSE.
+    self % printFlux   = .FALSE.
+    self % printVolume = .FALSE.
+    self % printCells  = .FALSE.
 
     self % keff        = ZERO
     self % keffScore   = ZERO
