@@ -414,18 +414,18 @@ contains
   end function activeMats
 
   !!
-  !! Descend down the geometry structure untill material is reached
+  !! Descend down the geometry structure until material is reached
   !!
-  !! Requires strting level to be specified.
+  !! Requires starting level to be specified.
   !! It is private procedure common to all movment types in geometry.
   !!
   !! Args:
-  !!   coords [inout] -> CoordList of a particle. Assume thet coords are already valid for all
+  !!   coords [inout] -> CoordList of a particle. Assume that coords are already valid for all
   !!     levels above and including start
-  !!   start [in] -> Starting level for meterial search
+  !!   start [in] -> Starting level for material search
   !!
   !! Errors:
-  !!   fatalError if material cell is not found untill maximum nesting is reached
+  !!   fatalError if material cell is not found until maximum nesting is reached
   !!
   subroutine diveToMat(self, coords, start)
     class(geometryStd), intent(in) :: self

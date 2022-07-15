@@ -233,7 +233,7 @@ contains
     else
       far = (-k + sqrt(delta)) / a
       near = (-k - sqrt(delta)) / a
-      if (far < near) call swap(far, near) ! Ensure corect order for any orientation
+      if (far < near) call swap(far, near) ! Ensure correct order for any orientation
 
     end if
 
@@ -249,7 +249,7 @@ contains
 
     end if
 
-    ! Ensure corect order for any orientation
+    ! Ensure correct order for any orientation
     if (test_far < test_near) call swap(test_far, test_near)
 
     ! Get intersection

@@ -219,7 +219,7 @@ contains
   !!   ID of the cell under index
   !!
   !! Error:
-  !!   fatalError is idx does not correspond to a cell (is out-of-bounds)
+  !!   fatalError if idx does not correspond to a cell (is out-of-bounds)
   !!
   function getId(self, idx) result(id)
     class(cellShelf), intent(in)  :: self
