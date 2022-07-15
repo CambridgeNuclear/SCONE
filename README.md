@@ -43,3 +43,4 @@ HTML documentation should now be avaliable in `./_build/html`
 
 ## Licence
 This project is licensed under MIT Licence - see the [LICENCE](LICENCE) file for details.
+=======
