@@ -60,13 +60,13 @@ module poly_func
     !! Use Newton-Raphspon method to solve polynomial with m terms
     !!
     !! Args:
-    !!   equation ->
-    !!   derivative ->
-    !!   x0 ->
+    !!   equation -> 1D array of n coefficients followed by m exponents
+    !!   derivative -> 1D array of n coefficients followed by m exponents
+    !!   x0 -> Starting guess
     !!   const -> For f(x) = const, if not given then solves f(x) = 0
     !!
     !! Errors:
-    !!   equation and derivative are different sizes
+    !!   Equation and derivative are different sizes
     !!   Input array sizes are not divisible by 2
     !!
     function poly_solve(equation, derivative, x0, const) result(x)
@@ -90,6 +90,9 @@ module poly_func
 
       x = x0
       m = size(equation) / 2
+
+      ! May not converge if x0 = 0
+      if ( x == 0 ) x = 0.0000001
 
       ! If no constant present then solving f(x) = 0
       if(  present(const) ) then
