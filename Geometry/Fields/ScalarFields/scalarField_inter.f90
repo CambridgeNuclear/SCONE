@@ -1,8 +1,8 @@
 module scalarField_inter
 
   use numPrecision
-  use field_inter, only : field
-  use coord_class, only : coordList
+  use field_inter,    only : field
+  use particle_class, only : particle
 
   implicit none
   private
@@ -38,10 +38,10 @@ module scalarField_inter
     !! Result:
     !!   Value of the scalar field. Real number.
     !!
-    function at(self, coords) result(val)
-      import :: scalarField, coordList, defReal
+    function at(self, p) result(val)
+      import :: scalarField, particle, defReal
       class(scalarField), intent(in) :: self
-      type(coordList), intent(in)    :: coords
+    class(particle), intent(inout)   :: p
       real(defReal)                  :: val
     end function at
 
