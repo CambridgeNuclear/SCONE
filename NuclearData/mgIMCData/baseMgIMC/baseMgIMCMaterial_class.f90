@@ -83,7 +83,6 @@ module baseMgIMCMaterial_class
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: initProps
-    procedure :: isBlackBody
     procedure :: getTemp
 
   end type baseMgIMCMaterial
@@ -309,9 +308,12 @@ contains
 
   !!
   !! Update material properties at each time step
+  !! First update energy using simple balance, then solve for temperature,
+  !!  then update temperature-dependent properties
   !!
   !! Args:
-  !!   delta T [in] -> Time step size
+  !!   tallyEnergy [in] -> Energy absorbed into material
+  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
   !!
   subroutine updateMat(self, tallyEnergy, printUpdate)
     class(baseMgIMCMaterial),intent(inout)  :: self
@@ -338,7 +340,7 @@ contains
 
     ! New material internal energy density, U_{m,n+1}/V
     energyDens = self % matEnergy / self % volume
-    
+
     !! Integration of dUm/dT = cv gives equation to be solved for T_{n+1}:
     !!
     !!      f(T_{n+1}) = U_{m,n+1} - U_{m,n} + f(T_n)
@@ -349,7 +351,7 @@ contains
 
     ! Update material temperature by solving f(T_{n+1}) = const
     if ( energyDens /= prev ) then
-      self % T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)  !! Using energy and const give save result, const not necessary
+      self % T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
     end if
 
     ! Print updated properties 
@@ -363,7 +365,7 @@ contains
 
     ! Update sigmaP
     self % sigmaP = poly_eval(self % sigmaEqn, self % T)
-      ! Also need these lines because cross section functions still use this instead of sigmaP
+      ! Also need these lines because cross section functions use this instead of sigmaP
     self % data(CAPTURE_XS,:) = self % sigmaP
     self % data(TOTAL_XS,:) = self % sigmaP
 
@@ -432,18 +434,11 @@ contains
     self % data(CAPTURE_XS,:) = self % sigmaP
     self % data(TOTAL_XS,:) = self % sigmaP
 
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)  ! Incomplete, need to add alpha
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
     self % deltaT = deltaT
 
   end subroutine initProps
 
-  function isBlackBody(self) result(bool)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    logical(defBool)                        :: bool
-
-    ! Incomplete
-
-  end function isBlackBody
 
   function getTemp(self) result(temp)
     class(baseMgIMCMaterial), intent(inout) :: self

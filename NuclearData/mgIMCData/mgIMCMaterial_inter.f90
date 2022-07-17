@@ -47,7 +47,6 @@ module mgIMCMaterial_inter
     procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
     procedure(initProps), deferred          :: initProps
-    procedure(isBlackBody), deferred        :: isBlackBody
     procedure(getTemp), deferred            :: getTemp
 
   end type mgIMCMaterial
@@ -94,10 +93,13 @@ module mgIMCMaterial_inter
     end function getTotalXS
 
     !!
-    !! Update material temperature at each time step
+    !! Update material properties at each time step
+    !! First update energy using simple balance, then solve for temperature,
+    !!  then update temperature-dependent properties
     !!
     !! Args:
-    !!   None
+    !!   tallyEnergy [in] -> Energy absorbed into material
+    !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
     !!
     subroutine updateMat(self, tallyEnergy, printUpdate)
       import :: mgIMCMaterial, defReal, defBool
@@ -139,12 +141,6 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial),intent(inout) :: self
       real(defReal), intent(in)          :: deltaT, T, V
     end subroutine initProps
-
-    function isBlackBody(self) result(bool)
-      import :: mgIMCMaterial, defReal, defBool
-      class(mgIMCMaterial), intent(inout) :: self
-      logical(defBool)                    :: bool
-    end function isBlackBody
 
     function getTemp(self) result(temp)
       import :: mgIMCMaterial, defReal
