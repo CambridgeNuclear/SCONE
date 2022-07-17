@@ -58,7 +58,6 @@ module particleDungeon_class
     private
     real(defReal),public     :: k_eff = ONE   ! k-eff for fission site generation rate normalisation
     integer(shortInt)        :: pop = 0       ! Current population size of the dungeon
-    !integer(shortInt),public :: nTimeStep     ! Current time step - Only used in IMC calculations
     real(defreal),public     :: endOfStepTime ! Time at end of current time step - only used in IMC calculations
 
     ! Storage space
@@ -88,6 +87,7 @@ module particleDungeon_class
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: printToScreen
+    procedure  :: getSize
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -426,14 +426,15 @@ contains
     integer(shortInt)                  :: i
 
     filename = trim(name)//'.txt'
-    open(unit = 10, file = filename, status = 'new')
+    open(unit = 10, file = filename)
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      write(10,'(8A)') numToChar(self % prisoners(i) % r), &
-                       numToChar(self % prisoners(i) % dir), &
-                       numToChar(self % prisoners(i) % E), &
-                       numToChar(self % prisoners(i) % G)
+      write(10,'(8A)') numToChar(self % prisoners(i) % r)!, &
+                       !numToChar(self % prisoners(i) % dir), &
+                       !numToChar(self % prisoners(i) % E), &
+                       !numToChar(self % prisoners(i) % G), &
+                       !numToChar(self % prisoners(i) % matIdx)
     end do
 
     ! Close the file
@@ -555,6 +556,7 @@ contains
             totSum = totSum + self % prisoners(i) % wgt
           end do
           print *, 'Cumulative sum of p % wgt = ', totSum
+          write(12, *) totSum
         end if
 
       case('time')
@@ -580,6 +582,17 @@ contains
     end select
 
   end subroutine printToScreen
+
+  !!
+  !!  Return number of particles in dungeon
+  !!
+  function getSize(self) result(n)
+    class(particleDungeon), intent(in) :: self
+    integer(shortInt)                  :: n
+
+    n = self % pop
+
+  end function getSize
     
 
 end module particleDungeon_class
