@@ -109,8 +109,8 @@ contains
     class(nuclearDatabase), pointer      :: nucData
     class(IMCMaterial), pointer          :: mat
     real(defReal), dimension(3)          :: r, rand3, dir
-    real(defReal)                        :: mu, phi
-    integer(shortInt)                    :: matIdx, uniqueID, nucIdx, i
+    real(defReal)                        :: mu, phi, i
+    integer(shortInt)                    :: matIdx, uniqueID, nucIdx
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
@@ -120,7 +120,7 @@ contains
     i = 0
     rejection : do
       ! Protect against infinite loop
-      i = i +1
+      i = i + 1
       if ( i > 200) then
         call fatalError(Here, '200 particles in a row sampled in void or outside material.&
                              & Check that geometry is as intended')
@@ -161,6 +161,13 @@ contains
 
       ! Set weight to be equal to total emitted radiation from material
       p % wgt = mat % getEmittedRad()
+
+      ! Don't sample particles from areas of 0 temperature
+      if( p % wgt == 0 ) then
+        self % matPops(matIdx) = 1   ! Set to 1 to avoid error in appendIMC (source_inter.f90)
+        i = i - 0.9 ! To allow more attempts if large regions with 0 temp
+        cycle rejection
+      end if
 
       ! Increase counter of number of particles in material in order to normalise later
       self % matPops(matIdx) = self % matPops(matIdx) + 1
