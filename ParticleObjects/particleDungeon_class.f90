@@ -131,11 +131,11 @@ contains
     integer(shortInt)                     :: pop
     character(100),parameter              :: Here = 'detain_particle (particleDungeon_class.f90)'
 
-    !$omp critical
+    !$omp atomic capture
     ! Increase population and weight
     self % pop = self % pop +1
     pop = self % pop
-    !$omp end critical
+    !$omp end atomic
     
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
@@ -159,10 +159,10 @@ contains
     character(100), parameter    :: Here = 'detain_particleState (particleDungeon_class.f90)'
 
     ! Increase population
-    !$omp critical
+    !$omp atomic capture
     self % pop = self % pop +1
     pop = self % pop
-    !$omp end critical
+    !$omp end atomic
     
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
@@ -185,11 +185,11 @@ contains
     type(particle), intent(inout)         :: p
     integer(shortInt)                     :: pop
 
-    !$omp critical
+    !$omp atomic capture
     ! Decrease population
     pop = self % pop
     self % pop = self % pop - 1
-    !$omp end critical
+    !$omp end atomic
     
     ! Load data into the particle
     p = self % prisoners(pop)
