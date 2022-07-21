@@ -729,7 +729,7 @@ contains
       ! This can be fixed by resetting the cache after X number
       ! of distance calculations.
       if (self % cache) then
-        if (mod(ints,500_longInt) == 0)  cache % lvl = 0
+        if (mod(ints,100_longInt) == 0)  cache % lvl = 0
         call self % moveRayCache(r, length, hitVacuum, cache)
       else
         call self % moveRay(r, length, hitVacuum)

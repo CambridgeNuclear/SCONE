@@ -10,6 +10,11 @@ XSdata   mg;
 dataType mg;
 outputFile C5G7_MG_2D ;
 
+fissionMap {type multiMap;
+            maps (xax yax);
+            xax { type spaceMap; grid lin; min -32.13; max 10.71; N 34;}
+            yax { type spaceMap; grid lin; min -10.71; max 32.13; N 34;}
+}
                    
 geometry { 
   type geometryStd; 
