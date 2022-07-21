@@ -19,11 +19,11 @@ activeTally {
   fissionMap {type collisionClerk;
               map {type multiMap;
               maps (xax yax);
-              xax { type spaceMap; grid lin; min -32.13; max 10.71; N 34;}
-              yax { type spaceMap; grid lin; min -10.71; max 32.13; N 34;}
+              xax { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;}
+              yax { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;}
               }
          response (fiss);
-         fiss { type macroResponse; MT 18; }
+         fiss { type macroResponse; MT -6; }
          }
 } 
 
