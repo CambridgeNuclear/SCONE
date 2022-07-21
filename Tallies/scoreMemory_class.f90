@@ -173,7 +173,8 @@ contains
   subroutine score_defReal(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score
-    integer(longInt), intent(in)     :: idx
+    integer(longInt), intent(in)      :: idx
+    integer(shortInt)                 :: thread_idx
     character(100),parameter :: Here = 'score_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
@@ -183,10 +184,9 @@ contains
     end if
 
     ! Add the score
-    self % parallelBins(idx, ompGetThreadNum() + 1) = &
-            self % parallelBins(idx, ompGetThreadNum() + 1) + score
-    !!$omp atomic
-    !self % bins(idx, BIN) = self % bins(idx, BIN) + score
+    thread_idx = ompGetThreadNum() + 1
+    self % parallelBins(idx, thread_idx) = &
+            self % parallelBins(idx, thread_idx) + score
 
   end subroutine score_defReal
 
