@@ -16,13 +16,13 @@ module scoreMemory_class
 
 
   !!
-  !! scoreMemory is a class that stores space for scores from tallies
-  !! it is separate from tallyClerks and individual responses to allow:
+  !! scoreMemory is a class that stores space for scores from tallies.
+  !! It is separate from tallyClerks and individual responses to allow:
   !!   -> Easy writing and (later) reading from file for archivisation of results
   !!   -> Easy possibility of extention to tally higher moments of result
-  !!   -> Possibility of extention to tally covariance of selected tally bins
+  !!   -> Possibility of extension to tally covariance of selected tally bins
   !!   -> Easy copying and recombination of results for OpenMP shared memory parallelism
-  !!   -> Easy, output format independent way to perform regression tests
+  !!   -> Easy, output format-independent way to perform regression tests
   !!   -> Easy handling of different batch sizes
   !!
   !! For every bin index there are two positions: CSUM, CSUM2. All are initialised to 0.
@@ -30,7 +30,7 @@ module scoreMemory_class
   !! On accumulation, this array adds to the normal bin array.
   !!
   !! Interface:
-  !!     init(N,idBS): Initialise with integer size N and iteger id. Optional integer Batch Size.
+  !!     init(N,idBS): Initialise with integer size N and integer id. Optional integer Batch Size.
   !!
   !!     kill(): Elemental. Return to uninitialised state.
   !!
@@ -40,7 +40,7 @@ module scoreMemory_class
   !!     accumulate(score,idx): Accumulate result in cumulative sums in bin under idx. FatalError
   !!         if idx is outside bounds. Score is defReal, shortInt or longInt.
   !!
-  !!     getResult(mean, STD, idx, samples): Retrive mean value and standard deviation of the
+  !!     getResult(mean, STD, idx, samples): Retrieve mean value and standard deviation of the
   !!         estimate under idx. Use optional samples to specify number of estimates used to
   !!         evaluate mean and STD from default, which is number of batches in score memory.
   !!         STD is optional.
@@ -72,7 +72,7 @@ module scoreMemory_class
   !!  call scoreMem % getResult(mean,2,200) ! Get mean from bin 2 assuming 200 samples
   !!
   !! NOTE:  Following indexing is used in bins class member
-  !!        bins(binIndex,binType) binType is BIN/CSUM/CSUM2
+  !!        bins(binIndex,binType) binType is CSUM/CSUM2
   !! NOTE2: If batch size is not a denominator of cycles scored results accumulated
   !!        in extra cycles are discarded in current implementation
   !!
@@ -85,7 +85,7 @@ module scoreMemory_class
       integer(shortInt)                        :: id            !! Id of the tally
       integer(shortInt)                        :: batchN = 0    !! Number of Batches
       integer(shortInt)                        :: cycles = 0    !! Cycles counter
-      integer(shortInt)                        :: batchSize = 1 !! Batch interval sieze (in cycles)
+      integer(shortInt)                        :: batchSize = 1 !! Batch interval size (in cycles)
   contains
     ! Interface procedures
     procedure :: init
@@ -173,7 +173,7 @@ contains
   subroutine score_defReal(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     real(defReal), intent(in)         :: score
-    integer(longInt), intent(in)      :: idx
+    integer(longInt), intent(in)      :: idx 
     integer(shortInt)                 :: thread_idx
     character(100),parameter :: Here = 'score_defReal (scoreMemory_class.f90)'
 
@@ -253,35 +253,32 @@ contains
   subroutine accumulate_longInt(self, score, idx)
     class(scoreMemory), intent(inout) :: self
     integer(longInt), intent(in)      :: score
-    integer(longInt), intent(in)     :: idx
+    integer(longInt), intent(in)      :: idx
 
     call self % accumulate_defReal(real(score, defReal), idx)
 
   end subroutine accumulate_longInt
 
   !!
-  !! Close Cylce
+  !! Close Cycle
   !! Increments cycle counter and detects end-of-batch
   !! When batch finishes it normalises all scores by the factor and moves them to CSUMs
   !!
   subroutine closeCycle(self, normFactor)
     class(scoreMemory), intent(inout) :: self
     real(defReal),intent(in)          :: normFactor
-    integer(shortInt)                 :: i
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       ! Normalise scores
-      self % parallelBins(:,:) = self % parallelBins(:,:) * normFactor
+      self % parallelBins = self % parallelBins * normFactor
 
       ! Increment cumulative sums
-      do i = 1, self % nThreads
-        self % bins(:,CSUM)  = self % bins(:,CSUM) + self % parallelBins(:,i)
-        self % bins(:,CSUM2) = self % bins(:,CSUM2) + &
-                self % parallelBins(:,i) * self % parallelBins(:,i)
-      end do
+      self % bins(:,CSUM)  = self % bins(:,CSUM) + sum(self % parallelBins,2)
+      self % bins(:,CSUM2) = self % bins(:,CSUM2) + &
+              sum(self % parallelBins,2) * sum(self % parallelBins,2)
 
       ! Zero all score bins
       self % parallelBins = ZERO
@@ -290,6 +287,7 @@ contains
       self % batchN = self % batchN + 1
 
     end if
+
   end subroutine closeCycle
 
   !!
@@ -300,7 +298,6 @@ contains
     class(scoreMemory), intent(inout) :: self
     real(defReal),intent(in)          :: normFactor
     integer(longInt), intent(in)      :: idx
-    integer(shortInt)                 :: i
     real(defReal)                     :: res
     character(100),parameter :: Here = 'closeBin (scoreMemory_class.f90)'
 
@@ -314,11 +311,9 @@ contains
     self % parallelBins(idx, :) = self % parallelBins(idx, :) * normFactor
 
     ! Increment cumulative sum
-    do i = 1, self % nThreads
-      res = self % parallelBins(idx,i)
-      self % bins(idx,CSUM)  = self % bins(idx,CSUM) + res
-      self % bins(idx,CSUM2) = self % bins(idx,CSUM2) + res * res
-    end do
+    res = sum(self % parallelBins(idx,:))
+    self % bins(idx,CSUM)  = self % bins(idx,CSUM) + res
+    self % bins(idx,CSUM2) = self % bins(idx,CSUM2) + res * res
 
     ! Zero the score
     self % parallelBins(idx,:) = ZERO
@@ -357,7 +352,7 @@ contains
     class(scoreMemory), intent(in)         :: self
     real(defReal), intent(out)             :: mean
     real(defReal),intent(out)              :: STD
-    integer(longInt), intent(in)          :: idx
+    integer(longInt), intent(in)           :: idx
     integer(shortInt), intent(in),optional :: samples
     integer(shortInt)                      :: N
     real(defReal)                          :: inv_N, inv_Nm1
