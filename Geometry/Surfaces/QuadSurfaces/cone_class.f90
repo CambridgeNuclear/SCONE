@@ -178,7 +178,7 @@ contains
    end select
 
    ! Load data
-   self % t_sq   = tangent * tangent
+   self % t_sq   = tangent
    self % vertex = vertex
    self % dir = dir
    call self % setID(id)
@@ -222,6 +222,19 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
     real(defReal), dimension(3)             :: diff
+    real(defReal), parameter :: NOT_PRESENT = ONE
+
+    ! Exit the function with a positive number if the position is in the wrong semiplane
+    if (self % dir > 0 .and. r(self % axis) < (self % vertex(self % axis) - self % surfTol())) then
+      c = NOT_PRESENT
+      return
+    end if
+
+    ! Exit the function with a positive number if the position is in the wrong semiplane
+    if (self % dir < 0 .and. r(self % axis) > (self % vertex(self % axis) + self % surfTol())) then
+      c = NOT_PRESENT
+      return
+    end if
 
     diff = r - self % vertex
     c = dot_product(diff(self % plane), diff(self % plane)) - self % t_sq * diff(self % axis) ** 2
@@ -243,12 +256,14 @@ contains
     class(cone), intent(in)             :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
-    real(defReal)                           :: d, a, c, k, delta, b
+    real(defReal), dimension(3)             :: diff
+    real(defReal)                           :: d, a, c, k, delta
 
-    ! Calculate quadratic components in the plane
-    c = self % evaluate(r)
-    k = dot_product(r(self % plane) - self % vertex(self % plane) , u(self % plane)) - &
-        self % t_sq * r(self % axis) - self % vertex(self % axis)
+    ! Calculate quadratic components in the cone
+    diff = r - self % vertex
+    c = dot_product(diff(self % plane), diff(self % plane)) - self % t_sq * diff(self % axis) ** 2
+    k = dot_product(diff(self % plane) , u(self % plane)) - &
+        self % t_sq * diff(self % axis) * u(self % axis)
     a = dot_product(u(self % plane), u(self % plane)) - self % t_sq * u(self % axis)**2
     delta = k*k - a*c  ! Technically delta/4
 
@@ -258,7 +273,7 @@ contains
 
     else if (abs(c) < self % surfTol()) then ! Point at a surface
       if ( k >= ZERO) then
-        d = d/a
+        d = INF
       else
         d = -k + sqrt(delta)
         d = d/a
@@ -290,7 +305,13 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal), dimension(2)             :: rp, up
+    real(defReal), dimension(3)             :: diff, norm
+
+    diff = r - self % vertex
+    norm(self % plane) = diff(self % plane)
+    norm(self % axis) = - self % t_sq * diff(self % axis)
+
+    halfspace = dot_product(norm, u) >= ZERO
 
   end function going
 
