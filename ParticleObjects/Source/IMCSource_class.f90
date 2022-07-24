@@ -36,7 +36,8 @@ module IMCSource_class
   !! Interface:
   !!   source_inter Interface
   !!
-  !! Initiated in IMC physics package, does not need to appear in input file
+  !! SAMPLE INPUT:
+  !!   imcSource { type IMCSource; nParticles 100; }
   !!
   type, public,extends(source) :: imcSource
     private
