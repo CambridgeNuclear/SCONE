@@ -1,0 +1,122 @@
+//
+// Intended as a sample/tutorial input file for calculations using IMC physics
+//   package, to detail settings that differ to other calculation types
+//
+
+
+type IMCPhysicsPackage;
+
+pop            1000;
+  // For now this determines the maximum size of particle dungeons, physics package sets
+  //   thisCycle as 15*pop and nextCycle as 10*pop
+  // Very abitrary and non-optimal, would benefit from a simple change such that dungeon size is
+  //   increased automatically to accommodate required no. of particles
+  // Runtime is very dependent on this value, should not be set too large
+  // Actual number of of particles emitted in each time step is set in imcSource dictionary
+
+cycles         50;
+  // The number of time steps to be used in the calculation
+  // Still called cycles in many functions and subroutines to avoid breaking other
+  //   calculation types
+
+timeStepSize   0.1;
+  // The time step size for the calculation
+
+
+XSdata     mg;
+dataType   mg; 
+
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorIMC;
+                  } 
+
+imcSource {
+            type imcSource;
+            nParticles 500;
+              // imcSource is required by physics package, nParticles is the number of
+              //   particles emitted from material as radiation within each time step.
+              // Needs to be lower than 'pop' (see above), depending on time step size
+              //   and material properties may need to be several orders of magnitude lower
+              // Increasing will give higher accuracy but longer runtime
+          }
+
+
+// No tallies are required for calculation, but empty dictionaries must be given
+
+inactiveTally {
+              } 
+
+activeTally  {
+    	     }
+
+tally  {
+	   }
+
+
+// Geometry is as in all other calculation types.
+// Here a simple infinite region is given (a perfectly reflected 1x1x1 cube)
+
+geometry { 
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces {
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 0.5 0.5 0.5); }  
+             }
+
+    cells {
+          }
+
+    universes {
+      root { id 1; type rootUniverse; border 1; fill mat; }
+              }
+}
+
+nuclearData {
+
+  handles { 
+     mg       { type baseMgIMCDatabase; PN P0;}
+  }
+  
+  // Dictionary containing all materials used in geometry
+  // If desired to have spatial temperature variation, split geometry (above)
+  //   into desired cells and set each cell fill as a DIFFERENT material
+  //   (e.g. mat1, mat2, mat3, ...) then define all materials here. Even if each
+  //   each mat input is identical (even including data file), a unique material object
+  //   will be created allowing for a unique temperature evolution.
+
+  materials { 
+
+    // Example: mat
+    mat {
+
+      temp       1;
+        // Initial temperature of material (will change as calculation progresses).
+
+      composition {}
+        // Empty dictionary required for composition.
+
+      xsFile ./imcSampleMat;
+        // Location of material data file containing material properties.
+
+      volume     1;
+        // Total volume that this material occupies, for now need to calculate by hand
+        //   and enter here. May be room to make this automatic in the future.
+
+    }
+
+    // Example 2: mat2
+    //mat2 { temp 1; composition {} xssFile ./imcSampleMat2; volume 1 }
+
+} 
+  
+}
+  
+  
+  
