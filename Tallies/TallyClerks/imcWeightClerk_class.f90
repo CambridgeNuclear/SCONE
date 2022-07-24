@@ -33,8 +33,7 @@ module imcWeightClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
-  !! Calculates flux weighted integral from collisions
+  !! Record energy weight of particles absorbed in collisions
   !!
   !! Private Members:
   !!   filter   -> Space to store tally Filter
@@ -45,16 +44,7 @@ module imcWeightClerk_class
   !! Interface
   !!   tallyClerk Interface
   !!
-  !! SAMPLE DICTIOANRY INPUT:
-  !!
-  !! myImcWeightClerk {
-  !!   type imcWeightClerk;
-  !!   # filter { <tallyFilter definition> } #
-  !!   # map    { <tallyMap definition>    } #
-  !!   response (resName1 #resName2 ... #)
-  !!   resName1 { <tallyResponse definition> }
-  !!   #resNamew { <tallyResponse definition #
-  !! }
+  !! Initialised in IMC physics package and so not required in input file
   !!
   type, public, extends(tallyClerk) :: imcWeightClerk
     private
@@ -216,7 +206,7 @@ contains
     if(allocated(self % map)) then
       binIdx = self % map % map(state)
     else
-      binIdx = 1 !p % matIdx()
+      binIdx = 1
     end if
 
     ! Return if invalid bin index

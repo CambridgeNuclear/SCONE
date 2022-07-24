@@ -74,6 +74,7 @@ module tallyAdmin_class
   !!   display     -> Call "display" on all Clerks registered to display
   !!   isConverged -> Return .true. if all convergance targets have been reached
   !!   print       -> Prints results to an output file object
+  !!   reset       -> Resets tally clerk count to 0
   !!
   !! SAMPLE DICTIOANRY INPUT:
   !!

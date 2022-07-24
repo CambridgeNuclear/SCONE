@@ -49,11 +49,13 @@ module scoreMemory_class
   !!         cumulative sums. Then sets the bin to zero.
   !!
   !!     closeCycle(normFactor): Multiplies all scores by normFactor and accumulates them in
-  !!         cumulative sums. Sets all scors to zero.
+  !!         cumulative sums. Sets all scores to zero.
   !!
   !!     lastCycle(): Return true if the next call to closeCycle will close a batch.
   !!
   !!     getBatchSize(): Returns number of cycles that constitute a single batch.
+  !!
+  !!     reset(idx): Reset the value in a memory location
   !!
   !! Example use case:
   !!
@@ -416,7 +418,8 @@ contains
   end function getScore
 
   !!
-  !!
+  !! Reset the value in a memory location
+  !! Useful for tallies that do not accumulate across cycles
   !!
   subroutine reset(self,idx)
     class(scoreMemory), intent(inout) :: self
