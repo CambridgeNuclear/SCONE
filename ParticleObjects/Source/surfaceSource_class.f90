@@ -41,14 +41,15 @@ module surfaceSource_class
   !!       type surfaceSource;
   !!       shape circle    ! circle or square;
   !!       size 5;         ! radius(circle) or side length(square)
-  !!       axis x;         ! axis normal to shape
+  !!       axis x;         ! axis normal to planar shape
   !!       pos 0;          ! distance along axis to place plane
   !!       T 1;            ! temperature of source boundary
   !!       nParticles 100; ! Number of particles emitted per time step, for now has to be
   !!                         the same as IMC source if used in IMC calculation
   !!       particle photon;
   !!       #dir 1; #       ! Positive or negative to indicate direction along axis
-  !!       deltat 1;       ! Currently needed as IMC time step size
+  !!                         If 0 then emit in both directions
+  !!       deltat 1;       ! Currently needed to be the same as IMC time step size
   !!      }
   !!
   type, public,extends(configSource) :: surfaceSource
