@@ -2,6 +2,7 @@
 !! This module brakes standard rules
 !! It contains a library of XS Packages for IMC particle type
 !!
+!! Pretty much a copy of neutronXsPackages_class, may contain unnecessary lines
 !!
 module IMCXsPackages_class
 

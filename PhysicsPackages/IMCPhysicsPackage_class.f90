@@ -87,8 +87,10 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: nMat
 
     ! Calculation components
-    type(particleDungeon), allocatable :: thisCycle!       => null()      Other physics packages use pointers here
-    type(particleDungeon), allocatable :: nextCycle!       => null()        - Need to read up more to figure out correct usage    e.g. using = instead of => for pointers
+    type(particleDungeon), allocatable :: thisCycle
+    type(particleDungeon), allocatable :: nextCycle
+      ! Note that other physics packages used pointers for these particleDungeons ( => null() )
+      ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
 
@@ -124,7 +126,7 @@ contains
   end subroutine
 
   !!
-  !!
+  !! Run cycles for calculation
   !!
   subroutine cycles(self, tally, tallyAtch, N_cycles)
     class(IMCPhysicsPackage), intent(inout)         :: self
