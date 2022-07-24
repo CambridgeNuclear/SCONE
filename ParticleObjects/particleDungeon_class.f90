@@ -49,6 +49,8 @@ module particleDungeon_class
   !!                          does not take ununiform weight of particles into account
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     printToFile(name) -> prints population in ASCII format to file "name"
+  !!     printToScreen(prop,nMax,total) -> prints property to screen for up to nMax particles
+  !!     getSize()         -> returns number of particles in dungeon
   !!
   !!   Build procedures:
   !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
@@ -446,8 +448,10 @@ contains
   !! Prints given property of particles to screen
   !!
   !! Args:
-  !!   prop [in] -> Particle property to be displayed
-  !!   nMax [in] -> Maximum number of particles displayed
+  !!   prop  [in] -> Particle property to be displayed
+  !!   nMax  [in] -> Maximum number of particles displayed
+  !!   total [in] -> Optional, if True then sum contributions of particles
+  !!                  and print for total
   !!
   !! Errors:
   !!   fatalError if prop is invalid

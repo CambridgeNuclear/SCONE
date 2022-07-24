@@ -13,10 +13,13 @@ module surfaceSource_class
   private
 
   !!
-  !! Class describing point-like particle sources
-  !!
-  !! Generates a mono-energetic, mono-directional or isotropic particle
-  !! source from a single point in space, with particles of a single type
+  !! Generates a source representing a black body surface
+  !! Put together quite quickly so very specific in use and not perfect
+  !!   - Currently only allows a circle or square aligned on x y or z axis, with
+  !!     a certain radius or side length
+  !!   - Requires deltat and nParticles in input file to be the same as specified elsewhere
+  !!     in file, can change to not require these inputs with some more thought
+  !!   - May still contain unnecessary lines of code copied from pointSource_class.f90
   !!
   !! Private members:
   !!   r            -> source position
@@ -41,10 +44,11 @@ module surfaceSource_class
   !!       axis x;         ! axis normal to shape
   !!       pos 0;          ! distance along axis to place plane
   !!       T 1;            ! temperature of source boundary
-  !!       nParticles 100; ! Number of particles emitted per time step, for now has to be the same as IMC source if used in IMC calculation
+  !!       nParticles 100; ! Number of particles emitted per time step, for now has to be
+  !!                         the same as IMC source if used in IMC calculation
   !!       particle photon;
   !!       #dir 1; #       ! Positive or negative to indicate direction along axis
-  !!       deltat 1;       ! Just until properly implemented
+  !!       deltat 1;       ! Currently needed as IMC time step size
   !!      }
   !!
   type, public,extends(configSource) :: surfaceSource
@@ -257,6 +261,9 @@ contains
 
   !!
   !! Provide particle energy
+  !!
+  !! Sampled as a black body surface, see "Four Decades of Implicit Monte Carlo",
+  !!  Allan B Wollaber, p.24-25
   !!
   !! See configSource_inter for details.
   !!

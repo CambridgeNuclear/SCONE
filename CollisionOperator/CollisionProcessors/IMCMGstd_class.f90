@@ -37,6 +37,7 @@ module IMCMGstd_class
 
   !!
   !! Standard (default) scalar collision processor for MG IMC
+  !! Determines type of collision as either absorption or effective scattering
   !!
   !! Settings:
   !!  NONE
@@ -80,7 +81,13 @@ contains
   end subroutine init
 
   !!
-  !! Samples collision without any implicit treatment
+  !! Samples collision
+  !!
+  !! Absorption with probability equal to fleck factor, otherwise
+  !!  effective scattering
+  !!
+  !! Physical scattering is omitted as in reference paper "Four Decades of Implicit Monte Carlo"
+  !!  (Allan B Wollaber) but may be included later if desired 
   !!
   subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -152,7 +159,8 @@ contains
   end subroutine elastic
 
   !!
-  !! Preform scattering
+  !! Preform scattering - Currently this is for effective scattering, and energy weights
+  !!                       are unchanged (so is actually elastic)
   !!
   subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -168,22 +176,7 @@ contains
     character(100),parameter :: Here = "inelastic (IMCMGstd_class.f90)"
 
     ! Assign MT number
-    collDat % MT = macroIEScatter
-
-    ! Get Scatter object
-    !scatter => multiScatterMG_CptrCast( self % xsData % getReaction(macroIEscatter, collDat % matIdx))
-    !if(.not.associated(scatter)) call fatalError(Here, "Failed to get scattering reaction object for MG IMC")
-
-    ! Sample Mu and G_out
-    !call scatter % sampleOut(collDat % muL, phi, G_out, p % G, p % pRNG)
-
-    ! Read scattering multiplicity
-    !w_mul = scatter % production(p % G, G_out)
-
-    ! Update photon state
-    !p % G = G_out
-    !p % w = p % w * w_mul
-    !call p % rotate(collDat % muL, phi)
+    collDat % MT = macroIEScatter 
 
     ! Sample Direction - chosen uniformly inside unit sphere
     mu = 2 * p % pRNG % get() - 1

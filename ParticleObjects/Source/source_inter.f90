@@ -30,6 +30,8 @@ module source_inter
   !! Interface:
   !!   init              -> initialise the source
   !!   generate          -> generate particles to fill a dungeon
+  !!   append            -> generate new particles to add to an existing dungeon
+  !!   appendIMC         -> generate particles for uniform IMC material source
   !!   sampleParticle    -> sample particles from the corresponding distributions
   !!   kill              -> clean up the source
   !!
@@ -126,6 +128,7 @@ contains
     !! Args:
     !!   dungeon [inout] -> particle dungeon to be populated
     !!   n [in]          -> number of particles to place in dungeon
+    !!   rand [inout]    -> particle RNG object
     !!
     !! Result:
     !!   A dungeon populated with n particles sampled from the source
@@ -155,6 +158,7 @@ contains
     !! Args:
     !!   dungeon [inout] -> particle dungeon to be populated
     !!   n [in]          -> number of particles to place in dungeon
+    !!   rand [inout]    -> particle RNG object
     !!
     !! Result:
     !!   A dungeon populated with n particles sampled from the source
@@ -183,10 +187,12 @@ contains
         call tempDungeon % replace(self % sampleParticle(rand), i)
       end do
 
-      ! Call error if any region contains no generated particles
+      ! Call error if any region contains no generated particles (due to small regions and/or
+      !   not enough particles used), needed for now as otherwise will lead to energy imbalance
+      !   as mat energy will be reduced by emittedRad but no particles will be carrying it
+      ! Note that matProps is set to 1 in IMCsource.f90 if region is of 0 temperature to avoid
+      !   this error for such a case
       if ( minval(self % matPops) == 0 ) then
-        ! Currently will lead to energy imbalance as mat energy will be reduced by emittedRad but
-        !  no particles will be carrying it, possible to modify code to maintain energy balance
         call fatalError(Here, "Not all regions emitted particles, use more particles")
       end if
 

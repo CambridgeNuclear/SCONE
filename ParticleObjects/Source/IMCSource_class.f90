@@ -22,11 +22,8 @@ module IMCSource_class
   private
 
   !!
-  !! IMC Source from distributed fission sites
+  !! IMC Source for uniform generation of photons within material regions
   !!
-  !! Places fission sites uniformly in regions with fissile material.
-  !! Spectrum of the fission IMC is such as if it fission was caused by incdent
-  !! IMC with CE energy E or MG with group G.
   !! Angular distribution is isotropic.
   !!
   !! Private members:
@@ -39,13 +36,7 @@ module IMCSource_class
   !! Interface:
   !!   source_inter Interface
   !!
-  !! Sample Dictionary Input:
-  !!   fission {
-  !!     type imcSource;
-  !!     #data MG; #
-  !!     #E 15.0;  #
-  !!     #G 7;     #
-  !!   }
+  !! Initiated in IMC physics package, does not need to appear in input file
   !!
   type, public,extends(source) :: imcSource
     private
@@ -109,6 +100,7 @@ contains
     class(nuclearDatabase), pointer      :: nucData
     class(IMCMaterial), pointer          :: mat
     real(defReal), dimension(3)          :: r, rand3, dir
+    ! Here, i is a float to allow more precise control of loop
     real(defReal)                        :: mu, phi, i
     integer(shortInt)                    :: matIdx, uniqueID, nucIdx
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
@@ -117,6 +109,8 @@ contains
     nucData => ndReg_getIMCMG()
     if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
+    ! Position is sampled by taking a random point from within geometry bounding box
+    ! If in valid material, position is accepted
     i = 0
     rejection : do
       ! Protect against infinite loop
@@ -160,12 +154,14 @@ contains
       p % isMG     = .true.
 
       ! Set weight to be equal to total emitted radiation from material
+      ! This weight is then normalised later - see appendIMC (source_inter.f90)
+      ! There may be more intuitive ways to do this, but works well for now
       p % wgt = mat % getEmittedRad()
 
       ! Don't sample particles from areas of 0 temperature
       if( p % wgt == 0 ) then
         self % matPops(matIdx) = 1   ! Set to 1 to avoid error in appendIMC (source_inter.f90)
-        i = i - 0.9 ! To allow more attempts if large regions with 0 temp
+        i = i - 0.9                  ! To allow more attempts if large regions with 0 temp
         cycle rejection
       end if
 
