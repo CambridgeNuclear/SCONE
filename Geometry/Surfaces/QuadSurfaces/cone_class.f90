@@ -23,20 +23,20 @@ module cone_class
   !!   yCone -> aligned with Y-axis
   !!   zCone -> aligned with Z-axis
   !!
-  !! Surface tolerance: 2 * R * SURF_TOL
+  !! Surface tolerance: SURF_TOL
   !!
   !! Sample dictionary input:
   !!   cone { type xCone; // could be yCone or zCone as well
   !!         id 3;
   !!         vertex (0.0 0.0 0.0);
-  !!         tangent 0.85;
+  !!         tangent 0.85;   // this is the tangent, rather than its square
   !!         orientation 1; }
   !!
   !! Private Members:
   !!   axis   -> Index of an alignment axis in {X_AXIS, Y_AXIS, Z_AXIS}
   !!   plane  -> Indexes of axis in plane of cone {X_AXIS, Y_AXIS, Z_AXIS}\{axis}
   !!   vertex -> Location of the vertex of the cone
-  !!   t      -> Tangent of the opening angle
+  !!   t_sq   -> Square of the tangent of the opening angle
   !!
   !! Interface:
   !!   surface interface
@@ -95,12 +95,9 @@ contains
   !!
   !! See surface_inter for more details
   !!
-  !! Errors:
-  !!   fatalError if radius or id < 0.
-  !!
   subroutine init(self, dict)
-    class(cone), intent(inout)      :: self
-    class(dictionary), intent(in)   :: dict
+    class(cone), intent(inout)               :: self
+    class(dictionary), intent(in)            :: dict
     integer(shortInt)                        :: id, dir
     real(defReal), dimension(:), allocatable :: vertex
     character(nameLen)                       :: name
@@ -135,7 +132,8 @@ contains
   !!   dir [in]     -> Orientation of the cone
   !!
   !! Errors:
-  !!   fatalError if id or radius are -ve
+  !!   fatalError if id or tangent are -ve, and if orientation is different from
+  !!   1 or -1
   !!
   subroutine build(self, id, type, vertex, tangent, dir)
     class(cone), intent(inout)              :: self
@@ -178,13 +176,13 @@ contains
    end select
 
    ! Load data
-   self % t_sq   = tangent
+   self % t_sq   = tangent * tangent
    self % vertex = vertex
    self % dir = dir
    call self % setID(id)
 
    ! Set surface tolerance
-   call self % setTol(SURF_TOL)
+   call self % setTol(TWO * SURF_TOL)
 
   end subroutine build
 
@@ -257,7 +255,7 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal), dimension(3)             :: diff
-    real(defReal)                           :: d, a, c, k, delta
+    real(defReal)                           :: d, a, c, k, delta, b
 
     ! Calculate quadratic components in the cone
     diff = r - self % vertex
@@ -268,28 +266,40 @@ contains
     delta = k*k - a*c  ! Technically delta/4
 
     ! Calculate the distance
-    if (delta < ZERO .or. a == ZERO) then ! No intersection
+    if (delta < ZERO) then ! No intersection
       d = INF
 
     else if (abs(c) < self % surfTol()) then ! Point at a surface
       if ( k >= ZERO) then
-        d = INF
+        d = -k - sqrt(delta)
+        d = d/a
       else
         d = -k + sqrt(delta)
         d = d/a
       end if
 
-    else if (c < ZERO) then ! Point inside the surface
-      d = -k + sqrt(delta)
-      d = d/a
+    else if (a == ZERO) then
+      d = - HALF * c / k
 
-    else ! Point outside the surface
+    else ! Calculate both solutions
       d = -k - sqrt(delta)
       d = d/a
-      if (d <= ZERO) d = INF
+
+      b = -k + sqrt(delta)
+      b = b/a
+
+      ! Choose the smallest positive solution
+      if (d < ZERO) then
+        if (b > ZERO) d = b
+      else
+        if (b > ZERO) then
+          if (b < d) d = b
+        end if
+      end if
 
     end if
 
+    if (d <= ZERO) d = INF
     ! Cap distance at Infinity
     d = min(d, INF)
 

@@ -7,338 +7,343 @@ module cone_test
 
   implicit none
 
-    !!
-    !! Test parameter wrapper around AN INTEGER (bit of boilerplate)
-    !!
-    !!
-    @testParameter(constructor=newParam)
-    type, extends (AbstractTestParameter) :: dirParam
-       integer(shortInt) :: dir
-    contains
-       procedure :: toString
-    end type dirParam
-
-    !!
-    !! Cone Test case
-    !!
-    @TestCase(constructor=newTestCase)
-      type, extends(ParameterizedTestCase) :: test_cone
-        integer(shortInt)                  :: axis
-        integer(shortInt), dimension(2)    :: plane
-        type(cone)                         :: surf
-      contains
-        procedure :: tearDown
-      end type test_cone
-
+  !!
+  !! Test parameter wrapper around AN INTEGER (bit of boilerplate)
+  !!
+  !!
+  @testParameter(constructor=newParam)
+  type, extends (AbstractTestParameter) :: dirParam
+     integer(shortInt) :: dir
   contains
+     procedure :: toString
+  end type dirParam
 
-    !!
-    !! Test parameter constructor
-    !!
-    function newParam(i) result(param)
-       integer(shortInt), intent(in) :: i
-       type (dirParam) :: param
+  !!
+  !! Cone Test case
+  !!
+  @TestCase(constructor=newTestCase)
+    type, extends(ParameterizedTestCase) :: test_cone
+      integer(shortInt)                  :: axis
+      integer(shortInt), dimension(2)    :: plane
+      type(cone)                         :: surf
+    contains
+      procedure :: tearDown
+    end type test_cone
 
-       param % dir = i
+contains
 
-    end function newParam
+  !!
+  !! Test parameter constructor
+  !!
+  function newParam(i) result(param)
+     integer(shortInt), intent(in) :: i
+     type (dirParam) :: param
 
-    !!
-    !! Print parameter to string for more verbose description
-    !!
-    function toString(this) result(string)
-       class (dirParam), intent(in) :: this
-       character(:), allocatable :: string
+     param % dir = i
 
-       select case(this % dir)
-         case(X_AXIS)
-           string = 'xCone'
-         case(Y_AXIS)
-           string = 'yCone'
-         case(Z_AXIS)
-           string = 'zCone'
-         case default
-           string ="Unknown"
-        end select
-    end function toString
+  end function newParam
 
-    !!
-    !! Build new test_cone test case
-    !! Given integer direction X_AXIS, Y_AXIS or Z_AXIS
-    !!
-    !! Vertex 1.0, 1.0, 1.0
-    !! Tangent 1.0
-    !! ID 52
-    !!
-    function newTestCase(dir) result(tst)
-      type(dirParam), intent(in) :: dir
-      type(test_cone)            :: tst
-      type(dictionary)           :: dict
-      character(nameLen)         :: type
+  !!
+  !! Print parameter to string for more verbose description
+  !!
+  function toString(this) result(string)
+     class (dirParam), intent(in) :: this
+     character(:), allocatable :: string
 
-      ! Select type of cone and axis
-      select case(dir % dir)
-        case(X_AXIS)
-          tst % axis = X_AXIS
-          tst % plane = [Y_AXIS, Z_AXIS]
-          type = 'xCone'
-
-        case(Y_AXIS)
-          tst % axis = Y_AXIS
-          tst % plane = [X_AXIS, Z_AXIS]
-          type = 'yCone'
-
-        case(Z_AXIS)
-          tst % axis = Z_AXIS
-          tst % plane = [X_AXIS, Y_AXIS]
-          type = 'zCone'
-
-        case default
-          print *, "Should not happen. Wrong direction in testCase constructor"
-
+     select case(this % dir)
+       case(X_AXIS)
+         string = 'xCone'
+       case(Y_AXIS)
+         string = 'yCone'
+       case(Z_AXIS)
+         string = 'zCone'
+       case default
+         string ="Unknown"
       end select
+  end function toString
 
-      ! Build surface
-      call dict % init(5)
-      call dict % store('id', 52)
-      call dict % store('type', type)
-      call dict % store('vertex', [ONE, ONE, ONE])
-      call dict % store('tangent', ONE)
-      call dict % store('orientation', -1)
-      call tst % surf % init(dict)
-    end function newTestCase
+  !!
+  !! Build new test_cone test case
+  !! Given integer direction X_AXIS, Y_AXIS or Z_AXIS
+  !!
+  !! Vertex 1.0, 1.0, 1.0
+  !! Tangent 1.0
+  !! ID 52
+  !!
+  function newTestCase(dir) result(tst)
+    type(dirParam), intent(in) :: dir
+    type(test_cone)            :: tst
+    type(dictionary)           :: dict
+    character(nameLen)         :: type
 
-    !!
-    !! Deconstruct the test case
-    !!
-    subroutine tearDown(this)
-      class(test_cone), intent(inout) :: this
+    ! Select type of cone and axis
+    select case(dir % dir)
+      case(X_AXIS)
+        tst % axis = X_AXIS
+        tst % plane = [Y_AXIS, Z_AXIS]
+        type = 'xCone'
 
-      call this % surf % kill()
+      case(Y_AXIS)
+        tst % axis = Y_AXIS
+        tst % plane = [X_AXIS, Z_AXIS]
+        type = 'yCone'
 
-    end subroutine tearDown
+      case(Z_AXIS)
+        tst % axis = Z_AXIS
+        tst % plane = [X_AXIS, Y_AXIS]
+        type = 'zCone'
 
-  !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-  !! Proper tests begin here
-  !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+      case default
+        print *, "Should not happen. Wrong direction in testCase constructor"
 
-    !!
-    !! Test Misc functionality
-    !!
-    !! Directions must be given as integers for pFUnit parser to work
-    !!
-  @Test(cases = [1, 2, 3])
-    subroutine testMisc(this)
-      class(test_cone), intent(inout) :: this
-      real(defReal), dimension(6)     :: aabb, ref
-      character(nameLen)              :: name
-      real(defReal), parameter        :: TOL = 1.0E-6_defReal
+    end select
 
-      ! Test ID
-      @assertEqual(52, this % surf % id())
+    ! Build surface
+    call dict % init(5)
+    call dict % store('id', 52)
+    call dict % store('type', type)
+    call dict % store('vertex', [ONE, ONE, ONE])
+    call dict % store('tangent', ONE)
+    call dict % store('orientation', -1)
+    call tst % surf % init(dict)
+  end function newTestCase
 
-      ! Change ID
-      call this % surf % setID(1)
-      @assertEqual(1, this % surf % id())
+  !!
+  !! Deconstruct the test case
+  !!
+  subroutine tearDown(this)
+    class(test_cone), intent(inout) :: this
 
-      ! Name
-      select case(this % axis)
-        case(X_AXIS)
-          name = 'xCone'
-        case(Y_AXIS)
-          name = 'yCone'
-        case(Z_AXIS)
-          name = 'zCone'
-      end select
-      @assertEqual(name, this % surf % myType())
+    call this % surf % kill()
 
-      ! Bounding Box
-      ref = [-INF, -INF, -INF, INF, INF, INF]
-      ref( 3 + this % axis) = ONE
-      aabb = this % surf % boundingBox()
-      @assertEqual(ref, aabb, TOL)
+  end subroutine tearDown
 
-    end subroutine testMisc
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Proper tests begin here
+!!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
-    !!
-    !! Test boundary conditions
-    !!
-  @Test(cases=[1,2,3])
-    subroutine testBC(this)
-      class(test_cone), intent(inout) :: this
-      real(defReal), dimension(3)     :: r, u, r_pre, u_pre
+  !!
+  !! Test Misc functionality
+  !!
+  !! Directions must be given as integers for pFUnit parser to work
+  !!
+@Test(cases = [1, 2, 3])
+  subroutine testMisc(this)
+    class(test_cone), intent(inout) :: this
+    real(defReal), dimension(6)     :: aabb, ref
+    character(nameLen)              :: name
+    real(defReal), parameter        :: TOL = 1.0E-6_defReal
 
-      ! Set Boundary Contidions
-      ! Should ignore extra entries
-      call this % surf % setBC([VACUUM_BC, REFLECTIVE_BC, REFLECTIVE_BC])
+    ! Test ID
+    @assertEqual(52, this % surf % id())
 
-      ! Apply BC
-      r = [ONE, ONE, ONE]
-      u = ZERO
-      ! Moving out at the surface in one planar direction
-      u(this % plane(1)) = ONE
+    ! Change ID
+    call this % surf % setID(1)
+    @assertEqual(1, this % surf % id())
 
-      r_pre = r
-      u_pre = u
+    ! Name
+    select case(this % axis)
+      case(X_AXIS)
+        name = 'xCone'
+      case(Y_AXIS)
+        name = 'yCone'
+      case(Z_AXIS)
+        name = 'zCone'
+    end select
+    @assertEqual(name, this % surf % myType())
 
-      ! Explicit
-      call this % surf % explicitBC(r, u)
-      @assertEqual(r_pre, r)
-      @assertEqual(u_pre, u)
+    ! Bounding Box
+    ref = [-INF, -INF, -INF, INF, INF, INF]
+    ref( 3 + this % axis) = ONE
+    aabb = this % surf % boundingBox()
+    @assertEqual(ref, aabb, TOL)
 
-      ! Transform
-      call this % surf % transformBC(r, u)
-      @assertEqual(r_pre, r)
-      @assertEqual(u_pre, u)
+  end subroutine testMisc
 
-    end subroutine testBC
+  !!
+  !! Test boundary conditions
+  !!
+@Test(cases=[1,2,3])
+  subroutine testBC(this)
+    class(test_cone), intent(inout) :: this
+    real(defReal), dimension(3)     :: r, u, r_pre, u_pre
 
-    !!
-    !! Test Halfspaces membership
-    !!
-  @Test(cases=[1,2,3])
-    subroutine testHalfspace(this)
-      class(test_cone), intent(inout) :: this
-      integer(shortInt)               :: a, p1, p2
-      real(defReal), dimension(3)     :: r, u
-      real(defReal)                   :: eps
+    ! Set Boundary Contidions
+    ! Should ignore extra entries
+    call this % surf % setBC([VACUUM_BC, REFLECTIVE_BC, REFLECTIVE_BC])
 
-      ! Set axis and plane axis indices
-      a = this % axis
-      p1 = this % plane(1)
-      p2 = this % plane(2)
+    ! Apply BC
+    r = [ONE, ONE, ONE]
+    u = ZERO
+    ! Moving out at the surface in one planar direction
+    u(this % plane(1)) = ONE
 
-      ! Choose point at the surface moving in
-      ! Direction is at 45deg to the plane
-      r = ONE
-      r(a) = ZERO
-      r(p1) = TWO
-      u(p2) = ZERO
-      u(p1) = -ONE
-      u(a)  = -ONE
-      u = u / norm2(u)
+    r_pre = r
+    u_pre = u
 
-      ! At the surface
-      @assertFalse(this % surf % halfspace(r, u))
+    ! Explicit
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_pre, r)
+    @assertEqual(u_pre, u)
 
-      ! Out within SURF_TOL
-      eps = -HALF * SURF_TOL
-      @assertFalse(this % surf % halfspace(r + eps*u, u))
+    ! Transform
+    call this % surf % transformBC(r, u)
+    @assertEqual(r_pre, r)
+    @assertEqual(u_pre, u)
 
-      ! Out outside SURF_TOL
-      eps = -1.00001_defReal * SURF_TOL
-      @assertTrue(this % surf % halfspace(r + eps*u, u))
+  end subroutine testBC
 
-      ! Well Outside
-      eps = -TWO
-      @assertTrue(this % surf % halfspace(r + eps*u, u))
+  !!
+  !! Test Halfspaces membership
+  !!
+@Test(cases=[1,2,3])
+  subroutine testHalfspace(this)
+    class(test_cone), intent(inout) :: this
+    integer(shortInt)               :: a, p1, p2
+    real(defReal), dimension(3)     :: r, u
+    real(defReal)                   :: eps
 
-      ! Well withn
-      eps = TWO
-      @assertFalse(this % surf % halfspace(r + eps*u, u))
+    ! Set axis and plane axis indices
+    a = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
 
-      ! Tangent particle should be outside
-      u(p2) = -ONE
-      u(p1) = ZERO
-      u = u /norm2(u)
-      @assertTrue(this % surf % halfspace(r, u))
+    ! Choose point at the surface moving in
+    ! Direction is at 45deg to the plane
+    r = ONE
+    r(a) = ZERO
+    r(p1) = TWO
+    u(p2) = ZERO
+    u(p1) = -ONE
+    u(a)  = -ONE
+    u = u / norm2(u)
 
-    end subroutine testHalfspace
+    ! At the surface
+    @assertFalse(this % surf % halfspace(r, u))
 
-    !!
-    !! Test distance calculation
-    !!
-  @Test(cases=[1, 2, 3])
-    subroutine testDistance(this)
-      class(test_cone), intent(inout) :: this
-      integer(shortInt)               :: a, p1, p2
-      real(defReal), dimension(3)     :: r, u
-      real(defReal)                   :: ref
-      real(defReal), parameter :: TOL = 1.0E-7
+    ! Out within SURF_TOL
+    eps = -HALF * SURF_TOL
+    @assertFalse(this % surf % halfspace(r + eps*u, u))
 
-      ! Set axis and plane axis indices
-      a = this % axis
-      p1 = this % plane(1)
-      p2 = this % plane(2)
+    ! Out outside SURF_TOL
+    eps = -TWO * SURF_TOL
+    @assertTrue(this % surf % halfspace(r + eps*u, u))
 
-      ! **Outside
-      r = ZERO
-      r(p1) = 3.0_defReal
-      r(p2) = ONE
+    ! Well Outside
+    eps = -TWO
+    @assertTrue(this % surf % halfspace(r + eps*u, u))
 
-      ! Impact at an angle, direction of flight on an axis
-      u(a) = ZERO
-      u(p1) = -ONE
-      u(p2) = ZERO
-      u = u/norm2(u)
-      ref = ONE
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+    ! Well withn
+    eps = TWO
+    @assertFalse(this % surf % halfspace(r + eps*u, u))
 
-      ! Almost Parallel
-      u(a) = -ONE
-      u(p1) = 1.0_defReal + 1.0E+20_defReal
-      u(p2) = ZERO
-      u = u/norm2(u)
-      @assertEqual(INF, this % surf % distance(r, u))
+    ! Tangent particle should be outside
+    u = ZERO
+    u(p2) = -ONE
+    u = u /norm2(u)
+    @assertTrue(this % surf % halfspace(r, u))
 
-      ! **Exactly at the surface
-      r(p1) = TWO
+  end subroutine testHalfspace
 
-      ! Particle going inside
-      u(a) = ZERO
-      u(p1) = -ONE
-      u(p2) = ZERO
-      u = u/norm2(u)
-      ref = TWO
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+  !!
+  !! Test distance calculation
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testDistance(this)
+    class(test_cone), intent(inout) :: this
+    integer(shortInt)               :: a, p1, p2
+    real(defReal), dimension(3)     :: r, u
+    real(defReal)                   :: ref
+    real(defReal), parameter :: TOL = 1.0E-7
 
-      ! Particle going outside
-      @assertEqual(INF, this % surf % distance(r, -u))
+    ! Set axis and plane axis indices
+    a = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
 
-      ! Tangent particle
-      u(a) = ZERO
-      u(p1) = ZERO
-      u(p2) = ONE
-      u = u/norm2(u)
-      @assertEqual(INF, this % surf % distance(r, u))
+    ! **Outside the cone
+    r(a) = ZERO
+    r(p1) = 3.0_defReal
+    r(p2) = ONE
 
-      ! **Outside within surface tolerance
-      r(p1) = TWO + HALF * SURF_TOL)
-      u(a) = ZERO
-      u(p1) = -ONE
-      u(p2) = ZERO
-      u = u/norm2(u)
-      ref = TWO + HALF * SURF_TOL
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+    ! Impact at an angle, direction of flight on an axis
+    u(a) = ZERO
+    u(p1) = -ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = ONE
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-      ! ** Inside the surface
-      r = ONE
-      r(a) = ZERO
+    ! Almost Parallel
+    u(a) = -ONE
+    u(p1) = 1.0_defReal + 1.0E+20_defReal
+    u(p2) = ZERO
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
 
-      ! Parallel to second plane direction
-      u(a) = ZERO
-      u(p1) = ZERO
-      u(p2) = ONE
-      u = u/norm2(u)
-      ref = ONE
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+    ! **Exactly at the surface
+    r(p1) = TWO
 
-      ! Parallel to axis
-      u(a) = ONE
-      u(p1) = ZERO
-      u(p2) = ZERO
-      u = u/norm2(u)
-      ref = ONE
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+    ! Particle going inside
+    u(a) = ZERO
+    u(p1) = -ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = TWO
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-      ! At an angle
-      u(a) = ONE
-      u(p1) = ONE
-      u(p2) = ZERO
-      u = u/norm2(u)
-      ref = HALF * SQRT2
-      @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+    ! Particle going outside
+    @assertEqual(INF, this % surf % distance(r, -u))
 
-    end subroutine testDistance
+    ! Tangent particle
+    u(a) = ZERO
+    u(p1) = ZERO
+    u(p2) = ONE
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! **Outside within surface tolerance
+    r(p1) = TWO + HALF * SURF_TOL
+    u(a) = ZERO
+    u(p1) = -ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = TWO + HALF * SURF_TOL
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! ** Inside the surface
+    r = ONE
+    r(a) = ZERO
+
+    ! Parallel to second plane direction
+    u(a) = ZERO
+    u(p1) = ZERO
+    u(p2) = ONE
+    u = u/norm2(u)
+    ref = ONE
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! Parallel to axis
+    u(a) = ONE
+    u(p1) = ZERO
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = ONE
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    u(a) = -ONE
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u), TOL * ref)
+
+    ! At an angle
+    u(a) = ONE
+    u(p1) = ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = HALF * SQRT2
+
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+  end subroutine testDistance
 
 end module cone_test

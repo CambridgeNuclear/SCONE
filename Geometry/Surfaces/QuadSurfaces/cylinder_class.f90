@@ -205,7 +205,7 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(cylinder), intent(in)               :: self
+    class(cylinder), intent(in)             :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
     real(defReal), dimension(2)             :: diff
