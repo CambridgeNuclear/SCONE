@@ -54,6 +54,12 @@ module ceNeutronCache_mod
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
   !!   xss    -> Cached Cross-Sections values
+  !!   needsSabInel -> Flag that tells if the nuclide is using thermal inelastic
+  !!                   scattering data
+  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic
+  !!                   scattering data
+  !!   needsUrr     -> Flag that tells if the nuclide is using unresolved resonance
+  !!                   probability tables
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -62,6 +68,9 @@ module ceNeutronCache_mod
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMicroXSs) :: xss
+    logical(defBool)      :: needsSabInel = .false.
+    logical(defBool)      :: needsSabEl = .false.
+    logical(defBool)      :: needsUrr = .false.
   end type cacheNucDat
 
   !!

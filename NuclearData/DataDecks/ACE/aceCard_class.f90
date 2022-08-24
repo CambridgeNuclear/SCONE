@@ -91,9 +91,9 @@ module aceCard_class
     integer(shortInt) :: totalNUp     = unINIT  ! Location of total NU data
 
     ! RAW ACE TABLES *** PUBLIC in DEBUG * WILL BE PRIVATE
-    integer(shortInt),dimension(16),public        :: NXS
-    integer(shortInt),dimension(32),public        :: JXS
-    real(defReal),dimension(:),allocatable,public :: XSS
+    integer(shortInt),dimension(16)        :: NXS
+    integer(shortInt),dimension(32)        :: JXS
+    real(defReal),dimension(:),allocatable :: XSS
 
   contains
     ! Superclass procedures
@@ -102,11 +102,11 @@ module aceCard_class
     ! XSs directly from blocks
     procedure, non_overridable :: gridSize
     procedure, non_overridable :: ESZ_XS
-    procedure :: ESZblock            ! Returns ESZ block XS (see detailed description) !*LAGACY
+    procedure :: ESZblock            ! Returns ESZ block XS (see detailed description) !*LEGACY
 
     ! Procedures to enquire about MT reaction and set read head to angle or energy data
     !
-    procedure :: getMTs              ! Get array of MT numners present
+    procedure :: getMTs              ! Get array of MT numbers present
     procedure :: getScatterMTs
     procedure :: getCaptureMTs
     procedure :: getFissionMTs
@@ -126,7 +126,7 @@ module aceCard_class
 
     ! Procedures releted to Elastic Scattering
     procedure :: LOCBforEscatter     ! Return LOCB for Elastic Scattering
-    procedure :: setToAngleEscatter  ! Set head to beggining of angle data for Elastic Scatter
+    procedure :: setToAngleEscatter  ! Set head to beginning of angle data for Elastic Scatter
 
     ! Procedures releated to Fission data
     procedure :: firstIdxFiss        ! Get first fission Idx
@@ -1427,7 +1427,7 @@ contains
   end subroutine setFissionData
 
   !!
-  !! Read ACE card from dile in provided filePath that beggins at provided lineNum
+  !! Read ACE card from file in provided filePath that begins at provided lineNum
   !!
   subroutine readFromFile(self,filePath,lineNum)
     class(aceCard), intent(inout)  :: self
@@ -1439,7 +1439,7 @@ contains
     character(13)                  :: skip
     character(100),parameter :: Here ='readFromFile (aceCard_class.f90)'
 
-    ! Copy filepath and make shure it is left adjusted
+    ! Copy filepath and make sure it is left adjusted
     localFilePath = trim(adjustl(filePath))
 
     ! Open file to read data
