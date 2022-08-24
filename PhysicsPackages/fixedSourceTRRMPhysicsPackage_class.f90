@@ -86,7 +86,13 @@ module fixedSourceTRRMPhysicsPackage_class
   !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!
-  !!     geometry {<Geometry Definition>}
+  !!     #source {             // Fixed sources for named materials and their intensities n/cm3/s
+  !!                           // Intensities are in each energy group, from 1 to G
+  !!         material_name1 ( s_g1 s_g2 ... s_gG );
+  !!         ...
+  !!      } #
+  !!
+  !!     geometry {<Geometry definition>}
   !!     nuclearData {<Nuclear data definition>}
   !!   }
   !!
@@ -123,6 +129,7 @@ module fixedSourceTRRMPhysicsPackage_class
   !!   fluxScore    -> Array of scalar flux values and squared values to be reported 
   !!                   in results, dimension =  [nG * nCells, 2]
   !!   source       -> Array of neutron source values of length = nG * nCells
+  !!   fixedSource  -> Array of fixed source values of length = nG * nCells
   !!   volume       -> Array of stochastically estimated cell volumes of length = nCells
   !!   cellHit      -> Array tracking whether given cells have been hit during tracking
   !!   cellFound    -> Array tracking whether a cell was ever found
@@ -166,6 +173,7 @@ module fixedSourceTRRMPhysicsPackage_class
     real(defReal), dimension(:), allocatable     :: prevFlux
     real(defReal), dimension(:,:), allocatable   :: fluxScores
     real(defReal), dimension(:), allocatable     :: source
+    real(defReal), dimension(:), allocatable     :: fixedSource
     real(defReal), dimension(:), allocatable     :: volume
     real(defReal), dimension(:), allocatable     :: volumeTracks
 
@@ -189,6 +197,7 @@ module fixedSourceTRRMPhysicsPackage_class
 
     ! Private procedures
     procedure, private :: cycles
+    procedure, private :: initialiseSource
     procedure, private :: initialiseRay
     procedure, private :: moveRay
     procedure, private :: moveRayCache
@@ -218,7 +227,7 @@ contains
     character(10)                                       :: time
     character(8)                                        :: date
     character(:),allocatable                            :: string
-    class(dictionary),pointer                           :: tempDict, graphDict
+    class(dictionary),pointer                           :: tempDict, graphDict, sourceDict
     class(mgNeutronDatabase),pointer                    :: db
     character(nameLen)                                  :: geomName, graphType, nucData
     class(geometry), pointer                            :: geom
@@ -320,7 +329,7 @@ contains
     if (graphType /= 'extended') call fatalError(Here,&
             'Geometry graph type must be "extended" for random ray calculations.')
 
-    ! Activatee nuclear data
+    ! Activate nuclear data
     call ndReg_activate(P_NEUTRON_MG, nucData, self % geom % activeMats())
 
     ! Ensure that nuclear data is multi-group
@@ -374,16 +383,84 @@ contains
     allocate(self % prevFlux(self % nCells * self % nG))
     allocate(self % fluxScores(self % nCells * self % nG, 2))
     allocate(self % source(self % nCells * self % nG))
+    allocate(self % fixedSource(self % nCells * self % nG))
     allocate(self % volume(self % nCells))
     allocate(self % volumeTracks(self % nCells))
     allocate(self % cellHit(self % nCells))
     allocate(self % cellFound(self % nCells))
     allocate(self % cellPos(self % nCells, 3))
     
+    ! Read and initialise the fixed sources
+    sourceDict => dict % getDictPtr('source')
+    call self % initialiseSource(sourceDict)
+
     ! Set active length traveled per iteration
     self % lengthPerIt = (self % termination - self % dead) * self % pop
 
   end subroutine init
+
+  !!
+  !! Initialises the fixed source to be used in the simulation
+  !! Takes a dictionary containing names of materials in the geometry and
+  !! source strengths in each energy group and places these in the appropriate
+  !! elements of the fixed source vector
+  !!
+  subroutine initialiseSource(self, dict)
+    class(fixedSourceTRRMPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(inout)                    :: dict
+    character(nameLen),dimension(:), allocatable        :: names
+    real(defReal), dimension(:), allocatable            :: sourceStrength
+    integer(shortInt)                                   :: cIdx, i
+    integer(shortInt), save                             :: g, matIdx, idx
+    logical(defBool)                                    :: found
+    character(nameLen)                                  :: sourceName 
+    character(nameLen), save                            :: localName
+    character(100), parameter :: Here = 'initialiseSource (fixedSourceTRRMPhysicsPackage_class.f90)'
+    !$omp threadprivate(matIdx, localName, idx, g)
+
+    self % fixedSource = ZERO
+
+    call dict % keys(names)
+
+    ! Cycle through entries of the dictionary
+    do i = 1, size(names)
+
+      sourceName = names(i)
+      call dict % get(sourceStrength, sourceName)
+
+      ! Ensure correct number of energy groups
+      if (size(sourceStrength) /= self % nG) call fatalError(Here,'Source '//sourceName//&
+              ' has '//numToChar(size(sourceStrength))//' groups rather than '//numToChar(self % nG))
+      
+      ! Make sure that the source corresponds to a material present in the geometry
+      found = .FALSE.
+      !$omp parallel do schedule(static) 
+      do cIdx = 1, self % nCells
+
+        matIdx    = self % geom % geom % graph % getMatFromUID(cIdx)
+        localName = mm_matName(matIdx)
+
+        if (localName == sourceName) then
+
+          found = .TRUE.
+          do g = 1, self % nG
+            
+            idx = (cIdx - 1) * self % nG + g
+            self % fixedSource(idx) = sourceStrength(g)
+
+          end do
+
+        end if
+
+      end do
+      !$omp end parallel do
+
+      if (.NOT. found) call fatalError(Here,'The source '//trim(sourceName)//' does not correspond to '//&
+              'any material found in the geometry.')
+
+    end do
+
+  end subroutine initialiseSource
 
   !!
   !! Run calculation
@@ -411,14 +488,6 @@ contains
   !! Inactive and active iterations occur, terminating subject either to 
   !! given criteria or when a fixed number of iterations has been passed.
   !!
-  !! Args:
-  !!   rand [inout] -> Initialised random number generator
-  !!
-  !! NOTE:
-  !!   RNG needs to be given as an argument `class(RNG)` to prevent inlining. Compiler (gcc 8.3)
-  !!   produced erroneous code withou it. Same random number would be produced for diffrent calls
-  !!   of `get` function.
-  !!
   subroutine cycles(self)
     class(fixedSourceTRRMPhysicsPackage), intent(inout) :: self
     type(ray), save                                     :: r
@@ -437,7 +506,7 @@ contains
 
     ! Initialise fluxes 
     self % scalarFlux = ZERO
-    self % prevFlux   = ONE
+    self % prevFlux   = ZERO
     self % fluxScores = ZERO
     self % source     = ZERO
 
@@ -494,7 +563,7 @@ contains
       
       call timerStop(self % timerTransport)
 
-      ! Update RNG on master thread
+      ! Update RNG 
       call self % rand % stride(self % pop + 1)
 
       ! Normalise flux estimate and combines with source
@@ -580,7 +649,7 @@ contains
 
       i = i + 1
       if (i > 5000) then
-        call fatalError(Here, 'Infinite loop when searching ray start in the geometry.')
+        call fatalError(Here, 'Infinite loop when searching for ray start in the geometry.')
       end if
     end do rejection
 
@@ -591,7 +660,7 @@ contains
     ! Set angular flux to angle average of cell source
     do g = 1, self % nG
       idx = (cIdx - 1) * self % nG + g
-      r % flux(g) = self % source(idx)
+      r % flux(g) = self % source(idx) 
     end do
 
     if (.NOT. self % cellFound(cIdx)) then
@@ -731,7 +800,7 @@ contains
         ! Calculate delta
         idx = (cIdx - 1) * self % nG + g
         attenuate = exponential(total * length)
-        !attenuate = ONE - exp(-SigmaT * length) ! For debugging
+        !attenuate = ONE - exp(-total * length) ! For debugging
         delta = (r % flux(g) - self % source(idx)) * attenuate
 
         ! Accumulate scalar flux
@@ -748,7 +817,7 @@ contains
       ! Accumulate cell volume estimates
       if (r % isActive) then
         self % cellHit(cIdx) = 1
-
+        
         !$omp atomic
         self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
       end if
@@ -792,7 +861,7 @@ contains
         total =  mat % getTotalXS(g, self % rand)
         idx   = self % nG * (cIdx - 1) + g
 
-        if (self % volume(cIdx) > volume_tolerance) then
+        if (self % volume(cIdx) > ZERO) then
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm / ( total * self % volume(cIdx))
         end if
         self % scalarFlux(idx) = self % scalarFlux(idx) + self % source(idx)
@@ -815,7 +884,8 @@ contains
     integer(shortInt)                                   :: cIdx
     class(baseMgNeutronMaterial), pointer, save         :: mat
     class(materialHandle), pointer, save                :: matPtr
-    !$omp threadprivate(mat, matPtr, scatter, fission, scatterXS, nuFission, total, chi, matIdx, g, gIn, idx, idx0)
+    !$omp threadprivate(mat, matPtr, scatter, fission, scatterXS, &
+    !$omp& nuFission, total, chi, matIdx, g, gIn, idx, idx0)
 
     !$omp parallel do schedule(static) 
     do cIdx = 1, self % nCells
@@ -851,8 +921,8 @@ contains
         total = mat % getTotalXS(g, self % rand)
         chi   = mat % getChi(g, self % rand)
     
-        self % source(idx) = chi * fission  + scatter
-        self % source(idx) = self % source(idx) / total
+        self % source(idx) = chi * fission  + scatter + self % fixedSource(idx)
+        self % source(idx) = self % source(idx) / total 
 
       end do
 
@@ -1084,7 +1154,17 @@ contains
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g1
-          groupFlux(cIdx) = self % fluxScores(idx,2)
+          groupFlux(cIdx) = self % fluxScores(idx,2) / self % fluxScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'source_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % source(idx)
         end do
         !$omp end parallel do
         call self % viz % addVTKData(groupFlux,name)
@@ -1161,6 +1241,7 @@ contains
     if(allocated(self % prevFlux)) deallocate(self % prevFlux)
     if(allocated(self % fluxScores)) deallocate(self % fluxScores)
     if(allocated(self % source)) deallocate(self % source)
+    if(allocated(self % fixedSource)) deallocate(self % fixedSource)
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % cellHit)) deallocate(self % cellHit)

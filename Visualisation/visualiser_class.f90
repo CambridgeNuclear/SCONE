@@ -330,7 +330,7 @@ contains
 
     nVox = self % vtk % nVox
     allocate(values(nVox(1),nVox(2),nVox(3)))
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do i = 1, self % vtk % nVox(1)
       do j = 1, self % vtk % nVox(2)
         do k = 1, self % vtk % nVox(3)
