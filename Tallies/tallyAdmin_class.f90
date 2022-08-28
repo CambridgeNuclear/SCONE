@@ -742,7 +742,7 @@ contains
   end subroutine getResult
 
   !!
-  !! Append sorrting array identified with the code with tallyClerk idx
+  !! Append sorting array identified with the code with tallyClerk idx
   !!
   !! Private helper subroutine
   !!
