@@ -96,7 +96,7 @@ contains
 
         ! Obtain bounds of the lower and upper bin
         call self % ePdfs(idx) % bounds(E_min_low, E_max_low)
-        call self % ePdfs(idx) % bounds(E_min_up,  E_max_up )
+        call self % ePdfs(idx + 1) % bounds(E_min_up,  E_max_up )
 
         eps = (E_in - self % eGrid(idx)) / (self % eGrid(idx+1) - self % eGrid(idx))
 
