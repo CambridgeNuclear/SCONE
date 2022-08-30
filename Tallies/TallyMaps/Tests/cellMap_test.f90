@@ -1,12 +1,15 @@
 module cellMap_test
   use numPrecision
   use pFUnit_mod
-  use particle_class,      only : particleState
-  use dictionary_class,    only : dictionary
-  use dictParser_func,     only : charToDict
-  use outputFile_class,    only : outputFile
-  use cellMap_class,       only : cellMap
-  use geometryReg_mod,     only : geometries, gr_addGeom => addGeom
+  use universalVariables, only : VOID_MAT
+  use particle_class,     only : particleState
+  use dictionary_class,   only : dictionary
+  use dictParser_func,    only : charToDict
+  use charMap_class,      only : charMap
+  use outputFile_class,   only : outputFile
+  use cellMap_class,      only : cellMap
+  use geometryReg_mod,    only : gr_addGeom => addGeom, gr_kill => kill
+  use materialMenu_mod,   only : mm_nameMap => nameMap
 
   implicit none
 
@@ -21,12 +24,25 @@ module cellMap_test
     procedure :: tearDown
   end type test_cellMap
 
-
   !!
   !! Test parameters
   !!
-  integer(shortInt),dimension(*),parameter :: CELL_NAMES = [1, 2, 3, 4, 5]
-  integer(shortInt),dimension(*),parameter :: CELL_IN_MAP = [2, 3, 5]
+  character(*), parameter :: SURF_DEF = "&
+  & surf2 {id 8; type zPlane; z0 -1.3;} &
+  & surf3 {id 9; type zPlane; z0 0.0;} &
+  & surf4 {id 10; type zPlane; z0 1.0;}"
+
+  character(*), parameter :: CELL_DEF = "&
+  & cell2 {id 2; type simpleCell; surfaces (-8 10); filltype mat; material fuel;} &
+  & cell3 {id 1; type simpleCell; surfaces (-8 -10 9); filltype mat; material void;} &
+  & cell4 {id 5; type simpleCell; surfaces (-9 8); filltype mat; material fuel;} &
+  & cell5 {id 3; type simpleCell; surfaces (-8); filltype mat; material pecorino;}"
+
+  character(*), parameter :: UNI_DEF = "&
+  & root {id 2; type rootUniverse; border 9; fill u<1>;} &
+  & uni2 {id 1; type cellUniverse; cells (2 1 5 3);} "
+
+  integer(shortInt),dimension(*),parameter :: CELL_IN_MAP = [2, 5, 3]
 
 contains
 
@@ -35,11 +51,36 @@ contains
   !!
   subroutine setUp(this)
     class(test_cellMap), intent(inout) :: this
-    type(dictionary)                   :: dict, mapDict1
+    type(dictionary)                   :: dict, mapDict1, dictTemp
+    character(nameLen)                 :: name
 
-    call dict % init(1)
+    call dict % init(6)
     call dict % store('type','geometryStd')
-    call gr_addGeom('geom', dict)
+    call dict % store('boundary', [0, 0, 0, 0, 0, 0])
+    ! Store graph
+    call dictTemp % init(1)
+    call dictTemp % store('type','shrunk')
+    call dict % store('graph', dictTemp)
+    call dictTemp % kill()
+
+    ! Store surfaces, cells and universes dictionaries
+    call charToDict(dictTemp, SURF_DEF)
+    call dict % store('surfaces', dictTemp)
+    call charToDict(dictTemp, CELL_DEF)
+    call dict % store('cells', dictTemp)
+    call charToDict(dictTemp, UNI_DEF)
+    call dict % store('universes', dictTemp)
+
+    ! Initialise material map for materialMenu
+    name = 'fuel'
+    call mm_nameMap % add(name, 1)
+    name = 'pecorino'
+    call mm_nameMap % add(name, 2)
+    name = 'void'
+    call mm_nameMap % add(name, VOID_MAT)
+
+    ! Initialise geometry in geomReg
+    call gr_addGeom('geom', dict, .true.)
 
     ! Initialise dictionaries
     call mapDict1 % init(2)
@@ -61,6 +102,7 @@ contains
 
     call this % map_noUndef % kill()
     call this % map_Undef % kill()
+    call gr_kill()
 
   end subroutine tearDown
 
@@ -77,9 +119,9 @@ contains
     type(particleState)                      :: state
     integer(shortInt)                        :: i
     integer(shortInt),dimension(5)           :: bins
-    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [0, 1, 2, 0, 3]
+    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [1, 0, 2, 3, 0]
 
-    do i=1,5
+    do i = 1,5
       state % cellIdx = i
       bins(i) = this % map_noUndef % map(state)
     end do
@@ -98,9 +140,9 @@ contains
     type(particleState)                      :: state
     integer(shortInt)                        :: i
     integer(shortInt),dimension(5)           :: bins
-    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [4, 1, 2, 4, 3]
+    integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [1, 4, 2, 3, 4]
 
-    do i=1,5
+    do i = 1,5
       state % cellIdx = i
       bins(i) = this % map_undef % map(state)
     end do
@@ -145,7 +187,5 @@ contains
     call out % reset()
 
   end subroutine testPrint
-
-
 
 end module cellMap_test

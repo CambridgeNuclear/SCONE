@@ -32,9 +32,9 @@ module cellMap_class
   !! ------------------------------------------------------------------
   !!
   !! Private Members:
-  !!   binMap -> intMap that maps cellIdx to binIdx
+  !!   binMap  -> intMap that maps cellIdx to binIdx
   !!   default -> binIdx for cells not in binMap
-  !!   Nbins -> Number of bins in the map
+  !!   Nbins   -> Number of bins in the map
   !!   cellIndices -> List of cell indices in the map
   !!
   !! Interface:
@@ -104,7 +104,7 @@ contains
     geomStd => geometryStd_CptrCast(geom)
 
     ! Load cell indices and bins
-    do i=1,N
+    do i = 1,N
       ! Get unique cell IDs
       ID = geomStd % geom % cells % getIdx(cells(i))
       call self % binMap % add(ID, i)
@@ -222,14 +222,12 @@ contains
     ! Print cell indexes
     do i=1,size(self % cellIndices)
       call out % addValue(numToChar(self % cellIndices(i)))
-
     end do
 
     ! Print 'undefined'
     if ( self % Nbins > size(self % cellIndices)) then
       name = 'undefined'
       call out % addValue(name)
-
     end if
 
     call out % endArray()
