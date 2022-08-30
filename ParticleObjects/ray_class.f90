@@ -60,7 +60,10 @@ module ray_class
     procedure            :: point
     procedure            :: takeAboveGeom
     procedure            :: setMatIdx
-
+    
+    ! Ray movements for MoC
+    procedure            :: prepareToMove
+    
     ! Debug procedures
     procedure            :: display
 
@@ -241,6 +244,27 @@ contains
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Ray operations on coordinates procedures
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Accounts for biases that may be introduced by rays moving
+  !! significantly past their dead/termination length during an FSR crossing.
+  !! Determines the maximum distance a ray can move and whether the ray is active.
+  !!
+  subroutine prepareToMove(self, length, dead, termination)
+    class(ray), intent(inout)                  :: self
+    real(defReal), intent(out)                 :: length
+    real(defReal), intent(in)                  :: dead
+    real(defReal), intent(in)                  :: termination
+
+    ! Set maximum flight distance and ensure ray is active
+    if (self % length >= dead) then
+      length = termination - self % length 
+      self % isActive = .TRUE.
+    else
+      length = dead - self % length
+    end if
+
+  end subroutine prepareToMove
 
   !!
   !! Move the ray above the geometry

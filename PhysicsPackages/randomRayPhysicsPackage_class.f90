@@ -109,7 +109,6 @@ module randomRayPhysicsPackage_class
   !!   inactive    -> Number of inactive cycles to perform
   !!   active      -> Number of active cycles to perform
   !!   cache       -> Logical check whether to use distance caching
-  !!   cache       -> Perform distance caching?
   !!   outputFile  -> Output file name
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
@@ -196,8 +195,6 @@ module randomRayPhysicsPackage_class
     ! Private procedures
     procedure, private :: cycles
     procedure, private :: initialiseRay
-    procedure, private :: moveRay
-    procedure, private :: moveRayCache
     procedure, private :: transportSweep
     procedure, private :: calculateSources
     procedure, private :: calculateKeff
@@ -421,11 +418,6 @@ contains
   !! Args:
   !!   rand [inout] -> Initialised random number generator
   !!
-  !! NOTE:
-  !!   RNG needs to be given as an argument `class(RNG)` to prevent inlining. Compiler (gcc 8.3)
-  !!   produced erroneous code withou it. Same random number would be produced for diffrent calls
-  !!   of `get` function.
-  !!
   subroutine cycles(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), save                               :: r
@@ -617,79 +609,6 @@ contains
   end subroutine initialiseRay
 
   !!
-  !! Geometry handling of the ray: moves the ray across a FSR,
-  !! returning the distance travelled and applying boundary conditions
-  !! where necessary.
-  !!
-  !! Accounts for biases that may be introduced by rays moving
-  !! significantly past their dead/termination length during an FSR crossing.
-  !! The ray is only moved as far as the point where the dead/termination 
-  !! length is exceeded and this is the distance which is travelled during 
-  !! the operation.
-  !!
-  !! Reports the vacuum hit to be dealt with after attenuation
-  !! has taken place.
-  !!
-  subroutine moveRay(self, r, length, hitVacuum)
-    class(randomRayPhysicsPackage), intent(in) :: self
-    type(ray), intent(inout)                   :: r
-    real(defReal), intent(out)                 :: length
-    logical(defBool), intent(out)              :: hitVacuum
-    integer(shortInt)                          :: event
-
-    ! Set maximum flight distance and ensure ray is active
-    if (r % length >= self % dead) then
-      length = self % termination - r % length 
-      r % isActive = .TRUE.
-    else
-      length = self % dead - r % length
-    end if
-
-    ! Perform the movement
-    call self % geom % moveRay_noCache(r % coords, length, event, hitVacuum)
-
-    r % length = r % length + length
-
-  end subroutine moveRay
-
-  !!
-  !! Geometry handling of the ray: moves the ray across a FSR,
-  !! returning the distance travelled and applying boundary conditions
-  !! where necessary.
-  !!
-  !! Accounts for biases that may be introduced by rays moving
-  !! significantly past their dead/termination length during an FSR crossing.
-  !! The ray is only moved as far as the point where the dead/termination 
-  !! length is exceeded and this is the distance which is travelled during 
-  !! the operation.
-  !!
-  !! Reports the vacuum hit to be dealt with after attenuation
-  !! has taken place.
-  !!
-  subroutine moveRayCache(self, r, length, hitVacuum, cache)
-    class(randomRayPhysicsPackage), intent(in) :: self
-    type(ray), intent(inout)                   :: r
-    real(defReal), intent(out)                 :: length
-    logical(defBool), intent(out)              :: hitVacuum
-    type(distCache), intent(inout)             :: cache
-    integer(shortInt)                          :: event
-
-    ! Set maximum flight distance and ensure ray is active
-    if (r % length >= self % dead) then
-      length = self % termination - r % length 
-      r % isActive = .TRUE.
-    else
-      length = self % dead - r % length
-    end if
-
-    ! Perform the movement
-    call self % geom % moveRay_withCache(r % coords, length, event, cache, hitVacuum)
-
-    r % length = r % length + length
-
-  end subroutine moveRayCache
-
-  !!
   !! Moves ray through geometry, updating angular flux and
   !! scoring scalar flux and volume.
   !! Records the number of integrations/ray movements.
@@ -698,7 +617,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), intent(inout)                      :: r
     integer(longInt), intent(out)                 :: ints
-    integer(shortInt)                             :: matIdx, g, cIdx, idx
+    integer(shortInt)                             :: matIdx, g, cIdx, idx, event
     real(defReal)                                 :: attenuate, length, delta, total
     logical(defBool)                              :: hitVacuum
     type(distCache)                               :: cache
@@ -728,12 +647,14 @@ contains
       ! due to FP error accumulation, but is faster.
       ! This can be fixed by resetting the cache after X number
       ! of distance calculations.
+      call r % prepareToMove(length, self % dead, self % termination)
       if (self % cache) then
         if (mod(ints,100_longInt) == 0)  cache % lvl = 0
-        call self % moveRayCache(r, length, hitVacuum, cache)
+        call self % geom % moveRay_withCache(r % coords, length, event, cache, hitVacuum)
       else
-        call self % moveRay(r, length, hitVacuum)
+        call self % geom % moveRay_noCache(r % coords, length, event, hitVacuum)
       end if
+      r % length = r % length + length
 
       ints = ints + 1
  
@@ -1124,12 +1045,18 @@ contains
             idx = (cIdx - 1)* self % nG + g
             fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
             ! Is this correct? Also neglects uncertainty in volume - assumed small.
-            fissSTD(i) = fissSTD(i) + vol * self % fluxScores(idx,2) * SigmaF
+            fissSTD(i) = fissSTD(i) + &
+                    vol * self % fluxScores(idx,2)*self % fluxScores(idx,2) * SigmaF
           end do
         end if
 
       end do
       !$omp end parallel do
+
+      do i = 1,size(fissSTD)
+        fissSTD(i) = sqrt(fissSTD(i))
+        if (fiss(i) > 0) fissSTD(i) = fissSTD(i) / fiss(i)
+      end do
 
       name = 'fissionRate'
       call out % startBlock(name)
