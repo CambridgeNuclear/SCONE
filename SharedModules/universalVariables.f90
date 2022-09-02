@@ -60,6 +60,10 @@ module universalVariables
                                   P_NEUTRON_MG = 2, &
                                   P_PHOTON_MG = 3
 
+  ! IMC Calculation Type
+  integer(shortInt), parameter :: IMC = 1, &
+                                  ISMC = 2
+
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&
                                   tooManyIter       = -2,&
@@ -68,9 +72,14 @@ module universalVariables
 
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
-                              lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
+                              lightSpeed  = ONE, &
+                              !lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
                               energyPerFission = 200.0_defReal, &    ! MeV
-                              radiationConstant = 0.01372_defReal    ! GJ/(cm^3 keV^4)
+                              radiationConstant = ONE, &
+                              !radiationConstant = 0.01372_defReal, &    ! GJ/(cm^3 keV^4)
+                              !radiationConstant = 7.5657e-10_defReal, & ! J/(cm^3 K^-4)
+                              planckConst = 6.62607015e-30_defReal, &   ! cm^2 kg/s
+                              boltzmannConst = 1.380649e-19_defReal     ! cm^2 kg s^-2 K^-1
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J

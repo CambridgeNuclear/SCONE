@@ -69,6 +69,7 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:), allocatable   :: cv, updateEqn, sigmaEqn
     class(multiScatterMG), allocatable        :: scatter
     real(defReal)                             :: T, fleck, deltaT, sigmaP, matEnergy, volume
+    integer(shortInt)                         :: calcType
 
   contains
     ! Superclass procedures
@@ -80,6 +81,8 @@ module baseMgIMCMaterial_class
     procedure :: init
     procedure :: nGroups
     procedure :: updateMat
+    procedure :: updateMatIMC
+    procedure :: updateMatISMC
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: initProps
@@ -319,7 +322,6 @@ contains
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: printUpdate
-    real(defReal)                           :: energyDens, prev
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
     ! Print current properties
@@ -331,6 +333,38 @@ contains
         print *, "  tallyEnergy =                   ", tallyEnergy
       end if
     end if
+
+    select case (self % calcType)
+
+      case(IMC)
+        call self % updateMatIMC(tallyEnergy)
+
+      case(ISMC)
+        call self % updateMatISMC(tallyEnergy)
+
+      case default
+        call fatalError(Here, "Invalid calculation type")
+
+    end select
+
+    ! Print updated properties 
+    if (present(printUpdate)) then
+      if(printUpdate .eqv. .True.) then
+        print *, "  matEnergy at end of timestep =  ", self % matEnergy
+        print *, "  T_new =                         ", self % T
+      end if
+    end if
+
+  end subroutine updateMat
+
+  !!
+  !! Material update for IMC calculation
+  !!
+  subroutine updateMatIMC(self, tallyEnergy)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal), intent(in)               :: tallyEnergy
+    real(defReal)                           :: energyDens, prev
+    character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
 
     ! Store previous material internal energy density, U_{m,n}/V
     prev = self % matEnergy / self % volume
@@ -354,15 +388,6 @@ contains
       self % T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
     end if
 
-    ! Print updated properties 
-    if (present(printUpdate)) then
-      if(printUpdate .eqv. .True.) then
-        print *, "  matEnergy at end of timestep =  ", self % matEnergy
-        print *, "  T_new =                         ", self % T
-      end if
-    end if
-
-
     ! Update sigmaP
     self % sigmaP = poly_eval(self % sigmaEqn, self % T)
       ! Also need these lines because cross section functions use this instead of sigmaP
@@ -375,13 +400,18 @@ contains
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
 
-    !print *, 'fleck_new =', self % fleck
-    !print *, 'a =', radiationConstant
-    !print *, 'c =', lightSpeed
-    !print *, 'V =', self % volume
-    !print *, 'sigmaP_new =', self % sigmaP
+  end subroutine updateMatIMC
 
-  end subroutine updateMat
+  !!
+  !! Material update for ISMC calculation
+  !!
+  subroutine updateMatISMC(self, tallyEnergy)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal), intent(in)               :: tallyEnergy
+
+
+  end subroutine updateMatISMC
+
 
   !!
   !! Return the energy to be emitted during time step, E_r
@@ -436,6 +466,8 @@ contains
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
     self % deltaT = deltaT
+
+    self % calcType = IMC
 
   end subroutine initProps
 
