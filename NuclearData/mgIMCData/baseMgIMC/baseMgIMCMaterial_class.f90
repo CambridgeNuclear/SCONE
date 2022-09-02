@@ -81,12 +81,15 @@ module baseMgIMCMaterial_class
     procedure :: init
     procedure :: nGroups
     procedure :: updateMat
-    procedure :: updateMatIMC
-    procedure :: updateMatISMC
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: initProps
     procedure :: getTemp
+
+    procedure, private :: updateMatIMC
+    procedure, private :: updateMatISMC
+    procedure, private :: tempFromEnergy
+    procedure, private :: sigmaFromTemp
 
   end type baseMgIMCMaterial
 
@@ -363,42 +366,22 @@ contains
   subroutine updateMatIMC(self, tallyEnergy)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal), intent(in)               :: tallyEnergy
-    real(defReal)                           :: energyDens, prev
     character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
-
-    ! Store previous material internal energy density, U_{m,n}/V
-    prev = self % matEnergy / self % volume
 
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
-    ! New material internal energy density, U_{m,n+1}/V
-    energyDens = self % matEnergy / self % volume
-
-    !! Integration of dUm/dT = cv gives equation to be solved for T_{n+1}:
-    !!
-    !!      f(T_{n+1}) = U_{m,n+1} - U_{m,n} + f(T_n)
-    !!
-    !!   where f(T) is the indefinite integral of cv (stored in self % updateEqn)
-    !!
-    !const = energy - const + poly_eval(self % updateEqn, self % T)
-
-    ! Update material temperature by solving f(T_{n+1}) = const
-    if ( energyDens /= prev ) then
-      self % T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
-    end if
+    ! Update material temperature
+    self % T = self % tempFromEnergy()
 
     ! Update sigmaP
-    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
-      ! Also need these lines because cross section functions use this instead of sigmaP
-    self % data(CAPTURE_XS,:) = self % sigmaP
-    self % data(TOTAL_XS,:) = self % sigmaP
+    call self % sigmaFromTemp
 
     if( self % T < 0 ) then
      call fatalError(Here, "Temperature is negative")
     end if
 
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
+    self % fleck = 1 / (1 + 1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
 
   end subroutine updateMatIMC
 
@@ -408,16 +391,58 @@ contains
   subroutine updateMatISMC(self, tallyEnergy)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal), intent(in)               :: tallyEnergy
+    real(defReal)                           :: beta, eta, zeta
 
+    ! Update material internal energy
+    self % matEnergy = tallyEnergy
+
+    ! Update material temperature
+    self % T = self % tempFromEnergy()
+
+    ! Update ISMC equivalent of fleck factor
+    beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+    eta  =   radiationConstant * self % T**4 / self % matEnergy
+    zeta = beta - eta
+    self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+
+    ! Update sigmaP
+    call self % sigmaFromTemp
 
   end subroutine updateMatISMC
+
+  !!
+  !! Calculate the temperature of material from internal energy
+  !!
+  function tempFromEnergy(self) result(T)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal)                           :: T, energyDens
+
+    energyDens = self % matEnergy / self % volume
+    T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
+
+  end function tempFromEnergy
+
+  !!
+  !! Calculate sigmaP from current temp
+  !!
+  subroutine sigmaFromTemp(self)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal)                           :: sigma
+
+    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
+
+    ! Also need these lines because cross section functions use this instead of sigmaP for now
+    self % data(CAPTURE_XS,:) = self % sigmaP
+    self % data(TOTAL_XS,:) = self % sigmaP
+
+  end subroutine sigmaFromTemp
 
 
   !!
   !! Return the energy to be emitted during time step, E_r
   !!
   function getEmittedRad(self) result(emittedRad)
-    class(baseMgIMCMaterial),intent(inout)  :: self
+    class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: U_r, emittedRad
 
     U_r = radiationConstant * (self % T)**4
