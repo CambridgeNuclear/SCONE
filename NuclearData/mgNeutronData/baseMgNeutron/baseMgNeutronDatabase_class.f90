@@ -32,18 +32,27 @@ module baseMgNeutronDatabase_class
   !!
   !! Basic type of MG nuclear Data for neutrons
   !!
-  !! All materials in aproblem are baseMgMaterials. See its documentation for
+  !! All materials in a problem are baseMgMaterials. See its documentation for
   !! details on how the physics is handled
+  !!
+  !! Sample input dictionary:
+  !!   nucData {
+  !!     type baseMgNeutronDatabase;
+  !!     PN P0;                        // or P1
+  !!   }
   !!
   !! Public Members:
   !!   mats       -> array containing all defined materials (by matIdx)
+  !!   majorant   -> majorant xs for delta tracking
   !!   activeMats -> list of matIdxs of materials active in the problem
+  !!   nG         -> number of energy groups
   !!
   !! Interface:
   !!   nuclearDatabase interface
   !!
   type, public, extends(mgNeutronDatabase) :: baseMgNeutronDatabase
     type(baseMgNeutronMaterial), dimension(:), pointer :: mats => null()
+    real(defReal), dimension(:), allocatable           :: majorant
     integer(shortInt), dimension(:), allocatable       :: activeMats
     integer(shortInt)                                  :: nG = 0
 
@@ -75,12 +84,6 @@ contains
   !! Note:
   !!   DOES NOT check if particle is MG. Will refer to G in the particle and give error
   !!   if the value is invalid
-  !!
-  !! Sample input dictionary:
-  !!   nucData {
-  !!     type baseMgNeutronDatabase;
-  !!     PN P0;                        // or P1
-  !!   }
   !!
   function getTransMatXS(self, p, matIdx) result(xs)
     class(baseMgNeutronDatabase), intent(inout) :: self
@@ -124,13 +127,16 @@ contains
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)                 :: p
     real(defReal)                               :: xs
-    integer(shortInt)                           :: i, idx
+    character(100), parameter :: Here = ' getMajorantXS (baseMgNeutronDatabase_class.f90)'
 
-    xs = ZERO
-    do i=1,size(self % activeMats)
-      idx = self % activeMats(i)
-      xs = max(xs, self % getTotalMatXS(p, idx))
-    end do
+    ! Verify bounds
+    if (p % G < 1 .or. self % nG < p % G) then
+      call fatalError(Here,'Invalid group number: '//numToChar(p % G)// &
+                           ' Data has only: ' // numToChar(self % nG))
+      xs = ZERO ! Avoid warning
+    end if
+
+    xs = self % majorant(p % G)
 
   end function getMajorantXS
 
@@ -246,11 +252,13 @@ contains
     class(nuclearDatabase), pointer,intent(in)         :: ptr
     logical(defBool), intent(in), optional             :: silent
     logical(defBool)                                   :: loud
-    integer(shortInt)                                  :: i, nMat
+    integer(shortInt)                                  :: i, nMat, g
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
     character(nameLen)                                 :: scatterKey
     type(dictionary)                                   :: tempDict
+    real(defReal)                                      :: xs
+    integer(shortInt), parameter                       :: TOTAL_XS = 1
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -290,10 +298,20 @@ contains
 
     ! Load and verify number of groups
     self % nG = self % mats(1) % nGroups()
-    do i=2,nMat
+    do i = 2,nMat
       if(self % nG /= self % mats(i) % nGroups()) then
         call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
       end if
+    end do
+
+    ! Precalculate majorant xs for delta tracking
+    allocate (self % majorant(self % nG))
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,nMat
+        xs = max(xs, self % mats(i) % data(TOTAL_XS, g))
+      end do
+      self % majorant(g) = xs
     end do
 
   end subroutine init
