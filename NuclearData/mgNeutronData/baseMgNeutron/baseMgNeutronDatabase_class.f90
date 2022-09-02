@@ -252,13 +252,11 @@ contains
     class(nuclearDatabase), pointer,intent(in)         :: ptr
     logical(defBool), intent(in), optional             :: silent
     logical(defBool)                                   :: loud
-    integer(shortInt)                                  :: i, nMat, g
+    integer(shortInt)                                  :: i, nMat
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
     character(nameLen)                                 :: scatterKey
     type(dictionary)                                   :: tempDict
-    real(defReal)                                      :: xs
-    integer(shortInt), parameter                       :: TOTAL_XS = 1
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -304,16 +302,6 @@ contains
       end if
     end do
 
-    ! Precalculate majorant xs for delta tracking
-    allocate (self % majorant(self % nG))
-    do g = 1,self % nG
-      xs = ZERO
-      do i = 1,nMat
-        xs = max(xs, self % mats(i) % data(TOTAL_XS, g))
-      end do
-      self % majorant(g) = xs
-    end do
-
   end subroutine init
 
   !!
@@ -324,9 +312,23 @@ contains
   subroutine activate(self, activeMat)
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
+    integer(shortInt)                           :: g, i, idx
+    real(defReal)                               :: xs
+    integer(shortInt), parameter                :: TOTAL_XS = 1
 
     if(allocated(self % activeMats)) deallocate(self % activeMats)
     self % activeMats = activeMat
+
+    ! Precalculate majorant xs for delta tracking
+    allocate (self % majorant(self % nG))
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,size(self % activeMats)
+        idx = self % activeMats(i)
+        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
+      end do
+      self % majorant(g) = xs
+    end do
 
   end subroutine activate
 
