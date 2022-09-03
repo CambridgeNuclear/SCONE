@@ -1,11 +1,12 @@
 type randomRayPhysicsPackage; 
 
-pop      650;
-active   1280; 
-inactive 1038;
-dead     12.56; 
-termination 628.12; 
-plot 1;
+pop      1750; //650;
+active   325; //300; 
+inactive 1000; //1038;
+dead     20; //12.56; 
+termination 220; //628.12; 
+plot 0;
+cache 1;
 XSdata   mg; 
 dataType mg;
 outputFile C5G7_TRRM ;
