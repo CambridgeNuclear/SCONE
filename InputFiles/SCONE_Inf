@@ -57,7 +57,7 @@ geometry {
 nuclearData {
 
   handles { 
-     ce { type aceNeutronDatabase; aceLibrary /home/ajb343/Cases/U235_Compr/XSDAT/JEF311.aceXS;}
+     ce { type aceNeutronDatabase; aceLibrary /home/mak60/Cases/U235_Compr/XSDAT/JEF311.aceXS;}
      mg { type baseMgNeutronDatabase; PN P0;} 
   }
   
