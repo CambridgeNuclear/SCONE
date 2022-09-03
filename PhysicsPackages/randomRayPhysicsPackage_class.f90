@@ -617,7 +617,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), intent(inout)                      :: r
     integer(longInt), intent(out)                 :: ints
-    integer(shortInt)                             :: matIdx, g, cIdx, idx, event
+    integer(shortInt)                             :: matIdx, g, cIdx, idx, event, matIdx0
     real(defReal)                                 :: attenuate, length, delta, total
     logical(defBool)                              :: hitVacuum
     type(distCache)                               :: cache
@@ -625,13 +625,22 @@ contains
     class(materialHandle), pointer                :: matPtr
     
     ints = 0
+    matIdx0 = 0
     do while (r % length < self % termination)
 
       ! Get material and cell the ray is moving through
       matIdx  = r % coords % matIdx
       cIdx    = r % coords % uniqueID
-      matPtr  => self % mgData % getMaterial(matIdx)
-      mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+      if (matIdx0 /= matIdx) then
+        matPtr  => self % mgData % getMaterial(matIdx)
+        mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+        
+        ! Cache total cross section
+        do g = 1, self % nG
+          r % total(g) = mat % getTotalXS(g, self % rand)
+        end do
+      end if
+      matIdx0 = matIdx
 
       ! Remember new cell positions
       if (.NOT. self % cellFound(cIdx)) then
@@ -660,8 +669,9 @@ contains
  
       do g = 1, self % nG
         
-        total = mat % getTotalXS(g, self % rand)
-            
+        !total = mat % getTotalXS(g, self % rand)
+        total = r % total(g)    
+
         ! Calculate delta
         idx = (cIdx - 1) * self % nG + g
         attenuate = exponential(total * length)
@@ -965,6 +975,9 @@ contains
     name = 'Total_Transport_Time'
     call out % printValue(self % time_transport,name)
     
+    name = 'Clock_Time'
+    call out % printValue(timerTime(self % timerMain),name)
+
     ! Print keff
     name = 'keff'
     call out % startBlock(name)

@@ -34,6 +34,7 @@ module ray_class
 
     ! Ray tracking data
     real(defReal), dimension(:), allocatable :: flux               ! Angular flux in all energy groups
+    real(defReal), dimension(:), allocatable :: total              ! Total XS in all energy groups
     real(defReal)                            :: length   = ZERO    ! Total distance that the ray has traversed
     logical(defBool)                         :: isActive = .FALSE. ! Is the ray scoring to scalar flux? 
 
@@ -95,9 +96,10 @@ contains
     if (ng < 1) call fatalError(Here,'Must have one or more energy groups')
 
     if (.NOT. allocated(self % flux)) allocate(self % flux(self % ng))
+    if (.NOT. allocated(self % total)) allocate(self % total(self % ng))
 
     self % length   = ZERO
-    self % flux     = ZERO
+    self % total    = ZERO
     self % isActive = .FALSE.
 
   end subroutine build
@@ -109,6 +111,7 @@ contains
     class(ray), intent(inout) :: self
 
     if (allocated(self % flux)) deallocate(self % flux)
+    if (allocated(self % total)) deallocate(self % total)
     self % ng = 0
     self % length = ZERO
     self % isActive = .FALSE.
@@ -359,6 +362,7 @@ contains
     class(ray), intent(in) :: self
 
     if (allocated(self % flux)) print *, self % flux
+    if (allocated(self % total)) print *, self % total
     print *, self % ng
     print *, self % coords % matIdx
 
