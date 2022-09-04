@@ -634,13 +634,13 @@ contains
       if (matIdx0 /= matIdx) then
         matPtr  => self % mgData % getMaterial(matIdx)
         mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+        matIdx0 = matIdx
         
         ! Cache total cross section
         do g = 1, self % nG
           r % total(g) = mat % getTotalXS(g, self % rand)
         end do
       end if
-      matIdx0 = matIdx
 
       ! Remember new cell positions
       if (.NOT. self % cellFound(cIdx)) then
@@ -669,7 +669,6 @@ contains
  
       do g = 1, self % nG
         
-        !total = mat % getTotalXS(g, self % rand)
         total = r % total(g)    
 
         ! Calculate delta
@@ -755,56 +754,105 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     real(defReal)                                 :: ONE_KEFF
     real(defReal), save                           :: scatter, fission
-    real(defReal), save                           :: nuFission, total, chi, scatterXS
-    integer(shortInt), save                       :: matIdx, g, gIn, idx, idx0
+    real(defReal), dimension(:), pointer, save    :: nuFission, total, chi 
+    real(defReal), dimension(:,:), pointer, save  :: scatterXS
+    integer(shortInt), save                       :: matIdx, matIdx0, g, gIn 
+    integer(shortInt), save                       :: baseIdx, idx, idx0
     integer(shortInt)                             :: cIdx
     class(baseMgNeutronMaterial), pointer, save   :: mat
     class(materialHandle), pointer, save          :: matPtr
-    !$omp threadprivate(mat, matPtr, scatter, fission, scatterXS, nuFission, total, chi, matIdx, g, gIn, idx, idx0)
+    logical(defBool), save                        :: isFiss
+    !$omp threadprivate(mat, matPtr, scatter, fission, scatterXS, isFiss, &
+    !$omp& nuFission, total, chi, matIdx, g, gIn, idx, idx0, matIdx0, baseIdx)
 
     ONE_KEFF = ONE / self % keff
 
-    !$omp parallel do schedule(static) 
+    !$omp parallel
+    matIdx0   = 0 
+    matPtr    => null()
+    mat       => null()
+    scatterXS => null()
+    total     => null()
+    nuFission => null()
+    chi       => null()
+    isFiss    = .FALSE.
+    !$omp do schedule(static) 
     do cIdx = 1, self % nCells
 
       ! Identify material
       matIdx  =  self % geom % geom % graph % getMatFromUID(cIdx) 
-      matPtr  => self % mgData % getMaterial(matIdx)
-      mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+      ! Update cross sections
+      if (matIdx /= matIdx0) then
+        matPtr  => self % mgData % getMaterial(matIdx)
+        mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+        matIdx0 = matIdx
+        scatterXS =>  mat % getScatterPtr()
+        total     =>  mat % getTotalPtr()
+        isFiss    = mat % isFissile()
+        if (isFiss) then
+          nuFission =>  mat % getNuFissionPtr()
+          chi       =>  mat % getChiPtr()
+        end if
+      end if
 
-      do g = 1, self % nG
+      baseIdx = self % ng * (cIdx - 1)
 
-        ! Calculate fission and scattering source
-        scatter = ZERO
-        fission = ZERO
+      ! There is a scattering and fission source
+      if (isFiss) then
+        do g = 1, self % nG
 
-        ! Sum contributions from all energies
-        do gIn = 1, self % nG
+          ! Calculate fission and scattering source
+          scatter = ZERO
+          fission = ZERO
+
+          ! Sum contributions from all energies
+          do gIn = 1, self % nG
       
-          ! Input index
-          idx0 = self % nG * (cIdx - 1) + gIn
+            ! Input index
+            idx0 = baseIdx + gIn
 
-          scatterXS = mat % getScatterProdXS(gIn, g, self % rand)
-          nuFission = mat % getNuFissionXS(gIn, self % rand)
-
-          fission = fission + self % prevFlux(idx0) * nuFission
-          scatter = scatter + self % prevFlux(idx0) * scatterXS
+            fission = fission + self % prevFlux(idx0) * nuFission(gIn)
+            scatter = scatter + self % prevFlux(idx0) * scatterXS(g,gIn)
           
+          end do
+
+          ! Output index
+          idx = baseIdx + g
+
+          self % source(idx) = chi(g) * fission * ONE_KEFF + scatter
+          self % source(idx) = self % source(idx) / total(g)
+
         end do
 
-        ! Output index
-        idx = self % nG * (cIdx - 1) + g
+      ! There is only a scattering source
+      else
+        do g = 1, self % nG
 
-        total = mat % getTotalXS(g, self % rand)
-        chi   = mat % getChi(g, self % rand)
-    
-        self % source(idx) = chi * fission * ONE_KEFF + scatter
-        self % source(idx) = self % source(idx) / total
+          ! Calculate scattering source
+          scatter = ZERO
 
-      end do
+          ! Sum contributions from all energies
+          do gIn = 1, self % nG
+      
+            ! Input index
+            idx0 = baseIdx + gIn
+
+            scatter = scatter + self % prevFlux(idx0) * scatterXS(g,gIn)
+          
+          end do
+
+          ! Output index
+          idx = baseIdx + g
+
+          self % source(idx) = scatter / total(g)
+
+        end do
+
+    end if
 
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine calculateSources
 
@@ -814,7 +862,8 @@ contains
   subroutine calculateKeff(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
     real(defReal)                                 :: fissionRate, prevFissionRate
-    real(defReal), save                           :: fissLocal, prevFissLocal, nuFission, vol
+    real(defReal), save                           :: fissLocal, prevFissLocal, vol
+    real(defReal), dimension(:), pointer, save    :: nuFission
     integer(shortInt), save                       :: matIdx, g, idx
     integer(shortInt)                             :: cIdx
     class(baseMgNeutronMaterial), pointer, save   :: mat
@@ -830,6 +879,7 @@ contains
       matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
       matPtr => self % mgData % getMaterial(matIdx)
       mat    => baseMgNeutronMaterial_CptrCast(matPtr)
+      if (.NOT. mat % isFissile()) cycle
 
       vol = self % volume(cIdx)
 
@@ -837,14 +887,14 @@ contains
 
       fissLocal = ZERO
       prevFissLocal = ZERO
+      nuFission => mat % getNuFissionPtr()
       do g = 1, self % nG
       
-        nuFission = mat % getNuFissionXS(g, self % rand)
         
         ! Source index
         idx = self % nG * (cIdx - 1) + g
-        fissLocal     = fissLocal     + self % scalarFlux(idx) * nuFission
-        prevFissLocal = prevFissLocal + self % prevFlux(idx) * nuFission
+        fissLocal     = fissLocal     + self % scalarFlux(idx) * nuFission(g)
+        prevFissLocal = prevFissLocal + self % prevFlux(idx) * nuFission(g)
 
       end do
 

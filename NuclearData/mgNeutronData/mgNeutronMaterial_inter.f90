@@ -51,7 +51,7 @@ module mgNeutronMaterial_inter
     procedure(getNuFissionXS), deferred     :: getNuFissionXS
     procedure(getFissionXS), deferred       :: getFissionXS
     procedure(getChi), deferred             :: getChi
-    procedure(getScatterProdXS), deferred   :: getScatterProdXS
+    procedure(getScatterXS), deferred       :: getScatterXS
     procedure                               :: isFissile
     procedure                               :: set
 
@@ -162,7 +162,7 @@ module mgNeutronMaterial_inter
     end function getChi
 
     !!
-    !! Return Macroscopic Scatter Production XSs for ingoing energy Gin and outgoing
+    !! Return Macroscopic Scatter XSs for ingoing energy Gin and outgoing
     !! energy Gout for the material
     !!
     !! Args:
@@ -171,19 +171,19 @@ module mgNeutronMaterial_inter
     !!   rand [inout]   -> Random number generator
     !!
     !! Result:
-    !!   xs -> scatter*production XS
+    !!   xs -> scatter XS
     !!
     !! Errors:
     !!   fatalError if Gin or Gout are out-of-bounds for the stored data
     !!
-    function getScatterProdXS(self, Gin, Gout, rand) result(xs)
+    function getScatterXS(self, Gin, Gout, rand) result(xs)
       import :: mgNeutronMaterial, defReal, shortInt, RNG
       class(mgNeutronMaterial), intent(in) :: self
       integer(shortInt), intent(in)        :: Gin
       integer(shortInt), intent(in)        :: Gout
       class(RNG), intent(inout)            :: rand
       real(defReal)                        :: xs
-    end function getScatterProdXS
+    end function getScatterXS
 
   end interface
 
