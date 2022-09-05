@@ -848,7 +848,7 @@ contains
 
         end do
 
-    end if
+      end if
 
     end do
     !$omp end do
