@@ -126,8 +126,6 @@ contains
       collDat % MT = macroIEScatter
     end if
 
-    !collDat % MT = macroXSs % invert(r)
-
   end subroutine sampleCollision
 
   !!
@@ -140,7 +138,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    ! Do nothing. Should not be called
+    ! Do nothing.
 
   end subroutine implicit
 
@@ -153,8 +151,11 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    character(100), parameter :: Here = 'elastic (IMCMGstd_class.f90)'
 
     ! Do nothing. Should not be called
+
+    call fatalError(Here, "elastic subroutine should not be called")
 
   end subroutine elastic
 
@@ -213,8 +214,11 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    character(100), parameter :: Here = 'fission (IMCMGstd_class.f90)'
 
     ! Do nothing. Should not be called
+
+    call fatalError(Here, "elastic subroutine should not be called")
 
   end subroutine fission
 
