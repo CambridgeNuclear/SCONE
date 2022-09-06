@@ -16,6 +16,7 @@ module physicsPackageFactory_func
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
   use IMCPhysicsPackage_class,         only : IMCPhysicsPackage
+  use ISMCPhysicsPackage_class,        only : ISMCPhysicsPackage
 
   implicit none
   private
@@ -28,6 +29,7 @@ module physicsPackageFactory_func
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
                                                                              'IMCPhysicsPackage        ',&
+                                                                             'ISMCPhysicsPackage       ',&
                                                                              'vizPhysicsPackage        ',&
                                                                              'rayVolPhysicsPackage     ']
 
@@ -80,6 +82,13 @@ contains
             call new % init(dict)
         end select
 
+      case('ISMCPhysicsPackage')
+        ! Allocate and initialise
+        allocate( ISMCPhysicsPackage :: new)
+        select type(new)
+          type is (ISMCPhysicsPackage)
+            call new % init(dict)
+        end select
 
       case('vizPhysicsPackage')
         ! Allocate and initialise
