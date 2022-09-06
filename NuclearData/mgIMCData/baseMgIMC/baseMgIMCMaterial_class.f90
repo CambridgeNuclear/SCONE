@@ -85,6 +85,7 @@ module baseMgIMCMaterial_class
     procedure :: getFleck
     procedure :: initProps
     procedure :: getTemp
+    procedure :: getEnergyDens
     procedure :: setType
 
     procedure, private :: updateMatIMC
@@ -505,6 +506,17 @@ contains
     temp = self % T
 
   end function getTemp
+
+  !!
+  !! Return energy per unit volume of material
+  !!
+  function getEnergyDens(self) result(energyDens)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal)                           :: energyDens
+
+    energyDens = poly_eval(self % updateEqn, self % T)
+
+  end function getEnergyDens
 
   !!
   !! Set the calculation type to be used

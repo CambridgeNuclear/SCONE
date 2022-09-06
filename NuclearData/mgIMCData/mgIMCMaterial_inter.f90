@@ -48,6 +48,7 @@ module mgIMCMaterial_inter
     procedure(getFleck), deferred           :: getFleck
     procedure(initProps), deferred          :: initProps
     procedure(getTemp), deferred            :: getTemp
+    procedure(getEnergyDens), deferred      :: getEnergyDens
     procedure(setType), deferred            :: setType
 
   end type mgIMCMaterial
@@ -148,6 +149,15 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(inout) :: self
       real(defReal)                       :: temp
     end function getTemp
+
+    !!
+    !! Return energy per unit volume of material
+    !!
+    function getEnergyDens(self) result(energyDens)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial), intent(inout) :: self
+      real(defReal)                       :: energyDens
+    end function getEnergyDens
 
     !!
     !! Set the calculation type to be used
