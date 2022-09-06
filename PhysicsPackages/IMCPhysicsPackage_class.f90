@@ -162,12 +162,6 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    ! Attach initial properties to material classes
-    do j=1, self % nMat 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      call mat % initProps(self % deltaT, mm_matTemp(j), mm_matVol(j))
-    end do
-
     allocate(tallyEnergy(self % nMat))
 
     ! Generate initial source distribution
@@ -348,8 +342,9 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    integer(shortInt)                               :: i
+    integer(shortInt)                               :: i, j
     character(nameLen), dimension(:), allocatable   :: mats
+    class(IMCMaterial), pointer                     :: mat
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -447,6 +442,13 @@ contains
     allocate(mats(self % nMat))
     do i=1, self % nMat
       mats(i) = mm_matName(i)
+    end do
+
+    ! Attach initial properties to material classes
+    do j=1, self % nMat 
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+      call mat % initProps(self % deltaT, mm_matTemp(j), mm_matVol(j))
+      call mat % setType(IMC)
     end do
 
     ! Initialise imcWeight tally attachment

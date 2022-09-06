@@ -85,6 +85,7 @@ module baseMgIMCMaterial_class
     procedure :: getFleck
     procedure :: initProps
     procedure :: getTemp
+    procedure :: setType
 
     procedure, private :: updateMatIMC
     procedure, private :: updateMatISMC
@@ -504,5 +505,24 @@ contains
     temp = self % T
 
   end function getTemp
+
+  !!
+  !! Set the calculation type to be used
+  !!
+  !! Current options:
+  !!   IMC
+  !!   ISMC
+  !!
+  !! Errors:
+  !!   Unrecognised option
+  !!
+  subroutine setType(self, calcType)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    integer(shortInt), intent(in)           :: calcType
+    character(100), parameter               :: Here = 'setType (baseMgIMCMaterial_class.f90)'
+
+    self % calcType = calcType
+
+  end subroutine setType
 
 end module baseMgIMCMaterial_class

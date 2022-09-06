@@ -48,6 +48,7 @@ module mgIMCMaterial_inter
     procedure(getFleck), deferred           :: getFleck
     procedure(initProps), deferred          :: initProps
     procedure(getTemp), deferred            :: getTemp
+    procedure(setType), deferred            :: setType
 
   end type mgIMCMaterial
 
@@ -147,6 +148,22 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(inout) :: self
       real(defReal)                       :: temp
     end function getTemp
+
+    !!
+    !! Set the calculation type to be used
+    !!
+    !! Current options:
+    !!   IMC
+    !!   ISMC
+    !!
+    !! Errors:
+    !!   Unrecognised option
+    !!
+    subroutine setType(self, calcType)
+      import :: mgIMCMaterial, shortInt
+      class(mgIMCMaterial), intent(inout) :: self
+      integer(shortInt), intent(in)       :: calcType
+    end subroutine setType
 
 
   end interface
