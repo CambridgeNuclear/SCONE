@@ -36,23 +36,20 @@ module ISMCSource_class
   !! Interface:
   !!   source_inter Interface
   !!
-  !! SAMPLE INPUT:
-  !!   ismcSource { type ISMCSource; nParticles 100; }
-  !!
-  type, public,extends(source) :: imcSource
+  type, public,extends(source) :: ismcSource
     private
     logical(defBool)            :: isMG   = .true.
     real(defReal), dimension(3) :: bottom = ZERO
     real(defReal), dimension(3) :: top    = ZERO
     real(defReal)               :: E      = ZERO
     integer(shortInt)           :: G      = 0
-    integer(shortInt)           :: nParticles = 10
+    integer(shortInt)           :: N      = 10
     real(defReal)               :: boundingVol = ZERO
   contains
     procedure :: init
     procedure :: sampleParticle
     procedure :: kill
-  end type imcSource
+  end type ismcSource
 
 contains
 
@@ -62,20 +59,20 @@ contains
   !! See source_inter for details
   !!
   subroutine init(self, dict, geom)
-    class(imcSource), intent(inout)          :: self
+    class(ismcSource), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: type
     real(defReal), dimension(6)              :: bounds
     real(defReal), dimension(3)              :: boundSize
     integer(shortInt)                        :: i, n
-    character(100), parameter :: Here = 'init (imcSource_class.f90)'
+    character(100), parameter :: Here = 'init (ismcSource_class.f90)'
 
     ! Provide geometry info to source
     self % geom => geom
 
     call dict % getOrDefault(self % G, 'G', 1)
-    call dict % getOrDefault(self % nParticles, 'nParticles', 10)
+    call dict % getOrDefault(self % N, 'N', 10)
 
     ! Set bounding region
     bounds = self % geom % bounds()
@@ -101,7 +98,7 @@ contains
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(imcSource), intent(inout)      :: self
+    class(ismcSource), intent(inout)      :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
     class(nuclearDatabase), pointer      :: nucData
@@ -110,7 +107,7 @@ contains
     ! Here, i is a float to allow more precise control of loop
     real(defReal)                        :: mu, phi, i
     integer(shortInt)                    :: matIdx, uniqueID, nucIdx
-    character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
+    character(100), parameter :: Here = 'sampleParticle (ismcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
     nucData => ndReg_getIMCMG()
@@ -160,7 +157,7 @@ contains
       p % G        = self % G
       p % isMG     = .true.
 
-      p % wgt = mat % getEnergyDens() * self % boundingVol / self % nParticles
+      p % wgt = mat % getEnergyDens() * self % boundingVol / self % N
 
 !      ! Don't sample particles from areas of 0 temperature
 !      if( p % wgt == 0 ) then
@@ -183,7 +180,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(imcSource), intent(inout) :: self
+    class(ismcSource), intent(inout) :: self
 
     !call kill_super(self)
 
@@ -192,7 +189,7 @@ contains
     self % top    = ZERO
     self % E      = ZERO
     self % G      = 0
-    self % nParticles = 10
+    self % N      = 10
 
   end subroutine kill
 

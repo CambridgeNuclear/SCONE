@@ -92,7 +92,7 @@ module ISMCPhysicsPackage_class
       ! Note that other physics packages used pointers for these particleDungeons ( => null() )
       ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
     class(source), allocatable     :: inputSource
-    class(source), allocatable     :: IMCSource
+    class(source), allocatable     :: ISMCSource
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -177,25 +177,25 @@ contains
 
 
       ! Check that there are regions of non-zero temperature by summing mat temperatures
-      sumT = 0
-      do j=1, self % nMat
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        sumT = sumT + mat % getTemp()
-      end do
+      !sumT = 0
+      !do j=1, self % nMat
+      !  mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+      !  sumT = sumT + mat % getTemp()
+      !end do
 
       ! Generate ISMC source, only if there are regions with non-zero temperature
-      if(sumT > 0) then
-        call self % IMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
-      end if
+      !if(sumT > 0) then
+      !  call self % ISMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
+      !end if
 
       ! Generate from input source
-      if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
-      end if
+      !if( self % sourceGiven ) then
+      !  call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
+      !end if
 
-      if(self % printSource == 1) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
-      end if
+      !if(self % printSource == 1) then
+      !  call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+      !end if
 
       call tally % reportCycleStart(self % thisCycle)
 
@@ -334,7 +334,7 @@ contains
     class(ISMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -418,9 +418,12 @@ contains
       call new_source(self % inputSource, tempDict, self % geom)
       self % sourceGiven = .true.
     end if
-    tempDict => dict % getDictPtr('imcSource')
-    call new_source(self % IMCSource, tempDict, self % geom)
-    call tempDict % get(self % imcSourceN, 'nParticles')
+
+    ! Initialise ISMC source
+    call locDict1 % init(2)
+    call locDict1 % store('type', 'ismcSource')
+    call locDict1 % store('N', self % pop)
+    call new_source(self % ISMCSource, locDict1, self % geom)
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
@@ -452,18 +455,18 @@ contains
     end do
 
     ! Initialise imcWeight tally attachment
-    call locDict1 % init(1)
-    call locDict2 % init(2)
+    call locDict2 % init(1)
     call locDict3 % init(2)
+    call locDict4 % init(2)
 
-    call locDict3 % store('type','materialMap')
-    call locDict3 % store('materials', [mats])
-    call locDict2 % store('type','imcWeightClerk')
-    call locDict2 % store('map', locDict3)
-    call locDict1 % store('imcWeight', locDict2)
+    call locDict4 % store('type','materialMap')
+    call locDict4 % store('materials', [mats])
+    call locDict3 % store('type','imcWeightClerk')
+    call locDict3 % store('map', locDict4)
+    call locDict2 % store('imcWeight', locDict3)
 
     allocate(self % imcWeightAtch)
-    call self % imcWeightAtch % init(locDict1)
+    call self % imcWeightAtch % init(locDict2)
 
     call self % tally % push(self % imcWeightAtch)
 
