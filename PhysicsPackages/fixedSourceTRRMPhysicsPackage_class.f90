@@ -145,8 +145,8 @@ module fixedSourceTRRMPhysicsPackage_class
     integer(shortInt)                     :: geomIdx     = 0
     real(defReal), dimension(3)           :: top         = ZERO
     real(defReal), dimension(3)           :: bottom      = ZERO
-    type(RNG)                             :: rand
     class(baseMgNeutronDatabase), pointer :: mgData      => null()
+    type(RNG)                             :: rand
     integer(shortInt)                     :: nG          = 0
     integer(shortInt)                     :: nCells      = 0
     real(defReal)                         :: lengthPerIt = ZERO
@@ -685,6 +685,7 @@ contains
     type(distCache)                                     :: cache
     class(baseMgNeutronMaterial), pointer               :: mat
     class(materialHandle), pointer                      :: matPtr
+    character(100), parameter :: Here = 'transportSweep (fixedSourceTRRMPhysicsPackage_class.f90)'
     
     ints = 0
     matIdx0 = 0
@@ -697,6 +698,8 @@ contains
         matPtr  => self % mgData % getMaterial(matIdx)
         mat     => baseMgNeutronMaterial_CptrCast(matPtr)
         matIdx0 = matIdx
+
+        if (matIdx <= 0) call fatalError(Here,'Ray escaped outside!')
         
         ! Cache total cross section
         do g = 1, self % nG
@@ -878,7 +881,7 @@ contains
           ! Output index
           idx = baseIdx + g
 
-          self % source(idx) = chi(g) * fission + scatter
+          self % source(idx) = chi(g) * fission + scatter + self % fixedSource(idx)
           self % source(idx) = self % source(idx) / total(g)
 
         end do
@@ -903,7 +906,7 @@ contains
           ! Output index
           idx = baseIdx + g
 
-          self % source(idx) = scatter / total(g)
+          self % source(idx) = (scatter + self % fixedSource(idx)) / total(g)
 
         end do
 
