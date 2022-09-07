@@ -89,6 +89,7 @@ module ISMCPhysicsPackage_class
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle
     type(particleDungeon), allocatable :: nextCycle
+    type(particleDungeon), allocatable :: matPhotons
       ! Note that other physics packages used pointers for these particleDungeons ( => null() )
       ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
     class(source), allocatable     :: inputSource
@@ -169,6 +170,9 @@ contains
     !  call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
     !end if
 
+    ! Generate initial material photons
+    call self % ISMCSource % generate(self % matPhotons, self % pop, p % pRNG)
+
     do i=1,N_cycles
 
       ! Store photons remaining from previous cycle
@@ -201,7 +205,7 @@ contains
 
       gen: do
         ! Obtain paticle from dungeon
-        call self % thisCycle % release(p)
+        call self % matPhotons % release(p)
         call self % geom % placeCoord(p % coords)
 
         ! Assign particle time
@@ -228,9 +232,10 @@ contains
                 exit history
             end if
 
-            call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
-
-            if(p % isDead) exit history
+            if (p % type == P_PHOTON) then
+              call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
+              if(p % isDead) exit history
+            end if
 
           end do history
 
@@ -472,9 +477,11 @@ contains
 
     ! Size particle dungeon
     allocate(self % thisCycle)
-    call self % thisCycle % init(15 * self % pop)
+    call self % thisCycle % init(self % pop)
     allocate(self % nextCycle)
-    call self % nextCycle % init(10 * self % pop)
+    call self % nextCycle % init(self % pop)
+    allocate(self % matPhotons)
+    call self % matPhotons % init(self % pop)
 
     call self % printSettings()
 

@@ -32,7 +32,8 @@ module transportOperatorIMC_class
   !!
   type, public, extends(transportOperator) :: transportOperatorIMC
   contains
-    procedure :: transit => imcTracking
+    procedure          :: transit => imcTracking
+    procedure, private :: materialTransform
   end type transportOperatorIMC
 
 contains
@@ -51,11 +52,17 @@ contains
 
     IMCLoop:do
 
+      ! Deal with material particles, only relevant for ISMC
+      if(p % getType() == P_MATERIAL_MG) then
+        call self % materialTransform(p)
+        if(p % fate == TIME_FATE) exit IMCLoop
+      end if
+
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to move particle before potential collision
-      dColl = -log( p% pRNG % get() ) * majorant_inv
+      dColl = -log( p % pRNG % get() ) * majorant_inv
 
       ! Determine which distance to move particle
       if (dColl < dTime) then
@@ -97,6 +104,34 @@ contains
 
     call tally % reportTrans(p)
   end subroutine imcTracking
+
+
+  !!
+  !! Transform material particles into radiation photons with
+  !! probability per unit time of c*sigma_a*fleck*eta
+  !!
+  !! Used only for ISMC, not for standard IMC
+  !!
+  subroutine materialTransform(self, p)
+    class(transportOperatorIMC), intent(inout) :: self
+    class(particle), intent(inout)             :: p
+    character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
+ 
+    ! Confirm that time = 0
+    !if (p % time .ne. 0) call fatalError(Here, 'Material particle should have time = 0')
+
+    ! Sample time to transform into radiation photon
+    p % time = -log( p % pRNG % get() )      !! Placeholder eqn.
+
+    ! Exit loop if particle remains material until end of time step
+    if (p % time >= p % timeMax) then
+      p % fate = TIME_FATE
+      p % time = p % timeMax
+    else
+      p % type = P_PHOTON_MG
+    end if
+
+  end subroutine materialTransform
 
 
 end module transportOperatorIMC_class
