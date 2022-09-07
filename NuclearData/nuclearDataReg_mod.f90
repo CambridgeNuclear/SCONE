@@ -54,7 +54,7 @@
 module nuclearDataReg_mod
 
   use numPrecision
-  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG
+  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG, P_MATERIAL_MG
   use genericProcedures,     only : fatalError, numToChar, printParticleType
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
@@ -511,6 +511,10 @@ contains
         ptr => getNeutronMG()
 
       case(P_PHOTON_MG)
+        ptr => getIMCMG()
+
+      case(P_MATERIAL_MG)
+        ! Currently only used for ISMC so point to same database
         ptr => getIMCMG()
 
       case default

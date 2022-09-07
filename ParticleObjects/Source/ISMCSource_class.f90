@@ -7,7 +7,7 @@ module ISMCSource_class
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
 
-  use particle_class,          only : particleState, P_PHOTON
+  use particle_class,          only : particleState, P_MATERIAL
   use particleDungeon_class,   only : particleDungeon
   use source_inter,            only : source, kill_super => kill
 
@@ -151,7 +151,7 @@ contains
       p % matIdx   = matIdx
       p % uniqueID = uniqueID
       p % time     = ZERO
-      p % type     = P_PHOTON
+      p % type     = P_MATERIAL
       p % r        = r
       p % dir      = dir
       p % G        = self % G

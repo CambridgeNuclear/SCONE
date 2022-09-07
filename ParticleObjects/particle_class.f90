@@ -13,8 +13,9 @@ module particle_class
   !!
   !! Particle types paramethers
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 1,&
-                                         P_PHOTON  = 2
+  integer(shortInt), parameter,public :: P_NEUTRON  = 1,&
+                                         P_PHOTON   = 2,&
+                                         P_MATERIAL = 3
 
   !!
   !! Public particle type procedures
@@ -405,7 +406,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG
+  !!   P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG, P_MATERIAL_MG
   !!
   !! Errors:
   !!   None
@@ -414,12 +415,19 @@ contains
     class(particle), intent(in) :: self
     integer(shortInt)           :: type
 
-    if (self % type == P_PHOTON) then
+    if (self % type == P_NEUTRON) then
+      if (self % isMG) then
+        type = P_NEUTRON_MG
+      else
+        type = P_NEUTRON_CE
+      end if
+
+    else if (self % type == P_PHOTON) then
       type = P_PHOTON_MG
-    else if (self % isMG) then
-      type = P_NEUTRON_MG
+
     else
-      type = P_NEUTRON_CE
+      type = P_MATERIAL_MG
+
     end if
 
   end function getType
@@ -716,6 +724,7 @@ contains
     ! Check against particles types
     isValid = isValid .or. type == P_NEUTRON
     isValid = isValid .or. type == P_PHOTON
+    isValid = isValid .or. type == P_MATERIAL
 
   end function verifyType
 
@@ -732,6 +741,9 @@ contains
 
       case(P_PHOTON)
         name = 'Photon'
+
+      case(P_MATERIAL)
+        name = 'Material'
 
       case default
         name = 'INVALID PARTICLE TYPE'
