@@ -83,6 +83,7 @@ module particleDungeon_class
     procedure  :: isEmpty
     procedure  :: normWeight
     procedure  :: normSize
+    procedure  :: reduceSize
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
@@ -346,6 +347,74 @@ contains
     end if
 
   end subroutine normSize
+
+  !!
+  !! Reduce size of particle dungeon to a size N, while maintaining total weight
+  !! and reducing teleportation error
+  !!
+  !! Rather than simply calling normSize(N) followed by normWeight(prevWeight), this
+  !! subroutine combines 2 random particles of the same type into a single particle,
+  !! with a new position based on a weighted average of the previous positions
+  !!
+  !! Finding the nearest particle would be better but much more computationally intensive,
+  !! may be doable in parallel
+  !!
+  subroutine reduceSize(self, N, rand)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: N
+    class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: excessP, randIdx1, randIdx2, loops
+    type(particle)                        :: p1, p2
+    real(defReal), dimension(3)           :: rNew
+    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+
+    ! Protect against invalid N
+    if( N > self % pop) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greather then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Calculate excess particles to be removed
+    excessP = self % pop - N
+
+    reduce:do
+
+      ! Obtain random particles from dungeon
+      randIdx1 = nint(rand % get() * self % pop)
+      p1 = self % prisoners(randIdx1)
+
+      ! Obtain random particle of the same type
+      sample:do
+        loops = 0
+        randIdx2 = nint(rand % get() * self % pop)
+        p2 = self % prisoners(randIdx2)
+        if(p2 % type == p1 % type) exit sample
+        ! Protect against infinite loop
+        if(loops >= self % pop) call fatalError(Here, 'Only single particle found of type ' &
+                                                       //numToChar(type))
+        loops = loops + 1
+      end do sample
+
+      ! Combine positions and weights
+      rNew = (p1 % rGlobal()*p1 % w+p2 % rGlobal()*p2 % w) / (p1 % w+p2 % w)
+      call p1 % teleport(rNew)
+      p1 % w = p1 % w + p2 % w
+      self % prisoners(randIdx1) = p1
+
+      ! Overwrite p2 and reduce size
+      call self % replace(self % prisoners(self % pop), randIdx2)
+      self % pop = self % pop - 1
+
+      if(self % pop == N) exit reduce
+
+      if(self % pop < N) call fatalError(Here, 'Uh oh, dungeon size somehow went below target')
+
+    end do reduce
+
+  end subroutine reduceSize
+
 
   !!
   !! Kill or particles in the dungeon
