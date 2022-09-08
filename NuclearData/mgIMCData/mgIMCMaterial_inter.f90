@@ -46,6 +46,7 @@ module mgIMCMaterial_inter
     procedure(updateMat), deferred          :: updateMat
     procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
+    procedure(getEta), deferred             :: getEta
     procedure(initProps), deferred          :: initProps
     procedure(getTemp), deferred            :: getTemp
     procedure(getEnergyDens), deferred      :: getEnergyDens
@@ -128,6 +129,17 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(in) :: self
       real(defReal)                    :: fleck
     end function getFleck
+
+    !!
+    !! Return eta = aT**4/U_m
+    !!
+    !! Currently only used in transportOperatorIMC_class.f90 for ISMC calculations
+    !!
+    function getEta(self) result(eta)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial),intent(in) :: self
+      real(defReal)                   :: eta
+    end function getEta
 
     !!
     !! Store deltaT in material class and set initial material properties

@@ -68,7 +68,7 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     real(defReal),dimension(:), allocatable   :: cv, updateEqn, sigmaEqn
     class(multiScatterMG), allocatable        :: scatter
-    real(defReal)                             :: T, fleck, deltaT, sigmaP, matEnergy, volume
+    real(defReal)                             :: T, fleck, eta, deltaT, sigmaP, matEnergy, volume
     integer(shortInt)                         :: calcType
 
   contains
@@ -83,6 +83,7 @@ module baseMgIMCMaterial_class
     procedure :: updateMat
     procedure :: getEmittedRad
     procedure :: getFleck
+    procedure :: getEta
     procedure :: initProps
     procedure :: getTemp
     procedure :: getEnergyDens
@@ -329,6 +330,30 @@ contains
     logical(defBool), intent(in), optional  :: printUpdate
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
+    select case (self % calcType)
+
+      case(IMC)
+        call self % updateMatIMC(tallyEnergy, printUpdate)
+
+      case(ISMC)
+        call self % updateMatISMC(tallyEnergy, printUpdate)
+
+      case default
+        call fatalError(Here, "Invalid calculation type")
+
+    end select
+
+  end subroutine updateMat
+
+  !!
+  !! Material update for IMC calculation
+  !!
+  subroutine updateMatIMC(self, tallyEnergy, printUpdate)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal), intent(in)               :: tallyEnergy
+    logical(defBool), intent(in), optional  :: printUpdate
+    character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
+
     ! Print current properties
     if (present(printUpdate)) then
       if (printUpdate .eqv. .True.) then
@@ -338,37 +363,6 @@ contains
         print *, "  tallyEnergy =                   ", tallyEnergy
       end if
     end if
-
-    select case (self % calcType)
-
-      case(IMC)
-        call self % updateMatIMC(tallyEnergy)
-
-      case(ISMC)
-        call self % updateMatISMC(tallyEnergy)
-
-      case default
-        call fatalError(Here, "Invalid calculation type")
-
-    end select
-
-    ! Print updated properties 
-    if (present(printUpdate)) then
-      if(printUpdate .eqv. .True.) then
-        print *, "  matEnergy at end of timestep =  ", self % matEnergy
-        print *, "  T_new =                         ", self % T
-      end if
-    end if
-
-  end subroutine updateMat
-
-  !!
-  !! Material update for IMC calculation
-  !!
-  subroutine updateMatIMC(self, tallyEnergy)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal), intent(in)               :: tallyEnergy
-    character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
 
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
@@ -385,15 +379,24 @@ contains
 
     self % fleck = 1 / (1 + 1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
 
+    ! Print updated properties 
+    if (present(printUpdate)) then
+      if(printUpdate .eqv. .True.) then
+        print *, "  matEnergy at end of timestep =  ", self % matEnergy
+        print *, "  T_new =                         ", self % T
+      end if
+    end if
+
   end subroutine updateMatIMC
 
   !!
   !! Material update for ISMC calculation
   !!
-  subroutine updateMatISMC(self, tallyEnergy)
+  subroutine updateMatISMC(self, tallyEnergy, printUpdate)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal), intent(in)               :: tallyEnergy
-    real(defReal)                           :: beta, eta, zeta
+    real(defReal)                           :: beta, zeta
+    logical(defBool), intent(in), optional  :: printUpdate
 
     ! Update material internal energy
     self % matEnergy = tallyEnergy
@@ -403,12 +406,20 @@ contains
 
     ! Update ISMC equivalent of fleck factor
     beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-    eta  =   radiationConstant * self % T**4 / self % matEnergy
-    zeta = beta - eta
+    self % eta  =   radiationConstant * self % T**4 / self % matEnergy
+    zeta = beta - self % eta
     self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
     ! Update sigmaP
     call self % sigmaFromTemp
+
+    ! Print updated properties 
+    if (present(printUpdate)) then
+      if(printUpdate .eqv. .True.) then
+        print *, "  matEnergy at end of timestep =  ", self % matEnergy
+        print *, "  T_new =                         ", self % T
+      end if
+    end if
 
   end subroutine updateMatISMC
 
@@ -465,6 +476,19 @@ contains
   end function getFleck
 
   !!
+  !! Return eta = aT**4/U_m
+  !!
+  !! Currently only used in transportOperatorIMC_class.f90 for ISMC calculations
+  !!
+  function getEta(self) result(eta)
+    class(baseMgIMCMaterial),intent(in) :: self
+    real(defReal)                       :: eta
+
+    eta = self % eta
+
+  end function getEta
+
+  !!
   !! Store deltaT in material class and set initial material properties
   !!
   !! Can be called from physics package with required arguments, as init does not have access
@@ -494,7 +518,7 @@ contains
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
     self % deltaT = deltaT
 
-    self % calcType = IMC
+    self % eta = 1
 
   end subroutine initProps
 

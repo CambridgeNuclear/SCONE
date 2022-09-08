@@ -23,6 +23,7 @@ module transportOperatorIMC_class
 
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
+  use mgIMCMaterial_inter,        only : mgIMCMaterial, mgIMCMaterial_CptrCast
 
   implicit none
   private
@@ -31,6 +32,7 @@ module transportOperatorIMC_class
   !! Transport operator that moves a particle with IMC tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorIMC
+    class(mgIMCMaterial), pointer, public :: mat    => null()
   contains
     procedure          :: transit => imcTracking
     procedure, private :: materialTransform
@@ -120,13 +122,22 @@ contains
     class(transportOperatorIMC), intent(inout) :: self
     class(particle), intent(inout)             :: p
     type(tallyAdmin), intent(inout)            :: tally
+    real(defReal)                              :: sigmaT, fleck, eta
     character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
  
     ! Confirm that time = 0
     !if (p % time .ne. 0) call fatalError(Here, 'Material particle should have time = 0')
 
+    ! Get and verify material pointer
+    self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
+
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())     !! Should be sigma_a, may need changing when sorting out cross-sections
+    fleck  = self % mat % getFleck()
+    eta    = self % mat % getEta()
+
     ! Sample time to transform into radiation photon
-    p % time = -log( p % pRNG % get() )      !! Placeholder eqn.
+    p % time = -log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
 
     ! Exit loop if particle remains material until end of time step
     if (p % time >= p % timeMax) then
