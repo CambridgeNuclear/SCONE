@@ -6,7 +6,7 @@ module transportOperatorIMC_class
   use universalVariables
 
   use genericProcedures,          only : fatalError, numToChar
-  use particle_class,             only : particle
+  use particle_class,             only : particle, P_PHOTON
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
@@ -48,15 +48,19 @@ contains
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     ! Get majornat XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    !majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
     IMCLoop:do
 
       ! Deal with material particles, only relevant for ISMC
       if(p % getType() == P_MATERIAL_MG) then
-        call self % materialTransform(p)
+        call self % materialTransform(p, tally)
         if(p % fate == TIME_FATE) exit IMCLoop
       end if
+
+      if(p % getType() .ne. P_PHOTON_MG) call fatalError(Here, 'Particle is not MG Photon')
+
+      majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
@@ -112,9 +116,10 @@ contains
   !!
   !! Used only for ISMC, not for standard IMC
   !!
-  subroutine materialTransform(self, p)
+  subroutine materialTransform(self, p, tally)
     class(transportOperatorIMC), intent(inout) :: self
     class(particle), intent(inout)             :: p
+    type(tallyAdmin), intent(inout)            :: tally
     character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
  
     ! Confirm that time = 0
@@ -127,8 +132,10 @@ contains
     if (p % time >= p % timeMax) then
       p % fate = TIME_FATE
       p % time = p % timeMax
+      ! Tally energy for next temperature calculation
+      call tally % reportHist(p)
     else
-      p % type = P_PHOTON_MG
+      p % type = P_PHOTON
     end if
 
   end subroutine materialTransform

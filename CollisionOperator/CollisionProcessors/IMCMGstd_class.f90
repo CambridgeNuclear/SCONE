@@ -101,7 +101,7 @@ contains
 
     ! Verify that particle is MG PHOTON
     if( .not. p % isMG .or. p % type /= P_PHOTON) then
-      call fatalError(Here, 'Supports only MG PHOTON. Was given NEUTRON and/or CE '//printType(p % type))
+      call fatalError(Here, 'Supports only MG PHOTON. Was given NEUTRON or MATERIAL and/or CE '//printType(p % type))
     end if
 
     ! Verify and load nuclear data pointer

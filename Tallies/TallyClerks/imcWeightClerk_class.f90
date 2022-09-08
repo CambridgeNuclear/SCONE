@@ -4,7 +4,7 @@ module imcWeightClerk_class
   use tallyCodes
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
-  use particle_class,             only : particle, particleState
+  use particle_class,             only : particle, particleState, P_MATERIAL
   use outputFile_class,           only : outputFile
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk, kill_super => kill
@@ -216,7 +216,7 @@ contains
     adrr = self % getMemAddress() + binIdx - 1
 
     ! Append to required bin
-    if( p % isDead .and. p % fate /= LEAK_FATE ) then
+    if( p % isDead .and. p % fate /= LEAK_FATE .or. p % type == P_MATERIAL) then
       scoreVal = p % w
       call mem % score(scoreVal, adrr)
     end if

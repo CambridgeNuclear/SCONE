@@ -13,7 +13,7 @@ module ISMCPhysicsPackage_class
                                              timerTime, timerReset, secToChar
 
   ! Particle classes and Random number generator
-  use particle_class,                 only : particle, P_PHOTON
+  use particle_class,                 only : particle, P_PHOTON, P_MATERIAL
   use particleDungeon_class,          only : particleDungeon
   use source_inter,                   only : source
   use RNG_class,                      only : RNG
@@ -165,32 +165,14 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
-    ! Generate initial source distribution
-    !if( self % sourceGiven ) then
-    !  call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
-    !end if
-
     ! Generate initial material photons
-    call self % ISMCSource % generate(self % matPhotons, self % pop, p % pRNG)
+    call self % ISMCSource % generate(self % nextCycle, self % pop, p % pRNG)
 
     do i=1,N_cycles
 
       ! Store photons remaining from previous cycle
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
-
-
-      ! Check that there are regions of non-zero temperature by summing mat temperatures
-      !sumT = 0
-      !do j=1, self % nMat
-      !  mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      !  sumT = sumT + mat % getTemp()
-      !end do
-
-      ! Generate ISMC source, only if there are regions with non-zero temperature
-      !if(sumT > 0) then
-      !  call self % ISMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
-      !end if
 
       ! Generate from input source
       !if( self % sourceGiven ) then
@@ -205,7 +187,7 @@ contains
 
       gen: do
         ! Obtain paticle from dungeon
-        call self % matPhotons % release(p)
+        call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
 
         ! Assign particle time
@@ -222,6 +204,7 @@ contains
 
           ! Transport particle until its death
           history: do
+
             call self % transOp % transport(p, tally, self % thisCycle, self % nextCycle)
             if(p % isDead) exit history
             
@@ -232,15 +215,27 @@ contains
                 exit history
             end if
 
-            if (p % type == P_PHOTON) then
-              call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
-              if(p % isDead) exit history
+            if (p % type == P_MATERIAL) then
+              call fatalError(Here, 'Material particle should not undergo collision')
+            end if
+
+            call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
+
+            ! If absorbed, transform into material
+            if(p % isDead) then
+              p % isDead = .false.
+              p % fate = 0
+              p % type = P_MATERIAL
+              call self % nextCycle % detain(p)
+              exit history
             end if
 
           end do history
 
         ! When dungeon is empty, exit
-        if( self % thisCycle % isEmpty() ) exit gen
+        if( self % thisCycle % isEmpty() ) then
+          exit gen
+        end if
 
       end do gen
 
