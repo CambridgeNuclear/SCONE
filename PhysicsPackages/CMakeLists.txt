@@ -8,5 +8,6 @@ add_sources( ./physicsPackage_inter.f90
              ./rayVolPhysicsPackage_class.f90
 	     ./randomRayPhysicsPackage_class.f90
 	     ./fixedSourceTRRMPhysicsPackage_class.f90
+	     ./adjointRRFSPhysicsPackage_class.f90
              )
              #./dynamPhysicsPackage_class.f90)

@@ -29,7 +29,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 # Add compilers flags
 # The flags set below will be applied to all Fortran files
 #
-set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-unused-dummy-argument -cpp -ftree-vectorizer-verbose=1 -fopt-info-vec-all")
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-unused-dummy-argument -cpp")
 
 # Add extra flags to all Fortran files
 if(COVERAGE)
