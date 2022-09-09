@@ -7,7 +7,7 @@ project(SCONE)
 ####################################################################################################
 # DEFINE COMPILATION OPTIONS
 
-option(BUILD_TESTS "If is set to ON will compile tests" ON)
+option(BUILD_TESTS "If is set to ON will compile tests" OFF)
 option(LTO         "Enables link-time optimisation"     ON)
 option(COVERAGE    "Collect Coverage Info"              OFF)
 option(DEBUG       "Enable extra run-time checks"       OFF)
@@ -29,7 +29,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
 # Add compilers flags
 # The flags set below will be applied to all Fortran files
 #
-set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-unused-dummy-argument -cpp")
+set(CMAKE_Fortran_FLAGS "-std=f2008 -O3 -g -pedantic -Wall -Wno-unused-dummy-argument -cpp -ftree-vectorizer-verbose=1 -fopt-info-vec-all")
 
 # Add extra flags to all Fortran files
 if(COVERAGE)
