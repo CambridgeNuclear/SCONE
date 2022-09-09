@@ -12,31 +12,19 @@ module ray_class
   !!
   !! Ray to be used with Random Ray Method implementations
   !!
-  !! Traverses geometry, accumulating angular flux. Does not have an energy group:
-  !! instead, the ray accumulates flux in all groups simultaneously.
-  !!
-  !! May contain a cross section package which is updated as material is changed.
+  !! Very simple version of a particle, simply used for traversing geometry
   !!
   !! Public Members:
-  !!   flux     -> Angular flux
-  !!   ng       -> Number of energy groups
   !!   coords   -> Position information of the ray
   !!
   type, public :: ray
       
     ! Ray phase space data
     type(coordList)                          :: coords  ! Space/angle co-ordinates
-    integer(shortInt)                        :: ng = 0  ! Number of energy groups
 
     ! Ray processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the ray
     integer(shortInt)          :: geomIdx          ! Index of the geometry used by the ray 
-
-    ! Ray tracking data
-    real(defReal), dimension(:), allocatable :: flux               ! Angular flux in all energy groups
-    real(defReal), dimension(:), allocatable :: total              ! Total XS in all energy groups
-    real(defReal)                            :: length   = ZERO    ! Total distance that the ray has traversed
-    logical(defBool)                         :: isActive = .FALSE. ! Is the ray scoring to scalar flux? 
 
   contains
      ! Build procedures
@@ -62,9 +50,6 @@ module ray_class
     procedure            :: takeAboveGeom
     procedure            :: setMatIdx
     
-    ! Ray movements for MoC
-    procedure            :: prepareToMove
-    
     ! Debug procedures
     procedure            :: display
 
@@ -82,25 +67,13 @@ contains
   !!   dir -> Global direction
   !!   ng  -> Number of energy groups
   !!
-  subroutine build(self, r, dir, ng)
+  subroutine build(self, r, dir)
     class(ray), intent(inout)               :: self
     real(defReal),dimension(3),intent(in)   :: r
     real(defReal),dimension(3),intent(in)   :: dir
-    integer(shortInt),intent(in)            :: ng
     character(nameLen), parameter           :: Here = 'build (ray_class.f90)'
 
     call self % coords % init(r, dir)
-    self % ng = ng
-    self % isActive = .FALSE.
-
-    if (ng < 1) call fatalError(Here,'Must have one or more energy groups')
-
-    if (.NOT. allocated(self % flux)) allocate(self % flux(self % ng))
-    if (.NOT. allocated(self % total)) allocate(self % total(self % ng))
-
-    self % length   = ZERO
-    self % total    = ZERO
-    self % isActive = .FALSE.
 
   end subroutine build
 
@@ -110,11 +83,6 @@ contains
   elemental subroutine kill(self)
     class(ray), intent(inout) :: self
 
-    if (allocated(self % flux)) deallocate(self % flux)
-    if (allocated(self % total)) deallocate(self % total)
-    self % ng = 0
-    self % length = ZERO
-    self % isActive = .FALSE.
     call self % coords % kill()
 
   end subroutine kill
@@ -249,27 +217,6 @@ contains
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
-  !! Accounts for biases that may be introduced by rays moving
-  !! significantly past their dead/termination length during an FSR crossing.
-  !! Determines the maximum distance a ray can move and whether the ray is active.
-  !!
-  subroutine prepareToMove(self, length, dead, termination)
-    class(ray), intent(inout)                  :: self
-    real(defReal), intent(out)                 :: length
-    real(defReal), intent(in)                  :: dead
-    real(defReal), intent(in)                  :: termination
-
-    ! Set maximum flight distance and ensure ray is active
-    if (self % length >= dead) then
-      length = termination - self % length 
-      self % isActive = .TRUE.
-    else
-      length = dead - self % length
-    end if
-
-  end subroutine prepareToMove
-
-  !!
   !! Move the ray above the geometry
   !! NOTE: regionID & matIdx will be reset!!!
   !!
@@ -361,9 +308,6 @@ contains
   subroutine display(self)
     class(ray), intent(in) :: self
 
-    if (allocated(self % flux)) print *, self % flux
-    if (allocated(self % total)) print *, self % total
-    print *, self % ng
     print *, self % coords % matIdx
 
   end subroutine display
