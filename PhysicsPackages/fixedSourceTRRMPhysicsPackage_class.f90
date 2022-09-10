@@ -752,11 +752,8 @@ contains
         !$omp simd
         do g = 1, self % nG
           attenuate(g) = exponential(totVec(g) * length)
-        end do
-
-        !$omp simd
-        do g = 1, self % nG
           delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
+          fluxVec(g) = fluxVec(g) - delta(g)
         end do
 
         ! Accumulate scalar flux
@@ -764,12 +761,6 @@ contains
         do g = 1, self % nG
           !$omp atomic
           scalarVec(g) = scalarVec(g) + delta(g) 
-        end do
-
-        ! Update flux
-        !$omp simd
-        do g = 1, self % nG
-          fluxVec(g) = fluxVec(g) - delta(g)
         end do
 
         ! Accumulate cell volume estimates
@@ -782,19 +773,9 @@ contains
         !$omp simd
         do g = 1, self % nG
           attenuate(g) = exponential(totVec(g) * length)
-        end do
-
-        !$omp simd
-        do g = 1, self % nG
           delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-        end do
-
-        ! Update flux
-        !$omp simd
-        do g = 1, self % nG
           fluxVec(g) = fluxVec(g) - delta(g)
         end do
-      
       end if
 
       ! Check for a vacuum hit
