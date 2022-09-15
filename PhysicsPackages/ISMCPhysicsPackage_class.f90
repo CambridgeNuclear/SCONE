@@ -77,6 +77,7 @@ module ISMCPhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
+    integer(shortInt)  :: limit
     real(defReal)      :: deltaT
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
@@ -146,13 +147,11 @@ contains
     ! Set whether or not to print energy and temperature updates of each material
     !   Printed from updateMat (baseMgIMCMaterial_class.f90), 7 lines of text
     !   per material so recommend to only print when low number of materials
-    if (self % nMat <= 5) then
+    if (self % nMat <= 8) then
       printUpdates = .True.
     else
       printUpdates = .False.
     end if
-
-    N = self % pop
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
@@ -168,16 +167,32 @@ contains
     ! Generate initial material photons
     call self % ISMCSource % generate(self % nextCycle, self % pop, p % pRNG)
 
+    open(unit = 10, file = 'particles.txt')
+
     do i=1,N_cycles
+
+      N = 0
 
       ! Store photons remaining from previous cycle
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
+      !call self % thisCycle % printToFile('particles')
+      !write(10, '(8A)') '0.0   0.0   0.0   0.0'
+
+      call self % thisCycle % printToScreen('wgt', 10, .true.)
+
       ! Generate from input source
-      !if( self % sourceGiven ) then
-      !  call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
-      !end if
+      if( self % sourceGiven ) then
+
+        ! Reduce size of dungeon if dungeon will overflow
+        if( self % thisCycle % popSize() + self % pop > self % limit) then
+          call self % thisCycle % reduceSize(self % limit - self % pop, p % pRNG)
+        end if
+
+        call self % inputSource % append(self % thisCycle, self % pop, p % pRNG)
+
+      end if
 
       !if(self % printSource == 1) then
       !  call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
@@ -189,6 +204,10 @@ contains
         ! Obtain paticle from dungeon
         call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
+
+        if( p % type == P_MATERIAL ) then
+          N = N+1
+        end if
 
         ! Assign particle time
         if( p % time /= self % deltaT ) then
@@ -250,6 +269,8 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
+      print *, "Number of material photons at start of time step = ", N
+
       ! Display progress
       call printFishLineR(i)
       print *
@@ -290,6 +311,8 @@ contains
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
 
     end do
+
+    close(10)
 
   end subroutine cycles
 
@@ -351,6 +374,7 @@ contains
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
+    call dict % getOrDefault( self % limit, 'limit', self % pop)
     call dict % get( self % N_cycles,'cycles')
     call dict % get( self % deltaT,'timeStepSize')
     call dict % get( nucData, 'XSdata')
@@ -472,11 +496,9 @@ contains
 
     ! Size particle dungeon
     allocate(self % thisCycle)
-    call self % thisCycle % init(self % pop)
+    call self % thisCycle % init(self % limit)
     allocate(self % nextCycle)
-    call self % nextCycle % init(self % pop)
-    allocate(self % matPhotons)
-    call self % matPhotons % init(self % pop)
+    call self % nextCycle % init(self % limit)
 
     call self % printSettings()
 
