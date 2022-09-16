@@ -122,7 +122,8 @@ contains
     class(transportOperatorIMC), intent(inout) :: self
     class(particle), intent(inout)             :: p
     type(tallyAdmin), intent(inout)            :: tally
-    real(defReal)                              :: sigmaT, fleck, eta
+    real(defReal)                              :: sigmaT, fleck, eta, mu, phi
+    real(defReal), dimension(3)                :: dir
     character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
  
     ! Confirm that time = 0
@@ -147,6 +148,13 @@ contains
       call tally % reportHist(p)
     else
       p % type = P_PHOTON
+      ! Resample direction
+      mu = 2 * p % pRNG % get() - 1
+      phi = p % pRNG % get() * 2*pi
+      dir(1) = mu
+      dir(2) = sqrt(1-mu**2) * cos(phi)
+      dir(3) = sqrt(1-mu**2) * sin(phi)
+      call p % point(dir)
     end if
 
   end subroutine materialTransform
