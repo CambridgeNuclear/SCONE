@@ -314,7 +314,7 @@ contains
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP
     integer(shortInt)                     :: i, idx
-    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+    character(100), parameter :: Here = 'normSize (particleDungeon_class.f90)'
 
     ! Protect against invalid N
     if( N > size(self % prisoners)) then
@@ -363,10 +363,13 @@ contains
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: excessP, randIdx1, randIdx2, loops
+    integer(shortInt)                     :: excessP, randIdx1, randIdx2, loops, loops2
     type(particle)                        :: p1, p2
-    real(defReal), dimension(3)           :: rNew
-    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+    real(defReal), dimension(3)           :: rNew, r1, r2
+    logical(defBool)                      :: distanceTest = .true.
+    character(100), parameter :: Here ='reduceSize (particleDungeon_class.f90)'
+
+    print *, "REDUCE", self % pop, N
 
     ! Protect against invalid N
     if( N > self % pop) then
@@ -379,22 +382,34 @@ contains
     ! Calculate excess particles to be removed
     excessP = self % pop - N
 
+    ! Protect against infinite loop
+    loops = 0
+
     reduce:do
+
+      loops = loops + 1
+      if(loops >= 50*self % pop) call fatalError(Here, 'Potentially infinite loop')
 
       ! Obtain random particles from dungeon
       randIdx1 = nint(rand % get() * self % pop)
       p1 = self % prisoners(randIdx1)
+      r1 = p1 % rGlobal()
 
       ! Obtain random particle of the same type
+      loops2 = 0
       sample:do
-        loops = 0
-        randIdx2 = nint(rand % get() * self % pop)
+        randIdx2 = ceiling(rand % get() * self % pop)
         p2 = self % prisoners(randIdx2)
-        if(p2 % type == p1 % type) exit sample
-        ! Protect against infinite loop
-        if(loops >= self % pop) call fatalError(Here, 'Only single particle found of type ' &
-                                                       //numToChar(type))
-        loops = loops + 1
+        r2 = p2 % rGlobal()
+        !if(abs(r1(1) - r2(1)) <= 0.01) then
+        !  distanceTest = .true.
+        !else
+        !  distanceTest = .false.
+        !end if
+        if(p2 % type == p1 % type .and. p1 % matIdx() == p2 % matIdx()) exit sample !distanceTest .eqv. .true.) exit sample
+        ! If too many samples of different type, resample p1
+        if(loops2 >= 0.05*self % pop) cycle reduce
+        loops2 = loops2 + 1
       end do sample
 
       ! Combine positions and weights
@@ -497,11 +512,12 @@ contains
     integer(shortInt)                  :: i
 
     filename = trim(name)//'.txt'
-    open(unit = 10, file = filename)
+    !open(unit = 10, file = filename)
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      write(10,'(8A)') numToChar(self % prisoners(i) % r)!, &
+      write(10,'(8A)') numToChar(self % prisoners(i) % r), &
+                       '   ', numToChar(self % prisoners(i) % type)!, &
                        !numToChar(self % prisoners(i) % dir), &
                        !numToChar(self % prisoners(i) % E), &
                        !numToChar(self % prisoners(i) % G), &
@@ -509,7 +525,7 @@ contains
     end do
 
     ! Close the file
-    close(10)
+    !close(10)
 
   end subroutine printToFile
 
