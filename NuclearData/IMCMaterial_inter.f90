@@ -80,7 +80,6 @@ module IMCMaterial_inter
     function getEmittedRad(self) result(emittedRad)
       import :: IMCMaterial, defReal, RNG
       class(IMCMaterial), intent(inout)  :: self
-      !class(RNG), intent(inout)          :: rand
       real(defReal)                      :: emittedRad
     end function getEmittedRad
 
