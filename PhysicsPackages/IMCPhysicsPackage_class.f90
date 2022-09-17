@@ -462,7 +462,7 @@ contains
 
     call self % tally % push(self % imcWeightAtch)
 
-    ! Size particle dungeon
+    ! Size particle dungeons
     allocate(self % thisCycle)
     call self % thisCycle % init(self % limit)
     allocate(self % nextCycle)
