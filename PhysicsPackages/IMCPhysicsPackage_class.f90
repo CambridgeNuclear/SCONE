@@ -168,11 +168,6 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
-    ! Generate initial source distribution
-    !if( self % sourceGiven ) then
-    !  call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
-    !end if
-
     do i=1,N_cycles
 
       ! Store photons remaining from previous cycle
