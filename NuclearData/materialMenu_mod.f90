@@ -246,7 +246,7 @@ contains
   end function matTemp
 
   !!
-  !! Return volume of materal given index
+  !! Return volume of material given index
   !!
   !! Args:
   !!   idx [in] -> Material Index
@@ -254,7 +254,7 @@ contains
   !! Result:
   !!   Volume of material as given in input file
   !!
-  !! Erorrs:
+  !! Errors:
   !!   If idx is -ve or larger then number of defined materials
   !!   then -1 is returned as its volume
   !!
