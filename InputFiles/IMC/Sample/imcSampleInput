@@ -20,7 +20,7 @@ cycles         50;
   //   calculation types
 
 timeStepSize   0.1;
-  // The time step size for the calculation
+  // The time step size for the calculation in seconds
 
 
 XSdata     mg;
