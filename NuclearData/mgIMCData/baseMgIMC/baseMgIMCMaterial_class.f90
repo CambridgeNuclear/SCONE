@@ -470,6 +470,8 @@ contains
   !!
   !! Args:
   !!   deltaT -> Time step size
+  !!   T      -> Initial temperature
+  !!   V      -> Material volume
   !!
   !! Errors:
   !!   fatalError if material volume <= 0
@@ -497,11 +499,11 @@ contains
   end subroutine initProps
 
 
-  function getTemp(self) result(temp)
+  function getTemp(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: temp
+    real(defReal)                           :: T
 
-    temp = self % T
+    T = self % T
 
   end function getTemp
 

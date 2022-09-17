@@ -108,10 +108,10 @@ module IMCMaterial_inter
       real(defReal), intent(in)        :: deltaT, T, V
     end subroutine initProps
 
-    function getTemp(self) result(temp)
+    function getTemp(self) result(T)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout) :: self
-      real(defReal)                     :: temp
+      real(defReal)                     :: T
     end function getTemp
 
   end interface
@@ -126,7 +126,7 @@ contains
   !!   source [in]    -> source pointer of class materialHandle
   !!
   !! Result:
-  !!   Null is source is not of IMCMaterial
+  !!   Null if source is not of IMCMaterial
   !!   Pointer to source if source is IMCMaterial class
   !!
   pure function IMCMaterial_CptrCast(source) result(ptr)

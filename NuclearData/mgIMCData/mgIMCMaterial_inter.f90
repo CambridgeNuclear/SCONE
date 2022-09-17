@@ -142,10 +142,10 @@ module mgIMCMaterial_inter
       real(defReal), intent(in)          :: deltaT, T, V
     end subroutine initProps
 
-    function getTemp(self) result(temp)
+    function getTemp(self) result(T)
       import :: mgIMCMaterial, defReal
       class(mgIMCMaterial), intent(inout) :: self
-      real(defReal)                       :: temp
+      real(defReal)                       :: T
     end function getTemp
 
 
