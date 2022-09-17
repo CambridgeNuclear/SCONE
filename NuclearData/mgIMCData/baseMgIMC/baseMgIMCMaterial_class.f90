@@ -401,6 +401,8 @@ contains
     ! Update material internal energy
     self % matEnergy = tallyEnergy
 
+    !if(self % matEnergy <= 0.3) self % matEnergy = 0.3
+
     ! Update material temperature
     self % T = self % tempFromEnergy()
 

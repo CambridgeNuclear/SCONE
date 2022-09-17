@@ -177,8 +177,6 @@ contains
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
-      !call self % thisCycle % printToFile('particles')
-      !write(10, '(8A)') '0.0   0.0   0.0   0.0'
 
       call self % thisCycle % printToScreen('wgt', 10, .true.)
 
@@ -210,12 +208,12 @@ contains
         end if
 
         ! Assign particle time
-        if( p % time /= self % deltaT ) then
+        if( p % type /= P_MATERIAL .and. p % time /= self % deltaT ) then
           ! If particle has just been sourced, t = 0 so sample uniformly within timestep
           p % time = p % pRNG % get() * self % deltaT
         else
           ! If particle survived previous time step, reset time to 0
-          p % time = 0
+          p % time = ZERO
         end if
 
         ! Save state
@@ -225,7 +223,7 @@ contains
           history: do
 
             call self % transOp % transport(p, tally, self % thisCycle, self % nextCycle)
-            if(p % isDead) exit history
+            if(p % fate == LEAK_FATE) exit history
             
             if(p % fate == TIME_FATE) then
                 ! Store particle for use in next time step
@@ -245,8 +243,9 @@ contains
               p % isDead = .false.
               p % fate = 0
               p % type = P_MATERIAL
-              call self % nextCycle % detain(p)
-              exit history
+              !call self % nextCycle % detain(p)
+              !exit history
+              cycle history
             end if
 
           end do history
@@ -309,6 +308,9 @@ contains
       call tallyAtch % reset('imcWeight')
 
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
+
+      !call self % nextCycle % printToFile('particles')
+      !write(10, '(8A)') '0.0   0.0   0.0   0.0'
 
     end do
 

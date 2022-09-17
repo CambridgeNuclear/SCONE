@@ -138,7 +138,7 @@ contains
     eta    = self % mat % getEta()
 
     ! Sample time to transform into radiation photon
-    p % time = -log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
+    p % time = p % time - log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
 
     ! Exit loop if particle remains material until end of time step
     if (p % time >= p % timeMax) then
