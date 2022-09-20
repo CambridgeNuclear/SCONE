@@ -51,6 +51,12 @@ module baseMgIMCMaterial_class
   !!   mgIMCMaterial interface
   !!   init -> initialise Basic MG Material from dictionary and config keyword
   !!   nGroups -> returns number of energy groups
+  !!   updateMat -> update material properties as required for IMC calculation
+  !!   getEmittedRad -> returns the radiation to be emitted in current timestep
+  !!   getFleck -> returns current material Fleck factor
+  !!   initProps -> attach initial properties to material, seperate to init (for now) as uses quantities
+  !!                from physics package e.g. time step size which are not available to init
+  !!   getTemp -> returns current material temperature
   !!
   !! Note:
   !!   Order of "data" array is: data(XS_type, Group #)
@@ -66,9 +72,17 @@ module baseMgIMCMaterial_class
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
-    real(defReal),dimension(:), allocatable   :: cv, updateEqn, sigmaEqn
+    real(defReal),dimension(:), allocatable   :: cv
+    real(defReal),dimension(:), allocatable   :: updateEqn
+    real(defReal),dimension(:), allocatable   :: sigmaEqn
     class(multiScatterMG), allocatable        :: scatter
-    real(defReal)                             :: T, fleck, eta, deltaT, sigmaP, matEnergy, volume
+    real(defReal)                             :: T
+    real(defReal)                             :: fleck
+    real(defReal)                             :: deltaT
+    real(defReal)                             :: sigmaP
+    real(defReal)                             :: matEnergy
+    real(defReal)                             :: volume
+    real(defReal)                             :: eta
     integer(shortInt)                         :: calcType
 
   contains
@@ -498,6 +512,8 @@ contains
   !!
   !! Args:
   !!   deltaT -> Time step size
+  !!   T      -> Initial temperature
+  !!   V      -> Material volume
   !!
   !! Errors:
   !!   fatalError if material volume <= 0
@@ -525,11 +541,11 @@ contains
   end subroutine initProps
 
 
-  function getTemp(self) result(temp)
+  function getTemp(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: temp
+    real(defReal)                           :: T
 
-    temp = self % T
+    T = self % T
 
   end function getTemp
 

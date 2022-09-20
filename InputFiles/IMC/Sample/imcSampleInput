@@ -7,12 +7,14 @@
 type IMCPhysicsPackage;
 
 pop            1000;
-  // For now this determines the maximum size of particle dungeons, physics package sets
-  //   thisCycle as 15*pop and nextCycle as 10*pop
-  // Very abitrary and non-optimal, would benefit from a simple change such that dungeon size is
-  //   increased automatically to accommodate required no. of particles
-  // Runtime is very dependent on this value, should not be set too large
-  // Actual number of of particles emitted in each time step is set in imcSource dictionary
+  // Total number of particles to be emitted during each time step from material. If an additional
+  //   source is given, this is also the number of particles emitted from that source.
+
+limit          10000;
+  // Sets the maximum size of particle dungeons. Typically needs to be around 10*pop, and may be
+  //   significantly higher for certain problems. Runtime is very dependent on this value so should
+  //   not be set arbitrarily large. Would benefit from a change such that dungeon size is increased 
+  //   automatically without needing to set a limit.
 
 cycles         50;
   // The number of time steps to be used in the calculation
@@ -20,7 +22,7 @@ cycles         50;
   //   calculation types
 
 timeStepSize   0.1;
-  // The time step size for the calculation
+  // The time step size for the calculation in seconds
 
 
 XSdata     mg;
@@ -29,27 +31,16 @@ dataType   mg;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
-                  } 
+                  }
 
 transportOperator {
                     type transportOperatorIMC;
-                  } 
-
-imcSource {
-            type imcSource;
-            nParticles 500;
-              // imcSource is required by physics package, nParticles is the number of
-              //   particles emitted from material as radiation within each time step.
-              // Needs to be lower than 'pop' (see above), depending on time step size
-              //   and material properties may need to be several orders of magnitude lower
-              // Increasing will give higher accuracy but longer runtime
-          }
-
+                  }
 
 // No tallies are required for calculation, but empty dictionaries must be given
 
 inactiveTally {
-              } 
+              }
 
 activeTally  {
     	     }

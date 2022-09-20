@@ -77,12 +77,12 @@ module IMCPhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
+    integer(shortInt)  :: limit
     real(defReal)      :: deltaT
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
-    integer(shortInt)  :: imcSourceN
     logical(defBool)   :: sourceGiven = .false.
     integer(shortInt)  :: nMat
 
@@ -133,7 +133,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, j, N
+    integer(shortInt)                               :: i, j
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
@@ -151,8 +151,6 @@ contains
       printUpdates = .False.
     end if
 
-    N = self % pop
-
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
     p % timeMax = self % deltaT
@@ -163,11 +161,6 @@ contains
     call timerStart(self % timerMain)
 
     allocate(tallyEnergy(self % nMat))
-
-    ! Generate initial source distribution
-    !if( self % sourceGiven ) then
-    !  call self % inputSource % generate(self % nextCycle, self % imcSourceN, p % pRNG)
-    !end if
 
     do i=1,N_cycles
 
@@ -185,12 +178,12 @@ contains
 
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
-        call self % IMCSource % appendIMC(self % thisCycle, self % imcSourceN, p % pRNG)
+        call self % IMCSource % appendIMC(self % thisCycle, self % pop, p % pRNG)
       end if
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisCycle, self % imcSourceN, p % pRNG)
+        call self % inputSource % append(self % thisCycle, self % pop, p % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -334,7 +327,7 @@ contains
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -351,6 +344,7 @@ contains
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
+    call dict % getOrDefault( self % limit, 'limit', self % pop)
     call dict % get( self % N_cycles,'cycles')
     call dict % get( self % deltaT,'timeStepSize')
     call dict % get( nucData, 'XSdata')
@@ -418,9 +412,12 @@ contains
       call new_source(self % inputSource, tempDict, self % geom)
       self % sourceGiven = .true.
     end if
-    tempDict => dict % getDictPtr('imcSource')
-    call new_source(self % IMCSource, tempDict, self % geom)
-    call tempDict % get(self % imcSourceN, 'nParticles')
+
+    ! Initialise ISMC source
+    call locDict1 % init(2)
+    call locDict1 % store('type', 'imcSource')
+    call locDict1 % store('nParticles', self % pop)
+    call new_source(self % IMCSource, locDict1, self % geom)
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
@@ -452,26 +449,26 @@ contains
     end do
 
     ! Initialise imcWeight tally attachment
-    call locDict1 % init(1)
-    call locDict2 % init(2)
+    call locDict2 % init(1)
     call locDict3 % init(2)
+    call locDict4 % init(2)
 
-    call locDict3 % store('type','materialMap')
-    call locDict3 % store('materials', [mats])
-    call locDict2 % store('type','imcWeightClerk')
-    call locDict2 % store('map', locDict3)
-    call locDict1 % store('imcWeight', locDict2)
+    call locDict4 % store('type','materialMap')
+    call locDict4 % store('materials', [mats])
+    call locDict3 % store('type','imcWeightClerk')
+    call locDict3 % store('map', locDict4)
+    call locDict2 % store('imcWeight', locDict3)
 
     allocate(self % imcWeightAtch)
-    call self % imcWeightAtch % init(locDict1)
+    call self % imcWeightAtch % init(locDict2)
 
     call self % tally % push(self % imcWeightAtch)
 
-    ! Size particle dungeon
+    ! Size particle dungeons
     allocate(self % thisCycle)
-    call self % thisCycle % init(15 * self % pop)
+    call self % thisCycle % init(self % limit)
     allocate(self % nextCycle)
-    call self % nextCycle % init(10 * self % pop)
+    call self % nextCycle % init(self % limit)
 
     call self % printSettings()
 

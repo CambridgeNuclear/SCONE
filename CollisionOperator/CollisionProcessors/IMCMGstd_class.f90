@@ -126,12 +126,10 @@ contains
       collDat % MT = macroIEScatter
     end if
 
-    !collDat % MT = macroXSs % invert(r)
-
   end subroutine sampleCollision
 
   !!
-  !! Preform implicit treatment
+  !! Perform implicit treatment
   !!
   subroutine implicit(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -140,7 +138,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    ! Do nothing. Should not be called
+    ! Do nothing.
 
   end subroutine implicit
 
@@ -153,13 +151,16 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    character(100), parameter :: Here = 'elastic (IMCMGstd_class.f90)'
 
     ! Do nothing. Should not be called
+
+    call fatalError(Here, "Elastic subroutine should not be called")
 
   end subroutine elastic
 
   !!
-  !! Preform scattering - Currently this is for effective scattering, and energy weights
+  !! Perform scattering - Currently this is for effective scattering, and energy weights
   !!                       are unchanged (so is actually elastic)
   !!
   subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
@@ -191,7 +192,7 @@ contains
   end subroutine inelastic
 
   !!
-  !! Preform capture
+  !! Perform capture
   !!
   subroutine capture(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -205,7 +206,7 @@ contains
   end subroutine capture
 
   !!
-  !! Preform fission
+  !! Perform fission
   !!
   subroutine fission(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -213,13 +214,16 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    character(100), parameter :: Here = 'fission (IMCMGstd_class.f90)'
 
     ! Do nothing. Should not be called
+
+    call fatalError(Here, "Fission subroutine should not be called")
 
   end subroutine fission
 
   !!
-  !! Applay cutoffs or post-collision implicit treatment
+  !! Apply cutoffs or post-collision implicit treatment
   !!
   subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self

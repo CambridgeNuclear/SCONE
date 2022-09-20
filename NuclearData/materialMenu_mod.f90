@@ -64,7 +64,7 @@ module materialMenu_mod
   !!   name      -> name of material
   !!   matIdx    -> material index of the material
   !!   T         -> material temperature [K]
-  !!   V         -> volume of material zone, currently used in IMC calculations
+  !!   V         -> volume of material zone [cm3]
   !!   dens      -> vector of densities [1/barn/cm]
   !!   nuclides  -> associated vector of nuclide types
   !!   extraInfo -> dictionary with extra keywords
@@ -203,7 +203,7 @@ contains
   !! Result:
   !!   nameLen long character with material name
   !!
-  !! Erorrs:
+  !! Errors:
   !!   If idx is -ve or larger then number of defined materials
   !!   Empty string '' is returned as its name
   !!
@@ -221,7 +221,7 @@ contains
   end function matName
 
   !!
-  !! Return starting temperature of materal given index
+  !! Return starting temperature of material given index
   !!
   !! Args:
   !!   idx [in] -> Material Index
@@ -229,25 +229,24 @@ contains
   !! Result:
   !!   Temperature of material as given in input file
   !!
-  !! Erorrs:
+  !! Errors:
   !!   If idx is -ve or larger then number of defined materials
-  !!   0 is returned as its temperature
+  !!   then -1 is returned as its temperature
   !!
-  function matTemp(idx) result(temp)
+  function matTemp(idx) result(T)
     integer(shortInt), intent(in) :: idx
-    real(defReal)                 :: temp
+    real(defReal)                 :: T
 
-    if( idx <= 0 .or. nMat() < idx) then
-      temp = 0
-
+    if(idx <= 0 .or. nMat() < idx) then
+      T = -ONE
     else
-      temp = materialDefs(idx) % T
+      T = materialDefs(idx) % T
     end if
 
   end function matTemp
 
   !!
-  !! Return volume of materal given index
+  !! Return volume of material given index
   !!
   !! Args:
   !!   idx [in] -> Material Index
@@ -255,17 +254,16 @@ contains
   !! Result:
   !!   Volume of material as given in input file
   !!
-  !! Erorrs:
+  !! Errors:
   !!   If idx is -ve or larger then number of defined materials
-  !!   0 is returned as its volume
+  !!   then -1 is returned as its volume
   !!
   function matVol(idx) result(vol)
     integer(shortInt), intent(in) :: idx
     real(defReal)                 :: vol
 
     if( idx <= 0 .or. nMat() < idx) then
-      vol = 0
-
+      vol = -ONE
     else
       vol = materialDefs(idx) % V
     end if

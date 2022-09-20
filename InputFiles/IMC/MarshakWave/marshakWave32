@@ -1,7 +1,8 @@
 
 type IMCPhysicsPackage;
 
-pop            200000;
+pop            500;
+limit          20000;
 cycles         10000;
 timeStepSize   0.05;
 
@@ -24,16 +25,11 @@ source {
   axis x;
   pos -2;
   T 1;
-  nParticles 5000;
+  nParticles 500;
   dir 1;
   deltat 0.05;
   particle photon;
 }
-
-imcSource {
-            type imcSource; 
-            nParticles 5000;
-          }
 
 inactiveTally {} 
 

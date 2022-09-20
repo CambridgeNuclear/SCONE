@@ -108,8 +108,6 @@ add_subdirectory(UserInterface)
 add_subdirectory(PhysicsPackages)
 add_subdirectory(DataStructures)
 
-#add_subdirectory(BlackBody)
-
 ####################################################################################################
 # Compile SCONE static library
 

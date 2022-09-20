@@ -1,7 +1,8 @@
 
 type IMCPhysicsPackage;
 
-pop            50000;
+pop            5000;
+limit          20000;
 cycles         31;
 timeStepSize   1;
 
@@ -16,19 +17,6 @@ collisionOperator {
 transportOperator {
                     type transportOperatorIMC;
                   } 
-
-
-//source {
- // type pointSource;
- // r (0 0 0);
- // particle photon;
- // G 1;
-//}
-
-imcSource {
-            type imcSource; 
-            nParticles 50000;
-          }
 
 inactiveTally {} 
 

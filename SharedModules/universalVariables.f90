@@ -73,12 +73,9 @@ module universalVariables
 
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
-                              lightSpeed  = ONE, &
-                              !lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
+                              lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
                               energyPerFission = 200.0_defReal, &    ! MeV
-                              radiationConstant = ONE, &
-                              !radiationConstant = 0.01372_defReal, &    ! GJ/(cm^3 keV^4)
-                              !radiationConstant = 7.5657e-10_defReal, & ! J/(cm^3 K^-4)
+                              radiationConstant = 0.01372_defReal, &    ! GJ/(cm^3 keV^4)
                               planckConst = 6.62607015e-30_defReal, &   ! cm^2 kg/s
                               boltzmannConst = 1.380649e-19_defReal     ! cm^2 kg s^-2 K^-1
 

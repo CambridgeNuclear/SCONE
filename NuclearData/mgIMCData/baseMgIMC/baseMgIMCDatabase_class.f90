@@ -76,12 +76,6 @@ contains
   !!   DOES NOT check if particle is MG. Will refer to G in the particle and give error
   !!   if the value is invalid
   !!
-  !! Sample input dictionary:
-  !!   nucData {
-  !!     type baseMgIMCDatabase;
-  !!     PN P0;                        // or P1
-  !!   }
-  !!
   function getTransMatXS(self, p, matIdx) result(xs)
     class(baseMgIMCDatabase), intent(inout)     :: self
     class(particle), intent(in)                 :: p
