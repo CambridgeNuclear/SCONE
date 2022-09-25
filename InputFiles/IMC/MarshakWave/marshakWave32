@@ -31,10 +31,6 @@ source {
   particle photon;
 }
 
-inactiveTally {} 
-
-activeTally  {}
-
 tally  {
 	   }
 

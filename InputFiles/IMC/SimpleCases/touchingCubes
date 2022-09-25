@@ -18,10 +18,6 @@ transportOperator {
                     type transportOperatorIMC;
                   } 
 
-inactiveTally {} 
-
-activeTally  {}
-
 tally  {
 	   }
 

@@ -37,14 +37,7 @@ transportOperator {
                     type transportOperatorIMC;
                   }
 
-// No tallies are required for calculation, but empty dictionaries must be given
-
-inactiveTally {
-              }
-
-activeTally  {
-    	     }
-
+// No tallies are required for calculation, but empty dictionary must be given
 tally  {
 	   }
 
@@ -88,7 +81,7 @@ nuclearData {
     mat {
 
       temp       1;
-        // Initial temperature of material (will change as calculation progresses).
+        // Initial temperature of material in keV.
 
       composition {}
         // Empty dictionary required for composition.
