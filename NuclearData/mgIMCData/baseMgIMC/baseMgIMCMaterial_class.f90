@@ -33,6 +33,7 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
   integer(shortInt), parameter, public :: IESCATTER_XS  = 2
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
+  integer(shortInt), parameter, public :: PLANCK_XS     = 4
 
   !!
   !! Basic type of MG material data
@@ -74,7 +75,9 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     real(defReal),dimension(:), allocatable   :: cv
     real(defReal),dimension(:), allocatable   :: updateEqn
-    real(defReal),dimension(:), allocatable   :: sigmaEqn
+    real(defReal),dimension(:), allocatable   :: absEqn
+    real(defReal),dimension(:), allocatable   :: scattEqn
+    real(defReal),dimension(:), allocatable   :: planckEqn
     class(multiScatterMG), allocatable        :: scatter
     real(defReal)                             :: T
     real(defReal)                             :: fleck
@@ -146,6 +149,7 @@ contains
     xss % elasticScatter   = ZERO
     xss % inelasticScatter = self % data(IESCATTER_XS, G)
     xss % capture          = self % data(CAPTURE_XS, G)
+    xss % planck           = self % data(PLANCK_XS, G)
 
   end subroutine getMacroXSs_byG
 
@@ -237,14 +241,15 @@ contains
     end if
     self % data(IESCATTER_XS,:) = self % scatter % scatterXSs
 
-    ! Calculate total XS
-    do i =1,nG
-      self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
-    end do
+    ! Read opacity equations
+    call dict % get(temp, 'sigmaA')
+    self % absEqn = temp
+    call dict % get(temp, 'sigmaS')
+    self % scattEqn = temp
 
-    ! Read Planck opacity equation
-    call dict % get(temp, 'sigmaP')
-    self % sigmaEqn = temp
+    ! Build planck opacity equation
+    ! For grey case, sigmaP = sigmaA. Will become more complicated for frequency-dependent case
+    self % planckEqn = self % absEqn
 
     ! Read heat capacity equation
     call dict % get(temp, 'cv')
@@ -387,8 +392,8 @@ contains
     ! Update material temperature
     self % T = self % tempFromEnergy()
 
-    ! Update sigmaP
-    call self % sigmaFromTemp
+    ! Update sigma
+    call self % sigmaFromTemp()
 
     if( self % T < 0 ) then
      call fatalError(Here, "Temperature is negative")
@@ -418,8 +423,8 @@ contains
     zeta = beta - eta
     self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
-    ! Update sigmaP
-    call self % sigmaFromTemp
+    ! Update sigma
+    call self % sigmaFromTemp()
 
   end subroutine updateMatISMC
 
@@ -436,17 +441,18 @@ contains
   end function tempFromEnergy
 
   !!
-  !! Calculate sigmaP from current temp
+  !! Calculate sigma from current temp
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: sigma
 
-    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
+    self % sigmaP = poly_eval(self % planckEqn, self % T)
 
-    ! Also need these lines because cross section functions use this instead of sigmaP for now
-    self % data(CAPTURE_XS,:) = self % sigmaP
-    self % data(TOTAL_XS,:) = self % sigmaP
+    self % data(CAPTURE_XS,:) = poly_eval(self % absEqn, self % T)
+    self % data(IESCATTER_XS,:) = poly_eval(self % scattEqn, self % T)
+    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
+    self % data(PLANCK_XS,:) = poly_eval(self % planckEqn, self % T)
 
   end subroutine sigmaFromTemp
 
@@ -500,9 +506,7 @@ contains
     self % T = T
     self % matEnergy = poly_eval(self % updateEqn, self % T) * self % volume
 
-    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
-    self % data(CAPTURE_XS,:) = self % sigmaP
-    self % data(TOTAL_XS,:) = self % sigmaP
+    call self % sigmaFromTemp()
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
     self % deltaT = deltaT
