@@ -31,6 +31,7 @@ module IMCXsPackages_class
     real(defReal) :: elasticScatter   = ZERO
     real(defReal) :: inelasticScatter = ZERO
     real(defReal) :: capture          = ZERO
+    real(defReal) :: planck           = ZERO
   contains
     procedure :: clean => clean_IMCMacroXSs
     procedure :: add   => add_IMCMacroXSs
@@ -53,8 +54,9 @@ module IMCXsPackages_class
     real(defReal) :: elasticScatter   = ZERO
     real(defReal) :: inelasticScatter = ZERO
     real(defReal) :: capture          = ZERO
+    real(defReal) :: planck           = ZERO
   contains
-    procedure :: invert => invert_microXSs
+    !procedure :: invert => invert_microXSs
   end type IMCMicroXSs
 
 contains
@@ -77,6 +79,7 @@ contains
     self % elasticScatter   = ZERO
     self % inelasticScatter = ZERO
     self % capture          = ZERO
+    self % planck           = ZERO
 
   end subroutine clean_IMCMacroXSs
 
@@ -95,12 +98,13 @@ contains
   elemental subroutine add_IMCMacroXSs(self, micro, dens)
     class(IMCMacroXSs), intent(inout) :: self
     type(IMCMicroXSs), intent(in)     :: micro
-    real(defReal), intent(in)             :: dens
+    real(defReal), intent(in)         :: dens
 
     self % total            = self % total            + dens * micro % total
     self % elasticScatter   = self % elasticScatter   + dens * micro % elasticScatter
     self % inelasticScatter = self % inelasticScatter + dens * micro % inelasticScatter
     self % capture          = self % capture          + dens * micro % capture
+    self % planck           = self % planck           + dens * micro % planck
 
   end subroutine add_IMCMacroXSs
 
@@ -118,8 +122,8 @@ contains
   !!
   elemental function get(self, MT) result(xs)
     class(IMCMacroXSs), intent(in) :: self
-    integer(shortInt), intent(in)      :: MT
-    real(defReal)                      :: xs
+    integer(shortInt), intent(in)  :: MT
+    real(defReal)                  :: xs
 
      select case(MT)
       case(macroTotal)
@@ -130,6 +134,9 @@ contains
 
       case(macroEscatter)
         xs = self % elasticScatter
+
+      case(macroPlanck)
+        xs = self % planck
 
       !case(macroAbsorbtion)
       !  xs = self % fission + self % capture
@@ -214,42 +221,42 @@ contains
   !! Errors:
   !!   If r < 0 then returns N_N_elastic
   !!
-  elemental function invert_microXSs(self, r) result(MT)
-    class(IMCMicroXSs), intent(in) :: self
-    real(defReal), intent(in)          :: r
-    integer(shortInt)                  :: MT
-    real(defReal)                      :: xs
-    integer(shortInt)                  :: C
+  !elemental function invert_microXSs(self, r) result(MT)
+  !  class(IMCMicroXSs), intent(in) :: self
+  !  real(defReal), intent(in)          :: r
+  !  integer(shortInt)                  :: MT
+  !  real(defReal)                      :: xs
+  !  integer(shortInt)                  :: C
 
-    ! Elastic Scattering
-    C = 1
-    xs = self % total * r - self % elasticScatter
-    if (xs > ZERO) C = C + 1
+  !  ! Elastic Scattering
+  !  C = 1
+  !  xs = self % total * r - self % elasticScatter
+  !  if (xs > ZERO) C = C + 1
 
-    ! Inelastic Scattering
-    xs = xs - self % inelasticScatter
-    if(xs > ZERO) C = C + 1
+  !  ! Inelastic Scattering
+  !  xs = xs - self % inelasticScatter
+  !  if(xs > ZERO) C = C + 1
 
-    ! Capture
-    xs = xs - self % capture
-    if(xs > ZERO) C = C + 1
+  !  ! Capture
+  !  xs = xs - self % capture
+  !  if(xs > ZERO) C = C + 1
 
-    ! Choose MT number
-    select case(C)
-      case(1)
-        MT = N_N_elastic
+  !  ! Choose MT number
+  !  select case(C)
+  !    case(1)
+  !      MT = N_N_elastic
 
-      case(2)
-        MT = N_N_inelastic
+  !    case(2)
+  !      MT = N_N_inelastic
 
-      case(3)
-        MT = N_disap
+  !    case(3)
+  !      MT = N_disap
 
-      case default  ! Should never happen -> Avoid compiler error and return nonsense number
-        MT = huge(C)
-    end select
+  !    case default  ! Should never happen -> Avoid compiler error and return nonsense number
+  !      MT = huge(C)
+  !  end select
 
-  end function invert_microXSs
+  !end function invert_microXSs
 
 
 end module IMCXsPackages_class
