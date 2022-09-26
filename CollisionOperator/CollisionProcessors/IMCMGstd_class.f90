@@ -21,17 +21,6 @@ module IMCMGstd_class
   use reactionHandle_inter,          only : reactionHandle
   use multiScatterMG_class,          only : multiScatterMG, multiScatterMG_CptrCast
 
-  ! Cross section packages
-  use IMCXsPackages_class,           only : IMCMacroXSs
-
-
-  ! Nuclear Data
-  !use nuclearData_inter,              only : nuclearData
-  !use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
-
-  ! Cross-section packages to interface with nuclear data
-  !use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
-
   implicit none
   private
 
@@ -95,7 +84,6 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(IMCMacroXSs)                    :: macroXSs
     real(defReal)                        :: r, fleck
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
@@ -112,8 +100,6 @@ contains
     self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
 
-    ! Select Main reaction channel
-    call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
 
     fleck = self % mat % getFleck()
