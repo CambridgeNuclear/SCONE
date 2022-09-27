@@ -6,18 +6,12 @@ module baseMgIMCMaterial_class
   use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
-  use dictDeck_class,    only : dictDeck
   use poly_func
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
-
-  ! Reaction objects
-  use reactionMG_inter,        only : reactionMG
-  use multiScatterMG_class,    only : multiScatterMG
-  use multiScatterP1MG_class,  only : multiScatterP1MG
 
   implicit none
   private
@@ -63,13 +57,6 @@ module baseMgIMCMaterial_class
   !!   Order of "data" array is: data(XS_type, Group #)
   !!   Dictionary with data must contain following entries:
   !!     -> numberOfGroups
-  !!     -> capture [nGx1]
-  !!     -> scatteringMultiplicity [nGxnG]
-  !!     -> P0 [nGxnG]
-  !!   Optional entries:
-  !!     -> nu [nGx1]
-  !!     -> chi [nGx1]
-  !!     -> P# [nGxnG]
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
@@ -78,7 +65,6 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:), allocatable   :: absEqn
     real(defReal),dimension(:), allocatable   :: scattEqn
     real(defReal),dimension(:), allocatable   :: planckEqn
-    class(multiScatterMG), allocatable        :: scatter
     real(defReal)                             :: T
     real(defReal)                             :: fleck
     real(defReal)                             :: deltaT
@@ -122,7 +108,6 @@ contains
 
     ! Kill local content
     if(allocated(self % data))        deallocate(self % data)
-    if(allocated(self % scatter))     deallocate(self % scatter)
 
   end subroutine kill
 
@@ -181,27 +166,16 @@ contains
   !!
   !! Args:
   !!   dict       [in] -> Input dictionary with all required XSs
-  !!   scatterKey [in] -> String with keyword to choose approperiate multiplicative scatering
-  !!                        type
+  !!
   !! Errors:
-  !!   FatalError if scatteKey is invalid
   !!   FatalError if data in dictionary is invalid (inconsistant # of groups;
   !!     -ve entries in P0 XSs)
   !!
-  !! Note:
-  !!   Some time in the future scattering MG reaction objects will have factory. For now
-  !!   the factory is hardcoded into this procedure. Not the best solution but is fine at this
-  !!   stage. The following scatterKey are supported:
-  !!     -> P0
-  !!     -> P1
-  !!
-  subroutine init(self, dict, scatterKey)
+  subroutine init(self, dict)
     class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
-    character(nameLen), intent(in)              :: scatterKey
     integer(shortInt)                           :: nG, N, i
     real(defReal), dimension(:), allocatable    :: temp
-    type(dictDeck)                              :: deck
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
 
@@ -209,37 +183,10 @@ contains
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
-    ! Build scattering reaction
-    ! Prepare input deck
-    deck % dict => dict
-
-    ! Choose Scattering type
-    select case(scatterKey)
-      case ('P0')
-        allocate( multiScatterMG :: self % scatter)
-
-      case ('P1')
-        allocate( multiScatterP1MG :: self % scatter)
-
-      case default
-        call fatalError(Here,'scatterKey: '//trim(scatterKey)//'is wrong. Must be P0 or P1')
-
-    end select
-
-    ! Initialise
-    call self % scatter % init(deck, macroAllScatter)
-
     ! Allocate space for data
     N = 3
 
     allocate(self % data(N, nG))
-
-    ! Extract values of scattering XS
-    if(size(self % scatter % scatterXSs) /= nG) then
-      call fatalError(Here, 'Somthing went wrong. Inconsistant # of groups in material and reaction&
-                            &. Clearly programming error.')
-    end if
-    self % data(IESCATTER_XS,:) = self % scatter % scatterXSs
 
     ! Read opacity equations
     call dict % get(temp, 'sigmaA')
