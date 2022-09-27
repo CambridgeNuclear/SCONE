@@ -12,6 +12,7 @@ module baseMgIMCMaterial_class
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
+  use materialMenu_mod,        only : timeStepSize
 
   implicit none
   private
@@ -49,8 +50,6 @@ module baseMgIMCMaterial_class
   !!   updateMat -> update material properties as required for IMC calculation
   !!   getEmittedRad -> returns the radiation to be emitted in current timestep
   !!   getFleck -> returns current material Fleck factor
-  !!   initProps -> attach initial properties to material, seperate to init (for now) as uses quantities
-  !!                from physics package e.g. time step size which are not available to init
   !!   getTemp -> returns current material temperature
   !!
   !! Note:
@@ -70,7 +69,7 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
-    real(defReal)                             :: volume
+    real(defReal)                             :: V
     integer(shortInt)                         :: calcType
 
   contains
@@ -85,7 +84,6 @@ module baseMgIMCMaterial_class
     procedure :: updateMat
     procedure :: getEmittedRad
     procedure :: getFleck
-    procedure :: initProps
     procedure :: getTemp
 
     procedure, private :: updateMatIMC
@@ -107,7 +105,7 @@ contains
     call kill_super(self)
 
     ! Kill local content
-    if(allocated(self % data))        deallocate(self % data)
+    if(allocated(self % data)) deallocate(self % data)
 
   end subroutine kill
 
@@ -174,19 +172,20 @@ contains
   subroutine init(self, dict)
     class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
-    integer(shortInt)                           :: nG, N, i
+    integer(shortInt)                           :: nG, N
     real(defReal), dimension(:), allocatable    :: temp
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
-
 
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
     ! Allocate space for data
-    N = 3
-
+    N = 4
     allocate(self % data(N, nG))
+
+    ! Store time step size
+    self % deltaT = timeStepSize
 
     ! Read opacity equations
     call dict % get(temp, 'sigmaA')
@@ -205,6 +204,18 @@ contains
     ! Build update equation
     call poly_integrate(temp)
     self % updateEqn = temp
+
+    ! Read initial temperature and volume
+    call dict % get(self % T, 'T')
+    call dict % get(self % V, 'V')
+
+    ! Calculate initial opacities, energy and Fleck factor
+    call self % sigmaFromTemp()
+    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)
+
+    ! Set calculation type (will support ISMC in the future)
+    self % calcType = IMC
 
   end subroutine init
 
@@ -382,7 +393,7 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: T, energyDens
 
-    energyDens = self % matEnergy / self % volume
+    energyDens = self % matEnergy / self % V
     T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
 
   end function tempFromEnergy
@@ -392,7 +403,6 @@ contains
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: sigma
 
     self % sigmaP = poly_eval(self % planckEqn, self % T)
 
@@ -413,7 +423,7 @@ contains
 
     U_r = radiationConstant * (self % T)**4
 
-    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % volume
+    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % V
 
   end function getEmittedRad
 
@@ -427,40 +437,6 @@ contains
     fleck = self % fleck
 
   end function getFleck
-
-  !!
-  !! Store deltaT in material class and set initial material properties
-  !!
-  !! Can be called from physics package with required arguments, as init does not have access
-  !!  to deltaT
-  !!
-  !! Args:
-  !!   deltaT -> Time step size
-  !!   T      -> Initial temperature
-  !!   V      -> Material volume
-  !!
-  !! Errors:
-  !!   fatalError if material volume <= 0
-  !!
-  subroutine initProps(self, deltaT, T, V)
-    class(baseMgIMCMaterial),intent(inout) :: self
-    real(defReal), intent(in)              :: deltaT, T, V
-    character(100), parameter  :: Here = 'initProps (baseMgIMCMaterial_class.f90)'
-
-    self % volume = V
-    if(self % volume <= 0) call fatalError(Here, 'Invalid material volume given')
-
-    self % T = T
-    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % volume
-
-    call self % sigmaFromTemp()
-
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
-    self % deltaT = deltaT
-
-    self % calcType = IMC
-
-  end subroutine initProps
 
 
   function getTemp(self) result(T)

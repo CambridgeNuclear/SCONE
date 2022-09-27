@@ -188,6 +188,7 @@ contains
     class(reactionHandle), pointer           :: reac
     character(100), parameter                :: Here = 'getReaction (baseMgIMCDatabase_class.f90)'
 
+    reac => null()
     call fatalError(Here, "Pointless function call")
 
   end function getReaction
@@ -224,7 +225,7 @@ contains
     character(pathLen)                                 :: path
     type(dictionary)                                   :: tempDict
     character(100), parameter :: Here = 'init (baseMgIMCDatabase_class.f90)'
-
+ 
     ! Prevent reallocations
     call self % kill()
 
@@ -242,6 +243,7 @@ contains
 
     ! Build materials
     do i=1,nMat
+
       ! Get Path to the xsFile
       matDef => mm_getMatPtr(i)
       call matDef % extraInfo % get(path,'xsFile')
@@ -253,6 +255,12 @@ contains
 
       ! Load dictionary
       call fileToDict(tempDict, path)
+
+      ! Add temperature and volume into dictionary
+      call tempDict % store('T', matDef % T)
+      call tempDict % store('V', matdef % V)
+
+      ! Initialise material
       call self % mats(i) % init(tempDict)
 
     end do

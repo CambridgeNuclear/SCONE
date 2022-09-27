@@ -29,8 +29,7 @@ module IMCPhysicsPackage_class
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
                                              mm_matName        => matName ,&
-                                             mm_matTemp        => matTemp ,&
-                                             mm_matVol         => matVol
+                                             mm_setTimeStep    => setTimeStep
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -159,12 +158,6 @@ contains
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
-
-    ! Attach initial properties to material classes
-    do j=1, self % nMat 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      call mat % initProps(self % deltaT, mm_matTemp(j), mm_matVol(j))
-    end do
 
     allocate(tallyEnergy(self % nMat))
 
@@ -397,6 +390,9 @@ contains
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
+    ! Provide materialMenuMod with time step size
+    call mm_setTimeStep(self % deltaT)
+
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
@@ -418,7 +414,7 @@ contains
       self % sourceGiven = .true.
     end if
 
-    ! Initialise ISMC source
+    ! Initialise IMC source
     call locDict1 % init(2)
     call locDict1 % store('type', 'imcSource')
     call locDict1 % store('nParticles', self % pop)
