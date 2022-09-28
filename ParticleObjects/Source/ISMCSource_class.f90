@@ -81,14 +81,7 @@ contains
 
     ! Calculate volume of bounding region
     boundSize = self % top - self % bottom
-    self % boundingVol = boundSize(1) * boundSize(2) * boundSize(3)
-
-!    ! Initialise array to store numbers of particles
-!    n = MMnMat()
-!    allocate( self % matPops(n) )
-!    do i=1, n
-!      self % matPops(i) = 0
-!    end do
+    self % boundingVol = boundSize(1) * boundSize(2) * boundSize(3) 
 
   end subroutine init
 
@@ -158,16 +151,6 @@ contains
       p % isMG     = .true.
 
       p % wgt = mat % getEnergyDens() * self % boundingVol / self % N
-
-!      ! Don't sample particles from areas of 0 temperature
-!      if( p % wgt == 0 ) then
-!        self % matPops(matIdx) = 1   ! Set to 1 to avoid error in appendIMC (source_inter.f90)
-!        i = i - 0.9                  ! To allow more attempts if large regions with 0 temp
-!        cycle rejection
-!      end if
-
-!      ! Increase counter of number of particles in material in order to normalise later
-!      self % matPops(matIdx) = self % matPops(matIdx) + 1
 
       ! Exit the loop
       exit rejection
