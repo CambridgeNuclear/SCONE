@@ -216,8 +216,6 @@ contains
     self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
 
-    print *, 'AAAA', self % alpha, self % fleck
-
     ! Set calculation type (will support ISMC in the future)
     self % calcType = IMC
 
