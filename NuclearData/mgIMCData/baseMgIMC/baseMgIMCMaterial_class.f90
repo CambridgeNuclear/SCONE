@@ -220,8 +220,6 @@ contains
     self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
 
-    print *, 'AAAA', self % alpha, self % fleck
-
     ! Set calculation type (will support ISMC in the future)
     self % calcType = IMC
 
@@ -503,9 +501,20 @@ contains
   subroutine setType(self, calcType)
     class(baseMgIMCMaterial), intent(inout) :: self
     integer(shortInt), intent(in)           :: calcType
+    real(defReal)                           :: beta, zeta
     character(100), parameter               :: Here = 'setType (baseMgIMCMaterial_class.f90)'
 
+    if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
+
     self % calcType = calcType
+
+    ! If ISMC, recalculate Fleck
+    if(self % calcType == ISMC) then
+      beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+      self % eta = radiationConstant * self % T**4 / self % matEnergy
+      zeta = beta - self % eta
+      self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+    end if
 
   end subroutine setType
 
