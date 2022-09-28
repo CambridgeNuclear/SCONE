@@ -443,13 +443,6 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Attach initial properties to material classes
-    do j=1, self % nMat 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      call mat % initProps(self % deltaT, mm_matTemp(j), mm_matVol(j))
-      call mat % setType(IMC)
-    end do
-
     ! Initialise imcWeight tally attachment
     call locDict2 % init(1)
     call locDict3 % init(2)
