@@ -5,6 +5,9 @@
 
 numberOfGroups 1; 
 
+alpha = 1;
+  // Optional setting of alpha used in calculation of fleck factor. If not given, alpha is set at 1.
+
 
   // Set polynomial temperature-dependent opacities for the material.
   // Currently have only considered the grey case, if using a frequency dependent opacity
@@ -23,6 +26,7 @@ sigmaS (    // Scattering opacity
  0
 );
 
+
   // Set temperature-dependent specific heat capacity of the material.
   // Same format as above.
   // Currently cannot have an exponent of exactly -1, as cv is integrated simply by adding 1 to
@@ -32,6 +36,7 @@ sigmaS (    // Scattering opacity
   //   numerical oversight in the way the calculation is done or if these are just unphysical
   //   choices.
   // e.g. Here, cv = 4T^3 - 2T + T^(-0.5)
+
 cv (
  4  -2   1      // Coefficients
  3   1  -0.5      // Exponents

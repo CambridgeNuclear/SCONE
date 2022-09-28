@@ -65,11 +65,12 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:), allocatable   :: scattEqn
     real(defReal),dimension(:), allocatable   :: planckEqn
     real(defReal)                             :: T
+    real(defReal)                             :: V
     real(defReal)                             :: fleck
+    real(defReal)                             :: alpha
     real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
-    real(defReal)                             :: V
     integer(shortInt)                         :: calcType
 
   contains
@@ -184,8 +185,9 @@ contains
     N = 4
     allocate(self % data(N, nG))
 
-    ! Store time step size
+    ! Store time step size and alpha settings
     self % deltaT = timeStepSize
+    call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
     ! Read opacity equations
     call dict % get(temp, 'sigmaA')
@@ -212,7 +214,9 @@ contains
     ! Calculate initial opacities, energy and Fleck factor
     call self % sigmaFromTemp()
     self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT)
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
+
+    print *, 'AAAA', self % alpha, self % fleck
 
     ! Set calculation type (will support ISMC in the future)
     self % calcType = IMC
@@ -357,7 +361,7 @@ contains
      call fatalError(Here, "Temperature is negative")
     end if
 
-    self % fleck = 1 / (1 + 1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
 
   end subroutine updateMatIMC
 
