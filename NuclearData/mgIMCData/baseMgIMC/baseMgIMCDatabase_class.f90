@@ -186,23 +186,10 @@ contains
     integer(shortInt), intent(in)            :: MT
     integer(shortInt), intent(in)            :: idx
     class(reactionHandle), pointer           :: reac
+    character(100), parameter                :: Here = 'getReaction (baseMgIMCDatabase_class.f90)'
 
-    ! Catch Invalid index
-    if(idx < 1 .or. idx > size(self % mats)) then
-      reac => null()
-      return
-    end if
-
-    ! Select correct reaction
-    select case(MT)
-
-      case(macroIEScatter)
-        reac => self % mats(idx) % scatter
-
-      case default
-        reac => null()
-
-    end select
+    reac => null()
+    call fatalError(Here, "Pointless function call")
 
   end function getReaction
 
@@ -236,10 +223,9 @@ contains
     integer(shortInt)                                  :: i, nMat
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
-    character(nameLen)                                 :: scatterKey
     type(dictionary)                                   :: tempDict
     character(100), parameter :: Here = 'init (baseMgIMCDatabase_class.f90)'
-
+ 
     ! Prevent reallocations
     call self % kill()
 
@@ -255,11 +241,9 @@ contains
 
     allocate(self % mats(nMat))
 
-    ! Read scatterKey
-    call dict % get(scatterKey, 'PN')
-
     ! Build materials
     do i=1,nMat
+
       ! Get Path to the xsFile
       matDef => mm_getMatPtr(i)
       call matDef % extraInfo % get(path,'xsFile')
@@ -271,7 +255,13 @@ contains
 
       ! Load dictionary
       call fileToDict(tempDict, path)
-      call self % mats(i) % init(tempDict, scatterKey)
+
+      ! Add temperature and volume into dictionary
+      call tempDict % store('T', matDef % T)
+      call tempDict % store('V', matdef % V)
+
+      ! Initialise material
+      call self % mats(i) % init(tempDict)
 
     end do
 

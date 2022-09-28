@@ -1,19 +1,14 @@
 
 numberOfGroups 1; 
 
-capture (0.0);
- 
-scatteringMultiplicity ( 
-0.0
-); 
-
-P0 ( 
- 0.0
-);
-
-sigmaP (
+sigmaA (
  10
  -3
+);
+
+sigmaS (
+ 0
+ 0
 );
 
 cv (

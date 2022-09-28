@@ -18,10 +18,6 @@ transportOperator {
                     type transportOperatorIMC;
                   }
 
-inactiveTally {} 
-
-activeTally  {}
-
 tally  {
 	   }
 
@@ -50,7 +46,7 @@ geometry {
 nuclearData {
 
   handles { 
-     mg       { type baseMgIMCDatabase; PN P0;}
+     mg       { type baseMgIMCDatabase; }
   }
   
   

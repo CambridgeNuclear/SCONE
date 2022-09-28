@@ -6,18 +6,13 @@ module baseMgIMCMaterial_class
   use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
-  use dictDeck_class,    only : dictDeck
   use poly_func
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
-
-  ! Reaction objects
-  use reactionMG_inter,        only : reactionMG
-  use multiScatterMG_class,    only : multiScatterMG
-  use multiScatterP1MG_class,  only : multiScatterP1MG
+  use materialMenu_mod,        only : timeStepSize
 
   implicit none
   private
@@ -33,6 +28,7 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
   integer(shortInt), parameter, public :: IESCATTER_XS  = 2
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
+  integer(shortInt), parameter, public :: PLANCK_XS     = 4
 
   !!
   !! Basic type of MG material data
@@ -54,34 +50,27 @@ module baseMgIMCMaterial_class
   !!   updateMat -> update material properties as required for IMC calculation
   !!   getEmittedRad -> returns the radiation to be emitted in current timestep
   !!   getFleck -> returns current material Fleck factor
-  !!   initProps -> attach initial properties to material, seperate to init (for now) as uses quantities
-  !!                from physics package e.g. time step size which are not available to init
   !!   getTemp -> returns current material temperature
   !!
   !! Note:
   !!   Order of "data" array is: data(XS_type, Group #)
   !!   Dictionary with data must contain following entries:
   !!     -> numberOfGroups
-  !!     -> capture [nGx1]
-  !!     -> scatteringMultiplicity [nGxnG]
-  !!     -> P0 [nGxnG]
-  !!   Optional entries:
-  !!     -> nu [nGx1]
-  !!     -> chi [nGx1]
-  !!     -> P# [nGxnG]
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
     real(defReal),dimension(:), allocatable   :: cv
     real(defReal),dimension(:), allocatable   :: updateEqn
-    real(defReal),dimension(:), allocatable   :: sigmaEqn
-    class(multiScatterMG), allocatable        :: scatter
+    real(defReal),dimension(:), allocatable   :: absEqn
+    real(defReal),dimension(:), allocatable   :: scattEqn
+    real(defReal),dimension(:), allocatable   :: planckEqn
     real(defReal)                             :: T
+    real(defReal)                             :: V
     real(defReal)                             :: fleck
+    real(defReal)                             :: alpha
     real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
-    real(defReal)                             :: volume
     real(defReal)                             :: eta
     integer(shortInt)                         :: calcType
 
@@ -98,7 +87,6 @@ module baseMgIMCMaterial_class
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: getEta
-    procedure :: initProps
     procedure :: getTemp
     procedure :: getEnergyDens
     procedure :: setType
@@ -122,8 +110,7 @@ contains
     call kill_super(self)
 
     ! Kill local content
-    if(allocated(self % data))        deallocate(self % data)
-    if(allocated(self % scatter))     deallocate(self % scatter)
+    if(allocated(self % data)) deallocate(self % data)
 
   end subroutine kill
 
@@ -150,6 +137,7 @@ contains
     xss % elasticScatter   = ZERO
     xss % inelasticScatter = self % data(IESCATTER_XS, G)
     xss % capture          = self % data(CAPTURE_XS, G)
+    xss % planck           = self % data(PLANCK_XS, G)
 
   end subroutine getMacroXSs_byG
 
@@ -181,74 +169,39 @@ contains
   !!
   !! Args:
   !!   dict       [in] -> Input dictionary with all required XSs
-  !!   scatterKey [in] -> String with keyword to choose approperiate multiplicative scatering
-  !!                        type
+  !!
   !! Errors:
-  !!   FatalError if scatteKey is invalid
   !!   FatalError if data in dictionary is invalid (inconsistant # of groups;
   !!     -ve entries in P0 XSs)
   !!
-  !! Note:
-  !!   Some time in the future scattering MG reaction objects will have factory. For now
-  !!   the factory is hardcoded into this procedure. Not the best solution but is fine at this
-  !!   stage. The following scatterKey are supported:
-  !!     -> P0
-  !!     -> P1
-  !!
-  subroutine init(self, dict, scatterKey)
+  subroutine init(self, dict)
     class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
-    character(nameLen), intent(in)              :: scatterKey
-    integer(shortInt)                           :: nG, N, i
+    integer(shortInt)                           :: nG, N
     real(defReal), dimension(:), allocatable    :: temp
-    type(dictDeck)                              :: deck
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
-
 
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
-    ! Build scattering reaction
-    ! Prepare input deck
-    deck % dict => dict
-
-    ! Choose Scattering type
-    select case(scatterKey)
-      case ('P0')
-        allocate( multiScatterMG :: self % scatter)
-
-      case ('P1')
-        allocate( multiScatterP1MG :: self % scatter)
-
-      case default
-        call fatalError(Here,'scatterKey: '//trim(scatterKey)//'is wrong. Must be P0 or P1')
-
-    end select
-
-    ! Initialise
-    call self % scatter % init(deck, macroAllScatter)
-
     ! Allocate space for data
-    N = 3
-
+    N = 4
     allocate(self % data(N, nG))
 
-    ! Extract values of scattering XS
-    if(size(self % scatter % scatterXSs) /= nG) then
-      call fatalError(Here, 'Somthing went wrong. Inconsistant # of groups in material and reaction&
-                            &. Clearly programming error.')
-    end if
-    self % data(IESCATTER_XS,:) = self % scatter % scatterXSs
+    ! Store time step size and alpha settings
+    self % deltaT = timeStepSize
+    call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
-    ! Calculate total XS
-    do i =1,nG
-      self % data(TOTAL_XS, i) = self % data(IESCATTER_XS, i) + self % data(CAPTURE_XS, i)
-    end do
+    ! Read opacity equations
+    call dict % get(temp, 'sigmaA')
+    self % absEqn = temp
+    call dict % get(temp, 'sigmaS')
+    self % scattEqn = temp
 
-    ! Read Planck opacity equation
-    call dict % get(temp, 'sigmaP')
-    self % sigmaEqn = temp
+    ! Build planck opacity equation
+    ! For grey case, sigmaP = sigmaA. Will become more complicated for frequency-dependent case
+    self % planckEqn = self % absEqn
 
     ! Read heat capacity equation
     call dict % get(temp, 'cv')
@@ -257,6 +210,20 @@ contains
     ! Build update equation
     call poly_integrate(temp)
     self % updateEqn = temp
+
+    ! Read initial temperature and volume
+    call dict % get(self % T, 'T')
+    call dict % get(self % V, 'V')
+
+    ! Calculate initial opacities, energy and Fleck factor
+    call self % sigmaFromTemp()
+    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
+
+    print *, 'AAAA', self % alpha, self % fleck
+
+    ! Set calculation type (will support ISMC in the future)
+    self % calcType = IMC
 
   end subroutine init
 
@@ -384,14 +351,14 @@ contains
     ! Update material temperature
     self % T = self % tempFromEnergy()
 
-    ! Update sigmaP
-    call self % sigmaFromTemp
+    ! Update sigma
+    call self % sigmaFromTemp()
 
     if( self % T < 0 ) then
      call fatalError(Here, "Temperature is negative")
     end if
 
-    self % fleck = 1 / (1 + 1*self % sigmaP*lightSpeed*self % deltaT)  ! Incomplete, need to add alpha
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
 
     ! Print updated properties 
     if (present(printUpdate)) then
@@ -426,8 +393,8 @@ contains
     zeta = beta - self % eta
     self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
-    ! Update sigmaP
-    call self % sigmaFromTemp
+    ! Update sigma
+    call self % sigmaFromTemp()
 
     ! Print updated properties 
     if (present(printUpdate)) then
@@ -446,23 +413,23 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: T, energyDens
 
-    energyDens = self % matEnergy / self % volume
+    energyDens = self % matEnergy / self % V
     T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
 
   end function tempFromEnergy
 
   !!
-  !! Calculate sigmaP from current temp
+  !! Calculate sigma from current temp
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: sigma
 
-    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
+    self % sigmaP = poly_eval(self % planckEqn, self % T)
 
-    ! Also need these lines because cross section functions use this instead of sigmaP for now
-    self % data(CAPTURE_XS,:) = self % sigmaP
-    self % data(TOTAL_XS,:) = self % sigmaP
+    self % data(CAPTURE_XS,:) = poly_eval(self % absEqn, self % T)
+    self % data(IESCATTER_XS,:) = poly_eval(self % scattEqn, self % T)
+    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
+    self % data(PLANCK_XS,:) = poly_eval(self % planckEqn, self % T)
 
   end subroutine sigmaFromTemp
 
@@ -476,7 +443,7 @@ contains
 
     U_r = radiationConstant * (self % T)**4
 
-    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % volume
+    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % V
 
   end function getEmittedRad
 
@@ -503,43 +470,6 @@ contains
     eta = self % eta
 
   end function getEta
-
-  !!
-  !! Store deltaT in material class and set initial material properties
-  !!
-  !! Can be called from physics package with required arguments, as init does not have access
-  !!  to deltaT
-  !!
-  !! Args:
-  !!   deltaT -> Time step size
-  !!   T      -> Initial temperature
-  !!   V      -> Material volume
-  !!
-  !! Errors:
-  !!   fatalError if material volume <= 0
-  !!
-  subroutine initProps(self, deltaT, T, V)
-    class(baseMgIMCMaterial),intent(inout) :: self
-    real(defReal), intent(in)              :: deltaT, T, V
-    character(100), parameter  :: Here = 'initProps (baseMgIMCMaterial_class.f90)'
-
-    self % volume = V
-    if(self % volume <= 0) call fatalError(Here, 'Invalid material volume given')
-
-    self % T = T
-    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % volume
-
-    self % sigmaP = poly_eval(self % sigmaEqn, self % T)
-    self % data(CAPTURE_XS,:) = self % sigmaP
-    self % data(TOTAL_XS,:) = self % sigmaP
-
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*deltaT)
-    self % deltaT = deltaT
-
-    self % eta = 1
-
-  end subroutine initProps
-
 
   function getTemp(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self

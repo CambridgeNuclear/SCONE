@@ -47,7 +47,6 @@ module mgIMCMaterial_inter
     procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
     procedure(getEta), deferred             :: getEta
-    procedure(initProps), deferred          :: initProps
     procedure(getTemp), deferred            :: getTemp
     procedure(getEnergyDens), deferred      :: getEnergyDens
     procedure(setType), deferred            :: setType
@@ -140,21 +139,6 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial),intent(in) :: self
       real(defReal)                   :: eta
     end function getEta
-
-    !!
-    !! Store deltaT in material class and set initial material properties
-    !!
-    !! Can be called from physics package with required arguments, as init does not have access
-    !!  to deltaT
-    !!
-    !! Args:
-    !!   deltaT -> Time step size
-    !!
-    subroutine initProps(self, deltaT, T, V)
-      import :: mgIMCMaterial, defReal
-      class(mgIMCMaterial),intent(inout) :: self
-      real(defReal), intent(in)          :: deltaT, T, V
-    end subroutine initProps
 
     function getTemp(self) result(T)
       import :: mgIMCMaterial, defReal

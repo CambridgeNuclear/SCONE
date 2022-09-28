@@ -19,18 +19,6 @@ module IMCMGstd_class
   use mgIMCDatabase_inter,           only : mgIMCDatabase
   use mgIMCMaterial_inter,           only : mgIMCMaterial, mgIMCMaterial_CptrCast
   use reactionHandle_inter,          only : reactionHandle
-  use multiScatterMG_class,          only : multiScatterMG, multiScatterMG_CptrCast
-
-  ! Cross section packages
-  use IMCXsPackages_class,           only : IMCMacroXSs
-
-
-  ! Nuclear Data
-  !use nuclearData_inter,              only : nuclearData
-  !use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
-
-  ! Cross-section packages to interface with nuclear data
-  !use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
 
   implicit none
   private
@@ -95,7 +83,6 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
-    type(IMCMacroXSs)                    :: macroXSs
     real(defReal)                        :: r, fleck
     character(100),parameter :: Here =' sampleCollision (IMCMGstd_class.f90)'
 
@@ -112,8 +99,6 @@ contains
     self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
 
-    ! Select Main reaction channel
-    call self % mat % getMacroXSs(macroXSs, p % G, p % pRNG)
     r = p % pRNG % get()
 
     fleck = self % mat % getFleck()
@@ -123,7 +108,7 @@ contains
       collDat % MT = macroCapture
     else
       ! Effective scattering
-      collDat % MT = macroIEScatter
+      collDat % MT = macroAllScatter
     end if
 
   end subroutine sampleCollision
@@ -143,7 +128,7 @@ contains
   end subroutine implicit
 
   !!
-  !! Elastic Scattering
+  !! Effective scattering - currently only elastic (constant energy-weight)
   !!
   subroutine elastic(self, p , collDat, thisCycle, nextCycle)
     class(IMCMGstd), intent(inout)       :: self
@@ -151,33 +136,12 @@ contains
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
+    real(defReal)                        :: phi, mu
+    real(defReal), dimension(3)          :: dir
     character(100), parameter :: Here = 'elastic (IMCMGstd_class.f90)'
 
-    ! Do nothing. Should not be called
-
-    call fatalError(Here, "Elastic subroutine should not be called")
-
-  end subroutine elastic
-
-  !!
-  !! Perform scattering - Currently this is for effective scattering, and energy weights
-  !!                       are unchanged (so is actually elastic)
-  !!
-  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
-    class(IMCMGstd), intent(inout)       :: self
-    class(particle), intent(inout)       :: p
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    class(multiScatterMG),pointer        :: scatter
-    integer(shortInt)                    :: G_out   ! Post-collision energy group
-    real(defReal)                        :: phi, mu     ! Azimuthal scatter angle
-    real(defReal)                        :: w_mul   ! Weight multiplier
-    real(defReal), dimension(3)          :: dir
-    character(100),parameter :: Here = "inelastic (IMCMGstd_class.f90)"
-
     ! Assign MT number
-    collDat % MT = macroIEScatter 
+    collDat % MT = macroAllScatter 
 
     ! Sample Direction - chosen uniformly inside unit sphere
     mu = 2 * p % pRNG % get() - 1
@@ -188,6 +152,23 @@ contains
 
     !p % coords % dir = dir
     call p % rotate(mu, phi)
+
+  end subroutine elastic
+
+  !!
+  !! Inelastic scattering - Not currently supported
+  !!
+  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
+    class(IMCMGstd), intent(inout)       :: self
+    class(particle), intent(inout)       :: p
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+    character(100),parameter :: Here = "inelastic (IMCMGstd_class.f90)"
+
+    ! Do nothing. Should not be called
+
+    call fatalError(Here, "Inelastic subroutine should not be called")
 
   end subroutine inelastic
 

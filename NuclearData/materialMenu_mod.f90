@@ -10,15 +10,16 @@
 !!   nameMap      -> Map that maps material name to matIdx
 !!
 !! Interface:
-!!   init      -> Load material definitions from a dictionary
-!!   kill      -> Return to uninitialised state
-!!   display   -> Display information about all defined materials to console
-!!   getMatPtr -> Return pointer to a detailed material information (materialItem)
-!!   nMat      -> Return number of materials
-!!   matName   -> Return material Name given Index
-!!   matTemp   -> Return material Temperature given Index
-!!   matVol    -> Return material Volume given Index
-!!   matIdx    -> Return material Index given Name
+!!   init        -> Load material definitions from a dictionary
+!!   kill        -> Return to uninitialised state
+!!   display     -> Display information about all defined materials to console
+!!   getMatPtr   -> Return pointer to a detailed material information (materialItem)
+!!   nMat        -> Return number of materials
+!!   matName     -> Return material Name given Index
+!!   matTemp     -> Return material Temperature given Index
+!!   matVol      -> Return material Volume given Index
+!!   matIdx      -> Return material Index given Name
+!!   setTimeStep -> Set size of time step
 !!
 module materialMenu_mod
 
@@ -102,6 +103,7 @@ module materialMenu_mod
 !! MODULE COMPONENTS
   type(materialItem),dimension(:),allocatable,target,public :: materialDefs
   type(charMap),target,public                               :: nameMap
+  real(defReal), public                                     :: timeStepSize = ZERO
 
   public :: init
   public :: kill
@@ -112,6 +114,7 @@ module materialMenu_mod
   public :: matTemp
   public :: matVol
   public :: matIdx
+  public :: setTimeStep
 
 contains
 
@@ -130,7 +133,7 @@ contains
     integer(shortInt)                           :: i
     character(nameLen)                          :: temp
 
-    ! Clean whatever may be alrady present
+    ! Clean whatever may be already present
     call kill()
 
     ! Load all material names
@@ -290,6 +293,21 @@ contains
 
   end function matIdx
 
+  !!
+  !! Set time step
+  !!
+  !! Used by IMC and ISMC physics packages to provide material objects with time step size
+  !!
+  !! Args:
+  !!   dt [in] -> time step size [s]
+  !!
+  subroutine setTimeStep(dt)
+    real(defReal), intent(in) :: dt
+
+    timeStepSize = dt
+
+  end subroutine setTimeStep
+
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! TYPE PROCEDURES
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -352,6 +370,7 @@ contains
     self % name   = ''
     self % matIdx = 0
     self % T      = ZERO
+    self % V      = ZERO
 
     ! Deallocate allocatable components
     if(allocated(self % dens)) deallocate(self % dens)

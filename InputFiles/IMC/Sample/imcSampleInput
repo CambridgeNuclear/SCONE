@@ -37,14 +37,7 @@ transportOperator {
                     type transportOperatorIMC;
                   }
 
-// No tallies are required for calculation, but empty dictionaries must be given
-
-inactiveTally {
-              }
-
-activeTally  {
-    	     }
-
+// No tallies are required for calculation, but empty dictionary must be given
 tally  {
 	   }
 
@@ -72,15 +65,15 @@ geometry {
 nuclearData {
 
   handles { 
-     mg       { type baseMgIMCDatabase; PN P0;}
+     mg       { type baseMgIMCDatabase; }
   }
   
   // Dictionary containing all materials used in geometry
-  // If desired to have spatial temperature variation, split geometry (above)
-  //   into desired cells and set each cell fill as a DIFFERENT material
-  //   (e.g. mat1, mat2, mat3, ...) then define all materials here. Even if each
-  //   each mat input is identical (even including data file), a unique material object
-  //   will be created allowing for a unique temperature evolution.
+  // If desired to have spatial temperature variation, split geometry (above) into desired cells
+  //   and set each cell fill as a DIFFERENT material (e.g. mat1, mat2, mat3, ...) then define
+  //   all materials here. Even if each each mat input is identical, a unique material object
+  //   will be created allowing for a unique temperature evolution. The same xsFile may be used
+  //   for different materials if desired.
 
   materials { 
 
@@ -88,7 +81,7 @@ nuclearData {
     mat {
 
       temp       1;
-        // Initial temperature of material (will change as calculation progresses).
+        // Initial temperature of material [keV].
 
       composition {}
         // Empty dictionary required for composition.
@@ -97,13 +90,13 @@ nuclearData {
         // Location of material data file containing material properties.
 
       volume     1;
-        // Total volume that this material occupies, for now need to calculate by hand
+        // Total volume that this material occupies [cm3], for now need to calculate by hand
         //   and enter here. May be room to make this automatic in the future.
 
     }
 
     // Example 2: mat2
-    //mat2 { temp 1; composition {} xssFile ./imcSampleMat2; volume 1 }
+    //mat2 { temp 1; composition {} xsFile ./imcSampleMat2; volume 1 }
 
 } 
   

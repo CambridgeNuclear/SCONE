@@ -3,7 +3,7 @@ type IMCPhysicsPackage;
 
 pop            5000;
 limit          20000;
-cycles         31;
+cycles         51;
 timeStepSize   1;
 
 XSdata     mg;
@@ -17,10 +17,6 @@ collisionOperator {
 transportOperator {
                     type transportOperatorIMC;
                   } 
-
-inactiveTally {} 
-
-activeTally  {}
 
 tally  {
 	   }
@@ -50,7 +46,7 @@ geometry {
 nuclearData {
 
   handles { 
-     mg       { type baseMgIMCDatabase; PN P0;}
+     mg       { type baseMgIMCDatabase; }
   }
   
   
