@@ -237,15 +237,8 @@ contains
 
             call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
 
-            ! If absorbed, transform into material
-            if(p % isDead) then
-              p % isDead = .false.
-              p % fate = 0
-              p % type = P_MATERIAL
-              !call self % nextCycle % detain(p)
-              !exit history
-              cycle history
-            end if
+            if(p % isDead) call fatalError(Here, 'Particle should not be dead, check that collision &
+                                                  operator is of type "ISMCMGstd"')
 
           end do history
 
@@ -475,7 +468,7 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Attach initial properties to material classes
+    ! Set calculation type for material objects
     do j=1, self % nMat 
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
       call mat % setType(ISMC)

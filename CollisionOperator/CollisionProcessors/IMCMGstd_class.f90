@@ -2,12 +2,13 @@ module IMCMGstd_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,            only : IMC, ISMC
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_PHOTON
+  use particle_class,                only : particle, particleState, printType, P_PHOTON, P_MATERIAL
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstract interface
@@ -39,6 +40,7 @@ module IMCMGstd_class
     private
     class(mgIMCDatabase), pointer, public :: xsData => null()
     class(mgIMCMaterial), pointer, public :: mat    => null()
+    integer(shortInt)                     :: calcType
   contains
     ! Initialisation procedure
     procedure :: init
@@ -61,7 +63,13 @@ contains
   subroutine init(self, dict)
     class(IMCMGstd), intent(inout)     :: self
     class(dictionary), intent(in)      :: dict
+    character(nameLen)                 :: calcType
     character(100), parameter :: Here = 'init (IMCMGstd_class.f90)'
+
+    ! Set calculation type
+    self % calcType = IMC
+    call dict % get(calcType, 'type')
+    if(calcType == 'ISMCMGstd') self % calcType = ISMC
 
     ! Call superclass
     call init_super(self, dict)
@@ -182,7 +190,11 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    p % isDead = .true.
+    if(self % calcType == IMC) then
+      p % isDead = .true.
+    else
+      p % type = P_MATERIAL
+    end if
 
   end subroutine capture
 
