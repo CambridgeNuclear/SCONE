@@ -5,21 +5,22 @@
 
 numberOfGroups 1; 
 
-  // For now the following 3 settings are required at 0, just due to the way that
-  //   some of the cross section functions work the same as other calculation types
-capture (0.0);
-scatteringMultiplicity (0.0);
-P0 (0.0);
 
-  // Set polynomial temperature-dependent Planck opacity for the material.
+  // Set polynomial temperature-dependent opacities for the material.
   // Currently have only considered the grey case, if using a frequency dependent opacity
   //   then this would need to be changed to a more complex input.
   // Input should be a 1D array of coefficients followed by exponents, with any polynomial
   //   length allowed
-  // e.g. Here, sigmaP = 1 + 2T
-sigmaP (
+  // e.g. Here, sigmaA = 1 + 2T
+
+sigmaA (    // Absorption opacity
  1  2       // Coefficients
  0  1       // Exponents
+);
+
+sigmaS (    // Scattering opacity
+ 0
+ 0
 );
 
   // Set temperature-dependent specific heat capacity of the material.
