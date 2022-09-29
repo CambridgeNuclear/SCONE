@@ -150,6 +150,7 @@ contains
       p % G        = self % G
       p % isMG     = .true.
 
+      ! Set weight to be (energy per unit volume) * (volume per particle)
       p % wgt = mat % getEnergyDens() * self % boundingVol / self % N
 
       ! Exit the loop
