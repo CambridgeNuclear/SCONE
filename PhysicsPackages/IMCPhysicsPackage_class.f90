@@ -132,7 +132,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, j
+    integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
@@ -177,7 +177,13 @@ contains
 
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
-        call self % IMCSource % appendIMC(self % thisCycle, self % pop, p % pRNG)
+        ! Select number of particles to generate
+        N = self % pop
+        if(N + self % thisCycle % getSize() > self % limit) then
+          N = self % limit - self % thisCycle % getSize() - self % nMat - 1
+        end if
+        ! Add to particle dungeon
+        call self % IMCSource % appendIMC(self % thisCycle, N, p % pRNG)
       end if
 
       ! Generate from input source
@@ -341,12 +347,12 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
-    call dict % getOrDefault( self % limit, 'limit', self % pop)
-    call dict % get( self % N_cycles,'cycles')
-    call dict % get( self % deltaT,'timeStepSize')
-    call dict % get( nucData, 'XSdata')
-    call dict % get( energy, 'dataType')
+    call dict % get(self % pop,'pop')
+    call dict % get(self % limit, 'limit')
+    call dict % get(self % N_cycles,'cycles')
+    call dict % get(self % deltaT,'timeStepSize')
+    call dict % get(nucData, 'XSdata')
+    call dict % get(energy, 'dataType')
 
     ! Process type of data
     select case(energy)
