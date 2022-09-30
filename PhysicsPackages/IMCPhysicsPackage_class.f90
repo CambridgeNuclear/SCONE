@@ -167,7 +167,6 @@ contains
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
-
       ! Check that there are regions of non-zero temperature by summing mat temperatures
       sumT = 0
       do j=1, self % nMat
@@ -180,8 +179,10 @@ contains
         ! Select number of particles to generate
         N = self % pop
         if(N + self % thisCycle % getSize() > self % limit) then
+          ! Fleck and Cummings IMC Paper, eqn 4.11
           N = self % limit - self % thisCycle % getSize() - self % nMat - 1
         end if
+        if(self % sourceGiven) N = N/2
         ! Add to particle dungeon
         call self % IMCSource % appendIMC(self % thisCycle, N, p % pRNG)
       end if
