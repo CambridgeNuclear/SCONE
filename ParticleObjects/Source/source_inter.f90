@@ -6,7 +6,7 @@ module source_inter
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
   use geometry_inter,        only : geometry
-  use genericProcedures,    only : fatalError
+  use genericProcedures,     only : fatalError
 
   implicit none
   private
@@ -31,18 +31,15 @@ module source_inter
   !!   init              -> initialise the source
   !!   generate          -> generate particles to fill a dungeon
   !!   append            -> generate new particles to add to an existing dungeon
-  !!   appendIMC         -> generate particles for uniform IMC material source
   !!   sampleParticle    -> sample particles from the corresponding distributions
   !!   kill              -> clean up the source
   !!
   type, public,abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
-    integer(shortInt), dimension(:), allocatable, public :: matPops
   contains
-    procedure, non_overridable             :: generate
-    procedure, non_overridable             :: append
-    procedure, non_overridable             :: appendIMC
+    procedure                              :: generate
+    procedure                              :: append
     procedure(sampleParticle), deferred    :: sampleParticle
     procedure(init), deferred              :: init
     procedure(kill), deferred              :: kill
@@ -119,19 +116,20 @@ contains
     end subroutine generate
 
     !!
-    !! Generate particles to populate a particleDungeon without overriding
+    !! Generate particles to add to a particleDungeon without overriding
     !! particles already present
     !!
     !! Adds to a particle dungeon n particles, sampled
     !! from the corresponding source distributions
     !!
     !! Args:
-    !!   dungeon [inout] -> particle dungeon to be populated
+    !!   dungeon [inout] -> particle dungeon to be added to
     !!   n [in]          -> number of particles to place in dungeon
     !!   rand [inout]    -> particle RNG object
     !!
     !! Result:
-    !!   A dungeon populated with n particles sampled from the source
+    !!   A dungeon populated with n particles sampled from the source, plus
+    !!   particles already present in dungeon
     !!
     subroutine append(self, dungeon, n, rand)
       class(source), intent(inout)         :: self
@@ -146,74 +144,6 @@ contains
       end do
 
     end subroutine append
-
-    !!
-    !! Generate n particles to populate a particleDungeon without overriding
-    !! particles already present. Unlike 'append' subroutine above, this is
-    !! specific to IMCSource_class and is needed for multiregion functionality.
-    !! The number of particles sampled in each matIdx is tallied and used to normalise
-    !! each particle weight, so that the total energy emitted in each region is as
-    !! required
-    !!
-    !! Args:
-    !!   dungeon [inout] -> particle dungeon to be populated
-    !!   n [in]          -> number of particles to place in dungeon
-    !!   rand [inout]    -> particle RNG object
-    !!
-    !! Result:
-    !!   A dungeon populated with n particles sampled from the source
-    !!
-    subroutine appendIMC(self, dungeon, n, rand)
-      class(source), intent(inout)         :: self
-      type(particleDungeon), intent(inout) :: dungeon
-      type(particleDungeon)                :: tempDungeon
-      type(particle)                       :: p
-      integer(shortInt), intent(in)        :: n
-      class(RNG), intent(inout)            :: rand
-      integer(shortInt)                    :: i
-      real(defReal)                        :: normFactor
-      character(100), parameter            :: Here = "appendIMC (source_inter.f90)"
-
-      ! Reset particle population counters
-      do i = 1, size( self % matPops )
-        self % matPops(i) = 0
-      end do
-
-      ! Set temporary dungeon size
-      call tempDungeon % setSize(n)
-
-      ! Generate n particles to populate temporary dungeon
-      do i = 1, n
-        call tempDungeon % replace(self % sampleParticle(rand), i)
-      end do
-
-      ! Call error if any region contains no generated particles (due to small regions and/or
-      !   not enough particles used), needed for now as otherwise will lead to energy imbalance
-      !   as mat energy will be reduced by emittedRad but no particles will be carrying it
-      ! Note that matProps is set to 1 in IMCsource.f90 if region is of 0 temperature to avoid
-      !   this error for such a case
-      if ( minval(self % matPops) == 0 ) then
-        call fatalError(Here, "Not all regions emitted particles, use more particles")
-      end if
-
-      ! Loop through again and add to input dungeon, normalising energies based on material
-      do i = 1, n
-
-        call tempDungeon % release(p)
-
-        ! Place inside geometry to set matIdx, for some reason resets when released from dungeon
-        call self % geom % placeCoord( p % coords )
-
-        ! Normalise
-        normFactor = self % matPops( p % coords % matIdx )
-        p % w = p % w / normFactor
-
-        ! Add to input dungeon
-        call dungeon % detain(p)
-
-      end do        
-
-    end subroutine appendIMC
 
     !!
     !! Return to uninitialised state

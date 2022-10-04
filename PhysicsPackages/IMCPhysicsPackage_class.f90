@@ -174,22 +174,23 @@ contains
         sumT = sumT + mat % getTemp()
       end do
 
+      N = self % pop
+
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
         ! Select number of particles to generate
-        N = self % pop
         if(N + self % thisCycle % getSize() > self % limit) then
           ! Fleck and Cummings IMC Paper, eqn 4.11
           N = self % limit - self % thisCycle % getSize() - self % nMat - 1
         end if
         if(self % sourceGiven) N = N/2
         ! Add to particle dungeon
-        call self % IMCSource % appendIMC(self % thisCycle, N, p % pRNG)
+        call self % IMCSource % append(self % thisCycle, N, p % pRNG)
       end if
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisCycle, self % pop, p % pRNG)
+        call self % inputSource % append(self % thisCycle, N, p % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -422,9 +423,8 @@ contains
     end if
 
     ! Initialise IMC source
-    call locDict1 % init(2)
+    call locDict1 % init(1)
     call locDict1 % store('type', 'imcSource')
-    call locDict1 % store('nParticles', self % pop)
     call new_source(self % IMCSource, locDict1, self % geom)
 
     ! Build collision operator
