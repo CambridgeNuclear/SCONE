@@ -64,7 +64,6 @@ module surfaceSource_class
     integer(shortInt)           :: planeShape   = 0  ! 0 => square, 1 => circle
     integer(shortInt)           :: axis         = 1  ! 1 => x, 2 => y, 3 => z
     real(defReal)               :: T            = ZERO
-    integer(shortInt)           :: nParticles   = ZERO
     real(defReal)               :: deltaT       = ZERO
   contains
     procedure :: init
@@ -168,7 +167,6 @@ contains
     end if
 
     call dict % get(self % T, 'T')
-    call dict % get(self % nParticles, 'nParticles')
     call dict % get(self % deltat, 'deltat')
 
   end subroutine init
@@ -275,7 +273,7 @@ contains
     real(defReal)                       :: num
 
     num = radiationConstant * lightSpeed * self % deltat * self % T**4 * self % area
-    p % wgt = num / (4 * self % nParticles)
+    p % wgt = num / (4)! * self % N)      TODO: NEED TO ADD THIS BACK IN
 
     ! If dir = 0 then emit in both directions => double total energy
     if (self % dir == 0) p % wgt = 2*p % wgt
