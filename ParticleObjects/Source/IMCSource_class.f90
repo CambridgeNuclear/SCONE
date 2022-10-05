@@ -115,7 +115,7 @@ contains
     type(particle)                       :: p
     integer(shortInt)                    :: i
     real(defReal)                        :: normFactor
-    character(100), parameter            :: Here = "appendIMC (IMCSource_class.f90)"
+    character(100), parameter            :: Here = "append (IMCSource_class.f90)"
 
     ! Reset particle population counters
     do i = 1, size( self % matPops )
