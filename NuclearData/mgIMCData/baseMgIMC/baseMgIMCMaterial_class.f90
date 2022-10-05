@@ -70,6 +70,7 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
+    real(defReal)                             :: energyDens
     real(defReal)                             :: eta
     integer(shortInt)                         :: calcType
 
@@ -216,7 +217,8 @@ contains
 
     ! Calculate initial opacities and energy
     call self % sigmaFromTemp()
-    self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
+    self % energyDens = poly_eval(self % updateEqn, self % T)
+    self % matEnergy  = self % energyDens * self % V
 
     ! Set calculation type (will support ISMC in the future)
     self % calcType = IMC
@@ -247,7 +249,7 @@ contains
 
     else if(self % calcType == ISMC) then
       beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-      self % eta  =   radiationConstant * self % T**4 / self % matEnergy
+      self % eta  =   radiationConstant * self % T**4 / self % energyDens
       zeta = beta - self % eta
       self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
@@ -377,7 +379,8 @@ contains
     end if
 
     ! Update material internal energy
-    self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
+    self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
+    self % energyDens = self % matEnergy / self % V
 
     ! Update material temperature
     self % T = self % tempFromEnergy()
@@ -411,7 +414,8 @@ contains
     logical(defBool), intent(in), optional  :: printUpdate
 
     ! Update material internal energy
-    self % matEnergy = tallyEnergy
+    self % matEnergy  = tallyEnergy
+    self % energyDens = self % matEnergy / self % V
 
     !if(self % matEnergy <= 0.3) self % matEnergy = 0.3
 
@@ -420,7 +424,7 @@ contains
 
     ! Update ISMC equivalent of fleck factor
     beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-    self % eta  =   radiationConstant * self % T**4 / self % matEnergy
+    self % eta  =   radiationConstant * self % T**4 / self % energyDens
     zeta = beta - self % eta
     self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
@@ -442,10 +446,9 @@ contains
   !!
   function tempFromEnergy(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: T, energyDens
+    real(defReal)                           :: T
 
-    energyDens = self % matEnergy / self % V
-    T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
+    T = poly_solve(self % updateEqn, self % cv, self % T, self % energyDens)
 
   end function tempFromEnergy
 
@@ -547,7 +550,7 @@ contains
     ! If ISMC, recalculate Fleck
     if(self % calcType == ISMC) then
       beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-      self % eta = radiationConstant * self % T**4 / self % matEnergy
+      self % eta = radiationConstant * self % T**4 / self % energyDens
       zeta = beta - self % eta
       self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
     end if
