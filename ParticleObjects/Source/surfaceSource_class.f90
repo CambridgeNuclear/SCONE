@@ -222,9 +222,9 @@ contains
       prevPos = self % r
 
       ! Set new x, y and z coords
-      self % r(1) = rand % get() * self % surfSize/2
-      self % r(2) = rand % get() * self % surfSize/2
-      self % r(3) = rand % get() * self % surfSize/2
+      self % r(1) = (rand % get()-0.5) * self % surfSize
+      self % r(2) = (rand % get()-0.5) * self % surfSize
+      self % r(3) = (rand % get()-0.5) * self % surfSize
       ! Leave position along normal axis unchanged
       self % r(self % axis) = prevPos(self % axis) 
 
