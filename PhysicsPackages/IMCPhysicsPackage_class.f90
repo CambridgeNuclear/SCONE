@@ -28,8 +28,7 @@ module IMCPhysicsPackage_class
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
-                                             mm_matName        => matName ,&
-                                             mm_setTimeStep    => setTimeStep
+                                             mm_matName        => matName
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -343,6 +342,7 @@ contains
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
+    class(IMCMaterial), pointer                     :: mat
     character(nameLen), dimension(:), allocatable   :: mats
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
@@ -398,9 +398,6 @@ contains
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
-    ! Provide materialMenuMod with time step size
-    call mm_setTimeStep(self % deltaT)
-
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
@@ -447,6 +444,12 @@ contains
     allocate(mats(self % nMat))
     do i=1, self % nMat
       mats(i) = mm_matName(i)
+    end do
+
+    ! Provide each material with time step
+    do i=1, self % nMat
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(i))
+      call mat % setTimeStep(self % deltaT)
     end do
 
     ! Initialise imcWeight tally attachment

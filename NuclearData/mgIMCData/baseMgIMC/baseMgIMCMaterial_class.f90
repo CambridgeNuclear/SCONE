@@ -12,7 +12,6 @@ module baseMgIMCMaterial_class
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
-  use materialMenu_mod,        only : timeStepSize
 
   implicit none
   private
@@ -86,6 +85,7 @@ module baseMgIMCMaterial_class
     procedure :: getEmittedRad
     procedure :: getFleck
     procedure :: getTemp
+    procedure :: setTimeStep
 
     procedure, private :: updateMatIMC
     procedure, private :: updateMatISMC
@@ -185,8 +185,7 @@ contains
     N = 4
     allocate(self % data(N, nG))
 
-    ! Store time step size and alpha settings
-    self % deltaT = timeStepSize
+    ! Store alpha setting
     call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
     ! Read opacity equations
@@ -211,15 +210,49 @@ contains
     call dict % get(self % T, 'T')
     call dict % get(self % V, 'V')
 
-    ! Calculate initial opacities, energy and Fleck factor
+    ! Calculate initial opacities and energy
     call self % sigmaFromTemp()
     self % matEnergy = poly_eval(self % updateEqn, self % T) * self % V
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
 
     ! Set calculation type (will support ISMC in the future)
     self % calcType = IMC
 
   end subroutine init
+
+
+  !!
+  !! Provide material with time step size
+  !!
+  !! Args:
+  !!   dt [in] -> time step size [s]
+  !!
+  !! Errors:
+  !!   fatalError if calculation type is invalid (valid options are IMC or ISMC)
+  !!
+  subroutine setTimeStep(self, dt)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal), intent(in)               :: dt
+    real(defReal)                           :: beta, eta, zeta
+    character(100), parameter               :: Here = 'setTimeStep (baseMgIMCMaterial_class.f90)'
+
+    self % deltaT = dt
+
+    ! Use time step size to calculate fleck factor
+    if(self % calcType == IMC) then
+      self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
+
+    else if(self % calcType == ISMC) then
+      beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+      eta  =   radiationConstant * self % T**4 / self % matEnergy
+      zeta = beta - eta
+      self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+
+    else
+      call fatalError(Here, 'Calculation type invalid or not set')
+    end if
+
+
+  end subroutine setTimeStep
 
   !!
   !! Return number of energy groups
@@ -440,7 +473,9 @@ contains
 
   end function getFleck
 
-
+  !!
+  !! Get temperature of material
+  !!
   function getTemp(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: T

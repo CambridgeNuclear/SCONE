@@ -35,6 +35,7 @@ module IMCMaterial_inter
     procedure(getEmittedRad), deferred   :: getEmittedRad
     procedure(getFleck), deferred        :: getFleck
     procedure(getTemp), deferred         :: getTemp
+    procedure(setTimeStep), deferred     :: setTimeStep
   end type IMCMaterial
 
   abstract interface
@@ -91,12 +92,26 @@ module IMCMaterial_inter
       real(defReal)                  :: fleck
     end function getFleck
 
-
+    !!
+    !! Get temperature of material
+    !!
     function getTemp(self) result(T)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout) :: self
       real(defReal)                     :: T
     end function getTemp
+
+    !!
+    !! Provide material with time step size
+    !!
+    !! Args:
+    !!   dt [in] -> time step size [s]
+    !!
+    subroutine setTimeStep(self, dt)
+      import :: IMCMaterial, defReal
+      class(IMCMaterial), intent(inout) :: self
+      real(defReal), intent(in)         :: dt
+    end subroutine setTimeStep
 
   end interface
 
