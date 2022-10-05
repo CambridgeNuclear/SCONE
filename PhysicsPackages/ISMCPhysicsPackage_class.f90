@@ -28,8 +28,7 @@ module ISMCPhysicsPackage_class
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
-                                             mm_matName        => matName ,&
-                                             mm_setTimeStep    => setTimeStep
+                                             mm_matName        => matName
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -238,7 +237,7 @@ contains
             call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
 
             if(p % isDead) call fatalError(Here, 'Particle should not be dead, check that collision &
-                                                  operator is of type "ISMCMGstd"')
+                                                  &operator is of type "ISMCMGstd"')
 
           end do history
 
@@ -348,7 +347,7 @@ contains
   !! Initialise from individual components and dictionaries for source and tally
   !!
   subroutine init(self, dict)
-    class(ISMCPhysicsPackage), intent(inout)         :: self
+    class(ISMCPhysicsPackage), intent(inout)        :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
     type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
@@ -359,7 +358,7 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    integer(shortInt)                               :: i, j
+    integer(shortInt)                               :: i
     character(nameLen), dimension(:), allocatable   :: mats
     class(IMCMaterial), pointer                     :: mat
     character(100), parameter :: Here ='init (ISMCPhysicsPackage_class.f90)'
@@ -416,9 +415,6 @@ contains
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
-    ! Provide materialMenuMod with time step size
-    call mm_setTimeStep(self % deltaT)
-
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
@@ -468,10 +464,11 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Set calculation type for material objects
-    do j=1, self % nMat 
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+    ! Set calculation type for material objects and provide time step
+    do i=1, self % nMat 
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(i))
       call mat % setType(ISMC)
+      call mat % setTimeStep(self % deltaT)
     end do
 
     ! Initialise imcWeight tally attachment

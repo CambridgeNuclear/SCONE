@@ -28,8 +28,7 @@ module IMCPhysicsPackage_class
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
-                                             mm_matName        => matName ,&
-                                             mm_setTimeStep    => setTimeStep
+                                             mm_matName        => matName
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_activate    => activate ,&
                                              ndReg_display     => display, &
@@ -132,7 +131,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, j
+    integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
@@ -167,7 +166,6 @@ contains
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
-
       ! Check that there are regions of non-zero temperature by summing mat temperatures
       sumT = 0
       do j=1, self % nMat
@@ -175,14 +173,23 @@ contains
         sumT = sumT + mat % getTemp()
       end do
 
+      N = self % pop
+
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
-        call self % IMCSource % appendIMC(self % thisCycle, self % pop, p % pRNG)
+        ! Select number of particles to generate
+        if(N + self % thisCycle % getSize() > self % limit) then
+          ! Fleck and Cummings IMC Paper, eqn 4.11
+          N = self % limit - self % thisCycle % getSize() - self % nMat - 1
+        end if
+        if(self % sourceGiven) N = N/2
+        ! Add to particle dungeon
+        call self % IMCSource % append(self % thisCycle, N, p % pRNG)
       end if
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisCycle, self % pop, p % pRNG)
+        call self % inputSource % append(self % thisCycle, N, p % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -334,20 +341,20 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    integer(shortInt)                               :: i, j
-    character(nameLen), dimension(:), allocatable   :: mats
+    integer(shortInt)                               :: i
     class(IMCMaterial), pointer                     :: mat
+    character(nameLen), dimension(:), allocatable   :: mats
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
-    call dict % getOrDefault( self % limit, 'limit', self % pop)
-    call dict % get( self % N_cycles,'cycles')
-    call dict % get( self % deltaT,'timeStepSize')
-    call dict % get( nucData, 'XSdata')
-    call dict % get( energy, 'dataType')
+    call dict % get(self % pop,'pop')
+    call dict % get(self % limit, 'limit')
+    call dict % get(self % N_cycles,'cycles')
+    call dict % get(self % deltaT,'timeStepSize')
+    call dict % get(nucData, 'XSdata')
+    call dict % get(energy, 'dataType')
 
     ! Process type of data
     select case(energy)
@@ -391,9 +398,6 @@ contains
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
-    ! Provide materialMenuMod with time step size
-    call mm_setTimeStep(self % deltaT)
-
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
@@ -416,9 +420,8 @@ contains
     end if
 
     ! Initialise IMC source
-    call locDict1 % init(2)
+    call locDict1 % init(1)
     call locDict1 % store('type', 'imcSource')
-    call locDict1 % store('nParticles', self % pop)
     call new_source(self % IMCSource, locDict1, self % geom)
 
     ! Build collision operator
@@ -441,6 +444,12 @@ contains
     allocate(mats(self % nMat))
     do i=1, self % nMat
       mats(i) = mm_matName(i)
+    end do
+
+    ! Provide each material with time step
+    do i=1, self % nMat
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(i))
+      call mat % setTimeStep(self % deltaT)
     end do
 
     ! Initialise imcWeight tally attachment

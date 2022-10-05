@@ -19,7 +19,6 @@
 !!   matTemp     -> Return material Temperature given Index
 !!   matVol      -> Return material Volume given Index
 !!   matIdx      -> Return material Index given Name
-!!   setTimeStep -> Set size of time step
 !!
 module materialMenu_mod
 
@@ -103,7 +102,6 @@ module materialMenu_mod
 !! MODULE COMPONENTS
   type(materialItem),dimension(:),allocatable,target,public :: materialDefs
   type(charMap),target,public                               :: nameMap
-  real(defReal), public                                     :: timeStepSize = ZERO
 
   public :: init
   public :: kill
@@ -114,7 +112,6 @@ module materialMenu_mod
   public :: matTemp
   public :: matVol
   public :: matIdx
-  public :: setTimeStep
 
 contains
 
@@ -292,21 +289,6 @@ contains
     idx = nameMap % getOrDefault(name, NOT_FOUND)
 
   end function matIdx
-
-  !!
-  !! Set time step
-  !!
-  !! Used by IMC and ISMC physics packages to provide material objects with time step size
-  !!
-  !! Args:
-  !!   dt [in] -> time step size [s]
-  !!
-  subroutine setTimeStep(dt)
-    real(defReal), intent(in) :: dt
-
-    timeStepSize = dt
-
-  end subroutine setTimeStep
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! TYPE PROCEDURES

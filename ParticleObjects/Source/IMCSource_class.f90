@@ -7,7 +7,7 @@ module IMCSource_class
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
 
-  use particle_class,          only : particleState, P_PHOTON
+  use particle_class,          only : particle, particleState, P_PHOTON
   use particleDungeon_class,   only : particleDungeon
   use source_inter,            only : source, kill_super => kill
 
@@ -37,18 +37,19 @@ module IMCSource_class
   !!   source_inter Interface
   !!
   !! SAMPLE INPUT:
-  !!   imcSource { type IMCSource; nParticles 100; }
+  !!   imcSource { type IMCSource; }
   !!
   type, public,extends(source) :: imcSource
     private
-    logical(defBool)            :: isMG   = .true.
-    real(defReal), dimension(3) :: bottom = ZERO
-    real(defReal), dimension(3) :: top    = ZERO
-    real(defReal)               :: E      = ZERO
-    integer(shortInt)           :: G      = 0
-    integer(shortInt)           :: nParticles = 10
+    logical(defBool)                             :: isMG   = .true.
+    real(defReal), dimension(3)                  :: bottom = ZERO
+    real(defReal), dimension(3)                  :: top    = ZERO
+    real(defReal)                                :: E      = ZERO
+    integer(shortInt)                            :: G      = 0
+    integer(shortInt), dimension(:), allocatable :: matPops
   contains
     procedure :: init
+    procedure :: append
     procedure :: sampleParticle
     procedure :: kill
   end type imcSource
@@ -64,7 +65,6 @@ contains
     class(imcSource), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    character(nameLen)                       :: type
     real(defReal), dimension(6)              :: bounds
     integer(shortInt)                        :: i, n
     character(100), parameter :: Here = 'init (imcSource_class.f90)'
@@ -73,7 +73,6 @@ contains
     self % geom => geom
 
     call dict % getOrDefault(self % G, 'G', 1)
-    call dict % getOrDefault(self % nParticles, 'nParticles', 10)
 
     ! Set bounding region
     bounds = self % geom % bounds()
@@ -82,12 +81,82 @@ contains
 
     ! Initialise array to store numbers of particles
     n = MMnMat()
-    allocate( self % matPops(n) )
+    allocate(self % matPops(n))
     do i=1, n
       self % matPops(i) = 0
     end do
 
   end subroutine init
+
+  !!
+  !! Generate n particles to add to a particleDungeon without overriding
+  !! particles already present. More complex than superclass 'append' subroutine,
+  !! needed for multiregion functionality.
+  !!
+  !! The number of particles sampled in each matIdx is recorded and used to normalise
+  !! each particle weight, so that the total energy emitted in each region is as
+  !! required
+  !!
+  !! Args:
+  !!   dungeon [inout] -> particle dungeon to be added to
+  !!   n [in]          -> number of particles to place in dungeon
+  !!   rand [inout]    -> particle RNG object
+  !!
+  !! Result:
+  !!   A dungeon populated with n particles sampled from the source, plus particles
+  !!   already present in dungeon
+  !!
+  subroutine append(self, dungeon, N, rand)
+    class(imcSource), intent(inout)      :: self
+    type(particleDungeon), intent(inout) :: dungeon
+    integer(shortInt), intent(in)        :: N
+    class(RNG), intent(inout)            :: rand
+    type(particleDungeon)                :: tempDungeon
+    type(particle)                       :: p
+    integer(shortInt)                    :: i
+    real(defReal)                        :: normFactor
+    character(100), parameter            :: Here = "append (IMCSource_class.f90)"
+
+    ! Reset particle population counters
+    do i = 1, size( self % matPops )
+      self % matPops(i) = 0
+    end do
+
+    ! Set temporary dungeon size
+    call tempDungeon % setSize(n)
+
+    ! Generate n particles to populate temporary dungeon
+    do i = 1, n
+      call tempDungeon % replace(self % sampleParticle(rand), i)
+    end do
+
+    ! Call error if any region contains no generated particles (due to small regions and/or
+    !   not enough particles used), needed for now as otherwise will lead to energy imbalance
+    !   as mat energy will be reduced by emittedRad but no particles will be carrying it
+    ! Note that matPops is set to 1 in sample_particle if region is of 0 temperature to avoid
+    !   this error for such a case
+    if ( minval(self % matPops) == 0 ) then
+      call fatalError(Here, "Not all regions emitted particles, use more particles")
+    end if
+
+    ! Loop through again and add to input dungeon, normalising energies based on material
+    do i = 1, n
+
+      call tempDungeon % release(p)
+
+      ! Place inside geometry to set matIdx, for some reason resets when released from dungeon
+      call self % geom % placeCoord( p % coords )
+
+      ! Normalise
+      normFactor = self % matPops( p % coords % matIdx )
+      p % w = p % w / normFactor
+
+      ! Add to input dungeon
+      call dungeon % detain(p)
+
+    end do
+   
+  end subroutine append
 
   !!
   !! Sample particle's phase space co-ordinates
@@ -103,7 +172,7 @@ contains
     real(defReal), dimension(3)          :: r, rand3, dir
     ! Here, i is a float to allow more precise control of loop
     real(defReal)                        :: mu, phi, i
-    integer(shortInt)                    :: matIdx, uniqueID, nucIdx
+    integer(shortInt)                    :: matIdx, uniqueID
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
@@ -161,7 +230,7 @@ contains
 
       ! Don't sample particles from areas of 0 temperature
       if( p % wgt == 0 ) then
-        self % matPops(matIdx) = 1   ! Set to 1 to avoid error in appendIMC (source_inter.f90)
+        self % matPops(matIdx) = 1   ! Set to 1 to avoid error in append subroutine
         i = i - 0.9                  ! To allow more attempts if large regions with 0 temp
         cycle rejection
       end if
@@ -189,7 +258,6 @@ contains
     self % top    = ZERO
     self % E      = ZERO
     self % G      = 0
-    self % nParticles = 10
 
   end subroutine kill
 

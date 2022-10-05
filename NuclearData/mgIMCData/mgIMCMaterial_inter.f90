@@ -50,6 +50,7 @@ module mgIMCMaterial_inter
     procedure(getTemp), deferred            :: getTemp
     procedure(getEnergyDens), deferred      :: getEnergyDens
     procedure(setType), deferred            :: setType
+    procedure(setTimeStep), deferred        :: setTimeStep
 
   end type mgIMCMaterial
 
@@ -140,6 +141,8 @@ module mgIMCMaterial_inter
       real(defReal)                   :: eta
     end function getEta
 
+    !! Get temperature of material
+    !!
     function getTemp(self) result(T)
       import :: mgIMCMaterial, defReal
       class(mgIMCMaterial), intent(inout) :: self
@@ -170,6 +173,18 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(inout) :: self
       integer(shortInt), intent(in)       :: calcType
     end subroutine setType
+
+    !!
+    !! Provide material with time step size
+    !!
+    !! Args:
+    !!   dt [in] -> time step size [s]
+    !!
+    subroutine setTimeStep(self, dt)
+      import :: mgIMCMaterial, defReal
+      class(mgIMCMaterial), intent(inout) :: self
+      real(defReal), intent(in)           :: dt
+    end subroutine setTimeStep
 
 
   end interface
