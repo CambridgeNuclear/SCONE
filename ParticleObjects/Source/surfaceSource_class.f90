@@ -2,12 +2,13 @@ module surfaceSource_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError
-  use particle_class,     only : particleState, P_NEUTRON, P_PHOTON
-  use dictionary_class,   only : dictionary
-  use configSource_inter, only : configSource, kill_super => kill
-  use geometry_inter,     only : geometry
-  use RNG_class,          only : RNG
+  use genericProcedures,     only : fatalError
+  use particle_class,        only : particleState, P_NEUTRON, P_PHOTON
+  use particleDungeon_class, only : particleDungeon
+  use dictionary_class,      only : dictionary
+  use configSource_inter,    only : configSource, kill_super => kill
+  use geometry_inter,        only : geometry
+  use RNG_class,             only : RNG
 
   implicit none
   private
@@ -65,8 +66,10 @@ module surfaceSource_class
     integer(shortInt)           :: axis         = 1  ! 1 => x, 2 => y, 3 => z
     real(defReal)               :: T            = ZERO
     real(defReal)               :: deltaT       = ZERO
+    integer(shortInt)           :: N            = 1
   contains
     procedure :: init
+    procedure :: append
     procedure :: sampleType
     procedure :: samplePosition
     procedure :: sampleEnergy
@@ -171,6 +174,23 @@ contains
 
   end subroutine init
 
+  subroutine append(self, dungeon, N, rand)
+    class(surfaceSource), intent(inout)  :: self
+    type(particleDungeon), intent(inout) :: dungeon
+    integer(shortInt), intent(in)        :: N
+    class(RNG), intent(inout)            :: rand
+    integer(shortInt)                    :: i
+    character(100), parameter            :: Here = 'append (surfaceSource_class.f90)'
+
+    self % N = N
+
+    ! Generate n particles to populate dungeon
+    do i = 1, N
+      call dungeon % detain(self % sampleParticle(rand))
+    end do
+
+  end subroutine append
+
   !!
   !! Provide particle type
   !!
@@ -273,7 +293,7 @@ contains
     real(defReal)                       :: num
 
     num = radiationConstant * lightSpeed * self % deltat * self % T**4 * self % area
-    p % wgt = num / (4)! * self % N)      TODO: NEED TO ADD THIS BACK IN
+    p % wgt = num / (4 * self % N)
 
     ! If dir = 0 then emit in both directions => double total energy
     if (self % dir == 0) p % wgt = 2*p % wgt
