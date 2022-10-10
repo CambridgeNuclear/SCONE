@@ -177,9 +177,6 @@ contains
       self % thisCycle = self % nextCycle
       call self % nextCycle % cleanPop()
 
-
-      call self % thisCycle % printToScreen('wgt', 10, .true.)
-
       ! Generate from input source
       if( self % sourceGiven ) then
 
