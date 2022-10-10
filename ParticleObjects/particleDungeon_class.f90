@@ -27,7 +27,7 @@ module particleDungeon_class
   !! Dungeon can work like stacks or arrays. Stack-like behaviour is not really thread safe
   !! so it can be utilised when collecting and processing secondary particles in history
   !! that should be processed during the course of one cycle. Array-like behaviour allows to
-  !! easily distribute particles among threads. As long as indices assign to diffrent threads
+  !! easily distribute particles among threads. As long as indices assign to different threads
   !! do not overlap, reading is thread-safe (I hope-MAK).
   !!
   !!
@@ -401,12 +401,12 @@ contains
         randIdx2 = ceiling(rand % get() * self % pop)
         p2 = self % prisoners(randIdx2)
         r2 = p2 % rGlobal()
-        !if(abs(r1(1) - r2(1)) <= 0.01) then
-        !  distanceTest = .true.
-        !else
-        !  distanceTest = .false.
-        !end if
-        if(p2 % type == p1 % type .and. p1 % matIdx() == p2 % matIdx()) exit sample !distanceTest .eqv. .true.) exit sample
+        if(abs(r1(1) - r2(1)) <= 0.005) then
+          distanceTest = .true.
+        else
+          distanceTest = .false.
+        end if
+        if(p2 % type == p1 % type .and. distanceTest .eqv. .true.) exit sample
         ! If too many samples of different type, resample p1
         if(loops2 >= 0.05*self % pop) cycle reduce
         loops2 = loops2 + 1
@@ -645,7 +645,6 @@ contains
             totSum = totSum + self % prisoners(i) % wgt
           end do
           print *, 'Cumulative sum of p % wgt = ', totSum
-          write(12, *) totSum
         end if
 
       case('time')
