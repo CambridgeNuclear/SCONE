@@ -60,8 +60,8 @@ module poly_func
     !! Use Newton-Raphspon method to solve polynomial with m terms
     !!
     !! Args:
-    !!   equation -> 1D array of n coefficients followed by m exponents
-    !!   derivative -> 1D array of n coefficients followed by m exponents
+    !!   equation -> 1D array of m coefficients followed by m exponents
+    !!   derivative -> 1D array of m coefficients followed by m exponents
     !!   x0 -> Starting guess
     !!   const -> For f(x) = const, if not given then solves f(x) = 0
     !!
@@ -101,9 +101,16 @@ module poly_func
         c = 0
       end if
 
+      ! Return 0 if f(x) = 0 and all exponents are non-zero
+      if (c == 0 .and. all(equation(m+1:2*m) /= 0)) then
+        x = 0
+        return
+      end if
+
       ! Iterate
       i = 0
       iterate: do
+
         ! Store x for convergence check
         x_old = x
 
@@ -124,7 +131,7 @@ module poly_func
 
         ! Call error if not converged
         if( i >= 1000 ) then
-          call fatalError(Here, "Solution has not converged after 1000 iterations")
+          call fatalError(Here, "Solution has not converged after 1000 iterations,"//numToChar(x0)//','//numToChar(const))
         end if
 
         ! Increase counter
