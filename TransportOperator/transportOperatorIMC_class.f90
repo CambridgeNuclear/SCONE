@@ -49,7 +49,7 @@ contains
     type(tallyAdmin), intent(inout)            :: tally
     class(particleDungeon), intent(inout)      :: thisCycle
     class(particleDungeon), intent(inout)      :: nextCycle
-    real(defReal)                              :: sigmaT, dTime, dColl, dist
+    real(defReal)                              :: sigmaT, dTime, dColl
     logical(defBool)                           :: finished
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
@@ -181,7 +181,7 @@ contains
       ! Time boundary
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
       p % fate = TIME_FATE
-      if (p % time /= p % timeMax) call fatalError(Here, 'Particle time is somehow incorrect')
+      if (abs(p % time - p % timeMax)>0.000001) call fatalError(Here, 'Particle time is somehow incorrect')
       p % time = p % timeMax
       finished = .true.
     else if (dist == dColl) then
