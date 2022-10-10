@@ -252,6 +252,11 @@ contains
       self % eta  =   radiationConstant * self % T**4 / self % energyDens
       zeta = beta - self % eta
       self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+      ! Deal with 0 temperature - needs more consideration for certain cv
+      if (self % fleck /= self % fleck) then
+        self % eta   = ZERO
+        self % fleck = ONE
+      end if
 
     else
       call fatalError(Here, 'Calculation type invalid or not set')
@@ -428,6 +433,12 @@ contains
     zeta = beta - self % eta
     self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
 
+    ! Deal with 0 temperature - needs more consideration for certain cv
+    if (self % fleck /= self % fleck) then
+      self % eta   = ZERO
+      self % fleck = ONE
+    end if
+
     ! Update sigma
     call self % sigmaFromTemp()
 
@@ -438,6 +449,8 @@ contains
         print *, "  T_new =                         ", self % T
       end if
     end if
+
+    write(10, '(8A)') numToChar(self % T)
 
   end subroutine updateMatISMC
 
@@ -546,14 +559,6 @@ contains
     if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
 
     self % calcType = calcType
-
-    ! If ISMC, recalculate Fleck
-    if(self % calcType == ISMC) then
-      beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-      self % eta = radiationConstant * self % T**4 / self % energyDens
-      zeta = beta - self % eta
-      self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
-    end if
 
   end subroutine setType
 
