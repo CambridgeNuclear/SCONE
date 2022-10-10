@@ -53,7 +53,7 @@ module cellShelf_class
   !!   getSize -> Return the number of cells (max cellIdx)
   !!   kill    -> Return to uninitialised state
   !!
-  !! NOTE: Becouse cells are stored as pointers, calling `kill` is crucial to prevent
+  !! NOTE: Because cells are stored as pointers, calling `kill` is crucial to prevent
   !!   memory leaks. TODO: Add `final` procedure here ?
   !!
   type, public :: cellShelf
