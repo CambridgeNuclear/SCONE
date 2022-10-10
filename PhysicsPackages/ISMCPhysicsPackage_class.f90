@@ -165,9 +165,11 @@ contains
     ! Generate initial material photons
     call self % ISMCSource % generate(self % nextCycle, self % pop, p % pRNG)
 
-    open(unit = 10, file = 'particles.txt')
+    open(unit = 10, file = 'temps.txt')
 
     do i=1,N_cycles
+
+      write(10, '(8A)') numToChar(i)
 
       N = 0
 
