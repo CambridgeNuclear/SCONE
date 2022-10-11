@@ -217,6 +217,9 @@ contains
       return
     end if
 
+    ! Check for particle leakage
+    if (p % matIdx() == OUTSIDE_FILL) return
+
     ! Obtain local cross-section
     sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
