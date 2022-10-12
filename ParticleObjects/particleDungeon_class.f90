@@ -363,7 +363,7 @@ contains
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: excessP, randIdx1, randIdx2, loops, loops2
+    integer(shortInt)                     :: randIdx1, randIdx2, loops, loops2
     type(particle)                        :: p1, p2, p3
     real(defReal), dimension(3)           :: rNew, r1, r2, r12
     real(defReal)                         :: dist
@@ -372,15 +372,12 @@ contains
     print *, "REDUCE", self % pop, N
 
     ! Protect against invalid N
-    if( N > self % pop) then
+    if(N > self % pop) then
       call fatalError(Here,'Requested size: '//numToChar(N) //&
                            'is greather then max size: '//numToChar(size(self % prisoners)))
-    else if ( N <= 0 ) then
+    else if (N <= 0) then
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
-
-    ! Calculate excess particles to be removed
-    excessP = self % pop - N
 
     ! Protect against infinite loop
     loops = 0
@@ -404,9 +401,9 @@ contains
         r2 = p2 % rGlobal()
         r12 = r2 - r1
         dist = sqrt(r12(1)**2 + r12(2)**2 + r12(3)**2)
-        if(p2 % type == p1 % type .and. dist <= 0.2 .and. r1(1) <= 0.5) exit sample
+        if (p2 % type == p1 % type .and. dist <= 0.2 .and. r1(1) <= 0.5) exit sample
         ! If too many failed samples, resample p1
-        if(loops2 >= 0.5*self % pop) cycle reduce
+        if (loops2 >= 0.5*self % pop) cycle reduce
         loops2 = loops2 + 1
       end do sample
 
