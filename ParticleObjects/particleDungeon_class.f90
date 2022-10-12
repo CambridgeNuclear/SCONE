@@ -204,7 +204,7 @@ contains
 
     ! Protect agoinst out-of-bounds acces
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
@@ -224,7 +224,7 @@ contains
 
     ! Protect agoinst out-of-bounds acces
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
@@ -364,9 +364,9 @@ contains
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP, randIdx1, randIdx2, loops, loops2
-    type(particle)                        :: p1, p2
-    real(defReal), dimension(3)           :: rNew, r1, r2
-    logical(defBool)                      :: distanceTest = .true.
+    type(particle)                        :: p1, p2, p3
+    real(defReal), dimension(3)           :: rNew, r1, r2, r12
+    real(defReal)                         :: dist
     character(100), parameter :: Here ='reduceSize (particleDungeon_class.f90)'
 
     print *, "REDUCE", self % pop, N
@@ -391,36 +391,34 @@ contains
       if(loops >= 50*self % pop) call fatalError(Here, 'Potentially infinite loop')
 
       ! Obtain random particles from dungeon
-      randIdx1 = nint(rand % get() * self % pop)
-      p1 = self % prisoners(randIdx1)
+      randIdx1 = ceiling(rand % get() * self % pop)
+      call self % copy(p1, randIdx1)
       r1 = p1 % rGlobal()
 
       ! Obtain random particle of the same type
       loops2 = 0
       sample:do
         randIdx2 = ceiling(rand % get() * self % pop)
-        p2 = self % prisoners(randIdx2)
+        if (randIdx2 == randIdx1 .or. randIdx2 == self % pop) cycle sample
+        call self % copy(p2, randIdx2)
         r2 = p2 % rGlobal()
-        if(abs(r1(1) - r2(1)) <= 0.005) then
-          distanceTest = .true.
-        else
-          distanceTest = .false.
-        end if
-        if(p2 % type == p1 % type .and. distanceTest .eqv. .true.) exit sample
-        ! If too many samples of different type, resample p1
-        if(loops2 >= 0.05*self % pop) cycle reduce
+        r12 = r2 - r1
+        dist = sqrt(r12(1)**2 + r12(2)**2 + r12(3)**2)
+        if(p2 % type == p1 % type .and. dist <= 0.2 .and. r1(1) <= 0.5) exit sample
+        ! If too many failed samples, resample p1
+        if(loops2 >= 0.5*self % pop) cycle reduce
         loops2 = loops2 + 1
       end do sample
 
       ! Combine positions and weights
-      rNew = (p1 % rGlobal()*p1 % w+p2 % rGlobal()*p2 % w) / (p1 % w+p2 % w)
+      rNew = (r1*p1 % w + r2*p2 % w) / (p1 % w + p2 % w)
       call p1 % teleport(rNew)
       p1 % w = p1 % w + p2 % w
-      self % prisoners(randIdx1) = p1
+      call self % replace(p1, randIdx1)
 
       ! Overwrite p2 and reduce size
-      call self % replace(self % prisoners(self % pop), randIdx2)
-      self % pop = self % pop - 1
+      call self % release(p3)
+      call self % replace(p3, randIdx2)
 
       if(self % pop == N) exit reduce
 
