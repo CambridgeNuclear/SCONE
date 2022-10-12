@@ -133,9 +133,10 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, j, N
+    integer(shortInt)                               :: i, j, matIdx
+    integer(shortInt), dimension(:), allocatable    :: Nm, Np
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     logical(defBool)                                :: printUpdates
@@ -166,12 +167,17 @@ contains
     call self % ISMCSource % generate(self % nextCycle, self % pop, p % pRNG)
 
     open(unit = 10, file = 'temps.txt')
+    open(unit = 11, file = 'pops.txt')
+
+    allocate(Nm(self % nMat))
+    allocate(Np(self % nMat))
 
     do i=1,N_cycles
 
       write(10, '(8A)') numToChar(i)
 
-      N = 0
+      Nm = 0
+      Np = 0
 
       ! Store photons remaining from previous cycle
       self % thisCycle = self % nextCycle
@@ -200,10 +206,6 @@ contains
         call self % thisCycle % release(p)
         call self % geom % placeCoord(p % coords)
 
-        if( p % type == P_MATERIAL ) then
-          N = N+1
-        end if
-
         ! Assign particle time
         if( p % type /= P_MATERIAL .and. p % time /= self % deltaT ) then
           ! If particle has just been sourced, t = 0 so sample uniformly within timestep
@@ -223,6 +225,15 @@ contains
             if(p % fate == LEAK_FATE) exit history
             
             if(p % fate == TIME_FATE) then
+                if(p % type == P_PHOTON) then
+                  matIdx = p % matIdx()
+                  Np(matIdx) = Np(matIdx) + 1
+                else if( p % type == P_MATERIAL ) then
+                  matIdx = p % matIdx()
+                  Nm(matIdx) = Nm(matIdx) + 1
+                else
+                  call fatalError(Here, 'Incorrect type')
+                end if
                 ! Store particle for use in next time step
                 p % fate = 0
                 call self % nextCycle % detain(p)
@@ -257,8 +268,6 @@ contains
       ! Predict time to end
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
-
-      print *, "Number of material photons at start of time step = ", N
 
       ! Display progress
       call printFishLineR(i)
@@ -299,12 +308,13 @@ contains
 
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
 
-      !call self % nextCycle % printToFile('particles')
-      !write(10, '(8A)') '0.0   0.0   0.0   0.0'
+      write(11, '(8A)') 'M', numToChar(Nm)
+      write(11, '(8A)') 'P', numToChar(Np)
 
     end do
 
     close(10)
+    close(11)
 
   end subroutine cycles
 
