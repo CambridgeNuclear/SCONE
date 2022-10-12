@@ -216,9 +216,11 @@ contains
     adrr = self % getMemAddress() + binIdx - 1
 
     ! Append to required bin
-    if( p % isDead .and. p % fate /= LEAK_FATE .or. p % type == P_MATERIAL) then
-      scoreVal = p % w
-      call mem % score(scoreVal, adrr)
+    if (p % isDead .or. p % type == P_MATERIAL) then
+      if (p % fate /= LEAK_FATE) then
+        scoreVal = p % w
+        call mem % score(scoreVal, adrr)
+      end if
     end if
 
   end subroutine reportHist
