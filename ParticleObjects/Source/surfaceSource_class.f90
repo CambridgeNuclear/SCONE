@@ -263,18 +263,22 @@ contains
     class(surfaceSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
-    real(defReal)                       :: r, phi, theta
+    real(defReal)                       :: phi, mu, theta
 
-    r = rand % get()
-    phi = TWO_PI * r
-    r = rand % get()
-    theta = acos(1 - TWO * r)
-    p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
+    phi = TWO_PI * rand % get()
+    mu = sqrt(rand % get())
+    !theta = acos(1 - TWO * r)
+    !p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
+
+    p % dir = [mu, sqrt(1-mu**2)*cos(phi), sqrt(1-mu**2)*sin(phi)]
 
     ! If dir not equal to zero, adjust so that particles are travelling in correct direction
-    if (self % dir /= 0) then
-      p % dir(self % axis) = abs(p % dir(self % axis)) * self % dir 
-    end if
+    !if (self % dir /= 0) then
+    !  p % dir(self % axis) = abs(p % dir(self % axis)) * self % dir 
+    !end if
+
+    !p % dir = [0,0,0]
+    !p % dir(self % axis) = 1
 
   end subroutine sampleEnergyAngle
 
