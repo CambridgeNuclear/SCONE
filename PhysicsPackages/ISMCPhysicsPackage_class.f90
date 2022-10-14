@@ -187,9 +187,11 @@ contains
       if( self % sourceGiven ) then
 
         ! Reduce size of dungeon if dungeon will overflow
-        if( self % thisCycle % popSize() + self % pop > self % limit) then
-          call self % thisCycle % reduceSize(self % limit - self % pop, p % pRNG)
-        end if
+        !if( self % thisCycle % popSize() + self % pop > self % limit) then
+        !  call self % thisCycle % reduceSize2(self % limit - self % pop, self % nMat, self % geom, p % pRNG)
+        !end if
+
+        !call self % thisCycle % reduceSize2(self % limit, self % nMat, self % geom, p % pRNG)
 
         call self % inputSource % append(self % thisCycle, self % pop, p % pRNG)
 
@@ -308,8 +310,8 @@ contains
 
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
 
-      write(11, '(8A)') 'M', numToChar(Nm)
-      write(11, '(8A)') 'P', numToChar(Np)
+      write(11, '(8A)') 'M ', numToChar(Nm)
+      write(11, '(8A)') 'P ', numToChar(Np)
 
     end do
 
@@ -498,9 +500,9 @@ contains
 
     ! Size particle dungeon
     allocate(self % thisCycle)
-    call self % thisCycle % init(self % limit)
+    call self % thisCycle % init(self % limit * self % nMat)
     allocate(self % nextCycle)
-    call self % nextCycle % init(self % limit)
+    call self % nextCycle % init(self % limit * self % nMat)
 
     call self % printSettings()
 
