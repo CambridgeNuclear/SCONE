@@ -12,7 +12,7 @@ module transportOperatorIMC_class
   use rng_class,                  only : rng
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
@@ -34,8 +34,10 @@ module transportOperatorIMC_class
   type, public, extends(transportOperator) :: transportOperatorIMC
     class(mgIMCMaterial), pointer, public :: mat    => null()
     real(defReal)                         :: majorant_inv
+    real(defReal)                         :: cutoff
   contains
     procedure          :: transit => imcTracking
+    procedure          :: init
     procedure, private :: materialTransform
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
@@ -81,7 +83,7 @@ contains
 
       ! Decide whether to use delta tracking or surface tracking
       ! Vastly different opacities make delta tracking infeasable
-      if(sigmaT * self % majorant_inv > 0.3) then
+      if(sigmaT * self % majorant_inv > self % cutoff) then
         ! Delta tracking
         call self % deltaTracking(p, dTime, dColl, finished)
       else
@@ -228,5 +230,20 @@ contains
     if (p % pRNG % get() < sigmaT * self % majorant_inv) finished = .true.
 
   end subroutine deltaTracking
+
+  !!
+  !! Provide transport operator with delta tracking/surface tracking cutoff
+  !!
+  subroutine init(self, dict)
+    class(transportOperatorIMC), intent(inout) :: self
+    class(dictionary), intent(in)              :: dict
+
+    ! Initialise superclass
+    call init_super(self, dict)
+
+    ! Get cutoff value
+    call dict % getOrDefault(self % cutoff, 'cutoff', 0.3_defReal)
+
+  end subroutine init
 
 end module transportOperatorIMC_class
