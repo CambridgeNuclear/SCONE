@@ -31,16 +31,25 @@ module transportOperatorIMC_class
   !!
   !! Transport operator that moves a particle with IMC tracking
   !!
-  type, public, extends(transportOperator) :: transportOperatorIMC
-    class(mgIMCMaterial), pointer, public :: mat    => null()
-    real(defReal)                         :: majorant_inv
-    real(defReal)                         :: cutoff
+  type, public, extends(transportOperator)   :: transportOperatorIMC
+    class(mgIMCMaterial), pointer, public    :: mat    => null()
+    real(defReal)                            :: majorant_inv
+    real(defReal)                            :: deltaT
+    real(defReal)                            :: cutoff
+    real(defReal), dimension(:), allocatable :: matMajs
+    real(defReal), dimension(:), allocatable :: ratios
+    integer(shortInt)                        :: majMapN = 0
+    real(defReal), dimension(3)              :: top     = ZERO
+    real(defReal), dimension(3)              :: bottom  = ZERO
+    integer(shortInt)                        :: steps
   contains
     procedure          :: transit => imcTracking
     procedure          :: init
+    procedure          :: buildMajMap
     procedure, private :: materialTransform
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
+    procedure, private :: simpleParticle
   end type transportOperatorIMC
 
 contains
@@ -232,17 +241,165 @@ contains
   end subroutine deltaTracking
 
   !!
+  !! Generate particles and follow them to attempt to reduce majorant opacity seen by each cell.
+  !!
+  !! Particles sampled uniformly within geometry, with random directions, then incrementally moved
+  !! up to distance dTime. Moving increments are determined by the number of steps to be taken,
+  !! either given directly in input or calculated from dTime and a given cell lengthscale.
+  !!
+  !! Majorant of each cell is set to be the maximum opacity seen by any particle originating in
+  !! that cell.
+  !!
+  subroutine buildMajMap(self, rand, xsData)
+    class(transportOperatorIMC), intent(inout) :: self
+    class(RNG), intent(inout)                  :: rand
+    class(nuclearDatabase), intent(in), pointer :: xsData
+    type(particle)                             :: p
+    integer(shortInt)                          :: i, j, matIdx
+    real(defReal)                              :: mu, phi, dist, sigmaT1, sigmaT2
+    logical(defBool)                           :: finished = .false.
+    real(defReal), dimension(8)   :: sigmaList
+
+    !sigmaList = 0
+
+    self % xsData => xsData
+ 
+    self % matMajs = 0
+    self % ratios = 0
+
+    dist = self % deltaT * lightSpeed / self % steps
+
+    do i = 1, self % majMapN
+
+      call self % simpleParticle(p, rand)
+
+      matIdx = p % matIdx()
+
+      ! Obtain cross section
+      sigmaT1 = self % xsData % getTransMatXS(p, matIdx)
+      self % matMajs(matIdx) = max(sigmaT1, self % matMajs(matIdx))
+
+      self % ratios (matIdx) = sigmaT1
+
+      ! Incrementally transport particle up to a distance dTime
+      do j = 1, self % steps
+
+        call self % geom % teleport(p % coords, dist)
+        if (p % matIdx() == VOID_MAT .or. p % matIdx() == OUTSIDE_MAT) exit
+
+        ! Find opacity at new location
+        sigmaT2 = self % xsData % getTransMatXS(p, p % matIdx())
+
+        ! Increase majorant of start location to that of new location if greater
+        self % matMajs(matIdx) = max(sigmaT2, self % matMajs(matIdx))
+        ! Increase majorant of new location to that of start location if greater
+        self % matMajs(p % matIdx()) = max(sigmaT1, self % matMajs(p % matIdx()))
+
+      end do
+
+    end do
+
+    !print *, 'Local opacities:'
+    !print *, sigmaList
+
+    print *, 'New Majorant Ratios:'
+    print *, self % ratios / self % matMajs
+
+  end subroutine buildMajMap
+
+  !!
+  !! Sample position for buildMajMap subroutine (see above)
+  !! Attach only necessary properties to particle:
+  !!
+  !!   - Position, sampled uniformly within geometry
+  !!   - Direction, uniformly from unit sphere
+  !!   - Group = 1 to avoid error
+  !!
+  subroutine simpleParticle(self, p, rand)
+    class(transportOperatorIMC), intent(inout) :: self
+    type(particle), intent(inout)              :: p
+    class(RNG), intent(inout)                  :: rand
+    real(defReal)                              :: mu, phi
+    real(defReal), dimension(3)                :: r, dir, rand3
+    integer(shortInt)                          :: matIdx, uniqueID
+
+      positionSample:do
+        ! Sample Position
+        rand3(1) = rand % get()
+        rand3(2) = rand % get()
+        rand3(3) = rand % get()
+        r = (self % top - self % bottom) * rand3 + self % bottom
+
+        ! Find material under position
+        call self % geom % whatIsAt(matIdx, uniqueID, r)
+
+        ! Reject if there is no material
+        if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle positionSample
+        exit positionSample
+      end do positionSample
+
+      call p % coords % assignPosition(r)
+
+      ! Sample Direction - chosen uniformly inside unit sphere
+      mu = 2 * rand % get() - 1
+      phi = rand % get() * 2*pi
+      dir(1) = mu
+      dir(2) = sqrt(1-mu**2) * cos(phi)
+      dir(3) = sqrt(1-mu**2) * sin(phi)
+      call p % coords % assignDirection(dir)
+
+      p % type = P_PHOTON
+      p % G    = 1
+      p % isMG = .true.
+
+      call self % geom % placeCoord(p % coords)
+
+  end subroutine simpleParticle
+
+
+  !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, geom)
     class(transportOperatorIMC), intent(inout) :: self
     class(dictionary), intent(in)              :: dict
+    class(geometry), pointer, intent(in), optional :: geom
+    class(dictionary), pointer                 :: tempDict
+    integer(shortInt)                          :: nMats
+    real(defReal), dimension(6)                :: bounds
+    real(defReal)                              :: lengthScale
 
     ! Initialise superclass
     call init_super(self, dict)
 
+    self % geom => geom
+
+    ! Get timestep size
+    call dict % get(self % deltaT, 'deltaT')
+
     ! Get cutoff value
     call dict % getOrDefault(self % cutoff, 'cutoff', 0.3_defReal)
+
+    ! Get settings for majorant reduction subroutine
+    if (dict % isPresent('majMap')) then
+      tempDict => dict % getDictPtr('majMap')
+      call tempDict % get(self % majMapN, 'nParticles')
+      call tempDict % get(nMats, 'nMats')
+
+      allocate(self % matMajs(nMats))
+      allocate(self % ratios(nMats))
+
+      if (tempDict % isPresent('steps')) then
+        call tempDict % get(self % steps, 'steps')
+      else
+        call tempDict % get(lengthScale, 'lengthScale')
+        self % steps = ceiling(lightSpeed*self % deltaT/lengthScale)
+      end if
+      ! Set bounding region
+      bounds = self % geom % bounds()
+      self % bottom = bounds(1:3)
+      self % top    = bounds(4:6)
+    end if
 
   end subroutine init
 
