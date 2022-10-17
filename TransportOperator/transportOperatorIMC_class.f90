@@ -38,7 +38,9 @@ module transportOperatorIMC_class
     real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
     real(defReal), dimension(:), allocatable :: matMajs
+    integer(shortInt), dimension(:,:), allocatable :: matConnections
     real(defReal), dimension(:), allocatable :: ratios
+    real(defReal), dimension(:), allocatable :: sigmaLocal
     integer(shortInt)                        :: majMapN = 0
     real(defReal), dimension(3)              :: top     = ZERO
     real(defReal), dimension(3)              :: bottom  = ZERO
@@ -47,6 +49,7 @@ module transportOperatorIMC_class
     procedure          :: transit => imcTracking
     procedure          :: init
     procedure          :: buildMajMap
+    procedure          :: updateMajorants
     procedure, private :: materialTransform
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
@@ -83,6 +86,8 @@ contains
     else
       self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
     end if
+
+    matIdx = p % matIdx()
 
     IMCLoop:do
 
@@ -265,18 +270,19 @@ contains
     class(nuclearDatabase), intent(in), pointer :: xsData
     type(particle)                             :: p
     integer(shortInt)                          :: i, j, matIdx
-    real(defReal)                              :: mu, phi, dist, sigmaT1, sigmaT2
+    real(defReal)                              :: mu, phi, dist
     logical(defBool)                           :: finished = .false.
-    real(defReal), dimension(8)   :: sigmaList
 
     if (.not. allocated(self % matMajs)) return
 
-    !sigmaList = 0
+    if (.not. allocated(self % matConnections)) return
 
     self % xsData => xsData
  
     self % matMajs = 0
     self % ratios = 0
+
+    self % matConnections = 0
 
     dist = self % deltaT * lightSpeed / self % steps
 
@@ -286,37 +292,56 @@ contains
 
       matIdx = p % matIdx()
 
-      ! Obtain cross section
-      sigmaT1 = self % xsData % getTransMatXS(p, matIdx)
-      self % matMajs(matIdx) = max(sigmaT1, self % matMajs(matIdx))
-
-      self % ratios (matIdx) = sigmaT1
-
       ! Incrementally transport particle up to a distance dTime
       do j = 1, self % steps
 
         call self % geom % teleport(p % coords, dist)
         if (p % matIdx() == VOID_MAT .or. p % matIdx() == OUTSIDE_MAT) exit
 
-        ! Find opacity at new location
-        sigmaT2 = self % xsData % getTransMatXS(p, p % matIdx())
-
-        ! Increase majorant of start location to that of new location if greater
-        self % matMajs(matIdx) = max(sigmaT2, self % matMajs(matIdx))
-        ! Increase majorant of new location to that of start location if greater
-        self % matMajs(p % matIdx()) = max(sigmaT1, self % matMajs(p % matIdx()))
+        ! Update matConnections to signify a connection between starting mat and new mat
+        self % matConnections(matIdx, p % matIdx()) = 1
+        self % matConnections(p % matIdx(), matIdx) = 1
 
       end do
 
     end do
 
-    !print *, 'Local opacities:'
-    !print *, sigmaList
-
-    !print *, 'New Majorant Ratios:'
-    !print *, self % ratios / self % matMajs
-
   end subroutine buildMajMap
+
+  subroutine updateMajorants(self, rand)
+    class(transportOperatorIMC), intent(inout) :: self
+    class(RNG), intent(inout)                  :: rand
+    integer(shortInt)                          :: i, G, nMats
+    character(100), parameter :: Here = 'updateMajorants (transportOperatorIMC_class.f90)'
+
+    if (.not. allocated(self % matMajs)) return
+
+    nMats = mm_nMat()
+    G = 1   ! Can easily be expanded to multiple groups later
+    self % sigmaLocal = 0
+
+    ! First, update array of local opacities
+    do i = 1, nMats
+      ! Get and verify material pointer for material i
+      self % mat => mgIMCMaterial_CptrCast(self % xsData % getMaterial(i))
+      if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
+
+      ! Store opacity
+      self % sigmaLocal(i) = self % mat % getTotalXS(G, rand)
+    end do
+
+    ! Now update majorants for each material
+    do i = 1, nMats
+      self % matMajs(i) = maxval(self % sigmaLocal * self % matConnections(i, 1:nMats))
+    end do
+
+    !print *, 'Local opacities:'
+    !print *, self % sigmaLocal
+
+    !print *, 'New majorants:'
+    !print *, self % matMajs
+
+  end subroutine updateMajorants
 
   !!
   !! Sample position for buildMajMap subroutine (see above)
@@ -400,6 +425,9 @@ contains
 
       allocate(self % matMajs(nMats))
       allocate(self % ratios(nMats))
+      allocate(self % sigmaLocal(nMats))
+
+      allocate(self % matConnections(nMats, nMats))
 
       if (tempDict % isPresent('steps')) then
         call tempDict % get(self % steps, 'steps')

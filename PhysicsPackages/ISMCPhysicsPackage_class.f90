@@ -172,6 +172,9 @@ contains
     allocate(Nm(self % nMat))
     allocate(Np(self % nMat))
 
+    ! Build connections between materials
+    call self % transOp % buildMajMap(p % pRNG, self % nucData)
+
     do i=1,N_cycles
 
       write(10, '(8A)') numToChar(i)
@@ -202,6 +205,9 @@ contains
       !end if
 
       call tally % reportCycleStart(self % thisCycle)
+
+      ! Update majorants for transport operator based
+      call self % transOp % updateMajorants(p % pRNG)
 
       gen: do
         ! Obtain paticle from dungeon
@@ -426,7 +432,7 @@ contains
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
-    ! Build Nuclear Data
+    ! Build Nuclear Data 
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
     ! Build geometry
@@ -459,7 +465,8 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict)
+    call tempDict % store('deltaT', self % deltaT)
+    call new_transportOperator(self % transOp, tempDict, self % geom)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')
