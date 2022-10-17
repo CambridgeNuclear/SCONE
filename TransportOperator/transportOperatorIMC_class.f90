@@ -24,6 +24,7 @@ module transportOperatorIMC_class
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
   use mgIMCMaterial_inter,        only : mgIMCMaterial, mgIMCMaterial_CptrCast
+  use materialMenu_mod,           only : mm_nMat => nMat
 
   implicit none
   private
@@ -62,17 +63,25 @@ contains
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: sigmaT, dTime, dColl
     logical(defBool)                           :: finished
+    integer(shortInt)                          :: matIdx
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     finished = .false.
 
-    ! Get majorant XS inverse: 1/Sigma_majorant
-    self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    !! Get majorant XS inverse: 1/Sigma_majorant
+    !self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
     ! Deal with material particles, only relevant for ISMC
     if(p % getType() == P_MATERIAL_MG) then
       call self % materialTransform(p, tally)
       if(p % fate == TIME_FATE) return
+    end if
+
+    ! Get majorant for particle
+    if (allocated(self % matMajs)) then
+      self % majorant_inv = ONE / self % matMajs(p % matIdx())
+    else
+      self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
     end if
 
     IMCLoop:do
@@ -260,6 +269,8 @@ contains
     logical(defBool)                           :: finished = .false.
     real(defReal), dimension(8)   :: sigmaList
 
+    if (.not. allocated(self % matMajs)) return
+
     !sigmaList = 0
 
     self % xsData => xsData
@@ -302,8 +313,8 @@ contains
     !print *, 'Local opacities:'
     !print *, sigmaList
 
-    print *, 'New Majorant Ratios:'
-    print *, self % ratios / self % matMajs
+    !print *, 'New Majorant Ratios:'
+    !print *, self % ratios / self % matMajs
 
   end subroutine buildMajMap
 
@@ -384,7 +395,8 @@ contains
     if (dict % isPresent('majMap')) then
       tempDict => dict % getDictPtr('majMap')
       call tempDict % get(self % majMapN, 'nParticles')
-      call tempDict % get(nMats, 'nMats')
+      nMats = mm_nMat()
+      !call tempDict % get(nMats, 'nMats')
 
       allocate(self % matMajs(nMats))
       allocate(self % ratios(nMats))
