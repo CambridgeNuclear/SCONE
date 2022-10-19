@@ -91,6 +91,9 @@ contains
       ! Obtain sigmaT
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
+      if (sigmaT*self % majorant_inv > 1) call fatalError(Here, 'Sigma greater than majorant.&
+                                          & MajorantMap settings may have been chosen poorly.')
+
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
 
@@ -134,7 +137,7 @@ contains
     logical(defBool), intent(inout)            :: finished
     real(defReal)                              :: dist
     integer(shortInt)                          :: event
-    character(100), parameter                  :: Here = 'surfaceTracking (transportOperatorIMC_class.f90)'
+    character(100), parameter :: Here = 'surfaceTracking (transportOperatorIMC_class.f90)'
 
     dist = min(dTime, dColl)
 
@@ -169,6 +172,7 @@ contains
     real(defReal), intent(in)                  :: dColl
     logical(defBool), intent(inout)            :: finished
     real(defReal)                              :: sigmaT
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorIMC_class.f90)'
 
     ! Determine which distance to move particle
     if (dColl < dTime) then
@@ -193,6 +197,10 @@ contains
     ! Roll RNG to determine if the collision is real or virtual
     ! Exit the loop if the collision is real
     if (p % pRNG % get() < sigmaT * self % majorant_inv) finished = .true.
+
+    ! Protect against infinite loop
+    if (sigmaT * self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance,&
+                                                                & potentially infinite loop')
 
   end subroutine deltaTracking
 
@@ -435,9 +443,6 @@ contains
 
     ! Preparation for majorant reduction subroutine
     if (dict % isPresent('majMap')) then
-
-      if (self % cutoff == 0) call fatalError(Here, 'No need to use majorant map &
-                                                    &without delta tracking')
 
       ! Get settings
       tempDict => dict % getDictPtr('majMap')
