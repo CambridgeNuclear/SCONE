@@ -353,6 +353,7 @@ contains
     real(defReal)                              :: mu, phi
     real(defReal), dimension(3)                :: r, dir, rand3
     integer(shortInt)                          :: matIdx, uniqueID, loops
+    character(100), parameter                  :: Here = 'simpleParticle (transportOperatorIMC.f90)'
 
     ! Sample points randomly within geometry until valid material is found
     loops = 0
@@ -419,6 +420,7 @@ contains
     integer(shortInt)                              :: nMats
     real(defReal), dimension(6)                    :: bounds
     real(defReal)                                  :: lengthScale
+    character(100), parameter                      :: Here = 'init (transportOperatorIMC.f90)'
 
     ! Initialise superclass
     call init_super(self, dict)
