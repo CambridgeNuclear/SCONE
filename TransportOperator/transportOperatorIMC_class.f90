@@ -38,9 +38,8 @@ module transportOperatorIMC_class
     real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
     real(defReal), dimension(:), allocatable :: matMajs
-    integer(shortInt), dimension(:,:), allocatable :: matConnections
-    real(defReal), dimension(:), allocatable :: ratios
     real(defReal), dimension(:), allocatable :: sigmaLocal
+    integer(shortInt), dimension(:,:), allocatable :: matConnections
     integer(shortInt)                        :: majMapN = 0
     real(defReal), dimension(3)              :: top     = ZERO
     real(defReal), dimension(3)              :: bottom  = ZERO
@@ -66,13 +65,9 @@ contains
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: sigmaT, dTime, dColl
     logical(defBool)                           :: finished
-    integer(shortInt)                          :: matIdx
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     finished = .false.
-
-    !! Get majorant XS inverse: 1/Sigma_majorant
-    !self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
     ! Deal with material particles, only relevant for ISMC
     if(p % getType() == P_MATERIAL_MG) then
@@ -86,8 +81,6 @@ contains
     else
       self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
     end if
-
-    matIdx = p % matIdx()
 
     IMCLoop:do
 
@@ -129,57 +122,6 @@ contains
     call tally % reportTrans(p)
 
   end subroutine imcTracking
-
-
-  !!
-  !! Transform material particles into radiation photons with
-  !! probability per unit time of c*sigma_a*fleck*eta
-  !!
-  !! Used only for ISMC, not for standard IMC
-  !!
-  subroutine materialTransform(self, p, tally)
-    class(transportOperatorIMC), intent(inout) :: self
-    class(particle), intent(inout)             :: p
-    type(tallyAdmin), intent(inout)            :: tally
-    real(defReal)                              :: sigmaT, fleck, eta, mu, phi
-    real(defReal), dimension(3)                :: dir
-    character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
-
-    ! Confirm that time = 0
-    !if (p % time .ne. 0) call fatalError(Here, 'Material particle should have time = 0')
-
-    ! Get and verify material pointer
-    self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
-    if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
-
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())     !! Should be sigma_a, may need changing when sorting out cross-sections
-    fleck  = self % mat % getFleck()
-    eta    = self % mat % getEta()
-
-    ! Sample time to transform into radiation photon
-    p % time = p % time - log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
-
-    ! Deal with eta = 0
-    if (p % time /= p % time) p % time = INF
-
-    ! Exit loop if particle remains material until end of time step
-    if (p % time >= p % timeMax) then
-      p % fate = TIME_FATE
-      p % time = p % timeMax
-      ! Tally energy for next temperature calculation
-      call tally % reportHist(p)
-    else
-      p % type = P_PHOTON
-      ! Resample direction
-      mu = 2 * p % pRNG % get() - 1
-      phi = p % pRNG % get() * 2*pi
-      dir(1) = mu
-      dir(2) = sqrt(1-mu**2) * cos(phi)
-      dir(3) = sqrt(1-mu**2) * sin(phi)
-      call p % point(dir)
-    end if
-
-  end subroutine materialTransform
 
   !!
   !! Perform surface tracking
@@ -255,6 +197,56 @@ contains
   end subroutine deltaTracking
 
   !!
+  !! Transform material particles into radiation photons with
+  !! probability per unit time of c*sigma_a*fleck*eta
+  !!
+  !! Used only for ISMC, not for standard IMC
+  !!
+  subroutine materialTransform(self, p, tally)
+    class(transportOperatorIMC), intent(inout) :: self
+    class(particle), intent(inout)             :: p
+    type(tallyAdmin), intent(inout)            :: tally
+    real(defReal)                              :: sigmaT, fleck, eta, mu, phi
+    real(defReal), dimension(3)                :: dir
+    character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
+
+    ! Confirm that time = 0
+    !if (p % time .ne. 0) call fatalError(Here, 'Material particle should have time = 0')
+
+    ! Get and verify material pointer
+    self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
+
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())     !! Should be sigma_a, may need changing when sorting out cross-sections
+    fleck  = self % mat % getFleck()
+    eta    = self % mat % getEta()
+
+    ! Sample time to transform into radiation photon
+    p % time = p % time - log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
+
+    ! Deal with eta = 0
+    if (p % time /= p % time) p % time = INF
+
+    ! Exit loop if particle remains material until end of time step
+    if (p % time >= p % timeMax) then
+      p % fate = TIME_FATE
+      p % time = p % timeMax
+      ! Tally energy for next temperature calculation
+      call tally % reportHist(p)
+    else
+      p % type = P_PHOTON
+      ! Resample direction
+      mu = 2 * p % pRNG % get() - 1
+      phi = p % pRNG % get() * 2*pi
+      dir(1) = mu
+      dir(2) = sqrt(1-mu**2) * cos(phi)
+      dir(3) = sqrt(1-mu**2) * sin(phi)
+      call p % point(dir)
+    end if
+
+  end subroutine materialTransform
+
+  !!
   !! Generate particles and follow them to attempt to reduce majorant opacity seen by each cell.
   !!
   !! Particles sampled uniformly within geometry, with random directions, then incrementally moved
@@ -273,23 +265,22 @@ contains
     real(defReal)                              :: mu, phi, dist
     logical(defBool)                           :: finished = .false.
 
+    ! Check that subroutine should be called
     if (.not. allocated(self % matMajs)) return
 
-    if (.not. allocated(self % matConnections)) return
-
+    ! Point to nuclear data, as otherwise cannot access until after first particle transport
     self % xsData => xsData
- 
-    self % matMajs = 0
-    self % ratios = 0
 
+    ! Reset array
     self % matConnections = 0
 
+    ! Calculate distance increments
     dist = self % deltaT * lightSpeed / self % steps
 
     do i = 1, self % majMapN
 
+      ! Sample particle
       call self % simpleParticle(p, rand)
-
       matIdx = p % matIdx()
 
       ! Incrementally transport particle up to a distance dTime
@@ -308,17 +299,20 @@ contains
 
   end subroutine buildMajMap
 
+  !!
+  !! Update majorants for each region using material connections build up in buildMajMap subroutine
+  !!
   subroutine updateMajorants(self, rand)
     class(transportOperatorIMC), intent(inout) :: self
     class(RNG), intent(inout)                  :: rand
     integer(shortInt)                          :: i, G, nMats
     character(100), parameter :: Here = 'updateMajorants (transportOperatorIMC_class.f90)'
 
+    ! Check that subroutine should be called
     if (.not. allocated(self % matMajs)) return
 
     nMats = mm_nMat()
-    G = 1   ! Can easily be expanded to multiple groups later
-    self % sigmaLocal = 0
+    G = 1   ! Can easily be extended to multiple groups later
 
     ! First, update array of local opacities
     do i = 1, nMats
@@ -349,7 +343,8 @@ contains
   !!
   !!   - Position, sampled uniformly within geometry
   !!   - Direction, uniformly from unit sphere
-  !!   - Group = 1 to avoid error
+  !!   - Type = P_PHOTON
+  !!   - Group = 1, can easily extend to work with multiple groups another time
   !!
   subroutine simpleParticle(self, p, rand)
     class(transportOperatorIMC), intent(inout) :: self
@@ -357,53 +352,73 @@ contains
     class(RNG), intent(inout)                  :: rand
     real(defReal)                              :: mu, phi
     real(defReal), dimension(3)                :: r, dir, rand3
-    integer(shortInt)                          :: matIdx, uniqueID
+    integer(shortInt)                          :: matIdx, uniqueID, loops
 
-      positionSample:do
-        ! Sample Position
-        rand3(1) = rand % get()
-        rand3(2) = rand % get()
-        rand3(3) = rand % get()
-        r = (self % top - self % bottom) * rand3 + self % bottom
+    ! Sample points randomly within geometry until valid material is found
+    loops = 0
+    positionSample:do
+      ! Protect against infinite loop
+      loops = loops + 1
+      if (loops >= 500) call fatalError(Here, '500 particles sampled in void or outside geometry')
 
-        ! Find material under position
-        call self % geom % whatIsAt(matIdx, uniqueID, r)
+      ! Sample position
+      rand3(1) = rand % get()
+      rand3(2) = rand % get()
+      rand3(3) = rand % get()
+      r = (self % top - self % bottom) * rand3 + self % bottom
 
-        ! Reject if there is no material
-        if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle positionSample
-        exit positionSample
-      end do positionSample
+      ! Find material under position
+      call self % geom % whatIsAt(matIdx, uniqueID, r)
+
+      ! Reject if there is no material
+      if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle positionSample
 
       call p % coords % assignPosition(r)
+      exit positionSample
 
-      ! Sample Direction - chosen uniformly inside unit sphere
-      mu = 2 * rand % get() - 1
-      phi = rand % get() * 2*pi
-      dir(1) = mu
-      dir(2) = sqrt(1-mu**2) * cos(phi)
-      dir(3) = sqrt(1-mu**2) * sin(phi)
-      call p % coords % assignDirection(dir)
+    end do positionSample
 
-      p % type = P_PHOTON
-      p % G    = 1
-      p % isMG = .true.
+    ! Sample Direction - chosen uniformly inside unit sphere
+    mu = 2 * rand % get() - 1
+    phi = rand % get() * 2*pi
+    dir(1) = mu
+    dir(2) = sqrt(1-mu**2) * cos(phi)
+    dir(3) = sqrt(1-mu**2) * sin(phi)
+    call p % coords % assignDirection(dir)
 
-      call self % geom % placeCoord(p % coords)
+    p % type = P_PHOTON
+    p % G    = 1
+    p % isMG = .true.
+
+    call self % geom % placeCoord(p % coords)
 
   end subroutine simpleParticle
 
-
   !!
-  !! Provide transport operator with delta tracking/surface tracking cutoff
+  !! Get transport settings
+  !!
+  !! Sample dictionary input:
+  !!
+  !! transportOperator {
+  !!   type    transportOperatorIMC;
+  !!   cutoff  0.5;
+  !!   majMap  {
+  !!     nParticles 500;
+  !!     steps      10;
+  !!   }
+  !! }
+  !!
+  !! As an alternative to 'steps' can specify 'lengthScale' and then steps is calculated
+  !! automatically as steps = c*dt/lengthScale
   !!
   subroutine init(self, dict, geom)
-    class(transportOperatorIMC), intent(inout) :: self
-    class(dictionary), intent(in)              :: dict
+    class(transportOperatorIMC), intent(inout)     :: self
+    class(dictionary), intent(in)                  :: dict
     class(geometry), pointer, intent(in), optional :: geom
-    class(dictionary), pointer                 :: tempDict
-    integer(shortInt)                          :: nMats
-    real(defReal), dimension(6)                :: bounds
-    real(defReal)                              :: lengthScale
+    class(dictionary), pointer                     :: tempDict
+    integer(shortInt)                              :: nMats
+    real(defReal), dimension(6)                    :: bounds
+    real(defReal)                                  :: lengthScale
 
     ! Initialise superclass
     call init_super(self, dict)
@@ -416,18 +431,15 @@ contains
     ! Get cutoff value
     call dict % getOrDefault(self % cutoff, 'cutoff', 0.3_defReal)
 
-    ! Get settings for majorant reduction subroutine
+    ! Preparation for majorant reduction subroutine
     if (dict % isPresent('majMap')) then
+
+      if (self % cutoff == 0) call fatalError(Here, 'No need to use majorant map &
+                                                    &without delta tracking')
+
+      ! Get settings
       tempDict => dict % getDictPtr('majMap')
       call tempDict % get(self % majMapN, 'nParticles')
-      nMats = mm_nMat()
-      !call tempDict % get(nMats, 'nMats')
-
-      allocate(self % matMajs(nMats))
-      allocate(self % ratios(nMats))
-      allocate(self % sigmaLocal(nMats))
-
-      allocate(self % matConnections(nMats, nMats))
 
       if (tempDict % isPresent('steps')) then
         call tempDict % get(self % steps, 'steps')
@@ -435,7 +447,17 @@ contains
         call tempDict % get(lengthScale, 'lengthScale')
         self % steps = ceiling(lightSpeed*self % deltaT/lengthScale)
       end if
-      ! Set bounding region
+
+      nMats = mm_nMat()
+
+      ! Allocate arrays
+      allocate(self % matMajs(nMats))
+      allocate(self % sigmaLocal(nMats))
+      allocate(self % matConnections(nMats, nMats))
+      self % matMajs    = 0
+      self % sigmaLocal = 0
+
+      ! Set bounding region for particle sourcing
       bounds = self % geom % bounds()
       self % bottom = bounds(1:3)
       self % top    = bounds(4:6)
