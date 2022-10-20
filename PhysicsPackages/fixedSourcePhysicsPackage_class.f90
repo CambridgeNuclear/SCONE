@@ -170,8 +170,8 @@ contains
         p % pRNG => pRNG
         call p % pRNG % stride(n)
         
-        ! Obtain paticle from dungeon
-        call self % thisCycle % release(p)
+        ! Obtain particle from dungeon
+        call self % thisCycle % copy(p, n)
 
         bufferLoop: do
 
