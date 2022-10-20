@@ -739,7 +739,6 @@ contains
         end do
 
         ! Accumulate adjoint flux
-        !$omp simd
         do g = 1, self % nG
           !$omp atomic
           adjointVec(g) = adjointVec(g) + delta(g) 

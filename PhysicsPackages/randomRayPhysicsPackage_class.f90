@@ -693,12 +693,9 @@ contains
           attenuate(g) = exponential(totVec(g) * length)
           delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
           fluxVec(g) = fluxVec(g) - delta(g)
-          !!$omp atomic
-          !scalarVec(g) = scalarVec(g) + delta(g) 
         end do
 
         ! Accumulate scalar flux
-        !$omp simd
         do g = 1, self % nG
           !$omp atomic
           scalarVec(g) = scalarVec(g) + delta(g) 

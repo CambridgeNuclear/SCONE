@@ -757,7 +757,6 @@ contains
         end do
 
         ! Accumulate scalar flux
-        !$omp simd
         do g = 1, self % nG
           !$omp atomic
           scalarVec(g) = scalarVec(g) + delta(g) 
