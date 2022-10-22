@@ -208,6 +208,10 @@ contains
           end if
 
           ! Clear out common queue
+          ! Note the apparently redundant critical sections (one here in PP, one in the dungeon).
+          ! This is to prevent the situation where two threads both enter the conditional and compete
+          ! for the final particle in the dungeon. The first thread would pop the particle while the
+          ! second would try to pop from an empty dungeon.
           if (associated(self % commonBuffer)) then
             !$omp critical
             if (.not. self % commonBuffer % isEmpty()) then
