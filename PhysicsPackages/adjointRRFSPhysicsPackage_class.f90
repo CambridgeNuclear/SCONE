@@ -49,11 +49,15 @@ module adjointRRFSPhysicsPackage_class
   ! Parameter for when to skip a tiny volume
   real(defReal), parameter :: volume_tolerance = 1.0E-15
 
+  ! Parameters for when forward or adjoint
+  logical(defBool), parameter :: FORWARD = .true.
+  logical(defBool), parameter :: ADJOINT = .false.
+
   !!
-  !! Physics package to perform adjoint (TRRM) fixed source calculations
+  !! Physics package to perform simultaneous forward and adjoint (TRRM) fixed source calculations
   !!
-  !! Tracks rays across the geometry, attenuating their adoint flux. After some dead length,
-  !! rays begin scoring to estimates of the adjoint flux and volume. Each ray has a
+  !! Tracks rays across the geometry, attenuating their foward+adjoint flux. After some dead length,
+  !! rays begin scoring to estimates of the fluxes and volume. Each ray has a
   !! uniform termination length, after which it is stopped and the next ray is tracked.
   !! Once all rays have been tracked, a cycle concludes and fluxes and sources are updated.
   !!
@@ -82,7 +86,13 @@ module adjointRRFSPhysicsPackage_class
   !!     #cache 1;#            // Optionally use distance caching to accelerate ray tracing
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!
-  !!     #source {             // Fixed adjoint sources for named materials and their intensities n/cm3/s
+  !!     #source {             // Fixed sources for named materials and their intensities n/cm3/s
+  !!                           // Intensities are in each energy group, from 1 to G
+  !!         material_name1 ( s_g1 s_g2 ... s_gG );
+  !!         ...
+  !!      } #
+  !!
+  !!     #adjSource {          // Fixed adjoint sources for named materials and their intensities n/cm3/s
   !!                           // Intensities are in each energy group, from 1 to G
   !!         material_name1 ( s_g1 s_g2 ... s_gG );
   !!         ...
@@ -118,11 +128,19 @@ module adjointRRFSPhysicsPackage_class
   !!   printCells  -> Print cell positions?
   !!   viz         -> Output visualiser
   !!
+  !!   scalarFlux   -> Array of scalar flux values of length = nG * nCells
+  !!   prevFlux     -> Array of previous flux values of length = nG * nCells
   !!   adjointFlux  -> Array of adjoint flux values of length = nG * nCells
-  !!   prevFlux     -> Array of previous adjoint flux values of length = nG * nCells
-  !!   fluxScore    -> Array of adjoint flux values and squared values to be reported 
+  !!   prevAdjFlux  -> Array of previous adjoint flux values of length = nG * nCells
+  !!   fwdAdjFlux   -> Array of combined forward*adjoint flux values of length = ng * nCells
+  !!   fluxScore    -> Array of flux values and squared values to be reported 
   !!                   in results, dimension =  [nG * nCells, 2]
-  !!   source       -> Array of adjoint source values of length = nG * nCells
+  !!   adjFluxScore -> Array of adjoint flux values and squared values to be reported 
+  !!                   in results, dimension =  [nG * nCells, 2]
+  !!   fwdAdjScore  -> Array of forward*adjoint flux values and squared values to be reported 
+  !!                   in results, dimension =  [nG * nCells, 2]
+  !!   source       -> Array of source values of length = nG * nCells
+  !!   adjSource    -> Array of adjoint source values of length = nG * nCells
   !!   fixedSource  -> Array of fixed source values of length = nG * nCells
   !!   volume       -> Array of stochastically estimated cell volumes of length = nCells
   !!   cellHit      -> Array tracking whether given cells have been hit during tracking
@@ -151,21 +169,38 @@ module adjointRRFSPhysicsPackage_class
     integer(shortInt)  :: pop         = 0
     integer(shortInt)  :: inactive    = 0
     integer(shortInt)  :: active      = 0
-    logical(defBool)   :: cache       = .FALSE.
+    logical(defBool)   :: cache       = .false.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
-    logical(defBool)   :: plotResults = .FALSE.
-    logical(defBool)   :: printFlux   = .FALSE.
-    logical(defBool)   :: printVolume = .FALSE.
-    logical(defBool)   :: printCells  = .FALSE.
+    logical(defBool)   :: plotResults  = .false.
+    logical(defBool)   :: printFlux    = .false.
+    logical(defBool)   :: printAdjoint = .false.
+    logical(defBool)   :: printComb    = .false.
+    logical(defBool)   :: printVolume  = .false.
+    logical(defBool)   :: printCells   = .false.
     type(visualiser)   :: viz
 
     ! Results space
+    ! Fluxes and previous fluxes
+    real(defReal), dimension(:), allocatable     :: scalarFlux
     real(defReal), dimension(:), allocatable     :: adjointFlux
+    real(defReal), dimension(:), allocatable     :: combFlux
     real(defReal), dimension(:), allocatable     :: prevFlux
+    real(defReal), dimension(:), allocatable     :: prevAdjFlux
+    
+    ! Scores for final results
     real(defReal), dimension(:,:), allocatable   :: fluxScores
+    real(defReal), dimension(:,:), allocatable   :: adjointScores
+    real(defReal), dimension(:,:), allocatable   :: combScores
+    
+    ! Fixed and general sources
     real(defReal), dimension(:), allocatable     :: source
     real(defReal), dimension(:), allocatable     :: fixedSource
+    real(defReal), dimension(:), allocatable     :: adjSource
+    real(defReal), dimension(:), allocatable     :: adjFSource
+    real(defReal), dimension(:), allocatable     :: combSource
+    
+    ! Volume estimates
     real(defReal), dimension(:), allocatable     :: volume
     real(defReal), dimension(:), allocatable     :: volumeTracks
 
@@ -239,6 +274,8 @@ contains
 
     ! Print fluxes?
     call dict % getOrDefault(self % printFlux, 'printFlux', .FALSE.)
+    call dict % getOrDefault(self % printAdjoint, 'printAdjoint', .FALSE.)
+    call dict % getOrDefault(self % printComb, 'printComb', .FALSE.)
 
     ! Print volumes?
     call dict % getOrDefault(self % printVolume, 'printVolume', .FALSE.)
@@ -359,11 +396,19 @@ contains
     self % nCells = self % geom % numberOfCells()
 
     ! Allocate results space
+    allocate(self % scalarFlux(self % nCells * self % nG))
     allocate(self % adjointFlux(self % nCells * self % nG))
+    allocate(self % combFlux(self % nCells * self % nG))
     allocate(self % prevFlux(self % nCells * self % nG))
+    allocate(self % prevAdjFlux(self % nCells * self % nG))
     allocate(self % fluxScores(self % nCells * self % nG, 2))
+    allocate(self % adjointScores(self % nCells * self % nG, 2))
+    allocate(self % combScores(self % nCells * self % nG, 2))
     allocate(self % source(self % nCells * self % nG))
+    allocate(self % adjSource(self % nCells * self % nG))
+    allocate(self % combSource(self % nCells * self % nG))
     allocate(self % fixedSource(self % nCells * self % nG))
+    allocate(self % adjFSource(self % nCells * self % nG))
     allocate(self % volume(self % nCells))
     allocate(self % volumeTracks(self % nCells))
     allocate(self % cellHit(self % nCells))
@@ -372,7 +417,9 @@ contains
     
     ! Read and initialise the fixed sources
     sourceDict => dict % getDictPtr('source')
-    call self % initialiseSource(sourceDict)
+    call self % initialiseSource(sourceDict, FORWARD)
+    sourceDict => dict % getDictPtr('adjSource')
+    call self % initialiseSource(sourceDict, ADJOINT)
 
     ! Set active length traveled per iteration
     self % lengthPerIt = (self % termination - self % dead) * self % pop
@@ -380,14 +427,16 @@ contains
   end subroutine init
 
   !!
-  !! Initialises theadjoint source to be used in the simulation
+  !! Initialises the fixed sources to be used in the simulation
   !! Takes a dictionary containing names of materials in the geometry and
   !! source strengths in each energy group and places these in the appropriate
   !! elements of the fixed source vector
+  !! If isForward is true, makes the forward source. Otherwise makes the adjoint.
   !!
-  subroutine initialiseSource(self, dict)
+  subroutine initialiseSource(self, dict, isForward)
     class(adjointRRFSPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                :: dict
+    logical(defBool), intent(in)                    :: isForward
     character(nameLen),dimension(:), allocatable    :: names
     real(defReal), dimension(:), allocatable        :: sourceStrength
     integer(shortInt)                               :: cIdx, i
@@ -398,7 +447,11 @@ contains
     character(100), parameter :: Here = 'initialiseSource (adjointRRFSPhysicsPackage_class.f90)'
     !$omp threadprivate(matIdx, localName, idx, g)
 
-    self % fixedSource = ZERO
+    if (isForward) then
+      self % fixedSource = ZERO
+    else
+      self % adjFSource = ZERO
+    end if
 
     call dict % keys(names)
 
@@ -426,7 +479,11 @@ contains
           do g = 1, self % nG
             
             idx = (cIdx - 1) * self % nG + g
-            self % fixedSource(idx) = sourceStrength(g)
+            if (isForward) then
+              self % fixedSource(idx) = sourceStrength(g)
+            else
+              self % adjFSource(idx) = sourceStrength(g)
+            end if
 
           end do
 
@@ -485,10 +542,17 @@ contains
     call timerStart(self % timerMain)
 
     ! Initialise fluxes 
-    self % adjointFlux = ZERO
-    self % prevFlux    = ZERO
-    self % fluxScores  = ZERO
-    self % source      = ZERO
+    self % scalarFlux    = ZERO
+    self % adjointFlux   = ZERO
+    self % combFlux      = ZERO
+    self % prevFlux      = ZERO
+    self % prevAdjFlux   = ZERO
+    self % fluxScores    = ZERO
+    self % adjointScores = ZERO
+    self % combScores    = ZERO
+    self % source        = ZERO
+    self % adjSource     = ZERO
+    self % combSource    = ZERO
 
     ! Initialise other results
     self % cellHit      = 0
@@ -496,15 +560,15 @@ contains
     self % volumeTracks = ZERO
     
     ! Initialise cell information
-    self % cellFound = .FALSE.
+    self % cellFound = .false.
     self % cellPos = -INFINITY
 
     ! Stopping criterion is initially on flux convergence or number of convergence iterations.
     ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
     itInac = 0
     itAct  = 0
-    isActive = .FALSE.
-    stoppingCriterion = .TRUE.
+    isActive = .false.
+    stoppingCriterion = .true.
 
     ! Source iteration
     do while( stoppingCriterion )
@@ -539,7 +603,7 @@ contains
         call self % initialiseRay(r)
 
         ! Transport ray until termination criterion met
-        call self % transportSweep(r,ints)
+        call self % transportSweep(r, ints, isActive)
         intersections = intersections + ints
 
       end do
@@ -567,8 +631,8 @@ contains
         isActive = (itInac >= self % inactive)
       end if
 
-      ! Set previous iteration flux to adjoint flux
-      ! and zero adjoint flux
+      ! Set previous iteration fluxes from current fluxes
+      ! and zero current fluxes
       call self % resetFluxes()
 
       ! Calculate times
@@ -595,7 +659,7 @@ contains
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       print *, 'Time per integration (ns): ', &
-              trim(numToChar(transport_T*10**9/(self % nG * intersections)))
+              trim(numToChar(transport_T*10**9/(3 * self % nG * intersections)))
 
     end do
 
@@ -643,7 +707,7 @@ contains
 
     if (.NOT. self % cellFound(cIdx)) then
       !$omp critical 
-      self % cellFound(cIdx) = .TRUE.
+      self % cellFound(cIdx) = .true.
       self % cellPos(cIdx,:) = x
       !$omp end critical
     end if
@@ -651,34 +715,38 @@ contains
   end subroutine initialiseRay
 
   !!
-  !! Moves ray through geometry, updating angular flux and
-  !! scoring adjoint flux and volume.
+  !! Moves ray through geometry, updating angular fluxes and
+  !! scoring fluxes and volume.
   !! Records the number of integrations/ray movements.
   !!
-  subroutine transportSweep(self, r, ints)
+  subroutine transportSweep(self, r, ints, isActive)
     class(adjointRRFSPhysicsPackage), target, intent(inout) :: self
     type(ray), intent(inout)                                :: r
     integer(longInt), intent(out)                           :: ints
+    logical(defBool), intent(in)                            :: isActive
     integer(shortInt)                                       :: matIdx, g, cIdx, idx, event, matIdx0, baseIdx
     real(defReal)                                           :: totalLength, length
     logical(defBool)                                        :: activeRay, hitVacuum
     type(distCache)                                         :: cache
     class(baseMgNeutronMaterial), pointer                   :: mat
     class(materialHandle), pointer                          :: matPtr
-    real(defReal), dimension(self % nG)                     :: attenuate, delta, fluxVec
-    real(defReal), pointer, dimension(:)                    :: adjointVec, sourceVec, totVec
+    real(defReal), dimension(self % nG)                     :: attenuate, deltaF, deltaA, deltaAF, fluxVec, adjVec, &
+                                                               dF, dA, attenuate2
+    real(defReal), pointer, dimension(:)                    :: scalarVec, adjointVec, totVec, combVec, &
+                                                               sourceVec, adjSourceVec, combSourceVec
     
     ! Set initial angular flux to angle average of cell source
     cIdx = r % coords % uniqueID
     do g = 1, self % nG
       idx = (cIdx - 1) * self % nG + g
       fluxVec(g) = self % source(idx)
+      adjVec(g)  = self % adjSource(idx)
     end do
     
     ints = 0
     matIdx0 = 0
     totalLength = ZERO
-    activeRay = .FALSE.
+    activeRay = .false.
     do while (totalLength < self % termination)
 
       ! Get material and cell the ray is moving through
@@ -696,7 +764,7 @@ contains
       ! Remember new cell positions
       if (.NOT. self % cellFound(cIdx)) then
         !$omp critical 
-        self % cellFound(cIdx) = .TRUE.
+        self % cellFound(cIdx) = .true.
         self % cellPos(cIdx,:) = r % rGlobal()
         !$omp end critical
       end if
@@ -704,7 +772,7 @@ contains
       ! Set maximum flight distance and ensure ray is active
       if (totalLength >= self % dead) then
         length = self % termination - totalLength 
-        activeRay = .TRUE.
+        activeRay = .true.
       else
         length = self % dead - totalLength
       end if
@@ -726,22 +794,53 @@ contains
       ints = ints + 1
 
       baseIdx = (cIdx - 1) * self % nG
-      sourceVec => self % source(baseIdx + 1 : baseIdx + self % nG)
-      adjointVec => self % adjointFlux(baseIdx + 1 : baseIdx + self % nG)
 
-      ! Accumulate to adjoint flux
+      ! Source vectors
+      sourceVec    => self % source(baseIdx + 1 : baseIdx + self % nG)
+      adjSourceVec => self % adjSource(baseIdx + 1 : baseIdx + self % nG)
+      combSourceVec => self % combSource(baseIdx + 1 : baseIdx + self % nG)
+      
+      ! Results vectors to accumulate to
+      scalarVec    => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
+      adjointVec   => self % adjointFlux(baseIdx + 1 : baseIdx + self % nG)
+      combVec      => self % combFlux(baseIdx + 1 : baseIdx + self % nG)
+
+      ! Accumulate to fluxes
       if (activeRay) then
         !$omp simd
         do g = 1, self % nG
           attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
+          attenuate2(g) = HALF*(ONE - (ONE - attenuate(g))*(ONE - attenuate(g)))
+
+          dF(g) = fluxVec(g) - sourceVec(g)
+          dA(g) = adjVec(g) - adjSourceVec(g)
+
+          deltaAF(g) = dF(g)*dA(g)*attenuate2(g) + &
+                  (fluxVec(g)*adjSourceVec(g) + adjVec(g)*sourceVec(g) - &
+                  combSourceVec(g))*attenuate(g)
+          
+          ! Change in forward flux
+          deltaF(g) = dF(g) * attenuate(g)
+          fluxVec(g) = fluxVec(g) - deltaF(g)
+          
+          ! Change in adjoint flux
+          deltaA(g) = dA(g) * attenuate(g)
+          adjVec(g) = adjVec(g) - deltaA(g)
         end do
 
-        ! Accumulate adjoint flux
+        ! Accumulate fluxes
         do g = 1, self % nG
+          ! Forward flux
           !$omp atomic
-          adjointVec(g) = adjointVec(g) + delta(g) 
+          scalarVec(g) = scalarVec(g) + deltaF(g) 
+          
+          ! Adjoint flux
+          !$omp atomic
+          adjointVec(g) = adjointVec(g) + deltaA(g) 
+          
+          ! Product of fluxes
+          !$omp atomic
+          combVec(g) = combVec(g) + deltaAF(g)
         end do
 
         ! Accumulate cell volume estimates
@@ -749,13 +848,19 @@ contains
         !$omp atomic
         self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
 
-      ! Don't accumulate to adjoint flux
+      ! Don't accumulate to fluxes
       else
         !$omp simd
         do g = 1, self % nG
           attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
+          
+          ! Change in forward flux
+          deltaF(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
+          fluxVec(g) = fluxVec(g) - deltaF(g)
+          
+          ! Change in adjoint flux
+          deltaA(g) = (adjVec(g) - adjSourceVec(g)) * attenuate(g)
+          adjVec(g) = adjVec(g) - deltaA(g)
         end do
       end if
 
@@ -764,6 +869,7 @@ contains
         !$omp simd
         do g = 1, self % nG
           fluxVec(g) = ZERO
+          adjVec(g)  = ZERO
         end do
       end if
 
@@ -805,8 +911,12 @@ contains
 
         if (self % volume(cIdx) > ZERO) then
           self % adjointFlux(idx) = self % adjointFlux(idx) * norm / ( total * self % volume(cIdx))
+          self % scalarFlux(idx)  = self % scalarFlux(idx) * norm / ( total * self % volume(cIdx))
+          self % combFlux(idx)    = self % combFlux(idx) * norm / ( total * self % volume(cIdx))
         end if
-        self % adjointFlux(idx) = self % adjointFlux(idx) + self % source(idx)
+        self % adjointFlux(idx) = self % adjointFlux(idx) + self % adjSource(idx)
+        self % scalarFlux(idx)  = self % scalarFlux(idx) + self % source(idx)
+        self % combFlux(idx)    = self % combFlux(idx) + HALF * self % combSource(idx)
 
       end do
 
@@ -821,7 +931,7 @@ contains
   subroutine sourceUpdateKernel(self, cIdx)
     class(adjointRRFSPhysicsPackage), target, intent(inout) :: self
     integer(shortInt), intent(in)                           :: cIdx
-    real(defReal)                                           :: scatter, fission
+    real(defReal)                                           :: scatter, fission, scatterAdj, fissionAdj
     real(defReal), dimension(:), pointer                    :: nuFission, total, chi 
     real(defReal), dimension(:,:), pointer                  :: scatterXS
     integer(shortInt)                                       :: matIdx, g, gOut 
@@ -829,7 +939,7 @@ contains
     class(baseMgNeutronMaterial), pointer                   :: mat
     class(materialHandle), pointer                          :: matPtr
     logical(defBool)                                        :: isFiss
-    real(defReal), pointer, dimension(:)                    :: fluxVec
+    real(defReal), pointer, dimension(:)                    :: fluxVec, adjVec
 
     ! Identify material
     matIdx  =  self % geom % geom % graph % getMatFromUID(cIdx) 
@@ -847,27 +957,36 @@ contains
 
     baseIdx = self % ng * (cIdx - 1)
     fluxVec => self % prevFlux(baseIdx + 1 : baseIdx + self % nG)
+    adjVec  => self % prevAdjFlux(baseIdx + 1 : baseIdx + self % nG)
 
     ! There is a scattering and fission source
     if (isFiss) then
       do g = 1, self % nG
 
         ! Calculate fission and scattering source
-        scatter = ZERO
-        fission = ZERO
+        scatter    = ZERO
+        fission    = ZERO
+        scatterAdj = ZERO
+        fissionAdj = ZERO
 
         ! Sum contributions from all energies
-        !$omp simd reduction(+:fission, scatter)
+        !$omp simd reduction(+:fissionAdj, scatterAdj, fission, scatter)
         do gOut = 1, self % nG
-          fission = fission + fluxVec(gOut) * chi(gOut)
-          scatter = scatter + fluxVec(gOut) * scatterXS(gOut,g)
+          fissionAdj = fissionAdj + adjVec(gOut) * chi(gOut)
+          scatterAdj = scatterAdj + adjVec(gOut) * scatterXS(gOut,g)
+          fission = fission + fluxVec(gOut) * nuFission(gOut)
+          scatter = scatter + fluxVec(gOut) * scatterXS(g,gOut)
         end do
 
         ! Input index
         idx = baseIdx + g
 
-        self % source(idx) = nuFission(g) * fission + scatter + self % fixedSource(idx)
+        self % adjSource(idx) = nuFission(g) * fissionAdj + scatterAdj + self % adjFSource(idx)
+        self % adjSource(idx) = self % adjSource(idx) / total(g)
+        self % source(idx) = chi(g) * fission + scatter + self % fixedSource(idx)
         self % source(idx) = self % source(idx) / total(g)
+
+        self % combSource(idx) = self % source(idx) * self % adjSource(idx) * TWO
 
       end do
 
@@ -876,18 +995,23 @@ contains
       do g = 1, self % nG
 
         ! Calculate scattering source
-        scatter = ZERO
+        scatter    = ZERO
+        scatterAdj = ZERO
 
         ! Sum contributions from all energies
-        !$omp simd reduction(+:scatter)
+        !$omp simd reduction(+:scatterAdj, scatter)
         do gOut = 1, self % nG
-          scatter = scatter + fluxVec(gOut) * scatterXS(gOut,g)
+          scatterAdj = scatterAdj + adjVec(gOut) * scatterXS(gOut,g)
+          scatter    = scatter    + fluxVec(gOut) * scatterXS(g,gOut)
         end do
 
         ! Output index
         idx = baseIdx + g
 
+        self % adjSource(idx) = (self % adjFSource(idx) + scatterAdj) / total(g)
         self % source(idx) = (self % fixedSource(idx) + scatter) / total(g)
+        
+        self % combSource(idx) = self % source(idx) * self % adjSource(idx) * TWO
 
       end do
 
@@ -896,7 +1020,7 @@ contains
   end subroutine sourceUpdateKernel
 
   !!
-  !! Sets prevFlux to adjointFlux and zero's adjointFlux
+  !! Sets previous fluxes from current and zero current fluxes
   !!
   subroutine resetFluxes(self)
     class(adjointRRFSPhysicsPackage), intent(inout) :: self
@@ -904,8 +1028,11 @@ contains
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % adjointFlux)
-      self % prevFlux(idx) = self % adjointFlux(idx)
+      self % prevAdjFlux(idx) = self % adjointFlux(idx)
       self % adjointFlux(idx) = ZERO
+      self % prevFlux(idx) = self % scalarFlux(idx)
+      self % scalarFlux(idx) = ZERO
+      self % combFlux(idx) = ZERO
     end do
     !$omp end parallel do
 
@@ -923,8 +1050,14 @@ contains
     !$omp parallel do schedule(static)
     do idx = 1, size(self % adjointFlux)
       flux = self % adjointFlux(idx)
+      self % adjointScores(idx,1) = self % adjointScores(idx, 1) + flux
+      self % adjointScores(idx,2) = self % adjointScores(idx, 2) + flux*flux
+      flux = self % scalarFlux(idx)
       self % fluxScores(idx,1) = self % fluxScores(idx, 1) + flux
       self % fluxScores(idx,2) = self % fluxScores(idx, 2) + flux*flux
+      flux = self % combFlux(idx)
+      self % combScores(idx,1) = self % combScores(idx, 1) + flux
+      self % combScores(idx,2) = self % combScores(idx, 2) + flux*flux
     end do
     !$omp end parallel do
 
@@ -956,6 +1089,26 @@ contains
         self % fluxScores(idx,2) = ZERO
       else
         self % fluxScores(idx,2) = sqrt(self % fluxScores(idx,2))
+      end if
+
+      self % adjointScores(idx,1) = self % adjointScores(idx, 1) * N1
+      self % adjointScores(idx,2) = self % adjointScores(idx, 2) * N1
+      self % adjointScores(idx,2) = Nm1 *(self % adjointScores(idx,2) - &
+            self % adjointScores(idx,1) * self % adjointScores(idx,1)) 
+      if (self % adjointScores(idx,2) <= ZERO) then
+        self % adjointScores(idx,2) = ZERO
+      else
+        self % adjointScores(idx,2) = sqrt(self % adjointScores(idx,2))
+      end if
+
+      self % combScores(idx,1) = self % combScores(idx, 1) * N1
+      self % combScores(idx,2) = self % combScores(idx, 2) * N1
+      self % combScores(idx,2) = Nm1 *(self % combScores(idx,2) - &
+            self % combScores(idx,1) * self % combScores(idx,1)) 
+      if (self % combScores(idx,2) <= ZERO) then
+        self % combScores(idx,2) = ZERO
+      else
+        self % combScores(idx,2) = sqrt(self % combScores(idx,2))
       end if
     end do
     !$omp end parallel do
@@ -1048,11 +1201,45 @@ contains
 
     call out % writeToFile(self % outputFile)
 
+    if (self % printAdjoint) then
+      resArrayShape = [size(self % volume)]
+      do g = 1, self % nG
+        name = 'adjFlux_g'//numToChar(g)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % adjointScores(idx,1), self % adjointScores(idx,2))
+        end do
+        call out % endArray()
+        call out % endBlock()
+      end do
+    end if
+
+    call out % writeToFile(self % outputFile)
+
+    if (self % printComb) then
+      resArrayShape = [size(self % volume)]
+      do g = 1, self % nG
+        name = 'combFlux_g'//numToChar(g)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % combScores(idx,1), self % combScores(idx,2))
+        end do
+        call out % endArray()
+        call out % endBlock()
+      end do
+    end if
+
+    call out % writeToFile(self % outputFile)
+
     ! Send all fluxes and stds to VTK
     if (self % plotResults) then
       allocate(groupFlux(self % nCells))
       do g1 = 1, self % nG
-        name = 'adjoint_g'//numToChar(g1)
+        name = 'scalar_g'//numToChar(g1)
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g1
@@ -1072,6 +1259,46 @@ contains
         call self % viz % addVTKData(groupFlux,name)
       end do
       do g1 = 1, self % nG
+        name = 'adjoint_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjointScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'stdAdj_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjointScores(idx,2) / self % adjointScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'comb_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % combScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'stdComb_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % combScores(idx,2) / self % combScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
         name = 'source_g'//numToChar(g1)
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
@@ -1081,6 +1308,23 @@ contains
         !$omp end parallel do
         call self % viz % addVTKData(groupFlux,name)
       end do
+      do g1 = 1, self % nG
+        name = 'adjSource_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjSource(idx)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      name = 'material'
+      !$omp parallel do schedule(static)
+      do cIdx = 1, self % nCells
+        groupFlux(cIdx) = self % geom % geom % graph % getMatFromUID(cIdx)
+      end do
+      !$omp end parallel do
+      call self % viz % addVTKData(groupFlux,name)
       call self % viz % finaliseVTK
     end if
 
@@ -1137,22 +1381,32 @@ contains
     self % nG        = 0
     self % nCells    = 0
 
-    self % termination = ZERO
-    self % dead        = ZERO
-    self % pop         = 0
-    self % inactive    = 0
-    self % active      = 0
-    self % cache       = .FALSE.
-    self % plotResults = .FALSE.
-    self % printFlux   = .FALSE.
-    self % printVolume = .FALSE.
-    self % printCells  = .FALSE.
+    self % termination  = ZERO
+    self % dead         = ZERO
+    self % pop          = 0
+    self % inactive     = 0
+    self % active       = 0
+    self % cache        = .false.
+    self % plotResults  = .false.
+    self % printFlux    = .false.
+    self % printAdjoint = .false.
+    self % printComb    = .false.
+    self % printVolume  = .false.
+    self % printCells   = .false.
 
-    if(allocated(self % adjointFlux)) deallocate(self % adjointFlux)
+    if(allocated(self % scalarFlux)) deallocate(self % scalarFlux)
     if(allocated(self % prevFlux)) deallocate(self % prevFlux)
+    if(allocated(self % adjointFlux)) deallocate(self % adjointFlux)
+    if(allocated(self % prevAdjFlux)) deallocate(self % prevAdjFlux)
+    if(allocated(self % combFlux)) deallocate(self % combFlux)
     if(allocated(self % fluxScores)) deallocate(self % fluxScores)
+    if(allocated(self % adjointScores)) deallocate(self % adjointScores)
+    if(allocated(self % combScores)) deallocate(self % combScores)
     if(allocated(self % source)) deallocate(self % source)
+    if(allocated(self % adjSource)) deallocate(self % adjSource)
+    if(allocated(self % combSource)) deallocate(self % combSource)
     if(allocated(self % fixedSource)) deallocate(self % fixedSource)
+    if(allocated(self % adjFSource)) deallocate(self % adjFSource)
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % cellHit)) deallocate(self % cellHit)

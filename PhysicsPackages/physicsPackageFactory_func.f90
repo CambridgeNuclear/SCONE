@@ -106,7 +106,7 @@ contains
 
       case('adjointRRFSPhysicsPackage')
         ! Allocate and initialise
-        allocate( fixedSourceTRRMPhysicsPackage :: new)
+        allocate( adjointRRFSPhysicsPackage :: new)
         call new % init(dict)
 
       case('rayVolPhysicsPackage')
