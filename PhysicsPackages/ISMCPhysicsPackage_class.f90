@@ -206,7 +206,7 @@ contains
 
       call tally % reportCycleStart(self % thisCycle)
 
-      ! Update majorants for transport operator based
+      ! Update majorants for transport operator
       call self % transOp % updateMajorants(p % pRNG)
 
       gen: do

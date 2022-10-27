@@ -91,15 +91,14 @@ contains
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(ismcSource), intent(inout)      :: self
+    class(ismcSource), intent(inout)     :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
     class(nuclearDatabase), pointer      :: nucData
     class(IMCMaterial), pointer          :: mat
     real(defReal), dimension(3)          :: r, rand3, dir
-    ! Here, i is a float to allow more precise control of loop
-    real(defReal)                        :: mu, phi, i
-    integer(shortInt)                    :: matIdx, uniqueID, nucIdx
+    real(defReal)                        :: mu, phi
+    integer(shortInt)                    :: i, matIdx, uniqueID, nucIdx
     character(100), parameter :: Here = 'sampleParticle (ismcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
