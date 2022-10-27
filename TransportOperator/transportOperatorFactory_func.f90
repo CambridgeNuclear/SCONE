@@ -15,6 +15,9 @@ module transportOperatorFactory_func
   use transportOperatorIMC_class,       only : transportOperatorIMC
   !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
+  ! Geometry interfaces
+  use geometry_inter,                   only : geometry
+
   implicit none
   private
 
@@ -37,9 +40,10 @@ contains
   !! Allocate new allocatable transportOperator to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_transportOperator(new, dict)
+  subroutine new_transportOperator(new, dict, geom)
     class(transportOperator),allocatable, intent(inout):: new
     class(dictionary), intent(in)                      :: dict
+    class(geometry), pointer, intent(in), optional     :: geom
     character(nameLen)                                 :: type
     character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
 
@@ -65,7 +69,7 @@ contains
 
       case('transportOperatorIMC')
         allocate( transportOperatorIMC :: new)
-        call new % init(dict)
+        call new % init(dict, geom)
 
 !      case('dynamicTranspOperDT')
 !        allocate( transportOperatorDynamicDT :: new)

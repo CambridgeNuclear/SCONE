@@ -101,9 +101,10 @@ contains
   !!
   !! See transportOperator_inter for details
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, geom)
     class(transportOperatorST), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
+    class(geometry), pointer, intent(in), optional :: geom
 
     if (dict % isPresent('cache')) then
       call dict % get(self % cache, 'cache')
