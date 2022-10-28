@@ -27,7 +27,7 @@ module IMCSource_class
   !! Angular distribution is isotropic.
   !!
   !! Private members:
-  !!   isMG   -> is the source multi-group? (default = .false.)
+  !!   isMG   -> is the source multi-group? (default = .true.)
   !!   bottom -> Bottom corner (x_min, y_min, z_min)
   !!   top    -> Top corner (x_max, y_max, z_max)
   !!   E      -> Fission site energy [MeV] (default = 1.0E-6)
