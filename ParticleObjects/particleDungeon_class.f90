@@ -456,14 +456,11 @@ contains
   !! Errors:
   !!   fatalError if prop is invalid
   !!
-  subroutine printToScreen(self, prop, nMax, total)
+  subroutine printToScreen(self, prop, nMax)
     class(particleDungeon), intent(in)     :: self
     character(*), intent(in)               :: prop
     integer(shortInt), intent(in)          :: nMax
     integer(shortInt)                      :: i,iMax
-    logical(defBool), intent(in), optional :: total
-    logical(defBool)                       :: totBool = .false.
-    real(defReal)                          :: totSum
     character(100), parameter :: Here = 'printToScreen (particleDungeon_class.f90)'
 
     character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r     ',&
@@ -475,106 +472,54 @@ contains
                                                                        'time  ',&
                                                                        'pop   ']
 
-    ! Reset sum variable
-    totSum = 0
-
     print *, 'Number in dungeon =', self % pop
 
     ! Number of particles to be printed
     iMax = min(nMax, self % pop)
 
-    ! Print for each particle unless otherwise specified
-    if( present(total) ) totBool = total
-
     ! Print desired quantities
     select case(prop)
       case('r')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Position **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % r)
-          end do
-        else
-          call fatalError(Here, 'p % r is not a scalar quantity')
-        end if
+        print *, '**          ** Position **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % r)
+        end do
 
       case('dir')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Direction **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % dir)
-          end do
-        else
-          call fatalError(Here, 'p % dir is not a scalar quantity')
-        end if
+        print *, '**          ** Direction **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % dir)
+        end do
 
       case('matIdx')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** matIdx **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % matIdx)
-          end do
-        else
-          call fatalError(Here, 'p % matIdx not suitable for cumulative sum')
-        end if
+        print *, '**          ** matIdx **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % matIdx)
+        end do
 
       case('E')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Energy **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % E)
-          end do
-        else
-          ! Sum for each particle
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % E
-          end do
-          ! Print total
-          print *, 'Cumulative sum of p % E = ', totSum
-        end if
-
+        print *, '**          ** Energy **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % E)
+        end do
+     
       case('G')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Group **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % G)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % G
-          end do
-          print *, 'Cumulative sum of p % G = ', totSum
-        end if
+        print *, '**          ** Group **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % G)
+        end do
 
       case('wgt')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Weight **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % wgt)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % wgt
-          end do
-          print *, 'Cumulative sum of p % wgt = ', totSum
-          write(12, *) totSum
-        end if
+        print *, '**          ** Weight **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % wgt)
+        end do
 
       case('time')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Time **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % time)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % time
-          end do
-          print *, 'Cumulative sum of p % time = ', totSum
-        end if
+        print *, '**          ** Time **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % time)
+        end do
 
       case('pop')
         ! Do nothing, pop already printed above

@@ -178,9 +178,9 @@ contains
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
         ! Select number of particles to generate
-        if(N + self % thisCycle % getSize() > self % limit) then
+        if(N + self % thisCycle % popSize() > self % limit) then
           ! Fleck and Cummings IMC Paper, eqn 4.11
-          N = self % limit - self % thisCycle % getSize() - self % nMat - 1
+          N = self % limit - self % thisCycle % popSize() - self % nMat - 1
         end if
         if(self % sourceGiven) N = N/2
         ! Add to particle dungeon
@@ -254,7 +254,7 @@ contains
       print *
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % nextCycle % getSize())
+      print *, 'Pop:          ', numToChar(self % nextCycle % popSize())
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
