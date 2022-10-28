@@ -399,7 +399,7 @@ contains
   end function matIdx
 
   !!
-  !! Return one of the particle Tpes defined in universal variables
+  !! Return one of the particle types defined in universal variables
   !!
   !! Args:
   !!   None
@@ -414,12 +414,20 @@ contains
     class(particle), intent(in) :: self
     integer(shortInt)           :: type
 
-    if (self % type == P_PHOTON) then
-      type = P_PHOTON_MG
-    else if (self % isMG) then
-      type = P_NEUTRON_MG
-    else
-      type = P_NEUTRON_CE
+    ! Check for neutron
+    if (self % type == P_NEUTRON) then
+      if (self % isMg) then
+        type = P_NEUTRON_MG
+      else
+        type = P_NEUTRON_CE
+      end if
+    ! Check for photon
+    else if (self % type == P_PHOTON) then
+      if (self % isMg) then
+        type = P_PHOTON_MG
+      else
+        type = P_PHOTON_CE
+      end if
     end if
 
   end function getType
