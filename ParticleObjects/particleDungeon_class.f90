@@ -50,7 +50,8 @@ module particleDungeon_class
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!     printToScreen(prop,nMax,total) -> prints property to screen for up to nMax particles
-  !!     getSize()         -> returns number of particles in dungeon
+  !!     popSize()         -> returns number of particles in dungeon
+  !!     popWeight()       -> returns total population weight
   !!
   !!   Build procedures:
   !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
@@ -89,7 +90,6 @@ module particleDungeon_class
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: printToScreen
-    procedure  :: getSize
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -358,7 +358,7 @@ contains
   end subroutine cleanPop
 
   !!
-  !! Returns number of neutrons in the dungeon
+  !! Returns number of particles in the dungeon
   !!
   function popSize(self) result(pop)
     class(particleDungeon), intent(in) :: self
@@ -586,17 +586,6 @@ contains
     end select
 
   end subroutine printToScreen
-
-  !!
-  !!  Return number of particles in dungeon
-  !!
-  function getSize(self) result(n)
-    class(particleDungeon), intent(in) :: self
-    integer(shortInt)                  :: n
-
-    n = self % pop
-
-  end function getSize
     
 
 end module particleDungeon_class
