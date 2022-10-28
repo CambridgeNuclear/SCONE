@@ -1,12 +1,12 @@
 
 numberOfGroups 1; 
 
-sigmaA (
+capture (
  10
  -3
 );
 
-sigmaS (
+scatter (
  0
  0
 );

@@ -189,9 +189,9 @@ contains
     call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
     ! Read opacity equations
-    call dict % get(temp, 'sigmaA')
+    call dict % get(temp, 'capture')
     self % absEqn = temp
-    call dict % get(temp, 'sigmaS')
+    call dict % get(temp, 'scatter')
     self % scattEqn = temp
 
     ! Build planck opacity equation
