@@ -432,11 +432,11 @@ contains
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      write(10,'(8A)') numToChar(self % prisoners(i) % r)!, &
-                       !numToChar(self % prisoners(i) % dir), &
-                       !numToChar(self % prisoners(i) % E), &
-                       !numToChar(self % prisoners(i) % G), &
-                       !numToChar(self % prisoners(i) % matIdx)
+      write(10,'(8A)') numToChar(self % prisoners(i) % r), &
+                       numToChar(self % prisoners(i) % dir), &
+                       numToChar(self % prisoners(i) % E), &
+                       numToChar(self % prisoners(i) % G), &
+                       numToChar(self % prisoners(i) % matIdx)
     end do
 
     ! Close the file
