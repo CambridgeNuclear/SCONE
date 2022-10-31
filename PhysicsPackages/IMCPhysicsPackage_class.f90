@@ -332,7 +332,7 @@ contains
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy, geomName
+    character(nameLen)                              :: nucData, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
     class(IMCMaterial), pointer                     :: mat
@@ -346,19 +346,9 @@ contains
     call dict % get(self % limit, 'limit')
     call dict % get(self % N_steps,'steps')
     call dict % get(self % deltaT,'timeStepSize')
-    call dict % get(nucData, 'XSdata')
-    call dict % get(energy, 'dataType')
     call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
-
-    ! Process type of data
-    select case(energy)
-      case('mg')
-        self % particleType = P_PHOTON_MG
-      !case('ce')
-      !  self % particleType = P_PHOTON_CE
-      case default
-        call fatalError(Here,"dataType must be 'mg' or 'ce'.")
-    end select
+    self % particleType = P_PHOTON_MG
+    nucData = 'mg'
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
