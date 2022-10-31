@@ -86,10 +86,9 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: printUpdates
 
     ! Calculation components
-    type(particleDungeon), allocatable :: thisStep
-    type(particleDungeon), allocatable :: nextStep
-      ! Note that other physics packages used pointers for these particleDungeons ( => null() )
-      ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
+    type(particleDungeon), pointer :: thisStep     => null()
+    type(particleDungeon), pointer :: nextStep     => null()
+    type(particleDungeon), pointer :: temp_dungeon => null()
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
 
@@ -152,8 +151,10 @@ contains
 
     do i=1,N_steps
 
-      ! Store photons remaining from previous time step
-      self % thisStep = self % nextStep
+      ! Swap dungeons to store photons remaining from previous time step
+      self % temp_dungeon => self % nextStep
+      self % nextStep     => self % thisStep
+      self % thisStep     => self % temp_dungeon
       call self % nextStep % cleanPop()
 
       ! Check that there are regions of non-zero temperature by summing mat temperatures
