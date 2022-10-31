@@ -2,8 +2,8 @@
 type IMCPhysicsPackage;
 
 pop            500;
-limit          20000
-cycles         10000;
+limit          5000;
+steps          10000;
 timeStepSize   0.05;
 
 XSdata     mg;
