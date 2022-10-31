@@ -83,6 +83,7 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: particleType
     logical(defBool)   :: sourceGiven = .false.
     integer(shortInt)  :: nMat
+    integer(shortInt)  :: printUpdates
 
     ! Calculation components
     type(particleDungeon), allocatable :: thisCycle
@@ -136,18 +137,8 @@ contains
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
-    logical(defBool)                                :: printUpdates
     character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
-
-    ! Set whether or not to print energy and temperature updates of each material
-    !   Printed from updateMat (baseMgIMCMaterial_class.f90), 7 lines of text
-    !   per material so recommend to only print when low number of materials
-    if (self % nMat <= 5) then
-      printUpdates = .True.
-    else
-      printUpdates = .False.
-    end if
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
@@ -275,11 +266,13 @@ contains
       ! Update material properties
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (printUpdates .eqv. .True.) then
+        if (j <= self % printUpdates) then
           print *
           print *, "Material update:  ", mm_matName(j)
+          call mat % updateMat(tallyEnergy(j), .true.)
+        else
+          call mat % updateMat(tallyEnergy(j), .false.)
         end if
-        call mat % updateMat(tallyEnergy(j), printUpdates)
       end do
       print *
 
@@ -355,6 +348,7 @@ contains
     call dict % get(self % deltaT,'timeStepSize')
     call dict % get(nucData, 'XSdata')
     call dict % get(energy, 'dataType')
+    call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
 
     ! Process type of data
     select case(energy)
