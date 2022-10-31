@@ -211,7 +211,7 @@ contains
             call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
             
-            if(p % fate == TIME_FATE) then
+            if(p % fate == AGED_FATE) then
                 ! Store particle for use in next time step
                 p % fate = 0
                 call self % nextStep % detain(p)

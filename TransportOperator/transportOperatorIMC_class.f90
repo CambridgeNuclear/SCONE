@@ -65,7 +65,7 @@ contains
       else
         ! Move particle to end of time step location
         call self % geom % teleport(p % coords, dTime)
-        p % fate = TIME_FATE
+        p % fate = AGED_FATE
         p % time = p % timeMax
       end if
 
@@ -76,7 +76,7 @@ contains
         return
       end if
 
-      if (p % fate == TIME_FATE) exit IMCLoop
+      if (p % fate == AGED_FATE) exit IMCLoop
 
       ! Check for void
       if( p % matIdx() == VOID_MAT) cycle IMCLoop
