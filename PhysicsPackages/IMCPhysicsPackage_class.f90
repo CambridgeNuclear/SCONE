@@ -151,7 +151,6 @@ contains
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
-    p % timeMax = self % deltaT
     p % geomIdx = self % geomIdx
 
     ! Reset and start timer
@@ -204,12 +203,13 @@ contains
         call self % geom % placeCoord(p % coords)
 
         ! Assign particle time
-        if( p % time /= self % deltaT ) then
+        p % timeMax = self % deltaT * i
+        if( p % time /= self % deltaT*(i-1) ) then
           ! If particle has just been sourced, t = 0 so sample uniformly within timestep
-          p % time = p % pRNG % get() * self % deltaT
+          p % time = (p % pRNG % get() + i-1) * self % deltaT
         else
-          ! If particle survived previous time step, reset time to 0
-          p % time = 0
+          ! If particle survived previous time step, reset time
+          p % time = self % deltaT * (i-1)
         end if
 
         ! Save state
