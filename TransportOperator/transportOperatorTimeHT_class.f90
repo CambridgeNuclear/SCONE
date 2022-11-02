@@ -72,7 +72,7 @@ contains
 
       ! Decide whether to use delta tracking or surface tracking
       ! Vastly different opacities make delta tracking infeasable
-      if(sigmaT * self % majorant_inv > self % cutoff) then
+      if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
         ! Delta tracking
         call self % deltaTracking(p, dTime, dColl, finished)
       else
@@ -173,6 +173,8 @@ contains
   !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
   !!
+  !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
+  !!
   subroutine init(self, dict)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(dictionary), intent(in)              :: dict
@@ -185,7 +187,7 @@ contains
     call init_super(self, dict)
 
     ! Get cutoff value
-    call dict % getOrDefault(self % cutoff, 'cutoff', 0.3_defReal)
+    call dict % getOrDefault(self % cutoff, 'cutoff', 0.7_defReal)
 
   end subroutine init
 
