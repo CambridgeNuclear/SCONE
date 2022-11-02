@@ -13,6 +13,7 @@ module transportOperatorFactory_func
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
   use transportOperatorIMC_class,       only : transportOperatorIMC
+  use transportOperatorTimeHT_class,    only : transportOperatorTimeHT
   !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
   implicit none
@@ -23,10 +24,11 @@ module transportOperatorFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST ', &
-                                                                         'transportOperatorDT ', &
-                                                                         'transportOperatorHT ', &
-                                                                         'transportOperatorIMC']!, &
+  character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST    ', &
+                                                                         'transportOperatorDT    ', &
+                                                                         'transportOperatorHT    ', &
+                                                                         'transportOperatorIMC   ', &
+                                                                         'transportOperatorTimeHT']!, &
                                                                        !  'dynamicTranspOperDT']
 
   public :: new_transportOperator
@@ -65,6 +67,10 @@ contains
 
       case('transportOperatorIMC')
         allocate( transportOperatorIMC :: new)
+        call new % init(dict)
+
+      case('transportOperatorTimeHT')
+        allocate( transportOperatorTimeHT :: new)
         call new % init(dict)
 
 !      case('dynamicTranspOperDT')

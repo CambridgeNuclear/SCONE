@@ -136,6 +136,7 @@ module particle_class
     procedure                  :: getUniIdx
     procedure                  :: matIdx
     procedure, non_overridable :: getType
+    procedure                  :: getSpeed
 
     ! Operations on coordinates
     procedure            :: moveGlobal
@@ -431,6 +432,28 @@ contains
     end if
 
   end function getType
+
+  !!
+  !! Return speed of particle
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   Currently returns lightSpeed for P_PHOTONs and gives error otherwise
+  !!
+  function getSpeed(self) result(speed)
+    class(particle), intent(in) :: self
+    real(defReal)               :: speed
+    character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
+
+    if (self % type == P_PHOTON) then
+      speed = lightSpeed
+    else 
+      call fatalError(Here, "Not yet coded to provide speed for neutrons")
+    end if
+
+  end function getSpeed
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
