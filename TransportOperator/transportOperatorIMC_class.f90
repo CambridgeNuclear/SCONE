@@ -157,6 +157,7 @@ contains
     else if (dist == dColl) then
       ! Collision, increase time accordingly
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
+      p % time = p % time + dColl/lightSpeed
       finished = .true.
     end if
 
