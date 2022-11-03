@@ -43,7 +43,7 @@ module transportOperatorIMC_class
     integer(shortInt)                        :: majMapN = 0
     real(defReal), dimension(3)              :: top     = ZERO
     real(defReal), dimension(3)              :: bottom  = ZERO
-    integer(shortInt)                        :: steps
+    integer(shortInt)                        :: pSteps
   contains
     procedure          :: transit => imcTracking
     procedure          :: init
@@ -102,7 +102,7 @@ contains
 
       ! Decide whether to use delta tracking or surface tracking
       ! Vastly different opacities make delta tracking infeasable
-      if(sigmaT * self % majorant_inv > self % cutoff) then
+      if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
         ! Delta tracking
         call self % deltaTracking(p, dTime, dColl, finished)
       else
@@ -284,7 +284,7 @@ contains
     self % matConnections = 0
 
     ! Calculate distance increments
-    dist = self % deltaT * lightSpeed / self % steps
+    dist = self % deltaT * lightSpeed / self % pSteps
 
     do i = 1, self % majMapN
 
@@ -293,7 +293,7 @@ contains
       matIdx = p % matIdx()
 
       ! Incrementally transport particle up to a distance dTime
-      do j = 1, self % steps
+      do j = 1, self % pSteps
 
         call self % geom % teleport(p % coords, dist)
         if (p % matIdx() == VOID_MAT .or. p % matIdx() == OUTSIDE_MAT) exit
@@ -414,12 +414,14 @@ contains
   !!   cutoff  0.5;
   !!   majMap  {
   !!     nParticles 500;
-  !!     steps      10;
+  !!     pSteps     10;
   !!   }
   !! }
   !!
-  !! As an alternative to 'steps' can specify 'lengthScale' and then steps is calculated
-  !! automatically as steps = c*dt/lengthScale
+  !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
+  !!
+  !! As an alternative to 'pSteps' can specify 'lengthScale' and then steps is calculated
+  !! automatically as pSteps = c*dt/lengthScale
   !!
   subroutine init(self, dict, geom)
     class(transportOperatorIMC), intent(inout)     :: self
@@ -440,7 +442,7 @@ contains
     call dict % get(self % deltaT, 'deltaT')
 
     ! Get cutoff value
-    call dict % getOrDefault(self % cutoff, 'cutoff', 0.3_defReal)
+    call dict % getOrDefault(self % cutoff, 'cutoff', 0.7_defReal)
 
     ! Preparation for majorant reduction subroutine
     if (dict % isPresent('majMap')) then
@@ -449,11 +451,11 @@ contains
       tempDict => dict % getDictPtr('majMap')
       call tempDict % get(self % majMapN, 'nParticles')
 
-      if (tempDict % isPresent('steps')) then
-        call tempDict % get(self % steps, 'steps')
+      if (tempDict % isPresent('pSteps')) then
+        call tempDict % get(self % pSteps, 'pSteps')
       else
         call tempDict % get(lengthScale, 'lengthScale')
-        self % steps = ceiling(lightSpeed*self % deltaT/lengthScale)
+        self % pSteps = ceiling(lightSpeed*self % deltaT/lengthScale)
       end if
 
       nMats = mm_nMat()
