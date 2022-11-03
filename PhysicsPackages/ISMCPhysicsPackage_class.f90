@@ -155,7 +155,6 @@ contains
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
-    p % timeMax = self % deltaT
     p % geomIdx = self % geomIdx
 
     ! Reset and start timer
@@ -212,18 +211,29 @@ contains
       ! Update majorants for transport operator
       call self % transOp % updateMajorants(p % pRNG)
 
+      ! Assign new maximum particle time
+      p % timeMax = self % deltaT * i
+
       gen: do
         ! Obtain paticle from dungeon
         call self % thisStep % release(p)
         call self % geom % placeCoord(p % coords)
 
-        ! Assign particle time
-        if( p % type /= P_MATERIAL .and. p % time /= self % deltaT ) then
-          ! If particle has just been sourced, t = 0 so sample uniformly within timestep
-          p % time = p % pRNG % get() * self % deltaT
-        else
-          ! If particle survived previous time step, reset time to 0
-          p % time = ZERO
+        ! Check particle type
+        if (p % getType() /= P_PHOTON_MG .and. p % getType() /= P_MATERIAL_MG) then
+          call fatalError(Here, 'Particle is not of type P_PHOTON_MG or P_MATERIAL_MG')
+        end if
+
+        ! For newly sourced particles, sample time uniformly within time step
+        if (p % time == ZERO) then
+          p % time = (p % pRNG % get() + i-1) * self % deltaT
+        end if
+
+        ! Check for time errors
+        if (p % time >= p % timeMax .or. p % time < self % deltaT*(i-1)) then
+          call fatalError(Here, 'Particle time is not within timestep bounds')
+        else if (p % time /= p % time) then
+          call fatalError(Here, 'Particle time is NaN')
         end if
 
         ! Save state
