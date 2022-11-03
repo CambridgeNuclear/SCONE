@@ -189,19 +189,29 @@ contains
 
       call tally % reportCycleStart(self % thisStep)
 
+      ! Assign new maximum particle time
+      p % timeMax = self % deltaT * i
+
       gen: do
         ! Obtain paticle from dungeon
         call self % thisStep % release(p)
         call self % geom % placeCoord(p % coords)
 
-        ! Assign particle time
-        p % timeMax = self % deltaT * i
-        if( p % time /= self % deltaT*(i-1) ) then
-          ! If particle has just been sourced, t = 0 so sample uniformly within timestep
+        ! Check particle type
+        if (p % getType() /= P_PHOTON_MG) then
+          call fatalError(Here, 'Particle is not of type P_PHOTON_MG')
+        end if
+
+        ! For newly sourced particles, sample time uniformly within time step
+        if (p % time == ZERO) then
           p % time = (p % pRNG % get() + i-1) * self % deltaT
-        else
-          ! If particle survived previous time step, reset time
-          p % time = self % deltaT * (i-1)
+        end if
+
+        ! Check for time errors
+        if (p % time >= p % timeMax .or. p % time < self % deltaT*(i-1)) then
+          call fatalError(Here, 'Particle time is not within timestep bounds')
+        else if (p % time /= p % time) then
+          call fatalError(Here, 'Particle time is NaN')
         end if
 
         ! Save state
