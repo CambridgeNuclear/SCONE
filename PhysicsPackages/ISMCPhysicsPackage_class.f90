@@ -282,7 +282,7 @@ contains
       print *
       print *
       print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % nextCycle % getSize())
+      print *, 'Pop:          ', numToChar(self % nextCycle % popSize())
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))

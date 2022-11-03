@@ -1,7 +1,7 @@
 module pointSource_class
 
   use numPrecision
-  use universalVariables
+  use universalVariables, only : OUTSIDE_MAT
   use genericProcedures,  only : fatalError
   use particle_class,     only : particleState, P_NEUTRON, P_PHOTON
   use dictionary_class,   only : dictionary

@@ -52,7 +52,8 @@ module particleDungeon_class
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!     printToScreen(prop,nMax,total) -> prints property to screen for up to nMax particles
-  !!     getSize()         -> returns number of particles in dungeon
+  !!     popSize()         -> returns number of particles in dungeon
+  !!     popWeight()       -> returns total population weight
   !!
   !!   Build procedures:
   !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
@@ -62,7 +63,6 @@ module particleDungeon_class
     private
     real(defReal),public     :: k_eff = ONE   ! k-eff for fission site generation rate normalisation
     integer(shortInt)        :: pop = 0       ! Current population size of the dungeon
-    real(defreal),public     :: endOfStepTime ! Time at end of current time step - only used in IMC calculations
 
     ! Storage space
     type(particleState), dimension(:), allocatable :: prisoners
@@ -94,7 +94,6 @@ module particleDungeon_class
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: printToScreen
-    procedure  :: getSize
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -545,7 +544,7 @@ contains
   end subroutine cleanPop
 
   !!
-  !! Returns number of neutrons in the dungeon
+  !! Returns number of particles in the dungeon
   !!
   function popSize(self) result(pop)
     class(particleDungeon), intent(in) :: self
@@ -615,20 +614,19 @@ contains
     integer(shortInt)                  :: i
 
     filename = trim(name)//'.txt'
-    !open(unit = 10, file = filename)
+    open(unit = 10, file = filename)
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
       write(10,'(8A)') numToChar(self % prisoners(i) % r), &
-                       '   ', numToChar(self % prisoners(i) % type)!, &
-                       !numToChar(self % prisoners(i) % dir), &
-                       !numToChar(self % prisoners(i) % E), &
-                       !numToChar(self % prisoners(i) % G), &
-                       !numToChar(self % prisoners(i) % matIdx)
+                       numToChar(self % prisoners(i) % dir), &
+                       numToChar(self % prisoners(i) % E), &
+                       numToChar(self % prisoners(i) % G), &
+                       numToChar(self % prisoners(i) % matIdx)
     end do
 
     ! Close the file
-    !close(10)
+    close(10)
 
   end subroutine printToFile
 
@@ -644,14 +642,11 @@ contains
   !! Errors:
   !!   fatalError if prop is invalid
   !!
-  subroutine printToScreen(self, prop, nMax, total)
+  subroutine printToScreen(self, prop, nMax)
     class(particleDungeon), intent(in)     :: self
     character(*), intent(in)               :: prop
     integer(shortInt), intent(in)          :: nMax
     integer(shortInt)                      :: i,iMax
-    logical(defBool), intent(in), optional :: total
-    logical(defBool)                       :: totBool = .false.
-    real(defReal)                          :: totSum
     character(100), parameter :: Here = 'printToScreen (particleDungeon_class.f90)'
 
     character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r     ',&
@@ -663,105 +658,54 @@ contains
                                                                        'time  ',&
                                                                        'pop   ']
 
-    ! Reset sum variable
-    totSum = 0
-
     print *, 'Number in dungeon =', self % pop
 
     ! Number of particles to be printed
     iMax = min(nMax, self % pop)
 
-    ! Print for each particle unless otherwise specified
-    if( present(total) ) totBool = total
-
     ! Print desired quantities
     select case(prop)
       case('r')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Position **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % r)
-          end do
-        else
-          call fatalError(Here, 'p % r is not a scalar quantity')
-        end if
+        print *, '**          ** Position **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % r)
+        end do
 
       case('dir')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Direction **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % dir)
-          end do
-        else
-          call fatalError(Here, 'p % dir is not a scalar quantity')
-        end if
+        print *, '**          ** Direction **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % dir)
+        end do
 
       case('matIdx')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** matIdx **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % matIdx)
-          end do
-        else
-          call fatalError(Here, 'p % matIdx not suitable for cumulative sum')
-        end if
+        print *, '**          ** matIdx **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % matIdx)
+        end do
 
       case('E')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Energy **          **'
-          ! Print for each particle
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % E)
-          end do
-        else
-          ! Sum for each particle
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % E
-          end do
-          ! Print total
-          print *, 'Cumulative sum of p % E = ', totSum
-        end if
-
+        print *, '**          ** Energy **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % E)
+        end do
+     
       case('G')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Group **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % G)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % G
-          end do
-          print *, 'Cumulative sum of p % G = ', totSum
-        end if
+        print *, '**          ** Group **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % G)
+        end do
 
       case('wgt')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Weight **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % wgt)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % wgt
-          end do
-          print *, 'Cumulative sum of p % wgt = ', totSum
-        end if
+        print *, '**          ** Weight **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % wgt)
+        end do
 
       case('time')
-        if( totBool .eqv. .false. ) then
-          print *, '**          ** Time **          **'
-          do i = 1, iMax
-            print *, i,numToChar(self % prisoners(i) % time)
-          end do
-        else
-          do i = 1, self % pop
-            totSum = totSum + self % prisoners(i) % time
-          end do
-          print *, 'Cumulative sum of p % time = ', totSum
-        end if
+        print *, '**          ** Time **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % time)
+        end do
 
       case('pop')
         ! Do nothing, pop already printed above
@@ -773,17 +717,6 @@ contains
     end select
 
   end subroutine printToScreen
-
-  !!
-  !!  Return number of particles in dungeon
-  !!
-  function getSize(self) result(n)
-    class(particleDungeon), intent(in) :: self
-    integer(shortInt)                  :: n
-
-    n = self % pop
-
-  end function getSize
     
 
 end module particleDungeon_class

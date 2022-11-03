@@ -73,7 +73,7 @@ module IMCPhysicsPackage_class
     type(tallyAdmin),pointer               :: imcWeightAtch => null()
 
     ! Settings
-    integer(shortInt)  :: N_cycles
+    integer(shortInt)  :: N_steps
     integer(shortInt)  :: pop
     integer(shortInt)  :: limit
     real(defReal)      :: deltaT
@@ -83,12 +83,12 @@ module IMCPhysicsPackage_class
     integer(shortInt)  :: particleType
     logical(defBool)   :: sourceGiven = .false.
     integer(shortInt)  :: nMat
+    integer(shortInt)  :: printUpdates
 
     ! Calculation components
-    type(particleDungeon), allocatable :: thisCycle
-    type(particleDungeon), allocatable :: nextCycle
-      ! Note that other physics packages used pointers for these particleDungeons ( => null() )
-      ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
+    type(particleDungeon), pointer :: thisStep     => null()
+    type(particleDungeon), pointer :: nextStep     => null()
+    type(particleDungeon), pointer :: temp_dungeon => null()
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: IMCSource
 
@@ -100,7 +100,7 @@ module IMCPhysicsPackage_class
   contains
     procedure :: init
     procedure :: printSettings
-    procedure :: cycles
+    procedure :: steps
     procedure :: collectResults
     procedure :: run
     procedure :: kill
@@ -115,7 +115,7 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ IMC CALCULATION /\/\"
 
-    call self % cycles(self % tally, self % imcWeightAtch, self % N_cycles)
+    call self % steps(self % tally, self % imcWeightAtch, self % N_steps)
     call self % collectResults()
 
     print *
@@ -124,34 +124,23 @@ contains
   end subroutine
 
   !!
-  !! Run cycles for calculation
+  !! Run steps for calculation
   !!
-  subroutine cycles(self, tally, tallyAtch, N_cycles)
+  subroutine steps(self, tally, tallyAtch, N_steps)
     class(IMCPhysicsPackage), intent(inout)         :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
-    integer(shortInt), intent(in)                   :: N_cycles
+    integer(shortInt), intent(in)                   :: N_steps
     integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
-    logical(defBool)                                :: printUpdates
-    character(100),parameter :: Here ='cycles (IMCPhysicsPackage_class.f90)'
+    character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
-
-    ! Set whether or not to print energy and temperature updates of each material
-    !   Printed from updateMat (baseMgIMCMaterial_class.f90), 7 lines of text
-    !   per material so recommend to only print when low number of materials
-    if (self % nMat <= 5) then
-      printUpdates = .True.
-    else
-      printUpdates = .False.
-    end if
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
-    p % timeMax = self % deltaT
     p % geomIdx = self % geomIdx
 
     ! Reset and start timer
@@ -160,11 +149,13 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
-    do i=1,N_cycles
+    do i=1,N_steps
 
-      ! Store photons remaining from previous cycle
-      self % thisCycle = self % nextCycle
-      call self % nextCycle % cleanPop()
+      ! Swap dungeons to store photons remaining from previous time step
+      self % temp_dungeon => self % nextStep
+      self % nextStep     => self % thisStep
+      self % thisStep     => self % temp_dungeon
+      call self % nextStep % cleanPop()
 
       ! Check that there are regions of non-zero temperature by summing mat temperatures
       sumT = 0
@@ -178,38 +169,39 @@ contains
       ! Generate IMC source, only if there are regions with non-zero temperature
       if(sumT > 0) then
         ! Select number of particles to generate
-        if(N + self % thisCycle % getSize() > self % limit) then
+        if(N + self % thisStep % popSize() > self % limit) then
           ! Fleck and Cummings IMC Paper, eqn 4.11
-          N = self % limit - self % thisCycle % getSize() - self % nMat - 1
+          N = self % limit - self % thisStep % popSize() - self % nMat - 1
         end if
         if(self % sourceGiven) N = N/2
         ! Add to particle dungeon
-        call self % IMCSource % append(self % thisCycle, N, p % pRNG)
+        call self % IMCSource % append(self % thisStep, N, p % pRNG)
       end if
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisCycle, N, p % pRNG)
+        call self % inputSource % append(self % thisStep, N, p % pRNG)
       end if
 
       if(self % printSource == 1) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+        call self % thisStep % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
-      call tally % reportCycleStart(self % thisCycle)
+      call tally % reportCycleStart(self % thisStep)
 
       gen: do
         ! Obtain paticle from dungeon
-        call self % thisCycle % release(p)
+        call self % thisStep % release(p)
         call self % geom % placeCoord(p % coords)
 
         ! Assign particle time
-        if( p % time /= self % deltaT ) then
+        p % timeMax = self % deltaT * i
+        if( p % time /= self % deltaT*(i-1) ) then
           ! If particle has just been sourced, t = 0 so sample uniformly within timestep
-          p % time = p % pRNG % get() * self % deltaT
+          p % time = (p % pRNG % get() + i-1) * self % deltaT
         else
-          ! If particle survived previous time step, reset time to 0
-          p % time = 0
+          ! If particle survived previous time step, reset time
+          p % time = self % deltaT * (i-1)
         end if
 
         ! Save state
@@ -217,44 +209,44 @@ contains
 
           ! Transport particle until its death
           history: do
-            call self % transOp % transport(p, tally, self % thisCycle, self % nextCycle)
+            call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
             
-            if(p % fate == TIME_FATE) then
+            if(p % fate == AGED_FATE) then
                 ! Store particle for use in next time step
                 p % fate = 0
-                call self % nextCycle % detain(p)
+                call self % nextStep % detain(p)
                 exit history
             end if
 
-            call self % collOp % collide(p, tally, self % thisCycle, self % nextCycle)
+            call self % collOp % collide(p, tally, self % thisStep, self % nextStep)
 
             if(p % isDead) exit history
 
           end do history
 
         ! When dungeon is empty, exit
-        if( self % thisCycle % isEmpty() ) exit gen
+        if (self % thisStep % isEmpty()) exit gen
 
       end do gen
 
-      ! Send end of cycle report
-      call tally % reportCycleEnd(self % thisCycle)
+      ! Send end of time step report
+      call tally % reportCycleEnd(self % thisStep)
 
       ! Calculate times
       call timerStop(self % timerMain)
       elapsed_T = timerTime(self % timerMain)
 
       ! Predict time to end
-      end_T = real(N_cycles,defReal) * elapsed_T / i
+      end_T = real(N_steps,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
       call printFishLineR(i)
       print *
       print *
-      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % nextCycle % getSize())
+      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_steps)
+      print *, 'Pop:          ', numToChar(self % nextStep % popSize())
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
@@ -275,22 +267,24 @@ contains
       ! Update material properties
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (printUpdates .eqv. .True.) then
+        if (j <= self % printUpdates) then
           print *
           print *, "Material update:  ", mm_matName(j)
+          call mat % updateMat(tallyEnergy(j), .true.)
+        else
+          call mat % updateMat(tallyEnergy(j), .false.)
         end if
-        call mat % updateMat(tallyEnergy(j), printUpdates)
       end do
       print *
 
-      ! Reset tally for next cycle
+      ! Reset tally for next time step
       call tallyAtch % reset('imcWeight')
 
-      print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_cycles)
+      print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
 
     end do
 
-  end subroutine cycles
+  end subroutine steps
 
   !!
   !! Print calculation results to file
@@ -309,7 +303,7 @@ contains
     call out % printValue(self % pop,name)
 
     name = 'Source_batches'
-    call out % printValue(self % N_cycles,name)
+    call out % printValue(self % N_steps,name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
@@ -339,7 +333,7 @@ contains
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy, geomName
+    character(nameLen)                              :: nucData, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
     class(IMCMaterial), pointer                     :: mat
@@ -351,20 +345,11 @@ contains
     ! Read calculation settings
     call dict % get(self % pop,'pop')
     call dict % get(self % limit, 'limit')
-    call dict % get(self % N_cycles,'cycles')
+    call dict % get(self % N_steps,'steps')
     call dict % get(self % deltaT,'timeStepSize')
-    call dict % get(nucData, 'XSdata')
-    call dict % get(energy, 'dataType')
-
-    ! Process type of data
-    select case(energy)
-      case('mg')
-        self % particleType = P_PHOTON_MG
-      !case('ce')
-      !  self % particleType = P_PHOTON_CE
-      case default
-        call fatalError(Here,"dataType must be 'mg' or 'ce'.")
-    end select
+    call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
+    self % particleType = P_PHOTON_MG
+    nucData = 'mg'
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -395,7 +380,7 @@ contains
     seed = seed_temp
     call self % pRNG % init(seed)
 
-    ! Read whether to print particle source per cycle
+    ! Read whether to print particle source each time step
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
     ! Build Nuclear Data
@@ -469,10 +454,10 @@ contains
     call self % tally % push(self % imcWeightAtch)
 
     ! Size particle dungeons
-    allocate(self % thisCycle)
-    call self % thisCycle % init(self % limit)
-    allocate(self % nextCycle)
-    call self % nextCycle % init(self % limit)
+    allocate(self % thisStep)
+    call self % thisStep % init(self % limit)
+    allocate(self % nextStep)
+    call self % nextStep % init(self % limit)
 
     call self % printSettings()
 
@@ -496,7 +481,7 @@ contains
 
     print *, repeat("<>",50)
     print *, "/\/\ IMC CALCULATION /\/\"
-    print *, "Source batches:       ", numToChar(self % N_cycles)
+    print *, "Source batches:       ", numToChar(self % N_steps)
     print *, "Population per batch: ", numToChar(self % pop)
     print *, "Initial RNG Seed:     ", numToChar(self % pRNG % getSeed())
     print *

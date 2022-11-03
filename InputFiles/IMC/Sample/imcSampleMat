@@ -16,12 +16,12 @@ alpha = 1;
   //   length allowed
   // e.g. Here, sigmaA = 1 + 2T
 
-sigmaA (    // Absorption opacity
+capture (    // Absorption opacity
  1  2       // Coefficients
  0  1       // Exponents
 );
 
-sigmaS (    // Scattering opacity
+scatter (    // Scattering opacity
  0
  0
 );

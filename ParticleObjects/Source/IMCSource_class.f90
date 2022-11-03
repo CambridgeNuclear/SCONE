@@ -27,11 +27,12 @@ module IMCSource_class
   !! Angular distribution is isotropic.
   !!
   !! Private members:
-  !!   isMG   -> is the source multi-group? (default = .false.)
-  !!   bottom -> Bottom corner (x_min, y_min, z_min)
-  !!   top    -> Top corner (x_max, y_max, z_max)
-  !!   E      -> Fission site energy [MeV] (default = 1.0E-6)
-  !!   G      -> Fission site Group (default = 1)
+  !!   isMG    -> is the source multi-group? (default = .true.)
+  !!   bottom  -> Bottom corner (x_min, y_min, z_min)
+  !!   top     -> Top corner (x_max, y_max, z_max)
+  !!   G       -> Group (default = 1)
+  !!   matPops -> Array to store the number of particles sampled in each material for
+  !!              normalisation of weight
   !!
   !! Interface:
   !!   source_inter Interface
@@ -44,7 +45,6 @@ module IMCSource_class
     logical(defBool)                             :: isMG   = .true.
     real(defReal), dimension(3)                  :: bottom = ZERO
     real(defReal), dimension(3)                  :: top    = ZERO
-    real(defReal)                                :: E      = ZERO
     integer(shortInt)                            :: G      = 0
     integer(shortInt), dimension(:), allocatable :: matPops
   contains
@@ -256,7 +256,6 @@ contains
     self % isMG   = .true.
     self % bottom = ZERO
     self % top    = ZERO
-    self % E      = ZERO
     self % G      = 0
 
   end subroutine kill

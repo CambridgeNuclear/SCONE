@@ -47,13 +47,13 @@ module cellShelf_class
   !! Interface:
   !!   init    -> Initialise from a dictionary & surfaceShelf
   !!   getPtr  -> Get pointer to a cell given by its index
-  !!   getIdx  -> Return index of a cell fivent its ID
+  !!   getIdx  -> Return index of a cell given its ID
   !!   getID   -> Return cell ID given its index
   !!   getFill -> Return content of the cell. If -ve it is universe ID. If +ve it is matIdx.
   !!   getSize -> Return the number of cells (max cellIdx)
   !!   kill    -> Return to uninitialised state
   !!
-  !! NOTE: Becouse cells are stored as pointers, calling `kill` is crucial to prevent
+  !! NOTE: Because cells are stored as pointers, calling `kill` is crucial to prevent
   !!   memory leaks. TODO: Add `final` procedure here ?
   !!
   type, public :: cellShelf

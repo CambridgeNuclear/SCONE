@@ -58,8 +58,9 @@ module universalVariables
   ! Particle Type Enumeration
   integer(shortInt), parameter :: P_NEUTRON_CE  = 1, &
                                   P_NEUTRON_MG  = 2, &
-                                  P_PHOTON_MG   = 3, &
-                                  P_MATERIAL_MG = 4
+                                  P_PHOTON_CE   = 3, &
+                                  P_PHOTON_MG   = 4, &
+                                  P_MATERIAL_MG = 5
 
   ! IMC Calculation Type
   integer(shortInt), parameter :: IMC = 1, &
