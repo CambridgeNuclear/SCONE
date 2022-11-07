@@ -43,8 +43,7 @@ module azimPinUniverse_class
   !!     fills (u<3> void clad u<4>);
   !!   }
   !!
-  !!  naz corresponds to the number of azimuthal regions produced. Must be a multiple
-  !!  of 2.
+  !!  naz corresponds to the number of azimuthal regions produced. Must be a multiple of 2.
   !!  Takes origin at 0 degrees, i.e., the centre of the first azimuthal slice.
   !!  There must be 0.0 entry, which indicates outermost annulus (infinite radius).
   !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
@@ -117,7 +116,7 @@ contains
     if (self % nAz < 2) call fatalError(Here,'Number of azimuthal regions must be 2 or more')
 
     ! Use binary logic to check if nAz is a power of 2
-    if (IAND(self % nAz, self % nAz - 1) /= 0) call fatalError(Here, 'Number of azimuthal regions must be a multiple of 2')
+    if (IAND(self % nAz, self % nAz - 1) /= 0) call fatalError(Here, 'Number of azimuthal regions must be a power of 2')
 
     ! Load origin
     if (dict % isPresent('origin')) then
@@ -135,7 +134,7 @@ contains
       call dict % get(temp, 'rotation')
 
       if (size(temp) /= 3) then
-        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
+        call fatalError(Here, '3 rotation angles must be given. Has: '//numToChar(size(temp)))
       end if
       call self % setTransform(rotation=temp)
     end if
@@ -302,7 +301,7 @@ contains
     end if
 
     ! Identify annulus index and azimuthal index
-    rIdx = floor((real(id-1)+0.1) / self % nAz) + 1
+    rIdx = (id - 1) / self % nAz + 1
     aIdx = id - (self % nAz * (rIdx - 1))
 
     ! Check distance to annuli
@@ -337,16 +336,15 @@ contains
     searchIdxP = aIdx
     if (aIdx > self % nAz/2) searchIdxP = searchIdxP - self % nAz/2
 
+    ! Set default senses for which cell will be entered
+    minus_sense = MOVING_CLOCK
+    plus_sense  = MOVING_ANTI
+
     ! Check for first or last cells circling round
     if (aIdx == 1) then
       minus_sense = MOVING_CLOCK_BACK
-      plus_sense = MOVING_ANTI
     else if (aIdx == self % nAz) then
       plus_sense = MOVING_CLOCK_FORWARD
-      minus_sense = MOVING_CLOCK
-    else
-      plus_sense = MOVING_ANTI
-      minus_sense = MOVING_CLOCK
     end if
 
     ! If in the first cell or nAz/2 + 1 cell, find correct plane
