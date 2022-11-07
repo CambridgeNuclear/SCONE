@@ -40,11 +40,9 @@ module randomRayPhysicsPackage_class
   use tallyMap_inter,                 only : tallyMap
   use tallyMapFactory_func,           only : new_tallyMap
 
-  ! Random ray
-  use ray_class,                      only : ray
-
-  ! Particle state (just for easier output)
-  use particle_class,                 only : particleState
+  ! Random ray - or a standard particle
+  ! Also particleState for easier output
+  use particle_class,                      only : ray => particle, particleState
 
   implicit none
   private
@@ -153,15 +151,15 @@ module randomRayPhysicsPackage_class
     integer(shortInt)  :: pop         = 0
     integer(shortInt)  :: inactive    = 0
     integer(shortInt)  :: active      = 0
-    logical(defBool)   :: cache       = .FALSE.
+    logical(defBool)   :: cache       = .false.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
-    logical(defBool)   :: plotResults = .FALSE.
-    logical(defBool)   :: printFlux   = .FALSE.
-    logical(defBool)   :: printVolume = .FALSE.
-    logical(defBool)   :: printCells  = .FALSE.
+    logical(defBool)   :: plotResults = .false.
+    logical(defBool)   :: printFlux   = .false.
+    logical(defBool)   :: printVolume = .false.
+    logical(defBool)   :: printCells  = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFission  = .FALSE.
+    logical(defBool)   :: mapFission  = .false.
     class(tallyMap), allocatable :: resultsMap
 
     ! Results space
@@ -240,16 +238,16 @@ contains
     call dict % get(self % inactive, 'inactive')
     
     ! Perform distance caching?
-    call dict % getOrDefault(self % cache, 'cache', .FALSE.)
+    call dict % getOrDefault(self % cache, 'cache', .false.)
 
     ! Print fluxes?
-    call dict % getOrDefault(self % printFlux, 'printFlux', .FALSE.)
+    call dict % getOrDefault(self % printFlux, 'printFlux', .false.)
 
     ! Print volumes?
-    call dict % getOrDefault(self % printVolume, 'printVolume', .FALSE.)
+    call dict % getOrDefault(self % printVolume, 'printVolume', .false.)
 
     ! Print cell positions?
-    call dict % getOrDefault(self % printCells, 'printCells', .FALSE.)
+    call dict % getOrDefault(self % printCells, 'printCells', .false.)
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -276,11 +274,11 @@ contains
     ! Check whether there is a map for outputting fission rates
     ! If so, read and initialise the map to be used
     if (dict % isPresent('fissionMap')) then
-      self % mapFission = .TRUE.
+      self % mapFission = .true.
       tempDict => dict % getDictPtr('fissionMap')
       call new_tallyMap(self % resultsMap, tempDict)
     else
-      self % mapFission = .FALSE.
+      self % mapFission = .false.
     end if
 
     ! Register timer
@@ -329,7 +327,7 @@ contains
 
     ! Ensure that nuclear data is multi-group
     db => ndReg_getNeutronMG()
-    if (.NOT. associated(db)) call fatalError(Here,&
+    if (.not. associated(db)) call fatalError(Here,&
             'No MG nuclear database was constructed')
 
     ! Ensure nuclear data is baseMgNeutronDatabase
@@ -360,7 +358,7 @@ contains
     endif
     
     ! Check for results plotting and initialise VTK
-    call dict % getOrDefault(self % plotResults,'plot',.FALSE.)
+    call dict % getOrDefault(self % plotResults,'plot',.false.)
     if (self % plotResults) then
       ! Initialise a visualiser to be used when results are available
       print *, "Initialising results visualiser"
@@ -448,15 +446,15 @@ contains
     self % volumeTracks = ZERO
     
     ! Initialise cell information
-    self % cellFound = .FALSE.
+    self % cellFound = .false.
     self % cellPos = -INFINITY
 
     ! Stopping criterion is initially on flux convergence or number of convergence iterations.
     ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
     itInac = 0
     itAct  = 0
-    isActive = .FALSE.
-    stoppingCriterion = .TRUE.
+    isActive = .false.
+    stoppingCriterion = .true.
     
     ! Power iteration
     do while( stoppingCriterion )
@@ -595,12 +593,12 @@ contains
     end do rejection
 
     ! Place in the geometry & process the ray
-    call r % build(x, u)
+    call r % build(x, u, 1, ONE)
     call self % geom % placeCoord(r % coords)
 
-    if (.NOT. self % cellFound(cIdx)) then
+    if (.not. self % cellFound(cIdx)) then
       !$omp critical 
-      self % cellFound(cIdx) = .TRUE.
+      self % cellFound(cIdx) = .true.
       self % cellPos(cIdx,:) = x
       !$omp end critical
     end if
@@ -624,6 +622,7 @@ contains
     class(materialHandle), pointer                        :: matPtr
     real(defReal), dimension(self % nG)                   :: attenuate, delta, fluxVec
     real(defReal), pointer, dimension(:)                  :: scalarVec, sourceVec, totVec
+    real(defReal), dimension(3)                           :: r0, mu0
     
     ! Set initial angular flux to angle average of cell source
     cIdx = r % coords % uniqueID
@@ -635,7 +634,7 @@ contains
     ints = 0
     matIdx0 = 0
     totalLength = ZERO
-    activeRay = .FALSE.
+    activeRay = .false.
     do while (totalLength < self % termination)
 
       ! Get material and cell the ray is moving through
@@ -650,18 +649,16 @@ contains
         totVec => mat % getTotalPtr()
       end if
 
-      ! Remember new cell positions
-      if (.NOT. self % cellFound(cIdx)) then
-        !$omp critical 
-        self % cellFound(cIdx) = .TRUE.
-        self % cellPos(cIdx,:) = r % rGlobal()
-        !$omp end critical
+      ! Remember co-ordinates to set new cell's position
+      if (.not. self % cellFound(cIdx)) then
+        r0 = r % rGlobal()
+        mu0 = r % dirGlobal()
       end if
           
       ! Set maximum flight distance and ensure ray is active
       if (totalLength >= self % dead) then
         length = self % termination - totalLength 
-        activeRay = .TRUE.
+        activeRay = .true.
       else
         length = self % dead - totalLength
       end if
@@ -679,6 +676,15 @@ contains
         call self % geom % moveRay_noCache(r % coords, length, event, hitVacuum)
       end if
       totalLength = totalLength + length
+      
+      ! Set new cell's position. Use half distance across cell
+      ! to try and avoid FP error
+      if (.not. self % cellFound(cIdx)) then
+        !$omp critical 
+        self % cellFound(cIdx) = .true.
+        self % cellPos(cIdx,:) = r0 + length/2 * mu0
+        !$omp end critical
+      end if
 
       ints = ints + 1
 
@@ -876,7 +882,7 @@ contains
       matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
       matPtr => self % mgData % getMaterial(matIdx)
       mat    => baseMgNeutronMaterial_CptrCast(matPtr)
-      if (.NOT. mat % isFissile()) cycle
+      if (.not. mat % isFissile()) cycle
 
       vol = self % volume(cIdx)
 
@@ -1105,7 +1111,7 @@ contains
             fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
             ! Is this correct? Also neglects uncertainty in volume - assumed small.
             fissSTD(i) = fissSTD(i) + &
-                    vol * self % fluxScores(idx,2)*self % fluxScores(idx,2) * SigmaF
+                    vol * vol * self % fluxScores(idx,2)*self % fluxScores(idx,2) * SigmaF * SigmaF
           end do
         end if
 
@@ -1218,12 +1224,12 @@ contains
     self % pop         = 0
     self % inactive    = 0
     self % active      = 0
-    self % cache       = .FALSE.
-    self % mapFission  = .FALSE.
-    self % plotResults = .FALSE.
-    self % printFlux   = .FALSE.
-    self % printVolume = .FALSE.
-    self % printCells  = .FALSE.
+    self % cache       = .false.
+    self % mapFission  = .false.
+    self % plotResults = .false.
+    self % printFlux   = .false.
+    self % printVolume = .false.
+    self % printCells  = .false.
 
     self % keff        = ZERO
     self % keffScore   = ZERO

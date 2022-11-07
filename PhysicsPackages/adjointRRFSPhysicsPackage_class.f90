@@ -40,8 +40,8 @@ module adjointRRFSPhysicsPackage_class
   use tallyMap_inter,                 only : tallyMap
   use tallyMapFactory_func,           only : new_tallyMap
 
-  ! Random ray
-  use ray_class,                      only : ray
+  ! Random ray - or a standard particle
+  use particle_class,                 only : ray => particle
 
   implicit none
   private
@@ -702,7 +702,7 @@ contains
     end do rejection
 
     ! Place in the geometry & process the ray
-    call r % build(x, u)
+    call r % build(x, u, 1, ONE)
     call self % geom % placeCoord(r % coords)
 
     if (.NOT. self % cellFound(cIdx)) then

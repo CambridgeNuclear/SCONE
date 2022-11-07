@@ -40,11 +40,9 @@ module fixedSourceTRRMPhysicsPackage_class
   use tallyMap_inter,                 only : tallyMap
   use tallyMapFactory_func,           only : new_tallyMap
 
-  ! Random ray
-  use ray_class,                      only : ray
-
-  ! Particle state (just for easier output)
-  use particle_class,                 only : particleState
+  ! Random ray - or a standard particle
+  ! Also particleState for easier output
+  use particle_class,                 only : ray => particle, particleState
 
   implicit none
   private
@@ -157,16 +155,18 @@ module fixedSourceTRRMPhysicsPackage_class
     integer(shortInt)  :: pop         = 0
     integer(shortInt)  :: inactive    = 0
     integer(shortInt)  :: active      = 0
-    logical(defBool)   :: cache       = .FALSE.
+    logical(defBool)   :: cache       = .false.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
-    logical(defBool)   :: plotResults = .FALSE.
-    logical(defBool)   :: printFlux   = .FALSE.
-    logical(defBool)   :: printVolume = .FALSE.
-    logical(defBool)   :: printCells  = .FALSE.
+    logical(defBool)   :: plotResults = .false.
+    logical(defBool)   :: printFlux   = .false.
+    logical(defBool)   :: printVolume = .false.
+    logical(defBool)   :: printCells  = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFission  = .FALSE.
+    logical(defBool)   :: mapFission  = .false.
     class(tallyMap), allocatable :: resultsMap
+    real(defReal), dimension(:), allocatable      :: samplePoints
+    character(nameLen), dimension(:), allocatable :: sampleNames
 
     ! Results space
     real(defReal), dimension(:), allocatable     :: scalarFlux
@@ -220,12 +220,13 @@ contains
   subroutine init(self,dict)
     class(fixedSourceTRRMPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                    :: dict
-    integer(shortInt)                                   :: seed_temp
+    integer(shortInt)                                   :: seed_temp, n, nPoints
     integer(longInt)                                    :: seed
     character(10)                                       :: time
     character(8)                                        :: date
     character(:),allocatable                            :: string
     class(dictionary),pointer                           :: tempDict, graphDict, sourceDict
+    real(defReal), dimension(:), allocatable            :: tempArray
     class(mgNeutronDatabase),pointer                    :: db
     character(nameLen)                                  :: geomName, graphType, nucData
     class(geometry), pointer                            :: geom
@@ -243,16 +244,35 @@ contains
     call dict % get(self % inactive, 'inactive')
     
     ! Perform distance caching?
-    call dict % getOrDefault(self % cache, 'cache', .FALSE.)
+    call dict % getOrDefault(self % cache, 'cache', .false.)
 
     ! Print fluxes?
-    call dict % getOrDefault(self % printFlux, 'printFlux', .FALSE.)
+    call dict % getOrDefault(self % printFlux, 'printFlux', .false.)
 
     ! Print volumes?
-    call dict % getOrDefault(self % printVolume, 'printVolume', .FALSE.)
+    call dict % getOrDefault(self % printVolume, 'printVolume', .false.)
 
     ! Print cell positions?
-    call dict % getOrDefault(self % printCells, 'printCells', .FALSE.)
+    call dict % getOrDefault(self % printCells, 'printCells', .false.)
+
+    ! Return flux values at sample points?
+    ! Store a set of points to return values at on concluding the simulation
+    if (dict % isPresent('samplePoints')) then
+
+      tempDict => dict % getDictPtr('samplePoints')
+      call tempDict % keys(self % sampleNames)
+      nPoints = size(self % sampleNames)
+      allocate(self % samplePoints(3*nPoints))
+      do n = 1, nPoints
+
+        call tempDict % get(tempArray, self % sampleNames(n))
+        if (size(tempArray) /= 3) call fatalError(Here,&
+               'Sample points must be 3 dimensional')
+        self % samplePoints(1+3*(n-1):3*n) = tempArray
+
+      end do
+
+    end if
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -279,11 +299,11 @@ contains
     ! Check whether there is a map for outputting fission rates
     ! If so, read and initialise the map to be used
     if (dict % isPresent('fissionMap')) then
-      self % mapFission = .TRUE.
+      self % mapFission = .true.
       tempDict => dict % getDictPtr('fissionMap')
       call new_tallyMap(self % resultsMap, tempDict)
     else
-      self % mapFission = .FALSE.
+      self % mapFission = .false.
     end if
 
     ! Register timer
@@ -363,7 +383,7 @@ contains
     endif
     
     ! Check for results plotting and initialise VTK
-    call dict % getOrDefault(self % plotResults,'plot',.FALSE.)
+    call dict % getOrDefault(self % plotResults,'plot',.false.)
     if (self % plotResults) then
       ! Initialise a visualiser to be used when results are available
       print *, "Initialising results visualiser"
@@ -431,7 +451,7 @@ contains
               ' has '//numToChar(size(sourceStrength))//' groups rather than '//numToChar(self % nG))
       
       ! Make sure that the source corresponds to a material present in the geometry
-      found = .FALSE.
+      found = .false.
       !$omp parallel do schedule(static) 
       do cIdx = 1, self % nCells
 
@@ -440,7 +460,7 @@ contains
 
         if (localName == sourceName) then
 
-          found = .TRUE.
+          found = .true.
           do g = 1, self % nG
             
             idx = (cIdx - 1) * self % nG + g
@@ -453,7 +473,7 @@ contains
       end do
       !$omp end parallel do
 
-      if (.NOT. found) call fatalError(Here,'The source '//trim(sourceName)//' does not correspond to '//&
+      if (.not. found) call fatalError(Here,'The source '//trim(sourceName)//' does not correspond to '//&
               'any material found in the geometry.')
 
     end do
@@ -514,15 +534,15 @@ contains
     self % volumeTracks = ZERO
     
     ! Initialise cell information
-    self % cellFound = .FALSE.
+    self % cellFound = .false.
     self % cellPos = -INFINITY
 
     ! Stopping criterion is initially on flux convergence or number of convergence iterations.
     ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
     itInac = 0
     itAct  = 0
-    isActive = .FALSE.
-    stoppingCriterion = .TRUE.
+    isActive = .false.
+    stoppingCriterion = .true.
 
     ! Source iteration
     do while( stoppingCriterion )
@@ -656,12 +676,12 @@ contains
     end do rejection
 
     ! Place in the geometry & process the ray
-    call r % build(x, u)
+    call r % build(x, u, 1, ONE)
     call self % geom % placeCoord(r % coords)
 
     if (.NOT. self % cellFound(cIdx)) then
       !$omp critical 
-      self % cellFound(cIdx) = .TRUE.
+      self % cellFound(cIdx) = .false.
       self % cellPos(cIdx,:) = x
       !$omp end critical
     end if
@@ -696,7 +716,7 @@ contains
     ints = 0
     matIdx0 = 0
     totalLength = ZERO
-    activeRay = .FALSE.
+    activeRay = .false.
     do while (totalLength < self % termination)
 
       ! Get material and cell the ray is moving through
@@ -712,9 +732,9 @@ contains
       end if
 
       ! Remember new cell positions
-      if (.NOT. self % cellFound(cIdx)) then
+      if (.not. self % cellFound(cIdx)) then
         !$omp critical 
-        self % cellFound(cIdx) = .TRUE.
+        self % cellFound(cIdx) = .true.
         self % cellPos(cIdx,:) = r % rGlobal()
         !$omp end critical
       end if
@@ -722,7 +742,7 @@ contains
       ! Set maximum flight distance and ensure ray is active
       if (totalLength >= self % dead) then
         length = self % termination - totalLength 
-        activeRay = .TRUE.
+        activeRay = .true.
       else
         length = self % dead - totalLength
       end if
@@ -994,6 +1014,7 @@ contains
     integer(shortInt), save                             :: idx, matIdx, i, g
     real(defReal), save                                 :: vol, SigmaF
     type(particleState), save                           :: s
+    type(ray), save                                     :: point
     integer(shortInt),dimension(:),allocatable          :: resArrayShape
     real(defReal), dimension(:), allocatable            :: groupFlux, fiss, fissSTD
     class(baseMgNeutronMaterial), pointer, save         :: mat
@@ -1125,6 +1146,27 @@ contains
       call self % resultsMap % print(out)
     end if
 
+    ! Print sample point values if requested
+    if (allocated(self % sampleNames)) then
+      resArrayShape = [1]
+      do i = 1, size(self % sampleNames)
+        name = self % sampleNames(i)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        s % r = self % samplePoints(1+3*(i-1):3*i)
+        point = s
+        call self % geom % placeCoord(point % coords)
+        cIdx = point % coords % uniqueID
+        do g = 1, self % nG
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % fluxScores(idx,1), &
+                  self % fluxScores(idx,2) / self % fluxScores(idx,1))
+        end do
+        call out % endArray()
+        call out % endBlock()
+      end do
+    end if
+
     call out % writeToFile(self % outputFile)
 
     ! Send all fluxes and stds to VTK
@@ -1221,12 +1263,12 @@ contains
     self % pop         = 0
     self % inactive    = 0
     self % active      = 0
-    self % cache       = .FALSE.
-    self % mapFission  = .FALSE.
-    self % plotResults = .FALSE.
-    self % printFlux   = .FALSE.
-    self % printVolume = .FALSE.
-    self % printCells  = .FALSE.
+    self % cache       = .false.
+    self % mapFission  = .false.
+    self % plotResults = .false.
+    self % printFlux   = .false.
+    self % printVolume = .false.
+    self % printCells  = .false.
 
     if(allocated(self % scalarFlux)) deallocate(self % scalarFlux)
     if(allocated(self % prevFlux)) deallocate(self % prevFlux)
@@ -1236,6 +1278,8 @@ contains
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % cellHit)) deallocate(self % cellHit)
+    if(allocated(self % sampleNames)) deallocate(self % sampleNames)
+    if(allocated(self % samplePoints)) deallocate(self % samplePoints)
     if(allocated(self % resultsMap)) then
       call self % resultsMap % kill()
       deallocate(self % resultsMap)
