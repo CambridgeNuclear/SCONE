@@ -635,7 +635,9 @@ contains
   recursive subroutine reportCycleStart(self, start)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: start
-    integer(shortInt)                  :: i, idx
+    integer(shortInt)                  :: i
+    integer(shortInt), save            :: idx
+    !$omp threadprivate(idx)
 
     ! Call attachment
     if(associated(self % atch)) then
@@ -643,11 +645,12 @@ contains
     end if
 
     ! Go through all clerks that request the report
+    !$omp parallel do schedule(static)
     do i=1,self % cycleStartClerks % getSize()
       idx = self % cycleStartClerks % get(i)
       call self % tallyClerks(idx) % reportCycleStart(start, self % mem)
-
     end do
+    !$omp end parallel do
 
   end subroutine reportCycleStart
 
@@ -670,9 +673,11 @@ contains
   recursive subroutine reportCycleEnd(self,end)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: end
-    integer(shortInt)                  :: i, idx
+    integer(shortInt)                  :: i
+    integer(shortInt), save            :: idx
     real(defReal)                      :: normFactor, normScore
     character(100), parameter :: Here ='reportCycleEnd (tallyAdmin)class.f90)'
+    !$omp threadprivate(idx)
 
     ! Call attachment
     if(associated(self % atch)) then
@@ -680,14 +685,15 @@ contains
     end if
 
     ! Go through all clerks that request the report
+    !$omp parallel do schedule(static)
     do i=1,self % cycleEndClerks % getSize()
       idx = self % cycleEndClerks % get(i)
       call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
-
     end do
+    !$omp end parallel do
 
     ! Calculate normalisation factor
-    if( self % normBInAddr /= NO_NORM ) then
+    if( self % normBinAddr /= NO_NORM ) then
       normScore  = self % mem % getScore(self % normBinAddr)
       if (normScore == ZERO) then
         call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
