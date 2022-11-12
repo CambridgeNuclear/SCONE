@@ -65,6 +65,7 @@ contains
     class(particleDungeon), intent(inout)      :: nextCycle
     real(defReal)                              :: sigmaT, dTime, dColl
     logical(defBool)                           :: finished
+    integer(shortInt)                          :: idx
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     finished = .false.
@@ -117,6 +118,18 @@ contains
         exit IMCLoop
       end if
 
+      ! TODO
+      ! Experiencing an issue where p % matIdx() returns 1 when it should be 0 (OUTSIDE_FILL)
+      ! self % geom % whatIsAt correctly gives 0
+      ! Also a related issue, this was occurring even more frequently when bounds were set to
+      ! fully reflective, so no particles should even reach OUTSIDE_FILL in the first place
+      call self % geom % whatIsAt(idx, idx, p % coords % lvl(1) % r)
+      if (idx == OUTSIDE_FILL) then
+        p % fate = LEAK_FATE
+        p % isDead = .true.
+        exit IMCLoop
+      end if
+
       ! Exit if transport is finished
       if (finished .eqv. .true.) exit IMCLoop
 
@@ -154,11 +167,20 @@ contains
       if (abs(p % time - p % timeMax)>0.000001) call fatalError(Here, 'Particle time is somehow incorrect')
       p % time = p % timeMax
       finished = .true.
+
+      !TODO Called quickly when running marshakWave:
+      !if (p % coords % lvl(1) % r(1) < -2) call fatalError(Here, 'ERROR IN DTIME')
+
     else if (dist == dColl) then
       ! Collision, increase time accordingly
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
       p % time = p % time + dColl/lightSpeed
       finished = .true.
+
+      !TODO Never called when running marshakWave:
+      !if (p % coords % lvl(1) % r(1) < -2) call fatalError(Here, 'ERROR IN DCOLL')
+      !TODO No idea yet why this works differently for dTime or dColl
+
     end if
 
   end subroutine surfaceTracking
