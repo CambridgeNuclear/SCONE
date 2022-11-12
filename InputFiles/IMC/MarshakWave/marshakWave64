@@ -3,8 +3,9 @@ type ISMCPhysicsPackage;
 
 pop            80;
 limit          1300;
-cycles         10000;
+steps          10000;
 timeStepSize   0.05;
+printUpdates   8;
 
 XSdata     mg;
 dataType   mg; 
