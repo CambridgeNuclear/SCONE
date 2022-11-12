@@ -62,6 +62,7 @@ module particle_class
     procedure  :: display        => display_particleState
     procedure  :: fromParticle   => particleState_fromParticle
     procedure  :: kill           => kill_particleState
+    procedure  :: getDistance   ! Would be good to move this from particleState to particle at some point
 
     ! Private procedures
     procedure,private :: equal_particleState
@@ -736,6 +737,17 @@ contains
 
   end subroutine kill_particleState
 
+  !!
+  !! Returns distance of a particle to a given point
+  !!
+  function getDistance(self, r) result(dist)
+    class(particleState), intent(inout) :: self
+    real(defReal), intent(in)           :: r
+    real(defReal)                       :: dist
+
+    dist = (self % r(1) - r(1))**2 + (self % r(2) - r(2))**2 + (self % r(3) - r(3))**2
+
+  end function getDistance
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Misc Procedures

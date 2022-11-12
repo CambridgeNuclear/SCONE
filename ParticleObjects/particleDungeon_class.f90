@@ -87,6 +87,7 @@ module particleDungeon_class
     procedure  :: normSize
     procedure  :: reduceSize
     procedure  :: reduceSize2
+    procedure  :: reduceSize3
     procedure  :: combine
     procedure  :: cleanPop
     procedure  :: popSize
@@ -431,29 +432,29 @@ contains
   !!
   !! N = max in each cell
   !!
-  subroutine reduceSize2(self, N, Nmats, geom, rand)
+  subroutine reduceSize2(self, N, Nmats, geom, rand, idxArray, toKeep)
     class(particleDungeon), intent(inout)          :: self
     integer(shortInt), intent(in)                  :: N
     integer(shortInt), intent(in)                  :: Nmats
     class(geometry), intent(inout)                 :: geom
     class(RNG), intent(inout)                      :: rand
+    integer(shortInt), dimension(:,:), pointer, intent(inout) :: idxArray
+    integer(shortInt), dimension(:), pointer, intent(inout) :: toKeep
     integer(shortInt)                              :: matIdx, pIdx, pIdx2, closeIdx, num
     integer(shortInt)                              :: i, j, j_dec, k
-    integer(shortInt), dimension(:,:), allocatable :: idxArray
-    integer(shortInt), dimension(:), allocatable   :: toKeep
     real(defReal), dimension(3)                    :: r1, r2
     real(defReal)                                  :: dist, minDist
     character(100), parameter :: Here = 'reduceSize2 (particleDungeon_class.f90)'
 
-    allocate(idxArray(self % pop+1, Nmats))
     idxArray = 0
+    toKeep = 0
 
     ! Generate array with first row as N_particles in each mat, and subsequent rows
     ! containing dungeon idx of each particle in that mat
     do i = 1, self % pop
-      call geom % whatIsAt(matIdx, matIdx, self % prisoners(i) % r)
+      !call geom % whatIsAt(matIdx, matIdx, self % prisoners(i) % r)
       if (self % prisoners(i) % type == P_MATERIAL) then
-        matIdx = matIdx-1
+        matIdx = self % prisoners(i) % matIdx
         num = idxArray(1,matIdx) + 1
         idxArray(1,matIdx) = num
         idxArray(num+1,matIdx) = i
@@ -467,7 +468,6 @@ contains
       num = idxArray(1,i)
       if (num > N) then
         print *, 'Reducing mat '//numToChar(i)//' from '//numToChar(num)//' to '//numToChar(N)
-        allocate(toKeep(N))
         ! Sample particles to keep
         do j = 1, N
           toKeep(j) = idxArray(j+1,i)
@@ -491,13 +491,63 @@ contains
           ! Combine particle with closest particle to keep
           call self % combine(pIdx, closeIdx)
         end do
-        deallocate(toKeep)
       end if
     end do
 
-    deallocate(idxArray)
-
   end subroutine reduceSize2
+
+
+  subroutine reduceSize3(self, N, Nmats, idxArray, toKeep)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: N
+    integer(shortInt), intent(in)         :: Nmats
+    integer(shortInt), dimension(:), intent(in), pointer :: idxArray
+    integer(shortInt)                     :: i, j, idxKeep, idxRemove
+    real(defReal), dimension(3)           :: r
+    real(defReal)                         :: minDist
+
+
+    ! Store particle matIdx in array for easy access
+    idxArray = 0
+    idxArray(1:self % pop) = self % prisoners(1:self % pop) % matIdx
+
+    ! Only consider material particles
+    idxArray = idxArray * merge(1, 0, self % prisoners(1:self % pop) % type == P_MATERIAL)
+
+    do i=1, Nmats
+
+      ! Determine if population needs to be reduced
+      if (count(idxArray==i) > N) then
+        ! Select particles to keep
+        toKeep = same size as idxArray
+        toKeep = 0 for not in mat, 1 for keeping and 2 for removing
+      end if
+
+      reduce:do
+        ! Exit if material population does not need to be reduced
+        if (count(toKeep == 2) > 0) exit reduce
+
+        ! Select particle to be removed
+        idxRemove = findloc(toKeep, 2, 1)
+        r = self % prisoners(idxRemove) % r
+
+        ! Find minimum distance to a particle being kept
+        minDist = INF
+        do j = 1, self % pop
+          if (toKeep(j) == 1) minDist = min(minDist, self % prisoners(j) % getDistance(r))
+        end do
+        idxKeep = findloc(self % prisoners(1:self % pop), minDist, 1)
+
+        ! Combine particles
+        call self % combine(idxKeep, idxRemove)
+
+      end do reduce
+
+    end do
+
+
+  end subroutine reduceSize3
+
 
   !!
   !! Combine two particles in the dungeon, and reduce dungeon size by 1
