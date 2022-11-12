@@ -496,19 +496,31 @@ contains
 
   end subroutine reduceSize2
 
-
-  subroutine reduceSize3(self, N, Nmats, idxArray, toKeep)
+  !!
+  !!
+  !!
+  !! Args:
+  !!   N          => Maximum number of particles in each region
+  !!   Nmats      => Number of material regions
+  !!   emptyArray => Pointer to an array of size (2, system limit) to avoid allocating every time
+  !!
+  subroutine reduceSize3(self, N, Nmats, emptyArray)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     integer(shortInt), intent(in)         :: Nmats
-    integer(shortInt), dimension(:), intent(in), pointer :: idxArray
+    integer(shortInt), dimension(:,:), intent(in), pointer :: emptyArray
+    !integer(shortInt), dimension(:), intent(in), pointer :: toKeep
+    integer(shortInt), dimension(:), pointer :: idxArray, toKeep
     integer(shortInt)                     :: i, j, idxKeep, idxRemove
     real(defReal), dimension(3)           :: r
     real(defReal)                         :: minDist
 
+    ! Initialise arrays and pointers
+    emptyArray = 0
+    idxArray   => emptyArray(1, 1:size(emptyArray,1))
+    toKeep     => emptyArray(2, 1:size(emptyArray,1))
 
     ! Store particle matIdx in array for easy access
-    idxArray = 0
     idxArray(1:self % pop) = self % prisoners(1:self % pop) % matIdx
 
     ! Only consider material particles
@@ -517,24 +529,27 @@ contains
     do i=1, Nmats
 
       ! Determine if population needs to be reduced
-      if (count(idxArray==i) > N) then
-        ! Select particles to keep
-        toKeep = same size as idxArray
-        toKeep = 0 for not in mat, 1 for keeping and 2 for removing
+      if (count(idxArray == i) > N) then
+        ! Set toKeep array to be 1 for mat particles in material i and 0 otherwise
+        toKeep = merge(1, 0, idxArray == i)
+        do j=1, N
+          ! Select particles being kept and increase flag from 1 to 2
+          toKeep(findloc(toKeep, 1, 1)) = 2
+        end do
       end if
 
       reduce:do
         ! Exit if material population does not need to be reduced
-        if (count(toKeep == 2) > 0) exit reduce
+        if (count(toKeep == 1) > 0) exit reduce
 
         ! Select particle to be removed
-        idxRemove = findloc(toKeep, 2, 1)
+        idxRemove = findloc(toKeep, 1, 1)
         r = self % prisoners(idxRemove) % r
 
         ! Find minimum distance to a particle being kept
         minDist = INF
-        do j = 1, self % pop
-          if (toKeep(j) == 1) minDist = min(minDist, self % prisoners(j) % getDistance(r))
+        do j=1, size(toKeep)
+          if (toKeep(j) == 2) minDist = min(minDist, self % prisoners(j) % getDistance(r))
         end do
         idxKeep = findloc(self % prisoners(1:self % pop), minDist, 1)
 

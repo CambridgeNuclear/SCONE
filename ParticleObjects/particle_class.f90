@@ -741,9 +741,9 @@ contains
   !! Returns distance of a particle to a given point
   !!
   function getDistance(self, r) result(dist)
-    class(particleState), intent(inout) :: self
-    real(defReal), intent(in)           :: r
-    real(defReal)                       :: dist
+    class(particleState), intent(in)        :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal)                           :: dist
 
     dist = (self % r(1) - r(1))**2 + (self % r(2) - r(2))**2 + (self % r(3) - r(3))**2
 
