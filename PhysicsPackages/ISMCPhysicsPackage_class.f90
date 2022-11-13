@@ -193,7 +193,7 @@ contains
       if( self % sourceGiven ) then
 
         ! Limit number of particles in each zone
-        !call self % thisStep % reduceSize3(self % limit, self % emptyArray)
+        !call self % thisStep % reduceSize(self % limit, self % emptyArray)
 
         ! Generate new particles
         call self % inputSource % append(self % thisStep, self % pop, p % pRNG)

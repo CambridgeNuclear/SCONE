@@ -86,8 +86,6 @@ module particleDungeon_class
     procedure  :: normWeight
     procedure  :: normSize
     procedure  :: reduceSize
-    procedure  :: reduceSize2
-    procedure  :: reduceSize3
     procedure  :: combine
     procedure  :: deleteParticle
     procedure  :: cleanPop
@@ -364,7 +362,7 @@ contains
   !! Finding the nearest particle would be better but much more computationally intensive,
   !! may be doable in parallel
   !!
-  subroutine reduceSize(self, N, rand)
+  subroutine reduceSizeOLD(self, N, rand)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
@@ -428,12 +426,12 @@ contains
 
     end do reduce
 
-  end subroutine reduceSize
+  end subroutine reduceSizeOLD
 
   !!
   !! N = max in each cell
   !!
-  subroutine reduceSize2(self, N, Nmats, geom, rand, idxArray, toKeep)
+  subroutine reduceSizeOLD2(self, N, Nmats, geom, rand, idxArray, toKeep)
     class(particleDungeon), intent(inout)          :: self
     integer(shortInt), intent(in)                  :: N
     integer(shortInt), intent(in)                  :: Nmats
@@ -495,7 +493,7 @@ contains
       end if
     end do
 
-  end subroutine reduceSize2
+  end subroutine reduceSizeOLD2
 
   !!
   !!
@@ -504,7 +502,7 @@ contains
   !!   N          => Maximum number of particles in each region
   !!   emptyArray => Pointer to an array of size (2, system limit) to avoid allocating every time
   !!
-  subroutine reduceSize3(self, N, emptyArray)
+  subroutine reduceSize(self, N, emptyArray)
     class(particleDungeon), intent(inout)                  :: self
     integer(shortInt), intent(in)                          :: N
     integer(shortInt), dimension(:,:), intent(in), pointer :: emptyArray
@@ -589,7 +587,7 @@ contains
 
     print *, 'END OF REDUCE: ', self % pop
 
-  end subroutine reduceSize3
+  end subroutine reduceSize
 
 
   !!
