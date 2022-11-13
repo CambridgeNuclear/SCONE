@@ -87,6 +87,18 @@ contains
         exit trackingLoop
       end if
 
+      ! TODO
+      ! Experiencing an issue where p % matIdx() returns 1 when it should be 0 (OUTSIDE_FILL)
+      ! self % geom % whatIsAt correctly gives 0
+      ! Also a related issue, this was occurring even more frequently when bounds were set to
+      ! fully reflective, so no particles should even reach OUTSIDE_FILL in the first place
+      call self % geom % whatIsAt(matIdx, matIdx, p % coords % lvl(1) % r)
+      if (matIdx == OUTSIDE_FILL) then
+        p % fate = LEAK_FATE
+        p % isDead = .true.
+        exit trackingLoop
+      end if
+
       ! Exit if transport is finished
       if (finished .eqv. .true.) exit trackingLoop
 
