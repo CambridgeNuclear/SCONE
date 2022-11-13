@@ -94,6 +94,7 @@ module ISMCPhysicsPackage_class
       ! I found it easier to get 'allocatable' to work, unsure if this needs to be changed
     class(source), allocatable     :: inputSource
     class(source), allocatable     :: ISMCSource
+    integer(shortInt), dimension(:,:), pointer :: emptyArray => null()
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -191,13 +192,10 @@ contains
       ! Generate from input source
       if( self % sourceGiven ) then
 
-        ! Reduce size of dungeon if dungeon will overflow
-        !if( self % thisStep % popSize() + self % pop > self % limit) then
-        !  call self % thisStep % reduceSize2(self % limit - self % pop, self % nMat, self % geom, p % pRNG)
-        !end if
+        ! Limit number of particles in each zone
+        !call self % thisStep % reduceSize3(self % limit, self % emptyArray)
 
-        !call self % thisStep % reduceSize2(self % limit, self % nMat, self % geom, p % pRNG)
-
+        ! Generate new particles
         call self % inputSource % append(self % thisStep, self % pop, p % pRNG)
 
       end if
@@ -510,9 +508,11 @@ contains
 
     ! Size particle dungeon
     allocate(self % thisStep)
-    call self % thisStep % init(self % limit * self % nMat)
+    call self % thisStep % init(self % limit * self % nMat *2)
     allocate(self % nextStep)
-    call self % nextStep % init(self % limit * self % nMat)
+    call self % nextStep % init(self % limit * self % nMat *2)
+
+    allocate(self % emptyArray(3, self % limit * self % nMat * 2))
 
     call self % printSettings()
 

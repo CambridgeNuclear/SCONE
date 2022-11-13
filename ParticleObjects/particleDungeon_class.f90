@@ -1,7 +1,7 @@
 module particleDungeon_class
 
   use numPrecision
-  use genericProcedures,     only : fatalError, numToChar
+  use genericProcedures,     only : fatalError, numToChar, linFind
   use particle_class,        only : particle, particleState, P_MATERIAL, P_PHOTON
   use RNG_class,             only : RNG
   use geometry_inter,        only : geometry
@@ -89,6 +89,7 @@ module particleDungeon_class
     procedure  :: reduceSize2
     procedure  :: reduceSize3
     procedure  :: combine
+    procedure  :: deleteParticle
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
@@ -501,24 +502,24 @@ contains
   !!
   !! Args:
   !!   N          => Maximum number of particles in each region
-  !!   Nmats      => Number of material regions
   !!   emptyArray => Pointer to an array of size (2, system limit) to avoid allocating every time
   !!
-  subroutine reduceSize3(self, N, Nmats, emptyArray)
-    class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)         :: N
-    integer(shortInt), intent(in)         :: Nmats
+  subroutine reduceSize3(self, N, emptyArray)
+    class(particleDungeon), intent(inout)                  :: self
+    integer(shortInt), intent(in)                          :: N
     integer(shortInt), dimension(:,:), intent(in), pointer :: emptyArray
-    !integer(shortInt), dimension(:), intent(in), pointer :: toKeep
-    integer(shortInt), dimension(:), pointer :: idxArray, toKeep
-    integer(shortInt)                     :: i, j, idxKeep, idxRemove
-    real(defReal), dimension(3)           :: r
-    real(defReal)                         :: minDist
+    integer(shortInt), dimension(:), pointer               :: idxArray, toKeep, toRemove
+    integer(shortInt)                                      :: i, j, idx, idxKeep, idxRemove
+    real(defReal), dimension(3)                            :: r
+    real(defReal)                                          :: dist, minDist
+
+    print *, 'START OF REDUCE: ', self % pop
 
     ! Initialise arrays and pointers
     emptyArray = 0
-    idxArray   => emptyArray(1, 1:size(emptyArray,1))
-    toKeep     => emptyArray(2, 1:size(emptyArray,1))
+    idxArray   => emptyArray(1, 1:size(emptyArray,2))
+    toKeep     => emptyArray(2, 1:size(emptyArray,2))
+    toRemove   => emptyArray(3, 1:size(emptyArray,2))
 
     ! Store particle matIdx in array for easy access
     idxArray(1:self % pop) = self % prisoners(1:self % pop) % matIdx
@@ -526,40 +527,67 @@ contains
     ! Only consider material particles
     idxArray = idxArray * merge(1, 0, self % prisoners(1:self % pop) % type == P_MATERIAL)
 
-    do i=1, Nmats
+    do i=1, maxVal(idxArray)
+
+      ! Set toKeep array to be 1 for mat particles in material i and 0 otherwise
+      toKeep = merge(1, 0, idxArray == i)
+
+!      print *, 'Material:', i
+!      print *, 'Starting Pop:', sum(toKeep)
 
       ! Determine if population needs to be reduced
-      if (count(idxArray == i) > N) then
-        ! Set toKeep array to be 1 for mat particles in material i and 0 otherwise
-        toKeep = merge(1, 0, idxArray == i)
+      if (sum(toKeep) > N) then
         do j=1, N
           ! Select particles being kept and increase flag from 1 to 2
-          toKeep(findloc(toKeep, 1, 1)) = 2
+          idx = linFind(toKeep, 1)
+          toKeep(idx) = 2
         end do
+      else
+        ! Increase flags to 2 if no reduction is necessary
+        toKeep = toKeep * 2
       end if
 
       reduce:do
         ! Exit if material population does not need to be reduced
-        if (count(toKeep == 1) > 0) exit reduce
+        if (count(toKeep == 1) == 0) exit reduce
 
         ! Select particle to be removed
-        idxRemove = findloc(toKeep, 1, 1)
+        idxRemove = linFind(toKeep, 1)
         r = self % prisoners(idxRemove) % r
 
         ! Find minimum distance to a particle being kept
         minDist = INF
         do j=1, size(toKeep)
-          if (toKeep(j) == 2) minDist = min(minDist, self % prisoners(j) % getDistance(r))
+          dist = self % prisoners(j) % getDistance(r)
+          if (toKeep(j) == 2 .and. dist < minDist) then
+             minDist = dist
+             idxKeep = j
+          end if
         end do
-        idxKeep = findloc(self % prisoners(1:self % pop), minDist, 1)
+
+        !print *, 'keep: ', idxKeep, 'remove: ', idxRemove
 
         ! Combine particles
         call self % combine(idxKeep, idxRemove)
+
+        ! Store idxRemove for deletion later
+        toRemove(idxRemove) = 1
+
+        ! Remove from toKeep
+        toKeep(idxRemove) = 0
 
       end do reduce
 
     end do
 
+    ! Delete particles starting from highest index
+    do i=1, size(toRemove)
+      idx = size(toRemove)-i+1
+      !print *, 'Pop: ', self % pop, 'Index: ', idx, 'Flag: ', toRemove(idx)
+      if (toRemove(idx) == 1) call self % deleteParticle(idx)
+    end do
+
+    print *, 'END OF REDUCE: ', self % pop
 
   end subroutine reduceSize3
 
@@ -593,10 +621,30 @@ contains
     call self % replace(p1, idx1)
 
     ! Release top particle and place at idx2
-    call self % release(p3)
-    if (idx2 /= self % pop) call self % replace(p3, idx2)
+    !call self % release(p3)
+    !if (idx2 /= self % pop) call self % replace(p3, idx2)
 
   end subroutine combine
+
+  !!
+  !! Deletes particle at idx by releasing top particle and copying into position idx,
+  !! overwriting particle to be deleted
+  !!
+  !! Args:
+  !!   idx => index of particle to be deleted
+  !!
+  subroutine deleteParticle(self, idx)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)        :: idx
+    type(particle)                       :: p
+
+    ! Release particle at top of dungeon
+    call self % release(p)
+
+    ! Copy into position of particle to be deleted
+    if (idx /= self % pop + 1) call self % replace(p, idx)
+
+  end subroutine deleteParticle
 
   !!
   !! Kill or particles in the dungeon
