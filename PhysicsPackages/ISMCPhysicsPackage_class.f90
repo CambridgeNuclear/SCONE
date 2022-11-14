@@ -84,6 +84,7 @@ module ISMCPhysicsPackage_class
     integer(shortInt)  :: imcSourceN
     logical(defBool)   :: sourceGiven = .false.
     integer(shortInt)  :: nMat
+    integer(shortint)  :: printUpdates
 
     ! Calculation components
     type(particleDungeon), pointer :: thisStep     => null()
@@ -141,18 +142,8 @@ contains
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
-    logical(defBool)                                :: printUpdates
     character(100),parameter :: Here ='steps (ISMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
-
-    ! Set whether or not to print energy and temperature updates of each material
-    !   Printed from updateMat (baseMgIMCMaterial_class.f90), 7 lines of text
-    !   per material so recommend to only print when low number of materials
-    if (self % nMat <= 8) then
-      printUpdates = .True.
-    else
-      printUpdates = .False.
-    end if
 
     ! Attach nuclear data and RNG to particle
     p % pRNG   => self % pRNG
@@ -314,11 +305,13 @@ contains
       ! Update material properties
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (printUpdates .eqv. .True.) then
+        if (j <= self % printUpdates) then
           print *
           print *, "Material update:  ", mm_matName(j)
+          call mat % updateMat(tallyEnergy(j), .true.)
+        else
+          call mat % updateMat(tallyEnergy(j), .false.)
         end if
-        call mat % updateMat(tallyEnergy(j), printUpdates)
       end do
       print *
 
@@ -398,6 +391,7 @@ contains
     call dict % getOrDefault( self % limit, 'limit', self % pop)
     call dict % get( self % N_steps,'steps')
     call dict % get( self % deltaT,'timeStepSize')
+    call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
     self % particleType = P_PHOTON_MG
     nucData = 'mg'
 
