@@ -174,7 +174,6 @@ contains
     else if (dist == dColl) then
       ! Collision, increase time accordingly
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
-      p % time = p % time + dColl/lightSpeed
       finished = .true.
 
       !TODO Never called when running marshakWave:
@@ -255,7 +254,7 @@ contains
     ! Sample time to transform into radiation photon
     p % time = p % time - log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
 
-    ! Deal with eta = 0
+    ! Deal with eta = 0 causing NaN
     if (p % time /= p % time) p % time = INF
 
     ! Exit loop if particle remains material until end of time step

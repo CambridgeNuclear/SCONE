@@ -130,7 +130,6 @@ contains
     else if (dist == dColl) then
       ! Collision, increase time accordingly
       if (event /= COLL_EV) call fatalError(Here, 'Moving dColl should result in COLL_EV')
-      p % time = p % time + dColl / p % getSpeed()
       finished = .true.
     end if
 
