@@ -184,7 +184,7 @@ contains
       if( self % sourceGiven ) then
 
         ! Limit number of particles in each zone
-        !call self % thisStep % reduceSize(self % limit, self % emptyArray)
+        call self % thisStep % reduceSize(self % limit, self % emptyArray)
 
         ! Generate new particles
         call self % inputSource % append(self % thisStep, self % pop, p % pRNG)
@@ -214,7 +214,9 @@ contains
         end if
 
         ! For newly sourced particles, sample time uniformly within time step
-        if (p % time == ZERO) then
+        if (p % time /= ZERO .and. p % time /= self % deltaT*(i-1)) then
+          call fatalError(Here, 'Particle released from dungeon has incorrect time')
+        else if (p % time == ZERO) then
           p % time = (p % pRNG % get() + i-1) * self % deltaT
         end if
 
