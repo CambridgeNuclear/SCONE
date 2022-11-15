@@ -73,7 +73,7 @@ contains
     ! Deal with material particles, only relevant for ISMC
     if(p % getType() == P_MATERIAL_MG) then
       call self % materialTransform(p, tally)
-      if(p % fate == TIME_FATE) return
+      if(p % fate == AGED_FATE) return
     end if
 
     ! Get majorant for particle
@@ -163,7 +163,7 @@ contains
     if (dist == dTime) then
       ! Time boundary
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
-      p % fate = TIME_FATE
+      p % fate = AGED_FATE
       if (abs(p % time - p % timeMax)>0.000001) call fatalError(Here, 'Particle time is somehow incorrect')
       p % time = p % timeMax
       finished = .true.
@@ -196,7 +196,7 @@ contains
     else
       ! Move particle to end of time step location
       call self % geom % teleport(p % coords, dTime)
-      p % fate = TIME_FATE
+      p % fate = AGED_FATE
       p % time = p % timeMax
       finished = .true.
       return
@@ -251,7 +251,7 @@ contains
 
     ! Exit loop if particle remains material until end of time step
     if (p % time >= p % timeMax) then
-      p % fate = TIME_FATE
+      p % fate = AGED_FATE
       p % time = p % timeMax
       ! Tally energy for next temperature calculation
       call tally % reportHist(p)
@@ -285,7 +285,6 @@ contains
     type(particle)                             :: p
     integer(shortInt)                          :: i, j, matIdx
     real(defReal)                              :: mu, phi, dist
-    logical(defBool)                           :: finished = .false.
 
     ! Check that subroutine should be called
     if (.not. allocated(self % matMajs)) return

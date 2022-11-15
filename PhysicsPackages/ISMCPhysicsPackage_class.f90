@@ -236,7 +236,7 @@ contains
             call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % fate == LEAK_FATE) exit history
             
-            if(p % fate == TIME_FATE) then
+            if(p % fate == AGED_FATE) then
                 if(p % type == P_PHOTON) then
                   matIdx = p % matIdx()
                   Np(matIdx) = Np(matIdx) + 1
