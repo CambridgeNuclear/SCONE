@@ -168,18 +168,10 @@ contains
       p % time = p % timeMax
       finished = .true.
 
-      !TODO Called quickly when running marshakWave:
-      !if (p % coords % lvl(1) % r(1) < -2) call fatalError(Here, 'ERROR IN DTIME')
-
     else if (dist == dColl) then
       ! Collision, increase time accordingly
       if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV after moving dTime')
       finished = .true.
-
-      !TODO Never called when running marshakWave:
-      !if (p % coords % lvl(1) % r(1) < -2) call fatalError(Here, 'ERROR IN DCOLL')
-      !TODO No idea yet why this works differently for dTime or dColl
-
     end if
 
   end subroutine surfaceTracking
