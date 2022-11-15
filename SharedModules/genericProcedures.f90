@@ -1501,4 +1501,16 @@ module genericProcedures
 
   end subroutine  printFishLineR
 
+  !!
+  !! Returns the euclidean distance between two 3D points
+  !!
+  function getDistance(r1, r2) result(dist)
+    real(defReal), dimension(3), intent(in) :: r1
+    real(defReal), dimension(3), intent(in) :: r2
+    real(defReal)                           :: dist
+
+    dist = (r2(1) - r1(1))**2 + (r2(2) - r1(2))**2 + (r2(3) - r1(3))**2
+
+  end function getDistance
+
 end module genericProcedures

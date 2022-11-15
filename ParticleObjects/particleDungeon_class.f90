@@ -1,7 +1,7 @@
 module particleDungeon_class
 
   use numPrecision
-  use genericProcedures,     only : fatalError, numToChar, linFind
+  use genericProcedures,     only : fatalError, numToChar, linFind, getDistance
   use particle_class,        only : particle, particleState, P_MATERIAL, P_PHOTON
   use RNG_class,             only : RNG
   use geometry_inter,        only : geometry
@@ -35,7 +35,7 @@ module particleDungeon_class
   !!
   !! INTERFACE:
   !!   Stack-like interface:
-  !!     detain(particle)   -> adda a particle to the top
+  !!     detain(particle)   -> add a a particle to the top
   !!     release(particle)  -> removes a particle from the top. Sets p % isDead = .false.
   !!
   !!   Array-like interface:
@@ -44,20 +44,25 @@ module particleDungeon_class
   !!     get(i)               -> function returns particle state at index i
   !!
   !!   Misc procedures:
-  !!     isEmpty()         -> returns .true. if there are no more particles
-  !!     cleanPop()        -> kill or prisoners
-  !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
-  !!     normSize(N)       -> normalise dungeon population so it contains N particles
-  !!                          does not take ununiform weight of particles into account
-  !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
-  !!     printToFile(name) -> prints population in ASCII format to file "name"
+  !!     isEmpty()           -> returns .true. if there are no more particles
+  !!     cleanPop()          -> kill or prisoners
+  !!     normWeight(totWgt)  -> normalise dungeon population so its total weight is totWgt
+  !!     normSize(N)         -> normalise dungeon population so it contains N particles
+  !!                            does not take nonuniform weight of particles into account
+  !!     reduceSize(N,arr)   -> reduce size of dungeon by combining particles such that a max of
+  !!                            N particles are present in each material
+  !!     combine(idx1,idx2)  -> combine 2 particles by summing their weight and moving to a weight-
+  !!                            averaged position
+  !!     deleteParticle(idx) -> deletes particle at idx and reduces dungeon size by 1
+  !!     setSize(n)          -> sizes dungeon to have n dummy particles for ease of overwriting
+  !!     printToFile(name)   -> prints population in ASCII format to file "name"
   !!     printToScreen(prop,nMax,total) -> prints property to screen for up to nMax particles
-  !!     popSize()         -> returns number of particles in dungeon
-  !!     popWeight()       -> returns total population weight
+  !!     popSize()           -> returns number of particles in dungeon
+  !!     popWeight()         -> returns total population weight
   !!
   !!   Build procedures:
-  !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
-  !!     kill()            -> return to uninitialised state
+  !!     init(maxSize)       -> allocate space to store maximum of maxSize particles
+  !!     kill()              -> return to uninitialised state
   !!
   type, public :: particleDungeon
     private
@@ -352,166 +357,27 @@ contains
   end subroutine normSize
 
   !!
-  !! Reduce size of particle dungeon to a size N, while maintaining total weight
-  !! and reducing teleportation error
-  !!
-  !! Rather than simply calling normSize(N) followed by normWeight(prevWeight), this
-  !! subroutine combines 2 random particles of the same type into a single particle,
-  !! with a new position based on a weighted average of the previous positions
-  !!
-  !! Finding the nearest particle would be better but much more computationally intensive,
-  !! may be doable in parallel
-  !!
-  subroutine reduceSizeOLD(self, N, rand)
-    class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)         :: N
-    class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: randIdx1, randIdx2, loops, loops2
-    type(particle)                        :: p1, p2, p3
-    real(defReal), dimension(3)           :: rNew, r1, r2, r12
-    real(defReal)                         :: dist
-    character(100), parameter :: Here ='reduceSize (particleDungeon_class.f90)'
-
-    print *, "REDUCE", self % pop, N
-
-    ! Protect against invalid N
-    if(N > self % pop) then
-      call fatalError(Here,'Requested size: '//numToChar(N) //&
-                           'is greather then max size: '//numToChar(size(self % prisoners)))
-    else if (N <= 0) then
-      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
-    end if
-
-    ! Protect against infinite loop
-    loops = 0
-
-    reduce:do
-
-      loops = loops + 1
-      if(loops >= 50*self % pop) call fatalError(Here, 'Potentially infinite loop')
-
-      ! Obtain random particles from dungeon
-      randIdx1 = ceiling(rand % get() * self % pop)
-      call self % copy(p1, randIdx1)
-      r1 = p1 % rGlobal()
-
-      ! Obtain random particle of the same type
-      loops2 = 0
-      sample:do
-        randIdx2 = ceiling(rand % get() * self % pop)
-        if (randIdx2 == randIdx1 .or. randIdx2 == self % pop) cycle sample
-        call self % copy(p2, randIdx2)
-        r2 = p2 % rGlobal()
-        r12 = r2 - r1
-        dist = sqrt(r12(1)**2 + r12(2)**2 + r12(3)**2)
-        if (p2 % type == p1 % type .and. dist <= 0.2 .and. r1(1) <= 0.5) exit sample
-        ! If too many failed samples, resample p1
-        if (loops2 >= 0.5*self % pop) cycle reduce
-        loops2 = loops2 + 1
-      end do sample
-
-      ! Combine positions and weights
-      rNew = (r1*p1 % w + r2*p2 % w) / (p1 % w + p2 % w)
-      call p1 % teleport(rNew)
-      p1 % w = p1 % w + p2 % w
-      call self % replace(p1, randIdx1)
-
-      ! Overwrite p2 and reduce size
-      call self % release(p3)
-      call self % replace(p3, randIdx2)
-
-      if(self % pop == N) exit reduce
-
-      if(self % pop < N) call fatalError(Here, 'Uh oh, dungeon size somehow went below target')
-
-    end do reduce
-
-  end subroutine reduceSizeOLD
-
-  !!
-  !! N = max in each cell
-  !!
-  subroutine reduceSizeOLD2(self, N, Nmats, geom, rand, idxArray, toKeep)
-    class(particleDungeon), intent(inout)          :: self
-    integer(shortInt), intent(in)                  :: N
-    integer(shortInt), intent(in)                  :: Nmats
-    class(geometry), intent(inout)                 :: geom
-    class(RNG), intent(inout)                      :: rand
-    integer(shortInt), dimension(:,:), pointer, intent(inout) :: idxArray
-    integer(shortInt), dimension(:), pointer, intent(inout) :: toKeep
-    integer(shortInt)                              :: matIdx, pIdx, pIdx2, closeIdx, num
-    integer(shortInt)                              :: i, j, j_dec, k
-    real(defReal), dimension(3)                    :: r1, r2
-    real(defReal)                                  :: dist, minDist
-    character(100), parameter :: Here = 'reduceSize2 (particleDungeon_class.f90)'
-
-    idxArray = 0
-    toKeep = 0
-
-    ! Generate array with first row as N_particles in each mat, and subsequent rows
-    ! containing dungeon idx of each particle in that mat
-    do i = 1, self % pop
-      !call geom % whatIsAt(matIdx, matIdx, self % prisoners(i) % r)
-      if (self % prisoners(i) % type == P_MATERIAL) then
-        matIdx = self % prisoners(i) % matIdx
-        num = idxArray(1,matIdx) + 1
-        idxArray(1,matIdx) = num
-        idxArray(num+1,matIdx) = i
-      else if (self % prisoners(i) % type /= P_PHOTON) then
-        call fatalError(Here,'Incorrect particle type')
-      end if
-    end do
-
-    ! Determine which mats need populations reduced
-    do i = 1, Nmats
-      num = idxArray(1,i)
-      if (num > N) then
-        print *, 'Reducing mat '//numToChar(i)//' from '//numToChar(num)//' to '//numToChar(N)
-        ! Sample particles to keep
-        do j = 1, N
-          toKeep(j) = idxArray(j+1,i)
-        end do
-        ! Loop through particles to be removed
-        do j = N+1, num
-          j_dec = num-j+N+1
-          pIdx = idxArray(j_dec+1,i)
-          r1 = self % prisoners(pIdx) % r
-          ! Find closest particle in particles to keep
-          minDist = INF
-          do k = 1, N
-            pIdx2 = toKeep(k)
-            r2 = self % prisoners(pIdx2) % r - r1
-            dist = sqrt(r2(1)**2 + r2(2)**2 + r2(3)**2)
-            if (dist < minDist) then
-              minDist  = dist
-              closeIdx = pIdx2
-            end if
-          end do
-          ! Combine particle with closest particle to keep
-          call self % combine(pIdx, closeIdx)
-        end do
-      end if
-    end do
-
-  end subroutine reduceSizeOLD2
-
-  !!
-  !!
+  !! Combines particles such that the max population in any region is N, based on algorithm
+  !! proposed by Elad Steinberg and Shay I. Heizler, A New Discrete Implicit Monte Carlo Scheme
+  !! for Simulating Radiative Transfer Problems (2022). Currently chooses particles to keep as the
+  !! first ones found, Steinberg and Heizler suggest choosing using a weighted-probability, can be
+  !! improved to do this in the future if necessary.
   !!
   !! Args:
-  !!   N          => Maximum number of particles in each region
-  !!   emptyArray => Pointer to an array of size (2, system limit) to avoid allocating every time
+  !!   N [in]          -> Maximum number of particles in each region
+  !!   emptyArray [in] -> Pointer to array of size (3, system limit) to avoid allocating every time
   !!
   subroutine reduceSize(self, N, emptyArray)
     class(particleDungeon), intent(inout)                  :: self
     integer(shortInt), intent(in)                          :: N
     integer(shortInt), dimension(:,:), intent(in), pointer :: emptyArray
     integer(shortInt), dimension(:), pointer               :: idxArray, toKeep, toRemove
-    integer(shortInt)                                      :: i, j, idx, idxKeep, idxRemove
+    integer(shortInt)                                      :: i, j, idx, idxKeep, idxRemove, pop
     real(defReal), dimension(3)                            :: r
     real(defReal)                                          :: dist, minDist
 
-    print *, 'START OF REDUCE: ', self % pop
+    ! Store initial population
+    pop = self % pop
 
     ! Initialise arrays and pointers
     emptyArray = 0
@@ -527,11 +393,13 @@ contains
 
     do i=1, maxVal(idxArray)
 
+      ! Manipulate toKeep to be as follows:
+      !   0 -> Either not in material i, or not of type P_MATERIAL
+      !   1 -> In material i, P_MATERIAL, to be removed
+      !   2 -> In material i, P_MATERIAL, to be kept
+
       ! Set toKeep array to be 1 for mat particles in material i and 0 otherwise
       toKeep = merge(1, 0, idxArray == i)
-
-!      print *, 'Material:', i
-!      print *, 'Starting Pop:', sum(toKeep)
 
       ! Determine if population needs to be reduced
       if (sum(toKeep) > N) then
@@ -556,14 +424,14 @@ contains
         ! Find minimum distance to a particle being kept
         minDist = INF
         do j=1, size(toKeep)
-          dist = self % prisoners(j) % getDistance(r)
-          if (toKeep(j) == 2 .and. dist < minDist) then
+          if (toKeep(j) == 2) then
+            dist = getDistance(r, self % prisoners(j) % r)
+            if (dist < minDist) then
              minDist = dist
              idxKeep = j
+            end if
           end if
         end do
-
-        !print *, 'keep: ', idxKeep, 'remove: ', idxRemove
 
         ! Combine particles
         call self % combine(idxKeep, idxRemove)
@@ -581,21 +449,31 @@ contains
     ! Delete particles starting from highest index
     do i=1, size(toRemove)
       idx = size(toRemove)-i+1
-      !print *, 'Pop: ', self % pop, 'Index: ', idx, 'Flag: ', toRemove(idx)
       if (toRemove(idx) == 1) call self % deleteParticle(idx)
     end do
 
-    print *, 'END OF REDUCE: ', self % pop
+    ! Print reduction
+    if (self % pop /= pop) then
+      print *
+      print *, 'Reduced dungeon size from '//numToChar(pop)//' to '//numToChar(self % pop)
+      print *
+    end if
 
   end subroutine reduceSize
 
 
   !!
-  !! Combine two particles in the dungeon, and reduce dungeon size by 1
+  !! Combine two particles in the dungeon by summing their weight and moving to a weighted-
+  !! average position. Direction is unchanged.
   !!
-  !! Particle at idx1 remains, and is moved to a position that is the energy-weighted average
+  !! Particle at idx1 is moved to a position that is the energy-weighted average
   !! of the two original positions. Its new energy is the sum of the two original energies.
-  !! To reduce dungeon size, particle at position self % pop is copied into position idx2.
+  !!
+  !! Particle at idx2 remains unchanged. To delete, call self % deleteParticle(idx2) afterwards.
+  !!
+  !! Args:
+  !!   idx1 [in] -> Index of 1st particle, will be overridden 
+  !!   idx2 [in] -> Index of 2nd particle, will be kept unchanged
   !!
   subroutine combine(self, idx1, idx2)
     class(particleDungeon), intent(inout) :: self
@@ -618,10 +496,6 @@ contains
     p1 % w = p1 % w + p2 % w
     call self % replace(p1, idx1)
 
-    ! Release top particle and place at idx2
-    !call self % release(p3)
-    !if (idx2 /= self % pop) call self % replace(p3, idx2)
-
   end subroutine combine
 
   !!
@@ -629,7 +503,7 @@ contains
   !! overwriting particle to be deleted
   !!
   !! Args:
-  !!   idx => index of particle to be deleted
+  !!   idx [in] -> index of particle to be deleted
   !!
   subroutine deleteParticle(self, idx)
     class(particleDungeon), intent(inout) :: self
