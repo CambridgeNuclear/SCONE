@@ -14,6 +14,9 @@ module transportOperatorTimeHT_class
   ! Superclass
   use transportOperator_inter,    only : transportOperator, init_super => init
 
+  ! Geometry interfaces
+  use geometry_inter,             only : geometry
+
   ! Tally interface
   use tallyCodes
   use tallyAdmin_class,           only : tallyAdmin
@@ -182,9 +185,10 @@ contains
   !!
   !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, geom)
     class(transportOperatorTimeHT), intent(inout) :: self
-    class(dictionary), intent(in)              :: dict
+    class(dictionary), intent(in)                 :: dict
+    class(geometry), intent(in), optional         :: geom
 
     ! Initialise superclass
     call init_super(self, dict)

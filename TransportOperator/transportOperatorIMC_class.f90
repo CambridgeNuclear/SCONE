@@ -117,8 +117,8 @@ contains
   subroutine surfaceTracking(self, p)
     class(transportOperatorIMC), intent(inout) :: self
     class(particle), intent(inout)             :: p
-    real(defReal)                  :: dTime
-    real(defReal)                  :: dColl
+    real(defReal)                              :: dTime
+    real(defReal)                              :: dColl
     real(defReal)                              :: dist, sigmaT
     integer(shortInt)                          :: event
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorIMC_class.f90)'
@@ -170,8 +170,8 @@ contains
   subroutine deltaTracking(self, p)
     class(transportOperatorIMC), intent(inout) :: self
     class(particle), intent(inout)             :: p
-    real(defReal)                  :: dTime
-    real(defReal)                  :: dColl
+    real(defReal)                              :: dTime
+    real(defReal)                              :: dColl
     real(defReal)                              :: sigmaT
     character(100), parameter :: Here = 'deltaTracking (transportOperatorIMC_class.f90)'
 
