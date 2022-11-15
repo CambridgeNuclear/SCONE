@@ -18,9 +18,6 @@ module transportOperatorTimeHT_class
   use tallyCodes
   use tallyAdmin_class,           only : tallyAdmin
 
-  ! Geometry interfaces
-  use geometry_inter,             only : geometry
-
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
 
@@ -49,51 +46,33 @@ contains
     type(tallyAdmin), intent(inout)              :: tally
     class(particleDungeon), intent(inout)        :: thisCycle
     class(particleDungeon), intent(inout)        :: nextCycle
-    real(defReal)                                :: sigmaT, dTime, dColl
-    logical(defBool)                             :: finished
-    integer(shortInt)                            :: matIdx
+    real(defReal)                                :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
-
-    finished = .false.
 
     ! Get majorant XS inverse: 1/Sigma_majorant
     self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
-    trackingLoop:do
+    ! Check for errors
+    if (p % time /= p % time) call fatalError(Here, 'Particle time is NaN')
 
-      ! Check for errors
-      if (p % time /= p % time) call fatalError(Here, 'Particle time is NaN')
+    ! Obtain sigmaT
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
-      ! Obtain sigmaT
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+    ! Decide whether to use delta tracking or surface tracking
+    ! Vastly different opacities make delta tracking infeasable
+    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
+      ! Delta tracking
+      call self % deltaTracking(p)
+    else
+      ! Surface tracking
+      call self % surfaceTracking(p)
+    end if
 
-      ! Find distance to time boundary
-      dTime = p % getSpeed() * (p % timeMax - p % time)
-
-      ! Sample distance to move particle before collision
-      dColl = -log( p % pRNG % get() ) / sigmaT
-
-      ! Decide whether to use delta tracking or surface tracking
-      ! Vastly different opacities make delta tracking infeasable
-      if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
-        ! Delta tracking
-        call self % deltaTracking(p, dTime, dColl, finished)
-      else
-        ! Surface tracking
-        call self % surfaceTracking(p, dTime, dColl, finished)
-      end if
-
-      ! Check for particle leakage
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % fate = LEAK_FATE
-        p % isDead = .true.
-        exit trackingLoop
-      end if
-
-      ! Exit if transport is finished
-      if (finished .eqv. .true.) exit trackingLoop
-
-    end do trackingLoop
+    ! Check for particle leakage
+    if (p % matIdx() == OUTSIDE_FILL) then
+      p % fate = LEAK_FATE
+      p % isDead = .true.
+    end if
 
     call tally % reportTrans(p)
 
@@ -102,73 +81,99 @@ contains
   !!
   !! Perform surface tracking
   !!
-  subroutine surfaceTracking(self, p, dTime, dColl, finished)
+  subroutine surfaceTracking(self, p)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
-    real(defReal), intent(in)                     :: dTime
-    real(defReal), intent(in)                     :: dColl
-    logical(defBool), intent(inout)               :: finished
-    real(defReal)                                 :: dist
+    real(defReal)                                 :: dTime, dColl, dist, sigmaT
     integer(shortInt)                             :: event
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorTimeHT_class.f90)'
 
-    dist = min(dTime, dColl)
+    STLoop:do
 
-    ! Move through geometry using minimum distance
-    call self % geom % move(p % coords, dist, event)
+      ! Find distance to time boundary
+      dTime = lightSpeed * (p % timeMax - p % time)
 
-    p % time = p % time + dist / p % getSpeed()
+      ! Sample distance to collision
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      dColl = -log( p % pRNG % get() ) / sigmaT
 
-    ! Check result of transport
-    if (dist == dTime) then
-      ! Time boundary
-      if (event /= COLL_EV) call fatalError(Here, 'Moving dTime should result in COLL_EV')
-      p % fate = AGED_FATE
-      if (abs(p % time - p % timeMax) > 0.000001) call fatalError(Here, 'Particle time incorrect?')
-      p % time = p % timeMax
-      finished = .true.
-    else if (dist == dColl) then
-      ! Collision, increase time accordingly
-      if (event /= COLL_EV) call fatalError(Here, 'Moving dColl should result in COLL_EV')
-      finished = .true.
-    end if
+      ! Choose minimum distance
+      dist = min(dTime, dColl)
+
+      ! Move through geometry using minimum distance
+      call self % geom % move(p % coords, dist, event)
+
+      ! Check for particle leakage
+      if (p % matIdx() == OUTSIDE_FILL) return
+
+      ! Increase time based on distance moved
+      p % time = p % time + dist / lightSpeed
+
+      ! Check result of transport
+      if (dist == dTime) then
+        ! Time boundary
+        if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV &
+                                                    &after moving dTime')
+        p % fate = AGED_FATE
+        p % time = p % timeMax
+        exit STLoop
+
+      else if (dist == dColl) then
+        ! Collision, increase time accordingly
+        if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV &
+                                                    &after moving dTime')
+        exit STLoop
+
+      end if
+
+    end do STLoop
 
   end subroutine surfaceTracking
 
   !!
   !! Perform delta tracking
   !!
-  subroutine deltaTracking(self, p, dTime, dColl, finished)
+  subroutine deltaTracking(self, p)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
-    real(defReal), intent(in)                     :: dTime
-    real(defReal), intent(in)                     :: dColl
-    logical(defBool), intent(inout)               :: finished
-    real(defReal)                                 :: sigmaT
+    real(defReal)                                 :: dTime, dColl, sigmaT
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorTimeHT_class.f90)'
 
-    ! Determine which distance to move particle
-    if (dColl < dTime) then
-      ! Move partice to potential collision location
+    DTLoop:do
+
+      ! Find distance to time boundary
+      dTime = lightSpeed * (p % timeMax - p % time)
+
+      ! Sample distance to collision
+      dColl = -log( p % pRNG % get() ) * self % majorant_inv
+
+      ! If dTime < dColl, move to end of time step location
+      if (dTime < dColl) then
+        call self % geom % teleport(p % coords, dColl)
+        p % fate = AGED_FATE
+        p % time = p % timeMax
+        exit DTLoop
+      end if
+
+      ! Otherwise, move to potential collision location
       call self % geom % teleport(p % coords, dColl)
-      p % time = p % time + dColl / p % getSpeed()
-    else
-      ! Move particle to end of time step location
-      call self % geom % teleport(p % coords, dTime)
-      p % fate = AGED_FATE
-      p % time = p % timeMax
-      finished = .true.
-      return
-    end if
+      p % time = p % time + dColl / lightSpeed
 
-    ! Check for particle leakage
-    if (p % matIdx() == OUTSIDE_FILL) return
+      ! Check for particle leakage
+      if (p % matIdx() == OUTSIDE_FILL) return
 
-    ! Obtain local cross-section
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      ! Obtain local cross-section
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
-    ! Roll RNG to determine if the collision is real or virtual
-    ! Exit the loop if the collision is real
-    if (p % pRNG % get() < sigmaT * self % majorant_inv) finished = .true.
+      ! Roll RNG to determine if the collision is real or virtual
+      ! Exit the loop if the collision is real
+      if (p % pRNG % get() < sigmaT * self % majorant_inv) exit DTLoop
+
+      ! Protect against infinite loop
+      if (sigmaT*self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance, &
+                                                                 &potentially infinite loop')
+
+    end do DTLoop
 
   end subroutine deltaTracking
 
@@ -177,14 +182,9 @@ contains
   !!
   !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
   !!
-  subroutine init(self, dict, geom)
+  subroutine init(self, dict)
     class(transportOperatorTimeHT), intent(inout) :: self
-    class(dictionary), intent(in)                 :: dict
-    class(geometry), pointer, intent(in), optional :: geom
-    class(dictionary), pointer                    :: tempDict
-    integer(shortInt)                             :: nMats
-    real(defReal), dimension(6)                   :: bounds
-    real(defReal)                                 :: lengthScale
+    class(dictionary), intent(in)              :: dict
 
     ! Initialise superclass
     call init_super(self, dict)
