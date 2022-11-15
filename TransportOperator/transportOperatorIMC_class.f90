@@ -63,8 +63,7 @@ contains
     type(tallyAdmin), intent(inout)            :: tally
     class(particleDungeon), intent(inout)      :: thisCycle
     class(particleDungeon), intent(inout)      :: nextCycle
-    real(defReal)                              :: sigmaT, dTime, dColl
-    integer(shortInt)                          :: idx, uniqueId
+    real(defReal)                              :: sigmaT
     character(100), parameter :: Here = 'IMCTracking (transportOperatorIMC_class.f90)' 
 
     ! Deal with material particles, only relevant for ISMC
@@ -279,7 +278,7 @@ contains
     class(nuclearDatabase), intent(in), pointer :: xsData
     type(particle)                             :: p
     integer(shortInt)                          :: i, j, matIdx
-    real(defReal)                              :: mu, phi, dist
+    real(defReal)                              :: dist
 
     ! Check that subroutine should be called
     if (.not. allocated(self % matMajs)) return
