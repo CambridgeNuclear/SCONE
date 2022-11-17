@@ -133,7 +133,7 @@ contains
     integer(shortInt), intent(in)                   :: N_steps
     integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
@@ -157,32 +157,26 @@ contains
       self % thisStep     => self % temp_dungeon
       call self % nextStep % cleanPop()
 
-      ! Check that there are regions of non-zero temperature by summing mat temperatures
-      sumT = 0
+      ! Select number of particles to generate - for now this is an equal number from each zone
+      N = self % pop
+      if(N + self % thisStep % popSize() > self % limit) then
+        ! Fleck and Cummings IMC Paper, eqn 4.11
+        N = self % limit - self % thisStep % popSize() - self % nMat - 1
+      end if
+      N = int(N/self % nMat)
+      if (N == 0) N = 1
+
+      ! Add to particle dungeon
       do j=1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        sumT = sumT + mat % getTemp()
-      end do
-
-      N = self % pop
-
-      ! Generate IMC source, only if there are regions with non-zero temperature
-      if(sumT > 0) then
-        ! Select number of particles to generate
-        if(N + self % thisStep % popSize() > self % limit) then
-          ! Fleck and Cummings IMC Paper, eqn 4.11
-          N = self % limit - self % thisStep % popSize() - self % nMat - 1
+        if (mat % getTemp() > 0) then
+          call self % IMCSource % append(self % thisStep, N, p % pRNG, j)
         end if
-        if(self % sourceGiven) N = N/2
-        ! Add to particle dungeon
-        do j=1, self % nMat
-          call self % IMCSource % append(self % thisStep, int(N/self % nMat), p % pRNG, j)
-        end do
-      end if
+      end do
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, N, p % pRNG)
+        call self % inputSource % append(self % thisStep, 0, p % pRNG)
       end if
 
       if(self % printSource == 1) then

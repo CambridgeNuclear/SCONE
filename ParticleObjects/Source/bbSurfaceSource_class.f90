@@ -43,12 +43,10 @@ module bbSurfaceSource_class
   !!       axis x;         ! axis normal to planar shape
   !!       pos 0;          ! distance along axis to place plane
   !!       T 1;            ! temperature of source boundary
-  !!       nParticles 100; ! Number of particles emitted per time step, for now has to be
-  !!                         the same as IMC source if used in IMC calculation
   !!       particle photon;
-  !!       #dir 1; #       ! Positive or negative to indicate direction along axis
+  !!       # dir 1; #      ! Positive or negative to indicate direction along axis
   !!                         If 0 then emit in both directions
-  !!       deltat 1;       ! Currently needed to be the same as IMC time step size
+  !!       # N 100; #      ! Number of particles, only used if call to append subroutine uses N=0
   !!      }
   !!
   type, public,extends(configSource) :: bbSurfaceSource
@@ -169,6 +167,7 @@ contains
 
     call dict % get(self % T, 'T')
     call dict % get(self % deltaT, 'deltaT')
+    call dict % getOrDefault(self % N, 'N', 1)
 
   end subroutine init
 
@@ -181,10 +180,11 @@ contains
     integer(shortInt)                       :: i
     character(100), parameter               :: Here = 'append (bbSurfaceSource_class.f90)'
 
-    self % N = N
+    ! Set number to generate. Using 0 in function call will use N from input dictionary
+    if (N /= 0) self % N = N
 
     ! Generate n particles to populate dungeon
-    do i = 1, N
+    do i = 1, self % N
       call dungeon % detain(self % sampleParticle(rand))
     end do
 
