@@ -1,4 +1,4 @@
-module surfaceSource_class
+module bbSurfaceSource_class
 
   use numPrecision
   use universalVariables
@@ -39,7 +39,7 @@ module surfaceSource_class
   !!
   !! Sample Dictionary Input:
   !!   source {
-  !!       type surfaceSource;
+  !!       type bbSurfaceSource;
   !!       shape circle    ! circle or square;
   !!       size 5;         ! radius(circle) or side length(square)
   !!       axis x;         ! axis normal to planar shape
@@ -53,7 +53,7 @@ module surfaceSource_class
   !!       deltat 1;       ! Currently needed to be the same as IMC time step size
   !!      }
   !!
-  type, public,extends(configSource) :: surfaceSource
+  type, public,extends(configSource) :: bbSurfaceSource
     private
     real(defReal),dimension(3)  :: r            = ZERO
     real(defReal)               :: dir          = ZERO
@@ -75,7 +75,7 @@ module surfaceSource_class
     procedure :: sampleEnergy
     procedure :: sampleEnergyAngle
     procedure :: kill
-  end type surfaceSource
+  end type bbSurfaceSource
 
 contains
 
@@ -92,14 +92,14 @@ contains
   !!   - error if neither energy type is specified
   !!
   subroutine init(self, dict, geom)
-    class(surfaceSource), intent(inout)    :: self
+    class(bbSurfaceSource), intent(inout)    :: self
     class(dictionary), intent(in)          :: dict
     class(geometry), pointer, intent(in)   :: geom
     character(30)                          :: type, tempName
     integer(shortInt)                      :: matIdx, uniqueID
     logical(defBool)                       :: isCE, isMG
     real(defReal) :: temp !,dimension(:),allocatable :: temp
-    character(100), parameter :: Here = 'init (surfaceSource_class.f90)'
+    character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
 
     ! Provide geometry info to source
     self % geom => geom
@@ -175,12 +175,12 @@ contains
   end subroutine init
 
   subroutine append(self, dungeon, N, rand)
-    class(surfaceSource), intent(inout)  :: self
+    class(bbSurfaceSource), intent(inout)  :: self
     type(particleDungeon), intent(inout) :: dungeon
     integer(shortInt), intent(in)        :: N
     class(RNG), intent(inout)            :: rand
     integer(shortInt)                    :: i
-    character(100), parameter            :: Here = 'append (surfaceSource_class.f90)'
+    character(100), parameter            :: Here = 'append (bbSurfaceSource_class.f90)'
 
     self % N = N
 
@@ -197,7 +197,7 @@ contains
   !! See configSource_inter for details.
   !!
   subroutine sampleType(self, p, rand)
-    class(surfaceSource), intent(inout)   :: self
+    class(bbSurfaceSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
 
@@ -211,7 +211,7 @@ contains
   !! See configSource_inter for details.
   !!
   subroutine samplePosition(self, p, rand)
-    class(surfaceSource), intent(inout)   :: self
+    class(bbSurfaceSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
     real(defReal), dimension(3)         :: prevPos
@@ -260,7 +260,7 @@ contains
   !! Only isotropic/fixed direction. Does not sample energy.
   !!
   subroutine sampleEnergyAngle(self, p, rand)
-    class(surfaceSource), intent(inout)   :: self
+    class(bbSurfaceSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
     real(defReal)                       :: r, phi, theta
@@ -287,7 +287,7 @@ contains
   !! See configSource_inter for details.
   !!
   subroutine sampleEnergy(self, p, rand)
-    class(surfaceSource), intent(inout) :: self
+    class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
     real(defReal)                       :: num
@@ -307,7 +307,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(surfaceSource), intent(inout) :: self
+    class(bbSurfaceSource), intent(inout) :: self
 
     ! Kill superclass
     call kill_super(self)
@@ -321,4 +321,4 @@ contains
 
   end subroutine kill
 
-end module surfaceSource_class
+end module bbSurfaceSource_class

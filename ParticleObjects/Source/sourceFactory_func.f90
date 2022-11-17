@@ -8,10 +8,10 @@ module sourceFactory_func
   use source_inter,      only : source
 
   ! source implementations
-  use pointSource_class,   only : pointSource
-  use fissionSource_class, only : fissionSource
-  use IMCSource_class,     only : imcSource
-  use surfaceSource_class, only : surfaceSource
+  use pointSource_class,     only : pointSource
+  use fissionSource_class,   only : fissionSource
+  use IMCSource_class,       only : imcSource
+  use bbSurfaceSource_class, only : bbSurfaceSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -26,10 +26,10 @@ module sourceFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource  ',&
-                                                                     'fissionSource',&
-                                                                     'imcSource    ',&
-                                                                     'surfaceSource']
+  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource    ',&
+                                                                     'fissionSource  ',&
+                                                                     'imcSource      ',&
+                                                                     'bbSurfaceSource']
 
 contains
 
@@ -65,8 +65,8 @@ contains
         allocate(imcSource :: new)
         call new % init(dict, geom)
 
-      case('surfaceSource')
-        allocate(surfaceSource :: new)
+      case('bbSurfaceSource')
+        allocate(bbSurfaceSource :: new)
         call new % init(dict, geom)
 
      !*** NEW SOURCE TEMPLATE ***!
