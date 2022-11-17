@@ -175,7 +175,9 @@ contains
         end if
         if(self % sourceGiven) N = N/2
         ! Add to particle dungeon
-        call self % IMCSource % append(self % thisStep, N, p % pRNG)
+        do j=1, self % nMat
+          call self % IMCSource % append(self % thisStep, int(N/self % nMat), p % pRNG, j)
+        end do
       end if
 
       ! Generate from input source

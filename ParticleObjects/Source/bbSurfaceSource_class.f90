@@ -172,13 +172,14 @@ contains
 
   end subroutine init
 
-  subroutine append(self, dungeon, N, rand)
-    class(bbSurfaceSource), intent(inout)  :: self
-    type(particleDungeon), intent(inout) :: dungeon
-    integer(shortInt), intent(in)        :: N
-    class(RNG), intent(inout)            :: rand
-    integer(shortInt)                    :: i
-    character(100), parameter            :: Here = 'append (bbSurfaceSource_class.f90)'
+  subroutine append(self, dungeon, N, rand, matIdx)
+    class(bbSurfaceSource), intent(inout)   :: self
+    type(particleDungeon), intent(inout)    :: dungeon
+    integer(shortInt), intent(in)           :: N
+    class(RNG), intent(inout)               :: rand
+    integer(shortInt), intent(in), optional :: matIdx
+    integer(shortInt)                       :: i
+    character(100), parameter               :: Here = 'append (bbSurfaceSource_class.f90)'
 
     self % N = N
 
