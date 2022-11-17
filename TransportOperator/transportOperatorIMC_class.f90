@@ -91,7 +91,7 @@ contains
 
     ! Decide whether to use delta tracking or surface tracking
     ! Vastly different opacities make delta tracking infeasable
-    if(sigmaT * self % majorant_inv >= ONE - self % cutoff) then
+    if(sigmaT * self % majorant_inv > ONE - self % cutoff .or. self % cutoff == ONE) then
       ! Delta tracking
       call self % deltaTracking(p)
     else
@@ -128,8 +128,12 @@ contains
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to collision
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-      dColl = -log( p % pRNG % get() ) / sigmaT
+      if (p % matIdx() == VOID_MAT) then
+        dColl = INF
+      else
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        dColl = -log( p % pRNG % get() ) / sigmaT
+      end if
 
       ! Choose minimum distance
       dist = min(dTime, dColl)
@@ -180,7 +184,11 @@ contains
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to collision
-      dColl = -log( p % pRNG % get() ) * self % majorant_inv
+      if (p % matIdx() == VOID_MAT) then
+        dColl = INF
+      else
+        dColl = -log( p % pRNG % get() ) * self % majorant_inv
+      end if
 
       ! If dTime < dColl, move to end of time step location
       if (dTime < dColl) then
