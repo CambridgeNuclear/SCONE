@@ -1,8 +1,8 @@
 
 type IMCPhysicsPackage;
 
-pop            500;
-limit          5000;
+pop            200;
+limit          10000;
 steps          10000;
 timeStepSize   0.05;
 printUpdates   4;
@@ -16,7 +16,7 @@ transportOperator {
                   } 
 
 source {
-  type surfaceSource;
+  type bbSurfaceSource;
   shape square;
   size 1;
   axis x;

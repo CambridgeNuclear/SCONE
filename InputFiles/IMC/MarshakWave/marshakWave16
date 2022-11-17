@@ -16,7 +16,7 @@ transportOperator {
                   } 
 
 source {
-  type surfaceSource;
+  type bbSurfaceSource;
   shape square;
   size 1;
   axis x;
