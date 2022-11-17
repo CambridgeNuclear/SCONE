@@ -18,8 +18,6 @@ module bbSurfaceSource_class
   !! Put together quite quickly so very specific in use and not perfect
   !!   - Currently only allows a circle or square aligned on x y or z axis, with
   !!     a certain radius or side length
-  !!   - Requires deltat and nParticles in input file to be the same as specified elsewhere
-  !!     in file, can change to not require these inputs with some more thought
   !!   - May still contain unnecessary lines of code copied from pointSource_class.f90
   !!
   !! Private members:
@@ -98,7 +96,7 @@ contains
     character(30)                          :: type, tempName
     integer(shortInt)                      :: matIdx, uniqueID
     logical(defBool)                       :: isCE, isMG
-    real(defReal) :: temp !,dimension(:),allocatable :: temp
+    real(defReal)                          :: temp
     character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
 
     ! Provide geometry info to source
@@ -170,7 +168,7 @@ contains
     end if
 
     call dict % get(self % T, 'T')
-    call dict % get(self % deltat, 'deltat')
+    call dict % get(self % deltaT, 'deltaT')
 
   end subroutine init
 
@@ -292,7 +290,7 @@ contains
     class(RNG), intent(inout)           :: rand
     real(defReal)                       :: num
 
-    num = radiationConstant * lightSpeed * self % deltat * self % T**4 * self % area
+    num = radiationConstant * lightSpeed * self % deltaT * self % T**4 * self % area
     p % wgt = num / (4 * self % N)
 
     ! If dir = 0 then emit in both directions => double total energy

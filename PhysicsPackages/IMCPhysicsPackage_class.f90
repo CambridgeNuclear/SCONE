@@ -410,6 +410,7 @@ contains
     ! Read particle source definition
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
+      call tempDict % store('deltaT', self % deltaT)
       call new_source(self % inputSource, tempDict, self % geom)
       self % sourceGiven = .true.
     end if
