@@ -5,17 +5,14 @@ pop            5000;
 limit          20000;
 steps          50;
 timeStepSize   0.1;
-
-XSdata     mg;
-dataType   mg; 
-
+printUpdates   3;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
                   } 
 
 transportOperator {
-                    type transportOperatorIMC;
+                    type transportOperatorTimeHT;
                   }
 
 tally  {
