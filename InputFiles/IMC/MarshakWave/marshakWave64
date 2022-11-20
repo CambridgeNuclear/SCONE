@@ -1,11 +1,11 @@
 
 type IMCPhysicsPackage;
 
-pop            200;
-limit          10000;
-steps          10000;
+pop            64;
+limit          320;
+steps          2000;
 timeStepSize   0.05;
-printUpdates   4;
+printUpdates   32;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
@@ -24,6 +24,7 @@ source {
   T 1;
   dir 1;
   particle photon;
+  N 20;
 }
 
 tally  {
@@ -139,71 +140,71 @@ nuclearData {
   
   materials {
 
-    mat1  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat2  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat3  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat4  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat5  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat6  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat7  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat8  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat9  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat10 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat11 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat12 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat13 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat14 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat15 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat16 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat17 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat18 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat19 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat20 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat21 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat22 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat23 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat24 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat25 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat26 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat27 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat28 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat29 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat1  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat2  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat3  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat4  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat5  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat6  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat7  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat8  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat9  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat10 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat11 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat12 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat13 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat14 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat15 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat16 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat17 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat18 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat19 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat20 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat21 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat22 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat23 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat24 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat25 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat26 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat27 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat28 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat29 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
     mat30 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat31 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat32 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat31 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat32 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
 
-    mat33 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat34 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat35 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat36 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat37 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat38 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat39 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat40 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat41 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat42 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat43 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat44 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat45 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat46 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat47 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat48 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat49 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat50 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat51 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat52 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat53 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat54 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat55 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat56 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat57 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat58 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat59 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat60 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat61 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat62 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat63 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat64 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat33 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat34 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat35 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat36 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat37 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat38 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat39 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat40 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat41 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat42 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat43 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat44 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat45 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat46 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat47 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat48 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat49 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat50 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat51 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat52 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat53 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat54 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat55 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat56 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat57 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat58 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat59 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat60 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat61 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat62 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat63 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat64 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
 
   }
 
