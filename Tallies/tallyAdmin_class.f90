@@ -17,7 +17,6 @@ module tallyAdmin_class
   ! Nuclear Data Interface
   use nuclearDataReg_mod,     only : ndReg_get => get
   use nuclearDatabase_inter,  only : nuclearDatabase
-  use materialMenu_mod,       only : mm_nMat => nMat
 
   implicit none
   private
