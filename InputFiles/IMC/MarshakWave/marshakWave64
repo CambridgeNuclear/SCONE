@@ -7,9 +7,6 @@ steps          10000;
 timeStepSize   0.05;
 printUpdates   8;
 
-XSdata     mg;
-dataType   mg; 
-
 
 collisionOperator {
                     photonMG {type ISMCMGstd;}
@@ -20,15 +17,15 @@ transportOperator {
                   } 
 
 source {
-  type surfaceSource;
+  type bbSurfaceSource;
   shape square;
   size 1;
   axis x;
   pos -2;
   T 1;
   dir 1;
-  deltat 0.05;
   particle photon;
+  N 20;
 }
 
 tally  {

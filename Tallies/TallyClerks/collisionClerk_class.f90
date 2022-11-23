@@ -57,7 +57,7 @@ module collisionClerk_class
     class(tallyMap), allocatable                     :: map
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
-    ! Usefull data
+    ! Useful data
     integer(shortInt)  :: width = 0
 
   contains
@@ -93,7 +93,7 @@ contains
     ! Assign name
     call self % setName(name)
 
-    ! Load filetr
+    ! Load filter
     if( dict % isPresent('filter')) then
       call new_tallyFilter(self % filter, dict % getDictPtr('filter'))
     end if

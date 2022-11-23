@@ -47,7 +47,7 @@ module IMCPhysicsPackage_class
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
   use tallyResult_class,              only : tallyResult
-  use imcWeightClerk_class,           only : imcWeightResult
+  use absorptionClerk_class,          only : absClerkResult
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -133,7 +133,7 @@ contains
     integer(shortInt), intent(in)                   :: N_steps
     integer(shortInt)                               :: i, j, N
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, sumT
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
@@ -157,30 +157,26 @@ contains
       self % thisStep     => self % temp_dungeon
       call self % nextStep % cleanPop()
 
-      ! Check that there are regions of non-zero temperature by summing mat temperatures
-      sumT = 0
+      ! Select number of particles to generate - for now this is an equal number from each zone
+      N = self % pop
+      if(N + self % thisStep % popSize() > self % limit) then
+        ! Fleck and Cummings IMC Paper, eqn 4.11
+        N = self % limit - self % thisStep % popSize() - self % nMat - 1
+      end if
+      N = int(N/self % nMat)
+      if (N == 0) N = 1
+
+      ! Add to particle dungeon
       do j=1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        sumT = sumT + mat % getTemp()
-      end do
-
-      N = self % pop
-
-      ! Generate IMC source, only if there are regions with non-zero temperature
-      if(sumT > 0) then
-        ! Select number of particles to generate
-        if(N + self % thisStep % popSize() > self % limit) then
-          ! Fleck and Cummings IMC Paper, eqn 4.11
-          N = self % limit - self % thisStep % popSize() - self % nMat - 1
+        if (mat % getTemp() > 0) then
+          call self % IMCSource % append(self % thisStep, N, p % pRNG, j)
         end if
-        if(self % sourceGiven) N = N/2
-        ! Add to particle dungeon
-        call self % IMCSource % append(self % thisStep, N, p % pRNG)
-      end if
+      end do
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, N, p % pRNG)
+        call self % inputSource % append(self % thisStep, 0, p % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -221,7 +217,7 @@ contains
           history: do
             call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
-            
+
             if(p % fate == AGED_FATE) then
                 ! Store particle for use in next time step
                 p % fate = 0
@@ -263,15 +259,15 @@ contains
       call tally % display()
 
       ! Obtain energy deposition tally results
-      call tallyAtch % getResult(tallyRes, 'imcWeight')
+      call tallyAtch % getResult(tallyRes, 'imcWeightTally')
 
       select type(tallyRes)
-        class is(imcWeightResult)
+        class is(absClerkResult)
           do j = 1, self % nMat
-            tallyEnergy(j) = tallyRes % imcWeight(j)
+            tallyEnergy(j) = tallyRes % clerkResults(j)
           end do
         class default
-          call fatalError(Here, 'Invalid result has been returned')
+          call fatalError(Here, 'Tally result class should be absClerkResult')
       end select
 
       ! Update material properties
@@ -288,7 +284,7 @@ contains
       print *
 
       ! Reset tally for next time step
-      call tallyAtch % reset('imcWeight')
+      call tallyAtch % reset('imcWeightTally')
 
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
 
@@ -337,7 +333,7 @@ contains
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4, locDict5
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -410,6 +406,7 @@ contains
     ! Read particle source definition
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
+      call tempDict % store('deltaT', self % deltaT)
       call new_source(self % inputSource, tempDict, self % geom)
       self % sourceGiven = .true.
     end if
@@ -449,14 +446,18 @@ contains
 
     ! Initialise imcWeight tally attachment
     call locDict2 % init(1)
-    call locDict3 % init(2)
+    call locDict3 % init(4)
     call locDict4 % init(2)
+    call locDict5 % init(1)
 
+    call locDict5 % store('type', 'weightResponse')
     call locDict4 % store('type','materialMap')
     call locDict4 % store('materials', [mats])
-    call locDict3 % store('type','imcWeightClerk')
+    call locDict3 % store('response', ['imcWeightResponse'])
+    call locDict3 % store('imcWeightResponse', locDict5)
+    call locDict3 % store('type','absorptionClerk')
     call locDict3 % store('map', locDict4)
-    call locDict2 % store('imcWeight', locDict3)
+    call locDict2 % store('imcWeightTally', locDict3)
 
     allocate(self % imcWeightAtch)
     call self % imcWeightAtch % init(locDict2)

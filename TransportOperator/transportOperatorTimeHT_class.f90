@@ -45,11 +45,11 @@ contains
 
   subroutine timeTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorTimeHT), intent(inout) :: self
-    class(particle), intent(inout)               :: p
-    type(tallyAdmin), intent(inout)              :: tally
-    class(particleDungeon), intent(inout)        :: thisCycle
-    class(particleDungeon), intent(inout)        :: nextCycle
-    real(defReal)                                :: sigmaT
+    class(particle), intent(inout)                :: p
+    type(tallyAdmin), intent(inout)               :: tally
+    class(particleDungeon), intent(inout)         :: thisCycle
+    class(particleDungeon), intent(inout)         :: nextCycle
+    real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
     ! Get majorant XS inverse: 1/Sigma_majorant

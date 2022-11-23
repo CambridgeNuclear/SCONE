@@ -11,10 +11,8 @@ pop            1000;
   //   source is given, this is also the number of particles emitted from that source.
 
 limit          10000;
-  // Sets the maximum size of particle dungeons. Typically needs to be around 10*pop, and may be
-  //   significantly higher for certain problems. Runtime is very dependent on this value so should
-  //   not be set arbitrarily large. Would benefit from a change such that dungeon size is increased 
-  //   automatically without needing to set a limit.
+  // Sets the maximum size of particle dungeons. Runtime is very dependent on this value so should
+  //   not be set arbitrarily large.
 
 steps          50;
   // The number of time steps to be used in the calculation
@@ -22,17 +20,16 @@ steps          50;
 timeStepSize   0.1;
   // The time step size for the calculation in seconds
 
-
-XSdata     mg;
-dataType   mg; 
-
+printUpdates   1;
+  // The number maximum number of material updates to print to screen. If 0, no updates will be
+  //   printed.
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
                   }
 
 transportOperator {
-                    type transportOperatorIMC;
+                    type transportOperatorTimeHT; cutoff 0.7;
                   }
 
 // No tallies are required for calculation, but empty dictionary must be given

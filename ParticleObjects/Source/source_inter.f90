@@ -126,17 +126,20 @@ contains
     !!   dungeon [inout] -> particle dungeon to be added to
     !!   n [in]          -> number of particles to place in dungeon
     !!   rand [inout]    -> particle RNG object
+    !!   matIdx [in]     -> optional unused argument, here so that subclasses can override to
+    !!                      select matIdx to sample from
     !!
     !! Result:
     !!   A dungeon populated with n particles sampled from the source, plus
     !!   particles already present in dungeon
     !!
-    subroutine append(self, dungeon, n, rand)
-      class(source), intent(inout)         :: self
-      type(particleDungeon), intent(inout) :: dungeon
-      integer(shortInt), intent(in)        :: n
-      class(RNG), intent(inout)            :: rand
-      integer(shortInt)                    :: i
+    subroutine append(self, dungeon, n, rand, matIdx)
+      class(source), intent(inout)            :: self
+      type(particleDungeon), intent(inout)    :: dungeon
+      integer(shortInt), intent(in)           :: n
+      class(RNG), intent(inout)               :: rand
+      integer(shortInt), intent(in), optional :: matIdx
+      integer(shortInt)                       :: i
 
       ! Generate n particles to populate dungeon
       do i = 1, n

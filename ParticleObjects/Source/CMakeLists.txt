@@ -6,5 +6,5 @@ add_sources( source_inter.f90
              fissionSource_class.f90
              IMCSource_class.f90
              ISMCSource_class.f90
-             surfaceSource_class.f90
+             bbSurfaceSource_class.f90
              )

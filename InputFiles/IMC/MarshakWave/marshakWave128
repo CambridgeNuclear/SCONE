@@ -5,29 +5,24 @@ pop            500;
 limit          5000;
 steps          10000;
 timeStepSize   0.05;
-
-XSdata     mg;
-dataType   mg; 
-
+printUpdates   4;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
                   } 
 
 transportOperator {
-                    type transportOperatorIMC;
+                    type transportOperatorTimeHT;
                   } 
 
 source {
-  type surfaceSource;
+  type bbSurfaceSource;
   shape square;
   size 1;
   axis x;
   pos -2;
   T 1;
-  nParticles 500;
   dir 1;
-  deltat 0.05;
   particle photon;
 }
 

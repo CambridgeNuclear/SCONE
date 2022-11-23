@@ -17,7 +17,6 @@ module tallyAdmin_class
   ! Nuclear Data Interface
   use nuclearDataReg_mod,     only : ndReg_get => get
   use nuclearDatabase_inter,  only : nuclearDatabase
-  use materialMenu_mod,       only : mm_nMat => nMat
 
   implicit none
   private
@@ -754,7 +753,7 @@ contains
     integer(shortInt)               :: idx
     integer(shortInt),parameter     :: NOT_PRESENT = -3
     integer(longInt)                :: addr
-    integer(shortInt)               :: i
+    integer(shortInt)               :: i, width
     character(100),parameter  :: Here='reset (tallyAdmin_class.f90)'
 
     name_loc = name
@@ -766,15 +765,11 @@ contains
     end if
 
     addr = self % tallyClerks(idx) % getMemAddress()
+    width = self % tallyClerks(idx) % getSize()
 
-    call self % mem % reset(addr)
-
-    ! If IMCWeight, reset for each material - probably a better way to do this but fine for now
-    if ( name == 'imcWeight' ) then
-      do i = 1, mm_nMat()-1
-        call self % mem % reset(addr+i)
-      end do
-    end if
+    do i = 1, width
+      call self % mem % reset(addr+i-1)
+    end do
 
   end subroutine reset
 
