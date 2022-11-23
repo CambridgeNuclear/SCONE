@@ -47,7 +47,7 @@ module ISMCPhysicsPackage_class
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
   use tallyResult_class,              only : tallyResult
-  use imcWeightClerk_class,           only : imcWeightResult
+  use absorptionClerk_class,          only : absClerkResult
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -293,15 +293,15 @@ contains
       call tally % display()
 
       ! Obtain energy deposition tally results
-      call tallyAtch % getResult(tallyRes, 'imcWeight')
+      call tallyAtch % getResult(tallyRes, 'imcWeightTally')
 
       select type(tallyRes)
-        class is(imcWeightResult)
+        class is(absClerkResult)
           do j = 1, self % nMat
-            tallyEnergy(j) = tallyRes % imcWeight(j)
+            tallyEnergy(j) = tallyRes % clerkResults(j)
           end do
         class default
-          call fatalError(Here, 'Invalid result has been returned')
+          call fatalError(Here, 'Tally result class should be absClerkResult')
       end select
 
       ! Update material properties
@@ -318,7 +318,7 @@ contains
       print *
 
       ! Reset tally for next cycle
-      call tallyAtch % reset('imcWeight')
+      call tallyAtch % reset('imcWeightTally')
 
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
 
@@ -373,7 +373,7 @@ contains
     class(ISMCPhysicsPackage), intent(inout)        :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4, locDict5
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -488,12 +488,16 @@ contains
 
     ! Initialise imcWeight tally attachment
     call locDict2 % init(1)
-    call locDict3 % init(2)
+    call locDict3 % init(4)
     call locDict4 % init(2)
+    call locDict5 % init(1)
 
+    call locDict5 % store('type', 'weightResponse')
     call locDict4 % store('type','materialMap')
     call locDict4 % store('materials', [mats])
-    call locDict3 % store('type','imcWeightClerk')
+    call locDict3 % store('response', ['imcWeightResponse'])
+    call locDict3 % store('imcWeightResponse', locDict5)
+    call locDict3 % store('type','absorptionClerk')
     call locDict3 % store('map', locDict4)
     call locDict2 % store('imcWeight', locDict3)
 
