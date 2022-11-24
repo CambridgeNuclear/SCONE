@@ -500,7 +500,7 @@ contains
     call locDict3 % store('imcWeightResponse', locDict5)
     call locDict3 % store('type','absorptionClerk')
     call locDict3 % store('map', locDict4)
-    call locDict2 % store('imcWeight', locDict3)
+    call locDict2 % store('imcWeightTally', locDict3)
 
     allocate(self % imcWeightAtch)
     call self % imcWeightAtch % init(locDict2)
