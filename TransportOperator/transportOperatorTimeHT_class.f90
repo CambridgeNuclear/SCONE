@@ -152,7 +152,7 @@ contains
 
       ! If dTime < dColl, move to end of time step location
       if (dTime < dColl) then
-        call self % geom % teleport(p % coords, dColl)
+        call self % geom % teleport(p % coords, dTime)
         p % fate = AGED_FATE
         p % time = p % timeMax
         exit DTLoop

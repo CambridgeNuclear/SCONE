@@ -192,7 +192,7 @@ contains
 
       ! If dTime < dColl, move to end of time step location
       if (dTime < dColl) then
-        call self % geom % teleport(p % coords, dColl)
+        call self % geom % teleport(p % coords, dTime)
         p % fate = AGED_FATE
         p % time = p % timeMax
         exit DTLoop
@@ -216,6 +216,12 @@ contains
       if (sigmaT * self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance,&
                                                                   & potentially infinite loop')
 
+      ! Switch to ST if particle moves into a region where delta tracking is no longer feasible
+      if (sigmaT * self % majorant_inv < ONE - self % cutoff) then
+        call self % surfaceTracking(p)
+        return
+      end if
+
     end do DTLoop
 
   end subroutine deltaTracking
@@ -233,9 +239,6 @@ contains
     real(defReal)                              :: sigmaT, fleck, eta, mu, phi
     real(defReal), dimension(3)                :: dir
     character(100), parameter                  :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
-
-    ! Confirm that time = 0
-    !if (p % time .ne. 0) call fatalError(Here, 'Material particle should have time = 0')
 
     ! Get and verify material pointer
     self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
