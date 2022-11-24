@@ -231,7 +231,11 @@ contains
 
     ! Append all bins
     do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
+      scoreVal = self % response(i) % get(p, xsData) * p % w * flx
+      ! Deal with infinite cross sections - may not be the right solution for generality
+      if (scoreVal /= scoreVal) then
+        scoreVal = p % w
+      end if
       call mem % score(scoreVal, adrr + i)
 
     end do
