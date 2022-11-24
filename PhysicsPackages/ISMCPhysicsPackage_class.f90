@@ -187,7 +187,7 @@ contains
         call self % thisStep % reduceSize(self % limit, self % emptyArray)
 
         ! Generate new particles
-        call self % inputSource % append(self % thisStep, self % pop, p % pRNG)
+        call self % inputSource % append(self % thisStep, 0, p % pRNG)
 
       end if
 
