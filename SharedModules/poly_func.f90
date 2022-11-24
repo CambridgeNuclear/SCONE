@@ -131,7 +131,7 @@ module poly_func
 
         ! Call error if not converged
         if( i >= 1000 ) then
-          call fatalError(Here, "Solution has not converged after 1000 iterations,"//numToChar(x0)//','//numToChar(const))
+          call fatalError(Here, "Solution has not converged after 1000 iterations")
         end if
 
         ! Increase counter

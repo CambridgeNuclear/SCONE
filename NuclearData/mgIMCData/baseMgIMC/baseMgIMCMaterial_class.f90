@@ -422,8 +422,6 @@ contains
     self % matEnergy  = tallyEnergy
     self % energyDens = self % matEnergy / self % V
 
-    !if(self % matEnergy <= 0.3) self % matEnergy = 0.3
-
     ! Update material temperature
     self % T = self % tempFromEnergy()
 
