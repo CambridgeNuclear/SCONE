@@ -2,6 +2,7 @@ module absorptionClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables,         only : P_MATERIAL_MG
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState, P_MATERIAL
@@ -202,8 +203,8 @@ contains
     ! Get current particle state
     state = p
 
-    if( p % fate == LEAK_FATE ) return
-    if( p % isDead .eqv. .false. .and. p % type /= P_MATERIAL) then
+    if (p % fate == LEAK_FATE) return
+    if (p % getType() /= P_MATERIAL_MG .and. .not. p % isDead) then
       call fatalError(Here, 'Particle is still alive')
     end if
 
