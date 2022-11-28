@@ -1,8 +1,8 @@
 
 type ISMCPhysicsPackage;
 
-pop            80;
-limit          1300;
+pop            800;
+limit          1600;
 steps          10000;
 timeStepSize   0.05;
 printUpdates   8;
@@ -13,7 +13,7 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorIMC; cutoff 0.7; majMap { nParticles 5000; lengthScale 0.00625; }
+                    type transportOperatorIMC; cutoff 0.9; //majMap { nParticles 5000; lengthScale 0.00625; }
                   } 
 
 source {
@@ -25,7 +25,7 @@ source {
   T 1;
   dir 1;
   particle photon;
-  N 20;
+  N 40;
 }
 
 tally  {
