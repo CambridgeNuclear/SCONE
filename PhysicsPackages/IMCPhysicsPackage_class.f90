@@ -131,9 +131,9 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
-    integer(shortInt)                               :: i, j, N
+    integer(shortInt)                               :: i, j, N, Ntemp
     type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, totEnergy
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
@@ -149,7 +149,11 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
+    open(unit = 10, file = 'temps.txt')
+
     do i=1,N_steps
+
+      write(10, '(8A)') numToChar(i)
 
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
@@ -157,20 +161,29 @@ contains
       self % thisStep     => self % temp_dungeon
       call self % nextStep % cleanPop()
 
-      ! Select number of particles to generate - for now this is an equal number from each zone
+      ! Select total number of particles to generate from material emission
       N = self % pop
-      if(N + self % thisStep % popSize() > self % limit) then
+      if (N + self % thisStep % popSize() > self % limit) then
         ! Fleck and Cummings IMC Paper, eqn 4.11
         N = self % limit - self % thisStep % popSize() - self % nMat - 1
       end if
-      N = int(N/self % nMat)
-      if (N == 0) N = 1
+
+      ! Find total energy to be emitted
+      totEnergy = 0
+      do j=1, self % nMat
+        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        totEnergy = totEnergy + mat % getEmittedRad()
+      end do
 
       ! Add to particle dungeon
       do j=1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
         if (mat % getTemp() > 0) then
-          call self % IMCSource % append(self % thisStep, N, p % pRNG, j)
+          ! Choose particle numbers in proportion to zone energy
+          Ntemp = int(N * mat % getEmittedRad() / totEnergy)
+          ! Enforce at least 1 particle
+          if (Ntemp == 0) Ntemp = 1
+          call self % IMCSource % append(self % thisStep, Ntemp, p % pRNG, j)
         end if
       end do
 
@@ -289,6 +302,8 @@ contains
       print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
 
     end do
+
+    close(10)
 
   end subroutine steps
 
