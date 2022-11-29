@@ -245,7 +245,8 @@ contains
 
     ! Use time step size to calculate fleck factor
     if(self % calcType == IMC) then
-      self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
+      beta = 4*radiationConstant* self % T **4 / poly_eval(self % cv, self % T)
+      self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
     else if(self % calcType == ISMC) then
       beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
@@ -371,6 +372,7 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: printUpdate
+    real(defReal)                           :: beta
     character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
 
     ! Print current properties
@@ -397,7 +399,11 @@ contains
      call fatalError(Here, "Temperature is negative")
     end if
 
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*self % deltaT*self % alpha)
+    beta = 4*radiationConstant* self % T **4 / poly_eval(self % cv, self % T)
+
+    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
+
+    write(10, '(8A)') numToChar(self % T)
 
     ! Print updated properties 
     if (present(printUpdate)) then

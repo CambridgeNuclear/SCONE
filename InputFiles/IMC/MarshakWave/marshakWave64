@@ -7,14 +7,13 @@ steps          10000;
 timeStepSize   0.05;
 printUpdates   8;
 
-
 collisionOperator {
                     photonMG {type ISMCMGstd;}
                   } 
 
 transportOperator {
                     type transportOperatorIMC; cutoff 0.9; //majMap { nParticles 5000; lengthScale 0.00625; }
-                  } 
+                  }
 
 source {
   type bbSurfaceSource;
