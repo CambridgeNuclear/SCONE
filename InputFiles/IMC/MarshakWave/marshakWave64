@@ -2,8 +2,8 @@
 type IMCPhysicsPackage;
 
 pop            64;
-limit          320;
-steps          2000;
+limit          1000;
+steps          10000;
 timeStepSize   0.05;
 printUpdates   32;
 
@@ -24,7 +24,7 @@ source {
   T 1;
   dir 1;
   particle photon;
-  N 20;
+  N 40;
 }
 
 tally  {
@@ -169,7 +169,7 @@ nuclearData {
     mat27 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
     mat28 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
     mat29 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
-    mat30 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
+    mat30 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
     mat31 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
     mat32 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.0625; }
 
