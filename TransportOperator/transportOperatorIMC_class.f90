@@ -252,7 +252,7 @@ contains
     p % time = p % time - log(p % pRNG % get()) / (sigmaT*fleck*eta*lightSpeed)
 
     ! Deal with eta = 0 causing NaN
-    if (p % time /= p % time) p % time = INF
+    if (p % time /= p % time) p % time = p % time -log(p % pRNG % get()) / (1.400*fleck*lightSpeed)
 
     ! Exit loop if particle remains material until end of time step
     if (p % time >= p % timeMax) then

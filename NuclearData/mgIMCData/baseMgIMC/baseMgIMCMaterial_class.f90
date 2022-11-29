@@ -255,7 +255,7 @@ contains
       ! Deal with 0 temperature - needs more consideration for certain cv
       if (self % fleck /= self % fleck) then
         self % eta   = ZERO
-        self % fleck = ONE
+        self % fleck = 0.70414
       end if
 
     else
@@ -425,6 +425,9 @@ contains
     ! Update material temperature
     self % T = self % tempFromEnergy()
 
+    ! Update sigma
+    call self % sigmaFromTemp()
+
     ! Update ISMC equivalent of fleck factor
     beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
     self % eta  =   radiationConstant * self % T**4 / self % energyDens
@@ -434,11 +437,8 @@ contains
     ! Deal with 0 temperature - needs more consideration for certain cv
     if (self % fleck /= self % fleck) then
       self % eta   = ZERO
-      self % fleck = ONE
+      self % fleck = 0.70414
     end if
-
-    ! Update sigma
-    call self % sigmaFromTemp()
 
     ! Print updated properties 
     if (present(printUpdate)) then
