@@ -1,18 +1,18 @@
 
 type IMCPhysicsPackage;
 
-pop            64;
-limit          1000;
-steps          10000;
-timeStepSize   0.05;
-printUpdates   32;
+pop            64000;
+limit          2560000;
+steps          1000;
+timeStepSize   0.5;
+printUpdates   4;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
                   } 
 
 transportOperator {
-                    type transportOperatorTimeHT;
+                    type transportOperatorTimeHT; cutoff 0.0;
                   } 
 
 source {
@@ -24,7 +24,7 @@ source {
   T 1;
   dir 1;
   particle photon;
-  N 40;
+  N 500;
 }
 
 tally  {

@@ -1,10 +1,10 @@
 
 type IMCPhysicsPackage;
 
-pop            500;
-limit          5000;
-steps          10000;
-timeStepSize   0.05;
+pop            16000;
+limit          320000;
+steps          1000;
+timeStepSize   0.5;
 printUpdates   4;
 
 collisionOperator {
@@ -12,7 +12,7 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorTimeHT;
+                    type transportOperatorTimeHT; cutoff 0.0;
                   } 
 
 source {
@@ -24,6 +24,7 @@ source {
   T 1;
   dir 1;
   particle photon;
+  N 1000;
 }
 
 tally  {
@@ -84,22 +85,22 @@ nuclearData {
   
   materials {
 
-    mat1  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat2  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat3  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat4  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat5  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat6  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat7  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat8  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat9  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat10 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat11 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat12 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat13 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat14 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat15 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
-    mat16 { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat1  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat2  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat3  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat4  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat5  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat6  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat7  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat8  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat9  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat10 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat11 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat12 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat13 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat14 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat15 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat16 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
 
   }
 
