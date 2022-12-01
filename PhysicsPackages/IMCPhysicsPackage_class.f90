@@ -149,6 +149,7 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
+    ! Create temps.txt file for easy access to results
     open(unit = 10, file = 'temps.txt')
 
     do i=1,N_steps
