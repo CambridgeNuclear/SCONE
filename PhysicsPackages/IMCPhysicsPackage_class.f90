@@ -151,6 +151,9 @@ contains
 
     open(unit = 10, file = 'temps.txt')
 
+    ! Build connections between materials
+    !call self % transOp % buildMajMap(p % pRNG, self % nucData)
+
     do i=1,N_steps
 
       write(10, '(8A)') numToChar(i)
@@ -197,6 +200,9 @@ contains
       end if
 
       call tally % reportCycleStart(self % thisStep)
+
+      ! Update majorants for transport operator
+      !call self % transOp % updateMajorants(p % pRNG)
 
       ! Assign new maximum particle time
       p % timeMax = self % deltaT * i
@@ -437,7 +443,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict)
+    call new_transportOperator(self % transOp, tempDict, self % geom)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')
