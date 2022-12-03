@@ -10,6 +10,10 @@ module universalVariables
   integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 8
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
 
+  ! CHANGE THIS: NUMBER WILL DEPEND ON SYSTEM ARCHITECTURE
+  ! WILL AFFECT PARALLEL SCALING
+  integer(shortInt), parameter, public :: array_pad = 64
+
   ! Display information
   integer(shortInt), parameter, public :: MAX_COL = 70 ! Maximum number of columns in console display
 
