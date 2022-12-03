@@ -44,6 +44,9 @@ module randomRayPhysicsPackage_class
   ! Also particleState for easier output
   use particle_class,                      only : ray => particle, particleState
 
+  ! For locks
+  use omp_lib
+
   implicit none
   private
 
@@ -177,6 +180,9 @@ module randomRayPhysicsPackage_class
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
 
+    ! OMP locks
+    integer(kind=omp_lock_kind), dimension(:), allocatable :: locks
+
     ! Timer bins
     integer(shortInt) :: timerMain
     integer(shortInt) :: timerTransport
@@ -215,7 +221,7 @@ contains
   subroutine init(self,dict)
     class(randomRayPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)              :: dict
-    integer(shortInt)                             :: seed_temp
+    integer(shortInt)                             :: seed_temp, i
     integer(longInt)                              :: seed
     character(10)                                 :: time
     character(8)                                  :: date
@@ -384,6 +390,12 @@ contains
     
     ! Set active length traveled per iteration
     self % lengthPerIt = (self % termination - self % dead) * self % pop
+    
+    ! Initialise OMP locks
+    allocate(self % locks(self % nCells))
+    do i = 1, self % nCells
+      call omp_init_lock(self % locks(i))
+    end do
 
   end subroutine init
 
@@ -448,6 +460,7 @@ contains
     ! Initialise cell information
     self % cellFound = .false.
     self % cellPos = -INFINITY
+
 
     ! Stopping criterion is initially on flux convergence or number of convergence iterations.
     ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
@@ -692,34 +705,26 @@ contains
       sourceVec => self % source(baseIdx + 1 : baseIdx + self % nG)
       scalarVec => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
 
+      !$omp simd
+      do g = 1, self % nG
+        attenuate(g) = exponential(totVec(g) * length)
+        delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
+        fluxVec(g) = fluxVec(g) - delta(g)
+      end do
+
       ! Accumulate to scalar flux
       if (activeRay) then
+      
+        call OMP_set_lock(self % locks(cIdx))
         !$omp simd
         do g = 1, self % nG
-          attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
-        end do
-
-        ! Accumulate scalar flux
-        do g = 1, self % nG
-          !$omp atomic
           scalarVec(g) = scalarVec(g) + delta(g) 
         end do
-
-        ! Accumulate cell volume estimates
-        self % cellHit(cIdx) = 1
-        !$omp atomic
         self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
+        call OMP_unset_lock(self % locks(cIdx))
+
+        self % cellHit(cIdx) = 1
       
-      ! Don't accumulate to scalar flux
-      else
-        !$omp simd
-        do g = 1, self % nG
-          attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
-        end do
       end if
 
       ! Check for a vacuum hit
@@ -1157,7 +1162,7 @@ contains
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g1
-          groupFlux(cIdx) = self % fluxScores(idx,2)
+          groupFlux(cIdx) = self % fluxScores(idx,2) /self % fluxScores(idx,1)
         end do
         !$omp end parallel do
         call self % viz % addVTKData(groupFlux,name)
@@ -1201,6 +1206,7 @@ contains
   !!
   subroutine kill(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
+    integer(shortInt) :: i
 
     ! Clean Nuclear Data, Geometry and visualisation
     call gr_kill()
@@ -1217,6 +1223,13 @@ contains
     self % bottom    = ZERO
     self % mgData    => null()
     self % nG        = 0
+    
+    if(allocated(self % locks)) then
+      do i = 1, self % nCells
+        call OMP_destroy_lock(self % locks(i))
+      end do
+      deallocate(self % locks)
+    end if
     self % nCells    = 0
 
     self % termination = ZERO

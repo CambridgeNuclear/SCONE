@@ -1,7 +1,7 @@
 type randomRayPhysicsPackage; 
 
 pop      1750; //650;
-active   325; //300; 
+active   1000; //300; 
 inactive 1000; //1038;
 dead     20; //12.56; 
 termination 220; //628.12; 
@@ -230,13 +230,6 @@ latCore
 }
 
 viz {
-  bmp1 { 
-    type bmp; 
-    output C5G7_fine_disc_xy; 
-    what uniqueID; 
-    centre (0.0 0.0 10.0); 
-    axis x; 
-    res (2000 2000);  }
   myVTK {
     type vtk;
     what uniqueID; 

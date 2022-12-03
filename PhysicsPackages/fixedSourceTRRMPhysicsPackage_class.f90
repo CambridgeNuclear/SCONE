@@ -44,6 +44,9 @@ module fixedSourceTRRMPhysicsPackage_class
   ! Also particleState for easier output
   use particle_class,                 only : ray => particle, particleState
 
+  ! For locks
+  use omp_lib
+  
   implicit none
   private
 
@@ -181,6 +184,9 @@ module fixedSourceTRRMPhysicsPackage_class
     integer(shortInt), dimension(:), allocatable :: cellHit
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
+    
+    ! OMP locks
+    integer(kind=omp_lock_kind), dimension(:), allocatable :: locks
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -220,7 +226,7 @@ contains
   subroutine init(self,dict)
     class(fixedSourceTRRMPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                    :: dict
-    integer(shortInt)                                   :: seed_temp, n, nPoints
+    integer(shortInt)                                   :: seed_temp, n, nPoints, i
     integer(longInt)                                    :: seed
     character(10)                                       :: time
     character(8)                                        :: date
@@ -407,13 +413,19 @@ contains
     allocate(self % cellHit(self % nCells))
     allocate(self % cellFound(self % nCells))
     allocate(self % cellPos(self % nCells, 3))
-    
+
     ! Read and initialise the fixed sources
     sourceDict => dict % getDictPtr('source')
     call self % initialiseSource(sourceDict)
 
     ! Set active length traveled per iteration
     self % lengthPerIt = (self % termination - self % dead) * self % pop
+    
+    ! Initialise OMP locks
+    allocate(self % locks(self % nCells))
+    do i = 1, self % nCells
+      call omp_init_lock(self % locks(i))
+    end do
 
   end subroutine init
 
@@ -518,22 +530,19 @@ contains
     integer(longInt)                                    :: intersections
     !$omp threadprivate(pRNG, r, ints)
 
-    ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
-
+    
     ! Initialise fluxes 
     self % scalarFlux = ZERO
     self % prevFlux   = ZERO
     self % fluxScores = ZERO
     self % source     = ZERO
 
-    ! Initialise other results
+    ! Initialise cell information
     self % cellHit      = 0
     self % volume       = ZERO
     self % volumeTracks = ZERO
-    
-    ! Initialise cell information
     self % cellFound = .false.
     self % cellPos = -INFINITY
 
@@ -651,7 +660,7 @@ contains
     type(ray), intent(inout)                            :: r
     real(defReal)                                       :: mu, phi
     real(defReal), dimension(3)                         :: u, rand3, x
-    integer(shortInt)                                   :: i, matIdx, cIdx
+    integer(shortInt)                                   :: i, matIdx, cIdx, g
     character(100), parameter :: Here = 'initialiseRay (fixedSourceTRRMPhysicsPackage_class.f90)'
 
     i = 0
@@ -667,6 +676,7 @@ contains
 
       ! Exit if point is inside the geometry
       call self % geom % whatIsAt(matIdx, cIdx, x, u)
+      
       if (matIdx /= OUTSIDE_MAT) exit rejection
 
       i = i + 1
@@ -689,8 +699,7 @@ contains
   end subroutine initialiseRay
 
   !!
-  !! Moves ray through geometry, updating angular flux and
-  !! scoring scalar flux and volume.
+  !! Moves ray through geometry, used for generating uncollided flux
   !! Records the number of integrations/ray movements.
   !!
   subroutine transportSweep(self, r, ints)
@@ -766,35 +775,27 @@ contains
       baseIdx = (cIdx - 1) * self % nG
       sourceVec => self % source(baseIdx + 1 : baseIdx + self % nG)
       scalarVec => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
+      
+      !$omp simd
+      do g = 1, self % nG
+        attenuate(g) = exponential(totVec(g) * length)
+        delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
+        fluxVec(g) = fluxVec(g) - delta(g)
+      end do
 
       ! Accumulate to scalar flux
       if (activeRay) then
+      
+        call OMP_set_lock(self % locks(cIdx))
         !$omp simd
         do g = 1, self % nG
-          attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
-        end do
-
-        ! Accumulate scalar flux
-        do g = 1, self % nG
-          !$omp atomic
           scalarVec(g) = scalarVec(g) + delta(g) 
         end do
-
-        ! Accumulate cell volume estimates
-        self % cellHit(cIdx) = 1
-        !$omp atomic
         self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
+        call OMP_unset_lock(self % locks(cIdx))
 
-      ! Don't accumulate to scalar flux
-      else
-        !$omp simd
-        do g = 1, self % nG
-          attenuate(g) = exponential(totVec(g) * length)
-          delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-          fluxVec(g) = fluxVec(g) - delta(g)
-        end do
+        self % cellHit(cIdx) = 1
+      
       end if
 
       ! Check for a vacuum hit
@@ -1240,6 +1241,7 @@ contains
   !!
   subroutine kill(self)
     class(fixedSourceTRRMPhysicsPackage), intent(inout) :: self
+    integer(shortInt) :: i
 
     ! Clean Nuclear Data, Geometry and visualisation
     call gr_kill()
@@ -1256,6 +1258,13 @@ contains
     self % bottom    = ZERO
     self % mgData    => null()
     self % nG        = 0
+    
+    if(allocated(self % locks)) then
+      do i = 1, self % nCells
+        call OMP_destroy_lock(self % locks(i))
+      end do
+      deallocate(self % locks)
+    end if
     self % nCells    = 0
 
     self % termination = ZERO

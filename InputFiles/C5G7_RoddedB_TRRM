@@ -1031,34 +1031,34 @@ latCore
 }
 
 viz {
-  bmp1 { 
-    type bmp; 
-    output material_yz; 
-    what material; 
-    centre (-21.42 0.0 0.0); 
-    axis x; 
-    res (2000 2000);  }
-  bmp2 { 
-    type bmp; 
-    output material_xy; 
-    what material; 
-    centre (0.0 0.0 31.0); 
-    axis z; 
-    res (2000 2000);  }
-  bmp3 { 
-    type bmp; 
-    output ID_yz; 
-    what uniqueID; 
-    centre (-21.42 0.0 0.0); 
-    axis x; 
-    res (2000 2000);  }
-//  myVTK {
-//    type vtk;
+//  bmp1 { 
+//    type bmp; 
+//    output material_yz; 
+//    what material; 
+//    centre (-21.42 0.0 0.0); 
+//    axis x; 
+//    res (2000 2000);  }
+//  bmp2 { 
+//    type bmp; 
+//    output material_xy; 
+//    what material; 
+//    centre (0.0 0.0 31.0); 
+//    axis z; 
+//    res (2000 2000);  }
+//  bmp3 { 
+//    type bmp; 
+//    output ID_yz; 
 //    what uniqueID; 
-//    corner (-21.42 -32.13 -32.13);
-//    width (0.1 64.26 64.26);
-//    vox (1 2000 2000);
-//  }
+//    centre (-21.42 0.0 0.0); 
+//    axis x; 
+//    res (2000 2000);  }
+  myVTK {
+    type vtk;
+    what uniqueID; 
+    corner (-21.42 -32.13 -32.13);
+    width (0.1 64.26 64.26);
+    vox (1 2000 2000);
+  }
 } 
 
 
