@@ -1,9 +1,9 @@
 module scoreMemory_class
 
   use numPrecision
-  use universalVariable, only : array_pad
-  use genericProcedures, only : fatalError, numToChar
-  use openmp_func,       only : ompGetMaxThreads, ompGetThreadNum
+  use universalVariables, only : array_pad
+  use genericProcedures,  only : fatalError, numToChar
+  use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
 
   implicit none
   private
