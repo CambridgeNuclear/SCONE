@@ -181,10 +181,10 @@ contains
     character(100),parameter :: Here = 'score_defReal (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    !if( idx < 0_longInt .or. idx > self % N) then
-    !  call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
-    !                        & memory with size '//numToChar(self % N))
-    !end if
+    if( idx < 0_longInt .or. idx > self % N) then
+      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
+                            & memory with size '//numToChar(self % N))
+    end if
 
     ! Add the score
     thread_idx = ompGetThreadNum() + 1
