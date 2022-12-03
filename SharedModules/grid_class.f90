@@ -52,7 +52,7 @@ contains
 
     ! Verify input
     if ( N < 1) call fatalError(Here,'Number of bins must be +ve')
-    if ((maxi-mini)/maxi < FP_REL_TOL)  then
+    if (abs((maxi-mini)/maxi) < FP_REL_TOL)  then
       call fatalError(Here,'Minimum value must be smaller then maximum above realtive FP tolerance')
     end if
 

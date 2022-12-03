@@ -191,7 +191,7 @@ contains
     do i=1,self % nMT
       ! Get index in MT reaction grid
       idxT = idx - self % MTdata(i) % firstIdx + 1
-      if( idxT < 0 ) cycle
+      if( idxT < 1 ) cycle
 
       ! Get top and bottom XS
       topXS = self % MTdata(i) % xs(idxT+1)
