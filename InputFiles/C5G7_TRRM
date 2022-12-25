@@ -1,10 +1,10 @@
 type randomRayPhysicsPackage; 
 
-pop      1750; //650;
-active   1000; //300; 
-inactive 1000; //1038;
-dead     20; //12.56; 
-termination 220; //628.12; 
+pop      1750; 
+active   2600;  
+inactive 1000; 
+dead     20;  
+termination 220;  
 plot 0;
 cache 1;
 XSdata   mg; 
@@ -15,6 +15,11 @@ fissionMap {type multiMap;
             maps (xax yax);
             xax { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;}
             yax { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;}
+}
+fluxMap {type multiMap;
+            maps (xax yax);
+            xax { type spaceMap; axis x; grid lin; min -32.13; max 32.13; N 51;}
+            yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
 }
                    
 geometry { 

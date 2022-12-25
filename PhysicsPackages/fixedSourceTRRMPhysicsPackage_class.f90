@@ -660,7 +660,7 @@ contains
     type(ray), intent(inout)                            :: r
     real(defReal)                                       :: mu, phi
     real(defReal), dimension(3)                         :: u, rand3, x
-    integer(shortInt)                                   :: i, matIdx, cIdx, g
+    integer(shortInt)                                   :: i, matIdx, cIdx
     character(100), parameter :: Here = 'initialiseRay (fixedSourceTRRMPhysicsPackage_class.f90)'
 
     i = 0

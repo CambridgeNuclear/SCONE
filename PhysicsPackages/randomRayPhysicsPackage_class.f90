@@ -86,6 +86,7 @@ module randomRayPhysicsPackage_class
   !!     #seed 86868;#         // Optional RNG seed
   !!     #cache 1;#            // Optionally use distance caching to accelerate ray tracing
   !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
+  !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!
   !!     geometry {<Geometry Definition>}
@@ -164,6 +165,8 @@ module randomRayPhysicsPackage_class
     type(visualiser)   :: viz
     logical(defBool)   :: mapFission  = .false.
     class(tallyMap), allocatable :: resultsMap
+    logical(defBool)   :: mapFlux     = .false.
+    class(tallyMap), allocatable :: fluxMap
 
     ! Results space
     real(defReal)                                :: keff
@@ -285,6 +288,16 @@ contains
       call new_tallyMap(self % resultsMap, tempDict)
     else
       self % mapFission = .false.
+    end if
+    
+    ! Check whether there is a map for outputting one-group fluxes
+    ! If so, read and initialise the map to be used
+    if (dict % isPresent('fluxMap')) then
+      self % mapFlux = .true.
+      tempDict => dict % getDictPtr('fluxMap')
+      call new_tallyMap(self % fluxMap, tempDict)
+    else
+      self % mapFlux = .false.
     end if
 
     ! Register timer
@@ -1136,10 +1149,65 @@ contains
         call out % addResult(fiss(idx), fissSTD(idx))
       end do
       call out % endArray()
-      call out % endBlock()
-      
       ! Output tally map
       call self % resultsMap % print(out)
+      call out % endBlock()
+      
+      deallocate(fiss)
+      deallocate(fissSTD)
+    end if
+
+    ! Send fluxes to map output
+    if (self % mapFlux) then
+      resArrayShape = self % fluxMap % binArrayShape()
+      allocate(fiss(self % fluxMap % bins(0)))
+      allocate(fissSTD(self % fluxMap % bins(0)))
+      fiss    = ZERO
+      fissSTD = ZERO
+
+      ! Find whether cells are in map and sum their contributions
+      !$omp parallel do reduction(+: fiss, fissSTD)
+      do cIdx = 1, self % nCells
+        
+        vol    =  self % volume(cIdx)
+        if (vol < volume_tolerance) cycle
+
+        ! Fudge a particle state to search tally map
+        s % r = self % cellPos(cIdx,:)
+        i = self % fluxMap % map(s)
+
+        if (i > 0) then
+          do g = 1, self % nG
+            idx = (cIdx - 1)* self % nG + g
+            fiss(i) = fiss(i) + vol * self % fluxScores(idx,1)
+            ! Is this correct? Also neglects uncertainty in volume - assumed small.
+            fissSTD(i) = fissSTD(i) + &
+                    self % fluxScores(idx,2)*self % fluxScores(idx,2) * vol * vol
+          end do
+        end if
+
+      end do
+      !$omp end parallel do
+
+      do i = 1,size(fissSTD)
+        fissSTD(i) = sqrt(fissSTD(i))
+        if (fiss(i) > 0) fissSTD(i) = fissSTD(i) / fiss(i)
+      end do
+
+      name = 'flux1G'
+      call out % startBlock(name)
+      call out % startArray(name, resArrayShape)
+      ! Add all map elements to results
+      do idx = 1, self % fluxMap % bins(0)
+        call out % addResult(fiss(idx), fissSTD(idx))
+      end do
+      call out % endArray()
+      ! Output tally map
+      call self % fluxMap % print(out)
+      call out % endBlock()
+      
+      deallocate(fiss)
+      deallocate(fissSTD)
     end if
 
     call out % writeToFile(self % outputFile)
@@ -1239,6 +1307,7 @@ contains
     self % active      = 0
     self % cache       = .false.
     self % mapFission  = .false.
+    self % mapFlux     = .false.
     self % plotResults = .false.
     self % printFlux   = .false.
     self % printVolume = .false.
@@ -1256,6 +1325,10 @@ contains
     if(allocated(self % resultsMap)) then
       call self % resultsMap % kill()
       deallocate(self % resultsMap)
+    end if
+    if(allocated(self % fluxMap)) then
+      call self % resultsMap % kill()
+      deallocate(self % fluxMap)
     end if
 
   end subroutine kill
