@@ -158,7 +158,7 @@ contains
     character(100), parameter :: Here = ' getTotalXS (baseMgNeutronMaterial_class.f90)'
 
     ! Verify bounds
-    if(G < 1 .or. self % nGroups() < G) then
+    if (G < 1 .or. self % nGroups() < G) then
       call fatalError(Here,'Invalid group number: '//numToChar(G)// &
                            ' Data has only: ' // numToChar(self % nGroups()))
       xs = ZERO ! Avoid warning

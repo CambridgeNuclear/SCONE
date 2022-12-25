@@ -23,23 +23,23 @@ module aceNeutronDatabaseUni_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = " &
-  water { temp 273;                           &
-         composition {                        &
-         1001.03 5.028E-02;                   &
-         8016.03 2.505E-02;                   &
-         }                                    &
-       }                                      &
-  uo2  { temp 1;                              &
-          composition {                       &
-          92233.03 2.286E-02;                 &
-          8016.03  4.572E-02;                 &
-          }                                   &
-        }"
+  character(*),parameter :: MAT_INPUT_STR = &
+  & " water { temp 273;         &
+  &       composition {         &
+  &       1001.03 5.028E-02;    &
+  &       8016.03 2.505E-02;    &
+  &                   }         &
+  &         }                   &
+  & uo2  { temp 1;              &
+  &        composition {        &
+  &        92233.03 2.286E-02;  &
+  &        8016.03  4.572E-02;  &
+  &                    }        &
+  &      }"
 
   ! CE Neutron Database specification
-  character(*),parameter :: ACE_INPUT_STR = " &
-  aceLibrary ./IntegrationTestFiles/testLib;    "
+  character(*),parameter :: ACE_INPUT_STR = &
+  & "aceLibrary ./IntegrationTestFiles/testLib;    "
 
 contains
 

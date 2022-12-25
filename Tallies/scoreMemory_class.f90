@@ -1,8 +1,9 @@
 module scoreMemory_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, numToChar
-  use openmp_func,       only : ompGetMaxThreads, ompGetThreadNum
+  use universalVariables, only : array_pad
+  use genericProcedures,  only : fatalError, numToChar
+  use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
 
   implicit none
   private
@@ -131,7 +132,7 @@ contains
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(N+64, self % nThreads))
+    allocate( self % parallelBins(N + array_pad, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
