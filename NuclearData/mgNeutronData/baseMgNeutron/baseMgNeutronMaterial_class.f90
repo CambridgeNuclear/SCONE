@@ -81,11 +81,15 @@ module baseMgNeutronMaterial_class
     procedure :: getNuFissionXS
     procedure :: getFissionXS
     procedure :: getChi
-    procedure :: getScatterProdXS
+    procedure :: getScatterXS
 
     ! Local procedures
     procedure :: init
     procedure :: nGroups
+    procedure :: getTotalPtr
+    procedure :: getNuFissionPtr
+    procedure :: getChiPtr
+    procedure :: getScatterPtr
 
   end type baseMgNeutronMaterial
 
@@ -243,11 +247,11 @@ contains
   end function getChi
 
   !!
-  !! Return scatter production XS for incoming energy group Gin and outgoing group Gout
+  !! Return scatter XS for incoming energy group Gin and outgoing group Gout
   !!
   !! See mgNeutronMaterial documentationfor details
   !!
-  function getScatterProdXS(self, Gin, Gout, rand) result(xs)
+  function getScatterXS(self, Gin, Gout, rand) result(xs)
     class(baseMgNeutronMaterial), intent(in) :: self
     integer(shortInt), intent(in)            :: Gin
     integer(shortInt), intent(in)            :: Gout
@@ -261,9 +265,9 @@ contains
                            //' Data has only: ' // numToChar(self % nGroups()))
       xs = ZERO ! Avoid warning
     end if
-    xs = self % scatter % P0(Gout,Gin) * self % scatter % prod(Gout,Gin)
+    xs = self % scatter % P0(Gout,Gin) 
   
-  end function getScatterProdXS
+  end function getScatterXS
 
 
   !!
@@ -399,7 +403,59 @@ contains
     end if
 
   end function nGroups
+  
+  !!
+  !! Return pointer to Total XSs 
+  !!
+  function getTotalPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: xs
 
+    xs => self % data(TOTAL_XS, :)
+
+  end function getTotalPtr
+  
+  !!
+  !! Return pointer to NuFission XSs 
+  !!
+  function getNuFissionPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: xs
+
+    if (self % isFissile()) then
+      xs => self % data(NU_FISSION, :)
+    else
+      xs => null()
+    end if
+
+  end function getNuFissionPtr
+  
+  !!
+  !! Return pointer to Chis 
+  !!
+  function getChiPtr(self) result(chi)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: chi
+
+    if (self % isFissile()) then
+      chi => self % fission % data(:,2)
+    else
+      chi => null()
+    end if
+
+  end function getChiPtr
+  
+  !!
+  !! Return pointer to scatter XSs 
+  !!
+  function getScatterPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:,:), pointer           :: xs
+
+    xs => self % scatter % P0(:, :)
+
+  end function getScatterPtr
+  
   !!
   !! Cast materialHandle pointer to baseMgNeutronMaterial type pointer
   !!

@@ -1,8 +1,8 @@
 type eigenPhysicsPackage; 
 
-pop      12000;
-active   20;
-inactive 300;
+pop      20000;
+active   10400;
+inactive 50;
 XSdata   mg; 
 dataType mg;
 outputFile C5G7_MGMC_2D ;
@@ -13,7 +13,6 @@ transportOperator { type transportOperatorST;  }
                    
 inactiveTally {
 	  } 
-					} 
 
 activeTally {
   fissionMap {type collisionClerk;
@@ -24,6 +23,15 @@ activeTally {
               }
          response (fiss);
          fiss { type macroResponse; MT -6; }
+         }
+  fluxMap {type collisionClerk;
+              map {type multiMap;
+              maps (xax yax);
+              xax { type spaceMap; axis x; grid lin; min -32.13; max 32.71; N 51;}
+              yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
+              }
+         response (flx);
+         flx { type fluxResponse; }
          }
 } 
 
@@ -43,18 +51,12 @@ geometry {
     	root { id 1000; type rootUniverse; border 3; fill u<100>; }  
     
     // Pin universes 
-    //pin1 { id 1; type pinUniverse; radii (0.5400  0.0  );  fills (UO2    water);}
-    //pin2 { id 2; type pinUniverse; radii (0.5400  0.0  );  fills (GT     water);}
-    //pin3 { id 3; type pinUniverse; radii (0.5400  0.0  );  fills (mox43  water);}
-    //pin4 { id 4; type pinUniverse; radii (0.5400  0.0  );  fills (mox7   water);}    
-    //pin5 { id 5; type pinUniverse; radii (0.5400  0.0  );  fills (mox87  water);}           
-    //pin6 { id 6; type pinUniverse; radii (0.5400  0.0  );  fills (FC     water);}
-    pin1 { id 1; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (UO2 UO2 UO2 water water water);}
-    pin2 { id 2; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (GT GT GT water water water);}
-    pin3 { id 3; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox43 mox43 mox43 water water water);}
-    pin4 { id 4; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox7 mox7 mox7 water water water);}    
-    pin5 { id 5; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (mox87 mox87 mox87 water water  water);}           
-    pin6 { id 6; type azimPinUniverse; naz 8; radii (0.311769 0.440908 0.5400 0.66 0.78 0.0 );  fills (FC FC FC water water water);}
+    pin1 { id 1; type pinUniverse; radii (0.5400  0.0  );  fills (UO2    water);}
+    pin2 { id 2; type pinUniverse; radii (0.5400  0.0  );  fills (GT     water);}
+    pin3 { id 3; type pinUniverse; radii (0.5400  0.0  );  fills (mox43  water);}
+    pin4 { id 4; type pinUniverse; radii (0.5400  0.0  );  fills (mox7   water);}    
+    pin5 { id 5; type pinUniverse; radii (0.5400  0.0  );  fills (mox87  water);}           
+    pin6 { id 6; type pinUniverse; radii (0.5400  0.0  );  fills (FC     water);}
 
     // Infinite moderator
     pin30 { id 30; type pinUniverse; radii (0.0); fills (water);}      

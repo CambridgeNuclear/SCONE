@@ -129,7 +129,9 @@ contains
     self % bins = ZERO
 
     self % nThreads = ompGetMaxThreads()
-    allocate( self % parallelBins(N,self % nThreads))
+
+    ! Note the array padding to avoid false sharing
+    allocate( self % parallelBins(N+64, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -267,21 +269,31 @@ contains
   subroutine closeCycle(self, normFactor)
     class(scoreMemory), intent(inout) :: self
     real(defReal),intent(in)          :: normFactor
+    integer(longInt)                  :: i
+    real(defReal), save               :: res
+    !$omp threadprivate(res)
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
-      ! Normalise scores
-      self % parallelBins = self % parallelBins * normFactor
+      
+      !$omp parallel do schedule(static)
+      do i = 1, self % N
+        
+        ! Normalise scores
+        self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
+        res = sum(self % parallelBins(i,:))
+        
+        ! Zero all score bins
+        self % parallelBins(i,:) = ZERO
+       
+        ! Increment cumulative sums 
+        self % bins(i,CSUM)  = self % bins(i,CSUM) + res
+        self % bins(i,CSUM2) = self % bins(i,CSUM2) + res * res
 
-      ! Increment cumulative sums
-      self % bins(:,CSUM)  = self % bins(:,CSUM) + sum(self % parallelBins,2)
-      self % bins(:,CSUM2) = self % bins(:,CSUM2) + &
-              sum(self % parallelBins,2) * sum(self % parallelBins,2)
-
-      ! Zero all score bins
-      self % parallelBins = ZERO
+      end do
+      !$omp end parallel do
 
       ! Increment batch counter
       self % batchN = self % batchN + 1

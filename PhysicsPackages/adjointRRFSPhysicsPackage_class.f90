@@ -1,4 +1,4 @@
-module randomRayPhysicsPackage_class
+module adjointRRFSPhysicsPackage_class
 
   use numPrecision
   use universalVariables
@@ -41,11 +41,7 @@ module randomRayPhysicsPackage_class
   use tallyMapFactory_func,           only : new_tallyMap
 
   ! Random ray - or a standard particle
-  ! Also particleState for easier output
-  use particle_class,                      only : ray => particle, particleState
-
-  ! For locks
-  use omp_lib
+  use particle_class,                 only : ray => particle
 
   implicit none
   private
@@ -53,20 +49,23 @@ module randomRayPhysicsPackage_class
   ! Parameter for when to skip a tiny volume
   real(defReal), parameter :: volume_tolerance = 1.0E-15
 
+  ! Parameters for when forward or adjoint
+  logical(defBool), parameter :: FORWARD = .true.
+  logical(defBool), parameter :: ADJOINT = .false.
+
   !!
-  !! Physics package to perform The Random Ray Method (TRRM) eigenvalue calculations
+  !! Physics package to perform simultaneous forward and adjoint (TRRM) fixed source calculations
   !!
-  !! Tracks rays across the geometry, attenuating their flux. After some dead length,
-  !! rays begin scoring to estimates of the scalar flux and volume. Each ray has a
+  !! Tracks rays across the geometry, attenuating their foward+adjoint flux. After some dead length,
+  !! rays begin scoring to estimates of the fluxes and volume. Each ray has a
   !! uniform termination length, after which it is stopped and the next ray is tracked.
-  !! Once all rays have been tracked, a cycle concludes and fluxes, sources, and keff
-  !! are updated.
+  !! Once all rays have been tracked, a cycle concludes and fluxes and sources are updated.
   !!
-  !! Both inactive and active cycles occur, as in Monte Carlo. These can be terminated
+  !! Both inactive and active cycles occur, as in eigenvalue calculations. These can be terminated
   !! after a specified number of iterations or on reaching some chosen convergence
   !! criterion (though the latter hasn't been implemented yet).
   !!
-  !! Calculates relative volume of diffrent materials in the problem by performing
+  !! Calculates relative volume of different materials in the problem by performing
   !! random ray tracing in the geometry. The volume is normalised such that the total domain
   !! volume is 1.0.
   !!
@@ -77,19 +76,29 @@ module randomRayPhysicsPackage_class
   !!
   !! Sample Input Dictionary:
   !!   PP {
-  !!     type randomRayPhysicsPackage;
-  !!     dead 10;              // Dead length where rays do not score to scalar fluxes
+  !!     type adjointRRFSPhysicsPackage;
+  !!     dead 10;              // Dead length where rays do not score to adjoint fluxes
   !!     termination 100;      // Length a ray travels before it is terminated
   !!     rays 1000;            // Number of rays to sample per iteration
   !!     inactive 100;         // Number of convergence cycles (would use accum and std otherwise)
   !!     active 200;           // Number of scoring cycles (would use eps otherwise)
   !!     #seed 86868;#         // Optional RNG seed
   !!     #cache 1;#            // Optionally use distance caching to accelerate ray tracing
-  !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
-  !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!
-  !!     geometry {<Geometry Definition>}
+  !!     #source {             // Fixed sources for named materials and their intensities n/cm3/s
+  !!                           // Intensities are in each energy group, from 1 to G
+  !!         material_name1 ( s_g1 s_g2 ... s_gG );
+  !!         ...
+  !!      } #
+  !!
+  !!     #adjSource {          // Fixed adjoint sources for named materials and their intensities n/cm3/s
+  !!                           // Intensities are in each energy group, from 1 to G
+  !!         material_name1 ( s_g1 s_g2 ... s_gG );
+  !!         ...
+  !!      } #
+  !!
+  !!     geometry {<Geometry definition>}
   !!     nuclearData {<Nuclear data definition>}
   !!   }
   !!
@@ -110,41 +119,46 @@ module randomRayPhysicsPackage_class
   !!   pop         -> Number of rays to track per cycle
   !!   inactive    -> Number of inactive cycles to perform
   !!   active      -> Number of active cycles to perform
-  !!   cache       -> Logical check whether to use distance caching
+  !!   cache       -> Perform distance caching?
   !!   outputFile  -> Output file name
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
-  !!   printFluxes -> Print fluxes?
+  !!   printFluxes -> Print adjoint fluxes?
   !!   printVolume -> Print volumes?
   !!   printCells  -> Print cell positions?
   !!   viz         -> Output visualiser
-  !!   mapFission  -> Output fission rates across a given map?
-  !!   resultsMap  -> The map across which to output fission rate results
   !!
-  !!   keff        -> Estimated value of keff
-  !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
-  !!   scalarFlux  -> Array of scalar flux values of length = nG * nCells
-  !!   prevFlux    -> Array of previous scalar flux values of length = nG * nCells
-  !!   fluxScore   -> Array of scalar flux values and squared values to be reported 
-  !!                  in results, dimension =  [nG * nCells, 2]
-  !!   source      -> Array of neutron source values of length = nG * nCells
-  !!   volume      -> Array of stochastically estimated cell volumes of length = nCells
-  !!   cellHit     -> Array tracking whether given cells have been hit during tracking
-  !!   cellFound   -> Array tracking whether a cell was ever found
-  !!   cellPos     -> Array of cell positions, populated once they are found
+  !!   scalarFlux   -> Array of scalar flux values of length = nG * nCells
+  !!   prevFlux     -> Array of previous flux values of length = nG * nCells
+  !!   adjointFlux  -> Array of adjoint flux values of length = nG * nCells
+  !!   prevAdjFlux  -> Array of previous adjoint flux values of length = nG * nCells
+  !!   fwdAdjFlux   -> Array of combined forward*adjoint flux values of length = ng * nCells
+  !!   fluxScore    -> Array of flux values and squared values to be reported 
+  !!                   in results, dimension =  [nG * nCells, 2]
+  !!   adjFluxScore -> Array of adjoint flux values and squared values to be reported 
+  !!                   in results, dimension =  [nG * nCells, 2]
+  !!   fwdAdjScore  -> Array of forward*adjoint flux values and squared values to be reported 
+  !!                   in results, dimension =  [nG * nCells, 2]
+  !!   source       -> Array of source values of length = nG * nCells
+  !!   adjSource    -> Array of adjoint source values of length = nG * nCells
+  !!   fixedSource  -> Array of fixed source values of length = nG * nCells
+  !!   volume       -> Array of stochastically estimated cell volumes of length = nCells
+  !!   cellHit      -> Array tracking whether given cells have been hit during tracking
+  !!   cellFound    -> Array tracking whether a cell was ever found
+  !!   cellPos      -> Array of cell positions, populated once they are found
   !!
   !! Interface:
   !!   physicsPackage interface
   !!
-  type, public, extends(physicsPackage) :: randomRayPhysicsPackage
+  type, public, extends(physicsPackage) :: adjointRRFSPhysicsPackage
     private
     ! Components
     class(geometryStd), pointer           :: geom
     integer(shortInt)                     :: geomIdx     = 0
     real(defReal), dimension(3)           :: top         = ZERO
     real(defReal), dimension(3)           :: bottom      = ZERO
-    type(RNG)                             :: rand
     class(baseMgNeutronDatabase), pointer :: mgData      => null()
+    type(RNG)                             :: rand
     integer(shortInt)                     :: nG          = 0
     integer(shortInt)                     :: nCells      = 0
     real(defReal)                         :: lengthPerIt = ZERO
@@ -158,23 +172,35 @@ module randomRayPhysicsPackage_class
     logical(defBool)   :: cache       = .false.
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
-    logical(defBool)   :: plotResults = .false.
-    logical(defBool)   :: printFlux   = .false.
-    logical(defBool)   :: printVolume = .false.
-    logical(defBool)   :: printCells  = .false.
+    logical(defBool)   :: plotResults  = .false.
+    logical(defBool)   :: printFlux    = .false.
+    logical(defBool)   :: printAdjoint = .false.
+    logical(defBool)   :: printComb    = .false.
+    logical(defBool)   :: printVolume  = .false.
+    logical(defBool)   :: printCells   = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFission  = .false.
-    class(tallyMap), allocatable :: resultsMap
-    logical(defBool)   :: mapFlux     = .false.
-    class(tallyMap), allocatable :: fluxMap
 
     ! Results space
-    real(defReal)                                :: keff
-    real(defReal), dimension(2)                  :: keffScore
+    ! Fluxes and previous fluxes
     real(defReal), dimension(:), allocatable     :: scalarFlux
+    real(defReal), dimension(:), allocatable     :: adjointFlux
+    real(defReal), dimension(:), allocatable     :: combFlux
     real(defReal), dimension(:), allocatable     :: prevFlux
+    real(defReal), dimension(:), allocatable     :: prevAdjFlux
+    
+    ! Scores for final results
     real(defReal), dimension(:,:), allocatable   :: fluxScores
+    real(defReal), dimension(:,:), allocatable   :: adjointScores
+    real(defReal), dimension(:,:), allocatable   :: combScores
+    
+    ! Fixed and general sources
     real(defReal), dimension(:), allocatable     :: source
+    real(defReal), dimension(:), allocatable     :: fixedSource
+    real(defReal), dimension(:), allocatable     :: adjSource
+    real(defReal), dimension(:), allocatable     :: adjFSource
+    real(defReal), dimension(:), allocatable     :: combSource
+    
+    ! Volume estimates
     real(defReal), dimension(:), allocatable     :: volume
     real(defReal), dimension(:), allocatable     :: volumeTracks
 
@@ -182,9 +208,6 @@ module randomRayPhysicsPackage_class
     integer(shortInt), dimension(:), allocatable :: cellHit
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
-
-    ! OMP locks
-    integer(kind=omp_lock_kind), dimension(:), allocatable :: locks
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -201,18 +224,18 @@ module randomRayPhysicsPackage_class
 
     ! Private procedures
     procedure, private :: cycles
+    procedure, private :: initialiseSource
     procedure, private :: initialiseRay
     procedure, private :: transportSweep
     procedure, private :: sourceUpdateKernel
-    procedure, private :: calculateKeff
     procedure, private :: normaliseFluxAndVolume
     procedure, private :: resetFluxes
-    procedure, private :: accumulateFluxAndKeffScores
-    procedure, private :: finaliseFluxAndKeffScores
+    procedure, private :: accumulateFluxScores
+    procedure, private :: finaliseFluxScores
     procedure, private :: printResults
     procedure, private :: printSettings
 
-  end type randomRayPhysicsPackage
+  end type adjointRRFSPhysicsPackage
 
 contains
 
@@ -222,19 +245,19 @@ contains
   !! See physicsPackage_inter for details
   !!
   subroutine init(self,dict)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(inout)              :: dict
-    integer(shortInt)                             :: seed_temp, i
-    integer(longInt)                              :: seed
-    character(10)                                 :: time
-    character(8)                                  :: date
-    character(:),allocatable                      :: string
-    class(dictionary),pointer                     :: tempDict, graphDict
-    class(mgNeutronDatabase),pointer              :: db
-    character(nameLen)                            :: geomName, graphType, nucData
-    class(geometry), pointer                      :: geom
-    type(outputFile)                              :: test_out
-    character(100), parameter :: Here = 'init (randomRayPhysicsPackage_class.f90)'
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(inout)                :: dict
+    integer(shortInt)                               :: seed_temp
+    integer(longInt)                                :: seed
+    character(10)                                   :: time
+    character(8)                                    :: date
+    character(:),allocatable                        :: string
+    class(dictionary),pointer                       :: tempDict, graphDict, sourceDict
+    class(mgNeutronDatabase),pointer                :: db
+    character(nameLen)                              :: geomName, graphType, nucData
+    class(geometry), pointer                        :: geom
+    type(outputFile)                                :: test_out
+    character(100), parameter :: Here = 'init (adjointRRFSPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
     
@@ -247,16 +270,18 @@ contains
     call dict % get(self % inactive, 'inactive')
     
     ! Perform distance caching?
-    call dict % getOrDefault(self % cache, 'cache', .false.)
+    call dict % getOrDefault(self % cache, 'cache', .FALSE.)
 
     ! Print fluxes?
-    call dict % getOrDefault(self % printFlux, 'printFlux', .false.)
+    call dict % getOrDefault(self % printFlux, 'printFlux', .FALSE.)
+    call dict % getOrDefault(self % printAdjoint, 'printAdjoint', .FALSE.)
+    call dict % getOrDefault(self % printComb, 'printComb', .FALSE.)
 
     ! Print volumes?
-    call dict % getOrDefault(self % printVolume, 'printVolume', .false.)
+    call dict % getOrDefault(self % printVolume, 'printVolume', .FALSE.)
 
     ! Print cell positions?
-    call dict % getOrDefault(self % printCells, 'printCells', .false.)
+    call dict % getOrDefault(self % printCells, 'printCells', .FALSE.)
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -279,26 +304,6 @@ contains
     ! Ensure termination length is longer than dead length
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
-
-    ! Check whether there is a map for outputting fission rates
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fissionMap')) then
-      self % mapFission = .true.
-      tempDict => dict % getDictPtr('fissionMap')
-      call new_tallyMap(self % resultsMap, tempDict)
-    else
-      self % mapFission = .false.
-    end if
-    
-    ! Check whether there is a map for outputting one-group fluxes
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fluxMap')) then
-      self % mapFlux = .true.
-      tempDict => dict % getDictPtr('fluxMap')
-      call new_tallyMap(self % fluxMap, tempDict)
-    else
-      self % mapFlux = .false.
-    end if
 
     ! Register timer
     self % timerMain = registerTimer('simulationTime')
@@ -341,12 +346,12 @@ contains
     if (graphType /= 'extended') call fatalError(Here,&
             'Geometry graph type must be "extended" for random ray calculations.')
 
-    ! Activatee nuclear data
+    ! Activate nuclear data
     call ndReg_activate(P_NEUTRON_MG, nucData, self % geom % activeMats())
 
     ! Ensure that nuclear data is multi-group
     db => ndReg_getNeutronMG()
-    if (.not. associated(db)) call fatalError(Here,&
+    if (.NOT. associated(db)) call fatalError(Here,&
             'No MG nuclear database was constructed')
 
     ! Ensure nuclear data is baseMgNeutronDatabase
@@ -377,7 +382,7 @@ contains
     endif
     
     ! Check for results plotting and initialise VTK
-    call dict % getOrDefault(self % plotResults,'plot',.false.)
+    call dict % getOrDefault(self % plotResults,'plot',.FALSE.)
     if (self % plotResults) then
       ! Initialise a visualiser to be used when results are available
       print *, "Initialising results visualiser"
@@ -392,25 +397,107 @@ contains
 
     ! Allocate results space
     allocate(self % scalarFlux(self % nCells * self % nG))
+    allocate(self % adjointFlux(self % nCells * self % nG))
+    allocate(self % combFlux(self % nCells * self % nG))
     allocate(self % prevFlux(self % nCells * self % nG))
+    allocate(self % prevAdjFlux(self % nCells * self % nG))
     allocate(self % fluxScores(self % nCells * self % nG, 2))
+    allocate(self % adjointScores(self % nCells * self % nG, 2))
+    allocate(self % combScores(self % nCells * self % nG, 2))
     allocate(self % source(self % nCells * self % nG))
+    allocate(self % adjSource(self % nCells * self % nG))
+    allocate(self % combSource(self % nCells * self % nG))
+    allocate(self % fixedSource(self % nCells * self % nG))
+    allocate(self % adjFSource(self % nCells * self % nG))
     allocate(self % volume(self % nCells))
     allocate(self % volumeTracks(self % nCells))
     allocate(self % cellHit(self % nCells))
     allocate(self % cellFound(self % nCells))
     allocate(self % cellPos(self % nCells, 3))
     
+    ! Read and initialise the fixed sources
+    sourceDict => dict % getDictPtr('source')
+    call self % initialiseSource(sourceDict, FORWARD)
+    sourceDict => dict % getDictPtr('adjSource')
+    call self % initialiseSource(sourceDict, ADJOINT)
+
     ! Set active length traveled per iteration
     self % lengthPerIt = (self % termination - self % dead) * self % pop
-    
-    ! Initialise OMP locks
-    allocate(self % locks(self % nCells))
-    do i = 1, self % nCells
-      call omp_init_lock(self % locks(i))
-    end do
 
   end subroutine init
+
+  !!
+  !! Initialises the fixed sources to be used in the simulation
+  !! Takes a dictionary containing names of materials in the geometry and
+  !! source strengths in each energy group and places these in the appropriate
+  !! elements of the fixed source vector
+  !! If isForward is true, makes the forward source. Otherwise makes the adjoint.
+  !!
+  subroutine initialiseSource(self, dict, isForward)
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(inout)                :: dict
+    logical(defBool), intent(in)                    :: isForward
+    character(nameLen),dimension(:), allocatable    :: names
+    real(defReal), dimension(:), allocatable        :: sourceStrength
+    integer(shortInt)                               :: cIdx, i
+    integer(shortInt), save                         :: g, matIdx, idx
+    logical(defBool)                                :: found
+    character(nameLen)                              :: sourceName 
+    character(nameLen), save                        :: localName
+    character(100), parameter :: Here = 'initialiseSource (adjointRRFSPhysicsPackage_class.f90)'
+    !$omp threadprivate(matIdx, localName, idx, g)
+
+    if (isForward) then
+      self % fixedSource = ZERO
+    else
+      self % adjFSource = ZERO
+    end if
+
+    call dict % keys(names)
+
+    ! Cycle through entries of the dictionary
+    do i = 1, size(names)
+
+      sourceName = names(i)
+      call dict % get(sourceStrength, sourceName)
+
+      ! Ensure correct number of energy groups
+      if (size(sourceStrength) /= self % nG) call fatalError(Here,'Source '//sourceName//&
+              ' has '//numToChar(size(sourceStrength))//' groups rather than '//numToChar(self % nG))
+      
+      ! Make sure that the source corresponds to a material present in the geometry
+      found = .FALSE.
+      !$omp parallel do schedule(static) 
+      do cIdx = 1, self % nCells
+
+        matIdx    = self % geom % geom % graph % getMatFromUID(cIdx)
+        localName = mm_matName(matIdx)
+
+        if (localName == sourceName) then
+
+          found = .TRUE.
+          do g = 1, self % nG
+            
+            idx = (cIdx - 1) * self % nG + g
+            if (isForward) then
+              self % fixedSource(idx) = sourceStrength(g)
+            else
+              self % adjFSource(idx) = sourceStrength(g)
+            end if
+
+          end do
+
+        end if
+
+      end do
+      !$omp end parallel do
+
+      if (.NOT. found) call fatalError(Here,'The source '//trim(sourceName)//' does not correspond to '//&
+              'any material found in the geometry.')
+
+    end do
+
+  end subroutine initialiseSource
 
   !!
   !! Run calculation
@@ -418,7 +505,7 @@ contains
   !! See physicsPackage_inter for details
   !!
   subroutine run(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
 
     call self % printSettings()
     call self % cycles()
@@ -438,19 +525,16 @@ contains
   !! Inactive and active iterations occur, terminating subject either to 
   !! given criteria or when a fixed number of iterations has been passed.
   !!
-  !! Args:
-  !!   rand [inout] -> Initialised random number generator
-  !!
   subroutine cycles(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    type(ray), save                               :: r
-    type(RNG), target, save                       :: pRNG
-    real(defReal)                                 :: hitRate, ONE_KEFF
-    real(defReal)                                 :: elapsed_T, end_T, T_toEnd, transport_T
-    logical(defBool)                              :: stoppingCriterion, isActive
-    integer(shortInt)                             :: i, itInac, itAct, it
-    integer(longInt), save                        :: ints
-    integer(longInt)                              :: intersections
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    type(ray), save                                 :: r
+    type(RNG), target, save                         :: pRNG
+    real(defReal)                                   :: hitRate
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, transport_T
+    logical(defBool)                                :: stoppingCriterion, isActive
+    integer(shortInt)                               :: i, itInac, itAct, it
+    integer(longInt), save                          :: ints
+    integer(longInt)                                :: intersections
     !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
@@ -458,12 +542,17 @@ contains
     call timerStart(self % timerMain)
 
     ! Initialise fluxes 
-    self % keff       = ONE
-    self % scalarFlux = ZERO
-    self % prevFlux   = ONE
-    self % fluxScores = ZERO
-    self % keffScore  = ZERO
-    self % source     = ZERO
+    self % scalarFlux    = ZERO
+    self % adjointFlux   = ZERO
+    self % combFlux      = ZERO
+    self % prevFlux      = ZERO
+    self % prevAdjFlux   = ZERO
+    self % fluxScores    = ZERO
+    self % adjointScores = ZERO
+    self % combScores    = ZERO
+    self % source        = ZERO
+    self % adjSource     = ZERO
+    self % combSource    = ZERO
 
     ! Initialise other results
     self % cellHit      = 0
@@ -474,15 +563,14 @@ contains
     self % cellFound = .false.
     self % cellPos = -INFINITY
 
-
     ! Stopping criterion is initially on flux convergence or number of convergence iterations.
     ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
     itInac = 0
     itAct  = 0
     isActive = .false.
     stoppingCriterion = .true.
-    
-    ! Power iteration
+
+    ! Source iteration
     do while( stoppingCriterion )
       
       if (isActive) then
@@ -492,10 +580,9 @@ contains
       end if
       it = itInac + itAct
 
-      ONE_KEFF = ONE / self % keff
       !$omp parallel do schedule(static)
       do i = 1, self % nCells
-        call self % sourceUpdateKernel(i, ONE_KEFF)
+        call self % sourceUpdateKernel(i)
       end do
       !$omp end parallel do
     
@@ -516,7 +603,7 @@ contains
         call self % initialiseRay(r)
 
         ! Transport ray until termination criterion met
-        call self % transportSweep(r,ints)
+        call self % transportSweep(r, ints, isActive)
         intersections = intersections + ints
 
       end do
@@ -524,17 +611,14 @@ contains
       
       call timerStop(self % timerTransport)
 
-      ! Update RNG on master thread
+      ! Update RNG 
       call self % rand % stride(self % pop + 1)
 
       ! Normalise flux estimate and combines with source
       call self % normaliseFluxAndVolume(it)
 
-      ! Calculate new k
-      call self % calculateKeff()
-
       ! Accumulate flux scores
-      if (isActive) call self % accumulateFluxAndKeffScores()
+      if (isActive) call self % accumulateFluxScores()
 
       ! Calculate proportion of cells that were hit
       hitRate = real(sum(self % cellHit),defReal) / self % nCells
@@ -547,8 +631,8 @@ contains
         isActive = (itInac >= self % inactive)
       end if
 
-      ! Set previous iteration flux to scalar flux
-      ! and zero scalar flux
+      ! Set previous iteration fluxes from current fluxes
+      ! and zero current fluxes
       call self % resetFluxes()
 
       ! Calculate times
@@ -571,17 +655,16 @@ contains
         print *,'Inactive iterations'
       end if
       print *, 'Cell hit rate: ', trim(numToChar(hitRate))
-      print *, 'keff: ', trim(numToChar(self % keff))
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       print *, 'Time per integration (ns): ', &
-              trim(numToChar(transport_T*10**9/(self % nG * intersections)))
+              trim(numToChar(transport_T*10**9/(3 * self % nG * intersections)))
 
     end do
 
     ! Finalise flux scores
-    call self % finaliseFluxAndKeffScores(itAct)
+    call self % finaliseFluxScores(itAct)
 
   end subroutine cycles
 
@@ -590,12 +673,12 @@ contains
   !! and performs the build operation
   !!
   subroutine initialiseRay(self, r)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    type(ray), intent(inout)                      :: r
-    real(defReal)                                 :: mu, phi
-    real(defReal), dimension(3)                   :: u, rand3, x
-    integer(shortInt)                             :: i, matIdx, cIdx
-    character(100), parameter :: Here = 'initialiseRay (randomRayPhysicsPackage_class.f90)'
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    type(ray), intent(inout)                        :: r
+    real(defReal)                                   :: mu, phi
+    real(defReal), dimension(3)                     :: u, rand3, x
+    integer(shortInt)                               :: i, matIdx, cIdx
+    character(100), parameter :: Here = 'initialiseRay (adjointRRFSPhysicsPackage_class.f90)'
 
     i = 0
     mu = TWO * r % pRNG % get() - ONE
@@ -614,7 +697,7 @@ contains
 
       i = i + 1
       if (i > 5000) then
-        call fatalError(Here, 'Infinite loop when searching ray start in the geometry.')
+        call fatalError(Here, 'Infinite loop when searching for ray start in the geometry.')
       end if
     end do rejection
 
@@ -622,7 +705,7 @@ contains
     call r % build(x, u, 1, ONE)
     call self % geom % placeCoord(r % coords)
 
-    if (.not. self % cellFound(cIdx)) then
+    if (.NOT. self % cellFound(cIdx)) then
       !$omp critical 
       self % cellFound(cIdx) = .true.
       self % cellPos(cIdx,:) = x
@@ -632,31 +715,34 @@ contains
   end subroutine initialiseRay
 
   !!
-  !! Moves ray through geometry, updating angular flux and
-  !! scoring scalar flux and volume.
+  !! Moves ray through geometry, updating angular fluxes and
+  !! scoring fluxes and volume.
   !! Records the number of integrations/ray movements.
   !!
-  subroutine transportSweep(self, r, ints)
-    class(randomRayPhysicsPackage), target, intent(inout) :: self
-    type(ray), intent(inout)                              :: r
-    integer(longInt), intent(out)                         :: ints
-    integer(shortInt)                                     :: matIdx, g, cIdx, idx, event, matIdx0, baseIdx
-    real(defReal)                                         :: totalLength, length
-    logical(defBool)                                      :: activeRay, hitVacuum
-    type(distCache)                                       :: cache
-    class(baseMgNeutronMaterial), pointer                 :: mat
-    class(materialHandle), pointer                        :: matPtr
-    real(defReal), dimension(self % nG)                   :: attenuate, delta, fluxVec
-    real(defReal), pointer, dimension(:)                  :: scalarVec, sourceVec, totVec
-    real(defReal), dimension(3)                           :: r0, mu0
+  subroutine transportSweep(self, r, ints, isActive)
+    class(adjointRRFSPhysicsPackage), target, intent(inout) :: self
+    type(ray), intent(inout)                                :: r
+    integer(longInt), intent(out)                           :: ints
+    logical(defBool), intent(in)                            :: isActive
+    integer(shortInt)                                       :: matIdx, g, cIdx, idx, event, matIdx0, baseIdx
+    real(defReal)                                           :: totalLength, length
+    logical(defBool)                                        :: activeRay, hitVacuum
+    type(distCache)                                         :: cache
+    class(baseMgNeutronMaterial), pointer                   :: mat
+    class(materialHandle), pointer                          :: matPtr
+    real(defReal), dimension(self % nG)                     :: attenuate, deltaF, deltaA, deltaAF, fluxVec, adjVec, &
+                                                               dF, dA, attenuate2
+    real(defReal), pointer, dimension(:)                    :: scalarVec, adjointVec, totVec, combVec, &
+                                                               sourceVec, adjSourceVec, combSourceVec
     
     ! Set initial angular flux to angle average of cell source
     cIdx = r % coords % uniqueID
     do g = 1, self % nG
       idx = (cIdx - 1) * self % nG + g
       fluxVec(g) = self % source(idx)
+      adjVec(g)  = self % adjSource(idx)
     end do
-
+    
     ints = 0
     matIdx0 = 0
     totalLength = ZERO
@@ -675,10 +761,12 @@ contains
         totVec => mat % getTotalPtr()
       end if
 
-      ! Remember co-ordinates to set new cell's position
-      if (.not. self % cellFound(cIdx)) then
-        r0 = r % rGlobal()
-        mu0 = r % dirGlobal()
+      ! Remember new cell positions
+      if (.NOT. self % cellFound(cIdx)) then
+        !$omp critical 
+        self % cellFound(cIdx) = .true.
+        self % cellPos(cIdx,:) = r % rGlobal()
+        !$omp end critical
       end if
           
       ! Set maximum flight distance and ensure ray is active
@@ -702,42 +790,78 @@ contains
         call self % geom % moveRay_noCache(r % coords, length, event, hitVacuum)
       end if
       totalLength = totalLength + length
-      
-      ! Set new cell's position. Use half distance across cell
-      ! to try and avoid FP error
-      if (.not. self % cellFound(cIdx)) then
-        !$omp critical 
-        self % cellFound(cIdx) = .true.
-        self % cellPos(cIdx,:) = r0 + length/2 * mu0
-        !$omp end critical
-      end if
 
       ints = ints + 1
 
       baseIdx = (cIdx - 1) * self % nG
-      sourceVec => self % source(baseIdx + 1 : baseIdx + self % nG)
-      scalarVec => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
 
-      !$omp simd
-      do g = 1, self % nG
-        attenuate(g) = exponential(totVec(g) * length)
-        delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
-        fluxVec(g) = fluxVec(g) - delta(g)
-      end do
-
-      ! Accumulate to scalar flux
-      if (activeRay) then
+      ! Source vectors
+      sourceVec    => self % source(baseIdx + 1 : baseIdx + self % nG)
+      adjSourceVec => self % adjSource(baseIdx + 1 : baseIdx + self % nG)
+      combSourceVec => self % combSource(baseIdx + 1 : baseIdx + self % nG)
       
-        call OMP_set_lock(self % locks(cIdx))
+      ! Results vectors to accumulate to
+      scalarVec    => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
+      adjointVec   => self % adjointFlux(baseIdx + 1 : baseIdx + self % nG)
+      combVec      => self % combFlux(baseIdx + 1 : baseIdx + self % nG)
+
+      ! Accumulate to fluxes
+      if (activeRay) then
         !$omp simd
         do g = 1, self % nG
-          scalarVec(g) = scalarVec(g) + delta(g) 
-        end do
-        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
-        call OMP_unset_lock(self % locks(cIdx))
+          attenuate(g) = exponential(totVec(g) * length)
+          attenuate2(g) = HALF*(ONE - (ONE - attenuate(g))*(ONE - attenuate(g)))
 
+          dF(g) = fluxVec(g) - sourceVec(g)
+          dA(g) = adjVec(g) - adjSourceVec(g)
+
+          deltaAF(g) = dF(g)*dA(g)*attenuate2(g) + &
+                  (fluxVec(g)*adjSourceVec(g) + adjVec(g)*sourceVec(g) - &
+                  combSourceVec(g))*attenuate(g)
+          
+          ! Change in forward flux
+          deltaF(g) = dF(g) * attenuate(g)
+          fluxVec(g) = fluxVec(g) - deltaF(g)
+          
+          ! Change in adjoint flux
+          deltaA(g) = dA(g) * attenuate(g)
+          adjVec(g) = adjVec(g) - deltaA(g)
+        end do
+
+        ! Accumulate fluxes
+        do g = 1, self % nG
+          ! Forward flux
+          !$omp atomic
+          scalarVec(g) = scalarVec(g) + deltaF(g) 
+          
+          ! Adjoint flux
+          !$omp atomic
+          adjointVec(g) = adjointVec(g) + deltaA(g) 
+          
+          ! Product of fluxes
+          !$omp atomic
+          combVec(g) = combVec(g) + deltaAF(g)
+        end do
+
+        ! Accumulate cell volume estimates
         self % cellHit(cIdx) = 1
-      
+        !$omp atomic
+        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
+
+      ! Don't accumulate to fluxes
+      else
+        !$omp simd
+        do g = 1, self % nG
+          attenuate(g) = exponential(totVec(g) * length)
+          
+          ! Change in forward flux
+          deltaF(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
+          fluxVec(g) = fluxVec(g) - deltaF(g)
+          
+          ! Change in adjoint flux
+          deltaA(g) = (adjVec(g) - adjSourceVec(g)) * attenuate(g)
+          adjVec(g) = adjVec(g) - deltaA(g)
+        end do
       end if
 
       ! Check for a vacuum hit
@@ -745,6 +869,7 @@ contains
         !$omp simd
         do g = 1, self % nG
           fluxVec(g) = ZERO
+          adjVec(g)  = ZERO
         end do
       end if
 
@@ -757,14 +882,14 @@ contains
   !! the flux by the neutron source
   !!
   subroutine normaliseFluxAndVolume(self, it)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    integer(shortInt), intent(in)                 :: it
-    real(defReal)                                 :: norm, normVol
-    real(defReal), save                           :: total
-    integer(shortInt), save                       :: g, matIdx, idx
-    integer(shortInt)                             :: cIdx
-    class(baseMgNeutronMaterial), pointer, save   :: mat
-    class(materialHandle), pointer, save          :: matPtr
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    integer(shortInt), intent(in)                   :: it
+    real(defReal)                                   :: norm, normVol
+    real(defReal), save                             :: total
+    integer(shortInt), save                         :: g, matIdx, idx
+    integer(shortInt)                               :: cIdx
+    class(baseMgNeutronMaterial), pointer, save     :: mat
+    class(materialHandle), pointer, save            :: matPtr
     !$omp threadprivate(mat, matPtr, total, idx, g, matIdx)
 
     norm = ONE / self % lengthPerIt
@@ -784,10 +909,14 @@ contains
         total =  mat % getTotalXS(g, self % rand)
         idx   = self % nG * (cIdx - 1) + g
 
-        if (self % volume(cIdx) > volume_tolerance) then
-          self % scalarFlux(idx) = self % scalarFlux(idx) * norm / ( total * self % volume(cIdx))
+        if (self % volume(cIdx) > ZERO) then
+          self % adjointFlux(idx) = self % adjointFlux(idx) * norm / ( total * self % volume(cIdx))
+          self % scalarFlux(idx)  = self % scalarFlux(idx) * norm / ( total * self % volume(cIdx))
+          self % combFlux(idx)    = self % combFlux(idx) * norm / ( total * self % volume(cIdx))
         end if
-        self % scalarFlux(idx) = self % scalarFlux(idx) + self % source(idx)
+        self % adjointFlux(idx) = self % adjointFlux(idx) + self % adjSource(idx)
+        self % scalarFlux(idx)  = self % scalarFlux(idx) + self % source(idx)
+        self % combFlux(idx)    = self % combFlux(idx) + HALF * self % combSource(idx)
 
       end do
 
@@ -799,19 +928,18 @@ contains
   !!
   !! Kernel to update sources given a cell index
   !!
-  subroutine sourceUpdateKernel(self, cIdx, ONE_KEFF)
-    class(randomRayPhysicsPackage), target, intent(inout) :: self
-    integer(shortInt), intent(in)                         :: cIdx
-    real(defReal), intent(in)                             :: ONE_KEFF
-    real(defReal)                                         :: scatter, fission
-    real(defReal), dimension(:), pointer                  :: nuFission, total, chi 
-    real(defReal), dimension(:,:), pointer                :: scatterXS
-    integer(shortInt)                                     :: matIdx, g, gIn 
-    integer(shortInt)                                     :: baseIdx, idx
-    class(baseMgNeutronMaterial), pointer                 :: mat
-    class(materialHandle), pointer                        :: matPtr
-    logical(defBool)                                      :: isFiss
-    real(defReal), pointer, dimension(:)                  :: fluxVec
+  subroutine sourceUpdateKernel(self, cIdx)
+    class(adjointRRFSPhysicsPackage), target, intent(inout) :: self
+    integer(shortInt), intent(in)                           :: cIdx
+    real(defReal)                                           :: scatter, fission, scatterAdj, fissionAdj
+    real(defReal), dimension(:), pointer                    :: nuFission, total, chi 
+    real(defReal), dimension(:,:), pointer                  :: scatterXS
+    integer(shortInt)                                       :: matIdx, g, gOut 
+    integer(shortInt)                                       :: baseIdx, idx
+    class(baseMgNeutronMaterial), pointer                   :: mat
+    class(materialHandle), pointer                          :: matPtr
+    logical(defBool)                                        :: isFiss
+    real(defReal), pointer, dimension(:)                    :: fluxVec, adjVec
 
     ! Identify material
     matIdx  =  self % geom % geom % graph % getMatFromUID(cIdx) 
@@ -828,28 +956,37 @@ contains
     end if
 
     baseIdx = self % ng * (cIdx - 1)
-    fluxVec => self % prevFlux(baseIdx+1:baseIdx+self % nG)
+    fluxVec => self % prevFlux(baseIdx + 1 : baseIdx + self % nG)
+    adjVec  => self % prevAdjFlux(baseIdx + 1 : baseIdx + self % nG)
 
     ! There is a scattering and fission source
     if (isFiss) then
       do g = 1, self % nG
 
         ! Calculate fission and scattering source
-        scatter = ZERO
-        fission = ZERO
+        scatter    = ZERO
+        fission    = ZERO
+        scatterAdj = ZERO
+        fissionAdj = ZERO
 
         ! Sum contributions from all energies
-        !$omp simd reduction(+:fission, scatter)
-        do gIn = 1, self % nG
-          fission = fission + fluxVec(gIn) * nuFission(gIn)
-          scatter = scatter + fluxVec(gIn) * scatterXS(g,gIn)
+        !$omp simd reduction(+:fissionAdj, scatterAdj, fission, scatter)
+        do gOut = 1, self % nG
+          fissionAdj = fissionAdj + adjVec(gOut) * chi(gOut)
+          scatterAdj = scatterAdj + adjVec(gOut) * scatterXS(gOut,g)
+          fission = fission + fluxVec(gOut) * nuFission(gOut)
+          scatter = scatter + fluxVec(gOut) * scatterXS(g,gOut)
         end do
 
-        ! Output index
+        ! Input index
         idx = baseIdx + g
 
-        self % source(idx) = chi(g) * fission * ONE_KEFF + scatter
+        self % adjSource(idx) = nuFission(g) * fissionAdj + scatterAdj + self % adjFSource(idx)
+        self % adjSource(idx) = self % adjSource(idx) / total(g)
+        self % source(idx) = chi(g) * fission + scatter + self % fixedSource(idx)
         self % source(idx) = self % source(idx) / total(g)
+
+        self % combSource(idx) = self % source(idx) * self % adjSource(idx) * TWO
 
       end do
 
@@ -858,18 +995,23 @@ contains
       do g = 1, self % nG
 
         ! Calculate scattering source
-        scatter = ZERO
+        scatter    = ZERO
+        scatterAdj = ZERO
 
         ! Sum contributions from all energies
-        !$omp simd reduction(+:scatter)
-        do gIn = 1, self % nG
-          scatter = scatter + fluxVec(gIn) * scatterXS(g,gIn)
+        !$omp simd reduction(+:scatterAdj, scatter)
+        do gOut = 1, self % nG
+          scatterAdj = scatterAdj + adjVec(gOut) * scatterXS(gOut,g)
+          scatter    = scatter    + fluxVec(gOut) * scatterXS(g,gOut)
         end do
 
         ! Output index
         idx = baseIdx + g
 
-        self % source(idx) = scatter / total(g)
+        self % adjSource(idx) = (self % adjFSource(idx) + scatterAdj) / total(g)
+        self % source(idx) = (self % fixedSource(idx) + scatter) / total(g)
+        
+        self % combSource(idx) = self % source(idx) * self % adjSource(idx) * TWO
 
       end do
 
@@ -878,68 +1020,19 @@ contains
   end subroutine sourceUpdateKernel
 
   !!
-  !! Calculate keff
-  !!
-  subroutine calculateKeff(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    real(defReal)                                 :: fissionRate, prevFissionRate
-    real(defReal), save                           :: fissLocal, prevFissLocal, vol
-    real(defReal), dimension(:), pointer, save    :: nuFission
-    integer(shortInt), save                       :: matIdx, g, idx
-    integer(shortInt)                             :: cIdx
-    class(baseMgNeutronMaterial), pointer, save   :: mat
-    class(materialHandle), pointer, save          :: matPtr
-    !$omp threadprivate(mat, matPtr, fissLocal, prevFissLocal, nuFission, matIdx, g, idx, vol)
-
-    fissionRate     = ZERO
-    prevFissionRate = ZERO
-    !$omp parallel do schedule(static) reduction(+: fissionRate, prevFissionRate)
-    do cIdx = 1, self % nCells
-
-      ! Identify material
-      matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
-      matPtr => self % mgData % getMaterial(matIdx)
-      mat    => baseMgNeutronMaterial_CptrCast(matPtr)
-      if (.not. mat % isFissile()) cycle
-
-      vol = self % volume(cIdx)
-
-      if (vol <= volume_tolerance) cycle
-
-      fissLocal = ZERO
-      prevFissLocal = ZERO
-      nuFission => mat % getNuFissionPtr()
-      do g = 1, self % nG
-        
-        ! Source index
-        idx = self % nG * (cIdx - 1) + g
-        fissLocal     = fissLocal     + self % scalarFlux(idx) * nuFission(g)
-        prevFissLocal = prevFissLocal + self % prevFlux(idx) * nuFission(g)
-
-      end do
-
-      fissionRate     = fissionRate     + fissLocal * vol
-      prevFissionRate = prevFissionRate + prevFissLocal * vol
-
-    end do
-    !$omp end parallel do
-
-    ! Update k
-    self % keff = self % keff * fissionRate / prevFissionRate
-
-  end subroutine calculateKeff
-  
-  !!
-  !! Sets prevFlux to scalarFlux and zero's scalarFlux
+  !! Sets previous fluxes from current and zero current fluxes
   !!
   subroutine resetFluxes(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    integer(shortInt)                             :: idx
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    integer(shortInt)                               :: idx
 
     !$omp parallel do schedule(static)
-    do idx = 1, size(self % scalarFlux)
+    do idx = 1, size(self % adjointFlux)
+      self % prevAdjFlux(idx) = self % adjointFlux(idx)
+      self % adjointFlux(idx) = ZERO
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = ZERO
+      self % combFlux(idx) = ZERO
     end do
     !$omp end parallel do
 
@@ -948,33 +1041,36 @@ contains
   !!
   !! Accumulate flux scores for stats
   !!
-  subroutine accumulateFluxAndKeffScores(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    real(defReal), save                           :: flux
-    integer(shortInt)                             :: idx
+  subroutine accumulateFluxScores(self)
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    real(defReal), save                             :: flux
+    integer(shortInt)                               :: idx
     !$omp threadprivate(flux)
 
     !$omp parallel do schedule(static)
-    do idx = 1, size(self % scalarFlux)
+    do idx = 1, size(self % adjointFlux)
+      flux = self % adjointFlux(idx)
+      self % adjointScores(idx,1) = self % adjointScores(idx, 1) + flux
+      self % adjointScores(idx,2) = self % adjointScores(idx, 2) + flux*flux
       flux = self % scalarFlux(idx)
       self % fluxScores(idx,1) = self % fluxScores(idx, 1) + flux
       self % fluxScores(idx,2) = self % fluxScores(idx, 2) + flux*flux
+      flux = self % combFlux(idx)
+      self % combScores(idx,1) = self % combScores(idx, 1) + flux
+      self % combScores(idx,2) = self % combScores(idx, 2) + flux*flux
     end do
     !$omp end parallel do
 
-    self % keffScore(1) = self % keffScore(1) + self % keff
-    self % keffScore(2) = self % keffScore(2) + self % keff * self % keff
-
-  end subroutine accumulateFluxAndKeffScores
+  end subroutine accumulateFluxScores
   
   !!
   !! Finalise flux scores for stats
   !!
-  subroutine finaliseFluxAndKeffScores(self,it)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    integer(shortInt), intent(in)                 :: it
-    integer(shortInt)                             :: idx
-    real(defReal)                                 :: N1, Nm1
+  subroutine finaliseFluxScores(self,it)
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    integer(shortInt), intent(in)                   :: it
+    integer(shortInt)                               :: idx
+    real(defReal)                                   :: N1, Nm1
 
     if (it /= 1) then
       Nm1 = ONE/(it - 1)
@@ -984,7 +1080,7 @@ contains
     N1 = ONE/it
 
     !$omp parallel do schedule(static)
-    do idx = 1, size(self % scalarFlux)
+    do idx = 1, size(self % adjointFlux)
       self % fluxScores(idx,1) = self % fluxScores(idx, 1) * N1
       self % fluxScores(idx,2) = self % fluxScores(idx, 2) * N1
       self % fluxScores(idx,2) = Nm1 *(self % fluxScores(idx,2) - &
@@ -994,15 +1090,30 @@ contains
       else
         self % fluxScores(idx,2) = sqrt(self % fluxScores(idx,2))
       end if
+
+      self % adjointScores(idx,1) = self % adjointScores(idx, 1) * N1
+      self % adjointScores(idx,2) = self % adjointScores(idx, 2) * N1
+      self % adjointScores(idx,2) = Nm1 *(self % adjointScores(idx,2) - &
+            self % adjointScores(idx,1) * self % adjointScores(idx,1)) 
+      if (self % adjointScores(idx,2) <= ZERO) then
+        self % adjointScores(idx,2) = ZERO
+      else
+        self % adjointScores(idx,2) = sqrt(self % adjointScores(idx,2))
+      end if
+
+      self % combScores(idx,1) = self % combScores(idx, 1) * N1
+      self % combScores(idx,2) = self % combScores(idx, 2) * N1
+      self % combScores(idx,2) = Nm1 *(self % combScores(idx,2) - &
+            self % combScores(idx,1) * self % combScores(idx,1)) 
+      if (self % combScores(idx,2) <= ZERO) then
+        self % combScores(idx,2) = ZERO
+      else
+        self % combScores(idx,2) = sqrt(self % combScores(idx,2))
+      end if
     end do
     !$omp end parallel do
 
-    self % keffScore(1) = self % keffScore(1) * N1
-    self % keffScore(2) = self % keffScore(2) * N1
-    self % keffScore(2) = sqrt(Nm1*(self % keffScore(2) - &
-            self % keffScore(1) * self % keffScore(1))) 
-
-  end subroutine finaliseFluxAndKeffScores
+  end subroutine finaliseFluxScores
   
   !!
   !! Output calculation results to a file
@@ -1011,18 +1122,14 @@ contains
   !!   None
   !!
   subroutine printResults(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    type(outputFile)                              :: out
-    character(nameLen)                            :: name
-    integer(shortInt)                             :: cIdx, g1
-    integer(shortInt), save                       :: idx, matIdx, i, g
-    real(defReal), save                           :: vol, SigmaF
-    type(particleState), save                     :: s
-    integer(shortInt),dimension(:),allocatable    :: resArrayShape
-    real(defReal), dimension(:), allocatable      :: groupFlux, fiss, fissSTD
-    class(baseMgNeutronMaterial), pointer, save   :: mat
-    class(materialHandle), pointer, save          :: matPtr
-    !$omp threadprivate(idx, matIdx, i, mat, matPtr, vol, s, SigmaF, g)
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
+    type(outputFile)                                :: out
+    character(nameLen)                              :: name
+    integer(shortInt)                               :: cIdx, g1
+    integer(shortInt), save                         :: idx, g
+    integer(shortInt),dimension(:),allocatable      :: resArrayShape
+    real(defReal), dimension(:), allocatable        :: groupFlux
+    !$omp threadprivate(idx, g)
 
     call out % init(self % outputFormat)
     
@@ -1047,13 +1154,7 @@ contains
     
     name = 'Clock_Time'
     call out % printValue(timerTime(self % timerMain),name)
-
-    ! Print keff
-    name = 'keff'
-    call out % startBlock(name)
-    call out % printResult(self % keffScore(1), self % keffScore(2), name)
-    call out % endBlock()
-
+    
     ! Print cell volumes
     if (self % printVolume) then
       name = 'volume'
@@ -1098,116 +1199,38 @@ contains
       end do
     end if
 
-    ! Send fission rates to map output
-    if (self % mapFission) then
-      resArrayShape = self % resultsMap % binArrayShape()
-      allocate(fiss(self % resultsMap % bins(0)))
-      allocate(fissSTD(self % resultsMap % bins(0)))
-      fiss    = ZERO
-      fissSTD = ZERO
+    call out % writeToFile(self % outputFile)
 
-      ! Find whether cells are in map and sum their contributions
-      !$omp parallel do reduction(+: fiss, fissSTD)
-      do cIdx = 1, self % nCells
-        
-        ! Identify material
-        matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
-        matPtr => self % mgData % getMaterial(matIdx)
-        mat    => baseMgNeutronMaterial_CptrCast(matPtr)
-        vol    =  self % volume(cIdx)
-
-        if (vol < volume_tolerance) cycle
-
-        ! Fudge a particle state to search tally map
-        s % r = self % cellPos(cIdx,:)
-        i = self % resultsMap % map(s)
-
-        if (i > 0) then
-          do g = 1, self % nG
-            SigmaF = mat % getFissionXS(g, self % rand)
-            idx = (cIdx - 1)* self % nG + g
-            fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
-            ! Is this correct? Also neglects uncertainty in volume - assumed small.
-            fissSTD(i) = fissSTD(i) + &
-                    vol * vol * self % fluxScores(idx,2)*self % fluxScores(idx,2) * SigmaF * SigmaF
-          end do
-        end if
-
+    if (self % printAdjoint) then
+      resArrayShape = [size(self % volume)]
+      do g = 1, self % nG
+        name = 'adjFlux_g'//numToChar(g)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % adjointScores(idx,1), self % adjointScores(idx,2))
+        end do
+        call out % endArray()
+        call out % endBlock()
       end do
-      !$omp end parallel do
-
-      do i = 1,size(fissSTD)
-        fissSTD(i) = sqrt(fissSTD(i))
-        if (fiss(i) > 0) fissSTD(i) = fissSTD(i) / fiss(i)
-      end do
-
-      name = 'fissionRate'
-      call out % startBlock(name)
-      call out % startArray(name, resArrayShape)
-      ! Add all map elements to results
-      do idx = 1, self % resultsMap % bins(0)
-        call out % addResult(fiss(idx), fissSTD(idx))
-      end do
-      call out % endArray()
-      ! Output tally map
-      call self % resultsMap % print(out)
-      call out % endBlock()
-      
-      deallocate(fiss)
-      deallocate(fissSTD)
     end if
 
-    ! Send fluxes to map output
-    if (self % mapFlux) then
-      resArrayShape = self % fluxMap % binArrayShape()
-      allocate(fiss(self % fluxMap % bins(0)))
-      allocate(fissSTD(self % fluxMap % bins(0)))
-      fiss    = ZERO
-      fissSTD = ZERO
+    call out % writeToFile(self % outputFile)
 
-      ! Find whether cells are in map and sum their contributions
-      !$omp parallel do reduction(+: fiss, fissSTD)
-      do cIdx = 1, self % nCells
-        
-        vol    =  self % volume(cIdx)
-        if (vol < volume_tolerance) cycle
-
-        ! Fudge a particle state to search tally map
-        s % r = self % cellPos(cIdx,:)
-        i = self % fluxMap % map(s)
-
-        if (i > 0) then
-          do g = 1, self % nG
-            idx = (cIdx - 1)* self % nG + g
-            fiss(i) = fiss(i) + vol * self % fluxScores(idx,1)
-            ! Is this correct? Also neglects uncertainty in volume - assumed small.
-            fissSTD(i) = fissSTD(i) + &
-                    self % fluxScores(idx,2)*self % fluxScores(idx,2) * vol * vol
-          end do
-        end if
-
+    if (self % printComb) then
+      resArrayShape = [size(self % volume)]
+      do g = 1, self % nG
+        name = 'combFlux_g'//numToChar(g)
+        call out % startBlock(name)
+        call out % startArray(name, resArrayShape)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g
+          call out % addResult(self % combScores(idx,1), self % combScores(idx,2))
+        end do
+        call out % endArray()
+        call out % endBlock()
       end do
-      !$omp end parallel do
-
-      do i = 1,size(fissSTD)
-        fissSTD(i) = sqrt(fissSTD(i))
-        if (fiss(i) > 0) fissSTD(i) = fissSTD(i) / fiss(i)
-      end do
-
-      name = 'flux1G'
-      call out % startBlock(name)
-      call out % startArray(name, resArrayShape)
-      ! Add all map elements to results
-      do idx = 1, self % fluxMap % bins(0)
-        call out % addResult(fiss(idx), fissSTD(idx))
-      end do
-      call out % endArray()
-      ! Output tally map
-      call self % fluxMap % print(out)
-      call out % endBlock()
-      
-      deallocate(fiss)
-      deallocate(fissSTD)
     end if
 
     call out % writeToFile(self % outputFile)
@@ -1216,7 +1239,7 @@ contains
     if (self % plotResults) then
       allocate(groupFlux(self % nCells))
       do g1 = 1, self % nG
-        name = 'flux_g'//numToChar(g1)
+        name = 'scalar_g'//numToChar(g1)
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g1
@@ -1230,14 +1253,80 @@ contains
         !$omp parallel do schedule(static)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g1
-          groupFlux(cIdx) = self % fluxScores(idx,2) /self % fluxScores(idx,1)
+          groupFlux(cIdx) = self % fluxScores(idx,2) / self % fluxScores(idx,1)
         end do
         !$omp end parallel do
         call self % viz % addVTKData(groupFlux,name)
       end do
+      do g1 = 1, self % nG
+        name = 'adjoint_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjointScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'stdAdj_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjointScores(idx,2) / self % adjointScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'comb_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % combScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'stdComb_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % combScores(idx,2) / self % combScores(idx,1)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'source_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % source(idx)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      do g1 = 1, self % nG
+        name = 'adjSource_g'//numToChar(g1)
+        !$omp parallel do schedule(static)
+        do cIdx = 1, self % nCells
+          idx = (cIdx - 1)* self % nG + g1
+          groupFlux(cIdx) = self % adjSource(idx)
+        end do
+        !$omp end parallel do
+        call self % viz % addVTKData(groupFlux,name)
+      end do
+      name = 'material'
+      !$omp parallel do schedule(static)
+      do cIdx = 1, self % nCells
+        groupFlux(cIdx) = self % geom % geom % graph % getMatFromUID(cIdx)
+      end do
+      !$omp end parallel do
+      call self % viz % addVTKData(groupFlux,name)
       call self % viz % finaliseVTK
     end if
-
 
   end subroutine printResults
 
@@ -1248,10 +1337,10 @@ contains
   !!   None
   !!
   subroutine printSettings(self)
-    class(randomRayPhysicsPackage), intent(in) :: self
+    class(adjointRRFSPhysicsPackage), intent(in) :: self
 
     print *, repeat("<>", MAX_COL/2)
-    print *, "/\/\ RANDOM RAY EIGENVALUE CALCULATION /\/\"
+    print *, "/\/\ RANDOM RAY ADJOINT FIXED SOURCE CALCULATION /\/\"
     print *, "Using "//numToChar(self % inactive)// " iterations for "&
               //"the inactive cycles"
     print *, "Using "//numToChar(self % active)// " iterations for "&
@@ -1273,8 +1362,7 @@ contains
   !! Return to uninitialised state
   !!
   subroutine kill(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    integer(shortInt) :: i
+    class(adjointRRFSPhysicsPackage), intent(inout) :: self
 
     ! Clean Nuclear Data, Geometry and visualisation
     call gr_kill()
@@ -1291,46 +1379,38 @@ contains
     self % bottom    = ZERO
     self % mgData    => null()
     self % nG        = 0
-    
-    if(allocated(self % locks)) then
-      do i = 1, self % nCells
-        call OMP_destroy_lock(self % locks(i))
-      end do
-      deallocate(self % locks)
-    end if
     self % nCells    = 0
 
-    self % termination = ZERO
-    self % dead        = ZERO
-    self % pop         = 0
-    self % inactive    = 0
-    self % active      = 0
-    self % cache       = .false.
-    self % mapFission  = .false.
-    self % mapFlux     = .false.
-    self % plotResults = .false.
-    self % printFlux   = .false.
-    self % printVolume = .false.
-    self % printCells  = .false.
+    self % termination  = ZERO
+    self % dead         = ZERO
+    self % pop          = 0
+    self % inactive     = 0
+    self % active       = 0
+    self % cache        = .false.
+    self % plotResults  = .false.
+    self % printFlux    = .false.
+    self % printAdjoint = .false.
+    self % printComb    = .false.
+    self % printVolume  = .false.
+    self % printCells   = .false.
 
-    self % keff        = ZERO
-    self % keffScore   = ZERO
     if(allocated(self % scalarFlux)) deallocate(self % scalarFlux)
     if(allocated(self % prevFlux)) deallocate(self % prevFlux)
+    if(allocated(self % adjointFlux)) deallocate(self % adjointFlux)
+    if(allocated(self % prevAdjFlux)) deallocate(self % prevAdjFlux)
+    if(allocated(self % combFlux)) deallocate(self % combFlux)
     if(allocated(self % fluxScores)) deallocate(self % fluxScores)
+    if(allocated(self % adjointScores)) deallocate(self % adjointScores)
+    if(allocated(self % combScores)) deallocate(self % combScores)
     if(allocated(self % source)) deallocate(self % source)
+    if(allocated(self % adjSource)) deallocate(self % adjSource)
+    if(allocated(self % combSource)) deallocate(self % combSource)
+    if(allocated(self % fixedSource)) deallocate(self % fixedSource)
+    if(allocated(self % adjFSource)) deallocate(self % adjFSource)
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % cellHit)) deallocate(self % cellHit)
-    if(allocated(self % resultsMap)) then
-      call self % resultsMap % kill()
-      deallocate(self % resultsMap)
-    end if
-    if(allocated(self % fluxMap)) then
-      call self % resultsMap % kill()
-      deallocate(self % fluxMap)
-    end if
 
   end subroutine kill
 
-end module randomRayPhysicsPackage_class
+end module adjointRRFSPhysicsPackage_class
