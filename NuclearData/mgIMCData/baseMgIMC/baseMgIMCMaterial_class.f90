@@ -245,7 +245,7 @@ contains
 
     ! Use time step size to calculate fleck factor
     if(self % calcType == IMC) then
-      beta = 4*radiationConstant* self % T **4 / poly_eval(self % cv, self % T)
+      beta = 4*radiationConstant* self % T **3 / poly_eval(self % cv, self % T)
       self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
     else if(self % calcType == ISMC) then
@@ -399,7 +399,7 @@ contains
      call fatalError(Here, "Temperature is negative")
     end if
 
-    beta = 4*radiationConstant* self % T **4 / poly_eval(self % cv, self % T)
+    beta = 4*radiationConstant* self % T **3 / poly_eval(self % cv, self % T)
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
