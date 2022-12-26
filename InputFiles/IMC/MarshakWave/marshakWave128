@@ -1,10 +1,10 @@
 
 type IMCPhysicsPackage;
 
-pop            12800;
-limit          204800;
-steps          1000;
-timeStepSize   0.5;
+pop            10000;
+limit          200000;
+steps          10000;
+timeStepSize   0.05;
 printUpdates   4;
 
 collisionOperator {
@@ -12,7 +12,7 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorTimeHT;
+                    type transportOperatorTimeHT; cutoff 0.9;
                   } 
 
 source {
@@ -24,7 +24,7 @@ source {
   T 1;
   dir 1;
   particle photon;
-  N 1000;
+  N 200;
 }
 
 tally  {
