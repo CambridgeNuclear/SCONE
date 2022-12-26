@@ -1,18 +1,18 @@
 
-type ISMCPhysicsPackage;
+type IMCPhysicsPackage;
 
 pop            10000;
 limit          200000;
-steps          10000;
+steps          1000;
 timeStepSize   0.05;
 printUpdates   4;
 
 collisionOperator {
-                    photonMG {type ISMCMGstd;}
+                    photonMG {type IMCMGstd;}
                   } 
 
 transportOperator {
-                    type transportOperatorIMC; cutoff 0.9;
+                    type transportOperatorTimeHT; cutoff 0.9;
                   } 
 
 source {
