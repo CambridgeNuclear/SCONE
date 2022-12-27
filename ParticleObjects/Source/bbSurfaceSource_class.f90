@@ -268,18 +268,18 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: r, phi, theta
+    real(defReal)                         :: phi, mu
 
-    r = rand % get()
-    phi = TWO_PI * r
-    r = rand % get()
-    theta = acos(1 - TWO * r)
-    p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
+    phi = TWO_PI * rand % get()
+    mu = sqrt(rand % get())
+
+    p % dir = [mu, sqrt(1-mu**2)*cos(phi), sqrt(1-mu**2)*sin(phi)]
 
     ! If dir not equal to zero, adjust so that particles are travelling in correct direction
     if (self % dir /= 0) then
-      p % dir(self % axis) = abs(p % dir(self % axis)) * self % dir
+      p % dir(self % axis) = abs(p % dir(self % axis)) * self % dir 
     end if
+
 
   end subroutine sampleEnergyAngle
 
@@ -318,9 +318,6 @@ contains
 
     ! If dir = 0 then emit in both directions => double total energy
     if (self % dir == 0) p % wgt = 2*p % wgt
-
-    p % isMG = .true.
-    p % G = 1
 
   end subroutine sampleWeight
 
