@@ -32,6 +32,7 @@ module configSource_inter
 
   contains
     procedure                              :: sampleParticle
+    procedure                              :: sampleWeight
     procedure(sampleType), deferred        :: sampleType
     procedure(samplePosition), deferred    :: samplePosition
     procedure(sampleEnergy), deferred      :: sampleEnergy
@@ -133,11 +134,23 @@ contains
     call self % samplePosition(p, rand)
     call self % sampleEnergyAngle(p, rand)
     call self % sampleEnergy(p, rand)
+    call self % sampleWeight(p, rand)
     p % time = ZERO
 
-    if (p % wgt  == ZERO) p % wgt = ONE
-
   end function sampleParticle
+
+  !!
+  !! Set particle's weight to 1.
+  !! Can be overriden in subclasses if needed.
+  !!
+  subroutine sampleWeight(self, p, rand)
+    class(configSource), intent(inout)  :: self
+    class(particleState), intent(inout) :: p
+    class(RNG), intent(inout)           :: rand
+
+    p % wgt = ONE
+
+  end subroutine sampleWeight
 
   !!
   !! Return to uninitialised state

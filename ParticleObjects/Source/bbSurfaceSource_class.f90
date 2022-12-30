@@ -70,6 +70,7 @@ module bbSurfaceSource_class
     procedure :: samplePosition
     procedure :: sampleEnergy
     procedure :: sampleEnergyAngle
+    procedure :: sampleWeight
     procedure :: kill
   end type bbSurfaceSource
 
@@ -82,19 +83,17 @@ contains
   !!
   !! Errors:
   !!   - error if an unrecognised particle type is provided
-  !!   - error if source is not inside geometry
-  !!   - error if either direction or position have more than 3 components
-  !!   - error if both CE and MG is specified
-  !!   - error if neither energy type is specified
+  !!   - error if an axis other than x, y, or z is given
+  !!   - error if shape is not square or circle
   !!
   subroutine init(self, dict, geom)
-    class(bbSurfaceSource), intent(inout)    :: self
-    class(dictionary), intent(in)          :: dict
-    class(geometry), pointer, intent(in)   :: geom
-    character(30)                          :: type, tempName
-    integer(shortInt)                      :: matIdx, uniqueID
-    logical(defBool)                       :: isCE, isMG
-    real(defReal)                          :: temp
+    class(bbSurfaceSource), intent(inout) :: self
+    class(dictionary), intent(in)         :: dict
+    class(geometry), pointer, intent(in)  :: geom
+    character(30)                         :: type, tempName
+    integer(shortInt)                     :: matIdx, uniqueID
+    logical(defBool)                      :: isCE, isMG
+    real(defReal)                         :: temp
     character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
 
     ! Provide geometry info to source
@@ -131,7 +130,7 @@ contains
         self % r(3) = temp
         self % axis = 3
       case default
-        call fatalError(Here, 'Unrecognised axis, may onlt be x, y or z')
+        call fatalError(Here, 'Unrecognised axis, may only be x, y or z')
     end select
 
     ! Get size of boundary surface
@@ -171,6 +170,13 @@ contains
 
   end subroutine init
 
+  !!
+  !! Add particles to given dungeon
+  !!
+  !! See source_inter for details
+  !!
+  !! If N is given as 0, then N is instead taken from the input dictionary defining this source
+  !!
   subroutine append(self, dungeon, N, rand, matIdx)
     class(bbSurfaceSource), intent(inout)   :: self
     type(particleDungeon), intent(inout)    :: dungeon
@@ -210,11 +216,11 @@ contains
   !! See configSource_inter for details.
   !!
   subroutine samplePosition(self, p, rand)
-    class(bbSurfaceSource), intent(inout)   :: self
-    class(particleState), intent(inout) :: p
-    class(RNG), intent(inout)           :: rand
-    real(defReal), dimension(3)         :: prevPos
-    real(defReal)                       :: r1, r2, rad, theta
+    class(bbSurfaceSource), intent(inout) :: self
+    class(particleState), intent(inout)   :: p
+    class(RNG), intent(inout)             :: rand
+    real(defReal), dimension(3)           :: prevPos
+    real(defReal)                         :: r1, r2, rad, theta
 
     if ( self % planeShape == 0 ) then   ! Square
 
@@ -259,41 +265,47 @@ contains
   !! Only isotropic/fixed direction. Does not sample energy.
   !!
   subroutine sampleEnergyAngle(self, p, rand)
-    class(bbSurfaceSource), intent(inout)   :: self
-    class(particleState), intent(inout) :: p
-    class(RNG), intent(inout)           :: rand
-    real(defReal)                       :: phi, mu, theta
+    class(bbSurfaceSource), intent(inout) :: self
+    class(particleState), intent(inout)   :: p
+    class(RNG), intent(inout)             :: rand
+    real(defReal)                         :: phi, mu
 
     phi = TWO_PI * rand % get()
     mu = sqrt(rand % get())
-    !theta = acos(1 - TWO * r)
-    !p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
 
     p % dir = [mu, sqrt(1-mu**2)*cos(phi), sqrt(1-mu**2)*sin(phi)]
-
-    ! If dir not equal to zero, adjust so that particles are travelling in correct direction
-    !if (self % dir /= 0) then
-    !  p % dir(self % axis) = abs(p % dir(self % axis)) * self % dir 
-    !end if
-
-    !p % dir = [0,0,0]
-    !p % dir(self % axis) = 1
 
   end subroutine sampleEnergyAngle
 
   !!
-  !! Provide particle energy
+  !! Provide particle energy, currently only a single group
+  !!
+  !! See configSource_inter for details.
+  !!
+  subroutine sampleEnergy(self, p, rand)
+    class(bbSurfaceSource), intent(inout) :: self
+    class(particleState), intent(inout)   :: p
+    class(RNG), intent(inout)             :: rand
+    real(defReal)                         :: num
+
+    p % isMG = .true.
+    p % G    = 1
+
+  end subroutine sampleEnergy
+
+  !!
+  !! Provide particle energy-weight
   !!
   !! Sampled as a black body surface, see "Four Decades of Implicit Monte Carlo",
   !!  Allan B Wollaber, p.24-25
   !!
   !! See configSource_inter for details.
   !!
-  subroutine sampleEnergy(self, p, rand)
+  subroutine sampleWeight(self, p, rand)
     class(bbSurfaceSource), intent(inout) :: self
-    class(particleState), intent(inout) :: p
-    class(RNG), intent(inout)           :: rand
-    real(defReal)                       :: num
+    class(particleState), intent(inout)   :: p
+    class(RNG), intent(inout)             :: rand
+    real(defReal)                         :: num
 
     num = radiationConstant * lightSpeed * self % deltaT * self % T**4 * self % area
     p % wgt = num / (4 * self % N)
@@ -301,10 +313,7 @@ contains
     ! If dir = 0 then emit in both directions => double total energy
     if (self % dir == 0) p % wgt = 2*p % wgt
 
-    p % isMG = .true.
-    p % G = 1
-
-  end subroutine sampleEnergy
+  end subroutine sampleWeight
 
   !!
   !! Return to uninitialised state

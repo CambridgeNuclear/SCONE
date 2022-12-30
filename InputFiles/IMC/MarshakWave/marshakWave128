@@ -4,7 +4,7 @@ type IMCPhysicsPackage;
 pop            10000;
 limit          200000;
 steps          1000;
-timeStepSize   0.05;
+timeStepSize   0.5;
 printUpdates   4;
 
 collisionOperator {

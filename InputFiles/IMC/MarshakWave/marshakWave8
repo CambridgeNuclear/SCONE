@@ -76,14 +76,14 @@ nuclearData {
   
   materials {
 
-    mat1  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat2  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat3  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat4  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat5  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat6  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat7  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
-    mat8  { temp 0.1; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat1  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat2  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat3  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat4  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat5  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat6  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat7  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
+    mat8  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.5; }
 
   }
 

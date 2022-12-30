@@ -7,8 +7,9 @@
 type IMCPhysicsPackage;
 
 pop            1000;
-  // Total number of particles to be emitted during each time step from material. If an additional
-  //   source is given, this is also the number of particles emitted from that source.
+  // Maximum total number of particles to be emitted during each time step from all material.
+  //   This number is split between material regions based on the energy they are emitting and is
+  //   reduced if limit is going to be reached.
 
 limit          10000;
   // Sets the maximum size of particle dungeons. Runtime is very dependent on this value so should
