@@ -243,13 +243,13 @@ contains
 
     self % deltaT = dt
 
+    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+
     ! Use time step size to calculate fleck factor
     if(self % calcType == IMC) then
-      beta = 4*radiationConstant* self % T **3 / poly_eval(self % cv, self % T)
-      self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
+      self % fleck = 1/(1+self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
     else if(self % calcType == ISMC) then
-      beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
       self % eta  =   radiationConstant * self % T**4 / self % energyDens
       zeta = beta - self % eta
       self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
@@ -262,7 +262,6 @@ contains
     else
       call fatalError(Here, 'Calculation type invalid or not set')
     end if
-
 
   end subroutine setTimeStep
 
@@ -399,7 +398,7 @@ contains
      call fatalError(Here, "Temperature is negative")
     end if
 
-    beta = 4*radiationConstant* self % T **3 / poly_eval(self % cv, self % T)
+    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
