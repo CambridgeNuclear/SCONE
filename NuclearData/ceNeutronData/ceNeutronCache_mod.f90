@@ -54,6 +54,12 @@ module ceNeutronCache_mod
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
   !!   xss    -> Cached Cross-Sections values
+  !!   needsSabInel -> Flag that tells if the nuclide is using thermal inelastic
+  !!                   scattering data
+  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic
+  !!                   scattering data
+  !!   needsUrr     -> Flag that tells if the nuclide is using unresolved resonance
+  !!                   probability tables
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -62,6 +68,9 @@ module ceNeutronCache_mod
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMicroXSs) :: xss
+    logical(defBool)      :: needsSabInel = .false.
+    logical(defBool)      :: needsSabEl = .false.
+    logical(defBool)      :: needsUrr = .false.
   end type cacheNucDat
 
   !!
@@ -93,6 +102,7 @@ module ceNeutronCache_mod
   type(cacheNucDat), dimension(:), allocatable, public   :: nuclideCache
   type(cacheMajorant), dimension(:), allocatable, public :: majorantCache
   type(cacheZAID), dimension(:), allocatable, public     :: zaidCache
+  !$omp threadprivate(materialCache, nuclideCache, majorantCache, zaidCache)
 
   ! Public procedures
   public :: init
@@ -138,6 +148,8 @@ contains
     if(Nloc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(Nmat))
 
     ! Allocate space
+    ! Need to do in parallel region to allocate each copy
+    !$omp parallel
     allocate(materialCache(Nmat))
     allocate(nuclideCache(Nnuc))
     allocate(majorantCache(Nloc))
@@ -149,6 +161,7 @@ contains
         call fatalError(Here,'Number of zaids must be +ve! Not: '//numToChar(Nzaid))
       end if
     end if
+    !$omp end parallel
 
   end subroutine init
 
@@ -156,10 +169,13 @@ contains
   !! Return Cache Module (Singleton) to uninitialised state
   !!
   subroutine kill()
+    ! Need to deallocate on all threads
+    !$omp parallel
     if(allocated(materialCache)) deallocate (materialCache)
     if(allocated(nuclideCache))  deallocate (nuclideCache)
     if(allocated(majorantCache)) deallocate (majorantCache)
     if(allocated(zaidCache)) deallocate (zaidCache)
+    !$omp end parallel
   end subroutine kill
 
 

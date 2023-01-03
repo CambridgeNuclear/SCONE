@@ -27,6 +27,8 @@ module rng_class
     procedure :: get
     procedure :: getInt
     procedure :: skip
+    procedure :: stride
+    procedure :: setSeed
     procedure :: getCount
     procedure :: getSeed
   end type rng
@@ -118,6 +120,11 @@ module rng_class
                                                             1_int64, &
                                                             1_int64, &
                                                             1_int64]
+
+  !!
+  !! Stride value between particle histories
+  !!
+  integer(int64) :: strideSize = 152917
 
 contains
 
@@ -293,6 +300,31 @@ contains
       self % rngSeed = iand(Gk * self % rngSeed + Ck, bitMask)
 
     end subroutine skip
+
+  !!
+  !! Stride subroutine: skips the RNG forward by the stride
+  !! muliplied by an integer
+  !!
+  subroutine stride(self, n)
+    class(rng), intent(inout)     :: self
+    integer(shortInt), intent(in) :: n
+
+    call self % skip(strideSize * n)
+
+  end subroutine stride
+
+  !!
+  !! Set seed subroutine: used to predictably set the particle seed
+  !! with some number of strides above the initial seed
+  !!
+  subroutine setSeed(self, n)
+    class(rng), intent(inout)     :: self
+    integer(shortInt), intent(in) :: n
+
+    self % rngSeed = self % initialSeed
+    call self % stride(n)
+
+  end subroutine setSeed
 
   !!
   !! Return total number of psudo-random numbers generated

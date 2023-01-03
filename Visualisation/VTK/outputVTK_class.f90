@@ -275,9 +275,9 @@ contains
     ! Specify number of elements in each direction, specify an origin,
     ! and specify spacing in each direction
     write(file,'(A)') 'DATASET STRUCTURED_POINTS'
-    write(file,'(A,3I0)') 'DIMENSIONS ',self % nVox
-    write(file,'(A,3F0.0)') 'ORIGIN ',self % corner
-    write(file,'(A,3F0.0)') 'SPACING ',self % width
+    write(file,'(A,I0,A,I0,A,I0)') 'DIMENSIONS ',self % nVox(1),' ',self % nVox(2),' ',self % nVox(3)
+    write(file,'(A,F0.3,A,F0.3,A,F0.3)') 'ORIGIN ',self % corner(1),' ',self % corner(2),' ',self % corner(3)
+    write(file,'(A,F0.3,A,F0.3,A,F0.3)') 'SPACING ',self % width(1),' ',self % width(2),' ',self % width(3)
     write(file,'(A,I0)') 'POINT_DATA ',self % nCells
 
     ! Output dataset attributes - begins with POINT_DATA or CELL_DATA followed by number of cells/points
@@ -293,7 +293,7 @@ contains
       write(file,'(A)') 'LOOKUP_TABLE default'
 
       if (self % dataReal(l)) then
-        write(file,'(F0.0)') self % values(l,:,:,:)
+        write(file,'(F0.3)') self % values(l,:,:,:)
       else
         write(file,'(I0)') int(self % values(l,:,:,:),shortInt)
       endif

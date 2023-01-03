@@ -8,15 +8,16 @@ module tallyClerkFactory_func
   use tallyClerk_inter,    only : tallyClerk
 
   ! tallyClerk implementations
-  use keffAnalogClerk_class,     only : keffAnalogClerk
-  use keffImplicitClerk_class,   only : keffImplicitClerk
-  use collisionClerk_class,      only : collisionClerk
-  use trackClerk_class,          only : trackClerk
-  use simpleFMClerk_class,       only : simpleFMClerk
-  use dancoffBellClerk_class,    only : dancoffBellClerk
-  use shannonEntropyClerk_class, only : shannonEntropyClerk
-  use centreOfMassClerk_class,   only : centreOfMassClerk
-  use absorptionClerk_class,     only : absorptionClerk
+  use keffAnalogClerk_class,           only : keffAnalogClerk
+  use keffImplicitClerk_class,         only : keffImplicitClerk
+  use collisionClerk_class,            only : collisionClerk
+  use collisionProbabilityClerk_class, only : collisionProbabilityClerk
+  use trackClerk_class,                only : trackClerk
+  use simpleFMClerk_class,             only : simpleFMClerk
+  use dancoffBellClerk_class,          only : dancoffBellClerk
+  use shannonEntropyClerk_class,       only : shannonEntropyClerk
+  use centreOfMassClerk_class,         only : centreOfMassClerk
+  use absorptionClerk_class,           only : absorptionClerk
 
   implicit none
   private
@@ -28,15 +29,16 @@ module tallyClerkFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk    ',&
-                                                                        'keffImplicitClerk  ',&
-                                                                        'collisionClerk     ',&
-                                                                        'trackClerk         ',&
-                                                                        'simpleFMClerk      ',&
-                                                                        'shannonEntropyClerk',&
-                                                                        'centreOfMassClerk  ',&
-                                                                        'dancoffBellClerk   ',&
-                                                                        'absorptionClerk    ' ]
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyClerks = [ 'keffAnalogClerk          ',&
+                                                                        'keffImplicitClerk        ',&
+                                                                        'collisionClerk           ',&
+                                                                        'collisionProbabilityClerk',&
+                                                                        'trackClerk               ',&
+                                                                        'simpleFMClerk            ',&
+                                                                        'shannonEntropyClerk      ',&
+                                                                        'centreOfMassClerk        ',&
+                                                                        'dancoffBellClerk         ',&
+                                                                        'absorptionClerk          ' ]
 
 contains
 
@@ -70,6 +72,10 @@ contains
 
      case('collisionClerk')
        allocate(collisionClerk :: new)
+       call new % init(dict, name)
+
+     case('collisionProbabilityClerk')
+       allocate(collisionProbabilityClerk :: new)
        call new % init(dict, name)
 
      case('trackClerk')
