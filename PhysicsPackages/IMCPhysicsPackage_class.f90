@@ -131,17 +131,26 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
-    integer(shortInt)                               :: i, j, N, Ntemp
-    type(particle)                                  :: p
+    integer(shortInt)                               :: i, j, N, Ntemp, num, nParticles
+    type(particle), save                            :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, totEnergy
     real(defReal), dimension(:), allocatable        :: tallyEnergy
-    class(IMCMaterial), pointer                     :: mat
+    class(IMCMaterial), pointer, save               :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
+    type(collisionOperator), save                   :: collOp
+    class(transportOperator), allocatable, save     :: transOp
+    type(RNG), target, save                         :: pRNG 
+    !$omp threadprivate(p, collOp, transOp, pRNG, mat)
 
-    ! Attach nuclear data and RNG to particle
-    p % pRNG   => self % pRNG
+    !$omp parallel
     p % geomIdx = self % geomIdx
+
+    ! Create a collision + transport operator which can be made thread private
+    collOp = self % collOp
+    transOp = self % transOp
+
+    !$omp end parallel
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -149,12 +158,7 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
-    ! Create temps.txt file for easy access to results
-    open(unit = 10, file = 'temps.txt')
-
     do i=1,N_steps
-
-      write(10, '(8A)') numToChar(i)
 
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
@@ -184,13 +188,13 @@ contains
           Ntemp = int(N * mat % getEmittedRad() / totEnergy)
           ! Enforce at least 1 particle
           if (Ntemp == 0) Ntemp = 1
-          call self % IMCSource % append(self % thisStep, Ntemp, p % pRNG, j)
+          call self % IMCSource % append(self % thisStep, Ntemp, self % pRNG, j)
         end if
       end do
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, 0, p % pRNG)
+        call self % inputSource % append(self % thisStep, 0, self % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -199,10 +203,16 @@ contains
 
       call tally % reportCycleStart(self % thisStep)
 
-      ! Assign new maximum particle time
-      p % timeMax = self % deltaT * i
+      nParticles = self % thisStep % popSize()
 
-      gen: do
+      !$omp parallel do schedule(dynamic)
+      gen: do num = 1, nParticles
+
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
+        p % pRNG => pRNG
+        call p % pRNG % stride(num)
+
         ! Obtain paticle from dungeon
         call self % thisStep % release(p)
         call self % geom % placeCoord(p % coords)
@@ -211,6 +221,9 @@ contains
         if (p % getType() /= P_PHOTON_MG) then
           call fatalError(Here, 'Particle is not of type P_PHOTON_MG')
         end if
+
+        ! Assign maximum particle time
+        p % timeMax = self % deltaT * i
 
         ! For newly sourced particles, sample time uniformly within time step
         if (p % time == ZERO) then
@@ -229,7 +242,7 @@ contains
 
           ! Transport particle until its death
           history: do
-            call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
+            call transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
 
             if(p % fate == AGED_FATE) then
@@ -239,16 +252,17 @@ contains
                 exit history
             end if
 
-            call self % collOp % collide(p, tally, self % thisStep, self % nextStep)
+            call collOp % collide(p, tally, self % thisStep, self % nextStep)
 
             if(p % isDead) exit history
 
           end do history
 
-        ! When dungeon is empty, exit
-        if (self % thisStep % isEmpty()) exit gen
-
       end do gen
+      !$omp end parallel do
+
+      ! Update RNG
+      call self % pRNG % stride(nParticles)
 
       ! Send end of time step report
       call tally % reportCycleEnd(self % thisStep)
@@ -285,6 +299,7 @@ contains
       end select
 
       ! Update material properties
+      !$omp parallel do
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
         if (j <= self % printUpdates) then
@@ -295,6 +310,7 @@ contains
           call mat % updateMat(tallyEnergy(j), .false.)
         end if
       end do
+      !$omp end parallel do
       print *
 
       ! Reset tally for next time step
@@ -304,6 +320,12 @@ contains
 
     end do
 
+    ! Output final mat temperatures
+    open(unit = 10, file = 'temps.txt')
+    do j = 1, self % nMat
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+      write(10, '(8A)') numToChar(mat % getTemp())
+    end do
     close(10)
 
   end subroutine steps
