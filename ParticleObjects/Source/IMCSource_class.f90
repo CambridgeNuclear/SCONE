@@ -101,10 +101,10 @@ contains
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in), optional :: matIdx
-    type(particleDungeon)                   :: tempDungeon
     type(particle)                          :: p
     integer(shortInt)                       :: i
     real(defReal)                           :: normFactor
+    type(RNG)                               :: pRand
     character(100), parameter               :: Here = "append (IMCSource_class.f90)"
 
     ! Assert that optional argument matIdx is in fact present
@@ -115,9 +115,15 @@ contains
     self % matIdx = matIdx
 
     ! Add N particles to dungeon
+    !$omp parallel
+    pRand = rand
+    !$omp do private(pRand)
     do i=1, N
-      call dungeon % detain(self % sampleParticle(rand))
+      call pRand % stride(i)
+      call dungeon % detain(self % sampleParticle(pRand))
     end do
+    !$omp end do
+    !$omp end parallel
    
   end subroutine append
 
