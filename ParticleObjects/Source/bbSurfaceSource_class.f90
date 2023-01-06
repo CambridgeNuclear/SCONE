@@ -184,12 +184,27 @@ contains
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in), optional :: matIdx
     integer(shortInt)                       :: i
+    type(RNG)                               :: pRand
     character(100), parameter               :: Here = 'append (bbSurfaceSource_class.f90)'
 
     ! Set number to generate. Using 0 in function call will use N from input dictionary
     if (N /= 0) self % N = N
 
-    ! Generate n particles to populate dungeon
+
+! TODO Parallel for some reason isn't working here, even though changes are the same as IMCSource ???
+
+    ! Generate N particles to populate dungeon
+!    !$omp parallel
+!    pRand = rand
+!    !$omp do private(pRand)
+!    do i = 1, self % N
+!      call pRand % stride(i)
+!      call dungeon % detain(self % sampleParticle(pRand))
+!    end do
+!    !$omp end do 
+!    !$omp end parallel
+
+
     do i = 1, self % N
       call dungeon % detain(self % sampleParticle(rand))
     end do
