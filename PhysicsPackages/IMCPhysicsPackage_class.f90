@@ -63,8 +63,9 @@ module IMCPhysicsPackage_class
   type, public,extends(physicsPackage) :: IMCPhysicsPackage
     private
     ! Building blocks
-    class(nuclearDatabase), pointer        :: nucData => null()
-    class(geometry), pointer               :: geom    => null()
+    class(nuclearDatabase), pointer        :: nucData  => null()
+    class(geometry), pointer               :: geom     => null()
+    class(geometry), pointer               :: geomAtch => null()
     integer(shortInt)                      :: geomIdx = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
@@ -140,8 +141,10 @@ contains
     class(tallyResult), allocatable                 :: tallyRes
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
-    type(RNG), target, save                         :: pRNG 
-    !$omp threadprivate(p, collOp, transOp, pRNG, mat)
+    type(RNG), target, save                         :: pRNG
+    real(defReal), save :: dist
+    integer(shortInt) :: event
+    !$omp threadprivate(p, collOp, transOp, pRNG, mat, dist)
 
     !$omp parallel
     p % geomIdx = self % geomIdx
@@ -239,6 +242,9 @@ contains
 
         ! Save state
         call p % savePreHistory()
+
+call self % geomAtch % move(p % coords, dist, event)
+print *, dist
 
           ! Transport particle until its death
           history: do
@@ -435,6 +441,13 @@ contains
     call gr_addGeom(geomName, tempDict)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
+
+    if (dict % isPresent('geometryAtch')) then
+      tempDict => dict % getDictPtr('geometryAtch')
+      geomName = 'GridGeom'
+      call gr_addGeom(geomName, tempDict)
+      self % geomAtch => gr_geomPtr(gr_geomIdx(geomName))
+    end if
 
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())

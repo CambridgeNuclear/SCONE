@@ -38,6 +38,7 @@ module geometryReg_mod
   ! Geometry
   use geometry_inter,    only : geometry
   use geometryStd_class, only : geometryStd
+  use geomGrid_class,    only : geomGrid
 
   ! Fields
   use field_inter,              only : field
@@ -347,6 +348,9 @@ contains
     select case (type)
       case ('geometryStd')
         allocate(geometryStd :: geom)
+
+      case ('geomGrid')
+        allocate(geomGrid :: geom)
 
       case default
         print '(A)', 'AVAILABLE GEOMETRIES'

@@ -8,6 +8,7 @@ add_sources( ./csg_class.f90
              ./geomGraph_class.f90
              ./geometry_inter.f90
              ./geometryStd_class.f90
+             ./geomGrid_class.f90
              ./geometryReg_mod.f90
            )
 
