@@ -302,21 +302,20 @@ contains
       !$omp parallel do
       do j = 1, self % nMat
         mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (j <= self % printUpdates) then
-          print *
-          print *, "Material update:  ", mm_matName(j)
-          call mat % updateMat(tallyEnergy(j), .true.)
-        else
-          call mat % updateMat(tallyEnergy(j), .false.)
-        end if
+        call mat % updateMat(tallyEnergy(j), .false.)
       end do
       !$omp end parallel do
       print *
 
+      ! Print material updates if requested
+      do j = 1, self % printUpdates
+        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+        print *, '  '//mm_matName(j), numToChar(mat % getTemp())
+      end do
+      print *
+
       ! Reset tally for next time step
       call tallyAtch % reset('imcWeightTally')
-
-      print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
 
     end do
 
