@@ -38,7 +38,7 @@ endif()
 
 # Add Debugging flags to scone library
 if(DEBUG)
-  list(APPEND scone_extra_flags "-fcheck=bounds,do,mem,pointer" "-Waliasing")
+  list(APPEND scone_extra_flags "-fcheck=all" "-Waliasing")
 endif()
 
 
