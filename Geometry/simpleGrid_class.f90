@@ -30,22 +30,20 @@ module simpleGrid_class
     class(geometry), pointer                     :: mainGeom => null()
     class(nuclearDatabase), pointer              :: xsData   => null()
     integer(shortInt), dimension(:), allocatable :: sizeN
-    integer(shortInt), dimension(3)              :: dx = 0
+    real(defReal), dimension(3)                  :: dx = 0
     real(defReal), dimension(6)                  :: bounds
+    real(defReal), dimension(3)                  :: corner
     type(gridCell), dimension(:), allocatable    :: gridCells
 
   contains
     procedure :: init
     !procedure :: kill
     procedure :: getDistance
-    procedure :: get
+    procedure :: getValue
     procedure :: storeMats
     procedure :: update
  
   end type grid
-
-
-
 
 contains
 
@@ -67,9 +65,12 @@ contains
 
     ! Get bounds of grid and calculate discretisations
     self % bounds = geom % bounds()
+
     self % dx(1)  = (self % bounds(4) - self % bounds(1)) / self % sizeN(1)
     self % dx(2)  = (self % bounds(5) - self % bounds(2)) / self % sizeN(2)
     self % dx(3)  = (self % bounds(6) - self % bounds(3)) / self % sizeN(3)
+
+    self % corner = [self % bounds(1), self % bounds(2), self % bounds(3)]
 
     ! Allocate space for cells
     N = self % sizeN(1) * self % sizeN(2) * self % sizeN(3)
@@ -89,11 +90,12 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
-    real(defReal), dimension(3)             :: point, corner, ratio
+    real(defReal), dimension(3)             :: rbar, point, corner, ratio
     character(100), parameter :: Here = 'getDistance (simpleGrid_class.f90)'
 
     ! Calculate position in grid
-    point = r / self % dx
+    rbar = r - self % corner
+    point = rbar / self % dx
 
     ! Round each dimension either up or down depending on which boundary will be hit
     do i = 1, 3
@@ -112,7 +114,7 @@ contains
     corner = corner * self % dx
 
     ! Determine which axis boundary will be hit first
-    ratio = (corner - r) / u
+    ratio = (corner - rbar) / u
 
     dist = minval(ratio)
 
@@ -124,18 +126,20 @@ contains
   !!
   !! Returns value of grid cell at position
   !!
-  function get(self, r, u) result(val)
+  function getValue(self, r, u) result(val)
     class(grid), intent(in)                 :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: val
+    real(defReal), dimension(3)             :: rbar
     integer(shortInt), dimension(3)         :: corner
     character(100), parameter :: Here = 'get (simpleGrid_class.f90)'
 
     ! Get grid cell bottom corner
-    corner = floor(r)
+    rbar = r - self % corner
+    corner = floor(rbar)
     do i = 1, 3
-      if (corner(i) == r(i) .and. u(i) < 0) then
+      if (corner(i) == rbar(i) .and. u(i) < 0) then
         ! Adjust for point starting on cell boundary
         corner(i) = corner(i) - 1
       end if
@@ -150,7 +154,7 @@ contains
 
     val = self % gridCells(idx) % majorant
 
-  end function get
+  end function getValue
 
   !!
   !!
@@ -206,6 +210,9 @@ contains
     integer(shortInt)            :: i, j, matIdx
     real(defReal)                :: sigmaT
     class(particle), allocatable :: p
+
+    allocate(p)
+    p % G = 1
 
     ! Loop through grid cells
     do i = 1, size(self % gridCells)
@@ -270,6 +277,5 @@ contains
     end if
 
   end function get_idx
-
 
 end module simpleGrid_class
