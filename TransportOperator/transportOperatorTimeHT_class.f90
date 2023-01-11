@@ -21,6 +21,9 @@ module transportOperatorTimeHT_class
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  ! Geometry interfaces
+  use simpleGrid_class,           only : simpleGrid
+
   implicit none
   private
 
@@ -50,7 +53,11 @@ contains
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
     ! Get majorant XS inverse: 1/Sigma_majorant
-    self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    if (associated(self % grid)) then
+      self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    else
+      self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    end if
 
     ! Check for errors
     if (p % time /= p % time) call fatalError(Here, 'Particle time is NaN')
@@ -136,10 +143,16 @@ contains
   subroutine deltaTracking(self, p)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
-    real(defReal)                                 :: dTime, dColl, sigmaT
+    real(defReal)                                 :: dTime, dColl, dGrid, sigmaT
     character(100), parameter :: Here = 'deltaTracking (transportOperatorTimeHT_class.f90)'
 
+    dColl = ZERO
+    dGrid = INF
+    if (associated(self % grid)) dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+
     DTLoop:do
+
+      dGrid = dGrid - dColl
 
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
@@ -147,8 +160,15 @@ contains
       ! Sample distance to collision
       dColl = -log( p % pRNG % get() ) * self % majorant_inv
 
+      if (dGrid < dTime .and. dGrid < dColl) then
+        call self % geom % teleport(p % coords, dGrid)
+        p % time = p % time + dGrid / lightSpeed
+        self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+        dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+        cycle DTLoop
+
       ! If dTime < dColl, move to end of time step location
-      if (dTime < dColl) then
+      else if (dTime < dColl) then
         call self % geom % teleport(p % coords, dTime)
         p % fate = AGED_FATE
         p % time = p % timeMax
@@ -182,15 +202,19 @@ contains
   !!
   !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
   !!
-  subroutine init(self, dict)
-    class(transportOperatorTimeHT), intent(inout) :: self
-    class(dictionary), intent(in)                 :: dict
+  subroutine init(self, dict, grid)
+    class(transportOperatorTimeHT), intent(inout)    :: self
+    class(dictionary), intent(in)                    :: dict
+    class(simpleGrid), intent(in), pointer, optional :: grid
 
     ! Initialise superclass
     call init_super(self, dict)
 
     ! Get cutoff value
     call dict % getOrDefault(self % cutoff, 'cutoff', 0.7_defReal)
+
+    ! Store grid pointer
+    if (present(grid)) self % grid => grid
 
   end subroutine init
 

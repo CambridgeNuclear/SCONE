@@ -16,6 +16,7 @@ module transportOperatorST_class
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry, distCache
+  use simpleGrid_class,           only : simpleGrid
 
   ! Tally interface
   use tallyCodes
@@ -101,9 +102,10 @@ contains
   !!
   !! See transportOperator_inter for details
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, grid)
     class(transportOperatorST), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
+    class(simpleGrid), intent(in), pointer, optional :: grid
 
     if (dict % isPresent('cache')) then
       call dict % get(self % cache, 'cache')
