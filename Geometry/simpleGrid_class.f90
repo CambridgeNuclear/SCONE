@@ -26,7 +26,7 @@ module simpleGrid_class
   !! dx     -> array [dx, dy, dz], the discretisation in each direction
   !! bounds -> [x_min, y_min, z_min, z_max, y_max, z_max] as in geometry_inter
   !!
-  type, public :: grid
+  type, public :: simpleGrid
     class(geometry), pointer                     :: mainGeom => null()
     class(nuclearDatabase), pointer              :: xsData   => null()
     integer(shortInt), dimension(:), allocatable :: sizeN
@@ -43,12 +43,12 @@ module simpleGrid_class
     procedure :: storeMats
     procedure :: update
  
-  end type grid
+  end type simpleGrid
 
 contains
 
   subroutine init(self, dict, geom, xsData)
-    class(grid), intent(inout)                   :: self
+    class(simpleGrid), intent(inout)             :: self
     class(dictionary), intent(in)                :: dict
     class(geometry), intent(in), pointer         :: geom
     class(nuclearDatabase), intent(in), pointer  :: xsData
@@ -86,7 +86,7 @@ contains
   !! May have issues with non-box geometry root universe surface with reflective boundary
   !!
   function getDistance(self, r, u) result(dist)
-    class(grid), intent(in)                 :: self
+    class(simpleGrid), intent(in)           :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
@@ -127,13 +127,13 @@ contains
   !! Returns value of grid cell at position
   !!
   function getValue(self, r, u) result(val)
-    class(grid), intent(in)                 :: self
+    class(simpleGrid), intent(in)           :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: val
     real(defReal), dimension(3)             :: rbar
     integer(shortInt), dimension(3)         :: corner
-    character(100), parameter :: Here = 'get (simpleGrid_class.f90)'
+    character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
 
     ! Get grid cell bottom corner
     rbar = r - self % corner
@@ -150,9 +150,11 @@ contains
 
     ! Get grid cell idx
     idx = get_idx(corner, self % sizeN)
-    if (idx == 0) call fatalError(Here, 'Point is outside lattice')
+    if (idx == 0) call fatalError(Here, 'Point is outside lattice: '//numToChar(r))
 
     val = self % gridCells(idx) % majorant
+
+    if (val <= ZERO) call fatalError(Here, 'Invalid majorant: '//numToChar(val))
 
   end function getValue
 
@@ -160,7 +162,7 @@ contains
   !!
   !!
   subroutine storeMats(self, searchN)
-    class(grid), intent(inout)                    :: self
+    class(simpleGrid), intent(inout)              :: self
     integer(shortInt), dimension(3), intent(in)   :: searchN
     real(defReal), dimension(3)                   :: searchRes
     integer(shortInt)                             :: i, j, k, l, matIdx, id
@@ -174,7 +176,7 @@ contains
     do i = 1, size(self % gridCells)
 
       ! Get cell lower corner
-      corner = self % dx * (get_ijk(i, self % sizeN) - 1)
+      corner = self % corner + self % dx * (get_ijk(i, self % sizeN) - 1)
 
       ! Loop through search locations
       do j = 1, searchN(1)
@@ -197,6 +199,7 @@ contains
 
       ! Store matIdx data in grid cell
       self % gridCells(i) % mats = mats % expose()
+      call mats % kill()
 
     end do
 
@@ -206,10 +209,10 @@ contains
   !!
   !!
   subroutine update(self)
-    class(grid), intent(inout)   :: self
-    integer(shortInt)            :: i, j, matIdx
-    real(defReal)                :: sigmaT
-    class(particle), allocatable :: p
+    class(simpleGrid), intent(inout) :: self
+    integer(shortInt)                :: i, j, matIdx
+    real(defReal)                    :: sigmaT
+    class(particle), allocatable     :: p
 
     allocate(p)
     p % G = 1
@@ -222,13 +225,15 @@ contains
       do j = 1, size(self % gridCells(i) % mats)
         ! Get opacity of each material
         matIdx = self % gridCells(i) % mats(j)
-        sigmaT = self % xsData % getTransMatXS(p, matIdx)
-
-        ! Update majorant if required
-        if (sigmaT > self % gridCells(i) % majorant) self % gridCells(i) % majorant = sigmaT
+        if (matIdx /= 0) then
+          sigmaT = self % xsData % getTransMatXS(p, matIdx)
+          ! Update majorant if required
+          if (sigmaT > self % gridCells(i) % majorant) self % gridCells(i) % majorant = sigmaT
+        end if
 
       end do
-
+!print *, 'mats: ', self % gridCells(i) % mats
+!print *, 'maj: ', self % gridCells(i) % majorant
     end do
 
   end subroutine update
