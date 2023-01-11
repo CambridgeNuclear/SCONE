@@ -25,6 +25,7 @@ module IMCPhysicsPackage_class
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx
+  use simpleGrid_class,               only : simpleGrid
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
@@ -65,7 +66,7 @@ module IMCPhysicsPackage_class
     ! Building blocks
     class(nuclearDatabase), pointer        :: nucData  => null()
     class(geometry), pointer               :: geom     => null()
-    class(geometry), pointer               :: geomAtch => null()
+    class(simpleGrid), pointer             :: grid     => null()
     integer(shortInt)                      :: geomIdx = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
@@ -142,9 +143,7 @@ contains
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
     type(RNG), target, save                         :: pRNG
-    real(defReal), save :: dist
-    integer(shortInt) :: event
-    !$omp threadprivate(p, collOp, transOp, pRNG, mat, dist)
+    !$omp threadprivate(p, collOp, transOp, pRNG, mat)
 
     !$omp parallel
     p % geomIdx = self % geomIdx
@@ -162,6 +161,9 @@ contains
     allocate(tallyEnergy(self % nMat))
 
     do i=1,N_steps
+
+      ! Update grid values if grid is in use
+      if (associated(self % grid)) call self % grid % update()
 
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
@@ -242,9 +244,6 @@ contains
 
         ! Save state
         call p % savePreHistory()
-
-call self % geomAtch % move(p % coords, dist, event)
-print *, dist
 
           ! Transport particle until its death
           history: do
@@ -442,16 +441,16 @@ print *, dist
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
-    if (dict % isPresent('geometryAtch')) then
-      tempDict => dict % getDictPtr('geometryAtch')
-      geomName = 'GridGeom'
-      call gr_addGeom(geomName, tempDict)
-      self % geomAtch => gr_geomPtr(gr_geomIdx(geomName))
-    end if
-
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+
+    ! Initialise grid for hybrid tracking
+    if (dict % isPresent('grid')) then
+      tempDict => dict % getDictPtr('grid')
+      allocate(self % grid)
+      call self % grid % init(tempDict, self % geom, self % nucData)
+    end if
 
     ! Read particle source definition
     if( dict % isPresent('source') ) then
@@ -472,7 +471,7 @@ print *, dist
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict)
+    call new_transportOperator(self % transOp, tempDict, self % grid)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')

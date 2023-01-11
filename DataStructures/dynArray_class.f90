@@ -34,6 +34,7 @@ module dynArray_class
     procedure  :: pop           => pop_shortInt
     procedure  :: empty         => empty_shortInt
     procedure  :: kill          => kill_shortInt
+    procedure  :: isPresent     => isPresent_shortInt
 
     ! Private procedures
 
@@ -247,5 +248,21 @@ contains
     if(allocated(self % array)) deallocate(self % array)
 
   end subroutine kill_shortInt
+
+  !!
+  !! Checks if item is present in array
+  !!
+  pure function isPresent_shortInt(self, item) result(isPresent)
+    class(dynIntArray), intent(in) :: self
+    integer(shortInt), intent(in)  :: item
+    logical(defBool)               :: isPresent
+
+    isPresent = .false.
+
+    if (self % mySize == 0) return
+
+    if (any(self % array == item)) isPresent = .true.
+
+  end function isPresent_shortInt
 
 end module dynArray_class
