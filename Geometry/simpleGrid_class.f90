@@ -105,7 +105,7 @@ contains
         corner(i) = floor(point(i))
       end if
       ! Adjust if starting position was on boundary
-      if (corner(i) == point(i)) then
+      if (abs(corner(i) - point(i)) < surface_tol) then
         corner(i) = corner(i) + sign(ONE, u(i))
       end if
     end do
@@ -118,7 +118,11 @@ contains
 
     dist = minval(ratio)
 
-    if (dist <= ZERO) call fatalError(Here, 'Distance invalid: '//numToChar(dist))
+    if (dist <= ZERO) then
+      print *, 'r', r
+      print *, 'u', u
+      call fatalError(Here, 'Distance invalid: '//numToChar(dist))
+    end if
 
   end function getDistance
 
@@ -136,7 +140,7 @@ contains
     character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
 
     ! Get grid cell bottom corner
-    rbar = r - self % corner
+    rbar = reposition(r, self % bounds) - self % corner
     corner = floor(rbar)
     do i = 1, 3
       if (corner(i) == rbar(i) .and. u(i) < 0) then
@@ -150,7 +154,7 @@ contains
 
     ! Get grid cell idx
     idx = get_idx(corner, self % sizeN)
-    if (idx == 0) call fatalError(Here, 'Point is outside lattice: '//numToChar(r))
+    if (idx == 0) call fatalError(Here, 'Point is outside grid: '//numToChar(r))
 
     val = self % gridCells(idx) % majorant
 
@@ -275,12 +279,29 @@ contains
     integer(shortInt), dimension(3), intent(in) :: sizeN
     integer(shortInt)                           :: idx
 
-    if (any(ijk <= 0 .or. ijk > sizeN)) then ! Point is outside lattice
+    if (any(ijk <= 0 .or. ijk > sizeN)) then ! Point is outside grid
       idx = 0
     else
       idx = ijk(1) + sizeN(1) * (ijk(2)-1 + sizeN(2) * (ijk(3)-1))
     end if
 
   end function get_idx
+
+
+  function reposition(r, bounds) result(rNew)
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(6), intent(in) :: bounds
+    real(defReal), dimension(3)             :: rNew
+    integer(shortInt)                       :: i
+
+    rNew = r
+
+    do i = 1, 3
+      if (r(i) < bounds(i)   .and. r(i) > bounds(i)-surface_tol)   rNew(i) = bounds(i)
+      if (r(i) > bounds(i+3) .and. r(i) < bounds(i+3)+surface_tol) rNew(i) = bounds(i+3)
+    end do
+
+  end function reposition
+
 
 end module simpleGrid_class

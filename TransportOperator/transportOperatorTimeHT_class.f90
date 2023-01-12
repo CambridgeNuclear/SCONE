@@ -163,6 +163,7 @@ contains
       if (dGrid < dTime .and. dGrid < dColl) then
         call self % geom % teleport(p % coords, dGrid)
         p % time = p % time + dGrid / lightSpeed
+        if (p % matIdx() == OUTSIDE_FILL) return
         self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
         dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
         cycle DTLoop
