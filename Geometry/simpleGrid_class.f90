@@ -1,7 +1,7 @@
 module simpleGrid_class
 
   use numPrecision
-  use universalVariables,    only : surface_tol
+  use universalVariables,    only : SURF_TOL
   use genericProcedures,     only : fatalError, numToChar
   use dictionary_class,      only : dictionary
   use geometry_inter,        only : geometry
@@ -33,6 +33,7 @@ module simpleGrid_class
     real(defReal), dimension(3)                  :: dx = 0
     real(defReal), dimension(6)                  :: bounds
     real(defReal), dimension(3)                  :: corner
+    real(defReal), dimension(3)                  :: a_bar
     type(gridCell), dimension(:), allocatable    :: gridCells
 
   contains
@@ -71,6 +72,7 @@ contains
     self % dx(3)  = (self % bounds(6) - self % bounds(3)) / self % sizeN(3)
 
     self % corner = [self % bounds(1), self % bounds(2), self % bounds(3)]
+    self % a_bar  = self % dx * HALF - SURF_TOL
 
     ! Allocate space for cells
     N = self % sizeN(1) * self % sizeN(2) * self % sizeN(3)
@@ -90,33 +92,54 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
-    real(defReal), dimension(3)             :: rbar, point, corner, ratio
+    real(defReal), dimension(3)             :: rbar, low, high !, point, corner, ratio
     character(100), parameter :: Here = 'getDistance (simpleGrid_class.f90)'
 
-    ! Calculate position in grid
+    ! Calculate position from grid corner
     rbar = r - self % corner
-    point = rbar / self % dx
+    if (any(rbar < -SURF_TOL)) call fatalError(Here, 'Point is outside grid geometry') !TODO only checks bottom for now
 
-    ! Round each dimension either up or down depending on which boundary will be hit
+    ! Write as a fraction across cell
+    rbar = rbar / self % dx
+    rbar = rbar - floor(rbar)
+
+    ! Account for surface tolerance
+    low = SURF_TOL / self % dx
+    high = ONE - low
     do i = 1, 3
-      if (u(i) >= 0) then
-        corner(i) = ceiling(point(i))
-      else
-        corner(i) = floor(point(i))
-      end if
-      ! Adjust if starting position was on boundary
-      if (abs(corner(i) - point(i)) < surface_tol) then
-        corner(i) = corner(i) + sign(ONE, u(i))
-      end if
+      if (rbar(i) < low(i)  .and. u(i) < ZERO) rbar(i) = ONE
+      if (rbar(i) > high(i) .and. u(i) > ZERO) rbar(i) = ZERO
     end do
 
-    ! Convert back to spatial coordinates - this is now the coordinates of the corner being travelled towards
-    corner = corner * self % dx
+    ! Distance to centre plus distance from centre to required boundary
+    rbar = (HALF - rbar + sign(HALF, u)) * self % dx
+    dist = minval(rbar / u)
 
-    ! Determine which axis boundary will be hit first
-    ratio = (corner - rbar) / u
 
-    dist = minval(ratio)
+
+    ! Round each dimension either up or down depending on which boundary will be hit
+!    do i = 1, 3
+!      if (u(i) >= 0) then
+!    ! Round each dimension either up or down depending on which boundary will be hit
+!    do i = 1, 3
+!      if (u(i) >= 0) then
+!        corner(i) = ceiling(point(i))
+!      else
+!        corner(i) = floor(point(i))
+!      end if
+!      ! Adjust if starting position was on boundary
+!      if (abs(corner(i) - point(i)) < SURF_TOL) then
+!        corner(i) = corner(i) + sign(ONE, u(i))
+!      end if
+!    end do
+
+!    ! Convert back to spatial coordinates - this is now the coordinates of the corner being travelled towards
+!    corner = corner * self % dx
+
+!    ! Determine which axis boundary will be hit first
+!    ratio = (corner - rbar) / u
+
+!    dist = minval(ratio)
 
     if (dist <= ZERO) then
       print *, 'r', r
@@ -135,26 +158,65 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: val
-    real(defReal), dimension(3)             :: rbar
-    integer(shortInt), dimension(3)         :: corner
+    real(defReal), dimension(3)             :: r_bar
+    integer(shortInt), dimension(3)         :: corner, ijk
+    integer(shortInt)                       :: i, idx
     character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
 
-    ! Get grid cell bottom corner
-    rbar = reposition(r, self % bounds) - self % corner
-    corner = floor(rbar)
+
+!    rbar = r - self % corner
+
+
+    ! Find lattice location in x,y&z
+    ijk = floor((r - self % corner) / self % dx) + 1
+
+    ! Get position wrt middle of the lattice cell
+    r_bar = r - self % corner - ijk * self % dx + HALF * self % dx
+
+    ! Check if position is within surface tolerance
+    ! If it is, push it to next cell
     do i = 1, 3
-      if (corner(i) == rbar(i) .and. u(i) < 0) then
-        ! Adjust for point starting on cell boundary
-        corner(i) = corner(i) - 1
+      if (abs(r_bar(i)) > self % a_bar(i) .and. r_bar(i)*u(i) > ZERO) then
+
+        ! Select increment. Ternary expression
+        if (u(i) < ZERO) then
+          inc = -1
+        else
+          inc = 1
+        end if
+
+        ijk(i) = ijk(i) + inc
+
       end if
     end do
 
-    ! Adjust for bottom corner starting at 1
-    corner = corner + 1
+    ! Set localID & cellIdx
+    if (any(ijk <= 0 .or. ijk > self % sizeN)) then ! Point is outside grid
+      call fatalError(Here, 'Point is outside grid')
 
-    ! Get grid cell idx
-    idx = get_idx(corner, self % sizeN)
-    if (idx == 0) call fatalError(Here, 'Point is outside grid: '//numToChar(r))
+    else
+      idx = ijk(1) + self % sizeN(1) * (ijk(2)-1 + self % sizeN(2) * (ijk(3)-1))
+
+    end if
+
+
+
+!    ! Get grid cell bottom corner
+!    rbar = reposition(r, self % bounds) - self % corner
+!    corner = floor(rbar)
+!    do i = 1, 3
+!      if (corner(i) == rbar(i) .and. u(i) < 0) then
+!        ! Adjust for point starting on cell boundary
+!        corner(i) = corner(i) - 1
+!      end if
+!    end do
+!
+!    ! Adjust for bottom corner starting at 1
+!    corner = corner + 1
+!
+!    ! Get grid cell idx
+!    idx = get_idx(corner, self % sizeN)
+!    if (idx == 0) call fatalError(Here, 'Point is outside grid: '//numToChar(r))
 
     val = self % gridCells(idx) % majorant
 
@@ -287,7 +349,9 @@ contains
 
   end function get_idx
 
-
+  !!
+  !! Adjustment for surface tolerance used by getValue subroutine
+  !!
   function reposition(r, bounds) result(rNew)
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(6), intent(in) :: bounds
@@ -297,11 +361,41 @@ contains
     rNew = r
 
     do i = 1, 3
-      if (r(i) < bounds(i)   .and. r(i) > bounds(i)-surface_tol)   rNew(i) = bounds(i)
-      if (r(i) > bounds(i+3) .and. r(i) < bounds(i+3)+surface_tol) rNew(i) = bounds(i+3)
+      if (r(i) < bounds(i)   .and. r(i) > bounds(i)  -SURF_TOL) rNew(i) = bounds(i)
+      if (r(i) > bounds(i+3) .and. r(i) < bounds(i+3)+SURF_TOL) rNew(i) = bounds(i+3)
     end do
+
+    ! TODO Boundaries between cells rather than just edge of grid
 
   end function reposition
 
+  !!
+  !! Adjustment for surface tolerance used by getDistance function.
+  !! Able to be simpler than repositionLoc as only consider position within cell
+  !! rather than within grid.
+  !!
+  !! Args:
+  !!   r  [inout] -> position as a fraction of distance across cell, 0 < r(i), < 1
+  !!   u  [in]    -> direction
+  !!   dx [in]    -> grid resolution
+  !!
+!  subroutine repositionDist(rbar, u, dx)
+!    real(defReal), dimension(3), intent(inout) :: rbar
+!    real(defReal), dimension(3), intent(in)    :: u
+!    real(defReal), dimension(3), intent(in)    :: dx
+!    real(defReal), dimension(3)                :: low, high
+!    integer(shortInt)                          :: i
+!
+!    ! Calculate cut-offs
+!    low = SURF_TOL / dx
+!    high = ONE - low
+!
+!    ! Change position if needed
+!    do i = 1, 3
+!      if (rbar(i) < low(i)  .and. u(i) < ZERO) rbar(i) = ONE
+!      if (rbar(i) > high(i) .and. u(i) > ZERO) rbar(i) = ZERO
+!    end do
+!
+!  end subroutine repositionDist
 
 end module simpleGrid_class
