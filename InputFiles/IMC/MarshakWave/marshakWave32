@@ -1,10 +1,10 @@
 
 type IMCPhysicsPackage;
 
-pop            500;
-limit          5000;
-steps          10000;
-timeStepSize   0.05;
+pop            10000;
+limit          50000;
+steps          500;
+timeStepSize   0.5;
 printUpdates   4;
 
 collisionOperator {
@@ -24,10 +24,13 @@ source {
   T 1;
   dir 1;
   particle photon;
+  N 1000;
 }
 
 tally  {
 	   }
+
+//grid { dimensions (10 1 1); searchN (100 1 1); }
 
 geometry { 
     type geometryStd;
