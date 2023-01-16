@@ -1,19 +1,19 @@
-! ZAID    Line Number     PATH 
-92233.03c 1         ./IntegrationTestFiles/92233JEF311.ace 
+! ZAID    Line Number     PATH
+92233.03c; 1;         ./IntegrationTestFiles/92233JEF311.ace;
 
 
-1001.03c  1779      ./IntegrationTestFiles/1001JEF311.ace
+1001.03c;  1779;      ./IntegrationTestFiles/1001JEF311.ace;
 
-6012.06c  1         ./IntegrationTestFiles/6012JNDL32.ace
+6012.06c;  1;         ./IntegrationTestFiles/6012JNDL32.ace;
 
 
-! An extra comment line 
+! An extra comment line
 
-8016.03c  1       ./IntegrationTestFiles/8016JEF311.ace
+8016.03c;  1;       ./IntegrationTestFiles/8016JEF311.ace;
 
-92235.03c 1       ./IntegrationTestFiles/92235JEF311.ace 
+92235.03c; 1;       ./IntegrationTestFiles/92235JEF311.ace;
 
 ! Test S(alpha,beta) T = 323.6K
 
-h-h2o.49t   1 ./IntegrationTestFiles/h-h2o.49t
-grph30.46t  1 ./IntegrationTestFiles/grph30.46t
+h-h2o.49t;   1; ./IntegrationTestFiles/h-h2o.49t;
+grph30.46t;  1; ./IntegrationTestFiles/grph30.46t;

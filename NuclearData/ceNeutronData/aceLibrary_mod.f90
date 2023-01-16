@@ -1,8 +1,15 @@
 !!
 !! This module is a factory that produces aceCards for a given nuclide
 !!
+!! Two types of ACE cards can be specified
+!!   Continious energy neutron data e.g. ZZAAA.TTc
+!!   SAB bard e.g. XXXXX.TT.t
+!!
 !! Library format:
 !!   '!' line comment indicators
+!!   ';' for field delimiters
+!!   Each line consists of 3 fields: NAME; LINE NUMBER; PATH;
+!!   Empty lines are allowed
 !!
 module aceLibrary_mod
 
@@ -18,12 +25,13 @@ module aceLibrary_mod
   private
 
   !! Module parameters
-  integer(shortInt), parameter         :: UNDEF   = 0
-  integer(shortInt), parameter         :: ACE_CE  = 1
-  integer(shortInt), parameter         :: ACE_SAB = 2
-  integer(shortInt), parameter         :: MAX_COL = 900
-  character(*),parameter               :: READ_FMT = '(A900)'
-  character(1),      parameter         :: COMMENT_TOKEN = '!'
+  integer(shortInt), parameter  :: UNDEF   = 0
+  integer(shortInt), parameter  :: ACE_CE  = 1
+  integer(shortInt), parameter  :: ACE_SAB = 2
+  integer(shortInt), parameter  :: MAX_COL = 900
+  character(*), parameter       :: READ_FMT = '(A900)'
+  character(1), parameter       :: COMMENT_TOKEN = '!'
+  character(1), parameter       :: DELIM = ';'
 
   character(1), parameter :: TAB   = char(9)
   character(1), parameter :: SPACE = ' '
@@ -60,7 +68,7 @@ contains
   !!   path [in] -> Path to library file. Should be absolute path for safety
   !!
   !! Erros:
-  !!   fatalError or Frotran intrinsic read  error if there are ill-formated lines in
+  !!   fatalError or Fortran intrinsic read  error if there are ill-formated lines in
   !!     provided library file
   !!   Fortran intrinsic error if the requested file does not exist
   !!
@@ -114,19 +122,19 @@ contains
 
       ! Read if line is not empty
       if( len_trim(buffor) /= 0) then
-        associate ( bounds => splitChar(buffor, ' ') )
-          if (size(bounds,2) < 3) call fatalError(Here, 'Ill formatted line: '//trim(buffor))
+        associate ( bounds => splitChar(buffor, DELIM) )
+          if (size(bounds, 2) < 3) call fatalError(Here, 'Ill formatted line: ' // trim(buffor))
           ! Read Content
           entry(i) % ZAID      = buffor(bounds(1,1):bounds(2,1))
           entry(i) % firstLine = charToInt(buffor(bounds(1,2):bounds(2,2)))
-          entry(i) % path      = buffor(bounds(1,3):len_trim(buffor))
-          i = i +1
+          entry(i) % path      = buffor(bounds(1,3):bounds(2,3))
+          i = i + 1
         end associate
       end if
     end do
 
     ! Detect type of each entry and store in map for quick access
-    do i=1,size(entry)
+    do i = 1, size(entry)
       last = len_trim(entry(i) % ZAID)
 
       ! Set entry type
@@ -138,7 +146,7 @@ contains
           entry(i) % TYPE = ACE_SAB
 
         case default
-          call fatalError(Here,'Unrecognised ACE CARD type: '// entry(i) % ZAID(last:last))
+          call fatalError(Here,'Unrecognised ACE CARD type: ' // entry(i) % ZAID(last:last))
 
       end select
 
@@ -176,7 +184,7 @@ contains
     class(aceCard), intent(inout)  :: ACE
     character(nameLen), intent(in) :: ZAID
     integer(shortInt)              :: idx
-    integer(shortInt), parameter     :: NOT_FOUND = -1
+    integer(shortInt), parameter   :: NOT_FOUND = -1
     character(100), parameter :: Here = 'new_neutronACE (aceLibrary_mod.f90)'
 
     ! Find index of the requested ZAID identifier
