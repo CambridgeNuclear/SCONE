@@ -23,8 +23,9 @@ contains
     character(*),parameter :: tape = " myInt 7;                                 &
                                        myChar my;                               &
                                        myReal 1.3;                              &
+                                       weirdFloat 1E-11;                        &
                                        intArray (1 2 4 5);                      &
-                                       realArray (1.1 2.2 3.4);                 &
+                                       realArray (1.1 2.2 3.4 1E-11);           &
                                        charArray (One element );                &
                                        subDict { myInt 3; myReal 3.2; }"
 
@@ -44,8 +45,12 @@ contains
     call dict % get(tempRealArray, 'realArray')
 
     @assertEqual(1.3_defReal, tempReal)
-    @assertEqual([1.1_defReal, 2.2_defReal, 3.4_defReal], tempRealArray)
+    @assertEqual([1.1_defReal, 2.2_defReal, 3.4_defReal, 1.0E-11_defReal], tempRealArray)
 
+    ! Verify a problematic value
+    ! It may not be parsed correclty with wrong fromat settings
+    call dict % get(tempReal, 'weirdFloat')
+    @assertEqual(1.0E-11_defReal, tempReal)
 
     ! Verify nested dictionary
     dictPtr => dict % getDictPtr('subDict')
