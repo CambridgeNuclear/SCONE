@@ -67,13 +67,15 @@ contains
 
     ! Decide whether to use delta tracking or surface tracking
     ! Vastly different opacities make delta tracking infeasable
-    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
-      ! Delta tracking
-      call self % deltaTracking(p)
-    else
-      ! Surface tracking
-      call self % surfaceTracking(p)
-    end if
+!    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
+!      ! Delta tracking
+!      call self % deltaTracking(p)
+!    else
+!      ! Surface tracking
+!      call self % surfaceTracking(p)
+!    end if
+
+    call self % deltaTracking(p)
 
     ! Check for particle leakage
     if (p % matIdx() == OUTSIDE_FILL) then
@@ -152,6 +154,15 @@ contains
 
     DTLoop:do
 
+      ! Switch to surface tracking if delta tracking is infeasible
+      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      if(sigmaT * self % majorant_inv < ONE - self % cutoff) then
+        ! Surface tracking
+        call self % surfaceTracking(p)
+        return
+      end if
+
+      ! Update distance to grid
       dGrid = dGrid - dColl
 
       ! Find distance to time boundary
