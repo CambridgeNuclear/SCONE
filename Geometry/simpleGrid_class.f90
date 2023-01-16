@@ -115,6 +115,7 @@ contains
     rbar = (HALF - rbar + sign(HALF, u)) * self % dx
     dist = minval(rbar / u)
 
+    if (dist <= ZERO) call fatalError(Here, 'Distance invalid: '//numToChar(dist))
 
 
     ! Round each dimension either up or down depending on which boundary will be hit
@@ -141,11 +142,6 @@ contains
 
 !    dist = minval(ratio)
 
-    if (dist <= ZERO) then
-      print *, 'r', r
-      print *, 'u', u
-      call fatalError(Here, 'Distance invalid: '//numToChar(dist))
-    end if
 
   end function getDistance
 
@@ -162,10 +158,6 @@ contains
     integer(shortInt), dimension(3)         :: corner, ijk
     integer(shortInt)                       :: i, idx
     character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
-
-
-!    rbar = r - self % corner
-
 
     ! Find lattice location in x,y&z
     ijk = floor((r - self % corner) / self % dx) + 1
@@ -276,13 +268,16 @@ contains
   !!
   subroutine update(self)
     class(simpleGrid), intent(inout) :: self
-    integer(shortInt)                :: i, j, matIdx
-    real(defReal)                    :: sigmaT
+    integer(shortInt)                :: i
+    integer(shortInt), save          :: j, matIdx
+    real(defReal), save              :: sigmaT
     class(particle), allocatable     :: p
+    !$omp threadprivate(j, matIdx)
 
     allocate(p)
     p % G = 1
 
+    !$omp parallel do
     ! Loop through grid cells
     do i = 1, size(self % gridCells)
       ! Reset majorant
@@ -298,9 +293,8 @@ contains
         end if
 
       end do
-!print *, 'mats: ', self % gridCells(i) % mats
-!print *, 'maj: ', self % gridCells(i) % majorant
     end do
+    !$omp end parallel do
 
   end subroutine update
 
