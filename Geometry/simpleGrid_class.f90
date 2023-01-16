@@ -23,14 +23,14 @@ module simpleGrid_class
   !! It increases first with X then Y and lastly Z.
   !!
   !! sizeN  -> array [nx, ny, nz], the dimensions of the grid
-  !! dx     -> array [dx, dy, dz], the discretisation in each direction
+  !! pitch  -> array [dx, dy, dz], the discretisation in each direction
   !! bounds -> [x_min, y_min, z_min, z_max, y_max, z_max] as in geometry_inter
   !!
   type, public :: simpleGrid
     class(geometry), pointer                     :: mainGeom => null()
     class(nuclearDatabase), pointer              :: xsData   => null()
     integer(shortInt), dimension(:), allocatable :: sizeN
-    real(defReal), dimension(3)                  :: dx = 0
+    real(defReal), dimension(3)                  :: pitch = 0
     real(defReal), dimension(6)                  :: bounds
     real(defReal), dimension(3)                  :: corner
     real(defReal), dimension(3)                  :: a_bar
@@ -67,12 +67,12 @@ contains
     ! Get bounds of grid and calculate discretisations
     self % bounds = geom % bounds()
 
-    self % dx(1)  = (self % bounds(4) - self % bounds(1)) / self % sizeN(1)
-    self % dx(2)  = (self % bounds(5) - self % bounds(2)) / self % sizeN(2)
-    self % dx(3)  = (self % bounds(6) - self % bounds(3)) / self % sizeN(3)
+    self % pitch(1)  = (self % bounds(4) - self % bounds(1)) / self % sizeN(1)
+    self % pitch(2)  = (self % bounds(5) - self % bounds(2)) / self % sizeN(2)
+    self % pitch(3)  = (self % bounds(6) - self % bounds(3)) / self % sizeN(3)
 
     self % corner = [self % bounds(1), self % bounds(2), self % bounds(3)]
-    self % a_bar  = self % dx * HALF - SURF_TOL
+    self % a_bar  = self % pitch * HALF - SURF_TOL
 
     ! Allocate space for cells
     N = self % sizeN(1) * self % sizeN(2) * self % sizeN(3)
@@ -92,28 +92,28 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
-    real(defReal), dimension(3)             :: rbar, low, high !, point, corner, ratio
+    real(defReal), dimension(3)             :: r_bar, low, high !, point, corner, ratio
     character(100), parameter :: Here = 'getDistance (simpleGrid_class.f90)'
 
     ! Calculate position from grid corner
-    rbar = r - self % corner
-    if (any(rbar < -SURF_TOL)) call fatalError(Here, 'Point is outside grid geometry') !TODO only checks bottom for now
+    r_bar = r - self % corner
+    if (any(r_bar < -SURF_TOL)) call fatalError(Here, 'Point is outside grid geometry') !TODO only checks bottom for now
 
     ! Write as a fraction across cell
-    rbar = rbar / self % dx
-    rbar = rbar - floor(rbar)
+    r_bar = r_bar / self % pitch
+    r_bar = r_bar - floor(r_bar)
 
     ! Account for surface tolerance
-    low = SURF_TOL / self % dx
+    low = SURF_TOL / self % pitch
     high = ONE - low
     do i = 1, 3
-      if (rbar(i) < low(i)  .and. u(i) < ZERO) rbar(i) = ONE
-      if (rbar(i) > high(i) .and. u(i) > ZERO) rbar(i) = ZERO
+      if (r_bar(i) < low(i)  .and. u(i) < ZERO) r_bar(i) = ONE
+      if (r_bar(i) > high(i) .and. u(i) > ZERO) r_bar(i) = ZERO
     end do
 
     ! Distance to centre plus distance from centre to required boundary
-    rbar = (HALF - rbar + sign(HALF, u)) * self % dx
-    dist = minval(rbar / u)
+    r_bar = (HALF - r_bar + sign(HALF, u)) * self % pitch
+    dist = minval(r_bar / u)
 
     if (dist <= ZERO) call fatalError(Here, 'Distance invalid: '//numToChar(dist))
 
@@ -135,10 +135,10 @@ contains
 !    end do
 
 !    ! Convert back to spatial coordinates - this is now the coordinates of the corner being travelled towards
-!    corner = corner * self % dx
+!    corner = corner * self % pitch
 
 !    ! Determine which axis boundary will be hit first
-!    ratio = (corner - rbar) / u
+!    ratio = (corner - r_bar) / u
 
 !    dist = minval(ratio)
 
@@ -160,10 +160,10 @@ contains
     character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
 
     ! Find lattice location in x,y&z
-    ijk = floor((r - self % corner) / self % dx) + 1
+    ijk = floor((r - self % corner) / self % pitch) + 1
 
     ! Get position wrt middle of the lattice cell
-    r_bar = r - self % corner - ijk * self % dx + HALF * self % dx
+    r_bar = r - self % corner - ijk * self % pitch + HALF * self % pitch
 
     ! Check if position is within surface tolerance
     ! If it is, push it to next cell
@@ -194,10 +194,10 @@ contains
 
 
 !    ! Get grid cell bottom corner
-!    rbar = reposition(r, self % bounds) - self % corner
-!    corner = floor(rbar)
+!    r_bar = reposition(r, self % bounds) - self % corner
+!    corner = floor(r_bar)
 !    do i = 1, 3
-!      if (corner(i) == rbar(i) .and. u(i) < 0) then
+!      if (corner(i) == r_bar(i) .and. u(i) < 0) then
 !        ! Adjust for point starting on cell boundary
 !        corner(i) = corner(i) - 1
 !      end if
@@ -228,13 +228,13 @@ contains
     type(dynIntArray)                             :: mats
 
     ! Calculate distance between search points
-    searchRes = self % dx / (searchN + 1)
+    searchRes = self % pitch / (searchN + 1)
 
     ! Loop through grid cells
     do i = 1, size(self % gridCells)
 
       ! Get cell lower corner
-      corner = self % corner + self % dx * (get_ijk(i, self % sizeN) - 1)
+      corner = self % corner + self % pitch * (get_ijk(i, self % sizeN) - 1)
 
       ! Loop through search locations
       do j = 1, searchN(1)
@@ -371,23 +371,23 @@ contains
   !! Args:
   !!   r  [inout] -> position as a fraction of distance across cell, 0 < r(i), < 1
   !!   u  [in]    -> direction
-  !!   dx [in]    -> grid resolution
+  !!   pitch [in] -> grid resolution
   !!
-!  subroutine repositionDist(rbar, u, dx)
-!    real(defReal), dimension(3), intent(inout) :: rbar
+!  subroutine repositionDist(r_bar, u, pitch)
+!    real(defReal), dimension(3), intent(inout) :: r_bar
 !    real(defReal), dimension(3), intent(in)    :: u
-!    real(defReal), dimension(3), intent(in)    :: dx
+!    real(defReal), dimension(3), intent(in)    :: pitch
 !    real(defReal), dimension(3)                :: low, high
 !    integer(shortInt)                          :: i
 !
 !    ! Calculate cut-offs
-!    low = SURF_TOL / dx
+!    low = SURF_TOL / pitch
 !    high = ONE - low
 !
 !    ! Change position if needed
 !    do i = 1, 3
-!      if (rbar(i) < low(i)  .and. u(i) < ZERO) rbar(i) = ONE
-!      if (rbar(i) > high(i) .and. u(i) > ZERO) rbar(i) = ZERO
+!      if (r_bar(i) < low(i)  .and. u(i) < ZERO) r_bar(i) = ONE
+!      if (r_bar(i) > high(i) .and. u(i) > ZERO) r_bar(i) = ZERO
 !    end do
 !
 !  end subroutine repositionDist
