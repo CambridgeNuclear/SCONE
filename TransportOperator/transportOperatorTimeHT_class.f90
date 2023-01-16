@@ -67,15 +67,13 @@ contains
 
     ! Decide whether to use delta tracking or surface tracking
     ! Vastly different opacities make delta tracking infeasable
-!    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
-!      ! Delta tracking
-!      call self % deltaTracking(p)
-!    else
-!      ! Surface tracking
-!      call self % surfaceTracking(p)
-!    end if
-
-    call self % deltaTracking(p)
+    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
+      ! Delta tracking
+      call self % deltaTracking(p)
+    else
+      ! Surface tracking
+      call self % surfaceTracking(p)
+    end if
 
     ! Check for particle leakage
     if (p % matIdx() == OUTSIDE_FILL) then
@@ -150,17 +148,11 @@ contains
 
     dColl = ZERO
     dGrid = INF
-    if (associated(self % grid)) dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    if (associated(self % grid)) then
+      dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    end if
 
     DTLoop:do
-
-      ! Switch to surface tracking if delta tracking is infeasible
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-      if(sigmaT * self % majorant_inv < ONE - self % cutoff) then
-        ! Surface tracking
-        call self % surfaceTracking(p)
-        return
-      end if
 
       ! Update distance to grid
       dGrid = dGrid - dColl
@@ -171,6 +163,7 @@ contains
       ! Sample distance to collision
       dColl = -log( p % pRNG % get() ) * self % majorant_inv
 
+      ! Check if grid cell changes - only passes if grid is allocated, otherwise dGrid = INF
       if (dGrid < dTime .and. dGrid < dColl) then
         call self % geom % teleport(p % coords, dGrid)
         p % time = p % time + dGrid / lightSpeed
@@ -200,6 +193,13 @@ contains
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
       if (p % pRNG % get() < sigmaT * self % majorant_inv) exit DTLoop
+
+      ! Switch to surface tracking if delta tracking is infeasible
+      if(sigmaT * self % majorant_inv < ONE - self % cutoff) then
+        call self % surfaceTracking(p)
+        ! Exit after surface tracking
+        return
+      end if
 
       ! Protect against infinite loop
       if (sigmaT*self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance, &
