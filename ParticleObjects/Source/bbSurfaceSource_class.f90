@@ -190,24 +190,16 @@ contains
     ! Set number to generate. Using 0 in function call will use N from input dictionary
     if (N /= 0) self % N = N
 
-
-! TODO Parallel for some reason isn't working here, even though changes are the same as IMCSource ???
-
     ! Generate N particles to populate dungeon
-!    !$omp parallel
-!    pRand = rand
-!    !$omp do private(pRand)
-!    do i = 1, self % N
-!      call pRand % stride(i)
-!      call dungeon % detain(self % sampleParticle(pRand))
-!    end do
-!    !$omp end do 
-!    !$omp end parallel
-
-
+    !$omp parallel
+    pRand = rand
+    !$omp do private(pRand)
     do i = 1, self % N
-      call dungeon % detain(self % sampleParticle(rand))
+      call pRand % stride(i)
+      call dungeon % detain(self % sampleParticle(pRand))
     end do
+    !$omp end do 
+    !$omp end parallel
 
   end subroutine append
 
@@ -234,19 +226,15 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal), dimension(3)           :: prevPos
+    integer(shortInt)                     :: i
     real(defReal)                         :: r1, r2, rad, theta
 
     if ( self % planeShape == 0 ) then   ! Square
 
-      prevPos = self % r
-
       ! Set new x, y and z coords
-      self % r(1) = (rand % get()-0.5) * self % surfSize
-      self % r(2) = (rand % get()-0.5) * self % surfSize
-      self % r(3) = (rand % get()-0.5) * self % surfSize
-      ! Leave position along normal axis unchanged
-      self % r(self % axis) = prevPos(self % axis) 
+      do i = 1, 3
+        if (i /= self % axis) self % r(i) = (rand % get()-0.5) * self % surfSize
+      end do
 
     else   ! Circle
       rad = rand % get() * self % surfSize
