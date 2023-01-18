@@ -30,6 +30,7 @@ module tallyMap1DFactory_func
   use materialMap_class, only : materialMap
   use homogMatMap_class, only : homogMatMap
   use weightMap_class,   only : weightMap
+  use cellMap_class,     only : cellMap
   use testMap_class,     only : testMap
 !  use matXsMap_class,    only : matXsMap
 
@@ -50,6 +51,7 @@ module tallyMap1DFactory_func
                                                                                 'materialMap',&
                                                                                 'homogMatMap',&
                                                                                 'weightMap  ',&
+                                                                                'cellMap    ',&
                                                                                 'testMap    ']
 
 contains
@@ -99,6 +101,10 @@ contains
 
       case('weightMap')
         allocate(weightMap :: new)
+        call new % init(dict)
+
+      case('cellMap')
+        allocate(cellMap :: new)
         call new % init(dict)
 
       case('testMap')
