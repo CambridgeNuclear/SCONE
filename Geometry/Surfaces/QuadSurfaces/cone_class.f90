@@ -18,6 +18,9 @@ module cone_class
   !! Where i,j,k are x,y & z axis, and t is the tangent of the cone opening angle
   !! The cone is aligned along the k axis
   !!
+  !! The cone can be oriented towards the +k or -k directions; in the input the entry
+  !! orientation should respectively be 1 or -1.
+  !!
   !! Three diffrent types are avaliable
   !!   xCone -> aligned with X-axis
   !!   yCone -> aligned with Y-axis
@@ -226,10 +229,8 @@ contains
     if (self % dir > 0 .and. r(self % axis) < (self % vertex(self % axis) - self % surfTol())) then
       c = NOT_PRESENT
       return
-    end if
 
-    ! Exit the function with a positive number if the position is in the wrong semiplane
-    if (self % dir < 0 .and. r(self % axis) > (self % vertex(self % axis) + self % surfTol())) then
+    elseif (self % dir < 0 .and. r(self % axis) > (self % vertex(self % axis) + self % surfTol())) then
       c = NOT_PRESENT
       return
     end if
