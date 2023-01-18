@@ -49,10 +49,11 @@ contains
   !! Does not check range of r
   !! Optionaly return index of a sampled bin
   !!
-  function sample(self, r, res_idx) result (x)
+  function sample(self, r, res_idx, eps) result (x)
     class(tabularPdf),intent(in)             :: self
     real(defReal),intent(in)                 :: r    ! Random Number
     integer(ShortInt), intent(out), optional :: res_idx
+    real(defReal), intent(out), optional     :: eps
     real(defReal)                            :: x
     integer(shortInt)                        :: idx
     real(defReal)                            :: f, delta, ci, pi
@@ -61,20 +62,21 @@ contains
     idx = linearSearch(self % cdf,r)
     call searchError(idx,Here)
 
+    idx = min(idx, size(self % x) - 1)
+
+    ci = self % cdf(idx)
+    pi = self % pdf(idx)
+
     select case (self % flag)
       case (histogram)
-        ci = self % cdf(idx)
-        pi = self % pdf(idx)
 
         x = self % x(idx) + (r-ci) / pi
 
       case (linLin)
-        ci = self % cdf(idx)
-        pi = self % pdf(idx)
 
         f = (self % pdf(idx+1) - self % pdf(idx)) / (self % x(idx+1) - self % x(idx))
 
-        if (f == 0) then
+        if (f == 0 .or. (pi*pi + 2*f*(r-ci)) < 0) then
           x = self % x(idx) + (r-ci) / pi
         else
           delta = sqrt( pi*pi + 2*f*(r-ci))
@@ -87,7 +89,8 @@ contains
     end select
 
     ! Return the sampled index
-    if(present(res_idx)) res_idx = idx
+    if (present(res_idx)) res_idx = idx
+    if (present(eps)) eps = (r - ci)/(self % cdf(idx+1) - ci)
 
   end function sample
 

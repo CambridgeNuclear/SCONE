@@ -9,10 +9,10 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active 100; 
-inactive 200; 
+active 400;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 
 collisionOperator { neutronCE {type neutronCEstd;} 
                   } 
@@ -81,7 +81,7 @@ materials {
         92234.03  0.000024316;
         92235.03  0.00000089598;
         92238.03  0.0000071284;
-        01001.03  0.055183;
+        moder {01001.03  0.055183; file h-h2o.40 ; }
         08016.03  0.032043;
         09019.03  0.0047182;
       }

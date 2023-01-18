@@ -12,13 +12,15 @@ module aceLibrary_mod
   use charLib_func,      only : splitChar
   use charMap_class,     only : charMap
   use aceCard_class,     only : aceCard
+  use aceSabCard_class,  only : aceSabCard
 
   implicit none
   private
 
   !! Module parameters
-  integer(shortInt), parameter         :: UNDEF  = 0
-  integer(shortInt), parameter         :: ACE_CE = 1
+  integer(shortInt), parameter         :: UNDEF   = 0
+  integer(shortInt), parameter         :: ACE_CE  = 1
+  integer(shortInt), parameter         :: ACE_SAB = 2
   integer(shortInt), parameter         :: MAX_COL = 900
   character(*),parameter               :: READ_FMT = '(A900)'
   character(1),      parameter         :: COMMENT_TOKEN = '!'
@@ -46,6 +48,7 @@ module aceLibrary_mod
 
   public :: load
   public :: new_neutronACE
+  public :: new_moderACE
   public :: kill
 
 contains
@@ -131,6 +134,9 @@ contains
         case ('c')
           entry(i) % TYPE = ACE_CE
 
+        case ('t')
+          entry(i) % TYPE = ACE_SAB
+
         case default
           call fatalError(Here,'Unrecognised ACE CARD type: '// entry(i) % ZAID(last:last))
 
@@ -170,11 +176,12 @@ contains
     class(aceCard), intent(inout)  :: ACE
     character(nameLen), intent(in) :: ZAID
     integer(shortInt)              :: idx
+    integer(shortInt), parameter     :: NOT_FOUND = -1
     character(100), parameter :: Here = 'new_neutronACE (aceLibrary_mod.f90)'
 
     ! Find index of the requested ZAID identifier
-    idx = map % getOrDefault(ZAID, -1)
-    if(idx == -1) then
+    idx = map % getOrDefault(ZAID, NOT_FOUND)
+    if(idx == NOT_FOUND) then
       call fatalError(Here, trim(ZAID) //" was not found in ACE library from: "//trim(libFile))
     end if
 
@@ -187,6 +194,44 @@ contains
     call ACE % readFromFile(entry(idx) % path, entry(idx) % firstLine)
 
   end subroutine new_neutronACE
+
+  !!
+  !! Load new thermal scattering neutron data for a given file name
+  !!
+  !! Note: file name is provided without suffix
+  !!   h-h2o.42  -> will work
+  !!   h-h2o.42t -> will NOT work
+  !!
+  !! Args:
+  !!   ACE [inout] -> ACE Sab Card which will store the data
+  !!   file [in]   -> Requested thermal scattering file
+  !!
+  !! Errors:
+  !!   fatalError if file is not present in the library
+  !!   fatalError if file points to data which is not for Sab data
+  !!
+  subroutine new_moderACE(ACE, file)
+    class(aceSabCard), intent(inout) :: ACE
+    character(nameLen), intent(in)   :: file
+    integer(shortInt)                :: idx
+    integer(shortInt), parameter     :: NOT_FOUND = -1
+    character(100), parameter :: Here = 'new_moderACE (aceLibrary_mod.f90)'
+
+    ! Find index of the requested ZAID identifier
+    idx = map % getOrDefault(file, NOT_FOUND)
+    if (idx == NOT_FOUND) then
+      call fatalError(Here, trim(file) //" was not found in ACE library from: "//trim(libFile))
+    end if
+
+    ! Verify that type is correct
+    if( entry(idx) % type /= ACE_SAB) then
+      call fatalError(Here,trim(file)//" is not a ACE data with CE XSs.")
+    end if
+
+    ! Load data
+    call ACE % readFromFile(entry(idx) % path, entry(idx) % firstLine)
+
+  end subroutine new_moderACE
 
 
   !!
@@ -229,6 +274,6 @@ contains
     end do
 
   end subroutine preprocessLine
-    
+
 
 end module aceLibrary_mod
