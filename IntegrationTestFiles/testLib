@@ -1,8 +1,8 @@
 ! ZAID    Line Number     PATH
 92233.03c; 1;         ./IntegrationTestFiles/92233JEF311.ace;
 
-
-1001.03c;  1779;      ./IntegrationTestFiles/1001JEF311.ace;
+! We wish to make sure we support long paths
+1001.03c;  1779;      ./IntegrationTestFiles/../IntegrationTestFiles/../IntegrationTestFiles/../IntegrationTestFiles/../IntegrationTestFiles/../IntegrationTestFiles/../IntegrationTestFiles/1001JEF311.ace;
 
 6012.06c;  1;         ./IntegrationTestFiles/6012JNDL32.ace;
 

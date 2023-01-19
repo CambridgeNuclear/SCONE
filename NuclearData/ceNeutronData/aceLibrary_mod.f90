@@ -40,10 +40,10 @@ module aceLibrary_mod
   !! Storage for data associated with each library entry
   !!
   type, private :: item
-    character(nameLen) :: ZAID
-    integer(shortInt)  :: firstLine = 1
-    integer(shortInt)  :: type = UNDEF
-    character(pathLen) :: path
+    character(nameLen)        :: ZAID
+    integer(shortInt)         :: firstLine = 1
+    integer(shortInt)         :: type = UNDEF
+    character(:), allocatable :: path
   end type
 
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -52,7 +52,7 @@ module aceLibrary_mod
 
   type(item),dimension(:),allocatable :: entry
   type(charMap)                       :: map
-  character(pathLen)                  :: libFile
+  character(:), allocatable           :: libFile
 
   public :: load
   public :: new_neutronACE
@@ -249,7 +249,7 @@ contains
 
     if(allocated(entry)) deallocate(entry)
     call map % kill()
-    libFile = ''
+    if(allocated(libFile)) deallocate(libFile)
 
   end subroutine kill
 
