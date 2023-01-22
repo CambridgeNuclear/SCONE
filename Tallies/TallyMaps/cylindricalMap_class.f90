@@ -16,10 +16,6 @@ module cylindricalMap_class
   !!
   !! Divides space into a mesh in cylindrical co-ordinates
   !!
-  !! TODO:
-  !!   Implement polar & azimuthal subdivision
-  !!   Add unstructured grid boundaries
-  !!
   !! Interface:
   !!   tallyMap interface
   !!
@@ -40,9 +36,14 @@ module cylindricalMap_class
   !!    #axMin 2.0;   // Needed if axGrid is present
   !!    #axMax  10.0; // Needed if axGrid is present
   !!    #axN 10;      // Needed if axGrid is present
-  !!    #azimuthalBins 4;# // Optional
+  !!    #azimuthalN 4;# // Optional
   !!    }
   !!
+  !! NOTE: in the output file, a cylindrical map is printed as a 3D array where
+  !!       the dimension order is
+  !!       1: radial
+  !!       2: axial
+  !!       3: azimuthal
   !!
   type, public, extends (tallyMap) :: cylindricalMap
     private
@@ -79,9 +80,9 @@ contains
     class(dictionary), intent(in)            :: dict
     real(defReal), dimension(:), allocatable :: temp, grid
     character(nameLen)                       :: type
-    real(defReal)                            :: Rmin, Rmax, Amin, Amax, vol
+    real(defReal)                            :: Rmin, Rmax, axMin, axMax, vol
     integer(shortInt)                        :: i
-    character(100), parameter :: Here = 'init (sphericalmap_class.f90)'
+    character(100), parameter :: Here = 'init (cylindricalMap_class.f90)'
 
     ! Check & load origin
     call dict % getOrDefault(temp, 'origin', [ZERO, ZERO])
@@ -93,6 +94,8 @@ contains
 
     ! Check orientation of the cylinder
     if (dict % isPresent('orientation')) then
+      call dict % get(type, 'orientation')
+
       select case(type)
         case('x')
           self % DIM1 = 2
@@ -106,6 +109,9 @@ contains
           self % DIM1 = 1
           self % DIM2 = 2
           self % DIM3 = 3
+        case default
+          call fatalError(Here, 'Keyword orientation must be x, y or z. It is: '//type)
+
       end select
     else
       self % DIM1 = 1
@@ -114,7 +120,7 @@ contains
     end if
 
     ! Load radial grid information
-    if (.not.dict % isPresent('rGrid')) call fatalError(Here, 'Keyword rGrid must be present')
+    if (.not. dict % isPresent('rGrid')) call fatalError(Here, 'Keyword rGrid must be present')
     call dict % get(type, 'rGrid')
 
     ! Check type of radial grid bins
@@ -126,7 +132,7 @@ contains
 
         ! Check that minimum radius is OK
         if (Rmin < ZERO) then
-          call fatalError(Here, 'Minumum radius must be +ve is:'//numToChar(Rmin))
+          call fatalError(Here, 'Minumum radius must be +ve. It is: '//numToChar(Rmin))
         end if
 
         ! Build grid
@@ -148,7 +154,7 @@ contains
 
         ! Check that minimum radius is OK
         if (Rmin < ZERO) then
-          call fatalError(Here, 'Minumum radius must be +ve is:'//numToChar(Rmin))
+          call fatalError(Here, 'Minumum radius must be +ve. It is: '//numToChar(Rmin))
         end if
 
         ! Calculate volume
@@ -157,14 +163,15 @@ contains
         allocate(grid(self % rN + 1))
         ! Calculate grid boundaries
         grid(1) = Rmin
-        do i = 2,size(grid)
+        grid(self % rN + 1) = Rmax
+        do i = 2,self % rN
           grid(i) = sqrt(vol + grid(i-1)**2)
         end do
 
         call self % rBounds % init(grid)
 
       case default
-        call fatalError(Here, "'rGrid' can take only values of: lin")
+        call fatalError(Here, "'rGrid' can take only values of: lin, unstruct, equivolume")
 
     end select
 
@@ -175,24 +182,29 @@ contains
 
       select case(type)
         case('lin')
-          call dict % get(Amin, 'axMin')
-          call dict % get(Amax, 'axMax')
+          call dict % get(axMin, 'axMin')
+          call dict % get(axMax, 'axMax')
           call dict % get(self % axN, 'axN')
 
           ! Build grid
-          call self % axBounds % init(Amin, Amax, self % axN, type)
+          call self % axBounds % init(axMin, axMax, self % axN, type)
 
         case default
           call fatalError(Here, "'axGrid' can take only values of: lin")
 
         end select
 
+      else
+        self % axN = 1
       end if
 
       ! Load azimuthal grid information
-      if (dict % isPresent('azimuthalBins')) then
-        call dict % get(self % azN, 'azimuthalBins')
+      if (dict % isPresent('azimuthalN')) then
+        call dict % get(self % azN, 'azimuthalN')
         call self % azBounds % init(-PI, PI, self % azN, 'lin')
+
+      else
+        self % azN = 1
       end if
 
   end subroutine init
@@ -202,17 +214,28 @@ contains
   !!
   !! See tallyMap for specification.
   !!
+  !! Dimensions are ordered as: radial, azial, azimuthal
+  !!
   elemental function bins(self, D) result(N)
     class(cylindricalMap), intent(in) :: self
     integer(shortInt), intent(in)     :: D
     integer(shortInt)                 :: N
 
-    if (D == 1 .or. D == 0) then
+    if (D == 1) then
       N = self % rN
-      if (self % axN /= 0) N = N * self % axN
-      if (self % azN /= 0) N = N * self % azN
+
+    elseif (D == 2) then
+      N = self % axN
+
+    elseif (D == 3) then
+      N = self % azN
+
+    elseif (D == 0) then
+      N = self % rN * self % axN * self % azN
+
     else
       N = 0
+
     end if
 
   end function bins
@@ -226,7 +249,7 @@ contains
     class(cylindricalMap), intent(in)  :: self
     integer(shortInt)                  :: D
 
-    D = 1
+    D = 3
 
   end function dimensions
 
@@ -267,20 +290,22 @@ contains
     end if
 
     ! Update if there is axial dimension
-    if (self % axN /= 0) then
+    if (self % axN /= 1) then
+
       ! Search along the axial dimension and return 0 if index is out-of-bounds
       aIdx = self % axBounds % search(state % r(self % DIM3))
       if (aIdx == valueOutsideArray) then
         idx = 0
         return
       end if
+
       ! Compute new index and update number of bins
       idx = N * (aIdx - 1) + idx
       N = N * self % axN
     end if
 
     ! Update if there is azimuthal dimension
-    if (self % azN /= 0) then
+    if (self % azN /= 1) then
 
       x = state % r(self % DIM1) - self % origin(1)
       y = state % r(self % DIM2) - self % origin(2)
@@ -288,7 +313,7 @@ contains
       theta = atan2(y,x)
       ! Search along the azimuthal dimension and return 0 if index is out-of-bounds
       aIdx = self % azBounds % search(theta)
-      ! Compute new index and update number of bins
+      ! Compute new index
       idx = N * (aIdx - 1) + idx
     end if
 
@@ -320,7 +345,7 @@ contains
     call out % endArray()
 
     ! Add axial dimension if present
-    if (self % axN /= 0) then
+    if (self % axN /= 1) then
       name = trim(self % getAxisName()) //'AxialBounds'
 
       call out % startArray(name, [2,self % axN])
@@ -336,7 +361,7 @@ contains
     end if
 
     ! Add azimuthal dimension if present
-    if (self % azN /= 0) then
+    if (self % azN /= 1) then
       name = trim(self % getAxisName()) //'AzimuthalBounds'
 
       call out % startArray(name, [2,self % azN])

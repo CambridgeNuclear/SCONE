@@ -120,7 +120,8 @@ contains
         allocate(grid(self % N + 1))
         ! Calculate grid boundaries
         grid(1) = Rmin
-        do i = 2,size(grid)
+        grid(self % N + 1) = Rmax
+        do i = 2,self % N
           grid(i) = (vol + grid(i-1)**3)**(ONE/3.0_defReal)
         end do
 

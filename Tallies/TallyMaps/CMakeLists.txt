@@ -25,4 +25,5 @@ add_unit_tests(./Tests/materialMap_test.f90
                ./Tests/multiMap_test.f90
                ./Tests/homogMatMap_test.f90
                ./Tests/sphericalMap_test.f90
-               ./Tests/cellMap_test.f90)
+               ./Tests/cellMap_test.f90
+               ./Tests/cylindricalMap_test.f90)
