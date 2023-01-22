@@ -87,7 +87,7 @@ module neutronCEimp_class
     class(ceNeutronDatabase), pointer, public :: xsData => null()
     class(ceNeutronMaterial), pointer, public :: mat    => null()
     class(ceNeutronNuclide),  pointer, public :: nuc    => null()
-    class(uniFissSitesField), pointer :: UFSfield => null()
+    class(uniFissSitesField), pointer :: ufsField => null()
 
     !! Settings - private
     real(defReal) :: minE
@@ -183,7 +183,7 @@ contains
     if (self % uniFissSites) then
       name = 'UFS'
       idx = gr_fieldIdx(name)
-      self % UFSfield => uniFissSitesField_TptrCast(gr_fieldPtr(idx))
+      self % ufsField => uniFissSitesField_TptrCast(gr_fieldPtr(idx))
     end if
 
   end subroutine init
@@ -262,7 +262,7 @@ contains
       ! Sample number of fission sites generated
       ! Support -ve weight particles
       if (self % uniFissSites) then
-        val = self % UFSfield % at(p)
+        val = self % ufsField % at(p)
         n = int(abs( (wgt * sig_nufiss) / (sig_tot * k_eff))*val(1)/val(2) + rand1, shortInt)
         wgt =  val(2)/val(1)
       else
@@ -296,7 +296,7 @@ contains
         pTemp % wgt = wgt
 
         call nextCycle % detain(pTemp)
-        if (self % uniFissSites) call self % UFSfield % storeFS(pTemp)
+        if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
       end do
     end if
@@ -366,7 +366,7 @@ contains
       ! Support -ve weight particles
       ! Note change of denominator (sig_fiss) wrt implicit generation
       if (self % uniFissSites) then
-        val = self % UFSfield % at(p)
+        val = self % ufsField % at(p)
         n = int(abs( (wgt * sig_nufiss) / (sig_fiss * k_eff))*val(1)/val(2) + rand1, shortInt)
         wgt =  val(2)/val(1)
       else
@@ -400,6 +400,8 @@ contains
         pTemp % wgt = wgt
 
         call nextCycle % detain(pTemp)
+        if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
+
       end do
     end if
 

@@ -78,6 +78,7 @@ module eigenPhysicsPackage_class
     type(tallyAdmin),pointer               :: activeTally   => null()
     type(tallyAdmin),pointer               :: inactiveAtch  => null()
     type(tallyAdmin),pointer               :: activeAtch    => null()
+    class(uniFissSitesField),pointer       :: ufsField      => null()
 
 
     ! Settings
@@ -149,9 +150,6 @@ contains
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
-    character(nameLen)                        :: UFSname
-    class(field), pointer                     :: field
-    class(uniFissSitesField), pointer         :: UFSfield
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
@@ -234,10 +232,7 @@ contains
       call tally % reportCycleEnd(self % nextCycle)
 
       if (self % UFS) then
-        UFSname = 'UFS'
-        field => gr_fieldPtr(gr_fieldIdx(UFSname))
-        UFSfield => uniFissSitesField_TptrCast(field)
-        call UFSfield % updateMap()
+        call self % ufsField % updateMap()
       end if
 
       ! Normalise population
@@ -379,9 +374,10 @@ contains
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
-    character(nameLen)                        :: nucData, energy, geomName, fieldName
+    character(nameLen)                        :: nucData, energy, geomName, ufsName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
+    class(field), pointer                     :: field
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -451,14 +447,6 @@ contains
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
-    ! Read uniform fission site option as a geometry field
-    if (dict % isPresent('uniformFissionSites')) then
-      self % UFS = .true.
-      tempDict => dict % getDictPtr('uniformFissionSites')
-      fieldName = 'UFS'
-      call gr_addField(fieldName, tempDict)
-    end if
-
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
@@ -472,6 +460,20 @@ contains
       call viz % makeViz()
       call viz % kill()
     endif
+
+    ! Read uniform fission site option as a geometry field
+    if (dict % isPresent('uniformFissionSites')) then
+      self % ufs = .true.
+      ufsName = 'UFS'
+      ! Build and initialise
+      tempDict => dict % getDictPtr('uniformFissionSites')
+      call gr_addField(ufsName, tempDict)
+      ! Save UFS field
+      field => gr_fieldPtr(gr_fieldIdx(ufsName))
+      self % ufsField => uniFissSitesField_TptrCast(field)
+      ! Initialise
+      call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)
+    end if
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
