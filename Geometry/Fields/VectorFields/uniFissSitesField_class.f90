@@ -31,22 +31,28 @@ module uniFissSitesField_class
   !!
   !! Uniform Fission Sites Field
   !!
-  !! Returns a 2D vector with:
+  !! Returns a 3D vector with:
   !! - fraction of fissionable material volume occupied by the required cell
   !! - percentage of fission sites in the required cell
-  !! NOTE: as things are now, results are correct only if all the spatial bins
-  !!       include the same amount of fissionable material (are of equal size) !!!!!
+  !! - unused entry, filled with a contant. It is there to match the interface
   !!
   !! Sample Dictionary Input:
   !!   uniformFissionSites { type uniFissSitesField;
-  !!                         #uniformMap 1;#            optional
+  !!                         #uniformMap 0;#            optional
   !!                         #popVolumes 1.0e7;#        optional
   !!                         map { <map definition> } }
+  !!
+  !! NOTE: if uniformMap is 0, a routine to estimate the volumes of the map bins
+  !!       is run with population popVolumes. This might be inefficient if, for
+  !!       example, the volume to be tallied is small compared to the model geometry
   !!
   !! Public Members:
   !!   map ->  map that lays over the geometry. It should be a spatial map, an
   !!           energy map wouldn't make much sense!
   !!   N   ->  total number of map bins
+  !!   pop ->  particle population used for the volume estimation
+  !!   uniformMap     -> flag to indicate whether the map has bins with uniform volumes
+  !!   volFraction    -> array with the volume fraction of each bin
   !!   sourceFraction -> array with the percentage of fission sites in each bin
   !!   buildSource    -> array used to 'tally' fission sites
   !!
@@ -124,12 +130,15 @@ contains
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in)           :: type
     real(defReal), dimension(6)             :: bounds
-    real(defReal), dimension(3)             :: bottom, top, rand3, r
-    type(particleState)                     :: state
-    integer(shortInt)                       :: i, j, binIdx, matIdx, uniqueID
+    real(defReal), dimension(3)             :: bottom, top
+    real(defReal), dimension(3), save       :: rand3, r
+    type(particleState), save               :: state
+    integer(shortInt)                       :: i
+    integer(shortInt), save                 :: j, binIdx, matIdx, uniqueID
     class(nuclearDatabase), pointer         :: nucData
-    class(neutronMaterial), pointer         :: mat
+    class(neutronMaterial), pointer, save   :: mat
     character(100), parameter :: Here = 'estimateVol (uniFissSitesField_class.f90)'
+    !$omp threadprivate(rand3, r, state, j, binIdx, matIdx, uniqueID, mat)
 
     allocate(self % volFraction(self % N))
 
@@ -157,6 +166,7 @@ contains
       print *, "VOLUME CALCULATION FOR UFS"
 
       ! Iterate over number of points desired
+      !$omp parallel do
       do i = 1, self % pop
 
         j = 0
@@ -184,7 +194,7 @@ contains
           if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")
 
           ! Resample position if material is not fissile
-          if (.not. mat % isFissile()) cycle
+          if (.not. mat % isFissile()) cycle rejection
 
           state % r = r
 
@@ -192,9 +202,10 @@ contains
           binIdx = self % map % map(state)
 
           ! Return if invalid bin index
-          if (binIdx == 0) return
+          if (binIdx == 0) cycle rejection
 
           ! Add point to the volume fraction map
+          !$omp atomic
           self % volFraction(binIdx) = self % volFraction(binIdx) + 1
 
           ! Exit the loop
@@ -203,6 +214,7 @@ contains
         end do rejection
 
       end do
+      !$omp end parallel do
 
       ! Normalise the volume fraction map
       self % volFraction = self % volFraction/sum(self % volFraction)
