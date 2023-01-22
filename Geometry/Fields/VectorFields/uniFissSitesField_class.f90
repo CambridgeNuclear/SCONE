@@ -197,6 +197,7 @@ contains
           if (.not. mat % isFissile()) cycle rejection
 
           state % r = r
+          state % matIdx = matIdx
 
           ! Read map bin index
           binIdx = self % map % map(state)
