@@ -146,16 +146,12 @@ contains
     real(defReal)                                 :: dTime, dColl, dGrid, sigmaT
     character(100), parameter :: Here = 'deltaTracking (transportOperatorTimeHT_class.f90)'
 
-    dColl = ZERO
     dGrid = INF
     if (associated(self % grid)) then
       dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
     end if
 
     DTLoop:do
-
-      ! Update distance to grid
-      dGrid = dGrid - dColl
 
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
@@ -167,7 +163,7 @@ contains
       if (dGrid < dTime .and. dGrid < dColl) then
         call self % geom % teleport(p % coords, dGrid)
         p % time = p % time + dGrid / lightSpeed
-        if (p % matIdx() == OUTSIDE_FILL) return
+        if (p % matIdx() == OUTSIDE_FILL) return ! TODO Check that this check doesn't pass if particle is reflected on universe boundary
         self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
         dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
         cycle DTLoop
@@ -204,6 +200,9 @@ contains
       ! Protect against infinite loop
       if (sigmaT*self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance, &
                                                                  &potentially infinite loop')
+
+      ! Update distance to next grid cell
+      dGrid = dGrid - dColl
 
     end do DTLoop
 
