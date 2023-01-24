@@ -37,6 +37,9 @@ if(COVERAGE)
 endif()
 
 # Add Debugging flags to scone library
+# NOTE: GFortran 7.5 may give buggy warnings here
+#   If this is an issue, consider using `-fcheck=bounds,do,mem,pointer`
+#   https://github.com/CambridgeNuclear/SCONE/pull/15#issuecomment-1384192425
 if(DEBUG)
   list(APPEND scone_extra_flags "-fcheck=all,no-array-temps" "-Waliasing")
 endif()
