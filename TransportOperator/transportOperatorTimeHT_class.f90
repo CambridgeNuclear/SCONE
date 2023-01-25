@@ -1,5 +1,5 @@
 !!
-!! Transport operator time-dependent problems using a hybrid of delta tracking and surface tracking
+!! Transport operator for time-dependent problems using a hybrid of delta tracking and surface tracking
 !!
 module transportOperatorTimeHT_class
   use numPrecision
