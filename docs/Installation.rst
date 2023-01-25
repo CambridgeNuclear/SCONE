@@ -177,7 +177,7 @@ Compiling SCONE
 
 #. Download the repository. Run the following commands::
 
-     git clone https://Your-Bitbucket-Name@bitbucket.org/Your-Bitbucket-Name/scone.git
+     git clone https://github.com/CambridgeNuclear/SCONE
 
 #. Create build folder in the project directory (e.g. Build)::
 
