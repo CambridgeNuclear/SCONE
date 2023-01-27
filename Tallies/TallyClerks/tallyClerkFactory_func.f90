@@ -8,6 +8,15 @@ module tallyClerkFactory_func
   use tallyClerk_inter,    only : tallyClerk
 
   ! tallyClerk implementations
+  use keffAnalogClerk_class,     only : keffAnalogClerk
+  use keffImplicitClerk_class,   only : keffImplicitClerk
+  use collisionClerk_class,      only : collisionClerk
+  use trackClerk_class,          only : trackClerk
+  use simpleFMClerk_class,       only : simpleFMClerk
+  use dancoffBellClerk_class,    only : dancoffBellClerk
+  use shannonEntropyClerk_class, only : shannonEntropyClerk
+  use centreOfMassClerk_class,   only : centreOfMassClerk
+  use MGxsClerk_class,           only : MGxsClerk
   use keffAnalogClerk_class,           only : keffAnalogClerk
   use keffImplicitClerk_class,         only : keffImplicitClerk
   use collisionClerk_class,            only : collisionClerk
@@ -36,7 +45,8 @@ module tallyClerkFactory_func
                                                                         'simpleFMClerk            ',&
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
-                                                                        'dancoffBellClerk         ']
+                                                                        'dancoffBellClerk         ',&
+                                                                        'MGxsClerk                ']
 
 contains
 
@@ -94,6 +104,10 @@ contains
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
+       call new % init(dict, name)
+
+     case('MGxsClerk')
+       allocate(MGxsClerk :: new)
        call new % init(dict, name)
 
      !*** NEW TALLY MAP TEMPLATE ***!
