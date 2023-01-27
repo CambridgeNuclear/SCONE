@@ -259,9 +259,10 @@ contains
 
     isPresent = .false.
 
+    ! Return false if array is empty
     if (self % mySize == 0) return
 
-    if (any(self % array == item)) isPresent = .true.
+    if (any(self % array(1:self % mySize) == item)) isPresent = .true.
 
   end function isPresent_shortInt
 
