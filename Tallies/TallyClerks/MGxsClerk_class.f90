@@ -319,7 +319,7 @@ contains
         addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
         ! Score a scattering event from group g
-        call mem % score(preColl % wgt, addr + SCATT_idx)
+        call mem % score(preColl % wgt, addr + SCATT_EV_idx)
 
         ! Get bin of outgoing energy
         binEnOut = self % energyMap % map(postColl)
