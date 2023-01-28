@@ -117,6 +117,9 @@ contains
 
     if (dist <= ZERO) call fatalError(Here, 'Distance invalid: '//numToChar(dist))
 
+    ! Increase by surface tolerance to ensure that boundary conditions are correctly applied
+    dist = dist + SURF_TOL
+
 
     ! Round each dimension either up or down depending on which boundary will be hit
 !    do i = 1, 3
