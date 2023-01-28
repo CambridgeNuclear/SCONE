@@ -15,8 +15,8 @@ contains
   !!
 @Test
   subroutine testExponentialRA()
-    real(defReal)                :: x, res, resRA
-    real(defReal), parameter     :: tol = 1E-5
+    real(defFlt)                :: x, res, resRA
+    real(defFlt), parameter     :: tol = 1E-5
 
     x = 0.5
     res   = ONE - exp(-x)
@@ -24,26 +24,26 @@ contains
 
     @assertEqual(res, resRA, tol)
 
-    x = 0.2_defReal
+    x = 0.2_defFlt
     res   = ONE - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
-    x = 0.03_defReal
+    x = 0.03_defFlt
     res   = ONE - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
-    x = 3.0_defReal
+    x = 3.0_defFlt
     res   = ONE - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
 
-    x = 0.0001_defReal
+    x = 0.0001_defFlt
     res   = ONE - exp(-x)
     resRA = exponential(x) 
 

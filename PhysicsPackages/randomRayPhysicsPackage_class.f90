@@ -66,11 +66,11 @@ module randomRayPhysicsPackage_class
   !! after a specified number of iterations or on reaching some chosen convergence
   !! criterion (though the latter hasn't been implemented yet).
   !!
-  !! Calculates relative volume of diffrent materials in the problem by performing
+  !! Calculates relative volume of different materials in the problem by performing
   !! random ray tracing in the geometry. The volume is normalised such that the total domain
   !! volume is 1.0.
   !!
-  !! IMPORTANT N.B.: Geometry type must be extended! If shrunk, results may be dubious!
+  !! IMPORTANT N.B.: Geometry type must be extended! Won't run if shrunk.
   !! This is because spatial discretisation is determined by the number of unique cells in the
   !! geometry.
   !! Also, this is obviously for multi-group calculations only.
@@ -103,6 +103,7 @@ module randomRayPhysicsPackage_class
   !!   mgData      -> MG database. Calculation obviously cannot be run in CE.
   !!   nG          -> Number of energy groups, kept for convenience.
   !!   nCells      -> Number of unique cells in the geometry, kept for convenience.
+  !!   nMat        -> Number of unique materials in the geometry - for convenience.
   !!   lengthPerIt -> Distance all rays travel in a single iteration - for convenience.
   !!
   !!   termination -> Distance a ray can travel before it is terminated
@@ -120,6 +121,13 @@ module randomRayPhysicsPackage_class
   !!   viz         -> Output visualiser
   !!   mapFission  -> Output fission rates across a given map?
   !!   resultsMap  -> The map across which to output fission rate results
+  !!   mapFission  -> Output 1G flux across a given map?
+  !!   resultsMap  -> The map across which to output 1G flux results
+  !!
+  !!   sigmaT      -> Local total cross section vector
+  !!   nuSigmaF    -> Local nuSigmaF vector
+  !!   sigmaS      -> Local flattened scattering matrix
+  !!   chi         -> Local chi vector
   !!
   !!   keff        -> Estimated value of keff
   !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
@@ -132,6 +140,8 @@ module randomRayPhysicsPackage_class
   !!   cellHit     -> Array tracking whether given cells have been hit during tracking
   !!   cellFound   -> Array tracking whether a cell was ever found
   !!   cellPos     -> Array of cell positions, populated once they are found
+  !!
+  !!   locks       -> OpenMP locks used when writing to scalar flux during transport
   !!
   !! Interface:
   !!   physicsPackage interface
@@ -147,6 +157,7 @@ module randomRayPhysicsPackage_class
     class(baseMgNeutronDatabase), pointer :: mgData      => null()
     integer(shortInt)                     :: nG          = 0
     integer(shortInt)                     :: nCells      = 0
+    integer(shortInt)                     :: nMat        = 0
     real(defReal)                         :: lengthPerIt = ZERO
 
     ! Settings
@@ -168,15 +179,21 @@ module randomRayPhysicsPackage_class
     logical(defBool)   :: mapFlux     = .false.
     class(tallyMap), allocatable :: fluxMap
 
+    ! Data space - absorb all nuclear data for speed
+    real(defFlt), dimension(:), allocatable     :: sigmaT
+    real(defFlt), dimension(:), allocatable     :: nuSigmaF
+    real(defFlt), dimension(:), allocatable     :: sigmaS
+    real(defFlt), dimension(:), allocatable     :: chi
+
     ! Results space
-    real(defReal)                                :: keff
-    real(defReal), dimension(2)                  :: keffScore
-    real(defReal), dimension(:), allocatable     :: scalarFlux
-    real(defReal), dimension(:), allocatable     :: prevFlux
-    real(defReal), dimension(:,:), allocatable   :: fluxScores
-    real(defReal), dimension(:), allocatable     :: source
-    real(defReal), dimension(:), allocatable     :: volume
-    real(defReal), dimension(:), allocatable     :: volumeTracks
+    real(defFlt)                                :: keff
+    real(defFlt), dimension(2)                  :: keffScore
+    real(defFlt), dimension(:), allocatable     :: scalarFlux
+    real(defFlt), dimension(:), allocatable     :: prevFlux
+    real(defFlt), dimension(:,:), allocatable   :: fluxScores
+    real(defFlt), dimension(:), allocatable     :: source
+    real(defFlt), dimension(:), allocatable     :: volume
+    real(defFlt), dimension(:), allocatable     :: volumeTracks
 
     ! Tracking cell properites
     integer(shortInt), dimension(:), allocatable :: cellHit
@@ -224,7 +241,7 @@ contains
   subroutine init(self,dict)
     class(randomRayPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)              :: dict
-    integer(shortInt)                             :: seed_temp, i
+    integer(shortInt)                             :: seed_temp, i, g, g1, m
     integer(longInt)                              :: seed
     character(10)                                 :: time
     character(8)                                  :: date
@@ -234,6 +251,8 @@ contains
     character(nameLen)                            :: geomName, graphType, nucData
     class(geometry), pointer                      :: geom
     type(outputFile)                              :: test_out
+    class(baseMgNeutronMaterial), pointer         :: mat
+    class(materialHandle), pointer                :: matPtr
     character(100), parameter :: Here = 'init (randomRayPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -410,6 +429,29 @@ contains
       call omp_init_lock(self % locks(i))
     end do
 
+    ! Initialise local nuclear data
+    ! TODO: clean nuclear database afterwards! It is no longer used
+    !       and takes up memory.
+    self % nMat = mm_nMat()
+    allocate(self % sigmaT(self % nMat * self % nG))
+    allocate(self % nuSigmaF(self % nMat * self % nG))
+    allocate(self % chi(self % nMat * self % nG))
+    allocate(self % sigmaS(self % nMat * self % nG * self % nG))
+
+    do m = 1, self % nMat
+      matPtr  => self % mgData % getMaterial(m)
+      mat     => baseMgNeutronMaterial_CptrCast(matPtr)
+      do g = 1, self % nG
+        self % sigmaT(self % nG * (m - 1) + g) = real(mat % getTotalXS(g, self % rand),defFlt)
+        self % nuSigmaF(self % nG * (m - 1) + g) = real(mat % getNuFissionXS(g, self % rand),defFlt)
+        self % chi(self % nG * (m - 1) + g) = real(mat % getChi(g, self % rand),defFlt)
+        do g1 = 1, self % nG
+          self % sigmaS(self % nG * self % nG * (m - 1) + self % nG * (g - 1) + g1)  = &
+                  real(mat % getScatterXS(g1, g, self % rand), defFlt)
+        end do
+      end do
+    end do
+
   end subroutine init
 
   !!
@@ -445,7 +487,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), save                               :: r
     type(RNG), target, save                       :: pRNG
-    real(defReal)                                 :: hitRate, ONE_KEFF
+    real(defFlt)                                  :: hitRate, ONE_KEFF
     real(defReal)                                 :: elapsed_T, end_T, T_toEnd, transport_T
     logical(defBool)                              :: stoppingCriterion, isActive
     integer(shortInt)                             :: i, itInac, itAct, it
@@ -458,17 +500,17 @@ contains
     call timerStart(self % timerMain)
 
     ! Initialise fluxes 
-    self % keff       = ONE
-    self % scalarFlux = ZERO
-    self % prevFlux   = ONE
-    self % fluxScores = ZERO
-    self % keffScore  = ZERO
-    self % source     = ZERO
+    self % keff       = 1.0_defFlt
+    self % scalarFlux = 0.0_defFlt
+    self % prevFlux   = 1.0_defFlt
+    self % fluxScores = 0.0_defFlt
+    self % keffScore  = 0.0_defFlt
+    self % source     = 0.0_defFlt
 
     ! Initialise other results
     self % cellHit      = 0
-    self % volume       = ZERO
-    self % volumeTracks = ZERO
+    self % volume       = 0.0_defFlt
+    self % volumeTracks = 0.0_defFlt
     
     ! Initialise cell information
     self % cellFound = .false.
@@ -491,20 +533,20 @@ contains
         itInac = itInac + 1
       end if
       it = itInac + itAct
-
-      ONE_KEFF = ONE / self % keff
+      
+      ONE_KEFF = 1.0_defFlt / self % keff
       !$omp parallel do schedule(static)
       do i = 1, self % nCells
         call self % sourceUpdateKernel(i, ONE_KEFF)
       end do
       !$omp end parallel do
-    
+
       ! Reset and start transport timer
       call timerReset(self % timerTransport)
       call timerStart(self % timerTransport)
       intersections = 0
       
-      !$omp parallel do schedule(dynamic) reduction(+: intersections)
+      !$omp parallel do schedule(runtime) reduction(+: intersections)
       do i = 1, self % pop
 
         ! Set seed
@@ -537,7 +579,7 @@ contains
       if (isActive) call self % accumulateFluxAndKeffScores()
 
       ! Calculate proportion of cells that were hit
-      hitRate = real(sum(self % cellHit),defReal) / self % nCells
+      hitRate = real(sum(self % cellHit),defFlt) / self % nCells
       self % cellHit = 0
 
       ! Evaluate stopping criterion for active or inactive iterations
@@ -570,8 +612,8 @@ contains
       else
         print *,'Inactive iterations'
       end if
-      print *, 'Cell hit rate: ', trim(numToChar(hitRate))
-      print *, 'keff: ', trim(numToChar(self % keff))
+      print *, 'Cell hit rate: ', trim(numToChar(real(hitRate,defReal)))
+      print *, 'keff: ', trim(numToChar(real(self % keff,defReal)))
       print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
       print *, 'End time:     ', trim(secToChar(end_T))
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
@@ -644,10 +686,8 @@ contains
     real(defReal)                                         :: totalLength, length
     logical(defBool)                                      :: activeRay, hitVacuum
     type(distCache)                                       :: cache
-    class(baseMgNeutronMaterial), pointer                 :: mat
-    class(materialHandle), pointer                        :: matPtr
-    real(defReal), dimension(self % nG)                   :: attenuate, delta, fluxVec
-    real(defReal), pointer, dimension(:)                  :: scalarVec, sourceVec, totVec
+    real(defFlt), dimension(self % nG)                    :: attenuate, delta, fluxVec
+    real(defFlt), pointer, dimension(:)                   :: scalarVec, sourceVec, totVec
     real(defReal), dimension(3)                           :: r0, mu0
     
     ! Set initial angular flux to angle average of cell source
@@ -667,12 +707,10 @@ contains
       matIdx  = r % coords % matIdx
       cIdx    = r % coords % uniqueID
       if (matIdx0 /= matIdx) then
-        matPtr  => self % mgData % getMaterial(matIdx)
-        mat     => baseMgNeutronMaterial_CptrCast(matPtr)
         matIdx0 = matIdx
         
         ! Cache total cross section
-        totVec => mat % getTotalPtr()
+        totVec => self % sigmaT((matIdx - 1) * self % nG + 1:self % nG)
       end if
 
       ! Remember co-ordinates to set new cell's position
@@ -720,7 +758,7 @@ contains
 
       !$omp simd
       do g = 1, self % nG
-        attenuate(g) = exponential(totVec(g) * length)
+        attenuate(g) = exponential(totVec(g) * real(length,defFlt))
         delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
         fluxVec(g) = fluxVec(g) - delta(g)
       end do
@@ -733,10 +771,10 @@ contains
         do g = 1, self % nG
           scalarVec(g) = scalarVec(g) + delta(g) 
         end do
-        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
+        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + real(length,defFlt)
         call OMP_unset_lock(self % locks(cIdx))
 
-        self % cellHit(cIdx) = 1
+        if (self % cellHit(cIdx) == 0) self % cellHit(cIdx) = 1
       
       end if
 
@@ -744,7 +782,7 @@ contains
       if (hitVacuum) then
         !$omp simd
         do g = 1, self % nG
-          fluxVec(g) = ZERO
+          fluxVec(g) = 0.0_defFlt
         end do
       end if
 
@@ -759,29 +797,25 @@ contains
   subroutine normaliseFluxAndVolume(self, it)
     class(randomRayPhysicsPackage), intent(inout) :: self
     integer(shortInt), intent(in)                 :: it
-    real(defReal)                                 :: norm, normVol
-    real(defReal), save                           :: total
+    real(defFlt)                                  :: norm, normVol
+    real(defFlt), save                            :: total
     integer(shortInt), save                       :: g, matIdx, idx
     integer(shortInt)                             :: cIdx
-    class(baseMgNeutronMaterial), pointer, save   :: mat
-    class(materialHandle), pointer, save          :: matPtr
-    !$omp threadprivate(mat, matPtr, total, idx, g, matIdx)
+    !$omp threadprivate(total, idx, g, matIdx)
 
-    norm = ONE / self % lengthPerIt
-    normVol = ONE / (self % lengthPerIt * it)
+    norm = real(ONE / self % lengthPerIt, defFlt)
+    normVol = real(ONE / (self % lengthPerIt * it), defFlt)
 
     !$omp parallel do schedule(static)
     do cIdx = 1, self % nCells
       matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
-      matPtr => self % mgData % getMaterial(matIdx)
-      mat    => baseMgNeutronMaterial_CptrCast(matPtr)
       
       ! Update volume due to additional rays
       self % volume(cIdx) = self % volumeTracks(cIdx) * normVol
 
       do g = 1, self % nG
 
-        total =  mat % getTotalXS(g, self % rand)
+        total = self % sigmaT((matIdx - 1) * self % nG + g)
         idx   = self % nG * (cIdx - 1) + g
 
         if (self % volume(cIdx) > volume_tolerance) then
@@ -802,78 +836,52 @@ contains
   subroutine sourceUpdateKernel(self, cIdx, ONE_KEFF)
     class(randomRayPhysicsPackage), target, intent(inout) :: self
     integer(shortInt), intent(in)                         :: cIdx
-    real(defReal), intent(in)                             :: ONE_KEFF
-    real(defReal)                                         :: scatter, fission
-    real(defReal), dimension(:), pointer                  :: nuFission, total, chi 
-    real(defReal), dimension(:,:), pointer                :: scatterXS
-    integer(shortInt)                                     :: matIdx, g, gIn 
-    integer(shortInt)                                     :: baseIdx, idx
-    class(baseMgNeutronMaterial), pointer                 :: mat
-    class(materialHandle), pointer                        :: matPtr
-    logical(defBool)                                      :: isFiss
-    real(defReal), pointer, dimension(:)                  :: fluxVec
+    real(defFlt), intent(in)                              :: ONE_KEFF
+    real(defFlt)                                          :: scatter, fission
+    real(defFlt), dimension(:), pointer                   :: nuFission, total, chi, scatterXS 
+    integer(shortInt)                                     :: matIdx, g, gIn, baseIdx, idx
+    real(defFlt), pointer, dimension(:)                   :: fluxVec, scatterVec
 
     ! Identify material
     matIdx  =  self % geom % geom % graph % getMatFromUID(cIdx) 
-    matPtr  => self % mgData % getMaterial(matIdx)
-    mat     => baseMgNeutronMaterial_CptrCast(matPtr)
 
     ! Obtain XSs
-    scatterXS =>  mat % getScatterPtr()
-    total     =>  mat % getTotalPtr()
-    isFiss    = mat % isFissile()
-    if (isFiss) then
-      nuFission =>  mat % getNuFissionPtr()
-      chi       =>  mat % getChiPtr()
-    end if
+    matIdx = (matIdx - 1) * self % nG
+    total => self % sigmaT(matIdx + (1):(self % nG))
+    scatterXS => self % sigmaS(matIdx * self % nG + (1):(self % nG*self % nG))
+    nuFission => self % nuSigmaF(matIdx + (1):(self % nG))
+    chi => self % chi(matIdx + (1):(self % nG))
 
     baseIdx = self % ng * (cIdx - 1)
-    fluxVec => self % prevFlux(baseIdx+1:baseIdx+self % nG)
+    fluxVec => self % prevFlux(baseIdx+(1):(self % nG))
 
-    ! There is a scattering and fission source
-    if (isFiss) then
-      do g = 1, self % nG
+    ! Calculate fission source
+    fission = 0.0_defFlt
+    !$omp simd reduction(+:fission)
+    do gIn = 1, self % nG
+      fission = fission + fluxVec(gIn) * nuFission(gIn)
+    end do
 
-        ! Calculate fission and scattering source
-        scatter = ZERO
-        fission = ZERO
+    do g = 1, self % nG
 
-        ! Sum contributions from all energies
-        !$omp simd reduction(+:fission, scatter)
-        do gIn = 1, self % nG
-          fission = fission + fluxVec(gIn) * nuFission(gIn)
-          scatter = scatter + fluxVec(gIn) * scatterXS(g,gIn)
-        end do
+      scatterVec => scatterXS(self % nG * (g - 1) + (1):self % nG)
 
-        ! Output index
-        idx = baseIdx + g
+      ! Calculate scattering source
+      scatter = 0.0_defFlt
 
-        self % source(idx) = chi(g) * fission * ONE_KEFF + scatter
-        self % source(idx) = self % source(idx) / total(g)
-
+      ! Sum contributions from all energies
+      !$omp simd reduction(+:scatter)
+      do gIn = 1, self % nG
+        scatter = scatter + fluxVec(gIn) * scatterVec(gIn)
       end do
 
-    ! There is only a scattering source
-    else
-      do g = 1, self % nG
+      ! Output index
+      idx = baseIdx + g
 
-        ! Calculate scattering source
-        scatter = ZERO
+      self % source(idx) = chi(g) * fission * ONE_KEFF + scatter
+      self % source(idx) = self % source(idx) / total(g)
 
-        ! Sum contributions from all energies
-        !$omp simd reduction(+:scatter)
-        do gIn = 1, self % nG
-          scatter = scatter + fluxVec(gIn) * scatterXS(g,gIn)
-        end do
-
-        ! Output index
-        idx = baseIdx + g
-
-        self % source(idx) = scatter / total(g)
-
-      end do
-
-    end if
+    end do
 
   end subroutine sourceUpdateKernel
 
@@ -882,17 +890,16 @@ contains
   !!
   subroutine calculateKeff(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
-    real(defReal)                                 :: fissionRate, prevFissionRate
-    real(defReal), save                           :: fissLocal, prevFissLocal, vol
-    real(defReal), dimension(:), pointer, save    :: nuFission
-    integer(shortInt), save                       :: matIdx, g, idx
+    real(defFlt)                                  :: fissionRate, prevFissionRate
+    real(defFlt), save                            :: fissLocal, prevFissLocal, vol
+    integer(shortInt), save                       :: matIdx, g, idx, mIdx
     integer(shortInt)                             :: cIdx
     class(baseMgNeutronMaterial), pointer, save   :: mat
     class(materialHandle), pointer, save          :: matPtr
-    !$omp threadprivate(mat, matPtr, fissLocal, prevFissLocal, nuFission, matIdx, g, idx, vol)
+    !$omp threadprivate(mat, matPtr, fissLocal, prevFissLocal, matIdx, g, idx, mIdx, vol)
 
-    fissionRate     = ZERO
-    prevFissionRate = ZERO
+    fissionRate     = 0.0_defFlt
+    prevFissionRate = 0.0_defFlt
     !$omp parallel do schedule(static) reduction(+: fissionRate, prevFissionRate)
     do cIdx = 1, self % nCells
 
@@ -906,15 +913,15 @@ contains
 
       if (vol <= volume_tolerance) cycle
 
-      fissLocal = ZERO
-      prevFissLocal = ZERO
-      nuFission => mat % getNuFissionPtr()
+      fissLocal = 0.0_defFlt
+      prevFissLocal = 0.0_defFlt
+      mIdx = (matIdx - 1)* self % nG
       do g = 1, self % nG
         
         ! Source index
         idx = self % nG * (cIdx - 1) + g
-        fissLocal     = fissLocal     + self % scalarFlux(idx) * nuFission(g)
-        prevFissLocal = prevFissLocal + self % prevFlux(idx) * nuFission(g)
+        fissLocal     = fissLocal     + self % scalarFlux(idx) * self % nuSigmaF(mIdx + g)
+        prevFissLocal = prevFissLocal + self % prevFlux(idx) * self % nuSigmaF(mIdx + g)
 
       end do
 
@@ -950,7 +957,7 @@ contains
   !!
   subroutine accumulateFluxAndKeffScores(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
-    real(defReal), save                           :: flux
+    real(defFlt), save                            :: flux
     integer(shortInt)                             :: idx
     !$omp threadprivate(flux)
 
@@ -974,14 +981,14 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     integer(shortInt), intent(in)                 :: it
     integer(shortInt)                             :: idx
-    real(defReal)                                 :: N1, Nm1
+    real(defFlt)                                  :: N1, Nm1
 
     if (it /= 1) then
-      Nm1 = ONE/(it - 1)
+      Nm1 = 1.0_defFLt/(it - 1)
     else
-      Nm1 = ONE
+      Nm1 = 1.0_defFlt
     end if
-    N1 = ONE/it
+    N1 = 1.0_defFlt/it
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
@@ -1016,10 +1023,10 @@ contains
     character(nameLen)                            :: name
     integer(shortInt)                             :: cIdx, g1
     integer(shortInt), save                       :: idx, matIdx, i, g
-    real(defReal), save                           :: vol, SigmaF
+    real(defFlt), save                            :: vol, SigmaF
     type(particleState), save                     :: s
     integer(shortInt),dimension(:),allocatable    :: resArrayShape
-    real(defReal), dimension(:), allocatable      :: groupFlux, fiss, fissSTD
+    real(defFlt), dimension(:), allocatable       :: groupFlux, fiss, fissSTD
     class(baseMgNeutronMaterial), pointer, save   :: mat
     class(materialHandle), pointer, save          :: matPtr
     !$omp threadprivate(idx, matIdx, i, mat, matPtr, vol, s, SigmaF, g)
@@ -1051,7 +1058,7 @@ contains
     ! Print keff
     name = 'keff'
     call out % startBlock(name)
-    call out % printResult(self % keffScore(1), self % keffScore(2), name)
+    call out % printResult(real(self % keffScore(1),defReal), real(self % keffScore(2),defReal), name)
     call out % endBlock()
 
     ! Print cell volumes
@@ -1061,7 +1068,7 @@ contains
       resArrayShape = [size(self % volume)]
       call out % startArray(name, resArrayShape)
       do cIdx = 1, self % nCells
-        call out % addResult(self % volume(cIdx), ZERO)
+        call out % addResult(real(self % volume(cIdx),defReal), ZERO)
       end do
       call out % endArray()
       call out % endBlock()
@@ -1091,7 +1098,7 @@ contains
         call out % startArray(name, resArrayShape)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g
-          call out % addResult(self % fluxScores(idx,1), self % fluxScores(idx,2))
+          call out % addResult(real(self % fluxScores(idx,1),defReal), real(self % fluxScores(idx,2),defReal))
         end do
         call out % endArray()
         call out % endBlock()
@@ -1124,7 +1131,7 @@ contains
 
         if (i > 0) then
           do g = 1, self % nG
-            SigmaF = mat % getFissionXS(g, self % rand)
+            SigmaF = real(mat % getFissionXS(g, self % rand),defFlt)
             idx = (cIdx - 1)* self % nG + g
             fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
             ! Is this correct? Also neglects uncertainty in volume - assumed small.
@@ -1146,7 +1153,7 @@ contains
       call out % startArray(name, resArrayShape)
       ! Add all map elements to results
       do idx = 1, self % resultsMap % bins(0)
-        call out % addResult(fiss(idx), fissSTD(idx))
+        call out % addResult(real(fiss(idx),defReal), real(fissSTD(idx),defReal))
       end do
       call out % endArray()
       ! Output tally map
@@ -1199,7 +1206,7 @@ contains
       call out % startArray(name, resArrayShape)
       ! Add all map elements to results
       do idx = 1, self % fluxMap % bins(0)
-        call out % addResult(fiss(idx), fissSTD(idx))
+        call out % addResult(real(fiss(idx),defReal), real(fissSTD(idx),defReal))
       end do
       call out % endArray()
       ! Output tally map
@@ -1209,7 +1216,7 @@ contains
       deallocate(fiss)
       deallocate(fissSTD)
     end if
-
+    
     call out % writeToFile(self % outputFile)
 
     ! Send all fluxes and stds to VTK
@@ -1223,7 +1230,7 @@ contains
           groupFlux(cIdx) = self % fluxScores(idx,1)
         end do
         !$omp end parallel do
-        call self % viz % addVTKData(groupFlux,name)
+        call self % viz % addVTKData(real(groupFlux,defReal),name)
       end do
       do g1 = 1, self % nG
         name = 'std_g'//numToChar(g1)
@@ -1233,7 +1240,7 @@ contains
           groupFlux(cIdx) = self % fluxScores(idx,2) /self % fluxScores(idx,1)
         end do
         !$omp end parallel do
-        call self % viz % addVTKData(groupFlux,name)
+        call self % viz % addVTKData(real(groupFlux,defReal),name)
       end do
       call self % viz % finaliseVTK
     end if
@@ -1299,6 +1306,11 @@ contains
       deallocate(self % locks)
     end if
     self % nCells    = 0
+    self % nMat      = 0
+    if(allocated(self % sigmaT)) deallocate(self % sigmaT)
+    if(allocated(self % sigmaS)) deallocate(self % sigmaS)
+    if(allocated(self % nusigmaF)) deallocate(self % nuSigmaF)
+    if(allocated(self % chi)) deallocate(self % chi)
 
     self % termination = ZERO
     self % dead        = ZERO

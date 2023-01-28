@@ -3,6 +3,7 @@ module numPrecision
   private
   ! Variables Kind and Length parameters
   integer, public, parameter :: defReal = 8,     &
+                                defFlt  = 8,     &
                                 shortInt = 4,    &
                                 longInt = 8,     &
                                 defBool = 4,     &
