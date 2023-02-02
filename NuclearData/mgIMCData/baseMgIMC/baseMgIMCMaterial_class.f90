@@ -29,6 +29,10 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
   integer(shortInt), parameter, public :: PLANCK_XS     = 4
 
+  ! IMC Calculation Type
+  integer(shortInt), parameter, public :: IMC  = 1
+  integer(shortInt), parameter, public :: ISMC = 2
+
   !!
   !! Basic type of MG material data
   !!

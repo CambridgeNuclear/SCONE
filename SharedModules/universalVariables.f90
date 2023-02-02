@@ -61,10 +61,6 @@ module universalVariables
                                   P_PHOTON_CE  = 3, &
                                   P_PHOTON_MG  = 4
 
-  ! IMC Calculation Type
-  integer(shortInt), parameter :: IMC = 1, &
-                                  ISMC = 2
-
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&
                                   tooManyIter       = -2,&
