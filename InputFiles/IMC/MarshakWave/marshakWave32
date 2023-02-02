@@ -1,11 +1,13 @@
+// Marshak wave simulation using 32 equal spatial regions
+// *** lightSpeed and radiationConstant must both be changed to ONE in universalVariables ***
 
 type IMCPhysicsPackage;
 
-pop            500;
-limit          5000;
-steps          10000;
-timeStepSize   0.05;
-printUpdates   4;
+pop            5000;
+limit          50000;
+steps          1000;
+timeStepSize   0.5;
+printUpdates   12;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
@@ -16,14 +18,7 @@ transportOperator {
                   } 
 
 source {
-  type bbSurfaceSource;
-  shape square;
-  size 1;
-  axis x;
-  pos -2;
-  T 1;
-  dir 1;
-  particle photon;
+    type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 1000;
 }
 
 tally  {

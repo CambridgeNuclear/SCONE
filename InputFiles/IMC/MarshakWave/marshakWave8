@@ -1,3 +1,5 @@
+// Marshak wave simulation using 8 equal spatial regions
+// *** lightSpeed and radiationConstant must both be changed to ONE in universalVariables ***
 
 type IMCPhysicsPackage;
 
@@ -16,14 +18,7 @@ transportOperator {
                   } 
 
 source {
-  type bbSurfaceSource;
-  shape square;
-  size 1;
-  axis x;
-  pos -2;
-  T 1;
-  dir 1;
-  particle photon;
+    type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 1000;
 }
 
 tally  {

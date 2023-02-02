@@ -2,7 +2,8 @@
 // Intended as a sample/tutorial input file for calculations using IMC physics
 //   package, to detail settings that differ to other calculation types
 //
-
+// Note that a lot of the input files in this branch require lightSpeed and radiationConstant both
+//   to be changed to ONE in universalVariables before compiling
 
 type IMCPhysicsPackage;
 
