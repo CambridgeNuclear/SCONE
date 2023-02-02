@@ -44,12 +44,16 @@ module MGxsClerk_class
   !!
   !! It prints out:
   !! capture xs, fission xs, transport xs, nu, chi, the P0 and P1 scattering matrices,
-  !! the P0 scattering production matrix. On request, also the P2 -> P7 scattering matrices
+  !! the P0 scattering production matrix. On request, also the P2 -> P7 scattering matrices.
   !!
   !! NOTE:
-  !! - the cross sections are tallies with a collision estimator;
-  !! - the scattering matrices and chi are calculated with an analog estimator: the
-  !!   probability of events is calculated directly by counting events
+  !!  The energies in the output are thermal -> fast, i.e. increasing energy
+  !!  rather than increasing group number
+  !!
+  !! NOTE:
+  !! - the cross sections are tallied with a collision estimator;
+  !! - the scattering matrices and chi are calculated with an analog estimator: their
+  !!   probability is calculated directly by scoring events
   !! - the transport cross section is calculated with both the out-scatter and
   !!   flux-limited approximation
   !!
@@ -475,10 +479,10 @@ contains
 
       ! Retrieve reaction rates and flux from memory
       addr = self % getMemAddress() + self % width * (i - 1) - 1
+      call mem % getResult(flux,  fluxStd,  addr + FLUX_idx)
       call mem % getResult(fiss,  fissStd,  addr + FISS_idx)
       call mem % getResult(capt,  captStd,  addr + CAPT_idx)
       call mem % getResult(scatt, scattStd, addr + SCATT_idx)
-      call mem % getResult(flux,  fluxStd,  addr + FLUX_idx)
       call mem % getResult(nu,    nuStd,    addr + NUFISS_idx)
       call mem % getResult(chi,   chiStd,   addr + CHI_idx)
       call mem % getResult(scattProb, scattProbStd, addr + SCATT_EV_idx)
@@ -559,8 +563,8 @@ contains
       if (mod(i, N) == 0) k = k + 1
 
       ! Calculate out-scatter transport cross section
-      g1   = N*(i-1)+1
-      gEnd = N*(i-1)+N
+      g1   = N*(i-1) + 1
+      gEnd = N*(i-1) + N
       transOS_res(1,i) = tot(i) - sum(P1_res(1, g1:gEnd))
       transOS_res(2,i) = sqrt(totStd(i)**2 + sum(P1_res(2, g1:gEnd)))
 
@@ -569,7 +573,7 @@ contains
     ! Calculate flux-limited transport cross section
     do i = 1, M
       do j = 1, N
-        idx = N*(i-1)+j
+        idx = N*(i-1) + j
         if (fluxG(idx) == ZERO) then
           transFL_res(1:2,idx) = ZERO
         else
@@ -685,6 +689,8 @@ contains
   !! Write contents of the clerk to output file
   !!
   !! See tallyClerk_inter for details
+  !!
+  !! NOTE: the energy groups are ordered from thermal to fast (G_end -> G_1)
   !!
   subroutine print(self, outFile, mem)
     class(MGxsClerk), intent(in)               :: self

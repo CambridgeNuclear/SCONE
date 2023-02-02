@@ -21,4 +21,5 @@ add_unit_tests(./Tests/collisionClerk_test.f90
 	             ./Tests/shannonEntropyClerk_test.f90
                ./Tests/simpleFMClerk_test.f90
 	             ./Tests/collisionProbabilityClerk_test.f90
+               ./Tests/MGxsClerk_test.f90
                 )
