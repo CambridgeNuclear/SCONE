@@ -23,7 +23,6 @@ module neutronCEimp_class
   ! Nuclear reactions
   use reactionHandle_inter,          only : reactionHandle
   use uncorrelatedReactionCE_inter,  only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
-  use elasticNeutronScatter_class,   only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use neutronScatter_class,          only : neutronScatter, neutronScatter_TptrCast
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
 
@@ -54,26 +53,26 @@ module neutronCEimp_class
   !!  impGen  -> are fission sites generated implicitly? (on by default)
   !!  splitting -> splits particles above certain weight (on by default)
   !!  roulette  -> roulettes particles below certain weight (off by defautl)
-  !!  tresh_E -> Energy treshold for explicit treatment of target nuclide movement [-].
-  !!             Target movment is sampled if neutron energy E < kT * tresh_E where
-  !!             kT is target material temperature in [MeV]. (default = 400.0)
-  !!  tresh_A -> Mass treshold for explicit tratment of target nuclide movement [Mn].
-  !!             Target movment is sampled if target mass A < tresh_A. (default = 1.0)
+  !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
+  !!              Target movment is sampled if neutron energy E < kT * thresh_E where
+  !!              kT is target material temperature in [MeV]. (default = 400.0)
+  !!  thresh_A -> Mass threshold for explicit tratment of target nuclide movement [Mn].
+  !!              Target movment is sampled if target mass A < thresh_A. (default = 1.0)
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   type            neutronCEimp;
-  !!   #minEnergy      <real>;#
-  !!   #maxEnergy      <real>;#
-  !!   #energyTreshold <real>;#
-  !!   #massTreshold   <real>;#
-  !!   #splitting      <logical>;#
-  !!   #roulette       <logical>;#
-  !!   #minWgt         <real>;#
-  !!   #maxWgt         <real>;#
-  !!   #avgWgt         <real>;#
-  !!   #impAbs         <logical>;#
-  !!   #impGen         <logical>;#
+  !!   type             neutronCEimp;
+  !!   #minEnergy       <real>;#
+  !!   #maxEnergy       <real>;#
+  !!   #energyThreshold <real>;#
+  !!   #massThreshold   <real>;#
+  !!   #splitting       <logical>;#
+  !!   #roulette        <logical>;#
+  !!   #minWgt          <real>;#
+  !!   #maxWgt          <real>;#
+  !!   #avgWgt          <real>;#
+  !!   #impAbs          <logical>;#
+  !!   #impGen          <logical>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEimp
@@ -89,8 +88,8 @@ module neutronCEimp_class
     real(defReal) :: minWgt
     real(defReal) :: maxWgt
     real(defReal) :: avWgt
-    real(defReal) :: tresh_E
-    real(defReal) :: tresh_A
+    real(defReal) :: thresh_E
+    real(defReal) :: thresh_A
     ! Variance reduction options
     logical(defBool) :: splitting
     logical(defBool) :: roulette
@@ -139,8 +138,8 @@ contains
     call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
 
     ! Thermal scattering kernel thresholds
-    call dict % getOrDefault(self % tresh_E, 'energyTreshold', 400.0_defReal)
-    call dict % getOrDefault(self % tresh_A, 'massTreshold', 1.0_defReal)
+    call dict % getOrDefault(self % thresh_E, 'energyThreshold', 400.0_defReal)
+    call dict % getOrDefault(self % thresh_A, 'massThreshold', 1.0_defReal)
 
     ! Obtain settings for variance reduction
     call dict % getOrDefault(self % splitting,'split', .false.)
@@ -155,8 +154,8 @@ contains
     if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
     if( self % maxE < ZERO ) call fatalError(Here,'-ve maxEnergy')
     if( self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
-    if( self % tresh_E < 0) call fatalError(Here,' -ve energyTreshold')
-    if( self % tresh_A < 0) call fatalError(Here,' -ve massTreshold')
+    if( self % thresh_E < 0) call fatalError(Here,' -ve energyThreshold')
+    if( self % thresh_A < 0) call fatalError(Here,' -ve massThreshold')
 
     if (self % splitting) then
       if (self % maxWgt < 2 * self % minWgt) call fatalError(Here,&
@@ -384,29 +383,32 @@ contains
   !! All CE elastic scattering happens in the CM frame
   !!
   subroutine elastic(self, p, collDat, thisCycle, nextCycle)
-    class(neutronCEimp), intent(inout)   :: self
-    class(particle), intent(inout)       :: p
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    type(elasticNeutronScatter),pointer  :: reac
+    class(neutronCEimp), intent(inout)     :: self
+    class(particle), intent(inout)         :: p
+    type(collisionData), intent(inout)     :: collDat
+    class(particleDungeon),intent(inout)   :: thisCycle
+    class(particleDungeon),intent(inout)   :: nextCycle
+    class(uncorrelatedReactionCE), pointer :: reac
+    logical(defBool)                       :: isFixed
     character(100),parameter :: Here = 'elastic (neutronCEimp_class.f90)'
 
     ! Get reaction
-    reac => elasticNeutronScatter_TptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
     collDat % kT = self % nuc % getkT()
 
-    ! Apply criterion for Free-Gas vs Fixed Target scattering
-    if ((p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)) then
-      call self % scatterFromFixed(p, collDat, reac)
+    isFixed = (p % E > collDat % kT * self % thresh_E) .and. (collDat % A > self % thresh_A)
 
+    ! Apply criterion for Free-Gas vs Fixed Target scattering
+    if (.not. reac % inCMFrame()) then
+      call self % scatterInLAB(p, collDat, reac)
+    elseif (isFixed) then
+      call self % scatterFromFixed(p, collDat, reac)
     else
       call self % scatterFromMoving(p, collDat, reac)
-
     end if
 
   end subroutine elastic
@@ -432,10 +434,8 @@ contains
     if (reac % inCMFrame()) then
       collDat % A =  self % nuc % getMass()
       call self % scatterFromFixed(p, collDat, reac)
-
     else
       call self % scatterInLAB(p, collDat, reac)
-
     end if
 
     ! Apply weigth change
@@ -572,7 +572,7 @@ contains
     class(neutronCEimp), intent(inout)         :: self
     class(particle), intent(inout)             :: p
     type(collisionData),intent(inout)          :: collDat
-    type(elasticNeutronScatter), intent(in)    :: reac
+    class(uncorrelatedReactionCE), intent(in)  :: reac
     integer(shortInt)                          :: MT, nucIdx
     real(defReal)                              :: A, kT, mu
     real(defReal),dimension(3)                 :: V_n           ! Neutron velocity (vector)

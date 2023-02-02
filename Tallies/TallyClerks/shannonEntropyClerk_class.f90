@@ -125,7 +125,6 @@ contains
     class(shannonEntropyClerk), intent(inout) :: self
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
-    type(particleState)                       :: state
     integer(shortInt)                         :: i, j, cc, idx
     real(defReal)                             :: totWgt, one_log2
 

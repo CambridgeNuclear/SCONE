@@ -158,7 +158,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   Number of elements ion the map (Load)
+  !!   Number of elements in the map (Load)
   !!
   !! Errors:
   !!   None

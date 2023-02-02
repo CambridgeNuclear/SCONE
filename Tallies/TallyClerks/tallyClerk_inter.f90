@@ -30,14 +30,14 @@ module tallyClerk_inter
   !!
   !! Its responsibilites are as follows:
   !! 1) Score some result on scoreMemory by accepting a subset of all avalible reports
-  !! 2) Display implementation determined measure of convergance (usually some variance)
+  !! 2) Display implementation determined measure of convergence (usually some variance)
   !! 3) Can return information about reports it requires
   !! 4) Can return a tallyResult object for interaction with Physics Package
   !!
   !! Every tally Clerk is allocated memory location on score memory
   !! Every tally Clerk has a name
   !!
-  !! An implementation of a Clerk need to override procedures related to reports to
+  !! An implementation of a Clerk needs to override procedures related to reports to
   !! be able to process events reprts. Default behaviour for every report is to throw fatalError.
   !!
   !! Private Members:
@@ -60,7 +60,7 @@ module tallyClerk_inter
   !!   reportHist       -> Process history report
   !!   reportCycleStart -> Process beginning of a cycle report
   !!   reportCycleEnd   -> Process end of a cycle report (e.g. Calculate functions of scores like k-eff)
-  !!   isConverged      -> Return .true. if convergance criterion has been reachged
+  !!   isConverged      -> Return .true. if convergence criterion has been reached
   !!   display          -> Display to the console current value of a Score
   !!   print            -> Print results to the output file
   !!   getResult        -> Return tally result object for interactions
@@ -105,7 +105,7 @@ module tallyClerk_inter
 
   abstract interface
     !!
-    !! Returns array of codes that represent diffrent reports
+    !! Returns array of codes that represent different reports
     !!
     !! Args:
     !!   None
@@ -134,7 +134,7 @@ module tallyClerk_inter
     !!
     !! Return required size of score memory for the Clerk
     !!
-    !! This function is crutial to calculate required size of Score Memory for the TallyAdmin
+    !! This function is crucial to calculate required size of Score Memory for the TallyAdmin
     !!
     !! Args:
     !!   None
@@ -153,10 +153,10 @@ module tallyClerk_inter
     end function getSize
 
     !!
-    !! Display convergance progress on the console
+    !! Display convergence progress on the console
     !!
     !! The output should aim to be kept in 60 columns
-    !! If it is difficoult to provide a single, sensible result
+    !! If it is difficult to provide a single, sensible result
     !! it is recommended to print "<clerkClassName> does not support Display"
     !!
     !! Args:
@@ -385,13 +385,13 @@ contains
   end subroutine reportCycleEnd
 
   !!
-  !! Perform convergance check in the Clerk
+  !! Perform convergence check in the Clerk
   !!
   !! Args:
   !!   mem [in] -> Score Memory
   !!
   !! Result:
-  !!   .true. if a convergance target has been reached
+  !!   .true. if a convergence target has been reached
   !!
   !! Error:
   !!   fatalError if specific clerk does not implement this feature
@@ -410,7 +410,7 @@ contains
   end function isConverged
 
   !!
-  !! Set memory adress for the clerk
+  !! Set memory address for the clerk
   !!
   !! Args:
   !!   addr [in] -> Address in Score Memory

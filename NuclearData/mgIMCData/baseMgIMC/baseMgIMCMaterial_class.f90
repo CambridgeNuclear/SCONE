@@ -402,8 +402,6 @@ contains
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
 
-    write(10, '(8A)') numToChar(self % T)
-
   end subroutine updateMatIMC
 
   !!

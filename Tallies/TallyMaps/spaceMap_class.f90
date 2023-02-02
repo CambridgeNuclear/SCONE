@@ -183,7 +183,6 @@ contains
     self % dir = axis
     call self % binBounds % init(mini, maxi, N, type)
 
-
   end subroutine build_structured
 
   !!
@@ -295,7 +294,7 @@ contains
   !!
   elemental subroutine kill(self)
     class(spaceMap), intent(inout) :: self
-    
+
     call kill_super(self)
 
     call self % binBounds % kill()

@@ -50,8 +50,6 @@ contains
   !!
   subroutine setUp(this)
     class(test_materialMap), intent(inout) :: this
-    integer(shortInt)                 :: temp
-    integer(shortInt)                 :: i
     type(dictionary)                  :: dict
     type(dictionary)                  :: mapDict1
 
@@ -179,7 +177,7 @@ contains
 
     call this % map_undef % print(out)
     @assertTrue(out % isValid(),'For map with undefined material bin: ')
-    call out % reset() 
+    call out % reset()
 
   end subroutine testPrint
 

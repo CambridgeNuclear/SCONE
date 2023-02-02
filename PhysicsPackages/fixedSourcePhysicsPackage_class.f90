@@ -78,15 +78,18 @@ module fixedSourcePhysicsPackage_class
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
+    integer(shortInt)  :: bufferSize
+    integer(shortInt)  :: bufferShift
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle       => null()
+    type(particleDungeon), pointer :: commonBuffer    => null()
     class(source), allocatable     :: fixedSource
 
     ! Timer bins
     integer(shortInt) :: timerMain
-    real (defReal)     :: CPU_time_start
-    real (defReal)     :: CPU_time_end
+    real (defReal)    :: CPU_time_start
+    real (defReal)    :: CPU_time_end
 
   contains
     procedure :: init
@@ -121,52 +124,113 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, N
-    type(particle)                                  :: p
+    integer(shortInt)                               :: i, n, nParticles
+    integer(shortInt), save                         :: j, bufferExtra
+    type(particle), save                            :: p, transferP
+    type(particleDungeon), save                     :: buffer
+    type(collisionOperator), save                   :: collOp
+    class(transportOperator), allocatable, save     :: transOp
+    type(RNG), target, save                         :: pRNG     
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
-
-    N = self % pop
-
-    ! Attach nuclear data and RNG to particle
-    p % pRNG   => self % pRNG
-    p % k_eff = ONE
+    !$omp threadprivate(p, buffer, collOp, transOp, pRNG, j, bufferExtra, transferP)
+    
+    !$omp parallel
+    ! Create particle buffer
+    call buffer % init(self % bufferSize)
+    
+    ! Initialise neutron
     p % geomIdx = self % geomIdx
+    p % k_eff = ONE
+
+    ! Create a collision + transport operator which can be made thread private
+    collOp = self % collOp
+    transOp = self % transOp
+    !$omp end parallel
+    
+    nParticles = self % pop
 
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
     do i=1,N_cycles
-
+      
       ! Send start of cycle report
-      call self % fixedSource % generate(self % thisCycle, N, p % pRNG)
+      call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
-
+      
       call tally % reportCycleStart(self % thisCycle)
+      
+      !$omp parallel do schedule(dynamic)
+      gen: do n = 1, nParticles
+        
+        ! TODO: Further work to ensure reproducibility!
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
+        p % pRNG => pRNG
+        call p % pRNG % stride(n)
+        
+        ! Obtain particle from dungeon
+        call self % thisCycle % copy(p, n)
 
-      gen: do
-        ! Obtain paticle from dungeon
-        call self % thisCycle % release(p)
-        call self % geom % placeCoord(p % coords)
+        bufferLoop: do
 
-        ! Save state
-        call p % savePreHistory()
+          call self % geom % placeCoord(p % coords)
 
-          ! Transport particle untill its death
+          ! Save state
+          call p % savePreHistory()
+
+          ! Transport particle until its death
           history: do
-            call self % transOp % transport(p, tally, self % thisCycle, self % thisCycle)
+            call transOp % transport(p, tally, buffer, buffer)
             if(p % isDead) exit history
 
-            call self % collOp % collide(p, tally, self % thisCycle, self % thisCycle)
+            call collOp % collide(p, tally, buffer, buffer)
             if(p % isDead) exit history
           end do history
 
-        if( self % thisCycle % isEmpty()) exit gen
-      end do gen
+          ! If buffer is quite full, shift some particles to the commonBuffer
+          if (associated(self % commonBuffer) .and. (buffer % popSize() > self % bufferShift)) then
+            bufferExtra = buffer % popSize() - self % bufferShift
+            do j = 1, bufferExtra
+              call buffer % release(transferP)
+              call self % commonBuffer % detainCritical(transferP)
+            end do
+          end if
 
+          ! Clear out buffer
+          if (.not. buffer % isEmpty()) then
+            call buffer % release(p)
+            cycle
+          end if
+
+          ! Clear out common queue
+          ! Note the apparently redundant critical sections (one here in PP, one in the dungeon).
+          ! This is to prevent the situation where two threads both enter the conditional and compete
+          ! for the final particle in the dungeon. The first thread would pop the particle while the
+          ! second would try to pop from an empty dungeon.
+          if (associated(self % commonBuffer)) then
+            !$omp critical
+            if (.not. self % commonBuffer % isEmpty()) then
+              call self % commonBuffer % releaseCritical(p)
+            end if
+            !$omp end critical
+            if (p % isDead) exit bufferLoop
+          else
+            exit bufferLoop
+          end if
+
+        end do bufferLoop
+
+      end do gen
+      !$omp end parallel do
+
+      ! Update RNG
+      call self % pRNG % stride(self % pop)
+      
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
@@ -178,7 +242,6 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
-
       ! Display progress
       call printFishLineR(i)
       print *
@@ -189,6 +252,7 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
     end do
+ 
   end subroutine cycles
 
   !!
@@ -232,14 +296,13 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary),pointer                       :: tempDict
-    integer(shortInt)                               :: seed_temp
+    integer(shortInt)                               :: seed_temp, commonBufferSize
     integer(longInt)                                :: seed
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
-    integer(shortInt)                               :: i
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -264,10 +327,13 @@ contains
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
     ! Get output format and verify
-    ! Initialise output file before calculation (so mistake in format will be cought early)
+    ! Initialise output file before calculation (so mistake in format will be caught early)
     call dict % getOrDefault(self % outputFormat, 'outputFormat', 'asciiMATLAB')
     call test_out % init(self % outputFormat)
 
+    ! Parallel buffer size
+    call dict % getOrDefault( self % bufferSize, 'buffer', 50)
+    
     ! Register timer
     self % timerMain = registerTimer('transportTime')
 
@@ -324,9 +390,23 @@ contains
     call self % tally % init(tempDict)
 
     ! Size particle dungeon
+    ! Note no need to oversize for fixed source calculation
     allocate(self % thisCycle)
-    call self % thisCycle % init(3 * self % pop)
+    call self % thisCycle % init(self % pop)
 
+    ! Is the common buffer turned on? Set the size if so
+    if (dict % isPresent('commonBufferSize')) then
+      call dict % get(commonBufferSize,'commonBufferSize')
+      allocate(self % commonBuffer)
+      call self % commonBuffer % init(commonBufferSize)
+
+      ! Set threshold at which to shift particles from private buffer 
+      ! to common buffer
+      call dict % getOrDefault(self % bufferShift, 'bufferShift', 10)
+      if (self % bufferShift > self % bufferSize) call fatalError(Here, &
+              'Buffer size should be greater than the shift threshold')
+    end if
+    
     call self % printSettings()
 
   end subroutine init

@@ -20,25 +20,26 @@ contains
     character(4) :: ref4
 
     ! 1 Byte value
-    ref1 = transfer(z'86', ref1)   ! 134
+    ! 134
+    ref1 = char(int(z'86'))
 
     ! 2 Byte value -> Construct byte by byte Necessary to preserve endianess
     ! 259
-    ref2(1:1) = transfer(z'03', ref1)
-    ref2(2:2) = transfer(z'01', ref1)
+    ref2(1:1) = char(int(z'03'))
+    ref2(2:2) = char(int(z'01'))
 
     ! 3 Byte value -
     ! 776655
-    ref3(1:1) = transfer(z'CF', ref1)
-    ref3(2:2) = transfer(z'D9', ref1)
-    ref3(3:3) = transfer(z'0B', ref1)
+    ref3(1:1) = char(int(z'CF'))
+    ref3(2:2) = char(int(z'D9'))
+    ref3(3:3) = char(int(z'0B'))
 
     ! 4 Byte Value
     ! 133316666
-    ref4(1:1) = transfer(z'3A', ref1)
-    ref4(2:2) = transfer(z'40', ref1)
-    ref4(3:3) = transfer(z'F2', ref1)
-    ref4(4:4) = transfer(z'07', ref1)
+    ref4(1:1) = char(int(z'3A'))
+    ref4(2:2) = char(int(z'40'))
+    ref4(3:3) = char(int(z'F2'))
+    ref4(4:4) = char(int(z'07'))
 
     ! Verify
     @assertEqual(ref1, intToByte(134, 1))

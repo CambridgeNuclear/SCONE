@@ -47,15 +47,16 @@ contains
   !!
   !! Sample outgoing energy given Random Number Generator
   !!
-  function sample(self, rand, bin) result (E)
+  function sample(self, rand, bin, f) result (E)
     class(tabularEnergy), intent(in)         :: self
     class(RNG), intent(inout)                :: rand
     integer(shortInt), intent(out), optional :: bin
+    real(defReal), intent(out), optional     :: f
     real(defReal)                            :: E
     real(defReal)                            :: r
 
     r = rand % get()
-    E = self % pdf % sample(r, bin)
+    E = self % pdf % sample(r, bin, f)
 
   end function sample
 

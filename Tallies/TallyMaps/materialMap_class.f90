@@ -26,8 +26,8 @@ module materialMap_class
   !! Private Members:
   !!   binMap -> intMap that maps matIdx to binIdx
   !!   default -> binIdx for materials not in binMap
-  !!   Nbins -> Number of bins in the mape
-  !!   matIndices -> List of material indices in the mape
+  !!   Nbins -> Number of bins in the map
+  !!   matIndices -> List of material indices in the map
   !!
   !! Interface:
   !!   tallyMap Interface
@@ -119,6 +119,7 @@ contains
     character(nameLen),dimension(:),allocatable :: matNames
     character(nameLen)                          :: undefined
     logical(defBool)                            :: trackUndefined
+    character(100), parameter :: Here = 'init (materialMap_class.f90)'
 
     ! Get material names list
     call dict % get(matNames, 'materials')
@@ -126,12 +127,15 @@ contains
     ! Get setting for undefined tracking
     call dict % getOrDefault(undefined, 'undefBin', 'false')
 
-    select case(undefined)
+    select case (undefined)
       case('yes','y','true','TRUE','T')
         trackUndefined = .true.
 
-      case default
+      case('no', 'n', 'false', 'FALSE', 'F')
         trackUndefined = .false.
+
+      case default
+        call fatalError(Here, undefined//' is an unrecognised entry!')
     end select
 
     ! Initialise Map
@@ -204,7 +208,6 @@ contains
     do i=1,size(self % matIndices)
       name = mm_matName(self % matIndices(i))
       call out % addValue(name)
-
     end do
 
     ! Print 'undefined'

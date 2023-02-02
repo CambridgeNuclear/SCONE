@@ -77,8 +77,8 @@ contains
 
     ! Test getting Group-To-Group production
     @assertEqual(1.1_defReal, reaction % production(1,1), TOL)
-    @assertEqual(1.05_defReal, reaction % production(2,1), TOL)
-    @assertEqual(ONE, reaction % production (1,2), TOL)
+    @assertEqual(ONE, reaction % production(2,1), TOL)
+    @assertEqual(1.05_defReal, reaction % production(1,2), TOL)
 
     ! Test that normalisation of P1 coefficients is OK
     @assertEqual(ZERO, reaction % P1(2,2), TOL)
@@ -91,5 +91,5 @@ contains
     call reaction % kill()
 
   end subroutine multiplicative_p1_scattering_test
-    
+
 end module multiScatterP1MG_test
