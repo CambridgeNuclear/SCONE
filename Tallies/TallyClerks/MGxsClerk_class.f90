@@ -35,20 +35,16 @@ module MGxsClerk_class
                                    SCATT_idx     = 2 ,&  ! Scattering macroscopic reaction rate
                                    CAPT_idx      = 3 ,&  ! Capture macroscopic reaction rate
                                    FISS_idx      = 4 ,&  ! Fission macroscopic reaction rate
-                                   NUFISS_idx    = 5 ,&  ! NuBar
+                                   NUBAR_idx     = 5 ,&  ! NuBar
                                    CHI_idx       = 6 ,&  ! Fission neutron spectrum
                                    SCATT_EV_idx  = 7     ! Analog: number of scattering events
 
   !!
-  !! Multi-group cross section calculation
+  !! Multi-group macroscopic cross section calculation
   !!
   !! It prints out:
   !! capture xs, fission xs, transport xs, nu, chi, the P0 and P1 scattering matrices,
   !! the P0 scattering production matrix. On request, also the P2 -> P7 scattering matrices.
-  !!
-  !! NOTE:
-  !!  The energies in the output are thermal -> fast, i.e. increasing energy
-  !!  rather than increasing group number
   !!
   !! NOTE:
   !! - the cross sections are tallied with a collision estimator;
@@ -72,7 +68,7 @@ module MGxsClerk_class
   !!
   !! myMGxsClerk {
   !!   type MGxsClerk;
-  !!   energyMap { energyMap definition }
+  !!   # energyMap { energyMap definition } #
   !!   # spaceMap  { <other tallyMap definition> } #
   !!   # PN 1; #
   !! }
@@ -125,17 +121,14 @@ contains
     class(MGxsClerk), intent(inout)   :: self
     class(dictionary), intent(in)     :: dict
     character(nameLen), intent(in)    :: name
-    character(100), parameter :: Here =' init (MGxsClerk_class.f90)'
 
-    ! Load energy map
+    ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
+      self % energyN = self % energyMap % bins(0)
     else
-      call fatalError(Here,'An energy grid is necessary for MG cross section generation')
+      self % energyN = 1
     end if
-
-    ! Get energy bin number
-    self % energyN = self % energyMap % bins(0)
 
     ! Load space/material map and bin number
     if (dict % isPresent('spaceMap')) then
@@ -179,7 +172,7 @@ contains
   end subroutine kill
 
   !!
-  !! Returns array of codes that represent diffrent reports
+  !! Returns array of codes that represent different reports
   !!
   !! See tallyClerk_inter for details
   !!
@@ -226,7 +219,13 @@ contains
     state = p
 
     ! Find bin indexes
-    enIdx = self % energyMap % map(state)
+    ! Energy
+    if (allocated(self % energyMap)) then
+      enIdx = self % energyN + 1 - self % energyMap % map(state)
+    else
+      enIdx = 1
+    end if
+    ! Space
     if (allocated(self % spaceMap)) then
       matIdx = self % spaceMap % map(state)
     else
@@ -261,7 +260,7 @@ contains
 
     ! Add scores to counters
     call mem % score(flux,     addr + FLUX_idx)
-    call mem % score(nuFissXS, addr + NUFISS_idx)
+    call mem % score(nuFissXS, addr + NUBAR_idx)
     call mem % score(captXS,   addr + CAPT_idx)
     call mem % score(fissXS,   addr + FISS_idx)
     call mem % score(scattXS,  addr + SCATT_idx)
@@ -281,7 +280,7 @@ contains
     class(nuclearDatabase),intent(inout)    :: xsData
     type(scoreMemory), intent(inout)        :: mem
     type(particleState)                     :: preColl, postColl
-    real(defReal)                           :: score, prod, mu
+    real(defReal)                           :: score, prod, mu, mu2, mu3, mu4, mu5
     integer(shortInt)                       :: enIdx, matIdx, binIdx, binEnOut
     integer(longInt)                        :: addr
 
@@ -307,13 +306,19 @@ contains
            N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
            N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 
-        ! Find bin indexes
-        enIdx = self % energyMap % map(preColl)
-        if (allocated(self % spaceMap)) then
-          matIdx = self % spaceMap % map(preColl)
-        else
-          matIdx = 1
-        end if
+         ! Find bin indexes
+         ! Energy
+         if (allocated(self % energyMap)) then
+           enIdx = self % energyN + 1 - self % energyMap % map(preColl)
+         else
+           enIdx = 1
+         end if
+         ! Space
+         if (allocated(self % spaceMap)) then
+           matIdx = self % spaceMap % map(preColl)
+         else
+           matIdx = 1
+         end if
 
         ! Return if invalid bin index
         if (enIdx == 0 .or. matIdx == 0) return
@@ -326,7 +331,11 @@ contains
         call mem % score(preColl % wgt, addr + SCATT_EV_idx)
 
         ! Get bin of outgoing energy
-        binEnOut = self % energyMap % map(postColl)
+        if (allocated(self % energyMap)) then
+          binEnOut = self % energyN + 1 - self % energyMap % map(postColl)
+        else
+          binEnOut = 1
+        end if
 
         ! Return if invalid bin index
         if (binEnOut == 0) return
@@ -345,29 +354,35 @@ contains
         ! Higher order scattering matrices
         if (self % PN) then
 
+          ! Pre-computing powers
+          mu2 = muL * muL
+          mu3 = mu2 * muL
+          mu4 = mu3 * muL
+          mu5 = mu4 * muL
+
           ! Score outgoing scattering angle for P2 matrix
-          mu = HALF * (3.0_defReal*muL*muL - ONE) * preColl % wgt
+          mu = HALF * (3.0_defReal*mu2 - ONE) * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 3*self % energyN + binEnOut)
 
           ! Score outgoing scattering angle for P3 matrix
-          mu = HALF * (5.0_defReal*muL**3 - 3.0_defReal*muL) * preColl % wgt
+          mu = HALF * (5.0_defReal*mu3 - 3.0_defReal*muL) * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 4*self % energyN + binEnOut)
 
           ! Score outgoing scattering angle for P4 matrix
-          mu = (35.0_defReal*muL**4 - 30.0_defReal*muL*muL + 3.0_defReal)/8.0_defReal * preColl % wgt
+          mu = (35.0_defReal*mu4 - 30.0_defReal*mu2 + 3.0_defReal)/8.0_defReal * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 5*self % energyN + binEnOut)
 
           ! Score outgoing scattering angle for P5 matrix
-          mu = (63.0_defReal*muL**5 - 70.0_defReal*muL**3 + 15.0_defReal*muL)/8.0_defReal * preColl % wgt
+          mu = (63.0_defReal*mu5 - 70.0_defReal*mu3 + 15.0_defReal*muL)/8.0_defReal * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 6*self % energyN + binEnOut)
 
           ! Score outgoing scattering angle for P6 matrix
-          mu = (231.0_defReal*muL**6 - 315.0_defReal*muL**4 + 105.0_defReal*muL*muL &
+          mu = (231.0_defReal*mu5*muL - 315.0_defReal*mu4 + 105.0_defReal*mu2 &
                 - 5.0_defReal)/16.0_defReal * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 7*self % energyN + binEnOut)
 
           ! Score outgoing scattering angle for P7 matrix
-          mu = (429.0_defReal*muL**7 - 693.0_defReal*muL**5 + 315.0_defReal*muL**3 &
+          mu = (429.0_defReal*mu5*mu2 - 693.0_defReal*mu5 + 315.0_defReal*mu3 &
                 - 35.0_defReal*muL)/16.0_defReal * preColl % wgt
           call mem % score(mu, addr + SCATT_EV_idx + 8*self % energyN + binEnOut)
 
@@ -397,7 +412,13 @@ contains
     do i = 1,N
 
       ! Find bin indexes
-      enIdx = self % energyMap % map(end % get(i))
+      ! Energy
+      if (allocated(self % energyMap)) then
+        enIdx = self % energyN + 1 - self % energyMap % map(end % get(i))
+      else
+        enIdx = 1
+      end if
+      ! Space
       if (allocated(self % spaceMap)) then
         matIdx = self % spaceMap % map(end % get(i))
       else
@@ -483,7 +504,7 @@ contains
       call mem % getResult(fiss,  fissStd,  addr + FISS_idx)
       call mem % getResult(capt,  captStd,  addr + CAPT_idx)
       call mem % getResult(scatt, scattStd, addr + SCATT_idx)
-      call mem % getResult(nu,    nuStd,    addr + NUFISS_idx)
+      call mem % getResult(nu,    nuStd,    addr + NUBAR_idx)
       call mem % getResult(chi,   chiStd,   addr + CHI_idx)
       call mem % getResult(scattProb, scattProbStd, addr + SCATT_EV_idx)
 
@@ -689,8 +710,6 @@ contains
   !! Write contents of the clerk to output file
   !!
   !! See tallyClerk_inter for details
-  !!
-  !! NOTE: the energy groups are ordered from thermal to fast (G_end -> G_1)
   !!
   subroutine print(self, outFile, mem)
     class(MGxsClerk), intent(in)               :: self
