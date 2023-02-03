@@ -306,19 +306,19 @@ contains
            N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
            N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 
-         ! Find bin indexes
-         ! Energy
-         if (allocated(self % energyMap)) then
-           enIdx = self % energyN + 1 - self % energyMap % map(preColl)
-         else
-           enIdx = 1
-         end if
-         ! Space
-         if (allocated(self % spaceMap)) then
-           matIdx = self % spaceMap % map(preColl)
-         else
-           matIdx = 1
-         end if
+        ! Find bin indexes
+        ! Energy
+        if (allocated(self % energyMap)) then
+          enIdx = self % energyN + 1 - self % energyMap % map(preColl)
+        else
+          enIdx = 1
+        end if
+        ! Space
+        if (allocated(self % spaceMap)) then
+          matIdx = self % spaceMap % map(preColl)
+        else
+          matIdx = 1
+        end if
 
         ! Return if invalid bin index
         if (enIdx == 0 .or. matIdx == 0) return
