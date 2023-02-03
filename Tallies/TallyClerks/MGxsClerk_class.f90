@@ -302,9 +302,9 @@ contains
 
     ! Score in case of scattering events
     select case(MT)
-    case ( N_N_ELASTIC, N_N_INELASTIC, N_Nl(1):N_Nl(40), N_Ncont,         &
-           N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
-           N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
+      case ( N_N_ELASTIC, N_N_INELASTIC, N_Nl(1):N_Nl(40), N_Ncont,         &
+             N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
+             N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 
         ! Find bin indexes
         ! Energy
