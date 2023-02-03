@@ -1434,16 +1434,13 @@ contains
     character(*), intent(in)       :: filePath
     integer(shortInt), intent(in)  :: lineNum
     integer(shortInt)              :: aceFile = 8
-    character(pathLen)             :: localFilePath
     integer(shortInt)              :: i, xssLen
     character(13)                  :: skip
     character(100),parameter :: Here ='readFromFile (aceCard_class.f90)'
 
-    ! Copy filepath and make sure it is left adjusted
-    localFilePath = trim(adjustl(filePath))
-
     ! Open file to read data
-    call openToRead(aceFile,localFilePath)
+    ! If a path has whitespace at LHS, file will fail to open. We need to trim the whitespace.
+    call openToRead(aceFile, adjustl(filePath))
 
     ! Skip lines
     select case(lineNum)
