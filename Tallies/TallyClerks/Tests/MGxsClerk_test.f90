@@ -70,6 +70,7 @@ contains
     call energyDict % kill()
     call tempDict % kill()
 
+    ! Build test neutronDatabase
     call this % nucData % build(ONE, captureXS = 2.0_defReal, &
                                 fissionXS = 1.5_defReal, nuFissionXS = 3.0_defReal)
 
