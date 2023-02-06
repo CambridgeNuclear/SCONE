@@ -68,6 +68,7 @@ module geometryReg_mod
   public :: addGeom
   public :: geomIdx
   public :: geomPtr
+  public :: geomNum
   public :: addField
   public :: fieldIdx
   public :: fieldPtr
@@ -191,6 +192,27 @@ contains
     ptr => geometries(idx) % geom
 
   end function geomPtr
+
+  !!
+  !! Get number of geometries stored in the module
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of allocated geometries
+  !!
+  function geomNum() result(N)
+    integer(shortInt) :: N
+
+    ! Check allocation and get size
+    if (allocated(geometries)) then
+      N = geometryTop
+    else
+      N = 0
+    end if
+
+  end function geomNum
 
   !!
   !! Add Field definition
