@@ -35,7 +35,7 @@ module cellMap_class
   !!   binMap  -> intMap that maps cellIdx to binIdx
   !!   default -> binIdx for cells not in binMap
   !!   Nbins   -> Number of bins in the map
-  !!   cellIndices -> List of cell indices in the map
+  !!   cellIdx -> List of cell indices in the map
   !!
   !! Interface:
   !!   tallyMap Interface
@@ -53,7 +53,7 @@ module cellMap_class
     type(intMap)                                  :: binMap
     integer(shortInt)                             :: default = 0
     integer(shortInt)                             :: Nbins   = 0
-    integer(shortInt), dimension(:), allocatable  :: cellIndices
+    integer(shortInt), dimension(:), allocatable  :: cellIdx
 
   contains
     ! Superclass interface implementaction
@@ -95,9 +95,9 @@ contains
     ! Find number of cells to bin
     N = size(cells)
 
-    ! Allocate space in map and cellIndices
+    ! Allocate space in map and cellIdx
     call self % binMap % init(N)
-    allocate(self % cellIndices(N))
+    allocate(self % cellIdx(N))
 
     ! Check that geometryReg only includes one geometry
     geomNumber = geomNum()
@@ -121,7 +121,7 @@ contains
       ! Get unique cell IDs
       ID = geomStd % geom % cells % getIdx(cells(i))
       call self % binMap % add(ID, i)
-      self % cellIndices(i) = cells(i)
+      self % cellIdx(i) = cells(i)
     end do
 
     ! Set default and number of bins
@@ -233,12 +233,12 @@ contains
     call out % startArray(name, [1, self % Nbins])
 
     ! Print cell indexes
-    do i=1,size(self % cellIndices)
-      call out % addValue(numToChar(self % cellIndices(i)))
+    do i=1,size(self % cellIdx)
+      call out % addValue(numToChar(self % cellIdx(i)))
     end do
 
     ! Print 'undefined'
-    if ( self % Nbins > size(self % cellIndices)) then
+    if ( self % Nbins > size(self % cellIdx)) then
       name = 'undefined'
       call out % addValue(name)
     end if
@@ -279,7 +279,7 @@ contains
     self % default = 0
     self % Nbins = 0
 
-    if (allocated(self % cellIndices)) deallocate(self % cellIndices)
+    if (allocated(self % cellIdx)) deallocate(self % cellIdx)
 
   end subroutine kill
 
