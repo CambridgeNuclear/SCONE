@@ -10,7 +10,7 @@ module cellMap_class
   ! Geometry
   use geometryStd_class,       only : geometryStd, geometryStd_CptrCast
   use geometry_inter,          only : geometry
-  use geometryReg_mod,         only : geomPtr
+  use geometryReg_mod,         only : geomPtr, geomNum
 
   implicit none
   private
@@ -25,10 +25,10 @@ module cellMap_class
   !!
   !! Map that divides based on the cell a particle is in
   !! NOTE: the cell ID must be converted from the IDs in the input file
-  !!       to the uniqueIDs.
+  !!       to the cellIdx used in cellShelf.
   !! --------------------------- IMPORTANT ----------------------------
-  !! NOTE: The assumption is that there is ONLY ONE geometry in geometryReg,
-  !!       and that that geometry is geometryStd
+  !! NOTE: This map can be used if is ONLY ONE geometry in geometryReg,
+  !!       and if that geometry is geometryStd
   !! ------------------------------------------------------------------
   !!
   !! Private Members:
@@ -87,9 +87,10 @@ contains
     class(cellMap), intent(inout)               :: self
     integer(shortInt), dimension(:), intent(in) :: cells
     logical(defBool), intent(in)                :: trackRest
-    integer(shortInt)                           :: N, i, ID
+    integer(shortInt)                           :: N, i, ID, geomNumber
     class(geometry), pointer                    :: geom
     class(geometryStd), pointer                 :: geomStd
+    character(100), parameter :: Here = 'build (cellMap_class.f90)'
 
     ! Find number of cells to bin
     N = size(cells)
@@ -98,13 +99,25 @@ contains
     call self % binMap % init(N)
     allocate(self % cellIndices(N))
 
+    ! Check that geometryReg only includes one geometry
+    geomNumber = geomNum()
+    if (geomNumber /= 1) then
+      call fatalError(Here, 'geometryReg contains ' // numToChar(geomNumber) // ' geometries, &
+                      & it should be 1')
+    end if
+
     ! Get pointer to geometry
     ! ASSUMES THERE IS ONLY ONE GEOMETRY, AND THAT IT IS STD
     geom => geomPtr(1)
     geomStd => geometryStd_CptrCast(geom)
 
+    ! Check that the geometry is actually geometryStd
+    if (.not. associated(geomStd)) then
+      call fatalError(Here, 'The geometry in geometryReg is not of type geometryStd')
+    end if
+
     ! Load cell indices and bins
-    do i = 1,N
+    do i = 1, N
       ! Get unique cell IDs
       ID = geomStd % geom % cells % getIdx(cells(i))
       call self % binMap % add(ID, i)
@@ -215,9 +228,9 @@ contains
     integer(shortInt)                :: i
 
     ! Name the array
-    name = trim(self % getAxisName()) //'Bins'
+    name = trim(self % getAxisName()) // 'Bins'
 
-    call out % startArray(name,[1,self % Nbins])
+    call out % startArray(name, [1, self % Nbins])
 
     ! Print cell indexes
     do i=1,size(self % cellIndices)
@@ -265,6 +278,8 @@ contains
     call self % binMap % kill()
     self % default = 0
     self % Nbins = 0
+
+    if (allocated(self % cellIndices)) deallocate(self % cellIndices)
 
   end subroutine kill
 

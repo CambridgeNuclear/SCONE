@@ -121,7 +121,7 @@ contains
     integer(shortInt),dimension(5)           :: bins
     integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [1, 0, 2, 3, 0]
 
-    do i = 1,5
+    do i = 1, size(EXPECTED_BINS)
       state % cellIdx = i
       bins(i) = this % map_noUndef % map(state)
     end do
@@ -142,7 +142,7 @@ contains
     integer(shortInt),dimension(5)           :: bins
     integer(shortInt),dimension(5),parameter :: EXPECTED_BINS = [1, 4, 2, 3, 4]
 
-    do i = 1,5
+    do i = 1, size(EXPECTED_BINS)
       state % cellIdx = i
       bins(i) = this % map_undef % map(state)
     end do
