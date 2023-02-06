@@ -27,8 +27,8 @@ module cellMap_class
   !! NOTE: the cell ID must be converted from the IDs in the input file
   !!       to the cellIdx used in cellShelf.
   !! --------------------------- IMPORTANT ----------------------------
-  !! NOTE: This map can be used if is ONLY ONE geometry in geometryReg,
-  !!       and if that geometry is geometryStd
+  !! NOTE: This map can be used if there is ONLY ONE geometry in geometryReg,
+  !!       and that geometry is geometryStd
   !! ------------------------------------------------------------------
   !!
   !! Private Members:
