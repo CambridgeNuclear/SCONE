@@ -26,6 +26,7 @@ module IMCPhysicsPackage_class
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx
   use simpleGrid_class,               only : simpleGrid
+  use discretiseGeom_class,           only : discretise
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
@@ -386,6 +387,7 @@ contains
     integer(shortInt)                               :: i
     class(IMCMaterial), pointer                     :: mat
     character(nameLen), dimension(:), allocatable   :: mats
+type(dictionary) :: newGeom, newData
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -431,6 +433,25 @@ contains
     ! Read whether to print particle source each time step
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
+    ! Automatically split geometry into a uniform grid
+    if (dict % isPresent('discretise')) then
+      call discretise(dict, newGeom, newData)
+
+      ! Build Nuclear Data
+      call ndReg_init(newData)
+
+      ! Build geometry
+      geomName = 'IMCGeom'
+      call gr_addGeom(geomName, newGeom)
+      self % geomIdx = gr_geomIdx(geomName)
+      self % geom    => gr_geomPtr(self % geomIdx)
+
+      ! Activate Nuclear Data *** All materials are active
+      call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
+      self % nucData => ndReg_get(self % particleType)
+
+    else
+
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
 
@@ -444,6 +465,10 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+
+    end if
+
+
 
     ! Initialise grid for hybrid tracking
     if (dict % isPresent('grid')) then
@@ -480,6 +505,7 @@ contains
 
     ! Store number of materials
     self % nMat = mm_nMat()
+    self % printUpdates = min(self % printUpdates, self % nMat)
 
     ! Create array of material names
     allocate(mats(self % nMat))

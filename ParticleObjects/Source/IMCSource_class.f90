@@ -155,8 +155,8 @@ contains
 
       ! Protect against infinite loop
       i = i+1
-      if (i > 10000) then
-        call fatalError(Here, '10,000 failed samples in rejection sampling loop')
+      if (i > 100000) then
+        call fatalError(Here, '100,000 failed samples in rejection sampling loop')
       end if
 
       ! Sample Position
