@@ -194,7 +194,9 @@ contains
           Ntemp = int(N * mat % getEmittedRad() / totEnergy)
           ! Enforce at least 1 particle
           if (Ntemp == 0) Ntemp = 1
+
           call self % IMCSource % append(self % thisStep, Ntemp, self % pRNG, j)
+
         end if
       end do
 
@@ -387,7 +389,8 @@ contains
     integer(shortInt)                               :: i
     class(IMCMaterial), pointer                     :: mat
     character(nameLen), dimension(:), allocatable   :: mats
-type(dictionary) :: newGeom, newData
+    integer(shortInt), dimension(:), allocatable    :: latSizeN
+    type(dictionary)                                :: newGeom, newData
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -435,6 +438,12 @@ type(dictionary) :: newGeom, newData
 
     ! Automatically split geometry into a uniform grid
     if (dict % isPresent('discretise')) then
+
+      ! Store dimensions of lattice
+      tempDict => dict % getDictPtr('discretise')
+      call tempDict % get(latSizeN, 'dimensions')
+
+      ! Create new input
       call discretise(dict, newGeom, newData)
 
       ! Build Nuclear Data
@@ -449,6 +458,9 @@ type(dictionary) :: newGeom, newData
       ! Activate Nuclear Data *** All materials are active
       call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
       self % nucData => ndReg_get(self % particleType)
+
+      call newGeom % kill()
+      call newData % kill()
 
     else
 
@@ -486,7 +498,13 @@ type(dictionary) :: newGeom, newData
     end if
 
     ! Initialise IMC source
-    call locDict1 % init(1)
+    if (dict % isPresent('discretise')) then
+      ! Store size of lattice to avoid rejection sampling loop in source
+      call locDict1 % init(2)
+      call locDict1 % store('sizeN', latSizeN)
+    else
+      call locDict1 % init(1)
+    end if
     call locDict1 % store('type', 'imcSource')
     call new_source(self % IMCSource, locDict1, self % geom)
 
@@ -573,6 +591,5 @@ type(dictionary) :: newGeom, newData
     print *
     print *, repeat("<>",50)
   end subroutine printSettings
-
 
 end module IMCPhysicsPackage_class

@@ -44,13 +44,18 @@ module IMCSource_class
     logical(defBool)                             :: isMG   = .true.
     real(defReal), dimension(3)                  :: bottom = ZERO
     real(defReal), dimension(3)                  :: top    = ZERO
+    real(defReal), dimension(3)                  :: latPitch = ZERO
+    integer(shortInt), dimension(:), allocatable :: latSizeN
     integer(shortInt)                            :: G      = 0
     integer(shortInt)                            :: N
     integer(shortInt)                            :: matIdx
+    real(defReal), dimension(6)                  :: matBounds = ZERO
   contains
     procedure :: init
     procedure :: append
     procedure :: sampleParticle
+    procedure :: samplePosRej
+    procedure :: samplePosLat
     procedure :: kill
   end type imcSource
 
@@ -79,6 +84,13 @@ contains
     self % bottom = bounds(1:3)
     self % top    = bounds(4:6)
 
+    ! Store lattice dimensions for use in position sampling if using a large lattice
+    ! sizeN automatically added to dict in IMCPhysicsPackage if needed
+    if (dict % isPresent('sizeN')) then
+      call dict % get(self % latSizeN, 'sizeN')
+      self % latPitch = (self % top - self % bottom) / self % latSizeN
+    end if
+
   end subroutine init
 
   !!
@@ -103,6 +115,7 @@ contains
     integer(shortInt), intent(in), optional :: matIdx
     type(particle)                          :: p
     integer(shortInt)                       :: i
+    integer(shortInt), dimension(3)         :: ijk
     real(defReal)                           :: normFactor
     type(RNG)                               :: pRand
     character(100), parameter               :: Here = "append (IMCSource_class.f90)"
@@ -113,6 +126,16 @@ contains
     ! Store inputs for use by sampleParticle subroutine
     self % N      = N
     self % matIdx = matIdx
+
+    ! For a large number of materials (large lattice using discretiseGeom_class) rejection
+    ! sampling is too slow, so calculate bounding box of material
+    if (self % latPitch(1) /= 0) then
+      ijk = get_ijk(matIdx, self % latSizeN)
+      do i=1, 3
+        self % matBounds(i)   = (ijk(i)-1) * self % latPitch(i) + self % bottom(i)
+        self % matBounds(i+3) = ijk(i)     * self % latPitch(i) + self % bottom(i)
+      end do
+    end if
 
     ! Add N particles to dungeon
     !$omp parallel
@@ -138,7 +161,7 @@ contains
     type(particleState)                  :: p
     class(nuclearDatabase), pointer      :: nucData
     class(IMCMaterial), pointer          :: mat
-    real(defReal), dimension(3)          :: r, rand3, dir
+    real(defReal), dimension(3)          :: r, dir
     real(defReal)                        :: mu, phi
     integer(shortInt)                    :: i, matIdx, uniqueID
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
@@ -147,16 +170,61 @@ contains
     nucData => ndReg_getIMCMG()
     if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
-    ! Position is sampled by taking a random point from within geometry bounding box
-    ! If in correct material, position is accepted
+    ! Choose position sampling method
+    if (self % latPitch(1) == ZERO) then
+      call self % samplePosRej(r, matIdx, rand)
+    else
+      call self % samplePosLat(r, matIdx, rand)
+    end if
+
+    ! Point to material
+    mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))
+    if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return IMC material.")
+
+    ! Sample direction - chosen uniformly inside unit sphere
+    mu = 2 * rand % get() - 1
+    phi = rand % get() * 2*pi
+    dir(1) = mu
+    dir(2) = sqrt(1-mu**2) * cos(phi)
+    dir(3) = sqrt(1-mu**2) * sin(phi)
+
+    ! Assign basic phase-space coordinates
+    p % matIdx   = matIdx
+    p % uniqueID = uniqueID
+    p % time     = ZERO
+    p % type     = P_PHOTON
+    p % r        = r
+    p % dir      = dir
+    p % G        = self % G
+    p % isMG     = .true.
+
+    ! Set weight
+    p % wgt = mat % getEmittedRad() / self % N
+
+  end function sampleParticle
+
+
+  !!
+  !! Position is sampled by taking a random point from within geometry bounding box
+  !! If in correct material, position is accepted
+  !!
+  subroutine samplePosRej(self, r, matIdx, rand)
+    class(imcSource), intent(inout)          :: self
+    real(defReal), dimension(3), intent(out) :: r
+    integer(shortInt), intent(out)           :: matIdx
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt)                        :: i, uniqueID
+    real(defReal), dimension(3)              :: rand3
+    character(100), parameter :: Here = 'samplePosRej (IMCSource_class.f90)'
+
     i = 0
 
-    rejection : do
+    rejectionLoop : do
 
       ! Protect against infinite loop
       i = i+1
-      if (i > 100000) then
-        call fatalError(Here, '100,000 failed samples in rejection sampling loop')
+      if (i > 10000) then
+        call fatalError(Here, '10,000 failed samples in rejection sampling loop')
       end if
 
       ! Sample Position
@@ -168,39 +236,36 @@ contains
       ! Find material under position
       call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-      ! Reject if not in desired material
-      if (matIdx /= self % matIdx) cycle rejection
+      ! Exit if in desired material
+      if (matIdx == self % matIdx) exit rejectionLoop
 
-      ! Point to material
-      mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))
-      if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return IMC material.")
+    end do rejectionLoop
 
-      ! Sample direction - chosen uniformly inside unit sphere
-      mu = 2 * rand % get() - 1
-      phi = rand % get() * 2*pi
-      dir(1) = mu
-      dir(2) = sqrt(1-mu**2) * cos(phi)
-      dir(3) = sqrt(1-mu**2) * sin(phi)
+  end subroutine samplePosRej
 
-      ! Assign basic phase-space coordinates
-      p % matIdx   = matIdx
-      p % uniqueID = uniqueID
-      p % time     = ZERO
-      p % type     = P_PHOTON
-      p % r        = r
-      p % dir      = dir
-      p % G        = self % G
-      p % isMG     = .true.
+  !!
+  !! Sample position without using a rejection sampling method, by calculating the material bounds.
+  !!
+  !! Requires geometry to be a uniform lattice, so currently only called when discretiseGeom_class
+  !! is used to create inputs.
+  !!
+  subroutine samplePosLat(self, r, matIdx, rand)
+    class(imcSource), intent(inout)          :: self
+    real(defReal), dimension(3), intent(out) :: r
+    integer(shortInt), intent(out)           :: matIdx
+    class(RNG), intent(inout)            :: rand
+    integer(shortInt)                        :: i, uniqueID
+    character(100), parameter :: Here = 'samplePosLat (IMCSource_class.f90)'
 
-      ! Set weight
-      p % wgt = mat % getEmittedRad() / self % N
+    do i=1, 3
+      r(i) = self % matBounds(i) + rand % get() * (self % matBounds(i+3) - self % matBounds(i))
+    end do
 
-      ! Exit the loop
-      exit rejection
+    call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-    end do rejection
+    if (matIdx /= self % matIdx) call fatalError(Here, 'Incorrect material')
 
-  end function sampleParticle
+  end subroutine samplePosLat
 
   !!
   !! Return to uninitialised state
@@ -216,5 +281,36 @@ contains
     self % G      = 0
 
   end subroutine kill
+
+
+  !!
+  !! Generate ijk from localID and shape
+  !!
+  !! Args:
+  !!   localID [in] -> Local id of the cell between 1 and product(sizeN)
+  !!   sizeN [in]   -> Number of cells in each cardinal direction x, y & z
+  !!
+  !! Result:
+  !!   Array ijk which has integer position in each cardinal direction
+  !!
+  pure function get_ijk(localID, sizeN) result(ijk)
+    integer(shortInt), intent(in)               :: localID
+    integer(shortInt), dimension(3), intent(in) :: sizeN
+    integer(shortInt), dimension(3)             :: ijk
+    integer(shortInt)                           :: temp, base
+
+    temp = localID - 1
+
+    base = temp / sizeN(1)
+    ijk(1) = temp - sizeN(1) * base + 1
+
+    temp = base
+    base = temp / sizeN(2)
+    ijk(2) = temp - sizeN(2) * base + 1
+
+    ijk(3) = base + 1
+
+  end function get_ijk
+
 
 end module IMCSource_class
