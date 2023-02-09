@@ -71,7 +71,6 @@ contains
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     real(defReal), dimension(6)              :: bounds
-    integer(shortInt)                        :: i
     character(100), parameter :: Here = 'init (imcSource_class.f90)'
 
     ! Provide geometry info to source
@@ -113,10 +112,8 @@ contains
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in), optional :: matIdx
-    type(particle)                          :: p
     integer(shortInt)                       :: i
     integer(shortInt), dimension(3)         :: ijk
-    real(defReal)                           :: normFactor
     type(RNG)                               :: pRand
     character(100), parameter               :: Here = "append (IMCSource_class.f90)"
 
@@ -163,7 +160,7 @@ contains
     class(IMCMaterial), pointer          :: mat
     real(defReal), dimension(3)          :: r, dir
     real(defReal)                        :: mu, phi
-    integer(shortInt)                    :: i, matIdx, uniqueID
+    integer(shortInt)                    :: matIdx, uniqueID
     character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
@@ -172,9 +169,9 @@ contains
 
     ! Choose position sampling method
     if (self % latPitch(1) == ZERO) then
-      call self % samplePosRej(r, matIdx, rand)
+      call self % samplePosRej(r, matIdx, uniqueID, rand)
     else
-      call self % samplePosLat(r, matIdx, rand)
+      call self % samplePosLat(r, matIdx, uniqueID, rand)
     end if
 
     ! Point to material
@@ -208,12 +205,13 @@ contains
   !! Position is sampled by taking a random point from within geometry bounding box
   !! If in correct material, position is accepted
   !!
-  subroutine samplePosRej(self, r, matIdx, rand)
+  subroutine samplePosRej(self, r, matIdx, uniqueID, rand)
     class(imcSource), intent(inout)          :: self
     real(defReal), dimension(3), intent(out) :: r
     integer(shortInt), intent(out)           :: matIdx
+    integer(shortInt), intent(out)           :: uniqueID
     class(RNG), intent(inout)                :: rand
-    integer(shortInt)                        :: i, uniqueID
+    integer(shortInt)                        :: i
     real(defReal), dimension(3)              :: rand3
     character(100), parameter :: Here = 'samplePosRej (IMCSource_class.f90)'
 
@@ -249,16 +247,17 @@ contains
   !! Requires geometry to be a uniform lattice, so currently only called when discretiseGeom_class
   !! is used to create inputs.
   !!
-  subroutine samplePosLat(self, r, matIdx, rand)
+  subroutine samplePosLat(self, r, matIdx, uniqueID, rand)
     class(imcSource), intent(inout)          :: self
     real(defReal), dimension(3), intent(out) :: r
     integer(shortInt), intent(out)           :: matIdx
-    class(RNG), intent(inout)            :: rand
-    integer(shortInt)                        :: i, uniqueID
+    integer(shortInt), intent(out)           :: uniqueID
+    class(RNG), intent(inout)                :: rand
+    integer(shortInt)                        :: i
     character(100), parameter :: Here = 'samplePosLat (IMCSource_class.f90)'
 
     do i=1, 3
-      r(i) = self % matBounds(i) + rand % get() * (self % matBounds(i+3) - self % matBounds(i))
+      r(i) = self % matBounds(i) + rand % get() * (self % matBounds(i+3) - self % matBounds(i) - SURF_TOL) + SURF_TOL
     end do
 
     call self % geom % whatIsAt(matIdx, uniqueID, r)
