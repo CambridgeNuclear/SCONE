@@ -95,6 +95,9 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
+    real(defReal) :: activeTime
+    real(defReal) :: inactiveTime
+    integer(shortInt) :: timerParticle
     real (defReal)    :: time_transport = 0.0
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
@@ -120,7 +123,9 @@ contains
 
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
+    self % inactiveTime = timerTime(self % timerParticle)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
+    self % activeTime = timerTime(self % timerParticle)
     call self % collectResults()
 
     print *
@@ -167,6 +172,8 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
+    call timerReset(self % timerParticle)
+
     do i=1,N_cycles
 
       ! Send start of cycle report
@@ -175,6 +182,7 @@ contains
 
       nParticles = self % thisCycle % popSize()
 
+      call timerStart(self % timerParticle)
       !$omp parallel do schedule(dynamic)
       gen: do n = 1, nParticles
 
@@ -216,6 +224,7 @@ contains
       
       end do gen
       !$omp end parallel do
+      call timerStop(self % timerParticle)
       
       call self % thisCycle % cleanPop() 
       
@@ -322,8 +331,14 @@ contains
     name = 'Inactive_Cycles'
     call out % printValue(self % N_inactive,name)
 
+    name = 'inactive_particles_per_s'
+    call out % printValue(self % pop * self % N_inactive /self % inactiveTime,name)
+    
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
+    
+    name = 'active_particles_per_s'
+    call out % printValue(self % pop * self % N_active / self % activeTime,name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
@@ -402,6 +417,7 @@ contains
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')
+    self % timerParticle = registerTimer('particleTime')
 
     ! Initialise RNG
     allocate(self % pRNG)

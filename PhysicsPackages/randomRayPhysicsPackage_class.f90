@@ -51,7 +51,7 @@ module randomRayPhysicsPackage_class
   private
 
   ! Parameter for when to skip a tiny volume
-  real(defReal), parameter :: volume_tolerance = 1.0E-15
+  real(defFlt), parameter :: volume_tolerance = 1.0E-12
 
   !!
   !! Physics package to perform The Random Ray Method (TRRM) eigenvalue calculations
@@ -199,6 +199,7 @@ module randomRayPhysicsPackage_class
     integer(shortInt), dimension(:), allocatable :: cellHit
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
+    integer(longInt)                             :: intersectionsTotal = 0
 
     ! OMP locks
     integer(kind=omp_lock_kind), dimension(:), allocatable :: locks
@@ -511,7 +512,8 @@ contains
     self % cellHit      = 0
     self % volume       = 0.0_defFlt
     self % volumeTracks = 0.0_defFlt
-    
+    self % intersectionsTotal  = 0
+
     ! Initialise cell information
     self % cellFound = .false.
     self % cellPos = -INFINITY
@@ -563,6 +565,8 @@ contains
 
       end do
       !$omp end parallel do
+
+      self % intersectionsTotal = self % intersectionsTotal + intersections
       
       call timerStop(self % timerTransport)
 
@@ -1051,6 +1055,9 @@ contains
 
     name = 'Total_Transport_Time'
     call out % printValue(self % time_transport,name)
+    
+    name = 'Time_Per_Integration'
+    call out % printValue(self % time_transport/(self % intersectionsTotal * self % nG),name)
     
     name = 'Clock_Time'
     call out % printValue(timerTime(self % timerMain),name)
