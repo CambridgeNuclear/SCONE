@@ -53,7 +53,7 @@ contains
     hash_loc = iand( prime * key, mask)
 
     ! Keep m uppermost bits
-    hash = transfer(shiftr(hash_loc,32-m),shortInt)
+    hash = transfer(shiftr(hash_loc, 32 - m_loc),shortInt)
 
   end function knuthHash
 
