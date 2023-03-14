@@ -1,0 +1,103 @@
+
+type IMCPhysicsPackage;
+
+pop            2000000;
+limit          20000000;
+steps          100;
+timeStepSize   0.2;
+printUpdates   20;
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTimeHT; cutoff 0.9;
+                  } 
+
+source {
+  type bbSurfaceSource;
+  shape square;
+  size 1;
+  axis x;
+  pos -0.5;
+  T 1;
+  dir 1;
+  particle photon;
+  N 20000;
+}
+
+viz { vizDict { type vtk; corner (-0.5 -0.5 -0.5); width (1 1 1); vox (20 20 1); } }
+
+tally  {
+	   }
+
+grid { dimensions (20 20 1); searchN (10 10 1); }
+
+discretise { dimensions (200 200 1); }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      outer     { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 0.5 0.5 0.5); }
+      xPlane1   { id 2; type xPlane; x0 -0.45; }
+      xPlane2   { id 3; type xPlane; x0 -0.25; }
+      xPlane3   { id 4; type xPlane; x0 0.25; }
+      xPlane4   { id 5; type xPlane; x0 0.45; }
+      yPlane1   { id 6; type yPlane; y0 -0.45; }
+      yPlane2   { id 7; type yPlane; y0 -0.25; }
+      yPlane3   { id 8; type yPlane; y0 0.25; }
+      yPlane4   { id 9; type yPlane; y0 0.45; }
+    }
+
+    cells {
+      // Top mat
+      cell1 { id 1; type simpleCell; surfaces (9); filltype mat; material mat1; }
+      // Bottom mat
+      cell2 { id 2; type simpleCell; surfaces (-6); filltype mat; material mat1; }
+      // Right side mat
+      cell3 { id 3; type simpleCell; surfaces (5 6 -9); filltype mat; material mat1; }
+      // Left side mat
+      cell4 { id 4; type simpleCell; surfaces (-2 7 -8); filltype mat; material mat1; }
+      // Centre mat
+      cell5 { id 5; type simpleCell; surfaces (3 -4 7 -8); filltype mat; material mat1; }
+      // Top void
+      cell6 { id 6; type simpleCell; surfaces (8 -9 -5); filltype mat; material mat2; }
+      // Bottom void
+      cell7 { id 7; type simpleCell; surfaces (6 -7 -5); filltype mat; material mat2; }
+      // Right void
+      cell8 { id 8; type simpleCell; surfaces (7 -8 4 -5); filltype mat; material mat2; }
+      // Left void
+      cell9 { id 9; type simpleCell; surfaces (7 -8 2 -3); filltype mat; material mat2; }
+    }
+
+    universes
+    {
+      root  { id 1; type rootUniverse; border 1; fill u<2>; }
+      cells { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9); }
+    }
+
+}
+
+nuclearData {
+
+  handles { 
+     mg { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials {
+
+    mat1 { temp 0.01; composition {} xsFile ./dataFiles/hohlraumData; }
+    mat2 { temp 1; composition {} xsFile ./dataFiles/voidData; }
+
+  }
+
+}
+  
+  
+  
