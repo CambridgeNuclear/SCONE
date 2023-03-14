@@ -215,7 +215,7 @@ contains
 
     val = self % gridCells(idx) % majorant
 
-    if (val <= ZERO) call fatalError(Here, 'Invalid majorant: '//numToChar(val))
+    if (val < ZERO) call fatalError(Here, 'Invalid majorant: '//numToChar(val))
 
   end function getValue
 

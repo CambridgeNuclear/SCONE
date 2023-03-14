@@ -101,7 +101,13 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+    ! TODO: Added this check to try to avoid error with void mat, but somehow still leads to
+    ! segmentation error in nGroups (baseMgIMCMaterial_class.f90) when void regions are present
+    if (matIdx == 0) then
+      xs = ZERO
+    else
+      xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+    end if
 
   end function getTotalMatXS
 
