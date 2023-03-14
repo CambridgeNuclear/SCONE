@@ -16,6 +16,7 @@ module IMCSource_class
   use nuclearDataReg_mod,      only : ndReg_getIMCMG => getIMCMG
   use nuclearDatabase_inter,   only : nuclearDatabase
   use mgIMCDatabase_inter,     only : mgIMCDatabase
+  use materialMenu_mod,        only : mm_matName => matName
 
   implicit none
   private
@@ -54,8 +55,9 @@ module IMCSource_class
     procedure :: init
     procedure :: append
     procedure :: sampleParticle
-    procedure :: samplePosRej
-    procedure :: samplePosLat
+    procedure, private :: samplePosRej
+    procedure, private :: samplePosLat
+    procedure, private :: getMatBounds
     procedure :: kill
   end type imcSource
 
@@ -113,7 +115,6 @@ contains
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in), optional :: matIdx
     integer(shortInt)                       :: i
-    integer(shortInt), dimension(3)         :: ijk
     type(RNG)                               :: pRand
     character(100), parameter               :: Here = "append (IMCSource_class.f90)"
 
@@ -127,11 +128,8 @@ contains
     ! For a large number of materials (large lattice using discretiseGeom_class) rejection
     ! sampling is too slow, so calculate bounding box of material
     if (self % latPitch(1) /= 0) then
-      ijk = get_ijk(matIdx, self % latSizeN)
-      do i=1, 3
-        self % matBounds(i)   = (ijk(i)-1) * self % latPitch(i) + self % bottom(i)
-        self % matBounds(i+3) = ijk(i)     * self % latPitch(i) + self % bottom(i)
-      end do
+      ! Get material bounds
+      call self % getMatBounds(matIdx, self % matBounds)
     end if
 
     ! Add N particles to dungeon
@@ -262,9 +260,39 @@ contains
 
     call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-    if (matIdx /= self % matIdx) call fatalError(Here, 'Incorrect material')
-
   end subroutine samplePosLat
+
+  !!
+  !! Get location of material in lattice for position sampling
+  !!
+  !! Args:
+  !!   matIdx [in]     -> matIdx for which to calculate bounds
+  !!   matBounds [out] -> boundary of lattice cell, [xmin,ymin,zmin,xmax,ymax,zmax]
+  !!
+  !! TODO:
+  !!   Would be nice to have most of this in a geometry module
+  !!
+  subroutine getMatBounds(self, matIdx, matBounds)
+    class(imcSource), intent(inout)          :: self
+    integer(shortInt), intent(in)            :: matIdx
+    real(defReal), dimension(6), intent(out) :: matBounds
+    integer(shortInt), dimension(3)          :: ijk
+    integer(shortInt)                        :: latIdx, i
+    character(nameLen)                       :: matName
+    character(100), parameter                :: Here = 'getMatBounds (imcSourceClass.f90)'
+
+    ! Extract lattice position from mat name (e.g. "m106 -> 106")
+    matName = mm_matName(matIdx)
+    read (matName(2:), '(I10)') latIdx
+
+    ! Set bounds of lattice cell containing matIdx
+    ijk = get_ijk(latIdx, self % latSizeN)
+    do i=1, 3
+      matBounds(i)   = (ijk(i)-1) * self % latPitch(i) + self % bottom(i)
+      matBounds(i+3) = ijk(i)     * self % latPitch(i) + self % bottom(i)
+    end do
+
+  end subroutine getMatBounds
 
   !!
   !! Return to uninitialised state
