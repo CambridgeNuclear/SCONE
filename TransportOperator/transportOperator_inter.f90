@@ -11,7 +11,6 @@ module transportOperator_inter
   ! Geometry interfaces
   use geometryReg_mod,            only : gr_geomPtr => geomPtr
   use geometry_inter,             only : geometry
-  use simpleGrid_class,           only : simpleGrid
 
   ! Tally interface
   use tallyAdmin_class,           only : tallyAdmin
@@ -48,9 +47,6 @@ module transportOperator_inter
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(geometry), pointer         :: geom        => null()
-
-    !! Pointer to grid for improved hybrid tracking, currently only used in TOTimeHT_class
-    class(simpleGrid), pointer       :: grid => null()
 
   contains
     ! Public interface
@@ -124,10 +120,9 @@ contains
   !!
   !! Initialise transport operator from dictionary and geometry
   !!
-  subroutine init(self, dict, grid)
+  subroutine init(self, dict)
     class(transportOperator), intent(inout)    :: self
     class(dictionary), intent(in)              :: dict
-    class(simpleGrid), intent(in), pointer, optional :: grid
 
     ! Do nothing
 

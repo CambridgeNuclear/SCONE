@@ -28,17 +28,28 @@ module transportOperatorTimeHT_class
   private
 
   !!
+  !! Tracking method
+  !!
+  integer(shortInt), parameter :: HT = 1    ! Hybrid tracking
+  integer(shortInt), parameter :: GT = 2    ! Grid tracking
+  integer(shortInt), parameter :: ST = 3    ! Surface tracking
+  integer(shortInt), parameter :: DT = 4    ! Delta tracking
+
+  !!
   !! Transport operator that moves a particle with using hybrid tracking, up to a time boundary
   !!
   type, public, extends(transportOperator)   :: transportOperatorTimeHT
-    real(defReal)                            :: majorant_inv
     real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
+    integer(shortInt)                        :: method
+    real(defReal)                            :: timeMax
+    class(simpleGrid), pointer               :: grid => null()
   contains
     procedure          :: transit => timeTracking
     procedure          :: init
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
+    procedure, private :: getMajInv
   end type transportOperatorTimeHT
 
 contains
@@ -52,28 +63,34 @@ contains
     real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
-    ! Get majorant XS inverse: 1/Sigma_majorant
-    if (associated(self % grid)) then
-      self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
-    else
-      self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
-    end if
+    ! Select action based on specified method
+    select case (self % method)
 
-    ! Check for errors
-    if (p % time /= p % time) call fatalError(Here, 'Particle time is NaN')
+      ! Hybrid Tracking
+      case (HT)
+        call self % deltaTracking(p)
 
-    ! Obtain sigmaT
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      ! Grid tracking
+      case (GT)
+        ! Update grid majorants at the start of new time step
+        if (p % timeMax /= self % timeMax) then
+          call self % grid % update() ! TODO: currently being called in every parallel thread,
+                                      !       only needs to be called once
+          self % timeMax = p % timeMax
+        end if
+        call self % deltaTracking(p)
 
-    ! Decide whether to use delta tracking or surface tracking
-    ! Vastly different opacities make delta tracking infeasable
-    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
-      ! Delta tracking
-      call self % deltaTracking(p)
-    else
-      ! Surface tracking
-      call self % surfaceTracking(p)
-    end if
+      ! Surface Tracking
+      case (ST)
+        call self % surfaceTracking(p)
+
+      ! Delta Tracking
+      case (DT)
+        call self % deltaTracking(p)
+
+      case default
+
+    end select
 
     ! Check for particle leakage
     if (p % matIdx() == OUTSIDE_FILL) then
@@ -133,99 +150,156 @@ contains
 
       end if
 
+
+      ! TODO: Option to switch back to DT?
+
+
     end do STLoop
 
   end subroutine surfaceTracking
 
   !!
-  !! Perform delta tracking
+  !! Perform delta tracking - option to switch to surface tracking for HT and GT methods
   !!
   subroutine deltaTracking(self, p)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
-    real(defReal)                                 :: dTime, dColl, dGrid, sigmaT
+    real(defReal)                                 :: dTime, dColl, dGrid, sigmaT, majorant_inv, dist
     character(100), parameter :: Here = 'deltaTracking (transportOperatorTimeHT_class.f90)'
 
-    dGrid = INF
-    if (associated(self % grid)) then
+    ! Get majorant and grid crossing distance if required
+    majorant_inv = self % getMajInv(p)
+    if (self % method == GT) then
       dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    else
+      dGrid = INF
     end if
 
+    ! Get initial opacity
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+
     DTLoop:do
+
+      ! Switch to ST if required
+      if (self % method /= DT) then
+        if (sigmaT * majorant_inv < ONE - self % cutoff) then
+          call self % surfaceTracking(p)
+          return
+        end if
+      end if
 
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to collision
-      dColl = -log( p % pRNG % get() ) * self % majorant_inv
+      dColl = -log( p % pRNG % get() ) * majorant_inv
 
-      ! Check if grid cell changes - only passes if grid is allocated, otherwise dGrid = INF
-      if (dGrid < dTime .and. dGrid < dColl) then
-        call self % geom % teleport(p % coords, dGrid)
-        p % time = p % time + dGrid / lightSpeed
-        if (p % matIdx() == OUTSIDE_FILL) return ! TODO Check that this check doesn't pass if particle is reflected on universe boundary
-        self % majorant_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
-        dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
-        cycle DTLoop
+      ! Select particle by minimum distance
+      dist = min(dColl, dTime, dGrid)
+      call self % geom % teleport(p % coords, dist)
+      p % time = p % time + dist / lightSpeed
 
-      ! If dTime < dColl, move to end of time step location
-      else if (dTime < dColl) then
-        call self % geom % teleport(p % coords, dTime)
-        p % fate = AGED_FATE
-        p % time = p % timeMax
-        exit DTLoop
-      end if
-
-      ! Otherwise, move to potential collision location
-      call self % geom % teleport(p % coords, dColl)
-      p % time = p % time + dColl / lightSpeed
-
-      ! Check for particle leakage
-      if (p % matIdx() == OUTSIDE_FILL) return
-
-      ! Obtain local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
-      ! Roll RNG to determine if the collision is real or virtual
-      ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT * self % majorant_inv) exit DTLoop
-
-      ! Switch to surface tracking if delta tracking is infeasible
-      if(sigmaT * self % majorant_inv < ONE - self % cutoff) then
-        call self % surfaceTracking(p)
-        ! Exit after surface tracking
+      ! Exit in the case of particle leakage
+      if (p % matIdx() == OUTSIDE_FILL) then
         return
       end if
 
-      ! Protect against infinite loop
-      if (sigmaT*self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance, &
-                                                                 &potentially infinite loop')
+      ! Act based on distance moved
+      if (dist == dGrid) then
+        ! Update values and cycle loop
+        majorant_inv = self % getMajInv(p)
+        dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        cycle DTLoop
 
-      ! Update distance to next grid cell
-      dGrid = dGrid - dColl
+      else if (dist == dTime) then
+        ! Update particle fate and exit
+        p % fate = AGED_FATE
+        if (p % time /= p % timeMax) call fatalError(Here, 'Mismatching particle times')
+        exit DTLoop
+
+      else ! Dist == dColl
+        ! Check for real or virtual collision
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        if (p % pRNG % get() < sigmaT * majorant_inv) exit DTLoop
+        ! Protect against infinite loop
+        if (sigmaT * majorant_inv == 0) call fatalError(Here, '100% virtual collision probability')
+        ! Update grid distance
+        dGrid = dGrid - dColl
+
+      end if
 
     end do DTLoop
 
   end subroutine deltaTracking
 
   !!
+  !!
+  !!
+  function getMajInv(self, p) result (maj_inv)
+    class(transportOperatorTimeHT), intent(in) :: self
+    class(particle), intent(in)                :: p
+    real(defReal)                              :: maj_inv
+
+    if (self % method == GT) then
+      maj_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    else
+      maj_inv = ONE / self % xsData % getMajorantXS(p)
+    end if
+
+  end function getMajInv
+
+
+  !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
   !!
   !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
   !!
-  subroutine init(self, dict, grid)
+  subroutine init(self, dict)
     class(transportOperatorTimeHT), intent(inout)    :: self
     class(dictionary), intent(in)                    :: dict
-    class(simpleGrid), intent(in), pointer, optional :: grid
+!    class(simpleGrid), intent(in), pointer, optional :: grid
+    character(nameLen)                               :: method
+    class(dictionary),pointer                        :: tempdict
+    character(100), parameter :: Here = "init (transportOperatorTimeHT_class.f90)"
 
     ! Initialise superclass
     call init_super(self, dict)
 
-    ! Get cutoff value
-    call dict % getOrDefault(self % cutoff, 'cutoff', 0.7_defReal)
+    ! Get tracking method
+    call dict % getOrDefault(method, 'method', 'HT')
 
-    ! Store grid pointer
-    if (present(grid)) self % grid => grid
+    select case (method)
+
+      ! Hybrid tracking
+      case ('HT')
+        self % method = HT
+        ! Get cutoff value
+        call dict % get(self % cutoff, 'cutoff')
+
+      ! Grid tracking
+      case ('GT')
+        self % method = GT
+        ! Get cutoff value
+        call dict % get(self % cutoff, 'cutoff')
+
+        ! Initialise grid for hybrid tracking
+        tempDict => dict % getDictPtr('grid')
+        allocate(self % grid)
+        call self % grid % init(tempDict)
+
+      ! Surface tracking
+      case ('ST')
+        self % method = ST
+
+      ! Delta tracking
+      case ('DT')
+        self % method = DT
+
+      case default
+        call fatalError(Here, 'Invalid tracking method given. Must be HT, ST or DT.')
+
+    end select
 
   end subroutine init
 

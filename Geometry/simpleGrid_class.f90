@@ -1,13 +1,16 @@
 module simpleGrid_class
 
   use numPrecision
-  use universalVariables,    only : SURF_TOL
+  use universalVariables,    only : SURF_TOL, P_PHOTON_MG
   use genericProcedures,     only : fatalError, numToChar
   use dictionary_class,      only : dictionary
   use geometry_inter,        only : geometry
   use dynArray_class,        only : dynIntArray
   use nuclearDatabase_inter, only : nuclearDatabase
   use particle_class,        only : particle
+
+  use geometryReg_mod,            only : gr_geomPtr => geomPtr
+  use nuclearDataReg_mod,         only : ndReg_get => get
 
   !!
   !!
@@ -51,21 +54,23 @@ contains
   subroutine init(self, dict, geom, xsData)
     class(simpleGrid), intent(inout)             :: self
     class(dictionary), intent(in)                :: dict
-    class(geometry), intent(in), pointer         :: geom
-    class(nuclearDatabase), intent(in), pointer  :: xsData
+    class(geometry), intent(in), pointer, optional         :: geom
+    class(nuclearDatabase), intent(in), pointer, optional  :: xsData
     integer(shortInt)                            :: N
     integer(shortInt), dimension(:), allocatable :: searchN
 
     ! Store pointer to main geometry and data
-    self % mainGeom => geom
-    self % xsData   => xsData
+!    self % mainGeom => geom
+!    self % xsData   => xsData
+    self % xsData => ndReg_get(P_PHOTON_MG) ! TODO: not an ideal way to do this but fine temporarily
+    self % mainGeom => gr_geomPtr(1)  
 
     ! Store settings
     call dict % get(self % sizeN, 'dimensions')
     call dict % get(searchN, 'searchN')
 
     ! Get bounds of grid and calculate discretisations
-    self % bounds = geom % bounds()
+    self % bounds = self % mainGeom % bounds()
 
     self % pitch(1)  = (self % bounds(4) - self % bounds(1)) / self % sizeN(1)
     self % pitch(2)  = (self % bounds(5) - self % bounds(2)) / self % sizeN(2)

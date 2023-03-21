@@ -25,7 +25,6 @@ module IMCPhysicsPackage_class
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx
-  use simpleGrid_class,               only : simpleGrid
   use discretiseGeom_class,           only : discretise
 
   ! Nuclear Data
@@ -67,7 +66,6 @@ module IMCPhysicsPackage_class
     ! Building blocks
     class(nuclearDatabase), pointer        :: nucData  => null()
     class(geometry), pointer               :: geom     => null()
-    class(simpleGrid), pointer             :: grid     => null()
     integer(shortInt)                      :: geomIdx = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
@@ -135,6 +133,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
     integer(shortInt)                               :: i, j, N, Ntemp, num, nParticles
+!integer(shortInt) :: thisStepPop
     type(particle), save                            :: p
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd, totEnergy
     real(defReal), dimension(:), allocatable        :: tallyEnergy
@@ -145,6 +144,8 @@ contains
     class(transportOperator), allocatable, save     :: transOp
     type(RNG), target, save                         :: pRNG
     !$omp threadprivate(p, collOp, transOp, pRNG, mat)
+
+!open(unit=11, file='times.txt')
 
     !$omp parallel
     p % geomIdx = self % geomIdx
@@ -162,9 +163,6 @@ contains
     allocate(tallyEnergy(self % nMat))
 
     do i=1,N_steps
-
-      ! Update grid values if grid is in use
-      if (associated(self % grid)) call self % grid % update()
 
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
@@ -204,6 +202,8 @@ contains
       if( self % sourceGiven ) then
         call self % inputSource % append(self % thisStep, 0, self % pRNG)
       end if
+
+!thisStepPop = self % thisStep % popSize()
 
       if(self % printSource == 1) then
         call self % thisStep % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
@@ -294,6 +294,8 @@ contains
       print *, 'Time to end:  ', trim(secToChar(T_toEnd))
       call tally % display()
 
+!write(11, '(8A)') numToChar(elapsed_T * self % limit / thisStepPop)
+
       ! Obtain energy deposition tally results
       call tallyAtch % getResult(tallyRes, 'imcWeightTally')
 
@@ -334,6 +336,7 @@ contains
       write(10, '(8A)') numToChar(mat % getTemp())
     end do
     close(10)
+!close(11)
 
   end subroutine steps
 
@@ -377,7 +380,7 @@ contains
   subroutine init(self, dict)
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
-    class(dictionary),pointer                       :: tempDict
+    class(dictionary), pointer                      :: tempdict
     type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4, locDict5
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
@@ -480,15 +483,6 @@ contains
 
     end if
 
-
-
-    ! Initialise grid for hybrid tracking
-    if (dict % isPresent('grid')) then
-      tempDict => dict % getDictPtr('grid')
-      allocate(self % grid)
-      call self % grid % init(tempDict, self % geom, self % nucData)
-    end if
-
     ! Read particle source definition
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
@@ -514,7 +508,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict, self % grid)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')

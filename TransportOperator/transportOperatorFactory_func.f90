@@ -7,8 +7,6 @@ module transportOperatorFactory_func
   use genericProcedures, only : fatalError
   use dictionary_class,  only : dictionary
 
-  use simpleGrid_class,  only : simpleGrid
-
   ! Transport Operators
   use transportOperator_inter,          only : transportOperator
   use transportOperatorST_class,        only : transportOperatorST
@@ -39,10 +37,9 @@ contains
   !! Allocate new allocatable transportOperator to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_transportOperator(new, dict, grid)
+  subroutine new_transportOperator(new, dict)
     class(transportOperator),allocatable, intent(inout):: new
     class(dictionary), intent(in)                      :: dict
-    class(simpleGrid), intent(in), pointer, optional   :: grid
     character(nameLen)                                 :: type
     character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
 
@@ -68,11 +65,7 @@ contains
 
       case('transportOperatorTimeHT')
         allocate( transportOperatorTimeHT :: new)
-        if (present(grid)) then
-          call new % init(dict, grid)
-        else
-          call new % init(dict)
-        end if
+        call new % init(dict)
 
 !      case('dynamicTranspOperDT')
 !        allocate( transportOperatorDynamicDT :: new)

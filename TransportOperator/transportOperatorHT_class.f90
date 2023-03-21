@@ -20,7 +20,6 @@ module transportOperatorHT_class
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
-  use simpleGrid_class,           only : simpleGrid
 
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
@@ -43,10 +42,9 @@ module transportOperatorHT_class
 
 contains
 
-  subroutine init(self, dict, grid)
+  subroutine init(self, dict)
     class(transportOperatorHT), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
-    class(simpleGrid), intent(in), pointer, optional :: grid
 
     ! Initialise superclass
     call init_super(self, dict)
