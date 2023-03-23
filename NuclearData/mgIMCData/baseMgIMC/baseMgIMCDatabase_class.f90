@@ -2,6 +2,7 @@ module baseMgIMCDatabase_class
 
   use numPrecision
   use endfConstants
+  use universalVariables, only : VOID_MAT
   use genericProcedures,  only : fatalError, numToChar
   use particle_class,     only : particle
   use charMap_class,      only : charMap
@@ -103,7 +104,7 @@ contains
 
     ! TODO: Added this check to try to avoid error with void mat, but somehow still leads to
     ! segmentation error in nGroups (baseMgIMCMaterial_class.f90) when void regions are present
-    if (matIdx == 0) then
+    if (matIdx == VOID_MAT) then
       xs = ZERO
     else
       xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
