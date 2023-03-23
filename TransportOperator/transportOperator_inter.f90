@@ -19,6 +19,8 @@ module transportOperator_inter
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  ! Geometry interfaces
+  use simpleGrid_class,           only : simpleGrid
 
 
   implicit none
@@ -47,6 +49,8 @@ module transportOperator_inter
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(geometry), pointer         :: geom        => null()
+
+    class(simpleGrid), pointer       :: grid => null()
 
   contains
     ! Public interface

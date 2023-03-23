@@ -164,6 +164,9 @@ contains
 
     do i=1,N_steps
 
+      ! Update tracking grid if needed by transport operator
+      if (associated(self % transOp % grid)) call self % transOp % grid % update()
+
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
       self % nextStep     => self % thisStep
@@ -333,7 +336,8 @@ contains
     open(unit = 10, file = 'temps.txt')
     do j = 1, self % nMat
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      write(10, '(8A)') numToChar(mat % getTemp())
+      !write(10, '(8A)') numToChar(mat % getTemp())
+      write(10, '(8A)') mm_matName(j), numToChar(mat % getTemp())
     end do
     close(10)
 !close(11)

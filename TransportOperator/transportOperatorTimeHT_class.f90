@@ -21,9 +21,6 @@ module transportOperatorTimeHT_class
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
 
-  ! Geometry interfaces
-  use simpleGrid_class,           only : simpleGrid
-
   implicit none
   private
 
@@ -42,8 +39,6 @@ module transportOperatorTimeHT_class
     real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
     integer(shortInt)                        :: method
-    real(defReal)                            :: timeMax
-    class(simpleGrid), pointer               :: grid => null()
   contains
     procedure          :: transit => timeTracking
     procedure          :: init
@@ -63,34 +58,12 @@ contains
     real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
-    ! Select action based on specified method
-    select case (self % method)
-
-      ! Hybrid Tracking
-      case (HT)
-        call self % deltaTracking(p)
-
-      ! Grid tracking
-      case (GT)
-        ! Update grid majorants at the start of new time step
-        if (p % timeMax /= self % timeMax) then
-          call self % grid % update() ! TODO: currently being called in every parallel thread,
-                                      !       only needs to be called once
-          self % timeMax = p % timeMax
-        end if
-        call self % deltaTracking(p)
-
-      ! Surface Tracking
-      case (ST)
-        call self % surfaceTracking(p)
-
-      ! Delta Tracking
-      case (DT)
-        call self % deltaTracking(p)
-
-      case default
-
-    end select
+    ! Select action based on specified method - HT and GT start with DT but can switch to ST
+    if (self % method == ST) then
+      call self % surfaceTracking(p)
+    else
+      call self % deltaTracking(p)
+    end if
 
     ! Check for particle leakage
     if (p % matIdx() == OUTSIDE_FILL) then
@@ -215,15 +188,13 @@ contains
       else if (dist == dTime) then
         ! Update particle fate and exit
         p % fate = AGED_FATE
-        if (p % time /= p % timeMax) call fatalError(Here, 'Mismatching particle times')
+        p % time = p % timeMax
         exit DTLoop
 
       else ! Dist == dColl
         ! Check for real or virtual collision
         sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
         if (p % pRNG % get() < sigmaT * majorant_inv) exit DTLoop
-        ! Protect against infinite loop
-        if (sigmaT * majorant_inv == 0) call fatalError(Here, '100% virtual collision probability')
         ! Update grid distance
         dGrid = dGrid - dColl
 

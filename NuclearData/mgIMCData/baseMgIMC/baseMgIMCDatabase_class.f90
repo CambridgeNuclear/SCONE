@@ -102,8 +102,6 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    ! TODO: Added this check to try to avoid error with void mat, but somehow still leads to
-    ! segmentation error in nGroups (baseMgIMCMaterial_class.f90) when void regions are present
     if (matIdx == VOID_MAT) then
       xs = ZERO
     else
