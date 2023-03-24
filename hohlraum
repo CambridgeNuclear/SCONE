@@ -4,7 +4,7 @@ type IMCPhysicsPackage;
 pop            2000000;
 limit          20000000;
 steps          100;
-timeStepSize   0.2;
+timeStepSize   0.00000000001;
 printUpdates   20;
 
 collisionOperator {
@@ -12,18 +12,16 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorTimeHT; cutoff 0.9;
+                    type transportOperatorTimeHT;
+                    method GT;
+                    cutoff 0.9;
+                    grid { dimensions (20 20 1); searchN (10 10 1); }
                   } 
 
 source {
   type bbSurfaceSource;
-  shape square;
-  size 1;
-  axis x;
-  pos -0.5;
-  T 1;
-  dir 1;
-  particle photon;
+  r (-0.5 -0.5 -0.5 0.5 -0.5 0.5);
+  temp 1;
   N 20000;
 }
 
@@ -32,13 +30,13 @@ viz { vizDict { type vtk; corner (-0.5 -0.5 -0.5); width (1 1 1); vox (20 20 1);
 tally  {
 	   }
 
-grid { dimensions (20 20 1); searchN (10 10 1); }
+//grid { dimensions (20 20 1); searchN (10 10 1); }
 
 discretise { dimensions (200 200 1); }
 
 geometry { 
     type geometryStd;
-    boundary (0 0 0 0 0 0);
+    boundary (0 0 0 0 1 1);
     graph {type shrunk;}
 
     surfaces
@@ -66,13 +64,13 @@ geometry {
       // Centre mat
       cell5 { id 5; type simpleCell; surfaces (3 -4 7 -8); filltype mat; material mat1; }
       // Top void
-      cell6 { id 6; type simpleCell; surfaces (8 -9 -5); filltype mat; material mat2; }
+      cell6 { id 6; type simpleCell; surfaces (8 -9 -5); filltype mat; material void; }
       // Bottom void
-      cell7 { id 7; type simpleCell; surfaces (6 -7 -5); filltype mat; material mat2; }
+      cell7 { id 7; type simpleCell; surfaces (6 -7 -5); filltype mat; material void; }
       // Right void
-      cell8 { id 8; type simpleCell; surfaces (7 -8 4 -5); filltype mat; material mat2; }
+      cell8 { id 8; type simpleCell; surfaces (7 -8 4 -5); filltype mat; material void; }
       // Left void
-      cell9 { id 9; type simpleCell; surfaces (7 -8 2 -3); filltype mat; material mat2; }
+      cell9 { id 9; type simpleCell; surfaces (7 -8 2 -3); filltype mat; material void; }
     }
 
     universes
@@ -92,8 +90,8 @@ nuclearData {
   
   materials {
 
-    mat1 { temp 0.01; composition {} xsFile ./dataFiles/hohlraumData; }
-    mat2 { temp 1; composition {} xsFile ./dataFiles/voidData; }
+    mat1 { temp 0.000000001; composition {} xsFile ./dataFiles/hohlraumData; }
+//    mat2 { temp 1; composition {} xsFile ./dataFiles/voidData; }
 
   }
 
