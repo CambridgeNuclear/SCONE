@@ -381,6 +381,9 @@ contains
     real(defReal)                           :: beta
     character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
 
+    ! Return if no energy change
+    if (self % getEmittedRad() == tallyEnergy) return
+
     ! Update material internal energy
     self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
 
@@ -433,7 +436,12 @@ contains
     real(defReal)                           :: T, energyDens
 
     energyDens = self % matEnergy / self % V
-    T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
+
+    if (energyDens == 0) then
+      T = 0
+    else
+      T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
+    end if
 
   end function tempFromEnergy
 
