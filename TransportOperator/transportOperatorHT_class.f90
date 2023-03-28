@@ -89,7 +89,7 @@ contains
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
-    character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorHT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
@@ -109,6 +109,11 @@ contains
 
       ! Check for void
       if( p % matIdx() == VOID_MAT) cycle DTLoop
+
+      ! Give error if the particle somehow ended in an undefined material
+      if (p % matIdx() == UNDEF_MAT) then
+        call fatalError(Here, "Particle is in undefined material")
+      end if
 
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
@@ -131,6 +136,7 @@ contains
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
     real(defReal)                             :: sigmaT, dist
+    character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
 
@@ -156,6 +162,11 @@ contains
       if( p % matIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         p % fate = LEAK_FATE
+      end if
+
+      ! Give error if the particle somehow ended in an undefined material
+      if (p % matIdx() == UNDEF_MAT) then
+        call fatalError(Here, "Particle is in undefined material")
       end if
 
       ! Return if particle stoped at collision (not cell boundary)

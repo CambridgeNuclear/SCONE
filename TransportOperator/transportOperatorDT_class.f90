@@ -65,6 +65,11 @@ contains
       ! Check for void
       if( p % matIdx() == VOID_MAT) cycle DTLoop
 
+      ! Give error if the particle somehow ended in an undefined material
+      if (p % matIdx() == UNDEF_MAT) then
+        call fatalError(Here, "Particle is in undefined material")
+      end if
+
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
