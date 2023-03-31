@@ -218,7 +218,7 @@ contains
     end if
 
     if(present(kT)) then
-      if(kT <= ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
+      if(kT < ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
       self % kT = kT
     end if
 

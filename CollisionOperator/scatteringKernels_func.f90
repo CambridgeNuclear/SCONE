@@ -5,11 +5,15 @@ module scatteringKernels_func
   use RNG_class,         only : RNG
   use particle_class,    only : particle
 
+  ! Nuclear Data
+  use aceNeutronNuclide_class,      only : aceNeutronNuclide
+
   implicit none
   private
 
   public  :: asymptoticScatter
   public  :: targetVelocity_constXS
+  public  :: targetVelocity_DBRCXS
   public  :: asymptoticInelasticScatter
 
   private :: sample_x2expx2
@@ -91,7 +95,6 @@ contains
   !! so that V_t*V_t=E_t with E_t beeing kinetic energy of a NEUTRON traveling with TARGET VELOCITY
   !! (note that it is not a kinetic energy of the target).
   !!
-  !!
   function targetVelocity_constXS(E,dir,A,kT,rand) result (V_t)
     real(defReal), intent(in)               :: E
     real(defReal), dimension(3), intent(in) :: dir
@@ -107,7 +110,7 @@ contains
     ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
     Y = sqrt(A*E/kT)
 
-    ! Calculate treshhold factor alpha
+    ! Calculate threshold factor alpha
     alpha = 2.0/(Y*sqrt(PI)+2.0)
 
 
@@ -130,7 +133,7 @@ contains
       ! Sample polar angle of target velocity wrt. neutron direction
       mu = 2.0 * r2 - 1.0;
 
-      ! Calculate Acceptance Propability
+      ! Calculate acceptance probability
       P_acc = sqrt(Y*Y + X*X - 2.0*X*Y*mu) / (Y+X)
 
       ! Accept or reject mu
@@ -138,7 +141,7 @@ contains
 
     end do rejectionLoop
 
-    ! Calculate azimithal angle for traget and obtain target direction
+    ! Calculate azimithal angle for target and obtain target direction
     r4 = rand % get()
     phi = 2.0 *PI * r4
 
@@ -149,6 +152,91 @@ contains
 
   end function targetVelocity_constXS
 
+  !!
+  !! Function that returns a sample of target velocity with DBRC
+  !! V_t is a vector. The velocity is scaled by a factor sqrt(Mn/2) where Mn is mass of a neutron
+  !! so that V_t*V_t=E_t with E_t being kinetic energy of a NEUTRON traveling with TARGET VELOCITY
+  !! (note that it is not a kinetic energy of the target).
+  !!
+  !!
+  function targetVelocity_DBRCXS(aceNuc, E, dir, A, kT, rand, tempMaj) result (V_t)
+    class(aceNeutronNuclide), intent(in)    :: aceNuc
+    real(defReal), intent(in)               :: E
+    real(defReal), dimension(3), intent(in) :: dir
+    real(defReal), intent(in)               :: A
+    real(defReal), intent(in)               :: kT
+    real(defReal), intent(in)               :: tempMaj
+    class(RNG), intent(inout)               :: rand
+    integer(shortInt)                       :: idx
+    real(defReal),dimension(3)              :: V_t
+    real(defReal)                           :: alpha, mu, phi, P_acc, DBRC_acc
+    real(defReal)                           :: X, Y
+    real(defReal)                           :: r1, r2, r3, r4, r5
+    real(defreal)                           :: rel_v, rel_E, xs_rel_v, f
+
+    ! Calculate neutron Y = beta *V_n
+    ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
+    Y = sqrt(A * E / kT)
+
+    ! Calculate threshold factor alpha
+    ! In MCNP, alpha is p1
+    alpha = 2.0 / (Y * sqrt(PI) + 2.0)
+
+    rejectionLoop: do
+
+      ! Obtain random numbers
+      r1 = rand % get()
+      r2 = rand % get()
+      r3 = rand % get()
+
+      ! Sample X = beta * V_t
+      ! Uses helper functions below
+      if ( r1 > alpha ) then
+        X = sample_x2expx2(rand)
+      else
+        X = sample_x3expx2(rand)
+      end if
+
+      ! Sample polar angle of target velocity wrt. neutron direction
+      mu = 2.0 * r2 - 1.0;
+
+      ! Calculate relative velocity between neutron and target
+      rel_v = sqrt(Y * Y + X * X - 2.0 * X * Y * mu)
+
+      ! Calculate Acceptance Propability
+      P_acc = rel_v / (Y + X)
+
+      ! Accept or reject mu and target velocity
+      if (P_acc < r3) cycle rejectionLoop
+
+      ! Relative energy = relative velocity **2 due to sqrt(Mn/2) scaling factor
+      rel_E = (rel_v**2 * kT / A)
+
+      ! Find 0K scattering xs of target at relative energy
+      call aceNuc % search(idx, f, rel_E)
+      xs_rel_v = aceNuc % scatterXS(idx, f)
+
+      ! Introduce DBRC acceptance condition
+      DBRC_acc = (xs_rel_v / tempMaj)
+      r4 = rand % get()
+
+      ! Accept or reject with DBRC
+      if (DBRC_acc > r4) then
+        exit rejectionLoop
+      end if
+
+    end do rejectionLoop
+
+    ! Calculate azimithal angle for target and obtain target direction
+    r5 = rand % get()
+    phi = 2.0 * PI * r5
+
+    V_t = rotateVector(dir, mu, phi)
+
+    ! Scale target direction by magnitude of velocity
+    V_t = V_t * (X * sqrt(kT / A))
+
+  end function targetVelocity_DBRCXS
 
 
   !!
@@ -188,7 +276,6 @@ contains
     sample = sqrt(sample)
 
   end function sample_x2expx2
-
 
   !!
   !! Helper function to sample x^3 * exp( - x^2) probability distribution

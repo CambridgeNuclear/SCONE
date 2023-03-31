@@ -54,15 +54,17 @@ module aceNeutronDatabase_class
   !! Sample input:
   !!   nuclearData {
   !!   handles {
-  !!   ce {type aceNeutronDatabase; ures <1 or 0>; aceLibrary <nuclear data path> ;} }
+  !!   ce {type aceNeutronDatabase; DBRC (92238 94242); ures <1 or 0>; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
-  !!   nuclides  -> array of aceNeutronNuclides with data
-  !!   materials -> array of ceNeutronMaterials with data
-  !!   Ebounds   -> array with bottom (1) and top (2) energy bound
-  !!   activeMat -> array of materials present in the geometry
-  !!   nucToZaid -> map to link nuclide index to zaid index
-  !!   hasUrr    -> ures probability tables flag, it's false by default
+  !!   nuclides   -> array of aceNeutronNuclides with data
+  !!   materials  -> array of ceNeutronMaterials with data
+  !!   Ebounds    -> array with bottom (1) and top (2) energy bound
+  !!   activeMat  -> array of materials present in the geometry
+  !!   nucToZaid  -> map to link nuclide index to zaid index
+  !!   hasUrr     -> ures probability tables flag, it's false by default
+  !!   hasDBRC    -> DBRC flag, it's false by default
+  !!   mapDBRCnuc -> map to link indexes of DBRC nuclides with their corresponding 0K
   !!
   !! Interface:
   !!   nuclearData Interface
@@ -77,6 +79,8 @@ module aceNeutronDatabase_class
     ! Probability tables data
     integer(shortInt),dimension(:),allocatable   :: nucToZaid
     logical(defBool)                             :: hasUrr = .false.
+    logical(defBool)                             :: hasDBRC = .false.
+    type(intMap)                                 :: mapDBRCnuc
 
   contains
     ! nuclearData Procedures
@@ -85,8 +89,10 @@ module aceNeutronDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
+    procedure :: getScattMicroMajXS
     procedure :: init
     procedure :: init_urr
+    procedure :: init_DBRC
     procedure :: activate
 
     ! ceNeutronDatabase Procedures
@@ -227,6 +233,47 @@ contains
     end if
 
   end function getReaction
+
+  !!
+  !! Subroutine to get the elastic scattering majorant cross section in a nuclide
+  !! over a certain energy range, defined as a function of a given temperature
+  !!
+  !! NOTE: This function is called by the collision operator to apply DBRC; nucIdx
+  !!       should correspond to a nuclide with temperature 0K, while kT is the
+  !!       temperature of the target nuclide the neutron is colliding with
+  !!
+  !! Args:
+  !!   A  [in]   -> Nuclide atomic weight ratio
+  !!   kT [in]   -> Thermal energy of nuclide
+  !!   E  [in]   -> Energy of neutron incident to target for which majorant needs to be found
+  !!   maj [out] -> Temperature majorant cross section
+  !!
+  function getScattMicroMajXS(self, E, kT, A, nucIdx) result(maj)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    real(defReal), intent(in)             :: kT
+    real(defReal), intent(in)             :: A
+    integer(shortInt), intent(in)         :: nucIdx
+    real(defReal)                         :: maj
+    real(defReal)                         :: E_upper, E_lower, E_min, E_max
+    real(defReal)                         :: alpha
+
+    ! Find energy limits to define majorant calculation range
+    alpha = 4 / (sqrt( E * A / kT ))
+    E_upper = E * (1 + alpha) * (1 + alpha)
+    E_lower = E * (1 - alpha) * (1 - alpha)
+
+    ! Find system minimum and maximum energies
+    call self % energyBounds(E_min, E_max)
+
+    ! Avoid energy limits being outside system range
+    if (E_lower < E_min) E_lower = E_min
+    if (E_upper > E_max) E_upper = E_max
+
+    ! Find largest elastic scattering xs in energy range given by E_lower and E_upper
+    maj = self % nuclides(nucIdx) % elScattMaj(E_lower, E_upper)
+
+  end function getScattMicroMajXS
 
   !!
   !! Return energy bounds for data in the database
@@ -453,7 +500,8 @@ contains
     integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
-    integer(shortInt),dimension(:),allocatable       :: nucIdxs
+    integer(shortInt),dimension(:),allocatable       :: nucIdxs, DBRCidxs
+    character(nameLen),dimension(:),allocatable      :: DBRC_nucs
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
@@ -520,6 +568,25 @@ contains
 
     ! Load library
     call aceLib_load(aceLibPath)
+
+    ! Check if DBRC is listed in the input file
+    if (dict % isPresent('DBRC')) then
+
+      ! Set flag to true if DBRC nucs are in input file
+      self % hasDBRC = .true.
+
+      ! Call through list of DBRC nuclides
+      call dict % get(DBRCidxs, 'DBRC')
+      allocate(DBRC_nucs(size(DBRCidxs)))
+
+      ! Add all DBRC nuclides to nucSet for initialisation
+      do i = 1, size(DBRCidxs)
+        DBRC_nucs(i) = numToChar(DBRCidxs(i))
+        DBRC_nucs(i) = trim(DBRC_nucs(i))//'.00'
+        call nucSet % add(DBRC_nucs(i), IN_SET)
+      end do
+
+    end if
 
     ! Build nuclide definitions
     allocate(self % nuclides(nucSet % length()))
@@ -597,8 +664,14 @@ contains
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
     end do
 
+    ! If on, initialise probability tables for ures
     if (self % hasUrr) then
        call self % init_urr()
+    end if
+
+    ! If on, initialise DBRC
+    if (self % hasDBRC) then
+      call self % init_DBRC(DBRC_nucs, nucSet, self % mapDBRCnuc)
     end if
 
     !! Clean up
@@ -644,6 +717,68 @@ contains
     end do
 
   end subroutine init_urr
+
+  !!
+  !!  Checks through all nuclides, creates map with nuclides present and corresponding 0K nuclide
+  !!
+  !!  NOTE: compares the first 5 letters of the ZAID.TT. It would be wrong with isotopes
+  !!        with Z > 99
+  !!
+  subroutine init_DBRC(self, DBRC_nucs, nucSet, map)
+    class(aceNeutronDatabase), intent(inout)     :: self
+    character(nameLen), dimension(:), intent(in) :: DBRC_nucs
+    type(charMap), intent(in)                    :: nucSet
+    type(intMap), intent(out)                    :: map
+    integer(shortInt)                            :: i, j, k, idx
+    character(nameLen)                           :: nuc0K, nucDBRC
+    character(5)                                 :: nuc0Ktemp, nucDBRCtemp
+
+    idx = 1
+
+    ! Loop through DBRC nuclides
+    do i = 1, size(DBRC_nucs)
+      ! Get ZAIDs with and without 0K temperature codes
+      nuc0K = DBRC_nucs(i)
+      nuc0Ktemp = nuc0K(1:5)
+
+      ! Loop through nucSet to find the nucIdxs of the 0K DBRC nuclides
+      k = nucSet % begin()
+      do while (k /= nucSet % end())
+
+        ! Exit loop if a match is found
+        if (nucSet % atKey(k) == nuc0K) then
+          idx = nucSet % atVal(k)
+          exit
+        end if
+
+        ! Increment index
+        k = nucSet % next(k)
+
+      end do
+
+      ! Loop through nucSec again to find the nucIdxs of the DBRC nuclides with
+      ! temperature different from 0K
+      j = nucSet % begin()
+      do while (j /= nucSet % end())
+        ! Get ZAIDs with and without temperature code
+        nucDBRC = nucSet % atKey(j)
+        nucDBRCtemp = nucDBRC(1:5)
+
+        ! If the ZAID of the DBRC nuclide matches one in nucSet, save them in the map
+        if (nucDBRCtemp == nuc0Ktemp) then
+          call map % add(nucSet % atVal(j), idx)
+          ! Set nuclide DBRC flag on
+          self % nuclides(nucSet % atVal(j)) % hasDBRC = .true.
+        end if
+
+        ! Increment index
+        j = nucSet % next(j)
+
+      end do
+
+    end do
+
+  end subroutine init_DBRC
 
   !!
   !! Activate this nuclearDatabase
