@@ -112,6 +112,7 @@ contains
 
       ! Give error if the particle somehow ended in an undefined material
       if (p % matIdx() == UNDEF_MAT) then
+        print *, p % rGlobal()
         call fatalError(Here, "Particle is in undefined material")
       end if
 
@@ -166,6 +167,7 @@ contains
 
       ! Give error if the particle somehow ended in an undefined material
       if (p % matIdx() == UNDEF_MAT) then
+        print *, p % rGlobal()
         call fatalError(Here, "Particle is in undefined material")
       end if
 
