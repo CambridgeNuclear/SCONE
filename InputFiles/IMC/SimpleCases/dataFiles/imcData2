@@ -1,0 +1,18 @@
+
+numberOfGroups 1; 
+
+capture (
+ 1.0
+ 0.0
+);
+
+scatter (
+ 0.0
+ 0.0
+);
+
+cv (
+ 4.0 3.0
+ 3.0 2.0
+);
+

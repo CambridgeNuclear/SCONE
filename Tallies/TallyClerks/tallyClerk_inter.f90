@@ -47,7 +47,7 @@ module tallyClerk_inter
   !! Interface:
   !!   init             -> Initialise Clerk from a dictionary
   !!   kill             -> Return to Uninitialised State
-  !!   validReports     -> Returns array of integers with tallyCodes of reports that the clark requires
+  !!   validReports     -> Returns array of integers with tallyCodes of reports that the clerk requires
   !!   getSize          -> Return size required by Clerk on ScoreMemory
   !!   setMemAddress    -> Setter for "memAddress" member
   !!   getMemAddress    -> Getter for "memAddress" member

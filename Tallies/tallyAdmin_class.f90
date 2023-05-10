@@ -73,6 +73,7 @@ module tallyAdmin_class
   !!   display     -> Call "display" on all Clerks registered to display
   !!   isConverged -> Return .true. if all convergance targets have been reached
   !!   print       -> Prints results to an output file object
+  !!   reset       -> Resets tally clerk count to 0
   !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
@@ -137,6 +138,7 @@ module tallyAdmin_class
 
     ! Interaction procedures
     procedure :: getResult
+    procedure :: reset
 
     ! Display procedures
     procedure :: display
@@ -746,6 +748,37 @@ contains
     end if
 
   end subroutine getResult
+
+  !!
+  !! Resets tally clerk count to 0
+  !!
+  subroutine reset(self, name)
+    class(tallyAdmin),intent(inout) :: self
+    character(*), intent(in)        :: name
+    character(nameLen)              :: name_loc
+    integer(shortInt)               :: idx
+    integer(shortInt),parameter     :: NOT_PRESENT = -3
+    integer(longInt)                :: addr
+    integer(shortInt)               :: i, width
+    character(100),parameter  :: Here='reset (tallyAdmin_class.f90)'
+
+    name_loc = name
+
+    idx = self % clerksNameMap % getOrDefault(name_loc, NOT_PRESENT)
+
+    if(idx == NOT_PRESENT) then
+      call fatalError(Here, 'Tally clerk not present')
+    end if
+
+    addr = self % tallyClerks(idx) % getMemAddress()
+    width = self % tallyClerks(idx) % getSize()
+
+    do i = 1, width
+      call self % mem % reset(addr+i-1)
+    end do
+
+  end subroutine reset
+
 
   !!
   !! Append sorting array identified with the code with tallyClerk idx

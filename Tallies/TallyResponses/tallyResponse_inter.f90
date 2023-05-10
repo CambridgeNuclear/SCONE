@@ -21,10 +21,10 @@ module tallyResponse_inter
   !!
   !! Interface:
   !!   init -> Initialise
-  !!   get  -> Get velue of the response
+  !!   get  -> Get value of the response
   !!   kill -> Return to uninitialised state
   !!
-  type, public,abstract :: tallyResponse
+  type, public, abstract :: tallyResponse
     private
 
   contains

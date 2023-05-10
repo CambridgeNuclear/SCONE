@@ -225,7 +225,7 @@ module nuclearDatabase_inter
     !!   if MT < 0 then reaction is associated with material: idx -> matIdx
     !!   if MT > 0 then reaction is associated with nuclide: idx -> nucIdx
     !!
-    !! NOTE: This function can be used to enquire abou the presence of data. If the data is
+    !! NOTE: This function can be used to enquire about the presence of data. If the data is
     !!       not present null() pointer is always returned!
     !!
     !! Args:

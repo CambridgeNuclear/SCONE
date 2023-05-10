@@ -1,0 +1,65 @@
+
+type IMCPhysicsPackage;
+
+pop            5000;
+limit          20000;
+steps          50;
+timeStepSize   0.01;
+printUpdates   1;
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTimeHT;
+                  }
+
+tally  { 
+	   }
+
+geometry { 
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 0.5 0.5 0.5); }  
+    }
+    cells {}
+    universes
+    {
+
+      root
+      {
+	  id 1;
+	  type rootUniverse; 
+	  border 1;
+        fill mat;
+      }
+    }   
+}
+
+nuclearData {
+
+  handles { 
+     mg       { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials { 
+
+    mat {  
+      temp       1;
+      composition {}
+      xsFile ./dataFiles/imcData;
+      volume     1;   
+    }	 
+
+} 
+ 
+}
+  
+  
+  
