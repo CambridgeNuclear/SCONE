@@ -1,4 +1,4 @@
-module simpleGrid_class
+module trackingGrid_class
 
   use numPrecision
   use universalVariables,    only : SURF_TOL, P_PHOTON_MG
@@ -29,7 +29,7 @@ module simpleGrid_class
   !! pitch  -> array [dx, dy, dz], the discretisation in each direction
   !! bounds -> [x_min, y_min, z_min, z_max, y_max, z_max] as in geometry_inter
   !!
-  type, public :: simpleGrid
+  type, public :: trackingGrid
     class(geometry), pointer                     :: mainGeom => null()
     class(nuclearDatabase), pointer              :: xsData   => null()
     integer(shortInt), dimension(:), allocatable :: sizeN
@@ -47,12 +47,12 @@ module simpleGrid_class
     procedure :: storeMats
     procedure :: update
  
-  end type simpleGrid
+  end type trackingGrid
 
 contains
 
   subroutine init(self, dict, geom, xsData)
-    class(simpleGrid), intent(inout)             :: self
+    class(trackingGrid), intent(inout)           :: self
     class(dictionary), intent(in)                :: dict
     class(geometry), intent(in), pointer, optional         :: geom
     class(nuclearDatabase), intent(in), pointer, optional  :: xsData
@@ -93,12 +93,12 @@ contains
   !! May have issues with non-box geometry root universe surface with reflective boundary
   !!
   function getDistance(self, r, u) result(dist)
-    class(simpleGrid), intent(in)           :: self
+    class(trackingGrid), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
     real(defReal), dimension(3)             :: r_bar, low, high !, point, corner, ratio
-    character(100), parameter :: Here = 'getDistance (simpleGrid_class.f90)'
+    character(100), parameter :: Here = 'getDistance (trackingGrid_class.f90)'
 
     ! Calculate position from grid corner
     r_bar = r - self % corner
@@ -158,14 +158,14 @@ contains
   !! Returns value of grid cell at position
   !!
   function getValue(self, r, u) result(val)
-    class(simpleGrid), intent(in)           :: self
+    class(trackingGrid), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: val
     real(defReal), dimension(3)             :: r_bar
     integer(shortInt), dimension(3)         :: corner, ijk
     integer(shortInt)                       :: i, idx
-    character(100), parameter :: Here = 'getValue (simpleGrid_class.f90)'
+    character(100), parameter :: Here = 'getValue (trackingGrid_class.f90)'
 
     ! Find lattice location in x,y&z
     ijk = floor((r - self % corner) / self % pitch) + 1
@@ -228,7 +228,7 @@ contains
   !!
   !!
   subroutine storeMats(self, searchN)
-    class(simpleGrid), intent(inout)              :: self
+    class(trackingGrid), intent(inout)            :: self
     integer(shortInt), dimension(3), intent(in)   :: searchN
     real(defReal), dimension(3)                   :: searchRes
     integer(shortInt)                             :: i, j, k, l, matIdx, id
@@ -275,11 +275,11 @@ contains
   !!
   !!
   subroutine update(self)
-    class(simpleGrid), intent(inout) :: self
-    integer(shortInt)                :: i
-    integer(shortInt), save          :: j, matIdx
-    real(defReal), save              :: sigmaT
-    class(particle), allocatable     :: p
+    class(trackingGrid), intent(inout) :: self
+    integer(shortInt)                  :: i
+    integer(shortInt), save            :: j, matIdx
+    real(defReal), save                :: sigmaT
+    class(particle), allocatable       :: p
     !$omp threadprivate(j, matIdx)
 
     allocate(p)
@@ -400,4 +400,4 @@ contains
 !
 !  end subroutine repositionDist
 
-end module simpleGrid_class
+end module trackingGrid_class

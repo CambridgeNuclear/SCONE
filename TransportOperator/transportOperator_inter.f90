@@ -20,7 +20,7 @@ module transportOperator_inter
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   ! Geometry interfaces
-  use simpleGrid_class,           only : simpleGrid
+  use trackingGrid_class,         only : trackingGrid
 
 
   implicit none
@@ -50,7 +50,7 @@ module transportOperator_inter
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(geometry), pointer         :: geom        => null()
 
-    class(simpleGrid), pointer       :: grid => null()
+    class(trackingGrid), pointer     :: grid => null()
 
   contains
     ! Public interface
