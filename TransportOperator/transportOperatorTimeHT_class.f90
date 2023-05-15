@@ -123,10 +123,6 @@ contains
 
       end if
 
-
-      ! TODO: Option to switch back to DT?
-
-
     end do STLoop
 
   end subroutine surfaceTracking
@@ -142,24 +138,24 @@ contains
 
     ! Get majorant and grid crossing distance if required
     majorant_inv = self % getMajInv(p)
+
+    ! Get initial opacity
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+
+    ! Check if surface tracking is needed, avoiding unnecessary grid calculations
+    if (sigmaT * majorant_inv < ONE - self % cutoff) then
+      call self % surfaceTracking(p)
+      return
+    end if
+
+    ! Calculate initial distance to grid
     if (self % method == GT) then
       dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
     else
       dGrid = INF
     end if
 
-    ! Get initial opacity
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
     DTLoop:do
-
-      ! Switch to ST if required
-      if (self % method /= DT) then
-        if (sigmaT * majorant_inv < ONE - self % cutoff) then
-          call self % surfaceTracking(p)
-          return
-        end if
-      end if
 
       ! Find distance to time boundary
       dTime = lightSpeed * (p % timeMax - p % time)
@@ -172,10 +168,8 @@ contains
       call self % geom % teleport(p % coords, dist)
       p % time = p % time + dist / lightSpeed
 
-      ! Exit in the case of particle leakage
-      if (p % matIdx() == OUTSIDE_FILL) then
-        return
-      end if
+      ! Check for particle leakage
+      if (p % matIdx() == OUTSIDE_FILL) return
 
       ! Act based on distance moved
       if (dist == dGrid) then
@@ -200,12 +194,26 @@ contains
 
       end if
 
+      ! Switch to surface tracking if needed
+      if (sigmaT * majorant_inv < ONE - self % cutoff) then
+        call self % surfaceTracking(p)
+        return
+      end if
+
+
     end do DTLoop
 
   end subroutine deltaTracking
 
   !!
+  !! Return the inverse majorant opacity
+  !! For DT or HT this will be constant, for GT this will be dependent on position
   !!
+  !! Args:
+  !!   p [in]  -> particle
+  !!
+  !! Result:
+  !!   maj_inv -> 1 / majorant opacity
   !!
   function getMajInv(self, p) result (maj_inv)
     class(transportOperatorTimeHT), intent(in) :: self
@@ -220,7 +228,6 @@ contains
 
   end function getMajInv
 
-
   !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
   !!
@@ -229,7 +236,6 @@ contains
   subroutine init(self, dict)
     class(transportOperatorTimeHT), intent(inout)    :: self
     class(dictionary), intent(in)                    :: dict
-!    class(simpleGrid), intent(in), pointer, optional :: grid
     character(nameLen)                               :: method
     class(dictionary),pointer                        :: tempdict
     character(100), parameter :: Here = "init (transportOperatorTimeHT_class.f90)"
@@ -266,6 +272,7 @@ contains
       ! Delta tracking
       case ('DT')
         self % method = DT
+        self % cutoff = ONE
 
       case default
         call fatalError(Here, 'Invalid tracking method given. Must be HT, ST or DT.')
