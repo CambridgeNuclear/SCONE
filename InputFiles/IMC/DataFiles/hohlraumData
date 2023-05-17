@@ -1,0 +1,22 @@
+// This XSS are for a URR-2-1-IN/SL Benchamrk Problem 
+// Source: A. Sood, R. A. Forster, and D. K. Parsons, 
+//        ‘Analytical Benchmark Test Set For Criticality Code Verification’
+//
+
+numberOfGroups 1;
+
+capture (
+ 100
+ -3
+);
+
+scatter (
+ 0
+ 0
+);
+
+cv (
+ 0.3 //3.00026706e15
+ 0
+);
+
