@@ -57,6 +57,9 @@ module baseMgIMCDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
+    procedure :: getTotalEnergy
+    procedure :: updateProperties
+    procedure :: setTimeStep
     procedure :: kill
     procedure :: init
     procedure :: activate
@@ -197,6 +200,66 @@ contains
     call fatalError(Here, "Pointless function call")
 
   end function getReaction
+
+  !!
+  !! Return total energy to be emitted during current time step
+  !!
+  function getTotalEnergy(self) result(energy)
+    class(baseMgIMCDatabase), intent(in) :: self
+    real(defReal)                        :: energy
+    integer(shortInt)                    :: i
+
+    energy = 0
+
+    do i=1, size(self % mats)
+      energy = energy + self % mats(i) % getEmittedRad()
+    end do
+
+  end function getTotalEnergy
+
+  !!
+  !! Update material properties based on energy absorbed during the time step
+  !!
+  subroutine updateProperties(self, tallyEnergy, printUpdates)
+    class(baseMgIMCDatabase), intent(inout) :: self
+    real(defReal), dimension(:), intent(in) :: tallyEnergy
+    integer(shortInt), intent(in)           :: printUpdates
+    integer(shortInt)                       :: i
+    character(100), parameter :: Here = 'updateProperties (baseMgIMCDatabase_class.f90)'
+
+    ! Check for valid inputs
+    if (size(tallyEnergy) /= size(self % mats)) call fatalError(Here, &
+                                &'Energy tally array must have size nMats')
+    if (printUpdates > size(self % mats)) call fatalError(Here, &
+                                &'printUpdates must be <= nMats')
+
+    ! Update mats to be printed (if any)
+    do i = 1, printUpdates
+      call self % mats(i) % updateMat(tallyEnergy(i), .true.)
+    end do
+
+    ! Update remaining mats
+    !$omp parallel do
+    do i = (printUpdates+1), size(tallyEnergy)
+      call self % mats(i) % updateMat(tallyEnergy(i))
+    end do
+    !$omp end parallel do
+
+  end subroutine updateProperties
+
+  !!
+  !! Provide each material with time step to calculate initial fleck factor
+  !!
+  subroutine setTimeStep(self, deltaT)
+    class(baseMgIMCDatabase), intent(inout) :: self
+    real(defReal), intent(in)               :: deltaT
+    integer(shortInt)                       :: i
+
+    do i=1, size(self % mats)
+      call self % mats(i) % setTimeStep(deltaT)
+    end do
+
+  end subroutine setTimeStep
 
   !!
   !! Return to uninitialised state

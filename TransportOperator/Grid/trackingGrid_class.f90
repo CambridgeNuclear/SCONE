@@ -231,7 +231,7 @@ contains
     class(trackingGrid), intent(inout)            :: self
     integer(shortInt), dimension(3), intent(in)   :: searchN
     real(defReal), dimension(3)                   :: searchRes
-    integer(shortInt)                             :: i, j, k, l, matIdx, id
+    integer(shortInt)                             :: i, j, k, l, matIdx, uniqueID
     real(defReal), dimension(3)                   :: corner, r
     type(dynIntArray)                             :: mats
 
@@ -250,7 +250,7 @@ contains
           do l = 1, searchN(3)
             ! Find matIdx at search location
             r = corner + [j, k, l] * searchRes
-            call self % mainGeom % whatIsAt(matIdx, id, r)
+            call self % mainGeom % whatIsAt(matIdx, uniqueID, r)
 
             ! Add to array if not already present
             if (mats % isPresent(matIdx)) then
