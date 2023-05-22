@@ -39,7 +39,6 @@ module IMCPhysicsPackage_class
   use nuclearDatabase_inter,          only : nuclearDatabase
   use mgIMCDatabase_inter,            only : mgIMCDatabase, mgIMCDatabase_CptrCast
   use IMCMaterial_inter,              only : IMCMaterial, IMCMaterial_CptrCast
-  use mgIMCMaterial_inter,            only : mgIMCMaterial
 
   ! Operators
   use collisionOperator_class,        only : collisionOperator
@@ -134,17 +133,17 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
-    integer(shortInt)                               :: i, j, N, Ntemp, num, nParticles
+    integer(shortInt)                               :: i, j, N, num, nParticles
     type(particle), save                            :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, totEnergy
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
-    class(IMCMaterial), pointer, save               :: mat
+    class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
     type(RNG), target, save                         :: pRNG
-    !$omp threadprivate(p, collOp, transOp, pRNG, mat)
+    !$omp threadprivate(p, collOp, transOp, pRNG)
 
     !$omp parallel
     p % geomIdx = self % geomIdx
@@ -179,22 +178,8 @@ contains
         N = self % limit - self % thisStep % popSize() - self % nMat - 1
       end if
 
-      ! Find total energy to be emitted
-      totEnergy = self % nucData % getTotalEnergy()
-
-      ! Add to particle dungeon
-      do j=1, self % nMat
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (mat % getTemp() > 0) then
-          ! Choose particle numbers in proportion to zone energy
-          Ntemp = int(N * mat % getEmittedRad() / totEnergy)
-          ! Enforce at least 1 particle
-          if (Ntemp == 0) Ntemp = 1
-
-          call self % IMCSource % append(self % thisStep, Ntemp, self % pRNG, j)
-
-        end if
-      end do
+      ! Add to dungeon particles emitted from material
+      call self % IMCSource % append(self % thisStep, N, self % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
@@ -314,7 +299,6 @@ contains
     open(unit = 10, file = 'temps.txt')
     do j = 1, self % nMat
       mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-      !write(10, '(8A)') numToChar(mat % getTemp())
       write(10, '(8A)') mm_matName(j), numToChar(mat % getTemp())
     end do
     close(10)
@@ -371,7 +355,6 @@ contains
     character(nameLen)                              :: nucData, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
-    class(IMCMaterial), pointer                     :: mat
     character(nameLen), dimension(:), allocatable   :: mats
     integer(shortInt), dimension(:), allocatable    :: latSizeN
     type(dictionary),target                         :: newGeom, newData
@@ -465,9 +448,8 @@ contains
 
     ! Initialise IMC source
     if (dict % isPresent('discretise')) then
-      ! Store size of lattice to avoid rejection sampling loop in source
       call locDict1 % init(2)
-      call locDict1 % store('sizeN', latSizeN)
+      call locDict1 % store('method', 'fast')
     else
       call locDict1 % init(1)
     end if

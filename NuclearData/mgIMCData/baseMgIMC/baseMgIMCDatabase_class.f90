@@ -57,7 +57,7 @@ module baseMgIMCDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
-    procedure :: getTotalEnergy
+    procedure :: getEmittedRad
     procedure :: updateProperties
     procedure :: setTimeStep
     procedure :: kill
@@ -202,20 +202,32 @@ contains
   end function getReaction
 
   !!
-  !! Return total energy to be emitted during current time step
+  !! Return energy to be emitted during current time step
   !!
-  function getTotalEnergy(self) result(energy)
-    class(baseMgIMCDatabase), intent(in) :: self
-    real(defReal)                        :: energy
-    integer(shortInt)                    :: i
+  !! Args:
+  !!   matIdx [in] [optional] -> If provided, return the energy to be emitted from only matIdx
+  !!                             Otherwise, return total energy to be emitted from all mats
+  !!
+  function getEmittedRad(self, matIdx) result(energy)
+    class(baseMgIMCDatabase), intent(in)    :: self
+    integer(shortInt), intent(in), optional :: matIdx
+    real(defReal)                           :: energy
+    integer(shortInt)                       :: i
 
+    ! If matIdx provided, return radiation emitted from only that material
+    if (present(matIdx)) then
+      energy = self % mats(matIdx) % getEmittedRad()
+      return
+    end if
+
+    ! Otherwise, return total energy emitted from all materials
     energy = 0
 
     do i=1, size(self % mats)
       energy = energy + self % mats(i) % getEmittedRad()
     end do
 
-  end function getTotalEnergy
+  end function getEmittedRad
 
   !!
   !! Update material properties based on energy absorbed during the time step

@@ -90,6 +90,7 @@ module latUniverse_class
     procedure :: distance
     procedure :: cross
     procedure :: cellOffset
+    procedure :: getSizeN
   end type latUniverse
 
 contains
@@ -363,6 +364,17 @@ contains
     end if
 
   end function cellOffset
+
+  !!
+  !! Return dimensions of lattice
+  !!
+  function getSizeN(self) result(sizeN)
+    class(latUniverse), intent(in)  :: self
+    integer(shortInt), dimension(3) :: sizeN
+
+    sizeN = self % sizeN
+
+  end function getSizeN
 
   !!
   !! Return to uninitialised state

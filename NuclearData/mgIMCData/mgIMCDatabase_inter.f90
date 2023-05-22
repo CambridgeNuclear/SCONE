@@ -22,7 +22,7 @@ module mgIMCDatabase_inter
   type, public, abstract, extends(nuclearDatabase) :: mgIMCDatabase
 
   contains
-    procedure(getTotalEnergy), deferred   :: getTotalEnergy
+    procedure(getEmittedRad), deferred    :: getEmittedRad
     procedure(updateProperties), deferred :: updateProperties
     procedure(setTimeStep), deferred      :: setTimeStep
 
@@ -31,13 +31,18 @@ module mgIMCDatabase_inter
   abstract interface
 
     !!
-    !! Return total energy to be emitted during current time step
+    !! Return energy to be emitted during current time step
     !!
-    function getTotalEnergy(self) result(energy)
-      import :: mgIMCDatabase, defReal
-      class(mgIMCDatabase), intent(in) :: self
-      real(defReal)                    :: energy
-    end function getTotalEnergy
+    !! Args:
+    !!   matIdx [in] [optional] -> If provided, return the energy to be emitted from only matIdx
+    !!                             Otherwise, return total energy to be emitted from all mats
+    !!
+    function getEmittedRad(self, matIdx) result(energy)
+      import :: mgIMCDatabase, shortInt, defReal
+      class(mgIMCDatabase), intent(in)        :: self
+      integer(shortInt), intent(in), optional :: matIdx
+      real(defReal)                           :: energy
+    end function getEmittedRad
 
     !!
     !! Update material properties based on energy absorbed during the time step

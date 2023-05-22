@@ -16,10 +16,12 @@ module IMCSource_class
   use nuclearDataReg_mod,      only : ndReg_getIMCMG => getIMCMG
   use nuclearDatabase_inter,   only : nuclearDatabase
   use mgIMCDatabase_inter,     only : mgIMCDatabase
-  use materialMenu_mod,        only : mm_matName => matName
+  use materialMenu_mod,        only : mm_nMat => nMat
 
   implicit none
   private
+
+  integer(shortInt), parameter :: REJ = 1, FAST = 2
 
   !!
   !! IMC Source for uniform generation of photons within a material
@@ -31,8 +33,6 @@ module IMCSource_class
   !!   bottom  -> Bottom corner (x_min, y_min, z_min)
   !!   top     -> Top corner (x_max, y_max, z_max)
   !!   G       -> Group (default = 1)
-  !!   N       -> number of particles being generated, used to normalise weight in sampleParticle
-  !!   matIdx  -> index of material to be sampled from
   !!
   !! Interface:
   !!   source_inter Interface
@@ -42,21 +42,19 @@ module IMCSource_class
   !!
   type, public,extends(source) :: imcSource
     private
-    logical(defBool)                             :: isMG   = .true.
-    real(defReal), dimension(3)                  :: bottom = ZERO
-    real(defReal), dimension(3)                  :: top    = ZERO
-    real(defReal), dimension(3)                  :: latPitch = ZERO
-    integer(shortInt), dimension(:), allocatable :: latSizeN
-    integer(shortInt)                            :: G      = 0
-    integer(shortInt)                            :: N
-    integer(shortInt)                            :: matIdx
-    real(defReal), dimension(6)                  :: matBounds = ZERO
+    logical(defBool)                :: isMG     = .true.
+    real(defReal), dimension(3)     :: bottom   = ZERO
+    real(defReal), dimension(3)     :: top      = ZERO
+    real(defReal), dimension(3)     :: latPitch = ZERO
+    integer(shortInt), dimension(3) :: latSizeN = 0
+    integer(shortInt)               :: G        = 0
+    real(defReal), dimension(6)     :: bounds   = ZERO
+    integer(shortInt)               :: method   = REJ
   contains
     procedure :: init
     procedure :: append
     procedure :: sampleParticle
-    procedure, private :: samplePosRej
-    procedure, private :: samplePosLat
+    procedure, private :: sampleIMC
     procedure, private :: getMatBounds
     procedure :: kill
   end type imcSource
@@ -72,78 +70,111 @@ contains
     class(imcSource), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    real(defReal), dimension(6)              :: bounds
+    character(nameLen)                       :: method
     character(100), parameter :: Here = 'init (imcSource_class.f90)'
+
+    call dict % getOrDefault(self % G, 'G', 1)
 
     ! Provide geometry info to source
     self % geom => geom
 
-    call dict % getOrDefault(self % G, 'G', 1)
-
     ! Set bounding region
-    bounds = self % geom % bounds()
-    self % bottom = bounds(1:3)
-    self % top    = bounds(4:6)
+    self % bounds = self % geom % bounds()
 
-    ! Store lattice dimensions for use in position sampling if using a large lattice
-    ! sizeN automatically added to dict in IMCPhysicsPackage if needed
-    if (dict % isPresent('sizeN')) then
-      call dict % get(self % latSizeN, 'sizeN')
-      self % latPitch = (self % top - self % bottom) / self % latSizeN
-    end if
+    ! Select method for position sampling
+    call dict % getOrDefault(method, 'method', 'rejection')
+    select case(method)
+      case('rejection')
+        self % method = REJ
+
+      case('fast')
+        self % method = FAST
+        ! Get lattice dimensions
+        self % latSizeN = self % geom % latSizeN()
+        self % latPitch = (self % bounds(4:6) - self % bounds(1:3)) / self % latSizeN
+
+      case default
+        call fatalError(Here, 'Unrecognised method. Should be "rejection" or "fast"')
+    end select
 
   end subroutine init
 
+
   !!
-  !! Generate N particles from material matIdx to add to a particleDungeon without overriding
+  !! Generate N particles to add to a particleDungeon without overriding
   !! particles already present.
   !!
   !! Args:
   !!   dungeon [inout] -> particle dungeon to be added to
   !!   n [in]          -> number of particles to place in dungeon
   !!   rand [inout]    -> particle RNG object
-  !!   matIdx [in]     -> index of material to sample from
   !!
   !! Result:
   !!   A dungeon populated with N particles sampled from the source, plus particles
   !!   already present in dungeon
   !!
-  subroutine append(self, dungeon, N, rand, matIdx)
+  subroutine append(self, dungeon, N, rand)
     class(imcSource), intent(inout)         :: self
     type(particleDungeon), intent(inout)    :: dungeon
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
-    integer(shortInt), intent(in), optional :: matIdx
-    integer(shortInt)                       :: i
+    real(defReal), dimension(6)             :: bounds
+    integer(shortInt)                       :: matIdx, i, Ntemp
+    real(defReal)                           :: energy, totalEnergy
     type(RNG)                               :: pRand
+    class(mgIMCDatabase), pointer           :: nucData
     character(100), parameter               :: Here = "append (IMCSource_class.f90)"
 
-    ! Assert that optional argument matIdx is in fact present
-    if (.not. present(matIdx)) call fatalError(Here, 'matIdx must be provided for IMC source')
+    ! Get pointer to appropriate nuclear database
+    nucData => ndReg_getIMCMG()
+    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
-    ! Store inputs for use by sampleParticle subroutine
-    self % N      = N
-    self % matIdx = matIdx
+    ! Obtain total energy
+    totalEnergy = nucData % getEmittedRad()
 
-    ! For a large number of materials (large lattice using discretiseGeom_class) rejection
-    ! sampling is too slow, so calculate bounding box of material
-    if (self % latPitch(1) /= 0) then
-      ! Get material bounds
-      call self % getMatBounds(matIdx, self % matBounds)
-    end if
+    ! Loop through materials
+    do matIdx=1, mm_nMat()
 
-    ! Add N particles to dungeon
-    !$omp parallel
-    pRand = rand
-    !$omp do private(pRand)
-    do i=1, N
-      call pRand % stride(i)
-      call dungeon % detain(self % sampleParticle(pRand))
+      ! Get energy to be emitted from material matIdx
+      energy = nucData % getEmittedRad(matIdx)
+
+      ! Choose particle numbers in proportion to material energy
+      if (energy > ZERO) then
+        Ntemp = int(N * energy / totalEnergy)
+        ! Enforce at least 1 particle
+        if (Ntemp == 0) Ntemp = 1
+
+        ! Set bounds for sampling
+        if (self % method == FAST) then
+          bounds = self % getMatBounds(matIdx)
+        else
+          bounds = self % bounds
+        end if
+
+        ! Find energy per particle
+        energy = energy / Ntemp
+
+        ! Sample particles
+        do i = 1, Ntemp
+          call dungeon % detain(self % sampleIMC(pRand, matIdx, energy, bounds))
+        end do
+
+      end if
     end do
-    !$omp end do
-    !$omp end parallel
+
+!    ! Add N particles to dungeon
+!    !$omp parallel
+!    pRand = rand
+!    !$omp do private(pRand)
+!    do i=1, N
+!      call pRand % stride(i)
+!      call dungeon % detain(self % sampleParticle(pRand))
+!    end do
+!    !$omp end do
+!    !$omp end parallel
    
   end subroutine append
+
 
   !!
   !! Sample particle's phase space co-ordinates
@@ -154,27 +185,63 @@ contains
     class(imcSource), intent(inout)      :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
-    class(nuclearDatabase), pointer      :: nucData
-    class(IMCMaterial), pointer          :: mat
-    real(defReal), dimension(3)          :: r, dir
-    real(defReal)                        :: mu, phi
-    integer(shortInt)                    :: matIdx, uniqueID
-    character(100), parameter :: Here = 'sampleParticle (imcSource_class.f90)'
+    character(100), parameter :: Here = 'sampleParticle (IMCSource_class.f90)'
 
-    ! Get pointer to appropriate nuclear database
-    nucData => ndReg_getIMCMG()
-    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
+    ! Should not be called, useful to have extra inputs so use sampleIMC instead
+    call fatalError(Here, 'Should not be called, sampleIMC should be used instead.')
 
-    ! Choose position sampling method
-    if (self % latPitch(1) == ZERO) then
-      call self % samplePosRej(r, matIdx, uniqueID, rand)
-    else
-      call self % samplePosLat(r, matIdx, uniqueID, rand)
-    end if
+    ! Avoid compiler warning
+    p % G = self % G
 
-    ! Point to material
-    mat => IMCMaterial_CptrCast(nucData % getMaterial(matIdx))
-    if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return IMC material.")
+  end function sampleParticle
+
+
+  !!
+  !! Sample particle's phase space co-ordinates
+  !!
+  !! Args:
+  !!   rand [in]   -> RNG
+  !!   matIdx [in] -> index of material being sampled from
+  !!   energy [in] -> energy-weight of sampled particle
+  !!   bounds [in] -> bounds for position search, will be bounds of entire geometry if using
+  !!                  rejection sampling method, and bounds of single material if using fast
+  !!
+  function sampleIMC(self, rand, targetMatIdx, energy, bounds) result(p)
+    class(imcSource), intent(inout)         :: self
+    class(RNG), intent(inout)               :: rand
+    integer(shortInt), intent(in)           :: targetMatIdx
+    real(defReal), intent(in)               :: energy
+    real(defReal), dimension(6), intent(in) :: bounds
+    type(particleState)                     :: p
+    real(defReal), dimension(3)             :: bottom, top, r, dir, rand3
+    real(defReal)                           :: mu, phi
+    integer(shortInt)                       :: i, matIdx, uniqueID
+    character(100), parameter :: Here = 'sampleIMC (IMCSource_class.f90)'
+
+    ! Sample particle position
+    bottom = bounds(1:3)
+    top    = bounds(4:6)
+    i = 0
+    rejection:do
+      rand3(1) = rand % get()
+      rand3(2) = rand % get()
+      rand3(3) = rand % get()
+      r = (top - bottom) * rand3 + bottom
+
+      ! Find material under position
+      call self % geom % whatIsAt(matIdx, uniqueID, r)
+
+      ! Exit if in desired material
+      if (matIdx == targetMatIdx) exit rejection
+
+      ! Should exit immediately if using fast method as bounds should contain only matIdx
+      if (self % method == FAST) call fatalError(Here, 'Fast sourcing returned incorrect material')
+
+      ! Protect against infinite loop
+      i = i+1
+      if (i > 10000) call fatalError(Here, '10,000 failed attempts in rejection sampling')
+
+    end do rejection
 
     ! Sample direction - chosen uniformly inside unit sphere
     mu = 2 * rand % get() - 1
@@ -192,75 +259,10 @@ contains
     p % dir      = dir
     p % G        = self % G
     p % isMG     = .true.
+    p % wgt      = energy
 
-    ! Set weight
-    p % wgt = mat % getEmittedRad() / self % N
+  end function sampleIMC
 
-  end function sampleParticle
-
-
-  !!
-  !! Position is sampled by taking a random point from within geometry bounding box
-  !! If in correct material, position is accepted
-  !!
-  subroutine samplePosRej(self, r, matIdx, uniqueID, rand)
-    class(imcSource), intent(inout)          :: self
-    real(defReal), dimension(3), intent(out) :: r
-    integer(shortInt), intent(out)           :: matIdx
-    integer(shortInt), intent(out)           :: uniqueID
-    class(RNG), intent(inout)                :: rand
-    integer(shortInt)                        :: i
-    real(defReal), dimension(3)              :: rand3
-    character(100), parameter :: Here = 'samplePosRej (IMCSource_class.f90)'
-
-    i = 0
-
-    rejectionLoop : do
-
-      ! Protect against infinite loop
-      i = i+1
-      if (i > 10000) then
-        call fatalError(Here, '10,000 failed samples in rejection sampling loop')
-      end if
-
-      ! Sample Position
-      rand3(1) = rand % get()
-      rand3(2) = rand % get()
-      rand3(3) = rand % get()
-      r = (self % top - self % bottom) * rand3 + self % bottom
-
-      ! Find material under position
-      call self % geom % whatIsAt(matIdx, uniqueID, r)
-
-      ! Exit if in desired material
-      if (matIdx == self % matIdx) exit rejectionLoop
-
-    end do rejectionLoop
-
-  end subroutine samplePosRej
-
-  !!
-  !! Sample position without using a rejection sampling method, by calculating the material bounds.
-  !!
-  !! Requires geometry to be a uniform lattice, so currently only called when discretiseGeom_class
-  !! is used to create inputs.
-  !!
-  subroutine samplePosLat(self, r, matIdx, uniqueID, rand)
-    class(imcSource), intent(inout)          :: self
-    real(defReal), dimension(3), intent(out) :: r
-    integer(shortInt), intent(out)           :: matIdx
-    integer(shortInt), intent(out)           :: uniqueID
-    class(RNG), intent(inout)                :: rand
-    integer(shortInt)                        :: i
-    character(100), parameter :: Here = 'samplePosLat (IMCSource_class.f90)'
-
-    do i=1, 3
-      r(i) = self % matBounds(i) + rand % get() * (self % matBounds(i+3) - self % matBounds(i) - SURF_TOL) + SURF_TOL
-    end do
-
-    call self % geom % whatIsAt(matIdx, uniqueID, r)
-
-  end subroutine samplePosLat
 
   !!
   !! Get location of material in lattice for position sampling
@@ -272,27 +274,23 @@ contains
   !! TODO:
   !!   Would be nice to have most of this in a geometry module
   !!
-  subroutine getMatBounds(self, matIdx, matBounds)
+  function getMatBounds(self, matIdx) result(matBounds)
     class(imcSource), intent(inout)          :: self
     integer(shortInt), intent(in)            :: matIdx
-    real(defReal), dimension(6), intent(out) :: matBounds
+    real(defReal), dimension(6)              :: matBounds
     integer(shortInt), dimension(3)          :: ijk
-    integer(shortInt)                        :: latIdx, i
-    character(nameLen)                       :: matName
+    integer(shortInt)                        :: i
     character(100), parameter                :: Here = 'getMatBounds (imcSourceClass.f90)'
 
-    ! Extract lattice position from mat name (e.g. "m106 -> 106")
-    matName = mm_matName(matIdx)
-    read (matName(2:), '(I10)') latIdx
-
     ! Set bounds of lattice cell containing matIdx
-    ijk = get_ijk(latIdx, self % latSizeN)
+    ijk = get_ijk(matIdx, self % latSizeN)
     do i=1, 3
-      matBounds(i)   = (ijk(i)-1) * self % latPitch(i) + self % bottom(i)
-      matBounds(i+3) = ijk(i)     * self % latPitch(i) + self % bottom(i)
+      matBounds(i)   = (ijk(i)-1) * self % latPitch(i) + self % bounds(i) + SURF_TOL
+      matBounds(i+3) = ijk(i)     * self % latPitch(i) + self % bounds(i) - SURF_TOL
     end do
 
-  end subroutine getMatBounds
+  end function getMatBounds
+
 
   !!
   !! Return to uninitialised state
@@ -303,8 +301,7 @@ contains
     call kill_super(self)
 
     self % isMG   = .true.
-    self % bottom = ZERO
-    self % top    = ZERO
+    self % bounds = ZERO
     self % G      = 0
 
   end subroutine kill

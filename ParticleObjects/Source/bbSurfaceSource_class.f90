@@ -133,12 +133,11 @@ contains
   !! If N is given as 0, then N is instead taken from the input dictionary defining this source
   !! to allow PP to have control over particle numbers
   !!
-  subroutine append(self, dungeon, N, rand, matIdx)
+  subroutine append(self, dungeon, N, rand)
     class(bbSurfaceSource), intent(inout)   :: self
     type(particleDungeon), intent(inout)    :: dungeon
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
-    integer(shortInt), intent(in), optional :: matIdx
     integer(shortInt)                       :: i
     type(RNG)                               :: pRand
     character(100), parameter               :: Here = 'append (bbSurfaceSource_class.f90)'
