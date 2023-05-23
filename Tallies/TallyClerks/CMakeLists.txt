@@ -11,7 +11,7 @@ add_sources(./tallyClerk_inter.f90
             ./dancoffBellClerk_class.f90
             ./shannonEntropyClerk_class.f90
             ./centreOfMassClerk_class.f90
-            ./MGxsClerk_class.f90
+            ./mgXsClerk_class.f90
              )
              
 add_unit_tests(./Tests/collisionClerk_test.f90
@@ -21,5 +21,5 @@ add_unit_tests(./Tests/collisionClerk_test.f90
                ./Tests/shannonEntropyClerk_test.f90
                ./Tests/simpleFMClerk_test.f90
                ./Tests/collisionProbabilityClerk_test.f90
-               ./Tests/MGxsClerk_test.f90
+               ./Tests/mgXsClerk_test.f90
                 )
