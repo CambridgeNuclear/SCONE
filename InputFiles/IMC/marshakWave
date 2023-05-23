@@ -17,6 +17,9 @@ transportOperator {
 
 tally  {}
 
+// Material photon source - optional but will default to rejection sampling if method not specified
+matSource { type imcSource; method fast; }
+
 // Black body surface source
 source { type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 10000; }
 
@@ -24,7 +27,7 @@ source { type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 10000; }
 discretise { dimensions (500 1 1); }
 
 // Overlaid grid for hybrid tracking
-grid { dimensions (50 1 1); searchN (1000 1 1); }
+grid { dimensions (50 1 1); searchN (10 1 1); }
 
 geometry { 
     type geometryStd;

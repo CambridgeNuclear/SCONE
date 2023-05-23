@@ -18,6 +18,8 @@ transportOperator {
                     grid { dimensions (20 20 1); searchN (10 10 1); }
                   } 
 
+matSource { type imcSource; method fast; }
+
 source {
   type bbSurfaceSource;
   r (-0.5 -0.5 -0.5 0.5 -0.5 0.5);

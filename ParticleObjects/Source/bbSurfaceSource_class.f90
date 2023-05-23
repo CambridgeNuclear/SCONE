@@ -74,17 +74,12 @@ contains
   !! See source_inter for details
   !!
   !! Errors:
-  !!   - error if an unrecognised particle type is provided
   !!   - error if an axis other than x, y, or z is given
-  !!   - error if shape is not square or circle
   !!
   subroutine init(self, dict, geom)
     class(bbSurfaceSource), intent(inout)    :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    character(30)                            :: type, tempName
-    integer(shortInt)                        :: matIdx, uniqueID
-    logical(defBool)                         :: isCE, isMG
     real(defReal), dimension(:), allocatable :: temp
     integer(shortInt)                        :: i, dir
     character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
@@ -249,7 +244,6 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: num
 
     p % isMG = .true.
     p % G    = 1

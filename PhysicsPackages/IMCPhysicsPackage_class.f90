@@ -346,7 +346,7 @@ contains
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
     class(dictionary), pointer                      :: tempDict, geomDict, dataDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4, locDict5
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -438,23 +438,24 @@ contains
     call newGeom % kill()
     call newData % kill()
 
-    ! Read particle source definition
+    ! Initialise IMC source
+    if (dict % isPresent('matSource')) then
+      tempDict => dict % getDictPtr('matSource')
+      call new_source(self % IMCSource, tempDict, self % geom)
+    else
+      call locDict1 % init(1)
+      call locDict1 % store('type', 'imcSource')
+      call new_source(self % IMCSource, locDict1, self % geom)
+      call locDict1 % kill()
+    end if
+
+    ! Read external particle source definition
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
       call tempDict % store('deltaT', self % deltaT)
       call new_source(self % inputSource, tempDict, self % geom)
       self % sourceGiven = .true.
     end if
-
-    ! Initialise IMC source
-    if (dict % isPresent('discretise')) then
-      call locDict1 % init(2)
-      call locDict1 % store('method', 'fast')
-    else
-      call locDict1 % init(1)
-    end if
-    call locDict1 % store('type', 'imcSource')
-    call new_source(self % IMCSource, locDict1, self % geom)
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
@@ -482,26 +483,23 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Provide materials with time step
-    call self % nucData % setTimeStep(self % deltaT)
-
     ! Initialise imcWeight tally attachment
-    call locDict2 % init(1)
-    call locDict3 % init(4)
-    call locDict4 % init(2)
-    call locDict5 % init(1)
+    call locDict1 % init(1)
+    call locDict2 % init(4)
+    call locDict3 % init(2)
+    call locDict4 % init(1)
 
-    call locDict5 % store('type', 'weightResponse')
-    call locDict4 % store('type','materialMap')
-    call locDict4 % store('materials', [mats])
-    call locDict3 % store('response', ['imcWeightResponse'])
-    call locDict3 % store('imcWeightResponse', locDict5)
-    call locDict3 % store('type','absorptionClerk')
-    call locDict3 % store('map', locDict4)
-    call locDict2 % store('imcWeightTally', locDict3)
+    call locDict4 % store('type', 'weightResponse')
+    call locDict3 % store('type','materialMap')
+    call locDict3 % store('materials', [mats])
+    call locDict2 % store('response', ['imcWeightResponse'])
+    call locDict2 % store('imcWeightResponse', locDict4)
+    call locDict2 % store('type','absorptionClerk')
+    call locDict2 % store('map', locDict3)
+    call locDict1 % store('imcWeightTally', locDict2)
 
     allocate(self % imcWeightAtch)
-    call self % imcWeightAtch % init(locDict2)
+    call self % imcWeightAtch % init(locDict1)
 
     call self % tally % push(self % imcWeightAtch)
 
