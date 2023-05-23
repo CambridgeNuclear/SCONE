@@ -84,10 +84,10 @@ module mgXsClerk_class
     class(tallyMap), allocatable :: energyMap
 
     ! Useful data
-    integer(shortInt) :: energyN
-    integer(shortInt) :: matN
-    integer(shortInt) :: width
-    logical(defBool)  :: PN
+    integer(shortInt) :: energyN = 0
+    integer(shortInt) :: matN = 0
+    integer(shortInt) :: width = 0
+    logical(defBool)  :: PN = .false.
 
   contains
     ! Procedures used during build
@@ -166,8 +166,11 @@ contains
       call self % spaceMap % kill()
     end if
 
-    ! Reset memory width
+    ! Reset parameters
+    self % matN = 0
+    self % energyN = 0
     self % width = 0
+    self % PN = .false.
 
   end subroutine kill
 
