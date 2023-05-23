@@ -24,7 +24,7 @@ module universalVariables
   integer(shortINt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
-                                          LOST_EV  = 4 
+                                          LOST_EV  = 4
 
   ! Create definitions for readability when dealing with positions relative to surfaces
   logical(defBool), parameter, public :: behind = .FALSE., &
@@ -72,5 +72,8 @@ module universalVariables
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
+
+  ! Global name variables used to define specific geometry or field types
+  character(nameLen), parameter :: nameWW = 'WeightWindows'
 
 end module universalVariables

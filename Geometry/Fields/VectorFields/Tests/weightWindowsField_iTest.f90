@@ -1,4 +1,4 @@
-module weightWindowsField_test
+module weightWindowsField_iTest
   use numPrecision
   use pFUnit_mod
   use particle_class,           only : particle
@@ -23,7 +23,7 @@ module weightWindowsField_test
   !! Weight Windows Definition
   !!
   character(*), parameter :: DICT_DEF = &
-  & "file /home/vr339/SCONE/scone/IntegrationTestFiles/testWW ;"
+  & "file ./IntegrationTestFiles/testWW ;"
 
 contains
 
@@ -84,4 +84,4 @@ contains
   end subroutine testGetValue
 
 
-end module weightWindowsField_test
+end module weightWindowsField_iTest
