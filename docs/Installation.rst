@@ -177,7 +177,7 @@ Compiling SCONE
 
 #. Download the repository. Run the following commands::
 
-     git clone https://Your-Bitbucket-Name@bitbucket.org/Your-Bitbucket-Name/scone.git
+     git clone https://github.com/CambridgeNuclear/SCONE
 
 #. Create build folder in the project directory (e.g. Build)::
 
@@ -261,14 +261,27 @@ its own library file. An example of it is given in *IntegrationTestFiles/testLib
   ! This is a comment line
   ! Each line needs to contain three entries
   ! ZAID   Line Number   PATH
-  92233.03c  1       <absolute_path>/9233JEF33.ace
-  1001.03c   4069    <absolute_path>/1001JEF33.ace
+  92233.03c;  1;       <absolute_path>/9233JEF33.ace;
+  1001.03c;   4069;    <absolute_path>/1001JEF33.ace;
   ...
 
 `Line Number` is the line in the file at which a particular data card begins. Each line cannot
-contain more then a single entry. Each component must be space separated. Path can have only 100
-character and contain no spaces.
+contain more then a single entry. Each component must be delimited by a semi-colon.
 
-Soon the format of the file will be changes to allow spaces in the path. Also the limitation on its
-length will be lifted. A script will be included in ``cream`` to generate the library file directly
-from the ACE files.
+To generate the library file from the collection of raw ACE files one can use the
+``scripts/make_ace_lib.sh`` bash script. It can be run with the following command:
+
+.. code-block:: bash
+
+  ./scripts/make_ace_lib.sh /path/lib.xsfile CE ./path_to_ace_files/*.ace
+
+To get extra help run the script without any arguments. The ``CE`` letters allow to select between
+searching for continuous energy neutron data cards and thermal scattering S(α,β) cards (SAB mode).
+Sadly the script can search only for a single type of card in one pass. Thus to create a full
+library with thermal data we need to do the following:
+
+.. code-block:: bash
+
+  ./scripts/make_ace_lib.sh ./tempCE CE ./path_to_CE_ace_files/*.ace
+  ./scripts/make_ace_lib.sh ./tempSAB SAB ./path_to_SAB_ace_files/*.ace
+  cat tempCE tempSAB > fullLib.xsfile

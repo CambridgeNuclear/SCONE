@@ -11,10 +11,11 @@
 type eigenPhysicsPackage; 
 
 pop      200000;
-active 100; 
+active 400; 
 inactive 200; 
 XSdata   ceData;
 dataType ce; 
+outputFile SB212 ; 
 
 collisionOperator { neutronCE {type neutronCEstd;} 
                      
@@ -189,7 +190,7 @@ materials {
     water {  
       temp       293; 
       composition {
-        01001.03  6.6735E-2;
+        moder {1001.03  6.6735E-2; file h-h2o.40; }
         08016.03  3.3368E-2;
       }   
     }

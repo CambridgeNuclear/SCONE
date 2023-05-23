@@ -7,6 +7,7 @@ module aceNeutronDatabase_class
   use dictionary_class,  only : dictionary
   use RNG_class,         only : RNG
   use charMap_class,     only : charMap
+  use intMap_class,      only : intMap
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,        only : nuclearDatabase
@@ -22,8 +23,9 @@ module aceNeutronDatabase_class
                                            mm_getMatPtr => getMatPtr, mm_nameMap => nameMap
 
   ! ACE CE Nuclear Data Objects
-  use aceLibrary_mod,               only : new_neutronAce, aceLib_load => load, aceLib_kill => kill
+  use aceLibrary_mod,               only : new_neutronAce, new_moderACE, aceLib_load => load, aceLib_kill => kill
   use aceCard_class,                only : aceCard
+  use aceSabCard_class,             only : aceSabCard
   use aceNeutronNuclide_class,      only : aceNeutronNuclide
 
 
@@ -72,8 +74,9 @@ module aceNeutronDatabase_class
     real(defReal), dimension(2)                  :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
 
+    ! Probability tables data
     integer(shortInt),dimension(:),allocatable   :: nucToZaid
-    logical(defBool)                             :: hasUrr
+    logical(defBool)                             :: hasUrr = .false.
 
   contains
     ! nuclearData Procedures
@@ -183,7 +186,7 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     integer(shortInt), intent(in)         :: MT
     integer(shortInt), intent(in)         :: idx
-    class(reactionHandle),pointer         :: reac
+    class(reactionHandle), pointer        :: reac
     integer(shortInt)                     :: idxMT
 
     ! Catch case of invalid reaction
@@ -203,13 +206,18 @@ contains
 
     ! Get nuclide reaction
     if( MT == N_N_elastic) then
-      reac => self % nuclides(idx) % elasticScatter
+      if (cache_nuclideCache(idx) % needsSabEl) then
+        reac => self % nuclides(idx) % thData % elasticOut
+      else
+        reac => self % nuclides(idx) % elasticScatter
+      end if
     else if ( MT == N_fission) then
       reac => self % nuclides(idx) % fission
+    else if (MT == N_N_ThermINEL) then
+      reac => self % nuclides(idx) % thData % inelasticOut
     else
       ! Find index of MT reaction
       idxMT = self % nuclides(idx) % idxMT % getOrDefault(MT, 0)
-
       ! See if the MT is present or not
       if(idxMT == 0) then
         reac => null()
@@ -218,9 +226,7 @@ contains
       end if
     end if
 
-
   end function getReaction
-
 
   !!
   !! Return energy bounds for data in the database
@@ -341,6 +347,7 @@ contains
         ! Add microscopic XSs
         call mat % xss % add(cache_nuclideCache(nucIdx) % xss, dens)
       end do
+
     end associate
 
   end subroutine updateMacroXSs
@@ -356,11 +363,19 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), intent(inout)             :: rand
+    logical(defBool)                      :: needsSab
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
-      if (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2)) then
+      ! Check if the nuclide needs ures probability tables at this energy
+      nucCache % needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
+      ! Check if the nuclide needs S(a,b) at this energy
+      nucCache % needsSabEl = (nuc % hasThData .and. E >= nuc % SabEl(1) .and. E < nuc % SabEl(2))
+      nucCache % needsSabInel = (nuc % hasThData .and. E >= nuc % SabInel(1) .and. E < nuc % SabInel(2))
+      needsSab = (nucCache % needsSabEl .or. nucCache % needsSabInel)
+
+      if (nucCache % needsUrr .or. needsSab) then
         call self % updateMicroXSs(E, nucIdx, rand)
       else
         nucCache % E_tot  = E
@@ -394,20 +409,22 @@ contains
         nucCache % E_tot  = E
         call nuc % search(nucCache % idx, nucCache % f, E)
       end if
-      ! Overwrites all the micro cross sections in cache
-      call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
 
+      ! Overwrites all the micro cross sections in cache
       ! Check if probability tables should be read
-      if (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2)) then
+      if (nucCache % needsUrr) then
         associate(zaidCache => cache_zaidCache(self % nucToZaid(nucIdx)))
           if (zaidCache % E /= E) then
-          ! Save random number for temperature correlation
+            ! Save random number for temperature correlation
             zaidCache % xi = rand % get()
             zaidCache % E = E
           end if
-        ! Overwrites all the micro cross sections in cache
-        call nuc % getUrrXSs(E, zaidCache % xi, nucCache % xss)
+          call nuc % getUrrXSs(nucCache % xss, nucCache % idx, nucCache % f, E, zaidCache % xi)
         end associate
+      elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
+        call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E)
+      else
+        call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
       end if
 
     end associate
@@ -429,8 +446,11 @@ contains
     class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
     type(charMap)                                    :: nucSet
     type(aceCard)                                    :: ACE
+    type(aceSabCard)                                 :: ACE_Sab
     character(pathLen)                               :: aceLibPath
-    integer(shortInt)                                :: i, j, envFlag, nucIdx
+    character(nameLen)                               :: name, name_file
+    character(:), allocatable                        :: zaid, file
+    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs
@@ -455,15 +475,20 @@ contains
 
     ! Create list of all nuclides. Loop over materials
     ! Find maximum number of nuclides: maxNuc
-    maxNuc = 0
     do i = 1, mm_nMat()
       mat => mm_getMatPtr(i)
       maxNuc = max(maxNuc, size(mat % nuclides))
 
       ! Add all nuclides in material to the map
       do j = 1, size(mat % nuclides)
-        call nucSet % add(mat % nuclides(j) % toChar(), IN_SET)
-
+        name = trim(mat % nuclides(j) % toChar())
+        if (mat % nuclides(j) % hasSab) then
+          zaid = trim(mat % nuclides(j) % toChar())
+          file = trim(mat % nuclides(j) % file_Sab)
+          name = zaid // '+' // file
+          deallocate(zaid, file)
+        end if
+        call nucSet % add(name, IN_SET)
       end do
     end do
 
@@ -501,12 +526,29 @@ contains
     i = nucSet % begin()
     nucIdx = 1
     do while (i /= nucSet % end())
-      if(loud) then
-        print '(A)', "Building: "// trim(nucSet % atKey(i))// " with index: " //numToChar(nucIdx)
+
+      idx = index(nucSet % atKey(i),'+')
+      if (idx /= 0) then
+        name = trim(nucSet % atKey(i))
+        name_file = trim(name(idx+1:nameLen))
+        name = name(1:idx-1)
+      else
+        name = nucSet % atKey(i)
       end if
 
-      call new_neutronACE(ACE, nucSet % atKey(i))
+      if(loud) then
+        print '(A)', "Building: "// trim(name)// " with index: " //numToChar(nucIdx)
+        if (idx /= 0) print '(A)', "including S(alpha,beta) tables with file: " //trim(name_file)
+      end if
+
+      call new_neutronACE(ACE, name)
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
+
+      ! Initialise S(alpha,beta) tables
+      if (idx /= 0 ) then
+        call new_moderACE(ACE_Sab, name_file)
+        call self % nuclides(nucIdx) % init_Sab(ACE_Sab)
+      end if
 
       ! Initialise probability tables
       if (self % hasUrr) call self % nuclides(nucIdx) % init_urr(ACE)
@@ -526,7 +568,14 @@ contains
       ! Load nuclide indices on storage space
       isFissileMat = .false.
       do j = 1, size(mat % nuclides)
-        nucIdxs(j) = nucSet % get( mat % nuclides(j) % toChar())
+        name = trim(mat % nuclides(j) % toChar())
+        if (mat % nuclides(j) % hasSab) then
+          zaid = trim(mat % nuclides(j) % toChar())
+          file = trim(mat % nuclides(j) % file_Sab)
+          name = zaid // '+' // file
+          deallocate(zaid, file)
+        end if
+        nucIdxs(j) = nucSet % get(name)
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
       end do
 

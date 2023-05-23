@@ -614,7 +614,7 @@ contains
   !!
   !! To identify entries uses 'read' Fortran data-transfer with following formats:
   !!   INT  -> '(I80)'
-  !!   REAL -> '(ES.80.80)'
+  !!   REAL -> '(ES.80.0)'
   !!   CHAR -> If both INT & REAL return error during reading
   !! The above assumes that pathLen=80
   !!
@@ -641,7 +641,7 @@ contains
     end if
 
     ! Try to read data as a REAL and check if this gives an error
-    fmt = "(ES"//numToChar(pathLen)//"."//numToChar(pathLen)//")"
+    fmt = "(ES" // numToChar(pathLen) // ".0)"
     read(unit = buffer, fmt = fmt , iostat = readErr) self % r
 
     if (readErr == 0) then

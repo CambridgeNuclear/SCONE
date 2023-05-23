@@ -54,6 +54,7 @@ contains
     integer(shortInt)                         :: event
     real(defReal)                             :: sigmaT, dist
     type(distCache)                           :: cache
+    character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
     STLoop: do
 
@@ -85,6 +86,12 @@ contains
       if( p % matIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         p % fate = LEAK_FATE
+      end if
+
+      ! Give error if the particle somehow ended in an undefined material
+      if (p % matIdx() == UNDEF_MAT) then
+        print *, p % rGlobal()
+        call fatalError(Here, "Particle is in undefined material")
       end if
 
       ! Return if particle stoped at collision (not cell boundary)
