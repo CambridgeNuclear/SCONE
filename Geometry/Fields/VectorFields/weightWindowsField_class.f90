@@ -28,6 +28,16 @@ module weightWindowsField_class
   !! Sample Dictionary Input:
   !!   varianceReduction { type weightWindowsField; file /home/WWfile.txt ;}
   !!
+  !! Sample weight window file:
+  !!   map {type spaceMap;  axis x;  grid unstruct;  bins (0.0 1.0 2.0 4.5); }
+  !!   constSurvival 2.0;
+  !!   wLower (0.5 0.1 0.2);
+  !!   wUpper (2.0 1.2 1.5);
+  !!
+  !! NOTE: the map can be of any type, including energyMap or multiMap. In the case
+  !!       of a multiMap, the elements of wLower and wUpper must be ordered according
+  !!       to the indexing used by multiMaps
+  !!
   !! Public Members:
   !!   net ->  map that lays over the geometry. Can be any type of Tally Map; it can
   !!           also include undefined bins if weight windows values are given
@@ -83,14 +93,16 @@ contains
     call dict2 % get(self % upperW, 'wUpper')
 
     ! Check data consistency
-    if (size(self % lowerW) /= self % N) then
+    if (size(self % lowerW) /= self % N .or. size(self % upperW) /= self % N) then
       call fatalError(Here, 'Size of weight window net does not match the map provided')
     end if
-
     if (self % constSurvival <= ONE) call fatalError(Here, 'Survival constant must be bigger than one')
     if (any(self % lowerW * self % constSurvival > self % upperW)) then
       call fatalError(Here, 'Russian Roulette survival weight must be smaller &
                            & than the weight window upper weight')
+    end if
+    if (any(self % lowerW < ZERO) .or. any(self % upperW < ZERO)) then
+      call fatalError(Here, 'Some weights in the weight windows provided are negative')
     end if
 
 
@@ -103,7 +115,9 @@ contains
     class(weightWindowsField), intent(inout) :: self
 
     call self % net % kill()
-    deallocate(self % net)
+    if (allocated(self % net)) deallocate(self % net)
+    self % N = 0
+    self % constSurvival = ZERO
 
   end subroutine kill
 

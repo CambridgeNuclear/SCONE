@@ -2,6 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
+  use universalVariables
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -56,14 +57,14 @@ module neutronCEimp_class
   !!  avgWgt  -> weight of a particle on surviving splitting (optional)
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
-  !!  weightWs  -> uses a weight windows field (off by default)
-  !!  splitting -> splits particles above certain weight (off by default)
-  !!  roulette  -> roulettes particles below certain weight (off by defautl)
   !!  tresh_E -> Energy treshold for explicit treatment of target nuclide movement [-].
   !!             Target movment is sampled if neutron energy E < kT * tresh_E where
   !!             kT is target material temperature in [MeV]. (default = 400.0)
   !!  tresh_A -> Mass treshold for explicit tratment of target nuclide movement [Mn].
   !!             Target movment is sampled if target mass A < tresh_A. (default = 1.0)
+  !!  splitting -> splits particles above certain weight (off by default)
+  !!  roulette  -> roulettes particles below certain weight (off by defautl)
+  !!  weightWindows  -> uses a weight windows field (off by default)
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -79,7 +80,7 @@ module neutronCEimp_class
   !!   #avgWgt         <real>;#
   !!   #impAbs         <logical>;#
   !!   #impGen         <logical>;#
-  !!   #weightWs       <logical>;#
+  !!   #weightWindows  <logical>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEimp
@@ -138,7 +139,6 @@ contains
     class(neutronCEimp), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
     integer(shortInt)                  :: idx
-    character(nameLen)                 :: name
     character(100), parameter :: Here = 'init (neutronCEimp_class.f90)'
 
     ! Call superclass
@@ -154,7 +154,7 @@ contains
     call dict % getOrDefault(self % tresh_A, 'massTreshold', 1.0_defReal)
 
     ! Obtain settings for variance reduction
-    call dict % getOrDefault(self % weightWindows,'weightWs', .false.)
+    call dict % getOrDefault(self % weightWindows,'weightWindows', .false.)
     call dict % getOrDefault(self % splitting,'split', .false.)
     call dict % getOrDefault(self % roulette,'roulette', .false.)
     call dict % getOrDefault(self % minWgt,'minWgt',0.25_defReal)
@@ -184,8 +184,7 @@ contains
 
     ! Sets up the weight windows field
     if (self % weightWindows) then
-      name = 'WeightWindows'
-      idx = gr_fieldIdx(name)
+      idx = gr_fieldIdx(nameWW)
       self % weightWindowsMap => weightWindowsField_TptrCast(gr_fieldPtr(idx))
     end if
 
@@ -477,6 +476,7 @@ contains
 
     if (p % E < self % minE) then
       p % isDead = .true.
+
     ! Weight Windows treatment
     elseif (self % weightWindows) then
       val = self % weightWindowsMap % at(p)
@@ -484,6 +484,8 @@ contains
       maxWgt = val(2)
       avWgt  = val(3)
 
+      ! If a particle is outside the WW map and all the weight limits
+      ! are zero nothing happens. NOTE: this holds for positive weights only
       if ((p % w > maxWgt) .and. (maxWgt /= ZERO)) then
         call self % split(p, thisCycle, maxWgt)
       elseif (p % w < minWgt) then
@@ -493,9 +495,11 @@ contains
     ! Splitting with fixed threshold
     elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
       call self % split(p, thisCycle, self % maxWgt)
+
     ! Roulette with fixed threshold and survival weight
     elseif ((self % roulette) .and. (p % w < self % minWgt)) then
       call self % russianRoulette(p, self % avWgt)
+
     end if
 
   end subroutine cutoffs
@@ -524,21 +528,12 @@ contains
     class(particle), intent(inout)        :: p
     class(particleDungeon), intent(inout) :: thisCycle
     real(defReal), intent(in)             :: maxWgt
-    integer(shortInt)                     :: mult, n, i
-    real(defReal)                         :: prob
+    integer(shortInt)                     :: mult, i
 
     ! This value must be at least 2
-    n = floor(p % w/maxWgt)
-    prob = p % w/maxWgt - n
+    mult = ceiling(p % w/maxWgt)
 
-    if (p % pRNG % get() < prob) then
-      mult = n + 1
-    else
-      mult = n
-    end if
-
-    if (mult == 1) return
-
+    ! Decrease weight
     p % w = p % w/mult
 
     ! Add split particle's to the dungeon

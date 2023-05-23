@@ -274,7 +274,7 @@ contains
     character(10)                                   :: time
     character(8)                                    :: date
     character(:),allocatable                        :: string
-    character(nameLen)                              :: nucData, energy, geomName, fieldName
+    character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
@@ -344,8 +344,7 @@ contains
     ! Read vaiance reduction option as a geometry field
     if (dict % isPresent('varianceReduction')) then
       tempDict => dict % getDictPtr('varianceReduction')
-      fieldName = 'WeightWindows'
-      call gr_addField(fieldName, tempDict)
+      call gr_addField(nameWW, tempDict)
     end if
 
     ! Activate Nuclear Data *** All materials are active
