@@ -1,9 +1,9 @@
-module MGxsClerk_test
+module mgXsClerk_test
 
   use numPrecision
   use endfConstants
   use genericProcedures,         only : numToChar
-  use MGxsClerk_class,           only : MGxsClerk
+  use mgXsClerk_class,           only : mgXsClerk
   use particle_class,            only : particle
   use particleDungeon_class,     only : particleDungeon
   use dictionary_class,          only : dictionary
@@ -15,23 +15,23 @@ module MGxsClerk_test
   implicit none
 
   @testCase
-    type, extends(TestCase) :: test_MGxsClerk
+    type, extends(TestCase) :: test_mgXsClerk
       private
-      type(MGxsClerk)  :: clerk_test1
-      type(MGxsClerk)  :: clerk_test2
+      type(mgXsClerk)  :: clerk_test1
+      type(mgXsClerk)  :: clerk_test2
       type(testNeutronDatabase) :: nucData
     contains
       procedure :: setUp
       procedure :: tearDown
-  end type test_MGxsClerk
+  end type test_mgXsClerk
 
 contains
 
   !!
-  !! Sets up test_MGxsClerk object we can use in a number of tests
+  !! Sets up test_mgXsClerk object we can use in a number of tests
   !!
   subroutine setUp(this)
-    class(test_MGxsClerk), intent(inout) :: this
+    class(test_mgXsClerk), intent(inout) :: this
     type(dictionary)                     :: tempDict, energyDict, spaceDict
 
     ! Build energy map
@@ -80,7 +80,7 @@ contains
   !! Kills test case object
   !!
   subroutine tearDown(this)
-    class(test_MGxsClerk), intent(inout) :: this
+    class(test_mgXsClerk), intent(inout) :: this
 
     call this % clerk_test1 % kill()
     call this % clerk_test2 % kill()
@@ -97,7 +97,7 @@ contains
   !!
 @Test
   subroutine testScoring_clerk1(this)
-    class(test_MGxsClerk), intent(inout) :: this
+    class(test_mgXsClerk), intent(inout) :: this
     character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
@@ -174,7 +174,7 @@ contains
   !!
 @Test
   subroutine testScoring_clerk2(this)
-    class(test_MGxsClerk), intent(inout) :: this
+    class(test_mgXsClerk), intent(inout) :: this
     character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
@@ -235,4 +235,4 @@ contains
 
   end subroutine testScoring_clerk2
 
-end module MGxsClerk_test
+end module mgXsClerk_test
