@@ -1,4 +1,4 @@
-module MGxsClerk_class
+module mgXsClerk_class
 
   use numPrecision
   use tallyCodes
@@ -66,8 +66,8 @@ module MGxsClerk_class
   !!
   !! SAMPLE DICTIOANRY INPUT:
   !!
-  !! myMGxsClerk {
-  !!   type MGxsClerk;
+  !! myMgXsClerk {
+  !!   type mgXsClerk;
   !!   # energyMap { energyMap definition } #
   !!   # spaceMap  { <other tallyMap definition> } #
   !!   # PN 1; #
@@ -77,7 +77,7 @@ module MGxsClerk_class
   !!  NOTE: PN is a flag that indicates whether scattering matrices from P2 to P7
   !!        have to be calculated
   !!
-  type, public, extends(tallyClerk) :: MGxsClerk
+  type, public, extends(tallyClerk) :: mgXsClerk
     private
     ! Maps
     class(tallyMap), allocatable :: spaceMap
@@ -107,7 +107,7 @@ module MGxsClerk_class
     procedure  :: processPN
     procedure  :: display
 
-  end type MGxsClerk
+  end type mgXsClerk
 
 
 contains
@@ -118,7 +118,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
-    class(MGxsClerk), intent(inout)   :: self
+    class(mgXsClerk), intent(inout)   :: self
     class(dictionary), intent(in)     :: dict
     character(nameLen), intent(in)    :: name
 
@@ -154,7 +154,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(MGxsClerk), intent(inout) :: self
+    class(mgXsClerk), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -177,7 +177,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
-    class(MGxsClerk),intent(in)                :: self
+    class(mgXsClerk),intent(in)                :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
     validCodes = [inColl_CODE, outColl_CODE, cycleEnd_CODE]
@@ -190,7 +190,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   elemental function getSize(self) result(S)
-    class(MGxsClerk), intent(in) :: self
+    class(mgXsClerk), intent(in) :: self
     integer(shortInt)            :: S
 
     S = self % width * self % energyN * self % matN
@@ -203,7 +203,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportInColl(self, p, xsData, mem)
-    class(MGxsClerk), intent(inout)       :: self
+    class(mgXsClerk), intent(inout)       :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
@@ -213,7 +213,7 @@ contains
     real(defReal)                         :: totalXS, nuFissXS, captXS, fissXS, scattXS, flux
     integer(shortInt)                     :: enIdx, matIdx, binIdx
     integer(longInt)                      :: addr
-    character(100), parameter :: Here =' reportInColl (MGxsClerk_class.f90)'
+    character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
 
     ! Get current particle state
     state = p
@@ -273,7 +273,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportOutColl(self, p, MT, muL, xsData, mem)
-    class(MGxsClerk), intent(inout) :: self
+    class(mgXsClerk), intent(inout) :: self
     class(particle), intent(in)             :: p
     integer(shortInt), intent(in)           :: MT
     real(defReal), intent(in)               :: muL
@@ -401,7 +401,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportCycleEnd(self, end, mem)
-    class(MGxsClerk), intent(inout)     :: self
+    class(mgXsClerk), intent(inout)     :: self
     class(particleDungeon), intent(in)  :: end
     type(scoreMemory), intent(inout)    :: mem
     integer(longInt)                    :: addr, binIdx, enIdx, matIdx
@@ -460,7 +460,7 @@ contains
   !!
   pure subroutine processRes(self, mem, capt_res, fiss_res, transFL_res, transOS_res, &
                              nu_res, chi_res, P0_res, P1_res, prod_res)
-    class(MGxsClerk), intent(in)    :: self
+    class(mgXsClerk), intent(in)    :: self
     type(scoreMemory), intent(in)   :: mem
     real(defReal), dimension(:,:), allocatable, intent(out) :: capt_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: fiss_res
@@ -623,7 +623,7 @@ contains
   !!   none
   !!
   pure subroutine processPN(self, mem, P2_res, P3_res, P4_res, P5_res, P6_res, P7_res)
-    class(MGxsClerk), intent(in)     :: self
+    class(mgXsClerk), intent(in)     :: self
     type(scoreMemory), intent(in)    :: mem
     real(defReal), dimension(:,:), allocatable, intent(out) :: P2_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: P3_res
@@ -712,7 +712,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
-    class(MGxsClerk), intent(in)               :: self
+    class(mgXsClerk), intent(in)               :: self
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     integer(shortInt),dimension(:),allocatable :: resArrayShape
@@ -877,11 +877,11 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine display(self, mem)
-    class(MGxsClerk), intent(in)  :: self
+    class(mgXsClerk), intent(in)  :: self
     type(scoreMemory), intent(in) :: mem
 
-    print *, 'MGxsClerk does not support display yet'
+    print *, 'mgXsClerk does not support display yet'
 
   end subroutine display
 
-end module MGxsClerk_class
+end module mgXsClerk_class
