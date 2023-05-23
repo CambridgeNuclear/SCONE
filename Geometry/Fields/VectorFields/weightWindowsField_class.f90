@@ -103,7 +103,9 @@ contains
     class(weightWindowsField), intent(inout) :: self
 
     call self % net % kill()
-    deallocate(self % net)
+    if (allocated(self % net)) deallocate(self % net)
+    self % N = 0
+    self % constSurvival = ZERO
 
   end subroutine kill
 
