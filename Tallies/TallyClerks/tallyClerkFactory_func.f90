@@ -17,6 +17,7 @@ module tallyClerkFactory_func
   use dancoffBellClerk_class,          only : dancoffBellClerk
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
+  use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
   private
@@ -36,7 +37,8 @@ module tallyClerkFactory_func
                                                                         'simpleFMClerk            ',&
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
-                                                                        'dancoffBellClerk         ']
+                                                                        'dancoffBellClerk         ',&
+                                                                        'mgXsClerk                ']
 
 contains
 
@@ -94,6 +96,10 @@ contains
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
+       call new % init(dict, name)
+
+     case('mgXsClerk')
+       allocate(mgXsClerk :: new)
        call new % init(dict, name)
 
      !*** NEW TALLY MAP TEMPLATE ***!
