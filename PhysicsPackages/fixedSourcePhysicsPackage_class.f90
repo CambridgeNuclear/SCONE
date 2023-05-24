@@ -24,7 +24,7 @@ module fixedSourcePhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+                                             gr_geomIdx  => geomIdx, gr_addField => addField
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -130,7 +130,7 @@ contains
     type(particleDungeon), save                     :: buffer
     type(collisionOperator), save                   :: collOp
     class(transportOperator), allocatable, save     :: transOp
-    type(RNG), target, save                         :: pRNG     
+    type(RNG), target, save                         :: pRNG
     real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (fixedSourcePhysicsPackage_class.f90)'
     !$omp threadprivate(p, buffer, collOp, transOp, pRNG, j, bufferExtra, transferP)
@@ -138,7 +138,7 @@ contains
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
+
     ! Initialise neutron
     p % geomIdx = self % geomIdx
     p % k_eff = ONE
@@ -147,7 +147,7 @@ contains
     collOp = self % collOp
     transOp = self % transOp
     !$omp end parallel
-    
+
     nParticles = self % pop
 
     ! Reset and start timer
@@ -155,18 +155,18 @@ contains
     call timerStart(self % timerMain)
 
     do i=1,N_cycles
-      
+
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
-      
+
       call tally % reportCycleStart(self % thisCycle)
-      
+
       !$omp parallel do schedule(dynamic)
       gen: do n = 1, nParticles
-        
+
         ! TODO: Further work to ensure reproducibility!
         ! Create RNG which can be thread private
         pRNG = self % pRNG
@@ -230,7 +230,7 @@ contains
 
       ! Update RNG
       call self % pRNG % stride(self % pop)
-      
+
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
@@ -368,6 +368,12 @@ contains
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
+    ! Read vaiance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      tempDict => dict % getDictPtr('varianceReduction')
+      call gr_addField(nameWW, tempDict)
+    end if
+
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
@@ -392,6 +398,7 @@ contains
     ! Size particle dungeon
     ! Note no need to oversize for fixed source calculation
     allocate(self % thisCycle)
+
     call self % thisCycle % init(self % pop)
 
     ! Is the common buffer turned on? Set the size if so
