@@ -815,7 +815,7 @@ contains
     end do
     call outFile % endArray()
 
-    ! Deallocate from memory
+    ! Deallocate to limit memory consumption when writing to the output file
     deallocate(capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
 
     ! If high order scattering is requested, print the other matrices
@@ -865,7 +865,7 @@ contains
       end do
       call outFile % endArray()
 
-      ! Deallocate from memory
+      ! Deallocate to limit memory consumption when writing to the output file
       deallocate(P2, P3, P4, P5, P6, P7)
 
     end if
