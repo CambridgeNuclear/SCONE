@@ -74,17 +74,12 @@ contains
   !! See source_inter for details
   !!
   !! Errors:
-  !!   - error if an unrecognised particle type is provided
   !!   - error if an axis other than x, y, or z is given
-  !!   - error if shape is not square or circle
   !!
   subroutine init(self, dict, geom)
     class(bbSurfaceSource), intent(inout)    :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    character(30)                            :: type, tempName
-    integer(shortInt)                        :: matIdx, uniqueID
-    logical(defBool)                         :: isCE, isMG
     real(defReal), dimension(:), allocatable :: temp
     integer(shortInt)                        :: i, dir
     character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
@@ -115,6 +110,9 @@ contains
       if (self % dr(i) == 0) self % dir(i) = sign(1, dir)
     end do
 
+    ! Move by 2*SURF_TOL to ensure sourcing in correct material
+    self % r = self % r + 2*SURF_TOL*self % dir
+
     ! Get remaining information
     call dict % get(self % T, 'temp')
     call dict % get(self % deltaT, 'deltaT') ! Automatically added to dict in IMC physics package
@@ -130,12 +128,11 @@ contains
   !! If N is given as 0, then N is instead taken from the input dictionary defining this source
   !! to allow PP to have control over particle numbers
   !!
-  subroutine append(self, dungeon, N, rand, matIdx)
+  subroutine append(self, dungeon, N, rand)
     class(bbSurfaceSource), intent(inout)   :: self
     type(particleDungeon), intent(inout)    :: dungeon
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
-    integer(shortInt), intent(in), optional :: matIdx
     integer(shortInt)                       :: i
     type(RNG)                               :: pRand
     character(100), parameter               :: Here = 'append (bbSurfaceSource_class.f90)'
@@ -247,7 +244,6 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: num
 
     p % isMG = .true.
     p % G    = 1

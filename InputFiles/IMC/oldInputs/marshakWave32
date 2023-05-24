@@ -7,7 +7,6 @@ pop            5000;
 limit          50000;
 steps          1000;
 timeStepSize   0.5;
-printUpdates   12;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
@@ -23,6 +22,8 @@ source {
 
 tally  {
 	   }
+
+//grid { dimensions (10 1 1); searchN (100 1 1); }
 
 geometry { 
     type geometryStd;

@@ -18,6 +18,7 @@
 !!   matName     -> Return material Name given Index
 !!   matTemp     -> Return material Temperature given Index
 !!   matVol      -> Return material Volume given Index
+!!   matFile     -> Return file path to material data given matIdx
 !!   matIdx      -> Return material Index given Name
 !!
 module materialMenu_mod
@@ -118,6 +119,7 @@ module materialMenu_mod
   public :: matName
   public :: matTemp
   public :: matVol
+  public :: matFile
   public :: matIdx
 
 contains
@@ -276,6 +278,23 @@ contains
     end if
 
   end function matVol
+
+  !!
+  !! Return file path to material XS data given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material index
+  !!
+  !! Result:
+  !!   Path to file
+  !!
+  function matFile(idx) result(path)
+    integer(shortInt), intent(in) :: idx
+    character(pathLen)            :: path
+
+    call materialDefs(idx) % extraInfo % get(path,'xsFile')
+
+  end function matFile
 
   !!
   !! Return material index Given Name

@@ -5,7 +5,7 @@ type IMCPhysicsPackage;
 
 pop            10000;
 limit          200000;
-steps          10000;
+steps          1000;
 timeStepSize   0.05;
 printUpdates   4;
 
@@ -23,6 +23,8 @@ source {
 
 tally  {
 	   }
+
+grid { dimensions (25 1 1); searchN (1000 1 1); }
 
 geometry { 
     type geometryStd;

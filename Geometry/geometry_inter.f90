@@ -43,6 +43,7 @@ module geometry_inter
     procedure(moveGlobal), deferred      :: moveGlobal
     procedure(teleport), deferred        :: teleport
     procedure(activeMats), deferred      :: activeMats
+    procedure(latSizeN), deferred        :: latSizeN
 
     ! Common procedures
     procedure :: slicePlot
@@ -261,6 +262,18 @@ module geometry_inter
       class(geometry), intent(in)                  :: self
       integer(shortInt), dimension(:), allocatable :: matList
     end function activeMats
+
+    !!
+    !! Return dimensions of latUniverse
+    !!
+    !! fatalError if no latUniverse found, if there are multiple then it will return dimensions
+    !! of the first one found, which may not be what is wanted
+    !!
+    function latSizeN(self) result(sizeN)
+      import geometry, shortInt
+      class(geometry), intent(in)     :: self
+      integer(shortInt), dimension(3) :: sizeN
+    end function latSizeN
 
   end interface
 

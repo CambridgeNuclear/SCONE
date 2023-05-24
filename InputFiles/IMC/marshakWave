@@ -1,0 +1,49 @@
+// Marshak wave IMC benchmark
+// Requires lightSpeed and radiation constant set to ONE in universalVariables
+
+type IMCPhysicsPackage;
+
+pop            1000000;
+limit          2500000;
+steps          10;
+timeStepSize   0.5;
+printUpdates   20;
+
+collisionOperator { photonMG {type IMCMGstd;} } 
+
+transportOperator {
+                    type transportOperatorTimeHT; cutoff 0.8;
+                  } 
+
+tally  {}
+
+// Material photon source - optional but will default to rejection sampling if method not specified
+matSource { type imcSource; method fast; }
+
+// Black body surface source
+source { type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 10000; }
+
+// Spatial discretisation
+discretise { dimensions (500 1 1); }
+
+// Overlaid grid for hybrid tracking
+grid { dimensions (50 1 1); searchN (10 1 1); }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces { outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }}
+    cells {}
+    universes { root { id 100; type rootUniverse; border 1; fill mat1; }}
+}
+
+nuclearData {
+  handles {  mg { type baseMgIMCDatabase; }}
+
+  materials { mat1 { temp 0.01; composition {} xsFile ./DataFiles/marshakData; }}
+}
+  
+  
+  

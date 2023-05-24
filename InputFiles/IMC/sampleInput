@@ -83,7 +83,7 @@ nuclearData {
       composition {}
         // Empty dictionary required for composition.
 
-      xsFile ./imcSampleMat;
+      xsFile ./DataFiles/sampleData;
         // Location of material data file containing material properties.
 
       volume     1;
@@ -93,7 +93,7 @@ nuclearData {
     }
 
     // Example 2: mat2
-    //mat2 { temp 1; composition {} xsFile ./imcSampleMat2; volume 1 }
+    //mat2 { temp 1; composition {} xsFile ./DataFiles/sampleData2; volume 1 }
 
 } 
   

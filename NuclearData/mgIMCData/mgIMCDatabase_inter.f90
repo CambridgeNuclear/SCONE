@@ -1,5 +1,7 @@
 module mgIMCDatabase_inter
 
+  use numPrecision
+
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
 
@@ -19,7 +21,49 @@ module mgIMCDatabase_inter
   !!
   type, public, abstract, extends(nuclearDatabase) :: mgIMCDatabase
 
+  contains
+    procedure(getEmittedRad), deferred    :: getEmittedRad
+    procedure(updateProperties), deferred :: updateProperties
+    procedure(setTimeStep), deferred      :: setTimeStep
+
   end type mgIMCDatabase
+
+  abstract interface
+
+    !!
+    !! Return energy to be emitted during current time step
+    !!
+    !! Args:
+    !!   matIdx [in] [optional] -> If provided, return the energy to be emitted from only matIdx
+    !!                             Otherwise, return total energy to be emitted from all mats
+    !!
+    function getEmittedRad(self, matIdx) result(energy)
+      import :: mgIMCDatabase, shortInt, defReal
+      class(mgIMCDatabase), intent(in)        :: self
+      integer(shortInt), intent(in), optional :: matIdx
+      real(defReal)                           :: energy
+    end function getEmittedRad
+
+    !!
+    !! Update material properties based on energy absorbed during the time step
+    !!
+    subroutine updateProperties(self, tallyEnergy, printUpdates)
+      import mgIMCDatabase, defReal, shortInt
+      class(mgIMCDatabase), intent(inout)     :: self
+      real(defReal), dimension(:), intent(in) :: tallyEnergy
+      integer(shortInt), intent(in)           :: printUpdates
+    end subroutine updateProperties
+
+    !!
+    !! Provide each material with time step to calculate initial fleck factor
+    !!
+    subroutine setTimeStep(self, deltaT)
+      import mgIMCDatabase, defReal
+      class(mgIMCDatabase), intent(inout) :: self
+      real(defReal), intent(in)               :: deltaT
+    end subroutine setTimeStep
+
+  end interface
 
 contains
 

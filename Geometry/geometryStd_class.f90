@@ -9,6 +9,7 @@ module geometryStd_class
   use geometry_inter,     only : geometry, distCache
   use csg_class,          only : csg
   use universe_inter,     only : universe
+  use latUniverse_class,  only : latUniverse
   use surface_inter,      only : surface
 
   ! Nuclear Data
@@ -57,6 +58,7 @@ module geometryStd_class
     procedure :: moveGlobal
     procedure :: teleport
     procedure :: activeMats
+    procedure :: latSizeN
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -571,6 +573,43 @@ contains
 
     end do
   end subroutine closestDist_cache
+
+  !!
+  !! Return dimensions of latUniverse
+  !!
+  !! fatalError if no latUniverse found, if there are multiple then it will return dimensions
+  !! of the first one found, which may not be what is wanted
+  !!
+  function latSizeN(self) result(sizeN)
+    class(geometryStd), intent(in)  :: self
+    integer(shortInt), dimension(3) :: sizeN
+    integer(shortInt)               :: i
+    class(universe), pointer        :: uni
+    class(latUniverse), pointer     :: latUni
+    character(100), parameter :: Here = 'latSizeN (geometryStd_class.f90)'
+
+    ! Search for latUniverse
+    do i=1, self % geom % unis % getSize()
+
+      uni => self % geom % unis % getPtr(i)
+
+      select type(uni)
+        class is(latUniverse)
+          latUni => uni
+          exit
+
+        class default
+          latUni => null()
+
+      end select
+    end do
+
+    if (.not. associated(latUni)) call fatalError(Here, 'Lattice universe not found')
+
+    ! Find lattice dimensions
+    sizeN = latUni % getSizeN()
+
+  end function latSizeN
 
 
 end module geometryStd_class

@@ -1,5 +1,5 @@
 !!
-!! Transport operator time-dependent problems using a hybrid of delta tracking and surface tracking
+!! Transport operator for time-dependent problems using a hybrid of delta tracking and surface tracking
 !!
 module transportOperatorTimeHT_class
   use numPrecision
@@ -25,17 +25,26 @@ module transportOperatorTimeHT_class
   private
 
   !!
+  !! Tracking method
+  !!
+  integer(shortInt), parameter :: HT = 1    ! Hybrid tracking
+  integer(shortInt), parameter :: GT = 2    ! Grid tracking
+  integer(shortInt), parameter :: ST = 3    ! Surface tracking
+  integer(shortInt), parameter :: DT = 4    ! Delta tracking
+
+  !!
   !! Transport operator that moves a particle with using hybrid tracking, up to a time boundary
   !!
   type, public, extends(transportOperator)   :: transportOperatorTimeHT
-    real(defReal)                            :: majorant_inv
     real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
+    integer(shortInt)                        :: method
   contains
     procedure          :: transit => timeTracking
     procedure          :: init
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
+    procedure, private :: getMajInv
   end type transportOperatorTimeHT
 
 contains
@@ -49,23 +58,11 @@ contains
     real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
-    ! Get majorant XS inverse: 1/Sigma_majorant
-    self % majorant_inv = ONE / self % xsData % getMajorantXS(p)
-
-    ! Check for errors
-    if (p % time /= p % time) call fatalError(Here, 'Particle time is NaN')
-
-    ! Obtain sigmaT
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
-    ! Decide whether to use delta tracking or surface tracking
-    ! Vastly different opacities make delta tracking infeasable
-    if(sigmaT * self % majorant_inv > ONE - self % cutoff) then
-      ! Delta tracking
-      call self % deltaTracking(p)
-    else
-      ! Surface tracking
+    ! Select action based on specified method - HT and GT start with DT but can switch to ST
+    if (self % method == ST) then
       call self % surfaceTracking(p)
+    else
+      call self % deltaTracking(p)
     end if
 
     ! Check for particle leakage
@@ -131,13 +128,32 @@ contains
   end subroutine surfaceTracking
 
   !!
-  !! Perform delta tracking
+  !! Perform delta tracking - option to switch to surface tracking for HT and GT methods
   !!
   subroutine deltaTracking(self, p)
     class(transportOperatorTimeHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
-    real(defReal)                                 :: dTime, dColl, sigmaT
+    real(defReal)                                 :: dTime, dColl, dGrid, sigmaT, majorant_inv, dist
     character(100), parameter :: Here = 'deltaTracking (transportOperatorTimeHT_class.f90)'
+
+    ! Get majorant and grid crossing distance if required
+    majorant_inv = self % getMajInv(p)
+
+    ! Get initial opacity
+    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+
+    ! Check if surface tracking is needed, avoiding unnecessary grid calculations
+    if (sigmaT * majorant_inv < ONE - self % cutoff) then
+      call self % surfaceTracking(p)
+      return
+    end if
+
+    ! Calculate initial distance to grid
+    if (self % method == GT) then
+      dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    else
+      dGrid = INF
+    end if
 
     DTLoop:do
 
@@ -145,37 +161,72 @@ contains
       dTime = lightSpeed * (p % timeMax - p % time)
 
       ! Sample distance to collision
-      dColl = -log( p % pRNG % get() ) * self % majorant_inv
+      dColl = -log( p % pRNG % get() ) * majorant_inv
 
-      ! If dTime < dColl, move to end of time step location
-      if (dTime < dColl) then
-        call self % geom % teleport(p % coords, dTime)
-        p % fate = AGED_FATE
-        p % time = p % timeMax
-        exit DTLoop
-      end if
-
-      ! Otherwise, move to potential collision location
-      call self % geom % teleport(p % coords, dColl)
-      p % time = p % time + dColl / lightSpeed
+      ! Select particle by minimum distance
+      dist = min(dColl, dTime, dGrid)
+      call self % geom % teleport(p % coords, dist)
+      p % time = p % time + dist / lightSpeed
 
       ! Check for particle leakage
       if (p % matIdx() == OUTSIDE_FILL) return
 
-      ! Obtain local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      ! Act based on distance moved
+      if (dist == dGrid) then
+        ! Update values and cycle loop
+        majorant_inv = self % getMajInv(p)
+        dGrid = self % grid % getDistance(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        cycle DTLoop
 
-      ! Roll RNG to determine if the collision is real or virtual
-      ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT * self % majorant_inv) exit DTLoop
+      else if (dist == dTime) then
+        ! Update particle fate and exit
+        p % fate = AGED_FATE
+        p % time = p % timeMax
+        exit DTLoop
 
-      ! Protect against infinite loop
-      if (sigmaT*self % majorant_inv == 0) call fatalError(Here, '100 % virtual collision chance, &
-                                                                 &potentially infinite loop')
+      else ! Dist == dColl
+        ! Check for real or virtual collision
+        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        if (p % pRNG % get() < sigmaT * majorant_inv) exit DTLoop
+        ! Update grid distance
+        dGrid = dGrid - dColl
+
+      end if
+
+      ! Switch to surface tracking if needed
+      if (sigmaT * majorant_inv < ONE - self % cutoff) then
+        call self % surfaceTracking(p)
+        return
+      end if
+
 
     end do DTLoop
 
   end subroutine deltaTracking
+
+  !!
+  !! Return the inverse majorant opacity
+  !! For DT or HT this will be constant, for GT this will be dependent on position
+  !!
+  !! Args:
+  !!   p [in]  -> particle
+  !!
+  !! Result:
+  !!   maj_inv -> 1 / majorant opacity
+  !!
+  function getMajInv(self, p) result (maj_inv)
+    class(transportOperatorTimeHT), intent(in) :: self
+    class(particle), intent(in)                :: p
+    real(defReal)                              :: maj_inv
+
+    if (self % method == GT) then
+      maj_inv = ONE / self % grid % getValue(p % coords % lvl(1) % r, p % coords % lvl(1) % dir)
+    else
+      maj_inv = ONE / self % xsData % getMajorantXS(p)
+    end if
+
+  end function getMajInv
 
   !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
@@ -183,14 +234,50 @@ contains
   !! Cutoff of 1 gives exclusively delta tracking, cutoff of 0 gives exclusively surface tracking
   !!
   subroutine init(self, dict)
-    class(transportOperatorTimeHT), intent(inout) :: self
-    class(dictionary), intent(in)                 :: dict
+    class(transportOperatorTimeHT), intent(inout)    :: self
+    class(dictionary), intent(in)                    :: dict
+    character(nameLen)                               :: method
+    class(dictionary),pointer                        :: tempdict
+    character(100), parameter :: Here = "init (transportOperatorTimeHT_class.f90)"
 
     ! Initialise superclass
     call init_super(self, dict)
 
-    ! Get cutoff value
-    call dict % getOrDefault(self % cutoff, 'cutoff', 0.7_defReal)
+    ! Get tracking method
+    call dict % getOrDefault(method, 'method', 'HT')
+
+    select case (method)
+
+      ! Hybrid tracking
+      case ('HT')
+        self % method = HT
+        ! Get cutoff value
+        call dict % get(self % cutoff, 'cutoff')
+
+      ! Grid tracking
+      case ('GT')
+        self % method = GT
+        ! Get cutoff value
+        call dict % get(self % cutoff, 'cutoff')
+
+        ! Initialise grid for hybrid tracking
+        tempDict => dict % getDictPtr('grid')
+        allocate(self % grid)
+        call self % grid % init(tempDict)
+
+      ! Surface tracking
+      case ('ST')
+        self % method = ST
+
+      ! Delta tracking
+      case ('DT')
+        self % method = DT
+        self % cutoff = ONE
+
+      case default
+        call fatalError(Here, 'Invalid tracking method given. Must be HT, ST or DT.')
+
+    end select
 
   end subroutine init
 
