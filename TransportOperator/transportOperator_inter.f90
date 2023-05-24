@@ -20,6 +20,8 @@ module transportOperator_inter
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
+  ! Geometry interfaces
+  use trackingGrid_class,         only : trackingGrid
 
 
   implicit none
@@ -48,6 +50,8 @@ module transportOperator_inter
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(geometry), pointer         :: geom        => null()
+
+    class(trackingGrid), pointer     :: grid => null()
 
   contains
     ! Public interface
@@ -123,10 +127,9 @@ contains
   !!
   !! Initialise transport operator from dictionary and geometry
   !!
-  subroutine init(self, dict, geom)
-    class(transportOperator), intent(inout)  :: self
-    class(dictionary), intent(in)            :: dict
-    class(geometry), pointer, intent(in), optional     :: geom
+  subroutine init(self, dict)
+    class(transportOperator), intent(inout)    :: self
+    class(dictionary), intent(in)              :: dict
 
     ! Do nothing
 

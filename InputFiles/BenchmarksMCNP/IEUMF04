@@ -1,0 +1,178 @@
+
+// MCNP benchmark case IEU-MF-04
+//
+// This input file is for the detailed version of the benchmark case, there is also
+//  a simplified version with a single layered core
+//
+// Spherical geometry consisting of central cavity surrounded by 7-layered core, and graphite reflector
+// Benchmark keff = 1.0000 +/- 0.0030
+
+
+type eigenPhysicsPackage; 
+
+pop      200000;
+active 100; 
+inactive 200; 
+XSdata   ceData;
+dataType ce; 
+
+collisionOperator { neutronCE {type neutronCEstd;} 
+                     
+                  } 
+
+transportOperator { type transportOperatorST;
+                  } 
+
+inactiveTally {
+              } 
+
+activeTally  { 
+                display (keff);
+                norm fiss;
+                normVal 100.0;
+                keff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk; 
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                       response (flux); flux {type fluxResponse;}
+                      } 
+	      }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      cavity { id 9; type sphere; origin ( 0.0  0.0  0.0); radius 2.788; }
+      layer1 { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 6.000; }
+      layer2 { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 7.550; }
+      layer3 { id 3; type sphere; origin ( 0.0  0.0  0.0); radius 9.150; }
+      layer4 { id 4; type sphere; origin ( 0.0  0.0  0.0); radius 11.00; }
+      layer5 { id 5; type sphere; origin ( 0.0  0.0  0.0); radius 12.25; }
+      layer6 { id 6; type sphere; origin ( 0.0  0.0  0.0); radius 13.25; }
+      layer7 { id 7; type sphere; origin ( 0.0  0.0  0.0); radius 14.00; }
+      refl   { id 8; type sphere; origin ( 0.0  0.0  0.0); radius 17.20; }
+    }
+
+
+    cells
+    {
+      cavity { type simpleCell; id 9; surfaces (-9);   filltype mat; material void;   }
+      layer1 { type simpleCell; id 1; surfaces (9 -1); filltype mat; material layer1; }
+      layer2 { type simpleCell; id 2; surfaces (1 -2); filltype mat; material layer2; }
+      layer3 { type simpleCell; id 3; surfaces (2 -3); filltype mat; material layer3; }
+      layer4 { type simpleCell; id 4; surfaces (3 -4); filltype mat; material layer4; }
+      layer5 { type simpleCell; id 5; surfaces (4 -5); filltype mat; material layer5; }
+      layer6 { type simpleCell; id 6; surfaces (5 -6); filltype mat; material layer6; }
+      layer7 { type simpleCell; id 7; surfaces (6 -7); filltype mat; material layer7; }
+      refl   { type simpleCell; id 8; surfaces (7);    filltype mat; material refl;   }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 8; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells (1 2 3 4 5 6 7 8 9); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  }
+  
+  
+  materials { 
+    
+
+    layer1 {
+      temp       293;
+      composition {
+        92234.03  1.5926E-4;
+        92235.03  1.7443E-2;
+        92238.03  2.9996E-2;
+        06012.03  4.7018E-4;
+        26056.03  1.6180E-4;
+        74184.03  1.2287E-5;
+     }
+    }
+    layer2 {
+      temp       293;
+      composition {
+        92234.03  1.5878E-4;
+        92235.03  1.7415E-2;
+        92238.03  2.9887E-2;
+        06012.03  3.7502E-4;
+        26056.03  1.6131E-4;
+        74184.03  1.2250E-5;
+     }
+    }
+    layer3 {
+      temp       293;
+      composition {
+        92234.03  1.5803E-4;
+        92235.03  1.7418E-2;
+        92238.03  2.9651E-2;
+        06012.03  5.5986E-4;
+        26056.03  1.6054E-4;
+        74184.03  1.2192E-5;
+      }
+    }
+    layer4 {
+      temp       293;
+      composition {
+        92234.03  1.3423E-4;
+        92235.03  1.7356E-2;
+        92238.03  2.9786E-2;
+        06012.03  7.4727E-4;
+        26056.03  1.2054E-4;
+        74184.03  1.2205E-5;
+      }
+    }
+    layer5 {
+      temp       293;
+      composition {
+        92234.03  1.6281E-4;
+        92235.03  1.7417E-2;
+        92238.03  2.9663E-2;
+        06012.03  5.5983E-4;
+        26056.03  1.0034E-4;
+        74184.03  6.0956E-6;
+      }
+    }
+    layer6 {
+      temp       293;
+      composition {
+        92234.03  1.7609E-4;
+        92235.03  1.7326E-2;
+        92238.03  2.9432E-2;
+        06012.03  9.2737E-4;
+        26056.03  9.9725E-5;
+        74184.03  1.2117E-5;
+      }
+    }
+    layer7 {
+      temp       293;
+      composition {
+        92234.03  1.5156E-4;
+        92235.03  1.7266E-2;
+        92238.03  2.9309E-2;
+        06012.03  6.4604E-4;
+        26056.03  9.9245E-5;
+        74184.03  6.0294E-6;
+      }
+    }
+    refl {
+      temp       293;
+      composition {
+        06012.03  7.7716E-2;
+      }
+    }
+  } 
+  
+}
+  
+  
+  

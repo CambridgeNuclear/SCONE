@@ -102,16 +102,25 @@ contains
       class(source), intent(inout)         :: self
       type(particleDungeon), intent(inout) :: dungeon
       integer(shortInt), intent(in)        :: n
-      class(RNG), intent(inout)            :: rand
+      class(RNG), intent(in)               :: rand
+      type(RNG)                            :: pRand
       integer(shortInt)                    :: i
 
       ! Set dungeon size to begin
       call dungeon % setSize(n)
 
       ! Generate n particles to populate dungeon
+      ! TODO: advance the rand after source generation!
+      !       This should prevent reusing RNs during transport
+      !$omp parallel
+      pRand = rand
+      !$omp do private(pRand)
       do i = 1, n
-        call dungeon % replace(self % sampleParticle(rand), i)
+        call pRand % stride(i)
+        call dungeon % replace(self % sampleParticle(pRand), i)
       end do
+      !$omp end do
+      !$omp end parallel
 
     end subroutine generate
 
@@ -119,30 +128,27 @@ contains
     !! Generate particles to add to a particleDungeon without overriding
     !! particles already present
     !!
-    !! Adds to a particle dungeon n particles, sampled
+    !! Adds to a particle dungeon N particles, sampled
     !! from the corresponding source distributions
     !!
     !! Args:
     !!   dungeon [inout] -> particle dungeon to be added to
     !!   n [in]          -> number of particles to place in dungeon
     !!   rand [inout]    -> particle RNG object
-    !!   matIdx [in]     -> optional unused argument, here so that subclasses can override to
-    !!                      select matIdx to sample from
     !!
     !! Result:
     !!   A dungeon populated with n particles sampled from the source, plus
     !!   particles already present in dungeon
     !!
-    subroutine append(self, dungeon, n, rand, matIdx)
+    subroutine append(self, dungeon, N, rand)
       class(source), intent(inout)            :: self
       type(particleDungeon), intent(inout)    :: dungeon
-      integer(shortInt), intent(in)           :: n
+      integer(shortInt), intent(in)           :: N
       class(RNG), intent(inout)               :: rand
-      integer(shortInt), intent(in), optional :: matIdx
       integer(shortInt)                       :: i
 
       ! Generate n particles to populate dungeon
-      do i = 1, n
+      do i = 1, N
         call dungeon % detain(self % sampleParticle(rand))
       end do
 

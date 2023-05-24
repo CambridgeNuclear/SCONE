@@ -2,6 +2,7 @@ module energyMap_class
 
   use numPrecision
   use universalVariables
+  use preDefEnergyGrids
   use genericProcedures,   only : fatalError
   use dictionary_class,    only : dictionary
   use grid_class,          only : grid
@@ -50,6 +51,12 @@ module energyMap_class
   !!     bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0);
   !!   }
   !!
+  !!   predefMap {
+  !!     type energyMap;
+  !!     grid predef;
+  !!     name wims69;
+  !!   }
+  !!
   type, public,extends(tallyMap1D) :: energyMap
     private
     type(grid)        :: binBounds
@@ -65,9 +72,10 @@ module energyMap_class
     procedure  :: kill
 
     ! Class specific procedures
-    generic            :: build => build_fromGrid, build_structured
-    procedure,private  :: build_fromGrid
-    procedure,private  :: build_structured
+    generic            :: build => build_fromGrid, build_structured, build_predef
+    procedure, private :: build_fromGrid
+    procedure, private :: build_structured
+    procedure, private :: build_predef
   end type energyMap
 
 contains
@@ -115,6 +123,64 @@ contains
   end subroutine build_structured
 
   !!
+  !! Retrieves predefined bin boundaries, reverts the order of the grid to be
+  !! from thermal to fast, and calls the function to build from bins
+  !!
+  !! Args:
+  !!   name [in] -> name of the bin boundaries array, as present in preDefEnergyGrids
+  !!
+  !! Errors:
+  !!   None from here. Grid type is responsible for checking input consistency
+  !!
+  subroutine build_predef(self, name)
+    class(energyMap), intent(inout)        :: self
+    character(nameLen), intent(in)         :: name
+    real(defReal),dimension(:),allocatable :: bins
+    integer(shortInt)                      :: i, j, N
+    real(defReal)                          :: temp
+    character(100), parameter :: Here = 'build_predef (energyMap_class.f90)'
+
+    select case(name)
+      case('wims69')
+        bins = wims69
+
+      case('wims172')
+        bins = wims172
+
+      case('casmo40')
+        bins = casmo40
+
+      case('casmo23')
+        bins = casmo23
+
+      case('casmo12')
+        bins = casmo12
+
+      case('casmo7')
+        bins = casmo7
+
+      case('vitaminj')
+        bins = vitaminj
+
+      case default
+          call fatalError(Here,'Grid '//name//' is undefined!')
+    end select
+
+    ! Revert order from low to high (thermal to fast)
+    N = size(bins)
+    do i = 1, N/2       ! Head moves forward
+      j = N - i + 1     ! j = Tail moves backward
+      temp  = bins(i)      ! swap elements
+      bins(i)  = bins(j)
+      bins(j)  = temp
+    end do
+
+    ! Initialise
+    call self % build(bins)
+
+  end subroutine build_predef
+
+  !!
   !! Initialise from dictionary
   !!
   !! See tallyMap for specification
@@ -126,6 +192,7 @@ contains
     real(defReal)                          :: mini, maxi
     real(defReal),dimension(:),allocatable :: bins
     integer(shortInt)                      :: N
+    character(nameLen)                     :: name
     character(100), parameter     :: Here = 'init (energyMap_class.f90)'
 
     if(.not.dict % isPresent('grid')) call fatalError(Here,"Keyword 'grid' must be present")
@@ -163,7 +230,11 @@ contains
         call self % build(bins)
 
       case('predef')
-        call fatalError(Here,"Predefined energy grids are not yet implemented")
+        ! Read settings
+        call dict % get(name,'name')
+
+        ! Initialise
+        call self % build(name)
 
       case default
         call fatalError(Here,"'grid' keyword must be: lin, log, usntruct or predef")
@@ -291,5 +362,5 @@ contains
     self % N = 0
 
   end subroutine kill
-    
+
 end module energyMap_class

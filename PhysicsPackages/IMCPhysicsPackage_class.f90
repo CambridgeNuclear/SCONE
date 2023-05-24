@@ -25,6 +25,7 @@ module IMCPhysicsPackage_class
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx
+  use discretiseGeom_class,           only : discretise
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat ,&
@@ -36,8 +37,8 @@ module IMCPhysicsPackage_class
                                              ndReg_get         => get ,&
                                              ndReg_getMatNames => getMatNames
   use nuclearDatabase_inter,          only : nuclearDatabase
+  use mgIMCDatabase_inter,            only : mgIMCDatabase, mgIMCDatabase_CptrCast
   use IMCMaterial_inter,              only : IMCMaterial, IMCMaterial_CptrCast
-  use mgIMCMaterial_inter,            only : mgIMCMaterial
 
   ! Operators
   use collisionOperator_class,        only : collisionOperator
@@ -63,8 +64,9 @@ module IMCPhysicsPackage_class
   type, public,extends(physicsPackage) :: IMCPhysicsPackage
     private
     ! Building blocks
-    class(nuclearDatabase), pointer        :: nucData => null()
-    class(geometry), pointer               :: geom    => null()
+!    class(nuclearDatabase), pointer        :: nucData  => null()
+    class(mgIMCDatabase), pointer          :: nucData  => null()
+    class(geometry), pointer               :: geom     => null()
     integer(shortInt)                      :: geomIdx = 0
     type(collisionOperator)                :: collOp
     class(transportOperator), allocatable  :: transOp
@@ -131,17 +133,26 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
-    integer(shortInt)                               :: i, j, N, Ntemp
-    type(particle)                                  :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd, totEnergy
+    integer(shortInt)                               :: i, j, N, num, nParticles
+    type(particle), save                            :: p
+    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
+    type(collisionOperator), save                   :: collOp
+    class(transportOperator), allocatable, save     :: transOp
+    type(RNG), target, save                         :: pRNG
+    !$omp threadprivate(p, collOp, transOp, pRNG)
 
-    ! Attach nuclear data and RNG to particle
-    p % pRNG   => self % pRNG
+    !$omp parallel
     p % geomIdx = self % geomIdx
+
+    ! Create a collision + transport operator which can be made thread private
+    collOp = self % collOp
+    transOp = self % transOp
+
+    !$omp end parallel
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -149,15 +160,10 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
-    ! Create temps.txt file for easy access to results
-    open(unit = 10, file = 'temps.txt')
-
-    ! Build connections between materials
-    !call self % transOp % buildMajMap(p % pRNG, self % nucData)
-
     do i=1,N_steps
 
-      write(10, '(8A)') numToChar(i)
+      ! Update tracking grid if needed by transport operator
+      if (associated(self % transOp % grid)) call self % transOp % grid % update()
 
       ! Swap dungeons to store photons remaining from previous time step
       self % temp_dungeon => self % nextStep
@@ -172,28 +178,12 @@ contains
         N = self % limit - self % thisStep % popSize() - self % nMat - 1
       end if
 
-      ! Find total energy to be emitted
-      totEnergy = 0
-      do j=1, self % nMat
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        totEnergy = totEnergy + mat % getEmittedRad()
-      end do
-
-      ! Add to particle dungeon
-      do j=1, self % nMat
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (mat % getTemp() > 0) then
-          ! Choose particle numbers in proportion to zone energy
-          Ntemp = int(N * mat % getEmittedRad() / totEnergy)
-          ! Enforce at least 1 particle
-          if (Ntemp == 0) Ntemp = 1
-          call self % IMCSource % append(self % thisStep, Ntemp, p % pRNG, j)
-        end if
-      end do
+      ! Add to dungeon particles emitted from material
+      call self % IMCSource % append(self % thisStep, N, self % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, 0, p % pRNG)
+        call self % inputSource % append(self % thisStep, 0, self % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -202,13 +192,16 @@ contains
 
       call tally % reportCycleStart(self % thisStep)
 
-      ! Update majorants for transport operator
-      !call self % transOp % updateMajorants(p % pRNG)
+      nParticles = self % thisStep % popSize()
 
-      ! Assign new maximum particle time
-      p % timeMax = self % deltaT * i
+      !$omp parallel do schedule(dynamic)
+      gen: do num = 1, nParticles
 
-      gen: do
+        ! Create RNG which can be thread private
+        pRNG = self % pRNG
+        p % pRNG => pRNG
+        call p % pRNG % stride(num)
+
         ! Obtain paticle from dungeon
         call self % thisStep % release(p)
         call self % geom % placeCoord(p % coords)
@@ -217,6 +210,9 @@ contains
         if (p % getType() /= P_PHOTON_MG) then
           call fatalError(Here, 'Particle is not of type P_PHOTON_MG')
         end if
+
+        ! Assign maximum particle time
+        p % timeMax = self % deltaT * i
 
         ! For newly sourced particles, sample time uniformly within time step
         if (p % time == ZERO) then
@@ -235,7 +231,7 @@ contains
 
           ! Transport particle until its death
           history: do
-            call self % transOp % transport(p, tally, self % thisStep, self % nextStep)
+            call transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
 
             if(p % fate == AGED_FATE) then
@@ -245,16 +241,17 @@ contains
                 exit history
             end if
 
-            call self % collOp % collide(p, tally, self % thisStep, self % nextStep)
+            call collOp % collide(p, tally, self % thisStep, self % nextStep)
 
             if(p % isDead) exit history
 
           end do history
 
-        ! When dungeon is empty, exit
-        if (self % thisStep % isEmpty()) exit gen
-
       end do gen
+      !$omp end parallel do
+
+      ! Update RNG
+      call self % pRNG % stride(nParticles)
 
       ! Send end of time step report
       call tally % reportCycleEnd(self % thisStep)
@@ -291,25 +288,19 @@ contains
       end select
 
       ! Update material properties
-      do j = 1, self % nMat
-        mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
-        if (j <= self % printUpdates) then
-          print *
-          print *, "Material update:  ", mm_matName(j)
-          call mat % updateMat(tallyEnergy(j), .true.)
-        else
-          call mat % updateMat(tallyEnergy(j), .false.)
-        end if
-      end do
-      print *
+      call self % nucData % updateProperties(tallyEnergy, self % printUpdates)
 
       ! Reset tally for next time step
       call tallyAtch % reset('imcWeightTally')
 
-      print *, 'Completed: ', numToChar(i), ' of ', numToChar(N_steps)
-
     end do
 
+    ! Output final mat temperatures
+    open(unit = 10, file = 'temps.txt')
+    do j = 1, self % nMat
+      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(j))
+      write(10, '(8A)') mm_matName(j), numToChar(mat % getTemp())
+    end do
     close(10)
 
   end subroutine steps
@@ -354,8 +345,8 @@ contains
   subroutine init(self, dict)
     class(IMCPhysicsPackage), intent(inout)         :: self
     class(dictionary), intent(inout)                :: dict
-    class(dictionary),pointer                       :: tempDict
-    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4, locDict5
+    class(dictionary), pointer                      :: tempDict, geomDict, dataDict
+    type(dictionary)                                :: locDict1, locDict2, locDict3, locDict4
     integer(shortInt)                               :: seed_temp
     integer(longInt)                                :: seed
     character(10)                                   :: time
@@ -364,8 +355,9 @@ contains
     character(nameLen)                              :: nucData, geomName
     type(outputFile)                                :: test_out
     integer(shortInt)                               :: i
-    class(IMCMaterial), pointer                     :: mat
     character(nameLen), dimension(:), allocatable   :: mats
+    integer(shortInt), dimension(:), allocatable    :: latSizeN
+    type(dictionary),target                         :: newGeom, newData
     character(100), parameter :: Here ='init (IMCPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -411,21 +403,53 @@ contains
     ! Read whether to print particle source each time step
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
+    ! Automatically split geometry into a uniform grid
+    if (dict % isPresent('discretise')) then
+
+      ! Store dimensions of lattice
+      tempDict => dict % getDictPtr('discretise')
+      call tempDict % get(latSizeN, 'dimensions')
+
+      ! Create new input
+      call discretise(dict, newGeom, newData)
+
+      geomDict => newGeom
+      dataDict => newData
+
+    else
+      geomDict => dict % getDictPtr("geometry")
+      dataDict => dict % getDictPtr("nuclearData")
+
+    end if
+
     ! Build Nuclear Data
-    call ndReg_init(dict % getDictPtr("nuclearData"))
+    call ndReg_init(dataDict)
 
     ! Build geometry
-    tempDict => dict % getDictPtr('geometry')
     geomName = 'IMCGeom'
-    call gr_addGeom(geomName, tempDict)
+    call gr_addGeom(geomName, geomDict)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
-    self % nucData => ndReg_get(self % particleType)
+    self % nucData => mgIMCDatabase_CptrCast(ndReg_get(self % particleType))
 
-    ! Read particle source definition
+    call newGeom % kill()
+    call newData % kill()
+
+    ! Initialise IMC source
+    if (dict % isPresent('matSource')) then
+      tempDict => dict % getDictPtr('matSource')
+      call new_source(self % IMCSource, tempDict, self % geom)
+    else
+      call locDict1 % init(1)
+      call locDict1 % store('type', 'imcSource')
+      call new_source(self % IMCSource, locDict1, self % geom)
+      call locDict1 % kill()
+    end if
+
+    ! Read external particle source definition
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
       call tempDict % store('deltaT', self % deltaT)
@@ -433,26 +457,25 @@ contains
       self % sourceGiven = .true.
     end if
 
-    ! Initialise IMC source
-    call locDict1 % init(1)
-    call locDict1 % store('type', 'imcSource')
-    call new_source(self % IMCSource, locDict1, self % geom)
-
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
     call self % collOp % init(tempDict)
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict, self % geom)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')
     allocate(self % tally)
     call self % tally % init(tempDict)
 
+    ! Provide materials with time step
+    call self % nucData % setTimeStep(self % deltaT)
+
     ! Store number of materials
     self % nMat = mm_nMat()
+    self % printUpdates = min(self % printUpdates, self % nMat)
 
     ! Create array of material names
     allocate(mats(self % nMat))
@@ -460,29 +483,23 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Provide each material with time step
-    do i=1, self % nMat
-      mat => IMCMaterial_CptrCast(self % nucData % getMaterial(i))
-      call mat % setTimeStep(self % deltaT)
-    end do
-
     ! Initialise imcWeight tally attachment
-    call locDict2 % init(1)
-    call locDict3 % init(4)
-    call locDict4 % init(2)
-    call locDict5 % init(1)
+    call locDict1 % init(1)
+    call locDict2 % init(4)
+    call locDict3 % init(2)
+    call locDict4 % init(1)
 
-    call locDict5 % store('type', 'weightResponse')
-    call locDict4 % store('type','materialMap')
-    call locDict4 % store('materials', [mats])
-    call locDict3 % store('response', ['imcWeightResponse'])
-    call locDict3 % store('imcWeightResponse', locDict5)
-    call locDict3 % store('type','absorptionClerk')
-    call locDict3 % store('map', locDict4)
-    call locDict2 % store('imcWeightTally', locDict3)
+    call locDict4 % store('type', 'weightResponse')
+    call locDict3 % store('type','materialMap')
+    call locDict3 % store('materials', [mats])
+    call locDict2 % store('response', ['imcWeightResponse'])
+    call locDict2 % store('imcWeightResponse', locDict4)
+    call locDict2 % store('type','absorptionClerk')
+    call locDict2 % store('map', locDict3)
+    call locDict1 % store('imcWeightTally', locDict2)
 
     allocate(self % imcWeightAtch)
-    call self % imcWeightAtch % init(locDict2)
+    call self % imcWeightAtch % init(locDict1)
 
     call self % tally % push(self % imcWeightAtch)
 
@@ -520,6 +537,5 @@ contains
     print *
     print *, repeat("<>",50)
   end subroutine printSettings
-
 
 end module IMCPhysicsPackage_class

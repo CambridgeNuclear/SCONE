@@ -18,6 +18,7 @@
 !!   matName     -> Return material Name given Index
 !!   matTemp     -> Return material Temperature given Index
 !!   matVol      -> Return material Volume given Index
+!!   matFile     -> Return file path to material data given matIdx
 !!   matIdx      -> Return material Index given Name
 !!
 module materialMenu_mod
@@ -48,9 +49,11 @@ module materialMenu_mod
   !!   init -> build from a string
   !!
   type, public :: nuclideInfo
-    integer(shortInt) :: Z = -1
-    integer(shortInt) :: A = -1
-    integer(shortInt) :: T = -1
+    integer(shortInt)  :: Z = -1
+    integer(shortInt)  :: A = -1
+    integer(shortInt)  :: T = -1
+    logical(defBool)   :: hasSab = .false.
+    character(nameLen) :: file_Sab
   contains
     procedure :: init   => init_nuclideInfo
     procedure :: toChar => toChar_nuclideInfo
@@ -77,6 +80,7 @@ module materialMenu_mod
   !!
   !!   matDef {
   !!     temp 273;
+  !!     moder {1001.03 h-h2o.43;}
   !!     composition {
   !!       1001.03  5.028E-02;
   !!       8016.03  2.505E-02;
@@ -84,6 +88,10 @@ module materialMenu_mod
   !!     }
   !!     xsFile /home/uberMoffTarkin/XS/mat1.xs;
   !!   }
+  !!
+  !! NOTE: the moder dictionary is optional, necessary only if S(a,b) thermal scattering
+  !!       data are used. If some nuclides are included in moder but not in composition,
+  !!       those are ignored.
   !!
   type, public :: materialItem
     character(nameLen)                         :: name   = ''
@@ -111,6 +119,7 @@ module materialMenu_mod
   public :: matName
   public :: matTemp
   public :: matVol
+  public :: matFile
   public :: matIdx
 
 contains
@@ -271,6 +280,23 @@ contains
   end function matVol
 
   !!
+  !! Return file path to material XS data given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material index
+  !!
+  !! Result:
+  !!   Path to file
+  !!
+  function matFile(idx) result(path)
+    integer(shortInt), intent(in) :: idx
+    character(pathLen)            :: path
+
+    call materialDefs(idx) % extraInfo % get(path,'xsFile')
+
+  end function matFile
+
+  !!
   !! Return material index Given Name
   !!
   !! Args:
@@ -308,9 +334,10 @@ contains
     class(materialItem), intent(inout)          :: self
     character(nameLen),intent(in)               :: name
     class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: keys
+    character(nameLen),dimension(:),allocatable :: keys, moderKeys
     integer(shortInt)                           :: i
-    class(dictionary),pointer                   :: compDict
+    class(dictionary),pointer                   :: compDict, moderDict
+    logical(defBool)                            :: hasSab
 
     ! Return to initial state
     call self % kill()
@@ -328,10 +355,25 @@ contains
     allocate(self % nuclides(size(keys)))
     allocate(self % dens(size(keys)))
 
+    hasSab = .false.
+    ! Check if S(a,b) files are specified
+    if (dict % isPresent('moder')) then
+      moderDict => dict % getDictPtr('moder')
+      call moderDict % keys(moderKeys)
+      hasSab = .true.
+    end if
+
     ! Load definitions
     do i =1,size(keys)
-      call self % nuclides(i) % init(keys(i))
+      ! Check if S(a,b) is on and required for that nuclide
+      if (hasSab .and. moderDict % isPresent(keys(i))) then
+        self % nuclides(i) % hasSab = .true.
+        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
+      end if
+
+      ! Initialise the nuclides
       call compDict % get(self % dens(i), keys(i))
+      call self % nuclides(i) % init(keys(i))
     end do
 
     ! Save dictionary

@@ -126,11 +126,11 @@ module poly_func
         x = x - f / f_dash
 
         ! Check for convergence
-        tol = 0.0000000001
+        tol = 0.000000000001
         if( abs(x) > (1-tol)*abs(x_old) .and. abs(x) < (1+tol)*abs(x_old) ) exit iterate
 
         ! Call error if not converged
-        if( i >= 1000 ) then
+        if( i >= 10000 ) then
           call fatalError(Here, "Solution has not converged after 1000 iterations")
         end if
 

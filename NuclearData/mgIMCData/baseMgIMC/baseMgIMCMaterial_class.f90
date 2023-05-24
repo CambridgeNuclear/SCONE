@@ -29,6 +29,10 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
   integer(shortInt), parameter, public :: PLANCK_XS     = 4
 
+  ! IMC Calculation Type
+  integer(shortInt), parameter, public :: IMC  = 1
+  integer(shortInt), parameter, public :: ISMC = 2
+
   !!
   !! Basic type of MG material data
   !!
@@ -384,6 +388,9 @@ contains
       end if
     end if
 
+    ! Return if no energy change
+    if (self % getEmittedRad() == tallyEnergy) return
+
     ! Update material internal energy
     self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
     self % energyDens = self % matEnergy / self % V
@@ -401,8 +408,6 @@ contains
     beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
 
     self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
-
-    write(10, '(8A)') numToChar(self % T)
 
     ! Print updated properties 
     if (present(printUpdate)) then
@@ -453,8 +458,6 @@ contains
       end if
     end if
 
-    write(10, '(8A)') numToChar(self % T)
-
   end subroutine updateMatISMC
 
   !!
@@ -462,9 +465,15 @@ contains
   !!
   function tempFromEnergy(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: T
+    real(defReal)                           :: T, energyDens
 
-    T = poly_solve(self % updateEqn, self % cv, self % T, self % energyDens)
+    energyDens = self % matEnergy / self % V
+
+    if (energyDens == 0) then
+      T = 0
+    else
+      T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
+    end if
 
   end function tempFromEnergy
 

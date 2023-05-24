@@ -1,0 +1,104 @@
+// Marshak wave simulation using 16 equal spatial regions
+// *** lightSpeed and radiationConstant must both be changed to ONE in universalVariables ***
+
+type IMCPhysicsPackage;
+
+pop            16000;
+limit          320000;
+steps          1000;
+timeStepSize   0.5;
+printUpdates   4;
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTimeHT; cutoff 0.0;
+                  } 
+
+source {
+    type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 1000;
+}
+
+tally  {
+	   }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }
+    }
+
+    cells
+    {
+    }
+    universes
+    {
+      root { id 100; type rootUniverse; border 1; fill u<200>; }
+
+      lat  { id 200;
+             type latUniverse;
+             origin (0.0  0.0  0.0);
+             pitch  (0.25  1.0  1.0);
+             shape  (16  1  1);
+             padMat void;
+             map ( 1  2  3  4  5  6  7  8  9 10
+                  11 12 13 14 15 16);
+            }
+
+      zone1  { id 1;  type pinUniverse; radii (0.0); fills (mat1);  }
+      zone2  { id 2;  type pinUniverse; radii (0.0); fills (mat2);  }
+      zone3  { id 3;  type pinUniverse; radii (0.0); fills (mat3);  }
+      zone4  { id 4;  type pinUniverse; radii (0.0); fills (mat4);  }
+      zone5  { id 5;  type pinUniverse; radii (0.0); fills (mat5);  }
+      zone6  { id 6;  type pinUniverse; radii (0.0); fills (mat6);  }
+      zone7  { id 7;  type pinUniverse; radii (0.0); fills (mat7);  }
+      zone8  { id 8;  type pinUniverse; radii (0.0); fills (mat8);  }
+      zone9  { id 9;  type pinUniverse; radii (0.0); fills (mat9);  }
+      zone10 { id 10; type pinUniverse; radii (0.0); fills (mat10); }
+      zone11 { id 11; type pinUniverse; radii (0.0); fills (mat11); }
+      zone12 { id 12; type pinUniverse; radii (0.0); fills (mat12); }
+      zone13 { id 13; type pinUniverse; radii (0.0); fills (mat13); }
+      zone14 { id 14; type pinUniverse; radii (0.0); fills (mat14); }
+      zone15 { id 15; type pinUniverse; radii (0.0); fills (mat15); }
+      zone16 { id 16; type pinUniverse; radii (0.0); fills (mat16); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     mg   { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials {
+
+    mat1  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat2  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat3  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat4  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat5  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat6  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat7  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat8  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat9  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat10 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat11 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat12 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat13 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat14 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat15 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+    mat16 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.25; }
+
+  }
+
+}
+  
+  
+  

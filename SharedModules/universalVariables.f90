@@ -7,8 +7,12 @@ module universalVariables
   ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
-  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 5
+  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 8
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
+
+  ! CHANGE THIS: NUMBER WILL DEPEND ON SYSTEM ARCHITECTURE
+  ! WILL AFFECT PARALLEL SCALING
+  integer(shortInt), parameter, public :: array_pad = 64
 
   ! Display information
   integer(shortInt), parameter, public :: MAX_COL = 70 ! Maximum number of columns in console display
@@ -61,10 +65,6 @@ module universalVariables
                                   P_PHOTON_CE   = 3, &
                                   P_PHOTON_MG   = 4, &
                                   P_MATERIAL_MG = 5
-
-  ! IMC Calculation Type
-  integer(shortInt), parameter :: IMC = 1, &
-                                  ISMC = 2
 
   ! Search error codes
   integer(shortInt), parameter :: valueOutsideArray = -1,&

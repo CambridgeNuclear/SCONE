@@ -42,10 +42,9 @@ module transportOperatorHT_class
 
 contains
 
-  subroutine init(self, dict, geom)
+  subroutine init(self, dict)
     class(transportOperatorHT), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
-    class(geometry), pointer, intent(in), optional :: geom
 
     ! Initialise superclass
     call init_super(self, dict)

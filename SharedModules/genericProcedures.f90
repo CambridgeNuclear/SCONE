@@ -3,6 +3,7 @@ module genericProcedures
   use iso_fortran_env, only : compiler_version
 
   use numPrecision
+  use openmp_func, only : ompGetMaxThreads
   use endfConstants
   use universalVariables
 
@@ -258,7 +259,7 @@ module genericProcedures
   !! ERROR HANDLING FOR SEARCHES SHOULD BE DONE BY CLIENT
   !!
   !! Although it can be replaced by ERROR_CODE -> ERROR_MESSAGE translation function to
-  !! give nice strings instead of raw integers in the error messages... 
+  !! give nice strings instead of raw integers in the error messages...
   !!
   subroutine searchError(idx,Here)
     integer(shortInt),intent(in)  :: idx
@@ -1469,6 +1470,9 @@ module genericProcedures
     print * , ''
     print * , ''
     print * , "Compiler Info :   ", compiler_version()
+#ifdef _OPENMP
+    print '(A, I4)', " OpenMP Threads: ", ompGetMaxThreads()
+#endif
     print *
     print *, repeat(" <*((((>< ",10)
 

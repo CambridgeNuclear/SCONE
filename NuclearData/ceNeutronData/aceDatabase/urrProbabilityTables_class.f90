@@ -82,7 +82,7 @@ contains
         call self % buildFromACE(data)
 
       class default
-        call fatalError(Here,'Elastic neutron scattering cannot be build from '//data % myType())
+        call fatalError(Here,'Probability tables cannot be build from '//data % myType())
     end select
 
   end subroutine init

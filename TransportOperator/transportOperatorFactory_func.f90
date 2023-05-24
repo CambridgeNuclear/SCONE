@@ -12,12 +12,8 @@ module transportOperatorFactory_func
   use transportOperatorST_class,        only : transportOperatorST
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
-  use transportOperatorIMC_class,       only : transportOperatorIMC
   use transportOperatorTimeHT_class,    only : transportOperatorTimeHT
   !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
-
-  ! Geometry interfaces
-  use geometry_inter,                   only : geometry
 
   implicit none
   private
@@ -30,7 +26,6 @@ module transportOperatorFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST    ', &
                                                                          'transportOperatorDT    ', &
                                                                          'transportOperatorHT    ', &
-                                                                         'transportOperatorIMC   ', &
                                                                          'transportOperatorTimeHT']!, &
                                                                        !  'dynamicTranspOperDT']
 
@@ -42,10 +37,9 @@ contains
   !! Allocate new allocatable transportOperator to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_transportOperator(new, dict, geom)
+  subroutine new_transportOperator(new, dict)
     class(transportOperator),allocatable, intent(inout):: new
     class(dictionary), intent(in)                      :: dict
-    class(geometry), pointer, intent(in), optional     :: geom
     character(nameLen)                                 :: type
     character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
 
@@ -68,10 +62,6 @@ contains
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
         call new % init(dict)
-
-      case('transportOperatorIMC')
-        allocate( transportOperatorIMC :: new)
-        call new % init(dict, geom)
 
       case('transportOperatorTimeHT')
         allocate( transportOperatorTimeHT :: new)

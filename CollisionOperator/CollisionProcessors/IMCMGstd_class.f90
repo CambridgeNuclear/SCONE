@@ -2,7 +2,6 @@ module IMCMGstd_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : IMC, ISMC
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -23,6 +22,8 @@ module IMCMGstd_class
 
   implicit none
   private
+
+  integer(shortInt), parameter :: IMC = 1, ISMC = 2
 
   !!
   !! Standard (default) scalar collision processor for MG IMC

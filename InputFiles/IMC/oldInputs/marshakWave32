@@ -1,0 +1,139 @@
+// Marshak wave simulation using 32 equal spatial regions
+// *** lightSpeed and radiationConstant must both be changed to ONE in universalVariables ***
+
+type IMCPhysicsPackage;
+
+pop            5000;
+limit          50000;
+steps          1000;
+timeStepSize   0.5;
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTimeHT;
+                  } 
+
+source {
+    type bbSurfaceSource; r (-2 -2 -0.5 0.5 -0.5 0.5); temp 1; N 1000;
+}
+
+tally  {
+	   }
+
+//grid { dimensions (10 1 1); searchN (100 1 1); }
+
+geometry { 
+    type geometryStd;
+    boundary (0 0 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }
+    }
+
+    cells
+    {
+    }
+    universes
+    {
+      root { id 100; type rootUniverse; border 1; fill u<200>; }
+
+      lat  { id 200;
+             type latUniverse;
+             origin (0.0  0.0  0.0);
+             pitch  (0.125  1.0  1.0);
+             shape  (32  1  1);
+             padMat void;
+             map ( 1  2  3  4  5  6  7  8  9 10
+                  11 12 13 14 15 16 17 18 19 20
+                  21 22 23 24 25 26 27 28 29 30
+                  31 32);
+            }
+
+      zone1  { id 1;  type pinUniverse; radii (0.0); fills (mat1);  }
+      zone2  { id 2;  type pinUniverse; radii (0.0); fills (mat2);  }
+      zone3  { id 3;  type pinUniverse; radii (0.0); fills (mat3);  }
+      zone4  { id 4;  type pinUniverse; radii (0.0); fills (mat4);  }
+      zone5  { id 5;  type pinUniverse; radii (0.0); fills (mat5);  }
+      zone6  { id 6;  type pinUniverse; radii (0.0); fills (mat6);  }
+      zone7  { id 7;  type pinUniverse; radii (0.0); fills (mat7);  }
+      zone8  { id 8;  type pinUniverse; radii (0.0); fills (mat8);  }
+      zone9  { id 9;  type pinUniverse; radii (0.0); fills (mat9);  }
+      zone10 { id 10; type pinUniverse; radii (0.0); fills (mat10); }
+      zone11 { id 11; type pinUniverse; radii (0.0); fills (mat11); }
+      zone12 { id 12; type pinUniverse; radii (0.0); fills (mat12); }
+      zone13 { id 13; type pinUniverse; radii (0.0); fills (mat13); }
+      zone14 { id 14; type pinUniverse; radii (0.0); fills (mat14); }
+      zone15 { id 15; type pinUniverse; radii (0.0); fills (mat15); }
+      zone16 { id 16; type pinUniverse; radii (0.0); fills (mat16); }
+      zone17 { id 17; type pinUniverse; radii (0.0); fills (mat17); }
+      zone18 { id 18; type pinUniverse; radii (0.0); fills (mat18); }
+      zone19 { id 19; type pinUniverse; radii (0.0); fills (mat19); }
+      zone20 { id 20; type pinUniverse; radii (0.0); fills (mat20); }
+      zone21 { id 21; type pinUniverse; radii (0.0); fills (mat21); }
+      zone22 { id 22; type pinUniverse; radii (0.0); fills (mat22); }
+      zone23 { id 23; type pinUniverse; radii (0.0); fills (mat23); }
+      zone24 { id 24; type pinUniverse; radii (0.0); fills (mat24); }
+      zone25 { id 25; type pinUniverse; radii (0.0); fills (mat25); }
+      zone26 { id 26; type pinUniverse; radii (0.0); fills (mat26); }
+      zone27 { id 27; type pinUniverse; radii (0.0); fills (mat27); }
+      zone28 { id 28; type pinUniverse; radii (0.0); fills (mat28); }
+      zone29 { id 29; type pinUniverse; radii (0.0); fills (mat29); }
+      zone30 { id 30; type pinUniverse; radii (0.0); fills (mat30); }
+      zone31 { id 31; type pinUniverse; radii (0.0); fills (mat31); }
+      zone32 { id 32; type pinUniverse; radii (0.0); fills (mat32); }
+    }
+}
+
+nuclearData {
+
+  handles { 
+     mg   { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials {
+
+    mat1  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat2  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat3  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat4  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat5  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat6  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat7  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat8  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat9  { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat10 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat11 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat12 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat13 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat14 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat15 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat16 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat17 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat18 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat19 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat20 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat21 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat22 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat23 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat24 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat25 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat26 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat27 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat28 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat29 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat30 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat31 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+    mat32 { temp 0.01; composition {} xsFile ./dataFiles/imcData; volume 0.125; }
+
+  }
+
+}
+  
+  
+  

@@ -57,6 +57,8 @@ module ISMCPhysicsPackage_class
 
   private
 
+  integer(shortInt), parameter :: IMC = 1, ISMC = 2
+
   !!
   !! Physics Package for ISMC calculations
   !!
@@ -464,7 +466,7 @@ contains
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
     call tempDict % store('deltaT', self % deltaT)
-    call new_transportOperator(self % transOp, tempDict, self % geom)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')

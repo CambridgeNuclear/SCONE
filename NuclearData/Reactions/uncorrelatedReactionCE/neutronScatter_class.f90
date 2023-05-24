@@ -34,7 +34,7 @@ module neutronScatter_class
   !! Reaction Type for any neutron scattering
   !!
   !! This includes any reaction that produces secondary neutrons but is not fission
-  !! For example : inealactic scattering, (N,2N), (N,alphaN) etc.
+  !! For example : inelastic scattering, (N,2N), (N,alphaN) etc.
   !!
   !! Number of secondary emissions is independent of incident energy.
   !! No delayed emissions are supported
