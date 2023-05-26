@@ -7,7 +7,7 @@ module IMCSource_class
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
 
-  use particle_class,          only : particle, particleState, P_PHOTON
+  use particle_class,          only : particle, particleState, P_PHOTON, P_MATERIAL
   use particleDungeon_class,   only : particleDungeon
   use source_inter,            only : source, kill_super => kill
 
@@ -22,7 +22,10 @@ module IMCSource_class
   implicit none
   private
 
+  ! Position sampling method
   integer(shortInt), parameter :: REJ = 1, FAST = 2
+  ! Calculation type
+  integer(shortInt), parameter :: IMC = 1, ISMC = 2
 
   !!
   !! IMC Source for uniform generation of photons within a material
@@ -51,6 +54,7 @@ module IMCSource_class
     integer(shortInt)               :: G        = 0
     real(defReal), dimension(6)     :: bounds   = ZERO
     integer(shortInt)               :: method   = REJ
+    integer(shortInt)               :: calcType = IMC
   contains
     procedure :: init
     procedure :: append
@@ -71,7 +75,7 @@ contains
     class(imcSource), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    character(nameLen)                       :: method
+    character(nameLen)                       :: method, calcType
     character(100), parameter :: Here = 'init (imcSource_class.f90)'
 
     call dict % getOrDefault(self % G, 'G', 1)
@@ -96,6 +100,17 @@ contains
 
       case default
         call fatalError(Here, 'Unrecognised method. Should be "rejection" or "fast"')
+    end select
+
+    ! Select calculation type
+    call dict % getOrDefault(calcType, 'calcType', 'IMC')
+    select case(calcType)
+      case('IMC')
+        self % calcType = IMC
+      case('ISMC')
+        self % calcType = ISMC
+      case default
+        call fatalError(Here, 'Unrecognised calculation type. Should be "IMC" or "ISMC"')
     end select
 
   end subroutine init
@@ -131,13 +146,21 @@ contains
     if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
     ! Obtain total energy
-    totalEnergy = nucData % getEmittedRad()
+    if (self % calcType == IMC) then
+      totalEnergy = nucData % getEmittedRad()
+    else
+      totalEnergy = nucData % getMaterialEnergy()
+    end if
 
     ! Loop through materials
     do matIdx = 1, mm_nMat()
 
       ! Get energy to be emitted from material matIdx
-      energy = nucData % getEmittedRad(matIdx)
+      if (self % calcType == IMC) then
+        energy = nucData % getEmittedRad(matIdx)
+      else
+        energy = nucData % getMaterialEnergy(matIdx)
+      end if
 
       ! Choose particle numbers in proportion to material energy
       if (energy > ZERO) then
@@ -250,12 +273,18 @@ contains
     p % matIdx   = matIdx
     p % uniqueID = uniqueID
     p % time     = ZERO
-    p % type     = P_PHOTON
     p % r        = r
     p % dir      = dir
     p % G        = self % G
     p % isMG     = .true.
     p % wgt      = energy
+
+    ! Set particle type
+    if (self % calcType == IMC) then
+      p % type = P_PHOTON
+    else
+      p % type = P_MATERIAL
+    end if
 
   end function sampleIMC
 

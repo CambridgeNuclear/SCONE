@@ -58,8 +58,10 @@ module baseMgIMCDatabase_class
     procedure :: getNuclide
     procedure :: getReaction
     procedure :: getEmittedRad
+    procedure :: getMaterialEnergy
     procedure :: updateProperties
     procedure :: setTimeStep
+    procedure :: setCalcType
     procedure :: kill
     procedure :: init
     procedure :: activate
@@ -230,6 +232,34 @@ contains
   end function getEmittedRad
 
   !!
+  !! Return material energy
+  !!
+  !! Args:
+  !!   matIdx [in] [optional] -> If provided, return the energy of only matIdx
+  !!                             Otherwise, return total energy of all mats
+  !!
+  function getMaterialEnergy(self, matIdx) result(energy)
+    class(baseMgIMCDatabase), intent(in)    :: self
+    integer(shortInt), intent(in), optional :: matIdx
+    real(defReal)                           :: energy
+    integer(shortInt)                       :: i
+
+    ! If matIdx provided, return radiation emitted from only that material
+    if (present(matIdx)) then
+      energy = self % mats(matIdx) % getMatEnergy()
+      return
+    end if
+
+    ! Otherwise, return total energy emitted from all materials
+    energy = 0
+
+    do i=1, size(self % mats)
+      energy = energy + self % mats(i) % getMatEnergy()
+    end do
+
+  end function getMaterialEnergy
+
+  !!
   !! Update material properties based on energy absorbed during the time step
   !!
   subroutine updateProperties(self, tallyEnergy, printUpdates)
@@ -272,6 +302,20 @@ contains
     end do
 
   end subroutine setTimeStep
+
+  !!
+  !! Tell each material if we are using IMC or ISMC
+  !!
+  subroutine setCalcType(self, type)
+    class(baseMgIMCDatabase), intent(inout) :: self
+    integer(shortInt), intent(in)           :: type
+    integer(shortInt)                       :: i
+
+    do i=1, size(self % mats)
+      call self % mats(i) % setCalcType(type)
+    end do
+
+  end subroutine setCalcType
 
   !!
   !! Return to uninitialised state

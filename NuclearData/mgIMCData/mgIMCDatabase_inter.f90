@@ -22,9 +22,11 @@ module mgIMCDatabase_inter
   type, public, abstract, extends(nuclearDatabase) :: mgIMCDatabase
 
   contains
-    procedure(getEmittedRad), deferred    :: getEmittedRad
-    procedure(updateProperties), deferred :: updateProperties
-    procedure(setTimeStep), deferred      :: setTimeStep
+    procedure(getEmittedRad), deferred     :: getEmittedRad
+    procedure(getMaterialEnergy), deferred :: getMaterialEnergy
+    procedure(updateProperties), deferred  :: updateProperties
+    procedure(setTimeStep), deferred       :: setTimeStep
+    procedure(setCalcType), deferred       :: setCalcType
 
   end type mgIMCDatabase
 
@@ -45,6 +47,21 @@ module mgIMCDatabase_inter
     end function getEmittedRad
 
     !!
+    !! Return material energy
+    !!
+    !! Args:
+    !!   matIdx [in] [optional] -> If provided, return the energy of only matIdx
+    !!                             Otherwise, return total energy of all mats
+    !!
+    function getMaterialEnergy(self, matIdx) result(energy)
+      import :: mgIMCDatabase, shortInt, defReal
+      class(mgIMCDatabase), intent(in)        :: self
+      integer(shortInt), intent(in), optional :: matIdx
+      real(defReal)                           :: energy
+    end function getMaterialEnergy
+
+
+    !!
     !! Update material properties based on energy absorbed during the time step
     !!
     subroutine updateProperties(self, tallyEnergy, printUpdates)
@@ -62,6 +79,15 @@ module mgIMCDatabase_inter
       class(mgIMCDatabase), intent(inout) :: self
       real(defReal), intent(in)               :: deltaT
     end subroutine setTimeStep
+
+    !!
+    !! Tell each material if we are using IMC or ISMC
+    !!
+    subroutine setCalcType(self, type)
+      import mgIMCDatabase, shortInt
+      class(mgIMCDatabase), intent(inout) :: self
+      integer(shortInt), intent(in)       :: type
+    end subroutine setCalcType
 
   end interface
 

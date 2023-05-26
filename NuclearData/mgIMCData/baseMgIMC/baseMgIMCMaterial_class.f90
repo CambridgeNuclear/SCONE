@@ -29,7 +29,7 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
   integer(shortInt), parameter, public :: PLANCK_XS     = 4
 
-  ! IMC Calculation Type
+  ! Calculation Type
   integer(shortInt), parameter, public :: IMC  = 1
   integer(shortInt), parameter, public :: ISMC = 2
 
@@ -92,18 +92,56 @@ module baseMgIMCMaterial_class
     procedure :: getFleck
     procedure :: getEta
     procedure :: getTemp
-    procedure :: getEnergyDens
-    procedure :: setType
+    procedure :: getMatEnergy
+    procedure :: setCalcType
     procedure :: setTimeStep
 
-    procedure, private :: updateMatIMC
-    procedure, private :: updateMatISMC
     procedure, private :: tempFromEnergy
     procedure, private :: sigmaFromTemp
+    procedure, private :: updateFleck
 
   end type baseMgIMCMaterial
 
 contains
+
+  !!
+  !! Update material properties at each time step
+  !! First update energy using simple balance, then solve for temperature,
+  !!  then update temperature-dependent properties
+  !!
+  !! Args:
+  !!   tallyEnergy [in] -> Energy absorbed into material
+  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
+  !!
+  subroutine updateMat(self, tallyEnergy, printUpdate)
+    class(baseMgIMCMaterial),intent(inout)  :: self
+    real(defReal), intent(in)               :: tallyEnergy
+    logical(defBool), intent(in), optional  :: printUpdate
+    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
+
+    ! TODO: Print updates if requested
+
+    ! Return if no energy change
+    if (self % getEmittedRad() == tallyEnergy) return
+
+    ! Update material internal energy
+    if (self % calcType == IMC) then
+      self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
+    else
+      self % matEnergy = tallyEnergy
+    end if
+    self % energyDens = self % matEnergy / self % V
+
+    ! Update material temperature
+    self % T = self % tempFromEnergy()
+
+    ! Update sigma
+    call self % sigmaFromTemp()
+
+    ! Update fleck factor
+    call self % updateFleck()
+
+  end subroutine updateMat
 
   !!
   !! Return to uninitialised state
@@ -224,11 +262,10 @@ contains
     self % energyDens = poly_eval(self % updateEqn, self % T)
     self % matEnergy  = self % energyDens * self % V
 
-    ! Set calculation type (will support ISMC in the future)
+    ! Default to IMC calculation type
     self % calcType = IMC
 
   end subroutine init
-
 
   !!
   !! Provide material with time step size
@@ -242,30 +279,12 @@ contains
   subroutine setTimeStep(self, dt)
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal), intent(in)               :: dt
-    real(defReal)                           :: beta, zeta
     character(100), parameter               :: Here = 'setTimeStep (baseMgIMCMaterial_class.f90)'
 
     self % deltaT = dt
 
-    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-
-    ! Use time step size to calculate fleck factor
-    if(self % calcType == IMC) then
-      self % fleck = 1/(1+self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
-
-    else if(self % calcType == ISMC) then
-      self % eta  =   radiationConstant * self % T**4 / self % energyDens
-      zeta = beta - self % eta
-      self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
-      ! Deal with 0 temperature - needs more consideration for certain cv
-      if (self % fleck /= self % fleck) then
-        self % eta   = ZERO
-        self % fleck = 0.70414
-      end if
-
-    else
-      call fatalError(Here, 'Calculation type invalid or not set')
-    end if
+    ! Set initial fleck factor
+    call self % updateFleck()
 
   end subroutine setTimeStep
 
@@ -339,128 +358,6 @@ contains
   end function baseMgIMCMaterial_CptrCast
 
   !!
-  !! Update material properties at each time step
-  !! First update energy using simple balance, then solve for temperature,
-  !!  then update temperature-dependent properties
-  !!
-  !! Args:
-  !!   tallyEnergy [in] -> Energy absorbed into material
-  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
-  !!
-  subroutine updateMat(self, tallyEnergy, printUpdate)
-    class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal), intent(in)               :: tallyEnergy
-    logical(defBool), intent(in), optional  :: printUpdate
-    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
-
-    select case (self % calcType)
-
-      case(IMC)
-        call self % updateMatIMC(tallyEnergy, printUpdate)
-
-      case(ISMC)
-        call self % updateMatISMC(tallyEnergy, printUpdate)
-
-      case default
-        call fatalError(Here, "Invalid calculation type")
-
-    end select
-
-  end subroutine updateMat
-
-  !!
-  !! Material update for IMC calculation
-  !!
-  subroutine updateMatIMC(self, tallyEnergy, printUpdate)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal), intent(in)               :: tallyEnergy
-    logical(defBool), intent(in), optional  :: printUpdate
-    real(defReal)                           :: beta
-    character(100), parameter               :: Here = "updateMatIMC (baseMgIMCMaterial_class.f90)"
-
-    ! Print current properties
-    if (present(printUpdate)) then
-      if (printUpdate .eqv. .True.) then
-        print *, "  T_old =                         ", self % T
-        print *, "  matEnergy at start of timestep =", self % matEnergy
-        print *, "  emittedRad =                    ", self % getEmittedRad()
-        print *, "  tallyEnergy =                   ", tallyEnergy
-      end if
-    end if
-
-    ! Return if no energy change
-    if (self % getEmittedRad() == tallyEnergy) return
-
-    ! Update material internal energy
-    self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
-    self % energyDens = self % matEnergy / self % V
-
-    ! Update material temperature
-    self % T = self % tempFromEnergy()
-
-    ! Update sigma
-    call self % sigmaFromTemp()
-
-    if( self % T < 0 ) then
-     call fatalError(Here, "Temperature is negative")
-    end if
-
-    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-
-    self % fleck = 1/(1+1*self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
-
-    ! Print updated properties 
-    if (present(printUpdate)) then
-      if(printUpdate .eqv. .True.) then
-        print *, "  matEnergy at end of timestep =  ", self % matEnergy
-        print *, "  T_new =                         ", self % T
-      end if
-    end if
-
-  end subroutine updateMatIMC
-
-  !!
-  !! Material update for ISMC calculation
-  !!
-  subroutine updateMatISMC(self, tallyEnergy, printUpdate)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal), intent(in)               :: tallyEnergy
-    real(defReal)                           :: beta, zeta
-    logical(defBool), intent(in), optional  :: printUpdate
-
-    ! Update material internal energy
-    self % matEnergy  = tallyEnergy
-    self % energyDens = self % matEnergy / self % V
-
-    ! Update material temperature
-    self % T = self % tempFromEnergy()
-
-    ! Update sigma
-    call self % sigmaFromTemp()
-
-    ! Update ISMC equivalent of fleck factor
-    beta = 4*radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
-    self % eta  =   radiationConstant * self % T**4 / self % energyDens
-    zeta = beta - self % eta
-    self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
-
-    ! Deal with 0 temperature - needs more consideration for certain cv
-    if (self % fleck /= self % fleck) then
-      self % eta   = ZERO
-      self % fleck = 0.70414
-    end if
-
-    ! Print updated properties 
-    if (present(printUpdate)) then
-      if(printUpdate .eqv. .True.) then
-        print *, "  matEnergy at end of timestep =  ", self % matEnergy
-        print *, "  T_new =                         ", self % T
-      end if
-    end if
-
-  end subroutine updateMatISMC
-
-  !!
   !! Calculate the temperature of material from internal energy
   !!
   function tempFromEnergy(self) result(T)
@@ -492,6 +389,35 @@ contains
 
   end subroutine sigmaFromTemp
 
+  !!
+  !! Update fleck factor
+  !!
+  subroutine updateFleck(self)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    real(defReal)                           :: beta, zeta
+    character(100), parameter               :: Here = 'updateFleck (baseMgIMCMaterial_class.f90)'
+
+    ! Calculate beta, ratio of radiation and material heat capacities
+    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+
+    ! Use time step size to calculate fleck factor
+    select case(self % calcType)
+
+      case(IMC)
+        self % fleck = 1/(1+self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
+
+      case(ISMC)
+        self % eta = radiationConstant * self % T**4 / self % energyDens
+        zeta = beta - self % eta
+        self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+        ! TODO: Check that 0 temperature will not cause problems
+
+      case default
+        call fatalError(Here, 'Unrecognised calculation type')
+
+    end select
+
+  end subroutine updateFleck
 
   !!
   !! Return the energy to be emitted during time step, E_r
@@ -544,13 +470,14 @@ contains
   !!
   !! Return energy per unit volume of material
   !!
-  function getEnergyDens(self) result(energyDens)
+  function getMatEnergy(self) result(energy)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: energyDens
+    real(defReal)                           :: energy
 
-    energyDens = poly_eval(self % updateEqn, self % T)
+    !energy = poly_eval(self % updateEqn, self % T) * self % V
+    energy = self % matEnergy
 
-  end function getEnergyDens
+  end function getMatEnergy
 
   !!
   !! Set the calculation type to be used
@@ -562,16 +489,15 @@ contains
   !! Errors:
   !!   Unrecognised option
   !!
-  subroutine setType(self, calcType)
+  subroutine setCalcType(self, calcType)
     class(baseMgIMCMaterial), intent(inout) :: self
     integer(shortInt), intent(in)           :: calcType
-    real(defReal)                           :: beta, zeta
-    character(100), parameter               :: Here = 'setType (baseMgIMCMaterial_class.f90)'
+    character(100), parameter               :: Here = 'setCalcType (baseMgIMCMaterial_class.f90)'
 
     if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
 
     self % calcType = calcType
 
-  end subroutine setType
+  end subroutine setCalcType
 
 end module baseMgIMCMaterial_class

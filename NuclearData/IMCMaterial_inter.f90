@@ -36,8 +36,8 @@ module IMCMaterial_inter
     procedure(getFleck), deferred        :: getFleck
     procedure(getEta), deferred          :: getEta
     procedure(getTemp), deferred         :: getTemp
-    procedure(getEnergyDens), deferred   :: getEnergyDens
-    procedure(setType), deferred         :: setType
+    procedure(getMatEnergy), deferred    :: getMatEnergy
+    procedure(setCalcType), deferred     :: setCalcType
     procedure(setTimeStep), deferred     :: setTimeStep
   end type IMCMaterial
 
@@ -116,13 +116,13 @@ module IMCMaterial_inter
     end function getTemp
 
     !!
-    !! Return energy per unit volume of material
+    !! Return material energy
     !!
-    function getEnergyDens(self) result(energyDens)
+    function getMatEnergy(self) result(energy)
       import :: IMCMaterial, defReal
       class(IMCMaterial), intent(inout) :: self
-      real(defReal)                     :: energyDens
-    end function getEnergyDens
+      real(defReal)                     :: energy
+    end function getMatEnergy
 
     !!
     !! Set the calculation type to be used
@@ -134,11 +134,11 @@ module IMCMaterial_inter
     !! Errors:
     !!   Unrecognised option
     !!
-    subroutine setType(self, calcType)
+    subroutine setCalcType(self, calcType)
       import :: IMCMaterial, shortInt
       class(IMCMaterial), intent(inout) :: self
       integer(shortInt), intent(in)     :: calcType
-    end subroutine setType
+    end subroutine setCalcType
 
     !!
     !! Provide material with time step size
