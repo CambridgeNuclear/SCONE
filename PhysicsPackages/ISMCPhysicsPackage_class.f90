@@ -160,26 +160,13 @@ contains
 
     allocate(tallyEnergy(self % nMat))
 
+    ! Generate initial population of material particles
+    call self % IMCSource % append(self % thisStep, self % pop, self % pRNG)
+
     do i=1,N_steps
 
       ! Update tracking grid if needed by transport operator
       if (associated(self % transOp % grid)) call self % transOp % grid % update()
-
-      ! Swap dungeons to store photons remaining from previous time step
-      self % temp_dungeon => self % nextStep
-      self % nextStep     => self % thisStep
-      self % thisStep     => self % temp_dungeon
-      call self % nextStep % cleanPop()
-
-      ! Select total number of particles to generate from material emission
-      N = self % pop
-      if (N + self % thisStep % popSize() > self % limit) then
-        ! Fleck and Cummings IMC Paper, eqn 4.11
-        N = self % limit - self % thisStep % popSize() - self % nMat - 1
-      end if
-
-      ! Add to dungeon particles emitted from material
-      call self % IMCSource % append(self % thisStep, N, self % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
@@ -207,8 +194,8 @@ contains
         call self % geom % placeCoord(p % coords)
 
         ! Check particle type
-        if (p % getType() /= P_PHOTON_MG) then
-          call fatalError(Here, 'Particle is not of type P_PHOTON_MG')
+        if (p % getType() /= P_PHOTON_MG .and. p % getType() /= P_MATERIAL_MG) then
+          call fatalError(Here, 'Particle is not of type P_PHOTON_MG or P_MATERIAL_MG')
         end if
 
         ! Assign maximum particle time
@@ -231,6 +218,7 @@ contains
 
           ! Transport particle until its death
           history: do
+
             call transOp % transport(p, tally, self % thisStep, self % nextStep)
             if(p % isDead) exit history
 
@@ -292,6 +280,12 @@ contains
 
       ! Reset tally for next time step
       call tallyAtch % reset('imcWeightTally')
+
+      ! Swap dungeons in preparation for next time step
+      self % temp_dungeon => self % nextStep
+      self % nextStep     => self % thisStep
+      self % thisStep     => self % temp_dungeon
+      call self % nextStep % cleanPop()
 
     end do
 
@@ -442,6 +436,7 @@ contains
     ! Initialise ISMC source
     if (dict % isPresent('matSource')) then
       tempDict => dict % getDictPtr('matSource')
+      call tempDict % store('calcType', 'ISMC')
       call new_source(self % IMCSource, tempDict, self % geom)
     else
       call locDict1 % init(2)

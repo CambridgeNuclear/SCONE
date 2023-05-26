@@ -1,6 +1,7 @@
 module mgIMCDatabase_inter
 
   use numPrecision
+  use RNG_class,        only : RNG
 
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
@@ -27,6 +28,7 @@ module mgIMCDatabase_inter
     procedure(updateProperties), deferred  :: updateProperties
     procedure(setTimeStep), deferred       :: setTimeStep
     procedure(setCalcType), deferred       :: setCalcType
+    procedure(sampleTransformTime), deferred :: sampleTransformTime
 
   end type mgIMCDatabase
 
@@ -65,7 +67,7 @@ module mgIMCDatabase_inter
     !! Update material properties based on energy absorbed during the time step
     !!
     subroutine updateProperties(self, tallyEnergy, printUpdates)
-      import mgIMCDatabase, defReal, shortInt
+      import :: mgIMCDatabase, defReal, shortInt
       class(mgIMCDatabase), intent(inout)     :: self
       real(defReal), dimension(:), intent(in) :: tallyEnergy
       integer(shortInt), intent(in)           :: printUpdates
@@ -75,7 +77,7 @@ module mgIMCDatabase_inter
     !! Provide each material with time step to calculate initial fleck factor
     !!
     subroutine setTimeStep(self, deltaT)
-      import mgIMCDatabase, defReal
+      import :: mgIMCDatabase, defReal
       class(mgIMCDatabase), intent(inout) :: self
       real(defReal), intent(in)               :: deltaT
     end subroutine setTimeStep
@@ -84,10 +86,22 @@ module mgIMCDatabase_inter
     !! Tell each material if we are using IMC or ISMC
     !!
     subroutine setCalcType(self, type)
-      import mgIMCDatabase, shortInt
+      import :: mgIMCDatabase, shortInt
       class(mgIMCDatabase), intent(inout) :: self
       integer(shortInt), intent(in)       :: type
     end subroutine setCalcType
+
+    !!
+    !! Sample the time taken for a material particle to transform into a photon
+    !! Used for ISMC only
+    !!
+    function sampleTransformTime(self, matIdx, rand) result(t)
+      import :: mgIMCDatabase, shortInt, RNG, defReal
+      class(mgIMCDatabase), intent(inout) :: self
+      integer(shortInt), intent(in)       :: matIdx
+      class(RNG), intent(inout)           :: rand
+      real(defReal)                       :: t
+    end function sampleTransformTime
 
   end interface
 

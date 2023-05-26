@@ -51,6 +51,7 @@ module mgIMCMaterial_inter
     procedure(getMatEnergy), deferred       :: getMatEnergy
     procedure(setCalcType), deferred        :: setCalcType
     procedure(setTimeStep), deferred        :: setTimeStep
+    procedure(sampleTransformTime), deferred :: sampleTransformTime
 
   end type mgIMCMaterial
 
@@ -186,6 +187,16 @@ module mgIMCMaterial_inter
       real(defReal), intent(in)           :: dt
     end subroutine setTimeStep
 
+    !!
+    !! Sample the time taken for a material particle to transform into a photon
+    !! Used for ISMC only
+    !!
+    function sampleTransformTime(self, rand) result(t)
+      import :: mgIMCMaterial, RNG, defReal
+      class(mgIMCMaterial), intent(inout) :: self
+      class(RNG), intent(inout)           :: rand
+      real(defReal)                       :: t
+    end function sampleTransformTime
 
   end interface
 

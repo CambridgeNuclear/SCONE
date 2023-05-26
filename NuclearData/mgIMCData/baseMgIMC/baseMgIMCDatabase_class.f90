@@ -8,6 +8,7 @@ module baseMgIMCDatabase_class
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : fileToDict
+  use RNG_class,          only : RNG
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,   only : nuclearDatabase
@@ -62,6 +63,7 @@ module baseMgIMCDatabase_class
     procedure :: updateProperties
     procedure :: setTimeStep
     procedure :: setCalcType
+    procedure :: sampleTransformTime
     procedure :: kill
     procedure :: init
     procedure :: activate
@@ -316,6 +318,20 @@ contains
     end do
 
   end subroutine setCalcType
+
+  !!
+  !! Sample the time taken for a material particle to transform into a photon
+  !! Used for ISMC only
+  !!
+  function sampleTransformTime(self, matIdx, rand) result(t)
+    class(baseMgIMCDatabase), intent(inout) :: self
+    integer(shortInt), intent(in)           :: matIdx
+    class(RNG), intent(inout)               :: rand
+    real(defReal)                           :: t
+
+    t = self % mats(matIdx) % sampleTransformTime(rand)
+
+  end function sampleTransformTime
 
   !!
   !! Return to uninitialised state

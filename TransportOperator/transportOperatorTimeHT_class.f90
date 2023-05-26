@@ -6,7 +6,7 @@ module transportOperatorTimeHT_class
   use universalVariables
 
   use genericProcedures,          only : fatalError, numToChar
-  use particle_class,             only : particle, P_PHOTON
+  use particle_class,             only : particle, P_PHOTON, P_MATERIAL
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
   use rng_class,                  only : rng
@@ -23,6 +23,7 @@ module transportOperatorTimeHT_class
 
   ! Nuclear data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
+  use mgIMCDatabase_inter,        only : mgIMCDatabase, mgIMCDatabase_CptrCast
 
   implicit none
   private
@@ -48,6 +49,7 @@ module transportOperatorTimeHT_class
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
     procedure, private :: getMajInv
+    procedure, private :: materialTransform
   end type transportOperatorTimeHT
 
 contains
@@ -60,6 +62,13 @@ contains
     class(particleDungeon), intent(inout)         :: nextCycle
     real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
+
+    ! Transform material particles into photons
+    if (p % type == P_MATERIAL) then
+      call self % materialTransform(p, tally)
+      ! Exit at time boundary
+      if (p % fate == AGED_FATE) return
+    end if
 
     ! Select action based on specified method - HT and GT start with DT but can switch to ST
     if (self % method == ST) then
@@ -121,7 +130,7 @@ contains
       else if (dist == dColl) then
         ! Collision, increase time accordingly
         if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV &
-                                                    &after moving dTime')
+                                                    &after moving dColl')
         exit STLoop
 
       end if
@@ -230,6 +239,49 @@ contains
     end if
 
   end function getMajInv
+
+  !!
+  !! Determine when a material particle will transform into a photon for ISMC calculations
+  !!
+  !! Args:
+  !!   p [inout]     -> material particle to be transformed
+  !!   tally [inout] -> tally to keep track of material particles surviving time step
+  !!
+  subroutine materialTransform(self, p, tally)
+    class(transportOperatorTimeHT), intent(inout) :: self
+    class(particle), intent(inout)                :: p
+    type(tallyAdmin), intent(inout)               :: tally
+    real(defReal)                                 :: transformTime, mu, phi
+    real(defReal), dimension(3)                   :: dir
+    class(mgIMCDatabase), pointer                 :: nucData
+    character(100), parameter                     :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
+
+    nucData => mgIMCDatabase_CptrCast(self % xsData)
+    if (.not. associated(nucData)) call fatalError(Here, 'Unable to find mgIMCDatabase')
+
+    ! Sample time until emission
+    transformTime = nucData % sampleTransformTime(p % matIdx(), p % pRNG)
+    p % time = min(p % timeMax, p % time + transformTime)
+
+    ! Exit loop if particle remains material until end of time step
+    if (p % time == p % timeMax) then
+      p % fate = AGED_FATE
+      ! Tally energy for next temperature calculation
+      call tally % reportHist(p)
+
+    ! Transform into photon
+    else
+      p % type = P_PHOTON
+      ! Resample direction
+      mu = 2 * p % pRNG % get() - 1
+      phi = p % pRNG % get() * 2*pi
+      dir(1) = mu
+      dir(2) = sqrt(1-mu**2) * cos(phi)
+      dir(3) = sqrt(1-mu**2) * sin(phi)
+      call p % point(dir)
+    end if
+
+  end subroutine materialTransform
 
   !!
   !! Provide transport operator with delta tracking/surface tracking cutoff

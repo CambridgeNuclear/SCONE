@@ -95,6 +95,7 @@ module baseMgIMCMaterial_class
     procedure :: getMatEnergy
     procedure :: setCalcType
     procedure :: setTimeStep
+    procedure :: sampleTransformTime
 
     procedure, private :: tempFromEnergy
     procedure, private :: sigmaFromTemp
@@ -117,19 +118,22 @@ contains
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: printUpdate
+    real(defReal)                           :: previous
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
     ! TODO: Print updates if requested
 
-    ! Return if no energy change
-    if (self % getEmittedRad() == tallyEnergy) return
-
+    previous = self % matEnergy
     ! Update material internal energy
     if (self % calcType == IMC) then
       self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
     else
       self % matEnergy = tallyEnergy
     end if
+
+    ! Return if no change
+    if (self % matEnergy == previous) return
+
     self % energyDens = self % matEnergy / self % V
 
     ! Update material temperature
@@ -499,5 +503,23 @@ contains
     self % calcType = calcType
 
   end subroutine setCalcType
+
+  !!
+  !! Sample the time taken for a material particle to transform into a photon
+  !! Used for ISMC only
+  !!
+  function sampleTransformTime(self, rand) result(t)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    class(RNG), intent(inout)               :: rand
+    real(defReal)                           :: t
+    integer(shortInt)                       :: G
+
+    G = 1
+
+    t = -log(rand % get()) / (self % data(CAPTURE_XS,G) * self % fleck * self % eta * lightSpeed)
+
+    ! TODO: consider implications when T = 0 (=> eta = 0)
+
+  end function sampleTransformTime
 
 end module baseMgIMCMaterial_class
