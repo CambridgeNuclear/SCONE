@@ -1,4 +1,4 @@
-module IMCSource_class
+module materialSource_class
 
   use numPrecision
   use endfConstants
@@ -42,9 +42,9 @@ module IMCSource_class
   !!   source_inter Interface
   !!
   !! SAMPLE INPUT:
-  !!   imcSource { type IMCSource; }
+  !!   matSource { type materialSource; calcType IMC; method fast; }
   !!
-  type, public,extends(source) :: imcSource
+  type, public,extends(source) :: materialSource
     private
     logical(defBool)                :: isMG     = .true.
     real(defReal), dimension(3)     :: bottom   = ZERO
@@ -52,6 +52,7 @@ module IMCSource_class
     real(defReal), dimension(3)     :: latPitch = ZERO
     integer(shortInt), dimension(3) :: latSizeN = 0
     integer(shortInt)               :: G        = 0
+    integer(shortInt)               :: pType    = P_PHOTON
     real(defReal), dimension(6)     :: bounds   = ZERO
     integer(shortInt)               :: method   = REJ
     integer(shortInt)               :: calcType = IMC
@@ -62,7 +63,7 @@ module IMCSource_class
     procedure, private :: sampleIMC
     procedure, private :: getMatBounds
     procedure :: kill
-  end type imcSource
+  end type materialSource
 
 contains
 
@@ -72,11 +73,11 @@ contains
   !! See source_inter for details
   !!
   subroutine init(self, dict, geom)
-    class(imcSource), intent(inout)          :: self
+    class(materialSource), intent(inout)     :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: method, calcType
-    character(100), parameter :: Here = 'init (imcSource_class.f90)'
+    character(100), parameter :: Here = 'init (materialSource_class.f90)'
 
     call dict % getOrDefault(self % G, 'G', 1)
 
@@ -107,8 +108,10 @@ contains
     select case(calcType)
       case('IMC')
         self % calcType = IMC
+        self % pType    = P_PHOTON
       case('ISMC')
         self % calcType = ISMC
+        self % pType    = P_MATERIAL
       case default
         call fatalError(Here, 'Unrecognised calculation type. Should be "IMC" or "ISMC"')
     end select
@@ -130,7 +133,7 @@ contains
   !!   already present in dungeon
   !!
   subroutine append(self, dungeon, N, rand)
-    class(imcSource), intent(inout)         :: self
+    class(materialSource), intent(inout)    :: self
     type(particleDungeon), intent(inout)    :: dungeon
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
@@ -139,7 +142,7 @@ contains
     real(defReal)                           :: energy, totalEnergy
     type(RNG)                               :: pRand
     class(mgIMCDatabase), pointer           :: nucData
-    character(100), parameter               :: Here = "append (IMCSource_class.f90)"
+    character(100), parameter               :: Here = "append (materialSource_class.f90)"
 
     ! Get pointer to appropriate nuclear database
     nucData => ndReg_getIMCMG()
@@ -201,10 +204,10 @@ contains
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(imcSource), intent(inout)      :: self
+    class(materialSource), intent(inout) :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
-    character(100), parameter :: Here = 'sampleParticle (IMCSource_class.f90)'
+    character(100), parameter :: Here = 'sampleParticle (materialSource_class.f90)'
 
     ! Should not be called, useful to have extra inputs so use sampleIMC instead
     call fatalError(Here, 'Should not be called, sampleIMC should be used instead.')
@@ -226,7 +229,7 @@ contains
   !!                  rejection sampling method, and bounds of single material if using fast
   !!
   function sampleIMC(self, rand, targetMatIdx, energy, bounds) result(p)
-    class(imcSource), intent(inout)         :: self
+    class(materialSource), intent(inout)    :: self
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in)           :: targetMatIdx
     real(defReal), intent(in)               :: energy
@@ -235,7 +238,7 @@ contains
     real(defReal), dimension(3)             :: bottom, top, r, dir, rand3
     real(defReal)                           :: mu, phi
     integer(shortInt)                       :: i, matIdx, uniqueID
-    character(100), parameter :: Here = 'sampleIMC (IMCSource_class.f90)'
+    character(100), parameter :: Here = 'sampleIMC (materialSource_class.f90)'
 
     ! Sample particle position
     bottom = bounds(1:3)
@@ -278,13 +281,7 @@ contains
     p % G        = self % G
     p % isMG     = .true.
     p % wgt      = energy
-
-    ! Set particle type
-    if (self % calcType == IMC) then
-      p % type = P_PHOTON
-    else
-      p % type = P_MATERIAL
-    end if
+    p % type     = self % pType
 
   end function sampleIMC
 
@@ -303,13 +300,13 @@ contains
   !!   Would be nice to have most of this in a geometry module
   !!
   function getMatBounds(self, matIdx) result(matBounds)
-    class(imcSource), intent(inout)          :: self
+    class(materialSource), intent(inout)     :: self
     integer(shortInt), intent(in)            :: matIdx
     real(defReal), dimension(6)              :: matBounds
     integer(shortInt), dimension(3)          :: ijk
     integer(shortInt)                        :: i, latIdFlipped
     character(nameLen)                       :: matName
-    character(100), parameter                :: Here = 'getMatBounds (imcSourceClass.f90)'
+    character(100), parameter                :: Here = 'getMatBounds (materialSourceClass.f90)'
 
     ! Extract lattice position from mat name (e.g. "m106 -> 106")
     ! This is different from localID in latUniverse_class as is counting from a different
@@ -331,7 +328,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(imcSource), intent(inout) :: self
+    class(materialSource), intent(inout) :: self
 
     call kill_super(self)
 
@@ -378,4 +375,4 @@ contains
   end function get_ijk
 
 
-end module IMCSource_class
+end module materialSource_class

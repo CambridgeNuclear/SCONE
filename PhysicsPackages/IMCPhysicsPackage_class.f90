@@ -92,7 +92,7 @@ module IMCPhysicsPackage_class
     type(particleDungeon), pointer :: nextStep     => null()
     type(particleDungeon), pointer :: temp_dungeon => null()
     class(source), allocatable     :: inputSource
-    class(source), allocatable     :: IMCSource
+    class(source), allocatable     :: matSource
 
     ! Timer bins
     integer(shortInt)  :: timerMain
@@ -179,7 +179,7 @@ contains
       end if
 
       ! Add to dungeon particles emitted from material
-      call self % IMCSource % append(self % thisStep, N, self % pRNG)
+      call self % matSource % append(self % thisStep, N, self % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
@@ -441,11 +441,11 @@ contains
     ! Initialise IMC source
     if (dict % isPresent('matSource')) then
       tempDict => dict % getDictPtr('matSource')
-      call new_source(self % IMCSource, tempDict, self % geom)
+      call new_source(self % matSource, tempDict, self % geom)
     else
       call locDict1 % init(1)
-      call locDict1 % store('type', 'imcSource')
-      call new_source(self % IMCSource, locDict1, self % geom)
+      call locDict1 % store('type', 'materialSource')
+      call new_source(self % matSource, locDict1, self % geom)
       call locDict1 % kill()
     end if
 
