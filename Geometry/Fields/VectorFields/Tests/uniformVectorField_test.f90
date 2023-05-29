@@ -2,7 +2,7 @@ module uniformVectorField_test
 
   use numPrecision
   use dictionary_class,         only : dictionary
-  use particle_class,           only : particle
+  use coord_class,              only : coordList
   use field_inter,              only : field
   use vectorField_inter,        only : vectorField, vectorField_CptrCast
   use uniformVectorField_class, only : uniformVectorField, uniformVectorField_TptrCast
@@ -22,7 +22,7 @@ contains
     class(vectorField), pointer       :: ptr
     type(uniformVectorField), pointer :: ptr2
     type(dictionary)                  :: dict
-    type(particle)                    :: p
+    type(coordList)                   :: coords
     real(defReal), parameter :: TOL = 1.0E-7_defReal
 
     ! Test invalid pointers
@@ -50,7 +50,8 @@ contains
     call fieldT % init(dict)
 
     ! Check value
-    @assertEqual([9.6_defReal, -8.0_defReal, 9.7_defReal], fieldT % at(p), TOL)
+    call coords % init([ONE, ZERO, ONE], [ONE, ZERO, ZERO])
+    @assertEqual([9.6_defReal, -8.0_defReal, 9.7_defReal], fieldT % at(coords), TOL)
 
     ! Kill
     call fieldT % kill()

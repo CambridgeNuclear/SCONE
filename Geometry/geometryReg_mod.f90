@@ -43,7 +43,6 @@ module geometryReg_mod
   use field_inter,              only : field
   use uniformScalarField_class, only : uniformScalarField
   use uniformVectorField_class, only : uniformVectorField
-  use weightWindowsField_class, only : weightWindowsField
 
   implicit none
   private
@@ -78,8 +77,7 @@ module geometryReg_mod
   !! Parameters
   character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd']
   character(nameLen), dimension(*), parameter :: AVAILABLE_FIELDS = ['uniformScalarField',&
-                                                                     'uniformVectorField',&
-                                                                     'weightWindowsField']
+                                                                     'uniformVectorField']
   integer(shortInt), parameter :: START_SIZE = 5
   real(defReal), parameter     :: GROWTH_RATE = 1.6_defReal
 
@@ -410,9 +408,6 @@ contains
 
       case ('uniformVectorField')
         allocate(uniformVectorField :: kentta)
-
-      case ('weightWindowsField')
-        allocate(weightWindowsField :: kentta)
 
       case default
         print '(A)', "AVAILABLE FIELDS:"

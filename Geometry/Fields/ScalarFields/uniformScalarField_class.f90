@@ -2,7 +2,7 @@ module uniformScalarField_class
 
   use numPrecision
   use dictionary_class,  only : dictionary
-  use particle_class,    only : particle
+  use coord_class,       only : coordList
   use field_inter,       only : field
   use scalarField_inter, only : scalarField
 
@@ -68,9 +68,9 @@ contains
   !!
   !! See scalarField_inter for details
   !!
-  function at(self, p) result(val)
+  function at(self, coords) result(val)
     class(uniformScalarField), intent(in) :: self
-    class(particle), intent(inout)        :: p
+    type(coordList), intent(in)           :: coords
     real(defReal)                         :: val
 
     val = self % val
