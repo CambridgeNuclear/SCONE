@@ -3,7 +3,7 @@ module uniformVectorField_class
   use numPrecision
   use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
-  use particle_class,    only : particle
+  use coord_class,       only : coordList
   use field_inter,       only : field
   use vectorField_inter, only : vectorField
 
@@ -77,9 +77,9 @@ contains
   !!
   !! See vectorField_inter for details
   !!
-  function at(self, p) result(val)
+  function at(self, coords) result(val)
     class(uniformVectorField), intent(in) :: self
-    class(particle), intent(inout)        :: p
+    type(coordList), intent(in)           :: coords
     real(defReal), dimension(3)           :: val
 
     val = self % val

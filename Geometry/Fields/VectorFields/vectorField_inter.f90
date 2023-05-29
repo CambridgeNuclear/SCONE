@@ -1,8 +1,8 @@
 module vectorField_inter
 
   use numPrecision
-  use field_inter,    only : field
-  use particle_class, only : particle
+  use field_inter, only : field
+  use coord_class, only : coordList
 
   implicit none
   private
@@ -38,10 +38,10 @@ module vectorField_inter
     !! Result:
     !!   Size 3 vector of real values.
     !!
-    function at(self, p) result(val)
-      import :: vectorField, particle, defReal
+    function at(self, coords) result(val)
+      import :: vectorField, coordList, defReal
       class(vectorField), intent(in) :: self
-      class(particle), intent(inout) :: p
+      type(coordList), intent(in)    :: coords
       real(defReal), dimension(3)    :: val
     end function at
 
