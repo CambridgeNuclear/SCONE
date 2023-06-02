@@ -53,7 +53,7 @@ module neutronCEimp_class
   !!             (default = 20.0)
   !!  minWgt  -> minimum particle weight for rouletting (optional)
   !!  maxWgt  -> maximum particle weight for splitting (optional)
-  !!  avgWgt  -> weight of a particle on surviving splitting (optional)
+  !!  avgWgt  -> weight of a particle on surviving rouletting (optional)
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
   !!  UFS     -> uniform fission sites variance reduction
