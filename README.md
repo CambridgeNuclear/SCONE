@@ -1,5 +1,6 @@
 # SCONE
-[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](LICENCE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Build status badge](https://github.com/CambridgeNuclear/SCONE/workflows/build-and-test.yml/badge.svg)]
 [![Documentation Status](https://readthedocs.org/projects/scone/badge/?version=latest)](https://scone.readthedocs.io/en/latest/?badge=latest)
 
 SCONE (**S**tochastic **C**alculator **O**f **N**eutron Transport **E**quation) is an object-oriented Monte Carlo
