@@ -291,7 +291,7 @@ Creating an executable
 #. Now recompile and a new executable ``sandbox.out`` should be produced in
    build folder. Run it and see that it indeed produces the expected result.
 
-Commiting changes
+Committing changes
 -----------------
 #. In the last step we would like to add the changes we have made to the git
    repository. We have created a number of new files so we need to make Git
