@@ -1,7 +1,7 @@
 module cylindricalMap_class
 
   use numPrecision
-  use universalVariables, only : valueOutsideArray
+  use universalVariables, only : valueOutsideArray, X_AXIS, Y_AXIS, Z_AXIS
   use genericProcedures,  only : fatalError, dotProduct, numToChar
   use dictionary_class,   only : dictionary
   use grid_class,         only : grid
@@ -54,9 +54,9 @@ module cylindricalMap_class
     integer(shortInt)           :: rN = 0
     integer(shortInt)           :: axN = 0
     integer(shortInt)           :: azN = 0
-    integer(shortInt)           :: DIM1
-    integer(shortInt)           :: DIM2
-    integer(shortInt)           :: DIM3
+    integer(shortInt)           :: DIM1 = 0
+    integer(shortInt)           :: DIM2 = 0
+    integer(shortInt)           :: DIM3 = 0
   contains
     ! Superclass
     procedure :: init
@@ -95,29 +95,30 @@ contains
     ! Check orientation of the cylinder
     if (dict % isPresent('orientation')) then
       call dict % get(type, 'orientation')
+    else
+      type = 'z'
+    end if
 
-      select case(type)
-        case('x')
-          self % DIM1 = 2
-          self % DIM2 = 3
-          self % DIM3 = 1
-        case('y')
-          self % DIM1 = 1
-          self % DIM2 = 3
-          self % DIM3 = 2
-        case('z')
-          self % DIM1 = 1
-          self % DIM2 = 2
-          self % DIM3 = 3
-        case default
-          call fatalError(Here, 'Keyword orientation must be x, y or z. It is: '//type)
+    select case(type)
+      case('x')
+        self % DIM1 = Y_AXIS
+        self % DIM2 = Z_AXIS
+        self % DIM3 = X_AXIS
+
+      case('y')
+        self % DIM1 = X_AXIS
+        self % DIM2 = Z_AXIS
+        self % DIM3 = Y_AXIS
+
+      case('z')
+        self % DIM1 = X_AXIS
+        self % DIM2 = Y_AXIS
+        self % DIM3 = Z_AXIS
+
+      case default
+        call fatalError(Here, 'Keyword orientation must be x, y or z. It is: '//type)
 
       end select
-    else
-      self % DIM1 = 1
-      self % DIM2 = 2
-      self % DIM3 = 3
-    end if
 
     ! Load radial grid information
     if (.not. dict % isPresent('rGrid')) call fatalError(Here, 'Keyword rGrid must be present')
@@ -214,29 +215,37 @@ contains
   !!
   !! See tallyMap for specification.
   !!
-  !! Dimensions are ordered as: radial, azial, azimuthal
+  !! Dimensions are ordered as: radial, axial, azimuthal
   !!
   elemental function bins(self, D) result(N)
     class(cylindricalMap), intent(in) :: self
     integer(shortInt), intent(in)     :: D
     integer(shortInt)                 :: N
 
-    if (D == 1) then
-      N = self % rN
+    ! Check which dimension is requested
+    select case(D)
 
-    elseif (D == 2) then
-      N = self % axN
+      case(1)
+        ! Radial
+        N = self % rN
 
-    elseif (D == 3) then
-      N = self % azN
+      case(2)
+        ! Axial
+        N = self % axN
 
-    elseif (D == 0) then
-      N = self % rN * self % axN * self % azN
+      case(3)
+        ! Azimuthal
+        N = self % azN
 
-    else
-      N = 0
+      case(0)
+        ! All bins
+        N = self % rN * self % axN * self % azN
 
-    end if
+      case default
+        ! Should not happen
+        N = 0
+
+    end select
 
   end function bins
 
@@ -393,6 +402,9 @@ contains
     self % rN = 0
     self % axN = 0
     self % azN = 0
+    self % DIM1 = 0
+    self % DIM2 = 0
+    self % DIM3 = 0
 
   end subroutine kill
 

@@ -2,6 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,            only : nameUFS
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -136,7 +137,6 @@ contains
     class(neutronCEimp), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
     integer(shortInt)                  :: idx
-    character(nameLen)                 :: name
     character(100), parameter :: Here = 'init (neutronCEimp_class.f90)'
 
     ! Call superclass
@@ -181,8 +181,7 @@ contains
 
     ! Sets up the uniform fission sites field
     if (self % uniFissSites) then
-      name = 'UFS'
-      idx = gr_fieldIdx(name)
+      idx = gr_fieldIdx(nameUFS)
       self % ufsField => uniFissSitesField_TptrCast(gr_fieldPtr(idx))
     end if
 
@@ -517,20 +516,12 @@ contains
     class(neutronCEimp), intent(inout)    :: self
     class(particle), intent(inout)        :: p
     class(particleDungeon), intent(inout) :: thisCycle
-    integer(shortInt)                     :: mult, i, n
-    real(defReal)                         :: prob
+    integer(shortInt)                     :: mult, i
 
-    n = floor(p % w/self % maxWgt)
-    prob = p % w/self % maxWgt - n
+    ! This value must be at least 2
+    mult = ceiling(p % w/maxWgt)
 
-    if (p % pRNG % get() < prob) then
-      mult = n + 1
-    else
-      mult = n
-    end if
-
-    if (mult == 1) return
-
+    ! Decrease weight
     p % w = p % w/mult
 
     ! Add split particle's to the dungeon

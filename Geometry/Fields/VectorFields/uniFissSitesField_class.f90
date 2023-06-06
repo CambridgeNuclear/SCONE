@@ -38,20 +38,23 @@ module uniFissSitesField_class
   !!
   !! Sample Dictionary Input:
   !!   uniformFissionSites { type uniFissSitesField;
-  !!                         #uniformMap 0;#            optional
+  !!                         #uniformVolMap 0;#         optional
   !!                         #popVolumes 1.0e7;#        optional
   !!                         map { <map definition> } }
   !!
-  !! NOTE: if uniformMap is 0, a routine to estimate the volumes of the map bins
-  !!       is run with population popVolumes. This might be inefficient if, for
-  !!       example, the volume to be tallied is small compared to the model geometry
+  !! NOTE: If uniformVolMap is set to 0 (False), the map bins may contain different
+  !! volumes of fissile material. If that's the case, the volume in each bin has to be
+  !! estimated with a Monte Carlo calculation: we use 'popVolumes' test points
+  !! distributed uniformly over the problem geometry to estimate the volume fractions.
+  !! This may be associated with a significant stochastic error if the fissile
+  !! volume in any cell (or in the geometry in general) is small
   !!
   !! Public Members:
   !!   map ->  map that lays over the geometry. It should be a spatial map, an
   !!           energy map wouldn't make much sense!
   !!   N   ->  total number of map bins
   !!   pop ->  particle population used for the volume estimation
-  !!   uniformMap     -> flag to indicate whether the map has bins with uniform volumes
+  !!   uniformVolMap  -> flag to indicate whether the map has bins with uniform volumes
   !!   volFraction    -> array with the volume fraction of each bin
   !!   sourceFraction -> array with the percentage of fission sites in each bin
   !!   buildSource    -> array used to 'tally' fission sites
@@ -63,7 +66,7 @@ module uniFissSitesField_class
     private
     class(tallyMap), allocatable :: map
     integer(shortInt)            :: N = 0
-    logical(defBool)             :: uniformMap
+    logical(defBool)             :: uniformVolMap
     integer(shortInt)            :: pop
     real(defReal), dimension(:), allocatable     :: volFraction
     real(defReal), dimension(:), allocatable     :: sourceFraction
@@ -101,8 +104,8 @@ contains
     self % buildSource = ZERO
 
     ! Settings for volume calculation
-    call dict % getOrDefault(self % uniformMap,'uniformMap', .true.)
-    if (.not. self % uniformMap) call dict % getOrDefault(self % pop,'popVolumes', 1000000)
+    call dict % getOrDefault(self % uniformVolMap,'uniformVolMap', .true.)
+    if (.not. self % uniformVolMap) call dict % getOrDefault(self % pop,'popVolumes', 1000000)
 
   end subroutine init
 
@@ -143,7 +146,7 @@ contains
     allocate(self % volFraction(self % N))
 
     ! Check if volume estimation is needed or not
-    if (self % uniformMap) then
+    if (self % uniformVolMap) then
       self % volFraction = ONE/self % N
       return
 

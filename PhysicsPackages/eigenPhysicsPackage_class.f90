@@ -374,7 +374,7 @@ contains
     character(10)                             :: time
     character(8)                              :: date
     character(:),allocatable                  :: string
-    character(nameLen)                        :: nucData, energy, geomName, ufsName
+    character(nameLen)                        :: nucData, energy, geomName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
@@ -464,12 +464,11 @@ contains
     ! Read uniform fission site option as a geometry field
     if (dict % isPresent('uniformFissionSites')) then
       self % ufs = .true.
-      ufsName = 'UFS'
       ! Build and initialise
       tempDict => dict % getDictPtr('uniformFissionSites')
-      call gr_addField(ufsName, tempDict)
+      call gr_addField(nameUFS, tempDict)
       ! Save UFS field
-      field => gr_fieldPtr(gr_fieldIdx(ufsName))
+      field => gr_fieldPtr(gr_fieldIdx(nameUFS))
       self % ufsField => uniFissSitesField_TptrCast(field)
       ! Initialise
       call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)

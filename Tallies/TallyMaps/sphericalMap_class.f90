@@ -128,7 +128,7 @@ contains
         call self % rBounds % init(grid)
 
       case default
-        call fatalError(Here, "'grid' can take only values of: lin")
+        call fatalError(Here, "'grid' can take only values of: lin, unstruct and equivolume")
 
     end select
 
