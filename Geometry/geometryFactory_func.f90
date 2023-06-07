@@ -1,5 +1,5 @@
 !!
-!! Module to build new fields. Called by geometryReg_mod
+!! Module to build new geometries and add them to the geometry registry
 !!
 module geometryFactory_func
 
@@ -29,9 +29,8 @@ module geometryFactory_func
 contains
 
   !!
-  !! Allocates and initialises a geometry from dictionary
-  !!
-  !! This is Factory procedure for geometries
+  !! Initialises a geometry from dictionary. This is then allocated inside
+  !! the geometry registry
   !!
   !! Args:
   !!   dict [in]  -> Dictionary with geometry definition
