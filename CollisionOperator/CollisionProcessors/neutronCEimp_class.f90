@@ -2,6 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,            only : nameUFS
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -25,6 +26,10 @@ module neutronCEimp_class
   use uncorrelatedReactionCE_inter,  only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
   use neutronScatter_class,          only : neutronScatter, neutronScatter_TptrCast
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
+
+  ! Geometry and fields
+  use geometryReg_mod,                only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
 
   ! Cross-Section Packages
   use neutronXsPackages_class,       only : neutronMicroXSs
@@ -51,6 +56,7 @@ module neutronCEimp_class
   !!  avgWgt  -> weight of a particle on surviving splitting (optional)
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
+  !!  UFS     -> uniform fission sites variance reduction
   !!  splitting -> splits particles above certain weight (on by default)
   !!  roulette  -> roulettes particles below certain weight (off by defautl)
   !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
@@ -61,18 +67,19 @@ module neutronCEimp_class
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   type             neutronCEimp;
-  !!   #minEnergy       <real>;#
-  !!   #maxEnergy       <real>;#
-  !!   #energyThreshold <real>;#
-  !!   #massThreshold   <real>;#
-  !!   #splitting       <logical>;#
-  !!   #roulette        <logical>;#
-  !!   #minWgt          <real>;#
-  !!   #maxWgt          <real>;#
-  !!   #avgWgt          <real>;#
-  !!   #impAbs          <logical>;#
-  !!   #impGen          <logical>;#
+  !!   type            neutronCEimp;
+  !!   #minEnergy      <real>;#
+  !!   #maxEnergy      <real>;#
+  !!   #energyTreshold <real>;#
+  !!   #massTreshold   <real>;#
+  !!   #splitting      <logical>;#
+  !!   #roulette       <logical>;#
+  !!   #minWgt         <real>;#
+  !!   #maxWgt         <real>;#
+  !!   #avgWgt         <real>;#
+  !!   #impAbs         <logical>;#
+  !!   #impGen         <logical>;#
+  !!   #UFS            <logical>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEimp
@@ -81,6 +88,7 @@ module neutronCEimp_class
     class(ceNeutronDatabase), pointer, public :: xsData => null()
     class(ceNeutronMaterial), pointer, public :: mat    => null()
     class(ceNeutronNuclide),  pointer, public :: nuc    => null()
+    class(uniFissSitesField), pointer :: ufsField => null()
 
     !! Settings - private
     real(defReal) :: minE
@@ -95,6 +103,7 @@ module neutronCEimp_class
     logical(defBool) :: roulette
     logical(defBool) :: implicitAbsorption ! Prevents particles dying through capture
     logical(defBool) :: implicitSites ! Generates fission sites on every fissile collision
+    logical(defBool) :: uniFissSites
 
   contains
     ! Initialisation procedure
@@ -127,6 +136,7 @@ contains
   subroutine init(self, dict)
     class(neutronCEimp), intent(inout) :: self
     class(dictionary), intent(in)      :: dict
+    integer(shortInt)                  :: idx
     character(100), parameter :: Here = 'init (neutronCEimp_class.f90)'
 
     ! Call superclass
@@ -149,6 +159,7 @@ contains
     call dict % getOrDefault(self % avWgt,'avWgt',0.5_defReal)
     call dict % getOrDefault(self % implicitAbsorption,'impAbs', .false.)
     call dict % getOrDefault(self % implicitSites,'impGen', .true.)
+    call dict % getOrDefault(self % uniFissSites,'UFS', .false.)
 
     ! Verify settings
     if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
@@ -166,6 +177,12 @@ contains
          'Must use Russian roulette when using implicit absorption')
       if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
+    end if
+
+    ! Sets up the uniform fission sites field
+    if (self % uniFissSites) then
+      idx = gr_fieldIdx(nameUFS)
+      self % ufsField => uniFissSitesField_TptrCast(gr_fieldPtr(idx))
     end if
 
   end subroutine init
@@ -221,9 +238,9 @@ contains
     type(fissionCE), pointer             :: fission
     type(neutronMicroXSs)                :: microXSs
     type(particleState)                  :: pTemp
-    real(defReal),dimension(3)           :: r, dir
+    real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic
     logical(defBool)                     :: fiss_and_implicit
@@ -234,7 +251,6 @@ contains
     if (fiss_and_implicit) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
-      w0    = p % preHistory % wgt ! Starting weight
       k_eff = p % k_eff            ! k_eff for normalisation
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
@@ -244,7 +260,14 @@ contains
 
       ! Sample number of fission sites generated
       ! Support -ve weight particles
-      n = int(abs( (wgt * sig_nufiss) / (w0 * sig_tot * k_eff)) + rand1, shortInt)
+      if (self % uniFissSites) then
+        val = self % ufsField % at(p)
+        n = int(abs( (wgt * sig_nufiss) / (sig_tot * k_eff))*val(1)/val(2) + rand1, shortInt)
+        wgt =  val(2)/val(1)
+      else
+        n = int(abs( (wgt * sig_nufiss) / (sig_tot * k_eff)) + rand1, shortInt)
+        wgt =  sign(ONE, wgt)
+      end if
 
       ! Shortcut particle generation if no particles were sampled
       if (n < 1) return
@@ -254,7 +277,6 @@ contains
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
       ! Store new sites in the next cycle dungeon
-      wgt =  sign(w0, wgt)
       r   = p % rGlobal()
 
       do i=1,n
@@ -273,6 +295,8 @@ contains
         pTemp % wgt = wgt
 
         call nextCycle % detain(pTemp)
+        if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
+
       end do
     end if
 
@@ -321,16 +345,15 @@ contains
     type(neutronMicroXSs)                :: microXSs
     type(fissionCE), pointer             :: fiss
     type(particleState)                  :: pTemp
-    real(defReal),dimension(3)           :: r, dir
+    real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi
     real(defReal)                        :: sig_nufiss, sig_fiss, k_eff
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
     if (.not.self % implicitSites) then
       ! Obtain required data
       wgt   = p % w                ! Current weight
-      w0    = p % preHistory % wgt ! Starting weight
       k_eff = p % k_eff            ! k_eff for normalisation
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
@@ -341,7 +364,14 @@ contains
       ! Sample number of fission sites generated
       ! Support -ve weight particles
       ! Note change of denominator (sig_fiss) wrt implicit generation
-      n = int(abs( (wgt * sig_nufiss) / (w0 * sig_fiss * k_eff)) + rand1, shortInt)
+      if (self % uniFissSites) then
+        val = self % ufsField % at(p)
+        n = int(abs( (wgt * sig_nufiss) / (sig_fiss * k_eff))*val(1)/val(2) + rand1, shortInt)
+        wgt =  val(2)/val(1)
+      else
+        n = int(abs( (wgt * sig_nufiss) / (sig_fiss * k_eff)) + rand1, shortInt)
+        wgt =  sign(ONE, wgt)
+      end if
 
       ! Shortcut particle generation if no particles were sampled
       if (n < 1) return
@@ -351,7 +381,6 @@ contains
       if(.not.associated(fiss)) call fatalError(Here, "Failed to get fissionCE")
 
       ! Store new sites in the next cycle dungeon
-      wgt =  sign(w0, wgt)
       r   = p % rGlobal()
 
       do i=1,n
@@ -370,6 +399,8 @@ contains
         pTemp % wgt = wgt
 
         call nextCycle % detain(pTemp)
+        if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
+
       end do
     end if
 
@@ -485,10 +516,12 @@ contains
     class(neutronCEimp), intent(inout)    :: self
     class(particle), intent(inout)        :: p
     class(particleDungeon), intent(inout) :: thisCycle
-    integer(shortInt)                     :: mult,i
+    integer(shortInt)                     :: mult, i
 
     ! This value must be at least 2
     mult = ceiling(p % w/self % maxWgt)
+
+    ! Decrease weight
     p % w = p % w/mult
 
     ! Add split particle's to the dungeon

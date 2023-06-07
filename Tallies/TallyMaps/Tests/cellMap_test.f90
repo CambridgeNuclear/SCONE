@@ -8,8 +8,9 @@ module cellMap_test
   use charMap_class,      only : charMap
   use outputFile_class,   only : outputFile
   use cellMap_class,      only : cellMap
-  use geometryReg_mod,    only : gr_addGeom => addGeom, gr_kill => kill
-  use materialMenu_mod,   only : mm_nameMap => nameMap
+  use geometryReg_mod,    only : gr_kill => kill
+  use geometryFactory_func, only : new_geometry
+  use materialMenu_mod,     only : mm_nameMap => nameMap
 
   implicit none
 
@@ -80,7 +81,7 @@ contains
     call mm_nameMap % add(name, VOID_MAT)
 
     ! Initialise geometry in geomReg
-    call gr_addGeom('geom', dict, .true.)
+    call new_geometry(dict, 'geom', silent = .true.)
 
     ! Initialise dictionaries
     call mapDict1 % init(2)

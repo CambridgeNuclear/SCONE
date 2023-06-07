@@ -64,7 +64,7 @@ module particleDungeon_class
     integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
 
     ! Storage space
-    type(particleState), dimension(:), allocatable :: prisoners
+    type(particleState), dimension(:), allocatable, public :: prisoners
 
   contains
     !! Build procedures
@@ -144,17 +144,17 @@ contains
     self % pop = self % pop + 1
     pop = self % pop
     !$omp end atomic
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-    
+
     ! Load new particle
     self % prisoners(pop) = p
-    
+
   end subroutine detain_particle
 
   !!
@@ -198,16 +198,16 @@ contains
     self % pop = self % pop + 1
     pop = self % pop
     !$omp end atomic
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-   
+
     ! Load new particle
-    self % prisoners(pop) = p_state 
+    self % prisoners(pop) = p_state
 
   end subroutine detain_particleState
 
@@ -252,7 +252,7 @@ contains
     pop = self % pop
     self % pop = self % pop - 1
     !$omp end atomic
-    
+
     ! Load data into the particle
     p = self % prisoners(pop)
     p % isDead = .false.

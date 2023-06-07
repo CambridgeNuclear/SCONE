@@ -124,7 +124,7 @@ contains
     integer(shortInt)                    :: matIdx, uniqueID, nucIdx, i, G_out
     character(100), parameter :: Here = 'sampleParticle (fissionSource_class.f90)'
 
-    ! Get pointer to approperiate nuclear database
+    ! Get pointer to appropriate nuclear database
     if (self % isMG) then
       nucData => ndReg_getNeutronMG()
     else
@@ -134,10 +134,10 @@ contains
 
     i = 0
     rejection : do
-      ! Protect against infinate loop
+      ! Protect against infinite loop
       i = i +1
       if ( i > 200) then
-        call fatalError(Here, 'Infinate loop in sampling of fission sites. Please check that&
+        call fatalError(Here, 'Infinite loop in sampling of fission sites. Please check that&
                               & defined volume contains fissile material.')
       end if
 
