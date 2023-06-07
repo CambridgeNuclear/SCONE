@@ -1,5 +1,5 @@
 !!
-!! Module to build new fields. Called by geometryReg_mod
+!! Module to build new fields and add them to the geometry registry
 !!
 module fieldFactory_func
 
@@ -31,7 +31,8 @@ module fieldFactory_func
 contains
 
   !!
-  !! Allocates and initialises field from dictionary
+  !! Initialises field from dictionary. The field gets then allocated
+  !! inside the geometry registry
   !!
   !! Args:
   !!   dict [in]   -> Dictionary with definition
