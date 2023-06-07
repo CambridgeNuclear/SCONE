@@ -88,10 +88,8 @@ contains
   !! Gets information about materials from materialMenu
   !!
   !! Args:
-  !!   name [in]   -> Name of the geometry
-  !!   dict [in]   -> Dictionary with geometry definition
-  !!   silent [in] -> Optional. Set to .true. to surpress console messeges. Default .false.
-  !!     Note that errors will still be printed with silent=.true.
+  !!   geom [in] -> Pre-initialised geometry, to be allocated
+  !!   name [in] -> Name of the geometry
   !!
   !! Errors:
   !!   fatalError if geometry with the name was already defined
@@ -200,8 +198,8 @@ contains
   !! Add Field definition
   !!
   !! Args:
+  !!   kentta [in] -> Pre-initialised field, to be allocated
   !!   name [in]   -> Name of the field
-  !!   dict [in]   -> Dictionary with field definition
   !!
   !! Errors:
   !!   fatalError if field with the name was already defined
