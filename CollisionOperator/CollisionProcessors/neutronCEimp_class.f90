@@ -519,7 +519,7 @@ contains
     integer(shortInt)                     :: mult, i
 
     ! This value must be at least 2
-    mult = ceiling(p % w/maxWgt)
+    mult = ceiling(p % w/self % maxWgt)
 
     ! Decrease weight
     p % w = p % w/mult

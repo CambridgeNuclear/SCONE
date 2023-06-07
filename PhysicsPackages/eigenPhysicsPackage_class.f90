@@ -22,11 +22,14 @@ module eigenPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom   => addGeom, &
-                                             gr_geomIdx  => geomIdx, gr_addField  => addField, &
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
                                              gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use geometryFactory_func,           only : new_geometry
+
+  ! Fields
   use field_inter,                    only : field
   use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
+  use fieldFactory_func,              only : new_field
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -443,7 +446,7 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'eigenGeom'
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
@@ -466,7 +469,7 @@ contains
       self % ufs = .true.
       ! Build and initialise
       tempDict => dict % getDictPtr('uniformFissionSites')
-      call gr_addField(nameUFS, tempDict)
+      call new_field(tempDict, nameUFS)
       ! Save UFS field
       field => gr_fieldPtr(gr_fieldIdx(nameUFS))
       self % ufsField => uniFissSitesField_TptrCast(field)
