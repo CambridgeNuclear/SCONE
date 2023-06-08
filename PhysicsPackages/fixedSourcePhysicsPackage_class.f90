@@ -26,6 +26,9 @@ module fixedSourcePhysicsPackage_class
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx
   use geometryFactory_func,           only : new_geometry
 
+  ! Fields
+  use fieldFactory_func,              only : new_field
+
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
@@ -371,6 +374,13 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+
+    ! Read variance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      ! Build and initialise
+      tempDict => dict % getDictPtr('varianceReduction')
+      call new_field(tempDict, nameWW)
+    end if
 
     ! Read particle source definition
     tempDict => dict % getDictPtr('source')

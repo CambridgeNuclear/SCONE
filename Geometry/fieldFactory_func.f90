@@ -12,6 +12,7 @@ module fieldFactory_func
   use uniformScalarField_class, only : uniformScalarField
   use uniformVectorField_class, only : uniformVectorField
   use uniFissSitesField_class,  only : uniFissSitesField
+  use weightWindowsField_class, only : weightWindowsField
 
   ! Geometry
   use geometryReg_mod,          only : gr_addField => addField
@@ -23,7 +24,8 @@ module fieldFactory_func
   !! Parameters
   character(nameLen), dimension(*), parameter :: AVAILABLE_FIELDS = ['uniformScalarField',&
                                                                      'uniformVectorField',&
-                                                                     'uniFissSitesField ']
+                                                                     'uniFissSitesField ',&
+                                                                     'weightWindowsField']
 
    ! Public interface
    public :: new_field
@@ -61,6 +63,9 @@ contains
 
       case ('uniFissSitesField')
         allocate(uniFissSitesField :: kentta)
+
+      case ('weightWindowsField')
+        allocate(weightWindowsField :: kentta)
 
       case default
         print '(A)', "AVAILABLE FIELDS:"
