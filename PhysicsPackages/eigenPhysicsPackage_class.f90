@@ -477,6 +477,13 @@ contains
       call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)
     end if
 
+    ! Read variance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      ! Build and initialise
+      tempDict => dict % getDictPtr('varianceReduction')
+      call new_field(tempDict, nameWW)
+    end if
+
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
     call self % collOp % init(tempDict)

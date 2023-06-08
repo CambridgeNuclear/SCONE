@@ -79,5 +79,6 @@ module universalVariables
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS = 'uniFissSites'
+  character(nameLen), parameter :: nameWW  = 'WeightWindows'  
 
 end module universalVariables
