@@ -8,32 +8,15 @@ on:
 
 jobs:
   build-and-test:
+    strategy:
+      matrix:
+        compiler: [gfortran8, gfortran9, gfortran10]
     runs-on: ubuntu-20.04
+    container:
+      image: mikolajkowalski/scone-test:${{matrix.compiler}}
     steps:
       - uses: actions/checkout@v3
-      # We need to use older Python due to PfUnit 3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.6'
-
-      - name: FetchPfUnit
-        uses: actions/checkout@v3
-        with:
-          repository: Goddard-Fortran-Ecosystem/pFUnit
-          ref: 3.3.3
-          path: ./external_pfunit
-      - name: InstallPfUnit
-        working-directory: ${{github.workspace}}/external_pfunit
-        env:
-          F90: gfortran
-          F90_VENDOR: GNU
-        run: |
-          make tests -j
-          make install INSTALL_DIR=./
-
       - name: CompileAndTest
-        env:
-          PFUNIT_INSTALL: ${{github.workspace}}/external_pfunit
         run : |
           mkdir build
           cd build
