@@ -51,7 +51,7 @@ module randomRayPhysicsPackage_class
   private
 
   ! Parameter for when to skip a tiny volume
-  real(defFlt), parameter :: volume_tolerance = 1.0E-12
+  real(defReal), parameter :: volume_tolerance = 1.0E-12
 
   !!
   !! Physics package to perform The Random Ray Method (TRRM) eigenvalue calculations
@@ -186,14 +186,14 @@ module randomRayPhysicsPackage_class
     real(defFlt), dimension(:), allocatable     :: chi
 
     ! Results space
-    real(defFlt)                                :: keff
-    real(defFlt), dimension(2)                  :: keffScore
-    real(defFlt), dimension(:), allocatable     :: scalarFlux
-    real(defFlt), dimension(:), allocatable     :: prevFlux
-    real(defFlt), dimension(:,:), allocatable   :: fluxScores
-    real(defFlt), dimension(:), allocatable     :: source
-    real(defFlt), dimension(:), allocatable     :: volume
-    real(defFlt), dimension(:), allocatable     :: volumeTracks
+    real(defFlt)                               :: keff
+    real(defReal), dimension(2)                :: keffScore
+    real(defFlt), dimension(:), allocatable    :: scalarFlux
+    real(defFlt), dimension(:), allocatable    :: prevFlux
+    real(defReal), dimension(:,:), allocatable :: fluxScores
+    real(defFlt), dimension(:), allocatable    :: source
+    real(defReal), dimension(:), allocatable   :: volume
+    real(defReal), dimension(:), allocatable   :: volumeTracks
 
     ! Tracking cell properites
     integer(shortInt), dimension(:), allocatable :: cellHit
@@ -504,14 +504,14 @@ contains
     self % keff       = 1.0_defFlt
     self % scalarFlux = 0.0_defFlt
     self % prevFlux   = 1.0_defFlt
-    self % fluxScores = 0.0_defFlt
-    self % keffScore  = 0.0_defFlt
+    self % fluxScores = 0.0_defReal
+    self % keffScore  = 0.0_defReal
     self % source     = 0.0_defFlt
 
     ! Initialise other results
     self % cellHit      = 0
-    self % volume       = 0.0_defFlt
-    self % volumeTracks = 0.0_defFlt
+    self % volume       = 0.0_defReal
+    self % volumeTracks = 0.0_defReal
     self % intersectionsTotal  = 0
 
     ! Initialise cell information
@@ -690,6 +690,7 @@ contains
     real(defReal)                                         :: totalLength, length
     logical(defBool)                                      :: activeRay, hitVacuum
     type(distCache)                                       :: cache
+    real(defFlt)                                          :: lenFlt
     real(defFlt), dimension(self % nG)                    :: attenuate, delta, fluxVec
     real(defFlt), pointer, dimension(:)                   :: scalarVec, sourceVec, totVec
     real(defReal), dimension(3)                           :: r0, mu0
@@ -750,19 +751,20 @@ contains
       if (.not. self % cellFound(cIdx)) then
         !$omp critical 
         self % cellFound(cIdx) = .true.
-        self % cellPos(cIdx,:) = r0 + length/2 * mu0
+        self % cellPos(cIdx,:) = r0 + length * HALF * mu0
         !$omp end critical
       end if
 
       ints = ints + 1
 
+      lenFlt = real(length,defFlt)
       baseIdx = (cIdx - 1) * self % nG
       sourceVec => self % source(baseIdx + 1 : baseIdx + self % nG)
       scalarVec => self % scalarFlux(baseIdx + 1 : baseIdx + self % nG)
 
       !$omp simd
       do g = 1, self % nG
-        attenuate(g) = exponential(totVec(g) * real(length,defFlt))
+        attenuate(g) = exponential(totVec(g) * lenFlt)
         delta(g) = (fluxVec(g) - sourceVec(g)) * attenuate(g)
         fluxVec(g) = fluxVec(g) - delta(g)
       end do
@@ -775,7 +777,7 @@ contains
         do g = 1, self % nG
           scalarVec(g) = scalarVec(g) + delta(g) 
         end do
-        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + real(length,defFlt)
+        self % volumeTracks(cIdx) = self % volumeTracks(cIdx) + length
         call OMP_unset_lock(self % locks(cIdx))
 
         if (self % cellHit(cIdx) == 0) self % cellHit(cIdx) = 1
@@ -801,14 +803,15 @@ contains
   subroutine normaliseFluxAndVolume(self, it)
     class(randomRayPhysicsPackage), intent(inout) :: self
     integer(shortInt), intent(in)                 :: it
-    real(defFlt)                                  :: norm, normVol
-    real(defFlt), save                            :: total
+    real(defFlt)                                  :: norm
+    real(defReal)                                 :: normVol
+    real(defFlt), save                            :: total, vol
     integer(shortInt), save                       :: g, matIdx, idx
     integer(shortInt)                             :: cIdx
-    !$omp threadprivate(total, idx, g, matIdx)
+    !$omp threadprivate(total, vol, idx, g, matIdx)
 
     norm = real(ONE / self % lengthPerIt, defFlt)
-    normVol = real(ONE / (self % lengthPerIt * it), defFlt)
+    normVol = ONE / (self % lengthPerIt * it)
 
     !$omp parallel do schedule(static)
     do cIdx = 1, self % nCells
@@ -816,14 +819,15 @@ contains
       
       ! Update volume due to additional rays
       self % volume(cIdx) = self % volumeTracks(cIdx) * normVol
+      vol = real(self % volume(cIdx),defFlt)
 
       do g = 1, self % nG
 
         total = self % sigmaT((matIdx - 1) * self % nG + g)
         idx   = self % nG * (cIdx - 1) + g
 
-        if (self % volume(cIdx) > volume_tolerance) then
-          self % scalarFlux(idx) = self % scalarFlux(idx) * norm / ( total * self % volume(cIdx))
+        if (vol > volume_tolerance) then
+          self % scalarFlux(idx) = self % scalarFlux(idx) * norm / ( total * vol)
         end if
         self % scalarFlux(idx) = self % scalarFlux(idx) + self % source(idx)
 
@@ -913,7 +917,7 @@ contains
       mat    => baseMgNeutronMaterial_CptrCast(matPtr)
       if (.not. mat % isFissile()) cycle
 
-      vol = self % volume(cIdx)
+      vol = real(self % volume(cIdx), defFlt)
 
       if (vol <= volume_tolerance) cycle
 
@@ -950,7 +954,7 @@ contains
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
-      self % scalarFlux(idx) = ZERO
+      self % scalarFlux(idx) = 0.0_defFlt
     end do
     !$omp end parallel do
 
@@ -961,13 +965,13 @@ contains
   !!
   subroutine accumulateFluxAndKeffScores(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
-    real(defFlt), save                            :: flux
-    integer(shortInt)                             :: idx
+    real(defReal), save                            :: flux
+    integer(shortInt)                              :: idx
     !$omp threadprivate(flux)
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
-      flux = self % scalarFlux(idx)
+      flux = real(self % scalarFlux(idx),defReal)
       self % fluxScores(idx,1) = self % fluxScores(idx, 1) + flux
       self % fluxScores(idx,2) = self % fluxScores(idx, 2) + flux*flux
     end do
@@ -985,14 +989,14 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     integer(shortInt), intent(in)                 :: it
     integer(shortInt)                             :: idx
-    real(defFlt)                                  :: N1, Nm1
+    real(defReal)                                 :: N1, Nm1
 
     if (it /= 1) then
-      Nm1 = 1.0_defFLt/(it - 1)
+      Nm1 = 1.0_defReal/(it - 1)
     else
-      Nm1 = 1.0_defFlt
+      Nm1 = 1.0_defReal
     end if
-    N1 = 1.0_defFlt/it
+    N1 = 1.0_defReal/it
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
@@ -1027,10 +1031,10 @@ contains
     character(nameLen)                            :: name
     integer(shortInt)                             :: cIdx, g1
     integer(shortInt), save                       :: idx, matIdx, i, g
-    real(defFlt), save                            :: vol, SigmaF
+    real(defReal), save                           :: vol, SigmaF
     type(particleState), save                     :: s
     integer(shortInt),dimension(:),allocatable    :: resArrayShape
-    real(defFlt), dimension(:), allocatable       :: groupFlux, fiss, fissSTD
+    real(defReal), dimension(:), allocatable      :: groupFlux, fiss, fissSTD
     class(baseMgNeutronMaterial), pointer, save   :: mat
     class(materialHandle), pointer, save          :: matPtr
     !$omp threadprivate(idx, matIdx, i, mat, matPtr, vol, s, SigmaF, g)
@@ -1075,7 +1079,7 @@ contains
       resArrayShape = [size(self % volume)]
       call out % startArray(name, resArrayShape)
       do cIdx = 1, self % nCells
-        call out % addResult(real(self % volume(cIdx),defReal), ZERO)
+        call out % addResult(self % volume(cIdx), ZERO)
       end do
       call out % endArray()
       call out % endBlock()
@@ -1105,7 +1109,7 @@ contains
         call out % startArray(name, resArrayShape)
         do cIdx = 1, self % nCells
           idx = (cIdx - 1)* self % nG + g
-          call out % addResult(real(self % fluxScores(idx,1),defReal), real(self % fluxScores(idx,2),defReal))
+          call out % addResult(self % fluxScores(idx,1), self % fluxScores(idx,2))
         end do
         call out % endArray()
         call out % endBlock()
@@ -1138,7 +1142,7 @@ contains
 
         if (i > 0) then
           do g = 1, self % nG
-            SigmaF = real(mat % getFissionXS(g, self % rand),defFlt)
+            SigmaF = mat % getFissionXS(g, self % rand)
             idx = (cIdx - 1)* self % nG + g
             fiss(i) = fiss(i) + vol * self % fluxScores(idx,1) * SigmaF
             ! Is this correct? Also neglects uncertainty in volume - assumed small.
@@ -1160,7 +1164,7 @@ contains
       call out % startArray(name, resArrayShape)
       ! Add all map elements to results
       do idx = 1, self % resultsMap % bins(0)
-        call out % addResult(real(fiss(idx),defReal), real(fissSTD(idx),defReal))
+        call out % addResult(fiss(idx), fissSTD(idx))
       end do
       call out % endArray()
       ! Output tally map
@@ -1213,7 +1217,7 @@ contains
       call out % startArray(name, resArrayShape)
       ! Add all map elements to results
       do idx = 1, self % fluxMap % bins(0)
-        call out % addResult(real(fiss(idx),defReal), real(fissSTD(idx),defReal))
+        call out % addResult(fiss(idx), fissSTD(idx))
       end do
       call out % endArray()
       ! Output tally map
@@ -1237,7 +1241,7 @@ contains
           groupFlux(cIdx) = self % fluxScores(idx,1)
         end do
         !$omp end parallel do
-        call self % viz % addVTKData(real(groupFlux,defReal),name)
+        call self % viz % addVTKData(groupFlux,name)
       end do
       do g1 = 1, self % nG
         name = 'std_g'//numToChar(g1)
@@ -1247,7 +1251,7 @@ contains
           groupFlux(cIdx) = self % fluxScores(idx,2) /self % fluxScores(idx,1)
         end do
         !$omp end parallel do
-        call self % viz % addVTKData(real(groupFlux,defReal),name)
+        call self % viz % addVTKData(groupFlux,name)
       end do
       call self % viz % finaliseVTK
     end if
