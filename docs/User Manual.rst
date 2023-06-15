@@ -3,7 +3,7 @@
 User Manual
 ===========
 
-Generic information about how to use dictionaries in writing an input file can be found in `Dictionary Input.rst <link to Dictionary Input.rst>`_. Here, more specific information about the input options available are described.
+Generic information about how to use dictionaries in writing an input file can be found in :ref:`Dictionary Input <dictSyntax>`. Here, more specific information about the input options available are described.
 
 Physics Package
 ---------------
@@ -30,7 +30,7 @@ Example: ::
         inactive 50;
         dataType ce;
         XSdata   ceData;
-        seed     55244654;
+        seed     -244654;
         
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -260,7 +260,7 @@ Example: ::
 Geometry
 --------
 
-A detailed description about the geometry modelling adopted in SCONE can be found at `Geometry.rst <link to Geometry.rst>`_. In an input file, one has to include: ::
+A detailed description about the geometry modelling adopted in SCONE can be found at :ref:`Geometry <Geometry>`. In an input file, one has to include: ::
 
       geometry  { type <geometryType>; boundary (a b c d e f); graph { type <graphType>; } 
       surfaces  { <Surfaces definition> }
@@ -458,7 +458,7 @@ Example: ::
       7 8 9 // x: 1-3, y: 1, z: 2
       10 11 12 ) } // x: 1-3, y: 2, z: 2
 
-* rootUniverse: top level universe of geometry  **NB THE DOCUMENTATION IN THE FILE IS WRONG (sample input)**
+* rootUniverse: top level universe of geometry
 
   - border: id of the boundary surface for the whole geometry
   - fill: inside filling, as a material name or a universe (u<id>)
