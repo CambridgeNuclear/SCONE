@@ -44,7 +44,8 @@ Example: ::
         uniformFissionSites { <Uniform fission sites definition> }
         varianceReduction { <Weight windows definition> }
         
-**NOTE**: even if a ``source`` definition is not required, it can be included.
+.. note::
+   Even if a ``source`` definition is not required, it can be included.
 
 fixedSourcePhysicsPackage
 #########################
@@ -273,7 +274,8 @@ At the moment, the only **geometry** type available is ``geometryStd``. As for t
 * reflective: input 1
 * periodic: input 2
 
-**NOTE**: curved surfaces only allow for vacuum boundaries.
+.. note::
+   Curved surfaces only allow for vacuum boundaries.
 
 The **graph** definition allows two options:
 
@@ -503,7 +505,8 @@ Example: ::
 
       plotBMP { type bmp; axis z; width (50 10); res (1000 200); output geomZ; what material; }
       
-**NOTE**: SCONE can be run to visualise geometry without actually doing transport, by including ``--plot`` when running the application. In this case the visualiser has to be included in the file.
+.. note:: 
+   SCONE can be run to visualise geometry without actually doing transport, by including ``--plot`` when running the application. In this case the visualiser has to be included in the file.
 
 **WHY ARE VTK AND BMP SCATTERED AROUND IN THE CODE???**
 
@@ -815,7 +818,8 @@ Example: ::
       }
       }
 
-**NOTE**: to calculate the average weight, one should divide weight moment 1 (weight1) by weight moment 0 (weight0). To calculate the variance of the weights, the tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2 
+.. note:: 
+   To calculate the average weight, one should divide weight moment 1 (weight1) by weight moment 0 (weight0). To calculate the variance of the weights, the tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2 
 
 Tally Maps
 ##########
