@@ -60,7 +60,6 @@ contains
     type(tallyAdmin), intent(inout)               :: tally
     class(particleDungeon), intent(inout)         :: thisCycle
     class(particleDungeon), intent(inout)         :: nextCycle
-    real(defReal)                                 :: sigmaT
     character(100), parameter :: Here = 'timeTracking (transportOperatorTimeHT_class.f90)' 
 
     ! Transform material particles into photons
@@ -106,6 +105,11 @@ contains
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
       dColl = -log( p % pRNG % get() ) / sigmaT
 
+      ! Ensure particle does not remain exactly on a boundary if dColl is close to 0
+      if (event == CROSS_EV .and. dColl < SURF_TOL) then
+        dColl = SURF_TOL
+      end if
+
       ! Choose minimum distance
       dist = min(dTime, dColl)
 
@@ -121,21 +125,21 @@ contains
       ! Check result of transport
       if (dist == dTime) then
         ! Time boundary
-        if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV &
-                                                    &after moving dTime')
         p % fate = AGED_FATE
         p % time = p % timeMax
         exit STLoop
 
       else if (dist == dColl) then
-        ! Collision, increase time accordingly
-        if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV &
-                                                    &after moving dColl')
+        ! Collision
         exit STLoop
 
       end if
 
+      if (event == COLL_EV) call fatalError(Here, 'Move outcome should be CROSS_EV or BOUNDARY_EV')
+
     end do STLoop
+
+    if (event /= COLL_EV) call fatalError(Here, 'Move outcome should be COLL_EV')
 
   end subroutine surfaceTracking
 
@@ -254,13 +258,28 @@ contains
     real(defReal)                                 :: transformTime, mu, phi
     real(defReal), dimension(3)                   :: dir
     class(mgIMCDatabase), pointer                 :: nucData
-    character(100), parameter                     :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
+    integer(shortInt)                             :: matIdx, uniqueID
+    character(100), parameter :: Here = 'materialTransform (transportOperatorIMC_class.f90)'
 
+    ! Get pointer to nuclear database
     nucData => mgIMCDatabase_CptrCast(self % xsData)
     if (.not. associated(nucData)) call fatalError(Here, 'Unable to find mgIMCDatabase')
 
+    ! Material particles can occasionally have coords placed in void if within SURF_TOL of boundary
+    matIdx = p % matIdx()
+    ! If so, get matIdx based on exact position (no adjustment for surface tol)
+    ! NOTE: Doing this for all particles (not just those placed in void) may in theory give very
+    !       slight accuracy increase for material-material surface crossings as well, but should
+    !       be negligible and will increase runtimes by calling whatIsAt for every mat particle.
+    if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) then
+      call self % geom % whatIsAt(matIdx, uniqueID, p % coords % lvl(1) % r, [ZERO,ZERO,ZERO])
+    end if
+    ! If still in invalid region, call fatalError
+    if (matIdx == 0)        call fatalError(Here, 'Outside material particle')
+    if (matIdx == VOID_MAT) call fatalError(Here, 'Void material particle')
+
     ! Sample time until emission
-    transformTime = nucData % sampleTransformTime(p % matIdx(), p % pRNG)
+    transformTime = nucData % sampleTransformTime(matIdx, p % pRNG)
     p % time = min(p % timeMax, p % time + transformTime)
 
     ! Exit loop if particle remains material until end of time step

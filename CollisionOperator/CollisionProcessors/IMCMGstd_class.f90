@@ -2,6 +2,7 @@ module IMCMGstd_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,            only : VOID_MAT
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -104,8 +105,11 @@ contains
     self % xsData => ndReg_getIMCMG()
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG IMC")
 
+    ! Confirm that particle is in valid material
+    if (p % matIdx() == VOID_MAT) call fatalError(Here, 'Collision in void material')
+
     ! Get and verify material pointer
-    self % mat => mgIMCMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    self % mat => mgIMCMaterial_CptrCast(self % xsData % getMaterial(p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG IMC Material")
 
     r = p % pRNG % get()
@@ -159,8 +163,7 @@ contains
     dir(2) = sqrt(1-mu**2) * cos(phi)
     dir(3) = sqrt(1-mu**2) * sin(phi)
 
-    !p % coords % dir = dir
-    call p % rotate(mu, phi)
+    call p % point(dir)
 
   end subroutine elastic
 
