@@ -21,6 +21,8 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * dataType: determines type of nuclear data used; can be ``ce`` or ``mg``
 * XSdata: keyword to the name of the nuclearDataHandle used 
 * seed (*optional*): initial seed for the pseudo random number generator 
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. Choices are ``asciiMATLAB`` and ``asciiJSON`` 
   
 Example: ::
   
@@ -31,6 +33,8 @@ Example: ::
         dataType ce;
         XSdata   ceData;
         seed     -244654;
+        outputFile PWR_1;
+        outputFormat asciiJSON;
         
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -43,9 +47,10 @@ Example: ::
 
         uniformFissionSites { <Uniform fission sites definition> }
         varianceReduction { <Weight windows definition> }
+        source { <Source definition> }
         
 .. note::
-   Even if a ``source`` definition is not required, it can be included.
+   Although a ``source`` definition is not required, it can be included to replace the default uniform fission source guess used in the first cycle
 
 fixedSourcePhysicsPackage
 #########################
@@ -57,6 +62,8 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
 * XSdata: keyword to the name of the nuclearDataHandle used 
 * seed (*optional*): initial seed for the pseudo random number generator 
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. Choices are ``asciiMATLAB`` and ``asciiJSON`` 
   
 Example: ::
 
@@ -66,6 +73,7 @@ Example: ::
         dataType ce;
         XSdata   ceData;
         seed     2829741;
+        outputFile shield_type11;
  
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -87,7 +95,7 @@ rayVolPhysicsPackage, used to perform ray-tracing based volume calculation
 * cycles: number of cycles
 * mfp: mean length of ray segments
 * abs_prob: ray absorption probability after each segment
-* robust: 1 for true; 0 for false; enable robust mode
+* robust: 1 for true; 0 for false; enable robust mode: in this case at each collision, each particle verifies that the material it currently thinks it is in and the one obtained by *placing* a particle in the geometry with the same spatial position and direction are in agreement
 * cache: 1 for true; 0 for false; enable distance caching
 * seed (*optional*): initial seed for the pseudo random number generator 
   
@@ -274,6 +282,9 @@ At the moment, the only **geometry** type available is ``geometryStd``. As for t
 * reflective: input 1
 * periodic: input 2
 
+.. note:: 
+    Strictly speaking it is up to a particular boundary surface to interpret how the values in the boundary condition sequence are interpreted. For all cube-like surfaces the rule above holds, but for more exotic boundaries (e.g., hexagons) it is worth double checking the documentation comment of the particular surface in the source code. 
+
 .. note::
    Curved surfaces only allow for vacuum boundaries.
 
@@ -289,6 +300,8 @@ Hence, an example of a geometry input could look like: ::
       cells     { <Cells definition> }
       universes { <Universes definition> } 
       }
+
+For more details about the graph-like structure of the nested geometry see the relevant :ref:`section <DAG_GEOM>`.
 
 Surfaces
 ########
@@ -342,7 +355,7 @@ Example: ::
 
       surf4 { id 8; type xPlane; x0 4.0; }
       
-* plane: generic plane (F(r) = c1 * x + c2 * y + c3 * z - c4). **NB THE DOCUMENTATION IN THE FILE IS WRONG**
+* plane: generic plane (F(r) = c1 * x + c2 * y + c3 * z - c4)
 
   - coeffs: (c1 c2 c3 c4) vector with coefficients
 
@@ -426,6 +439,9 @@ Several ``universeTypes`` are possible:
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the rotation angles in degrees applied to the universe. [°]
 
+.. note:: 
+   When creating a ``cellUniverse`` a user needs to take care to avoid leaving any 'unspecified' regions (sets in space which do not belong to any cell). If these are reachable by a particle (e.g., are not covered by any higher level universe) they will cause a calculation to crash.  
+   
 Example: ::
 
       uni3 { id 3; type cellUniverse; cells (1 2 55); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); }
@@ -453,10 +469,13 @@ Example: ::
 Example: ::
 
       uni_lattice { id 10; type latUniverse; shape (3 2 2); pitch (1.0 1.0 1.5); padMat u<3>; map (
-      1 2 3 // x: 1-3, y: 1, z: 1
-      4 5 6 // x: 1-3, y: 2, z: 1
-      7 8 9 // x: 1-3, y: 1, z: 2
-      10 11 12 ) } // x: 1-3, y: 2, z: 2
+      1 2 3 // x: 1-3, y: 2, z: 2
+      4 5 6 // x: 1-3, y: 1, z: 2
+      7 8 9 // x: 1-3, y: 2, z: 1
+      10 11 12 ) } // x: 1-3, y: 1, z: 1
+
+.. note:: 
+   The order of the elements in the lattice is different from other MC codes, e.g., Serpent. The lattice is written in the style *WYSIWYG*: What You See Is What You Get.
 
 * rootUniverse: top level universe of geometry
 
@@ -507,8 +526,6 @@ Example: ::
       
 .. note:: 
    SCONE can be run to visualise geometry without actually doing transport, by including ``--plot`` when running the application. In this case the visualiser has to be included in the file.
-
-**WHY ARE VTK AND BMP SCATTERED AROUND IN THE CODE???**
 
 Nuclear Data
 ------------
@@ -588,7 +605,7 @@ Example 1: ::
       composition { 
       1001.03   0.0222222;
       8016.03   0.00535; } 
-      moder { 1001.03 h-h2o.46; }
+      moder { 1001.03 h-h2o.42; }
       }
       }
 
@@ -999,9 +1016,10 @@ Other options
 
 Other keywords, such as for results **normalisation**, that could be included are:
 
-* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation criterion
+* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation criterion. If the tally has multiple bins, (e.g. has a map), the bin with index 1 will be used for normalisation
 * normVal: value to normalise the tally ``resName`` to
 * display: its entry is the name of the tally, ``resName``, which will be displayed each cycle. Only the tally clerks ``keffAnalogClerk`` and ``keffImplicitClerk`` support display at the moment
+* batchSize (*optional*, default = 1): the number of cycles that constitute a single batch for the purpose of statistical estimation. For example, a value of 5 means that a single estimate is obtained from a score accumulated over 5 cycles
 
 Example: ::
 
