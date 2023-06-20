@@ -272,6 +272,7 @@ contains
     LHS % isMG                  = RHS % isMG
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
+    LHS % collisionN            = RHS % collisionN
 
   end subroutine particle_fromParticleState
 
