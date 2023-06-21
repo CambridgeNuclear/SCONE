@@ -11,7 +11,6 @@ module sourceFactory_func
   use pointSource_class,     only : pointSource
   use fissionSource_class,   only : fissionSource
   use materialSource_class,  only : materialSource
-  use ISMCSource_class,      only : ismcSource
   use bbSurfaceSource_class, only : bbSurfaceSource
 
   ! geometry
@@ -30,7 +29,6 @@ module sourceFactory_func
   character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource    ',&
                                                                      'fissionSource  ',&
                                                                      'materialSource ',&
-                                                                     'ismcSource     ',&
                                                                      'bbsurfaceSource']
 
 contains
@@ -65,10 +63,6 @@ contains
 
       case('materialSource')
         allocate(materialSource :: new)
-        call new % init(dict, geom)
-
-      case('ismcSource')
-        allocate(ismcSource :: new)
         call new % init(dict, geom)
 
       case('bbSurfaceSource')
