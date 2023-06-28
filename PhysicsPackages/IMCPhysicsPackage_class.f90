@@ -64,7 +64,6 @@ module IMCPhysicsPackage_class
   type, public,extends(physicsPackage) :: IMCPhysicsPackage
     private
     ! Building blocks
-!    class(nuclearDatabase), pointer        :: nucData  => null()
     class(mgIMCDatabase), pointer          :: nucData  => null()
     class(geometry), pointer               :: geom     => null()
     integer(shortInt)                      :: geomIdx = 0
@@ -133,9 +132,9 @@ contains
     type(tallyAdmin), pointer,intent(inout)         :: tally
     type(tallyAdmin), pointer,intent(inout)         :: tallyAtch
     integer(shortInt), intent(in)                   :: N_steps
-    integer(shortInt)                               :: i, j, N, num, nParticles
+    integer(shortInt)                               :: i, j, N, nFromMat, num, nParticles
     type(particle), save                            :: p
-    real(defReal)                                   :: elapsed_T, end_T, T_toEnd
+    real(defReal)                                   :: sourceWeight, elapsed_T, end_T, T_toEnd
     real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (IMCPhysicsPackage_class.f90)'
@@ -171,19 +170,27 @@ contains
       self % thisStep     => self % temp_dungeon
       call self % nextStep % cleanPop()
 
-      ! Select total number of particles to generate from material emission
+      ! Reduce number of particles to generate if close to limit
       N = self % pop
       if (N + self % thisStep % popSize() > self % limit) then
         ! Fleck and Cummings IMC Paper, eqn 4.11
         N = self % limit - self % thisStep % popSize() - self % nMat - 1
       end if
 
+      ! Calculate proportion to be generated from input source
+      sourceWeight = self % inputSource % sourceWeight
+      if (self % inputSource % sourceWeight == 0) then
+        nFromMat = N
+      else
+        nFromMat = int(N * (1 - sourceWeight/(sourceWeight + self % nucData % getEmittedRad())))
+      end if
+
       ! Add to dungeon particles emitted from material
-      call self % matSource % append(self % thisStep, N, self % pRNG)
+      call self % matSource % append(self % thisStep, nFromMat, self % pRNG)
 
       ! Generate from input source
       if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, 0, self % pRNG)
+        call self % inputSource % append(self % thisStep, N - nFromMat, self % pRNG)
       end if
 
       if(self % printSource == 1) then

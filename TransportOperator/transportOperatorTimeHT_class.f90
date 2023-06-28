@@ -269,7 +269,7 @@ contains
     matIdx = p % matIdx()
     ! If so, get matIdx based on exact position (no adjustment for surface tol)
     ! NOTE: Doing this for all particles (not just those placed in void) may in theory give very
-    !       slight accuracy increase for material-material surface crossings as well, but should
+    !       slight accuracy increase for particles near material-material boundaries as well, but should
     !       be negligible and will increase runtimes by calling whatIsAt for every mat particle.
     if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) then
       call self % geom % whatIsAt(matIdx, uniqueID, p % coords % lvl(1) % r, [ZERO,ZERO,ZERO])

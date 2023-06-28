@@ -82,6 +82,7 @@ contains
     class(geometry), pointer, intent(in)     :: geom
     real(defReal), dimension(:), allocatable :: temp
     integer(shortInt)                        :: i, dir
+    real(defReal)                            :: area
     character(100), parameter :: Here = 'init (bbSurfaceSource_class.f90)'
 
     ! Provide geometry info to source
@@ -117,6 +118,12 @@ contains
     call dict % get(self % T, 'temp')
     call dict % get(self % deltaT, 'deltaT') ! Automatically added to dict in IMC physics package
     call dict % getOrDefault(self % N, 'N', 1)
+
+    ! Calculate surface area of source
+    area = product(self % dr, self % dr /= ZERO)
+
+    ! Calculate total source energy
+    self % sourceWeight = radiationConstant * lightSpeed * self % deltaT * self % T**4 * area / 4
 
   end subroutine init
 
@@ -262,14 +269,8 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: area, num
 
-    ! Calculate surface area of source
-    area = product(self % dr, self % dr /= ZERO)
-
-    ! Calculate energy weight per particle
-    num = radiationConstant * lightSpeed * self % deltaT * self % T**4 * area
-    p % wgt = num / (4 * self % N)
+    p % wgt = self % sourceWeight / self % N
 
   end subroutine sampleWeight
 

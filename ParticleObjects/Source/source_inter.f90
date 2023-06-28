@@ -37,6 +37,7 @@ module source_inter
   type, public,abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
+    real(defReal), public                  :: sourceWeight = ZERO
   contains
     procedure                              :: generate
     procedure                              :: append
