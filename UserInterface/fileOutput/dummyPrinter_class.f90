@@ -24,7 +24,6 @@ module dummyPrinter_class
   contains
     procedure :: init
     procedure :: extension
-    procedure :: writeToFile
 
     procedure :: startBlock
     procedure :: endBlock
@@ -63,18 +62,6 @@ contains
     str = ''
 
   end function extension
-
-  !!
-  !! Print the output to the given unit
-  !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine writeToFile(self, unit)
-    class(dummyPrinter), intent(inout) :: self
-    integer(shortInt), intent(in)      :: unit
-
-
-  end subroutine writeToFile
 
   !!
   !! Change state to writing new block with "name"
