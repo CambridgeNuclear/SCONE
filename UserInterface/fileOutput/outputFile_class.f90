@@ -69,7 +69,7 @@ module outputFile_class
   !!       is called root
   !!  -> Each entry in a block (including sub-blocks) must have a unique name
   !!  -> Each entry is either a raw "Name - Value" pair or an array
-  !!  -> Arrays can have unlimited rank (dimension), but values of the enteries must be given in a
+  !!  -> Arrays can have unlimited rank (dimension), but values of the entries must be given in a
   !!     sequence in a COLUMN-MAJOR ORDER
   !!  -> Arrays can store RESULTS, REALS, INTS or CHARACTERS.
   !!  -> RESULT is a pair of reals. MEAN and STANDARD DEVIATION
@@ -81,14 +81,14 @@ module outputFile_class
   !!
   !! Handling errors:
   !!  If `fatalError` is true (default) then on wrong sequence of calls fatalError will be raised.
-  !!  Otherwise the flag `noErrors` will be set to false and error massege saved in the `errorLog`
+  !!  Otherwise the flag `noErrors` will be set to false and error massage saved in the `errorLog`
   !!
   !! Repeated Names:
-  !!  If name in a block is repeted bahviour is governed by `logNameReuse` function. If `fatalError`
-  !!  is true, the nwarning message is produced. Otherwise error is logged in `errorLog` and
+  !!  If name in a block is repeated behaviour is governed by `logNameReuse` function. If `fatalError`
+  !!  is true, the warning message is produced. Otherwise error is logged in `errorLog` and
   !!  `noErrors` flag set to FALSE.
   !!
-  !! Private Memebers:
+  !! Private Members:
   !!   output      -> Output printer that determines the format
   !!   type        -> Type of the output printer
   !!   fatalErrors -> True (default) makes all errors fatal
@@ -107,8 +107,7 @@ module outputFile_class
   !!
   !! Interface:
   !!   init           -> Initialise the output file with format
-  !!   writeToFile    -> Write the output to a file
-  !!   writeToConsole -> Write the output to the console
+  !!   finalise       -> Finalise the output file. Ensures all data is written.
   !!   reset          -> Discard already written output.
   !!   isValid        -> Return true if no errors were raised since initialisation
   !!   getErrorLog    -> Get the error log
@@ -124,8 +123,9 @@ module outputFile_class
   !!
   type, public :: outputFile
     private
-    class(asciiOutput),allocatable :: output
-    character(nameLen)             :: type
+    class(asciiOutput), allocatable :: output
+    character(nameLen)              :: type
+    character(:), allocatable :: outputFileName
 
     ! Error handling settings
     logical(defBool) :: fatalErrors = .true. ! Enable fatalErrors on wrong logic
@@ -151,9 +151,10 @@ module outputFile_class
 
   contains
     procedure :: init
-    procedure :: writeToFile
-    procedure :: writeToConsole
+    procedure, private :: writeToConsole
     procedure :: reset
+    final :: finalisation
+    procedure, private :: writeToFile
 
     ! Error Handling
     procedure, private :: logError
@@ -210,16 +211,27 @@ contains
   !!
   !! Args:
   !!   type [in] -> Character to specify the format of the output file
-  !!   fatalErrors [in] -> Optional. Set on/off fatalErrors oninvalid use of output file.
+  !!   fatalErrors [in] -> Optional. Set on/off fatalErrors on invalid use of output file.
   !!                         Default is ON.
+  !!   filename [in] -> Optional. Set the name of the output file. If none is given no output is
+  !!                    written. Must be given without extension. It will be added automatically
+  !!                    based on the format of the output file.
   !!
-  subroutine init(self, type, fatalErrors)
-    class(outputFile), intent(inout)     :: self
-    character(*),intent(in)              :: type
-    logical(defBool),optional,intent(in) :: fatalErrors
+  subroutine init(self, type, fatalErrors, filename)
+    class(outputFile), intent(inout)      :: self
+    character(*), intent(in)              :: type
+    logical(defBool), optional,intent(in) :: fatalErrors
+    character(*), optional, intent(in)    :: filename
 
     self % type = type
     allocate( self % output, source = new_asciiOutput(self % type))
+
+    ! Set output file name
+    if (present(filename)) then
+      ! Because GFotran hates implicit allocation
+      ! It causes buggy warnings to appear in compilation
+      allocate(self % outputFileName, source = filename)
+    end if
 
     ! Initialise name stack
     call self % usedNames % init()
@@ -239,7 +251,7 @@ contains
   !!
   !! Args:
   !!   file [in] -> Path to the output file. Must be given WITHOUT extension
-  !!     Approperiate extension will recived from the printer
+  !!     Appropriate extension will be received from the printer
   !!
   !! Errors:
   !!   fatalError if there is a problem opening the file.
@@ -287,6 +299,23 @@ contains
   end subroutine writeToConsole
 
   !!
+  !! Upon the destruction of the object, write the output to file
+  !!
+  !! NOTE:
+  !!   This subroutine WILL NOT be called if the `end program` statement is
+  !!   reached! [Only `end subroutine`, `end block` etc.]. In that case
+  !!   one needs to call `finalisation` manually
+  !!
+  subroutine finalisation(self)
+    type(outputFile), intent(inout) :: self
+
+    if (allocated(self % outputFileName)) then
+      call self % writeToFile(self % outputFileName)
+    end if
+
+  end subroutine finalisation
+
+  !!
   !! Discards all results and sets output file to an initialised state
   !!
   subroutine reset(self)
@@ -295,6 +324,8 @@ contains
     ! Reallocate ascii output
     deallocate(self % output)
     allocate( self % output, source = new_asciiOutput(self % type))
+
+    if (allocated(self % outputFileName)) deallocate(self % outputFileName)
 
     ! Clean error log an reset flag
     call self % errorLog % clean()
@@ -341,10 +372,10 @@ contains
   end subroutine logError
 
   !!
-  !! Deal with an event when entry name is resued in a block
+  !! Deal with an event when entry name is reused in a block
   !!
   !! Currently is fatalError is TRUE -> Prints warning to the screen
-  !! If fatalError is False markes error flagto true and appends a log
+  !! If fatalError is False marks error flag to true and appends the log
   !!
   !! Args:
   !!  name [in] -> Name that has been reused
@@ -403,7 +434,7 @@ contains
   !!
   !! Errors:
   !!   Calls logError if:
-  !!     -Called when writting an array
+  !!     -Called when writing an array
   !!   Calls logNameReuse if name is not unique
   !!
   subroutine startBlock(self, name)
@@ -422,7 +453,7 @@ contains
     if ( self % arrayType /= NOT_ARRAY) then
       call self % logError(Here,'In block: '// self % current_block_name // &
                                 ' Cannot begin new block: '//name//          &
-                                ' Becouse is writing array: '// self % current_array_name)
+                                ' Because is writing array: '// self % current_array_name)
     end if
 
     ! Update state
@@ -443,7 +474,7 @@ contains
   !!
   !! Errors:
   !!   Calls logError if:
-  !!     -Called when writting an array
+  !!     -Called when writing an array
   !!     -Tries to end the root block.
   !!
   subroutine endBlock(self)
@@ -454,7 +485,7 @@ contains
     if ( self % arrayType /= NOT_ARRAY) then
       call self % logError(Here,'In block: '// self % current_block_name // &
                                 ' Cannot exit from block: '//                &
-                                ' Becouse is writing array: '// self % current_array_name)
+                                ' Because is writing array: '// self % current_array_name)
     end if
 
     ! Check that is not in root block
@@ -485,7 +516,7 @@ contains
   !!
   !! Errors:
   !!   Calls logError if:
-  !!     -Called when writting another array
+  !!     -Called when writing another array
   !!     -Shape is invalid
   !!   Calls logNameReuse if name is not unique
   !!
@@ -505,14 +536,14 @@ contains
     if ( self % arrayType /= NOT_ARRAY) then
       call self % logError(Here,'In block: '// self % current_block_name // &
                                 ' Cannot start new array: '//name//          &
-                                ' Becouse is writing array: '// self % current_array_name)
+                                ' Because is writing array: '// self % current_array_name)
     end if
 
     ! Check whether shape is degenerate
     if (size(shape) == 0 .or. product(shape) == 0) then
       call self % logError(Here,'In block: '// self % current_block_name // &
                                 ' Cannot start new array: '//name//          &
-                                ' Becouse the shape is degenerate')
+                                ' Because the shape is degenerate')
     end if
 
     ! Load shape information into buffer
@@ -524,8 +555,8 @@ contains
     ! Update State -> Array is present but has undefined type
     self % arrayType = UNDEF_ARRAY
 
-    ! Print begining of new entry
-    ! We don't know the shape of array becouse if has results its rank will increase
+    ! Print beginning of new entry
+    ! We don't know the shape of array because if has results its rank will increase
     call self % output % startEntry(name)
 
   end subroutine startArray
@@ -548,7 +579,7 @@ contains
     if(self % arrayTop /= self % arrayLimit) then
       call self % logError(Here, 'Cannot close array: ' // trim(self % current_array_name) // &
                                  ' in block: ' // trim(self % current_block_name)         //  &
-                                 ' Becouse only: '// numToChar(self % arrayTop)          //   &
+                                 ' Because only: '// numToChar(self % arrayTop)          //   &
                                  ' of '// numToChar(self % arrayLimit)//' were provided')
     end if
 
@@ -615,10 +646,10 @@ contains
   !! Add results to the array
   !!
   !! Args:
-  !!   val [in] -> Array of mean valuse
+  !!   val [in] -> Array of mean values
   !!   std [in] -> Associated standard deviations
   !!
-  !! Erorrs:
+  !! Errors:
   !!   Calls logError if:
   !!     -Called before an array is opened
   !!     -Currently opened array has different type
@@ -632,7 +663,7 @@ contains
     character(100),parameter :: Here ='addResult_rank1 (outputFile_class.f90)'
 
     N = size(val)
-    if (N /= size(std)) call self % logError(Here,'val and std have diffrent size.')
+    if (N /= size(std)) call self % logError(Here, 'val and std have different size.')
 
     ! Add all individual entries
     do i = 1, N
@@ -1203,7 +1234,7 @@ contains
   !!   None
   !!
   !! Errors:
-  !!   Poping empty stack does nothing!
+  !!   Popping empty stack does nothing!
   !!
   subroutine pop_charMapStack(self)
     class(charMapStack), intent(inout) :: self
@@ -1218,7 +1249,7 @@ contains
   end subroutine pop_charMapStack
 
   !!
-  !! Add new entery at the given block level
+  !! Add new entry at the given block level
   !!
   !! Args:
   !!   name [in]  -> Entry name
@@ -1246,7 +1277,7 @@ contains
   !!   b_lvl [in] -> Block level (idx = b_lvl + 1)
   !!
   !! Result:
-  !!  True if it is. False otherwsie
+  !!  True if it is. False otherwise
   !!
   !! Errors:
   !!   Returns FALSE is b_lvl is out of range
