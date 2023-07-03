@@ -61,7 +61,6 @@ module baseMgIMCDatabase_class
     procedure :: getEmittedRad
     procedure :: getMaterialEnergy
     procedure :: updateProperties
-    procedure :: setTimeStep
     procedure :: setCalcType
     procedure :: sampleTransformTime
     procedure :: kill
@@ -290,20 +289,6 @@ contains
     !$omp end parallel do
 
   end subroutine updateProperties
-
-  !!
-  !! Provide each material with time step to calculate initial fleck factor
-  !!
-  subroutine setTimeStep(self, deltaT)
-    class(baseMgIMCDatabase), intent(inout) :: self
-    real(defReal), intent(in)               :: deltaT
-    integer(shortInt)                       :: i
-
-    do i=1, size(self % mats)
-      call self % mats(i) % setTimeStep(deltaT)
-    end do
-
-  end subroutine setTimeStep
 
   !!
   !! Tell each material if we are using IMC or ISMC

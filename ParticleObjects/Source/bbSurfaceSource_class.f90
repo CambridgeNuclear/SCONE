@@ -9,6 +9,7 @@ module bbSurfaceSource_class
   use configSource_inter,    only : configSource, kill_super => kill
   use geometry_inter,        only : geometry
   use RNG_class,             only : RNG
+  use simulationTime_class,  only : timeStep, timeNow
 
   implicit none
   private
@@ -31,6 +32,7 @@ module bbSurfaceSource_class
   !!   sampleEnergyAngle -> sample particle angle
   !!   sampleEnergy      -> set particle energy (isMG = .true., G = 1)
   !!   sampleWeight      -> set particle energy-weight
+  !!   sampleTime        -> set particle time
   !!   kill              -> terminate source
   !!
   !! Sample Dictionary Input:
@@ -41,7 +43,6 @@ module bbSurfaceSource_class
   !!       #dir -1;      -> optional, negative will reverse direction in dominant axis
   !!                     -> defaults to positive
   !!       temp 1;       -> temperature of the black body source
-  !!       #deltaT 0.05; -> time step size, automatically added to dictionary in IMCPhysicsPackage_class.f90
   !!       N 100;        -> number of particles per time step, only used if append is called with N = 0
   !!      }
   !!
@@ -53,7 +54,6 @@ module bbSurfaceSource_class
     integer(shortInt)               :: particleType = P_PHOTON
     logical(defBool)                :: isMG         = .true.
     real(defReal)                   :: T            = ZERO
-    real(defReal)                   :: deltaT       = ZERO
     integer(shortInt)               :: N            = 0
   contains
     procedure :: init
@@ -63,6 +63,7 @@ module bbSurfaceSource_class
     procedure :: sampleEnergy
     procedure :: sampleEnergyAngle
     procedure :: sampleWeight
+    procedure :: sampleTime
     procedure :: kill
   end type bbSurfaceSource
 
@@ -116,14 +117,13 @@ contains
 
     ! Get remaining information
     call dict % get(self % T, 'temp')
-    call dict % get(self % deltaT, 'deltaT') ! Automatically added to dict in IMC physics package
     call dict % getOrDefault(self % N, 'N', 1)
 
     ! Calculate surface area of source
     area = product(self % dr, self % dr /= ZERO)
 
     ! Calculate total source energy
-    self % sourceWeight = radiationConstant * lightSpeed * self % deltaT * self % T**4 * area / 4
+    self % sourceWeight = radiationConstant * lightSpeed * timeStep() * self % T**4 * area / 4
 
   end subroutine init
 
@@ -275,6 +275,19 @@ contains
   end subroutine sampleWeight
 
   !!
+  !! Sample time uniformly within time step
+  !!
+  subroutine sampleTime(self, p, rand)
+    class(bbSurfaceSource), intent(inout) :: self
+    class(particleState), intent(inout)   :: p
+    class(RNG), intent(inout)             :: rand
+
+    ! Sample time uniformly within time step
+    p % time = timeNow() + timeStep() * rand % get()
+
+  end subroutine sampleTime
+
+  !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
@@ -290,7 +303,6 @@ contains
     self % particleType = P_PHOTON
     self % isMG         = .true.
     self % T      = ZERO
-    self % deltaT = ZERO
     self % N      = ZERO
 
   end subroutine kill

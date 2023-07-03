@@ -13,6 +13,8 @@ module baseMgIMCMaterial_class
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
 
+  use simulationTime_class,    only : timeStep
+
   implicit none
   private
 
@@ -71,7 +73,6 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: V
     real(defReal)                             :: fleck
     real(defReal)                             :: alpha
-    real(defReal)                             :: deltaT
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
     real(defReal)                             :: energyDens
@@ -94,7 +95,6 @@ module baseMgIMCMaterial_class
     procedure :: getTemp
     procedure :: getMatEnergy
     procedure :: setCalcType
-    procedure :: setTimeStep
     procedure :: sampleTransformTime
 
     procedure, private :: tempFromEnergy
@@ -272,27 +272,6 @@ contains
   end subroutine init
 
   !!
-  !! Provide material with time step size
-  !!
-  !! Args:
-  !!   dt [in] -> time step size [s]
-  !!
-  !! Errors:
-  !!   fatalError if calculation type is invalid (valid options are IMC or ISMC)
-  !!
-  subroutine setTimeStep(self, dt)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal), intent(in)               :: dt
-    character(100), parameter               :: Here = 'setTimeStep (baseMgIMCMaterial_class.f90)'
-
-    self % deltaT = dt
-
-    ! Set initial fleck factor
-    call self % updateFleck()
-
-  end subroutine setTimeStep
-
-  !!
   !! Return number of energy groups
   !!
   !! Args:
@@ -408,12 +387,12 @@ contains
     select case(self % calcType)
 
       case(IMC)
-        self % fleck = 1/(1+self % sigmaP*lightSpeed*beta*self % deltaT*self % alpha)
+        self % fleck = 1/(1+self % sigmaP*lightSpeed*beta*timeStep()*self % alpha)
 
       case(ISMC)
         self % eta = radiationConstant * self % T**4 / self % energyDens
         zeta = beta - self % eta
-        self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*self % deltaT)
+        self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*timeStep())
         ! TODO: Check that 0 temperature will not cause problems
 
       case default
@@ -432,7 +411,7 @@ contains
 
     U_r = radiationConstant * (self % T)**4
 
-    emittedRad = lightSpeed * self % deltaT * self % sigmaP * self % fleck * U_r * self % V
+    emittedRad = lightSpeed * timeStep() * self % sigmaP * self % fleck * U_r * self % V
 
   end function getEmittedRad
 
@@ -501,6 +480,9 @@ contains
     if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
 
     self % calcType = calcType
+
+    ! Set initial fleck factor
+    call self % updateFleck()
 
   end subroutine setCalcType
 

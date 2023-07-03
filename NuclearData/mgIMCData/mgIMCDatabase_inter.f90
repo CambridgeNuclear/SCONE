@@ -26,7 +26,6 @@ module mgIMCDatabase_inter
     procedure(getEmittedRad), deferred     :: getEmittedRad
     procedure(getMaterialEnergy), deferred :: getMaterialEnergy
     procedure(updateProperties), deferred  :: updateProperties
-    procedure(setTimeStep), deferred       :: setTimeStep
     procedure(setCalcType), deferred       :: setCalcType
     procedure(sampleTransformTime), deferred :: sampleTransformTime
 
@@ -72,15 +71,6 @@ module mgIMCDatabase_inter
       real(defReal), dimension(:), intent(in) :: tallyEnergy
       integer(shortInt), intent(in)           :: printUpdates
     end subroutine updateProperties
-
-    !!
-    !! Provide each material with time step to calculate initial fleck factor
-    !!
-    subroutine setTimeStep(self, deltaT)
-      import :: mgIMCDatabase, defReal
-      class(mgIMCDatabase), intent(inout) :: self
-      real(defReal), intent(in)               :: deltaT
-    end subroutine setTimeStep
 
     !!
     !! Tell each material if we are using IMC or ISMC

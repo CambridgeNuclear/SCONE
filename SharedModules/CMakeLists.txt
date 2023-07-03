@@ -13,7 +13,8 @@ add_sources( ./genericProcedures.f90
              ./timer_mod.f90
              ./charLib_func.f90
              ./poly_func.f90 
-             ./openmp_func.f90)
+             ./openmp_func.f90
+             ./simulationTime_class.f90)
 
 add_unit_tests( ./Tests/grid_test.f90
                 ./Tests/energyGrid_test.f90

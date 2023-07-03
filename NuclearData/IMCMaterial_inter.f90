@@ -38,7 +38,6 @@ module IMCMaterial_inter
     procedure(getTemp), deferred         :: getTemp
     procedure(getMatEnergy), deferred    :: getMatEnergy
     procedure(setCalcType), deferred     :: setCalcType
-    procedure(setTimeStep), deferred     :: setTimeStep
     procedure(sampleTransformTime), deferred :: sampleTransformTime
   end type IMCMaterial
 
@@ -140,18 +139,6 @@ module IMCMaterial_inter
       class(IMCMaterial), intent(inout) :: self
       integer(shortInt), intent(in)     :: calcType
     end subroutine setCalcType
-
-    !!
-    !! Provide material with time step size
-    !!
-    !! Args:
-    !!   dt [in] -> time step size [s]
-    !!
-    subroutine setTimeStep(self, dt)
-      import :: IMCMaterial, defReal
-      class(IMCMaterial), intent(inout) :: self
-      real(defReal), intent(in)         :: dt
-    end subroutine setTimeStep
 
     !!
     !! Sample the time taken for a material particle to transform into a photon

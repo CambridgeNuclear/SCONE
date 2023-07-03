@@ -26,8 +26,7 @@ module collisionProcessorFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_collisionProcessors = [ 'neutronCEstd',&
                                                                                 'neutronCEimp',&
                                                                                 'neutronMGstd',&
-                                                                                'IMCMGstd    ',&
-                                                                                'ISMCMGstd   ']
+                                                                                'IMCMGstd    ']
 
 contains
 
@@ -63,12 +62,6 @@ contains
         call new % init(dict)
 
       case('IMCMGstd')
-        allocate(IMCMGstd :: new)
-        call new % init(dict)
-
-      case('ISMCMGstd')
-        ! Collisions are very similar for IMC and ISMC so both use the same processor
-        ! Having this as a separate case allows this processor to tell the difference 
         allocate(IMCMGstd :: new)
         call new % init(dict)
 

@@ -24,8 +24,6 @@ module IMCMGstd_class
   implicit none
   private
 
-  integer(shortInt), parameter :: IMC = 1, ISMC = 2
-
   !!
   !! Standard (default) scalar collision processor for MG IMC
   !! Determines type of collision as either absorption or effective scattering
@@ -42,7 +40,6 @@ module IMCMGstd_class
     private
     class(mgIMCDatabase), pointer, public :: xsData => null()
     class(mgIMCMaterial), pointer, public :: mat    => null()
-    integer(shortInt)                     :: calcType
   contains
     ! Initialisation procedure
     procedure :: init
@@ -65,13 +62,7 @@ contains
   subroutine init(self, dict)
     class(IMCMGstd), intent(inout)     :: self
     class(dictionary), intent(in)      :: dict
-    character(nameLen)                 :: calcType
     character(100), parameter :: Here = 'init (IMCMGstd_class.f90)'
-
-    ! Set calculation type
-    self % calcType = IMC
-    call dict % get(calcType, 'type')
-    if(calcType == 'ISMCMGstd') self % calcType = ISMC
 
     ! Call superclass
     call init_super(self, dict)
@@ -194,11 +185,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
 
-    if(self % calcType == IMC) then
-      p % isDead = .true.
-    else
-      p % type = P_MATERIAL
-    end if
+    p % type = P_MATERIAL
 
   end subroutine capture
 

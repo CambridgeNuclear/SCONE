@@ -15,8 +15,7 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
-  use IMCPhysicsPackage_class,         only : IMCPhysicsPackage
-  use ISMCPhysicsPackage_class,        only : ISMCPhysicsPackage
+  use implicitPhysicsPackage_class,    only : implicitPhysicsPackage
 
   implicit none
   private
@@ -28,8 +27,7 @@ module physicsPackageFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
-                                                                             'IMCPhysicsPackage        ',&
-                                                                             'ISMCPhysicsPackage       ',&
+                                                                             'implicitPhysicsPackage   ',&
                                                                              'vizPhysicsPackage        ',&
                                                                              'rayVolPhysicsPackage     ']
 
@@ -74,19 +72,11 @@ contains
             call new % init(dict)
         end select
 
-      case('IMCPhysicsPackage')
+      case('implicitPhysicsPackage')
         ! Allocate and initialise
-        allocate( IMCPhysicsPackage :: new)
+        allocate( implicitPhysicsPackage :: new)
         select type(new)
-          type is (IMCPhysicsPackage)
-            call new % init(dict)
-        end select
-
-      case('ISMCPhysicsPackage')
-        ! Allocate and initialise
-        allocate( ISMCPhysicsPackage :: new)
-        select type(new)
-          type is (ISMCPhysicsPackage)
+          type is (implicitPhysicsPackage)
             call new % init(dict)
         end select
 
