@@ -38,8 +38,9 @@ Writing to an output file in SCONE is done through a series of calls to appropri
   character(nameLen) :: name
   type(outputFile)   :: out
 
-  !! Initialise output by choosing the format
-  call out % init('asciiMatlab')
+  !! Initialise output by choosing the format and output file
+  !! If no file name is provided, the output will not be printed
+  call out % init('asciiMatlab', filename="./path/to/output/without_any_extension")
 
   !! Write an integer of 7
   name = 'int'
@@ -76,9 +77,10 @@ Writing to an output file in SCONE is done through a series of calls to appropri
   !! Same goes for blocks
   call out % endBlock()
 
-  !! When done, we can write output to a file
-  !! Extension will be determined by the format printer
-  call out % writeToFile("./path/to/output/without_any_extension")
+  !! We need to make sure that output file is properly finalised. We can skip
+  !! this line if we we are not in a `program` block e.g. in `subroutine` or `function`
+  call out % finalise()
+
 
 The need to write name to a `character(nameLen)` variable before calling the procedure is a quirk
 caused by the fact that the output file expects character of `nameLen` as a variable. If one were to

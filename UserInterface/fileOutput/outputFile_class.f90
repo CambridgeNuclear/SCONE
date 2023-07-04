@@ -1,7 +1,8 @@
 module outputFile_class
 
   use numPrecision
-  use genericProcedures,       only : fatalError, numToChar
+  use errors_mod,              only : fatalError
+  use genericProcedures,       only : numToChar
   use stack_class,             only : stackChar
   use charTape_class,          only : charTape
   use charMap_class,           only : charMap
@@ -28,10 +29,10 @@ module outputFile_class
   !!
   !! Stack to store the dictionaries with occupied entries
   !!
-  !! Note that blocks in outputFile are enumarated from 0
+  !! Note that blocks in outputFile are enumerated from 0
   !! So index in stack is idx = blockLevel + 1
   !!
-  !! Imlementation must be rebust to avoid segmentation errors if outut is used
+  !! Implementation must be robust to avoid segmentation errors if output is used
   !! in incorrect sequence (e.g. closing more blocks then were open)
   !!
   !! Interface
@@ -126,6 +127,7 @@ module outputFile_class
     class(asciiOutput), allocatable :: output
     character(nameLen)              :: type
     character(:), allocatable :: outputFileName
+    integer(shortInt)         :: outputUnit = -97875674 ! Hopefully this does not exist for any internal units
 
     ! Error handling settings
     logical(defBool) :: fatalErrors = .true. ! Enable fatalErrors on wrong logic
@@ -141,7 +143,7 @@ module outputFile_class
     character(nameLen) :: current_array_name = ''
     type(stackChar)    :: block_name_stack
 
-    ! Buffors
+    ! Buffers
     integer(shortInt),dimension(:), allocatable :: shapeBuffer
     type(charMapStack)                          :: usedNames
 
@@ -151,10 +153,8 @@ module outputFile_class
 
   contains
     procedure :: init
-    procedure, private :: writeToConsole
     procedure :: reset
     final :: finalisation
-    procedure, private :: writeToFile
 
     ! Error Handling
     procedure, private :: logError
@@ -222,16 +222,44 @@ contains
     character(*), intent(in)              :: type
     logical(defBool), optional,intent(in) :: fatalErrors
     character(*), optional, intent(in)    :: filename
+    integer(shortInt)                     :: error
+    character(99)                         :: errorMsg
+    logical(defBool)                      :: isOpen
+    character(100), parameter             :: Here = "init (outputFile_class.f90)"
 
     self % type = type
     allocate( self % output, source = new_asciiOutput(self % type))
 
-    ! Set output file name
+    ! Open file if given
+    ! Otherwise make sure that the unit is not opened
     if (present(filename)) then
       ! Because GFotran hates implicit allocation
       ! It causes buggy warnings to appear in compilation
-      allocate(self % outputFileName, source = filename)
+      allocate(self % outputFileName, source = trim(filename) // "." // self % output % extension())
+
+      open(newunit = self % outputUnit, &
+           file = self % outputFileName, &
+           status = "replace", &
+           action = "write", &
+           access = "stream", &
+           form = "formatted",&
+           iostat = error, &
+           iomsg = errorMsg)
+
+      ! Catch error
+      if (error /= 0 ) call fatalError(Here, errorMsg)
+    else
+      ! Set unit to some unused, unopened unit
+      ! delayedStream will not write anything if given an unopened file
+      do
+        inquire(self % outputUnit, opened = isOpen)
+        if (.not. isOpen) exit
+        self % outputUnit = self % outputUnit + 1
+      end do
     end if
+
+    ! Set output unit
+    call self % output % setUnit(self % outputUnit)
 
     ! Initialise name stack
     call self % usedNames % init()
@@ -245,72 +273,33 @@ contains
   end subroutine init
 
   !!
-  !! Dump collected results to file
-  !!
-  !! Writes the output stored in memory to a file
-  !!
-  !! Args:
-  !!   file [in] -> Path to the output file. Must be given WITHOUT extension
-  !!     Appropriate extension will be received from the printer
-  !!
-  !! Errors:
-  !!   fatalError if there is a problem opening the file.
-  !!
-  subroutine writeToFile(self, file)
-    class(outPutFile), intent(inout) :: self
-    character(*), intent(in)         :: file
-    integer(shortInt)                :: unitNum
-    integer(shortInt)                :: error
-    character(:), allocatable        :: file_loc
-    character(99)                    :: errorMsg
-    character(100), parameter :: Here = 'writeToFile (outputFile_class.f90)'
-
-    file_loc = trim(file) // "." // self % output % extension()
-
-    ! Open file to write
-    open ( newunit   = unitNum, &
-           file      = file_loc, &
-           action    = 'write', &
-           iostat    = error  , &
-           iomsg     = errorMsg )
-
-    ! Catch error
-    if (error /= 0 ) call fatalError(Here, errorMsg)
-
-    ! Write to file
-    call self % output % writeToFile(unitNum)
-
-    ! Close file
-    close(unitNum)
-
-  end subroutine writeToFile
-
-  !!
-  !! Print output file to the console (default output)
-  !!
-  !! Args:
-  !!   None
-  !!
-  subroutine writeToConsole(self)
-    class(outputFile), intent(inout) :: self
-
-    call self % output % writeToFile(OUTPUT_UNIT)
-
-  end subroutine writeToConsole
-
-  !!
   !! Upon the destruction of the object, write the output to file
   !!
   !! NOTE:
-  !!   This subroutine WILL NOT be called if the `end program` statement is
-  !!   reached! [Only `end subroutine`, `end block` etc.]. In that case
-  !!   one needs to call `finalisation` manually
+  !!   Being marked `final`(a deconstructor) this subroutine will be normally implicitly called by
+  !!   by the compiler whenever a variable of `type(outputFile)` goes out of scope (e.g. when program
+  !!   execution reaches `end subroutine`, `end function` or `end block` statement. However, the rule in
+  !!   Fortran is that the decostructors are NOT called at the end of the program `end program`. In that case
+  !!   if one uses the output file as a module variable or defines it inside the program block, the `finalisation`
+  !!   must be called explicitly to ensure or data from the buffer is written to the disk
+  !!
   !!
   subroutine finalisation(self)
     type(outputFile), intent(inout) :: self
+    logical(defBool)                :: isOpen
 
-    if (allocated(self % outputFileName)) then
-      call self % writeToFile(self % outputFileName)
+    !! Deallocate the printer
+    !! Needs to be done before closing the file
+    !! So remaining contents of the buffer are flushed
+    if (allocated(self % output)) then
+      call self % output % close()
+      deallocate(self % output)
+    end if
+
+    inquire(unit = self % outputUnit, opened = isOpen)
+
+    if (isOpen) then
+      close(self % outputUnit)
     end if
 
   end subroutine finalisation
