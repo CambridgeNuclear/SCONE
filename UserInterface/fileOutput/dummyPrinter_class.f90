@@ -23,6 +23,7 @@ module dummyPrinter_class
 
   contains
     procedure :: init
+    procedure :: endFile
     procedure :: extension
 
     procedure :: startBlock
@@ -49,6 +50,18 @@ contains
     ! Nothing to do
 
   end subroutine init
+
+  !!
+  !! End the file
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  subroutine endFile(self)
+    class(dummyPrinter), intent(inout) :: self
+
+    ! Nothing to do
+
+  end subroutine endFile
 
   !!
   !! Return approperiate extension for the file
