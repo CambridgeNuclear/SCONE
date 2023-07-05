@@ -1,45 +1,45 @@
-// Ray-tracing calculation of relative volumes of diffrent materials 
-// Used to benchmark performance and debug geometry implementations 
+// Ray-tracing calculation of relative volumes of diffrent materials
+// Used to benchmark performance and debug geometry implementations
 //
-// Reference results 
-//   water  9.77906E-1  
+// Reference results
+//   water  9.77906E-1
 //   DO2     2.09440E-3
 //   fuel   3.92699E-3
 //   Al     1.60740E-2
 //
-type rayVolPhysicsPackage; 
+type rayVolPhysicsPackage;
 
-pop       20000; 
+pop       20000;
 cycles    100;
-mfp       3.2; 
+mfp       3.2;
 abs_prob  0.005;
-robust 1; 
-cache 0; 
+robust 1;
+cache 0;
 
-geometry { 
-  type geometryStd; 
-  boundary (1 1 2 2 1 1); 
-  graph {type shrunk;} 
-  root  1; 
+geometry {
+  type geometryStd;
+  boundary (1 1 2 2 1 1);
+  graph {type shrunk;}
+  root  1;
 
-  surfaces { 
-    domain { id 1; type box; origin (0.0 0.0 0.0); halfwidth (10.0 20.0 10.0); } 
-    pin    { id 2; type xSquareCylinder; origin (0.0 -2.0 0.0); halfwidth (0.0 2.0 2.0); } 
-    sph    { id 3; type sphere; origin (-7.0 7.0 7.0); radius 2.0;}  
+  surfaces {
+    domain { id 1; type box; origin (0.0 0.0 0.0); halfwidth (10.0 20.0 10.0); }
+    pin    { id 2; type xSquareCylinder; origin (0.0 -2.0 0.0); halfwidth (0.0 2.0 2.0); }
+    sph    { id 3; type sphere; origin (-7.0 7.0 7.0); radius 2.0;}
   }
 
   cells {
-    pin    { id 1; type simpleCell; surfaces (-2); filltype uni; universe 3;} 
-    sph    { id 2; type simpleCell; surfaces (-3); filltype mat; material DO2; } 
-    bcg    { id 3; type simpleCell; surfaces (2 3); filltype mat; material water;} 
+    pin    { id 1; type simpleCell; surfaces (-2); filltype uni; universe 3;}
+    sph    { id 2; type simpleCell; surfaces (-3); filltype mat; material DO2; }
+    bcg    { id 3; type simpleCell; surfaces (2 3); filltype mat; material water;}
   }
 
-  universes { 
-    domain { id 1; type rootUniverse; border 1; fill u<2>; } 
-    space  { id 2; type cellUniverse; cells (1 2 3); } 
-    // Veritcal Pin is rotated to align with X-axis 
-    // Translation happens in the rotated frame 
-    pin    { id 3; type pinUniverse; origin (-2.0 0.0 0.0); rotation (90.0 90.0 0.0); radii (1.0 0.0); fills (fuel Al); } 
+  universes {
+    domain { id 1; type rootUniverse; border 1; fill u<2>; }
+    space  { id 2; type cellUniverse; cells (1 2 3); }
+    // Veritcal Pin is rotated to align with X-axis
+    // Translation happens in the rotated frame
+    pin    { id 3; type pinUniverse; origin (-2.0 0.0 0.0); rotation (90.0 90.0 0.0); radii (1.0 0.0); fills (fuel Al); }
   }
 }
 
@@ -50,15 +50,15 @@ viz {
     width (0.0 40.0 20.0);
     vox (1 600 300);
   }
-} 
+}
 
 
-nuclearData { 
-  handles { } 
-  materials { 
-    water { temp 13; composition { } } 
-    DO2   { temp 1;  composition { } } 
-    fuel  { temp 1;  composition { } } 
-    Al    { temp 0;  composition { } } 
+nuclearData {
+  handles { }
+  materials {
+    water { temp 13; composition { } }
+    DO2   { temp 1;  composition { } }
+    fuel  { temp 1;  composition { } }
+    Al    { temp 0;  composition { } }
   }
 }

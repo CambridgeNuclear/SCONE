@@ -5,40 +5,40 @@
 // Benchmark keff = 1.0000 +/- 0.0010
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 400; 
-inactive 200; 
+active 400;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 outputFile PUMF11 ;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -65,16 +65,16 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
-    
 
-    fuel {  
-      temp       293; 
+
+materials {
+
+
+    fuel {
+      temp       293;
       composition {
         94239.03  4.6982E-2;
         94240.03  2.5852E-3;
@@ -82,17 +82,18 @@ materials {
         94242.03  9.9432E-6;
       }
     }
-    water {  
-      temp       293; 
+    water {
+      temp       293;
       composition {
-        moder {1001.03  6.6766E-2; file h-h2o.40; }
+        1001.03  6.6766E-2;
         08016.03  3.3383E-2;
       }
-    }	 
+      moder {1001.03 hh2o.04; }
+    }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+
