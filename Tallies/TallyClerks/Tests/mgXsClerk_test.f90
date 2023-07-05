@@ -33,6 +33,7 @@ contains
   subroutine setUp(this)
     class(test_mgXsClerk), intent(inout) :: this
     type(dictionary)                     :: tempDict, energyDict, spaceDict
+    character(nameLen)                   :: temp
 
     ! Build energy map
     call energyDict % init(3)
@@ -50,7 +51,8 @@ contains
     call tempDict % store('energyMap', energyDict)
     call tempDict % store('spaceMap', spaceDict)
 
-    call this % clerk_test1 % init(tempDict,'MGxs1')
+    temp = 'MGxs1'
+    call this % clerk_test1 % init(tempDict, temp)
     call spaceDict % kill()
     call energyDict % kill()
     call tempDict % kill()
@@ -66,7 +68,8 @@ contains
     call tempDict % store('energyMap', energyDict)
     call tempDict % store('PN', 0)
 
-    call this % clerk_test2 % init(tempDict,'MGxs2')
+    temp = 'MGxs2'
+    call this % clerk_test2 % init(tempDict, temp)
     call energyDict % kill()
     call tempDict % kill()
 
