@@ -116,7 +116,6 @@ nuclearData {
     ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
   }
   materials {
-    numberOfGroups 69;
 
     water {
       temp 75675;
