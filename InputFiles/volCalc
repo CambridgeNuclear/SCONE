@@ -1,4 +1,4 @@
-// Ray-tracing calculation of relative volumes of diffrent materials
+// Ray-tracing calculation of relative volumes of different materials
 // Used to benchmark performance and debug geometry implementations
 //
 // Reference results
@@ -37,7 +37,7 @@ geometry {
   universes {
     domain { id 1; type rootUniverse; border 1; fill u<2>; }
     space  { id 2; type cellUniverse; cells (1 2 3); }
-    // Veritcal Pin is rotated to align with X-axis
+    // Vertical Pin is rotated to align with X-axis
     // Translation happens in the rotated frame
     pin    { id 3; type pinUniverse; origin (-2.0 0.0 0.0); rotation (90.0 90.0 0.0); radii (1.0 0.0); fills (fuel Al); }
   }
