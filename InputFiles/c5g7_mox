@@ -113,10 +113,9 @@ viz {
 
 nuclearData {
   handles {
-    ce {type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
   }
   materials {
-    numberOfGroups 69;
 
     water {
       temp 75675;

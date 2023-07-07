@@ -1,47 +1,47 @@
 
 // MCNP benchmark case SB-2 1/2
 // Detailed in U233-COMP-THERM-001
-// 
+//
 // Fuel rod lattice surrounded by large cylinder of water of radius 42.18cm,
 //  extending 30.48cm above and below fuel rods
 //
 // Benchmark keff = 1.0000 +/- 0.0024
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 400; 
-inactive 200; 
+active 400;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
-outputFile SB212 ; 
+dataType ce;
+outputFile SB212 ;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
-source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; } 
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -152,60 +152,61 @@ geometry {
           12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12
           12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12
           12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 ); }
-    }   
+    }
 }
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
-    
+
+
+materials {
+
 
     fuel {                    // 233UO2-ZrO2
-      temp       293; 
+      temp       293;
       composition {
         92233.03  3.9891E-3;
         92234.03  6.3690E-5;
         92238.03  4.5759E-5;
         08016.03  5.3932E-2;
         40000.03  2.2867E-2;
-      }   
-    }	
+      }
+    }
 
-    blade {  
-      temp       293; 
+    blade {
+      temp       293;
       composition {
         26000.03  5.9259E-2;  // Fe
         24000.03  1.7428E-2;  // Cr
         25055.03  8.6816E-4;  // Mn
         28000.03  7.5171E-3;  // Ni
         05010.03  3.7488E-3;  // 10B
-      }   
+      }
     }
 
-    water {  
-      temp       293; 
+    water {
+      temp       293;
       composition {
-        moder {1001.03  6.6735E-2; file h-h2o.40; }
         08016.03  3.3368E-2;
-      }   
+        1001.03  6.6735E-2;
+      }
+      moder {1001.03  hh2o.04; }
     }
 
     zirc {                    // Zircaloy
-      temp       293; 
+      temp       293;
       composition {
         40000.03  4.2537E-2;  // Zr
         50000.03  4.9918E-4;  // Sn
-      }   
+      }
     }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+

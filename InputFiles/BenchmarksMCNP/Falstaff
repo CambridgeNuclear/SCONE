@@ -6,7 +6,7 @@
 // Benchmark keff = 1.0000 +/- 0.0083
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
 active 400;
@@ -14,30 +14,30 @@ inactive 200;
 XSdata   ceData;
 dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -66,44 +66,45 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
 
-    solution {  
-      temp       293; 
+
+materials {
+
+    solution {
+      temp       293;
       composition {
         92232.03  0.000000045608;
         92233.03  0.0022379;
         92234.03  0.000024316;
         92235.03  0.00000089598;
         92238.03  0.0000071284;
-        moder {01001.03  0.055183; file h-h2o.40 ; }
         08016.03  0.032043;
         09019.03  0.0047182;
+        01001.03  0.055183;
       }
+      moder {01001.03  hh2o.04; }
     }
-    steel {  
-      temp       293; 
+    steel {
+      temp       293;
       composition {
         26000.03  0.061248;
         24000.03  0.016678;
         28000.03  0.0090264;
       }
     }
-    reflector {  
-      temp       293; 
+    reflector {
+      temp       293;
       composition {
         04009.03  0.12161;
       }
-    }	 
+    }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+

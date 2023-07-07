@@ -6,38 +6,38 @@
 // Benchmark keff = 1.0015 +/- 0.0026
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 400; 
-inactive 200; 
+active 400;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
-outputFile ORNL10 ; 
+dataType ce;
+outputFile ORNL10 ;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -64,16 +64,16 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
-    
 
-    solution {  
-      temp       293; 
+
+materials {
+
+
+    solution {
+      temp       293;
       composition {
         92233.03  3.9124E-9;
         92234.03  4.0905E-7;
@@ -81,12 +81,13 @@ materials {
         92236.03  2.0858E-7;
         92238.03  1.9878E-6;
         07014.03  1.1212E-4;
-        moder { 1001.03  6.6409E-2; file h-h2o.40; } 
+        1001.03  6.6409E-2;
         08016.03  3.3601E-2;
       }
+      moder {1001.03 hh2o.04; }
     }
-    shell {  
-      temp       293; 
+    shell {
+      temp       293;
       composition {
         13027.03  5.9881E-2;
         14000.03  2.1790E-4;
@@ -94,11 +95,11 @@ materials {
         29000.03  5.1364E-5;
         25055.03  1.4853E-5;
       }
-    }	 
+    }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+
