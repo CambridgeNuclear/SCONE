@@ -45,7 +45,6 @@ module baseMgNeutronDatabase_class
   !!   mats       -> array containing all defined materials (by matIdx)
   !!   majorant   -> majorant xs for delta tracking
   !!   activeMats -> list of matIdxs of materials active in the problem
-  !!   nG         -> number of energy groups
   !!
   !! Interface:
   !!   nuclearDatabase interface
@@ -54,7 +53,6 @@ module baseMgNeutronDatabase_class
     type(baseMgNeutronMaterial), dimension(:), pointer :: mats => null()
     real(defReal), dimension(:), allocatable           :: majorant
     integer(shortInt), dimension(:), allocatable       :: activeMats
-    integer(shortInt)                                  :: nG = 0
 
   contains
     ! Superclass Interface
