@@ -9,7 +9,7 @@ module bbSurfaceSource_class
   use configSource_inter,    only : configSource, kill_super => kill
   use geometry_inter,        only : geometry
   use RNG_class,             only : RNG
-  use simulationTime_class,  only : timeStep, timeNow
+  use simulationTime_class
 
   implicit none
   private
@@ -283,7 +283,7 @@ contains
     class(RNG), intent(inout)             :: rand
 
     ! Sample time uniformly within time step
-    p % time = timeNow() + timeStep() * rand % get()
+    p % time = time % stepStart + timeStep() * rand % get()
 
   end subroutine sampleTime
 

@@ -19,7 +19,7 @@ module materialSource_class
   use materialMenu_mod,        only : mm_nMat    => nMat, &
                                       mm_matName => matName
 
-  use simulationTime_class,    only : timeStep, timeNow
+  use simulationTime_class
 
   implicit none
   private
@@ -273,7 +273,7 @@ contains
     dir(3) = sqrt(1-mu**2) * sin(phi)
 
     ! Sample time uniformly within time step
-    p % time = timeNow() + timeStep() * rand % get()
+    p % time = time % stepStart + timeStep() * rand % get()
 
     ! Assign basic phase-space coordinates
     p % matIdx   = matIdx

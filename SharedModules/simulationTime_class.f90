@@ -15,8 +15,10 @@ module simulationTime_class
   !! time step separately in all required modules (source, material, etc.)
   !! 
   type, public :: simulationTime
-    real(defReal) :: step = ONE
-    real(defReal) :: now  = ZERO
+    real(defReal)     :: step           = ONE
+    real(defReal)     :: stepStart      = ZERO
+    real(defReal)     :: stepEnd        = ONE
+    integer(shortInt) :: stepsCompleted = 0
   end type simulationTime
 
   type(simulationTime), public :: time
@@ -24,7 +26,6 @@ module simulationTime_class
   public :: setStep
   public :: nextStep
   public :: timeStep
-  public :: timeNow
   public :: timeLeft
 
 contains
@@ -38,7 +39,8 @@ contains
 
     if (dt <= ZERO) call fatalError(Here, 'Time step must be positive')
 
-    time % step = dt
+    time % step    = dt
+    time % stepEnd = dt
 
   end subroutine setStep
 
@@ -47,7 +49,11 @@ contains
   !!
   subroutine nextStep()
 
-    time % now = time % now + time % step
+    time % stepsCompleted = time % stepsCompleted + 1
+
+    ! Set step start and end time
+    time % stepStart = time % step *  time % stepsCompleted
+    time % stepEnd   = time % step * (time % stepsCompleted + 1)
 
   end subroutine nextStep
 
@@ -61,13 +67,6 @@ contains
 
   end function timeStep
 
-  function timeNow() result(t)
-    real(defReal) :: t
-
-    t = time % now
-
-  end function timeNow
-
   !!
   !! Return time remaining until end of time step
   !!
@@ -75,7 +74,7 @@ contains
     real(defReal), intent(in) :: t
     real(defReal)             :: remaining_t
 
-    remaining_t = time % now + time % step - t
+    remaining_t = time % stepEnd - t
 
   end function timeLeft
 

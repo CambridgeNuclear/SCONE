@@ -65,7 +65,16 @@ module implicitPhysicsPackage_class
   integer(shortInt), parameter, public :: ISMC = 2
 
   !!
-  !! Physics Package for IMC calculations
+  !! Physics Package for Implicit Monte Carlo calculations
+  !!
+  !! Settings:
+  !!  method                  -> IMC or ISMC
+  !!  pop                     -> For IMC, approx. number of new particles to generate per time step
+  !!                          -> For ISMC, starting population of material particles
+  !!  limit                   -> Size of particle dungeons
+  !!  steps                   -> Number of time steps to simulate
+  !!  timeStep                -> Time step to be used
+  !!  printUpdates (OPTIONAL) -> Prints material update info for first N materials
   !!
   type, public,extends(physicsPackage) :: implicitPhysicsPackage
     private
@@ -87,7 +96,6 @@ module implicitPhysicsPackage_class
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
-    logical(defBool)   :: sourceGiven = .false.
     integer(shortInt)  :: nMat
     integer(shortInt)  :: printUpdates
 
@@ -132,6 +140,17 @@ contains
   !!
   !! Run steps for calculation
   !!
+  !!
+  !! Notes differences between IMC and ISMC regarding particle generation:
+  !!
+  !!  -> IMC generates particles from material emission as well as input source, ISMC only
+  !!     generates from input source.
+  !!
+  !!  -> Particles for IMC are killed when absorbed, but for ISMC remain as material particles.
+  !!     This allows IMC to keep dungeon pop under control far better than ISMC. For ISMC we
+  !!     generate particles such that pop is at limit at end of calculation, with runtime per
+  !!     time step increasing approximatelty linearly as the calculation progresses
+  !!
   subroutine steps(self, tally, tallyAtch, N_steps)
     class(implicitPhysicsPackage), intent(inout)    :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
@@ -162,48 +181,46 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    allocate(tallyEnergy(self % nMat))
+    ! Generate starting population of material particles for ISMC
+    if (self % method == ISMC) then
+      call self % matSource % append(self % thisStep, self % pop, self % pRNG)
+      nFromMat = 0
+    end if
 
     do i=1,N_steps
 
       ! Update tracking grid if needed by transport operator
       if (associated(self % transOp % grid)) call self % transOp % grid % update()
 
-      ! Swap dungeons to store photons remaining from previous time step
-      self % temp_dungeon => self % nextStep
-      self % nextStep     => self % thisStep
-      self % thisStep     => self % temp_dungeon
-      call self % nextStep % cleanPop()
-
-      ! Generate particles for IMC from material emission
+      ! Generate particles while staying below dungeon limit (see note in subroutine description)
       if (self % method == IMC) then
+
         ! Reduce number of particles to generate if close to limit
         N = self % pop
         if (N + self % thisStep % popSize() > self % limit) then
           ! Fleck and Cummings IMC Paper, eqn 4.11
           N = self % limit - self % thisStep % popSize() - self % nMat - 1
+          N = max(1, N)
         end if
 
         ! Calculate proportion to be generated from input source
-        sourceWeight = self % inputSource % sourceWeight
-        if (self % inputSource % sourceWeight == 0) then
-          nFromMat = N
-        else
+        if (allocated(self % inputSource)) then
+          sourceWeight = self % inputSource % sourceWeight
           nFromMat = int(N * (1 - sourceWeight/(sourceWeight + self % nucData % getEmittedRad())))
+          ! Generate from input source
+          call self % inputSource % append(self % thisStep, N - nFromMat, self % pRNG)
         end if
 
         ! Add to dungeon particles emitted from material
         call self % matSource % append(self % thisStep, nFromMat, self % pRNG)
 
-      else if (i == 1) then
-        ! Generate starting population of material particles for ISMC
-        call self % matSource % append(self % thisStep, self % pop, self % pRNG)
+      ! ISMC particle generation
+      else if (allocated(self % inputSource)) then
 
-      end if
+        ! Generate particles such that pop is almost at limit at calculation end
+        N = (self % limit - self % thisStep % popSize()) / (N_steps-i+1)
+        call self % inputSource % append(self % thisStep, N, self % pRNG)
 
-      ! Generate from input source
-      if( self % sourceGiven ) then
-        call self % inputSource % append(self % thisStep, N - nFromMat, self % pRNG)
       end if
 
       if(self % printSource == 1) then
@@ -232,16 +249,11 @@ contains
         end if
 
         ! Assign maximum particle time
-        p % timeMax = timeStep() * i
-
-        ! For newly sourced particles, sample time uniformly within time step
-        if (p % time == ZERO) call fatalError(Here, 'Particle time is 0')
+        p % timeMax = time % stepEnd
 
         ! Check for time errors
-        if (p % time >= p % timeMax .or. p % time < timeStep()*(i-1)) then
-          call fatalError(Here, 'Particle time is not within timestep bounds')
-        else if (p % time /= p % time) then
-          call fatalError(Here, 'Particle time is NaN')
+        if (p % time < time % stepStart .or. p % time >= time % stepEnd) then
+          call fatalError(Here, 'Particle time not within time step')
         end if
 
         ! Save state
@@ -303,23 +315,25 @@ contains
       ! Obtain energy deposition tally results
       call tallyAtch % getResult(tallyRes, 'imcWeightTally')
 
+      ! Update material properties using tallied energy
       select type(tallyRes)
         class is(absClerkResult)
-          do j = 1, self % nMat
-            tallyEnergy(j) = tallyRes % clerkResults(j)
-          end do
+          call self % nucData % updateProperties(tallyRes % clerkResults, self % printUpdates)
         class default
           call fatalError(Here, 'Tally result class should be absClerkResult')
       end select
-
-      ! Update material properties
-      call self % nucData % updateProperties(tallyEnergy, self % printUpdates)
 
       ! Reset tally for next time step
       call tallyAtch % reset('imcWeightTally')
 
       ! Advance to next time step
       call nextStep()
+
+      ! Swap dungeons to store photons remaining from previous time step
+      self % temp_dungeon => self % nextStep
+      self % nextStep     => self % thisStep
+      self % thisStep     => self % temp_dungeon
+      call self % nextStep % cleanPop()
 
     end do
 
@@ -384,7 +398,6 @@ contains
     type(outputFile)                              :: test_out
     integer(shortInt)                             :: i
     character(nameLen), dimension(:), allocatable :: mats
-    integer(shortInt), dimension(:), allocatable  :: latSizeN
     real(defReal)                                 :: timeStep
     type(dictionary),target                       :: newGeom, newData
     character(nameLen)                            :: method
@@ -407,7 +420,7 @@ contains
     call dict % get(self % pop,'pop')
     call dict % get(self % limit, 'limit')
     call dict % get(self % N_steps,'steps')
-    call dict % get(timeStep,'timeStepSize')
+    call dict % get(timeStep,'timeStep')
     call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
     nucData = 'mg'
 
@@ -417,7 +430,7 @@ contains
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
     ! Get output format and verify
-    ! Initialise output file before calculation (so mistake in format will be cought early)
+    ! Initialise output file before calculation (so mistake in format will be caught early)
     call dict % getOrDefault(self % outputFormat, 'outputFormat', 'asciiMATLAB')
     call test_out % init(self % outputFormat)
 
@@ -450,7 +463,6 @@ contains
 
       ! Store dimensions of lattice
       tempDict => dict % getDictPtr('discretise')
-      call tempDict % get(latSizeN, 'dimensions')
 
       ! Create new input
       call discretise(dict, newGeom, newData)
@@ -497,7 +509,6 @@ contains
     if( dict % isPresent('source') ) then
       tempDict => dict % getDictPtr('source')
       call new_source(self % inputSource, tempDict, self % geom)
-      self % sourceGiven = .true.
     end if
 
     ! Build collision operator
