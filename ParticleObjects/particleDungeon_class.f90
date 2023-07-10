@@ -7,6 +7,11 @@ module particleDungeon_class
   use geometry_inter,        only : geometry
   use universalVariables,    only : INF
 
+  ! TODO ADDED FOR REDUCESIZE SUBROUTINE, CONSIDER CHANGING/REMOVING LATER
+  use nuclearDataReg_mod,    only : ndReg_getIMCMG => getIMCMG
+  use mgIMCDatabase_inter,   only : mgIMCDatabase
+  use materialMenu_mod,      only : mm_nMat => nMat
+
   implicit none
   private
 
@@ -97,6 +102,8 @@ module particleDungeon_class
     procedure  :: normWeight
     procedure  :: normSize
     procedure  :: reduceSize
+    procedure  :: reduceSizeNEW
+    procedure  :: closest
     procedure  :: combine
     procedure  :: deleteParticle
     procedure  :: cleanPop
@@ -451,6 +458,8 @@ contains
   end subroutine normSize
 
   !!
+  !! TODO DOESN'T WORK PROPERLY, REMOVE BEFORE GIT MERGE
+  !!
   !! Combines particles such that the max population in any region is N, based on algorithm
   !! proposed by Elad Steinberg and Shay I. Heizler, A New Discrete Implicit Monte Carlo Scheme
   !! for Simulating Radiative Transfer Problems (2022). Currently chooses particles to keep as the
@@ -555,6 +564,129 @@ contains
 
   end subroutine reduceSize
 
+  !!
+  !! TODO TOO SLOW TO BE USEFUL, CHANGE OR REMOVE BEFORE GIT MERGE
+  !!
+  !! N -> target size
+  !!
+  subroutine reduceSizeNEW(self, matMax, rand)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: matMax
+    class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: pop, i, j, idx, numInMat, matIdx
+    real(defReal)                         :: matWeight, prob, testVar
+    class(mgIMCDatabase), pointer         :: nucData
+    character(100), parameter :: Here = 'aiucbniuqbnwionmcas'
+
+    pop = self % pop
+    print *, 'START:', pop
+
+    nucData => ndReg_getIMCMG()
+
+    ! Consider each material seperately
+    do j = 1, mm_nMat()
+
+      ! Find number of particles in each material
+      numInMat = sum(merge(1, 0, self % prisoners(1:self % pop) % matIdx == j))
+      if (j == 1) print *, 'mat ', j, numInMat
+
+      ! Skip if reduction not needed
+      if (numInMat < matMax) cycle
+
+      ! Get sum of energies of material particles within mat - Faster than looping through dungeon
+      matWeight = nucData % getMaterialEnergy(j)
+
+      ! Loop through particles in material and mark for deletion by setting weight as negative
+      do i = 1, self % pop
+        ! Skip if wrong mat
+        if (self % prisoners(i) % matIdx /= j) cycle
+        ! Only consider material particles
+        if (self % prisoners(i) % type /= P_MATERIAL) cycle
+        ! Delete particles probabilistically based on particle weight
+        prob = 1 - matMax * self % prisoners(i) % wgt / matWeight
+        ! Mark for deletion by setting weight negative
+        if (rand % get() < prob) then
+          self % prisoners(i) % wgt = - self % prisoners(i) % wgt
+        end if
+      end do
+
+      ! TODO If only considering material particles then can get total weight from energy density
+      ! of material, if wanting to reduce pop of photons as well then could potentially approximate using
+      ! equilibrium radiation energy density of material (aT^4)
+
+    end do
+
+    ! Loop through dungeon again to combine particles
+    do i = 1, pop
+      ! Skip particles to keep
+      if (self % prisoners(i) % wgt >= ZERO) cycle
+      matIdx = self % prisoners(i) % matIdx
+      if (matIdx <= 0) call fatalError(Here, numToChar(matIdx))
+      ! Find nearest valid particle to join with
+      idx = self % closest(i)
+      ! If no suitable friend found, allow particle to survive
+      if (idx == 0) then
+        ! Re-flip weight
+        self % prisoners(i) % wgt = - self % prisoners(i) % wgt
+        cycle
+      end if
+      ! Combine
+      call self % combine(idx, i)
+    end do
+
+    ! Delete dead particles in reverse order to prevent changing indices
+    do i = 1, pop
+      idx = pop - i + 1
+      if (self % prisoners(idx) % wgt <= ZERO) call self % deleteParticle(idx)
+    end do
+
+    numInMat = sum(merge(1, 0, self % prisoners(1:self % pop) % matIdx == 1))
+    print *, 'mat ', '1', numInMat
+
+    print *, 'END: ', self % pop 
+
+  end subroutine reduceSizeNEW
+
+  !!
+  !! TODO
+  !!
+  function closest(self, idx) result(idxClose)
+    class(particleDungeon), intent(in) :: self
+    integer(shortInt), intent(in)      :: idx
+    integer(shortInt)                  :: idxClose, matIdx, type, i
+    real(defReal), dimension(3)        :: r
+    real(defReal)                      :: dist, minDist
+
+    ! Get required properties of particle
+    r      = self % prisoners(idx) % r
+    type   = self % prisoners(idx) % type
+    matIdx = self % prisoners(idx) % matIdx 
+
+    minDist  = INF
+    idxClose = 0
+
+    !$omp parallel
+    !$omp do private(dist)
+    do i=1, self % pop
+      ! Require particles to be of same type and in same matIdx
+      if (self % prisoners(i) % matIdx /= matIdx) cycle
+      if (self % prisoners(i) % type /= type) cycle
+
+      ! Require particle to have positive weight
+      if (self % prisoners(i) % wgt <= ZERO) cycle
+
+      ! Get distance
+      dist = getDistance(r, self % prisoners(i) % r)
+      if (dist < minDist) then
+        minDist  = dist
+        idxClose = i
+      end if
+
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end function closest
 
   !!
   !! Combine two particles in the dungeon by summing their weight and moving to a weighted-
@@ -573,7 +705,7 @@ contains
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: idx1
     integer(shortInt), intent(in)         :: idx2
-    type(particle)                        :: p1, p2, p3
+    type(particle)                        :: p1, p2
     real(defReal), dimension(3)           :: r1, r2, rNew
 
     ! Get initial particle data
@@ -581,6 +713,9 @@ contains
     call self % copy(p2, idx2)
     r1 = p1 % rGlobal()
     r2 = p2 % rGlobal()
+
+    ! Flip weight of p2 if negative (for reduceSizeNEW) TODO
+    p2 % w = abs(p2 % w)
 
     ! Move to new combined position
     rNew = (r1*p1 % w + r2*p2 % w) / (p1 % w + p2 % w)
@@ -601,14 +736,19 @@ contains
   !!
   subroutine deleteParticle(self, idx)
     class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)        :: idx
-    type(particle)                       :: p
+    integer(shortInt), intent(in)         :: idx
+    type(particle)                        :: p
+    integer(shortInt)                     :: matIdx
+
+    matIdx = self % prisoners(self % pop) % matIdx 
 
     ! Release particle at top of dungeon
     call self % release(p)
 
     ! Copy into position of particle to be deleted
     if (idx /= self % pop + 1) call self % replace(p, idx)
+
+    self % prisoners(idx) % matIdx = matIdx
 
   end subroutine deleteParticle
 
