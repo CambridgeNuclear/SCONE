@@ -495,6 +495,8 @@ contains
     ! Initialise material source
     if (dict % isPresent('matSource')) then
       tempDict => dict % getDictPtr('matSource')
+      ! Tell source if we are using IMC or ISMC
+      call tempDict % store('calcType', self % method)
       call new_source(self % matSource, tempDict, self % geom)
     else
       call locDict1 % init(2)

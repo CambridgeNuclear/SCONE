@@ -44,7 +44,7 @@ module materialSource_class
   !!   source_inter Interface
   !!
   !! SAMPLE INPUT:
-  !!   matSource { type materialSource; calcType IMC; method fast; }
+  !!   matSource { type materialSource; method fast; }
   !!
   type, public,extends(source) :: materialSource
     private
@@ -105,13 +105,13 @@ contains
         call fatalError(Here, 'Unrecognised method. Should be "rejection" or "fast"')
     end select
 
-    ! Select calculation type
+    ! Select calculation type - Automatically added to dict in implicitPhysicsPackage
     call dict % getOrDefault(self % calcType, 'calcType', IMC)
     select case(self % calcType)
       case(IMC)
-        self % pType    = P_PHOTON
+        self % pType = P_PHOTON
       case(ISMC)
-        self % pType    = P_MATERIAL
+        self % pType = P_MATERIAL
       case default
         call fatalError(Here, 'Unrecognised calculation type. Should be "IMC" or "ISMC"')
     end select
