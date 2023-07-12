@@ -65,7 +65,6 @@ module baseMgIMCMaterial_class
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
     real(defReal),dimension(:), allocatable   :: cv
-    real(defReal),dimension(:), allocatable   :: updateEqn
     real(defReal),dimension(:), allocatable   :: absEqn
     real(defReal),dimension(:), allocatable   :: scattEqn
     real(defReal),dimension(:), allocatable   :: planckEqn
@@ -75,6 +74,7 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: alpha
     real(defReal)                             :: sigmaP
     real(defReal)                             :: matEnergy
+    real(defReal)                             :: prevMatEnergy
     real(defReal)                             :: energyDens
     real(defReal)                             :: eta
     integer(shortInt)                         :: calcType
@@ -118,12 +118,13 @@ contains
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: printUpdate
-    real(defReal)                           :: previous
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
     ! TODO: Print updates if requested
 
-    previous = self % matEnergy
+    ! Save previous energy
+    self % prevMatEnergy = self % matEnergy
+
     ! Update material internal energy
     if (self % calcType == IMC) then
       self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
@@ -132,9 +133,12 @@ contains
     end if
 
     ! Return if no change
-    if (self % matEnergy == previous) return
+    if (abs(self % matEnergy - self % prevMatEnergy) < 0.00001*self % prevMatEnergy) return
 
     self % energyDens = self % matEnergy / self % V
+
+    ! Confirm new energy density is valid
+    if (self % energyDens <= ZERO) call fatalError(Here, 'Energy density is not positive')
 
     ! Update material temperature
     self % T = self % tempFromEnergy()
@@ -224,7 +228,8 @@ contains
   subroutine init(self, dict)
     class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
-    integer(shortInt)                           :: nG, N
+    integer(shortInt)                           :: nG, N, i
+    real(defReal)                               :: dT, tempT, tempU
     real(defReal), dimension(:), allocatable    :: temp
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
@@ -253,17 +258,22 @@ contains
     call dict % get(temp, 'cv')
     self % cv = temp
 
-    ! Build update equation
-    call poly_integrate(temp)
-    self % updateEqn = temp
-
     ! Read initial temperature and volume
     call dict % get(self % T, 'T')
     call dict % get(self % V, 'V')
 
-    ! Calculate initial opacities and energy
+    ! Calculate initial opacities
     call self % sigmaFromTemp()
-    self % energyDens = poly_eval(self % updateEqn, self % T)
+
+    ! Calculate initial energy density by integration
+    dT = self % T / 1000
+    tempT = dT/2
+    tempU = 0
+    do i=1, 1000
+      tempU = tempU + dT * poly_eval(self % cv, tempT)
+      tempT = tempT + dT
+    end do
+    self % energyDens = tempU
     self % matEnergy  = self % energyDens * self % V
 
     ! Default to IMC calculation type
@@ -341,19 +351,58 @@ contains
   end function baseMgIMCMaterial_CptrCast
 
   !!
-  !! Calculate the temperature of material from internal energy
+  !! Calculate material temperature from internal energy by integration
+  !!
+  !! Step up (or down if energy is lower than in previous step) through temperature in steps of dT
+  !! and increment energy density by dT*cv(T) until target energy density is reached
   !!
   function tempFromEnergy(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: T, energyDens
+    real(defReal)                           :: T, dT, tempT, U, tempU, tol, error
+    integer(shortInt)                       :: i
+    character(100), parameter               :: Here = 'tempFromEnergy (mgIMCMaterial_class.f90)'
 
-    energyDens = self % matEnergy / self % V
+    ! Parameters affecting accuracy
+    dT  = self % T / 1000     ! Initial temperature step size to take, reduced after overshoot
+    tol = self % T / 1000000  ! Continue stepping until within tolerance
 
-    if (energyDens == 0) then
-      T = 0
-    else
-      T = poly_solve(self % updateEqn, self % cv, self % T, energyDens)
-    end if
+    ! Starting temperature and energy density
+    T = self % T
+    U = self % prevMatEnergy / self % V
+
+    ! If starting energy density is higher than target, flip dT to be negative
+    if (U > self % energyDens) dT = -dT
+
+    i = 0
+
+    integrate:do
+
+      ! Protect against infinite loop
+      i = i+1
+      if (i > 1000000) call fatalError(Here, "1000,000 iterations without convergence.")
+
+      ! Increment temperature and increment the corresponding energy density
+      tempT = T + dT/2
+      tempU = U + dT * poly_eval(self % cv, tempT)
+
+      error = self % energyDens - tempU
+
+      if (abs(error) < tol) then ! Finished
+        T = T + dT
+        exit integrate
+      end if
+
+      if (error*dT < 0) then ! If error and dT have different signs then we have overshot
+        ! Decrease dT and try again
+        dT = dT/2
+        cycle integrate
+      end if
+
+      ! Update temperature and energy and return to start
+      T = T + dT
+      U = tempU
+
+    end do integrate
 
   end function tempFromEnergy
 
@@ -457,7 +506,6 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     real(defReal)                           :: energy
 
-    !energy = poly_eval(self % updateEqn, self % T) * self % V
     energy = self % matEnergy
 
   end function getMatEnergy
