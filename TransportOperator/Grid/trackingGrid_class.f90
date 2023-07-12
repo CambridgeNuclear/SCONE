@@ -102,19 +102,19 @@ contains
 
     ! Calculate position from grid corner
     r_bar = r - self % corner
-    if (any(r_bar < -SURF_TOL)) call fatalError(Here, 'Point is outside grid geometry') !TODO only checks bottom for now
+!    if (any(r_bar < -SURF_TOL)) call fatalError(Here, 'Point is outside grid geometry') !TODO only checks bottom for now
 
     ! Write as a fraction across cell
     r_bar = r_bar / self % pitch
     r_bar = r_bar - floor(r_bar)
 
     ! Account for surface tolerance
-    low = SURF_TOL / self % pitch
-    high = ONE - low
-    do i = 1, 3
-      if (r_bar(i) < low(i)  .and. u(i) < ZERO) r_bar(i) = ONE
-      if (r_bar(i) > high(i) .and. u(i) > ZERO) r_bar(i) = ZERO
-    end do
+!    low = SURF_TOL / self % pitch
+!    high = ONE - low
+!    do i = 1, 3
+!      if (r_bar(i) < low(i)  .and. u(i) < ZERO) r_bar(i) = ONE
+!      if (r_bar(i) > high(i) .and. u(i) > ZERO) r_bar(i) = ZERO
+!    end do
 
     ! Distance to centre plus distance from centre to required boundary
     r_bar = (HALF - r_bar + sign(HALF, u)) * self % pitch
@@ -171,26 +171,26 @@ contains
     ijk = floor((r - self % corner) / self % pitch) + 1
 
     ! Get position wrt middle of the lattice cell
-    r_bar = r - self % corner - ijk * self % pitch + HALF * self % pitch
+!    r_bar = r - self % corner - ijk * self % pitch + HALF * self % pitch
 
     ! Check if position is within surface tolerance
     ! If it is, push it to next cell
-    do i = 1, 3
-      if (abs(r_bar(i)) > self % a_bar(i) .and. r_bar(i)*u(i) > ZERO) then
+!    do i = 1, 3
+!      if (abs(r_bar(i)) > self % a_bar(i) .and. r_bar(i)*u(i) > ZERO) then
 
         ! Select increment. Ternary expression
-        if (u(i) < ZERO) then
-          inc = -1
-        else
-          inc = 1
-        end if
+!        if (u(i) < ZERO) then
+!          inc = -1
+!        else
+!          inc = 1
+!        end if
 
-        ijk(i) = ijk(i) + inc
+!        ijk(i) = ijk(i) + inc
 
-      end if
-    end do
+!      end if
+!    end do
 
-    ! Set localID & cellIdx
+    ! Set localID
     if (any(ijk <= 0 .or. ijk > self % sizeN)) then ! Point is outside grid
       call fatalError(Here, 'Point is outside grid')
 
