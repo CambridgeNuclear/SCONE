@@ -1,13 +1,15 @@
 module pointSource_class
 
   use numPrecision
-  use universalVariables, only : OUTSIDE_MAT
-  use genericProcedures,  only : fatalError
-  use particle_class,     only : particleState, P_NEUTRON, P_PHOTON
-  use dictionary_class,   only : dictionary
-  use configSource_inter, only : configSource, kill_super => kill
-  use geometry_inter,     only : geometry
-  use RNG_class,          only : RNG
+  use universalVariables,      only : OUTSIDE_MAT
+  use genericProcedures,       only : fatalError, numToChar
+  use particle_class,          only : particleState, P_NEUTRON, P_PHOTON
+  use dictionary_class,        only : dictionary
+  use configSource_inter,      only : configSource, kill_super => kill
+  use geometry_inter,          only : geometry
+  use RNG_class,               only : RNG
+  use nuclearDataReg_mod,      only : ndReg_getNeutronMG => getNeutronMG
+  use mgNeutronDatabase_inter, only : mgNeutronDatabase
 
   implicit none
   private
@@ -15,14 +17,19 @@ module pointSource_class
   !!
   !! Class describing point-like particle sources
   !!
-  !! Generates a mono-energetic, mono-directional or isotropic particle
+  !! Generates a mono-directional or isotropic particle
   !! source from a single point in space, with particles of a single type
+  !!
+  !! MG particles may be either monoenergetic or from a distribution
+  !!
+  !! TODO: allow for a continuous energy distribution
   !!
   !! Private members:
   !!   r            -> source position
   !!   dir          -> optional source direction
   !!   E            -> source energy
-  !!   G            -> source energy group
+  !!   G            -> source group
+  !!   probG        -> vector of probabilities of producing particle in group G
   !!   particleType -> source particle type
   !!   isMG         -> is the source multi-group?
   !!   isIsotropic  -> is the source isotropic?
@@ -40,20 +47,22 @@ module pointSource_class
   !!       type pointSource;
   !!       r (0.0 0.0 0.0);
   !!       particle neutron;
-  !!       #E 14.1;            #
-  !!       #G 3;               #
-  !!       #dir (2.0 1.0 0.0); #
+  !!       #E 14.1;              #
+  !!       #G 3;                 #
+  !!       #probG (0.1 0.2 0.7); #
+  !!       #dir (2.0 1.0 0.0);   #
   !!      }
   !!
   type, public,extends(configSource) :: pointSource
     private
-    real(defReal),dimension(3)  :: r            = ZERO
-    real(defReal),dimension(3)  :: dir          = ZERO
-    real(defReal)               :: E            = ZERO
-    integer(shortInt)           :: G            = 0
-    integer(shortInt)           :: particleType = P_NEUTRON
-    logical(defBool)            :: isMG         = .false.
-    logical(defBool)            :: isIsotropic  = .false.
+    real(defReal),dimension(3)                :: r   = ZERO
+    real(defReal),dimension(3)                :: dir = ZERO
+    real(defReal)                             :: E   = ZERO
+    integer(shortInt)                         :: G   = 0
+    real(defReal), dimension(:), allocatable  :: probG
+    integer(shortInt)                         :: particleType = P_NEUTRON
+    logical(defBool)                          :: isMG         = .false.
+    logical(defBool)                          :: isIsotropic  = .false.
   contains
     procedure :: init
     procedure :: sampleType
@@ -75,6 +84,7 @@ contains
   !!   - error if source is not inside geometry
   !!   - error if either direction or position have more than 3 components
   !!   - error if both CE and MG is specified
+  !!   - error if both monoenergetic and a distribution
   !!   - error if neither energy type is specified
   !!
   subroutine init(self, dict, geom)
@@ -83,8 +93,9 @@ contains
     class(geometry), pointer, intent(in)   :: geom
     character(30)                          :: type
     integer(shortInt)                      :: matIdx, uniqueID
-    logical(defBool)                       :: isCE, isMG
+    logical(defBool)                       :: isCE, isMG, isMono, isDist
     real(defReal),dimension(:),allocatable :: temp
+    class(mgNeutronDatabase), pointer      :: nucData
     character(100), parameter :: Here = 'init (pointSource_class.f90)'
 
     ! Provide geometry info to source
@@ -122,7 +133,7 @@ contains
     if (.not. self % isIsotropic) then
 
       call dict % get(temp, 'dir')
-      if (size(self % dir) /= 3) then
+      if (size(temp) /= 3) then
         call fatalError(Here, 'Source direction must have three components')
       end if
       self % dir = temp
@@ -131,7 +142,7 @@ contains
 
     ! Get particle energy/group
     isCE = dict % isPresent('E')
-    isMG = dict % isPresent('G')
+    isMG = (dict % isPresent('G') .or. dict % isPresent('probG'))
     if (isCE .and. isMG) then
       call fatalError(Here, 'Source may be either continuous energy or MG, not both')
 
@@ -139,11 +150,32 @@ contains
       call dict % get(self % E, 'E')
 
     elseif (isMG) then
-      call dict % get(self % G, 'G')
+      isDist = dict % isPresent('probG')
+      isMono = dict % isPresent('G')
+      if (isDist .and. isMono) then
+        call fatalError(Here, 'Source may be either monoenergetic or a distribution, not both')
+      end if
+
+      if (isDist) then
+        call dict % get(temp, 'probG')
+        nucData => ndReg_getNeutronMG()
+        if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
+
+        if (size(temp) /= nucData % nG) then
+          call fatalError(Here, 'Source energy group distribution must have '//numToChar(nucData % nG)//' groups')
+        end if
+
+        allocate(self % probG(nucData % nG))
+        self % probG = temp
+        self % probG = self % probG / sum(self % probG)
+      else
+        call dict % get(self % G, 'G')
+      end if
+
       self % isMG = .true.
 
     else
-      call fatalError(Here, 'Must specify source energy, either Energy(E) or Group(G)')
+      call fatalError(Here, 'Must specify source energy, either Energy(E) or Group distribution (probG)')
     end if
 
   end subroutine init
@@ -210,10 +242,24 @@ contains
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
+    real(defReal)                       :: r
+    integer(shortInt)                   :: g
 
     if (self % isMG) then
-      p % G = self % G
-      p % isMG = .true.
+      ! Sample from distribution
+      if (allocated(self % probG)) then
+        !! TODO: Replace this single, common procedure to sample discrete distributions
+        r = rand % get()
+        do g = 1, size(self % probG)
+          r = r - self % probG(g)
+          if (r < ZERO) exit
+        end do
+        p % G = g
+        p % isMG = .true.
+      ! Monoenergetic
+      else
+        p % G = self % G
+      end if
     else
       p % E = self % E
       p % isMG = .false.
@@ -235,6 +281,7 @@ contains
     self % dir = ZERO
     self % E   = ZERO
     self % G   = 0
+    if (allocated(self % probG)) deallocate(self % probG)
     self % particleType = P_NEUTRON
     self % isMG         = .false.
     self % isIsotropic  = .false.

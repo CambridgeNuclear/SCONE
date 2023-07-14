@@ -215,7 +215,7 @@ contains
           p % dir = rotateVector([ONE, ZERO, ZERO], mu, phi)
 
         class default
-          call fatalError(Here, "Uncrecognised type of nuclearDatabase")
+          call fatalError(Here, "Unrecognised type of nuclearDatabase")
 
       end select
       ! Exit the loop
