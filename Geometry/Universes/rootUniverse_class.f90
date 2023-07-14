@@ -30,7 +30,8 @@ module rootUniverse_class
   !! Local ID 1 is inside. 2 is outside.
   !!
   !! Sample Input Dictionary:
-  !!   root { id 7;
+  !!   root { type rootUniverse;
+  !!          id 7;
   !!          border 78;   // Boundary surface
   !!          fill u<17>;  // Inside filling
   !!        }
