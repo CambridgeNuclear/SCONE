@@ -10,14 +10,17 @@ Physics Package
 
 In SCONE, the **physics package** is what determines the flow of a calculation. The possible options and related input files are shown below.
 
-* eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
+eigenPhysicsPackage
+###################
 
-  - pop: number of particles used per cycle
-  - active: number of active cycles
-  - inactive: number of inactive cycles
-  - dataType: determines type of nuclear data used; can be ``ce`` or ``mg``
-  - XSdata: keyword to the name of the nuclearDataHandle used 
-  - seed (*optional*): initial seed for the pseudo random number generator 
+eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
+
+* pop: number of particles used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dataType: determines type of nuclear data used; can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used 
+* seed (*optional*): initial seed for the pseudo random number generator 
   
 Example: ::
   
@@ -43,13 +46,16 @@ Example: ::
         
 **NOTE**: even if a ``source`` definition is not required, it can be included.
 
-* fixedSourcePhysicsPackage, used for fixed source calculations
+fixedSourcePhysicsPackage
+#########################
 
-  - pop: number of particles used per batch
-  - cycles: number of batches
-  - dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
-  - XSdata: keyword to the name of the nuclearDataHandle used 
-  - seed (*optional*): initial seed for the pseudo random number generator 
+fixedSourcePhysicsPackage, used for fixed source calculations
+
+* pop: number of particles used per batch
+* cycles: number of batches
+* dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used 
+* seed (*optional*): initial seed for the pseudo random number generator 
   
 Example: ::
 
@@ -71,15 +77,18 @@ Example: ::
 
         varianceReduction { <Weight windows definition> }
 
-* rayVolPhysicsPackage, used to perform ray-tracing based volume calculation
+rayVolPhysicsPackage
+####################
 
-  - pop: number of rays used per cycle
-  - cycles: number of cycles
-  - mfp: mean length of ray segments
-  - abs_prob: ray absorption probability after each segment
-  - robust: 1 for true; 0 for false; enable robust mode
-  - cache: 1 for true; 0 for false; enable distance caching
-  - seed (*optional*): initial seed for the pseudo random number generator 
+rayVolPhysicsPackage, used to perform ray-tracing based volume calculation
+
+* pop: number of rays used per cycle
+* cycles: number of cycles
+* mfp: mean length of ray segments
+* abs_prob: ray absorption probability after each segment
+* robust: 1 for true; 0 for false; enable robust mode
+* cache: 1 for true; 0 for false; enable distance caching
+* seed (*optional*): initial seed for the pseudo random number generator 
   
 Example: ::
   
@@ -94,7 +103,10 @@ Example: ::
         geometry { <Geometry definition> }
         nuclearData { <Nuclear data definition. Requires material names only> }
 
-* vizPhysicsPackage, used for visualising geometry 
+vizPhysicsPackage
+#################
+
+vizPhysicsPackage, used for visualising geometry 
 
 Example: ::
   
@@ -151,42 +163,53 @@ if continuos energy nuclear data are used, or ::
 
       collisionOperator { neutronMG { type <ceCollisionOperatorType>; } }
 
-if multi-group nuclear data are used. In a hybrid simulation, both ``neutronCE`` and ``neutronMG`` can be included. The possible types to be used with **continuous energy** data are:
+if multi-group nuclear data are used. In a hybrid simulation, both ``neutronCE`` and ``neutronMG`` can be included. 
 
-* neutronCEstd, to perform analog collision processing
+The possible types to be used with **continuous energy** data are:
 
-  - minEnergy (*optional*, default = 1.0e-11): minimum energy cut-off. [MeV]
-  - maxEnergy (*optional*, default = 20.0): maximum energy cut-off. [MeV]
-  - energyThreshold (*optional*, default = 400): energy threshold for explicit treatment of target nuclide movement. Target movement is sampled if neutron energy E < kT ∗ energyThreshold where kT is target material temperature in [MeV]. [-]
-  - massThreshold (*optional*, default = 1): mass threshold for explicit treatment of target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn] 
+neutronCEstd
+############
+
+neutronCEstd, to perform analog collision processing
+
+* minEnergy (*optional*, default = 1.0e-11): minimum energy cut-off. [MeV]
+* maxEnergy (*optional*, default = 20.0): maximum energy cut-off. [MeV]
+* energyThreshold (*optional*, default = 400): energy threshold for explicit treatment of target nuclide movement. Target movement is sampled if neutron energy E < kT ∗ energyThreshold where kT is target material temperature in [MeV]. [-]
+* massThreshold (*optional*, default = 1): mass threshold for explicit treatment of target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn] 
   
 Example: ::
   
       collisionOperator { neutronCE { type neutronCEstd; minEnergy 1.0e-12; maxEnergy 30.0; energyThreshold 200; massThreshold 2; } }
 
-* neutronCEimp, to perform implicit collision processing
+neutronCEimp
+############
 
-  - minEnergy (*optional*, default = 1.0e-11): minimum energy cut-off. [MeV]
-  - maxEnergy (*optional*, default = 20.0): maximum energy cut-off. [MeV]
-  - energyThreshold (*optional*, default = 400): energy threshold for explicit treatment of target nuclide movement. Target movement is sampled if neutron energy E < kT ∗ energyThreshold where kT is target material temperature in [MeV]. [-]
-  - massThreshold (*optional*, default = 1): mass threshold for explicit treatment of target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn] 
-  - splitting (*optional*, default = 0): 1 for true; 0 for false; enables splitting for particles above a certain weight
-  - roulette (*optional*, default = 0): 1 for true; 0 for false; enables rouletting of particles below a certain weight
-  - minWgt (*optional*, default = 0.25): minimum particle weight for rouletting
-  - maxWgt (*optional*, default = 1.25): maximum particle weight for splitting
-  - avgWgt (*optional*, default = 0.5): weight of a particle on surviving rouletting
-  - impAbs (*optional*, default = 0): 1 for true; 0 for false; enables implicit capture
-  - impGen (*optional*, default = 1): 1 for true; 0 for false; enables implicit fission sites generation
-  - weightWindows (*optional*, default = 0): 1 for true; 0 for false; enables the use of weight windows 
-  - UFS (*optional*, default = 0): 1 for true; 0 for false; enables the use of uniform fission sites 
+neutronCEimp, to perform implicit collision processing
+
+* minEnergy (*optional*, default = 1.0e-11): minimum energy cut-off. [MeV]
+* maxEnergy (*optional*, default = 20.0): maximum energy cut-off. [MeV]
+* energyThreshold (*optional*, default = 400): energy threshold for explicit treatment of target nuclide movement. Target movement is sampled if neutron energy E < kT ∗ energyThreshold where kT is target material temperature in [MeV]. [-]
+* massThreshold (*optional*, default = 1): mass threshold for explicit treatment of target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn] 
+* splitting (*optional*, default = 0): 1 for true; 0 for false; enables splitting for particles above a certain weight
+* roulette (*optional*, default = 0): 1 for true; 0 for false; enables rouletting of particles below a certain weight
+* minWgt (*optional*, default = 0.25): minimum particle weight for rouletting
+* maxWgt (*optional*, default = 1.25): maximum particle weight for splitting
+* avgWgt (*optional*, default = 0.5): weight of a particle on surviving rouletting
+* impAbs (*optional*, default = 0): 1 for true; 0 for false; enables implicit capture
+* impGen (*optional*, default = 1): 1 for true; 0 for false; enables implicit fission sites generation
+* weightWindows (*optional*, default = 0): 1 for true; 0 for false; enables the use of weight windows 
+* UFS (*optional*, default = 0): 1 for true; 0 for false; enables the use of uniform fission sites 
   
 Example: ::
   
       collisionOperator { neutronCE { type neutronCEimp; minEnergy 1.0e-12; maxEnergy 30.0; impAbs 1; roulette 1; splitting 1; impGen 1; maxWgt 2.0; minWgt 0.1; UFS 1; } }
       
 The possible types to be used with **multi-group** data are:
+
+neutronMGstd
+############
   
-* neutronMGstd, to perform analog collision processing
+neutronMGstd, to perform analog collision processing
 
 Example: ::
 
@@ -236,7 +259,7 @@ Example: ::
 Geometry
 --------
 
-A detailed description about the geometry modeling adopted in SCONE can be found at `Geometry.rst <link to Geometry.rst>`_. In an input file, one has to include: ::
+A detailed description about the geometry modelling adopted in SCONE can be found at `Geometry.rst <link to Geometry.rst>`_. In an input file, one has to include: ::
 
       geometry  { type <geometryType>; boundary (a b c d e f); graph { type <graphType>; } 
       surfaces  { <Surfaces definition> }
@@ -264,6 +287,9 @@ Hence, an example of a geometry input could look like: ::
       cells     { <Cells definition> }
       universes { <Universes definition> } 
       }
+
+Surfaces
+########
 
 To define one or multiple **surfaces**, the necessary entries are: ::
 
@@ -339,7 +365,10 @@ Example: ::
 Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
-      
+
+Cells
+#####
+
 Similarly to the surfaces, the **cells** in the geometry can be defined as: ::
 
       cells { 
@@ -375,6 +404,9 @@ Example: ::
 
       cellixx { id 55; type simpleCell; surfaces (-10); filltype outside; }
       
+Universes
+#########
+      
 Similarly to the surfaces and cells, the **universes** in the geometry can be defined as: ::
 
       universes { 
@@ -396,10 +428,10 @@ Example: ::
 
       uni3 { id 3; type cellUniverse; cells (1 2 55); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); }
 
-* pinUniverse, composed of infinite co-centered cylinders
+* pinUniverse, composed of infinite co-centred cylinders
 
-  - radii: array containing the radii of the co-centered cylinders. There must be an entry equal to 0.0, which corresponds to the outermost layer, which is infinite. [cm]
-  - fills: array containing the names or ids of what is inside each cylindical shell. The order of the fills must correspond to the order of the corresponding radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``, where ``id`` is the id of a defined universe
+  - radii: array containing the radii of the co-centred cylinders. There must be an entry equal to 0.0, which corresponds to the outermost layer, which is infinite. [cm]
+  - fills: array containing the names or ids of what is inside each cylindrical shell. The order of the fills must correspond to the order of the corresponding radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``, where ``id`` is the id of a defined universe
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the rotation angles in degrees applied to the universe. [°]
 
@@ -412,7 +444,7 @@ Example: ::
   - shape: (x y z) array of integers, stating the numbers of x, y and z elements of the lattice. For a 2D lattice, one of the entries has to be 0
   - pitch: (x y z) array with the x, y and z lattice pitches. In a 2D lattice, the value entered in the third dimension is not used. [cm]
   - padmat: material name or universe index (u<id>) that fills the possible extra space between the lattice and its bounding surface. Also the keyword ``void`` is allowed
-  - map: map that includes the univers ids of the elements of the lattice. The order is: increasing x, increasing y and then increasing z
+  - map: map that includes the universe ids of the elements of the lattice. The order is: increasing x, increasing y and then increasing z
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the rotation angles in degrees applied to the universe. [°]
 
@@ -445,25 +477,27 @@ To **plot** a geometry, the keyword ``viz`` must be present in the input file: :
       
 The possible types of files that the geometry is plotted in are:
 
-* vtk
+vtk
+###
 
-  - corner: (x y z) array with the corner of the geometry [cm]
-  - width: (x y z) array with the width of the mesh in each direction [cm]
-  - vox: (x y z) array with the number of voxels requested in each direction **NOTE: the sample input in outputVTK doesn't have vox**
-  - what (*optional*, default = material): defines what is highlighted in the plot; options are ``material`` and ``cellID``
+* corner: (x y z) array with the corner of the geometry [cm]
+* width: (x y z) array with the width of the mesh in each direction [cm]
+* vox: (x y z) array with the number of voxels requested in each direction **NOTE: the sample input in outputVTK doesn't have vox**
+* what (*optional*, default = material): defines what is highlighted in the plot; options are ``material`` and ``cellID``
 
 Example: ::
 
       plotVTK { type vtk; corner (10.0 6.0 2.0); width (20.0 12.0 4.0); vox (4000 120 400); what cellID; }
 
-* bmp
+bmp
+###
 
-  - centre: (x y z) array with the coordinates of the center of the plot [cm]
-  - axis: ``x``, ``y`` or ``z``, it's the axis normal to the 2D plot
-  - width (*optional*, default = whole geometry): (y z), (x z) or (x y) array with the width of the geometry plotted in each direction [cm]
-  - res: (y z), (x z) or (x y) array with the resolution of the mesh in each direction
-  - output: name of the output file, with extension ``.bmp``
-  - what (*optional*, default = material): defines what is highlighted in the plot; options are ``material`` and ``cellID``
+* centre: (x y z) array with the coordinates of the center of the plot [cm]
+* axis: ``x``, ``y`` or ``z``, it's the axis normal to the 2D plot
+* width (*optional*, default = whole geometry): (y z), (x z) or (x y) array with the width of the geometry plotted in each direction [cm]
+* res: (y z), (x z) or (x y) array with the resolution of the mesh in each direction
+* output: name of the output file, with extension ``.bmp``
+* what (*optional*, default = material): defines what is highlighted in the plot; options are ``material`` and ``cellID``
 
 Example: ::
 
@@ -490,22 +524,28 @@ The **handles** definition is structured as the following: ::
       <handleName2> { type <databaseType>; *keywords* }
       }
 
-The name of a handle has to be the same as definited in a ``physicsPackage`` under the keyword ``XSdata``. 
+The name of a handle has to be the same as defined in a ``physicsPackage`` under the keyword ``XSdata``. 
 
 Otherwise, the possible **nuclear database** types allowed are:  
 
-* aceNeutronDatabase, used for continuous energy data. In this case, the data is read from ACE files. 
+aceNeutronDatabase
+##################
 
-  - aceLibrary: includes the path to the *.aceXS* file, which includes the paths to the ACE files
-  - ures (*optional*, default = 0): 1 for true; 0 for false; activates the unresolved resonance probability tables treatment
+aceNeutronDatabase, used for continuous energy data. In this case, the data is read from ACE files. 
+
+* aceLibrary: includes the path to the *.aceXS* file, which includes the paths to the ACE files
+* ures (*optional*, default = 0): 1 for true; 0 for false; activates the unresolved resonance probability tables treatment
   
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS; ures 1; }
       
-* baseMgNeutronDatabase, used for multi-group data. In this case, the data is read from files provided by the user. 
+baseMgNeutronDatabase
+#####################
 
-  - PN: includes a flag for anisotropy treatment. Could be ``P0`` or ``P1``
+baseMgNeutronDatabase, used for multi-group data. In this case, the data is read from files provided by the user. 
+
+* PN: includes a flag for anisotropy treatment. Could be ``P0`` or ``P1``
   
 Example: ::
 
@@ -575,7 +615,7 @@ In the case of a multi-group calculation, **multi-group cross sections** must be
       3 -> 1   3 -> 2   3 -> 3
 
 * scatteringMultiplicity: P0 scattering multiplicity matrix, of size NxN. Contains multiplicative elements that will be multiplied to the P0 matrix elements for scattering production cross section, hence all elements must be >= 1.0
-* P1 (*optional*): necessary only if ``P1`` is definited in the ``baseMgNeutronDatabase`` entry ``PN``. It contains the P1 scattering matrix, of size NxN
+* P1 (*optional*): necessary only if ``P1`` is defined in the ``baseMgNeutronDatabase`` entry ``PN``. It contains the P1 scattering matrix, of size NxN
 
 An example file is: ::
 
@@ -599,7 +639,7 @@ An example file is: ::
 Tallies
 -------
 
-As mentioned previously, one might have to include the keywords ``inactiveTally`` and ``activeTally`` in the input file (in the case of ``eigenPhysicsPackage``), or just ``tally`` (in the case of ``fixedSourcePhysicsPackage``). Eitherway, the **tally** definition is the same for all cases: ::
+As mentioned previously, one might have to include the keywords ``inactiveTally`` and ``activeTally`` in the input file (in the case of ``eigenPhysicsPackage``), or just ``tally`` (in the case of ``fixedSourcePhysicsPackage``). Either way, the **tally** definition is the same for all cases: ::
 
       tally {
       *keywords*
@@ -610,6 +650,9 @@ As mentioned previously, one might have to include the keywords ``inactiveTally`
       }
       
 In this case, ``resName`` can be any name chosen by the user, and it is what will be reported in the output file. 
+
+Tally Clerks
+############
 
 The **tally clerks** determine which kind of estimator will be used. The options are:
 
@@ -684,7 +727,7 @@ Example: ::
 * mgXsClerk, calculates multi-group cross sections via a collision estimator of reaction rates and analog tallies of fission spectrum and scattering events ingoing and outgoing energies and multiplicity
 
   - energyMap (*optional*, default = 1 group): definition of the energy group structure to be used
-  - spaceMap (*optional*, default = whole geometry): definitnion of a spatial tally map
+  - spaceMap (*optional*, default = whole geometry): definition of a spatial tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``) 
   
 Example: ::
@@ -718,6 +761,9 @@ Example: ::
       tally {
       fissionMat { type simpleFMClerk; map { <Map definition> } }
       }
+
+Tally Responses
+###############
 
 Certain tally clerks, like the ``collisionClerk`` and ``trackClerk``, require a **response function**. The different types of responses could be:
 
@@ -755,7 +801,7 @@ Example: ::
       }
       }
 
-* weightResponse: responde for scoring particle weights
+* weightResponse: response for scoring particle weights
 
   - moment (*optional*, default = 1): moment of the weight scored
 
@@ -771,6 +817,9 @@ Example: ::
 
 **NOTE**: to calculate the average weight, one should divide weight moment 1 (weight1) by weight moment 0 (weight0). To calculate the variance of the weights, the tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2 
 
+Tally Maps
+##########
+
 The different types of **tally maps** are: 
 
 * cellMap (1D map), cell-wise map
@@ -784,7 +833,7 @@ Example: ::
   
 * energyMap (1D map), defines an energy group structure
 
-  - grid: ``log`` for logaritmically spaced bins or ``lin`` for linearly spaced bins
+  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
   
     + min: bottom energy [MeV]
     + max: top energy [MeV]
@@ -796,7 +845,7 @@ Example: ::
  
   - grid: ``predef``
   
-    + name: name of the predifined group structure. Options are: ``wims69``, ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``vitaminj``
+    + name: name of the predefined group structure. Options are: ``wims69``, ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``vitaminj``
 
 Examples: ::
 
@@ -828,7 +877,7 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* multiMap, ensamble of multiple 1D maps
+* multiMap, ensemble of multiple 1D maps
 
   - maps: list of the names of the maps that will compose the ``multiMap``. This is followed by dictionaries that define the requested maps
   
@@ -908,7 +957,7 @@ Example: ::
 
 * weightMap (1D map), divides weight into number of discrete bins
 
-  - grid: ``log`` for logaritmically spaced bins or ``lin`` for linearly spaced bins
+  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
   
     + min: bottom weight
     + max: top weight
@@ -923,7 +972,10 @@ Examples: ::
       map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
       map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
       map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); } 
-      
+    
+Tally Filters
+#############
+    
 Another option that can be included in the tallies is **tally filters**. These allow to filter out certain types of particles when scoring results. For now, the only type of filter existing is:
 
 * energyFilter, to stop particles within a certain energy range from contributing to a certain tally
@@ -937,6 +989,9 @@ Example: ::
 
       CEfilter { type energyFilter; Emin 10.0; Emax 20.0; }
       MGfilter { type energyFilter; Gtop 1; Glow 5; }
+
+Other options
+#############
 
 Other keywords, such as for results **normalisation**, that could be included are:
 

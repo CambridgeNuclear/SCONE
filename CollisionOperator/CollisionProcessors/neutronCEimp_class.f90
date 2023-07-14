@@ -58,6 +58,11 @@ module neutronCEimp_class
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
   !!  UFS     -> uniform fission sites variance reduction
+<<<<<<< HEAD
+=======
+  !!  splitting -> splits particles above certain weight (off by default)
+  !!  roulette  -> roulettes particles below certain weight (off by defautl)
+>>>>>>> b2f7afe... Fix docs in neutronCEimp_class.f90
   !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
   !!              Target movment is sampled if neutron energy E < kT * thresh_E where
   !!              kT is target material temperature in [MeV]. (default = 400.0)
