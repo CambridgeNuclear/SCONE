@@ -23,10 +23,11 @@ module mgIMCDatabase_inter
   type, public, abstract, extends(nuclearDatabase) :: mgIMCDatabase
 
   contains
-    procedure(getEmittedRad), deferred     :: getEmittedRad
-    procedure(getMaterialEnergy), deferred :: getMaterialEnergy
-    procedure(updateProperties), deferred  :: updateProperties
-    procedure(setCalcType), deferred       :: setCalcType
+    procedure(getEmittedRad), deferred       :: getEmittedRad
+    procedure(getMaterialEnergy), deferred   :: getMaterialEnergy
+    procedure(updateProperties), deferred    :: updateProperties
+    procedure(setCalcType), deferred         :: setCalcType
+    procedure(sampleEnergyGroup), deferred   :: sampleEnergyGroup
     procedure(sampleTransformTime), deferred :: sampleTransformTime
 
   end type mgIMCDatabase
@@ -80,6 +81,24 @@ module mgIMCDatabase_inter
       class(mgIMCDatabase), intent(inout) :: self
       integer(shortInt), intent(in)       :: type
     end subroutine setCalcType
+
+    !!
+    !! Sample energy group of a particle emitted from material matIdx
+    !!
+    !! Args:
+    !!   matIdx [in] -> index of material to sample from
+    !!   rand   [in] -> RNG
+    !!
+    !! Result:
+    !!   G -> energy group of sampled particle
+    !!
+    function sampleEnergyGroup(self, matIdx, rand) result(G)
+      import :: mgIMCDatabase, shortInt, RNG
+      class(mgIMCDatabase), intent(inout) :: self
+      integer(shortInt), intent(in)       :: matIdx
+      class(RNG), intent(inout)           :: rand
+      integer(shortInt)                   :: G
+    end function sampleEnergyGroup
 
     !!
     !! Sample the time taken for a material particle to transform into a photon

@@ -21,6 +21,7 @@ module baseMgIMCDatabase_class
 
   ! baseMgIMC Objects
   use baseMgIMCMaterial_class, only : baseMgIMCMaterial
+  use materialEquations,       only : imcEnergyGrid
 
   implicit none
   private
@@ -69,6 +70,7 @@ module baseMgIMCDatabase_class
 
     ! Local interface
     procedure :: nGroups
+    procedure :: sampleEnergyGroup
 
   end type baseMgIMCDatabase
 
@@ -305,6 +307,26 @@ contains
   end subroutine setCalcType
 
   !!
+  !! Sample energy group of a particle emitted from material matIdx
+  !!
+  !! Args:
+  !!   matIdx [in] -> index of material to sample from
+  !!   rand   [in] -> RNG
+  !!
+  !! Result:
+  !!   G -> energy group of sampled particle
+  !!
+  function sampleEnergyGroup(self, matIdx, rand) result(G)
+    class(baseMgIMCDatabase), intent(inout) :: self
+    integer(shortInt), intent(in)           :: matIdx
+    class(RNG), intent(inout)               :: rand
+    integer(shortInt)                       :: G
+
+    G = self % mats(matIdx) % sampleEnergyGroup(rand)
+
+  end function sampleEnergyGroup
+
+  !!
   !! Sample the time taken for a material particle to transform into a photon
   !! Used for ISMC only
   !!
@@ -349,6 +371,7 @@ contains
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
     type(dictionary)                                   :: tempDict
+    real(defReal), dimension(:), allocatable           :: temp
     character(100), parameter :: Here = 'init (baseMgIMCDatabase_class.f90)'
  
     ! Prevent reallocations
@@ -359,6 +382,19 @@ contains
       loud = .not.silent
     else
       loud = .true.
+    end if
+
+    ! Obtain number of groups and initialise energy grid if nG > 1
+    matDef => mm_getMatPtr(1)
+    call matDef % extraInfo % get(path,'xsFile')
+    call fileToDict(tempDict, path)
+    call tempDict % get(self % nG, 'numberOfGroups')
+    if (self % nG > 1) then
+      call tempDict % get(temp, 'energyBins') 
+      if (size(temp) /= self % nG + 1) call fatalError(Here, 'Should have '//numToChar(self % nG+1)&
+                                           &//' energy bins for '//numToChar(self % nG)//' groups. &
+                                           &Currently have '//numToChar(size(temp))//'.')
+      call imcEnergyGrid % init(temp)
     end if
 
     ! Find number of materials and allocate space
@@ -388,14 +424,11 @@ contains
       ! Initialise material
       call self % mats(i) % init(tempDict)
 
-    end do
-
-    ! Load and verify number of groups
-    self % nG = self % mats(1) % nGroups()
-    do i=2,nMat
+      ! Verify number of groups
       if(self % nG /= self % mats(i) % nGroups()) then
         call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
       end if
+
     end do
 
   end subroutine init

@@ -243,7 +243,7 @@ contains
   end subroutine sampleEnergyAngle
 
   !!
-  !! Provide particle energy, currently only a single group
+  !! Provide particle energy
   !!
   !! See configSource_inter for details.
   !!
@@ -251,9 +251,31 @@ contains
     class(bbSurfaceSource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: N
+    real(defReal)                         :: random, sumToN, const, nu
 
-    p % isMG = .true.
-    p % G    = 1
+    if (self % isMG .eqv. .true.) then
+      p % isMG = .true.
+      p % G = 1
+      return
+    end if
+
+    ! Sample frequency from a black body (Planck) spectrum. See Fig. 1 in:
+    !   "An Implicit Monte Carlo Scheme for Calculating Time and Frequency Dependent
+    !    Nonlinear Radiation Transport", Fleck and Cummings, 1971
+    N = 1
+    random = rand % get()
+    sumToN = 1
+    const  = 90 / (pi**4)
+
+    sample:do
+      if (random <= const*sumToN) exit sample
+      N = N + 1
+      sumToN = sumToN + 1 / (N**4)
+    end do sample
+
+    nu = -log(rand % get() * rand % get() * rand % get() * rand % get()) / N
+    p % E = planckConst * nu
 
   end subroutine sampleEnergy
 

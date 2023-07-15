@@ -138,7 +138,7 @@ contains
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
     real(defReal), dimension(6)             :: bounds
-    integer(shortInt)                       :: matIdx, i, Ntemp
+    integer(shortInt)                       :: matIdx, i, Ntemp, G
     real(defReal)                           :: energy, totalEnergy
     type(RNG)                               :: pRand
     class(mgIMCDatabase), pointer           :: nucData
@@ -184,10 +184,11 @@ contains
         ! Sample particles
         !$omp parallel
         pRand = rand
-        !$omp do private(pRand)
+        !$omp do private(pRand, G)
         do i=1, Ntemp
           call pRand % stride(i)
-          call dungeon % detain(self % sampleIMC(pRand, matIdx, energy, bounds))
+          G = nucData % sampleEnergyGroup(matIdx, pRand)
+          call dungeon % detain(self % sampleIMC(pRand, matIdx, energy, G, bounds))
         end do
         !$omp end do
         !$omp end parallel
@@ -228,11 +229,12 @@ contains
   !!   bounds [in] -> bounds for position search, will be bounds of entire geometry if using
   !!                  rejection sampling method, and bounds of single material if using fast
   !!
-  function sampleIMC(self, rand, targetMatIdx, energy, bounds) result(p)
+  function sampleIMC(self, rand, targetMatIdx, energy, G, bounds) result(p)
     class(materialSource), intent(inout)    :: self
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in)           :: targetMatIdx
     real(defReal), intent(in)               :: energy
+    integer(shortInt), intent(in)           :: G
     real(defReal), dimension(6), intent(in) :: bounds
     type(particleState)                     :: p
     real(defReal), dimension(3)             :: bottom, top, r, dir, rand3
@@ -280,7 +282,7 @@ contains
     p % uniqueID = uniqueID
     p % r        = r
     p % dir      = dir
-    p % G        = self % G
+    p % G        = G
     p % isMG     = .true.
     p % wgt      = energy
     p % type     = self % pType

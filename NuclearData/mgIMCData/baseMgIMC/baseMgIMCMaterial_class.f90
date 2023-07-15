@@ -12,6 +12,7 @@ module baseMgIMCMaterial_class
   use materialHandle_inter,    only : materialHandle
   use mgIMCMaterial_inter,     only : mgIMCMaterial, kill_super => kill
   use IMCXSPackages_class,     only : IMCMacroXSs
+  use materialEquations
 
   use simulationTime_class,    only : timeStep
 
@@ -29,7 +30,7 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: TOTAL_XS      = 1
   integer(shortInt), parameter, public :: IESCATTER_XS  = 2
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
-  integer(shortInt), parameter, public :: PLANCK_XS     = 4
+  integer(shortInt), parameter, public :: EMISSION_PROB = 4
 
   ! Calculation Type
   integer(shortInt), parameter, public :: IMC  = 1
@@ -67,7 +68,7 @@ module baseMgIMCMaterial_class
     real(defReal),dimension(:), allocatable   :: cv
     real(defReal),dimension(:), allocatable   :: absEqn
     real(defReal),dimension(:), allocatable   :: scattEqn
-    real(defReal),dimension(:), allocatable   :: planckEqn
+    character(nameLen)                        :: name
     real(defReal)                             :: T
     real(defReal)                             :: V
     real(defReal)                             :: fleck
@@ -95,6 +96,7 @@ module baseMgIMCMaterial_class
     procedure :: getTemp
     procedure :: getMatEnergy
     procedure :: setCalcType
+    procedure :: sampleEnergyGroup
     procedure :: sampleTransformTime
 
     procedure, private :: tempFromEnergy
@@ -188,7 +190,6 @@ contains
     xss % elasticScatter   = ZERO
     xss % inelasticScatter = self % data(IESCATTER_XS, G)
     xss % capture          = self % data(CAPTURE_XS, G)
-    xss % planck           = self % data(PLANCK_XS, G)
 
   end subroutine getMacroXSs_byG
 
@@ -235,7 +236,7 @@ contains
 
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
-    if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
+    if (nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
     ! Allocate space for data
     N = 4
@@ -244,15 +245,17 @@ contains
     ! Store alpha setting
     call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
-    ! Read opacity equations
-    call dict % get(temp, 'capture')
-    self % absEqn = temp
-    call dict % get(temp, 'scatter')
-    self % scattEqn = temp
+    ! Get name of equations for cv and opacity calculations
+    call dict % getOrDefault(self % name, 'equations','none')
 
-    ! Build planck opacity equation
-    ! For grey case, sigmaP = sigmaA. Will become more complicated for frequency-dependent case
-    self % planckEqn = self % absEqn
+    if (self % name == 'none') then
+      call fatalError(Here, 'No name provided for equations')
+!      ! Read opacity equations
+!      call dict % get(temp, 'capture')
+!      self % absEqn   = temp
+!      call dict % get(temp, 'scatter')
+!      self % scattEqn = temp
+    end if
 
     ! Read heat capacity equation
     call dict % get(temp, 'cv')
@@ -270,7 +273,7 @@ contains
     tempT = dT/2
     tempU = 0
     do i=1, 1000
-      tempU = tempU + dT * poly_eval(self % cv, tempT)
+      tempU = tempU + dT * evaluateCv(self % name, tempT) !poly_eval(self % cv, tempT)
       tempT = tempT + dT
     end do
     self % energyDens = tempU
@@ -379,11 +382,14 @@ contains
 
       ! Protect against infinite loop
       i = i+1
-      if (i > 1000000) call fatalError(Here, "1000,000 iterations without convergence.")
+      if (i > 1000000) then
+        print *, U, self % energyDens
+        call fatalError(Here, "1000,000 iterations without convergence.")
+      end if
 
       ! Increment temperature and increment the corresponding energy density
       tempT = T + dT/2
-      tempU = U + dT * poly_eval(self % cv, tempT)
+      tempU = U + dT * evaluateCv(self % name, tempT) !poly_eval(self % cv, tempT)
 
       error = self % energyDens - tempU
 
@@ -411,13 +417,60 @@ contains
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
+    integer(shortInt)                       :: i
+    real(defReal)                           :: sigmaP, E, EStep, increase
 
-    self % sigmaP = poly_eval(self % planckEqn, self % T)
+    ! Evaluate opacities for grey case
+    if (self % nGroups() == 1) then
+      self % data(CAPTURE_XS,1)   = evaluateSigma(self % name, self % T, ONE)
+      self % data(IESCATTER_XS,1) = ZERO
+      self % data(TOTAL_XS,1)     = self % data(CAPTURE_XS,1) + self % data(IESCATTER_XS,1)
+      ! Planck opacity equal to absorption opacity for single frequency
+      self % sigmaP = self % data(CAPTURE_XS, 1)
+      return
+    end if
 
-    self % data(CAPTURE_XS,:) = poly_eval(self % absEqn, self % T)
-    self % data(IESCATTER_XS,:) = poly_eval(self % scattEqn, self % T)
-    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
-    self % data(PLANCK_XS,:) = poly_eval(self % planckEqn, self % T)
+    ! Evaluate opacities for frequency-dependent case
+    do i = 1, self % nGroups()
+      ! Calculate central energy value of group
+      E = (imcEnergyGrid % bin(i) + imcEnergyGrid % bin(i+1)) / 2
+      ! Evaluate absorption opacity sigma(T, E)
+      self % data(CAPTURE_XS,i)   = evaluateSigma(self % name, self % T, E)
+    end do
+    self % data(IESCATTER_XS,:) = ZERO
+    self % data(TOTAL_XS,:)     = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
+
+    ! Calculate planck opacity - integral over frequency of b * sigma
+    EStep = imcEnergyGrid % bin(1) / 1000
+    E = -EStep / 2
+    sigmaP = ZERO
+    do i = 1, 10000
+      E = E + EStep
+      increase = EStep*normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
+      sigmaP = sigmaP + increase
+    end do
+    ! Continue with increasing step size to simulate E -> infinity
+    do i = 1, 1000
+      EStep = EStep + imcEnergyGrid % bin(1) / 100
+      E = E + EStep
+      increase = EStep*normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
+      sigmaP = sigmaP + increase
+    end do
+
+    self % sigmaP = sigmaP
+
+    ! Calculate probability of emission from each energy group
+    do i = 1, self % nGroups()
+      EStep = imcEnergyGrid % bin(i) - imcEnergyGrid % bin(i+1)
+      E     = imcEnergyGrid % bin(i) - 0.5*EStep
+      self % data(EMISSION_PROB,i) = EStep * normPlanckSpectrum(E, self % T) * &
+                                     & evaluateSigma(self % name, self % T, E)
+    end do
+    self % data(EMISSION_PROB,:) = self % data(EMISSION_PROB,:) / sum(self % data(EMISSION_PROB,:))
+
+!    self % data(CAPTURE_XS,:) = poly_eval(self % absEqn, self % T)
+!    self % data(IESCATTER_XS,:) = poly_eval(self % scattEqn, self % T)
+!    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
 
   end subroutine sigmaFromTemp
 
@@ -430,7 +483,7 @@ contains
     character(100), parameter               :: Here = 'updateFleck (baseMgIMCMaterial_class.f90)'
 
     ! Calculate beta, ratio of radiation and material heat capacities
-    beta = 4 * radiationConstant * self % T**3 / poly_eval(self % cv, self % T)
+    beta = 4 * radiationConstant * self % T**3 / evaluateCv(self % name, self % T) !poly_eval(self % cv, self % T)
 
     ! Use time step size to calculate fleck factor
     select case(self % calcType)
@@ -535,6 +588,29 @@ contains
   end subroutine setCalcType
 
   !!
+  !! Sample energy group for a particle emitted from material (and after effective scattering)
+  !!
+  function sampleEnergyGroup(self, rand) result(G)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    class(RNG), intent(inout)               :: rand
+    integer(shortInt)                       :: G, i
+    real(defReal)                           :: random, cumProb
+
+    random  = rand % get()
+    cumProb = ZERO
+
+    ! Choose based on emission probability of each group
+    do i = 1, self % nGroups()
+      cumProb = cumProb + self % data(EMISSION_PROB,i)
+      if (random < cumProb) then
+        G = i
+        return
+      end if
+    end do
+
+  end function sampleEnergyGroup   
+
+  !!
   !! Sample the time taken for a material particle to transform into a photon
   !! Used for ISMC only
   !!
@@ -551,5 +627,26 @@ contains
     ! TODO: consider implications when T = 0 (=> eta = 0)
 
   end function sampleTransformTime
+
+  !!
+  !! Evaluate frequency-normalised Planck spectrum
+  !!
+  !! Args:
+  !!   nu -> frequency
+  !!   T  -> temperature
+  !!
+  pure function normPlanckSpectrum(E, T) result(b)
+    real(defReal), intent(in) :: E
+    real(defReal), intent(in) :: T
+    real(defReal)             :: b
+    real(defReal)             :: nu, nuOverT
+
+    nu = E / planckConst
+    nuOverT = nu/T
+
+    b = 15 * nuOverT**3 / (pi**4 * T * (exp(nuOverT)-1))
+
+  end function normPlanckSpectrum
+
 
 end module baseMgIMCMaterial_class

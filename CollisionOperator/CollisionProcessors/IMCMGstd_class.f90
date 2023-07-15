@@ -89,7 +89,8 @@ contains
 
     ! Verify that particle is MG PHOTON
     if( .not. p % isMG .or. p % type /= P_PHOTON) then
-      call fatalError(Here, 'Supports only MG PHOTON. Was given NEUTRON or MATERIAL and/or CE '//printType(p % type))
+      call fatalError(Here, 'Supports only MG PHOTON. Was given NEUTRON or MATERIAL and/or CE '&
+                                                                         &//printType(p % type))
     end if
 
     ! Verify and load nuclear data pointer
@@ -147,7 +148,7 @@ contains
     ! Assign MT number
     collDat % MT = macroAllScatter 
 
-    ! Sample Direction - chosen uniformly inside unit sphere
+    ! Sample direction - chosen uniformly inside unit sphere
     mu = 2 * p % pRNG % get() - 1
     phi = p % pRNG % get() * 2*pi
     dir(1) = mu
@@ -155,6 +156,9 @@ contains
     dir(3) = sqrt(1-mu**2) * sin(phi)
 
     call p % point(dir)
+
+    ! Sample new frequency
+    p % G = self % xsData % sampleEnergyGroup(p % matIdx(), p % pRNG)
 
   end subroutine elastic
 
