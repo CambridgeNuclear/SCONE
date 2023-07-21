@@ -274,6 +274,7 @@ contains
     tempU = 0
     do i=1, 1000
       tempU = tempU + dT * evaluateCv(self % name, tempT) !poly_eval(self % cv, tempT)
+      if (tempU /= tempU) tempU = ZERO
       tempT = tempT + dT
     end do
     self % energyDens = tempU
@@ -361,7 +362,7 @@ contains
   !!
   function tempFromEnergy(self) result(T)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: T, dT, tempT, U, tempU, tol, error
+    real(defReal)                           :: T, dT, tempT, U, tempU, tol, error, increase
     integer(shortInt)                       :: i
     character(100), parameter               :: Here = 'tempFromEnergy (mgIMCMaterial_class.f90)'
 
@@ -389,7 +390,9 @@ contains
 
       ! Increment temperature and increment the corresponding energy density
       tempT = T + dT/2
-      tempU = U + dT * evaluateCv(self % name, tempT) !poly_eval(self % cv, tempT)
+      increase = dT * evaluateCv(self % name, tempT)
+      if (increase /= increase) increase = ZERO
+      tempU = U + increase !poly_eval(self % cv, tempT)
 
       error = self % energyDens - tempU
 
@@ -419,6 +422,7 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     integer(shortInt)                       :: i
     real(defReal)                           :: sigmaP, E, EStep, increase
+    character(100), parameter :: Here = 'sigmaFromTemp (baseMgIMCMaterial_class.f90)'
 
     ! Evaluate opacities for grey case
     if (self % nGroups() == 1) then
@@ -458,6 +462,7 @@ contains
     end do
 
     self % sigmaP = sigmaP
+    if (self % sigmaP == ZERO) call fatalError(Here, 'sigmaP = 0 ???')
 
     ! Calculate probability of emission from each energy group
     do i = 1, self % nGroups()
@@ -595,6 +600,11 @@ contains
     class(RNG), intent(inout)               :: rand
     integer(shortInt)                       :: G, i
     real(defReal)                           :: random, cumProb
+
+    if (self % nGroups() == 1) then
+      G = 1
+      return
+    end if
 
     random  = rand % get()
     cumProb = ZERO

@@ -1,4 +1,14 @@
-
+!!
+!! Module to store temperature and/or frequency-dependent equations for materials, especially
+!! those too complicated to be easily read in from an input file. Also contains an energy grid to
+!! allow materials to access particle energy group bounds for use in evaluating these equations.
+!!
+!! For a new set of material equations:
+!!   -> Add name to AVAILABLE_equations
+!!   -> Add case to evaluateCv and evaluateSigma
+!!   -> Evaluate simple equations (e.g. 'marshak' or 'hohlraum') in these functions,
+!!      or can link to new functions (e.g. 'olson1D')
+!!
 module materialEquations
 
   use numPrecision

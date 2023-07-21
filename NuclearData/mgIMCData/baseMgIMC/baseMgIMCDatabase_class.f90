@@ -2,7 +2,7 @@ module baseMgIMCDatabase_class
 
   use numPrecision
   use endfConstants
-  use universalVariables, only : VOID_MAT
+  use universalVariables, only : VOID_MAT, OUTSIDE_MAT
   use genericProcedures,  only : fatalError, numToChar
   use particle_class,     only : particle
   use charMap_class,      only : charMap
@@ -109,6 +109,9 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100), parameter :: Here = 'getTotalMatXS (baseMgIMCDatabase_class.f90)'
+
+    if (matIdx == OUTSIDE_MAT) call fatalError(Here, 'Requesting XS in OUTSIDE_MAT')
 
     if (matIdx == VOID_MAT) then
       xs = ZERO
