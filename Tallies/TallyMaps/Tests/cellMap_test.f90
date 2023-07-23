@@ -81,7 +81,8 @@ contains
     call mm_nameMap % add(name, VOID_MAT)
 
     ! Initialise geometry in geomReg
-    call new_geometry(dict, 'geom', silent = .true.)
+    name = 'geom'
+    call new_geometry(dict, name, silent = .true.)
 
     ! Initialise dictionaries
     call mapDict1 % init(2)

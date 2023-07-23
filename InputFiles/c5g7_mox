@@ -119,6 +119,7 @@ nuclearData {
 
     water {
       temp 75675;
+      moder { 1001.03 h-h2o.42; }
       composition {
       1001.03    6.700E-002;
       8016.03    3.350E-002;

@@ -1,5 +1,7 @@
 module mgNeutronDatabase_inter
 
+  use numPrecision
+
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
 
@@ -16,9 +18,13 @@ module mgNeutronDatabase_inter
   !!
   !! It does nothing, It adds nothing,
   !! It just provides a common superclass for related classes
+  !! and holds the number of energy groups
+  !!
+  !! Public members: 
+  !!   nG -> number of energy groups
   !!
   type, public, abstract, extends(nuclearDatabase) :: mgNeutronDatabase
-
+    integer(shortInt)  :: nG = 0
   end type mgNeutronDatabase
 
 contains
