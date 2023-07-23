@@ -236,7 +236,7 @@ contains
     end if
 
     ! Return if invalid bin index
-    if (enIdx == 0 .or. matIdx == 0) return
+    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
     ! Calculate bin address
     binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -324,7 +324,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (enIdx == 0 .or. matIdx == 0) return
+        if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
         ! Calculate bin address
         binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -341,7 +341,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (binEnOut == 0) return
+        if (binEnOut == self % energyN + 1) return
 
         ! Score scattering event from group g to g'
         call mem % score(preColl % wgt, addr + SCATT_EV_idx + binEnOut)
@@ -429,7 +429,7 @@ contains
       end if
 
       ! Return if invalid bin index
-      if (enIdx == 0 .or. matIdx == 0) cycle
+      if ((enIdx == self % energyN + 1) .or. matIdx == 0) cycle
 
       ! Calculate bin address
       binIdx = self % energyN * (matIdx - 1) + enIdx
