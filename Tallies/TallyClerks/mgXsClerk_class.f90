@@ -122,6 +122,9 @@ contains
     class(dictionary), intent(in)     :: dict
     character(nameLen), intent(in)    :: name
 
+    ! Assign name
+    call self % setName(name)
+    
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
@@ -236,7 +239,7 @@ contains
     end if
 
     ! Return if invalid bin index
-    if (enIdx == 0 .or. matIdx == 0) return
+    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
     ! Calculate bin address
     binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -324,7 +327,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (enIdx == 0 .or. matIdx == 0) return
+        if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
         ! Calculate bin address
         binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -341,7 +344,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (binEnOut == 0) return
+        if (binEnOut == self % energyN + 1) return
 
         ! Score scattering event from group g to g'
         call mem % score(preColl % wgt, addr + SCATT_EV_idx + binEnOut)
@@ -429,7 +432,7 @@ contains
       end if
 
       ! Return if invalid bin index
-      if (enIdx == 0 .or. matIdx == 0) cycle
+      if ((enIdx == self % energyN + 1) .or. matIdx == 0) cycle
 
       ! Calculate bin address
       binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -726,8 +729,7 @@ contains
     integer(shortInt)                          :: i
 
     ! Begin block
-    name = 'MGxs'
-    call outFile % startBlock(name)
+    call outFile % startBlock(self % getName())
 
     ! Allocate space for resultShape array
     if (allocated(self % spaceMap)) then
