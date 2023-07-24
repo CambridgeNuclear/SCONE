@@ -1,3 +1,8 @@
+//
+// PU-MET-FAST-001 rev. 3
+//
+// As described in LA-UR-14-21554
+//
 type eigenPhysicsPackage;
 
 pop      20000;
@@ -45,19 +50,16 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 6.3849; }
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 6.39157; }
     }
 
 
     cells
     {
-     // out     { id 3; surfaces (1 ); filltype outside;         }
-     // inside  { id 4; surfaces (-1); filltype mat; mat fuel;}
     }
 
     universes
     {
-
       root
       {
           id 1;
@@ -84,7 +86,8 @@ materials {
         94239.03  0.037047;
         94240.03  0.0017512;
         94241.03  0.00011674;
-        31000.03  0.0013752;
+        31069.03  0.00083603;
+        31071.03  0.00053917;
       }
     }
 
