@@ -122,6 +122,9 @@ contains
     class(dictionary), intent(in)     :: dict
     character(nameLen), intent(in)    :: name
 
+    ! Assign name
+    call self % setName(name)
+    
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
@@ -726,8 +729,7 @@ contains
     integer(shortInt)                          :: i
 
     ! Begin block
-    name = 'MGxs'
-    call outFile % startBlock(name)
+    call outFile % startBlock(self % getName())
 
     ! Allocate space for resultShape array
     if (allocated(self % spaceMap)) then
