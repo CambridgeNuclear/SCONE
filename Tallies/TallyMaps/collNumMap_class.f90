@@ -45,7 +45,7 @@ module collNumMap_class
     integer(shortInt), dimension(:), allocatable :: collisionNumbers
 
   contains
-    ! Superclass interface implementaction
+    ! Superclass interface implementation
     procedure :: init
     procedure :: bins
     procedure :: map
@@ -97,7 +97,7 @@ contains
   end subroutine build
 
   !!
-  !! Initialise cell map from dictionary
+  !! Initialise collision number map from dictionary
   !!
   !! See tallyMap for specification
   !!
@@ -185,13 +185,13 @@ contains
   end subroutine print
 
   !!
-  !! Build new cell Map from dictionary
+  !! Build new collision number Map from dictionary
   !!
   !! Args:
   !!   dict[in] -> input dictionary for the map
   !!
   !! Result:
-  !!   Initialised cellMap instance
+  !!   Initialised collNumMap instance
   !!
   !! Errors:
   !!   See init procedure.
