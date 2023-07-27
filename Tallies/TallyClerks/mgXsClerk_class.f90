@@ -739,12 +739,8 @@ contains
     end if
 
     ! Print energy map information
-    if (allocated(self % energyMap)) then
-      call self % energyMap % print(outFile)
-      resArrayShape(1) = self % energyN
-    else
-      resArrayShape(1) = 1
-    end if
+    if (allocated(self % energyMap)) self % energyMap % print(outFile)
+    resArrayShape(1) = self % energyN
 
     ! If a space map print map information
     if (allocated(self % spaceMap)) then
