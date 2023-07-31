@@ -259,6 +259,7 @@ contains
       ! Monoenergetic
       else
         p % G = self % G
+        p % isMG = .true.
       end if
     else
       p % E = self % E
