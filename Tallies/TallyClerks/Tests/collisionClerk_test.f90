@@ -82,7 +82,7 @@ contains
     tst % bins    = [(int(i,longInt), i=1,Nbins)]
     tst % results = [(ZERO, i=1,Nbins)]
 
-    ! Set approperiate results (wgt * 1/totXs)
+    ! Set appropriate results (wgt * 1/totXs)
     score1 = 0.7_defReal / 0.3_defReal
     score2 = 1.3_defReal / 0.3_defReal
 
@@ -149,7 +149,7 @@ contains
     has2Res   = this % has2Res
 
     ! Build case description
-    case = 'Vanila case with: '
+    case = 'Vanilla case with: '
     if(hasFilter) case = case // ' Filter '
     if(hasMap)    case = case // ' Map '
     if(has2Res)   case = case // ' 2nd Response '

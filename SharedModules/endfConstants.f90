@@ -89,6 +89,7 @@ module endfConstants
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
+  integer(shortInt),parameter  :: N_2Nl(16)     = [(874+i, i =1,16)]
 
   ! Microscopic lumped reaction channels special MT numbers
   integer(shortInt),parameter  :: anyScatter    = -102, &

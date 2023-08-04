@@ -27,7 +27,7 @@ module collisionClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
+  !! Collision estimator of reaction rates
   !! Calculates flux weighted integral from collisions
   !!
   !! Private Members:

@@ -13,6 +13,7 @@ add_sources(./tallyMap_inter.f90
             ./weightMap_class.f90
             ./sphericalMap_class.f90
             ./cellMap_class.f90
+            ./cylindricalMap_class.f90
  #          ./matXsMap_class.f90
             )
 
@@ -24,4 +25,5 @@ add_unit_tests(./Tests/materialMap_test.f90
                ./Tests/multiMap_test.f90
                ./Tests/homogMatMap_test.f90
                ./Tests/sphericalMap_test.f90
-               ./Tests/cellMap_test.f90)
+               ./Tests/cellMap_test.f90
+               ./Tests/cylindricalMap_test.f90)

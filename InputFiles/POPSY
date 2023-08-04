@@ -1,53 +1,53 @@
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 //pop      200000;
 pop 20000;
-active   500; 
-inactive 300; 
+active   500;
+inactive 300;
 XSdata   ce;
-dataType ce; 
+dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                    neutronMG {type neutronMGstd;} 
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+                    neutronMG {type neutronMGstd;}
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
-// Use generic source definition to initialise initial population 
-// Here we introduce isotropic blast of thermal neutrons (immediate fissions) 
-// This avoid needless generation of particles in U-nat reflector 
-source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; } 
+// Use generic source definition to initialise initial population
+// Here we introduce isotropic blast of thermal neutrons (immediate fissions)
+// This avoid needless generation of particles in U-nat reflector
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (k_eff);
                 norm fiss;
                 normVal 100.0;
                 k_eff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
+                flux { type collisionClerk;
                         map {
                           type multiMap;
-                          maps (ene mat); 
-                          ene {type energyMap; grid log; min 0.001; max 20; N 300;} 
+                          maps (ene mat);
+                          ene {type energyMap; grid log; min 0.001; max 20; N 300;}
                           mat {type materialMap; materials (fuel ref);}
                         }
                         response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph { type shrunk;}
 
     surfaces
     {
-      bound     { id 1; type sphere; origin (0.0 0.0 0.0); radius 4.5332; }  
+      bound     { id 1; type sphere; origin (0.0 0.0 0.0); radius 4.5332; }
       reflector { id 2; type sphere; origin (0.0 0.0 0.0); radius 24.142; }
     }
 
@@ -61,43 +61,43 @@ geometry {
     universes
     {
      root { id 1; type rootUniverse; border 2; fill u<2>;}
-     geom { id 2; type cellUniverse; origin (0.0 0.0 0.0); cells ( 2 4); 
+     geom { id 2; type cellUniverse; origin (0.0 0.0 0.0); cells ( 2 4);
       }
-    }   
+    }
 }
 
 nuclearData {
 
-  handles { 
-     ce { type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
+  handles {
+     ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
-    numberOfGroups 69; 
 
-    fuel {  
-      temp       273; 
+
+materials {
+    numberOfGroups 69;
+
+    fuel {
+      temp       273;
       composition {
-        94239.03  0.036697; 
-        94240.03  0.0018700; 
-        94241.03  0.00011639; 
+        94239.03  0.036697;
+        94240.03  0.0018700;
+        94241.03  0.00011639;
         31000.03  0.0014755;
-      }   
-    }	 
-
-    ref {
-      temp 273; 
-      composition { 
-        92234.03 0.0000026438;
-        92235.03 0.0003461;
-        92238.03 0.047721; 
       }
     }
 
-} 
-  
+    ref {
+      temp 273;
+      composition {
+        92234.03 0.0000026438;
+        92235.03 0.0003461;
+        92238.03 0.047721;
+      }
+    }
+
 }
-  
-  
-  
+
+}
+
+
+

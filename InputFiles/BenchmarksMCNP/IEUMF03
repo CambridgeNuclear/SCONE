@@ -8,37 +8,37 @@
 // Benchmark keff = 1.0000 +/- 0.0017
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 100; 
-inactive 200; 
+active 100;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -82,13 +82,13 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-  materials { 
-    
+
+
+  materials {
+
 
     layer1 {
       temp       293;
@@ -167,7 +167,7 @@ nuclearData {
         29063.03  3.3673E-4;
         28058.03  3.6459E-4;
       }
-    }    
+    }
     layer7 {
       temp       293;
       composition {
@@ -220,9 +220,9 @@ nuclearData {
         28058.03  1.5579E-3;
       }
     }
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+
