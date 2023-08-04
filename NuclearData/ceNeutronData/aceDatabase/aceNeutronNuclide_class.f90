@@ -589,7 +589,7 @@ contains
 
     ! Conservative: choose the xs at the energy point before the lower energy limit
     f = 0
-    maj = scatterXS(self, idx, f)
+    maj = self % scatterXS(idx, f)
 
     majorantLoop: do
 
