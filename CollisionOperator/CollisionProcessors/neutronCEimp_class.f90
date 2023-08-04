@@ -215,7 +215,7 @@ contains
     collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
 
     self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
-    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
     call self % nuc % getMicroXSs(microXss, p % E, p % pRNG)
@@ -418,7 +418,7 @@ contains
     ! Check is DBRC is on
     ! Cast pointer to aceNeutronNuclide
     self % aceNuc => aceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
-    if(.not.associated(self % aceNuc)) call fatalError(Here, 'Failed to retive ACE Neutron Nuclide')
+    if(.not.associated(self % aceNuc)) call fatalError(Here, 'Failed to retrieve ACE Neutron Nuclide')
     hasDBRC = self % aceNuc % hasDBRC
 
     isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % thresh_E) &
@@ -626,14 +626,14 @@ contains
 
       ! Cast pointer to aceNeutronDatabase
       self % aceData => aceNeutronDatabase_CptrCast(self % xsData)
-      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retive ACE Neutron Database')
+      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retrieve ACE Neutron Database')
 
-      ! Retrive 0K nuclide index from DBRC nuclide map
+      ! Retrieve 0K nuclide index from DBRC nuclide map
       nucIdx = self % aceData % mapDBRCnuc % get(nucIdx)
 
       ! Reassign pointer for the 0K nuclide
       self % aceNuc => aceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
-      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retive ACE Neutron Database')
+      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retrieve ACE Neutron Database')
 
       ! Get elastic scattering 0K majorant
       maj = self % aceData % getScattMicroMajXS(p % E, kT, A, nucIdx)
