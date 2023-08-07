@@ -447,10 +447,10 @@ Cells
 Similarly to the surfaces, the **cells** in the geometry can be defined as: ::
 
       cells { 
-      <name1> { id <idNumber1>; type <cellType>; surfaces (<surfaces>); filletype <fillType>; *keywords* } 
-      <name2> { id <idNumber2>; type <cellType>; surfaces (<surfaces>); filletype <fillType>; *keywords* } 
+      <name1> { id <idNumber1>; type <cellType>; surfaces (<surfaces>); filltype <fillType>; *keywords* } 
+      <name2> { id <idNumber2>; type <cellType>; surfaces (<surfaces>); filltype <fillType>; *keywords* } 
       ...
-      <nameN> { id <idNumberN>; type <cellType>; surfaces (<surfaces>); filletype <fillType>; *keywords* } 
+      <nameN> { id <idNumberN>; type <cellType>; surfaces (<surfaces>); filltype <fillType>; *keywords* } 
       }
       
 At the moment, in SCONE, the only ``cellType`` available is ``simpleCell``. 
