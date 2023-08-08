@@ -610,13 +610,15 @@ contains
   !! Interpret contents of buffer
   !!
   !! Sets self % type to {CONV_INT, CONV_FLOAT, CONV_CHAR}
-  !! loads value into approperite member {i, f, c}
+  !! loads value into appropriate member {i, f, c}
   !!
   !! To identify entries uses 'read' Fortran data-transfer with following formats:
-  !!   INT  -> '(I80)'
-  !!   REAL -> '(ES.80.0)'
+  !!   INT  -> '(I20)'
+  !!   REAL -> '(ES.100.0)'
   !!   CHAR -> If both INT & REAL return error during reading
-  !! The above assumes that pathLen=80
+  !! The formats were chosen to be sufficient to read any reasonable number.
+  !! Note that they have to be hardcoded because if they are allocated
+  !! runtime can increase significantly (up to factor of 2)
   !!
   !! Args:
   !!   buffer [in] -> pathLen long character with content to read
@@ -626,14 +628,12 @@ contains
   !!
   subroutine convert_reader(self, buffer)
     class(reader), intent(inout)   :: self
-    character(pathLen), intent(in) :: buffer
+    character(*), intent(in)       :: buffer
     integer(shortInt)              :: readErr
-    character(100)                 :: fmt
     character(100),parameter :: Here = 'convert_reader (dictParser_func.f90)'
 
     ! Try to read data as a INTEGER and check if this gives an error
-    fmt = "(I"//numToChar(pathLen)//")"
-    read(unit = buffer, fmt = fmt , iostat = readErr) self % i
+    read(unit = buffer, fmt = "(I20)" , iostat = readErr) self % i
 
     if (readErr == 0) then
       self % type = CONV_INT
@@ -641,8 +641,7 @@ contains
     end if
 
     ! Try to read data as a REAL and check if this gives an error
-    fmt = "(ES" // numToChar(pathLen) // ".0)"
-    read(unit = buffer, fmt = fmt , iostat = readErr) self % r
+    read(unit = buffer, fmt = "(ES100.0)" , iostat = readErr) self % r
 
     if (readErr == 0) then
       self % type = CONV_REAL
