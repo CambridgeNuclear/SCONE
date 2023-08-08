@@ -6,7 +6,7 @@ module scatteringKernels_func
   use particle_class,    only : particle
 
   ! Nuclear Data
-  use aceNeutronNuclide_class,      only : aceNeutronNuclide
+  use ceNeutronNuclide_inter, only : ceNeutronNuclide
 
   implicit none
   private
@@ -159,20 +159,19 @@ contains
   !! (note that it is not a kinetic energy of the target).
   !!
   !!
-  function targetVelocity_DBRCXS(aceNuc, E, dir, A, kT, rand, tempMaj) result (V_t)
-    class(aceNeutronNuclide), intent(in)    :: aceNuc
+  function targetVelocity_DBRCXS(nuc, E, dir, A, kT, rand, tempMaj) result (V_t)
+    class(ceNeutronNuclide), intent(in)     :: nuc
     real(defReal), intent(in)               :: E
     real(defReal), dimension(3), intent(in) :: dir
     real(defReal), intent(in)               :: A
     real(defReal), intent(in)               :: kT
     real(defReal), intent(in)               :: tempMaj
     class(RNG), intent(inout)               :: rand
-    integer(shortInt)                       :: idx
     real(defReal),dimension(3)              :: V_t
     real(defReal)                           :: alpha, mu, phi, P_acc, DBRC_acc
     real(defReal)                           :: X, Y
     real(defReal)                           :: r1, r2, r3, r4, r5
-    real(defreal)                           :: rel_v, rel_E, xs_rel_v, f
+    real(defreal)                           :: rel_v, rel_E, xs_rel_v
 
     ! Calculate neutron Y = beta *V_n
     ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
@@ -213,8 +212,7 @@ contains
       rel_E = (rel_v**2 * kT / A)
 
       ! Find 0K scattering xs of target at relative energy
-      call aceNuc % search(idx, f, rel_E)
-      xs_rel_v = aceNuc % scatterXS(idx, f)
+      xs_rel_v = nuc % elScatteringXS(rel_E)
 
       ! Introduce DBRC acceptance condition
       DBRC_acc = (xs_rel_v / tempMaj)

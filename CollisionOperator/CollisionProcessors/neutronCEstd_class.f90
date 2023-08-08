@@ -17,12 +17,8 @@ module neutronCEstd_class
   use nuclearDataReg_mod,            only : ndReg_getNeutronCE => getNeutronCE
   use nuclearDatabase_inter,         only : nuclearDatabase
   use ceNeutronDatabase_inter,       only : ceNeutronDatabase
-  use aceNeutronDatabase_class,      only : aceNeutronDatabase
-  use aceNeutronDatabase_class,      only : aceNeutronDatabase_CptrCast
   use ceNeutronMaterial_class,       only : ceNeutronMaterial, ceNeutronMaterial_CptrCast
   use ceNeutronNuclide_inter,        only : ceNeutronNuclide, ceNeutronNuclide_CptrCast
-  use aceNeutronNuclide_class,       only : aceNeutronNuclide_CptrCast
-  use aceNeutronNuclide_class,       only : aceNeutronNuclide
 
   ! Nuclear reactions
   use reactionHandle_inter,          only : reactionHandle
@@ -73,8 +69,6 @@ module neutronCEstd_class
     class(ceNeutronDatabase), pointer, public :: xsData => null()
     class(ceNeutronMaterial), pointer, public :: mat    => null()
     class(ceNeutronNuclide),  pointer, public :: nuc    => null()
-    class(aceNeutronNuclide), pointer, public :: aceNuc => null()
-    class(aceNeutronDatabase), pointer, public:: aceData=> null()
 
     !! Settings - private
     real(defReal) :: minE
@@ -295,10 +289,7 @@ contains
     collDat % kT = self % nuc % getkT()
 
     ! Check is DBRC is on
-    ! Cast pointer to aceNeutronNuclide
-    self % aceNuc => aceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
-    if(.not.associated(self % aceNuc)) call fatalError(Here, 'Failed to retrieve ACE Neutron Nuclide')
-    hasDBRC = self % aceNuc % hasDBRC
+    hasDBRC = self % nuc % hasDBRC()
 
     isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % thresh_E) &
               & .and. (collDat % A > self % thresh_A)
@@ -450,26 +441,22 @@ contains
     ! Check energy range
     eRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
     ! Check if DBRC is on for this target nuclide
-    hasDBRC = (self % aceNuc % hasDBRC)
+    hasDBRC = self % nuc % hasDBRC()
 
     if (eRange .and. hasDBRC) then
 
-      ! Cast pointer to aceNeutronDatabase
-      self % aceData => aceNeutronDatabase_CptrCast(self % xsData)
-      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retrieve ACE Neutron Database')
-      
       ! Retrieve 0K nuclide index from DBRC nuclide map
-      nucIdx = self % aceData % mapDBRCnuc % get(nucIdx)
+      nucIdx = self % xsData % mapDBRCnuc % get(nucIdx)
 
       ! Reassign pointer for the 0K nuclide
-      self % aceNuc => aceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
-      if(.not.associated(self % aceData)) call fatalError(Here, 'Failed to retrieve ACE Neutron Database')
+      self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
+      if(.not.associated(self % nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Database')
 
       ! Get elastic scattering 0K majorant
-      maj = self % aceData % getScattMicroMajXS(p % E, kT, A, nucIdx)
+      maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
 
       ! Use DBRC to sample target velocity
-      V_t = targetVelocity_DBRCXS(self % aceNuc, p % E, dir_pre, A, kT, p % pRNG, maj)
+      V_t = targetVelocity_DBRCXS(self % nuc, p % E, dir_pre, A, kT, p % pRNG, maj)
 
     else
       ! Constant cross section approximation

@@ -35,9 +35,10 @@ module ceNeutronNuclide_inter
   !! mantain and optimise.
   !!
   !! Private Members
-  !!   nucIdx    -> nucIdx for this nuclide
-  !!   data      -> pointer to a database to request update of XSs
-  !!   fissile   -> flag that specifies if the nuclide is fissile
+  !!   nucIdx  -> nucIdx for this nuclide
+  !!   data    -> pointer to a database to request update of XSs
+  !!   fissile -> flag that specifies if the nuclide is fissile
+  !!   DBRC    -> Doppler Broadening Rejection Correction flag
   !!
   !! Interface:
   !!   nuclideHandle Interface
@@ -48,6 +49,9 @@ module ceNeutronNuclide_inter
   !!   isFissile       -> Return .true. if nuclide can fission
   !!   invertInelastic -> Selects type of inelastic neutron scattering
   !!   xsOf            -> Returns microscopic XS given MT number
+  !!   elScatteringXS  -> Returns elastic scattering XS for the nuclide
+  !!   setDBRC         -> Turns the hasDBRC flag to true
+  !!   hasDBRC         -> Returns the value of the hasDBRC flag
   !!
   type, public, abstract, extends(nuclideHandle) :: ceNeutronNuclide
     private
@@ -56,6 +60,10 @@ module ceNeutronNuclide_inter
     logical(defBool)                 :: fissile = .false.
     real(defReal)                    :: mass    =  ZERO
     real(defReal)                    :: kT      =  ZERO
+
+    ! DBRC nuclide flag
+    logical(defBool)                 :: DBRC = .false.
+
   contains
 
     procedure, non_overridable :: getTotalXS
@@ -63,6 +71,8 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
+    procedure, non_overridable :: setDBRC
+    procedure, non_overridable :: hasDBRC
     procedure                  :: getMass
     procedure                  :: getkT
     procedure                  :: kill
@@ -70,6 +80,7 @@ module ceNeutronNuclide_inter
     ! Procedures for specific implementations
     procedure(invertInelastic),deferred :: invertInelastic
     procedure(xsOf), deferred           :: xsOf
+    procedure(elScatteringXS), deferred :: elScatteringXS
 
   end type ceNeutronNuclide
 
@@ -121,6 +132,28 @@ module ceNeutronNuclide_inter
       real(defReal)                       :: xs
 
     end function xsOf
+
+    !!
+    !! Return elastic scattering XS for the nuclide
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!
+    !! Result:
+    !!   Elastic scattering nuclide microscopic cross-section [barn]
+    !!
+    !! Errors:
+    !!   fatalError if E is out-of-bounds of the present data
+    !!   Invalid idx beyond array bounds -> undefined behaviour
+    !!   Invalid f (outside [0;1]) -> incorrect value of XS
+    !!
+    function elScatteringXS(self, E) result(xs)
+      import :: ceNeutronNuclide, defReal
+      class(ceNeutronNuclide), intent(in) :: self
+      real(defReal), intent(in)           :: E
+      real(defReal)                       :: xs
+
+    end function elScatteringXS
 
   end interface
 contains
@@ -261,6 +294,45 @@ contains
     isIt = self % fissile
 
   end function isFissile
+
+  !!
+  !! Set the hasDBRC flag to .true. if called
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
+  !!
+  subroutine setDBRC(self)
+    class(ceNeutronNuclide), intent(inout) :: self
+
+    self % DBRC = .true.
+
+  end subroutine setDBRC
+
+  !!
+  !! Return .true. if the nuclide needs to use DBRC
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   .TRUE. if DBRC is on, .FALSE. otherwise
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function hasDBRC(self) result(hasIt)
+    class(ceNeutronNuclide), intent(in) :: self
+    logical(defBool)                    :: hasIt
+
+    hasIt = self % DBRC
+
+  end function hasDBRC
 
     !!
     !! Return a mass of the nuclide

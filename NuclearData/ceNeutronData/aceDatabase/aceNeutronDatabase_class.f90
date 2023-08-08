@@ -64,7 +64,6 @@ module aceNeutronDatabase_class
   !!   nucToZaid  -> map to link nuclide index to zaid index
   !!   hasUrr     -> ures probability tables flag, it's false by default
   !!   hasDBRC    -> DBRC flag, it's false by default
-  !!   mapDBRCnuc -> map to link indexes of DBRC nuclides with their corresponding 0K
   !!
   !! Interface:
   !!   nuclearData Interface
@@ -80,7 +79,6 @@ module aceNeutronDatabase_class
     integer(shortInt),dimension(:),allocatable   :: nucToZaid
     logical(defBool)                             :: hasUrr = .false.
     logical(defBool)                             :: hasDBRC = .false.
-    type(intMap)                                 :: mapDBRCnuc
 
   contains
     ! nuclearData Procedures
@@ -89,7 +87,6 @@ module aceNeutronDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
-    procedure :: getScattMicroMajXS
     procedure :: init
     procedure :: init_urr
     procedure :: init_DBRC
@@ -102,6 +99,7 @@ module aceNeutronDatabase_class
     procedure :: updateMacroXSs
     procedure :: updateTotalNucXS
     procedure :: updateMicroXSs
+    procedure :: getScattMicroMajXS
 
   end type aceNeutronDatabase
 
@@ -235,18 +233,9 @@ contains
   end function getReaction
 
   !!
-  !! Subroutine to get the elastic scattering majorant cross section in a nuclide
-  !! over a certain energy range, defined as a function of a given temperature
+  !! Returns the elastic scattering majorant cross section for a nuclide
   !!
-  !! NOTE: This function is called by the collision operator to apply DBRC; nucIdx
-  !!       should correspond to a nuclide with temperature 0K, while kT is the
-  !!       temperature of the target nuclide the neutron is colliding with
-  !!
-  !! Args:
-  !!   A  [in]   -> Nuclide atomic weight ratio
-  !!   kT [in]   -> Thermal energy of nuclide
-  !!   E  [in]   -> Energy of neutron incident to target for which majorant needs to be found
-  !!   maj [out] -> Temperature majorant cross section
+  !! See ceNeutronDatabase for more details
   !!
   function getScattMicroMajXS(self, E, kT, A, nucIdx) result(maj)
     class(aceNeutronDatabase), intent(in) :: self
@@ -271,7 +260,7 @@ contains
     if (E_upper > E_max) E_upper = E_max
 
     ! Find largest elastic scattering xs in energy range given by E_lower and E_upper
-    maj = self % nuclides(nucIdx) % elScattMaj(E_lower, E_upper)
+    maj = self % nuclides(nucIdx) % elScatteringMaj(E_lower, E_upper)
 
   end function getScattMicroMajXS
 
@@ -768,7 +757,7 @@ contains
         if (nucDBRCtemp == nuc0Ktemp) then
           call map % add(nucSet % atVal(j), idx)
           ! Set nuclide DBRC flag on
-          self % nuclides(nucSet % atVal(j)) % hasDBRC = .true.
+          call self % nuclides(nucSet % atVal(j)) % setDBRC()
         end if
 
         ! Increment index

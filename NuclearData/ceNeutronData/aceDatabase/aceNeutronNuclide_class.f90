@@ -92,22 +92,21 @@ module aceNeutronNuclide_class
   !!   thData         -> S(a,b) thermal data class to store XSs and outgoing distributions
   !!   SabEl          -> energy boundaries of elastic S(a,b) data
   !!   SabInel        -> energy boundaries of inelastic S(a,b) data
-  !!   hasDBRC        -> Doppler Broadening Rejection Correction flag
   !!
   !! Interface:
   !!   ceNeutronNuclide Interface
-  !!   search     -> search energy grid and return index and interpolation factor
-  !!   totalXS    -> return totalXS given index and interpolation factor
-  !!   scatterXS  -> return elastic scattering XS given index and interpolation factor
-  !!   microXSs   -> return interpolated ceNeutronMicroXSs package given index and inter. factor
-  !!   getUrrXSs  -> return ceNeutronMicroXSs accounting for ures probability tables
-  !!   getThXSs   -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
-  !!   elScattMaj -> returns the elastic scattering majorant within an energy range given as input
-  !!   init       -> build nuclide from aceCard
-  !!   init_urr   -> build list and mapping of nuclides to maintain temperature correlation
-  !!                 when reading ures probability tables
-  !!   init_Sab   -> builds S(a,b) propertied from aceCard
-  !!   display    -> print information about the nuclide to the console
+  !!   search          -> search energy grid and return index and interpolation factor
+  !!   totalXS         -> return totalXS given index and interpolation factor
+  !!   scatterXS       -> return elastic scattering XS given index and interpolation factor
+  !!   microXSs        -> return interpolated ceNeutronMicroXSs package given index and inter. factor
+  !!   getUrrXSs       -> return ceNeutronMicroXSs accounting for ures probability tables
+  !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
+  !!   elScatteringMaj -> returns the elastic scattering majorant within an energy range given as input
+  !!   init            -> build nuclide from aceCard
+  !!   init_urr        -> build list and mapping of nuclides to maintain temperature correlation
+  !!                      when reading ures probability tables
+  !!   init_Sab        -> builds S(a,b) propertied from aceCard
+  !!   display         -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
     character(nameLen)                          :: ZAID    = ''
@@ -132,13 +131,11 @@ module aceNeutronNuclide_class
     real(defReal), dimension(2) :: SabEl = ZERO
     real(defReal), dimension(2) :: SabInel = ZERO
 
-    ! DBRC nuclide flag
-    logical(defBool)            :: hasDBRC = .false.
-
   contains
     ! Superclass Interface
     procedure :: invertInelastic
     procedure :: xsOf
+    procedure :: elScatteringXS
     procedure :: kill
 
     ! Local interface
@@ -148,7 +145,7 @@ module aceNeutronNuclide_class
     procedure :: microXSs
     procedure :: getUrrXSs
     procedure :: getThXSs
-    procedure :: elScattMaj
+    procedure :: elScatteringMaj
     procedure :: init
     procedure :: init_urr
     procedure :: init_Sab
@@ -276,6 +273,25 @@ contains
     xs = topXS * f + (1-f) * bottomXS
 
   end function xsOf
+
+  !!
+  !! Return value of the elastic scattering XS given neutron energy
+  !!
+  !! See ceNeutronNuclide documentation
+  !!
+  function elScatteringXS(self, E) result(xs)
+    class(aceNeutronNuclide), intent(in) :: self
+    real(defReal), intent(in)            :: E
+    real(defReal)                        :: xs
+    integer(shortInt)                    :: idx
+    real(defReal)                        :: f
+
+    ! Find energy index
+    call self % search(idx, f, E)
+    ! Retrieve cross section
+    xs = self % scatterXS(idx, f)
+
+  end function elScatteringXS
 
   !!
   !! Return to uninitialised state
@@ -576,7 +592,7 @@ contains
   !!   upperE [in]  -> Upper bound of energy range
   !!   maj [out]    -> Maximum scattering cross section within energy range
   !!
-  function elScattMaj(self, lowerE, upperE) result (maj)
+  function elScatteringMaj(self, lowerE, upperE) result (maj)
     class(aceNeutronNuclide), intent(in)  :: self
     real(defReal), intent(in)             :: lowerE
     real(defReal), intent(in)             :: upperE
@@ -610,7 +626,7 @@ contains
 
     end do majorantLoop
 
-  end function elScattMaj
+  end function elScatteringMaj
 
   !!
   !! Initialise from an ACE Card
