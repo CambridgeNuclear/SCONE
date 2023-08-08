@@ -206,11 +206,13 @@ neutronCEstd, to perform analog collision processing
   energyThreshold where kT is target material temperature in [MeV]. [-]
 * massThreshold (*optional*, default = 1): mass threshold for explicit treatment of 
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn] 
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
   
 Example: ::
   
       collisionOperator { neutronCE { type neutronCEstd; minEnergy 1.0e-12; maxEnergy 30.0; 
-      energyThreshold 200; massThreshold 2; } }
+      energyThreshold 200; massThreshold 2; DBRCeMin 1.0e-06; DBRCeMax 0.001; } }
 
 neutronCEimp
 ############
@@ -239,6 +241,8 @@ neutronCEimp, to perform implicit collision processing
   weight windows 
 * UFS (*optional*, default = 0): 1 for true; 0 for false; enables the use of uniform 
   fission sites 
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
   
 Example: ::
   
@@ -650,10 +654,17 @@ from ACE files.
   the ACE files
 * ures (*optional*, default = 0): 1 for true; 0 for false; activates the unresolved
   resonance probability tables treatment
+* DBRC (*optional*, default = no DBRC): list of ZAIDs of nuclides for which DBRC has
+  to be applied.
   
 Example: ::
 
-      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS; ures 1; }
+      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS; 
+      ures 1; DBRC (92238 94242)}
+
+.. note:: 
+   If DBRC is applied, the 0K cross section ace files of the relevant nuclides must 
+   be included in the aceLibrary file.
       
 baseMgNeutronDatabase
 #####################
@@ -983,8 +994,8 @@ Example: ::
 
 .. note:: 
    To calculate the average weight, one should divide weight moment 1 (weight1) 
-    by weight moment 0 (weight0). To calculate the variance of the weights, the 
-    tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2 
+   by weight moment 0 (weight0). To calculate the variance of the weights, the 
+   tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2 
 
 Tally Maps
 ##########
