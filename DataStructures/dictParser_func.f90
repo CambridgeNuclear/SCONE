@@ -12,14 +12,11 @@ module dictParser_func
   public :: fileToDict
   public :: charToDict
 
-
   ! Parameters
-  integer(shortInt), parameter :: MAX_COLUMN = 1000
-  character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
   integer(shortInt), parameter :: CONV_INT = 1, CONV_REAL = 2, CONV_CHAR = 3, CONV_UDEF = 0
 
   !!
-  !! Psuedo dynamic type for reading entries
+  !! Pseudo dynamic type for reading entries
   !!
   !! Can read INT, REAL and CHARACTER
   !! Which one was read is indicated by type in {CONV_INT, CONV_REAL, CONV_CHAR}
@@ -32,7 +29,7 @@ module dictParser_func
   !!
   !! Interface:
   !!   convert -> read contents of the pathLen-long character into
-  !!              i,r or c & set approperiate type
+  !!              i,r or c & set appropriate type
   !!
   type, private :: reader
     integer(shortInt)  :: i = 0
@@ -47,9 +44,78 @@ module dictParser_func
 contains
 
   !!
+  !! Reads a contents of the file in a stream fashion
+  !!
+  !! All relevant preprocessing is done while reading:
+  !!   - TABS are replaced with SPACE
+  !!   - Line comments ['!' or '//'] are removed and replaced with SPACE
+  !!   - NEWLINE is replaced with SPACE
+  !!
+  !! Args:
+  !!   file [out] -> charTape that will be filled with contents of the file
+  !!   filePath [in] -> Path to the file that is to be read
+  !!
+  subroutine readFileContents(file, filePath)
+    type(charTape), intent(out) :: file
+    character(*), intent(in)    :: filePath
+    integer(shortInt)           :: unit, stat
+    character(1)                :: buffer, lastChar
+    character(100)              :: errorMsg
+    character(100),parameter    :: Here = 'readFileContents (dictParser_func.f90)'
+
+    ! Open file and read its contents to a charTape
+    open (newunit=unit, file=filePath, status="old", action="read", &
+          access="stream", form="formatted", iostat=stat, iomsg=errorMsg)
+
+    ! Process possible errors
+    if (stat > 0) call fatalError(Here, errorMsg)
+
+    ! Load and append as a stream
+    ! For some reason Fortran converts NEWLINE to SPACE <- Investigate!
+    lastChar = ' '
+    do
+      read(unit=unit, fmt='(A)', iostat=stat, advance='no') buffer
+
+      if (is_iostat_end(stat)) exit
+
+      ! If reached a new line make sure that the buffer is a space
+      if (is_iostat_eor(stat)) buffer = ' '
+
+      ! Convert tabs to spaces
+      if (buffer == char(9)) buffer = ' '
+
+      ! Process line comments
+      ! If characters match a line comment we use advancing read to skip
+      ! to the end of the line
+      !
+      ! Also we replace the skipped comment with a space
+      !
+      ! The 'advance' tells Fortran to skip to the next record (line)
+      ! after the read operation
+      !
+      if (buffer == '!') then
+        read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+
+      else if (lastChar == '/' .and. buffer == '/') then
+        ! We need to remove the last character
+        call file % cut(1)
+        read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+
+      end if
+
+      call file % append(buffer)
+      lastChar = buffer
+    end do
+
+    close(unit=unit)
+
+  end subroutine readFileContents
+
+
+  !!
   !! Reads contents of a file into dictionary
   !!
-  !! Follows the SCONE dictionary grammar see Documentation for more detailed explenation.
+  !! Follows the SCONE dictionary grammar see Documentation for more detailed explanation.
   !!
   !! Informal definition of the grammar follows here. In general leading and trailing spaces
   !! are allowed for each <component>. When at least one space is REQUIRED it is marked with ' '
@@ -84,48 +150,10 @@ contains
     class(dictionary), intent(inout) :: dict
     character(*), intent(in)         :: filePath
     type(charTape)                   :: file
-    integer(shortInt)                :: unit, stat, pos, i
-    character(100)                   :: errorMsg
-    character(:),allocatable         :: formatStr
-    character(MAX_COLUMN)            :: buffer
+    integer(shortInt)                :: pos
     character(100),parameter :: Here = 'fileToDict (dictParser_func.f90)'
 
-    ! Open file and read its contents to a charTape
-    open ( newunit=unit, file=filePath, status="old", action="read", iostat=stat, iomsg=errorMsg)
-
-    ! Process possible errors
-    if (stat > 0) call fatalError(Here, errorMsg )
-
-    ! Create format string for reading
-    formatStr = '(A'//numToChar(MAX_COLUMN)//')'
-
-    ! Read file contents
-    stat = 0
-    do
-      read(unit=unit, fmt=formatStr, iostat=stat) buffer
-      if(is_iostat_end(stat)) exit
-
-      ! Remove all character after comment
-      ! Loop over all comment signs
-      do i=1,size(cmtSigns)
-        pos = index(buffer, trim(cmtSigns(i)))
-
-        ! If there is no comment pos = 0.
-        ! If there is pos > 0. Then comment is removed
-        if (pos > 0) buffer = buffer(1:pos-1)
-      end do
-
-      ! Replace all tabs with a space
-      ! char(9) is TAB
-      call replaceChar(buffer,char(9),' ')
-
-      ! Append the file
-      call file % append(trim(adjustl(buffer)))
-      call file % append(' ')
-    end do
-
-    ! Close file
-    close(unit)
+    call readFileContents(file, filePath)
 
     ! Append with dictionary terminator
     call file % append('}')
@@ -170,12 +198,13 @@ contains
     type(charTape)                   :: file
     integer(shortInt)                :: i, pos
     character(100),parameter :: Here = 'charToDict (dictParser_func.f90)'
+    character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
 
     ! Check that data string has no comment
-    do i=1,size(cmtSigns)
+    do i = 1, size(cmtSigns)
       if(index(data, trim(cmtSigns(i))) /= 0) then
-        call fatalError(Here, 'Detected line comment sign: '//trim(cmtSigns(i))//&
-                              ' Comments are nor allowes in dictionary made of character string')
+        call fatalError(Here, 'Detected line comment sign: ' // trim(cmtSigns(i)) //&
+                              ' Comments are nor allowed in dictionary made of character string')
       end if
     end do
 
@@ -186,7 +215,8 @@ contains
 
     ! Create document charTape
     call file % append(loc_data)
-    ! parceDict does not like '}}' ending so add an extra space
+
+    ! parseDict does not like '}}' ending so add an extra space
     call file % append(' }' )
 
     ! Reinitialise dictionary
@@ -201,7 +231,7 @@ contains
     ! Remember that pos will be 1 over last '}'
     if(pos-1 /= file % length()) then
       call fatalError(Here,"Not entire string was read. It means that there must be an &
-                           &extra '}' bracket somwhere. ")
+                           &extra '}' bracket somewhere. ")
     end if
 
   end subroutine charToDict
@@ -274,7 +304,7 @@ contains
 
         case('}') ! End of dictionary
           ! Check that only blanks are present
-          ! Must protect againt brackets with no content e.g. {}
+          ! Must protect against brackets with no content e.g. {}
           if (pos /= fin) then
             if (0 /= verify(tape % segment(pos, fin-1),' ')) then
               call fatalError(Here, "There is unparsed content. Missing a token ';' or '{...}' ")
@@ -291,7 +321,7 @@ contains
 
     ! Reach the end of file without terminal character
     call fatalError(Here, "End of file was reached without finding a termination symbol for&
-                         & a subdictionary. It means that '}' must be missing somwhere.")
+                         & a subdictionary. It means that '}' must be missing somewhere.")
 
 
   end subroutine parseDict
@@ -386,7 +416,7 @@ contains
       l2 = p1 + l2 - 1
       call readList(dict, name, l1 + 1, l2 - 1, tape )
 
-      ! Verify that there are no multipe entries
+      ! Verify that there are no multiple entries
       ! After List
       if(l2 /= end) then
         l2 = l2 + 1
@@ -547,7 +577,7 @@ contains
   !! Args:
   !!   pos [inout] -> beginning of an interval. Set to first blank after word
   !!                  on exit or end if segment does not end with blank
-  !!   end [in] -> end of an intervale
+  !!   end [in] -> end of an interval
   !!   tape [in] -> charTape with data
   !!
   !! Returns:
@@ -610,13 +640,15 @@ contains
   !! Interpret contents of buffer
   !!
   !! Sets self % type to {CONV_INT, CONV_FLOAT, CONV_CHAR}
-  !! loads value into approperite member {i, f, c}
+  !! loads value into appropriate member {i, f, c}
   !!
   !! To identify entries uses 'read' Fortran data-transfer with following formats:
-  !!   INT  -> '(I80)'
-  !!   REAL -> '(ES.80.0)'
+  !!   INT  -> '(I20)'
+  !!   REAL -> '(ES.100.0)'
   !!   CHAR -> If both INT & REAL return error during reading
-  !! The above assumes that pathLen=80
+  !! The formats were chosen to be sufficient to read any reasonable number.
+  !! Note that they have to be hardcoded because if they are allocated
+  !! runtime can increase significantly (up to factor of 2)
   !!
   !! Args:
   !!   buffer [in] -> pathLen long character with content to read
@@ -626,14 +658,12 @@ contains
   !!
   subroutine convert_reader(self, buffer)
     class(reader), intent(inout)   :: self
-    character(pathLen), intent(in) :: buffer
+    character(*), intent(in)       :: buffer
     integer(shortInt)              :: readErr
-    character(100)                 :: fmt
     character(100),parameter :: Here = 'convert_reader (dictParser_func.f90)'
 
     ! Try to read data as a INTEGER and check if this gives an error
-    fmt = "(I"//numToChar(pathLen)//")"
-    read(unit = buffer, fmt = fmt , iostat = readErr) self % i
+    read(unit = buffer, fmt = "(I20)" , iostat = readErr) self % i
 
     if (readErr == 0) then
       self % type = CONV_INT
@@ -641,8 +671,7 @@ contains
     end if
 
     ! Try to read data as a REAL and check if this gives an error
-    fmt = "(ES" // numToChar(pathLen) // ".0)"
-    read(unit = buffer, fmt = fmt , iostat = readErr) self % r
+    read(unit = buffer, fmt = "(ES100.0)" , iostat = readErr) self % r
 
     if (readErr == 0) then
       self % type = CONV_REAL
