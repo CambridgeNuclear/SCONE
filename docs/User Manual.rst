@@ -466,7 +466,7 @@ The possible ``fillTypes`` are:
   
 Example: ::
 
-      cell1 { id 1; type simpleCell; surfaces (1 -6 90); filltype material; material fuel; }
+      cell1 { id 1; type simpleCell; surfaces (1 -6 90); filltype mat; material fuel; }
 
 * uni: if the cell is filled with a universe
 
@@ -474,7 +474,7 @@ Example: ::
   
 Example: ::
 
-      cellX { id 5; type simpleCell; surfaces (2 -3); filltype universe; universe 6; }
+      cellX { id 5; type simpleCell; surfaces (2 -3); filltype uni; universe 6; }
 
 * outside: if the cell is outside of the geometry
 
