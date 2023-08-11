@@ -13,11 +13,10 @@ module dictParser_func
   public :: charToDict
 
   ! Parameters
-  character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
   integer(shortInt), parameter :: CONV_INT = 1, CONV_REAL = 2, CONV_CHAR = 3, CONV_UDEF = 0
 
   !!
-  !! Psuedo dynamic type for reading entries
+  !! Pseudo dynamic type for reading entries
   !!
   !! Can read INT, REAL and CHARACTER
   !! Which one was read is indicated by type in {CONV_INT, CONV_REAL, CONV_CHAR}
@@ -30,7 +29,7 @@ module dictParser_func
   !!
   !! Interface:
   !!   convert -> read contents of the pathLen-long character into
-  !!              i,r or c & set approperiate type
+  !!              i,r or c & set appropriate type
   !!
   type, private :: reader
     integer(shortInt)  :: i = 0
@@ -45,11 +44,16 @@ module dictParser_func
 contains
 
   !!
-  !! Reads a contents of the file in stream fashion
+  !! Reads a contents of the file in a stream fashion
   !!
   !! All relevant preprocessing is done while reading:
   !!   - TABS are replaced with SPACE
-  !!   - Line comments ['!' or '//'] are removed and replaced with space
+  !!   - Line comments ['!' or '//'] are removed and replaced with SPACE
+  !!   - NEWLINE is replaced with SPACE
+  !!
+  !! Args:
+  !!   file [out] -> charTape that will be filled with contents of the file
+  !!   filePath [in] -> Path to the file that is to be read
   !!
   subroutine readFileContents(file, filePath)
     type(charTape), intent(out) :: file
@@ -86,6 +90,9 @@ contains
       !
       ! Also we replace the skipped comment with a space
       !
+      ! The 'advance' tells Fortran to skip to the next record (line)
+      ! after the read operation
+      !
       if (buffer == '!') then
         read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
 
@@ -108,7 +115,7 @@ contains
   !!
   !! Reads contents of a file into dictionary
   !!
-  !! Follows the SCONE dictionary grammar see Documentation for more detailed explenation.
+  !! Follows the SCONE dictionary grammar see Documentation for more detailed explanation.
   !!
   !! Informal definition of the grammar follows here. In general leading and trailing spaces
   !! are allowed for each <component>. When at least one space is REQUIRED it is marked with ' '
@@ -191,12 +198,13 @@ contains
     type(charTape)                   :: file
     integer(shortInt)                :: i, pos
     character(100),parameter :: Here = 'charToDict (dictParser_func.f90)'
+    character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
 
     ! Check that data string has no comment
-    do i=1,size(cmtSigns)
+    do i = 1, size(cmtSigns)
       if(index(data, trim(cmtSigns(i))) /= 0) then
-        call fatalError(Here, 'Detected line comment sign: '//trim(cmtSigns(i))//&
-                              ' Comments are nor allowes in dictionary made of character string')
+        call fatalError(Here, 'Detected line comment sign: ' // trim(cmtSigns(i)) //&
+                              ' Comments are nor allowed in dictionary made of character string')
       end if
     end do
 
@@ -207,7 +215,8 @@ contains
 
     ! Create document charTape
     call file % append(loc_data)
-    ! parceDict does not like '}}' ending so add an extra space
+
+    ! parseDict does not like '}}' ending so add an extra space
     call file % append(' }' )
 
     ! Reinitialise dictionary
@@ -222,7 +231,7 @@ contains
     ! Remember that pos will be 1 over last '}'
     if(pos-1 /= file % length()) then
       call fatalError(Here,"Not entire string was read. It means that there must be an &
-                           &extra '}' bracket somwhere. ")
+                           &extra '}' bracket somewhere. ")
     end if
 
   end subroutine charToDict
@@ -295,7 +304,7 @@ contains
 
         case('}') ! End of dictionary
           ! Check that only blanks are present
-          ! Must protect againt brackets with no content e.g. {}
+          ! Must protect against brackets with no content e.g. {}
           if (pos /= fin) then
             if (0 /= verify(tape % segment(pos, fin-1),' ')) then
               call fatalError(Here, "There is unparsed content. Missing a token ';' or '{...}' ")
@@ -312,7 +321,7 @@ contains
 
     ! Reach the end of file without terminal character
     call fatalError(Here, "End of file was reached without finding a termination symbol for&
-                         & a subdictionary. It means that '}' must be missing somwhere.")
+                         & a subdictionary. It means that '}' must be missing somewhere.")
 
 
   end subroutine parseDict
@@ -407,7 +416,7 @@ contains
       l2 = p1 + l2 - 1
       call readList(dict, name, l1 + 1, l2 - 1, tape )
 
-      ! Verify that there are no multipe entries
+      ! Verify that there are no multiple entries
       ! After List
       if(l2 /= end) then
         l2 = l2 + 1
@@ -568,7 +577,7 @@ contains
   !! Args:
   !!   pos [inout] -> beginning of an interval. Set to first blank after word
   !!                  on exit or end if segment does not end with blank
-  !!   end [in] -> end of an intervale
+  !!   end [in] -> end of an interval
   !!   tape [in] -> charTape with data
   !!
   !! Returns:
