@@ -12,9 +12,7 @@ module dictParser_func
   public :: fileToDict
   public :: charToDict
 
-
   ! Parameters
-  integer(shortInt), parameter :: MAX_COLUMN = 1000
   character(2),dimension(2),parameter :: cmtSigns    = ['! ','//']
   integer(shortInt), parameter :: CONV_INT = 1, CONV_REAL = 2, CONV_CHAR = 3, CONV_UDEF = 0
 
@@ -45,6 +43,67 @@ module dictParser_func
 
 
 contains
+
+  !!
+  !! Reads a contents of the file in stream fashion
+  !!
+  !! All relevant preprocessing is done while reading:
+  !!   - TABS are replaced with SPACE
+  !!   - Line comments ['!' or '//'] are removed and replaced with space
+  !!
+  subroutine readFileContents(file, filePath)
+    type(charTape), intent(out) :: file
+    character(*), intent(in)    :: filePath
+    integer(shortInt)           :: unit, stat
+    character(1)                :: buffer, lastChar
+    character(100)              :: errorMsg
+    character(100),parameter    :: Here = 'readFileContents (dictParser_func.f90)'
+
+    ! Open file and read its contents to a charTape
+    open (newunit=unit, file=filePath, status="old", action="read", &
+          access="stream", form="formatted", iostat=stat, iomsg=errorMsg)
+
+    ! Process possible errors
+    if (stat > 0) call fatalError(Here, errorMsg)
+
+    ! Load and append as a stream
+    ! For some reason Fortran converts NEWLINE to SPACE <- Investigate!
+    lastChar = ' '
+    do
+      read(unit=unit, fmt='(A)', iostat=stat, advance='no') buffer
+
+      if (is_iostat_end(stat)) exit
+
+      ! If reached a new line make sure that the buffer is a space
+      if (is_iostat_eor(stat)) buffer = ' '
+
+      ! Convert tabs to spaces
+      if (buffer == char(9)) buffer = ' '
+
+      ! Process line comments
+      ! If characters match a line comment we use advancing read to skip
+      ! to the end of the line
+      !
+      ! Also we replace the skipped comment with a space
+      !
+      if (buffer == '!') then
+        read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+
+      else if (lastChar == '/' .and. buffer == '/') then
+        ! We need to remove the last character
+        call file % cut(1)
+        read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+
+      end if
+
+      call file % append(buffer)
+      lastChar = buffer
+    end do
+
+    close(unit=unit)
+
+  end subroutine readFileContents
+
 
   !!
   !! Reads contents of a file into dictionary
@@ -84,48 +143,10 @@ contains
     class(dictionary), intent(inout) :: dict
     character(*), intent(in)         :: filePath
     type(charTape)                   :: file
-    integer(shortInt)                :: unit, stat, pos, i
-    character(100)                   :: errorMsg
-    character(:),allocatable         :: formatStr
-    character(MAX_COLUMN)            :: buffer
+    integer(shortInt)                :: pos
     character(100),parameter :: Here = 'fileToDict (dictParser_func.f90)'
 
-    ! Open file and read its contents to a charTape
-    open ( newunit=unit, file=filePath, status="old", action="read", iostat=stat, iomsg=errorMsg)
-
-    ! Process possible errors
-    if (stat > 0) call fatalError(Here, errorMsg )
-
-    ! Create format string for reading
-    formatStr = '(A'//numToChar(MAX_COLUMN)//')'
-
-    ! Read file contents
-    stat = 0
-    do
-      read(unit=unit, fmt=formatStr, iostat=stat) buffer
-      if(is_iostat_end(stat)) exit
-
-      ! Remove all character after comment
-      ! Loop over all comment signs
-      do i=1,size(cmtSigns)
-        pos = index(buffer, trim(cmtSigns(i)))
-
-        ! If there is no comment pos = 0.
-        ! If there is pos > 0. Then comment is removed
-        if (pos > 0) buffer = buffer(1:pos-1)
-      end do
-
-      ! Replace all tabs with a space
-      ! char(9) is TAB
-      call replaceChar(buffer,char(9),' ')
-
-      ! Append the file
-      call file % append(trim(adjustl(buffer)))
-      call file % append(' ')
-    end do
-
-    ! Close file
-    close(unit)
+    call readFileContents(file, filePath)
 
     ! Append with dictionary terminator
     call file % append('}')
