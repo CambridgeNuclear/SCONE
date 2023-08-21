@@ -166,6 +166,11 @@ if(BUILD_TESTS)
     LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
     )
 
+  # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
+  # present if the suite contains only a TestCase and its methods
+  # We need to suppress this warning for clarity
+  target_compile_options(unitTests PRIVATE "-Wno-unused-variable" )
+
 ####################################################################################################
 # COMPILE INTEGRATION TESTS
 
@@ -182,6 +187,11 @@ if(BUILD_TESTS)
     LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+
+  # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
+  # present if the suite contains only a TestCase and its methods
+  # We need to suppress this warning for clarity
+  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable" )
 
 endif()
 
