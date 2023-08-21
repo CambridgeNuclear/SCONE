@@ -52,8 +52,6 @@ contains
     class(ceNeutronNuclide), pointer  :: nuc
     type(particle)                    :: p
     type(neutronMicroXSs)             :: microXSs
-    integer(shortInt)                 :: Nin
-    logical(defBool)                  :: gotIt
     real(defReal), parameter          :: TOL = 1.0E-6
 
     ! Prepare dictionaries

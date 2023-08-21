@@ -4,6 +4,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(SCONE)
 
+# Set CMAKE Policies
+#   CMP0074: Starting with CMake 3.12, all `find_package` commands will use `<package>_ROOT`
+#            variables as hints for where to search. This policy provides compatibility
+#            with older projects.
+#            https://cmake.org/cmake/help/latest/policy/CMP0074.html
+cmake_policy(SET CMP0074 NEW)
+
 ####################################################################################################
 # DEFINE COMPILATION OPTIONS
 

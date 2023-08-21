@@ -101,7 +101,6 @@ contains
 @Test
   subroutine testScoring_clerk1(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleDungeon)                :: pit
@@ -178,7 +177,6 @@ contains
 @Test
   subroutine testScoring_clerk2(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleDungeon)                :: pit

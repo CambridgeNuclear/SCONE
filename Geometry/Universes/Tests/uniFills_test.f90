@@ -180,7 +180,6 @@ contains
 @Test
   subroutine test_count_instances()
     type(intMap) :: map
-    integer(shortInt) :: idx
 
     ! Perform count
     call geom % countInstances(map)

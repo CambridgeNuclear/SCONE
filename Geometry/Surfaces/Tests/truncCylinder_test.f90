@@ -98,6 +98,7 @@ contains
 
       case default
         print *, "Should not happen. Wrong direction in testcase constructor"
+        error stop
 
     end select
 
@@ -184,7 +185,6 @@ contains
 @Test(cases=[1,2,3])
   subroutine testBC(this)
     class(test_truncCylinder), intent(inout) :: this
-    integer(shortInt), dimension(6)  :: BC
     integer(shortInt)                :: ax, p1, p2
     integer(shortInt), dimension(3)  :: pe
     real(defReal), dimension(3)      :: r, u, r_ref, u_ref
@@ -245,7 +245,7 @@ contains
     r(pe) = [12.0_defReal, 0.0_defReal, 2.3_defReal]
     u(pe) = [ONE, ZERO, ZERO]
     r_ref(pe) = [3.0_defReal, 0.0_defReal, 2.3_defReal]
-    u_ref = u     
+    u_ref = u
     call this % surf % transformBC(r, u)
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)
@@ -260,7 +260,7 @@ contains
     class(test_truncCylinder), intent(inout) :: this
     integer(shortInt)                         :: ax, p1, p2
     integer(shortInt), dimension(3)           :: pe
-    real(defReal), dimension(3)               :: r, u, u2
+    real(defReal), dimension(3)               :: r, u
     real(defReal)                             :: eps
 
     ! Get axis and diffrent planar directions
@@ -495,7 +495,7 @@ contains
  @Test(cases=[1, 2, 3])
    subroutine testEdgeCases(this)
      class(test_truncCylinder), intent(inout) :: this
-     real(defReal), dimension(3)    :: r, u, u2
+     real(defReal), dimension(3)    :: r, u
     integer(shortInt), dimension(3) :: pe
      integer(shortInt)              :: ax, p1, p2
      real(defReal)                  :: eps, d

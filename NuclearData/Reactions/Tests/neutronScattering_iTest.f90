@@ -32,7 +32,6 @@ contains
     class(uncorrelatedReactionCE),pointer :: unCorrPtr
     type(neutronScatter),pointer          :: scatterPtr
     type(aceCard)                         :: ACE
-    type(RNG)                             :: rand
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
     ! Set pointers

@@ -76,7 +76,6 @@ contains
     class(test_collisionProbabilityClerk), intent(inout) :: this
     type(scoreMemory)                                    :: mem
     type(particle)                                       :: p
-    type(particleState)                                  :: phase
     type(particleDungeon)                                :: pop
     type(testNeutronDatabase)                            :: xsData
     real(defReal)                                        :: val

@@ -26,7 +26,6 @@ contains
   !!
   subroutine setUp(this)
     class(test_fluxResponse), intent(inout) :: this
-    type(dictionary)                      :: tempDict
 
   end subroutine setUp
 

@@ -70,7 +70,6 @@ contains
   !!
 @Test
   subroutine test_misc()
-    real(defReal), dimension(3,3) :: mat
 
     ! Get id
     @assertEqual(7, uni % id())

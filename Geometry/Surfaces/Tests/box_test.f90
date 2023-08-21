@@ -267,7 +267,7 @@ contains
   !!
 @Test
   subroutine testEdgeCases()
-    real(defReal), dimension(3) :: r, u, u2
+    real(defReal), dimension(3) :: r, u
     real(defReal)               :: eps, d
     logical(defBool)            :: hs
 

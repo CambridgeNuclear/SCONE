@@ -97,6 +97,7 @@ contains
 
       case default
         print *, "Should not happen. Wrong direction in testcase constructor"
+        error stop
 
     end select
 
@@ -425,7 +426,7 @@ contains
 @Test(cases=[1, 2, 3])
   subroutine testEdgeCases(this)
     class(test_squareCylinder), intent(inout) :: this
-    real(defReal), dimension(3) :: r, u, u2
+    real(defReal), dimension(3) :: r, u
     integer(shortInt)           :: ax, p1, p2
     real(defReal)               :: eps, d
     logical(defBool)            :: hs

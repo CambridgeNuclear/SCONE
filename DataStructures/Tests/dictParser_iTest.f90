@@ -15,11 +15,9 @@ contains
     type(dictionary) :: dict
     integer(shortInt)  :: tempInt
     real(defReal)      :: tempReal
-    character(nameLen) :: tempChar
     class(dictionary), pointer :: dictPtr
     integer(shortInt), dimension(:), allocatable  :: tempIntArray
     real(defReal), dimension(:), allocatable      :: tempRealArray
-    character(nameLen), dimension(:), allocatable :: tempCharArray
 
     call fileToDict(dict,'./IntegrationTestFiles/testDictionary')
 

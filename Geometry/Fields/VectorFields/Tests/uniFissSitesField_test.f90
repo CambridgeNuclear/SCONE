@@ -25,7 +25,7 @@ module uniFissSitesField_test
   !!
   character(*), parameter :: DICT_DEF = &
   " type spaceMap;  axis z;  grid unstruct; &
-    bins (0.0 20.0 40.0 60.0 80.0); "
+    &bins (0.0 20.0 40.0 60.0 80.0); "
 
 contains
 
@@ -76,14 +76,14 @@ contains
     class(test_uniFissSitesField), intent(inout) :: this
     type(particle)                               :: p
     type(particleState)                          :: state
-    integer(shortInt), dimension(3)              :: bins, EXPECTED_BINS
+    real(defReal), dimension(3)                  :: bins, EXPECTED_BINS
 
     ! Test case in the map
     p % coords % lvl(1) % r = [0.5, 7.0, 50.0]
 
     bins = this % ufsField % at(p)
     EXPECTED_BINS = [0.25, 0.25, 0.0]
-    @assertEqual(EXPECTED_BINS,bins)
+    @assertEqual(EXPECTED_BINS, bins, tolerance=1.0e-6)
 
     ! Test case outside the map
     p % coords % lvl(1) % r = [0.5, 7.0, 100.0]
@@ -109,7 +109,7 @@ contains
 
     bins = this % ufsField % at(p)
     EXPECTED_BINS = [0.25, 0.06666666667, 0.0]
-    @assertEqual(EXPECTED_BINS,bins)
+    @assertEqual(EXPECTED_BINS, bins, tolerance=1.0e-6)
 
   end subroutine testGetValue
 

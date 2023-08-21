@@ -75,7 +75,6 @@ contains
     type(scoreMemory)                              :: mem
     type(particleState)                            :: phase
     type(particleDungeon)                          :: pop
-    real(defReal)                                  :: val
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! Create score memory

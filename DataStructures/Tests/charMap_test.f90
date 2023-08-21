@@ -39,8 +39,6 @@ contains
   !!
   subroutine setUp(this)
     class(test_charMap), intent(inout) :: this
-    integer(shortInt)                 :: temp
-    integer(shortInt)                 :: N, i
 
     ! Load entries
      call this % map % add(KEY1, VAL1)
@@ -198,7 +196,7 @@ contains
     character(nameLen)                        :: tKey
 
     ! Initialise parameters
-    KEYS_PAST = "This is not a Key. It's picture of a key!"
+    KEYS_PAST = "This is not a Key."
     counter = 0
 
     ! Delete Entry 6 from map

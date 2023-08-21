@@ -11,18 +11,18 @@ module materialMenu_test
   implicit none
 
   character(*),parameter :: INPUT_STR = "     &
-  mat1 { temp 273;                            &
-         composition {                        &
-         1001.03 12;                          &
-         8016.07 0.00654;                     &
-         }                                    &
-         xsPath ./A_PATH;                     &
-       }                                      &
-  mat2 { temp 1;                              &
-          composition {                       &
-          100253.00 7.0E+4;                   &
-          }                                   &
-        }                                     "
+  &mat1 { temp 273;                           &
+  &      composition {                        &
+  &        1001.03 12;                        &
+  &        8016.07 0.00654;                   &
+  &      }                                    &
+  &      xsPath ./A_PATH;                     &
+  &     }                                     &
+  &mat2 { temp 1;                             &
+  &       composition {                       &
+  &         100253.00 7.0E+4;                 &
+  &       }                                   &
+  &     }                                     "
 
 contains
 

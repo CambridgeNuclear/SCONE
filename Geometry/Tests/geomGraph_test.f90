@@ -91,7 +91,7 @@ contains
 @Test
   subroutine test_shrunk()
     type(geomGraph)   :: graph
-    integer(shortInt) :: i, idx, id
+    integer(shortInt) :: idx, id
     type(dictionary)  :: dict
 
     ! Create input dictionary
@@ -138,7 +138,7 @@ contains
 @Test
   subroutine test_extended()
     type(geomGraph)   :: graph
-    integer(shortInt) :: i, idx, id
+    integer(shortInt) :: idx, id
     type(dictionary)  :: dict
 
     ! Create input dictionary
