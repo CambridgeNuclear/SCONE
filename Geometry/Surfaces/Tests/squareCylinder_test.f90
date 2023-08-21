@@ -3,7 +3,7 @@ module squareCylinder_test
   use universalVariables
   use dictionary_class,     only : dictionary
   use squareCylinder_class, only : squareCylinder
-  use pfUnit_mod
+  use funit
 
   implicit none
 

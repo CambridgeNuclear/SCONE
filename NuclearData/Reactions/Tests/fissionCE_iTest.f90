@@ -7,7 +7,7 @@ module fissionCE_iTest
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
   use fissionCE_class,              only : fissionCE, fissionCE_TptrCast
   use aceCard_class,                only : aceCard
-  use pFUnit_mod
+  use funit
   implicit none
 
 contains

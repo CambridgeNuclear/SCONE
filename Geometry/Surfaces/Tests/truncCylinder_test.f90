@@ -3,7 +3,7 @@ module truncCylinder_test
   use universalVariables
   use dictionary_class,     only : dictionary
   use truncCylinder_class,  only : truncCylinder
-  use pfUnit_mod
+  use funit
 
   implicit none
 

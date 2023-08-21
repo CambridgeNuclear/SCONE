@@ -1,7 +1,7 @@
 module linearAlgebra_test
   use numPrecision
   use linearAlgebra_func, only : kill_linearAlgebra, eig, solve, solveAdjointProblem
-  use pFUnit_mod
+  use funit
 
   implicit none
 

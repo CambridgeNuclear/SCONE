@@ -5,7 +5,7 @@ module box_test
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use box_class,          only : box
-  use pfUnit_mod
+  use funit
 
   implicit none
 

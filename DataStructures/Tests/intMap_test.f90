@@ -1,7 +1,7 @@
 module intMap_test
   use numPrecision
   use intMap_class, only : intMap
-  use pFUnit_mod
+  use funit
 
   implicit none
 

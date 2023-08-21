@@ -6,7 +6,7 @@ module materialMenu_test
 
   use materialMenu_mod,   only : init_menu => init, kill_menu => kill, nameMap, materialDefs, &
                                               display, nMat, getMatPtr, materialItem
-  use pFUnit_mod
+  use funit
 
   implicit none
 

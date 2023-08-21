@@ -11,7 +11,7 @@ module urrProbabilityTables_iTest
   use neutronXSPackages_class,  only : neutronMicroXSs
   use materialMenu_mod,         only : mm_init => init
   use ceNeutronCache_mod,       only : zaidCache, nuclideCache
-  use pFUnit_mod
+  use funit
 
   implicit none
 

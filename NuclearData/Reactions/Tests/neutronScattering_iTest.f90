@@ -8,7 +8,7 @@ module neutronScattering_iTest
   use neutronScatter_class,         only : neutronScatter, neutronScatter_TptrCast
   use aceCard_class,                only : aceCard
 
-  use pFUnit_mod
+  use funit
   implicit none
 
 

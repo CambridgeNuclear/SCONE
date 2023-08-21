@@ -9,7 +9,7 @@ module rootUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use rootUniverse_class, only : rootUniverse
-  use pfUnit_mod
+  use funit
 
   implicit none
 

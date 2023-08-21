@@ -3,7 +3,7 @@ module cylinder_test
   use universalVariables
   use dictionary_class,  only : dictionary
   use cylinder_class,    only : cylinder
-  use pfUnit_mod
+  use funit
 
   implicit none
 

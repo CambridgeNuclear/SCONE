@@ -1,6 +1,6 @@
 module weightWindowsField_iTest
   use numPrecision
-  use pFUnit_mod
+  use funit
   use particle_class,           only : particle
   use dictionary_class,         only : dictionary
   use dictParser_func,          only : charToDict

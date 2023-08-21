@@ -1,7 +1,7 @@
 module charMap_test
   use numPrecision
   use charMap_class, only : charMap
-  use pFUnit_mod
+  use funit
 
   implicit none
 

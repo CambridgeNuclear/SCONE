@@ -10,7 +10,7 @@ module cellUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use cellUniverse_class, only : cellUniverse
-  use pfUnit_mod
+  use funit
 
   implicit none
 

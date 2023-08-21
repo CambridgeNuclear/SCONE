@@ -1,7 +1,7 @@
 module sort_test
   use numPrecision
   use genericProcedures, only : swap, quickSort
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -2,7 +2,7 @@ module baseMgNeutronDatabase_iTest
 
   use numPrecision
   use endfConstants
-  use pFUnit_mod
+  use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use particle_class,     only : particle

@@ -8,7 +8,7 @@ module fissionMG_test
   use reactionHandle_inter, only : reactionHandle
   use reactionMG_inter,     only : reactionMG, reactionMG_CptrCast
   use fissionMG_class,      only : fissionMG, fissionMG_TptrCast
-  use pfUnit_mod
+  use funit
 
   implicit none
 

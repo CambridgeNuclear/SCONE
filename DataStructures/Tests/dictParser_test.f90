@@ -2,7 +2,7 @@ module dictParser_test
   use numPrecision
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
-  use pFUnit_mod
+  use funit
   implicit none
 
 contains

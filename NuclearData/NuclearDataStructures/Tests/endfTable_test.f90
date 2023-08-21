@@ -2,7 +2,7 @@ module endfTable_test
   use numPrecision
   use endfConstants
   use endfTable_class, only : endfTable, endf_bin_integral
-  use pFUnit_mod
+  use funit
 
   implicit none
 

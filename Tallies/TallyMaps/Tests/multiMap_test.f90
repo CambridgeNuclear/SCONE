@@ -1,6 +1,6 @@
 module multiMap_test
   use numPrecision
-  use pFUnit_mod
+  use funit
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
   use dictParser_func,         only : charToDict

@@ -3,7 +3,7 @@ module aPlane_test
   use universalVariables
   use dictionary_class,  only : dictionary
   use aPlane_class,      only : aPlane
-  use pfUnit_mod
+  use funit
 
   implicit none
 

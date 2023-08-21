@@ -7,7 +7,7 @@ module elasticScattering_iTest
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
   use elasticNeutronScatter_class,  only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use aceCard_class,                only : aceCard
-  use pFUnit_mod
+  use funit
   implicit none
 
 contains

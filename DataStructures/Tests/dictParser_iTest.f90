@@ -2,7 +2,7 @@ module dictParser_iTest
   use numPrecision
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : fileToDict
-  use pFUnit_mod
+  use funit
   implicit none
 
 contains
