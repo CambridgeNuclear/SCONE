@@ -215,5 +215,5 @@ contains
     end if
 
   end function isConverged
-    
+
 end module tallyTimeAdmin_class

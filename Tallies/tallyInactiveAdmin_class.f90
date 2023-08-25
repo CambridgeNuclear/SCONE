@@ -128,5 +128,5 @@ contains
     call display_super(self)
 
   end subroutine display
-    
+
 end module tallyInactiveAdmin_class

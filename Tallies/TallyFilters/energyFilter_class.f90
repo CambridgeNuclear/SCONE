@@ -155,7 +155,7 @@ contains
     self % Glow = -huge(self % Glow)
 
   end subroutine build_CE
-    
+
   !!
   !! Build energyFilter for MG particles only from components
   !!

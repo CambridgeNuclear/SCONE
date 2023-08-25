@@ -140,5 +140,5 @@ contains
     call self % physicsTable(idx) % proc % collide(p, tally, thisCycle, nextCycle)
 
   end subroutine collide
-    
+
 end module collisionOperator_class

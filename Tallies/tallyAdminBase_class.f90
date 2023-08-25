@@ -89,7 +89,7 @@ module tallyAdminBase_class
   public :: init
   public :: print
   public :: kill
-    
+
 contains
   !!
   !! Process incoming collision report

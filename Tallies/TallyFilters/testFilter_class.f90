@@ -52,5 +52,5 @@ contains
     passed = (self % minIdx <= state % matIdx) .and. (state % matIdx <= self % maxIdx)
 
   end function isPass
-    
+
 end module testFilter_class

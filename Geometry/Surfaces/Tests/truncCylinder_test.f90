@@ -245,7 +245,7 @@ contains
     r(pe) = [12.0_defReal, 0.0_defReal, 2.3_defReal]
     u(pe) = [ONE, ZERO, ZERO]
     r_ref(pe) = [3.0_defReal, 0.0_defReal, 2.3_defReal]
-    u_ref = u     
+    u_ref = u
     call this % surf % transformBC(r, u)
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)

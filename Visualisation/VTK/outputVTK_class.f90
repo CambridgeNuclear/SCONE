@@ -46,14 +46,14 @@ module outputVTK_class
   !!   }
   !!
   type, public                                              :: outputVTK
-    logical(defBool), private                               :: legacy = .TRUE. 
-    integer(shortInt), dimension(2), private                :: version = [3,0] 
-    real(defReal), dimension(3), private                    :: corner 
-    real(defReal), dimension(3), private                    :: width  
-    integer(shortInt), dimension(3), private                :: nVox   
-    integer(shortInt), private                              :: nCells 
+    logical(defBool), private                               :: legacy = .TRUE.
+    integer(shortInt), dimension(2), private                :: version = [3,0]
+    real(defReal), dimension(3), private                    :: corner
+    real(defReal), dimension(3), private                    :: width
+    integer(shortInt), dimension(3), private                :: nVox
+    integer(shortInt), private                              :: nCells
     integer(shortInt), private                              :: nOutput
-    real(defReal), dimension(:,:,:,:), allocatable, private :: values  
+    real(defReal), dimension(:,:,:,:), allocatable, private :: values
     character(nameLen), dimension(:), allocatable, private  :: dataName
     logical(defBool), dimension(:), allocatable, private    :: dataReal
   contains

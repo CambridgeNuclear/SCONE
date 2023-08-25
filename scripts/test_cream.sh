@@ -7,10 +7,10 @@
 set -ex
 
 # Change folder to cream tests
-cd ./cream/test 
+cd ./cream/test
 
-# Execute Tests 
-pytest 
+# Execute Tests
+pytest
 
-# Return to root directory 
+# Return to root directory
 cd ./../..

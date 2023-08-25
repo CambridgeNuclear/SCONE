@@ -46,7 +46,7 @@ module universeShelf_class
   !!   init    -> Initialise and build uniFills
   !!   getPtr  -> Get pointer to a universe given by its index
   !!   getPtr_fast -> Get pointer to a universe without bounds checking. Should be used in
-  !!     speed-critical parts. 
+  !!     speed-critical parts.
   !!   getIdx  -> Get uniIdx of a universe given by uniId
   !!   getId   -> Get uniId of a universe given by uniIdx
   !!   getSize -> Return the number of universes (max uniIdx)

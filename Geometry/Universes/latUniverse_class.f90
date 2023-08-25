@@ -308,7 +308,7 @@ contains
     ! Provide default axis to ensure no out of bounds array access if
     ! all distances happen to be infinite
     d = INF
-    ax = 1 
+    ax = 1
     do i = 1, 3
       ! Nominator and denominator will have the same sign (by ealier bounds selection)
       test_d = (bounds(i) - r_bar(i)) / u(i)
