@@ -40,5 +40,5 @@ contains
 
   end subroutine testCharToInt
 
-    
+
 end module conversions_test

@@ -45,13 +45,13 @@ module collisionProbabilityClerk_class
   !!    -> CPM is stored in column-major order [prodBin, startBin].
   !!    -> CPs are only non-zero within an energy group. It may be more efficient to
   !!       define a slightly different CPClerk which has a separate map for energy.
-  !!       With a fine energy and space discretisation, a large sparse matrix will be 
+  !!       With a fine energy and space discretisation, a large sparse matrix will be
   !!       produced by the current clerk which could be avoided with a slightly different
   !!       implementation.
   !!
   !! Private Members:
   !!   map      -> Map to divide phase-space into bins
-  !!   resp     -> Response for transfer function 
+  !!   resp     -> Response for transfer function
   !!               (Not presently used, would be macroTotal by default)
   !!   N        -> Number of Bins
   !!
@@ -198,7 +198,7 @@ contains
     ! neutrons which collide outside the mapped region of phase space
     ! These correspond to index = 0
 
-    ! Calculate collision probability 
+    ! Calculate collision probability
     ! Used the simple estimator - the commented line can allow CP to generalise to
     ! other responses
     ! For collision probability, top and bottom will cancel -- for other probabilities,

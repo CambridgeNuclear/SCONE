@@ -1,25 +1,25 @@
 //
-// Test input file 
-// Tilted cylinder in a box 
+// Test input file
+// Tilted cylinder in a box
 //
-boundary ( 1 1 2 2 0 0); 
-graph { type shrunk; } 
+boundary ( 1 1 2 2 0 0);
+graph { type shrunk; }
 
 
-surfaces { 
-  squareBound { id 1; type box; origin (0.0 0.0 0.0); halfwidth (5.0 5.0 5.0);} 
+surfaces {
+  squareBound { id 1; type box; origin (0.0 0.0 0.0); halfwidth (5.0 5.0 5.0);}
  }
-  
-cells { 
+
+cells {
  }
-  
-universes { 
-  root { id 1; type rootUniverse; border 1; fill u<10>;} 
-    
-  // Pin universes 
+
+universes {
+  root { id 1; type rootUniverse; border 1; fill u<10>;}
+
+  // Pin universes
   pin31 { id 10; type pinUniverse; origin (1.0 0.0 0.0); rotation (0.0 30.0 0.0); radii (0.900 0.0 ); fills (mox43 water);}
 
-  // Include an unused universe 
+  // Include an unused universe
   pin32 {id 32; type pinUniverse; radii (0.0); fills (water);}
 
 
@@ -27,22 +27,22 @@ universes {
 
 
 nuclearData {
-  materials { 
- 
-    water { 
+  materials {
+
+    water {
       temp 75675;
       composition {  }
       }
-         
-    mox43 { 
-      temp 87476; 
+
+    mox43 {
+      temp 87476;
        composition { }
       }
 
-    uox { 
-       temp 6786; 
+    uox {
+       temp 6786;
        composition { }
-       } 
+       }
   }
 }
 

@@ -38,7 +38,7 @@ contains
 
     self % coeffs = coeffs ! implicit allocation
   end subroutine
-    
+
   !!
   !! Calculate release at energy E_in
   !!

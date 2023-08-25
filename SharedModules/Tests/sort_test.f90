@@ -24,7 +24,7 @@ contains
 
     @assertEqual(4_shortInt, i1)
     @assertEqual(-7_shortInt, i2)
-    
+
     ! Swap same integers (If one tries XOR swap this can fail)
     i1 = 4
     i2 = 4

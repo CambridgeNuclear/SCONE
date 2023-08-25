@@ -124,7 +124,7 @@ contains
 
     ! Assign name
     call self % setName(name)
-    
+
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))

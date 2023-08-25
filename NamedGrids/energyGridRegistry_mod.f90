@@ -245,5 +245,5 @@ contains
     end select
   end subroutine new_energyGrid
 
-    
+
 end module energyGridRegistry_mod

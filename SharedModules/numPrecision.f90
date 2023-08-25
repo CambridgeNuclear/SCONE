@@ -27,5 +27,5 @@ module numPrecision
 
 
 contains
-    
+
 end module numPrecision

@@ -94,5 +94,5 @@ contains
     dummy = new % probabilityOf(HALF,ONE)
   end function new_noAngle
 
-    
+
 end module noAngle_class

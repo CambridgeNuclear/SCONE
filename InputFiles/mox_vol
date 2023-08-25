@@ -1,44 +1,44 @@
-type rayVolPhysicsPackage; 
+type rayVolPhysicsPackage;
 
 pop      20000;
-cycles   20; 
-mfp      3.3; 
-abs_prob 0.01; 
-robust 0;   
-           
-geometry { 
-  type geometryStd; 
-  boundary ( 1 1 2 2 0 0); 
+cycles   20;
+mfp      3.3;
+abs_prob 0.01;
+robust 0;
+
+geometry {
+  type geometryStd;
+  boundary ( 1 1 2 2 0 0);
   graph {type shrunk;}
 
-  surfaces { 
-    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);} 
+  surfaces {
+    squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.71 10.71 0.0);}
   }
-  
-  cells { 
+
+  cells {
   }
-  
-  universes { 
-    root { id 1; type rootUniverse; border 1; fill u<401>; } 
-    
-    // Pin universes 
-    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<401>; }
+
+    // Pin universes
+    pin31 { id 31; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
                                      fills (mox43  void   clad   void   alClad water);}
-    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
-                                     fills (mox70  void   clad   void   alClad water);}    
-    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 ); 
-                                     fills (mox87  void   clad   void   alClad water);}           
+    pin41 { id 41; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox70  void   clad   void   alClad water);}
+    pin51 { id 51; type pinUniverse; radii (0.4095 0.4180 0.4750 0.4850 0.5400 0.0 );
+                                     fills (mox87  void   clad   void   alClad water);}
     pin21 {id 21; type pinUniverse;  radii (0.3400 0.5400 0.0); fills (water clad water);}
 
-    // Lattices 
+    // Lattices
     latMox {
-      id 401; 
-      type latUniverse; 
-      origin (0.0 0.0 0.0); 
+      id 401;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
       pitch (1.26 1.26 0.0);
-      shape (17 17 0); 
-      padMat water; 
-      map ( 
+      shape (17 17 0);
+      padMat water;
+      map (
         31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
         31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
         31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
@@ -55,44 +55,44 @@ geometry {
         31 41 41 21 41 51 51 51 51 51 51 51 41 21 41 41 31
         31 41 41 41 41 21 41 41 21 41 41 21 41 41 41 41 31
         31 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 31
-        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }  
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
   }
-  
+
 }
 
 nuclearData {
-  handles { 
-  } 
-  materials { 
+  handles {
+  }
+  materials {
     numberOfGroups 69;
-      
-    water { 
+
+    water {
       temp 75675;
       composition { }
       }
-        
-     clad { 
+
+     clad {
        temp 12345;
-       composition { } 
+       composition { }
        }
      alClad {
-       temp 9876; 
-      composition { } 
+       temp 9876;
+      composition { }
       }
-      
-    mox43 { 
-      temp 87476; 
+
+    mox43 {
+      temp 87476;
        composition {}
       }
-     mox70 { 
-       temp 6786; 
+     mox70 {
+       temp 6786;
        composition {}
-       } 
-     mox87 { 
-       temp 8765; 
-       composition {}   
-       } 
-     
+       }
+     mox87 {
+       temp 8765;
+       composition {}
+       }
+
 }
 }
 

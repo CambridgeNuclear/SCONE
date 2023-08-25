@@ -27,8 +27,8 @@ module particleDungeon_class
   !! Dungeon can work like stacks or arrays. Stack-like behaviour is not really thread safe
   !! so it can be utilised when collecting and processing secondary particles in history
   !! that should be processed during the course of one cycle. Alternatively, one can use the
-  !! critical variations of the stack-like procedures. 
-  !! Array-like behaviour allows to easily distribute particles among threads. As long as indices 
+  !! critical variations of the stack-like procedures.
+  !! Array-like behaviour allows to easily distribute particles among threads. As long as indices
   !! assigned to different threads do not overlap, reading is thread-safe (I hope-MAK).
   !!
   !!
@@ -170,18 +170,18 @@ contains
     ! Increase population and weight
     self % pop = self % pop + 1
     pop = self % pop
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-    
+
     ! Load new particle
     self % prisoners(pop) = p
     !$omp end critical (dungeon)
-    
+
   end subroutine detainCritical_particle
 
   !!
@@ -224,16 +224,16 @@ contains
     !$omp critical (dungeon)
     self % pop = self % pop + 1
     pop = self % pop
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-   
+
     ! Load new particle
-    self % prisoners(pop) = p_state 
+    self % prisoners(pop) = p_state
     !$omp end critical (dungeon)
 
   end subroutine detainCritical_particleState
@@ -272,11 +272,11 @@ contains
     ! Decrease population
     pop = self % pop
     self % pop = self % pop - 1
-    
+
     ! Load data into the particle
     p = self % prisoners(pop)
     !$omp end critical (dungeon)
-    
+
     p % isDead = .false.
 
   end subroutine releaseCritical

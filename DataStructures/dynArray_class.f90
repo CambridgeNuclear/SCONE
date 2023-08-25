@@ -120,7 +120,7 @@ contains
     isIt = self % mySize == 0 .or. .not.allocated(self % array)
 
   end function isEmpty_shortInt
-    
+
   !!
   !! Return current memory capacity of the dynamicArray
   !!

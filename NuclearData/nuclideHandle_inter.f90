@@ -72,5 +72,5 @@ module nuclideHandle_inter
   end interface
 
 
-    
+
 end module nuclideHandle_inter

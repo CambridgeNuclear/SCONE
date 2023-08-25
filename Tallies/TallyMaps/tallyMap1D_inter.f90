@@ -39,7 +39,7 @@ contains
     D = 1
 
   end function dimensions
-    
+
   !!
   !! Return to uninitialised state
   !!

@@ -4,7 +4,7 @@ module quadSurface_inter
 
   implicit none
   private
-  
+
   !!
   !! Abstract interface to group all quadratic surfaces.
   !!

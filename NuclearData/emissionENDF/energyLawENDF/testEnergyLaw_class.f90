@@ -81,5 +81,5 @@ contains
     self % E_out = ZERO
 
   end subroutine kill
-    
+
 end module testEnergyLaw_class

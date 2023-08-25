@@ -126,7 +126,7 @@ contains
 
     ! Perform checks
     if(any( E < 0.0 ) ) call fatalError(Here,'E contains -ve values')
-    
+
     ! Initialise table
     call self % table % init(E,pdf,R,A,interFlag)
 

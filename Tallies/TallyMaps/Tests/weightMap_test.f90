@@ -194,7 +194,7 @@ contains
 
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'Unstructured map case')
-    call out % reset() 
+    call out % reset()
 
   end subroutine testPrint
 

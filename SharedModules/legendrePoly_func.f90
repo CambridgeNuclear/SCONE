@@ -98,5 +98,5 @@ contains
 
   end function sampleLegendre_P1
 
-    
+
 end module legendrePoly_func

@@ -132,5 +132,5 @@ contains
     @assertGreaterThan(7.38_defReal, Chi)
 
   end subroutine testSampling
-    
+
 end module multipleEnergyLaws_test

@@ -123,7 +123,7 @@ contains
     real(defReal), intent(in)             :: LDAT1
     real(defReal), intent(in)             :: LDAT2
     type(levelScattering)                 :: new
-    
+
     ! Initialise
     call new % init(LDAT1, LDAT2)
 

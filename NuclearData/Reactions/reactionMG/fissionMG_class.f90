@@ -147,7 +147,7 @@ contains
     N = ZERO
 
   end function releaseDelayed
-    
+
   !!
   !! Sample the delay rate for the delayed particle
   !!

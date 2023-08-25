@@ -7,10 +7,10 @@
 set -ex
 
 # Change folder to cream
-cd ./cream 
+cd ./cream
 
-# Install Cream 
+# Install Cream
 pip install -e .[test]
 
-# Return to root directory 
+# Return to root directory
 cd ./..

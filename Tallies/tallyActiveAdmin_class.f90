@@ -228,5 +228,5 @@ contains
     end if
 
   end function isConverged
-    
+
 end module tallyActiveAdmin_class

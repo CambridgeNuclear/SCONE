@@ -294,7 +294,7 @@ contains
         do while (x(val) <= self % x(i))
           y(val) = csum + endf_bin_integral(x0, x1, y0, y1, x(val), flag)
           val = val + 1
-          if (val > size(x)) exit  
+          if (val > size(x)) exit
         end do
       end if
 

@@ -90,5 +90,5 @@ contains
     call move_alloc(RHS, LHS % slot)
 
   end subroutine moveAllocFrom
-    
+
 end module energyLawENDFslot_class
