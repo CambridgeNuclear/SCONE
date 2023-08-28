@@ -3,6 +3,8 @@
 !! those too complicated to be easily read in from an input file. Also contains an energy grid to
 !! allow materials to access particle energy group bounds for use in evaluating these equations.
 !!
+!! Also stores energy grid for multigroup problems for easy access by materials
+!!
 !! For a new set of material equations:
 !!   -> Add name to AVAILABLE_equations
 !!   -> Add case to evaluateCv and evaluateSigma
@@ -25,8 +27,10 @@ module materialEquations
 
   public :: evaluateCv
   public :: evaluateSigma
+  public :: normPlanckSpectrum
 
-  type(energyGrid), public :: imcEnergyGrid
+  ! Energy grid for multi-frequency problems for easy access by material classes
+  type(energyGrid), public :: mgEnergyGrid
 
   interface evaluateCv
     module procedure evaluateCv
@@ -35,6 +39,10 @@ module materialEquations
   interface evaluateSigma
     module procedure evaluateSigma
   end interface
+
+!  interface normPlanckSpectrum
+!    procedure normPlanckSpectrum
+!  end interface
 
   contains
 
@@ -153,6 +161,26 @@ module materialEquations
 
   end function sigmaOlson1D
 
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Commonly used equations
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Evaluate frequency-normalised Planck spectrum
+  !!
+  !! Args:
+  !!   nu -> frequency
+  !!   T  -> temperature
+  !!
+  pure function normPlanckSpectrum(E, T) result(b)
+    real(defReal), intent(in) :: E
+    real(defReal), intent(in) :: T
+    real(defReal)             :: b
+
+    b = 15*E**3 / ((pi*T)**4 * (exp(E/T)-1))
+
+  end function normPlanckSpectrum
 
 
 end module materialEquations

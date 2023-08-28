@@ -21,7 +21,11 @@ module baseMgIMCDatabase_class
 
   ! baseMgIMC Objects
   use baseMgIMCMaterial_class, only : baseMgIMCMaterial
-  use materialEquations,       only : imcEnergyGrid
+  use materialEquations,       only : mgEnergyGrid
+
+  ! Energy grid for multi-frequency
+  use energyGrid_class,         only : energyGrid
+  use energyGridRegistry_mod,   only : get_energyGrid
 
   implicit none
   private
@@ -375,6 +379,9 @@ contains
     character(pathLen)                                 :: path
     type(dictionary)                                   :: tempDict
     real(defReal), dimension(:), allocatable           :: temp
+    type(energyGrid)                         :: eGrid
+    logical(defBool)                         :: err
+    character(nameLen)                       :: gridName
     character(100), parameter :: Here = 'init (baseMgIMCDatabase_class.f90)'
  
     ! Prevent reallocations
@@ -387,17 +394,13 @@ contains
       loud = .true.
     end if
 
-    ! Obtain number of groups and initialise energy grid if nG > 1
-    matDef => mm_getMatPtr(1)
-    call matDef % extraInfo % get(path,'xsFile')
-    call fileToDict(tempDict, path)
-    call tempDict % get(self % nG, 'numberOfGroups')
-    if (self % nG > 1) then
-      call tempDict % get(temp, 'energyBins') 
-      if (size(temp) /= self % nG + 1) call fatalError(Here, 'Should have '//numToChar(self % nG+1)&
-                                           &//' energy bins for '//numToChar(self % nG)//' groups. &
-                                           &Currently have '//numToChar(size(temp))//'.')
-      call imcEnergyGrid % init(temp)
+    ! Get energy grid in multi-frequency case
+    gridName = 'mg'
+    call get_energyGrid(mgEnergyGrid, gridName, err)
+    if (err .eqv. .false.) then 
+      self % nG = mgEnergyGrid % getSize()
+    else
+      self % nG = 1
     end if
 
     ! Find number of materials and allocate space
@@ -429,7 +432,7 @@ contains
 
       ! Verify number of groups
       if(self % nG /= self % mats(i) % nGroups()) then
-        call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
+        call fatalError(Here,'Inconsistent # of groups in materials in matIdx'//numToChar(i))
       end if
 
     end do

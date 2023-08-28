@@ -65,9 +65,6 @@ module baseMgIMCMaterial_class
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
-    real(defReal),dimension(:), allocatable   :: cv
-    real(defReal),dimension(:), allocatable   :: absEqn
-    real(defReal),dimension(:), allocatable   :: scattEqn
     character(nameLen)                        :: name
     real(defReal)                             :: T
     real(defReal)                             :: V
@@ -107,51 +104,9 @@ module baseMgIMCMaterial_class
 
 contains
 
-  !!
-  !! Update material properties at each time step
-  !! First update energy using simple balance, then solve for temperature,
-  !!  then update temperature-dependent properties
-  !!
-  !! Args:
-  !!   tallyEnergy [in] -> Energy absorbed into material
-  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
-  !!
-  subroutine updateMat(self, tallyEnergy, printUpdate)
-    class(baseMgIMCMaterial),intent(inout)  :: self
-    real(defReal), intent(in)               :: tallyEnergy
-    logical(defBool), intent(in), optional  :: printUpdate
-    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
-
-    ! TODO: Print updates if requested
-
-    ! Save previous energy
-    self % prevMatEnergy = self % matEnergy
-
-    ! Update material internal energy
-    if (self % calcType == IMC) then
-      self % matEnergy  = self % matEnergy - self % getEmittedRad() + tallyEnergy
-    else
-      self % matEnergy = tallyEnergy
-    end if
-
-    ! Return if no change
-    if (abs(self % matEnergy - self % prevMatEnergy) < 0.00001*self % prevMatEnergy) return
-
-    self % energyDens = self % matEnergy / self % V
-
-    ! Confirm new energy density is valid
-    if (self % energyDens <= ZERO) call fatalError(Here, 'Energy density is not positive')
-
-    ! Update material temperature
-    self % T = self % tempFromEnergy()
-
-    ! Update sigma
-    call self % sigmaFromTemp()
-
-    ! Update fleck factor
-    call self % updateFleck()
-
-  end subroutine updateMat
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Standard procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Return to uninitialised state
@@ -235,7 +190,7 @@ contains
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
     ! Read number of groups
-    call dict % get(nG, 'numberOfGroups')
+    nG = mgEnergyGrid % getSize()
     if (nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
 
     ! Allocate space for data
@@ -245,21 +200,8 @@ contains
     ! Store alpha setting
     call dict % getOrDefault(self % alpha, 'alpha', ONE)
 
-    ! Get name of equations for cv and opacity calculations
-    call dict % getOrDefault(self % name, 'equations','none')
-
-    if (self % name == 'none') then
-      call fatalError(Here, 'No name provided for equations')
-!      ! Read opacity equations
-!      call dict % get(temp, 'capture')
-!      self % absEqn   = temp
-!      call dict % get(temp, 'scatter')
-!      self % scattEqn = temp
-    end if
-
-    ! Read heat capacity equation
-    call dict % get(temp, 'cv')
-    self % cv = temp
+    ! Get name of equations for heat capacity and opacity calculations
+    call dict % get(self % name, 'equations')
 
     ! Read initial temperature and volume
     call dict % get(self % T, 'T')
@@ -278,9 +220,6 @@ contains
     end do
     self % energyDens = tempU
     self % matEnergy  = self % energyDens * self % V
-
-    ! Default to IMC calculation type
-    self % calcType = IMC
 
   end subroutine init
 
@@ -354,6 +293,80 @@ contains
   end function baseMgIMCMaterial_CptrCast
 
   !!
+  !! Set the calculation type to be used
+  !!
+  !! Current options:
+  !!   IMC
+  !!   ISMC
+  !!
+  !! Errors:
+  !!   Unrecognised option
+  !!
+  subroutine setCalcType(self, calcType)
+    class(baseMgIMCMaterial), intent(inout) :: self
+    integer(shortInt), intent(in)           :: calcType
+    character(100), parameter               :: Here = 'setCalcType (baseMgIMCMaterial_class.f90)'
+
+    if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
+
+    self % calcType = calcType
+
+    ! Set initial fleck factor
+    call self % updateFleck()
+
+  end subroutine setCalcType
+
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Material Updates
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Update material properties at each time step
+  !! First update energy using simple balance, then solve for temperature,
+  !!  then update temperature-dependent properties
+  !!
+  !! Args:
+  !!   tallyEnergy [in] -> Energy absorbed into material
+  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
+  !!
+  subroutine updateMat(self, tallyEnergy, printUpdate)
+    class(baseMgIMCMaterial),intent(inout)  :: self
+    real(defReal), intent(in)               :: tallyEnergy
+    logical(defBool), intent(in), optional  :: printUpdate
+    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
+    ! TODO: Print updates if requested
+
+    ! Save previous energy
+    self % prevMatEnergy = self % matEnergy
+
+    ! Update material internal energy
+    if (self % calcType == IMC) then
+      self % matEnergy = self % matEnergy - self % getEmittedRad() + tallyEnergy
+    else
+      self % matEnergy = tallyEnergy
+    end if
+
+    self % energyDens = self % matEnergy / self % V
+
+    ! Return if no change
+    if (abs(self % matEnergy - self % prevMatEnergy) < 0.00001*self % prevMatEnergy) return
+
+    ! Confirm new energy density is valid
+    if (self % energyDens <= ZERO) call fatalError(Here, 'Energy density is not positive')
+
+    ! Update material temperature
+    self % T = self % tempFromEnergy()
+
+    ! Update sigma
+    call self % sigmaFromTemp()
+
+    ! Update fleck factor
+    call self % updateFleck()
+
+  end subroutine updateMat
+
+  !!
   !! Calculate material temperature from internal energy by integration
   !!
   !! Step up (or down if energy is lower than in previous step) through temperature in steps of dT
@@ -384,13 +397,14 @@ contains
       i = i+1
       if (i > 1000000) then
         print *, U, self % energyDens
-        call fatalError(Here, "1000,000 iterations without convergence.")
+        call fatalError(Here, "1000,000 iterations without convergence")
       end if
 
       ! Increment temperature and increment the corresponding energy density
       tempT = T + dT/2
       increase = dT * evaluateCv(self % name, tempT)
-      if (increase /= increase) increase = ZERO
+      ! Protect against division by 0 or other numerical errors
+      if (increase /= increase .or. increase > INF) increase = ZERO
       tempU = U + increase
 
       error = self % energyDens - tempU
@@ -436,7 +450,7 @@ contains
     ! Evaluate opacities for frequency-dependent case
     do i = 1, self % nGroups()
       ! Calculate central energy value of group
-      E = (imcEnergyGrid % bin(i) + imcEnergyGrid % bin(i+1)) / 2
+      E = (mgEnergyGrid % bin(i) + mgEnergyGrid % bin(i+1)) / 2
       ! Evaluate absorption opacity sigma(T, E)
       self % data(CAPTURE_XS,i)   = evaluateSigma(self % name, self % T, E)
     end do
@@ -444,7 +458,7 @@ contains
     self % data(TOTAL_XS,:)     = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
 
     ! Calculate planck opacity - integral over frequency of b * sigma
-    EStep = imcEnergyGrid % bin(1) / 1000
+    EStep = mgEnergyGrid % bin(1) / 1000
     E = -EStep / 2
     sigmaP = ZERO
     do i = 1, 10000
@@ -454,7 +468,7 @@ contains
     end do
     ! Continue with increasing step size to simulate E -> infinity
     do i = 1, 1000
-      EStep = EStep + imcEnergyGrid % bin(1) / 100
+      EStep = EStep + mgEnergyGrid % bin(1) / 100
       E = E + EStep
       increase = EStep*normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
       sigmaP = sigmaP + increase
@@ -465,8 +479,8 @@ contains
 
     ! Calculate probability of emission from each energy group
     do i = 1, self % nGroups()
-      EStep = imcEnergyGrid % bin(i) - imcEnergyGrid % bin(i+1)
-      E     = imcEnergyGrid % bin(i) - 0.5*EStep
+      EStep = mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1)
+      E     = mgEnergyGrid % bin(i) - 0.5*EStep
       self % data(EMISSION_PROB,i) = EStep * normPlanckSpectrum(E, self % T) * &
                                      & evaluateSigma(self % name, self % T, E)
     end do
@@ -503,6 +517,11 @@ contains
     end select
 
   end subroutine updateFleck
+
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Obtain material info
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Return the energy to be emitted during time step, E_r
@@ -563,29 +582,10 @@ contains
 
   end function getMatEnergy
 
-  !!
-  !! Set the calculation type to be used
-  !!
-  !! Current options:
-  !!   IMC
-  !!   ISMC
-  !!
-  !! Errors:
-  !!   Unrecognised option
-  !!
-  subroutine setCalcType(self, calcType)
-    class(baseMgIMCMaterial), intent(inout) :: self
-    integer(shortInt), intent(in)           :: calcType
-    character(100), parameter               :: Here = 'setCalcType (baseMgIMCMaterial_class.f90)'
 
-    if(calcType /= IMC .and. calcType /= ISMC) call fatalError(Here, 'Invalid calculation type')
-
-    self % calcType = calcType
-
-    ! Set initial fleck factor
-    call self % updateFleck()
-
-  end subroutine setCalcType
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Sample emission properties
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Sample energy group for a particle emitted from material (and after effective scattering)
@@ -632,23 +632,5 @@ contains
     ! TODO: consider implications when T = 0 (=> eta = 0)
 
   end function sampleTransformTime
-
-  !!
-  !! Evaluate frequency-normalised Planck spectrum
-  !!
-  !! Args:
-  !!   nu -> frequency
-  !!   T  -> temperature
-  !!
-  pure function normPlanckSpectrum(E, T) result(b)
-    real(defReal), intent(in) :: E
-    real(defReal), intent(in) :: T
-    real(defReal)             :: b
-    real(defReal)             :: nu, nuOverT
-
-    b = 15*E**3 / ((pi*T)**4 * (exp(E/T)-1))
-
-  end function normPlanckSpectrum
-
 
 end module baseMgIMCMaterial_class
