@@ -130,6 +130,9 @@ module materialEquations
 
     cv = 0.1*radiationConstant*(1+alpha+(T+0.1)*dAlphadT)
 
+    ! Deal with numerical errors from poorly defined regions (e.g. T almost 0)
+    if (cv /= cv .or. cv > INF) cv = ZERO
+
   end function cvOlson1D
 
   function sigmaOlson1D(T, E) result(sigma)
@@ -146,7 +149,7 @@ module materialEquations
     end if
 
     ! Multiply by density
-    sigma = 0.01*sigma
+    sigma = 0.001*sigma
 
   end function sigmaOlson1D
 

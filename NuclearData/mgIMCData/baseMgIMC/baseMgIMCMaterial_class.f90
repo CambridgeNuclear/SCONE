@@ -273,8 +273,7 @@ contains
     tempT = dT/2
     tempU = 0
     do i=1, 1000
-      tempU = tempU + dT * evaluateCv(self % name, tempT) !poly_eval(self % cv, tempT)
-      if (tempU /= tempU) tempU = ZERO
+      tempU = tempU + dT * evaluateCv(self % name, tempT)
       tempT = tempT + dT
     end do
     self % energyDens = tempU
@@ -392,7 +391,7 @@ contains
       tempT = T + dT/2
       increase = dT * evaluateCv(self % name, tempT)
       if (increase /= increase) increase = ZERO
-      tempU = U + increase !poly_eval(self % cv, tempT)
+      tempU = U + increase
 
       error = self % energyDens - tempU
 
@@ -473,10 +472,6 @@ contains
     end do
     self % data(EMISSION_PROB,:) = self % data(EMISSION_PROB,:) / sum(self % data(EMISSION_PROB,:))
 
-!    self % data(CAPTURE_XS,:) = poly_eval(self % absEqn, self % T)
-!    self % data(IESCATTER_XS,:) = poly_eval(self % scattEqn, self % T)
-!    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
-
   end subroutine sigmaFromTemp
 
   !!
@@ -488,7 +483,7 @@ contains
     character(100), parameter               :: Here = 'updateFleck (baseMgIMCMaterial_class.f90)'
 
     ! Calculate beta, ratio of radiation and material heat capacities
-    beta = 4 * radiationConstant * self % T**3 / evaluateCv(self % name, self % T) !poly_eval(self % cv, self % T)
+    beta = 4 * radiationConstant * self % T**3 / evaluateCv(self % name, self % T)
 
     ! Use time step size to calculate fleck factor
     select case(self % calcType)
@@ -651,10 +646,7 @@ contains
     real(defReal)             :: b
     real(defReal)             :: nu, nuOverT
 
-    nu = E / planckConst
-    nuOverT = nu/T
-
-    b = 15 * nuOverT**3 / (pi**4 * T * (exp(nuOverT)-1))
+    b = 15*E**3 / ((pi*T)**4 * (exp(E/T)-1))
 
   end function normPlanckSpectrum
 

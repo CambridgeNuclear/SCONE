@@ -55,6 +55,7 @@ module implicitPhysicsPackage_class
   use sourceFactory_func,             only : new_source
 
   use simulationTime_class
+  use energyGridRegistry_mod,         only : define_energyGrid
 
   implicit none
 
@@ -159,7 +160,6 @@ contains
     integer(shortInt)                               :: i, j, N, nFromMat, num, nParticles
     type(particle), save                            :: p
     real(defReal)                                   :: sourceWeight, elapsed_T, end_T, T_toEnd
-    real(defReal), dimension(:), allocatable        :: tallyEnergy
     class(IMCMaterial), pointer                     :: mat
     character(100),parameter :: Here ='steps (implicitPhysicsPackage_class.f90)'
     class(tallyResult), allocatable                 :: tallyRes
@@ -396,7 +396,8 @@ contains
     character(:),allocatable                      :: string
     character(nameLen)                            :: nucData, geomName
     type(outputFile)                              :: test_out
-    integer(shortInt)                             :: i
+    integer(shortInt)                             :: i, nGroups
+    real(defReal), dimension(:), allocatable      :: energyBins
     character(nameLen), dimension(:), allocatable :: mats
     real(defReal)                                 :: timeStep
     type(dictionary),target                       :: newGeom, newData
@@ -474,6 +475,12 @@ contains
       geomDict => dict % getDictPtr("geometry")
       dataDict => dict % getDictPtr("nuclearData")
 
+    end if
+
+    ! Initialise energy grid in multi-frequency case
+    if (dict % isPresent('energyGrid')) then
+      tempDict => dict % getDictPtr('energyGrid')
+      call define_energyGrid(nucData, tempDict)
     end if
 
     ! Build Nuclear Data
