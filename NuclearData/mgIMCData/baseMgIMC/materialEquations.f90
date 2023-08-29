@@ -40,9 +40,6 @@ module materialEquations
     module procedure evaluateSigma
   end interface
 
-!  interface normPlanckSpectrum
-!    procedure normPlanckSpectrum
-!  end interface
 
   contains
 

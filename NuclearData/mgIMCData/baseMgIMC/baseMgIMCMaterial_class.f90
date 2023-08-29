@@ -433,8 +433,8 @@ contains
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
-    integer(shortInt)                       :: i
-    real(defReal)                           :: sigmaP, E, EStep, increase
+    integer(shortInt)                       :: i, j
+    real(defReal)                           :: sigmaP, E, EStep, increase, sigmaA, norm
     character(100), parameter :: Here = 'sigmaFromTemp (baseMgIMCMaterial_class.f90)'
 
     ! Evaluate opacities for grey case
@@ -457,34 +457,34 @@ contains
     self % data(IESCATTER_XS,:) = ZERO
     self % data(TOTAL_XS,:)     = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
 
-    ! Calculate planck opacity - integral over frequency of b * sigma
-    EStep = mgEnergyGrid % bin(1) / 1000
-    E = -EStep / 2
-    sigmaP = ZERO
-    do i = 1, 10000
-      E = E + EStep
-      increase = EStep*normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
-      sigmaP = sigmaP + increase
-    end do
-    ! Continue with increasing step size to simulate E -> infinity
-    do i = 1, 1000
-      EStep = EStep + mgEnergyGrid % bin(1) / 100
-      E = E + EStep
-      increase = EStep*normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
-      sigmaP = sigmaP + increase
-    end do
-
-    self % sigmaP = sigmaP
-    if (self % sigmaP == ZERO) call fatalError(Here, 'sigmaP = 0 ???')
-
-    ! Calculate probability of emission from each energy group
+    ! Evaluate opacities
+    sigmaP = ZERO ! For Planck opacity, integrate over entire frequency domain
     do i = 1, self % nGroups()
-      EStep = mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1)
-      E     = mgEnergyGrid % bin(i) - 0.5*EStep
-      self % data(EMISSION_PROB,i) = EStep * normPlanckSpectrum(E, self % T) * &
-                                     & evaluateSigma(self % name, self % T, E)
+      ! For CAPTURE_XS, integrate over each energy group
+      sigmaA = ZERO
+      ! Normalise CAPTURE_XS after weighting with planck spectrum
+      norm = ZERO
+      ! 100 integration steps per energy group, chosen arbitrarily
+      EStep = (mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1)) / 100
+      E = mgEnergyGrid % bin(i) - 0.5*EStep
+      do j = 1, 100
+        increase = normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
+        sigmaP = sigmaP + EStep * increase
+        norm = norm + normPlanckSpectrum(E, self % T)
+        sigmaA = sigmaA + increase
+        E = E - EStep
+      end do
+      if (sigmaA /= ZERO) sigmaA = sigmaA / norm
+      self % data(CAPTURE_XS, i) = sigmaA
     end do
-    self % data(EMISSION_PROB,:) = self % data(EMISSION_PROB,:) / sum(self % data(EMISSION_PROB,:))
+
+    ! Set cross sections
+    self % sigmaP = sigmaP
+    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
+
+    ! Set emission probability of each group - proportional to sigmaA
+    self % data(EMISSION_PROB,:) = self % data(CAPTURE_XS,:) / sum(self % data(CAPTURE_XS,:))
+
 
   end subroutine sigmaFromTemp
 
@@ -528,11 +528,11 @@ contains
   !!
   function getEmittedRad(self) result(emittedRad)
     class(baseMgIMCMaterial), intent(inout) :: self
-    real(defReal)                           :: U_r, emittedRad
+    real(defReal)                           :: u_r, emittedRad
 
-    U_r = radiationConstant * (self % T)**4
+    u_r = radiationConstant * (self % T)**4
 
-    emittedRad = lightSpeed * timeStep() * self % sigmaP * self % fleck * U_r * self % V
+    emittedRad = lightSpeed * timeStep() * self % sigmaP * self % fleck * u_r * self % V
 
   end function getEmittedRad
 

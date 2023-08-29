@@ -378,10 +378,8 @@ contains
     type(materialItem), pointer                        :: matDef
     character(pathLen)                                 :: path
     type(dictionary)                                   :: tempDict
-    real(defReal), dimension(:), allocatable           :: temp
-    type(energyGrid)                         :: eGrid
-    logical(defBool)                         :: err
-    character(nameLen)                       :: gridName
+    logical(defBool)                                   :: err
+    character(nameLen)                                 :: gridName
     character(100), parameter :: Here = 'init (baseMgIMCDatabase_class.f90)'
  
     ! Prevent reallocations

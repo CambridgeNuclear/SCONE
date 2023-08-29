@@ -24,6 +24,7 @@ module simulationTime_class
   type(simulationTime), public :: time
 
   public :: setStep
+  public :: thisStep
   public :: nextStep
   public :: timeStep
   public :: timeLeft
@@ -43,6 +44,13 @@ contains
     time % stepEnd = dt
 
   end subroutine setStep
+
+  function thisStep() result(i)
+    integer(shortInt) :: i
+
+    i = time % stepsCompleted + 1
+
+  end function thisStep
 
   !!
   !! Advance time by one time step
