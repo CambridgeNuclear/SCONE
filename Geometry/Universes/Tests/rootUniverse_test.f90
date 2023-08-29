@@ -30,7 +30,7 @@ module rootUniverse_test
 contains
 
   !!
-  !! Setup enviroment
+  !! Setup environment
   !!
 @Before
   subroutine setUp()
@@ -57,7 +57,7 @@ contains
   end subroutine setUp
 
   !!
-  !! Clean enviroment
+  !! Clean environment
   !!
 @After
   subroutine clean()

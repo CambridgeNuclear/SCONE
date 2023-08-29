@@ -28,7 +28,7 @@ module cellUniverse_class
   !!
   !! Representation of a universe via cells
   !!
-  !! Each local cell in the universe corespondes to a cell given by an ID.
+  !! Each local cell in the universe corresponds to a cell given by an ID.
   !! An extra local cell is always defined inside the cellUniverse with UNDEF_MAT
   !! (undefined material) filling. If position is not in any user-defined cell, it is in this
   !! extra cell. Extra cell exists to enable plotting of geometry without fatalErrors.
@@ -168,8 +168,8 @@ contains
   !!
   !! See universe_inter for details.
   !!
-  !! Note: Introduces extra movment to the particle to push it over boundary
-  !!   for more efficent search. Distance is NUGDE.
+  !! Note: Introduces extra movement to the particle to push it over boundary
+  !!   for more efficient search. Distance is NUGDE.
   !!
   subroutine cross(self, coords, surfIdx)
     class(cellUniverse), intent(inout) :: self

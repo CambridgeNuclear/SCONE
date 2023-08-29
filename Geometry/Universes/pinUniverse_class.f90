@@ -34,14 +34,14 @@ module pinUniverse_class
   !!     fills (u<3> void clad u<4>);
   !!   }
   !!
-  !!  There must be 0.0 entry, which indicates outermost annulus (infinate radius).
+  !!  There must be 0.0 entry, which indicates outermost annulus (infinite radius).
   !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
   !!  are sorted together with the `radii`. As a result, in the example, local cell 1 is
   !!  filled with u<4>, cell 2 with u<3> etc.
   !!
   !! Public Members:
   !!  r_sqr  -> Array of radius^2 for each annulus
-  !!  annuli -> Array of cylinder surfaces that represent diffrent annuli
+  !!  annuli -> Array of cylinder surfaces that represent different annuli
   !!
   !! Interface:
   !!   universe interface
@@ -104,7 +104,7 @@ contains
     ! Change 0.0 to infinity
     N = size(radii)
     idx = minloc(radii, 1)
-    if (radii(idx) /= ZERO) call fatalError(Here, 'Did not found outermst element with radius 0.0.')
+    if (radii(idx) /= ZERO) call fatalError(Here, 'Did not found outermost element with radius 0.0.')
     call swap( radii(idx), radii(N))
     call swap( fillNames(idx), fillNames(N))
     radii(N) = INF * 1.1_defReal

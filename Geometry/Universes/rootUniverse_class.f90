@@ -22,7 +22,7 @@ module rootUniverse_class
   !!
   !! A top level (root) universe of geometry
   !!
-  !! Is composed of two regions. Inside and outside seperated by a single surface.
+  !! Is composed of two regions. Inside and outside separated by a single surface.
   !! Inside is the -ve halfspace of the boundary surface
   !! +ve halfspace is OUTSIDE
   !! Filling can be universe given by ID (`u<67` syntax) or a material given by name (e.g. 'fuel')

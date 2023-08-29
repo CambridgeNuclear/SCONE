@@ -31,7 +31,7 @@ module latUniverse_class
   !! Cells inside the lattice can only be filled with a universe (given as integer ID).
   !! Background cell can have any filling given by keyword (material or universe)
   !!
-  !! Every lattice cell has an offset to its centere (so the centre of the nested universe
+  !! Every lattice cell has an offset to its centre (so the centre of the nested universe
   !! is in the center of the lattice cell).
   !!
   !! Minimum lattice pitch is set to 10 * SURF_TOL
@@ -66,7 +66,7 @@ module latUniverse_class
   !! Private Members:
   !!  pitch      -> Values of lattice pitch in x, y & z directions
   !!  sizeN      -> Number of lattice cells in x, y & z directions
-  !!  corner     -> Location of the minumum corner
+  !!  corner     -> Location of the minimum corner
   !!  a_bar      -> Halfwidth of lattice cell reduced by surface tolerance
   !!  outline    -> Box type surface that is a boundary between lattice & background
   !!  outLocalID -> LocalID of the background cell
@@ -288,7 +288,7 @@ contains
     d = INF
     ax = 1
     do i = 1, 3
-      ! Nominator and denominator will have the same sign (by ealier bounds selection)
+      ! Nominator and denominator will have the same sign (by earlier bounds selection)
       test_d = (bounds(i) - r_bar(i)) / u(i)
 
       if (test_d < d) then

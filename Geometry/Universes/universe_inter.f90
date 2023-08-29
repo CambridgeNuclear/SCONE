@@ -12,7 +12,7 @@ module universe_inter
   private
 
 
-  ! Extandable methods
+  ! Extendable methods
   public :: kill
 
   ! Universe utility functions
@@ -40,7 +40,7 @@ module universe_inter
   !! Private Members:
   !!   uniId   -> Id of the universe
   !!   uniIdx  -> Index of the universe
-  !!   origin  -> Location of the origin of the univere co-ordinates in the frame of higher universe
+  !!   origin  -> Location of the origin of the universe co-ordinates in the frame of higher universe
   !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
   !!   rot     -> rotation flag. True is universe is rotated
   !!
@@ -50,7 +50,7 @@ module universe_inter
   !!   setIdx       -> Set index of the universe
   !!   setTransfrom -> Set origin and/or rotation of the universe. Rotation angles are in [deg]
   !!   init         -> Initialise universe and return fillArray with content of local cells.
-  !!     Requires surface/cell shelfs and map of material names to matIdxs
+  !!     Requires surface/cell shelves and map of material names to matIdxs
   !!   kill         -> Return to uninitialised state
   !!   enter        -> Generate new coord after entering a universe from higher level coord.
   !!   findCell     -> Return local cell ID and cellIdx in cellShelf for a given position.
@@ -88,7 +88,7 @@ module universe_inter
     !!
     !! Initialise Universe
     !!
-    !! Must ruturn a fill array, that contains content in each local cell of the universe.
+    !! Must return a fill array, that contains content in each local cell of the universe.
     !! Array is indexed by local cell ID. Universe content is -uniID and material content
     !! is +ve matIdx.
     !!
@@ -123,7 +123,7 @@ module universe_inter
     !!   cellIdx [out] -> cellIdx in cellShelf, if the cell point is in is defined there.
     !!     If the cell exists only in the universe return 0.
     !!   r [in]        -> Position of a point
-    !!   u [in]        -> Normalised direaction (norm2(u) = 1.0)
+    !!   u [in]        -> Normalised direction (norm2(u) = 1.0)
     !!
     !! Note: Self is intent(inout), but if a state of the universe is to be changed
     !!   it is necessary to consider issues related to parallel calculations with shared
@@ -152,7 +152,7 @@ module universe_inter
     !! Args:
     !!   d [out]       -> Distance to the next surface
     !!   surfIdx [out] -> Index of the surface that will be crossed. If +ve than surface
-    !!     is defined on surfaceSHelf. If -ve surface is local to this univerese.
+    !!     is defined on surfaceSHelf. If -ve surface is local to this universe.
     !!   coords [in]   -> Coordinates of the point inside the universe (after transformations
     !!     and with localID already set)
     !!
@@ -172,12 +172,12 @@ module universe_inter
     !! Cross between local cells
     !!
     !! Procedure assumes that the point is ON THE SURFACE between cells within under/overshoot as
-    !! a result of finate FP precision.
+    !! a result of finite FP precision.
     !!
     !! Args:
     !!   coords [inout] -> Coordinates placed in the universe (after transformations and with
     !!     local ID set). On exit localID will be changed
-    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is beeing
+    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is being
     !!     crossed.
     !!
     !! Note: Self is intent(inout), but if a state of the universe is to be changed
@@ -352,7 +352,7 @@ contains
   !! Sets:
   !!   - New position (r)
   !!   - New direction (dir)
-  !!   - Rotation infor (isRotated + rotMat)
+  !!   - Rotation info (isRotated + rotMat)
   !!   - Local cell (localID)
   !!   - Cell info (cellIdx)
   !!
@@ -362,7 +362,7 @@ contains
   !!
   !! Args:
   !!   new [out] -> New coordinates for the level.
-  !!   r [in] -> Position affter cellOffset in upper univere is applied
+  !!   r [in] -> Position after cellOffset in upper universe is applied
   !!   u [in] -> Normalised direction (norm2(u) = 1.0)
   !!
   !! Note: Self is intent(inout), but if a state of the universe is to be changed
