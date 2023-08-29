@@ -84,12 +84,11 @@ contains
     character(nameLen)                                        :: name
     character(100), parameter :: Here = 'init (rootUniverse_class.f90)'
 
-    ! Set ID
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
-    ! Make shure root does not contain neither origin nor rotation
+    ! Make sure root does not contain neither origin nor rotation
     if (dict % isPresent('origin')) then
       call fatalError(Here, 'Origin is not allowed. Centre of the root universe is &
                             &always (0.0 0.0 0.0).')

@@ -29,6 +29,14 @@ module universe_inter
   !!
   !! Rotation is applied before translation to the origin.
   !!
+  !! Sample Dictionary Input:
+  !!   uni {
+  !!     id 7;
+  !!     #origin (1.0 0.0 0.1);#
+  !!     #rotation (30.0 0.0 0.0);#
+  !!     <subclass specific data>
+  !!   }
+  !!
   !! Private Members:
   !!   uniId   -> Id of the universe
   !!   uniIdx  -> Index of the universe
@@ -64,6 +72,7 @@ module universe_inter
     procedure, non_overridable :: setIdx
     procedure, non_overridable :: setTransform
     procedure(init), deferred  :: init
+    procedure                  :: setupBase
     procedure                  :: kill
 
     ! Runtime procedures
@@ -264,6 +273,50 @@ contains
     self % uniIdx = idx
 
   end subroutine setIdx
+
+  !!
+  !! Read the data common to all universes from the dictionary
+  !!
+  !! Sets-up the base universe class with translations, ids and rotations (if any).
+  !! Is used to avoid the code repeat in each subclass of the universe.
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary with the universe definition
+  !!
+  subroutine setupBase(self, dict)
+    class(universe), intent(inout)           :: self
+    type(dictionary), intent(in)             :: dict
+    integer(shortInt)                        :: id
+    real(defReal), dimension(:), allocatable :: temp
+    character(100), parameter :: Here = 'setupBase (universe_inter.f90)'
+
+    ! Load basic data
+    call dict % get(id, 'id')
+    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: ' // numToChar(id))
+    call self % setId(id)
+
+    ! Load origin
+    if (dict % isPresent('origin')) then
+      call dict % get(temp, 'origin')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, 'Origin must have size 3. Has: ' // numToChar(size(temp)))
+      end if
+      call self % setTransform(origin=temp)
+
+    end if
+
+    ! Load rotation
+    if (dict % isPresent('rotation')) then
+      call dict % get(temp, 'rotation')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, '3 rotation angles must be given. Has only: ' // numToChar(size(temp)))
+      end if
+      call self % setTransform(rotation=temp)
+    end if
+
+  end subroutine setupBase
 
   !!
   !! Set universe origin & rotation

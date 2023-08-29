@@ -77,36 +77,14 @@ contains
     type(cellShelf), intent(inout)                            :: cells
     type(surfaceShelf), intent(inout)                         :: surfs
     type(charMap), intent(in)                                 :: mats
-    integer(shortInt)                             :: id, idx, N, i
-    real(defReal), dimension(:), allocatable      :: radii, temp
+    integer(shortInt)                             :: idx, N, i
+    real(defReal), dimension(:), allocatable      :: radii
     character(nameLen), dimension(:), allocatable :: fillNames
     character(100), parameter :: Here = 'init (pinUniverse_class.f90)'
 
-    ! Load basic data
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
-
-    ! Load origin
-    if (dict % isPresent('origin')) then
-      call dict % get(temp, 'origin')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(origin=temp)
-
-    end if
-
-    ! Load rotation
-    if (dict % isPresent('rotation')) then
-      call dict % get(temp, 'rotation')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(rotation=temp)
-    end if
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
     ! Load radii and fill data
     call dict % get(radii, 'radii')

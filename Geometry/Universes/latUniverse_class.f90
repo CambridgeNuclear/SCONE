@@ -111,37 +111,15 @@ contains
     type(charMap), intent(in)                                 :: mats
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempI
-    integer(shortInt)                              :: id, N, i, j, outFill
+    integer(shortInt)                              :: N, i, j, outFill
     type(dictionary)                               :: tempDict
     integer(shortInt), dimension(:,:), allocatable :: tempMap
     character(nameLen)                             :: name
     character(100), parameter :: Here = 'init (latUniverse_class.f90)'
 
-    ! Load basic data
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
-
-    ! Load origin
-    if (dict % isPresent('origin')) then
-      call dict % get(temp, 'origin')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(origin=temp)
-
-    end if
-
-    ! Load rotation
-    if (dict % isPresent('rotation')) then
-      call dict % get(temp, 'rotation')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(rotation=temp)
-    end if
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
     ! Load pitch
     call dict % get(temp, 'pitch')
@@ -308,7 +286,7 @@ contains
     ! Provide default axis to ensure no out of bounds array access if
     ! all distances happen to be infinite
     d = INF
-    ax = 1 
+    ax = 1
     do i = 1, 3
       ! Nominator and denominator will have the same sign (by ealier bounds selection)
       test_d = (bounds(i) - r_bar(i)) / u(i)
