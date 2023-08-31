@@ -19,7 +19,7 @@ module weightResponse_class
 
   !!
   !! tallyResponse for scoring particle weights
-  !!  Currently supports neutrons only
+  !!  Currently supports neutrons and IMC only
   !!
   !! Interface:
   !!   tallyResponse interface
@@ -65,7 +65,7 @@ contains
   !! See tallyResponse_inter for details
   !!
   !! Errors:
-  !!   Return ZERO if particle is not a Neutron
+  !!   Return ZERO if particle is not a Neutron or IMC
   !!
   function get(self, p, xsData) result(val)
     class(weightResponse), intent(in)      :: self

@@ -11,7 +11,7 @@ add_sources(./tallyClerk_inter.f90
             ./dancoffBellClerk_class.f90
             ./shannonEntropyClerk_class.f90
             ./centreOfMassClerk_class.f90
-            ./absorptionClerk_class.f90
+            ./energyWeightClerk_class.f90
              )
              
 add_unit_tests(./Tests/collisionClerk_test.f90

@@ -48,7 +48,7 @@ module implicitPhysicsPackage_class
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
   use tallyResult_class,              only : tallyResult
-  use absorptionClerk_class,          only : absClerkResult
+  use energyWeightClerk_class,        only : energyWeightClerkResult
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -87,7 +87,7 @@ module implicitPhysicsPackage_class
     class(transportOperator), allocatable  :: transOp
     class(RNG), pointer                    :: pRNG    => null()
     type(tallyAdmin),pointer               :: tally   => null()
-    type(tallyAdmin),pointer               :: imcWeightAtch => null()
+    type(tallyAdmin),pointer               :: energyWeightAtch => null()
 
     ! Settings
     integer(shortInt)  :: N_steps
@@ -130,7 +130,7 @@ contains
     print *, repeat("<>",50)
     print *, "/\/\ IMPLICIT CALCULATION /\/\"
 
-    call self % steps(self % tally, self % imcWeightAtch, self % N_steps)
+    call self % steps(self % tally, self % energyWeightAtch, self % N_steps)
     call self % collectResults()
 
     print *
@@ -313,18 +313,18 @@ contains
       call tally % display()
 
       ! Obtain energy deposition tally results
-      call tallyAtch % getResult(tallyRes, 'imcWeightTally')
+      call tallyAtch % getResult(tallyRes, 'energyWeightTally')
 
       ! Update material properties using tallied energy
       select type(tallyRes)
-        class is(absClerkResult)
-          call self % nucData % updateProperties(tallyRes % clerkResults, self % printUpdates)
+        class is(energyWeightClerkResult)
+          call self % nucData % updateProperties(tallyRes % materialEnergy, self % printUpdates)
         class default
-          call fatalError(Here, 'Tally result class should be absClerkResult')
+          call fatalError(Here, 'Tally result class should be energyWeightClerkResult')
       end select
 
       ! Reset tally for next time step
-      call tallyAtch % reset('imcWeightTally')
+      if (i /= N_Steps) call tallyAtch % reset('energyWeightTally')
 
       ! Advance to next time step
       call nextStep()
@@ -344,6 +344,16 @@ contains
       write(10, '(8A)') mm_matName(j), numToChar(mat % getTemp())
     end do
     close(10)
+
+    ! Output final radiation energies
+    open(unit = 11, file = 'radEnergy.txt')
+    select type(tallyRes)
+      class is(energyWeightClerkResult)
+        write(11, '(8A)') numToChar(tallyRes % radiationEnergy)
+      class default
+          call fatalError(Here, 'Tally result class should be energyWeightClerkResult')
+    end select
+    close(11)
 
   end subroutine steps
 
@@ -388,7 +398,7 @@ contains
     class(implicitPhysicsPackage), intent(inout)  :: self
     class(dictionary), intent(inout)              :: dict
     class(dictionary), pointer                    :: tempDict, geomDict, dataDict
-    type(dictionary)                              :: locDict1, locDict2, locDict3, locDict4
+    type(dictionary)                              :: locDict1, locDict2, locDict3
     integer(shortInt)                             :: seed_temp
     integer(longInt)                              :: seed
     character(10)                                 :: time
@@ -396,8 +406,7 @@ contains
     character(:),allocatable                      :: string
     character(nameLen)                            :: nucData, geomName
     type(outputFile)                              :: test_out
-    integer(shortInt)                             :: i, nGroups
-    real(defReal), dimension(:), allocatable      :: energyBins
+    integer(shortInt)                             :: i
     character(nameLen), dimension(:), allocatable :: mats
     real(defReal)                                 :: timeStep
     type(dictionary),target                       :: newGeom, newData
@@ -459,6 +468,13 @@ contains
     ! Read whether to print particle source each time step
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
+    ! Initialise energy grid in multi-frequency case
+    if (dict % isPresent('energyGrid')) then
+      tempDict => dict % getDictPtr('energyGrid')
+      call define_energyGrid(nucData, tempDict)
+      print *, 'Energy grid defined: ', nucData
+    end if
+
     ! Automatically split geometry into a uniform grid
     if (dict % isPresent('discretise')) then
 
@@ -475,12 +491,6 @@ contains
       geomDict => dict % getDictPtr("geometry")
       dataDict => dict % getDictPtr("nuclearData")
 
-    end if
-
-    ! Initialise energy grid in multi-frequency case
-    if (dict % isPresent('energyGrid')) then
-      tempDict => dict % getDictPtr('energyGrid')
-      call define_energyGrid(nucData, tempDict)
     end if
 
     ! Build Nuclear Data
@@ -546,25 +556,20 @@ contains
       mats(i) = mm_matName(i)
     end do
 
-    ! Initialise imcWeight tally attachment
-    call locDict1 % init(1)
-    call locDict2 % init(4)
-    call locDict3 % init(2)
-    call locDict4 % init(1)
 
-    call locDict4 % store('type', 'weightResponse')
+    ! Initialise energy weight tally attachment
+    call locDict1 % init(1)
+    call locDict2 % init(2)
+    call locDict3 % init(2)
     call locDict3 % store('type','materialMap')
     call locDict3 % store('materials', [mats])
-    call locDict2 % store('response', ['imcWeightResponse'])
-    call locDict2 % store('imcWeightResponse', locDict4)
-    call locDict2 % store('type','absorptionClerk')
+    call locDict2 % store('type','energyWeightClerk')
     call locDict2 % store('map', locDict3)
-    call locDict1 % store('imcWeightTally', locDict2)
+    call locDict1 % store('energyWeightTally', locDict2)
 
-    allocate(self % imcWeightAtch)
-    call self % imcWeightAtch % init(locDict1)
-
-    call self % tally % push(self % imcWeightAtch)
+    allocate(self % energyWeightAtch)
+    call self % energyWeightAtch % init(locDict1)
+    call self % tally % push(self % energyWeightAtch)
 
     ! Size particle dungeons
     allocate(self % thisStep)

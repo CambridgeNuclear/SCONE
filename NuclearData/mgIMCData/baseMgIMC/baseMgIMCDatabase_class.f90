@@ -53,6 +53,7 @@ module baseMgIMCDatabase_class
     type(baseMgIMCMaterial), dimension(:), pointer     :: mats => null()
     integer(shortInt), dimension(:), allocatable       :: activeMats
     integer(shortInt)                                  :: nG = 0
+    type(energyGrid)                                   :: eGrid
 
   contains
     ! Superclass Interface
@@ -394,9 +395,10 @@ contains
 
     ! Get energy grid in multi-frequency case
     gridName = 'mg'
-    call get_energyGrid(mgEnergyGrid, gridName, err)
-    if (err .eqv. .false.) then 
-      self % nG = mgEnergyGrid % getSize()
+    call get_energyGrid(self % eGrid, gridName, err)
+    if (err .eqv. .false.) then
+      self % nG = self % eGrid % getSize()
+      mgEnergyGrid => self % eGrid
     else
       self % nG = 1
     end if

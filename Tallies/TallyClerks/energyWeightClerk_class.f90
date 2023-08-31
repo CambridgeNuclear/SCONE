@@ -1,11 +1,10 @@
-module absorptionClerk_class
+module energyWeightClerk_class
 
   use numPrecision
   use tallyCodes
-  use universalVariables,         only : P_MATERIAL_MG
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
-  use particle_class,             only : particle, particleState, P_MATERIAL
+  use particle_class,             only : particle, particleState, P_PHOTON
   use outputFile_class,           only : outputFile
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk, kill_super => kill
@@ -46,7 +45,7 @@ module absorptionClerk_class
   !! SAMPLE DICTIOANRY INPUT:
   !!
   !! myAbsorptionClerk {
-  !!   type absorptionClerk;
+  !!   type energyWeightClerk;
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
   !!   response (resName1 #resName2 ... #)
@@ -54,14 +53,14 @@ module absorptionClerk_class
   !!   #resNamew { <tallyResponse definition #
   !! }
   !!
-  type, public, extends(tallyClerk) :: absorptionClerk
+  type, public, extends(tallyClerk) :: energyWeightClerk
     private
     ! Filter, Map & Vector of Responses
     class(tallyFilter), allocatable                  :: filter
     class(tallyMap), allocatable                     :: map
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
-    ! Usefull data
+    ! Useful data
     integer(shortInt)  :: width = 0
 
   contains
@@ -73,18 +72,24 @@ module absorptionClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportHist
+    procedure  :: reportTrans
 
     ! Output procedures
     procedure  :: display
     procedure  :: print
     procedure  :: getResult
 
-  end type absorptionClerk
+  end type energyWeightClerk
 
 
-  type,public, extends(tallyResult)           :: absClerkResult
-    real(defReal), dimension(:), allocatable  :: clerkResults
-  end type absClerkResult
+  type, public, extends(tallyResult)         :: energyWeightClerkResult
+    real(defReal), dimension(:), allocatable :: materialEnergy
+    real(defReal), dimension(:), allocatable :: radiationEnergy
+  end type energyWeightClerkResult
+
+
+  integer(shortInt), parameter :: MATERIAL_ENERGY  = 1
+  integer(shortInt), parameter :: RADIATION_ENERGY = 2
 
 
 contains
@@ -95,11 +100,13 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
-    class(absorptionClerk), intent(inout)        :: self
+    class(energyWeightClerk), intent(inout)     :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen), intent(in)              :: name
     character(nameLen),dimension(:),allocatable :: responseNames
     integer(shortInt)                           :: i
+    type(dictionary)                            :: locDict
+    character(100), parameter :: Here = 'init (energyWeightClerk_class.f90)'
 
     ! Assign name
     call self % setName(name)
@@ -114,17 +121,18 @@ contains
       call new_tallyMap(self % map, dict % getDictPtr('map'))
     end if
 
-    ! Get names of response dictionaries
-    call dict % get(responseNames,'response')
+    ! Call error if responses are given
+    if( dict % isPresent('response')) then
+      call fatalError(Here, 'Warning: response not needed for energyWeightClerk')
+    end if
 
-    ! Load responses
-    allocate(self % response(size(responseNames)))
-    do i=1, size(responseNames)
-      call self % response(i) % init(dict % getDictPtr( responseNames(i) ))
-    end do
+    ! Initialise weight response automatically
+    call locDict % init(1)
+    call locDict % store('type','weightResponse')
+    allocate(self % response(1))
+    call self % response(1) % init(locDict)
 
-    ! Set width
-    self % width = size(responseNames)
+    self % width = 2
 
   end subroutine init
 
@@ -132,7 +140,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(absorptionClerk), intent(inout) :: self
+    class(energyWeightClerk), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -163,10 +171,10 @@ contains
   !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
-    class(absorptionClerk),intent(in)           :: self
+    class(energyWeightClerk),intent(in)        :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [hist_CODE]
+    validCodes = [trans_CODE,hist_CODE]
 
   end function validReports
 
@@ -176,21 +184,19 @@ contains
   !! See tallyClerk_inter for details
   !!
   elemental function getSize(self) result(S)
-    class(absorptionClerk), intent(in) :: self
+    class(energyWeightClerk), intent(in) :: self
     integer(shortInt)                 :: S
 
-    S = size(self % response)
+    S = self % width
     if(allocated(self % map)) S = S * self % map % bins(0)
 
   end function getSize
 
-  !!
-  !! Process incoming collision report
-  !!
-  !! See tallyClerk_inter for details
-  !!
+
+
+
   subroutine reportHist(self, p, xsData, mem)
-    class(absorptionClerk), intent(inout)  :: self
+    class(energyWeightClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
@@ -198,15 +204,12 @@ contains
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportHist (absorptionClerk_class.f90)'
+    character(100), parameter :: Here =' reportHist (energyWeightClerk_class.f90)'
 
     ! Get current particle state
     state = p
 
     if (p % fate == LEAK_FATE) return
-    if (p % getType() /= P_MATERIAL_MG .and. .not. p % isDead) then
-      call fatalError(Here, 'Particle is still alive')
-    end if
 
     ! Check if within filter
     if(allocated( self % filter)) then
@@ -230,17 +233,72 @@ contains
     flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
 
     ! Append all bins
-    do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w * flx
-      ! Deal with infinite cross sections - may not be the right solution for generality
-      if (scoreVal /= scoreVal) then
-        scoreVal = p % w
-      end if
-      call mem % score(scoreVal, adrr + i)
-
-    end do
+    scoreVal = self % response(1) % get(p, xsData) * p % w * flx
+    ! Deal with infinite cross sections - may not be the right solution for generality
+    if (scoreVal /= scoreVal) then
+      scoreVal = p % w
+    end if
+    call mem % score(scoreVal, adrr + MATERIAL_ENERGY)
 
   end subroutine reportHist
+
+
+
+
+
+  !!
+  !! Process incoming collision report
+  !!
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportTrans(self, p, xsData, mem)
+    class(energyWeightClerk), intent(inout)  :: self
+    class(particle), intent(in)           :: p
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
+    type(particleState)                   :: state
+    integer(shortInt)                     :: binIdx, i
+    integer(longInt)                      :: adrr
+    real(defReal)                         :: scoreVal, flx
+    character(100), parameter :: Here = 'reportTrans (energyWeightClerk_class.f90)'
+
+    ! Get current particle state
+    state = p
+
+    ! Consider only radiation particles (those surviving timestep)
+    if (p % fate /= AGED_FATE) return
+    if (p % type /= P_PHOTON) return
+
+    ! Check if within filter
+    if(allocated( self % filter)) then
+      if(self % filter % isFail(state)) return
+    end if
+
+    ! Find bin index
+    if(allocated(self % map)) then
+      binIdx = self % map % map(state)
+    else
+      binIdx = 1
+    end if
+
+    ! Return if invalid bin index
+    if (binIdx == 0) return
+
+    ! Calculate bin address
+    adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
+
+    ! Calculate flux sample 1/totXs
+    flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+
+    ! Append all bins
+    scoreVal = self % response(1) % get(p, xsData) * p % w * flx
+    ! Deal with infinite cross sections - may not be the right solution for generality
+    if (scoreVal /= scoreVal) then
+      scoreVal = p % w
+    end if
+    call mem % score(scoreVal, adrr + RADIATION_ENERGY)
+
+  end subroutine reportTrans
 
   !!
   !! Display convergance progress on the console
@@ -248,10 +306,10 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine display(self, mem)
-    class(absorptionClerk), intent(in)  :: self
+    class(energyWeightClerk), intent(in)  :: self
     type(scoreMemory), intent(in)      :: mem
 
-    print *, 'absorptionClerk does not support display yet'
+    print *, 'energyWeightClerk does not support display yet'
 
   end subroutine display
 
@@ -261,7 +319,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
-    class(absorptionClerk), intent(in)          :: self
+    class(energyWeightClerk), intent(in)       :: self
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
@@ -280,9 +338,9 @@ contains
     ! Write results.
     ! Get shape of result array
     if(allocated(self % map)) then
-      resArrayShape = [size(self % response), self % map % binArrayShape()]
+      resArrayShape = [self % width, self % map % binArrayShape()]
     else
-      resArrayShape = [size(self % response)]
+      resArrayShape = [self % width]
     end if
 
     ! Start array
@@ -308,22 +366,24 @@ contains
   !! See tallyClerk_inter for details
   !!
   pure subroutine getResult(self, res, mem)
-    class(absorptionClerk), intent(in)               :: self
+    class(energyWeightClerk), intent(in)            :: self
     class(tallyResult), allocatable, intent(inout)  :: res
     type(scoreMemory), intent(in)                   :: mem
-    real(defReal), dimension(:), allocatable        :: w
+    real(defReal), dimension(:), allocatable        :: mat, rad
     integer(shortInt)                               :: i, N
 
-    N = self % getSize()
-    allocate( w(N) )
+    N = self % getSize() / 2
+    allocate(mat(N))
+    allocate(rad(N))
 
     ! Get result value for each material
     do i = 1, N 
-      call mem % getResult(w(i), self % getMemAddress()+i-1)
+      call mem % getResult(mat(i), self % getMemAddress()+2*i-2)
+      call mem % getResult(rad(i), self % getMemAddress()+2*i-1)
     end do
 
-    allocate(res, source = absClerkResult(w))
+    allocate(res, source = energyWeightClerkResult(mat,rad))
 
   end subroutine getResult
 
-end module absorptionClerk_class
+end module energyWeightClerk_class

@@ -190,8 +190,12 @@ contains
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
     ! Read number of groups
-    nG = mgEnergyGrid % getSize()
-    if (nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
+    if (associated(mgEnergyGrid)) then
+      nG = mgEnergyGrid % getSize()
+      if (nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
+    else
+      nG = 1
+    end if
 
     ! Allocate space for data
     N = 4
