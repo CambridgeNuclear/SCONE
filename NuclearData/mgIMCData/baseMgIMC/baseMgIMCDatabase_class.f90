@@ -37,14 +37,15 @@ module baseMgIMCDatabase_class
   public :: baseMgIMCDatabase_CptrCast
 
   !!
-  !! Basic type of MG nuclear Data for IMCs
+  !! Database for MG IMC and ISMC calculations
   !!
-  !! All materials in aproblem are baseMgMaterials. See its documentation for
+  !! All materials in a problem are of class baseMgIMCMaterial. See its documentation for
   !! details on how the physics is handled
   !!
   !! Public Members:
   !!   mats       -> array containing all defined materials (by matIdx)
   !!   activeMats -> list of matIdxs of materials active in the problem
+  !!   nG         -> number of energy groups
   !!
   !! Interface:
   !!   nuclearDatabase interface
@@ -53,7 +54,7 @@ module baseMgIMCDatabase_class
     type(baseMgIMCMaterial), dimension(:), pointer     :: mats => null()
     integer(shortInt), dimension(:), allocatable       :: activeMats
     integer(shortInt)                                  :: nG = 0
-    type(energyGrid)                                   :: eGrid
+    type(energyGrid), private                          :: eGrid
 
   contains
     ! Superclass Interface
@@ -219,7 +220,7 @@ contains
   !!
   !! Args:
   !!   matIdx [in] [optional] -> If provided, return the energy to be emitted from only matIdx
-  !!                             Otherwise, return total energy to be emitted from all mats
+  !!                             Otherwise, return the total energy to be emitted from all mats
   !!
   function getEmittedRad(self, matIdx) result(energy)
     class(baseMgIMCDatabase), intent(in)    :: self
@@ -247,7 +248,7 @@ contains
   !!
   !! Args:
   !!   matIdx [in] [optional] -> If provided, return the energy of only matIdx
-  !!                             Otherwise, return total energy of all mats
+  !!                             Otherwise, return the total energy of all mats
   !!
   function getMaterialEnergy(self, matIdx) result(energy)
     class(baseMgIMCDatabase), intent(in)    :: self
@@ -286,7 +287,7 @@ contains
     if (printUpdates > size(self % mats)) call fatalError(Here, &
                                 &'printUpdates must be <= nMats')
 
-    ! Update mats to be printed (if any)
+    ! Update mats to be printed (if any), not in parallel to allow correct order of console output
     do i = 1, printUpdates
       call self % mats(i) % updateMat(tallyEnergy(i), .true.)
     end do

@@ -37,13 +37,9 @@ module baseMgIMCMaterial_class
   integer(shortInt), parameter, public :: ISMC = 2
 
   !!
-  !! Basic type of MG material data
+  !! Material class for MG IMC and ISMC calculations
   !!
   !! Stores MG data in a table.
-  !! All other scattering reactions are lumped into single multiplicative scattering,
-  !! which is stored as INELASTIC scatering in macroXSs package! After all it is inelastic in
-  !! the sense that outgoing group can change. Diffrent types of multiplicative scattering can be
-  !! build. See doc of "init" procedure for details.
   !!
   !! Public members:
   !!   data -> Rank 2 array with all XSs data
@@ -51,12 +47,17 @@ module baseMgIMCMaterial_class
   !! Interface:
   !!   materialHandle interface
   !!   mgIMCMaterial interface
-  !!   init -> initialise Basic MG Material from dictionary and config keyword
-  !!   nGroups -> returns number of energy groups
-  !!   updateMat -> update material properties as required for IMC calculation
-  !!   getEmittedRad -> returns the radiation to be emitted in current timestep
-  !!   getFleck -> returns current material Fleck factor
-  !!   getTemp -> returns current material temperature
+  !!   init                 -> initialise Basic MG Material from dictionary and config keywords
+  !!   nGroups              -> returns number of energy groups
+  !!   updateMat            -> update material properties as required for IMC calculation  
+  !!   getEmittedRad        -> returns the radiation to be emitted in current timestep
+  !!   getFleck             -> returns current material Fleck factor
+  !!   getEta               -> returns current value of eta (ISMC only)
+  !!   getTemp              -> returns current material temperature
+  !!   getMatEnergy         -> returns energy of material
+  !!   setCalcType          -> set to IMC or ISMC
+  !!   sampleEnergyGroup    -> return sampled energy group of an emitted photon
+  !!   sampleTransformTime  -> return sampled time for transform of P_MATERIAL to P_PHOTON (ISMC)
   !!
   !! Note:
   !!   Order of "data" array is: data(XS_type, Group #)
@@ -65,17 +66,17 @@ module baseMgIMCMaterial_class
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
     real(defReal),dimension(:,:), allocatable :: data
-    character(nameLen)                        :: name
-    real(defReal)                             :: T
-    real(defReal)                             :: V
-    real(defReal)                             :: fleck
-    real(defReal)                             :: alpha
-    real(defReal)                             :: sigmaP
-    real(defReal)                             :: matEnergy
-    real(defReal)                             :: prevMatEnergy
-    real(defReal)                             :: energyDens
-    real(defReal)                             :: eta
-    integer(shortInt)                         :: calcType
+    character(nameLen)                        :: name   ! Name for update equations (see materialEquations.f90)
+    real(defReal)                             :: T      ! Temperature
+    real(defReal)                             :: V      ! Volume
+    real(defReal)                             :: fleck  ! Fleck factor
+    real(defReal)                             :: alpha  ! User-defined parameter for fleck factor
+    real(defReal)                             :: sigmaP ! Planck opacity
+    real(defReal)                             :: matEnergy      ! Total energy stored in material
+    real(defReal)                             :: prevMatEnergy  ! Energy prior to material update
+    real(defReal)                             :: energyDens     ! Energy density = matEnergy/V
+    real(defReal)                             :: eta            ! aT^4/energyDens, used for ISMC only
+    integer(shortInt)                         :: calcType       ! IMC or ISMC
 
   contains
     ! Superclass procedures
@@ -169,7 +170,6 @@ contains
     xs = self % data(TOTAL_XS, G)
 
   end function getTotalXS
-
 
   !!
   !! Initialise Base MG IMC Material fromdictionary
@@ -339,6 +339,7 @@ contains
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: printUpdate
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
+
     ! TODO: Print updates if requested
 
     ! Save previous energy
@@ -513,7 +514,6 @@ contains
         self % eta = radiationConstant * self % T**4 / self % energyDens
         zeta = beta - self % eta
         self % fleck = 1 / (1 + zeta*self % sigmaP*lightSpeed*timeStep())
-        ! TODO: Check that 0 temperature will not cause problems
 
       case default
         call fatalError(Here, 'Unrecognised calculation type')
@@ -632,8 +632,6 @@ contains
     G = 1
 
     t = -log(rand % get()) / (self % data(CAPTURE_XS,G) * self % fleck * self % eta * lightSpeed)
-
-    ! TODO: consider implications when T = 0 (=> eta = 0)
 
   end function sampleTransformTime
 

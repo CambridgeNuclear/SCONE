@@ -69,6 +69,15 @@ contains
       if (p % fate == AGED_FATE) return
     end if
 
+    ! Check for particle leakage
+    if (p % matIdx() == OUTSIDE_FILL) then
+      ! TODO: Figure out why this sometimes happens
+      print *, 'WARNING: Leak before transport?'
+      p % fate = LEAK_FATE
+      p % isDead = .true.
+      return
+    end if
+
     ! Select action based on specified method - HT and GT start with DT but can switch to ST
     if (self % method == ST) then
       call self % surfaceTracking(p)

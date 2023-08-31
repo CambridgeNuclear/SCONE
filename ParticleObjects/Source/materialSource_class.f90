@@ -30,15 +30,23 @@ module materialSource_class
   integer(shortInt), parameter :: IMC = 1, ISMC = 2
 
   !!
-  !! IMC Source for uniform generation of photons within a material
+  !! Source for uniform generation of photons within a material for IMC and ISMC calculations
   !!
-  !! Angular distribution is isotropic.
+  !! Angular distribution is isotropic
   !!
   !! Private members:
-  !!   isMG    -> is the source multi-group? (default = .true.)
-  !!   bottom  -> Bottom corner (x_min, y_min, z_min)
-  !!   top     -> Top corner (x_max, y_max, z_max)
-  !!   G       -> Group (default = 1)
+  !!   isMG     -> is the source multi-group? (default = .true.)
+  !!   bottom   -> Bottom corner (x_min, y_min, z_min)
+  !!   top      -> Top corner (x_max, y_max, z_max)
+  !!   latPitch -> Pitch of lattice (if using a lattice geom)
+  !!   latSizeN -> Lattice dimensions (if using a lattice geom)
+  !!   G        -> Energy group
+  !!   pType    -> P_PHOTON for IMC, P_MATERIAL for ISMC
+  !!   bounds   -> Bounds of geometry
+  !!   method   -> REJ uses rejection sampling for position (VERY slow for many materials)
+  !!            -> FAST samples only within bounds of each material so no rejection needed,
+  !!               currently only works for lattics geometry (hence lattice settings above)
+  !!   calcType -> IMC or ISMC, changes type of material to be sampled
   !!
   !! Interface:
   !!   source_inter Interface
@@ -70,7 +78,7 @@ module materialSource_class
 contains
 
   !!
-  !! Initialise IMC Source
+  !! Initialise material Source
   !!
   !! See source_inter for details
   !!
@@ -198,11 +206,8 @@ contains
    
   end subroutine append
 
-
   !!
-  !! Sample particle's phase space co-ordinates
-  !!
-  !! See source_inter for details
+  !! Should not be called
   !!
   function sampleParticle(self, rand) result(p)
     class(materialSource), intent(inout) :: self
@@ -218,7 +223,6 @@ contains
 
   end function sampleParticle
 
-
   !!
   !! Sample particle's phase space co-ordinates
   !!
@@ -226,6 +230,7 @@ contains
   !!   rand [in]   -> RNG
   !!   matIdx [in] -> index of material being sampled from
   !!   energy [in] -> energy-weight of sampled particle
+  !!   G [in]      -> energy group of sampled particle
   !!   bounds [in] -> bounds for position search, will be bounds of entire geometry if using
   !!                  rejection sampling method, and bounds of single material if using fast
   !!
@@ -288,7 +293,6 @@ contains
     p % type     = self % pType
 
   end function sampleIMC
-
 
   !!
   !! Get location of material in lattice for position sampling
@@ -377,6 +381,5 @@ contains
     ijk(3) = sizeN(3) - base
 
   end function get_ijk
-
 
 end module materialSource_class
