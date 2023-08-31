@@ -14,16 +14,12 @@ module blackBodySource_class
   use energyGrid_class,         only : energyGrid
   use energyGridRegistry_mod,   only : get_energyGrid
 
-  use blackBodyPdf_class,       only : normPlanck
-
   implicit none
   private
-
 
   ! Options for source distribution
   integer(shortInt), parameter, public :: SURFACE = 1
   integer(shortInt), parameter, public :: OLSON1D = 2
-
 
   !!
   !! Generates a source representing a black body surface
@@ -41,7 +37,7 @@ module blackBodySource_class
   !!   sampleType        -> set particle type
   !!   samplePosition    -> set particle position
   !!   sampleEnergyAngle -> sample particle angle
-  !!   sampleEnergy      -> set particle energy (isMG = .true., G = 1)
+  !!   sampleEnergy      -> set particle energy
   !!   sampleWeight      -> set particle energy-weight
   !!   sampleTime        -> set particle time
   !!   kill              -> terminate source
@@ -74,9 +70,11 @@ module blackBodySource_class
     real(defReal), dimension(:), allocatable :: cumEnergyProbs
 
   contains
+    ! Initialisation procedures
     procedure :: init
     procedure :: initSurface
     procedure :: initCustom
+    ! Sampling procedures
     procedure :: append
     procedure :: sampleType
     procedure :: samplePosition
@@ -90,73 +88,9 @@ module blackBodySource_class
 
 contains
 
-  !!
-  !! Initialise from dictionary
-  !!
-  !! See source_inter for details
-  !!
-  !! Errors:
-  !!   - error if an axis other than x, y, or z is given
-  !!
-  subroutine init(self, dict, geom)
-    class(blackBodySource), intent(inout)    :: self
-    class(dictionary), intent(in)            :: dict
-    class(geometry), pointer, intent(in)     :: geom
-    real(defReal), dimension(:), allocatable :: temp
-    integer(shortInt)                        :: i, j, nGroups, dir
-    real(defReal)                            :: nu, eStep
-    type(energyGrid)                         :: eGrid
-    logical(defBool)                         :: err
-    character(nameLen)                       :: gridName, distribution
-    character(100), parameter :: Here = 'init (blackBodySource_class.f90)'
-
-    ! Provide geometry info to source
-    self % geom => geom
-
-    ! Provide particle type
-    self % particleType = P_PHOTON
-
-    ! Initialise specifics of source (e.g. position samlping bounds)
-    call dict % getOrDefault(distribution, 'distribution', 'surface')
-    select case(distribution)
-      case('surface')
-        call self % initSurface(dict)
-      case default
-        call self % initCustom(dict)
-    end select
-
-    ! Get source temperature
-    call dict % get(self % T, 'temp')
-
-    ! Get time step to turn off source
-    call dict % getOrDefault(self % timeStepMax, 'untilStep', 0)
-
-    ! Exit in grey case
-    gridName = 'mg'
-    call get_energyGrid(eGrid, gridName, err)
-    if (err .eqv. .true.) return
-
-    ! Calculate emission probability in each energy group
-    nGroups = eGrid % getSize()
-    allocate(self % cumEnergyProbs(nGroups))
-
-    do i=1, nGroups
-      eStep = (eGrid % bin(i) - eGrid % bin(i+1)) / 1000
-      nu = eGrid % bin(i) - eStep/2
-      ! Add previous group probability to get cumulative distribution
-      if (i > 1) self % cumEnergyProbs(i) = self % cumEnergyProbs(i-1)
-      ! Step through energies
-      do j=1, 1000
-        self % cumEnergyProbs(i) = self % cumEnergyProbs(i) + eStep*normPlanck(nu,self % T)
-        nu = nu - eStep
-      end do
-    end do
-
-    ! Normalise to account for exclusion of tail ends of distribution
-    ! TODO: should possibly add these tails into outer energy groups rather than normalising over all groups?
-    self % cumEnergyProbs = self % cumEnergyProbs / self % cumEnergyProbs(nGroups)
-
-  end subroutine init
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Particle sampling procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
   !! Add particles to given dungeon
@@ -280,7 +214,8 @@ contains
     phi = TWO_PI * rand % get()
     mu = sqrt(rand % get())
     dir = [mu, sqrt(1-mu*mu)*cos(phi), sqrt(1-mu*mu)*sin(phi)]
-    ! Rotate if necessary for different surfaces
+
+    ! Rotate to direction of surface normal
     p % dir = matmul(self % rotation, dir)
 
   end subroutine sampleEnergyAngle
@@ -299,6 +234,12 @@ contains
     character(100), parameter :: Here = 'sampleEnergy (blackBodySource_class.f90)'
 
     p % isMG = .true.
+
+    ! Grey case
+    if (.not.allocated(self % cumEnergyProbs)) then
+      p % G = 1
+      return
+    end if
 
     ! Sample energy group
     random = rand % get()
@@ -342,7 +283,88 @@ contains
   end subroutine sampleTime
 
 
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Source initialisation procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
+  !!
+  !! Initialise from dictionary
+  !!
+  !! See source_inter for details
+  !!
+  subroutine init(self, dict, geom)
+    class(blackBodySource), intent(inout)    :: self
+    class(dictionary), intent(in)            :: dict
+    class(geometry), pointer, intent(in)     :: geom
+    real(defReal), dimension(:), allocatable :: temp
+    integer(shortInt)                        :: i, j, nGroups, dir
+    real(defReal)                            :: nu, eStep
+    type(energyGrid)                         :: eGrid
+    logical(defBool)                         :: err
+    character(nameLen)                       :: gridName, distribution
+    character(100), parameter :: Here = 'init (blackBodySource_class.f90)'
+
+    ! Provide geometry info to source
+    self % geom => geom
+
+    ! Provide particle type
+    self % particleType = P_PHOTON
+
+    ! Initialise specifics of source (e.g. position samlping bounds)
+    call dict % getOrDefault(distribution, 'distribution', 'surface')
+    select case(distribution)
+      case('surface')
+        call self % initSurface(dict)
+      case default
+        call self % initCustom(dict)
+    end select
+
+    ! Get source temperature
+    call dict % get(self % T, 'temp')
+
+    ! Get time step to turn off source
+    call dict % getOrDefault(self % timeStepMax, 'untilStep', 0)
+
+    ! Exit in grey case
+    gridName = 'mg'
+    call get_energyGrid(eGrid, gridName, err)
+    if (err .eqv. .true.) return
+
+    ! Calculate emission probability in each energy group
+    nGroups = eGrid % getSize()
+    allocate(self % cumEnergyProbs(nGroups))
+
+    do i=1, nGroups
+      eStep = (eGrid % bin(i) - eGrid % bin(i+1)) / 1000
+      nu = eGrid % bin(i) - eStep/2
+      ! Add previous group probability to get cumulative distribution
+      if (i > 1) self % cumEnergyProbs(i) = self % cumEnergyProbs(i-1)
+      ! Step through energies
+      do j=1, 1000
+        self % cumEnergyProbs(i) = self % cumEnergyProbs(i) + eStep*normPlanck(nu,self % T)
+        nu = nu - eStep
+      end do
+    end do
+
+    ! Normalise to account for exclusion of tail ends of distribution
+    ! TODO: should possibly add these tails into outer energy groups rather than normalising over all groups?
+    self % cumEnergyProbs = self % cumEnergyProbs / self % cumEnergyProbs(nGroups)
+
+  end subroutine init
+
+
+  !!
+  !! Initialise source for standard black body surface by placing source as one side of
+  !! bounding bos of geometry
+  !!
+  !! Input dict should contain 'surface', corresponding to which side of the box is the source
+  !! e.g. surface -x;    => source placed on negative x side of bounding box
+  !!      surface +z;    => source placed on positive z side of bounding box
+  !!      etc.
+  !!
+  !! Automatically sets bounds for position sampling, rotation matrix for direction sampling, and
+  !! total weight emitted from the source during each time step
+  !!
   subroutine initSurface(self, dict)
     class(blackBodySource), intent(inout)   :: self
     class(dictionary), intent(in)           :: dict
@@ -410,6 +432,13 @@ contains
 
   end subroutine initSurface
 
+  !!
+  !! Initialise black body source for more unique cases, e.g. Olson 1D MG benchmark (2020)
+  !!
+  !! Rotation matrix of ZERO corresponds to isotropic direction sampling. Set source weight or
+  !! other settings as required for specific case, and add additional cases to individual samping
+  !! procedures if needed.
+  !!
   subroutine initCustom(self, dict)
     class(blackBodySource), intent(inout)   :: self
     class(dictionary), intent(in)           :: dict
@@ -436,7 +465,6 @@ contains
 
   end subroutine initCustom
 
-
   !!
   !! Return to uninitialised state
   !!
@@ -456,5 +484,23 @@ contains
     self % particleWeight = ZERO
 
   end subroutine kill
+
+
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+!! Misc. procedures
+!!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
+
+  !!
+  !! Return the frequency-normalised Planck spectrum evaluated for given frequency
+  !! nu and temperature T
+  !!
+  pure function normPlanck(E, T) result(b)
+    real(defReal), intent(in) :: E, T
+    real(defReal)             :: b
+
+    b = 15*E**3 / ((pi*T)**4 * (exp(E/T)-1))
+
+  end function normPlanck
+
 
 end module blackBodySource_class

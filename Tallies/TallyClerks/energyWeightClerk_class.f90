@@ -30,8 +30,12 @@ module energyWeightClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
-  !! Calculates flux weighted integral from collisions
+  !! Clerk for tallying energy weights. Weight response automatically initialised, does not accept
+  !! additional responses.
+  !!
+  !! Tallies two different energies:
+  !!   materialEnergy  (reportHist, weight of particles absorbed into material)
+  !!   radiationEnergy (reportTrans, only for particles with fate=AGED_FATE)
   !!
   !! Private Members:
   !!   filter   -> Space to store tally Filter
@@ -42,16 +46,16 @@ module energyWeightClerk_class
   !! Interface
   !!   tallyClerk Interface
   !!
-  !! SAMPLE DICTIOANRY INPUT:
+  !! SAMPLE DICTIONARY INPUT:
   !!
-  !! myAbsorptionClerk {
+  !! myEnergyWeightClerk {
   !!   type energyWeightClerk;
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
-  !!   response (resName1 #resName2 ... #)
-  !!   resName1 { <tallyResponse definition> }
-  !!   #resNamew { <tallyResponse definition #
   !! }
+  !!
+  !! Note that tally % reset('myEnergyWeightClerk') should be called between time steps to avoid
+  !! energy accumulation across time steps
   !!
   type, public, extends(tallyClerk) :: energyWeightClerk
     private
@@ -81,16 +85,17 @@ module energyWeightClerk_class
 
   end type energyWeightClerk
 
-
+  !!
+  !! Result class, gives access to tallied material energy and radiatino energy
+  !!
   type, public, extends(tallyResult)         :: energyWeightClerkResult
     real(defReal), dimension(:), allocatable :: materialEnergy
     real(defReal), dimension(:), allocatable :: radiationEnergy
   end type energyWeightClerkResult
 
-
+  !! Relative bin positions of each energy 
   integer(shortInt), parameter :: MATERIAL_ENERGY  = 1
   integer(shortInt), parameter :: RADIATION_ENERGY = 2
-
 
 contains
 
@@ -192,9 +197,9 @@ contains
 
   end function getSize
 
-
-
-
+  !!
+  !! Tally an increase in material energy after a particle has been absorbed
+  !!
   subroutine reportHist(self, p, xsData, mem)
     class(energyWeightClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
@@ -242,14 +247,9 @@ contains
 
   end subroutine reportHist
 
-
-
-
-
   !!
-  !! Process incoming collision report
-  !!
-  !! See tallyClerk_inter for details
+  !! Tally the weight of a particle surviving the time step, corresponding to radiation energy in
+  !! that instant as a
   !!
   subroutine reportTrans(self, p, xsData, mem)
     class(energyWeightClerk), intent(inout)  :: self
@@ -361,7 +361,6 @@ contains
 
   !!
   !! Return result for interaction with Physics Package
-  !! from the clerk in the slot
   !!
   !! See tallyClerk_inter for details
   !!
