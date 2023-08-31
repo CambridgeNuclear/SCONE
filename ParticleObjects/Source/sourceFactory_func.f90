@@ -12,6 +12,7 @@ module sourceFactory_func
   use fissionSource_class,   only : fissionSource
   use materialSource_class,  only : materialSource
   use bbSurfaceSource_class, only : bbSurfaceSource
+  use blackBodySource_class, only : blackBodySource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -68,6 +69,11 @@ contains
       case('bbSurfaceSource')
         allocate(bbSurfaceSource :: new)
         call new % init(dict, geom)
+
+      case('blackBodySource')
+        allocate(blackBodySource :: new)
+        call new % init(dict, geom)
+
 
      !*** NEW SOURCE TEMPLATE ***!
      !case('<newSourceName>')
