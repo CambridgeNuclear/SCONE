@@ -310,6 +310,9 @@ contains
     ! Provide particle type
     self % particleType = P_PHOTON
 
+    ! Get source temperature
+    call dict % get(self % T, 'temp')
+
     ! Initialise specifics of source (e.g. position samlping bounds)
     call dict % getOrDefault(distribution, 'distribution', 'surface')
     select case(distribution)
@@ -318,9 +321,6 @@ contains
       case default
         call self % initCustom(dict)
     end select
-
-    ! Get source temperature
-    call dict % get(self % T, 'temp')
 
     ! Get time step to turn off source
     call dict % getOrDefault(self % timeStepMax, 'untilStep', 0)

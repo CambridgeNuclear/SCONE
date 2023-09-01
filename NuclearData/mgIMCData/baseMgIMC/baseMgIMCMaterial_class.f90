@@ -402,8 +402,10 @@ contains
       i = i+1
       if (i > 1000000) then
         print *, U, self % energyDens
-        call fatalError(Here, "1000,000 iterations without convergence")
+        call fatalError(Here, "1,000,000 iterations without convergence")
       end if
+      ! Increase step size to avoid lack of convergence due to very small starting temperature
+      if (mod(i,1000)==0) dT = 10*dT
 
       ! Increment temperature and increment the corresponding energy density
       tempT = T + dT/2
