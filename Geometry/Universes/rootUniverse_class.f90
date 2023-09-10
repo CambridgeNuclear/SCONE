@@ -92,7 +92,7 @@ contains
     if (dict % isPresent('origin')) then
       call fatalError(Here, 'Origin is not allowed. Centre of the root universe is &
                             &always (0.0 0.0 0.0).')
-    else if (dict % isPresent('origin')) then
+    else if (dict % isPresent('rotation')) then
       call fatalError(Here, 'Rotation is not allowed. Root universe cannot be rotated.')
 
     end if
