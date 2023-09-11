@@ -28,7 +28,8 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
   Choices are ``asciiMATLAB`` and ``asciiJSON`` 
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
-  to print the particle source to a text file
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
   
 Example: ::
   
@@ -73,7 +74,8 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
   Choices are ``asciiMATLAB`` and ``asciiJSON`` 
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
-  to print the particle source to a text file
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
   
 Example: ::
 
