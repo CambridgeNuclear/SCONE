@@ -25,8 +25,11 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * XSdata: keyword to the name of the nuclearDataHandle used
 * seed (*optional*): initial seed for the pseudo random number generator
 * outputFile (*optional*, default = 'output'): name of the output file
-* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
-  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
+  Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
 
 Example: ::
 
@@ -68,8 +71,11 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * XSdata: keyword to the name of the nuclearDataHandle used
 * seed (*optional*): initial seed for the pseudo random number generator
 * outputFile (*optional*, default = 'output'): name of the output file
-* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
-  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
+  Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
 
 Example: ::
 
@@ -531,7 +537,7 @@ Example: ::
 
 Example: ::
 
-      uni3 { id 3; type pinlUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
+      uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
 
 * latUniverse, cartesian lattice of constant pitch
 
@@ -588,12 +594,13 @@ vtk
 * corner: (x y z) array with the corner of the geometry [cm]
 * width: (x y z) array with the width of the mesh in each direction [cm]
 * vox: (x y z) array with the number of voxels requested in each direction
-* what (*optional*, default = material): defines what is highlighted in the
-  plot; options are ``material`` and ``cellID``
+* what (*optional*, default = material): defines what is highlighted in the 
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID`` 
+  highlights unique cell IDs
 
 Example: ::
 
-      plotVTK { type vtk; corner (10.0 6.0 2.0); width (20.0 12.0 4.0); vox (4000 120 400); what cellID; }
+      plotVTK { type vtk; corner (10.0 6.0 2.0); width (20.0 12.0 4.0); vox (4000 120 400); what uniqueID; }
 
 bmp
 ###
@@ -604,16 +611,17 @@ bmp
   with the width of the geometry plotted in each direction [cm]
 * res: (y z), (x z) or (x y) array with the resolution of the mesh in each direction
 * output: name of the output file, with extension ``.bmp``
-* what (*optional*, default = material): defines what is highlighted in the
-  plot; options are ``material`` and ``cellID``
+* what (*optional*, default = material): defines what is highlighted in the 
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID`` 
+  highlights unique cell IDs
 
 Example: ::
 
-      plotBMP { type bmp; axis z; width (50 10); res (1000 200); output geomZ; what material; }
-
-.. note::
-   SCONE can be run to visualise geometry without actually doing transport, by
-   including ``--plot`` when running the application. In this case the visualiser
+      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10); res (1000 200); output geomZ; what material; }
+      
+.. note:: 
+   SCONE can be run to visualise geometry without actually doing transport, by 
+   including ``--plot`` when running the application. In this case the visualiser 
    has to be included in the file.
 
 Nuclear Data
