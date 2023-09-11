@@ -27,6 +27,8 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
   Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source to a text file
   
 Example: ::
   
@@ -70,6 +72,8 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
   Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source to a text file
   
 Example: ::
 
@@ -531,7 +535,7 @@ Example: ::
 
 Example: ::
 
-      uni3 { id 3; type pinlUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
+      uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
 
 * latUniverse, cartesian lattice of constant pitch
 
