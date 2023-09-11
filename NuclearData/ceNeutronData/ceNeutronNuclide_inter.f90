@@ -50,7 +50,6 @@ module ceNeutronNuclide_inter
   !!   invertInelastic -> Selects type of inelastic neutron scattering
   !!   xsOf            -> Returns microscopic XS given MT number
   !!   elScatteringXS  -> Returns elastic scattering XS for the nuclide
-  !!   setDBRC         -> Turns the hasDBRC flag to true
   !!   hasDBRC         -> Returns the value of the hasDBRC flag
   !!
   type, public, abstract, extends(nuclideHandle) :: ceNeutronNuclide
@@ -71,7 +70,6 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
-    procedure, non_overridable :: setDBRC
     procedure, non_overridable :: hasDBRC
     procedure                  :: getMass
     procedure                  :: getkT
@@ -232,18 +230,20 @@ contains
   !!   fatalError if kT <= 0.0
   !!   fatalError if mass <= 0.0
   !!
-  subroutine set(self, nucIdx, database, fissile, mass, kT)
+  subroutine set(self, nucIdx, database, fissile, mass, kT, dbrc)
     class(ceNeutronNuclide), intent(inout)                  :: self
     integer(shortInt), intent(in),optional                  :: nucIdx
     class(ceNeutronDatabase), pointer, optional, intent(in) :: database
     logical(defBool), intent(in), optional                  :: fissile
     real(defReal), intent(in), optional                     :: mass
     real(defReal), intent(in), optional                     :: kT
+    logical(defBool), intent(in), optional                  :: dbrc
     character(100), parameter :: Here = 'set (ceNuetronNuclide_inter.f90)'
 
     if(present(nucIdx))    self % nucIdx  = nucIdx
     if(present(database))  self % data    => database
     if(present(fissile))   self % fissile = fissile
+    if(present(dbrc))      self % DBRC    = dbrc
 
     if(present(mass)) then
       if(mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
@@ -294,25 +294,6 @@ contains
     isIt = self % fissile
 
   end function isFissile
-
-  !!
-  !! Set the hasDBRC flag to .true. if called
-  !!
-  !! Args:
-  !!   None
-  !!
-  !! Result:
-  !!   None
-  !!
-  !! Errors:
-  !!   None
-  !!
-  subroutine setDBRC(self)
-    class(ceNeutronNuclide), intent(inout) :: self
-
-    self % DBRC = .true.
-
-  end subroutine setDBRC
 
   !!
   !! Return .true. if the nuclide needs to use DBRC

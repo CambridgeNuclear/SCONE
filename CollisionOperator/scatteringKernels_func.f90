@@ -18,6 +18,7 @@ module scatteringKernels_func
 
   private :: sample_x2expx2
   private :: sample_x3expx2
+  private :: sample_targetVelocity
 
 contains
 
@@ -101,10 +102,11 @@ contains
     real(defReal), intent(in)               :: A
     real(defReal), intent(in)               :: kT
     class(RNG), intent(inout)               :: rand
+    logical(defBool)                        :: accept
     real(defReal),dimension(3)              :: V_t
-    real(defReal)                           :: alpha, mu, phi, P_acc
+    real(defReal)                           :: alpha, mu, phi
     real(defReal)                           :: X, Y
-    real(defReal)                           :: r1, r2, r3, r4
+    real(defReal)                           :: rel_v, r1
 
     ! Calculate neutron Y = beta *V_n
     ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
@@ -113,37 +115,19 @@ contains
     ! Calculate threshold factor alpha
     alpha = 2.0/(Y*sqrt(PI)+2.0)
 
-
     rejectionLoop: do
 
-      ! Obtain random numbers
-      r1 = rand % get()
-      r2 = rand % get()
-      r3 = rand % get()
-
-      ! Sample X = beta * V_t
-      if ( r1 > alpha ) then
-        X = sample_x2expx2(rand)
-
-      else
-        X = sample_x3expx2(rand)
-
-      end if
-
-      ! Sample polar angle of target velocity wrt. neutron direction
-      mu = 2.0 * r2 - 1.0;
-
-      ! Calculate acceptance probability
-      P_acc = sqrt(Y*Y + X*X - 2.0*X*Y*mu) / (Y+X)
+      ! Sample velocity and calculate angle and acceptance probability
+      call sample_targetVelocity(X, accept, rel_v, mu, rand, Y, alpha)
 
       ! Accept or reject mu
-      if (P_acc > r3) exit rejectionLoop
+      if (accept) exit rejectionLoop
 
     end do rejectionLoop
 
     ! Calculate azimithal angle for target and obtain target direction
-    r4 = rand % get()
-    phi = 2.0 *PI * r4
+    r1 = rand % get()
+    phi = 2.0 *PI * r1
 
     V_t = rotateVector(dir, mu, phi)
 
@@ -167,11 +151,12 @@ contains
     real(defReal), intent(in)               :: kT
     real(defReal), intent(in)               :: tempMaj
     class(RNG), intent(inout)               :: rand
+    logical(defBool)                        :: accept
     real(defReal),dimension(3)              :: V_t
-    real(defReal)                           :: alpha, mu, phi, P_acc, DBRC_acc
+    real(defReal)                           :: alpha, mu, phi, DBRC_acc
     real(defReal)                           :: X, Y
-    real(defReal)                           :: r1, r2, r3, r4, r5
-    real(defreal)                           :: rel_v, rel_E, xs_rel_v
+    real(defReal)                           :: r1, r2
+    real(defReal)                           :: rel_v, rel_E, xs_rel_v
 
     ! Calculate neutron Y = beta *V_n
     ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
@@ -183,30 +168,11 @@ contains
 
     rejectionLoop: do
 
-      ! Obtain random numbers
-      r1 = rand % get()
-      r2 = rand % get()
-      r3 = rand % get()
-
-      ! Sample X = beta * V_t
-      ! Uses helper functions below
-      if ( r1 > alpha ) then
-        X = sample_x2expx2(rand)
-      else
-        X = sample_x3expx2(rand)
-      end if
-
-      ! Sample polar angle of target velocity wrt. neutron direction
-      mu = 2.0 * r2 - 1.0;
-
-      ! Calculate relative velocity between neutron and target
-      rel_v = sqrt(Y * Y + X * X - 2.0 * X * Y * mu)
-
-      ! Calculate Acceptance Propability
-      P_acc = rel_v / (Y + X)
+      ! Sample velocity and calculate angle and acceptance probability
+      call sample_targetVelocity(X, accept, rel_v, mu, rand, Y, alpha)
 
       ! Accept or reject mu and target velocity
-      if (P_acc < r3) cycle rejectionLoop
+      if (.not. accept) cycle rejectionLoop
 
       ! Relative energy = relative velocity **2 due to sqrt(Mn/2) scaling factor
       rel_E = (rel_v**2 * kT / A)
@@ -216,18 +182,18 @@ contains
 
       ! Introduce DBRC acceptance condition
       DBRC_acc = (xs_rel_v / tempMaj)
-      r4 = rand % get()
+      r1 = rand % get()
 
       ! Accept or reject with DBRC
-      if (DBRC_acc > r4) then
+      if (DBRC_acc > r1) then
         exit rejectionLoop
       end if
 
     end do rejectionLoop
 
     ! Calculate azimithal angle for target and obtain target direction
-    r5 = rand % get()
-    phi = 2.0 * PI * r5
+    r2 = rand % get()
+    phi = 2.0 * PI * r2
 
     V_t = rotateVector(dir, mu, phi)
 
@@ -297,6 +263,54 @@ contains
     sample = sqrt(sample)
 
   end function sample_x3expx2
+
+  !!
+  !! Subroutine to sample the target velocity using the predefined helper functions,
+  !! sample the scattering angle, and calculate the acceptance probability for the
+  !! sampling loop.
+  !!
+  !! It is called used by different methods (contant xs, DBRC) when sampling the velocity
+  !!
+  subroutine sample_targetVelocity(X, accept, rel_v, mu, rand, Y, alpha)
+    real(defReal), intent(out)    :: X
+    logical(defBool), intent(out) :: accept
+    real(defReal), intent(out)    :: rel_v
+    real(defReal), intent(out)    :: mu
+    class(RNG), intent(inout)     :: rand
+    real(defReal), intent(in)     :: Y
+    real(defReal), intent(in)     :: alpha
+    real(defReal)                 :: r1, r2, r3, P_acc
+
+    ! Obtain random numbers
+    r1 = rand % get()
+    r2 = rand % get()
+    r3 = rand % get()
+
+    ! Sample X = beta * V_t
+    ! Uses helper functions below
+    if ( r1 > alpha ) then
+      X = sample_x2expx2(rand)
+    else
+      X = sample_x3expx2(rand)
+    end if
+
+    ! Sample polar angle of target velocity wrt. neutron direction
+    mu = 2.0 * r2 - 1.0;
+
+    ! Calculate relative velocity between neutron and target
+    rel_v = sqrt(Y * Y + X * X - 2.0 * X * Y * mu)
+
+    ! Calculate Acceptance Propability
+    P_acc = rel_v / (Y + X)
+
+    ! Verigy acceptance condition
+    if (P_acc > r3) then
+      accept = .true.
+    else
+      accept = .false.
+    end if
+
+  end subroutine sample_targetVelocity
 
 
 end module scatteringKernels_func

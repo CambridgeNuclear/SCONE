@@ -484,13 +484,13 @@ contains
     type(aceCard)                                    :: ACE
     type(aceSabCard)                                 :: ACE_Sab
     character(pathLen)                               :: aceLibPath
-    character(nameLen)                               :: name, name_file
+    character(nameLen)                               :: name, name_file, nucDBRC_temp
     character(:), allocatable                        :: zaid, file
     integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
-    integer(shortInt),dimension(:),allocatable       :: nucIdxs, DBRCidxs
-    character(nameLen),dimension(:),allocatable      :: DBRC_nucs
+    integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
+    character(nameLen),dimension(:),allocatable      :: nucDBRC
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
@@ -565,14 +565,14 @@ contains
       self % hasDBRC = .true.
 
       ! Call through list of DBRC nuclides
-      call dict % get(DBRCidxs, 'DBRC')
-      allocate(DBRC_nucs(size(DBRCidxs)))
+      call dict % get(zaidDBRC, 'DBRC')
+      allocate(nucDBRC(size(zaidDBRC)))
 
       ! Add all DBRC nuclides to nucSet for initialisation
-      do i = 1, size(DBRCidxs)
-        DBRC_nucs(i) = numToChar(DBRCidxs(i))
-        DBRC_nucs(i) = trim(DBRC_nucs(i))//'.00'
-        call nucSet % add(DBRC_nucs(i), IN_SET)
+      do i = 1, size(zaidDBRC)
+        nucDBRC(i)  = numToChar(zaidDBRC(i))
+        nucDBRC_temp = trim(nucDBRC(i))//'.00'
+        call nucSet % add(nucDBRC_temp, IN_SET)
       end do
 
     end if
@@ -660,7 +660,7 @@ contains
 
     ! If on, initialise DBRC
     if (self % hasDBRC) then
-      call self % init_DBRC(DBRC_nucs, nucSet, self % mapDBRCnuc)
+      call self % init_DBRC(nucDBRC, nucSet, self % mapDBRCnuc)
     end if
 
     !! Clean up
@@ -713,51 +713,41 @@ contains
   !!  NOTE: compares the first 5 letters of the ZAID.TT. It would be wrong with isotopes
   !!        with Z > 99
   !!
-  subroutine init_DBRC(self, DBRC_nucs, nucSet, map)
+  subroutine init_DBRC(self, nucDBRC, nucSet, map)
     class(aceNeutronDatabase), intent(inout)     :: self
-    character(nameLen), dimension(:), intent(in) :: DBRC_nucs
+    character(nameLen), dimension(:), intent(in) :: nucDBRC
     type(charMap), intent(in)                    :: nucSet
     type(intMap), intent(out)                    :: map
-    integer(shortInt)                            :: i, j, k, idx
-    character(nameLen)                           :: nuc0K, nucDBRC
-    character(5)                                 :: nuc0Ktemp, nucDBRCtemp
+    integer(shortInt)                            :: i, j, idx0K, last
+    character(nameLen)                           :: nuc0K, nucTemp
 
-    idx = 1
+    idx0K = 1
 
     ! Loop through DBRC nuclides
-    do i = 1, size(DBRC_nucs)
-      ! Get ZAIDs with and without 0K temperature codes
-      nuc0K = DBRC_nucs(i)
-      nuc0Ktemp = nuc0K(1:5)
+    do i = 1, size(nucDBRC)
 
-      ! Loop through nucSet to find the nucIdxs of the 0K DBRC nuclides
-      k = nucSet % begin()
-      do while (k /= nucSet % end())
+      ! Get ZAID with 0K temperature code
+      nuc0K = trim(nucDBRC(i))//'.00'
 
-        ! Exit loop if a match is found
-        if (nucSet % atKey(k) == nuc0K) then
-          idx = nucSet % atVal(k)
-          exit
-        end if
+      ! Find the nucIdxs of the 0K DBRC nuclides
+      idx0K = nucSet % get(nuc0K)
 
-        ! Increment index
-        k = nucSet % next(k)
-
-      end do
-
-      ! Loop through nucSec again to find the nucIdxs of the DBRC nuclides with
+      ! Loop through nucSec to find the nucIdxs of the DBRC nuclides with
       ! temperature different from 0K
       j = nucSet % begin()
       do while (j /= nucSet % end())
-        ! Get ZAIDs with and without temperature code
-        nucDBRC = nucSet % atKey(j)
-        nucDBRCtemp = nucDBRC(1:5)
+
+        ! Get ZAIDs in the nuclide set without temperature code
+        nucTemp = nucSet % atKey(j)
+        ! Remove temperature code (.TT)
+        last = len_trim(nucTemp)
+        nucTemp = nucTemp(1:last-3)
 
         ! If the ZAID of the DBRC nuclide matches one in nucSet, save them in the map
-        if (nucDBRCtemp == nuc0Ktemp) then
-          call map % add(nucSet % atVal(j), idx)
+        if (nucTemp == nucDBRC(i)) then
+          call map % add(nucSet % atVal(j), idx0K)
           ! Set nuclide DBRC flag on
-          call self % nuclides(nucSet % atVal(j)) % setDBRC()
+          call self % nuclides(nucSet % atVal(j)) % set(dbrc=.true.)
         end if
 
         ! Increment index

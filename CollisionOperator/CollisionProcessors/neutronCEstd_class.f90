@@ -416,6 +416,7 @@ contains
     class(particle), intent(inout)             :: p
     type(collisionData),intent(inout)          :: collDat
     class(uncorrelatedReactionCE), intent(in)  :: reac
+    class(ceNeutronNuclide), pointer           :: ceNuc0K
     integer(shortInt)                          :: nucIdx
     real(defReal)                              :: A, kT, mu
     real(defReal),dimension(3)                 :: V_n           ! Neutron velocity (vector)
@@ -425,7 +426,7 @@ contains
     real(defReal),dimension(3)                 :: V_t, V_cm     ! Target and CM velocity
     real(defReal)                              :: phi, dummy
     real(defReal)                              :: maj
-    logical(defBool)                           :: eRange, hasDBRC
+    logical(defBool)                           :: inEnergyRange, hasDBRC
     character(100), parameter :: Here = 'ScatterFromMoving (neutronCEstd_class.f90)'
 
     ! Read collision data
@@ -439,24 +440,24 @@ contains
 
     ! Sample target velocity with constant XS or with DBRC
     ! Check energy range
-    eRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
+    inEnergyRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
     ! Check if DBRC is on for this target nuclide
     hasDBRC = self % nuc % hasDBRC()
 
-    if (eRange .and. hasDBRC) then
+    if (inEnergyRange .and. hasDBRC) then
 
       ! Retrieve 0K nuclide index from DBRC nuclide map
       nucIdx = self % xsData % mapDBRCnuc % get(nucIdx)
 
-      ! Reassign pointer for the 0K nuclide
-      self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
-      if(.not.associated(self % nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Database')
+      ! Assign pointer for the 0K nuclide
+      ceNuc0K => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
+      if(.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
       ! Get elastic scattering 0K majorant
       maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
 
       ! Use DBRC to sample target velocity
-      V_t = targetVelocity_DBRCXS(self % nuc, p % E, dir_pre, A, kT, p % pRNG, maj)
+      V_t = targetVelocity_DBRCXS(ceNuc0K, p % E, dir_pre, A, kT, p % pRNG, maj)
 
     else
       ! Constant cross section approximation
