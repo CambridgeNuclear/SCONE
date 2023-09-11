@@ -34,14 +34,14 @@ module pinUniverse_class
   !!     fills (u<3> void clad u<4>);
   !!   }
   !!
-  !!  There must be 0.0 entry, which indicates outermost annulus (infinate radius).
+  !!  There must be 0.0 entry, which indicates outermost annulus (infinite radius).
   !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
   !!  are sorted together with the `radii`. As a result, in the example, local cell 1 is
   !!  filled with u<4>, cell 2 with u<3> etc.
   !!
   !! Public Members:
   !!  r_sqr  -> Array of radius^2 for each annulus
-  !!  annuli -> Array of cylinder surfaces that represent diffrent annuli
+  !!  annuli -> Array of cylinder surfaces that represent different annuli
   !!
   !! Interface:
   !!   universe interface
@@ -77,36 +77,14 @@ contains
     type(cellShelf), intent(inout)                            :: cells
     type(surfaceShelf), intent(inout)                         :: surfs
     type(charMap), intent(in)                                 :: mats
-    integer(shortInt)                             :: id, idx, N, i
-    real(defReal), dimension(:), allocatable      :: radii, temp
+    integer(shortInt)                             :: idx, N, i
+    real(defReal), dimension(:), allocatable      :: radii
     character(nameLen), dimension(:), allocatable :: fillNames
     character(100), parameter :: Here = 'init (pinUniverse_class.f90)'
 
-    ! Load basic data
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
-
-    ! Load origin
-    if (dict % isPresent('origin')) then
-      call dict % get(temp, 'origin')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(origin=temp)
-
-    end if
-
-    ! Load rotation
-    if (dict % isPresent('rotation')) then
-      call dict % get(temp, 'rotation')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(rotation=temp)
-    end if
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
     ! Load radii and fill data
     call dict % get(radii, 'radii')
@@ -126,7 +104,7 @@ contains
     ! Change 0.0 to infinity
     N = size(radii)
     idx = minloc(radii, 1)
-    if (radii(idx) /= ZERO) call fatalError(Here, 'Did not found outermst element with radius 0.0.')
+    if (radii(idx) /= ZERO) call fatalError(Here, 'Did not found outermost element with radius 0.0.')
     call swap( radii(idx), radii(N))
     call swap( fillNames(idx), fillNames(N))
     radii(N) = INF * 1.1_defReal

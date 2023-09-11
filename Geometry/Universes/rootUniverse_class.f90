@@ -22,7 +22,7 @@ module rootUniverse_class
   !!
   !! A top level (root) universe of geometry
   !!
-  !! Is composed of two regions. Inside and outside seperated by a single surface.
+  !! Is composed of two regions. Inside and outside separated by a single surface.
   !! Inside is the -ve halfspace of the boundary surface
   !! +ve halfspace is OUTSIDE
   !! Filling can be universe given by ID (`u<67` syntax) or a material given by name (e.g. 'fuel')
@@ -84,16 +84,15 @@ contains
     character(nameLen)                                        :: name
     character(100), parameter :: Here = 'init (rootUniverse_class.f90)'
 
-    ! Set ID
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
-    ! Make shure root does not contain neither origin nor rotation
+    ! Make sure root does not contain neither origin nor rotation
     if (dict % isPresent('origin')) then
       call fatalError(Here, 'Origin is not allowed. Centre of the root universe is &
                             &always (0.0 0.0 0.0).')
-    else if (dict % isPresent('origin')) then
+    else if (dict % isPresent('rotation')) then
       call fatalError(Here, 'Rotation is not allowed. Root universe cannot be rotated.')
 
     end if

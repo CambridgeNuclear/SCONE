@@ -37,7 +37,7 @@ contains
   !!
   !! Args:
   !!  ptr [out]     -> Pointer to the new universe
-  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  fill [out]    -> Allocatable integer array with filling of different uniqueID
   !!  dict [in]     -> Dictionary with universe definition
   !!  cells [inout] -> Shelf with defined cells
   !!  surfs [inout] -> Shelf  with defined surfaces
@@ -59,7 +59,7 @@ contains
     ! Obtain type of the universe
     call dict % get(type, 'type')
 
-    ! Allocate approperiate universe
+    ! Allocate appropriate universe
     ! ** FOR NEW UNIVERSE ADD CASE STATEMENT HERE ** !
     select case (type)
       case ('rootUniverse')
@@ -87,11 +87,11 @@ contains
   end subroutine new_universe_ptr
 
   !!
-  !! Allocte an allocatable universe
+  !! Allocate an allocatable universe
   !!
   !! Args:
   !!  new [out]     -> Universe to be allocated
-  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  fill [out]    -> Allocatable integer array with filling of different uniqueID
   !!  dict [in]     -> Dictionary with universe definition
   !!  cells [inout] -> Shelf with defined cells
   !!  surfs [inout] -> Shelf  with defined surfaces
