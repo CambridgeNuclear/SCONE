@@ -1,6 +1,7 @@
 module materialMap_class
 
   use numPrecision
+  use universalVariables,      only : NOT_FOUND
   use genericProcedures,       only : fatalError
   use dictionary_class,        only : dictionary
   use intMap_class,            only : intMap
@@ -48,7 +49,7 @@ module materialMap_class
     integer(shortInt), dimension(:), allocatable  :: matIndices
 
   contains
-    ! Superclass interface implementaction
+    ! Superclass interface implementation
     procedure :: init
     procedure :: bins
     procedure :: map
@@ -71,15 +72,15 @@ contains
   !!   trackRest [in] -> Logical. For TRUE makes extra bin for all materials not
   !!     explicitly in the map.
   !!
-  !! Erorrs:
-  !!   None from here. NuclearDataRegistry should give fatalError if material is given but
-  !!   not defined.
+  !! Errors:
+  !!   If a material is fed in but not defined a fatal error will be thrown.
   !!
   subroutine build(self, materials, trackRest)
     class(materialMap), intent(inout)            :: self
     character(nameLen), dimension(:), intent(in) :: materials
     logical(defBool),intent(in)                  :: trackRest
     integer(shortInt)                            :: N, i, matIdx
+    character(100), parameter :: Here = 'build (materialMap_class.f90)'
 
     ! Find number of materials to bin
     N = size(materials)
@@ -91,6 +92,8 @@ contains
     ! Load material indices and bins
     do i=1,N
       matIdx = mm_matIdx(materials(i))
+      if (matIdx == NOT_FOUND) call fatalError(Here,&
+              'Material '//trim(materials(i))//' does not exist in the input materials')
       call self % binMap % add(matIdx, i)
       self % matIndices(i) = matIdx
 
@@ -138,7 +141,7 @@ contains
         call fatalError(Here, undefined//' is an unrecognised entry!')
     end select
 
-    ! Initialise Map
+    ! Initialise map
     call self % build(matNames, trackUndefined)
 
   end subroutine init
