@@ -142,7 +142,11 @@ Example: ::
 Source
 ------
 
-For the moment, the only possible external **source** type in SCONE in a point source.
+For the moment, the only possible external **source** types in SCONE are point source and material source.
+
+pointSource
+############
+
 The properties of a point source are:
 
 * r: (x y z) vector with the origin position. [cm]
@@ -151,7 +155,7 @@ The properties of a point source are:
 * E or G: emission energy
 
   - E: energy of the particles emitted, for continuous energy calculations. [MeV]
-  - G: energy group of the particles emitted, for multi-group calculations
+  - G: energy group of the particles emitted, for multi-group calculations.
 
 * dir (*optional*, default = isotropic): (u v w) vector with the direction of the source
   particles
@@ -159,6 +163,24 @@ The properties of a point source are:
 Hence, an input would look like: ::
 
       source { type pointSource; r (0.0 1.0 5.2); particle neutron; E 14.1; dir (0.0 1.0 0.0); }
+
+materialSource
+##############
+
+A material source is a particle source which can only be produced in a given material.
+It is a type of volumetric source. For the moment it is constrained to neutrons.
+The properties of a material source are:
+
+* matName: the name of the material from which to sample (must be defined in materials).
+* data (*optional*, default = continuous energy): data type for source particles. Can be ``ce`` or ``mg``.
+* E (*optional*, default = 1E-6 MeV): energy of the particles emitted, for continuous energy calculations. [MeV]
+* G (*optional*, default = 1): energy group of the particles emitted, for multi-group calculations.
+* boundingBox (*optional*, default is the geometry bounding box): (x_min y_min z_min x_max y_max z_max) vector 
+  describing a bounding box to improve sampling efficiency or to localise material sampling to a particular region.
+
+Hence, an input would look like: ::
+
+      source { type materialSource; data ce; E 2.0; boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
 
 Transport Operator
 ------------------
