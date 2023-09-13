@@ -84,7 +84,7 @@ contains
     ! Provide geometry info to source
     self % geom => geom
 
-    ! Select Energy Type
+    ! Select energy type
     call dict % getOrDefault(type, 'data', 'ce')
     select case(type)
       case('ce')
