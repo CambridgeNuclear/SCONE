@@ -34,7 +34,7 @@ module materialSource_class
   !!   bottom -> Bottom corner (x_min, y_min, z_min)
   !!   top    -> Top corner (x_max, y_max, z_max)
   !!   E      -> Source site energy [MeV] (default = 1.0E-6)
-  !!   G      -> Source site Group (default = 1)
+  !!   G      -> Source site group (default = 1)
   !!
   !! Interface:
   !!   source_inter Interface
