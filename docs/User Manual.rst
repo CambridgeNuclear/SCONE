@@ -293,7 +293,7 @@ Example: ::
 Weight Windows
 --------------
 
-Weight windows can be used if, inside the collision operator ``CEneutronimp``, the
+Weight windows can be used if, inside the collision operator ``neutronCEimp``, the
 keyword ``weightWindows`` is set to 1. Then, in the input file, one needs to add: ::
 
         varianceReduction { type weightWindowsField; file <pathToWeightWindowsFile>; }
@@ -320,7 +320,7 @@ Example: ::
 Uniform Fission Sites
 ---------------------
 
-Uniform Fission Sites can be used if, inside the collision operator ``CEneutronimp``, the
+Uniform Fission Sites can be used if, inside the collision operator ``neutronCEimp``, the
 keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 
       uniformFissionSites { type uniFissSitesField; map { <Map definition> } *keywords* }
