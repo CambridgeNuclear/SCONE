@@ -42,7 +42,7 @@ module materialSource_class
   !! Sample Dictionary Input:
   !!   matsource {
   !!     type materialSource;
-  !!     #data MG; #
+  !!     #data mg; #
   !!     #E 15.0;  #
   !!     #G 7;     #
   !!     #bb (-x -y -z +x +y +z); #
