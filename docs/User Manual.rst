@@ -173,7 +173,7 @@ The properties of a material source are:
 
 * mat: the name of the material from which to sample (must be defined in materials).
 * data (*optional*, default = continuous energy): data type for source particles. Can be ``ce`` or ``mg``.
-* E (*optional*, default = 1E-6 MeV): energy of the particles emitted, for continuous energy calculations. [MeV]
+* E (*optional*, default = 1E-6): energy of the particles emitted, for continuous energy calculations. [MeV]
 * G (*optional*, default = 1): energy group of the particles emitted, for multi-group calculations.
 * boundingBox (*optional*, default is the geometry bounding box): (x_min y_min z_min x_max y_max z_max) vector 
   describing a bounding box to improve sampling efficiency or to localise material sampling to a particular region.
