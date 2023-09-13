@@ -171,7 +171,7 @@ A material source is a particle source which can only be produced in a given mat
 It is a type of volumetric source. For the moment it is constrained to neutrons.
 The properties of a material source are:
 
-* matName: the name of the material from which to sample (must be defined in materials).
+* mat: the name of the material from which to sample (must be defined in materials).
 * data (*optional*, default = continuous energy): data type for source particles. Can be ``ce`` or ``mg``.
 * E (*optional*, default = 1E-6 MeV): energy of the particles emitted, for continuous energy calculations. [MeV]
 * G (*optional*, default = 1): energy group of the particles emitted, for multi-group calculations.
@@ -180,7 +180,7 @@ The properties of a material source are:
 
 Hence, an input would look like: ::
 
-      source { type materialSource; data ce; E 2.0; boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
+      source { type materialSource; mat myMat; data ce; E 2.0; boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
 
 Transport Operator
 ------------------
