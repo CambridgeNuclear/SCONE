@@ -76,6 +76,15 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
   in the particleDungeon) to a text file
+* buffer (*optional*, default = 50): size of the particle bank used by each 
+  OpenMP thread to store secondary particles
+* commonBufferSize (*optional*): if not included, the common buffer is not 
+  used; if included, after each particle history the particles in each 
+  thread-private buffer (or bank, or dungeon) are moved to a buffer 
+  common to all threads to avoid long histories
+* bufferShift (*optional*, default = 10): threshold of particles to be 
+  stored in a thread-private buffer, after which particles are shifted to 
+  the common buffer
 
 Example: ::
 
@@ -86,6 +95,9 @@ Example: ::
         XSdata   ceData;
         seed     2829741;
         outputFile shield_type11;
+
+        buffer 10000;
+        commonBufferSize 50000;
 
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
