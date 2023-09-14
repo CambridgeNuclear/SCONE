@@ -48,7 +48,8 @@ module tallyMap1DFactory_func
                                                                                 'materialMap',&
                                                                                 'homogMatMap',&
                                                                                 'weightMap  ',&
-                                                                                'cellMap    ']
+                                                                                'cellMap    ',&
+                                                                                'testMap    ']
 
 contains
 
