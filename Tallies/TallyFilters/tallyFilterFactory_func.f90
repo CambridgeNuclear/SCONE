@@ -56,7 +56,7 @@ contains
     end select
 
     ! Initialise new filter
-    call new % init(dict, name)
+    call new % init(dict)
 
   end subroutine new_tallyFilter
 
