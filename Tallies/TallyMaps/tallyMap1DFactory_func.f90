@@ -106,7 +106,7 @@ contains
     end select
 
     ! Initialise new map
-    call new % init(dict, name)
+    call new % init(dict)
 
   end subroutine new_tallyMap1D
 
