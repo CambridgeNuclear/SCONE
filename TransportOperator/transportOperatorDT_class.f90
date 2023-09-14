@@ -49,6 +49,9 @@ contains
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
+    ! Should never happen! Prevents NaN distances
+    if (majorant_inv /= majorant_inv) call fatalError(Here, "Majorant is 0")
+
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
@@ -73,11 +76,6 @@ contains
 
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
-      ! Protect Against Sillines
-      !if( sigmaT*majorant_inv < ZERO .or. ONE < sigmaT*majorant_inv) then
-      !  call fatalError(Here, "TotalXS/MajorantXS is silly: "//numToChar(sigmaT*majorant_inv))
-      !end if
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real
