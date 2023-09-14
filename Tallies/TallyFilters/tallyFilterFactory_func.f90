@@ -17,7 +17,6 @@ module tallyFilterFactory_func
 
   public :: new_tallyFilter
 
-  ! *** ADD NAME OF A NEW TALLY FILTER HERE ***!
   ! List that contains all accaptable types of tallyFilters
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -43,26 +42,21 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of tallyFilter
-    ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
       case('energyFilter')
         allocate(energyFilter :: new)
-        call new % init(dict)
 
       case('testFilter')
         allocate(testFilter :: new)
-        call new % init(dict)
 
-     !*** NEW TALLY MAP TEMPLATE ***!
-     !case('<newtallyFilterName>')
-     !  allocate(<newtallyFilterName> :: new)
-     !  call new % init(dict)
-     !
       case default
         print *, AVALIBLE_tallyFilters
         call fatalError(Here, 'Unrecognised type of tallyFilter: ' // trim(type))
 
     end select
+
+    ! Initialise new filter
+    call new % init(dict, name)
 
   end subroutine new_tallyFilter
 
