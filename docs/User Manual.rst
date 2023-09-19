@@ -1081,8 +1081,8 @@ Examples: ::
 
       map1 { type energyMap; grid log; min 1.0e-11; max 20.0; N 300; }
       map2 { type energyMap; grid lin; min 1.0; max 20.0; N 100; }
-      map3 { type energyMap; bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0); }
-      map4 { type energyMap; name casmo12; }
+      map3 { type energyMap; grid unstruct; bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0); }
+      map4 { type energyMap; grid predef; name casmo12; }
 
 * homogMatMap (1D map), divides based on the material a particle is in with the
   possibility of grouping some materials together
