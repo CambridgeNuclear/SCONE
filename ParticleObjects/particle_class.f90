@@ -564,7 +564,7 @@ contains
 
     state = self
     call state % display()
-    print *, self % coords % matIdx
+    print *, 'Material: ', self % coords % matIdx
 
   end subroutine display_particle
 
@@ -672,7 +672,13 @@ contains
   subroutine display_particleState(self)
     class(particleState), intent(in) :: self
 
-    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
+    print*, 'Position: ', self % r
+    print*, 'Direction: ', self % dir
+    print*, 'Energy: ', self % E
+    print*, 'Group: ', self % G
+    print*, 'isMG: ', self % isMG
+    print*, 'Weight: ', self % wgt
+    print*, 'Time: ', self % time
 
   end subroutine display_particleState
 
