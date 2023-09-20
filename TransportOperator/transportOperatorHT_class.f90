@@ -94,6 +94,9 @@ contains
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
+   ! Should never happen! Prevents Inf distances
+    if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
+
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
@@ -148,6 +151,10 @@ contains
       else
         sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
         dist = -log( p % pRNG % get()) / sigmaT
+
+        ! Should never happen! Catches NaN distances
+        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+
       end if
 
       ! Save state before movement
