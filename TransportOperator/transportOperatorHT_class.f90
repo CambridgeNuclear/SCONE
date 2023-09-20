@@ -96,6 +96,7 @@ contains
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
+
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
