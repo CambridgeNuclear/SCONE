@@ -55,7 +55,6 @@ contains
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
 
-
       ! Move partice in the geometry
       call self % geom % teleport(p % coords, distance)
 
