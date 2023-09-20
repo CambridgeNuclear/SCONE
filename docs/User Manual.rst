@@ -1075,7 +1075,7 @@ Example: ::
   - grid: ``predef``
 
     + name: name of the predefined group structure. Options are: ``wims69``,
-      ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``vitaminj``
+      ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``ecco33``, ``vitaminj``
 
 Examples: ::
 

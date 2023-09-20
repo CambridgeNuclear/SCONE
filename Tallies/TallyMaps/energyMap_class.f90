@@ -159,6 +159,9 @@ contains
       case('casmo7')
         bins = casmo7
 
+      case('ecco33')
+        bins = ecco33
+
       case('vitaminj')
         bins = vitaminj
 
