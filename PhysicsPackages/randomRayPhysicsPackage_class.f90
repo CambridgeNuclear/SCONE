@@ -88,6 +88,7 @@ module randomRayPhysicsPackage_class
   !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
   !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
+  !!     #rho 0;#              // Optional stabilisation for negative in-group scattering XSs
   !!
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
@@ -112,6 +113,7 @@ module randomRayPhysicsPackage_class
   !!   inactive    -> Number of inactive cycles to perform
   !!   active      -> Number of active cycles to perform
   !!   cache       -> Logical check whether to use distance caching
+  !!   rho         -> Stabilisation factor: 0 is no stabilisation, 1 is aggressive stabilisation
   !!   outputFile  -> Output file name
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
@@ -167,6 +169,7 @@ module randomRayPhysicsPackage_class
     integer(shortInt)  :: inactive    = 0
     integer(shortInt)  :: active      = 0
     logical(defBool)   :: cache       = .false.
+    real(defReal)      :: rho         = ZERO
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .false.
@@ -268,6 +271,9 @@ contains
     
     ! Perform distance caching?
     call dict % getOrDefault(self % cache, 'cache', .false.)
+    
+    ! Stabilisation factor for negative in-group scattering
+    call dict % getOrDefault(self % rho, 'rho', ZERO)
 
     ! Print fluxes?
     call dict % getOrDefault(self % printFlux, 'printFlux', .false.)
@@ -446,9 +452,10 @@ contains
         self % sigmaT(self % nG * (m - 1) + g) = real(mat % getTotalXS(g, self % rand),defFlt)
         self % nuSigmaF(self % nG * (m - 1) + g) = real(mat % getNuFissionXS(g, self % rand),defFlt)
         self % chi(self % nG * (m - 1) + g) = real(mat % getChi(g, self % rand),defFlt)
+        ! Include scattering multiplicity
         do g1 = 1, self % nG
           self % sigmaS(self % nG * self % nG * (m - 1) + self % nG * (g - 1) + g1)  = &
-                  real(mat % getScatterXS(g1, g, self % rand), defFlt)
+                  real(mat % getScatterXS(g1, g, self % rand) * mat % scatter % prod(g1, g) , defFlt)
         end do
       end do
     end do
@@ -481,16 +488,13 @@ contains
   !! Inactive and active iterations occur, terminating subject either to 
   !! given criteria or when a fixed number of iterations has been passed.
   !!
-  !! Args:
-  !!   rand [inout] -> Initialised random number generator
-  !!
   subroutine cycles(self)
     class(randomRayPhysicsPackage), intent(inout) :: self
     type(ray), save                               :: r
     type(RNG), target, save                       :: pRNG
     real(defFlt)                                  :: hitRate, ONE_KEFF
     real(defReal)                                 :: elapsed_T, end_T, T_toEnd, transport_T
-    logical(defBool)                              :: stoppingCriterion, isActive
+    logical(defBool)                              :: keepRunning, isActive
     integer(shortInt)                             :: i, itInac, itAct, it
     integer(longInt), save                        :: ints
     integer(longInt)                              :: intersections
@@ -504,14 +508,14 @@ contains
     self % keff       = 1.0_defFlt
     self % scalarFlux = 0.0_defFlt
     self % prevFlux   = 1.0_defFlt
-    self % fluxScores = 0.0_defReal
-    self % keffScore  = 0.0_defReal
+    self % fluxScores = ZERO
+    self % keffScore  = ZERO
     self % source     = 0.0_defFlt
 
     ! Initialise other results
     self % cellHit      = 0
-    self % volume       = 0.0_defReal
-    self % volumeTracks = 0.0_defReal
+    self % volume       = ZERO
+    self % volumeTracks = ZERO
     self % intersectionsTotal  = 0
 
     ! Initialise cell information
@@ -519,15 +523,15 @@ contains
     self % cellPos = -INFINITY
 
 
-    ! Stopping criterion is initially on flux convergence or number of convergence iterations.
-    ! Will be replaced by RMS error in flux or number of scoring iterations afterwards.
+    ! Stopping criterion is on number of convergence iterations.
+    ! TODO: Make this on, e.g., entropy during inactive, followed by stochastic noise during active!
     itInac = 0
     itAct  = 0
     isActive = .false.
-    stoppingCriterion = .true.
+    keepRunning = .true.
     
     ! Power iteration
-    do while( stoppingCriterion )
+    do while( keepRunning )
       
       if (isActive) then
         itAct = itAct + 1
@@ -588,7 +592,7 @@ contains
 
       ! Evaluate stopping criterion for active or inactive iterations
       if (isActive) then
-        stoppingCriterion = (itAct < self % active)
+        keepRunning = (itAct < self % active)
       else
         isActive = (itInac >= self % inactive)
       end if
@@ -805,10 +809,10 @@ contains
     integer(shortInt), intent(in)                 :: it
     real(defFlt)                                  :: norm
     real(defReal)                                 :: normVol
-    real(defFlt), save                            :: total, vol
+    real(defFlt), save                            :: total, vol, sigGG, D
     integer(shortInt), save                       :: g, matIdx, idx
     integer(shortInt)                             :: cIdx
-    !$omp threadprivate(total, vol, idx, g, matIdx)
+    !$omp threadprivate(total, vol, idx, g, matIdx, sigGG, D)
 
     norm = real(ONE / self % lengthPerIt, defFlt)
     normVol = ONE / (self % lengthPerIt * it)
@@ -829,7 +833,22 @@ contains
         if (vol > volume_tolerance) then
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm / ( total * vol)
         end if
-        self % scalarFlux(idx) = self % scalarFlux(idx) + self % source(idx)
+        
+        ! Apply stabilisation for negative XSs
+        if (matIdx < VOID_MAT) then
+          sigGG = self % sigmaS(self % nG * self % nG * (matIdx - 1) + self % nG * (g - 1) + g)
+
+          ! Presumes non-zero total XS
+          if ((sigGG < 0) .and. (total > 0)) then
+            D = -real(self % rho, defFlt) * sigGG / total
+          else
+            D = 0.0_defFlt
+          end if
+        else
+          D = 0.0_defFlt
+        end if
+
+        self % scalarFlux(idx) =  (self % scalarflux(idx) + self % source(idx) + D * self % prevFlux(idx) ) / (1 + D)
 
       end do
 
@@ -852,6 +871,16 @@ contains
 
     ! Identify material
     matIdx  =  self % geom % geom % graph % getMatFromUID(cIdx) 
+    
+    ! Guard against void cells
+    if (matIdx >= VOID_MAT) then
+      baseIdx = self % ng * (cIdx - 1)
+      do g = 1, self % nG
+        idx = baseIdx + g
+        self % source(idx) = 0.0_defFlt
+      end do
+      return
+    end if
 
     ! Obtain XSs
     matIdx = (matIdx - 1) * self % nG
@@ -869,6 +898,7 @@ contains
     do gIn = 1, self % nG
       fission = fission + fluxVec(gIn) * nuFission(gIn)
     end do
+    fission = fission * ONE_KEFF
 
     do g = 1, self % nG
 
@@ -886,7 +916,7 @@ contains
       ! Output index
       idx = baseIdx + g
 
-      self % source(idx) = chi(g) * fission * ONE_KEFF + scatter
+      self % source(idx) = chi(g) * fission + scatter
       self % source(idx) = self % source(idx) / total(g)
 
     end do
@@ -913,6 +943,8 @@ contains
 
       ! Identify material
       matIdx =  self % geom % geom % graph % getMatFromUID(cIdx) 
+      if (matIdx >= VOID_MAT) cycle
+
       matPtr => self % mgData % getMaterial(matIdx)
       mat    => baseMgNeutronMaterial_CptrCast(matPtr)
       if (.not. mat % isFissile()) cycle
@@ -923,7 +955,7 @@ contains
 
       fissLocal = 0.0_defFlt
       prevFissLocal = 0.0_defFlt
-      mIdx = (matIdx - 1)* self % nG
+      mIdx = (matIdx - 1) * self % nG
       do g = 1, self % nG
         
         ! Source index
@@ -973,7 +1005,7 @@ contains
     do idx = 1, size(self % scalarFlux)
       flux = real(self % scalarFlux(idx),defReal)
       self % fluxScores(idx,1) = self % fluxScores(idx, 1) + flux
-      self % fluxScores(idx,2) = self % fluxScores(idx, 2) + flux*flux
+      self % fluxScores(idx,2) = self % fluxScores(idx, 2) + flux * flux
     end do
     !$omp end parallel do
 
@@ -1329,6 +1361,7 @@ contains
     self % inactive    = 0
     self % active      = 0
     self % cache       = .false.
+    self % rho         = ZERO
     self % mapFission  = .false.
     self % mapFlux     = .false.
     self % plotResults = .false.
