@@ -45,7 +45,6 @@ module baseMgNeutronDatabase_class
   !!   mats       -> array containing all defined materials (by matIdx)
   !!   majorant   -> majorant xs for delta tracking
   !!   activeMats -> list of matIdxs of materials active in the problem
-  !!   nG         -> number of energy groups
   !!
   !! Interface:
   !!   nuclearDatabase interface
@@ -54,11 +53,8 @@ module baseMgNeutronDatabase_class
     type(baseMgNeutronMaterial), dimension(:), pointer :: mats => null()
     real(defReal), dimension(:), allocatable           :: majorant
     integer(shortInt), dimension(:), allocatable       :: activeMats
-    integer(shortInt)                                  :: nG = 0
 
   contains
-    ! Superclass Interface
-    procedure :: nGroups
 
     ! Local interface
     procedure :: getTransMatXS
@@ -71,6 +67,7 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
+    procedure :: nGroups
 
   end type baseMgNeutronDatabase
 
@@ -331,6 +328,23 @@ contains
     end do
 
   end subroutine activate
+
+  !!
+  !! Return number of energy groups in this database
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function nGroups(self) result(nG)
+    class(baseMgNeutronDatabase), intent(in) :: self
+    integer(shortInt)                        :: nG
+
+    nG = self % nG
+
+  end function nGroups
 
   !!
   !! Return number of energy groups in this database

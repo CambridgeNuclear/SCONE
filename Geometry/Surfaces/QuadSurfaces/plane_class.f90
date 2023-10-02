@@ -10,9 +10,7 @@ module plane_class
   private
 
   !!
-  !! (Axis) Plane
-  !!
-  !! Planes with a normal which is one of the principal axis (x,y or z)
+  !! Generic plane surface
   !!
   !! F(r) = c1 * x + c2 * y + c3 * z - c4
   !!

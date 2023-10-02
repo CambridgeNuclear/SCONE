@@ -160,24 +160,10 @@ contains
     real(defReal)                            :: s1, s2
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
-    ! Obatin XSs
-!    select type( mat => xsData % getMaterial( p % matIdx()))
-!      class is(ceNeutronMaterial)
-!        call mat % getMacroXSs(xss, p % E, p % pRNG)
-!
-!      class is(mgNeutronMaterial)
-!        call mat % getMacroXSs(xss, p % G, p % pRNG)
-!
-!      class default
-!        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
-!
-!    end select
-
     ! Obtain XSs
     mat => neutronMaterial_CptrCast(xsData % getMaterial( p % matIdx()))
     if(.not.associated(mat)) call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
     call mat % getMacroXSs(xss, p)
-
 
     totalXS  = xss % total
     nuFissXS = xss % nuFission

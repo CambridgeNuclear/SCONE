@@ -100,8 +100,9 @@ contains
       type(particleDungeon), intent(inout) :: dungeon
       integer(shortInt), intent(in)        :: n
       class(RNG), intent(in)               :: rand
-      type(RNG)                            :: pRand
+      type(RNG), save                      :: pRand
       integer(shortInt)                    :: i
+      !$omp threadprivate(pRand)
 
       ! Set dungeon size to begin
       call dungeon % setSize(n)
@@ -111,7 +112,7 @@ contains
       !       This should prevent reusing RNs during transport
       !$omp parallel
       pRand = rand
-      !$omp do private(pRand)
+      !$omp do
       do i = 1, n
         call pRand % stride(i)
         call dungeon % replace(self % sampleParticle(pRand), i)

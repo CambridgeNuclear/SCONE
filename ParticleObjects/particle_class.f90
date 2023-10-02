@@ -255,7 +255,7 @@ contains
   !!
   !! Copy phase coordinates into particle
   !!
-  subroutine particle_fromParticleState(LHS,RHS)
+  pure subroutine particle_fromParticleState(LHS,RHS)
     class(particle), intent(inout)   :: LHS
     type(particleState), intent(in)  :: RHS
 
@@ -351,7 +351,7 @@ contains
   !! Return cell index at a given nesting level n
   !!  If no n is given return for lowest nesting level
   !!
-  function getCellIdx(self,n) result(idx)
+  pure function getCellIdx(self,n) result(idx)
     class(particle), intent(in)             :: self
     integer(shortInt),optional, intent(in)  :: n
     integer(shortInt)                       :: idx
@@ -370,7 +370,7 @@ contains
   !!
   !! Return universe index at a given nesting level n
   !!
-  function getUniIdx(self,n) result(idx)
+  pure function getUniIdx(self,n) result(idx)
     class(particle), intent(in)             :: self
     integer(shortInt),optional, intent(in)  :: n
     integer(shortInt)                       :: idx
@@ -489,7 +489,7 @@ contains
   !!
   !! Resets the particle's nesting level
   !!
-  subroutine takeAboveGeom(self)
+  pure subroutine takeAboveGeom(self)
     class(particle), intent(inout) :: self
 
     call self % coords % takeAboveGeom()
@@ -564,7 +564,7 @@ contains
 
     state = self
     call state % display()
-    print *, self % coords % matIdx
+    print *, 'Material: ', self % coords % matIdx
 
   end subroutine display_particle
 
@@ -672,7 +672,13 @@ contains
   subroutine display_particleState(self)
     class(particleState), intent(in) :: self
 
-    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
+    print*, 'Position: ', self % r
+    print*, 'Direction: ', self % dir
+    print*, 'Energy: ', self % E
+    print*, 'Group: ', self % G
+    print*, 'isMG: ', self % isMG
+    print*, 'Weight: ', self % wgt
+    print*, 'Time: ', self % time
 
   end subroutine display_particleState
 

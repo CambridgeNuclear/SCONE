@@ -22,8 +22,14 @@ module eigenPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use geometryFactory_func,           only : new_geometry
+
+  ! Fields
+  use field_inter,                    only : field
+  use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
+  use fieldFactory_func,              only : new_field
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -75,6 +81,7 @@ module eigenPhysicsPackage_class
     type(tallyAdmin),pointer               :: activeTally   => null()
     type(tallyAdmin),pointer               :: inactiveAtch  => null()
     type(tallyAdmin),pointer               :: activeAtch    => null()
+    class(uniFissSitesField),pointer       :: ufsField      => null()
 
 
     ! Settings
@@ -87,6 +94,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
     integer(shortInt)  :: bufferSize
+    logical(defBool)   :: UFS = .false.
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -95,9 +103,6 @@ module eigenPhysicsPackage_class
 
     ! Timer bins
     integer(shortInt) :: timerMain
-    real(defReal) :: activeTime
-    real(defReal) :: inactiveTime
-    integer(shortInt) :: timerParticle
     real (defReal)    :: time_transport = 0.0
     real (defReal)    :: CPU_time_start
     real (defReal)    :: CPU_time_end
@@ -123,9 +128,7 @@ contains
 
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
-    self % inactiveTime = timerTime(self % timerParticle)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
-    self % activeTime = timerTime(self % timerParticle)
     call self % collectResults()
 
     print *
@@ -137,29 +140,29 @@ contains
   !!
   !!
   subroutine cycles(self, tally, tallyAtch, N_cycles)
-    class(eigenPhysicsPackage), intent(inout)   :: self
-    type(tallyAdmin), pointer,intent(inout)     :: tally
-    type(tallyAdmin), pointer,intent(inout)     :: tallyAtch
-    integer(shortInt), intent(in)               :: N_cycles
-    type(particleDungeon), save                 :: buffer
-    integer(shortInt)                           :: i, n, Nstart, Nend, nParticles
-    class(tallyResult),allocatable              :: res
-    type(collisionOperator), save               :: collOp
-    class(transportOperator), allocatable, save :: transOp
-    type(RNG), target, save                     :: pRNG     
-    type(particle), save                        :: neutron
-    real(defReal)                               :: k_old, k_new
-    real(defReal)                               :: elapsed_T, end_T, T_toEnd
+    class(eigenPhysicsPackage), intent(inout) :: self
+    type(tallyAdmin), pointer,intent(inout)   :: tally
+    type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
+    integer(shortInt), intent(in)             :: N_cycles
+    type(particleDungeon), save               :: buffer
+    integer(shortInt)                         :: i, n, Nstart, Nend, nParticles
+    class(tallyResult),allocatable            :: res
+    type(collisionOperator), save             :: collOp
+    class(transportOperator),allocatable,save :: transOp
+    type(RNG), target, save                   :: pRNG
+    type(particle), save                      :: neutron
+    real(defReal)                             :: k_old, k_new
+    real(defReal)                             :: elapsed_T, end_T, T_toEnd
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
     !$omp parallel
     ! Create particle buffer
     call buffer % init(self % bufferSize)
-    
+
     ! Initialise neutron
     neutron % geomIdx = self % geomIdx
-    
+
     ! Create a collision + transport operator which can be made thread private
     collOp = self % collOp
     transOp = self % transOp
@@ -172,8 +175,6 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    call timerReset(self % timerParticle)
-
     do i=1,N_cycles
 
       ! Send start of cycle report
@@ -182,7 +183,6 @@ contains
 
       nParticles = self % thisCycle % popSize()
 
-      call timerStart(self % timerParticle)
       !$omp parallel do schedule(dynamic)
       gen: do n = 1, nParticles
 
@@ -191,10 +191,10 @@ contains
         pRNG = self % pRNG
         neutron % pRNG => pRNG
         call neutron % pRNG % stride(n)
-        
-        ! Obtain particle current cycle dungeon 
+
+        ! Obtain particle current cycle dungeon
         call self % thisCycle % copy(neutron, n)
-        
+
         bufferLoop: do
           call self % geom % placeCoord(neutron % coords)
 
@@ -212,7 +212,7 @@ contains
             call collOp % collide(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
           end do history
-        
+
           ! Clear out buffer
           if (buffer % isEmpty()) then
             exit bufferLoop
@@ -221,19 +221,22 @@ contains
           end if
 
         end do bufferLoop
-      
+
       end do gen
       !$omp end parallel do
-      call timerStop(self % timerParticle)
-      
-      call self % thisCycle % cleanPop() 
-      
+
+      call self % thisCycle % cleanPop()
+
       ! Update RNG
       call self % pRNG % stride(self % pop + 1)
 
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
+
+      if (self % UFS) then
+        call self % ufsField % updateMap()
+      end if
 
       ! Normalise population
       call self % nextCycle % normSize(self % pop, pRNG)
@@ -331,15 +334,9 @@ contains
     name = 'Inactive_Cycles'
     call out % printValue(self % N_inactive,name)
 
-    name = 'inactive_particles_per_s'
-    call out % printValue(self % pop * self % N_inactive /self % inactiveTime,name)
-    
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
     
-    name = 'active_particles_per_s'
-    call out % printValue(self % pop * self % N_active / self % activeTime,name)
-
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
     call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
@@ -383,6 +380,7 @@ contains
     character(nameLen)                        :: nucData, energy, geomName
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
+    class(field), pointer                     :: field
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -395,7 +393,7 @@ contains
     call dict % get( energy, 'dataType')
 
     ! Parallel buffer size
-    call dict % getOrDefault( self % bufferSize, 'buffer', 10)
+    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
 
     ! Process type of data
     select case(energy)
@@ -417,7 +415,6 @@ contains
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')
-    self % timerParticle = registerTimer('particleTime')
 
     ! Initialise RNG
     allocate(self % pRNG)
@@ -449,7 +446,7 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'eigenGeom'
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
@@ -466,6 +463,26 @@ contains
       call viz % makeViz()
       call viz % kill()
     endif
+
+    ! Read uniform fission site option as a geometry field
+    if (dict % isPresent('uniformFissionSites')) then
+      self % ufs = .true.
+      ! Build and initialise
+      tempDict => dict % getDictPtr('uniformFissionSites')
+      call new_field(tempDict, nameUFS)
+      ! Save UFS field
+      field => gr_fieldPtr(gr_fieldIdx(nameUFS))
+      self % ufsField => uniFissSitesField_TptrCast(field)
+      ! Initialise
+      call self % ufsField % estimateVol(self % geom, self % pRNG, self % particleType)
+    end if
+
+    ! Read variance reduction option as a geometry field
+    if (dict % isPresent('varianceReduction')) then
+      ! Build and initialise
+      tempDict => dict % getDictPtr('varianceReduction')
+      call new_field(tempDict, nameWW)
+    end if
 
     ! Build collision operator
     tempDict => dict % getDictPtr('collisionOperator')
