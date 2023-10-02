@@ -18,8 +18,9 @@ module randomRayPhysicsPackage_class
   use coord_class,                    only : coordList
   use geometry_inter,                 only : geometry, distCache
   use geometryStd_class,              only : geometryStd
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx, gr_kill    => kill
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use geometryFactory_func,           only : new_geometry
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat            => nMat, mm_matName => matName
@@ -349,7 +350,7 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'randomRayGeom'
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     self % geomIdx = gr_geomIdx(geomName)
     geom    => gr_geomPtr(self % geomIdx)
 
@@ -1327,7 +1328,6 @@ contains
     integer(shortInt) :: i
 
     ! Clean Nuclear Data, Geometry and visualisation
-    call gr_kill()
     call ndreg_kill()
     call self % viz % kill()
 

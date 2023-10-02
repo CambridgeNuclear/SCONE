@@ -347,23 +347,6 @@ contains
   end function nGroups
 
   !!
-  !! Return number of energy groups in this database
-  !!
-  !! Args:
-  !!   None
-  !!
-  !! Errors:
-  !!   None
-  !!
-  pure function nGroups(self) result(nG)
-    class(baseMgNeutronDatabase), intent(in) :: self
-    integer(shortInt)                        :: nG
-
-    nG = self % nG
-
-  end function nGroups
-
-  !!
   !! Cast nuclearDatabase pointer to baseMgNeutronDatabase type pointer
   !!
   !! Args:
