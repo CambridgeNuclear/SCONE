@@ -1,3 +1,13 @@
+
+
+
+!!
+!! NOTE: With the addition of geometryGrid_class this module is obsolete. I left it in in case any
+!!       parts of it might have other uses but feel free to delete if not
+!!
+
+
+
 !!
 !! Module to help with simplify the process of writing input files, specifically aimed at IMC but
 !! may be useful for other applications if needed
@@ -242,8 +252,13 @@ contains
                           &radii (0); fills (m'//numToChar(i)//');}'
 
         ! Material
+!        write(22, '(8A)') 'm'//numToChar(i)//' {temp '//numToChar(mm_matTemp(matIdx))//'; &
+!                          &composition {} xsFile '//trim(mm_matFile(matIdx))//'; volume '//numToChar(volume)//';}'
+
+        ! Material
         write(22, '(8A)') 'm'//numToChar(i)//' {temp '//numToChar(mm_matTemp(matIdx))//'; &
-                          &composition {} xsFile '//trim(mm_matFile(matIdx))//'; volume '//numToChar(volume)//';}'
+                          &xsFile '//trim(mm_matFile(matIdx))//'; volume '//numToChar(volume)//';}'
+
 
       end if
     end do

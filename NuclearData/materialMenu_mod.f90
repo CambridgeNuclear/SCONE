@@ -348,8 +348,10 @@ contains
     call dict % getOrDefault(self % V, 'volume', ZERO)
 
     ! Get composition dictionary and load composition
-    compDict => dict % getDictPtr('composition')
-    call compDict % keys(keys)
+    if (dict % isPresent('composition')) then
+      compDict => dict % getDictPtr('composition')
+      call compDict % keys(keys)
+    end if
 
     ! Allocate space for nuclide information
     allocate(self % nuclides(size(keys)))
@@ -364,17 +366,20 @@ contains
     end if
 
     ! Load definitions
-    do i =1,size(keys)
-      ! Check if S(a,b) is on and required for that nuclide
-      if (hasSab .and. moderDict % isPresent(keys(i))) then
-        self % nuclides(i) % hasSab = .true.
-        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
-      end if
+    if (associated(compDict)) then
+      do i =1,size(keys)
+        ! Check if S(a,b) is on and required for that nuclide
+        if (hasSab .and. moderDict % isPresent(keys(i))) then
+          self % nuclides(i) % hasSab = .true.
+          call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
+        end if
 
-      ! Initialise the nuclides
-      call compDict % get(self % dens(i), keys(i))
-      call self % nuclides(i) % init(keys(i))
-    end do
+        ! Initialise the nuclides
+        call compDict % get(self % dens(i), keys(i))
+        call self % nuclides(i) % init(keys(i))
+      end do
+
+    end if
 
     ! Save dictionary
     self % extraInfo = dict

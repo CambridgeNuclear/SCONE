@@ -10,6 +10,7 @@ add_sources( ./csg_class.f90
              ./geometryStd_class.f90
              ./geometryReg_mod.f90
              ./discretiseGeom_class.f90
+             ./geometryGrid_class.f90
            )
 
 add_unit_tests( ./Tests/geomGraph_test.f90

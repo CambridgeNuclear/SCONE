@@ -38,6 +38,7 @@ module geometryReg_mod
   ! Geometry
   use geometry_inter,    only : geometry
   use geometryStd_class, only : geometryStd
+  use geometryGrid_class, only : geometryGrid
 
   ! Fields
   use field_inter,              only : field
@@ -74,7 +75,8 @@ module geometryReg_mod
   public :: kill
 
   !! Parameters
-  character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd']
+  character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd ' ,&
+                                                                         'geometryGrid']
   character(nameLen), dimension(*), parameter :: AVAILABLE_FIELDS = ['uniformScalarField',&
                                                                      'uniformVectorField']
   integer(shortInt), parameter :: START_SIZE = 5
@@ -347,6 +349,9 @@ contains
     select case (type)
       case ('geometryStd')
         allocate(geometryStd :: geom)
+
+      case ('geometryGrid')
+        allocate(geometryGrid :: geom)
 
       case default
         print '(A)', 'AVAILABLE GEOMETRIES'

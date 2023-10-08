@@ -397,7 +397,7 @@ contains
   subroutine init(self, dict)
     class(implicitPhysicsPackage), intent(inout)  :: self
     class(dictionary), intent(inout)              :: dict
-    class(dictionary), pointer                    :: tempDict, geomDict, dataDict
+    class(dictionary), pointer                    :: tempDict
     type(dictionary)                              :: locDict1, locDict2, locDict3
     integer(shortInt)                             :: seed_temp
     integer(longInt)                              :: seed
@@ -475,30 +475,12 @@ contains
       print *, 'Energy grid defined: ', nucData
     end if
 
-    ! Automatically split geometry into a uniform grid
-    if (dict % isPresent('discretise')) then
-
-      ! Store dimensions of lattice
-      tempDict => dict % getDictPtr('discretise')
-
-      ! Create new input
-      call discretise(dict, newGeom, newData)
-
-      geomDict => newGeom
-      dataDict => newData
-
-    else
-      geomDict => dict % getDictPtr("geometry")
-      dataDict => dict % getDictPtr("nuclearData")
-
-    end if
-
     ! Build Nuclear Data
-    call ndReg_init(dataDict)
+    call ndReg_init(dict % getDictPtr('nuclearData'))
 
     ! Build geometry
     geomName = 'IMCGeom'
-    call gr_addGeom(geomName, geomDict)
+    call gr_addGeom(geomName, dict % getDictPtr('geometry'))
     self % geomIdx =  gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
@@ -510,19 +492,12 @@ contains
     call newData % kill()
 
     ! Initialise material source
-    if (dict % isPresent('matSource')) then
-      tempDict => dict % getDictPtr('matSource')
-      ! Tell source if we are using IMC or ISMC
-      call tempDict % store('calcType', self % method)
-      call new_source(self % matSource, tempDict, self % geom)
-    else
-      call locDict1 % init(2)
-      call locDict1 % store('type', 'materialSource')
-      ! Tell source if we are using IMC or ISMC
-      call locDict1 % store('calcType', self % method)
-      call new_source(self % matSource, locDict1, self % geom)
-      call locDict1 % kill()
-    end if
+    call locDict1 % init(2)
+    call locDict1 % store('type', 'materialSource')
+    ! Tell source if we are using IMC or ISMC
+    call locDict1 % store('calcType', self % method)
+    call new_source(self % matSource, locDict1, self % geom)
+    call locDict1 % kill()
 
     ! Read external particle source definition
     if( dict % isPresent('source') ) then
