@@ -13,8 +13,7 @@ module geometryGrid_class
   use surface_inter,      only : surface
 
   ! Nuclear Data
-  use materialMenu_mod,   only : nMat                  ,&
-                                 mm_matTemp => matTemp ,&
+  use materialMenu_mod,   only : mm_matTemp => matTemp ,&
                                  mm_matFile => matFile ,&
                                  mm_init    => init    ,&
                                  mm_kill    => kill,&
@@ -125,7 +124,7 @@ contains
 
     ! Get geometry discretisation
     call dict % get(self % latSizeN, 'dimensions')
-    if (size(self % latSizeN) /= 3) call fatalError(Here, 'Dimenions must be of size 3')
+    if (size(self % latSizeN) /= 3) call fatalError(Here, 'Dimensions must be of size 3')
 
     do i = 1, 3
       self % latPitch(i) = (bounds(i+3) - bounds(i)) / self % latSizeN(i)
@@ -175,6 +174,7 @@ contains
           call matDict % store('mat'//numToChar(idxCounter+voidCounter), tempDict)
           call tempDict % kill()
 
+          ! Store matIdx in material array
           self % mats(i,j,z) = idxCounter
 
         end do
@@ -227,6 +227,10 @@ contains
 
     call self % whatIsAt(matIdx, uniqueID, coords % lvl(1) % r)
     coords % matIdx = matIdx
+
+    ! Extra unnecessary info for coords % isPlaced to return true
+    coords % uniqueID = matIdx
+    coords % nesting  = 1
 
   end subroutine placeCoord
 
@@ -298,28 +302,33 @@ contains
     r_bar = (HALF - r_bar + sign(HALF, u)) * self % latPitch
     dist = minval(r_bar / u)                      ! Which direction will result in crossing
 
-    ! Check that distance is valid
-    if (dist <= ZERO) then ! TODO: Also add check for maximum distance?
-      call fatalError(Here, 'Distance invalid: '//numToChar(dist))
-    end if
-
     if (maxDist < dist) then ! Moves within cell
       call coords % moveGlobal(maxDist)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness and compiler
 
+      ! Place coords back into geometry
+      call self % placeCoord(coords)
+
     else ! Move to next cell, increased by NUDGE to avoid numerical issues
       call coords % moveGlobal(dist + NUDGE)
-      event = CROSS_EV
       maxDist = dist + NUDGE
 
+      ! Set matIdx
+      call self % placeCoord(coords)
+
+      ! Apply boundary conditions if leaving geometry
+      if (coords % matIdx == OUTSIDE_MAT) then 
+        event = BOUNDARY_EV
+        call self % explicitBC(coords)
+
+      else
+        ! Cell crossing within geometry - no BCs needed
+        event = CROSS_EV
+
+      end if
+
     end if
-
-    ! Set matIdx
-    call self % placeCoord(coords)
-
-    ! Apply boundary conditions if necessary
-    if (coords % matIdx == OUTSIDE_MAT) call self % explicitBC(coords)
 
   end subroutine move_noCache
 
@@ -355,9 +364,33 @@ contains
     type(coordList), intent(inout) :: coords
     real(defReal), intent(inout)   :: maxDist
     integer(shortInt), intent(out) :: event
+    real(defReal)                  :: dist
+    real(defReal), dimension(3)    :: r, u, r_bar, geomSize
 
-    !TODO
-    call fatalError('moveGlobal (geomGrid)', 'global')
+    ! Calculate distance to next cell crossing
+    r = coords % lvl(1) % r
+    u = coords % lvl(1) % dir
+    geomSize = self % geomBounds(4:6) - self % geomBounds(1:3)
+    r_bar = -r + self % corner + (HALF + sign(HALF, u)) * geomSize
+    dist = minval(r_bar / u)
+
+    if (maxDist < dist) then ! Moves within geometry
+      call coords % moveGlobal(maxDist)
+      event = COLL_EV
+      maxDist = maxDist ! Left for explicitness and compiler
+
+      ! Place coords back into geometry
+      call self % placeCoord(coords)
+
+    else ! Hit geometry bounds, increased by NUDGE to avoid numerical issues
+      call coords % moveGlobal(dist + NUDGE)
+      event = BOUNDARY_EV
+      maxDist = dist + NUDGE
+
+      ! Apply boundary conditions
+      if (coords % matIdx == OUTSIDE_MAT) call self % explicitBC(coords)
+
+    end if
 
   end subroutine moveGlobal
 
@@ -382,7 +415,6 @@ contains
     ! If point is outside apply boundary transformations
     if (coords % matIdx == OUTSIDE_MAT) then
       call self % explicitBC(coords)
-      call self % placeCoord(coords)
     end if
 
   end subroutine teleport
