@@ -23,7 +23,8 @@ module materialEquations
 
   character(nameLen),dimension(*),parameter :: AVAILABLE_equations = ['marshak ',&
                                                                       'hohlraum',&
-                                                                      'olson1D ']
+                                                                      'olson1D ',&
+                                                                      'densmore']
 
   public :: evaluateCv
   public :: evaluateSigma
@@ -71,6 +72,9 @@ module materialEquations
       case('olson1D')
         cv = cvOlson1D(T)
 
+      case('densmore')
+        cv = 0.1
+
       case default
         cv = ZERO
         print *, AVAILABLE_equations
@@ -105,6 +109,9 @@ module materialEquations
 
       case('olson1D')
         sigma = sigmaOlson1D(T, E)
+
+      case('densmore')
+        sigma = 10 / (E**3 * sqrt(T))
 
       case default
         sigma = ZERO

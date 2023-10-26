@@ -307,6 +307,8 @@ contains
       dir(2) = sqrt(1-mu**2) * cos(phi)
       dir(3) = sqrt(1-mu**2) * sin(phi)
       call p % point(dir)
+      ! Resample energy
+      p % G = nucData % sampleEnergyGroup(matIdx, p % pRNG)
     end if
 
   end subroutine materialTransform

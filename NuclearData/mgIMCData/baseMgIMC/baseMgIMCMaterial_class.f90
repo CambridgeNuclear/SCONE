@@ -186,7 +186,6 @@ contains
     class(dictionary),target, intent(in)        :: dict
     integer(shortInt)                           :: nG, N, i
     real(defReal)                               :: dT, tempT, tempU
-    real(defReal), dimension(:), allocatable    :: temp
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
     ! Read number of groups
@@ -400,9 +399,9 @@ contains
 
       ! Protect against infinite loop
       i = i+1
-      if (i > 1000000) then
-        print *, U, self % energyDens
-        call fatalError(Here, "1,000,000 iterations without convergence")
+      if (i > 100000) then
+        print *, 'Energy density: ', self % energyDens
+        call fatalError(Here, "100,000 iterations without convergence, maybe NaN energy density?")
       end if
       ! Increase step size to avoid lack of convergence due to very small starting temperature
       if (mod(i,1000)==0) dT = 10*dT
@@ -436,12 +435,12 @@ contains
   end function tempFromEnergy
 
   !!
-  !! Calculate sigma from current temp
+  !! Calculate opacities from current temp
   !!
   subroutine sigmaFromTemp(self)
     class(baseMgIMCMaterial), intent(inout) :: self
-    integer(shortInt)                       :: i, j
-    real(defReal)                           :: sigmaP, E, EStep, increase, sigmaA, norm
+    integer(shortInt)                       :: i, j, stepsPerGroup
+    real(defReal)                           :: sigmaP, E, EStep, increase, upper, lower
     character(100), parameter :: Here = 'sigmaFromTemp (baseMgIMCMaterial_class.f90)'
 
     ! Evaluate opacities for grey case
@@ -456,42 +455,35 @@ contains
 
     ! Evaluate opacities for frequency-dependent case
     do i = 1, self % nGroups()
-      ! Calculate central energy value of group
-      E = (mgEnergyGrid % bin(i) + mgEnergyGrid % bin(i+1)) / 2
-      ! Evaluate absorption opacity sigma(T, E)
-      self % data(CAPTURE_XS,i)   = evaluateSigma(self % name, self % T, E)
+      ! Take geometric mean of upper and lower group boundaries
+      upper = evaluateSigma(self % name, self % T, mgEnergyGrid % bin(i))
+      lower = evaluateSigma(self % name, self % T, mgEnergyGrid % bin(i+1))
+      self % data(CAPTURE_XS,i) = sqrt(upper*lower) !min(1e5_defReal, sqrt(o1 * o2))
+
+      upper = upper * normPlanckSpectrum(mgEnergyGrid % bin(i), self % T)
+      lower = lower * normPlanckSpectrum(mgEnergyGrid % bin(i+1), self % T)
+      self % data(EMISSION_PROB,i) = sqrt(upper*lower)
+      self % data(EMISSION_PROB,i) = self % data(EMISSION_PROB,i)*(mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1))
+
     end do
     self % data(IESCATTER_XS,:) = ZERO
     self % data(TOTAL_XS,:)     = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
+    self % data(EMISSION_PROB,:) = self % data(EMISSION_PROB,:)/sum(self % data(EMISSION_PROB,:))
 
-    ! Evaluate opacities
-    sigmaP = ZERO ! For Planck opacity, integrate over entire frequency domain
+    ! Evaluate Planck opacity via a much finer numerical integration
+    sigmaP = ZERO
     do i = 1, self % nGroups()
-      ! For CAPTURE_XS, integrate over each energy group
-      sigmaA = ZERO
-      ! Normalise CAPTURE_XS after weighting with planck spectrum
-      norm = ZERO
-      ! 100 integration steps per energy group, chosen arbitrarily
-      EStep = (mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1)) / 100
+      ! 100 integration steps per energy group seems to give very good accuracy, might be worth playing around with
+      stepsPerGroup = 100
+      EStep = (mgEnergyGrid % bin(i) - mgEnergyGrid % bin(i+1)) / stepsPerGroup
       E = mgEnergyGrid % bin(i) - 0.5*EStep
-      do j = 1, 100
+      do j = 1, stepsPerGroup
         increase = normPlanckSpectrum(E, self % T)*evaluateSigma(self % name, self % T, E)
         sigmaP = sigmaP + EStep * increase
-        norm = norm + normPlanckSpectrum(E, self % T)
-        sigmaA = sigmaA + increase
         E = E - EStep
       end do
-      if (sigmaA /= ZERO) sigmaA = sigmaA / norm
-      self % data(CAPTURE_XS, i) = sigmaA
     end do
-
-    ! Set cross sections
     self % sigmaP = sigmaP
-    self % data(TOTAL_XS,:) = self % data(CAPTURE_XS,:) + self % data(IESCATTER_XS,:)
-
-    ! Set emission probability of each group - proportional to sigmaA
-    self % data(EMISSION_PROB,:) = self % data(CAPTURE_XS,:) / sum(self % data(CAPTURE_XS,:))
-
 
   end subroutine sigmaFromTemp
 
@@ -629,11 +621,8 @@ contains
     class(baseMgIMCMaterial), intent(inout) :: self
     class(RNG), intent(inout)               :: rand
     real(defReal)                           :: t
-    integer(shortInt)                       :: G
 
-    G = 1
-
-    t = -log(rand % get()) / (self % data(CAPTURE_XS,G) * self % fleck * self % eta * lightSpeed)
+    t = -log(rand % get()) / (self % sigmaP * self % fleck * self % eta * lightSpeed)
 
   end function sampleTransformTime
 
