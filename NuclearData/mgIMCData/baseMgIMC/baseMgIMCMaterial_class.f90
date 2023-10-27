@@ -77,6 +77,8 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: energyDens     ! Energy density = matEnergy/V
     real(defReal)                             :: eta            ! aT^4/energyDens, used for ISMC only
     integer(shortInt)                         :: calcType       ! IMC or ISMC
+    real(defReal)                             :: sigmaFactor
+    real(defReal)                             :: cvFactor
 
   contains
     ! Superclass procedures
@@ -206,6 +208,10 @@ contains
     ! Get name of equations for heat capacity and opacity calculations
     call dict % get(self % name, 'equations')
 
+    ! Get optional multiplication factor for heat capacity and opacity
+    call dict % getOrDefault(self % sigmaFactor, 'sigmaMultiple', ONE)
+    call dict % getOrDefault(self % cvFactor, 'cvMultiple', ONE)
+
     ! Read initial temperature and volume
     call dict % get(self % T, 'T')
     call dict % get(self % V, 'V')
@@ -221,7 +227,7 @@ contains
       tempU = tempU + dT * evaluateCv(self % name, tempT)
       tempT = tempT + dT
     end do
-    self % energyDens = tempU
+    self % energyDens = tempU * self % cvFactor
     self % matEnergy  = self % energyDens * self % V
 
   end subroutine init
@@ -408,7 +414,7 @@ contains
 
       ! Increment temperature and increment the corresponding energy density
       tempT = T + dT/2
-      increase = dT * evaluateCv(self % name, tempT)
+      increase = dT * evaluateCv(self % name, tempT) * self % cvFactor
       ! Protect against division by 0 or other numerical errors
       if (increase /= increase .or. increase > INF) increase = ZERO
       tempU = U + increase
@@ -445,7 +451,7 @@ contains
 
     ! Evaluate opacities for grey case
     if (self % nGroups() == 1) then
-      self % data(CAPTURE_XS,1)   = evaluateSigma(self % name, self % T, ONE)
+      self % data(CAPTURE_XS,1)   = evaluateSigma(self % name, self % T, ONE) * self % sigmaFactor
       self % data(IESCATTER_XS,1) = ZERO
       self % data(TOTAL_XS,1)     = self % data(CAPTURE_XS,1) + self % data(IESCATTER_XS,1)
       ! Planck opacity equal to absorption opacity for single frequency
@@ -458,7 +464,7 @@ contains
       ! Take geometric mean of upper and lower group boundaries
       upper = evaluateSigma(self % name, self % T, mgEnergyGrid % bin(i))
       lower = evaluateSigma(self % name, self % T, mgEnergyGrid % bin(i+1))
-      self % data(CAPTURE_XS,i) = sqrt(upper*lower) !min(1e5_defReal, sqrt(o1 * o2))
+      self % data(CAPTURE_XS,i) = sqrt(upper*lower)*self % sigmaFactor !min(1e5_defReal, sqrt(o1 * o2))
 
       upper = upper * normPlanckSpectrum(mgEnergyGrid % bin(i), self % T)
       lower = lower * normPlanckSpectrum(mgEnergyGrid % bin(i+1), self % T)
@@ -483,7 +489,7 @@ contains
         E = E - EStep
       end do
     end do
-    self % sigmaP = sigmaP
+    self % sigmaP = sigmaP * self % sigmaFactor
 
   end subroutine sigmaFromTemp
 
@@ -496,7 +502,7 @@ contains
     character(100), parameter               :: Here = 'updateFleck (baseMgIMCMaterial_class.f90)'
 
     ! Calculate beta, ratio of radiation and material heat capacities
-    beta = 4 * radiationConstant * self % T**3 / evaluateCv(self % name, self % T)
+    beta = 4 * radiationConstant * self % T**3 / (evaluateCv(self % name, self % T)*self % cvFactor)
 
     ! Use time step size to calculate fleck factor
     select case(self % calcType)
