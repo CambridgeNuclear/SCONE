@@ -335,19 +335,19 @@ contains
   !!  then update temperature-dependent properties
   !!
   !! Args:
-  !!   tallyEnergy [in] -> Energy absorbed into material
-  !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
+  !!   tallyEnergy [in]    -> Energy absorbed into material
+  !!   loud [in, optional] -> Bool, if true then will print updates to screen
   !!
-  subroutine updateMat(self, tallyEnergy, printUpdate)
+  subroutine updateMat(self, tallyEnergy, loud)
     class(baseMgIMCMaterial),intent(inout)  :: self
     real(defReal), intent(in)               :: tallyEnergy
-    logical(defBool), intent(in), optional  :: printUpdate
+    logical(defBool), intent(in), optional  :: loud
+    real(defReal)                           :: prevTemp, change
     character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
 
-    ! TODO: Print updates if requested
-
-    ! Save previous energy
+    ! Save previous energy and temperature
     self % prevMatEnergy = self % matEnergy
+    prevTemp = self % T
 
     ! Update material internal energy
     if (self % calcType == IMC) then
@@ -372,6 +372,25 @@ contains
 
     ! Update fleck factor
     call self % updateFleck()
+
+    ! Print updates if requested
+    if (present(loud)) then
+      if (loud) then
+        change = self % matEnergy - self % prevMatEnergy
+        if (change < ZERO) then
+          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//'    ( -'//numToChar(abs(change))//')'
+        else
+          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//'    ( +'//numToChar(change)//')'
+        end if
+        change = self % T - prevTemp
+        if (change < ZERO) then
+          print *, '    Mat Temperature ='//numToChar(self % T)//'    ( -'//numToChar(abs(change))//')'
+        else
+          print *, '    Mat Temperature ='//numToChar(self % T)//'    ( +'//numToChar(change)//')'
+        end if
+
+      end if
+    end if
 
   end subroutine updateMat
 

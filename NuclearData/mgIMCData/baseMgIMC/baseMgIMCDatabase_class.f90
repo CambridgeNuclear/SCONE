@@ -17,7 +17,7 @@ module baseMgIMCDatabase_class
   use nuclideHandle_inter,     only : nuclideHandle
   use reactionHandle_inter,    only : reactionHandle
   use materialMenu_mod,        only : materialItem, mm_getMatPtr => getMatPtr, mm_nMat => nMat, &
-                                      mm_nameMap => nameMap
+                                      mm_nameMap => nameMap, mm_matName => matName
 
   ! baseMgIMC Objects
   use baseMgIMCMaterial_class, only : baseMgIMCMaterial
@@ -289,7 +289,10 @@ contains
 
     ! Update mats to be printed (if any), not in parallel to allow correct order of console output
     do i = 1, printUpdates
+      print *
+      print *, '  Material update for '//trim(mm_matName(i))//':'
       call self % mats(i) % updateMat(tallyEnergy(i), .true.)
+      if (i == printUpdates) print *
     end do
 
     ! Update remaining mats
