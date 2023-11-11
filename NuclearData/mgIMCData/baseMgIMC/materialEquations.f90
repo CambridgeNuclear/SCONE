@@ -111,7 +111,7 @@ module materialEquations
         sigma = sigmaOlson1D(T, E)
 
       case('densmore')
-        sigma = 10 / (E**3 * sqrt(T))
+        sigma = ONE / (E**3 * sqrt(T))
 
       case default
         sigma = ZERO

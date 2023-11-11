@@ -70,13 +70,13 @@ module baseMgIMCDatabase_class
     procedure :: updateProperties
     procedure :: setCalcType
     procedure :: sampleTransformTime
+    procedure :: sampleEnergyGroup
     procedure :: kill
     procedure :: init
     procedure :: activate
 
     ! Local interface
     procedure :: nGroups
-    procedure :: sampleEnergyGroup
 
   end type baseMgIMCDatabase
 

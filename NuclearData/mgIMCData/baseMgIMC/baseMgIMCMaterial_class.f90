@@ -7,6 +7,7 @@ module baseMgIMCMaterial_class
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
   use poly_func
+  use simulationTime_class,    only : timeStep
 
   ! Nuclear Data Interfaces
   use materialHandle_inter,    only : materialHandle
@@ -14,7 +15,6 @@ module baseMgIMCMaterial_class
   use IMCXSPackages_class,     only : IMCMacroXSs
   use materialEquations
 
-  use simulationTime_class,    only : timeStep
 
   implicit none
   private
@@ -52,7 +52,6 @@ module baseMgIMCMaterial_class
   !!   updateMat            -> update material properties as required for IMC calculation  
   !!   getEmittedRad        -> returns the radiation to be emitted in current timestep
   !!   getFleck             -> returns current material Fleck factor
-  !!   getEta               -> returns current value of eta (ISMC only)
   !!   getTemp              -> returns current material temperature
   !!   getMatEnergy         -> returns energy of material
   !!   setCalcType          -> set to IMC or ISMC
@@ -77,28 +76,28 @@ module baseMgIMCMaterial_class
     real(defReal)                             :: energyDens     ! Energy density = matEnergy/V
     real(defReal)                             :: eta            ! aT^4/energyDens, used for ISMC only
     integer(shortInt)                         :: calcType       ! IMC or ISMC
-    real(defReal)                             :: sigmaFactor
-    real(defReal)                             :: cvFactor
+    real(defReal)                             :: sigmaFactor ! Constant to multiply sigma by
+    real(defReal)                             :: cvFactor    ! Constant to multiply heat capacity by
 
   contains
     ! Superclass procedures
     procedure :: kill
     procedure :: getMacroXSs_byG
     procedure :: getTotalXS
+    procedure :: getFleck
+    procedure :: getTemp
 
     ! Local procedures
     procedure :: init
     procedure :: nGroups
     procedure :: updateMat
     procedure :: getEmittedRad
-    procedure :: getFleck
-    procedure :: getEta
-    procedure :: getTemp
     procedure :: getMatEnergy
     procedure :: setCalcType
     procedure :: sampleEnergyGroup
     procedure :: sampleTransformTime
 
+    ! Private local procedures
     procedure, private :: tempFromEnergy
     procedure, private :: sigmaFromTemp
     procedure, private :: updateFleck
@@ -550,19 +549,6 @@ contains
     fleck = self % fleck
 
   end function getFleck
-
-  !!
-  !! Return eta = aT**4/U_m
-  !!
-  !! Currently only used in transportOperatorIMC_class.f90 for ISMC calculations
-  !!
-  function getEta(self) result(eta)
-    class(baseMgIMCMaterial),intent(in) :: self
-    real(defReal)                       :: eta
-
-    eta = self % eta
-
-  end function getEta
 
   !!
   !! Get temperature of material

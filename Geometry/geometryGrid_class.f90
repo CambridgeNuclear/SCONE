@@ -468,7 +468,8 @@ contains
     class(geometryGrid), intent(in)              :: self
     integer(shortInt), dimension(:), allocatable :: matList
 
-    matList = reshape(self % mats, (/1/))
+    !TODO: For some reason this gives a warning after compiling, can't figure out why?
+    matList = reshape(self % mats,[size(self % mats)])
 
   end function activeMats
 

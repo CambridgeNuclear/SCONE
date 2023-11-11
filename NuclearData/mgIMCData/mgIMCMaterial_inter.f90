@@ -43,14 +43,8 @@ module mgIMCMaterial_inter
     ! Local procedures
     procedure(getMacroXSs_byG), deferred    :: getMacroXSs_byG
     procedure(getTotalXS), deferred         :: getTotalXS
-    procedure(updateMat), deferred          :: updateMat
-    procedure(getEmittedRad), deferred      :: getEmittedRad
     procedure(getFleck), deferred           :: getFleck
-    procedure(getEta), deferred             :: getEta
     procedure(getTemp), deferred            :: getTemp
-    procedure(getMatEnergy), deferred       :: getMatEnergy
-    procedure(setCalcType), deferred        :: setCalcType
-    procedure(sampleTransformTime), deferred :: sampleTransformTime
 
   end type mgIMCMaterial
 
@@ -96,32 +90,6 @@ module mgIMCMaterial_inter
     end function getTotalXS
 
     !!
-    !! Update material properties at each time step
-    !! First update energy using simple balance, then solve for temperature,
-    !!  then update temperature-dependent properties
-    !!
-    !! Args:
-    !!   tallyEnergy [in] -> Energy absorbed into material
-    !!   printUpdate [in, optional] -> Bool, if true then will print updates to screen
-    !!
-    subroutine updateMat(self, tallyEnergy, printUpdate)
-      import :: mgIMCMaterial, defReal, defBool
-      class(mgIMCMaterial), intent(inout)    :: self
-      real(defReal), intent(in)              :: tallyEnergy
-      logical(defBool), intent(in), optional :: printUpdate
-    end subroutine updateMat
-
-    !!
-    !! Return the equilibrium radiation energy density, U_r
-    !!
-    function getEmittedRad(self) result(emittedRad)
-      import :: mgIMCMaterial, defReal, RNG
-      class(mgIMCMaterial), intent(inout) :: self
-      !class(RNG), intent(inout)           :: rand
-      real(defReal)                       :: emittedRad
-    end function getEmittedRad
-
-    !!
     !! Return Fleck factor
     !!
     function getFleck(self) result(fleck)
@@ -130,17 +98,6 @@ module mgIMCMaterial_inter
       real(defReal)                    :: fleck
     end function getFleck
 
-    !!
-    !! Return eta = aT**4/U_m
-    !!
-    !! Currently only used in transportOperatorIMC_class.f90 for ISMC calculations
-    !!
-    function getEta(self) result(eta)
-      import :: mgIMCMaterial, defReal
-      class(mgIMCMaterial),intent(in) :: self
-      real(defReal)                   :: eta
-    end function getEta
-
     !! Get temperature of material
     !!
     function getTemp(self) result(T)
@@ -148,42 +105,6 @@ module mgIMCMaterial_inter
       class(mgIMCMaterial), intent(inout) :: self
       real(defReal)                       :: T
     end function getTemp
-
-    !!
-    !! Return material energy
-    !!
-    function getMatEnergy(self) result(energy)
-      import :: mgIMCMaterial, defReal
-      class(mgIMCMaterial), intent(inout) :: self
-      real(defReal)                       :: energy
-    end function getMatEnergy
-
-    !!
-    !! Set the calculation type to be used
-    !!
-    !! Current options:
-    !!   IMC
-    !!   ISMC
-    !!
-    !! Errors:
-    !!   Unrecognised option
-    !!
-    subroutine setCalcType(self, calcType)
-      import :: mgIMCMaterial, shortInt
-      class(mgIMCMaterial), intent(inout) :: self
-      integer(shortInt), intent(in)       :: calcType
-    end subroutine setCalcType
-
-    !!
-    !! Sample the time taken for a material particle to transform into a photon
-    !! Used for ISMC only
-    !!
-    function sampleTransformTime(self, rand) result(t)
-      import :: mgIMCMaterial, RNG, defReal
-      class(mgIMCMaterial), intent(inout) :: self
-      class(RNG), intent(inout)           :: rand
-      real(defReal)                       :: t
-    end function sampleTransformTime
 
   end interface
 

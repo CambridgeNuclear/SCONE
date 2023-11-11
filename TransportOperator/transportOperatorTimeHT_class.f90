@@ -329,7 +329,7 @@ contains
     call init_super(self, dict)
 
     ! Get tracking method
-    call dict % getOrDefault(method, 'method', 'HT')
+    call dict % getOrDefault(method, 'method', 'ST')
 
     select case (method)
 
