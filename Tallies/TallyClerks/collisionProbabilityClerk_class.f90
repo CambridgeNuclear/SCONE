@@ -168,17 +168,21 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(collisionProbabilityClerk), intent(inout) :: self
     class(particle), intent(in)                     :: p
     class(nuclearDatabase),intent(inout)            :: xsData
     type(scoreMemory), intent(inout)                :: mem
+    logical(defBool), intent(in)                    :: virtual
     type(particleState)                             :: state
     integer(shortInt)                               :: sIdx, cIdx
     integer(longInt)                                :: addr
     real(defReal)                                   :: score
     class(neutronMaterial), pointer                 :: mat
     character(100), parameter :: Here = 'reportInColl (collisionProbabilityClerk_class.f90)'
+
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
     ! Get material or return if it is not a neutron
     mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
