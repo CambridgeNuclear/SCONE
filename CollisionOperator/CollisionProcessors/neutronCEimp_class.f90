@@ -500,7 +500,10 @@ contains
     real(defReal), dimension(3)          :: val
     real(defReal)                        :: minWgt, maxWgt, avWgt
 
-    if (p % E < self % minE) then
+    if (p % isDead) then
+    ! Do nothing
+
+    elseif (p % E < self % minE) then
       p % isDead = .true.
 
     ! Weight Windows treatment
