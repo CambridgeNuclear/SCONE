@@ -165,14 +165,15 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(tallyClerkSlot), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
 
     ! Pass call to instance in the slot
-    call self % slot % reportInColl(p, xsData, mem)
+    call self % slot % reportInColl(p, xsData, mem, virtual)
 
   end subroutine reportInColl
 

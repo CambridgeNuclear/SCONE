@@ -120,7 +120,7 @@ contains
     ! Note: the ordering must not be changed between feeding the particle to the tally
     ! and updating the particle's preCollision state, otherwise this may cause certain 
     ! tallies (e.g., collisionProbability) to return dubious results
-    call tally % reportInColl(p)
+    call tally % reportInColl(p, .false.)
     call p % savePreCollision()
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
