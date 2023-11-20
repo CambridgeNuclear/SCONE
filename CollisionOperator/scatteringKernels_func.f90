@@ -303,7 +303,7 @@ contains
     ! Calculate Acceptance Propability
     P_acc = rel_v / (Y + X)
 
-    ! Verigy acceptance condition
+    ! Verify acceptance condition
     if (P_acc > r3) then
       accept = .true.
     else
