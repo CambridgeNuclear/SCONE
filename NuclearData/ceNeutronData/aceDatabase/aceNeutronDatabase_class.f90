@@ -732,7 +732,7 @@ contains
       ! Find the nucIdxs of the 0K DBRC nuclides
       idx0K = nucSet % get(nuc0K)
 
-      ! Loop through nucSec to find the nucIdxs of the DBRC nuclides with
+      ! Loop through nucSet to find the nucIdxs of the DBRC nuclides with
       ! temperature different from 0K
       j = nucSet % begin()
       do while (j /= nucSet % end())
