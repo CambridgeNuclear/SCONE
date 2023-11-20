@@ -95,16 +95,18 @@ module aceNeutronNuclide_class
   !!
   !! Interface:
   !!   ceNeutronNuclide Interface
-  !!   search    -> search energy grid and return index and interpolation factor
-  !!   totalXS   -> return totalXS given index and interpolation factor
-  !!   microXSs  -> return interpolated ceNeutronMicroXSs package given index and inter. factor
-  !!   getUrrXSs -> return ceNeutronMicroXSs accounting for ures probability tables
-  !!   getThXSs  -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
-  !!   init      -> build nuclide from aceCard
-  !!   init_urr  -> build list and mapping of nuclides to maintain temperature correlation
-  !!                when reading ures probability tables
-  !!   init_Sab  -> builds S(a,b) propertied from aceCard
-  !!   display   -> print information about the nuclide to the console
+  !!   search          -> search energy grid and return index and interpolation factor
+  !!   totalXS         -> return totalXS given index and interpolation factor
+  !!   scatterXS       -> return elastic scattering XS given index and interpolation factor
+  !!   microXSs        -> return interpolated ceNeutronMicroXSs package given index and inter. factor
+  !!   getUrrXSs       -> return ceNeutronMicroXSs accounting for ures probability tables
+  !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
+  !!   elScatteringMaj -> returns the elastic scattering majorant within an energy range given as input
+  !!   init            -> build nuclide from aceCard
+  !!   init_urr        -> build list and mapping of nuclides to maintain temperature correlation
+  !!                      when reading ures probability tables
+  !!   init_Sab        -> builds S(a,b) propertied from aceCard
+  !!   display         -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
     character(nameLen)                          :: ZAID    = ''
@@ -133,14 +135,17 @@ module aceNeutronNuclide_class
     ! Superclass Interface
     procedure :: invertInelastic
     procedure :: xsOf
+    procedure :: elScatteringXS
     procedure :: kill
 
     ! Local interface
     procedure :: search
     procedure :: totalXS
+    procedure :: scatterXS
     procedure :: microXSs
     procedure :: getUrrXSs
     procedure :: getThXSs
+    procedure :: elScatteringMaj
     procedure :: init
     procedure :: init_urr
     procedure :: init_Sab
@@ -270,6 +275,25 @@ contains
   end function xsOf
 
   !!
+  !! Return value of the elastic scattering XS given neutron energy
+  !!
+  !! See ceNeutronNuclide documentation
+  !!
+  function elScatteringXS(self, E) result(xs)
+    class(aceNeutronNuclide), intent(in) :: self
+    real(defReal), intent(in)            :: E
+    real(defReal)                        :: xs
+    integer(shortInt)                    :: idx
+    real(defReal)                        :: f
+
+    ! Find energy index
+    call self % search(idx, f, E)
+    ! Retrieve cross section
+    xs = self % scatterXS(idx, f)
+
+  end function elScatteringXS
+
+  !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
@@ -358,6 +382,32 @@ contains
     xs = self % mainData(TOTAL_XS, idx+1) * f + (ONE-f) * self % mainData(TOTAL_XS, idx)
 
   end function totalXS
+
+  !!
+  !! Return value of the elastic scattering XS given interpolation factor and index
+  !!
+  !! Does not perform any check for valid input!
+  !!
+  !! Args:
+  !!   idx [in] -> index of the bottom bin in nuclide Energy-Grid
+  !!   f [in]   -> interpolation factor in [0;1]
+  !!
+  !! Result:
+  !!   xs = sigma(idx+1) * f + (1-f) * sigma(idx)
+  !!
+  !! Errors:
+  !!   Invalid idx beyond array bounds -> undefined behaviour
+  !!   Invalid f (outside [0;1]) -> incorrect value of XS
+  !!
+  elemental function scatterXS(self, idx, f) result(xs)
+    class(aceNeutronNuclide), intent(in) :: self
+    integer(shortInt), intent(in)        :: idx
+    real(defReal), intent(in)            :: f
+    real(defReal)                        :: xs
+
+    xs = self % mainData(ESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(ESCATTER_XS, idx)
+
+  end function scatterXS
 
   !!
   !! Return interpolated neutronMicroXSs package for the given interpolation factor and index
@@ -533,6 +583,50 @@ contains
                   xss % fission
 
   end subroutine getUrrXSs
+
+  !! Function to calculate the maximum elastic scattering cross section within
+  !! an energy range given by an upper and lower energy bound.
+  !!
+  !! Args:
+  !!   upperE [in]  -> Upper bound of energy range
+  !!   upperE [in]  -> Upper bound of energy range
+  !!   maj [out]    -> Maximum scattering cross section within energy range
+  !!
+  function elScatteringMaj(self, lowerE, upperE) result (maj)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: lowerE
+    real(defReal), intent(in)             :: upperE
+    real(defReal)                         :: maj
+    integer(shortInt)                     :: idx
+    real(defReal)                         :: f, E, xs
+
+    ! Search for idx, f, and xs for the lower energy limit
+    call self % search(idx, f, lowerE)
+
+    ! Conservative: choose the xs at the energy point before the lower energy limit
+    f = 0
+    maj = self % scatterXS(idx, f)
+
+    majorantLoop: do
+
+      ! Increase index
+      idx = idx + 1
+
+      ! Find XS and energy at index
+      xs = self % mainData(ESCATTER_XS, idx)
+      E = self % eGrid(idx)
+
+      ! Compare cross sections and possibly update majorant
+      if (xs > maj) then
+        maj = xs
+      end if
+
+      ! Exit loop after getting to the upper energy limit
+      if (E > upperE) exit majorantLoop
+
+    end do majorantLoop
+
+  end function elScatteringMaj
 
   !!
   !! Initialise from an ACE Card
