@@ -208,11 +208,12 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(mgXsClerk), intent(inout)       :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
@@ -220,6 +221,9 @@ contains
     integer(shortInt)                     :: enIdx, matIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
+
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
     ! Get current particle state
     state = p
@@ -308,7 +312,7 @@ contains
 
     ! Score in case of scattering events
     select case(MT)
-      case ( N_N_ELASTIC, N_N_INELASTIC, N_Nl(1):N_Nl(40), N_Ncont,         &
+      case ( N_N_ELASTIC, N_N_INELASTIC, N_N_ThermINEL, N_Nl(1):N_Nl(40), N_Ncont, &
              N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
              N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 

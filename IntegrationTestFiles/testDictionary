@@ -5,6 +5,8 @@ intArray (1 2 4 5);
 realArray (      1
                2.2  3.5 )   ; // a bit of weird formatting
 charArray (One element );
+!Another comment
 subDict{ myInt 3; myReal 3.2; } ! Note lack of space
 
+//Line comment without space after marker. This case caused a bug at some point
 subDict2 { myInt 4; myReal 17.0;}

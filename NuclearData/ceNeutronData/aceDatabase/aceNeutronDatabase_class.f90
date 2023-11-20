@@ -376,7 +376,7 @@ contains
         nucIdx = self % materials(matIdx) % nuclides(i)
 
         ! Update if needed
-        if(cache_nuclideCache(nucIdx) % E_tail /= E) then
+        if (cache_nuclideCache(nucIdx) % E_tail /= E .or. cache_nuclideCache(nucIdx) % E_tot /= E) then
           call self % updateMicroXSs(E, nucIdx, rand)
         end if
 
