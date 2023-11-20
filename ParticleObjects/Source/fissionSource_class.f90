@@ -3,7 +3,8 @@ module fissionSource_class
   use numPrecision
   use endfConstants
   use universalVariables,      only : OUTSIDE_MAT, VOID_MAT
-  use genericProcedures,       only : fatalError, rotateVector
+  use genericProcedures,       only : rotateVector, numToChar
+  use errors_mod,              only : fatalError
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
 
@@ -28,17 +29,17 @@ module fissionSource_class
   !! Neutron Source from distributed fission sites
   !!
   !! Places fission sites uniformly in regions with fissile material.
-  !! Spectrum of the fission neutron is such as if it fission was caused by incdent
-  !! neutron with CE energy E or MG with group G.
+  !! Spectrum of the fission neutron is such as if it fission was caused by
+  !! incident neutron with CE energy E or MG with group G.
   !! Angular distribution is isotropic.
   !!
   !! Private members:
-  !!   isMG   -> is the source multi-group? (default = .false.)
-  !!   bottom -> Bottom corner (x_min, y_min, z_min)
-  !!   top    -> Top corner (x_max, y_max, z_max)
-  !!   E      -> Fission site energy [MeV] (default = 1.0E-6)
-  !!   G      -> Fission site Group (default = 1)
-  !!
+  !!   isMG     -> is the source multi-group? (default = .false.)
+  !!   bottom   -> Bottom corner (x_min, y_min, z_min)
+  !!   top      -> Top corner (x_max, y_max, z_max)
+  !!   E        -> Fission site energy [MeV] (default = 1.0E-6)
+  !!   G        -> Fission site Group (default = 1)
+  !!   attempts -> Maximum number of attempts to find a fissile material
   !! Interface:
   !!   source_inter Interface
   !!
@@ -48,6 +49,9 @@ module fissionSource_class
   !!     #data MG; #
   !!     #E 15.0;  #
   !!     #G 7;     #
+  !!     #attempts 100000; # (default: 10000)
+  !!     #top (1.0 1.0 1.0);    #
+  !!     #bottom (0.0 0.0 0.0); #
   !!   }
   !!
   type, public,extends(source) :: fissionSource
@@ -57,6 +61,7 @@ module fissionSource_class
     real(defReal), dimension(3) :: top    = ZERO
     real(defReal)               :: E      = ZERO
     integer(shortInt)           :: G      = 0
+    integer(shortInt)           :: attempts = 10000
   contains
     procedure :: init
     procedure :: sampleParticle
@@ -76,6 +81,7 @@ contains
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: type
     real(defReal), dimension(6)              :: bounds
+    real(defReal), allocatable, dimension(:) :: temp
     character(100), parameter :: Here = 'init (fissionSource_class.f90)'
 
     ! Provide geometry info to source
@@ -98,10 +104,39 @@ contains
     call dict % getOrDefault(self % E, 'E', 1.0E-6_defReal)
     call dict % getOrDefault(self % G, 'G', 1)
 
+    ! Load the number of allowed attempts
+    call dict % getOrDefault(self % attempts, 'attempts', 10000)
+
+    if (self % attempts < 1) then
+      call fatalError(Here, 'Number of attempts must be greater than 0. Is: ' // numToChar(self % attempts))
+    end if
+
     ! Set bounding region
-    bounds = self % geom % bounds()
-    self % bottom = bounds(1:3)
-    self % top    = bounds(4:6)
+    if (dict % isPresent('top') .or. dict % isPresent('bottom')) then
+      ! Get top and bottom from dictionary
+      call dict % get(temp, 'top')
+      if (size(temp) /= 3) then
+        call fatalError(Here, "Top point must have 3 coordinates.")
+      end if
+      self % top = temp
+
+      call dict % get(temp, 'bottom')
+      if (size(temp) /= 3) then
+        call fatalError(Here, "Bottom point must have 3 coordinates.")
+      end if
+      self % bottom = temp
+
+      ! Check that top and bottom are valid
+      if (any(self % top < self % bottom)) then
+        call fatalError(Here, "Top point must have all coordinates greater than bottom point.")
+      end if
+
+    else ! Get bounds from geometry
+      bounds = self % geom % bounds()
+      self % bottom = bounds(1:3)
+      self % top    = bounds(4:6)
+    end if
+
 
   end subroutine init
 
@@ -136,9 +171,9 @@ contains
     rejection : do
       ! Protect against infinite loop
       i = i +1
-      if ( i > 200) then
-        call fatalError(Here, 'Infinite loop in sampling of fission sites. Please check that&
-                              & defined volume contains fissile material.')
+      if (i > self % attempts) then
+        call fatalError(Here, "Failed to find a fissile material in: "// numToChar(self % attempts) // " attempts.&
+                              & Increase the number of maximum attempts or verify that fissile materials are present.")
       end if
 
       ! Sample Position
