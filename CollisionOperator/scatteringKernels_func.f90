@@ -304,11 +304,7 @@ contains
     P_acc = rel_v / (Y + X)
 
     ! Verify acceptance condition
-    if (P_acc > r3) then
-      accept = .true.
-    else
-      accept = .false.
-    end if
+    accept = P_acc > r3
 
   end subroutine sample_targetVelocity
 
