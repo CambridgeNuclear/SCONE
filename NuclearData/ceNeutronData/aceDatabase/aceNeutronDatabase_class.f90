@@ -710,9 +710,6 @@ contains
   !!
   !!  Checks through all nuclides, creates map with nuclides present and corresponding 0K nuclide
   !!
-  !!  NOTE: compares the first 5 letters of the ZAID.TT. It would be wrong with isotopes
-  !!        with Z > 99
-  !!
   subroutine init_DBRC(self, nucDBRC, nucSet, map)
     class(aceNeutronDatabase), intent(inout)     :: self
     character(nameLen), dimension(:), intent(in) :: nucDBRC
