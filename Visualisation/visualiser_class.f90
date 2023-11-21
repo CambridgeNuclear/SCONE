@@ -18,7 +18,7 @@ module visualiser_class
   !!
   !! Object that creates images relating to SCONE geometries
   !! Should be extensible for adding different visualisation methods
-  !! Recieves and generates data for visualisation
+  !! Receives and generates data for visualisation
   !! Requires a dictionary input which specifies the procedures to call
   !! Presently supports: VTK voxel mesh creation
   !!
@@ -59,7 +59,7 @@ contains
   !! Initialises visualiser
   !!
   !! Provides visualiser with filename for output,
-  !! geometry information, and the dictionary decribing
+  !! geometry information, and the dictionary describing
   !! what is to be plotted
   !!
   !! Args:
@@ -148,7 +148,7 @@ contains
   !!   }
   !!
   !! TODO: VTK output is placed in a input filename appended by '.vtk' extension.
-  !!   This prevents multiple VTK visualistions (due to overriding). Might also become
+  !!   This prevents multiple VTK visualisations (due to overriding). Might also become
   !!   weird for input files with extension e.g. 'input.dat'.
   !!   DEMAND USER TO GIVE OUTPUT NAME
   !!
@@ -216,7 +216,7 @@ contains
   !!   }
   !!
   !! NOTE: If 'width' is not given, the plot will extend to the bounds of the geometry.
-  !!   This may result in the provided centre beeing moved to the center of the geoemtry in the
+  !!   This may result in the provided centre being moved to the center of the geometry in the
   !!   plot plane. However, the position on the plot axis will be unchanged.
   !!
   subroutine makeBmpImg(self, dict)
@@ -301,10 +301,10 @@ contains
     ! Translate to an image
     select case (what)
       case ('material')
-        img = materialColor(img, offset)
+        img = materialColour(img, offset)
 
       case ('uniqueID')
-        img = uniqueIDColor(img)
+        img = uniqueIDColour(img)
 
       case default
         call fatalError(Here, "Invalid request for plot target. Must be 'material' or 'uniqueID'&
@@ -335,9 +335,9 @@ contains
 
 
   !!
-  !! Convert matIdx to a 24bit color
+  !! Convert matIdx to a 24bit colour
   !!
-  !! Special materials are associeted with special colors:
+  !! Special materials are associated with special colours:
   !!   OUTSIDE_MAT -> white (#ffffff)
   !!   VOID_MAT    -> black (#000000)
   !!   UNDEF_MAT   -> green (#00ff00)
@@ -347,11 +347,11 @@ contains
   !!   offset [in] -> Offset to be used in the hash function
   !!
   !! Result:
-  !!   A 24-bit color specifing the material
+  !!   A 24-bit colour specifying the material
   !!
-  elemental function materialColor(matIdx, offset) result(color)
+  elemental function materialColour(matIdx, offset) result(colour)
     integer(shortInt), intent(in) :: matIdx
-    integer(shortInt)             :: color
+    integer(shortInt)             :: colour
     integer(shortInt), intent(in) :: offset
     integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
     integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
@@ -359,43 +359,43 @@ contains
 
     select case (matIdx)
       case (OUTSIDE_MAT)
-        color = COL_OUTSIDE
+        colour = COL_OUTSIDE
 
       case (VOID_MAT)
-        color = COL_VOID
+        colour = COL_VOID
 
       case (UNDEF_MAT)
-        color = COL_UNDEF
+        colour = COL_UNDEF
 
       case default
-        color = knuthHash(matIdx + offset, 24)
+        colour = knuthHash(matIdx + offset, 24)
 
     end select
 
-  end function materialColor
+  end function materialColour
 
   !!
-  !! Convert uniqueID to 24bit color
+  !! Convert uniqueID to 24bit colour
   !!
   !! An elemental wrapper over Knuth Hash
   !!
-  !! We use a hash function to scatter colors accross all available.
+  !! We use a hash function to scatter colours across all available.
   !! Knuth multiplicative hash is very good at scattering integer
-  !! sequences e.g. {1, 2, 3...}. Thus, it is ideal for a colormap.
+  !! sequences e.g. {1, 2, 3...}. Thus, it is ideal for a colourmap.
   !!
   !! Args:
   !!   uniqueID [in] -> Value of the uniqueID
   !!
   !! Result:
-  !!   A 24-bit color specifing the uniqueID
+  !!   A 24-bit colour specifying the uniqueID
   !!
-  elemental function uniqueIDColor(uniqueID) result(color)
+  elemental function uniqueIDColour(uniqueID) result(colour)
     integer(shortInt), intent(in) :: uniqueID
-    integer(shortInt)             :: color
+    integer(shortInt)             :: colour
 
-    color = knuthHash(uniqueID, 24)
+    colour = knuthHash(uniqueID, 24)
 
-  end function uniqueIDColor
+  end function uniqueIDColour
 
 
 end module visualiser_class
