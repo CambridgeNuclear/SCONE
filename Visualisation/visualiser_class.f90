@@ -211,6 +211,7 @@ contains
   !!     centre (0.0 0.0 0.0); // Coordinates of the centre of the plot
   !!     axis x;               // Must be 'x', 'y' or 'z'
   !!     res (300 300);        // Resolution of the image
+  !!     #offset 978; #        // Parameter to 'randomize' the colour map
   !!     #width (1.0 2.0);#    // Width of the plot from the centre
   !!   }
   !!
@@ -230,6 +231,7 @@ contains
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempInt
     integer(shortInt), dimension(:,:), allocatable :: img
+    integer(shortInt)                              :: offset = 0
     character(100), parameter :: Here = 'makeBmpImg (visualiser_class.f90)'
 
     ! Get plot parameters
@@ -286,6 +288,9 @@ contains
 
     end if
 
+    ! Colourmap offset
+    call dict % getOrDefault(offset, 'offset', 0)
+
     ! Get plot
     if (useWidth) then
       call self % geom % slicePlot(img, centre, dir, what, width)
@@ -296,7 +301,7 @@ contains
     ! Translate to an image
     select case (what)
       case ('material')
-        img = materialColor(img)
+        img = materialColor(img, offset)
 
       case ('uniqueID')
         img = uniqueIDColor(img)
@@ -339,13 +344,15 @@ contains
   !!
   !! Args:
   !!   matIdx [in] -> Value of the material index
+  !!   offset [in] -> Offset to be used in the hash function
   !!
   !! Result:
   !!   A 24-bit color specifing the material
   !!
-  elemental function materialColor(matIdx) result(color)
+  elemental function materialColor(matIdx, offset) result(color)
     integer(shortInt), intent(in) :: matIdx
     integer(shortInt)             :: color
+    integer(shortInt), intent(in) :: offset
     integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
     integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
     integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
@@ -361,7 +368,7 @@ contains
         color = COL_UNDEF
 
       case default
-        color = knuthHash(matIdx, 24)
+        color = knuthHash(matIdx + offset, 24)
 
     end select
 
