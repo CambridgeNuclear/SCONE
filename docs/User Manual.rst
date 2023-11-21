@@ -203,9 +203,10 @@ Hence, an input would look like: ::
 fissionSource
 #############
 
-A source intended to be used in eigenvalue calculations. It is a type of volumetric source, which
-uniformly distributes fission sites in the geometry. The energy spectrum of the fission neutrons
-is based on a fixed incident energy provided by the user. The properties of a fission source are:
+A source intended to initialise eigenvalue calculations. If it is not defined in the input file, it is
+used with the default settings. It is a type of volumetric source, which uniformly distributes fission
+sites in the geometry. The energy spectrum of the fission neutrons is based on a fixed incident
+energy provided by the user. The properties of a fission source are:
 
 * data (*optional*, default='ce'): data type for source particles. Can be ``ce``
   or ``mg``.
