@@ -1,9 +1,9 @@
 !!
-!! Material Menu is a module (Singleton) that contains global definitions of diffrent materials
+!! Material Menu is a module (Singleton) that contains global definitions of different materials
 !!
 !! It exists to make it easier for all databases to refer to the same materials by the same
-!! name and index. This is necessary to avoid confusion resulting from diffrent materials with the
-!! same name or index in diffrent databases.
+!! name and index. This is necessary to avoid confusion resulting from different materials with the
+!! same name or index in different databases.
 !!
 !! Public Members:
 !!   materialDefs -> array of material definitions of type materialItem
@@ -36,9 +36,9 @@ module materialMenu_mod
   !! Information about a single nuclide
   !!
   !! Based somewhat on MCNP conventions.
-  !! Atomic and Mass number identify cleary a nuclide species
+  !! Atomic and Mass number identify clearly a nuclide species
   !! Evaluation number T allows to refer to multiple states/evaluations of the same nuclide species
-  !! E.G. at a Diffrent temperature as in MCNP Library.
+  !! E.G. at a Different temperature as in MCNP Library.
   !!
   !! Public members:
   !!   Z -> Atomic number
@@ -142,7 +142,7 @@ contains
     integer(shortInt)                           :: i
     character(nameLen)                          :: temp
 
-    ! Clean whatever may be alrady present
+    ! Clean whatever may be already present
     call kill()
 
     ! Load all material names
@@ -218,7 +218,7 @@ contains
   !! Result:
   !!   nameLen long character with material name
   !!
-  !! Erorrs:
+  !! Error:
   !!   If idx is -ve or larger then number of defined materials
   !!   Empty string '' is returned as its name
   !!
@@ -422,7 +422,7 @@ contains
     za = verify(key(1:L),'0123456789')
     tt = verify(key(1:L),'0123456789', back = .true.)
 
-    ! Verify that the location of the dot is consistant
+    ! Verify that the location of the dot is consistent
     isIt = dot == za .and. dot == tt
 
   end function isNucDefinition
@@ -467,7 +467,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   Character in format ZZAAA.TT that dscribes nuclide definition
+  !!   Character in format ZZAAA.TT that describes nuclide definition
   !!
   !! Errors:
   !!   None
@@ -491,17 +491,17 @@ contains
   !! Get pointer to a material definition under matIdx
   !!
   !! Args:
-  !!   matIdx [in] -> Index of the material
+  !!   idx [in] -> Index of the material
   !!
   !! Result:
   !!   Pointer to a materialItem with the definition
   !!
   !! Errors:
-  !!   FatalError if matIdx does not correspond to any defined material
+  !!   FatalError if idx does not correspond to any defined material
   !!   FatalError if material definitions were not loaded
   !!
-  function getMatPtr(matIdx) result(ptr)
-    integer(shortInt), intent(in) :: matIdx
+  function getMatPtr(idx) result(ptr)
+    integer(shortInt), intent(in) :: idx
     type(materialItem), pointer   :: ptr
     character(100), parameter :: Here = 'getMatPtr (materialMenu_mod.f90)'
 
@@ -511,13 +511,13 @@ contains
     end if
 
     ! Verify matIdx
-    if( matIdx <= 0 .or. matIdx > nMat()) then
-      call fatalError(Here,"matIdx: "//numToChar(matIdx)// &
+    if( idx <= 0 .or. idx > nMat()) then
+      call fatalError(Here,"matIdx: "//numToChar(idx)// &
                            " does not correspond to any defined material")
     end if
 
     ! Attach pointer
-    ptr => materialDefs(matIdx)
+    ptr => materialDefs(idx)
 
   end function getMatPtr
 
