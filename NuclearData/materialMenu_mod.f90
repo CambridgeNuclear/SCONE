@@ -8,6 +8,7 @@
 !! Public Members:
 !!   materialDefs -> array of material definitions of type materialItem
 !!   nameMap      -> Map that maps material name to matIdx
+!!   colourMap    -> Map that maps matIdx to 24bit colour (to use for visualisation)
 !!
 !! Interface:
 !!   init      -> Load material definitions from a dictionary
@@ -21,8 +22,10 @@
 module materialMenu_mod
 
   use numPrecision
-  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT
+  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT, UNDEF_MAT
   use genericProcedures,  only : fatalError, charToInt, numToChar
+  use colours_func,       only : rgb24bit
+  use intMap_class,       only : intMap
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
 
@@ -83,6 +86,7 @@ module materialMenu_mod
   !!       5010.03  2.0E-005;
   !!     }
   !!     xsFile /home/uberMoffTarkin/XS/mat1.xs;
+  !!     #rgb (255 0 0); # // RGB colour to be used in visualisation
   !!   }
   !!
   !! NOTE: the moder dictionary is optional, necessary only if S(a,b) thermal scattering
@@ -102,9 +106,16 @@ module materialMenu_mod
     procedure :: display => display_materialItem
   end type materialItem
 
-!! MODULE COMPONENTS
+  !! Parameters
+  integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
+  integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
+  integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
+
+
+  !! MODULE COMPONENTS
   type(materialItem),dimension(:),allocatable,target,public :: materialDefs
-  type(charMap),target,public                               :: nameMap
+  type(charMap), target, public                             :: nameMap
+  type(intMap), public                                      :: colourMap
 
   public :: init
   public :: kill
@@ -142,17 +153,20 @@ contains
 
     ! Load definitions
     do i=1,size(matNames)
-      call materialDefs(i) % init(matNames(i), dict % getDictPtr(matNames(i)))
-      materialDefs(i) % matIdx = i
+      call materialDefs(i) % init(matNames(i), i, dict % getDictPtr(matNames(i)))
       call nameMap % add(matNames(i), i)
     end do
 
-    ! Add special Material keywords to thedictionary
+    ! Add special Material keywords to the dictionary
     temp = 'void'
     call nameMap % add(temp, VOID_MAT)
     temp = 'outside'
     call nameMap % add(temp, OUTSIDE_MAT)
 
+    !! Load colours for the special materials
+    call colourMap % add(VOID_MAT, COL_VOID)
+    call colourMap % add(OUTSIDE_MAT, COL_OUTSIDE)
+    call colourMap % add(UNDEF_MAT, COL_UNDEF)
 
   end subroutine init
 
@@ -250,25 +264,30 @@ contains
   !!
   !! Args:
   !!   name [in] -> character with material name
+  !!   idx  [in] -> material index
   !!   dict [in] -> dictionary with material definition
   !!
   !! Errors:
   !!   FatalError if dictionary does not contain valid material definition.
   !!
-  subroutine init_materialItem(self, name, dict)
-    class(materialItem), intent(inout)          :: self
-    character(nameLen),intent(in)               :: name
-    class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: keys, moderKeys
-    integer(shortInt)                           :: i
-    class(dictionary),pointer                   :: compDict, moderDict
-    logical(defBool)                            :: hasSab
+  subroutine init_materialItem(self, name, idx, dict)
+    class(materialItem), intent(inout)            :: self
+    character(nameLen), intent(in)                :: name
+    integer(shortInt), intent(in)                 :: idx
+    class(dictionary), intent(in)                 :: dict
+    character(nameLen), dimension(:), allocatable :: keys, moderKeys
+    integer(shortInt), dimension(:), allocatable  :: temp
+    integer(shortInt)                             :: i
+    class(dictionary),pointer                     :: compDict, moderDict
+    logical(defBool)                              :: hasSab
+    character(100), parameter :: Here = 'init_materialItem (materialMenu_mod.f90)'
 
     ! Return to initial state
     call self % kill()
 
     ! Load easy components c
     self % name = name
+    self % matIdx = idx
     call dict % get(self % T,'temp')
 
     ! Get composition dictionary and load composition
@@ -299,6 +318,17 @@ contains
       call compDict % get(self % dens(i), keys(i))
       call self % nuclides(i) % init(keys(i))
     end do
+
+    ! Add colour info if present
+    if(dict % isPresent('rgb')) then
+      call dict % get(temp, 'rgb')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'rgb' keyword must have 3 values")
+      end if
+
+      call colourMap % add(idx, rgb24bit(temp(1), temp(2), temp(3)))
+    end if
 
     ! Save dictionary
     self % extraInfo = dict

@@ -8,6 +8,7 @@ module visualiser_class
   use commandLineUI,      only : getInputFile
   use dictionary_class,   only : dictionary
   use geometry_inter,     only : geometry
+  use materialMenu_mod,   only : mm_colourMap => colourMap
   use outputVTK_class
 
   implicit none
@@ -353,24 +354,10 @@ contains
     integer(shortInt), intent(in) :: matIdx
     integer(shortInt)             :: colour
     integer(shortInt), intent(in) :: offset
-    integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
-    integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
-    integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
 
-    select case (matIdx)
-      case (OUTSIDE_MAT)
-        colour = COL_OUTSIDE
-
-      case (VOID_MAT)
-        colour = COL_VOID
-
-      case (UNDEF_MAT)
-        colour = COL_UNDEF
-
-      case default
-        colour = knuthHash(matIdx + offset, 24)
-
-    end select
+    ! Since Knuth hash is cheap we can compute it anyway even if colour from
+    ! the map will end up being used
+    colour = mm_colourMap % getOrDefault(matIdx, knuthHash(matIdx + offset, 24))
 
   end function materialColour
 
