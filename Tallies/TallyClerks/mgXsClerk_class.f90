@@ -556,7 +556,7 @@ contains
 
       ! Store total cross section and flux for this energy group
       tot(i)    = capt_res(1,i) + fiss_res(1,i) + scattXS
-      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(1,i)**2 + scattXSstd**2)
+      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(2,i)**2 + scattXSstd**2)
       fluxG(i)  = flux
       fluxGstd(i) = fluxStd
 
