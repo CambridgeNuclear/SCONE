@@ -11,6 +11,7 @@ module collisionProcessorFactory_func
   use neutronCEstd_class, only : neutronCEstd
   use neutronCEimp_class, only : neutronCEimp
   use neutronMGstd_class, only : neutronMGstd
+  use neutronMGimp_class, only : neutronMGimp
 
   implicit none
   private
@@ -24,7 +25,8 @@ module collisionProcessorFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_collisionProcessors = [ 'neutronCEstd',&
                                                                                 'neutronCEimp',&
-                                                                                'neutronMGstd']
+                                                                                'neutronMGstd',&
+                                                                                'neutronMGimp']
 
 contains
 
@@ -57,6 +59,10 @@ contains
 
       case('neutronMGstd')
         allocate(neutronMGstd :: new)
+        call new % init(dict)
+
+      case('neutronMGimp')
+        allocate(neutronMGimp :: new)
         call new % init(dict)
 
      !*** NEW COLLISION PROCESSOR TEMPLATE ***!

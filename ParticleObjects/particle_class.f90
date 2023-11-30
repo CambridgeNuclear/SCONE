@@ -54,6 +54,7 @@ module particle_class
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
+    integer(shortInt)          :: splitCount = 0    ! Counter of number of splits
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -112,7 +113,8 @@ module particle_class
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
     real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
-    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle 
+    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
+    integer(shortInt)          :: splitCount = 0   ! Counter of number of splits
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
@@ -269,6 +271,7 @@ contains
     LHS % isMG                  = RHS % isMG
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
+    LHS % splitCount            = RHS % splitCount
 
   end subroutine particle_fromParticleState
 
@@ -611,6 +614,7 @@ contains
     LHS % matIdx   = RHS % coords % matIdx
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
+    LHS % splitCount = RHS % splitCount
 
   end subroutine particleState_fromParticle
 
@@ -699,6 +703,7 @@ contains
     self % matIdx   = -1
     self % cellIdx  = -1
     self % uniqueID = -1
+    self % splitCount = 0
 
   end subroutine kill_particleState
 

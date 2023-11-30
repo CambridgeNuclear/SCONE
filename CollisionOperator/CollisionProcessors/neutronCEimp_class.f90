@@ -2,7 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameUFS, nameWW
+  use universalVariables,            only : nameUFS, nameWW, maxSplit
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -181,8 +181,8 @@ contains
     end if
 
     if (self % implicitAbsorption) then
-      if (.not.self % roulette) call fatalError(Here,&
-         'Must use Russian roulette when using implicit absorption')
+      if (.not.self % roulette .and. .not. self % weightWindows) call fatalError(Here,&
+         'Must use Russian roulette or weight windows when using implicit absorption')
       if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
     end if
@@ -500,7 +500,10 @@ contains
     real(defReal), dimension(3)          :: val
     real(defReal)                        :: minWgt, maxWgt, avWgt
 
-    if (p % E < self % minE) then
+    if (p % isDead) then
+      ! Do nothing !
+
+    elseif (p % E < self % minE) then
       p % isDead = .true.
 
     ! Weight Windows treatment
@@ -512,7 +515,7 @@ contains
 
       ! If a particle is outside the WW map and all the weight limits
       ! are zero nothing happens. NOTE: this holds for positive weights only
-      if ((p % w > maxWgt) .and. (maxWgt /= ZERO)) then
+      if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < maxSplit)) then
         call self % split(p, thisCycle, maxWgt)
       elseif (p % w < minWgt) then
         call self % russianRoulette(p, avWgt)
@@ -554,18 +557,29 @@ contains
     class(particle), intent(inout)        :: p
     class(particleDungeon), intent(inout) :: thisCycle
     real(defReal), intent(in)             :: maxWgt
-    integer(shortInt)                     :: mult, i
+    integer(shortInt)                     :: mult, i, splitCount
 
     ! This value must be at least 2
     mult = ceiling(p % w/maxWgt)
 
+    ! Limit maximum split
+    if (mult > maxSplit - p % splitCount + 1) then
+      mult = maxSplit  - p % splitCount + 1
+    end if
+
     ! Decrease weight
     p % w = p % w/mult
 
+    ! Save current particle splitCount
+    splitCount = p % splitCount
+
     ! Add split particle's to the dungeon
     do i = 1,mult-1
+      p % splitCount = 0
       call thisCycle % detain(p)
     end do
+
+    p % splitCount = splitCount + mult
 
   end subroutine split
 
