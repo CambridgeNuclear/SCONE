@@ -122,6 +122,9 @@ contains
     class(dictionary), intent(in)     :: dict
     character(nameLen), intent(in)    :: name
 
+    ! Assign name
+    call self % setName(name)
+    
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
@@ -205,11 +208,12 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(mgXsClerk), intent(inout)       :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
@@ -217,6 +221,9 @@ contains
     integer(shortInt)                     :: enIdx, matIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
+
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
     ! Get current particle state
     state = p
@@ -236,7 +243,7 @@ contains
     end if
 
     ! Return if invalid bin index
-    if (enIdx == 0 .or. matIdx == 0) return
+    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
     ! Calculate bin address
     binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -305,7 +312,7 @@ contains
 
     ! Score in case of scattering events
     select case(MT)
-      case ( N_N_ELASTIC, N_N_INELASTIC, N_Nl(1):N_Nl(40), N_Ncont,         &
+      case ( N_N_ELASTIC, N_N_INELASTIC, N_N_ThermINEL, N_Nl(1):N_Nl(40), N_Ncont, &
              N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
              N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 
@@ -324,7 +331,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (enIdx == 0 .or. matIdx == 0) return
+        if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
         ! Calculate bin address
         binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -341,7 +348,7 @@ contains
         end if
 
         ! Return if invalid bin index
-        if (binEnOut == 0) return
+        if (binEnOut == self % energyN + 1) return
 
         ! Score scattering event from group g to g'
         call mem % score(preColl % wgt, addr + SCATT_EV_idx + binEnOut)
@@ -429,7 +436,7 @@ contains
       end if
 
       ! Return if invalid bin index
-      if (enIdx == 0 .or. matIdx == 0) cycle
+      if ((enIdx == self % energyN + 1) .or. matIdx == 0) cycle
 
       ! Calculate bin address
       binIdx = self % energyN * (matIdx - 1) + enIdx
@@ -726,8 +733,7 @@ contains
     integer(shortInt)                          :: i
 
     ! Begin block
-    name = 'MGxs'
-    call outFile % startBlock(name)
+    call outFile % startBlock(self % getName())
 
     ! Allocate space for resultShape array
     if (allocated(self % spaceMap)) then
@@ -737,7 +743,7 @@ contains
     end if
 
     ! Print energy map information
-    call self % energyMap % print(outFile)
+    if (allocated(self % energyMap)) call self % energyMap % print(outFile)
     resArrayShape(1) = self % energyN
 
     ! If a space map print map information

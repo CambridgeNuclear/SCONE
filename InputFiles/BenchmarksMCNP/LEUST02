@@ -1,42 +1,42 @@
 
 // MCNP benchmark case LEU-ST-02 (2)
 //
-// Sphere of fuel solution to 34.4995cm radius, with aluminium wall of 0.1588cm thickness 
+// Sphere of fuel solution to 34.4995cm radius, with aluminium wall of 0.1588cm thickness
 // Benchmark keff = 1.0024 +/- 0.0037
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 400; 
-inactive 200; 
+active 400;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 outputFile LEUST02 ;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -63,27 +63,28 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-  materials { 
-    
 
-    solution {  
-      temp       293; 
+
+  materials {
+
+
+    solution {
+      temp       293;
       composition {
         92234.03  2.5304E-7;
         92235.03  6.1604E-5;
         92238.03  1.1828E-3;
         09019.03  2.4893E-3;
         08016.03  3.3331E-2;
-        moder {1001.03  6.1683E-2; file h-h2o.40 ; }
+        1001.03  6.1683E-2;
       }
+      moder {1001.03 hh2o.04; }
     }
-    aluminium {  
-      temp       293; 
+    aluminium {
+      temp       293;
       composition {
         13027.03  5.9699E-2;
         14000.03  5.5202E-4;
@@ -92,9 +93,9 @@ nuclearData {
         25055.03  1.4853E-5;
       }
     }
-  } 
-  
+  }
+
 }
-  
-  
-  
+
+
+

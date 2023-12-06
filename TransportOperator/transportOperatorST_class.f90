@@ -65,6 +65,10 @@ contains
       else
         sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
         dist = -log( p % pRNG % get()) / sigmaT
+
+        ! Should never happen! Catches NaN distances
+        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+
       end if
 
       ! Save state before movement

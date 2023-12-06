@@ -7,36 +7,36 @@
 // Benchmark keff = 0.9948 +/- 0.0013
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 100; 
-inactive 200; 
+active 100;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
@@ -66,15 +66,15 @@ geometry {
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-  materials { 
 
-    core {  
-      temp       293; 
+
+  materials {
+
+    core {
+      temp       293;
       composition {
         92234.03  4.8416E-5;
         92235.03  4.8151E-3;
@@ -82,8 +82,8 @@ nuclearData {
         92238.03  4.3181E-2;
       }
     }
-    refl {  
-      temp       293; 
+    refl {
+      temp       293;
       composition {
         92234.03  2.8672E-7;
         92235.03  1.0058E-4;
@@ -91,9 +91,9 @@ nuclearData {
         92238.03  4.7677E-2;
       }
     }
-  } 
-  
+  }
+
 }
-  
-  
-  
+
+
+

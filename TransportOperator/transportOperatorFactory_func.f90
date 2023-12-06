@@ -17,15 +17,13 @@ module transportOperatorFactory_func
   implicit none
   private
 
-  ! *** ADD NAME OF A NEW TRANSPORT OPERATOR HERE ***!
   ! List that contains all accaptable types of transport operators
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST', &
                                                                          'transportOperatorDT', &
-                                                                         'transportOperatorHT']!, &
-                                                                       !  'dynamicTranspOperDT']
+                                                                         'transportOperatorHT']
 
   public :: new_transportOperator
 
@@ -47,29 +45,24 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of transportOperator
-    ! *** ADD CASE STATEMENT FOR A NEW TRANSPORT OPERATOR BELOW ***!
     select case(type)
       case('transportOperatorST')
         allocate( transportOperatorST :: new)
-        call new % init(dict)
 
       case('transportOperatorDT')
         allocate( transportOperatorDT :: new)
-        call new % init(dict)
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
-        call new % init(dict)
-
-!      case('dynamicTranspOperDT')
-!        allocate( transportOperatorDynamicDT :: new)
-!        call new % init(dict, geom)
 
       case default
         print *, AVALIBLE_transportOps
         call fatalError(Here, 'Unrecognised type of transportOperator: ' // trim(type))
 
     end select
+
+    ! Initialise new transport operator
+    call new % init(dict)
 
   end subroutine new_transportOperator
 

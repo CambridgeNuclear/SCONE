@@ -5,6 +5,7 @@ module ceNeutronDatabase_inter
   use RNG_class,         only : RNG
   use particle_class,    only : particle, P_NEUTRON, printType
   use charMap_class,     only : charMap
+  use intMap_class,      only : intMap
 
   ! Nuclear Data Handles
   use nuclideHandle_inter,   only : nuclideHandle
@@ -32,16 +33,21 @@ module ceNeutronDatabase_inter
   !! It is also used by material and nuclide handles for CE Neutron data to order an
   !! update of XSs on the cache
   !!
+  !! Public Members:
+  !!   mapDBRCnuc -> map to link indexes of DBRC nuclides with their corresponding 0K
+  !!
   !! Interface:
   !!   nuclearDatabase Interface
-  !!   energyBounds     -> return maximum and minimum energy
-  !!   updateTotalMatXS -> update Total Material XS on CE Neutron Cache
-  !!   updateMajorantXS -> update Majorant XS on CE Neutron Cache
-  !!   updateMacroXSs   -> update Macroscopic XSs for a selected material
-  !!   updateTotalXS    -> update Total XS for a selected nuclide
-  !!   updateMicroXSs   -> update Microscopic XSs for a selected nuclide
+  !!   energyBounds       -> return maximum and minimum energy
+  !!   updateTotalMatXS   -> update Total Material XS on CE Neutron Cache
+  !!   updateMajorantXS   -> update Majorant XS on CE Neutron Cache
+  !!   updateMacroXSs     -> update Macroscopic XSs for a selected material
+  !!   updateTotalXS      -> update Total XS for a selected nuclide
+  !!   updateMicroXSs     -> update Microscopic XSs for a selected nuclide
+  !!   getScattMicroMajXS -> returns elastic scattering microscopic xs majorant
   !!
   type, public, abstract, extends(nuclearDatabase) :: ceNeutronDatabase
+    type(intMap) :: mapDBRCnuc
 
   contains
     ! nuclearDatabase Interface Implementation
@@ -50,12 +56,13 @@ module ceNeutronDatabase_inter
     procedure :: getMajorantXS
 
     ! Procedures implemented by a specific CE Neutron Database
-    procedure(updateTotalMatXS),deferred :: updateTotalMatXS
-    procedure(updateMajorantXS),deferred :: updateMajorantXS
-    procedure(updateMacroXSs),deferred   :: updateMacroXSs
-    procedure(updateTotalXS),deferred    :: updateTotalNucXS
-    procedure(updateMicroXSs),deferred   :: updateMicroXSs
-    procedure(energyBounds),deferred     :: energyBounds
+    procedure(updateTotalMatXS),deferred   :: updateTotalMatXS
+    procedure(updateMajorantXS),deferred   :: updateMajorantXS
+    procedure(updateMacroXSs),deferred     :: updateMacroXSs
+    procedure(updateTotalXS),deferred      :: updateTotalNucXS
+    procedure(updateMicroXSs),deferred     :: updateMicroXSs
+    procedure(energyBounds),deferred       :: energyBounds
+    procedure(getScattMicroMajXS),deferred :: getScattMicroMajXS
   end type ceNeutronDatabase
 
   abstract interface
@@ -186,8 +193,32 @@ module ceNeutronDatabase_inter
       integer(shortInt), intent(in)        :: nucIdx
       class(RNG), intent(inout)            :: rand
     end subroutine updateMicroXSs
-  end interface
 
+    !!
+    !! Subroutine to get the elastic scattering majorant cross section in a nuclide
+    !! over a certain energy range, defined as a function of a given temperature
+    !!
+    !! NOTE: This function is called by the collision operator to apply DBRC; nucIdx
+    !!       should correspond to a nuclide with temperature 0K, while kT is the
+    !!       temperature of the target nuclide the neutron is colliding with
+    !!
+    !! Args:
+    !!   A  [in]   -> Nuclide atomic weight ratio
+    !!   kT [in]   -> Thermal energy of nuclide
+    !!   E  [in]   -> Energy of neutron incident to target for which majorant needs to be found
+    !!   maj [out] -> Majorant cross section
+    !!
+    function getScattMicroMajXS(self, E, kT, A, nucIdx) result(maj)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      real(defReal), intent(in)            :: kT
+      real(defReal), intent(in)            :: A
+      integer(shortInt), intent(in)        :: nucIdx
+      real(defReal)                        :: maj
+    end function getScattMicroMajXS
+
+  end interface
 contains
 
   !!
@@ -287,5 +318,5 @@ contains
 
   end function ceNeutronDatabase_CptrCast
 
-    
+
 end module ceNeutronDatabase_inter

@@ -333,7 +333,7 @@ Comments and documentation
            exec = Low
          end if
 
-         ! Sample from UNIFORM ( PDF = 0.5); LIN ( PDF = 0.5 + 0.5 *mu) or DELATA ( PDF = DELTA(mu-1))
+         ! Sample from UNIFORM ( PDF = 0.5); LIN ( PDF = 0.5 + 0.5 *mu) or DELTA ( PDF = DELTA(mu-1))
          select case(exec)
            case (UNIFORM)
              x = TWO * rand % get() - ONE

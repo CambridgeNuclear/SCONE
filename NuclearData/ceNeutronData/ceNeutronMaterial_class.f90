@@ -187,7 +187,7 @@ contains
     class(RNG), intent(inout)            :: rand
 
     ! Check Cache and update if needed
-    if(materialCache(self % matIdx) % E_tail /= E) then
+    if (materialCache(self % matIdx) % E_tail /= E .or. materialCache(self % matIdx) % E_tot /= E) then
       call self % data % updateMacroXSs(E, self % matIdx, rand)
     end if
 
@@ -251,7 +251,7 @@ contains
     ! Loop over all nuclides
     do i=1,size(self % nuclides)
       nucIdx = self % nuclides(i)
-      if(E /= nuclideCache(nucIdx) % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
+      if (E /= nuclideCache(nucIdx) % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
       xs = xs - nuclideCache(nucIdx) % xss % total * self % dens(i)
       if(xs < ZERO) return
     end do

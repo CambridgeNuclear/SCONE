@@ -24,3 +24,31 @@ jobs:
           make -j
           make test
           cd -
+  build-and-test-debug:
+    runs-on: ubuntu-20.04
+    container:
+      image: mikolajkowalski/scone-test:gfortran10
+    steps:
+      - uses: actions/checkout@v3
+      - name: CompileAndTest
+        run : |
+          mkdir build
+          cd build
+          cmake -DDEBUG=ON ..
+          make -j
+          make test
+          cd -
+  build-and-test-no-openmp:
+    runs-on: ubuntu-20.04
+    container:
+      image: mikolajkowalski/scone-test:gfortran10
+    steps:
+      - uses: actions/checkout@v3
+      - name: CompileAndTest
+        run : |
+          mkdir build
+          cd build
+          cmake -DOPENMP=OFF ..
+          make -j
+          make test
+          cd -

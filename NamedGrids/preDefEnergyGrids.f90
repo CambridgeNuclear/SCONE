@@ -345,6 +345,42 @@ real(defReal),dimension(8),parameter :: casmo7 = [ &
     5.80000E-08_defReal,&
     1.00000E-11_defReal]
 
+real(defReal),dimension(34),parameter :: ecco33 = [ &
+    1.964033E+01_defReal,&
+    1.000000E+01_defReal,&
+    6.065307E+00_defReal,&
+    3.678794E+00_defReal,&
+    2.231302E+00_defReal,&
+    1.353353E+00_defReal,&
+    8.208500E-01_defReal,&
+    4.978707E-01_defReal,&
+    3.019738E-01_defReal,&
+    1.831564E-01_defReal,&
+    1.110900E-01_defReal,&
+    6.737947E-02_defReal,&
+    4.086771E-02_defReal,&
+    2.478752E-02_defReal,&
+    1.503439E-02_defReal,&
+    9.118820E-03_defReal,&
+    5.530844E-03_defReal,&
+    3.354626E-03_defReal,&
+    2.034684E-03_defReal,&
+    1.234098E-03_defReal,&
+    7.485183E-04_defReal,&
+    4.539993E-04_defReal,&
+    3.043248E-04_defReal,&
+    1.486254E-04_defReal,&
+    9.166088E-05_defReal,&
+    6.790405E-05_defReal,&
+    4.016900E-05_defReal,&
+    2.260329E-05_defReal,&
+    1.370959E-05_defReal,&
+    8.315287E-06_defReal,&
+    4.000000E-06_defReal,&
+    5.400000E-07_defReal,&
+    1.000000E-07_defReal,&
+    1.000010E-11_defReal]
+
 real(defReal),dimension(176),parameter :: vitaminj = [ &
     1.964000E+01_defReal,&
     1.733300E+01_defReal,&

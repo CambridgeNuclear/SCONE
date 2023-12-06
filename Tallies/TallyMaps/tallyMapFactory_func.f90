@@ -28,8 +28,6 @@ module tallyMapFactory_func
 
   public :: new_tallyMap
 
-
-  ! *** ADD NAME OF A NEW TALLY MAP 1D HERE ***!
   ! List that contains all accaptable types of tallyMaps1D
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -73,23 +71,22 @@ contains
       select case(type)
         case('multiMap')
           allocate( multiMap :: new)
-          call new % init(dict)
 
         case('sphericalMap')
           allocate( sphericalMap :: new)
-          call new % init(dict)
 
         case('cylindricalMap')
           allocate( cylindricalMap :: new)
-          call new % init(dict)
+
+        case default
+          print *, AVALIBLE_tallyMaps1D, AVALIBLE_tallyMaps
+          call fatalError(Here,' Unrecognised tallyMap : '// trim(type))
 
       end select
-    end if
 
-    ! Print error if failed to build a tallyMap
-    if(.not.allocated(new)) then
-      print *, AVALIBLE_tallyMaps1D, AVALIBLE_tallyMaps
-      call fatalError(Here,' Unrecognised tallyMap : '// trim(type))
+      ! Initialise new map
+      call new % init(dict)
+
     end if
 
   end subroutine new_tallyMap

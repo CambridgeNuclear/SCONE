@@ -44,10 +44,13 @@ contains
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
-    character(100), parameter :: Here = 'deltaTracking (transportOIperatorDT_class.f90)'
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
-    ! Get majornat XS inverse: 1/Sigma_majorant
+    ! Get majorant XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
+
+   ! Should never happen! Prevents Inf distances
+    if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
@@ -55,7 +58,7 @@ contains
       ! Move partice in the geometry
       call self % geom % teleport(p % coords, distance)
 
-      ! If particle has leaked exit
+      ! If particle has leaked, exit
       if (p % matIdx() == OUTSIDE_FILL) then
         p % fate = LEAK_FATE
         p % isDead = .true.
@@ -63,7 +66,10 @@ contains
       end if
 
       ! Check for void
-      if( p % matIdx() == VOID_MAT) cycle DTLoop
+      if(p % matIdx() == VOID_MAT) then
+        call tally % reportInColl(p, .true.)
+        cycle DTLoop
+      end if
 
       ! Give error if the particle somehow ended in an undefined material
       if (p % matIdx() == UNDEF_MAT) then
@@ -74,14 +80,13 @@ contains
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
-      ! Protect Against Sillines
-      !if( sigmaT*majorant_inv < ZERO .or. ONE < sigmaT*majorant_inv) then
-      !  call fatalError(Here, "TotalXS/MajorantXS is silly: "//numToChar(sigmaT*majorant_inv))
-      !end if
-
       ! Roll RNG to determine if the collision is real or virtual
-      ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT*majorant_inv) exit DTLoop
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (p % pRNG % get() < sigmaT*majorant_inv) then
+        exit DTLoop
+      else
+        call tally % reportInColl(p, .true.)
+      end if
 
     end do DTLoop
 
