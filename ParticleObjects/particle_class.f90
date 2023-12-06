@@ -638,6 +638,7 @@ contains
     isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
+    isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
