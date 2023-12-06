@@ -316,6 +316,7 @@ contains
         pTemp % dir = dir
         pTemp % E   = E_out
         pTemp % wgt = wgt
+        pTemp % collisionN = 0
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
@@ -420,6 +421,7 @@ contains
         pTemp % dir = dir
         pTemp % E   = E_out
         pTemp % wgt = wgt
+        pTemp % collisionN = 0
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)

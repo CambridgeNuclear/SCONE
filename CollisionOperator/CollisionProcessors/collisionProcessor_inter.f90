@@ -154,6 +154,9 @@ contains
     ! Apply post collision implicit treatments
     call self % cutoffs(p, collDat, thisCycle, nextCycle)
 
+    ! Update particle collision counter
+    p % collisionN = p % collisionN + 1
+
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)
 
