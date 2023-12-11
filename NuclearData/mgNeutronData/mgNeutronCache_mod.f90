@@ -9,9 +9,13 @@
 !!   majorantCache -> Array of cached data for majorant XS
 !!
 !! NOTE:
-!!   Cache arrays are deliberatly not targets. This is becouse there should be no pointers to the
-!!   cache. Any update call can change energy of any value so it would not be possible that the
-!!   energy of XSs pointed by pointers would not change silently.
+!!   Cache arrays are deliberatly not targets. This is because there should be no pointers to the
+!!   cache. Any update call can change energy group of any value so it would not be possible that the
+!!   energy group of XSs pointed by pointers changed silently.
+!!
+!! ALSO NOTE: 
+!!   The MG data cache was added to improve parallel scalability. It is still not fully understood 
+!!   why this helps, but it seemed to reduce cache misses largely
 !!
 module mgNeutronCache_mod
 
@@ -26,10 +30,14 @@ module mgNeutronCache_mod
   !!
   !! Structure that contains cached data for each MG Neutron Material
   !!
+  !! Note: the material pointer was included in the cache because it improved parallel performance 
+  !!       by avoiding the cache misses occurring when getting the pointer on-the-fly
+  !!
   !! Public Members:
   !!   G_tot  -> Energy group of the total XS in xss
   !!   G_tail -> Energy group of all XSs in xss except total
   !!   xss    -> Cached Cross-Section values
+  !!   mat    -> Pointer to MG material
   !!
   type, public :: cacheMatDat
     real(defReal)         :: G_tot  = ZERO
@@ -55,10 +63,9 @@ contains
   !!
   !! Args:
   !!   Nmat [in]  -> Number of materials
-  !!   Nmaj [in]  -> Optional. Number of majorant Xss (Default = 1)
   !!
   !! Errors:
-  !!   fatalError if Nmat or Nmaj is not a +ve value
+  !!   fatalError if Nmat is not a +ve value
   !!
   subroutine init(Nmat)
     integer(shortInt), intent(in)          :: Nmat
@@ -70,8 +77,7 @@ contains
     ! Chack the provided data
     if(Nmat < 1) call fatalError(Here,'Number of materials must be +ve! Not: '//numToChar(Nmat))
 
-    ! Allocate space
-    ! Need to do in parallel region to allocate each copy
+    ! Allocate space. Need to do in parallel to allocate each copy
     !$omp parallel
     allocate(materialCache(Nmat))
     !$omp end parallel
@@ -82,10 +88,12 @@ contains
   !! Return Cache Module (Singleton) to uninitialised state
   !!
   subroutine kill()
+
     ! Need to deallocate on all threads
     !$omp parallel
     if(allocated(materialCache)) deallocate (materialCache)
     !$omp end parallel
+
   end subroutine kill
 
 
