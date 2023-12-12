@@ -1,7 +1,7 @@
 module mgNeutronDatabase_inter
 
   use numPrecision
-
+  
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
 
@@ -16,7 +16,7 @@ module mgNeutronDatabase_inter
   !!
   !! An abstract class that groups all MG Neutron Data objects
   !!
-  !! It does nothing, It adds nothing,
+  !! It does nothing, It adds nothing, (other than give the number of groups)
   !! It just provides a common superclass for related classes
   !! and holds the number of energy groups
   !!

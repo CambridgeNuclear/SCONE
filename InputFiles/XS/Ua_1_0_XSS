@@ -1,0 +1,18 @@
+// This XSS are for a Ua-1-0-IN/SL Benchamrk Problem 
+// Source: A. Sood, R. A. Forster, and D. K. Parsons, 
+//        ‘Analytical Benchmark Test Set For Criticality Code Verification’
+//
+
+numberOfGroups 1; 
+
+capture (0.013056);
+fission (0.065280);
+nu      (2.7); 
+chi     (1.0); 
+ 
+scatteringMultiplicity ( 1.0  ); 
+
+P0 ( 
+ 0.248064
+); 
+

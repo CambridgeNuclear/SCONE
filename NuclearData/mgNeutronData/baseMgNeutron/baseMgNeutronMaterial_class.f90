@@ -71,16 +71,25 @@ module baseMgNeutronMaterial_class
     real(defReal),dimension(:,:), allocatable :: data
     class(multiScatterMG), allocatable        :: scatter
     type(fissionMG), allocatable              :: fission
+    integer(shortInt)                         :: nG
 
   contains
     ! Superclass procedures
     procedure :: kill
     procedure :: getMacroXSs_byG
     procedure :: getTotalXS
+    procedure :: getNuFissionXS
+    procedure :: getFissionXS
+    procedure :: getChi
+    procedure :: getScatterXS
 
     ! Local procedures
     procedure :: init
     procedure :: nGroups
+    procedure :: getTotalPtr
+    procedure :: getNuFissionPtr
+    procedure :: getChiPtr
+    procedure :: getScatterPtr
 
   end type baseMgNeutronMaterial
 
@@ -159,6 +168,108 @@ contains
 
   end function getTotalXS
 
+  !!
+  !! Return NuFission XS for energy group G
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getNuFissionXS(self, G, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getNuFissionXS (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if (self % isFissile()) then
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        xs = ZERO ! Avoid warning
+      end if
+      xs = self % data(NU_FISSION, G)
+    else
+      xs = ZERO
+    end if
+
+  end function getNuFissionXS
+
+  !!
+  !! Return Fission XS for energy group G
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getFissionXS(self, G, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getFissionXS (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if (self % isFissile()) then
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        xs = ZERO ! Avoid warning
+      end if
+      xs = self % data(FISSION_XS, G)
+    else
+      xs = ZERO
+    end if
+
+  end function getFissionXS
+
+  !!
+  !! Return chi for energy group G
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getChi(self, G, rand) result(chi)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: G
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: chi
+    character(100), parameter :: Here = ' getChi (baseMgNeutronMaterial_class.f90)'
+
+    if (self % isFissile()) then
+      ! Verify bounds
+      if(G < 1 .or. self % nGroups() < G) then
+        call fatalError(Here,'Invalid group number: '//numToChar(G)// &
+                             ' Data has only: ' // numToChar(self % nGroups()))
+        chi = ZERO ! Avoid warning
+      end if
+    
+      chi = self % fission % data(G,2)
+    else
+      chi = ZERO
+    end if
+
+  end function getChi
+
+  !!
+  !! Return scatter XS for incoming energy group Gin and outgoing group Gout
+  !!
+  !! See mgNeutronMaterial documentationfor details
+  !!
+  function getScatterXS(self, Gin, Gout, rand) result(xs)
+    class(baseMgNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)            :: Gin
+    integer(shortInt), intent(in)            :: Gout
+    class(RNG), intent(inout)                :: rand
+    real(defReal)                            :: xs
+    character(100), parameter :: Here = ' getScatterXS (baseMgNeutronMaterial_class.f90)'
+
+    ! Verify bounds
+    if(Gin < 1 .or. self % nGroups() < Gin .or. Gout < 1 .or. self % nGroups() < Gout) then
+      call fatalError(Here,'Invalid group numbers: '//numToChar(Gin)//' and '//numToChar(Gout) &
+                           //' Data has only: ' // numToChar(self % nGroups()))
+      xs = ZERO ! Avoid warning
+    end if
+    xs = self % scatter % P0(Gout,Gin) 
+  
+  end function getScatterXS
+
 
   !!
   !! Initialise Base MG Neutron Material fromdictionary
@@ -192,6 +303,7 @@ contains
     ! Read number of groups
     call dict % get(nG, 'numberOfGroups')
     if(nG < 1) call fatalError(Here,'Number of groups is invalid' // numToChar(nG))
+    self % nG = nG
 
     ! Set fissile flag
     call self % set(fissile = dict % isPresent('fission'))
@@ -286,13 +398,65 @@ contains
     integer(shortInt)                        :: nG
 
     if(allocated(self % data)) then
-      nG = size(self % data,2)
+      nG = self % nG
     else
       nG = 0
     end if
 
   end function nGroups
+  
+  !!
+  !! Return pointer to Total XSs 
+  !!
+  function getTotalPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: xs
 
+    xs => self % data(TOTAL_XS, :)
+
+  end function getTotalPtr
+  
+  !!
+  !! Return pointer to NuFission XSs 
+  !!
+  function getNuFissionPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: xs
+
+    if (self % isFissile()) then
+      xs => self % data(NU_FISSION, :)
+    else
+      xs => null()
+    end if
+
+  end function getNuFissionPtr
+  
+  !!
+  !! Return pointer to Chis 
+  !!
+  function getChiPtr(self) result(chi)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:), pointer             :: chi
+
+    if (self % isFissile()) then
+      chi => self % fission % data(:,2)
+    else
+      chi => null()
+    end if
+
+  end function getChiPtr
+  
+  !!
+  !! Return pointer to scatter XSs 
+  !!
+  function getScatterPtr(self) result(xs)
+    class(baseMgNeutronMaterial), intent(in), target :: self
+    real(defReal), dimension(:,:), pointer           :: xs
+
+    xs => self % scatter % P0(:, :)
+
+  end function getScatterPtr
+  
   !!
   !! Cast materialHandle pointer to baseMgNeutronMaterial type pointer
   !!

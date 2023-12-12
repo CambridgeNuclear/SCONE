@@ -67,6 +67,7 @@ module squareCylinder_class
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
+    procedure :: explicitRayBC
     procedure :: transformBC
   end type squareCylinder
 
@@ -430,6 +431,68 @@ contains
     end do axis
 
   end subroutine explicitBC
+
+  !!
+  !! Apply explicit BCs for ray problems: enforces a reflection when
+  !! a vacuum was hit and reports this
+  !!
+  !! See surface_inter for details
+  !!
+  !! Note:
+  !!   - Go through all directions in order to account for corners
+  !!
+  subroutine explicitRayBC(self, r, u, hitVacuum)
+    class(squareCylinder), intent(in)          :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(out)              :: hitVacuum
+    integer(shortInt)                          :: ax, bc, i
+    real(defReal)                              :: r0
+    character(100), parameter :: Here = 'explicitRayBC (squareCylinder_class.f90)'
+
+    hitVacuum = .FALSE.
+
+    ! Loop over directions
+    ! Becouse of the mix of 2D and 3D vectors to get right component use:
+    !   i -> for 2D vectors
+    !   ax -> for 3D vectors (r & u)
+    axis : do i = 1, 2
+      ax = self % plane(i)
+
+      ! Find position wrt origin
+      r0 = r(ax) - self % origin(i)
+
+      ! Skip if particle is well inside the domain
+      if (abs(r0)  <= self % halfwidth(i) - self % surfTol()) cycle axis
+
+      ! Choose correct BC
+      if (r0 < ZERO) then
+        bc = self % BC(2*ax - 1)
+      else
+        bc = self % BC(2*ax)
+      end if
+
+      ! Apply BC
+      select case(bc)
+        case (VACUUM_BC)
+          ! Treat as reflective but state that a vacuum was struck
+          u(ax) = -u(ax)
+          hitVacuum = .TRUE.
+
+        case (REFLECTIVE_BC)
+          u(ax) = -u(ax)
+
+        case (PERIODIC_BC)
+          ! Calculate displacement and perform translation
+          r(ax) = r(ax) - TWO * sign(self % halfwidth(i), r0)
+
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(bc))
+
+      end select
+    end do axis
+
+  end subroutine explicitRayBC
 
   !!
   !! Apply co-ordinate transform BC

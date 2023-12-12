@@ -336,7 +336,7 @@ contains
 
     name = 'Active_Cycles'
     call out % printValue(self % N_active,name)
-
+    
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
     call out % printValue((self % CPU_time_end - self % CPU_time_start),name)

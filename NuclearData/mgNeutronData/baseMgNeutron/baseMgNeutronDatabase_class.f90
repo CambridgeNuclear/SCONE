@@ -59,7 +59,8 @@ module baseMgNeutronDatabase_class
     integer(shortInt), dimension(:), allocatable       :: activeMats
 
   contains
-    ! Superclass Interface
+
+    ! Local interface
     procedure :: getTransMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
@@ -70,8 +71,6 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
-
-    ! Local interface
     procedure :: nGroups
 
   end type baseMgNeutronDatabase

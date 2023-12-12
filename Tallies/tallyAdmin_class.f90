@@ -647,7 +647,7 @@ contains
     end if
 
     ! Go through all clerks that request the report
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do i=1,self % cycleStartClerks % getSize()
       idx = self % cycleStartClerks % get(i)
       call self % tallyClerks(idx) % reportCycleStart(start, self % mem)
@@ -687,7 +687,7 @@ contains
     end if
 
     ! Go through all clerks that request the report
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do i=1,self % cycleEndClerks % getSize()
       idx = self % cycleEndClerks % get(i)
       call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
@@ -695,7 +695,7 @@ contains
     !$omp end parallel do
 
     ! Calculate normalisation factor
-    if( self % normBInAddr /= NO_NORM ) then
+    if( self % normBinAddr /= NO_NORM ) then
       normScore  = self % mem % getScore(self % normBinAddr)
       if (normScore == ZERO) then
         call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')

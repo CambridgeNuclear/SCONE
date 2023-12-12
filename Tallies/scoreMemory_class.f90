@@ -279,7 +279,7 @@ contains
 
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       
-      !$omp parallel do
+      !$omp parallel do schedule(static)
       do i = 1, self % N
         
         ! Normalise scores
