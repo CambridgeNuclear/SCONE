@@ -49,7 +49,7 @@ contains
     ! Get majorant XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getMajorantXS(p)
 
-    ! Should never happen! Prevents Inf distances
+   ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
@@ -66,7 +66,10 @@ contains
       end if
 
       ! Check for void
-      if( p % matIdx() == VOID_MAT) cycle DTLoop
+      if(p % matIdx() == VOID_MAT) then
+        call tally % reportInColl(p, .true.)
+        cycle DTLoop
+      end if
 
       ! Give error if the particle somehow ended in an undefined material
       if (p % matIdx() == UNDEF_MAT) then
@@ -78,8 +81,12 @@ contains
       sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
-      ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT*majorant_inv) exit DTLoop
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (p % pRNG % get() < sigmaT*majorant_inv) then
+        exit DTLoop
+      else
+        call tally % reportInColl(p, .true.)
+      end if
 
     end do DTLoop
 

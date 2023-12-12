@@ -437,21 +437,23 @@ contains
   !!   Particle is provided just after transition. Before any implicit treatment.
   !!
   !! Args:
-  !!   p [in] -> Particle
+  !!   p [in]       -> Particle
+  !!   virtual [in] -> Flag indicating virtual collision
   !!
   !! Errors:
   !!   None
   !!
-  recursive subroutine reportInColl(self, p)
+  recursive subroutine reportInColl(self, p, virtual)
     class(tallyAdmin), intent(inout) :: self
     class(particle), intent(in)      :: p
+    logical(defBool), intent(in)     :: virtual
     integer(shortInt)                :: i, idx
     class(nuclearDatabase),pointer   :: xsData
     character(100), parameter :: Here = "reportInColl (tallyAdmin_class.f90)"
 
     ! Call attachment
     if(associated(self % atch)) then
-      call reportInColl(self % atch, p)
+      call reportInColl(self % atch, p, virtual)
     end if
 
     ! Get Data
@@ -460,7 +462,7 @@ contains
     ! Go through all clerks that request the report
     do i=1,self % inCollClerks % getSize()
       idx = self % inCollClerks % get(i)
-      call self % tallyClerks(idx) % reportInColl(p, xsData, self % mem)
+      call self % tallyClerks(idx) % reportInColl(p, xsData, self % mem, virtual)
 
     end do
 
