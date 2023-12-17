@@ -37,10 +37,9 @@ module transportOperatorTimeHT_class
   integer(shortInt), parameter :: DT = 4    ! Delta tracking
 
   !!
-  !! Transport operator that moves a particle with using hybrid tracking, up to a time boundary
+  !! Transport operator that moves a particle using hybrid tracking, up to a time boundary
   !!
   type, public, extends(transportOperator)   :: transportOperatorTimeHT
-    real(defReal)                            :: deltaT
     real(defReal)                            :: cutoff
     integer(shortInt)                        :: method
   contains

@@ -60,8 +60,6 @@ module transportOperator_inter
     ! Extentable initialisation and deconstruction procedure
     procedure :: init
     procedure :: kill
-    procedure :: buildMajMap
-    procedure :: updateMajorants
 
     ! Customisable deferred procedures
     procedure(transit), deferred :: transit
@@ -145,29 +143,5 @@ contains
     self % xsData => null()
 
   end subroutine kill
-
-  !!
-  !! Improve majorant estimates for each material. See transportOperatorIMC_class for details.
-  !!
-  subroutine buildMajMap(self, rand, xsData)
-    class(transportOperator), intent(inout) :: self
-    class(RNG), intent(inout)               :: rand
-    class(nuclearDatabase), intent(in), pointer   :: xsData
-
-    ! Do nothing
-
-  end subroutine buildMajMap
-
-  !!
-  !! Update majorants for each region. See transportOperatorIMC_class for details.
-  !!
-  subroutine updateMajorants(self, rand)
-    class(transportOperator), intent(inout) :: self
-    class(RNG), intent(inout)               :: rand
-
-    ! Do nothing
-
-  end subroutine updateMajorants
-
 
 end module transportOperator_inter

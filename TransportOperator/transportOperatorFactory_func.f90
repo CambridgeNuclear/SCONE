@@ -12,6 +12,7 @@ module transportOperatorFactory_func
   use transportOperatorST_class,        only : transportOperatorST
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
+  use transportOperatorTime_class,      only : transportOperatorTime
   use transportOperatorTimeHT_class,    only : transportOperatorTimeHT
   !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
@@ -26,6 +27,7 @@ module transportOperatorFactory_func
   character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST    ', &
                                                                          'transportOperatorDT    ', &
                                                                          'transportOperatorHT    ', &
+                                                                         'transportOperatorTime  ', &
                                                                          'transportOperatorTimeHT']!, &
                                                                        !  'dynamicTranspOperDT']
 
@@ -61,6 +63,10 @@ contains
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
+        call new % init(dict)
+
+      case('transportOperatorTime')
+        allocate( transportOperatorTime :: new)
         call new % init(dict)
 
       case('transportOperatorTimeHT')
