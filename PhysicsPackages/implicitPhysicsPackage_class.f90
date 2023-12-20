@@ -410,7 +410,7 @@ contains
     character(nameLen), dimension(:), allocatable :: mats
     real(defReal)                                 :: timeStep
     type(dictionary),target                       :: newGeom, newData
-    character(nameLen)                            :: method
+    character(nameLen)                            :: method, units
     character(100), parameter :: Here ='init (implicitPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -428,12 +428,27 @@ contains
 
     ! Read calculation settings
     call dict % get(self % pop,'pop')
-    call dict % get(self % limit, 'limit')
+    call dict % get(self % limit,'limit')
     call dict % get(self % N_steps,'steps')
     call dict % get(timeStep,'timeStep')
     call dict % getOrDefault(self % printUpdates, 'printUpdates', 0)
     nucData = 'mg'
 
+    ! Set time step after changing units if necessary
+    call dict % getOrDefault(units, 'units', 'ns')
+    select case(units)
+      case('s')
+        ! No change needed
+      case('ns')
+        ! Convert time step from ns to s
+        timeStep = timeStep/10**9
+      case('marshak')
+        ! Special case where a = c = 1
+        timeStep = timeStep/lightSpeed
+        print *, 'WARNING: For Marshak wave, still need to manually change radiationConstant to 1'
+      case default
+        call fatalError(Here, 'Unrecognised units')
+    end select
     call setStep(timeStep)
 
     ! Read outputfile path
