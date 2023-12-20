@@ -1,102 +1,53 @@
-//
+
 // Intended as a sample/tutorial input file for calculations using IMC physics
 //   package, to detail settings that differ to other calculation types
-//
-// Note that a lot of the input files in this branch require lightSpeed and radiationConstant both
-//   to be changed to ONE in universalVariables before compiling
 
-type IMCPhysicsPackage;
+type implicitPhysicsPackage;
 
-pop            1000;
-  // Maximum total number of particles to be emitted during each time step from all material.
-  //   This number is split between material regions based on the energy they are emitting and is
-  //   reduced if limit is going to be reached.
+method         IMC;        // IMC or ISMC
+pop            10000;      // 
+limit          25000;      //
+steps          5000;       // Number of timesteps to take
+timeStep       0.1;        // Timestep for calculation
+units          marshak;    // Units for conversion of timeStep in physicsPackage
+printUpdates   2;          // Prints first N brief material updates per timestep
 
-limit          10000;
-  // Sets the maximum size of particle dungeons. Runtime is very dependent on this value so should
-  //   not be set arbitrarily large.
+// Energy grid for multi-frequency calculations, if not provided then defaults to grey case
+energygrid {
+            grid    log;
+            size    30;
+            min     0.0001;
+            max     100;
+            }
 
-steps          50;
-  // The number of time steps to be used in the calculation
-
-timeStepSize   0.1;
-  // The time step size for the calculation in seconds
-
-printUpdates   1;
-  // The number maximum number of material updates to print to screen. If 0, no updates will be
-  //   printed.
-
-collisionOperator {
-                    photonMG {type IMCMGstd;}
-                  }
+collisionOperator { photonMG {type IMCMGstd;} } 
 
 transportOperator {
-                    type transportOperatorTimeHT; cutoff 0.7;
-                  }
+                    type transportOperatorTime;  // Standard transport operator for IMC/ISMC
+                  } 
 
-// No tallies are required for calculation, but empty dictionary must be given
-tally  {
-	   }
+tally  {}  // Required tallies are defined automatically in physicsPackage
 
-
-// Geometry is as in all other calculation types.
-// Here a simple infinite region is given (a perfectly reflected 1x1x1 cube)
+// Black body surface source placed on -x face of geometry bounding box with T = 1
+source { type blackBodySource; distribution surface; surface -x; temp 1; }
 
 geometry { 
-    type geometryStd;
-    boundary (1 1 1 1 1 1);
+    type geometryGrid;      // Splits geometry into a uniform grid with the dimensions given below
+                            // Efficient for IMC, see geometryGrid_class.f90 for more detail
+    dimensions (100 1 1);
+
+    boundary (0 0 1 1 1 1); // 0 -> Open boundary, 1 -> Reflective boundary
     graph {type shrunk;}
 
-    surfaces {
-      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 0.5 0.5 0.5); }  
-             }
-
-    cells {
-          }
-
-    universes {
-      root { id 1; type rootUniverse; border 1; fill mat; }
-              }
+    surfaces { outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }}
+    cells {}
+    universes { root { id 100; type rootUniverse; border 1; fill mat1; }}
 }
 
 nuclearData {
+  handles {  mg { type baseMgIMCDatabase; }}
 
-  handles { 
-     mg       { type baseMgIMCDatabase; }
-  }
-  
-  // Dictionary containing all materials used in geometry
-  // If desired to have spatial temperature variation, split geometry (above) into desired cells
-  //   and set each cell fill as a DIFFERENT material (e.g. mat1, mat2, mat3, ...) then define
-  //   all materials here. Even if each each mat input is identical, a unique material object
-  //   will be created allowing for a unique temperature evolution. The same xsFile may be used
-  //   for different materials if desired.
-
-  materials { 
-
-    // Example: mat
-    mat {
-
-      temp       1;
-        // Initial temperature of material [keV].
-
-      composition {}
-        // Empty dictionary required for composition.
-
-      xsFile ./DataFiles/sampleData;
-        // Location of material data file containing material properties.
-
-      volume     1;
-        // Total volume that this material occupies [cm3], for now need to calculate by hand
-        //   and enter here. May be room to make this automatic in the future.
-
-    }
-
-    // Example 2: mat2
-    //mat2 { temp 1; composition {} xsFile ./DataFiles/sampleData2; volume 1 }
-
-} 
-  
+  materials { mat1 { temp 0.01; composition {} xsFile ./DataFiles/sampleData; }}
 }
   
   

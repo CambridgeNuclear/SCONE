@@ -1,0 +1,72 @@
+
+type implicitPhysicsPackage;
+
+method         IMC;
+pop            100000;
+limit          300000;
+steps          100;
+timeStep       0.01;
+units          ns;
+printUpdates   0;
+
+energyGrid {
+            grid    log;
+            size    30;
+            min     0.0001;
+            max     100;
+            }
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTime;
+                  } 
+
+matSource { type materialSource; method fast; }
+
+
+source { type blackBodySource; distribution surface; surface -x; temp 1; }
+
+
+tally  {
+	   }
+
+geometry { 
+    type geometryGrid;
+    dimensions (250 1 1);
+    boundary (0 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2.5 0.5 0.5); }
+    }
+
+    cells {}
+
+    universes
+    {
+      root { id 100; type rootUniverse; border 1; fill mat1; }
+    }
+
+}
+
+nuclearData {
+
+  handles { 
+     mg { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials {
+
+    mat1 { temp 0.001; composition {} xsFile ./DataFiles/densmoreDataThin; }
+
+  }
+
+}
+  
+  
+  

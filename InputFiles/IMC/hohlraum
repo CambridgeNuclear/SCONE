@@ -1,30 +1,26 @@
 
-type IMCPhysicsPackage;
+type implicitPhysicsPackage;
 
-pop            2000000;
-limit          20000000;
+method         IMC;
+pop            500000;
+limit          2000000;
 steps          100;
-timeStepSize   0.00000000001;
-printUpdates   0;
+timeStep       0.01;
+units          ns;
 
 collisionOperator {
                     photonMG {type IMCMGstd;}
                   } 
 
 transportOperator {
-                    type transportOperatorTimeHT;
-                    method ST;
-                    cutoff 0.9;
-                    grid { dimensions (20 20 1); searchN (10 10 1); }
+                    type transportOperatorTime;
                   } 
 
-matSource { type imcSource; method fast; }
-
 source {
-  type bbSurfaceSource;
-  r (-0.5 -0.5 -0.5 0.5 -0.5 0.5);
+  type blackBodySource;
+  distribution surface;
+  surface -x;
   temp 1;
-  N 20000;
 }
 
 viz { vizDict { type vtk; corner (-0.5 -0.5 -0.5); width (1 1 1); vox (20 20 1); } }
@@ -32,10 +28,9 @@ viz { vizDict { type vtk; corner (-0.5 -0.5 -0.5); width (1 1 1); vox (20 20 1);
 tally  {
 	   }
 
-discretise { dimensions (200 200 1); }
-
 geometry { 
-    type geometryStd;
+    type geometryGrid;
+    dimensions (200 200 1);
     boundary (0 0 0 0 1 1);
     graph {type shrunk;}
 
@@ -90,11 +85,11 @@ nuclearData {
   
   materials {
 
-    mat1 { temp 0.000000001; composition {} xsFile ./DataFiles/hohlraumData; }
+    mat1 { temp 0.000001; composition {} xsFile ./DataFiles/hohlraumData; }
 
   }
 
 }
-  
-  
-  
+
+
+
