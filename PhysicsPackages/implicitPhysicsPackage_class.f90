@@ -189,9 +189,6 @@ contains
 
     do i=1,N_steps
 
-      ! Update tracking grid if needed by transport operator
-      if (associated(self % transOp % grid)) call self % transOp % grid % update()
-
       ! Generate particles while staying below dungeon limit (see note in subroutine description)
       if (self % method == IMC) then
 

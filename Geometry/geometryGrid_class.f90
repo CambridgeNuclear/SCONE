@@ -76,6 +76,7 @@ module geometryGrid_class
     procedure :: matBounds
 
     ! Private procedures
+    procedure, private :: initGridOnly
     procedure, private :: explicitBC
     procedure, private :: csg_diveToMat
     procedure, private :: csg_placeCoord
@@ -100,6 +101,7 @@ contains
     real(defReal), dimension(3)            :: r
     type(dictionary)                       :: matDict, tempDict
     real(defReal)                          :: volume
+    character(nameLen)                     :: gridOnly
     integer(shortInt)                      :: i, j, k, z, N, matIdx, uniqueID, idxCounter, voidCounter
     character(100), parameter :: Here = 'init (geometryGrid_class.f90)'
 
@@ -108,6 +110,27 @@ contains
       loud = .not.silent
     else
       loud = .true.
+    end if
+
+    ! Get geometry discretisation
+    call dict % get(self % latSizeN, 'dimensions')
+    if (size(self % latSizeN) /= 3) call fatalError(Here, 'Dimensions must be of size 3')
+
+    ! Allocate space for material indexes
+    allocate(self % mats(self % latSizeN(1),self % latSizeN(2),self % latSizeN(3)))
+
+    ! Get boundary conditions
+    call dict % get(self % boundary, 'boundary')
+    if (size(self % boundary) /= 6) call fatalError(Here, 'boundary should be an array of size 6')
+
+    ! Determine whether to completely rebuild geometry or to just build a grid
+    call dict % getOrDefault(gridOnly, 'gridOnly','n')
+    if (gridOnly == 'y') then
+      ! Switch to dedicated subroutine
+      call self % initGridOnly(dict)
+      return
+    else if (gridOnly /= 'n') then
+      call fatalError(Here, 'Unrecognised value for gridOnly setting. Should be y or n.')
     end if
 
     ! Build the representation using CSG geometry
@@ -122,18 +145,11 @@ contains
     bounds = surf % boundingBox()
     self % geomBounds = bounds
 
-    ! Get geometry discretisation
-    call dict % get(self % latSizeN, 'dimensions')
-    if (size(self % latSizeN) /= 3) call fatalError(Here, 'Dimensions must be of size 3')
-
     do i = 1, 3
       self % latPitch(i) = (bounds(i+3) - bounds(i)) / self % latSizeN(i)
     end do
     self % corner = bounds(1:3)
     volume = product(self % latPitch)
-
-    ! Allocate space for material indexes
-    allocate(self % mats(self % latSizeN(1),self % latSizeN(2),self % latSizeN(3)))
 
     ! Initialise dictionary of materials for materialMenu_mod initialisation
     N = product(self % latSizeN)
@@ -191,10 +207,6 @@ contains
     ! Kill material dictionary
     call matDict % kill()
 
-    ! Get boundary conditions
-    call dict % get(self % boundary, 'boundary')
-    if (size(self % boundary) /= 6) call fatalError(Here, 'boundary should be an array of size 6')
-
     ! Print finish line
     if (loud) then
       print *, "\/\/ FINISHED BUILDING GRID GEOMETRY \/\/"
@@ -202,6 +214,40 @@ contains
     end if
 
   end subroutine init
+
+  !!
+  !! Generate grid geometry without giving any consideration to materials as is done in the full
+  !! subroutine above. Assigns a unique value to each grid cell so that self % whatIsAt(matIdx)
+  !! will return useful value.
+  !!
+  !! Unlike in full subroutine above, "bounds" is required in input dictionary.
+  !!
+  subroutine initGridOnly(self, dict)
+    class(geometryGrid), intent(inout)       :: self
+    class(dictionary), intent(in)            :: dict
+    real(defReal), dimension(:), allocatable :: bounds
+    integer(shortInt)                        :: i, j, k, idxCounter
+
+    ! Get grid bounds and calculate basic properties
+    call dict % get(bounds, 'bounds')
+    self % geomBounds = bounds
+    do i = 1, 3
+      self % latPitch(i) = (bounds(i+3) - bounds(i)) / self % latSizeN(i)
+    end do
+    self % corner = bounds(1:3)
+
+    ! Assign a unique value to each grid cell
+    idxCounter = 1
+    do k = 1, self % latSizeN(3)
+      do j = 1, self % latSizeN(2)
+        do i = 1, self % latSizeN(1)
+          self % mats(i,j,k) = idxCounter
+          idxCounter = idxCounter + 1
+        end do
+      end do
+    end do
+
+  end subroutine initGridOnly
 
   !!
   !! Return to uninitialised state

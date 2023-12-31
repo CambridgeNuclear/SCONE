@@ -11,6 +11,11 @@
 !!   -> Evaluate simple equations (e.g. 'marshak' or 'hohlraum') in these functions,
 !!      or can link to new functions (e.g. 'olson1D')
 !!
+!! Virtually all benchmark problems for IMC have a real scattering opactiy of 0, giving only
+!! effective absorptions and effective scattering. If desired, incorporating real scattering should
+!! be very easy, adding a new equation type in this module and scattering support in material and
+!! collision operator.
+!!
 module materialEquations
 
   use numPrecision

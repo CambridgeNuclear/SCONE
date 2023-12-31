@@ -13,7 +13,7 @@ module transportOperatorFactory_func
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
   use transportOperatorTime_class,      only : transportOperatorTime
-  use transportOperatorTimeHT_class,    only : transportOperatorTimeHT
+  use transportOperatorGeomHT_class,    only : transportOperatorGeomHT
   !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
   implicit none
@@ -28,7 +28,7 @@ module transportOperatorFactory_func
                                                                          'transportOperatorDT    ', &
                                                                          'transportOperatorHT    ', &
                                                                          'transportOperatorTime  ', &
-                                                                         'transportOperatorTimeHT']!, &
+                                                                         'transportOperatorGeomHT']!, &
                                                                        !  'dynamicTranspOperDT']
 
   public :: new_transportOperator
@@ -69,9 +69,10 @@ contains
         allocate( transportOperatorTime :: new)
         call new % init(dict)
 
-      case('transportOperatorTimeHT')
-        allocate( transportOperatorTimeHT :: new)
+      case('transportOperatorGeomHT')
+        allocate( transportOperatorGeomHT :: new)
         call new % init(dict)
+
 
 !      case('dynamicTranspOperDT')
 !        allocate( transportOperatorDynamicDT :: new)

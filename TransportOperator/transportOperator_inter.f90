@@ -20,10 +20,6 @@ module transportOperator_inter
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
-  ! Geometry interfaces
-  use trackingGrid_class,         only : trackingGrid
-
-
   implicit none
   private
 
@@ -50,8 +46,6 @@ module transportOperator_inter
 
     !! Geometry pointer -> public so it can be used by subclasses (protected member)
     class(geometry), pointer         :: geom        => null()
-
-    class(trackingGrid), pointer     :: grid => null()
 
   contains
     ! Public interface
