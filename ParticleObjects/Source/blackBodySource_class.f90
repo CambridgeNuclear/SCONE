@@ -19,10 +19,12 @@ module blackBodySource_class
 
   ! Options for source distribution
   integer(shortInt), parameter, public :: SURFACE = 1
-  integer(shortInt), parameter, public :: OLSON1D = 2
+  integer(shortInt), parameter, public :: UNIFORM = 2
+  integer(shortInt), parameter, public :: OLSON1D = 3
 
   !!
-  !! Generates a source representing a black body surface
+  !! Generates a source representing a black body
+  !! Standard is a surface distribution but can be configured for custom distributions
   !!
   !! Private members:
   !!   r            -> bottom corner of source
@@ -50,6 +52,13 @@ module blackBodySource_class
   !!       temp 1;       -> temperature of the black body source
   !!      }
   !!
+  !!  Current source distributions:
+  !!    surface -> black body surface source placed on the surface indicated
+  !!    uniform -> uniform in space, isotropic
+  !!    olson1D -> 1D multifrequency benchmark source from "Stretched and Filtered Multigroup Pn
+  !!               Transport for Improved Positivity and Accuracy", Olson, Gordon Lee, 2020
+  !!               See materialEquations.f90 for sigma and cv equations for this benchmark.
+  !!
   type, public,extends(configSource) :: blackBodySource
     private
 
@@ -58,9 +67,7 @@ module blackBodySource_class
     real(defReal), dimension(3)       :: dr           = ZERO     ! Spatial extent from corner
     integer(shortInt), dimension(3,3) :: rotation     = ZERO     ! Direction rotation matrix
     ! Other settings
-    integer(shortInt)                 :: distribution = SURFACE  ! Standard is a black body surface,
-                                                                 ! but can define new custom sources
-                                                                 !if needed
+    integer(shortInt)                 :: distribution = SURFACE
     integer(shortInt)                 :: particleType = P_PHOTON
     logical(defBool)                  :: isMG         = .true.
     real(defReal)                     :: T            = ZERO     ! Source temperature
@@ -158,14 +165,14 @@ contains
 
     select case(self % distribution)
 
-      case(SURFACE)
+      case(SURFACE, UNIFORM)
         ! Set new x, y and z coords
         do i = 1, 3
           r(i) = self % r(i) + rand % get()*self % dr(i)
         end do
 
       case(OLSON1D)
-        ! Q(x) proportional to exp(-693x**3)
+        ! Q(x) proportional to exp(-693x**3) (integral from 0 to 4.8 = 0.100909)
         rejection:do
           x = rand % get() * 4.8
           if (rand % get() < exp(-693*x**3)/0.100909) exit
@@ -210,7 +217,7 @@ contains
       return
     end if
 
-    ! If not isotropic, sample first with a primary direction of +x
+    ! If not isotropic (e.g. surface distribution), sample first with a primary direction of +x
     phi = TWO_PI * rand % get()
     mu = sqrt(rand % get())
     dir = [mu, sqrt(1-mu*mu)*cos(phi), sqrt(1-mu*mu)*sin(phi)]
@@ -263,7 +270,6 @@ contains
     class(blackBodySource), intent(inout) :: self
     class(particleState), intent(inout)   :: p
     class(RNG), intent(inout)             :: rand
-    real(defReal)                         :: intensity
 
     p % wgt = self % particleWeight
 
@@ -296,8 +302,7 @@ contains
     class(blackBodySource), intent(inout)    :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    real(defReal), dimension(:), allocatable :: temp
-    integer(shortInt)                        :: i, j, nGroups, dir
+    integer(shortInt)                        :: i, j, nGroups
     real(defReal)                            :: nu, eStep
     type(energyGrid)                         :: eGrid
     logical(defBool)                         :: err
@@ -355,7 +360,7 @@ contains
 
   !!
   !! Initialise source for standard black body surface by placing source as one side of
-  !! bounding bos of geometry
+  !! bounding box of geometry
   !!
   !! Input dict should contain 'surface', corresponding to which side of the box is the source
   !! e.g. surface -x;    => source placed on negative x side of bounding box
@@ -440,26 +445,40 @@ contains
   !! procedures if needed.
   !!
   subroutine initCustom(self, dict)
-    class(blackBodySource), intent(inout)   :: self
-    class(dictionary), intent(in)           :: dict
-    real(defReal), dimension(6)             :: bounds
-    character(nameLen)                      :: name
+    class(blackBodySource), intent(inout) :: self
+    class(dictionary), intent(in)         :: dict
+    character(nameLen)                    :: name
+    integer(shortInt)                     :: i
+    real(defReal), dimension(6)           :: bounds
     character(100), parameter :: Here = 'initCustom (blackBodySource_class.f90)'
 
     call dict % get(name, 'distribution')
 
     select case(name)
 
+      case('uniform')
+        self % distribution = UNIFORM
+        bounds = self % geom % bounds()
+        ! Bottom left corner
+        self % r = bounds(1:3)
+        ! Dimensions of bounding box
+        do i = 1, 3
+          self % dr(i) = bounds(i+3) - bounds(i)
+        end do
+        ! Isotropic direction sampling
+        self % rotation = ZERO
+        call dict % get(self % sourceWeight, 'sourceWeight')
+
       case('olson1D')
+        ! See self % samplePosition for position sampling specifics for Olson1D
         self % distribution = OLSON1D
         ! Isotropic directional sampling
         self % rotation = ZERO
         ! Set source weight
-        !self % sourceWeight = timeStep() * 0.100909 * 15 / (pi**4 * 0.5 * (exp(ONE) - ONE))
-        self % sourceWeight = timeStep() * 0.100909 * 15 / (pi**4 * 0.5 * (exp(ONE) - ONE))
+        self % sourceWeight = radiationConstant * lightSpeed * timeStep() * self % T**4 * 0.100909
 
       case default
-        call fatalError(Here, 'Unrecognised name for custom black body source')
+        call fatalError(Here, 'Unrecognised distribution for custom black body source')
 
     end select
 
@@ -475,12 +494,12 @@ contains
     call kill_super(self)
 
     ! Kill local components
-    self % r   = ZERO
-    self % dr  = ZERO
-    self % distribution = SURFACE
-    self % particleType = P_PHOTON
-    self % isMG         = .true.
-    self % T      = ZERO
+    self % r              = ZERO
+    self % dr             = ZERO
+    self % distribution   = SURFACE
+    self % particleType   = P_PHOTON
+    self % isMG           = .true.
+    self % T              = ZERO
     self % particleWeight = ZERO
 
   end subroutine kill

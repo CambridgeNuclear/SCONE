@@ -7,11 +7,6 @@ module particleDungeon_class
   use geometry_inter,        only : geometry
   use universalVariables,    only : INF
 
-  ! TODO ADDED FOR REDUCESIZE SUBROUTINE, CONSIDER CHANGING/REMOVING LATER
-  use nuclearDataReg_mod,    only : ndReg_getIMCMG => getIMCMG
-  use mgIMCDatabase_inter,   only : mgIMCDatabase
-  use materialMenu_mod,      only : mm_nMat => nMat
-
   implicit none
   private
 
@@ -58,8 +53,6 @@ module particleDungeon_class
   !!     normWeight(totWgt)  -> normalise dungeon population so its total weight is totWgt
   !!     normSize(N)         -> normalise dungeon population so it contains N particles
   !!                            does not take nonuniform weight of particles into account
-  !!     reduceSize(N,arr)   -> reduce size of dungeon by combining particles such that a max of
-  !!                            N particles are present in each material
   !!     combine(idx1,idx2)  -> combine 2 particles by summing their weight and moving to a weight-
   !!                            averaged position
   !!     deleteParticle(idx) -> deletes particle at idx and reduces dungeon size by 1
@@ -101,8 +94,6 @@ module particleDungeon_class
     procedure  :: isEmpty
     procedure  :: normWeight
     procedure  :: normSize
-    procedure  :: reduceSize
-    procedure  :: reduceSizeNEW
     procedure  :: closest
     procedure  :: combine
     procedure  :: deleteParticle
@@ -458,197 +449,7 @@ contains
   end subroutine normSize
 
   !!
-  !! TODO DOESN'T WORK PROPERLY, REMOVE BEFORE GIT MERGE
-  !!
-  !! Combines particles such that the max population in any region is N, based on algorithm
-  !! proposed by Elad Steinberg and Shay I. Heizler, A New Discrete Implicit Monte Carlo Scheme
-  !! for Simulating Radiative Transfer Problems (2022). Currently chooses particles to keep as the
-  !! first ones found, Steinberg and Heizler suggest choosing using a weighted-probability, can be
-  !! improved to do this in the future if necessary.
-  !!
-  !! Args:
-  !!   N [in]          -> Maximum number of particles in each region
-  !!   emptyArray [in] -> Pointer to array of size (3, system limit) to avoid allocating every time
-  !!
-  subroutine reduceSize(self, N, emptyArray)
-    class(particleDungeon), intent(inout)                  :: self
-    integer(shortInt), intent(in)                          :: N
-    integer(shortInt), dimension(:,:), intent(in), pointer :: emptyArray
-    integer(shortInt), dimension(:), pointer               :: idxArray, toKeep, toRemove
-    integer(shortInt)                                      :: i, j, idx, idxKeep, idxRemove, pop
-    real(defReal), dimension(3)                            :: r
-    real(defReal)                                          :: dist, minDist
-
-    ! Store initial population
-    pop = self % pop
-
-    ! Initialise arrays and pointers
-    emptyArray = 0
-    idxArray   => emptyArray(1, 1:size(emptyArray,2))
-    toKeep     => emptyArray(2, 1:size(emptyArray,2))
-    toRemove   => emptyArray(3, 1:size(emptyArray,2))
-
-    ! Store particle matIdx in array for easy access
-    idxArray(1:self % pop) = self % prisoners(1:self % pop) % matIdx
-
-    ! Only consider material particles
-    idxArray = idxArray * merge(1, 0, self % prisoners(1:self % pop) % type == P_MATERIAL)
-
-    do i=1, maxVal(idxArray)
-
-      ! Manipulate toKeep to be as follows:
-      !   0 -> Either not in material i, or not of type P_MATERIAL
-      !   1 -> In material i, P_MATERIAL, to be removed
-      !   2 -> In material i, P_MATERIAL, to be kept
-
-      ! Set toKeep array to be 1 for mat particles in material i and 0 otherwise
-      toKeep = merge(1, 0, idxArray == i)
-
-      ! Determine if population needs to be reduced
-      if (sum(toKeep) > N) then
-        do j=1, N
-          ! Select particles being kept and increase flag from 1 to 2
-          idx = linFind(toKeep, 1)
-          toKeep(idx) = 2
-        end do
-      else
-        ! Increase flags to 2 if no reduction is necessary
-        toKeep = toKeep * 2
-      end if
-
-      reduce:do
-        ! Exit if material population does not need to be reduced
-        if (count(toKeep == 1) == 0) exit reduce
-
-        ! Select particle to be removed
-        idxRemove = linFind(toKeep, 1)
-        r = self % prisoners(idxRemove) % r
-
-        ! Find minimum distance to a particle being kept
-        minDist = INF
-        do j=1, size(toKeep)
-          if (toKeep(j) == 2) then
-            dist = getDistance(r, self % prisoners(j) % r)
-            if (dist < minDist) then
-             minDist = dist
-             idxKeep = j
-            end if
-          end if
-        end do
-
-        ! Combine particles
-        call self % combine(idxKeep, idxRemove)
-
-        ! Store idxRemove for deletion later
-        toRemove(idxRemove) = 1
-
-        ! Remove from toKeep
-        toKeep(idxRemove) = 0
-
-      end do reduce
-
-    end do
-
-    ! Delete particles starting from highest index
-    do i=1, size(toRemove)
-      idx = size(toRemove)-i+1
-      if (toRemove(idx) == 1) call self % deleteParticle(idx)
-    end do
-
-    ! Print reduction
-    if (self % pop /= pop) then
-      print *
-      print *, 'Reduced dungeon size from '//numToChar(pop)//' to '//numToChar(self % pop)
-      print *
-    end if
-
-  end subroutine reduceSize
-
-  !!
-  !! TODO TOO SLOW TO BE USEFUL, CHANGE OR REMOVE BEFORE GIT MERGE
-  !!
-  !! N -> target size
-  !!
-  subroutine reduceSizeNEW(self, matMax, rand)
-    class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)         :: matMax
-    class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: pop, i, j, idx, numInMat, matIdx
-    real(defReal)                         :: matWeight, prob, testVar
-    class(mgIMCDatabase), pointer         :: nucData
-    character(100), parameter :: Here = 'aiucbniuqbnwionmcas'
-
-    pop = self % pop
-    print *, 'START:', pop
-
-    nucData => ndReg_getIMCMG()
-
-    ! Consider each material seperately
-    do j = 1, mm_nMat()
-
-      ! Find number of particles in each material
-      numInMat = sum(merge(1, 0, self % prisoners(1:self % pop) % matIdx == j))
-      if (j == 1) print *, 'mat ', j, numInMat
-
-      ! Skip if reduction not needed
-      if (numInMat < matMax) cycle
-
-      ! Get sum of energies of material particles within mat - Faster than looping through dungeon
-      matWeight = nucData % getMaterialEnergy(j)
-
-      ! Loop through particles in material and mark for deletion by setting weight as negative
-      do i = 1, self % pop
-        ! Skip if wrong mat
-        if (self % prisoners(i) % matIdx /= j) cycle
-        ! Only consider material particles
-        if (self % prisoners(i) % type /= P_MATERIAL) cycle
-        ! Delete particles probabilistically based on particle weight
-        prob = 1 - matMax * self % prisoners(i) % wgt / matWeight
-        ! Mark for deletion by setting weight negative
-        if (rand % get() < prob) then
-          self % prisoners(i) % wgt = - self % prisoners(i) % wgt
-        end if
-      end do
-
-      ! TODO If only considering material particles then can get total weight from energy density
-      ! of material, if wanting to reduce pop of photons as well then could potentially approximate using
-      ! equilibrium radiation energy density of material (aT^4)
-
-    end do
-
-    ! Loop through dungeon again to combine particles
-    do i = 1, pop
-      ! Skip particles to keep
-      if (self % prisoners(i) % wgt >= ZERO) cycle
-      matIdx = self % prisoners(i) % matIdx
-      if (matIdx <= 0) call fatalError(Here, numToChar(matIdx))
-      ! Find nearest valid particle to join with
-      idx = self % closest(i)
-      ! If no suitable friend found, allow particle to survive
-      if (idx == 0) then
-        ! Re-flip weight
-        self % prisoners(i) % wgt = - self % prisoners(i) % wgt
-        cycle
-      end if
-      ! Combine
-      call self % combine(idx, i)
-    end do
-
-    ! Delete dead particles in reverse order to prevent changing indices
-    do i = 1, pop
-      idx = pop - i + 1
-      if (self % prisoners(idx) % wgt <= ZERO) call self % deleteParticle(idx)
-    end do
-
-    numInMat = sum(merge(1, 0, self % prisoners(1:self % pop) % matIdx == 1))
-    print *, 'mat ', '1', numInMat
-
-    print *, 'END: ', self % pop 
-
-  end subroutine reduceSizeNEW
-
-  !!
-  !! TODO
+  !! Find the closest particle to particle at idx, that is of the same type and in the same material
   !!
   function closest(self, idx) result(idxClose)
     class(particleDungeon), intent(in) :: self
@@ -656,6 +457,7 @@ contains
     integer(shortInt)                  :: idxClose, matIdx, type, i
     real(defReal), dimension(3)        :: r
     real(defReal)                      :: dist, minDist
+    character(100), parameter :: Here = 'closest (particleDungeon_class.f90)'
 
     ! Get required properties of particle
     r      = self % prisoners(idx) % r
@@ -672,9 +474,6 @@ contains
       if (self % prisoners(i) % matIdx /= matIdx) cycle
       if (self % prisoners(i) % type /= type) cycle
 
-      ! Require particle to have positive weight
-      if (self % prisoners(i) % wgt <= ZERO) cycle
-
       ! Get distance
       dist = getDistance(r, self % prisoners(i) % r)
       if (dist < minDist) then
@@ -685,6 +484,8 @@ contains
     end do
     !$omp end do
     !$omp end parallel
+
+    if (idxClose == 0) call fatalError(Here, 'No valid particle found')
 
   end function closest
 
@@ -713,9 +514,6 @@ contains
     call self % copy(p2, idx2)
     r1 = p1 % rGlobal()
     r2 = p2 % rGlobal()
-
-    ! Flip weight of p2 if negative (for reduceSizeNEW) TODO
-    p2 % w = abs(p2 % w)
 
     ! Move to new combined position
     rNew = (r1*p1 % w + r2*p2 % w) / (p1 % w + p2 % w)

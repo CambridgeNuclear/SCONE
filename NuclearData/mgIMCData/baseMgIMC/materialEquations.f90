@@ -145,7 +145,7 @@ module materialEquations
     alpha = 0.5*exp(-0.1/T)*(root-1)
     dAlphadT = 0.1*(alpha-1/root)/(T*T)
 
-    cv = 0.1*(1+alpha+(T+0.1)*dAlphadT)
+    cv = radiationConstant*0.1*(1+alpha+(T+0.1)*dAlphadT)
 
     ! Deal with numerical errors from poorly defined regions (e.g. T almost 0)
     if (cv /= cv .or. cv > INF) cv = ZERO

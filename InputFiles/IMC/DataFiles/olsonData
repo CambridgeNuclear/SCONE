@@ -1,0 +1,6 @@
+// Data for 1D Olson benchamrk problem
+//
+
+equations olson1D;
+
+
