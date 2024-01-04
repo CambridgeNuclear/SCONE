@@ -60,24 +60,37 @@ module baseMgIMCMaterial_class
   !!
   !! Note:
   !!   Order of "data" array is: data(XS_type, Group #)
-  !!   Dictionary with data must contain following entries:
-  !!     -> numberOfGroups
+  !!   For multigroup calculations:
+  !!     -> energyGrid { } is given in input file, not in material data file
+  !!     -> if not provided, simulation is done for grey case
+  !!     -> numberOfGroups is automatically extracted from energyGrid
+  !!
+  !! Data file sample inputs:
+  !!   equations   olson;   -> required input, tells code which set of compiled equations to use
+  !!                           (see materialEquations.f90 for examples and to add new cases)
+  !!   sigmaFactor 10;      -> multiplies sigma equation by a constant, avoids recompiling or
+  !!                           duplicating equations
+  !!   cv          1;       -> as above, for heat capacity
+  !!   tol         8;       -> defaults to 6 if not given. The order of tolerence used in temp
+  !!                           calculation, i.e. 8 => 1e-8, this is then multiplied by current temp
+  !!   alpha       0.7;     -> optional parameter used to tweak fleck factor, defaults to 1
   !!
   type, public, extends(mgIMCMaterial) :: baseMgIMCMaterial
-    real(defReal),dimension(:,:), allocatable :: data
-    character(nameLen)                        :: name   ! Name for update equations (see materialEquations.f90)
-    real(defReal)                             :: T      ! Temperature
-    real(defReal)                             :: V      ! Volume
-    real(defReal)                             :: fleck  ! Fleck factor
-    real(defReal)                             :: alpha  ! User-defined parameter for fleck factor
-    real(defReal)                             :: sigmaP ! Planck opacity
-    real(defReal)                             :: matEnergy      ! Total energy stored in material
-    real(defReal)                             :: prevMatEnergy  ! Energy prior to material update
-    real(defReal)                             :: energyDens     ! Energy density = matEnergy/V
-    real(defReal)                             :: eta            ! aT^4/energyDens, used for ISMC only
-    integer(shortInt)                         :: calcType       ! IMC or ISMC
-    real(defReal)                             :: sigmaFactor ! Constant to multiply sigma by
-    real(defReal)                             :: cvFactor    ! Constant to multiply heat capacity by
+    real(defReal),dimension(:,:), allocatable :: data   ! XS (opacity) data for each group
+    character(nameLen)                 :: name          ! Name for update equations
+    real(defReal)                      :: T             ! Temperature
+    real(defReal)                      :: V             ! Volume
+    real(defReal)                      :: fleck         ! Fleck factor
+    real(defReal)                      :: alpha         ! User-defined parameter for fleck factor
+    real(defReal)                      :: sigmaP        ! Planck opacity
+    real(defReal)                      :: matEnergy     ! Total energy stored in material
+    real(defReal)                      :: prevMatEnergy ! Energy prior to material update
+    real(defReal)                      :: energyDens    ! Energy density = matEnergy/V
+    real(defReal)                      :: eta           ! aT^4/energyDens (ISMC only)
+    real(defReal)                      :: sigmaFactor   ! Constant to multiply sigma by
+    real(defReal)                      :: cvFactor      ! Constant to multiply heat capacity by
+    real(defReal)                      :: tol           ! Tolerance for calculating temperature
+    integer(shortInt)                  :: calcType      ! IMC or ISMC
 
   contains
     ! Superclass procedures
@@ -186,7 +199,7 @@ contains
     class(baseMgIMCMaterial), intent(inout)     :: self
     class(dictionary),target, intent(in)        :: dict
     integer(shortInt)                           :: nG, N, i
-    real(defReal)                               :: dT, tempT, tempU
+    real(defReal)                               :: dT, tempT, tempU, tol
     character(100), parameter :: Here = 'init (baseMgIMCMaterial_class.f90)'
 
     ! Read number of groups
@@ -210,6 +223,10 @@ contains
     ! Get optional multiplication factor for heat capacity and opacity
     call dict % getOrDefault(self % sigmaFactor, 'sigmaMultiple', ONE)
     call dict % getOrDefault(self % cvFactor, 'cvMultiple', ONE)
+
+    ! Get optional tolerance for temperature calculation
+    call dict % getOrDefault(tol, 'tol', 6*ONE)
+    self % tol = 10_defReal**(-tol)
 
     ! Read initial temperature and volume
     call dict % get(self % T, 'T')
@@ -358,9 +375,6 @@ contains
 
     self % energyDens = self % matEnergy / self % V
 
-    ! Return if no change
-    if (abs(self % matEnergy - self % prevMatEnergy) < 0.00001*self % prevMatEnergy) return
-
     ! Confirm new energy density is valid
     if (self % energyDens <= ZERO) call fatalError(Here, 'Energy density is not positive')
 
@@ -378,15 +392,19 @@ contains
       if (loud) then
         change = self % matEnergy - self % prevMatEnergy
         if (change < ZERO) then
-          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//'    ( -'//numToChar(abs(change))//')'
+          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//&
+                   '    ( -'//numToChar(abs(change))//' )'
         else
-          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//'    ( +'//numToChar(change)//')'
+          print *, '    Mat Energy      ='//numToChar(self % matEnergy)//&
+                   '    ( +'//numToChar(change)//' )'
         end if
         change = self % T - prevTemp
         if (change < ZERO) then
-          print *, '    Mat Temperature ='//numToChar(self % T)//'    ( -'//numToChar(abs(change))//')'
+          print *, '    Mat Temperature ='//numToChar(self % T)//&
+                   '    ( -'//numToChar(abs(change))//' )'
         else
-          print *, '    Mat Temperature ='//numToChar(self % T)//'    ( +'//numToChar(change)//')'
+          print *, '    Mat Temperature ='//numToChar(self % T)//&
+                   '    ( +'//numToChar(change)//' )'
         end if
 
       end if
@@ -406,9 +424,12 @@ contains
     integer(shortInt)                       :: i
     character(100), parameter               :: Here = 'tempFromEnergy (mgIMCMaterial_class.f90)'
 
+    ! Confirm that current temperature is valid
+    if (self % T <= ZERO) call fatalError(Here, 'Zero temperature')
+
     ! Parameters affecting accuracy
-    dT  = self % T / 1000     ! Initial temperature step size to take, reduced after overshoot
-    tol = self % T / 1000000  ! Continue stepping until within tolerance
+    dT  = self % T / 1000       ! Initial temperature step size to take, reduced after overshoot
+    tol = self % T * self % tol ! Continue stepping until within tolerance
 
     ! Starting temperature and energy density
     T = self % T

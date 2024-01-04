@@ -3,4 +3,5 @@
 
 equations olson1D;
 
+tol       8;
 

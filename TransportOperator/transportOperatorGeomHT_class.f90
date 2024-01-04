@@ -37,7 +37,37 @@ module transportOperatorGeomHT_class
   private
 
   !!
-  !! Transport operator that moves a particle with using hybrid tracking, up to a time boundary
+  !! Transport operator that moves a particle using hybrid tracking, up to a time boundary.
+  !!
+  !! Overlays a second geometry (currently only able to be geometryGrid_class) onto the primary
+  !! geometry. This second geometry is filled with fake materials (see virtualMat_class) to give
+  !! information about the primary geometry. A particle begins with delta tracking, using the
+  !! majorant of only the current cell in the upper (fake) geometry. If it would cross into a new
+  !! upper cell, it is moved in the upper geometry and the majorant is used accordingly. If the
+  !! acceptance probability is ever below the user-supplied cutoff (actually 1 - cutoff), standard
+  !! surface tracking is used in the lower geometry, for the rest of the particle's motion.
+  !!
+  !! In order to determine which real mats are in which virtual cell, input searchN = (Nx, Ny, Nz)
+  !! is provided, and Nx*Ny*Nz points are generated and used to map between the two geometries. If
+  !! searchN is too small then materials may be missed! (fatalError will be called if local opacity
+  !! is greater than majorant opacity for any particle, which will be the result of missed mats).
+  !! If searchN = (N) is given (size-1 array) then Nx = Ny = Nz = N.
+  !!
+  !! Sample Dictionary Input:
+  !!   transportOperator {
+  !!     type   transportOperatorGeomHT;
+  !!     cutoff 0.5;
+  !!     geometry { type geometryGrid;
+  !!                bounds      (-2.4 -0.5 -0.5 2.4 0.5 0.5); => Should match primary geometry
+  !!                boundary    (1 1 1 1 1 1);                => Should match primary geometry
+  !!                gridOnly    y;                            => Stops materials being overwritten
+  !!                dimensions  (25 1 1); }                   => Number of tracking cells
+  !!     searchN (100);
+  !!    }
+  !!
+  !! TODO There is a bug somewhere, potentially in this module, causing segmentation faults in
+  !!      certain situations, but I haven't been able to figure out where and why.
+  !!      See InputFiles/IMC/DensmoreMF/densmoreMid for the input that leads to this fault.
   !!
   type, public, extends(transportOperator)   :: transportOperatorGeomHT
     real(defReal)                            :: deltaT
@@ -46,18 +76,20 @@ module transportOperatorGeomHT_class
     class(geometry), pointer                 :: upperGeom
     integer(shortInt)                        :: upperGeomIdx
     integer(shortInt)                        :: thisTimeStep
-    class(virtualMat), dimension(:), allocatable :: virtualMats
+    class(virtualMat), dimension(:), pointer :: virtualMats
   contains
-    procedure          :: transit => timeTracking
+    procedure          :: transit => multiGeomTracking
     procedure          :: init
     procedure, private :: surfaceTracking
     procedure, private :: deltaTracking
-    procedure, private :: getMajInv
   end type transportOperatorGeomHT
 
 contains
 
-  subroutine timeTracking(self, p, tally, thisCycle, nextCycle)
+  !!
+  !! Update virtual materials if needed, and then begin particle journey with delta tracking.
+  !!
+  subroutine multiGeomTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorGeomHT), intent(inout) :: self
     class(particle), intent(inout)                :: p
     type(tallyAdmin), intent(inout)               :: tally
@@ -70,8 +102,9 @@ contains
     ! essentially copied and pasted from transportOperatorTime_class if desired to use ISMC here
     if (p % type == P_MATERIAL) call fatalError(Here, 'No support for ISMC in this transOp')
 
-    ! Update majorants if required - this would be better done at the end of time step in PP
-    ! to avoid check for each particle but I wanted to keep this class self-contained
+    ! Update majorants if required - this would be better done at the end of time step in PP to
+    ! avoid check for each particle and repetion in parallel but I wanted to keep this class
+    ! self-contained for now
     if (self % thisTimeStep /= thisStep()) then
       self % thisTimeStep = thisStep()
       do i = 1, size(self % virtualMats)
@@ -89,7 +122,7 @@ contains
 
     call tally % reportTrans(p)
 
-  end subroutine timeTracking
+  end subroutine multiGeomTracking
 
   !!
   !! Perform delta tracking
@@ -107,11 +140,12 @@ contains
     class(particle), intent(inout)                :: p
     class(coordList), allocatable                 :: coords
     real(defReal)                                 :: dTime, dColl, sigmaT, majorant_inv, dist, ratio
-    integer(shortInt)                             :: virtualMatIdx, testMat, uniqueID, event, i
+    integer(shortInt)                             :: virtualMatIdx, testMat, uniqueID, event
     character(100), parameter :: Here = 'deltaTracking (transportOperatorGeomHT_class.f90)'
 
-    ! Get majorant
-    call self % getMajInv(p, majorant_inv, virtualMatIdx)
+    ! Get index of virtual material and majorant inverse
+    call self % upperGeom % whatIsAt(virtualMatIdx, uniqueID, p % coords % lvl(1) % r)
+    majorant_inv = self % virtualMats(virtualMatIdx) % majorant_inv(p % G)
 
     ! Get initial local opacity
     sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
@@ -119,7 +153,7 @@ contains
     DTLoop:do
 
       ! Switch to surface tracking if delta tracking is unsuitable
-      ratio = sigmaT*majorant_inv
+      ratio = sigmaT * majorant_inv
       if (ratio > ONE) call fatalError(Here, 'Local opacity greater than majorant')
       if (ratio < self % cutoff .or. majorant_inv == ZERO) then
         call self % surfaceTracking(p)
@@ -144,14 +178,13 @@ contains
       end if
 
       ! Check for change of upper geometry
-      call self % upperGeom % whatIsAt(testMat, uniqueID, coords % lvl(1) % r, coords % lvl(1) % dir)
+      call self % upperGeom % whatIsAt(testMat, uniqueID, coords % lvl(1) % r)
       if (testMat /= virtualMatIdx) then
         ! Move would take particle to a new cell
         call self % upperGeom % move(p % coords, dist, event)
         ! Get new majorant (particle already placed in upper geometry)
         virtualMatIdx = p % matIdx()
-        majorant_inv = self % virtualMats(virtualMatIdx) % majorant_inv
-        !call self % getMajInv(p, majorant_inv, virtualMatIdx)
+        majorant_inv = self % virtualMats(virtualMatIdx) % majorant_inv(p % G)
         ! Update particle time and place back in lower geometry
         p % time = p % time + dist / lightSpeed
         call self % geom % placeCoord(p % coords)
@@ -173,14 +206,13 @@ contains
         p % time = p % timeMax
         exit DTLoop
 
-      else if (dist == dColl) then! Dist == dColl
+      else if (dist == dColl) then
         ! Get local opacity and check for real or virtual collision
         sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
         if (p % pRNG % get() < sigmaT * majorant_inv) exit DTLoop
 
       else
-        call fatalError(Here, 'aaa')
-
+        call fatalError(Here, 'Peculiar distance moved')
       end if
 
     end do DTLoop
@@ -245,35 +277,6 @@ contains
 
   end subroutine surfaceTracking
 
-
-  !!
-  !! Return the inverse majorant opacity
-  !! For DT or HT this will be constant, for GT this will be dependent on position
-  !!
-  !! Args:
-  !!   p [in]  -> particle
-  !!
-  !! Result:
-  !!   maj_inv -> 1 / majorant opacity
-  !!
-  subroutine getMajInv(self, p, majorant_inv, virtualMatIdx)
-    class(transportOperatorGeomHT), intent(in) :: self
-    class(particle), intent(in)                :: p
-    real(defReal), intent(out)                 :: majorant_inv
-    integer(shortInt), intent(out)             :: virtualMatIdx
-    real(defReal), dimension(3)                :: r, dir
-    integer(shortInt)                          :: uniqueID
-
-    ! Get index of virtual material
-    r = p % coords % lvl(1) % r
-    dir = p % coords % lvl(1) % dir
-    call self % upperGeom % whatIsAt(virtualMatIdx, uniqueID, r, dir)
-
-    ! Get 1/majorant
-    majorant_inv = self % virtualMats(virtualMatIdx) % majorant_inv
-
-  end subroutine getMajInv
-
   !!
   !! Provide transport operator with delta tracking/surface tracking cutoff
   !!
@@ -310,7 +313,8 @@ contains
     self % upperGeom    => upperGeom
 
     ! Provide access to lower (standard) geometry
-    ! TODO: This assumes that there is only 1 other defined geometry
+    ! TODO: Really geometry and xsData should be inputs to init, but would need to change all
+    ! other transport operators
     self % geom => gr_geomPtr(1)
     self % xsData => ndReg_get(P_PHOTON_MG)
 
@@ -365,6 +369,7 @@ contains
     do i = 1, size(self % virtualMats)
       call self % virtualMats (i) % updateMajorant()
     end do
+    self % thisTimeStep = thisStep()
 
   end subroutine init
 

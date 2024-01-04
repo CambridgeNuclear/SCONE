@@ -438,7 +438,7 @@ contains
         ! No change needed
       case('ns')
         ! Convert time step from ns to s
-        timeStep = timeStep/10**9
+        timeStep = timeStep * 1e-9_defReal
       case('marshak')
         ! Special case where a = c = 1
         timeStep = timeStep/lightSpeed

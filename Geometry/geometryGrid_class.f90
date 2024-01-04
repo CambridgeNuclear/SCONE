@@ -282,6 +282,8 @@ contains
 
   !!
   !! Find material and unique cell at a given location
+  !! Optional direction input is not used to nudge particles across cells. All moves in this class
+  !! are increased by NUDGE so particles should never be exactly on a surface.
   !!
   !! See geometry_inter for details
   !!
@@ -433,10 +435,11 @@ contains
       event = BOUNDARY_EV
       maxDist = dist + NUDGE
 
-      ! Apply boundary conditions
-      if (coords % matIdx == OUTSIDE_MAT) call self % explicitBC(coords)
+      ! Apply boundary conditions 
+      call self % explicitBC(coords)
 
     end if
+
 
   end subroutine moveGlobal
 

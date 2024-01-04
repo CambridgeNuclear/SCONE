@@ -48,22 +48,14 @@ contains
     class(particleDungeon), intent(inout)       :: nextCycle
     character(100), parameter :: Here = 'timeTracking (transportOperatorTime_class.f90)' 
 
-    ! Transform material particles into photons
+    ! Transform material particles into photons - for use in ISMC
     if (p % type == P_MATERIAL) then
       call self % materialTransform(p, tally)
       ! Exit at time boundary
       if (p % fate == AGED_FATE) return
     end if
 
-    ! Check for particle leakage
-    if (p % matIdx() == OUTSIDE_FILL) then
-      ! TODO: Figure out why this sometimes happens
-      print *, 'WARNING: Leak before transport?'
-      p % fate = LEAK_FATE
-      p % isDead = .true.
-      return
-    end if
-
+    ! Perform tracking
     call self % surfaceTracking(p)
 
     ! Check for particle leakage

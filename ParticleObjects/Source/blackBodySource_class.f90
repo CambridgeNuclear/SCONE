@@ -174,12 +174,12 @@ contains
       case(OLSON1D)
         ! Q(x) proportional to exp(-693x**3) (integral from 0 to 4.8 = 0.100909)
         rejection:do
-          x = rand % get() * 4.8
+          x = rand % get() * 4.8_defReal
           if (rand % get() < exp(-693*x**3)/0.100909) exit
         end do rejection
-        r(1) = x - 2.4
-        r(2) = rand % get() - 0.5
-        r(3) = rand % get() - 0.5
+        r(1) = x - 2.4_defReal
+        r(2) = rand % get() - 0.5_defReal
+        r(3) = rand % get() - 0.5_defReal
 
       case default
         call fatalError(Here, 'Unrecognised source distribution')
@@ -399,27 +399,27 @@ contains
         ! Set sampling position to be at constant x value
         self % dr(1) = ZERO
         ! Nudge to ensure sourcing in correct material
-        self % r(1) = bounds(1) + 2*SURF_TOL
+        self % r(1) = bounds(1) + TWO*SURF_TOL
         ! Set rotation matrix for direction sampling
         rotation = [[1,0,0],[0,1,0],[0,0,1]]
       case('-y')
         self % dr(2) = ZERO
-        self % r(2) = bounds(2) + 2*SURF_TOL
+        self % r(2) = bounds(2) + TWO*SURF_TOL
         rotation = [[0,1,0],[1,0,0],[0,0,1]]
       case('-z')
         self % dr(3) = ZERO
-        self % r(3) = bounds(3) + 2*SURF_TOL
+        self % r(3) = bounds(3) + TWO*SURF_TOL
         rotation = [[0,0,1],[0,1,0],[1,0,0]]
       case('+x')
-        self % r(1)  = bounds(4) - 2*SURF_TOL
+        self % r(1)  = bounds(4) - TWO*SURF_TOL
         self % dr(1) = ZERO
         rotation = [[-1,0,0],[0,1,0],[0,0,1]]
       case('+y')
-        self % r(2)  = bounds(5) - 2*SURF_TOL
+        self % r(2)  = bounds(5) - TWO*SURF_TOL
         self % dr(2) = ZERO
         rotation = [[0,-1,0],[1,0,0],[0,0,1]]
       case('+z')
-        self % r(3)  = bounds(6) - 2*SURF_TOL
+        self % r(3)  = bounds(6) - TWO*SURF_TOL
         self % dr(3) = ZERO
         rotation = [[0,0,-1],[0,1,0],[1,0,0]]
       case default
