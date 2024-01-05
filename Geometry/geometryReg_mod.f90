@@ -32,18 +32,16 @@ module geometryReg_mod
   use dictionary_class,  only : dictionary
   use charMap_class,     only : charMap
 
-  ! Meterial interface
-  use materialMenu_mod,  only : mm_nameMap => nameMap
-
   ! Geometry
   use geometry_inter,    only : geometry
+<<<<<<< HEAD
   use geometryStd_class, only : geometryStd
   use geometryGrid_class, only : geometryGrid
+=======
+>>>>>>> SCONE/main
 
   ! Fields
-  use field_inter,              only : field
-  use uniformScalarField_class, only : uniformScalarField
-  use uniformVectorField_class, only : uniformVectorField
+  use field_inter,       only : field
 
   implicit none
   private
@@ -69,16 +67,12 @@ module geometryReg_mod
   public :: addGeom
   public :: geomIdx
   public :: geomPtr
+  public :: geomNum
   public :: addField
   public :: fieldIdx
   public :: fieldPtr
   public :: kill
 
-  !! Parameters
-  character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd ' ,&
-                                                                         'geometryGrid']
-  character(nameLen), dimension(*), parameter :: AVAILABLE_FIELDS = ['uniformScalarField',&
-                                                                     'uniformVectorField']
   integer(shortInt), parameter :: START_SIZE = 5
   real(defReal), parameter     :: GROWTH_RATE = 1.6_defReal
 
@@ -99,30 +93,18 @@ contains
   !! Gets information about materials from materialMenu
   !!
   !! Args:
-  !!   name [in]   -> Name of the geometry
-  !!   dict [in]   -> Dictionary with geometry definition
-  !!   silent [in] -> Optional. Set to .true. to surpress console messeges. Default .false.
-  !!     Note that errors will still be printed with silent=.true.
+  !!   geom [in] -> Pre-initialised geometry, to be allocated
+  !!   name [in] -> Name of the geometry
   !!
   !! Errors:
   !!   fatalError if geometry with the name was already defined
   !!
-  subroutine addGeom(name, dict, silent)
-    character(nameLen), intent(in)         :: name
-    class(dictionary), intent(in)          :: dict
-    logical(defBool), optional, intent(in) :: silent
-    integer(shortInt)                      :: idx
-    logical(defBool)                       :: silent_l
+  subroutine addGeom(geom, name)
+    class(geometry), allocatable, intent(inout) :: geom
+    character(nameLen), intent(in)              :: name
+    integer(shortInt)                           :: idx
     integer(shortInt), parameter :: NOT_PRESENT = -7
     character(100), parameter    :: Here = 'addGeom (geometryReg_mod.f90)'
-
-    ! Get silent value
-    if (present(silent)) then
-      silent_l = silent
-    else
-      silent_l = .false.
-    end if
-
 
     ! Get free index
     idx = geometryNameMap % getOrDefault(name, NOT_PRESENT)
@@ -138,7 +120,9 @@ contains
     ! Initialise & store index
     call geometryNameMap % add(name, idx)
     geometries(idx) % name = name
-    call new_geometry(geometries(idx) % geom, dict, mm_namemap, silent_l)
+
+    ! Point geometry
+    call move_alloc(geom, geometries(idx) % geom)
 
   end subroutine addGeom
 
@@ -195,19 +179,40 @@ contains
   end function geomPtr
 
   !!
+  !! Get number of geometries stored in the module
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Number of allocated geometries
+  !!
+  function geomNum() result(N)
+    integer(shortInt) :: N
+
+    ! Check allocation and get size
+    if (allocated(geometries)) then
+      N = geometryTop
+    else
+      N = 0
+    end if
+
+  end function geomNum
+
+  !!
   !! Add Field definition
   !!
   !! Args:
+  !!   kentta [in] -> Pre-initialised field, to be allocated
   !!   name [in]   -> Name of the field
-  !!   dict [in]   -> Dictionary with field definition
   !!
   !! Errors:
   !!   fatalError if field with the name was already defined
   !!
-  subroutine addField(name, dict)
-    character(nameLen), intent(in)         :: name
-    class(dictionary), intent(in)          :: dict
-    integer(shortInt)                      :: idx
+  subroutine addField(kentta, name)
+    class(field), allocatable, intent(inout) :: kentta
+    character(nameLen), intent(in)           :: name
+    integer(shortInt)                        :: idx
     integer(shortInt), parameter :: NOT_PRESENT = -7
     character(100), parameter    :: Here = 'addField (geometryReg_mod.f90)'
 
@@ -225,7 +230,9 @@ contains
     ! Initialise & store index
     call fieldNameMap % add(name, idx)
     fields(idx) % name = name
-    call new_field(fields(idx) % kentta, dict)
+
+    ! Point field
+    call move_alloc(kentta, fields(idx) % kentta)
 
   end subroutine addField
 
@@ -310,99 +317,6 @@ contains
     fieldTop = 0
 
   end subroutine kill
-
-  !!
-  !! Allocates and initialises a geometry from dictionary
-  !!
-  !! This is Factory procedure for geometries
-  !!
-  !! Args:
-  !!   geom [out] -> Allocatable geometry to be allocated
-  !!   dict [in]  -> Dictionary with geometry definition
-  !!   mats [in]  -> Map of material names to matIdx
-  !!   silent [in] -> Optional. Set to .true. to surpress console messeges. Default .false.
-  !!     Note that errors will still be printed with silent=.true.
-  !!
-  !! Errors:
-  !!   fatalError is type of geometry is unknown
-  !!
-  subroutine new_geometry(geom, dict, mats, silent)
-    class(geometry), allocatable, intent(out) :: geom
-    class(dictionary), intent(in)             :: dict
-    type(charMap), intent(in)                 :: mats
-    logical(defBool), optional, intent(in)    :: silent
-    logical(defBool)                          :: silent_l
-    character(nameLen)                        :: type
-    character(100), parameter :: Here = 'new_geometry (geometryReg_mod.f90)'
-
-    ! Get type
-    call dict % get(type, 'type')
-
-    ! Get silent flag
-    if (present(silent)) then
-      silent_l = silent
-    else
-      silent_l = .false.
-    end if
-
-    ! Allocate to right type
-    select case (type)
-      case ('geometryStd')
-        allocate(geometryStd :: geom)
-
-      case ('geometryGrid')
-        allocate(geometryGrid :: geom)
-
-      case default
-        print '(A)', 'AVAILABLE GEOMETRIES'
-        print '(A)', AVAILABLE_GEOMETRIES
-        call fatalError(Here, trim(type)// ' is not valid geometry. See list above.')
-
-    end select
-
-    ! Initialise geometry
-    call geom % init(dict, mats, silent_l)
-
-  end subroutine new_geometry
-
-  !!
-  !! Allocates and initialises field from dictionary
-  !!
-  !! Args:
-  !!   kentta [out] -> Field to be allocated (kentta ~= field (Fi.))
-  !!   dict [in]   -> Dictionary with definition
-  !!
-  !! Errors:
-  !!   fatalError is type of field is unknown
-  !!
-  subroutine new_field(kentta, dict)
-    class(field), allocatable, intent(out) :: kentta
-    class(dictionary), intent(in)          :: dict
-    character(nameLen)                     :: type
-    character(100), parameter :: Here = 'new_field (geometryReg_mod.f90) '
-
-    ! Get type
-    call dict % get(type, 'type')
-
-    ! Build Field
-    select case (type)
-      case ('uniformScalarField')
-        allocate(uniformScalarField :: kentta)
-
-      case ('uniformVectorField')
-        allocate(uniformVectorField :: kentta)
-
-      case default
-        print '(A)', "AVAILABLE FIELDS:"
-        print '(A)', AVAILABLE_FIELDS
-        call fatalError(Here, trim(type)//' is not valid field. See list above.')
-
-    end select
-
-    ! Initialise Field
-    call kentta % init(dict)
-
-  end subroutine new_field
 
   !!
   !! Get geometry free Idx

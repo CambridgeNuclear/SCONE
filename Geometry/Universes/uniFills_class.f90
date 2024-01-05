@@ -30,12 +30,12 @@ module uniFills_class
   !! A Temporary structure to store universe fillings & check correctness
   !!
   !! Is used to transfer information about universe nesting structure decoupled from
-  !! the spatial subdivision. Will be used to constrct geomGraph.
+  !! the spatial subdivision. Will be used to construct geomGraph.
   !!
   !! TODO: The recursive procedures that do checks may not be the best from the point of
   !!   view of efficiency. Investigate if it is a problem.
   !!
-  !! Public Mambers:
+  !! Public Members:
   !!  root -> Index of the root universe
   !!  uni  -> Array of `fillInfo` with data for each universe. Universe indices are the
   !!    same on the uni array on on the universe Shelf.
@@ -304,7 +304,7 @@ contains
       call fatalError(Here, 'Root universe has not been set.')
     end if
 
-    ! Serach nested universes
+    ! Search nested universes
     hasIt = .false.
     do i = 1, size(self % uni(self % root) % fill)
       fill = self % uni(self % root) % fill(i)
@@ -360,7 +360,7 @@ contains
   end function unusedUniverses
 
   !!
-  !! Get count of instances of diffrent universes in the geometry
+  !! Get count of instances of different universes in the geometry
   !!
   !! Args:
   !!   map [out] -> Map of uniIdx to number of instances. If uniIdx is not present in the
@@ -483,7 +483,7 @@ contains
   !!   idx [in] -> Index of the current universe
   !!
   !! Result:
-  !!   True if universe under idx contains outside or outisde is present below it
+  !!   True if universe under idx contains outside or outside is present below it
   !!
   !! Errors:
   !!   fatalError if idx is invalid
@@ -554,7 +554,7 @@ contains
   end subroutine collectUsed
 
   !!
-  !! Count instances of diffrent univeres in the current universe or below it
+  !! Count instances of different universes in the current universe or below it
   !!
   !! Args:
   !!   map [inout] -> Map of uniIdx to number of instances. Instances in the current universe
@@ -578,7 +578,7 @@ contains
     count = map % getOrDefault(idx, 0) + 1
     call map % add(idx, count)
 
-    ! Loop over local cells and add nexted universes
+    ! Loop over local cells and add nested universes
     do i = 1, size(self % uni(idx) % fill)
       fill = self % uni(idx) % fill(i)
 

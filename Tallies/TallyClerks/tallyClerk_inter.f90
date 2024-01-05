@@ -216,21 +216,23 @@ contains
   !!
   !! Process incoming collision report
   !!
-  !! See tallyAdmin_class for implicit assumptionas about the report.
+  !! See tallyAdmin_class for implicit assumptions about the report.
   !!
   !! Args:
-  !!   p [in]        -> Partice
-  !!   xsData [inout]-> Nuclear Database with XSs data
-  !!   mem [inout]   -> Score Memory to put results on
+  !!   p [in]         -> Partice
+  !!   xsData [inout] -> Nuclear Database with XSs data
+  !!   mem [inout]    -> Score Memory to put results on
+  !!   virtual [in]   -> Flag indicating virtual collision
   !!
   !! Errors:
   !!   Depend on specific Clerk
   !!
-  subroutine reportInColl(self,p, xsData, mem)
+  subroutine reportInColl(self,p, xsData, mem, virtual)
     class(tallyClerk), intent(inout)      :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     character(100),parameter    :: Here = 'reportInColl (tallyClerk_inter.f90)'
 
     call fatalError(Here,'Report was send to an instance that does not support it.')

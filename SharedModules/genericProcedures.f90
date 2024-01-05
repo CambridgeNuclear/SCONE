@@ -4,6 +4,7 @@ module genericProcedures
 
   use numPrecision
   use openmp_func, only : ompGetMaxThreads
+  use errors_mod, only: fatalError
   use endfConstants
   use universalVariables
 
@@ -282,31 +283,6 @@ module genericProcedures
       end select
     end if
   end subroutine searchError
-
-  !!
-  !! Displays error message and stops execution
-  !!
-  subroutine fatalError(Where,Why)
-    character(*), intent(in)    :: Why, Where
-    character(100)              :: Line, locWhy, locWhere
-    character(20)               :: format
-
-    Line = repeat('<>',50)
-    format = '(A100)'
-    locWhere = adjustR(where)
-    locWhy = adjustR(why)
-
-    print format, Line
-    print format, 'Fatal Error has occured in:'
-    print format, locWhere
-    print *
-    print format, 'For the following reason:'
-    print format, locWhy
-    print *
-    print format, Line
-    stop
-
-  end subroutine fatalError
 
   !!
   !! Open "File" for reading under with "unitNum" reference

@@ -70,8 +70,6 @@ module nuclearDataReg_mod
   ! Implemented Nuclear Databases
   ! Neutron CE
   use aceNeutronDatabase_class,       only : aceNeutronDatabase
-  use aceNeutronDatabaseUni_class,    only : aceNeutronDatabaseUni
-  use aceNeutronDatabaseUniIdx_class, only : aceNeutronDatabaseUniIdx
 
   ! Neutron MG
   use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase
@@ -119,9 +117,7 @@ module nuclearDataReg_mod
   character(nameLen), dimension(*), parameter :: AVAILABLE_NUCLEAR_DATABASES = &
                                                 ['aceNeutronDatabase      ', &
                                                  'baseMgNeutronDatabase   ', &
-                                                 'baseMgIMCDatabase       ', &
-                                                 'aceNeutronDatabaseUni   ', &
-                                                 'aceNeutronDatabaseUniIdx']
+                                                 'baseMgIMCDatabase       ']
 
   !! Members
   type(ndBox),dimension(:),allocatable,target :: databases
@@ -632,12 +628,6 @@ contains
 
       case('baseMgIMCDatabase')
         allocate(baseMgIMCDatabase :: database)
-
-      case('aceNeutronDatabaseUni')
-        allocate(aceNeutronDatabaseUni :: database)
-
-      case('aceNeutronDatabaseUniIdx')
-        allocate(aceNeutronDatabaseUniIdx :: database)
 
       case default
         ! Print available nuclear database types

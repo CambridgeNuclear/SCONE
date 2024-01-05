@@ -505,7 +505,7 @@ contains
 
     ! Initialise material source
     call locDict1 % init(2)
-    call locDict1 % store('type', 'materialSource')
+    call locDict1 % store('type', 'imcMaterialSource')
     ! Tell source if we are using IMC or ISMC
     call locDict1 % store('calcType', self % method)
     call new_source(self % matSource, locDict1, self % geom)

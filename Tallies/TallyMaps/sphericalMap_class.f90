@@ -18,7 +18,6 @@ module sphericalMap_class
   !!
   !! TODO:
   !!   Implement polar & azimuthal subdivision
-  !!   Add unstructured grid boundaries
   !!
   !! Interface:
   !!   tallyMap interface
@@ -64,9 +63,10 @@ contains
   subroutine init(self, dict)
     class(sphericalMap), intent(inout)       :: self
     class(dictionary), intent(in)            :: dict
-    real(defReal), dimension(:), allocatable :: temp
+    real(defReal), dimension(:), allocatable :: temp, grid
     character(nameLen)                       :: type
-    real(defReal)                            :: Rmin, Rmax
+    real(defReal)                            :: Rmin, Rmax, vol
+    integer(shortInt)                        :: i
     character(100), parameter :: Here = 'init (sphericalmap_class.f90)'
 
     ! Check & load origin
@@ -95,8 +95,40 @@ contains
         ! Build grid
         call self % rBounds % init(Rmin, Rmax, self % N, type)
 
+      case('unstruct')
+
+        call dict % get(grid,'bins')
+
+        ! Initialise
+        self % N = size(grid) - 1
+        call self % rBounds % init(grid)
+
+      case('equivolume')
+
+        call dict % getOrDefault(Rmin, 'Rmin', ZERO)
+        call dict % get(Rmax, 'Rmax')
+        call dict % get(self % N, 'N')
+
+        ! Check that minimum radius is OK
+        if (Rmin < ZERO) then
+          call fatalError(Here, 'Minumum radius must be +ve is:'//numToChar(Rmin))
+        end if
+
+        ! Calculate volume
+        vol = (Rmax**3 - Rmin**3) /self % N
+
+        allocate(grid(self % N + 1))
+        ! Calculate grid boundaries
+        grid(1) = Rmin
+        grid(self % N + 1) = Rmax
+        do i = 2,self % N
+          grid(i) = (vol + grid(i-1)**3)**(ONE/3.0_defReal)
+        end do
+
+        call self % rBounds % init(grid)
+
       case default
-        call fatalError(Here, "'grid' can take only values of: lin")
+        call fatalError(Here, "'grid' can take only values of: lin, unstruct and equivolume")
 
     end select
 

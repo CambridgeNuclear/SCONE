@@ -27,7 +27,7 @@ module collisionClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
+  !! Collision estimator of reaction rates
   !! Calculates flux weighted integral from collisions
   !!
   !! Private Members:
@@ -59,6 +59,7 @@ module collisionClerk_class
 
     ! Useful data
     integer(shortInt)  :: width = 0
+    logical(defBool)   :: virtual = .false.
 
   contains
     ! Procedures used during build
@@ -114,6 +115,9 @@ contains
 
     ! Set width
     self % width = size(responseNames)
+
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
 
   end subroutine init
 
@@ -178,16 +182,25 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(collisionClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flx
     character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
+
+    ! Calculate flux sample based on physical or virtual collision
+    if (self % virtual) then
+      flx = ONE / xsData % getMajorantXS(p)
+    else
+      if (virtual) return
+      flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
     ! Get current particle state
     state = p
@@ -209,9 +222,6 @@ contains
 
     ! Calculate bin address
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
-
-    ! Calculate flux sample 1/totXs
-    flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
 
     ! Append all bins
     do i=1,self % width

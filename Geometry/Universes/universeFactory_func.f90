@@ -18,7 +18,6 @@ module universeFactory_func
   implicit none
   private
 
-  ! ** ADD NAME OF NEW UNIVERSE TO THE LIST
   ! List contains acceptable types of universe
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
   character(nameLen), dimension(*), parameter :: AVAILABLE_UNI = ['rootUniverse',&
@@ -37,7 +36,7 @@ contains
   !!
   !! Args:
   !!  ptr [out]     -> Pointer to the new universe
-  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  fill [out]    -> Allocatable integer array with filling of different uniqueID
   !!  dict [in]     -> Dictionary with universe definition
   !!  cells [inout] -> Shelf with defined cells
   !!  surfs [inout] -> Shelf  with defined surfaces
@@ -59,8 +58,7 @@ contains
     ! Obtain type of the universe
     call dict % get(type, 'type')
 
-    ! Allocate approperiate universe
-    ! ** FOR NEW UNIVERSE ADD CASE STATEMENT HERE ** !
+    ! Allocate appropriate universe
     select case (type)
       case ('rootUniverse')
         allocate(rootUniverse :: ptr)
@@ -87,11 +85,11 @@ contains
   end subroutine new_universe_ptr
 
   !!
-  !! Allocte an allocatable universe
+  !! Allocate an allocatable universe
   !!
   !! Args:
   !!  new [out]     -> Universe to be allocated
-  !!  fill [out]    -> Allocatable integer array with filling of diffrent uniqueID
+  !!  fill [out]    -> Allocatable integer array with filling of different uniqueID
   !!  dict [in]     -> Dictionary with universe definition
   !!  cells [inout] -> Shelf with defined cells
   !!  surfs [inout] -> Shelf  with defined surfaces

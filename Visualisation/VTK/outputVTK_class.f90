@@ -41,6 +41,7 @@ module outputVTK_class
   !!     type vtk;
   !!     corner (-1.2 -3.4 5.7);
   !!     width (0.8 27 100.1);
+  !!     vox (1000 2000 5000)
   !!     #what material;#
   !!   }
   !!

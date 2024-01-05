@@ -162,7 +162,7 @@ contains
 
   !!
   !! Test correctness of print subroutine
-  !! Does not checks that values are correct, but that calls sequance is without errors
+  !! Does not checks that values are correct, but that calls sequence is without errors
   !!
 @Test
   subroutine testPrint(this)

@@ -38,6 +38,7 @@ module particle_class
   !!   matIdx   -> material Index in which particle is present
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
   !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
+  !!   collisionN -> Number of collisions the particle went through
   !!
   !! Interface:
   !!   assignemnt(=)  -> Build particleState from particle
@@ -56,6 +57,7 @@ module particle_class
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
+    integer(shortInt)          :: collisionN = 0    ! Number of collisions
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -110,11 +112,12 @@ module particle_class
     real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
+    integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
     real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
-    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle 
+    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
@@ -258,7 +261,7 @@ contains
   !!
   !! Copy phase coordinates into particle
   !!
-  subroutine particle_fromParticleState(LHS,RHS)
+  pure subroutine particle_fromParticleState(LHS,RHS)
     class(particle), intent(inout)   :: LHS
     type(particleState), intent(in)  :: RHS
 
@@ -272,6 +275,7 @@ contains
     LHS % isMG                  = RHS % isMG
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
+    LHS % collisionN            = RHS % collisionN
 
   end subroutine particle_fromParticleState
 
@@ -354,7 +358,7 @@ contains
   !! Return cell index at a given nesting level n
   !!  If no n is given return for lowest nesting level
   !!
-  function getCellIdx(self,n) result(idx)
+  pure function getCellIdx(self,n) result(idx)
     class(particle), intent(in)             :: self
     integer(shortInt),optional, intent(in)  :: n
     integer(shortInt)                       :: idx
@@ -373,7 +377,7 @@ contains
   !!
   !! Return universe index at a given nesting level n
   !!
-  function getUniIdx(self,n) result(idx)
+  pure function getUniIdx(self,n) result(idx)
     class(particle), intent(in)             :: self
     integer(shortInt),optional, intent(in)  :: n
     integer(shortInt)                       :: idx
@@ -529,7 +533,7 @@ contains
   !!
   !! Resets the particle's nesting level
   !!
-  subroutine takeAboveGeom(self)
+  pure subroutine takeAboveGeom(self)
     class(particle), intent(inout) :: self
 
     call self % coords % takeAboveGeom()
@@ -604,7 +608,7 @@ contains
 
     state = self
     call state % display()
-    print *, self % coords % matIdx
+    print *, 'Material: ', self % coords % matIdx
 
   end subroutine display_particle
 
@@ -651,6 +655,7 @@ contains
     LHS % matIdx   = RHS % coords % matIdx
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
+    LHS % collisionN = RHS % collisionN
 
   end subroutine particleState_fromParticle
 
@@ -673,6 +678,7 @@ contains
     isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
+    isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -712,7 +718,13 @@ contains
   subroutine display_particleState(self)
     class(particleState), intent(in) :: self
 
-    print *, self % r, self % dir, self % E, self % G, self % isMG, self % wgt, self % time
+    print*, 'Position: ', self % r
+    print*, 'Direction: ', self % dir
+    print*, 'Energy: ', self % E
+    print*, 'Group: ', self % G
+    print*, 'isMG: ', self % isMG
+    print*, 'Weight: ', self % wgt
+    print*, 'Time: ', self % time
 
   end subroutine display_particleState
 
@@ -733,6 +745,7 @@ contains
     self % matIdx   = -1
     self % cellIdx  = -1
     self % uniqueID = -1
+    self % collisionN = 0
 
   end subroutine kill_particleState
 

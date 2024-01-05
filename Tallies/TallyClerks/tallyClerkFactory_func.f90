@@ -18,13 +18,13 @@ module tallyClerkFactory_func
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
   use energyWeightClerk_class,         only : energyWeightClerk
+  use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
   private
 
   public :: new_tallyClerk
 
-  ! *** ADD NAME OF A NEW TALLY FILTER HERE ***!
   ! List that contains all accaptable types of tallyClerks
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -39,6 +39,7 @@ module tallyClerkFactory_func
                                                                         'centreOfMassClerk        ',&
                                                                         'dancoffBellClerk         ',&
                                                                         'energyWeightClerk        ']
+                                                                        'mgXsClerk                ']
 
 contains
 
@@ -60,58 +61,48 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of tallyClerk
-    ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
      case('keffAnalogClerk')
        allocate(keffAnalogClerk :: new)
-       call new % init(dict, name)
 
      case('keffImplicitClerk')
        allocate(keffImplicitClerk :: new)
-       call new % init(dict, name)
 
      case('collisionClerk')
        allocate(collisionClerk :: new)
-       call new % init(dict, name)
 
      case('collisionProbabilityClerk')
        allocate(collisionProbabilityClerk :: new)
-       call new % init(dict, name)
 
      case('trackClerk')
        allocate(trackClerk :: new)
-       call new % init(dict, name)
 
      case('simpleFMClerk')
        allocate(simpleFMClerk :: new)
-       call new % init(dict, name)
 
      case('dancoffBellClerk')
        allocate(dancoffBellClerk :: new)
-       call new % init(dict, name)
 
      case('shannonEntropyClerk')
        allocate(shannonEntropyClerk :: new)
-       call new % init(dict, name)
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
-       call new % init(dict, name)
 
      case('energyWeightClerk')
        allocate(energyWeightClerk :: new)
-       call new % init(dict, name)
 
-     !*** NEW TALLY MAP TEMPLATE ***!
-     !case('<newtallyClerkName>')
-     !  allocate(<newtallyClerkName> :: new)
-     !  call new % init(dict, name)
-     !
-      case default
+     case('mgXsClerk')
+       allocate(mgXsClerk :: new)
+
+     case default
         print *, AVALIBLE_tallyClerks
         call fatalError(Here, 'Unrecognised type of tallyClerk: ' // trim(type))
 
     end select
+
+    ! Initialise new clerk
+    call new % init(dict, name)
 
   end subroutine new_tallyClerk
 

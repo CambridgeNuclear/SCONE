@@ -175,6 +175,7 @@ contains
         pTemp % dir = dir
         pTemp % G   = G_out
         pTemp % wgt = wgt
+        pTemp % collisionN = 0
 
         call nextCycle % detain(pTemp)
       end do

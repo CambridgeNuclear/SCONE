@@ -1,74 +1,74 @@
 module materialSource_class
 
   use numPrecision
-  use endfConstants
-  use universalVariables
+  use universalVariables,      only : OUTSIDE_MAT, VOID_MAT, NOT_FOUND
   use genericProcedures,       only : fatalError, rotateVector
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
+  use charMap_class,           only : charMap
 
-  use particle_class,          only : particle, particleState, P_PHOTON, P_MATERIAL
-  use particleDungeon_class,   only : particleDungeon
+  use particle_class,          only : particleState, P_NEUTRON
   use source_inter,            only : source, kill_super => kill
 
   use geometry_inter,          only : geometry
-  use geometryGrid_class,      only : geometryGrid
-  use IMCMaterial_inter,       only : IMCMaterial, IMCMaterial_CptrCast
-  use nuclearDataReg_mod,      only : ndReg_getIMCMG => getIMCMG
+  use neutronMaterial_inter,   only : neutronMaterial, neutronMaterial_CptrCast
+  use nuclearDataReg_mod,      only : ndReg_getNeutronCE => getNeutronCE, &
+                                      ndReg_getNeutronMG => getNeutronMG
   use nuclearDatabase_inter,   only : nuclearDatabase
-  use mgIMCDatabase_inter,     only : mgIMCDatabase
-  use materialMenu_mod,        only : mm_nMat    => nMat, &
-                                      mm_matName => matName
-
-  use simulationTime_class
+  use ceNeutronDatabase_inter, only : ceNeutronDatabase
+  use mgNeutronDatabase_inter, only : mgNeutronDatabase
+  use materialMenu_mod,        only : mm_matIdx => matIdx
 
   implicit none
   private
 
-  ! Calculation type
-  integer(shortInt), parameter :: IMC = 1, ISMC = 2
-
   !!
-  !! Source for uniform generation of photons within a material for IMC and ISMC calculations
+  !! Neutron source from a given material
   !!
-  !! Angular distribution is isotropic
+  !! Places neutrons uniformly in regions with given material.
+  !! Angular distribution is isotropic.
+  !!
+  !! Can be fed a bounding box to increase sampling efficiency
   !!
   !! Private members:
-  !!   isMG     -> is the source multi-group? (default = .true.)
-  !!   bottom   -> Bottom corner (x_min, y_min, z_min)
-  !!   top      -> Top corner (x_max, y_max, z_max)
-  !!   G        -> Energy group
-  !!   pType    -> P_PHOTON for IMC, P_MATERIAL for ISMC
-  !!   bounds   -> Bounds of geometry
-  !!   calcType -> IMC or ISMC, changes type of material to be sampled
+  !!   isMG   -> is the source multi-group? (default = .false.)
+  !!   bottom -> Bottom corner (x_min, y_min, z_min)
+  !!   top    -> Top corner (x_max, y_max, z_max)
+  !!   E      -> Source site energy [MeV] (default = 1.0E-6)
+  !!   G      -> Source site group (default = 1)
+  !!   matIdx -> Index of chosen material in the nuclear database
   !!
   !! Interface:
-  !!   source_inter Interface
+  !!   source_inter interface
   !!
-  !! SAMPLE INPUT:
-  !!   matSource { type materialSource; calcType IMC; }
+  !! Sample Dictionary Input:
+  !!   matsource {
+  !!     type materialSource;
+  !!     mat  myMaterialName;
+  !!     #data mg; #
+  !!     #E 15.0;  #
+  !!     #G 7;     #
+  !!     #boundingBox (-x -y -z +x +y +z); #
+  !!   }
   !!
   type, public,extends(source) :: materialSource
     private
-    logical(defBool)                :: isMG     = .true.
-    real(defReal), dimension(3)     :: bottom   = ZERO
-    real(defReal), dimension(3)     :: top      = ZERO
-    integer(shortInt)               :: G        = 0
-    integer(shortInt)               :: pType    = P_PHOTON
-    real(defReal), dimension(6)     :: bounds   = ZERO
-    integer(shortInt)               :: calcType = IMC
+    logical(defBool)            :: isMG   = .false.
+    real(defReal), dimension(3) :: bottom = ZERO
+    real(defReal), dimension(3) :: top    = ZERO
+    real(defReal)               :: E      = ZERO
+    integer(shortInt)           :: G      = 0
+    integer(shortInt)           :: matIdx = -1
   contains
     procedure :: init
-    procedure :: append
     procedure :: sampleParticle
-    procedure, private :: sampleIMC
     procedure :: kill
   end type materialSource
 
 contains
 
   !!
-  !! Initialise material Source
+  !! Initialise Material Source
   !!
   !! See source_inter for details
   !!
@@ -76,196 +76,140 @@ contains
     class(materialSource), intent(inout)     :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
+    character(nameLen)                       :: type
+    character(nameLen)                       :: matName 
+    real(defReal), dimension(6)              :: bounds
+    real(defReal), dimension(:), allocatable :: tempArray
     character(100), parameter :: Here = 'init (materialSource_class.f90)'
-
-    call dict % getOrDefault(self % G, 'G', 1)
 
     ! Provide geometry info to source
     self % geom => geom
 
-    ! Set bounding region
-    self % bounds = self % geom % bounds()
+    ! Select energy type
+    call dict % getOrDefault(type, 'data', 'ce')
+    select case(type)
+      case('ce')
+        self % isMG = .false.
 
-    ! Select calculation type - Automatically added to dict in implicitPhysicsPackage
-    call dict % getOrDefault(self % calcType, 'calcType', IMC)
-    select case(self % calcType)
-      case(IMC)
-        self % pType = P_PHOTON
-      case(ISMC)
-        self % pType = P_MATERIAL
+      case('mg')
+        self % isMG = .true.
+
       case default
-        call fatalError(Here, 'Unrecognised calculation type. Should be "IMC" or "ISMC"')
+        call fatalError(Here, 'Invalid source data type specified: must be ce or mg')
     end select
+
+    ! Select required fission group/energy
+    call dict % getOrDefault(self % E, 'E', 1.0E-6_defReal)
+    call dict % getOrDefault(self % G, 'G', 1)
+
+    ! Determine which material to sample source in
+    call dict % get(matName, 'mat')
+    self % matIdx = mm_matIdx(matName)
+    if (self % matIdx == NOT_FOUND) call fatalError(Here,&
+            'Source material '//trim(matName)//' was not found in the material definitions')
+
+    ! Set bounding region
+    if (dict % isPresent('boundingBox')) then
+      call dict % get(tempArray, 'boundingBox')
+      if (size(tempArray) /= 6) call fatalError(Here,&
+               'Bounding box must have 6 entries')
+      self % bottom = tempArray(1:3)
+      self % top    = tempArray(4:6)
+
+    else
+      bounds = self % geom % bounds()
+      self % bottom = bounds(1:3)
+      self % top    = bounds(4:6)
+    end if
 
   end subroutine init
 
-
   !!
-  !! Generate N particles to add to a particleDungeon without overriding particles already present.
-  !! Note that energy here refers to energy weight rather than group.
+  !! Sample particle's phase space co-ordinates
   !!
-  !! Args:
-  !!   dungeon [inout] -> particle dungeon to be added to
-  !!   n [in]          -> number of particles to place in dungeon
-  !!   rand [inout]    -> particle RNG object
-  !!
-  !! Result:
-  !!   A dungeon populated with N particles sampled from the source, plus particles
-  !!   already present in dungeon
-  !!
-  subroutine append(self, dungeon, N, rand)
-    class(materialSource), intent(inout)    :: self
-    type(particleDungeon), intent(inout)    :: dungeon
-    integer(shortInt), intent(in)           :: N
-    class(RNG), intent(inout)               :: rand
-    real(defReal), dimension(6)             :: bounds
-    integer(shortInt)                       :: matIdx, i, Ntemp, G
-    real(defReal)                           :: energy, totalEnergy
-    type(RNG)                               :: pRand
-    class(mgIMCDatabase), pointer           :: nucData
-    class(geometry), pointer                :: geom
-    character(100), parameter               :: Here = "append (materialSource_class.f90)"
-
-    ! Get pointer to appropriate nuclear database
-    nucData => ndReg_getIMCMG()
-    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
-
-    ! Obtain total energy
-    if (self % calcType == IMC) then
-      totalEnergy = nucData % getEmittedRad()
-    else
-      totalEnergy = nucData % getMaterialEnergy()
-    end if
-
-    ! Loop through materials
-    do matIdx = 1, mm_nMat()
-
-      ! Get energy to be emitted from material matIdx
-      if (self % calcType == IMC) then
-        energy = nucData % getEmittedRad(matIdx)
-      else
-        energy = nucData % getMaterialEnergy(matIdx)
-      end if
-
-      ! Choose particle numbers in proportion to material energy
-      if (energy > ZERO) then
-        Ntemp = int(N * energy / totalEnergy)
-        ! Enforce at least 1 particle
-        if (Ntemp == 0) Ntemp = 1
-
-        ! Set bounds for sampling
-        geom => self % geom
-        select type(geom)
-          class is(geometryGrid)
-            bounds = geom % matBounds(matIdx)
-          class default
-            bounds = self % bounds
-          end select
-
-        ! Find energy per particle
-        energy = energy / Ntemp
-
-        ! Sample particles
-        !$omp parallel
-        pRand = rand
-        !$omp do private(pRand, G)
-        do i=1, Ntemp
-          call pRand % stride(i)
-          G = nucData % sampleEnergyGroup(matIdx, pRand)
-          call dungeon % detain(self % sampleIMC(pRand, matIdx, energy, G, bounds))
-        end do
-        !$omp end do
-        !$omp end parallel
-
-      end if
-    end do
-   
-  end subroutine append
-
-  !!
-  !! Should not be called
+  !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
     class(materialSource), intent(inout) :: self
     class(RNG), intent(inout)            :: rand
     type(particleState)                  :: p
+    class(nuclearDatabase), pointer      :: nucData
+    class(neutronMaterial), pointer      :: mat
+    real(defReal), dimension(3)          :: r, rand3
+    real(defReal)                        :: mu, phi
+    integer(shortInt)                    :: matIdx, uniqueID, i
     character(100), parameter :: Here = 'sampleParticle (materialSource_class.f90)'
 
-    ! Should not be called, useful to have extra inputs so use sampleIMC instead
-    call fatalError(Here, 'Should not be called, sampleIMC should be used instead.')
+    ! Get pointer to appropriate nuclear database
+    if (self % isMG) then
+      nucData => ndReg_getNeutronMG()
+    else
+      nucData => ndReg_getNeutronCE()
+    end if
+    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
-    ! Avoid compiler warning
-    p % G = self % G
-
-  end function sampleParticle
-
-  !!
-  !! Sample particle's phase space co-ordinates
-  !!
-  !! Args:
-  !!   rand [in]   -> RNG
-  !!   matIdx [in] -> index of material being sampled from
-  !!   energy [in] -> energy-weight of sampled particle
-  !!   G [in]      -> energy group of sampled particle
-  !!   bounds [in] -> bounds for position search, will be bounds of entire geometry if using
-  !!                  geometryStd, and bounds of single material if using geometryGrid
-  !!
-  function sampleIMC(self, rand, targetMatIdx, energy, G, bounds) result(p)
-    class(materialSource), intent(inout)    :: self
-    class(RNG), intent(inout)               :: rand
-    integer(shortInt), intent(in)           :: targetMatIdx
-    real(defReal), intent(in)               :: energy
-    integer(shortInt), intent(in)           :: G
-    real(defReal), dimension(6), intent(in) :: bounds
-    type(particleState)                     :: p
-    real(defReal), dimension(3)             :: bottom, top, r, dir, rand3
-    real(defReal)                           :: mu, phi
-    integer(shortInt)                       :: i, matIdx, uniqueID
-    character(100), parameter :: Here = 'sampleIMC (materialSource_class.f90)'
-
-    ! Sample particle position
-    bottom = bounds(1:3)
-    top    = bounds(4:6)
     i = 0
-    rejection:do
+    rejection : do
+      ! Protect against infinite loop
+      i = i +1
+      if ( i > 200) then
+        call fatalError(Here, 'Infinite loop in sampling source. Please check that'//&
+                              ' defined volume contains source material.')
+      end if
+
+      ! Sample position
       rand3(1) = rand % get()
       rand3(2) = rand % get()
       rand3(3) = rand % get()
-      r = (top - bottom) * rand3 + bottom
+      r = (self % top - self % bottom) * rand3 + self % bottom
 
       ! Find material under position
       call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-      ! Exit if in desired material
-      if (matIdx == targetMatIdx) exit rejection
+      ! Reject if there is no material
+      if (matIdx == OUTSIDE_MAT) cycle rejection
 
-      ! Protect against infinite loop
-      i = i+1
-      if (i > 10000) call fatalError(Here, '10,000 failed attempts in rejection sampling')
+      mat => neutronMaterial_CptrCast(nucData % getMaterial(matIdx))
+      if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")
+
+      ! Resample position if material is not the specified material
+      if (.not. (matIdx == self % matIdx)) cycle rejection
+
+      ! Assign basic phase-space coordinates
+      p % matIdx   = matIdx
+      p % uniqueID = uniqueID
+      p % wgt      = ONE
+      p % time     = ZERO
+      p % type     = P_NEUTRON
+      p % r        = r
+
+      mu = TWO * rand % get() - ONE
+      phi = TWO_PI * rand % get()
+
+      ! Set energy
+      select type (nucData)
+        class is (ceNeutronDatabase)
+
+          p % E = self % E
+          p % isMG = .false.
+          p % dir  = rotateVector([ONE, ZERO, ZERO], mu, phi)
+
+        class is (mgNeutronDatabase)
+
+          p % G = self % G
+          p % isMG = .true.
+          p % dir = rotateVector([ONE, ZERO, ZERO], mu, phi)
+
+        class default
+          call fatalError(Here, "Unrecognised type of nuclearDatabase")
+
+      end select
+      ! Exit the loop
+      exit rejection
 
     end do rejection
 
-    ! Sample direction - chosen uniformly inside unit sphere
-    mu = 2 * rand % get() - 1
-    phi = rand % get() * 2*pi
-    dir(1) = mu
-    dir(2) = sqrt(1-mu**2) * cos(phi)
-    dir(3) = sqrt(1-mu**2) * sin(phi)
-
-    ! Sample time uniformly within time step
-    p % time = time % stepStart + timeStep() * rand % get()
-
-    ! Assign basic phase-space coordinates
-    p % matIdx   = matIdx
-    p % uniqueID = uniqueID
-    p % r        = r
-    p % dir      = dir
-    p % G        = G
-    p % isMG     = .true.
-    p % wgt      = energy
-    p % type     = self % pType
-
-  end function sampleIMC
+  end function sampleParticle
 
   !!
   !! Return to uninitialised state
@@ -275,9 +219,12 @@ contains
 
     call kill_super(self)
 
-    self % isMG   = .true.
-    self % bounds = ZERO
+    self % isMG   = .false.
+    self % bottom = ZERO
+    self % top    = ZERO
+    self % E      = ZERO
     self % G      = 0
+    self % matIdx = -1
 
   end subroutine kill
 

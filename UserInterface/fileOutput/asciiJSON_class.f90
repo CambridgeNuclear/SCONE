@@ -43,7 +43,7 @@ module asciiJSON_class
     integer(shortInt) :: ind_lvl = 0
 
     integer(shortInt), dimension(:), allocatable :: shapeBuffer
-    logical(defBool)                             :: in_array
+    logical(defBool)                             :: in_array = .false.
     integer(shortInt)                            :: count = 0
 
 

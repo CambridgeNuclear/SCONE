@@ -20,7 +20,6 @@ module physicsPackageFactory_func
   implicit none
   private
 
-  ! *** ADD NAME OF A NEW PHYSICS PACKAGE HERE ***!
   ! List that contains all accaptable types of Physics Packages
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -51,53 +50,31 @@ contains
     ! Obtain string that specifies type to be built
     call dict % get(type,'type')
 
-    ! Allocate approperiate subclass of physicsPackage
-    ! *** ADD CASE STATEMENT FOR A PHYSICS PACKAGE BELOW ***!
-    ! **** AT THE MOMENT ALLOCATE + SELECT TYPE + INIT is very unelegant implementation
-    ! **** Will have to be improved
+    ! Allocate appropriate subclass of physicsPackage
     select case(type)
       case('eigenPhysicsPackage')
-        ! Allocate and initialise
         allocate( eigenPhysicsPackage :: new)
-        select type(new)
-          type is (eigenPhysicsPackage)
-            call new % init(dict)
-        end select
 
       case('fixedSourcePhysicsPackage')
-        ! Allocate and initialise
         allocate( fixedSourcePhysicsPackage :: new)
-        select type(new)
-          type is (fixedSourcePhysicsPackage)
-            call new % init(dict)
-        end select
 
       case('implicitPhysicsPackage')
-        ! Allocate and initialise
         allocate( implicitPhysicsPackage :: new)
-        select type(new)
-          type is (implicitPhysicsPackage)
-            call new % init(dict)
-        end select
 
       case('vizPhysicsPackage')
-        ! Allocate and initialise
         allocate( vizPhysicsPackage :: new)
-        select type(new)
-          type is (vizPhysicsPackage)
-            call new % init(dict)
-        end select
 
       case('rayVolPhysicsPackage')
-        ! Allocate and initialise
         allocate( rayVolPhysicsPackage :: new)
-        call new % init(dict)
 
       case default
         print *, AVAILABLE_physicsPackages
         call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))
 
     end select
+
+    ! Initialise new physics package
+    call new % init(dict)
 
   end function new_physicsPackage
 

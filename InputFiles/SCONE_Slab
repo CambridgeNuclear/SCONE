@@ -1,35 +1,35 @@
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      15000;
-active   500; 
-inactive 200; 
+active   500;
+inactive 200;
 XSdata   mg;
-dataType mg; 
+dataType mg;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                    neutronMG {type neutronMGstd;} 
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+                    neutronMG {type neutronMGstd;}
+                  }
 
 transportOperator { type transportOperatorDT;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  {  
-                norm    fiss; 
+activeTally  {
+                norm    fiss;
                 normVal 100;
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-	      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 1 1 1 1);
     graph {type shrunk;}
 
     surfaces
     {
-      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth (9.4959 10.0 10.0); }  
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth (9.4959 10.0 10.0); }
     }
 
 
@@ -42,35 +42,35 @@ geometry {
 
       root
       {
-	  id 1;
-	  type rootUniverse; 
+          id 1;
+          type rootUniverse;
           border 1;
-	  fill fuel; 
+          fill fuel;
       }
-    }   
+    }
 }
 
 nuclearData {
 
-  handles { 
-     ce { type aceNeutronDatabase; aceLibrary /home/mak60/Cases/U235_Compr/XSDAT/JEF311.aceXS;}
-     mg { type baseMgNeutronDatabase; PN P1;} 
+  handles {
+     ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
+     mg { type baseMgNeutronDatabase; PN P1;}
   }
-  
-  
-materials { 
 
-    fuel {  
-      temp       273; 
+
+materials {
+
+    fuel {
+      temp       273;
       composition {
-        92235.03  0.037047; 
-      }   
+        92235.03  0.037047;
+      }
       xsFile ./XS/URRa_2_1_XSS;
-    }	 
+    }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+

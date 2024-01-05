@@ -82,7 +82,7 @@ contains
     tst % bins    = [(int(i,longInt), i=1,Nbins)]
     tst % results = [(ZERO, i=1,Nbins)]
 
-    ! Set approperiate results (wgt * 1/totXs)
+    ! Set appropriate results (wgt * 1/totXs)
     score1 = 0.7_defReal / 0.3_defReal
     score2 = 1.3_defReal / 0.3_defReal
 
@@ -149,7 +149,7 @@ contains
     has2Res   = this % has2Res
 
     ! Build case description
-    case = 'Vanila case with: '
+    case = 'Vanilla case with: '
     if(hasFilter) case = case // ' Filter '
     if(hasMap)    case = case // ' Map '
     if(has2Res)   case = case // ' 2nd Response '
@@ -207,11 +207,15 @@ contains
     ! Perform scoring
     call p % setMatIdx(1)
     p % w = 0.7_defReal
-    call clerk % reportInColl(p, nucData, mem)
+    call clerk % reportInColl(p, nucData, mem, .false.)
 
     call p % setMatIdx(6)
     p % w = 1.3_defReal
-    call clerk % reportInColl(p, nucData, mem)
+    call clerk % reportInColl(p, nucData, mem, .false.)
+
+    ! Virtual scoring should not contribute to score in this case
+    p % w = 1000.3_defReal
+    call clerk % reportInColl(p, nucData, mem, .true.)
 
     call mem % closeCycle(ONE)
 
@@ -239,5 +243,119 @@ contains
     call res2Dict % kill()
 
   end subroutine testScoring
+
+@Test(cases=[1,2,3,4,5,6,7,8])
+  subroutine testScoringVirtual(this)
+    class(test_collisionClerk), intent(inout) :: this
+    logical(defBool)                          :: hasFilter, hasMap, has2Res
+    character(:),allocatable                  :: case
+    type(collisionClerk)                      :: clerk
+    type(scoreMemory)                         :: mem
+    type(particle)                            :: p
+    type(testNeutronDatabase)                 :: nucData
+    type(outputFile)                          :: outF
+    type(dictionary)                          :: filterDict, mapDict, res1Dict, res2Dict, clerkDict
+    character(nameLen)                        :: res1Name, res2Name, clerkName
+    integer(shortInt)                         :: i
+    real(defReal)                             :: res
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! Copy test settings
+    hasFilter = this % hasFilter
+    hasMap    = this % hasMap
+    has2Res   = this % has2Res
+
+    ! Build case description
+    case = 'Vanilla case with: '
+    if(hasFilter) case = case // ' Filter '
+    if(hasMap)    case = case // ' Map '
+    if(has2Res)   case = case // ' 2nd Response '
+
+    ! Define filter dictionary
+    call filterDict % init(3)
+    call filterDict % store('type','testFilter')
+    call filterDict % store('minIdx',0)
+    call filterDict % store('maxIdx',5)
+
+    ! Define Map dictionary
+    call mapDict % init(2)
+    call mapDict % store('type','testMap')
+    call mapDict % store('maxIdx',7)
+
+    ! Define 1st response dictionary and name
+    res1Name = 'flux'
+    call res1Dict % init(1)
+    call res1Dict % store('type','fluxResponse')
+
+    ! Define 2nd response dictionary and name
+    res2Name ='testResponse'
+    call res2Dict % init(2)
+    call res2Dict % store('type','testResponse')
+    call res2Dict % store('value', 1.3_defReal)
+
+    ! Configure dictionary for the clerk
+    call clerkDict % init(6)
+    call clerkDict % store('type','collisionClerk')
+    call clerkDict % store('handleVirtual', 1)
+    call clerkDict % store(res1Name, res1Dict)
+    call clerkDict % store(res2Name, res2Dict)
+
+    ! Store filter or map
+    if(hasFilter) call clerkDict % store('filter', filterDict)
+    if(hasMap)    call clerkDict % store('map', mapDict)
+
+    ! Store responses used
+    if(has2Res) then
+      call clerkDict % store('response', [res1Name, res2Name])
+    else
+      call clerkDict % store('response', [res1Name])
+    end if
+
+    ! Build Clerk
+    clerkName ='myClerk'
+    call clerk % init(clerkDict, clerkName)
+
+    ! Create score memory
+    call mem % init(int(clerk % getSize(), longInt) , 1)
+    call clerk % setMemAddress(1_longInt)
+
+    ! Build nuclear data
+    call nucData % build(0.3_defReal)
+
+    ! Perform scoring, both virtual and physical should contribute
+    call p % setMatIdx(1)
+    p % w = 0.7_defReal
+    call clerk % reportInColl(p, nucData, mem, .true.)
+
+    call p % setMatIdx(6)
+    p % w = 1.3_defReal
+    call clerk % reportInColl(p, nucData, mem, .false.)
+
+    call mem % closeCycle(ONE)
+
+    ! Verify results of scoring
+    do i=1,size(this % bins)
+      call mem % getResult(res, this % bins(i))
+      @assertEqual(this % results(i), res, TOL, case // 'BIN : ' //numToChar(i) )
+    end do
+
+    ! Verify that size of memory returned is correct
+    @assertEqual(size(this % bins), clerk % getSize(), case // 'Memory size test:')
+
+    ! Verify that output calls are correct
+    call outF % init('dummyPrinter', fatalErrors = .false.)
+    call clerk % print (outF, mem)
+
+    @assertTrue(outF % isValid(), case)
+
+    ! Clean up
+    call nucData % kill()
+    call clerkDict % kill()
+    call filterDict % kill()
+    call mapDict % kill()
+    call res1Dict % kill()
+    call res2Dict % kill()
+
+  end subroutine testScoringVirtual
 
 end module collisionClerk_test

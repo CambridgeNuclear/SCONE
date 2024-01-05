@@ -5,44 +5,44 @@
 // Benchmark keff = 1.0000 +/- 0.0010
 
 
-type eigenPhysicsPackage; 
+type eigenPhysicsPackage;
 
 pop      200000;
-active 100; 
-inactive 200; 
+active 100;
+inactive 200;
 XSdata   ceData;
-dataType ce; 
+dataType ce;
 
-collisionOperator { neutronCE {type neutronCEstd;} 
-                     
-                  } 
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
 
 transportOperator { type transportOperatorST;
-                  } 
+                  }
 
 inactiveTally {
-              } 
+              }
 
-activeTally  { 
+activeTally  {
                 display (keff);
                 norm fiss;
                 normVal 100.0;
                 keff { type keffAnalogClerk;}
                 fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
-                flux { type collisionClerk; 
-                       map { type energyMap; grid log; min 0.001; max 20; N 300;} 
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
                        response (flux); flux {type fluxResponse;}
-                      } 
-	      }
+                      }
+        }
 
-geometry { 
+geometry {
     type geometryStd;
     boundary (0 0 0 0 0 0);
     graph {type shrunk;}
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 5.9838; }  
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 5.9838; }
     }
 
 
@@ -54,37 +54,37 @@ geometry {
 
       root
       {
-	  id 1;
-	  type rootUniverse; 
-	  border 1;
+          id 1;
+          type rootUniverse;
+          border 1;
           fill fuel;
       }
-    }   
+    }
 }
 
 nuclearData {
 
-  handles { 
-     ceData { type aceNeutronDatabase; ures 1; aceLibrary /home/pmc55/myACE/JEF311.aceXS;}
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
   }
-  
-  
-materials { 
-    
 
-    fuel {  
-      temp       293; 
+
+materials {
+
+
+    fuel {
+      temp       293;
       composition {
         92233.03  0.046712;
         92234.03  0.00059026;
         92235.03  0.000014281;
         92238.03  0.00028561;
-      }   
-    }	 
+      }
+    }
 
-} 
-  
 }
-  
-  
-  
+
+}
+
+
+

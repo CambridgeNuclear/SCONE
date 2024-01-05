@@ -14,12 +14,10 @@ module transportOperatorFactory_func
   use transportOperatorHT_class,        only : transportOperatorHT
   use transportOperatorTime_class,      only : transportOperatorTime
   use transportOperatorGeomHT_class,    only : transportOperatorGeomHT
-  !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
 
   implicit none
   private
 
-  ! *** ADD NAME OF A NEW TRANSPORT OPERATOR HERE ***!
   ! List that contains all accaptable types of transport operators
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -28,8 +26,7 @@ module transportOperatorFactory_func
                                                                          'transportOperatorDT    ', &
                                                                          'transportOperatorHT    ', &
                                                                          'transportOperatorTime  ', &
-                                                                         'transportOperatorGeomHT']!, &
-                                                                       !  'dynamicTranspOperDT']
+                                                                         'transportOperatorGeomHT']
 
   public :: new_transportOperator
 
@@ -51,38 +48,30 @@ contains
     call dict % get(type,'type')
 
     ! Allocate appropriate subclass of transportOperator
-    ! *** ADD CASE STATEMENT FOR A NEW TRANSPORT OPERATOR BELOW ***!
     select case(type)
       case('transportOperatorST')
         allocate( transportOperatorST :: new)
-        call new % init(dict)
 
       case('transportOperatorDT')
         allocate( transportOperatorDT :: new)
-        call new % init(dict)
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
-        call new % init(dict)
 
       case('transportOperatorTime')
         allocate( transportOperatorTime :: new)
-        call new % init(dict)
 
       case('transportOperatorGeomHT')
         allocate( transportOperatorGeomHT :: new)
-        call new % init(dict)
-
-
-!      case('dynamicTranspOperDT')
-!        allocate( transportOperatorDynamicDT :: new)
-!        call new % init(dict, geom)
 
       case default
         print *, AVALIBLE_transportOps
         call fatalError(Here, 'Unrecognised type of transportOperator: ' // trim(type))
 
     end select
+
+    ! Initialise new transport operator
+    call new % init(dict)
 
   end subroutine new_transportOperator
 
