@@ -429,7 +429,7 @@ contains
 
       ! Add temperature and volume into dictionary
       call tempDict % store('T', matDef % T)
-      call tempDict % store('V', matdef % V)
+      call tempDict % store('V', matDef % V)
 
       ! Initialise material
       call self % mats(i) % init(tempDict)

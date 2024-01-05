@@ -17,7 +17,6 @@
 !!   nMat        -> Return number of materials
 !!   matName     -> Return material Name given Index
 !!   matTemp     -> Return material Temperature given Index
-!!   matVol      -> Return material Volume given Index
 !!   matFile     -> Return file path to material data given matIdx
 !!   matIdx      -> Return material Index given Name
 !!
@@ -118,7 +117,6 @@ module materialMenu_mod
   public :: nMat
   public :: matName
   public :: matTemp
-  public :: matVol
   public :: matFile
   public :: matIdx
 
@@ -255,31 +253,6 @@ contains
   end function matTemp
 
   !!
-  !! Return volume of material given index
-  !!
-  !! Args:
-  !!   idx [in] -> Material Index
-  !!
-  !! Result:
-  !!   Volume of material as given in input file
-  !!
-  !! Errors:
-  !!   If idx is -ve or larger then number of defined materials
-  !!   then -1 is returned as its volume
-  !!
-  function matVol(idx) result(vol)
-    integer(shortInt), intent(in) :: idx
-    real(defReal)                 :: vol
-
-    if( idx <= 0 .or. nMat() < idx) then
-      vol = -ONE
-    else
-      vol = materialDefs(idx) % V
-    end if
-
-  end function matVol
-
-  !!
   !! Return file path to material XS data given index
   !!
   !! Args:
@@ -342,7 +315,7 @@ contains
     ! Return to initial state
     call self % kill()
 
-    ! Load easy components c
+    ! Load easy components
     self % name = name
     call dict % get(self % T,'temp')
     call dict % getOrDefault(self % V, 'volume', ZERO)
@@ -383,9 +356,6 @@ contains
 
     ! Save dictionary
     self % extraInfo = dict
-
-    ! TODO: Remove composition subdictionary from extraInfo
-    !       Or rather do not copy it in the first place
 
   end subroutine init_materialItem
 
