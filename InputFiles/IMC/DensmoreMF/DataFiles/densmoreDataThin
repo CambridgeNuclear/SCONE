@@ -1,0 +1,7 @@
+// Data for 1D Olson benchamrk problem
+//
+
+equations densmore;
+
+sigmaMultiple 10;
+

@@ -15,7 +15,7 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
-!  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
+  use implicitPhysicsPackage_class,    only : implicitPhysicsPackage
 
   implicit none
   private
@@ -26,6 +26,7 @@ module physicsPackageFactory_func
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
+                                                                             'implicitPhysicsPackage   ',&
                                                                              'vizPhysicsPackage        ',&
                                                                              'rayVolPhysicsPackage     ']
 
@@ -49,13 +50,16 @@ contains
     ! Obtain string that specifies type to be built
     call dict % get(type,'type')
 
-    ! Allocate approperiate subclass of physicsPackage
+    ! Allocate appropriate subclass of physicsPackage
     select case(type)
       case('eigenPhysicsPackage')
         allocate( eigenPhysicsPackage :: new)
 
       case('fixedSourcePhysicsPackage')
         allocate( fixedSourcePhysicsPackage :: new)
+
+      case('implicitPhysicsPackage')
+        allocate( implicitPhysicsPackage :: new)
 
       case('vizPhysicsPackage')
         allocate( vizPhysicsPackage :: new)

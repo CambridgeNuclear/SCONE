@@ -4,24 +4,26 @@
 module geometryFactory_func
 
   use numPrecision
-  use genericProcedures, only : fatalError
-  use dictionary_class,  only : dictionary
-  use charMap_class,     only : charMap
+  use genericProcedures,  only : fatalError
+  use dictionary_class,   only : dictionary
+  use charMap_class,      only : charMap
 
   ! Geometry
-  use geometry_inter,    only : geometry
-  use geometryStd_class, only : geometryStd
-  use geometryReg_mod,   only : gr_addGeom => addGeom
+  use geometry_inter,     only : geometry
+  use geometryStd_class,  only : geometryStd
+  use geometryGrid_class, only : geometryGrid
+  use geometryReg_mod,    only : gr_addGeom => addGeom
 
   ! Meterial interface
-  use materialMenu_mod,  only : mm_nameMap => nameMap
+  use materialMenu_mod,   only : mm_nameMap => nameMap
 
   implicit none
   private
 
 
   !! Parameters
-  character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd']
+  character(nameLen), dimension(*), parameter :: AVAILABLE_GEOMETRIES = ['geometryStd ' ,&
+                                                                         'geometryGrid']
 
   ! Public interface
   public :: new_geometry
@@ -64,6 +66,9 @@ contains
     select case (type)
       case ('geometryStd')
         allocate(geometryStd :: geom)
+
+      case ('geometryGrid')
+        allocate(geometryGrid :: geom)
 
       case default
         print '(A)', 'AVAILABLE GEOMETRIES'

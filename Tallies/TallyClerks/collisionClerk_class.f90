@@ -94,7 +94,7 @@ contains
     ! Assign name
     call self % setName(name)
 
-    ! Load filetr
+    ! Load filter
     if( dict % isPresent('filter')) then
       call new_tallyFilter(self % filter, dict % getDictPtr('filter'))
     end if

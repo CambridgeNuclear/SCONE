@@ -1,11 +1,12 @@
 module source_inter
 
   use numPrecision
-  use particle_class,        only : particleState
+  use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
   use geometry_inter,        only : geometry
+  use genericProcedures,     only : fatalError
 
   implicit none
   private
@@ -29,14 +30,17 @@ module source_inter
   !! Interface:
   !!   init              -> initialise the source
   !!   generate          -> generate particles to fill a dungeon
+  !!   append            -> generate new particles to add to an existing dungeon
   !!   sampleParticle    -> sample particles from the corresponding distributions
   !!   kill              -> clean up the source
   !!
   type, public,abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
+    real(defReal), public                  :: sourceWeight = ZERO
   contains
-    procedure, non_overridable             :: generate
+    procedure                              :: generate
+    procedure                              :: append
     procedure(sampleParticle), deferred    :: sampleParticle
     procedure(init), deferred              :: init
     procedure(kill), deferred              :: kill
@@ -121,6 +125,36 @@ contains
       !$omp end parallel
 
     end subroutine generate
+
+    !!
+    !! Generate particles to add to a particleDungeon without overriding
+    !! particles already present
+    !!
+    !! Adds to a particle dungeon N particles, sampled
+    !! from the corresponding source distributions
+    !!
+    !! Args:
+    !!   dungeon [inout] -> particle dungeon to be added to
+    !!   n [in]          -> number of particles to place in dungeon
+    !!   rand [inout]    -> particle RNG object
+    !!
+    !! Result:
+    !!   A dungeon populated with n particles sampled from the source, plus
+    !!   particles already present in dungeon
+    !!
+    subroutine append(self, dungeon, N, rand)
+      class(source), intent(inout)            :: self
+      type(particleDungeon), intent(inout)    :: dungeon
+      integer(shortInt), intent(in)           :: N
+      class(RNG), intent(inout)               :: rand
+      integer(shortInt)                       :: i
+
+      ! Generate n particles to populate dungeon
+      do i = 1, N
+        call dungeon % detain(self % sampleParticle(rand))
+      end do
+
+    end subroutine append
 
     !!
     !! Return to uninitialised state

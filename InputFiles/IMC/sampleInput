@@ -1,0 +1,54 @@
+
+// Intended as a sample/tutorial input file for calculations using IMC physics
+//   package, to detail settings that differ to other calculation types
+
+type implicitPhysicsPackage;
+
+method         IMC;        // IMC or ISMC
+pop            10000;      // 
+limit          25000;      //
+steps          5000;       // Number of timesteps to take
+timeStep       0.1;        // Timestep for calculation
+units          marshak;    // Units for conversion of timeStep in physicsPackage
+printUpdates   2;          // Prints first N brief material updates per timestep
+
+// Energy grid for multi-frequency calculations, if not provided then defaults to grey case
+energygrid {
+            grid    log;
+            size    30;
+            min     0.0001;
+            max     100;
+            }
+
+collisionOperator { photonMG {type IMCMGstd;} } 
+
+transportOperator {
+                    type transportOperatorTime;  // Standard transport operator for IMC/ISMC
+                  } 
+
+tally  {}  // Required tallies are defined automatically in physicsPackage
+
+// Black body surface source placed on -x face of geometry bounding box with T = 1
+source { type blackBodySource; distribution surface; surface -x; temp 1; }
+
+geometry { 
+    type geometryGrid;      // Splits geometry into a uniform grid with the dimensions given below
+                            // Efficient for IMC, see geometryGrid_class.f90 for more detail
+    dimensions (100 1 1);
+
+    boundary (0 0 1 1 1 1); // 0 -> Open boundary, 1 -> Reflective boundary
+    graph {type shrunk;}
+
+    surfaces { outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }}
+    cells {}
+    universes { root { id 100; type rootUniverse; border 1; fill mat1; }}
+}
+
+nuclearData {
+  handles {  mg { type baseMgIMCDatabase; }}
+
+  materials { mat1 { temp 0.01; composition {} xsFile ./DataFiles/sampleData; }}
+}
+  
+  
+  

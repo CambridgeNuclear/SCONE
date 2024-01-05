@@ -53,11 +53,13 @@ module scoreMemory_class
   !!         cumulative sums. Then sets the bin to zero.
   !!
   !!     closeCycle(normFactor): Multiplies all scores by normFactor and accumulates them in
-  !!         cumulative sums. Sets all scors to zero.
+  !!         cumulative sums. Sets all scores to zero.
   !!
   !!     lastCycle(): Return true if the next call to closeCycle will close a batch.
   !!
   !!     getBatchSize(): Returns number of cycles that constitute a single batch.
+  !!
+  !!     reset(idx): Reset the value in a memory location
   !!
   !! Example use case:
   !!
@@ -99,6 +101,7 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: reset
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -276,7 +279,6 @@ contains
 
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
-
     if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
       
       !$omp parallel do
@@ -445,5 +447,20 @@ contains
     end if
 
   end function getScore
+
+  !!
+  !! Reset the value in a memory location
+  !! Useful for tallies that do not accumulate across cycles
+  !!
+  subroutine reset(self,idx)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt), intent(in)      :: idx
+
+    self % bins(idx, :) = ZERO
+
+    self % cycles = 0
+    self % batchN = 0
+
+  end subroutine reset
 
 end module scoreMemory_class

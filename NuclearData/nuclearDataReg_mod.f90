@@ -13,6 +13,7 @@
 !! Available ND TYPES:
 !!   CE_NEUTRON
 !!   MG_NEUTRON
+!!   MG_PHOTON
 !!
 !! Private members:
 !!   databases           -> Array with defined databases (name, definition,
@@ -53,7 +54,7 @@
 module nuclearDataReg_mod
 
   use numPrecision
-  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG
+  use universalVariables,    only : P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG, P_MATERIAL_MG
   use genericProcedures,     only : fatalError, numToChar, printParticleType
   use charMap_class,         only : charMap
   use dictionary_class,      only : dictionary
@@ -62,6 +63,7 @@ module nuclearDataReg_mod
   use nuclearDatabase_inter,   only : nuclearDatabase
   use ceNeutronDatabase_inter, only : ceNeutronDatabase, ceNeutronDatabase_CptrCast
   use mgNeutronDatabase_inter, only : mgNeutronDatabase, mgNeutronDatabase_CptrCast
+  use mgIMCDatabase_inter,     only : mgIMCDatabase, mgIMCDatabase_CptrCast
   use materialMenu_mod,        only : mm_init => init, mm_kill => kill, mm_nMat => nMat,&
                                       mm_nameMap => nameMap
 
@@ -71,6 +73,9 @@ module nuclearDataReg_mod
 
   ! Neutron MG
   use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase
+
+  ! Photon MG
+  use baseMgIMCDatabase_class,     only : baseMgIMCDatabase
 
   implicit none
   private
@@ -97,6 +102,7 @@ module nuclearDataReg_mod
   public :: kill
   public :: getNeutronCE
   public :: getNeutronMG
+  public :: getIMCMG
   public :: get
   public :: getMatNames
 
@@ -110,7 +116,8 @@ module nuclearDataReg_mod
   !! Parameters
   character(nameLen), dimension(*), parameter :: AVAILABLE_NUCLEAR_DATABASES = &
                                                 ['aceNeutronDatabase      ', &
-                                                 'baseMgNeutronDatabase   ']
+                                                 'baseMgNeutronDatabase   ', &
+                                                 'baseMgIMCDatabase       ']
 
   !! Members
   type(ndBox),dimension(:),allocatable,target :: databases
@@ -121,6 +128,9 @@ module nuclearDataReg_mod
 
   class(mgNeutronDatabase), pointer :: active_mgNeutron => null()
   integer(shortInt)                 :: activeIdx_mgNeutron = 0
+
+  class(mgIMCDatabase),     pointer :: active_mgIMC     => null()
+  integer(shortInt)                 :: activeIdx_mgIMC     = 0
 
 contains
 
@@ -318,6 +328,13 @@ contains
           call fatalError(Here,trim(name)//' is not database for MG neutrons')
         end if
 
+      case(P_PHOTON_MG)
+        activeIdx_mgIMC = idx
+        active_mgIMC => mgIMCDatabase_CptrCast(ptr)
+        if(.not.associated(active_mgIMC)) then
+          call fatalError(Here,trim(name)//' is not database for MG IMC')
+        end if
+
       case default
         call fatalError(Here,'Unrecognised type of data to activate. Check parameters. Got: '//&
                               numToChar(type))
@@ -353,11 +370,18 @@ contains
     if(idx /= 0) activeName = databases(idx) % name
     print '(A)', "  MG NEUTRON DATA: " // trim(activeName)
 
+    ! MG IMC
+    activename = 'NONE'
+    idx = activeIdx_mgIMC
+    if(idx /= 0) activeName = databases(idx) % name
+    print '(A)', "  MG IMC DATA: "     // trim(activeName)
+
     ! INACTIVE DATABASES
     print '(A)', "INACTIVE DATABASES:"
     do idx=1,size(databases)
       if(idx == activeIdx_mgNeutron) cycle
       if(idx == activeIdx_ceNeutron) cycle
+      if(idx == activeIdx_mgIMC)     cycle
 
     end do
     print '(A)',repeat('\/',30)
@@ -393,6 +417,10 @@ contains
     activeIdx_mgNeutron = 0
     active_mgNeutron => null()
 
+    ! MG IMC
+    activeIdx_mgIMC     = 0
+    active_mgIMC     => null()
+
   end subroutine kill
 
   !!
@@ -415,13 +443,13 @@ contains
   end function getNeutronCE
 
   !!
-  !! Return pointer to an active Neutron CE Database
+  !! Return pointer to an active Neutron MG Database
   !!
   !! Args:
   !!   None
   !!
   !! Result:
-  !!   ceNeutronDatabase class pointer
+  !!   mgNeutronDatabase class pointer
   !!
   !! Errors:
   !!   If there is no active database returns NULL ptr
@@ -432,6 +460,25 @@ contains
     ptr => active_mgNeutron
 
   end function getNeutronMG
+
+  !!
+  !! Return pointer to an active IMC MG Database
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   mgIMCDatabase class pointer
+  !!
+  !! Errors:
+  !!   If there is no active database returns NULL ptr
+  !!
+  function getIMCMG() result(ptr)
+    class(mgIMCDatabase), pointer :: ptr
+
+    ptr => active_mgIMC
+
+  end function getIMCMG
 
   !!
   !! Return pointer to an active Nuclear Database given particle type
@@ -458,6 +505,13 @@ contains
 
       case(P_NEUTRON_MG)
         ptr => getNeutronMG()
+
+      case(P_PHOTON_MG)
+        ptr => getIMCMG()
+
+      case(P_MATERIAL_MG)
+        ! Currently only used for ISMC so point to same database
+        ptr => getIMCMG()
 
       case default
         ptr => null()
@@ -571,6 +625,9 @@ contains
 
       case('baseMgNeutronDatabase')
         allocate(baseMgNeutronDatabase :: database)
+
+      case('baseMgIMCDatabase')
+        allocate(baseMgIMCDatabase :: database)
 
       case default
         ! Print available nuclear database types

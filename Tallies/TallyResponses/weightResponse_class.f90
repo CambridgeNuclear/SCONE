@@ -4,12 +4,14 @@ module weightResponse_class
   use endfConstants
   use genericProcedures,          only : fatalError, numToChar
   use dictionary_class,           only : dictionary
-  use particle_class,             only : particle, P_NEUTRON
+  use particle_class,             only : particle
   use tallyResponse_inter,        only : tallyResponse
 
   ! Nuclear Data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
-  use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
+  use materialHandle_inter,       only : materialHandle
+  use neutronMaterial_inter,      only : neutronMaterial_CptrCast
+  use imcMaterial_inter,          only : IMCMaterial_CptrCast
 
   implicit none
   private
@@ -17,7 +19,7 @@ module weightResponse_class
 
   !!
   !! tallyResponse for scoring particle weights
-  !!  Currently supports neutrons only
+  !!  Currently supports neutrons and IMC only
   !!
   !! Interface:
   !!   tallyResponse interface
@@ -63,24 +65,22 @@ contains
   !! See tallyResponse_inter for details
   !!
   !! Errors:
-  !!   Return ZERO if particle is not a Neutron
+  !!   Return ZERO if particle is not a Neutron or IMC
   !!
   function get(self, p, xsData) result(val)
     class(weightResponse), intent(in)      :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
-    class(neutronMaterial), pointer       :: mat
+    class(materialHandle), pointer        :: mat
 
     val = ZERO
 
-    ! Return 0.0 if particle is not neutron
-    if(p % type /= P_NEUTRON) return
-
     ! Get pointer to active material data
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    if(.not.associated(mat)) mat => IMCMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
 
-    ! Return if material is not a neutronMaterial
+    ! Return if material is not a neutronMaterial or IMCMaterial
     if(.not.associated(mat)) return
 
     if (self % moment == 0) then

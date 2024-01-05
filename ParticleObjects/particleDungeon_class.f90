@@ -1,9 +1,11 @@
 module particleDungeon_class
 
   use numPrecision
-  use genericProcedures,     only : fatalError, numToChar
-  use particle_class,        only : particle, particleState
+  use genericProcedures,     only : fatalError, numToChar, linFind, getDistance
+  use particle_class,        only : particle, particleState, P_MATERIAL, P_PHOTON
   use RNG_class,             only : RNG
+  use geometry_inter,        only : geometry
+  use universalVariables,    only : INF
 
   implicit none
   private
@@ -46,22 +48,28 @@ module particleDungeon_class
   !!     get(i)               -> function returns particle state at index i
   !!
   !!   Misc procedures:
-  !!     isEmpty()         -> returns .true. if there are no more particles
-  !!     cleanPop()        -> kill or prisoners
-  !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
-  !!     normSize(N)       -> normalise dungeon population so it contains N particles
-  !!                          does not take nonuniform weight of particles into account
-  !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
-  !!     printToFile(name) -> prints population in ASCII format to file "name"
+  !!     isEmpty()           -> returns .true. if there are no more particles
+  !!     cleanPop()          -> kill or prisoners
+  !!     normWeight(totWgt)  -> normalise dungeon population so its total weight is totWgt
+  !!     normSize(N)         -> normalise dungeon population so it contains N particles
+  !!                            does not take nonuniform weight of particles into account
+  !!     combine(idx1,idx2)  -> combine 2 particles by summing their weight and moving to a weight-
+  !!                            averaged position
+  !!     deleteParticle(idx) -> deletes particle at idx and reduces dungeon size by 1
+  !!     setSize(n)          -> sizes dungeon to have n dummy particles for ease of overwriting
+  !!     printToFile(name)   -> prints population in ASCII format to file "name"
+  !!     printToScreen(prop,nMax,total) -> prints property to screen for up to nMax particles
+  !!     popSize()           -> returns number of particles in dungeon
+  !!     popWeight()         -> returns total population weight
   !!
   !!   Build procedures:
-  !!     init(maxSize)     -> allocate space to store maximum of maxSize particles
-  !!     kill()            -> return to uninitialised state
+  !!     init(maxSize)       -> allocate space to store maximum of maxSize particles
+  !!     kill()              -> return to uninitialised state
   !!
   type, public :: particleDungeon
     private
-    real(defReal),public :: k_eff = ONE ! k-eff for fission site generation rate normalisation
-    integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
+    real(defReal),public     :: k_eff = ONE   ! k-eff for fission site generation rate normalisation
+    integer(shortInt)        :: pop = 0       ! Current population size of the dungeon
 
     ! Storage space
     type(particleState), dimension(:), allocatable, public :: prisoners
@@ -86,11 +94,15 @@ module particleDungeon_class
     procedure  :: isEmpty
     procedure  :: normWeight
     procedure  :: normSize
+    procedure  :: closest
+    procedure  :: combine
+    procedure  :: deleteParticle
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
+    procedure  :: printToScreen
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -402,7 +414,7 @@ contains
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP
     integer(shortInt)                     :: i, idx
-    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+    character(100), parameter :: Here = 'normSize (particleDungeon_class.f90)'
 
     ! Protect against invalid N
     if( N > size(self % prisoners)) then
@@ -437,6 +449,108 @@ contains
   end subroutine normSize
 
   !!
+  !! Find the closest particle to particle at idx, that is of the same type and in the same material
+  !!
+  function closest(self, idx) result(idxClose)
+    class(particleDungeon), intent(in) :: self
+    integer(shortInt), intent(in)      :: idx
+    integer(shortInt)                  :: idxClose, matIdx, type, i
+    real(defReal), dimension(3)        :: r
+    real(defReal)                      :: dist, minDist
+    character(100), parameter :: Here = 'closest (particleDungeon_class.f90)'
+
+    ! Get required properties of particle
+    r      = self % prisoners(idx) % r
+    type   = self % prisoners(idx) % type
+    matIdx = self % prisoners(idx) % matIdx 
+
+    minDist  = INF
+    idxClose = 0
+
+    !$omp parallel
+    !$omp do private(dist)
+    do i=1, self % pop
+      ! Require particles to be of same type and in same matIdx
+      if (self % prisoners(i) % matIdx /= matIdx) cycle
+      if (self % prisoners(i) % type /= type) cycle
+
+      ! Get distance
+      dist = getDistance(r, self % prisoners(i) % r)
+      if (dist < minDist) then
+        minDist  = dist
+        idxClose = i
+      end if
+
+    end do
+    !$omp end do
+    !$omp end parallel
+
+    if (idxClose == 0) call fatalError(Here, 'No valid particle found')
+
+  end function closest
+
+  !!
+  !! Combine two particles in the dungeon by summing their weight and moving to a weighted-
+  !! average position. Direction is unchanged.
+  !!
+  !! Particle at idx1 is moved to a position that is the energy-weighted average
+  !! of the two original positions. Its new energy is the sum of the two original energies.
+  !!
+  !! Particle at idx2 remains unchanged. To delete, call self % deleteParticle(idx2) afterwards.
+  !!
+  !! Args:
+  !!   idx1 [in] -> Index of 1st particle, will be overridden 
+  !!   idx2 [in] -> Index of 2nd particle, will be kept unchanged
+  !!
+  subroutine combine(self, idx1, idx2)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: idx1
+    integer(shortInt), intent(in)         :: idx2
+    type(particle)                        :: p1, p2
+    real(defReal), dimension(3)           :: r1, r2, rNew
+
+    ! Get initial particle data
+    call self % copy(p1, idx1)
+    call self % copy(p2, idx2)
+    r1 = p1 % rGlobal()
+    r2 = p2 % rGlobal()
+
+    ! Move to new combined position
+    rNew = (r1*p1 % w + r2*p2 % w) / (p1 % w + p2 % w)
+    call p1 % teleport(rNew)
+
+    ! Combine weights and overwrite particle
+    p1 % w = p1 % w + p2 % w
+    call self % replace(p1, idx1)
+
+  end subroutine combine
+
+  !!
+  !! Deletes particle at idx by releasing top particle and copying into position idx,
+  !! overwriting particle to be deleted
+  !!
+  !! Args:
+  !!   idx [in] -> index of particle to be deleted
+  !!
+  subroutine deleteParticle(self, idx)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: idx
+    type(particle)                        :: p
+    integer(shortInt)                     :: matIdx
+
+    matIdx = self % prisoners(self % pop) % matIdx 
+
+    ! Release particle at top of dungeon
+    call self % release(p)
+
+    ! Copy into position of particle to be deleted
+    if (idx /= self % pop + 1) call self % replace(p, idx)
+
+    self % prisoners(idx) % matIdx = matIdx
+
+  end subroutine deleteParticle
+
+  !!
   !! Kill or particles in the dungeon
   !!
   pure subroutine cleanPop(self)
@@ -447,7 +561,7 @@ contains
   end subroutine cleanPop
 
   !!
-  !! Returns number of neutrons in the dungeon
+  !! Returns number of particles in the dungeon
   !!
   function popSize(self) result(pop)
     class(particleDungeon), intent(in) :: self
@@ -517,19 +631,109 @@ contains
     integer(shortInt)                  :: i
 
     filename = trim(name)//'.txt'
-    open(unit = 10, file = filename, status = 'new')
+    open(unit = 10, file = filename)
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
       write(10,'(8A)') numToChar(self % prisoners(i) % r), &
                        numToChar(self % prisoners(i) % dir), &
                        numToChar(self % prisoners(i) % E), &
-                       numToChar(self % prisoners(i) % G)
+                       numToChar(self % prisoners(i) % G), &
+                       numToChar(self % prisoners(i) % matIdx)
     end do
 
     ! Close the file
     close(10)
 
   end subroutine printToFile
+
+  !!
+  !! Prints given property of particles to screen
+  !!
+  !! Args:
+  !!   prop  [in] -> Particle property to be displayed
+  !!   nMax  [in] -> Maximum number of particles displayed
+  !!   total [in] -> Optional, if True then sum contributions of particles
+  !!                  and print for total
+  !!
+  !! Errors:
+  !!   fatalError if prop is invalid
+  !!
+  subroutine printToScreen(self, prop, nMax)
+    class(particleDungeon), intent(in)     :: self
+    character(*), intent(in)               :: prop
+    integer(shortInt), intent(in)          :: nMax
+    integer(shortInt)                      :: i,iMax
+    character(100), parameter :: Here = 'printToScreen (particleDungeon_class.f90)'
+
+    character(nameLen), dimension(*), parameter :: AVAILABLE_props = [ 'r     ',&
+                                                                       'dir   ',&
+                                                                       'matIdx',&
+                                                                       'E     ',&
+                                                                       'G     ',&
+                                                                       'wgt   ',&
+                                                                       'time  ',&
+                                                                       'pop   ']
+
+    print *, 'Number in dungeon =', self % pop
+
+    ! Number of particles to be printed
+    iMax = min(nMax, self % pop)
+
+    ! Print desired quantities
+    select case(prop)
+      case('r')
+        print *, '**          ** Position **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % r)
+        end do
+
+      case('dir')
+        print *, '**          ** Direction **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % dir)
+        end do
+
+      case('matIdx')
+        print *, '**          ** matIdx **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % matIdx)
+        end do
+
+      case('E')
+        print *, '**          ** Energy **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % E)
+        end do
+     
+      case('G')
+        print *, '**          ** Group **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % G)
+        end do
+
+      case('wgt')
+        print *, '**          ** Weight **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % wgt)
+        end do
+
+      case('time')
+        print *, '**          ** Time **          **'
+        do i = 1, iMax
+          print *, i,numToChar(self % prisoners(i) % time)
+        end do
+
+      case('pop')
+        ! Do nothing, pop already printed above
+
+      case default
+        print *, AVAILABLE_props
+        call fatalError(Here, 'Unrecognised particle property : ' // trim(prop))
+
+    end select
+
+  end subroutine printToScreen
+    
 
 end module particleDungeon_class

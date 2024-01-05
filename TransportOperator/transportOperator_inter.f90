@@ -7,6 +7,7 @@ module transportOperator_inter
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
+  use RNG_class,                  only : RNG
 
   ! Geometry interfaces
   use geometryReg_mod,            only : gr_geomPtr => geomPtr
@@ -18,8 +19,6 @@ module transportOperator_inter
   ! Nuclear data interfaces
   use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
-
-
 
   implicit none
   private
@@ -121,8 +120,8 @@ contains
   !! Initialise transport operator from dictionary and geometry
   !!
   subroutine init(self, dict)
-    class(transportOperator), intent(inout)  :: self
-    class(dictionary), intent(in)            :: dict
+    class(transportOperator), intent(inout)    :: self
+    class(dictionary), intent(in)              :: dict
 
     ! Do nothing
 
@@ -138,6 +137,5 @@ contains
     self % xsData => null()
 
   end subroutine kill
-
 
 end module transportOperator_inter

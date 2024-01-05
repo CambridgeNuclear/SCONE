@@ -8,9 +8,11 @@ module sourceFactory_func
   use source_inter,      only : source
 
   ! source implementations
-  use pointSource_class,    only : pointSource
-  use fissionSource_class,  only : fissionSource
-  use materialSource_class, only : materialSource
+  use pointSource_class,     only : pointSource
+  use fissionSource_class,   only : fissionSource
+  use materialSource_class,  only : materialSource
+  use blackBodySource_class, only : blackBodySource
+  use imcMaterialSource_class, only : imcMaterialSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -24,9 +26,11 @@ module sourceFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource   ',&
-                                                                     'fissionSource ',&
-                                                                     'materialSource']
+  character(nameLen),dimension(*),parameter :: AVAILABLE_sources = [ 'pointSource      ',&
+                                                                     'fissionSource    ',&
+                                                                     'materialSource   ',&
+                                                                     'blackBodySource  ',&
+                                                                     'imcMaterialSource']
 
 contains
 
@@ -57,6 +61,12 @@ contains
 
       case('materialSource')
         allocate(materialSource :: new)
+
+      case('blackBodySource')
+        allocate(blackBodySource :: new)
+
+      case('imcMaterialSource')
+        allocate(imcMaterialSource :: new)
 
      case default
        print *, AVAILABLE_sources

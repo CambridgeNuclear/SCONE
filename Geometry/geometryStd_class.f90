@@ -9,6 +9,7 @@ module geometryStd_class
   use geometry_inter,     only : geometry, distCache
   use csg_class,          only : csg
   use universe_inter,     only : universe
+  use latUniverse_class,  only : latUniverse
   use surface_inter,      only : surface
 
   ! Nuclear Data

@@ -9,6 +9,8 @@ add_sources( ./csg_class.f90
              ./geometry_inter.f90
              ./geometryStd_class.f90
              ./geometryReg_mod.f90
+             ./discretiseGeom_class.f90
+             ./geometryGrid_class.f90
              ./geometryFactory_func.f90
              ./fieldFactory_func.f90
            )

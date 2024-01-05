@@ -1,0 +1,42 @@
+// Marshak wave IMC benchmark
+// Requires lightSpeed and radiation constant set to ONE in universalVariables
+
+type implicitPhysicsPackage;
+
+method         IMC;
+pop            100000;
+limit          250000;
+steps          1000;
+timeStep       0.5;
+units          marshak;
+
+collisionOperator { photonMG {type IMCMGstd;} } 
+
+transportOperator {
+                    type transportOperatorTime;
+                  } 
+
+tally  {}
+
+// Black body surface source
+source { type blackBodySource; distribution surface; surface -x; temp 1; }
+
+geometry { 
+    type geometryGrid;
+    dimensions (100 1 1);
+    boundary (0 0 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces { outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2 0.5 0.5); }}
+    cells {}
+    universes { root { id 100; type rootUniverse; border 1; fill mat1; }}
+}
+
+nuclearData {
+  handles {  mg { type baseMgIMCDatabase; }}
+
+  materials { mat1 { temp 0.01; composition {} xsFile ./DataFiles/marshakData; }}
+}
+  
+  
+  

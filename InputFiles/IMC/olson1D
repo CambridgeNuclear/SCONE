@@ -1,0 +1,70 @@
+
+type implicitPhysicsPackage;
+
+method         ISMC;
+pop            5000;
+limit          1000000;
+steps          1333;
+timeStep       0.0001;
+units          ns;
+printUpdates   5;
+
+
+energyGrid {
+            grid            unstruct;
+            bins            (17.8 10.0 5.62 3.16 1.78 1.0 0.562 0.316
+                            0.178 0.1 0.0562 0.0316 0.0178 0.01
+                            0.00562 0.00316 0.00178 0.001 0.0001);
+            }
+
+collisionOperator {
+                    photonMG {type IMCMGstd;}
+                  } 
+
+transportOperator {
+                    type transportOperatorTime;
+                  }
+
+source { type blackBodySource; distribution olson1D; temp 0.5; untilStep 667; }
+
+
+tally  {
+	   }
+
+geometry { 
+    type geometryGrid;
+    dimensions (100 1 1);
+    boundary (1 1 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      outer { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth ( 2.4 0.5 0.5); }
+    }
+
+    cells {}
+
+    universes
+    {
+      root { id 100; type rootUniverse; border 1; fill mat1; }
+    }
+
+}
+
+nuclearData {
+
+  handles { 
+     mg { type baseMgIMCDatabase; }
+  }
+  
+  
+  materials {
+
+    mat1 { temp 0.01; composition {} xsFile ./DataFiles/olsonData; }
+
+  }
+
+}
+  
+  
+  

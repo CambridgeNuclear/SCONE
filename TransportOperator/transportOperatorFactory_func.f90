@@ -12,7 +12,8 @@ module transportOperatorFactory_func
   use transportOperatorST_class,        only : transportOperatorST
   use transportOperatorDT_class,        only : transportOperatorDT
   use transportOperatorHT_class,        only : transportOperatorHT
-  !use transportOperatorDynamicDT_class, only : transportOperatorDynamicDT
+  use transportOperatorTime_class,      only : transportOperatorTime
+  use transportOperatorGeomHT_class,    only : transportOperatorGeomHT
 
   implicit none
   private
@@ -21,9 +22,11 @@ module transportOperatorFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST', &
-                                                                         'transportOperatorDT', &
-                                                                         'transportOperatorHT']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_transportOps = [ 'transportOperatorST    ', &
+                                                                         'transportOperatorDT    ', &
+                                                                         'transportOperatorHT    ', &
+                                                                         'transportOperatorTime  ', &
+                                                                         'transportOperatorGeomHT']
 
   public :: new_transportOperator
 
@@ -44,7 +47,7 @@ contains
     ! Obtain string that specifies type to be built
     call dict % get(type,'type')
 
-    ! Allocate approperiate subclass of transportOperator
+    ! Allocate appropriate subclass of transportOperator
     select case(type)
       case('transportOperatorST')
         allocate( transportOperatorST :: new)
@@ -54,6 +57,12 @@ contains
 
       case('transportOperatorHT')
         allocate( transportOperatorHT :: new)
+
+      case('transportOperatorTime')
+        allocate( transportOperatorTime :: new)
+
+      case('transportOperatorGeomHT')
+        allocate( transportOperatorGeomHT :: new)
 
       case default
         print *, AVALIBLE_transportOps

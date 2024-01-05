@@ -1,5 +1,6 @@
 module particle_class
 
+
   use numPrecision
   use universalVariables
   use genericProcedures
@@ -12,8 +13,9 @@ module particle_class
   !!
   !! Particle types paramethers
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 1,&
-                                         P_PHOTON  = 2
+  integer(shortInt), parameter,public :: P_NEUTRON  = 1,&
+                                         P_PHOTON   = 2,&
+                                         P_MATERIAL = 3
 
   !!
   !! Public particle type procedures
@@ -138,6 +140,7 @@ module particle_class
     procedure                  :: getUniIdx
     procedure                  :: matIdx
     procedure, non_overridable :: getType
+    procedure                  :: getSpeed
 
     ! Operations on coordinates
     procedure            :: moveGlobal
@@ -402,13 +405,13 @@ contains
   end function matIdx
 
   !!
-  !! Return one of the particle Tpes defined in universal variables
+  !! Return one of the particle types defined in universal variables
   !!
   !! Args:
   !!   None
   !!
   !! Result:
-  !!   P_NEUTRON_CE, P_NEUTRON_MG
+  !!   P_NEUTRON_CE, P_NEUTRON_MG, P_PHOTON_MG, P_MATERIAL_MG
   !!
   !! Errors:
   !!   None
@@ -417,13 +420,50 @@ contains
     class(particle), intent(in) :: self
     integer(shortInt)           :: type
 
-    if (self % isMG) then
-      type = P_NEUTRON_MG
-    else
-      type = P_NEUTRON_CE
+    ! Check for neutron
+    if (self % type == P_NEUTRON) then
+      if (self % isMg) then
+        type = P_NEUTRON_MG
+      else
+        type = P_NEUTRON_CE
+      end if
+
+    ! Check for photon
+    else if (self % type == P_PHOTON) then
+      if (self % isMg) then
+        type = P_PHOTON_MG
+      else
+        type = P_PHOTON_CE
+      end if
+
+    ! Currently only MG material particles supported
+    else if (self % type == P_MATERIAL) then
+      type = P_MATERIAL_MG
     end if
 
   end function getType
+
+  !!
+  !! Return speed of particle
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Errors:
+  !!   Currently returns lightSpeed for P_PHOTONs and gives error otherwise
+  !!
+  function getSpeed(self) result(speed)
+    class(particle), intent(in) :: self
+    real(defReal)               :: speed
+    character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
+
+    if (self % type == P_PHOTON) then
+      speed = lightSpeed
+    else 
+      call fatalError(Here, "Not yet coded to provide speed for neutrons")
+    end if
+
+  end function getSpeed
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
@@ -709,7 +749,6 @@ contains
 
   end subroutine kill_particleState
 
-
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Misc Procedures
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -726,6 +765,7 @@ contains
     ! Check against particles types
     isValid = isValid .or. type == P_NEUTRON
     isValid = isValid .or. type == P_PHOTON
+    isValid = isValid .or. type == P_MATERIAL
 
   end function verifyType
 
@@ -742,6 +782,9 @@ contains
 
       case(P_PHOTON)
         name = 'Photon'
+
+      case(P_MATERIAL)
+        name = 'Material'
 
       case default
         name = 'INVALID PARTICLE TYPE'

@@ -10,13 +10,15 @@
 !!   nameMap      -> Map that maps material name to matIdx
 !!
 !! Interface:
-!!   init      -> Load material definitions from a dictionary
-!!   kill      -> Return to uninitialised state
-!!   display   -> Display information about all defined materials to console
-!!   getMatPtr -> Return pointer to a detailed material information (materialItem)
-!!   nMat      -> Return number of materials
-!!   matName   -> Return material Name given Index
-!!   matIdx    -> Return material Index given Name
+!!   init        -> Load material definitions from a dictionary
+!!   kill        -> Return to uninitialised state
+!!   display     -> Display information about all defined materials to console
+!!   getMatPtr   -> Return pointer to a detailed material information (materialItem)
+!!   nMat        -> Return number of materials
+!!   matName     -> Return material Name given Index
+!!   matTemp     -> Return material Temperature given Index
+!!   matFile     -> Return file path to material data given matIdx
+!!   matIdx      -> Return material Index given Name
 !!
 module materialMenu_mod
 
@@ -64,6 +66,7 @@ module materialMenu_mod
   !!   name      -> name of material
   !!   matIdx    -> material index of the material
   !!   T         -> material temperature [K]
+  !!   V         -> volume of material zone [cm3]
   !!   dens      -> vector of densities [1/barn/cm]
   !!   nuclides  -> associated vector of nuclide types
   !!   extraInfo -> dictionary with extra keywords
@@ -93,6 +96,7 @@ module materialMenu_mod
     character(nameLen)                         :: name   = ''
     integer(shortInt)                          :: matIdx = 0
     real(defReal)                              :: T      = ZERO
+    real(defReal)                              :: V      = ZERO
     real(defReal),dimension(:),allocatable     :: dens
     type(nuclideInfo),dimension(:),allocatable :: nuclides
     type(dictionary)                           :: extraInfo
@@ -112,6 +116,8 @@ module materialMenu_mod
   public :: getMatPtr
   public :: nMat
   public :: matName
+  public :: matTemp
+  public :: matFile
   public :: matIdx
 
 contains
@@ -131,7 +137,7 @@ contains
     integer(shortInt)                           :: i
     character(nameLen)                          :: temp
 
-    ! Clean whatever may be alrady present
+    ! Clean whatever may be already present
     call kill()
 
     ! Load all material names
@@ -204,7 +210,7 @@ contains
   !! Result:
   !!   nameLen long character with material name
   !!
-  !! Erorrs:
+  !! Errors:
   !!   If idx is -ve or larger then number of defined materials
   !!   Empty string '' is returned as its name
   !!
@@ -220,6 +226,48 @@ contains
     end if
 
   end function matName
+
+  !!
+  !! Return starting temperature of material given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material Index
+  !!
+  !! Result:
+  !!   Temperature of material as given in input file
+  !!
+  !! Errors:
+  !!   If idx is -ve or larger then number of defined materials
+  !!   then -1 is returned as its temperature
+  !!
+  function matTemp(idx) result(T)
+    integer(shortInt), intent(in) :: idx
+    real(defReal)                 :: T
+
+    if(idx <= 0 .or. nMat() < idx) then
+      T = -ONE
+    else
+      T = materialDefs(idx) % T
+    end if
+
+  end function matTemp
+
+  !!
+  !! Return file path to material XS data given index
+  !!
+  !! Args:
+  !!   idx [in] -> Material index
+  !!
+  !! Result:
+  !!   Path to file
+  !!
+  function matFile(idx) result(path)
+    integer(shortInt), intent(in) :: idx
+    character(pathLen)            :: path
+
+    call materialDefs(idx) % extraInfo % get(path,'xsFile')
+
+  end function matFile
 
   !!
   !! Return material index Given Name
@@ -267,13 +315,16 @@ contains
     ! Return to initial state
     call self % kill()
 
-    ! Load easy components c
+    ! Load easy components
     self % name = name
     call dict % get(self % T,'temp')
+    call dict % getOrDefault(self % V, 'volume', ZERO)
 
     ! Get composition dictionary and load composition
-    compDict => dict % getDictPtr('composition')
-    call compDict % keys(keys)
+    if (dict % isPresent('composition')) then
+      compDict => dict % getDictPtr('composition')
+      call compDict % keys(keys)
+    end if
 
     ! Allocate space for nuclide information
     allocate(self % nuclides(size(keys)))
@@ -288,23 +339,23 @@ contains
     end if
 
     ! Load definitions
-    do i =1,size(keys)
-      ! Check if S(a,b) is on and required for that nuclide
-      if (hasSab .and. moderDict % isPresent(keys(i))) then
-        self % nuclides(i) % hasSab = .true.
-        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
-      end if
+    if (associated(compDict)) then
+      do i =1,size(keys)
+        ! Check if S(a,b) is on and required for that nuclide
+        if (hasSab .and. moderDict % isPresent(keys(i))) then
+          self % nuclides(i) % hasSab = .true.
+          call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
+        end if
 
-      ! Initialise the nuclides
-      call compDict % get(self % dens(i), keys(i))
-      call self % nuclides(i) % init(keys(i))
-    end do
+        ! Initialise the nuclides
+        call compDict % get(self % dens(i), keys(i))
+        call self % nuclides(i) % init(keys(i))
+      end do
+
+    end if
 
     ! Save dictionary
     self % extraInfo = dict
-
-    ! TODO: Remove composition subdictionary from extraInfo
-    !       Or rather do not copy it in the first place
 
   end subroutine init_materialItem
 
@@ -318,6 +369,7 @@ contains
     self % name   = ''
     self % matIdx = 0
     self % T      = ZERO
+    self % V      = ZERO
 
     ! Deallocate allocatable components
     if(allocated(self % dens)) deallocate(self % dens)

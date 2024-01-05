@@ -17,6 +17,7 @@ module tallyClerkFactory_func
   use dancoffBellClerk_class,          only : dancoffBellClerk
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
+  use energyWeightClerk_class,         only : energyWeightClerk
   use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
@@ -37,6 +38,7 @@ module tallyClerkFactory_func
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
                                                                         'dancoffBellClerk         ',&
+                                                                        'energyWeightClerk        ',&
                                                                         'mgXsClerk                ']
 
 contains
@@ -87,10 +89,13 @@ contains
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
 
+     case('energyWeightClerk')
+       allocate(energyWeightClerk :: new)
+
      case('mgXsClerk')
        allocate(mgXsClerk :: new)
 
-      case default
+     case default
         print *, AVALIBLE_tallyClerks
         call fatalError(Here, 'Unrecognised type of tallyClerk: ' // trim(type))
 

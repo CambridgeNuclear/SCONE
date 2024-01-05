@@ -83,6 +83,11 @@ contains
       self % lookupTable(P_MG, P_NEUTRON) = 2
     end if
 
+    if(dict % isPresent('photonMG')) then
+      call new_collisionProcessor(self % physicsTable(3) % proc, dict % getDictPtr('photonMG'))
+      self % lookupTable(P_MG, P_PHOTON) = 3
+    end if
+
   end subroutine init
 
   !!

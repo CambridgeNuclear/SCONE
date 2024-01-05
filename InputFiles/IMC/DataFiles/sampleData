@@ -1,0 +1,23 @@
+
+//
+// Sample material data file for IMC calculations
+// Very simple, only exists to keep material creation more consistent with other calculation types
+//
+
+
+  // Set of equations to use for opacities and heat capacities, currently have densmore, marshak and
+  // holraum. Adding new cases requires recompiling but this allows for complex multi-frequency eqns.
+equations densmore;
+
+
+/\/\ Optional Inputs /\/\
+
+  // Multiple either opacity or heat capacity by a constant. Useful if wanting to change constant
+  // value in complex equations without having to recompile (e.g. different densmore MF cases)
+  // Default to 1
+sigmaMultiple   100;
+cvMultiple      1;
+
+  // Constant in Fleck factor, defaults to 1
+alpha = 1;
+
