@@ -96,7 +96,13 @@ contains
         if (sigma > majorant) majorant = sigma
       end do
 
-      self % majorant_inv(G) = ONE/majorant
+      ! Avoid infinite maj_inv for virtualMat cells containing only void
+      if (majorant == ZERO) then
+        ! maj_inv = 0 forces particle to default to ST in transport operator to avoid issues
+        self % majorant_inv(G) = ZERO
+      else
+        self % majorant_inv(G) = ONE/majorant
+      end if
 
     end do
 

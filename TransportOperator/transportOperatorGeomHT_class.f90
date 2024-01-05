@@ -155,7 +155,7 @@ contains
       ! Switch to surface tracking if delta tracking is unsuitable
       ratio = sigmaT * majorant_inv
       if (ratio > ONE) call fatalError(Here, 'Local opacity greater than majorant')
-      if (ratio < self % cutoff .or. majorant_inv == ZERO) then
+      if (ratio <= self % cutoff .or. majorant_inv == ZERO) then
         call self % surfaceTracking(p)
         return
       end if

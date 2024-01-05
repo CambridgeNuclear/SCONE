@@ -256,7 +256,7 @@ contains
     class(geometryGrid), intent(inout) :: self
 
     call self % geom % kill()
-    !TODO
+    deallocate(self % mats)
 
   end subroutine kill
 
@@ -512,6 +512,7 @@ contains
   !! See geometry_inter for details
   !!
   !! NOTE: This function uses VOID_MAT and UNDEF_MAT from universalVariables
+  !!       VOID_MAT will be listed multiple times if it occurs in multiple locations
   !!
   function activeMats(self) result(matList)
     class(geometryGrid), intent(in)              :: self

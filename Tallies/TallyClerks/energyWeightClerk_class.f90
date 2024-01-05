@@ -86,7 +86,7 @@ module energyWeightClerk_class
   end type energyWeightClerk
 
   !!
-  !! Result class, gives access to tallied material energy and radiatino energy
+  !! Result class, gives access to tallied material energy and radiation energy
   !!
   type, public, extends(tallyResult)         :: energyWeightClerkResult
     real(defReal), dimension(:), allocatable :: materialEnergy

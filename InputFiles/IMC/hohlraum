@@ -13,7 +13,12 @@ collisionOperator {
                   } 
 
 transportOperator {
-                    type transportOperatorTime;
+                    //type transportOperatorTime;
+                    type transportOperatorGeomHT;
+                    cutoff 0.5;
+                    geometry { type geometryGrid; boundary (0 0 0 0 1 1); dimensions (40 40 1);
+                               bounds (-0.5 -0.5 -0.5 0.5 0.5 0.5); gridOnly y; }
+                    searchN (200 200 1);
                   } 
 
 source {
