@@ -73,7 +73,7 @@ contains
   !! See source_inter for details
   !!
   subroutine init(self, dict, geom)
-    class(imcMaterialSource), intent(inout)     :: self
+    class(imcMaterialSource), intent(inout)  :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     character(100), parameter :: Here = 'init (imcMaterialSource_class.f90)'
@@ -114,7 +114,7 @@ contains
   !!   already present in dungeon
   !!
   subroutine append(self, dungeon, N, rand)
-    class(imcMaterialSource), intent(inout)    :: self
+    class(imcMaterialSource), intent(inout) :: self
     type(particleDungeon), intent(inout)    :: dungeon
     integer(shortInt), intent(in)           :: N
     class(RNG), intent(inout)               :: rand
@@ -187,8 +187,8 @@ contains
   !!
   function sampleParticle(self, rand) result(p)
     class(imcMaterialSource), intent(inout) :: self
-    class(RNG), intent(inout)            :: rand
-    type(particleState)                  :: p
+    class(RNG), intent(inout)               :: rand
+    type(particleState)                     :: p
     character(100), parameter :: Here = 'sampleParticle (imcMaterialSource_class.f90)'
 
     ! Should not be called, useful to have extra inputs so use sampleIMC instead
@@ -211,7 +211,7 @@ contains
   !!                  geometryStd, and bounds of single material if using geometryGrid
   !!
   function sampleIMC(self, rand, targetMatIdx, energy, G, bounds) result(p)
-    class(imcMaterialSource), intent(inout)    :: self
+    class(imcMaterialSource), intent(inout) :: self
     class(RNG), intent(inout)               :: rand
     integer(shortInt), intent(in)           :: targetMatIdx
     real(defReal), intent(in)               :: energy
