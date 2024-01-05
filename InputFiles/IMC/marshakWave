@@ -4,10 +4,10 @@
 type implicitPhysicsPackage;
 
 method         IMC;
-pop            10000;
-limit          25000;
-steps          5000;
-timeStep       0.1;
+pop            100000;
+limit          250000;
+steps          1000;
+timeStep       0.5;
 units          marshak;
 
 collisionOperator { photonMG {type IMCMGstd;} } 
