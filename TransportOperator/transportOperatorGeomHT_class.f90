@@ -17,8 +17,9 @@ module transportOperatorGeomHT_class
   ! Geometry interfaces
   use geometry_inter,             only : geometry
   use geometryGrid_class,         only : geometryGrid
-  use geometryReg_mod,            only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
+  use geometryReg_mod,            only : gr_geomPtr  => geomPtr, &
                                          gr_geomIdx  => geomIdx
+  use geometryFactory_func,       only : new_geometry
   use coord_class,                only : coordList
 
   ! Tally interface
@@ -307,7 +308,7 @@ contains
     ! Build upper level geometry
     geomName = 'surfaceGeom'
     tempDict => dict % getDictPtr('geometry')
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     self % upperGeomIdx =  gr_geomIdx(geomName)
     upperGeom           => gr_geomPtr(self % upperGeomIdx)
     self % upperGeom    => upperGeom

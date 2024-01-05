@@ -66,7 +66,7 @@ contains
         allocate(blackBodySource :: new)
 
       case('imcMaterialSource')
-        allocate(blackBodySource :: new)
+        allocate(imcMaterialSource :: new)
 
      case default
        print *, AVAILABLE_sources

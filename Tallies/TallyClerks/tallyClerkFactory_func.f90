@@ -38,7 +38,7 @@ module tallyClerkFactory_func
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
                                                                         'dancoffBellClerk         ',&
-                                                                        'energyWeightClerk        ']
+                                                                        'energyWeightClerk        ',&
                                                                         'mgXsClerk                ']
 
 contains

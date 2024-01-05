@@ -23,8 +23,9 @@ module implicitPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, &
                                              gr_geomIdx  => geomIdx
+  use geometryFactory_func,           only : new_geometry
   use discretiseGeom_class,           only : discretise
 
   ! Nuclear Data
@@ -492,7 +493,7 @@ contains
 
     ! Build geometry
     geomName = 'IMCGeom'
-    call gr_addGeom(geomName, dict % getDictPtr('geometry'))
+    call new_geometry(dict % getDictPtr('geometry'), geomName)
     self % geomIdx =  gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 

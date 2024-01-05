@@ -23,9 +23,10 @@ module discretiseGeom_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, &
-                                             gr_addGeom => addGeom, &
                                              gr_geomIdx  => geomIdx, &
                                              gr_kill     => kill
+  use geometryFactory_func,           only : new_geometry
+
   ! Nuclear Data
   use materialMenu_mod,               only : mm_matTemp        => matTemp ,&
                                              mm_matFile        => matFile
@@ -90,7 +91,7 @@ contains
     ! Build geometry using input
     tempDict => dict % getDictPtr('geometry')
     geomName = 'inputGeom'
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     inputGeomIdx = gr_geomIdx(geomName)
     inputGeom    => gr_geomPtr(inputGeomIdx)
 

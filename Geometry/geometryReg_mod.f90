@@ -34,11 +34,6 @@ module geometryReg_mod
 
   ! Geometry
   use geometry_inter,    only : geometry
-<<<<<<< HEAD
-  use geometryStd_class, only : geometryStd
-  use geometryGrid_class, only : geometryGrid
-=======
->>>>>>> SCONE/main
 
   ! Fields
   use field_inter,       only : field

@@ -6,7 +6,6 @@ module baseMgIMCMaterial_class
   use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use dictionary_class,  only : dictionary
-  use poly_func
   use simulationTime_class,    only : timeStep
 
   ! Nuclear Data Interfaces
@@ -360,7 +359,7 @@ contains
     real(defReal), intent(in)               :: tallyEnergy
     logical(defBool), intent(in), optional  :: loud
     real(defReal)                           :: prevTemp, change
-    character(100), parameter               :: Here = "updateMat (baseMgIMCMaterial_class.f90)"
+    character(100), parameter               :: Here = 'updateMat (baseMgIMCMaterial_class.f90)'
 
     ! Save previous energy and temperature
     self % prevMatEnergy = self % matEnergy
@@ -446,7 +445,7 @@ contains
       i = i+1
       if (i > 100000) then
         print *, 'Energy density: ', self % energyDens
-        call fatalError(Here, "100,000 iterations without convergence, maybe NaN energy density?")
+        call fatalError(Here, '100,000 iterations without convergence, maybe NaN energy density?')
       end if
       ! Increase step size to avoid lack of convergence due to very small starting temperature
       if (mod(i,1000)==0) dT = 10*dT

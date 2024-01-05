@@ -34,7 +34,7 @@ module blackBodySource_class
   !!   isMG         -> is the source multi-group? (yes)
   !!
   !! Interface:
-  !!   init              -> initialise point source
+  !!   init              -> initialise source
   !!   append            -> source particles and add to existing dungeon
   !!   sampleType        -> set particle type
   !!   samplePosition    -> set particle position
