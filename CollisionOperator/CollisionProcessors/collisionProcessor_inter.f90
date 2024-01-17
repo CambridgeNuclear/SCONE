@@ -120,7 +120,7 @@ contains
     ! Note: the ordering must not be changed between feeding the particle to the tally
     ! and updating the particle's preCollision state, otherwise this may cause certain 
     ! tallies (e.g., collisionProbability) to return dubious results
-    call tally % reportInColl(p)
+    call tally % reportInColl(p, .false.)
     call p % savePreCollision()
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
@@ -153,6 +153,9 @@ contains
 
     ! Apply post collision implicit treatments
     call self % cutoffs(p, collDat, thisCycle, nextCycle)
+
+    ! Update particle collision counter
+    p % collisionN = p % collisionN + 1
 
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)

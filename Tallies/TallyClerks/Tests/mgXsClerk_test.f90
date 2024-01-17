@@ -128,7 +128,7 @@ contains
     call pit % detain(p)
 
     ! Scoring
-    call this % clerk_test1 % reportInColl(p, this % nucData, mem)
+    call this % clerk_test1 % reportInColl(p, this % nucData, mem, .false.)
     call this % clerk_test1 % reportCycleEnd(pit, mem)
 
     p % preCollision % wgt = 0.2_defReal
@@ -203,7 +203,7 @@ contains
     call pit % detain(p)
 
     ! Scoring
-    call this % clerk_test2 % reportInColl(p, this % nucData, mem)
+    call this % clerk_test2 % reportInColl(p, this % nucData, mem, .false.)
     call this % clerk_test2 % reportCycleEnd(pit, mem)
 
     p % preCollision % wgt = 0.2_defReal
