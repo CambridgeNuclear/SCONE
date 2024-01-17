@@ -9,7 +9,7 @@ module transportOperatorHT_class
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use rng_class,                  only : rng
+  use RNG_class,                  only : RNG
 
   ! Tally interface
   use tallyCodes
@@ -22,6 +22,7 @@ module transportOperatorHT_class
   use geometry_inter,             only : geometry
 
   ! Nuclear data interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -31,28 +32,16 @@ module transportOperatorHT_class
   !! Transport operator that moves a particle with hybrid tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorHT
-    !! Cutoff threshold between ST and DT
-    real(defReal)             :: cutoff
+    real(defReal) :: cutoff   ! Cutoff threshold between ST and DT
   contains
-    procedure :: init
     procedure :: transit => tracking_selection
     procedure, private :: deltaTracking
     procedure, private :: surfaceTracking
+    ! Override procedure
+    procedure :: init
   end type transportOperatorHT
 
 contains
-
-  subroutine init(self, dict)
-    class(transportOperatorHT), intent(inout) :: self
-    class(dictionary), intent(in)             :: dict
-
-    ! Initialise superclass
-    call init_super(self, dict)
-
-    ! Initialise this class
-    call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
-
-  end subroutine init
 
   subroutine tracking_selection(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorHT), intent(inout)              :: self
@@ -81,7 +70,9 @@ contains
 
   end subroutine tracking_selection
 
-
+  !!
+  !! Performs delta tracking until a real collision point is found
+  !!
   subroutine deltaTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorHT), intent(inout) :: self
     class(particle), intent(inout)            :: p
@@ -138,7 +129,9 @@ contains
     call tally % reportTrans(p)
   end subroutine deltaTracking
 
-
+  !!
+  !! Performs surface tracking until a collision point is found
+  !!
   subroutine surfaceTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorHT), intent(inout) :: self
     class(particle), intent(inout)            :: p
@@ -193,6 +186,31 @@ contains
     call tally % reportTrans(p)
 
   end subroutine surfaceTracking
+
+  !!
+  !! Initialise HT operator from a dictionary
+  !!
+  !! See transportOperator_inter for more details
+  !!
+  subroutine init(self, dict, dataType, rand)
+    class(transportOperatorHT), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
+    integer(shortInt), intent(in)             :: dataType
+    class(RNG), intent(inout)                 :: rand
+
+    ! Initialise superclass
+    call init_super(self, dict, dataType, rand)
+
+    ! Retrieve DT-ST probability cutoff
+    call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
+
+    ! Get nuclear data pointer form the particle
+    self % xsData => ndReg_get(dataType)
+
+    ! Precompute majorant cross section for DT
+    call self % xsData % initMajorant(rand)
+
+  end subroutine init
 
 
 end module transportOperatorHT_class

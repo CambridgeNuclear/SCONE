@@ -7,6 +7,8 @@ module transportOperator_inter
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
+  use RNG_class,                  only : RNG
+
 
   ! Geometry interfaces
   use geometryReg_mod,            only : gr_geomPtr => geomPtr
@@ -61,7 +63,7 @@ module transportOperator_inter
 
   end type transportOperator
 
-  ! Extandable procedures
+  ! Extendable procedures
   public :: init
   public :: kill
 
@@ -120,9 +122,11 @@ contains
   !!
   !! Initialise transport operator from dictionary and geometry
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, dataType, rand)
     class(transportOperator), intent(inout)  :: self
     class(dictionary), intent(in)            :: dict
+    integer(shortInt), intent(in)            :: dataType
+    class(RNG), intent(inout)                :: rand
 
     ! Do nothing
 

@@ -4,6 +4,7 @@ module nuclearDatabase_inter
   use dictionary_class, only : dictionary
   use particle_class,   only : particle
   use charMap_class,    only : charMap
+  use RNG_class,        only : RNG
 
   ! Nuclear Data Handles
   use nuclideHandle_inter,  only : nuclideHandle
@@ -28,6 +29,7 @@ module nuclearDatabase_inter
   !!   getMaterial   -> returns a pointer to a material handle for given matIdx
   !!   getNuclide    -> returns a pointer to a nuclide handle for given nucIdx
   !!   getReaction   -> returns a pointer to a reaction for given matidx or nucIdx and MT number
+  !!   initMajorant  -> initialises the majorant cross section for delta tracking
   !!   kill          -> return to uninitialised state, clean memory
   !!
   type, public,abstract :: nuclearDatabase
@@ -41,6 +43,7 @@ module nuclearDatabase_inter
     procedure(getMaterial), deferred   :: getMaterial
     procedure(getNuclide), deferred    :: getNuclide
     procedure(getReaction), deferred   :: getReaction
+    procedure(initMajorant), deferred  :: initMajorant
     procedure(kill), deferred          :: kill
   end type nuclearDatabase
 
@@ -196,7 +199,7 @@ module nuclearDatabase_inter
     !! Allows to retrive an access to nuclide data for all databases types
     !! If database does not contain nuclides (e.g. MG data) just returns null() pointer
     !!
-    !! NOTE: This function can be used to inquire abou the presence of nucIdx in the database!
+    !! NOTE: This function can be used to inquire about the presence of nucIdx in the database!
     !!
     !! Args:
     !!   nucIdx [in] -> nuclide index of required material
@@ -225,7 +228,7 @@ module nuclearDatabase_inter
     !!   if MT < 0 then reaction is associated with material: idx -> matIdx
     !!   if MT > 0 then reaction is associated with nuclide: idx -> nucIdx
     !!
-    !! NOTE: This function can be used to enquire abou the presence of data. If the data is
+    !! NOTE: This function can be used to enquire about the presence of data. If the data is
     !!       not present null() pointer is always returned!
     !!
     !! Args:
@@ -246,6 +249,17 @@ module nuclearDatabase_inter
       integer(shortInt), intent(in)      :: idx
       class(reactionHandle),pointer      :: reac
     end function getReaction
+
+    !!
+    !! Subroutine that precomputes the majorant cross section to be used by DT
+    !!
+    !! NOTE: Assumes that the nuclear database has been initialised and activated
+    !!
+    subroutine initMajorant(self, rand)
+      import :: nuclearDatabase, RNG
+      class(nuclearDatabase), intent(inout) :: self
+      class(RNG), intent(inout)             :: rand
+    end subroutine initMajorant
 
     !!
     !! Return to uninitialised state

@@ -4,6 +4,7 @@ module testNeutronDatabase_class
   use particle_class,        only : particle
   use dictionary_class,      only : dictionary
   use charMap_class,         only : charMap
+  use RNG_class,             only : RNG
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter, only : nuclearDatabase
@@ -51,6 +52,7 @@ module testNeutronDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
+    procedure :: initMajorant
     procedure :: kill
 
     ! Local Procedures
@@ -260,6 +262,19 @@ contains
     reac => null()
 
   end function getReaction
+
+  !!
+  !! Initialise majorant for delta tracking
+  !!
+  !! See nuclearDatabase_inter for details
+  !!
+  subroutine initMajorant(self, rand)
+    class(testNeutronDatabase), intent(inout) :: self
+    class(RNG), intent(inout)                 :: rand
+
+    ! Does nothing
+
+  end subroutine initMajorant
 
   !!
   !! Return to uninitialised state

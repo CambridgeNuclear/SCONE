@@ -490,7 +490,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict)
+    call new_transportOperator(self % transOp, tempDict, self % particleType, self % pRNG)
 
     ! Initialise active & inactive tally Admins
     tempDict => dict % getDictPtr('inactiveTally')

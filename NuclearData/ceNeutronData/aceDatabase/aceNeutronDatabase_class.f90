@@ -3,7 +3,8 @@ module aceNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use genericProcedures, only : fatalError, numToChar
+  use genericProcedures, only : fatalError, numToChar, concatenate, quickSort, &
+                                removeDuplicatesSorted, binarySearch
   use dictionary_class,  only : dictionary
   use RNG_class,         only : RNG
   use charMap_class,     only : charMap
@@ -60,6 +61,8 @@ module aceNeutronDatabase_class
   !!   nuclides   -> array of aceNeutronNuclides with data
   !!   materials  -> array of ceNeutronMaterials with data
   !!   Ebounds    -> array with bottom (1) and top (2) energy bound
+  !!   majorant   -> unionised majorant cross section
+  !!   eGrid      -> unionised energy grid
   !!   activeMat  -> array of materials present in the geometry
   !!   nucToZaid  -> map to link nuclide index to zaid index
   !!   hasUrr     -> ures probability tables flag, it's false by default
@@ -72,6 +75,8 @@ module aceNeutronDatabase_class
   type, public, extends(ceNeutronDatabase) :: aceNeutronDatabase
     type(aceNeutronNuclide),dimension(:),pointer :: nuclides  => null()
     type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
+    real(defReal), dimension(:), allocatable     :: majorant
+    real(defReal), dimension(:), allocatable     :: eGrid
     real(defReal), dimension(2)                  :: Ebounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
 
@@ -81,16 +86,15 @@ module aceNeutronDatabase_class
     logical(defBool)                             :: hasDBRC = .false.
 
   contains
-    ! nuclearData Procedures
+    ! nuclearDatabase Procedures
     procedure :: kill
     procedure :: matNamesMap
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
     procedure :: init
-    procedure :: init_urr
-    procedure :: init_DBRC
     procedure :: activate
+    procedure :: initMajorant
 
     ! ceNeutronDatabase Procedures
     procedure :: energyBounds
@@ -100,6 +104,10 @@ module aceNeutronDatabase_class
     procedure :: updateTotalNucXS
     procedure :: updateMicroXSs
     procedure :: getScattMicroMajXS
+
+    ! class Procedures
+    procedure :: init_urr
+    procedure :: init_DBRC
 
   end type aceNeutronDatabase
 
@@ -328,22 +336,26 @@ contains
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: i, matIdx
+    integer(shortInt)                     :: idx
+    real(defReal)                         :: f
+    character(100), parameter :: Here = 'updateMajorantXS (aceNeutronDatabase_class.f90)'
 
     associate (maj => cache_majorantCache(1) )
       maj % E  = E
-      maj % xs = ZERO
 
-      do i = 1, size(self % activeMat)
-        matIdx = self % activeMat(i)
+      idx = binarySearch(self % eGrid, E)
 
-        ! Update if needed
-        if( cache_materialCache(matIdx) % E_tot /= E) then
-          call self % updateTotalMatXS(E, matIdx, rand)
-        end if
+      if(idx <= 0) then
+        call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
+                             ' in unionised majorant grid')
+      end if
 
-        maj % xs = max(maj % xs, cache_materialCache(matIdx) % xss % total)
-      end do
+      associate(E_top => self % eGrid(idx + 1), E_low  => self % eGrid(idx))
+        f = (E - E_low) / (E_top - E_low)
+      end associate
+
+      maj % xs = self % majorant(idx+1) * f + (ONE - f) * self % majorant(idx)
+
     end associate
 
   end subroutine updateMajorantXS
@@ -771,12 +783,110 @@ contains
 
     ! Configure Cache
     if (self % hasUrr) then
-      call cache_init(size( self % materials), size(self % nuclides), 1, maxval(self % nucToZaid))
+      call cache_init(size(self % materials), size(self % nuclides), 1, maxval(self % nucToZaid))
     else
-      call cache_init(size( self % materials), size(self % nuclides))
+      call cache_init(size(self % materials), size(self % nuclides))
     end if
 
   end subroutine activate
+
+  !!
+  !! Precomputes majorant cross section
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  subroutine initMajorant(self, rand)
+    class(aceNeutronDatabase), intent(inout) :: self
+    class(RNG), intent(inout)                :: rand
+    real(defReal), dimension(:), allocatable :: tmpGrid
+    integer(shortInt)                        :: i, j, matIdx, nNuc, nucIdx, isDone
+    type(intMap)                             :: nucMap
+    real(defReal)                            :: E, maj
+    integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
+
+    print '(A)', 'Building unionised energy grid'
+
+    ! Initialise energy grid
+    matIdx = self % activeMat(1)
+    nucIdx = self % materials(matIdx) % nuclides(1)
+    tmpGrid = self % nuclides(nucIdx) % eGrid
+
+    ! Add first nuclide to map to indicate it's been added
+    call nucMap % add(nucIdx, IN_SET)
+
+    ! Loop over active materials
+    do i = 1, size(self % activeMat)
+
+      ! Get current material index and number of nuclides in that material
+      matIdx = self % activeMat(i)
+      nNuc = size(self % materials(matIdx) % nuclides)
+
+      ! Loop over nuclides present in that material
+      do j = 1, nNuc
+
+        ! Get index and check if it's already been added to the grid
+        nucIdx = self % materials(matIdx) % nuclides(j)
+        isDone = nucMap % getOrDefault(nucIdx, NOT_PRESENT)
+
+        ! If it's a new nuclide, add its energy grid to the unionised one
+        if (isDone /= IN_SET) then
+
+          tmpGrid = concatenate(tmpGrid, self % nuclides(nucIdx) % eGrid)
+
+          ! Sort and remove duplicates
+          call quickSort(tmpGrid)
+          tmpGrid = removeDuplicatesSorted(tmpGrid)
+
+          ! Add nuclide to the set
+          call nucMap % add(nucIdx, IN_SET)
+
+        end if
+
+      end do
+    end do
+
+    ! Save final grid
+    self % eGrid = tmpGrid
+
+    print '(A)', 'Unionised energy grid has size: '//numToChar(size(self % eGrid))//&
+                 '. Now building unionised majorant cross section'
+
+    ! Allocate unionised majorant
+    allocate(self % majorant(size(self % eGrid)))
+
+    ! Loop over all the energies
+    do i = 1, size(self % eGrid)
+
+      ! Retrieve current energy
+      E = self % eGrid(i)
+
+      ! Correct for energies higher or lower than the allowed boundaries
+      if (E < self % EBounds(1)) E = self % EBounds(1)
+      if (E > self % EBounds(2)) E = self % EBounds(2)
+
+      ! Initialise majorant value for this energy
+      maj = ZERO
+
+      ! Loop over active materials
+      do j = 1, size(self % activeMat)
+
+        ! Get material index
+        matIdx = self % activeMat(j)
+
+        ! Calculate current material cross section and compare
+        call self % updateTotalMatXS(E, matIdx, rand)
+        maj = max(maj, cache_materialCache(matIdx) % xss % total)
+
+      end do
+
+      ! Save majorant for this energy
+      self % majorant(i) = maj
+
+    end do
+
+    print '(A)', 'Unionised majorant cross section completed'
+
+  end subroutine initMajorant
 
   !!
   !! Cast nuclearDatabase pointer to aceNeutronDatabase type pointer

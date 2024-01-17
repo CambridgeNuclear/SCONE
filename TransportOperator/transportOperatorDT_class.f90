@@ -9,10 +9,10 @@ module transportOperatorDT_class
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use rng_class,                  only : rng
+  use RNG_class,                  only : RNG
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
@@ -22,6 +22,7 @@ module transportOperatorDT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -33,10 +34,15 @@ module transportOperatorDT_class
   type, public, extends(transportOperator) :: transportOperatorDT
   contains
     procedure :: transit => deltaTracking
+    ! Override procedure
+    procedure :: init
   end type transportOperatorDT
 
 contains
 
+  !!
+  !! Performs delta tracking until a real collision point is found
+  !!
   subroutine deltaTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorDT), intent(inout) :: self
     class(particle), intent(inout)            :: p
@@ -91,7 +97,30 @@ contains
     end do DTLoop
 
     call tally % reportTrans(p)
+
   end subroutine deltaTracking
+
+  !!
+  !! Initialise DT transport operator
+  !!
+  !! See transportOperator_inter for more details
+  !!
+  subroutine init(self, dict, dataType, rand)
+    class(transportOperatorDT), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
+    integer(shortInt), intent(in)             :: dataType
+    class(RNG), intent(inout)                 :: rand
+
+    ! Initialise superclass
+    call init_super(self, dict, dataType, rand)
+
+    ! Get nuclear data pointer form the particle
+    self % xsData => ndReg_get(dataType)
+
+    ! Precompute majorant cross section
+    call self % xsData % initMajorant(rand)
+
+  end subroutine init
 
 
 end module transportOperatorDT_class

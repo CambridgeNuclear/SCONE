@@ -7,6 +7,7 @@ module baseMgNeutronDatabase_class
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : fileToDict
+  use RNG_class,          only : RNG
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,   only : nuclearDatabase
@@ -70,6 +71,7 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
 
     ! Local interface
     procedure :: nGroups
@@ -330,23 +332,10 @@ contains
   subroutine activate(self, activeMat)
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
-    integer(shortInt)                           :: g, i, idx
-    real(defReal)                               :: xs
-    integer(shortInt), parameter                :: TOTAL_XS = 1
+    integer(shortInt)                           :: idx
 
     if(allocated(self % activeMats)) deallocate(self % activeMats)
     self % activeMats = activeMat
-
-    ! Precalculate majorant xs for delta tracking
-    allocate (self % majorant(self % nG))
-    do g = 1,self % nG
-      xs = ZERO
-      do i = 1,size(self % activeMats)
-        idx = self % activeMats(i)
-        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
-      end do
-      self % majorant(g) = xs
-    end do
 
     ! Initialies cross section cache
     call cache_init(size(self % mats))
@@ -359,6 +348,37 @@ contains
     !$omp end parallel
 
   end subroutine activate
+
+  !!
+  !! Precomputes majorant cross section
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  subroutine initMajorant(self, rand)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    class(RNG), intent(inout)                   :: rand
+    integer(shortInt)                           :: g, i, idx
+    real(defReal)                               :: xs
+    integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    print '(A)', 'Building unionised majorant cross section'
+
+    ! Allocate majorant
+    allocate (self % majorant(self % nG))
+
+    ! Loop over energy groups
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,size(self % activeMats)
+        idx = self % activeMats(i)
+        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
+      end do
+      self % majorant(g) = xs
+    end do
+
+    print '(A)', 'Unionised majorant cross section completed'
+
+  end subroutine initMajorant
 
   !!
   !! Return number of energy groups in this database
@@ -389,7 +409,7 @@ contains
   !!
   pure function baseMgNeutronDatabase_TptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    type(baseMgNeutronDatabase), pointer           :: ptr
+    type(baseMgNeutronDatabase), pointer        :: ptr
 
     select type(source)
       type is(baseMgNeutronDatabase)

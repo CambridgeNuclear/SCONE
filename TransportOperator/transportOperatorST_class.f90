@@ -1,5 +1,5 @@
 !!
-!! Transport operator for delta tracking
+!! Transport operator for surface tracking
 !!
 module transportOperatorST_class
   use numPrecision
@@ -28,7 +28,7 @@ module transportOperatorST_class
   private
 
   !!
-  !! Transport operator that moves a particle with delta tracking
+  !! Transport operator that moves a particle with surface tracking
   !!
   !! Sample Input Dictionary:
   !!   trans { type transportOperatorST; cache 0;}
@@ -37,13 +37,14 @@ module transportOperatorST_class
     logical(defBool)  :: cache = .true.
   contains
     procedure :: transit => surfaceTracking
+    ! Override procedure
     procedure :: init
   end type transportOperatorST
 
 contains
 
   !!
-  !! Performs surface tracking
+  !! Performs surface tracking until a collision point is found
   !!
   subroutine surfaceTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorST), intent(inout) :: self
@@ -108,13 +109,18 @@ contains
   end subroutine surfaceTracking
 
   !!
-  !! Initialise surface operator from a dictionary
+  !! Initialise ST operator from a dictionary
   !!
   !! See transportOperator_inter for details
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, dataType, rand)
     class(transportOperatorST), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
+    integer(shortInt), intent(in)             :: dataType
+    class(RNG), intent(inout)                 :: rand
+
+    ! Initialise superclass
+    call init_super(self, dict, dataType, rand)
 
     if (dict % isPresent('cache')) then
       call dict % get(self % cache, 'cache')
