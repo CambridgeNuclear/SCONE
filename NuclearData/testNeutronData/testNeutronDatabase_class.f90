@@ -268,9 +268,10 @@ contains
   !!
   !! See nuclearDatabase_inter for details
   !!
-  subroutine initMajorant(self, rand)
+  subroutine initMajorant(self, rand, silent)
     class(testNeutronDatabase), intent(inout) :: self
     class(RNG), intent(inout)                 :: rand
+    logical(defBool), optional, intent(in)    :: silent
 
     ! Does nothing
 

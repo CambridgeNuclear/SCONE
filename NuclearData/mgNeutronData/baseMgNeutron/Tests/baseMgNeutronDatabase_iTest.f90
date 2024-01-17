@@ -75,6 +75,7 @@ contains
     call databaseDef % store('PN','P0')
     call database % init(databaseDef, data_ptr, silent = .true.)
     call database % activate([1])
+    call database % initMajorant(p % pRNG, silent = .true.)
 
     ! Varify number of groups
     @assertEqual(4, database % nGroups())
@@ -201,6 +202,7 @@ contains
     call databaseDef % store('PN','P1')
     call database % init(databaseDef, data_ptr, silent = .true.)
     call database % activate([1])
+    call database % initMajorant(p % pRNG, silent = .true.)
 
     ! Varify number of groups
     @assertEqual(4, database % nGroups())

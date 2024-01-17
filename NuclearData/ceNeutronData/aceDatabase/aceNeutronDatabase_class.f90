@@ -795,16 +795,25 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, rand)
+  subroutine initMajorant(self, rand, silent)
     class(aceNeutronDatabase), intent(inout) :: self
     class(RNG), intent(inout)                :: rand
+    logical(defBool), intent(in), optional   :: silent
+    logical(defBool)                         :: loud
     real(defReal), dimension(:), allocatable :: tmpGrid
     integer(shortInt)                        :: i, j, matIdx, nNuc, nucIdx, isDone
     type(intMap)                             :: nucMap
     real(defReal)                            :: E, maj
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
 
-    print '(A)', 'Building unionised energy grid'
+    ! Set build console output flag
+    if(present(silent)) then
+      loud = .not.silent
+    else
+      loud = .true.
+    end if
+
+    if (loud) print '(A)', 'Building unionised energy grid'
 
     ! Initialise energy grid
     matIdx = self % activeMat(1)
@@ -848,8 +857,10 @@ contains
     ! Save final grid
     self % eGrid = tmpGrid
 
-    print '(A)', 'Unionised energy grid has size: '//numToChar(size(self % eGrid))//&
-                 '. Now building unionised majorant cross section'
+    if (loud) then
+      print '(A)', 'Unionised energy grid has size: '//numToChar(size(self % eGrid))//&
+                   '. Now building unionised majorant cross section'
+    end if
 
     ! Allocate unionised majorant
     allocate(self % majorant(size(self % eGrid)))
@@ -884,7 +895,7 @@ contains
 
     end do
 
-    print '(A)', 'Unionised majorant cross section completed'
+    if (loud) print '(A)', 'Unionised majorant cross section completed'
 
   end subroutine initMajorant
 

@@ -255,10 +255,11 @@ module nuclearDatabase_inter
     !!
     !! NOTE: Assumes that the nuclear database has been initialised and activated
     !!
-    subroutine initMajorant(self, rand)
-      import :: nuclearDatabase, RNG
-      class(nuclearDatabase), intent(inout) :: self
-      class(RNG), intent(inout)             :: rand
+    subroutine initMajorant(self, rand, silent)
+      import :: nuclearDatabase, RNG, defBool
+      class(nuclearDatabase), intent(inout)  :: self
+      class(RNG), intent(inout)              :: rand
+      logical(defBool), optional, intent(in) :: silent
     end subroutine initMajorant
 
     !!

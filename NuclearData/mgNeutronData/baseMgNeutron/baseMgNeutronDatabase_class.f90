@@ -354,14 +354,23 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, rand)
+  subroutine initMajorant(self, rand, silent)
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(RNG), intent(inout)                   :: rand
+    logical(defBool), intent(in), optional      :: silent
+    logical(defBool)                            :: loud
     integer(shortInt)                           :: g, i, idx
     real(defReal)                               :: xs
     integer(shortInt), parameter                :: TOTAL_XS = 1
 
-    print '(A)', 'Building unionised majorant cross section'
+    ! Set build console output flag
+    if(present(silent)) then
+      loud = .not.silent
+    else
+      loud = .true.
+    end if
+
+    if (loud) print '(A)', 'Building unionised majorant cross section'
 
     ! Allocate majorant
     allocate (self % majorant(self % nG))
@@ -376,7 +385,7 @@ contains
       self % majorant(g) = xs
     end do
 
-    print '(A)', 'Unionised majorant cross section completed'
+    if (loud) print '(A)', 'Unionised majorant cross section completed'
 
   end subroutine initMajorant
 
