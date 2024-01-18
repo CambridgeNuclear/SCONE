@@ -406,7 +406,7 @@ contains
 
     ! Build transport operator
     tempDict => dict % getDictPtr('transportOperator')
-    call new_transportOperator(self % transOp, tempDict, self % particleType, self % pRNG)
+    call new_transportOperator(self % transOp, tempDict)
 
     ! Initialise tally Admin
     tempDict => dict % getDictPtr('tally')

@@ -4,9 +4,8 @@
 module transportOperatorFactory_func
 
   use numPrecision
-  use genericProcedures, only : fatalError
-  use dictionary_class,  only : dictionary
-  use RNG_class,         only : RNG
+  use errors_mod,          only : fatalError
+  use dictionary_class,    only : dictionary
 
   ! Transport Operators
   use transportOperator_inter,          only : transportOperator
@@ -34,11 +33,9 @@ contains
   !! Allocate new allocatable transportOperator to a specific type
   !! If new is allocated it deallocates it
   !!
-  subroutine new_transportOperator(new, dict, dataType, rand)
+  subroutine new_transportOperator(new, dict)
     class(transportOperator),allocatable, intent(inout):: new
     class(dictionary), intent(in)                      :: dict
-    integer(shortInt), intent(in)                      :: dataType
-    class(RNG), intent(inout)                          :: rand
     character(nameLen)                                 :: type
     character(100),parameter :: Here = 'new_transportOperator (transportOperatorFactory_func.f90)'
 
@@ -65,7 +62,7 @@ contains
     end select
 
     ! Initialise new transport operator
-    call new % init(dict, dataType, rand)
+    call new % init(dict)
 
   end subroutine new_transportOperator
 

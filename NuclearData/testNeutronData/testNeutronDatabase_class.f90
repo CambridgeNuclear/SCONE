@@ -52,7 +52,6 @@ module testNeutronDatabase_class
     procedure :: getMaterial
     procedure :: getNuclide
     procedure :: getReaction
-    procedure :: initMajorant
     procedure :: kill
 
     ! Local Procedures
@@ -155,9 +154,10 @@ contains
   !!
   !! See nuclearDatabase_inter for details
   !!
-  subroutine activate(self, activeMat)
+  subroutine activate(self, activeMat, silent)
     class(testNeutronDatabase), intent(inout)   :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
+    logical(defBool), optional, intent(in)      :: silent
 
     ! Do nothing
 
@@ -262,20 +262,6 @@ contains
     reac => null()
 
   end function getReaction
-
-  !!
-  !! Initialise majorant for delta tracking
-  !!
-  !! See nuclearDatabase_inter for details
-  !!
-  subroutine initMajorant(self, rand, silent)
-    class(testNeutronDatabase), intent(inout) :: self
-    class(RNG), intent(inout)                 :: rand
-    logical(defBool), optional, intent(in)    :: silent
-
-    ! Does nothing
-
-  end subroutine initMajorant
 
   !!
   !! Return to uninitialised state

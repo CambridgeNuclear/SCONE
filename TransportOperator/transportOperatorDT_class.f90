@@ -5,11 +5,11 @@ module transportOperatorDT_class
   use numPrecision
   use universalVariables
 
-  use genericProcedures,          only : fatalError, numToChar
+  use errors_mod,                 only : fatalError
+  use genericProcedures,          only : numToChar
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use RNG_class,                  only : RNG
 
   ! Superclass
   use transportOperator_inter,    only : transportOperator, init_super => init
@@ -105,20 +105,12 @@ contains
   !!
   !! See transportOperator_inter for more details
   !!
-  subroutine init(self, dict, dataType, rand)
+  subroutine init(self, dict)
     class(transportOperatorDT), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
-    integer(shortInt), intent(in)             :: dataType
-    class(RNG), intent(inout)                 :: rand
 
     ! Initialise superclass
-    call init_super(self, dict, dataType, rand)
-
-    ! Get nuclear data pointer form the particle
-    self % xsData => ndReg_get(dataType)
-
-    ! Precompute majorant cross section
-    call self % xsData % initMajorant(rand)
+    call init_super(self, dict)
 
   end subroutine init
 

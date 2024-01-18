@@ -5,11 +5,11 @@ module transportOperatorHT_class
   use numPrecision
   use universalVariables
 
-  use genericProcedures,          only : fatalError, numToChar
+  use errors_mod,                 only : fatalError
+  use genericProcedures,          only : numToChar
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use RNG_class,                  only : RNG
 
   ! Tally interface
   use tallyCodes
@@ -89,7 +89,7 @@ contains
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
-      distance = -log( p% pRNG % get() ) * majorant_inv
+      distance = -log( p % pRNG % get() ) * majorant_inv
 
       ! Move partice in the geometry
       call self % geom % teleport(p % coords, distance)
@@ -192,23 +192,15 @@ contains
   !!
   !! See transportOperator_inter for more details
   !!
-  subroutine init(self, dict, dataType, rand)
+  subroutine init(self, dict)
     class(transportOperatorHT), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
-    integer(shortInt), intent(in)             :: dataType
-    class(RNG), intent(inout)                 :: rand
 
     ! Initialise superclass
-    call init_super(self, dict, dataType, rand)
+    call init_super(self, dict)
 
     ! Retrieve DT-ST probability cutoff
     call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
-
-    ! Get nuclear data pointer form the particle
-    self % xsData => ndReg_get(dataType)
-
-    ! Precompute majorant cross section for DT
-    call self % xsData % initMajorant(rand)
 
   end subroutine init
 

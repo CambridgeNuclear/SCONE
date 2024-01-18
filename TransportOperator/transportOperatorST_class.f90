@@ -5,11 +5,10 @@ module transportOperatorST_class
   use numPrecision
   use universalVariables
 
-  use genericProcedures,          only : fatalError
+  use errors_mod,                 only : fatalError
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use RNG_class,                  only : RNG
 
   ! Superclass
   use transportOperator_inter,    only : transportOperator, init_super => init
@@ -113,14 +112,12 @@ contains
   !!
   !! See transportOperator_inter for details
   !!
-  subroutine init(self, dict, dataType, rand)
+  subroutine init(self, dict)
     class(transportOperatorST), intent(inout) :: self
     class(dictionary), intent(in)             :: dict
-    integer(shortInt), intent(in)             :: dataType
-    class(RNG), intent(inout)                 :: rand
 
     ! Initialise superclass
-    call init_super(self, dict, dataType, rand)
+    call init_super(self, dict)
 
     if (dict % isPresent('cache')) then
       call dict % get(self % cache, 'cache')

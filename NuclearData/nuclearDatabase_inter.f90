@@ -4,7 +4,6 @@ module nuclearDatabase_inter
   use dictionary_class, only : dictionary
   use particle_class,   only : particle
   use charMap_class,    only : charMap
-  use RNG_class,        only : RNG
 
   ! Nuclear Data Handles
   use nuclideHandle_inter,  only : nuclideHandle
@@ -29,7 +28,6 @@ module nuclearDatabase_inter
   !!   getMaterial   -> returns a pointer to a material handle for given matIdx
   !!   getNuclide    -> returns a pointer to a nuclide handle for given nucIdx
   !!   getReaction   -> returns a pointer to a reaction for given matidx or nucIdx and MT number
-  !!   initMajorant  -> initialises the majorant cross section for delta tracking
   !!   kill          -> return to uninitialised state, clean memory
   !!
   type, public,abstract :: nuclearDatabase
@@ -43,7 +41,6 @@ module nuclearDatabase_inter
     procedure(getMaterial), deferred   :: getMaterial
     procedure(getNuclide), deferred    :: getNuclide
     procedure(getReaction), deferred   :: getReaction
-    procedure(initMajorant), deferred  :: initMajorant
     procedure(kill), deferred          :: kill
   end type nuclearDatabase
 
@@ -78,10 +75,11 @@ module nuclearDatabase_inter
     !! Errors:
     !!   fatalError if activeMat contains materials not defined in the instance
     !!
-    subroutine activate(self, activeMat)
-      import :: nuclearDatabase, shortInt
+    subroutine activate(self, activeMat, silent)
+      import :: nuclearDatabase, shortInt, defBool
       class(nuclearDatabase), intent(inout)       :: self
       integer(shortInt), dimension(:), intent(in) :: activeMat
+      logical(defBool), optional, intent(in)      :: silent
     end subroutine activate
 
     !!
@@ -249,18 +247,6 @@ module nuclearDatabase_inter
       integer(shortInt), intent(in)      :: idx
       class(reactionHandle),pointer      :: reac
     end function getReaction
-
-    !!
-    !! Subroutine that precomputes the majorant cross section to be used by DT
-    !!
-    !! NOTE: Assumes that the nuclear database has been initialised and activated
-    !!
-    subroutine initMajorant(self, rand, silent)
-      import :: nuclearDatabase, RNG, defBool
-      class(nuclearDatabase), intent(inout)  :: self
-      class(RNG), intent(inout)              :: rand
-      logical(defBool), optional, intent(in) :: silent
-    end subroutine initMajorant
 
     !!
     !! Return to uninitialised state

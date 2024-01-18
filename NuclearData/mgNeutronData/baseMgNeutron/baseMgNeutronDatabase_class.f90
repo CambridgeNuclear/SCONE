@@ -2,12 +2,12 @@ module baseMgNeutronDatabase_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures,  only : fatalError, numToChar
+  use errors_mod,         only : fatalError
+  use genericProcedures,  only : numToChar
   use particle_class,     only : particle
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : fileToDict
-  use RNG_class,          only : RNG
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,   only : nuclearDatabase
@@ -71,9 +71,9 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
-    procedure :: initMajorant
 
     ! Local interface
+    procedure :: initMajorant
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -329,9 +329,11 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine activate(self, activeMat)
+  subroutine activate(self, activeMat, silent)
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
+    logical(defBool), optional, intent(in)      :: silent
+    logical(defBool)                            :: loud
     integer(shortInt)                           :: idx
 
     if(allocated(self % activeMats)) deallocate(self % activeMats)
@@ -347,6 +349,16 @@ contains
     end do
     !$omp end parallel
 
+    ! Set build console output flag
+    if (present(silent)) then
+      loud = .not. silent
+    else
+      loud = .true.
+    end if
+
+    ! Build unionised majorant
+    call self % initMajorant(loud)
+
   end subroutine activate
 
   !!
@@ -354,23 +366,14 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, rand, silent)
+  subroutine initMajorant(self, loud)
     class(baseMgNeutronDatabase), intent(inout) :: self
-    class(RNG), intent(inout)                   :: rand
-    logical(defBool), intent(in), optional      :: silent
-    logical(defBool)                            :: loud
+    logical(defBool), intent(in)                :: loud
     integer(shortInt)                           :: g, i, idx
     real(defReal)                               :: xs
     integer(shortInt), parameter                :: TOTAL_XS = 1
 
-    ! Set build console output flag
-    if(present(silent)) then
-      loud = .not.silent
-    else
-      loud = .true.
-    end if
-
-    if (loud) print '(A)', 'Building unionised majorant cross section'
+    if (loud) print '(A)', 'Building MG unionised majorant cross section'
 
     ! Allocate majorant
     allocate (self % majorant(self % nG))
@@ -385,7 +388,7 @@ contains
       self % majorant(g) = xs
     end do
 
-    if (loud) print '(A)', 'Unionised majorant cross section completed'
+    if (loud) print '(A)', 'MG unionised majorant cross section completed'
 
   end subroutine initMajorant
 

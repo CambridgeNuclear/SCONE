@@ -2,12 +2,11 @@ module transportOperator_inter
 
   use numPrecision
   use universalVariables
-  use genericProcedures,          only : fatalError
+  use errors_mod,                 only : fatalError
 
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use RNG_class,                  only : RNG
 
 
   ! Geometry interfaces
@@ -122,11 +121,9 @@ contains
   !!
   !! Initialise transport operator from dictionary and geometry
   !!
-  subroutine init(self, dict, dataType, rand)
+  subroutine init(self, dict)
     class(transportOperator), intent(inout)  :: self
     class(dictionary), intent(in)            :: dict
-    integer(shortInt), intent(in)            :: dataType
-    class(RNG), intent(inout)                :: rand
 
     ! Do nothing
 
