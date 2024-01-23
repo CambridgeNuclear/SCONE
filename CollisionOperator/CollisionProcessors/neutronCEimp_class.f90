@@ -38,6 +38,10 @@ module neutronCEimp_class
   ! Scattering procedures
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
                                      asymptoticInelasticScatter, targetVelocity_DBRCXS
+
+  ! Tally interfaces
+  use tallyAdmin_class,       only : tallyAdmin
+
   implicit none
   private
 
@@ -213,9 +217,10 @@ contains
   !!
   !! Samples collision without any implicit treatment
   !!
-  subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
+  subroutine sampleCollision(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -252,9 +257,10 @@ contains
   !!
   !! Perform implicit treatment
   !!
-  subroutine implicit(self, p, collDat, thisCycle, nextCycle)
+  subroutine implicit(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -302,7 +308,7 @@ contains
       ! Store new sites in the next cycle dungeon
       r   = p % rGlobal()
 
-      do i=1,n
+      do i = 1,n
         call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
         dir = rotateVector(p % dirGlobal(), mu, phi)
 
@@ -320,6 +326,9 @@ contains
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
+
+        ! Report birth of new particle
+        call tally % reportSpawn(p, pTemp)
 
       end do
     end if
@@ -346,9 +355,10 @@ contains
   !!
   !! Process capture reaction
   !!
-  subroutine capture(self, p, collDat, thisCycle, nextCycle)
+  subroutine capture(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -360,9 +370,10 @@ contains
   !!
   !! Process fission reaction
   !!
-  subroutine fission(self, p, collDat, thisCycle, nextCycle)
+  subroutine fission(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -426,6 +437,9 @@ contains
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
+        ! Report birth of new particle
+        call tally % reportSpawn(p, pTemp)
+
       end do
     end if
 
@@ -438,9 +452,10 @@ contains
   !!
   !! All CE elastic scattering happens in the CM frame
   !!
-  subroutine elastic(self, p, collDat, thisCycle, nextCycle)
+  subroutine elastic(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)     :: self
     class(particle), intent(inout)         :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)     :: collDat
     class(particleDungeon),intent(inout)   :: thisCycle
     class(particleDungeon),intent(inout)   :: nextCycle
@@ -476,9 +491,10 @@ contains
   !!
   !! Process inelastic scattering
   !!
-  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
+  subroutine inelastic(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)     :: self
     class(particle), intent(inout)         :: p
+    type(tallyAdmin), intent(inout)        :: tally
     type(collisionData), intent(inout)     :: collDat
     class(particleDungeon),intent(inout)   :: thisCycle
     class(particleDungeon),intent(inout)   :: nextCycle
@@ -506,9 +522,10 @@ contains
   !!
   !! Apply cutoffs
   !!
-  subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
+  subroutine cutoffs(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle

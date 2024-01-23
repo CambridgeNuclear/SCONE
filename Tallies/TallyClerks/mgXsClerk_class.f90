@@ -99,7 +99,7 @@ module mgXsClerk_class
     ! File reports -> run-time procedures
     procedure  :: reportInColl
     procedure  :: reportOutColl
-    procedure  :: reportCycleEnd
+    procedure  :: reportSpawn
 
     ! Output procedures
     procedure  :: print
@@ -124,7 +124,7 @@ contains
 
     ! Assign name
     call self % setName(name)
-    
+
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
       call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
@@ -186,7 +186,7 @@ contains
     class(mgXsClerk),intent(in)                :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, outColl_CODE, cycleEnd_CODE]
+    validCodes = [inColl_CODE, outColl_CODE, spawn_CODE]
 
   end function validReports
 
@@ -406,48 +406,43 @@ contains
   end subroutine reportOutColl
 
   !!
-  !! Process end of the cycle to score fission spectrum with an analog estimator
+  !! Process fission report
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
-    class(mgXsClerk), intent(inout)     :: self
-    class(particleDungeon), intent(in)  :: end
-    type(scoreMemory), intent(inout)    :: mem
-    integer(longInt)                    :: addr, binIdx, enIdx, matIdx
-    integer(shortInt)                   :: N, i
+  subroutine reportSpawn(self, pOld, pNew, xsData, mem)
+    class(mgXsClerk), intent(inout)       :: self
+    class(particle), intent(in)           :: pOld
+    class(particleState), intent(in)      :: pNew
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
+    integer(longInt)                      :: addr, binIdx, enIdx, matIdx
 
-    ! Loop over the whole neutron population
-    N = end % popSize()
-    do i = 1,N
+    ! Find bin indexes
+    ! Energy
+    if (allocated(self % energyMap)) then
+      enIdx = self % energyN + 1 - self % energyMap % map(pNew)
+    else
+      enIdx = 1
+    end if
+    ! Space
+    if (allocated(self % spaceMap)) then
+      matIdx = self % spaceMap % map(pNew)
+    else
+      matIdx = 1
+    end if
 
-      ! Find bin indexes
-      ! Energy
-      if (allocated(self % energyMap)) then
-        enIdx = self % energyN + 1 - self % energyMap % map(end % get(i))
-      else
-        enIdx = 1
-      end if
-      ! Space
-      if (allocated(self % spaceMap)) then
-        matIdx = self % spaceMap % map(end % get(i))
-      else
-        matIdx = 1
-      end if
+    ! Return if invalid bin index
+    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
-      ! Return if invalid bin index
-      if ((enIdx == self % energyN + 1) .or. matIdx == 0) cycle
+    ! Calculate bin address
+    binIdx = self % energyN * (matIdx - 1) + enIdx
+    addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
-      ! Calculate bin address
-      binIdx = self % energyN * (matIdx - 1) + enIdx
-      addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
+    ! Score energy group of fission neutron
+    call mem % score(ONE,  addr + CHI_idx)
 
-      ! Score energy group of fission neutron
-      call mem % score(ONE,  addr + CHI_idx)
-
-    end do
-
-  end subroutine reportCycleEnd
+  end subroutine reportSpawn
 
   !!
   !! Final processing to calculate the multi-group cross sections, fission data and
