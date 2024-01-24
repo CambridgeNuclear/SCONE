@@ -91,6 +91,7 @@ module particleDungeon_class
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
+    procedure :: sortByShowerID
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -99,6 +100,7 @@ module particleDungeon_class
     procedure, private :: detainCritical_particleState
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
+
   end type particleDungeon
 
 contains
@@ -413,6 +415,8 @@ contains
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
 
+    call self % sortByShowerID(N)
+
     ! Calculate excess particles to be removed
     excessP = self % pop - N
 
@@ -455,6 +459,66 @@ contains
     end if
 
   end subroutine normSize
+
+  !!
+  !! Reorder the dungeon so the shower ID is in the ascending order
+  !!
+  !! Args:
+  !!   k [in] -> Maximum shower ID
+  !!
+  subroutine sortByShowerID(self, k)
+    class(particleDungeon), intent(inout)        :: self
+    integer(shortInt), intent(in)                :: k
+    integer(shortInt), dimension(k)              :: count
+    integer(shortInt)                            :: i, id, loc, c
+    integer(shortInt), dimension(:), allocatable :: perm
+    type(particleState)                          :: tmp
+    character(100), parameter :: Here = 'sortByShowerID (particleDungeon_class.f90)'
+
+    ! Count number of particles with each shower ID
+    count = 0
+    do i = 1, self % pop
+      id = self % prisoners(i) % showerID
+      count(id) = count(id) + 1
+    end do
+
+    ! Convert to starting index
+    loc = 1
+    do i = 1, k
+      c = count(i)
+      count(i) = loc
+      loc = loc + c
+    end do
+
+    ! Create the permutation array
+    allocate(perm(self % pop))
+    do i = 1, self % pop
+      id = self % prisoners(i) % showerID
+      loc = count(id)
+      count(id) = count(id) + 1
+      perm(loc) = i
+    end do
+
+    ! Permute particles
+    do i = 1, self % pop
+      loc = perm(i)
+
+      ! If the element was already swapped follow it to its location
+      do while (loc < i)
+        loc = perm(loc)
+      end do
+
+      ! Swap elements
+      if (loc /= i) then
+        tmp = self % prisoners(i)
+        self % prisoners(i) = self % prisoners(loc)
+        self % prisoners(loc) = tmp
+      end if
+
+    end do
+
+  end subroutine sortByShowerID
+
 
   !!
   !! Kill or particles in the dungeon
@@ -541,10 +605,13 @@ contains
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      write(10,'(8A)') numToChar(self % prisoners(i) % r), &
-                       numToChar(self % prisoners(i) % dir), &
-                       numToChar(self % prisoners(i) % E), &
-                       numToChar(self % prisoners(i) % G)
+      ! write(10,'(8A)') numToChar(self % prisoners(i) % r), &
+      !                  numToChar(self % prisoners(i) % dir), &
+      !                  numToChar(self % prisoners(i) % E), &
+      !                  numToChar(self % prisoners(i) % G)
+      write(10, *) self % prisoners(i) % r, self % prisoners(i) % dir, &
+                   self % prisoners(i) % E, self % prisoners(i) % G, &
+                   self % prisoners(i) % showerID
     end do
 
     ! Close the file
