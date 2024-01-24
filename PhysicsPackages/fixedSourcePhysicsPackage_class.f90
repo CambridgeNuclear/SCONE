@@ -181,6 +181,7 @@ contains
 
         ! Obtain particle from dungeon
         call self % thisCycle % copy(p, n)
+        p % showerID = n
 
         bufferLoop: do
 
