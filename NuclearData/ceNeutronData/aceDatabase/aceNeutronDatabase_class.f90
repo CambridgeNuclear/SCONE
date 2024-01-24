@@ -53,6 +53,9 @@ module aceNeutronDatabase_class
   !! It's possible to use probability tables in the unresolved resonance range if
   !! ures is included in the input file
   !!
+  !! NOTE: the unionised majorant is not calculated and used if probability tables 
+  !!       are on 
+  !!
   !! Sample input:
   !!   nuclearData {
   !!   handles {
@@ -64,11 +67,12 @@ module aceNeutronDatabase_class
   !!   materials  -> array of ceNeutronMaterials with data
   !!   Ebounds    -> array with bottom (1) and top (2) energy bound
   !!   majorant   -> unionised majorant cross section
-  !!   eGrid      -> unionised energy grid
+  !!   eGridUnion -> unionised energy grid
   !!   activeMat  -> array of materials present in the geometry
   !!   nucToZaid  -> map to link nuclide index to zaid index
   !!   hasUrr     -> ures probability tables flag, it's false by default
   !!   hasDBRC    -> DBRC flag, it's false by default
+  !!   has majorant -> unionised majorant cross section flag
   !!
   !! Interface:
   !!   nuclearData Interface
