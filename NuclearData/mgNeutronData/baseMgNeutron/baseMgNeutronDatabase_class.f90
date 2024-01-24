@@ -373,8 +373,6 @@ contains
     real(defReal)                               :: xs
     integer(shortInt), parameter                :: TOTAL_XS = 1
 
-    if (loud) print '(A)', 'Building MG unionised majorant cross section'
-
     ! Allocate majorant
     allocate (self % majorant(self % nG))
 
@@ -388,7 +386,7 @@ contains
       self % majorant(g) = xs
     end do
 
-    if (loud) print '(A)', 'MG unionised majorant cross section completed'
+    if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
 
   end subroutine initMajorant
 

@@ -858,20 +858,15 @@ contains
     class(aceNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)             :: loud
     real(defReal), dimension(:), allocatable :: tmpGrid
-    integer(shortInt)                        :: i, j, matIdx, nNuc, nucIdx, isDone
-    type(intMap)                             :: nucMap
-    real(defReal)                            :: E, maj
+    integer(shortInt)                        :: i, j, matIdx, nNuc, nucIdx, isDone, &
+                                                sizeGrid, eIdx, nucIdxLast, eIdxLast
+    type(intMap)                             :: nucSet
+    real(defReal)                            :: eRef, eNuc, E, maj
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
 
-    if (loud) print '(A)', 'Building CE unionised energy grid'
-
-    ! Initialise energy grid
-    matIdx = self % activeMat(1)
-    nucIdx = self % materials(matIdx) % nuclides(1)
-    tmpGrid = self % nuclides(nucIdx) % eGrid
-
-    ! Add first nuclide to map to indicate it's been added
-    call nucMap % add(nucIdx, IN_SET)
+    ! Find the size of the unionised energy grid (with duplicates)
+    ! Initialise size
+    sizeGrid = 0
 
     ! Loop over active materials
     do i = 1, size(self % activeMat)
@@ -883,33 +878,76 @@ contains
       ! Loop over nuclides present in that material
       do j = 1, nNuc
 
-        ! Get index and check if it's already been added to the grid
+        ! Get index and check if it's already been added to the set
         nucIdx = self % materials(matIdx) % nuclides(j)
-        isDone = nucMap % getOrDefault(nucIdx, NOT_PRESENT)
+        isDone = nucSet % getOrDefault(nucIdx, NOT_PRESENT)
 
-        ! If it's a new nuclide, add its energy grid to the unionised one
+        ! If it's a new nuclide, add it to the set and find the size of its energy grid
         if (isDone /= IN_SET) then
 
-          tmpGrid = concatenate(tmpGrid, self % nuclides(nucIdx) % eGrid)
-
-          ! Sort and remove duplicates
-          call quickSort(tmpGrid)
-          tmpGrid = removeDuplicatesSorted(tmpGrid)
-
           ! Add nuclide to the set
-          call nucMap % add(nucIdx, IN_SET)
+          call nucSet % add(nucIdx, IN_SET)
+
+          ! Update energy grid size
+          sizeGrid = sizeGrid + size(self % nuclides(nucIdx) % eGrid)
 
         end if
 
       end do
     end do
 
-    ! Save final grid
-    self % eGridUnion = tmpGrid
+    ! Allocate temporary grid vector and initialise to largest value allowed
+    allocate(tmpGrid(sizeGrid))
+    tmpGrid = self % EBounds(2)
+
+    ! Loop over the energy grid
+    do i = 1, sizeGrid
+
+      ! Loop over all nuclides in the set - here the value of the intMap is used as an energy index
+      j = nucSet % begin()
+      do while (j /= nucSet % end())
+
+        ! Retrieve energy in the grid and nuclide information
+        eRef    = tmpGrid(i)
+        nucIdx  = nucSet % atKey(j)
+        eIdx    = nucSet % atVal(j)
+
+        ! Check if we already added all the energy values for this nuclide
+        if (eIdx > size(self % nuclides(nucIdx) % eGrid)) then
+          j = nucSet % next(j)
+          cycle
+        end if
+
+        ! Get energy from nuclide grid
+        eNuc = self % nuclides(nucIdx) % eGrid(eIdx)
+
+        ! Check if the energy from the nuclide grid is out of bounds
+        if (eNuc < self % EBounds(1) .or. eNuc > self % EBounds(2)) then
+          j = nucSet % next(j)
+          cycle
+        end if
+
+        ! Add energy value in the sorted grid, and save index of current nuclide
+        if (eNuc <= eRef) then
+          tmpGrid(i) = eNuc
+          nucIdxLast = nucIdx
+          eIdxLast   = eIdx
+        end if
+
+        j = nucSet % next(j)
+
+      end do
+
+      ! Increment the energy index saved in the intMap for the nuclides whose energy was added
+      call nucSet % add(nucIdxLast, eIdxLast + 1)
+
+    end do
+
+    ! Save final grid and remove duplicates
+    self % eGridUnion = removeDuplicatesSorted(tmpGrid)
 
     if (loud) then
-      print '(A)', 'CE unionised energy grid has size: '//numToChar(size(self % eGridUnion))//&
-                   '. Now building CE unionised majorant cross section'
+      print '(A)', 'CE unionised energy grid has size: '//numToChar(size(self % eGridUnion))
     end if
 
     ! Allocate unionised majorant
@@ -945,7 +983,7 @@ contains
 
     end do
 
-    if (loud) print '(A)', 'CE unionised majorant cross section completed'
+    if (loud) print '(A)', 'CE unionised majorant cross section calculation completed'
 
   end subroutine initMajorant
 
