@@ -27,8 +27,8 @@ module particleDungeon_class
   !! Dungeon can work like stacks or arrays. Stack-like behaviour is not really thread safe
   !! so it can be utilised when collecting and processing secondary particles in history
   !! that should be processed during the course of one cycle. Alternatively, one can use the
-  !! critical variations of the stack-like procedures. 
-  !! Array-like behaviour allows to easily distribute particles among threads. As long as indices 
+  !! critical variations of the stack-like procedures.
+  !! Array-like behaviour allows to easily distribute particles among threads. As long as indices
   !! assigned to different threads do not overlap, reading is thread-safe (I hope-MAK).
   !!
   !!
@@ -170,18 +170,18 @@ contains
     ! Increase population and weight
     self % pop = self % pop + 1
     pop = self % pop
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-    
+
     ! Load new particle
     self % prisoners(pop) = p
     !$omp end critical (dungeon)
-    
+
   end subroutine detainCritical_particle
 
   !!
@@ -224,16 +224,16 @@ contains
     !$omp critical (dungeon)
     self % pop = self % pop + 1
     pop = self % pop
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-   
+
     ! Load new particle
-    self % prisoners(pop) = p_state 
+    self % prisoners(pop) = p_state
     !$omp end critical (dungeon)
 
   end subroutine detainCritical_particleState
@@ -272,11 +272,11 @@ contains
     ! Decrease population
     pop = self % pop
     self % pop = self % pop - 1
-    
+
     ! Load data into the particle
     p = self % prisoners(pop)
     !$omp end critical (dungeon)
-    
+
     p % isDead = .false.
 
   end subroutine releaseCritical
@@ -396,18 +396,19 @@ contains
   !! Randomly duplicate or remove particles to match the number.
   !! Does not take weight of a particle into account!
   !!
-  subroutine normSize(self,N,rand)
+  subroutine normSize(self, N, rand)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: excessP
+    integer(shortInt)                     :: excessP, n_copies, n_duplicates
     integer(shortInt)                     :: i, idx
+    integer(shortInt), dimension(:), allocatable :: duplicates
     character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
 
     ! Protect against invalid N
     if( N > size(self % prisoners)) then
       call fatalError(Here,'Requested size: '//numToChar(N) //&
-                           'is greather then max size: '//numToChar(size(self % prisoners)))
+                           'is greater then max size: '//numToChar(size(self % prisoners)))
     else if ( N <= 0 ) then
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
@@ -416,9 +417,9 @@ contains
     excessP = self % pop - N
 
     if (excessP > 0 ) then ! Reduce population with reservoir sampling
-      do i=N,self % pop
+      do i = N + 1, self % pop
         ! Select new index. Copy data if it is in the safe zone (<= N).
-        idx = int(i * rand % get())+1
+        idx = int(i * rand % get()) + 1
         if (idx <= N) then
           self % prisoners(idx) = self % prisoners(i)
         end if
@@ -426,9 +427,28 @@ contains
       self % pop = N
 
     else if (excessP < 0) then ! Clone randomly selected particles
-      do i = self % pop, N
-        idx = int(self % pop * rand % get()) + 1
-        self % prisoners(i) = self % prisoners(idx)
+      ! For a massive undersampling duplicate (or n-plicate) particles
+      excessP = -excessP
+      n_copies = excessP / self % pop
+      n_duplicates = modulo(excessP, self % pop)
+
+      ! Copy all particle maximum possible number of times
+      do i = 1, n_copies
+        self % prisoners(N * i + 1 : N * (i + 1)) = self % prisoners(1:N)
+      end do
+
+      ! Choose the remainder particles to duplicate without replacement
+      duplicates = [(i, i = 1, n_duplicates)]
+      do i = n_duplicates + 1, self % pop
+        idx = int(i * rand % get()) + 1
+        if (idx <= n_duplicates) then
+          duplicates(idx) = i
+        end if
+      end do
+
+      ! Copy the duplicated particles at the end
+      do i = 1, n_duplicates
+        self % prisoners(self % pop + i) = self % prisoners(duplicates(i))
       end do
       self % pop = N
 
