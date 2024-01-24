@@ -10,6 +10,9 @@ module mgNeutronMaterial_inter
   use neutronMaterial_inter,   only : neutronMaterial
   use neutronXsPackages_class, only : neutronMacroXSs
 
+  ! MG NEUTRON CACHE
+  use mgNeutronCache_mod,      only : cache_materialCache => materialCache
+
   implicit none
   private
 
@@ -110,13 +113,25 @@ contains
     class(particle), intent(in)          :: p
     character(100), parameter :: Here = 'getMacroXSs_byP (mgNeutronMateerial_inter.f90)'
 
-    if( p % isMG) then
-      call self % getMacroXSs(xss, p % G, p % pRNG)
+    if (.not. p % isMG) call fatalError(Here, 'CE particle was given to MG data')
 
-    else
-      call fatalError(Here, 'CE particle was given to MG data')
+    associate (matCache => cache_materialCache(p % matIdx()))
 
-    end if
+      if (matCache % G_tail /= p % G) then
+        ! Get cross sections
+        call self % getMacroXSs(xss, p % G, p % pRNG)
+        ! Update cache
+        matCache % xss = xss
+        matCache % G_tail = p % G
+
+      else
+        ! Retrieve cross sections from cache
+        xss = matCache % xss
+
+      end if
+
+    end associate
+
   end subroutine getMacroXSs_byP
 
   !!

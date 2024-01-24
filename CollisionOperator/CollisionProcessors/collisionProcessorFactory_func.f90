@@ -18,7 +18,6 @@ module collisionProcessorFactory_func
 
   public :: new_collisionProcessor
 
-  ! *** ADD NAME OF A NEW COLLISION PROCESSOR HERE ***!
   ! List that contains all accaptable types of collisionProcessors
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -47,34 +46,28 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of collisionProcessor
-    ! *** ADD CASE STATEMENT FOR A NEW COLLISION PROCESSOR BELOW ***!
     select case(type)
       case('neutronCEstd')
         allocate(neutronCEstd :: new)
-        call new % init(dict)
 
       case('neutronCEimp')
         allocate(neutronCEimp :: new)
-        call new % init(dict)
 
       case('neutronMGstd')
         allocate(neutronMGstd :: new)
-        call new % init(dict)
 
       case('neutronMGimp')
         allocate(neutronMGimp :: new)
         call new % init(dict)
 
-     !*** NEW COLLISION PROCESSOR TEMPLATE ***!
-     !case('<newcollisionProcessorName>')
-     !  allocate(<newcollisionProcessorName> :: new)
-     !  call new % init(dict)
-     !
       case default
         print *, AVALIBLE_collisionProcessors
         call fatalError(Here, 'Unrecognised type of collisionProcessor: ' // trim(type))
 
     end select
+
+    ! Initialise new processor
+    call new % init(dict)
 
   end subroutine new_collisionProcessor
 

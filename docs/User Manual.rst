@@ -25,8 +25,8 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * XSdata: keyword to the name of the nuclearDataHandle used
 * seed (*optional*): initial seed for the pseudo random number generator
 * outputFile (*optional*, default = 'output'): name of the output file
-* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
-  Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
   in the particleDungeon) to a text file
@@ -71,19 +71,19 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * XSdata: keyword to the name of the nuclearDataHandle used
 * seed (*optional*): initial seed for the pseudo random number generator
 * outputFile (*optional*, default = 'output'): name of the output file
-* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file. 
-  Choices are ``asciiMATLAB`` and ``asciiJSON`` 
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
   in the particleDungeon) to a text file
-* buffer (*optional*, default = 50): size of the particle bank used by each 
+* buffer (*optional*, default = 50): size of the particle bank used by each
   OpenMP thread to store secondary particles
-* commonBufferSize (*optional*): if not included, the common buffer is not 
-  used; if included, after each particle history the particles in each 
-  thread-private buffer (or bank, or dungeon) are moved to a buffer 
+* commonBufferSize (*optional*): if not included, the common buffer is not
+  used; if included, after each particle history the particles in each
+  thread-private buffer (or bank, or dungeon) are moved to a buffer
   common to all threads to avoid long histories
-* bufferShift (*optional*, default = 10): threshold of particles to be 
-  stored in a thread-private buffer, after which particles are shifted to 
+* bufferShift (*optional*, default = 10): threshold of particles to be
+  stored in a thread-private buffer, after which particles are shifted to
   the common buffer
 
 Example: ::
@@ -154,7 +154,7 @@ Example: ::
 Source
 ------
 
-For the moment, the only possible external **source** types in SCONE are point source 
+For the moment, the only possible external **source** types in SCONE are point source
 and material source.
 
 pointSource
@@ -185,20 +185,41 @@ It is a type of volumetric source. For the moment it is constrained to neutrons.
 The properties of a material source are:
 
 * mat: the name of the material from which to sample (must be defined in materials).
-* data (*optional*, default = continuous energy): data type for source particles. Can be ``ce`` 
+* data (*optional*, default = continuous energy): data type for source particles. Can be ``ce``
   or ``mg``.
-* E (*optional*, default = 1E-6): energy of the particles emitted, for continuous energy 
+* E (*optional*, default = 1E-6): energy of the particles emitted, for continuous energy
   calculations. [MeV]
-* G (*optional*, default = 1): energy group of the particles emitted, for multi-group 
+* G (*optional*, default = 1): energy group of the particles emitted, for multi-group
   calculations.
-* boundingBox (*optional*, default is the geometry bounding box): 
-  (x_min y_min z_min x_max y_max z_max) vector describing a bounding box to improve sampling 
+* boundingBox (*optional*, default is the geometry bounding box):
+  (x_min y_min z_min x_max y_max z_max) vector describing a bounding box to improve sampling
   efficiency or to localise material sampling to a particular region.
 
 Hence, an input would look like: ::
 
-      source { type materialSource; mat myMat; data ce; E 2.0; 
+      source { type materialSource; mat myMat; data ce; E 2.0;
       boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
+
+fissionSource
+#############
+
+A source intended to initialise eigenvalue calculations. If it is not defined in the input file, it is
+used with the default settings. It is a type of volumetric source, which uniformly distributes fission
+sites in the geometry. The energy spectrum of the fission neutrons is based on a fixed incident
+energy provided by the user. The properties of a fission source are:
+
+* data (*optional*, default='ce'): data type for source particles. Can be ``ce``
+  or ``mg``.
+* E (*optional*, default=1E-6): energy of the incident neutron causing fission [MeV]. Makes
+  sense for continuous energy source only.
+* G (*optional*, default=1): energy group of the incident neutron causing fission. Makes
+  sense for multi-group source only.
+* attempts (*optional*, default=10000): number of attempts to sample a fission site in a cell
+  before throwing an error.
+* bottom (*optional*): Lower point determining axis-aligned bounding box where to sample points. If
+  provided ``top`` must also be provided.
+* top (*optional*): Upper point determining axis-aligned bounding box where to sample points. If
+  provided ``bottom`` must also be provided.
 
 Transport Operator
 ------------------
@@ -252,11 +273,13 @@ neutronCEstd, to perform analog collision processing
   energyThreshold where kT is target material temperature in [MeV]. [-]
 * massThreshold (*optional*, default = 1): mass threshold for explicit treatment of
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
-
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+  
 Example: ::
-
+  
       collisionOperator { neutronCE { type neutronCEstd; minEnergy 1.0e-12; maxEnergy 30.0;
-      energyThreshold 200; massThreshold 2; } }
+      energyThreshold 200; massThreshold 2; DBRCeMin 1.0e-06; DBRCeMax 0.001; } }
 
 neutronCEimp
 ############
@@ -285,6 +308,8 @@ neutronCEimp, to perform implicit collision processing
   weight windows
 * UFS (*optional*, default = 0): 1 for true; 0 for false; enables the use of uniform
   fission sites
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
 
 Example: ::
 
@@ -634,8 +659,8 @@ vtk
 * corner: (x y z) array with the corner of the geometry [cm]
 * width: (x y z) array with the width of the mesh in each direction [cm]
 * vox: (x y z) array with the number of voxels requested in each direction
-* what (*optional*, default = material): defines what is highlighted in the 
-  plot; options are ``material`` and ``uniqueID``, where ``uniqueID`` 
+* what (*optional*, default = material): defines what is highlighted in the
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
   highlights unique cell IDs
 
 Example: ::
@@ -651,17 +676,17 @@ bmp
   with the width of the geometry plotted in each direction [cm]
 * res: (y z), (x z) or (x y) array with the resolution of the mesh in each direction
 * output: name of the output file, with extension ``.bmp``
-* what (*optional*, default = material): defines what is highlighted in the 
-  plot; options are ``material`` and ``uniqueID``, where ``uniqueID`` 
+* what (*optional*, default = material): defines what is highlighted in the
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
   highlights unique cell IDs
 
 Example: ::
 
       plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10); res (1000 200); output geomZ; what material; }
-      
-.. note:: 
-   SCONE can be run to visualise geometry without actually doing transport, by 
-   including ``--plot`` when running the application. In this case the visualiser 
+
+.. note::
+   SCONE can be run to visualise geometry without actually doing transport, by
+   including ``--plot`` when running the application. In this case the visualiser
    has to be included in the file.
 
 Nuclear Data
@@ -698,11 +723,18 @@ from ACE files.
   the ACE files
 * ures (*optional*, default = 0): 1 for true; 0 for false; activates the unresolved
   resonance probability tables treatment
-
+* DBRC (*optional*, default = no DBRC): list of ZAIDs of nuclides for which DBRC has
+  to be applied.
+  
 Example: ::
 
-      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS; ures 1; }
+      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
+      ures 1; DBRC (92238 94242)}
 
+.. note::
+   If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
+   be included in the aceLibrary file.
+      
 baseMgNeutronDatabase
 #####################
 
@@ -869,6 +901,8 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    are tallied with a collisionClerk as well as physical collisions
 
 * trackClerk
 
@@ -1039,10 +1073,10 @@ Example: ::
       }
       }
 
-.. note::
+.. note:: 
    To calculate the average weight, one should divide weight moment 1 (weight1)
-    by weight moment 0 (weight0). To calculate the variance of the weights, the
-    tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2
+   by weight moment 0 (weight0). To calculate the variance of the weights, the
+   tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2
 
 Tally Maps
 ##########

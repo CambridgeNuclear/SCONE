@@ -208,11 +208,12 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(mgXsClerk), intent(inout)       :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
@@ -220,6 +221,9 @@ contains
     integer(shortInt)                     :: enIdx, matIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
+
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
     ! Get current particle state
     state = p
@@ -552,7 +556,7 @@ contains
 
       ! Store total cross section and flux for this energy group
       tot(i)    = capt_res(1,i) + fiss_res(1,i) + scattXS
-      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(1,i)**2 + scattXSstd**2)
+      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(2,i)**2 + scattXSstd**2)
       fluxG(i)  = flux
       fluxGstd(i) = fluxStd
 
