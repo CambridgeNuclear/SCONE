@@ -122,13 +122,13 @@ contains
 
     ! Scoring
     pFiss = p
-    call this % clerk_test1 % reportSpawn(p, pFiss, this % nucData, mem)
+    call this % clerk_test1 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
 
     p % E = 3.0_defReal
 
     ! Scoring
     pFiss = p
-    call this % clerk_test1 % reportSpawn(p, pFiss, this % nucData, mem)
+    call this % clerk_test1 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
 
     ! Scoring
     call this % clerk_test1 % reportInColl(p, this % nucData, mem, .false.)
@@ -201,13 +201,13 @@ contains
 
     ! Scoring
     pFiss = p
-    call this % clerk_test2 % reportSpawn(p, pFiss, this % nucData, mem)
+    call this % clerk_test2 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
 
     p % E = 0.3_defReal
 
     ! Scoring
     pFiss = p
-    call this % clerk_test2 % reportSpawn(p, pFiss, this % nucData, mem)
+    call this % clerk_test2 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
 
     ! Scoring
     call this % clerk_test2 % reportInColl(p, this % nucData, mem, .false.)

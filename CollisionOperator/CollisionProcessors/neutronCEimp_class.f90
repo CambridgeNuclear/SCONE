@@ -328,7 +328,7 @@ contains
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
         ! Report birth of new particle
-        call tally % reportSpawn(p, pTemp)
+        call tally % reportSpawn(N_FISSION, p, pTemp)
 
       end do
     end if
@@ -438,7 +438,7 @@ contains
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
 
         ! Report birth of new particle
-        call tally % reportSpawn(p, pTemp)
+        call tally % reportSpawn(N_FISSION, p, pTemp)
 
       end do
     end if
@@ -548,14 +548,14 @@ contains
       ! If a particle is outside the WW map and all the weight limits
       ! are zero nothing happens. NOTE: this holds for positive weights only
       if ((p % w > maxWgt) .and. (maxWgt /= ZERO)) then
-        call self % split(p, thisCycle, maxWgt)
+        call self % split(p, tally, thisCycle, maxWgt)
       elseif (p % w < minWgt) then
         call self % russianRoulette(p, avWgt)
       end if
 
     ! Splitting with fixed threshold
     elseif ((self % splitting) .and. (p % w > self % maxWgt)) then
-      call self % split(p, thisCycle, self % maxWgt)
+      call self % split(p, tally, thisCycle, self % maxWgt)
 
     ! Roulette with fixed threshold and survival weight
     elseif ((self % roulette) .and. (p % w < self % minWgt)) then
@@ -584,23 +584,30 @@ contains
   !!
   !! Split particle which has too large a weight
   !!
-  subroutine split(self, p, thisCycle, maxWgt)
+  subroutine split(self, p, tally, thisCycle, maxWgt)
     class(neutronCEimp), intent(inout)    :: self
     class(particle), intent(inout)        :: p
+    type(tallyAdmin), intent(inout)       :: tally
     class(particleDungeon), intent(inout) :: thisCycle
     real(defReal), intent(in)             :: maxWgt
+    type(particleState)                   :: pTemp
     integer(shortInt)                     :: mult, i
 
     ! This value must be at least 2
     mult = ceiling(p % w/maxWgt)
 
-    ! Decrease weight
-    p % w = p % w/mult
+    ! Copy particle to a particle state
+    pTemp = p
+    pTemp % wgt = p % w/mult
 
     ! Add split particle's to the dungeon
-    do i = 1,mult-1
-      call thisCycle % detain(p)
+    do i = 1, mult-1
+      call thisCycle % detain(pTemp)
+      call tally % reportSpawn(N_N_SPLIT, p, pTemp)
     end do
+
+    ! Decrease original particle weight
+    p % w = p % w/mult
 
   end subroutine split
 

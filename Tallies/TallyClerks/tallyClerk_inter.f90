@@ -57,7 +57,7 @@ module tallyClerk_inter
   !!   reportOutColl    -> Process an outgoing from collision report
   !!   reportPath       -> Process pathlength report
   !!   reportTrans      -> Process transition report
-  !!   reportSpawn      -> Process fission report
+  !!   reportSpawn      -> Process particle generation report
   !!   reportHist       -> Process history report
   !!   reportCycleStart -> Process beginning of a cycle report
   !!   reportCycleEnd   -> Process end of a cycle report (e.g. Calculate functions of scores like k-eff)
@@ -322,21 +322,23 @@ contains
   end subroutine reportTrans
 
   !!
-  !! Process fission report
+  !! Process particle creation report
   !!
   !! See tallyAdmin_class for implicit assumptionas about the report.
   !!
   !! Args:
-  !!   pOld [in] -> Particle that caused the fission event
-  !!   pNew [in] -> Particle state of the fission neutron
+  !!   MT [in]   -> MT number of the reaction the particle has undergone
+  !!   pOld [in] -> Particle that caused the branching event
+  !!   pNew [in] -> Particle state of the newly created neutron
   !!   xsData [inout] -> Nuclear Database with XSs data
   !!   mem [inout]    -> Score Memory to put results on
   !!
   !! Errors:
   !!   Depend on specific Clerk
   !!
-  subroutine reportSpawn(self, pOld, pNew, xsData, mem)
+  subroutine reportSpawn(self, MT, pOld, pNew, xsData, mem)
     class(tallyClerk), intent(inout)      :: self
+    integer(shortInt), intent(in)         :: MT
     class(particle), intent(in)           :: pOld
     class(particleState), intent(in)      :: pNew
     class(nuclearDatabase), intent(inout) :: xsData

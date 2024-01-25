@@ -231,19 +231,20 @@ contains
   end subroutine reportTrans
 
   !!
-  !! Process fission report
+  !! Process particle creation report
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportSpawn(self, pOld, pNew, xsData, mem)
+  subroutine reportSpawn(self, MT, pOld, pNew, xsData, mem)
     class(tallyClerkSlot), intent(inout)  :: self
+    integer(shortInt), intent(in)         :: MT
     class(particle), intent(in)           :: pOld
     class(particleState), intent(in)      :: pNew
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
 
     ! Pass call to instance in the slot
-    call self % slot % reportSpawn(pOld, pNew, xsData, mem)
+    call self % slot % reportSpawn(MT, pOld, pNew, xsData, mem)
 
   end subroutine reportSpawn
 

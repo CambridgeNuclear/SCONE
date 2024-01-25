@@ -283,16 +283,16 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportOutColl(self, p, MT, muL, xsData, mem)
-    class(mgXsClerk), intent(inout) :: self
-    class(particle), intent(in)             :: p
-    integer(shortInt), intent(in)           :: MT
-    real(defReal), intent(in)               :: muL
-    class(nuclearDatabase),intent(inout)    :: xsData
-    type(scoreMemory), intent(inout)        :: mem
-    type(particleState)                     :: preColl, postColl
-    real(defReal)                           :: score, prod, mu, mu2, mu3, mu4, mu5
-    integer(shortInt)                       :: enIdx, matIdx, binIdx, binEnOut
-    integer(longInt)                        :: addr
+    class(mgXsClerk), intent(inout)      :: self
+    class(particle), intent(in)          :: p
+    integer(shortInt), intent(in)        :: MT
+    real(defReal), intent(in)            :: muL
+    class(nuclearDatabase),intent(inout) :: xsData
+    type(scoreMemory), intent(inout)     :: mem
+    type(particleState)                  :: preColl, postColl
+    real(defReal)                        :: score, prod, mu, mu2, mu3, mu4, mu5
+    integer(shortInt)                    :: enIdx, matIdx, binIdx, binEnOut
+    integer(longInt)                     :: addr
 
     ! Get pre and post collision particle state
     preColl  = p % preCollision
@@ -410,37 +410,42 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportSpawn(self, pOld, pNew, xsData, mem)
+  subroutine reportSpawn(self, MT, pOld, pNew, xsData, mem)
     class(mgXsClerk), intent(inout)       :: self
+    integer(shortInt), intent(in)         :: MT
     class(particle), intent(in)           :: pOld
     class(particleState), intent(in)      :: pNew
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
     integer(longInt)                      :: addr, binIdx, enIdx, matIdx
 
-    ! Find bin indexes
-    ! Energy
-    if (allocated(self % energyMap)) then
-      enIdx = self % energyN + 1 - self % energyMap % map(pNew)
-    else
-      enIdx = 1
+    if (MT == N_FISSION) then
+
+      ! Find bin indexes
+      ! Energy
+      if (allocated(self % energyMap)) then
+        enIdx = self % energyN + 1 - self % energyMap % map(pNew)
+      else
+        enIdx = 1
+      end if
+      ! Space
+      if (allocated(self % spaceMap)) then
+        matIdx = self % spaceMap % map(pNew)
+      else
+        matIdx = 1
+      end if
+
+      ! Return if invalid bin index
+      if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+
+      ! Calculate bin address
+      binIdx = self % energyN * (matIdx - 1) + enIdx
+      addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
+
+      ! Score energy group of fission neutron
+      call mem % score(ONE,  addr + CHI_idx)
+
     end if
-    ! Space
-    if (allocated(self % spaceMap)) then
-      matIdx = self % spaceMap % map(pNew)
-    else
-      matIdx = 1
-    end if
-
-    ! Return if invalid bin index
-    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
-
-    ! Calculate bin address
-    binIdx = self % energyN * (matIdx - 1) + enIdx
-    addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
-
-    ! Score energy group of fission neutron
-    call mem % score(ONE,  addr + CHI_idx)
 
   end subroutine reportSpawn
 

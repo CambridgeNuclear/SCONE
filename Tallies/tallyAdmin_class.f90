@@ -42,20 +42,20 @@ module tallyAdmin_class
   !! Private Members:
   !!   atch -> Pointer to an attachment tallyClerk (implements linked-list)
   !!   normBinAddr   -> Address of a bin used for normalisation
-  !!   normValue     -> Target Value for normalisation
-  !!   normClerkName -> Name of a Clerk used for normalisation
-  !!   tallyClerks   -> Array of all defined tally Clerks
-  !!   clerksNameMap -> CharMap that maps Clerk Name to its index in tallyClerks
-  !!   inCollClerks     -> List of indices of all Clerks that require inCollReport
-  !!   outCollClerks    -> List of indices of all Clerks that require outCollReport
-  !!   pathClerks       -> List of indices of all Clerks that require pathReport
-  !!   transClerks      -> List of indices of all Clerks that require transReport
-  !!   spawnClerks      -> List of indices of all Clerks that require spawnReport
-  !!   histClerks       -> List of indices of all Clerks that require histReport
-  !!   cycleStartClerks -> List of indices of all Clerks that require cycleStartReport
-  !!   cycleEndClerks   -> List of indices of all Clerks that require cycleEndReport
-  !!   displayList      -> List of indices of all Clerks that are registered for display
-  !!   mem              -> Score Memory for all defined Clerks
+  !!   normValue     -> Target value for normalisation
+  !!   normClerkName -> Name of a clerk used for normalisation
+  !!   tallyClerks   -> Array of all defined tally clerks
+  !!   clerksNameMap -> CharMap that maps clerk name to its index in tallyClerks
+  !!   inCollClerks     -> List of indices of all clerks that require inCollReport
+  !!   outCollClerks    -> List of indices of all clerks that require outCollReport
+  !!   pathClerks       -> List of indices of all clerks that require pathReport
+  !!   transClerks      -> List of indices of all clerks that require transReport
+  !!   spawnClerks      -> List of indices of all clerks that require spawnReport
+  !!   histClerks       -> List of indices of all clerks that require histReport
+  !!   cycleStartClerks -> List of indices of all clerks that require cycleStartReport
+  !!   cycleEndClerks   -> List of indices of all clerks that require cycleEndReport
+  !!   displayList      -> List of indices of all clerks that are registered for display
+  !!   mem              -> Score Memory for all defined clerks
   !!
   !! Interface:
   !!   init   -> Initialise from dictionary
@@ -67,12 +67,12 @@ module tallyAdmin_class
   !!   reportOutColl    -> Process post-collision reports in all clerks
   !!   reportPath       -> Process pathlength reports in all clerks
   !!   reportTrans      -> Process transition reports in all clerks
-  !!   reportSpawn      -> Process fission reports in all clerks
-  !!   reportHist       -> Process History reports in all clerks
-  !!   reportCycleStart -> Process Start Of Cycle reports in all clerks
-  !!   reportCycleEnd   -> Process End of Cycle reports in all clerks
+  !!   reportSpawn      -> Process particle generation reports in all clerks
+  !!   reportHist       -> Process history reports in all clerks
+  !!   reportCycleStart -> Process start of cycle reports in all clerks
+  !!   reportCycleEnd   -> Process end of cycle reports in all clerks
   !!   getResult        -> Return tallyResult object from a named Clerk
-  !!   display     -> Call "display" on all Clerks registered to display
+  !!   display     -> Call "display" on all clerks registered to display
   !!   isConverged -> Return .true. if all convergance targets have been reached
   !!   print       -> Prints results to an output file object
   !!
@@ -589,20 +589,23 @@ contains
   end subroutine reportTrans
 
   !!
-  !! Process fission report
+  !! Process report for the creation of a new particle
   !!
   !! Assumptions:
-  !!   TODO: Decide on the details of this report
+  !!    It should be sent each time a new particle is created in the simulation
+  !!    by a nuclear reaction or some other mechanism (e.g. splitting)
   !!
   !! Args:
-  !!   pOld [in] -> Particle that caused the fission event
-  !!   pNew [in] -> Particle state of the fission neutron
+  !!   MT [in]   -> MT number of the reaction the particle has undergone
+  !!   pOld [in] -> Particle that caused the branching event
+  !!   pNew [in] -> Particle state of the newly created neutron
   !!
   !! Errors:
   !!   None
   !!
-  recursive subroutine reportSpawn(self, pOld, pNew)
+  recursive subroutine reportSpawn(self, MT, pOld, pNew)
     class(tallyAdmin), intent(inout) :: self
+    integer(shortInt), intent(in)    :: MT
     class(particle), intent(in)      :: pOld
     class(particleState), intent(in) :: pNew
     integer(shortInt)                :: i, idx
@@ -611,7 +614,7 @@ contains
 
     ! Call attachment
     if(associated(self % atch)) then
-      call reportSpawn(self % atch, pOld, pNew)
+      call reportSpawn(self % atch, MT, pOld, pNew)
     end if
 
     ! Get Data
@@ -620,7 +623,7 @@ contains
     ! Go through all clerks that request the report
     do i=1,self % spawnClerks % getSize()
       idx = self % spawnClerks % get(i)
-      call self % tallyClerks(idx) % reportSpawn(pOld, pNew, xsData, self % mem)
+      call self % tallyClerks(idx) % reportSpawn(MT, pOld, pNew, xsData, self % mem)
     end do
 
   end subroutine reportSpawn

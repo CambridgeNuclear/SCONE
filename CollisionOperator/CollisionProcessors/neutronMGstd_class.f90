@@ -177,7 +177,7 @@ contains
         call nextCycle % detain(pTemp)
 
         ! Report birth of new particle
-        call tally % reportSpawn(p, pTemp)
+        call tally % reportSpawn(N_FISSION, p, pTemp)
 
       end do
     end if
