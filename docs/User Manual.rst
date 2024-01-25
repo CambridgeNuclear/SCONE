@@ -301,6 +301,7 @@ neutronCEimp, to perform implicit collision processing
 * minWgt (*optional*, default = 0.25): minimum particle weight for rouletting
 * maxWgt (*optional*, default = 1.25): maximum particle weight for splitting
 * avgWgt (*optional*, default = 0.5): weight of a particle on surviving rouletting
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
 * impAbs (*optional*, default = 0): 1 for true; 0 for false; enables implicit capture
 * impGen (*optional*, default = 1): 1 for true; 0 for false; enables implicit fission
   sites generation
@@ -326,6 +327,19 @@ neutronMGstd, to perform analog collision processing
 Example: ::
 
       collisionOperator { neutronMG { type neutronMGstd; } }
+
+neutronMGimp
+############
+
+neutronMGimp, to perform implicit collision processing
+
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
+* weightWindows (*optional*, default = 0): 1 for true; 0 for false; enables the use of
+  weight windows
+
+Example: ::
+
+      collisionOperator { neutronMG { type neutronMGimp; weightWindows 1; maxSplit 50; } }
 
 Weight Windows
 --------------

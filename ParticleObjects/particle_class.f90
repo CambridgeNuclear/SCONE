@@ -116,6 +116,7 @@ module particle_class
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
     real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
     integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
+    integer(shortInt)          :: splitCount = 0   ! Counter of number of splits
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
