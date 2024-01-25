@@ -274,6 +274,7 @@ contains
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
     LHS % collisionN            = RHS % collisionN
+    LHS & splitCount            = 0 ! Reinitialise counter for number of splits
 
   end subroutine particle_fromParticleState
 
