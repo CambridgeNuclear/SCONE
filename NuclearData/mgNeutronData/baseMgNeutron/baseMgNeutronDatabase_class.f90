@@ -20,6 +20,10 @@ module baseMgNeutronDatabase_class
   ! baseMgNeutron Objects
   use baseMgNeutronMaterial_class, only : baseMgNeutronMaterial
 
+  ! MG NEUTRON CACHE
+  use mgNeutronCache_mod,           only : cache_materialCache => materialCache, &
+                                           cache_init => init
+
   implicit none
   private
 
@@ -108,7 +112,22 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+    associate (matCache => cache_materialCache(matIdx))
+
+      if (matCache % G_tot /= p % G) then
+        ! Get cross section
+        xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+        ! Update cache
+        matCache % xss % total = xs
+        matCache % G_tot = p % G
+
+      else
+        ! Retrieve cross section from cache
+        xs = matCache % xss % total
+
+      end if
+
+    end associate
 
   end function getTotalMatXS
 
@@ -164,7 +183,8 @@ contains
     if(matIdx < 1 .or. matIdx > size(self % mats)) then
       mat => null()
     else
-      mat => self % mats(matIdx)
+      ! Retrieve pointer from cache
+      mat => cache_materialCache(matIdx) % mat
     end if
 
   end function getMaterial
@@ -327,6 +347,16 @@ contains
       end do
       self % majorant(g) = xs
     end do
+
+    ! Initialies cross section cache
+    call cache_init(size(self % mats))
+
+    ! Store the material pointer in the material cache
+    !$omp parallel
+    do idx = 1,size(self % mats)
+      cache_materialCache(idx) % mat => self % mats(idx)
+    end do
+    !$omp end parallel
 
   end subroutine activate
 

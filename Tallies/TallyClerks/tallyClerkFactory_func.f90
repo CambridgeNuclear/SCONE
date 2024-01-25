@@ -24,7 +24,6 @@ module tallyClerkFactory_func
 
   public :: new_tallyClerk
 
-  ! *** ADD NAME OF A NEW TALLY FILTER HERE ***!
   ! List that contains all accaptable types of tallyClerks
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -60,58 +59,45 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of tallyClerk
-    ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
      case('keffAnalogClerk')
        allocate(keffAnalogClerk :: new)
-       call new % init(dict, name)
 
      case('keffImplicitClerk')
        allocate(keffImplicitClerk :: new)
-       call new % init(dict, name)
 
      case('collisionClerk')
        allocate(collisionClerk :: new)
-       call new % init(dict, name)
 
      case('collisionProbabilityClerk')
        allocate(collisionProbabilityClerk :: new)
-       call new % init(dict, name)
 
      case('trackClerk')
        allocate(trackClerk :: new)
-       call new % init(dict, name)
 
      case('simpleFMClerk')
        allocate(simpleFMClerk :: new)
-       call new % init(dict, name)
 
      case('dancoffBellClerk')
        allocate(dancoffBellClerk :: new)
-       call new % init(dict, name)
 
      case('shannonEntropyClerk')
        allocate(shannonEntropyClerk :: new)
-       call new % init(dict, name)
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
-       call new % init(dict, name)
 
      case('mgXsClerk')
        allocate(mgXsClerk :: new)
-       call new % init(dict, name)
 
-     !*** NEW TALLY MAP TEMPLATE ***!
-     !case('<newtallyClerkName>')
-     !  allocate(<newtallyClerkName> :: new)
-     !  call new % init(dict, name)
-     !
       case default
         print *, AVALIBLE_tallyClerks
         call fatalError(Here, 'Unrecognised type of tallyClerk: ' // trim(type))
 
     end select
+
+    ! Initialise new clerk
+    call new % init(dict, name)
 
   end subroutine new_tallyClerk
 

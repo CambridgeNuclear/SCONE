@@ -149,16 +149,20 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(keffImplicitClerk), intent(inout)  :: self
     class(particle), intent(in)              :: p
     class(nuclearDatabase),intent(inout)     :: xsData
     type(scoreMemory), intent(inout)         :: mem
+    logical(defBool), intent(in)             :: virtual
     type(neutronMacroXSs)                    :: xss
     class(neutronMaterial), pointer          :: mat
     real(defReal)                            :: totalXS, nuFissXS, absXS, flux
     real(defReal)                            :: s1, s2
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
+
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
     ! Obtain XSs
     mat => neutronMaterial_CptrCast(xsData % getMaterial( p % matIdx()))

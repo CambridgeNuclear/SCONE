@@ -14,7 +14,6 @@ module cellFactory_func
   implicit none
   private
 
-  ! ** ADD NAME OF NEW CELL TO THE LIST **!
   ! List that contains acceptable types of cells
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
   character(nameLen), dimension(*), parameter :: AVAILABLE_CELL = ['simpleCell']
@@ -49,7 +48,6 @@ contains
     call dict % get(type, 'type')
 
     ! Allocate approperiate cell
-    ! ** FOR NEW CELL ADD CASE STATEMENT HERE ** !
     select case (type)
       case ('simpleCell')
         allocate(simpleCell :: new)
