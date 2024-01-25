@@ -679,9 +679,9 @@ bmp
 * what (*optional*, default = material): defines what is highlighted in the
   plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
   highlights unique cell IDs
-* offset (*optional*, default = 0) An integer (positive or negative) that
+* offset (*optional*, default = random) An integer (positive or negative) that
   shifts the sequence of colours assigned to materials. Allows to change colours
-  from the default sequence in parametric way.
+  from the default sequence in a parametric way.
 
 Example: ::
 

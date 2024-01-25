@@ -3,7 +3,7 @@ module visualiser_class
   use numPrecision
   use universalVariables
   use genericProcedures,  only : fatalError, numToChar
-  use hashFunctions_func, only : knuthHash
+  use hashFunctions_func, only : knuthHash, FNV_1
   use imgBmp_func,        only : imgBmp_toFile
   use commandLineUI,      only : getInputFile
   use dictionary_class,   only : dictionary
@@ -232,7 +232,9 @@ contains
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempInt
     integer(shortInt), dimension(:,:), allocatable :: img
-    integer(shortInt)                              :: offset = 0
+    integer(shortInt)                              :: offset
+    character(10)                                  :: time
+    character(8)                                   :: date
     character(100), parameter :: Here = 'makeBmpImg (visualiser_class.f90)'
 
     ! Get plot parameters
@@ -290,7 +292,15 @@ contains
     end if
 
     ! Colourmap offset
-    call dict % getOrDefault(offset, 'offset', 0)
+    ! If not given select randomly
+    if (dict % isPresent('offset')) then
+      call dict % get(offset, 'offset')
+
+    else
+      call date_and_time(date, time)
+      call FNV_1(date // time, offset)
+
+    end if
 
     ! Get plot
     if (useWidth) then
