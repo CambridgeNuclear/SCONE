@@ -250,7 +250,7 @@ contains
     call dict % get(temp, 'centre')
 
     if (size(temp) /= 3) then
-      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+      call fatalError(Here, "'centre' must have size 3. Has: "//numToChar(size(temp)))
     end if
 
     centre = temp
