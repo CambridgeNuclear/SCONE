@@ -2,7 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameUFS, nameWW, maxSplit
+  use universalVariables,            only : nameUFS, nameWW
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -102,12 +102,13 @@ module neutronCEimp_class
     real(defReal) :: thresh_E
     real(defReal) :: thresh_A
     ! Variance reduction options
-    logical(defBool) :: weightWindows
-    logical(defBool) :: splitting
-    logical(defBool) :: roulette
-    logical(defBool) :: implicitAbsorption ! Prevents particles dying through capture
-    logical(defBool) :: implicitSites ! Generates fission sites on every fissile collision
-    logical(defBool) :: uniFissSites
+    integer(shortInt) :: maxSplit
+    logical(defBool)  :: weightWindows
+    logical(defBool)  :: splitting
+    logical(defBool)  :: roulette
+    logical(defBool)  :: implicitAbsorption ! Prevents particles dying through capture
+    logical(defBool)  :: implicitSites ! Generates fission sites on every fissile collision
+    logical(defBool)  :: uniFissSites
 
     type(weightWindowsField), pointer :: weightWindowsMap
 
@@ -159,6 +160,7 @@ contains
 
     ! Obtain settings for variance reduction
     call dict % getOrDefault(self % weightWindows,'weightWindows', .false.)
+    call dict % getOrDefault(self % maxSplit,'maxSplit', 1000)
     call dict % getOrDefault(self % splitting,'split', .false.)
     call dict % getOrDefault(self % roulette,'roulette', .false.)
     call dict % getOrDefault(self % minWgt,'minWgt',0.25_defReal)
@@ -515,7 +517,7 @@ contains
 
       ! If a particle is outside the WW map and all the weight limits
       ! are zero nothing happens. NOTE: this holds for positive weights only
-      if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < maxSplit)) then
+      if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < self % maxSplit)) then
         call self % split(p, thisCycle, maxWgt)
       elseif (p % w < minWgt) then
         call self % russianRoulette(p, avWgt)
@@ -563,23 +565,23 @@ contains
     mult = ceiling(p % w/maxWgt)
 
     ! Limit maximum split
-    if (mult > maxSplit - p % splitCount + 1) then
-      mult = maxSplit  - p % splitCount + 1
+    if (mult > self % maxSplit - p % splitCount + 1) then
+      mult = self % maxSplit  - p % splitCount + 1
     end if
 
     ! Decrease weight
     p % w = p % w/mult
-
+    p % splitCount = p % splitCount + mult
     ! Save current particle splitCount
-    splitCount = p % splitCount
+    !splitCount = p % splitCount
 
     ! Add split particle's to the dungeon
     do i = 1,mult-1
-      p % splitCount = 0
+      !p % splitCount = 0
       call thisCycle % detain(p)
     end do
 
-    p % splitCount = splitCount + mult
+    !p % splitCount = splitCount + mult
 
   end subroutine split
 

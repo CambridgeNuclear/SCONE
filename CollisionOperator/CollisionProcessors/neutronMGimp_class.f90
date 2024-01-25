@@ -2,7 +2,7 @@ module neutronMGimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameWW, maxSplit
+  use universalVariables,            only : nameWW
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -62,7 +62,8 @@ module neutronMGimp_class
     class(mgNeutronMaterial), pointer, public :: mat    => null()
 
     ! Variance reduction options
-    logical(defBool) :: weightWindows
+    integer(shortInt) :: maxSplit
+    logical(defBool)  :: weightWindows
     type(weightWindowsField), pointer :: weightWindowsMap
 
   contains
@@ -99,6 +100,7 @@ contains
     call init_super(self, dict)
 
     ! Obtain settings for variance reduction
+    call dict % getOrDefault(self % maxSplit,'maxSplit', 1000)
     call dict % getOrDefault(self % weightWindows,'weightWindows', .false.)
 
     ! Sets up the weight windows field
@@ -308,7 +310,7 @@ contains
 
       ! If a particle is outside the WW map and all the weight limits
       ! are zero nothing happens. NOTE: this holds for positive weights only
-      if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < maxSplit)) then
+      if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < self % maxSplit)) then
         call self % split(p, thisCycle, maxWgt)
       elseif (p % w < minWgt) then
         call self % russianRoulette(p, avWgt)
@@ -348,8 +350,8 @@ contains
     mult = ceiling(p % w/maxWgt)
 
     ! Limit maximum split
-    if (mult > maxSplit - p % splitCount + 1) then
-      mult = maxSplit  - p % splitCount + 1
+    if (mult > self % maxSplit - p % splitCount + 1) then
+      mult = self % maxSplit  - p % splitCount + 1
     end if
 
     ! Decrease weight
