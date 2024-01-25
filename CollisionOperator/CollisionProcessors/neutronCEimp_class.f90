@@ -58,6 +58,7 @@ module neutronCEimp_class
   !!  impAbs  -> is implicit capture performed? (off by default)
   !!  impGen  -> are fission sites generated implicitly? (on by default)
   !!  UFS     -> uniform fission sites variance reduction
+  !!  maxSplit -> maximum number of splits allowed per particle (default = 1000)
   !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
   !!              Target movment is sampled if neutron energy E < kT * thresh_E where
   !!              kT is target material temperature in [MeV]. (default = 400.0)
@@ -83,6 +84,7 @@ module neutronCEimp_class
   !!   #impGen         <logical>;#
   !!   #UFS            <logical>;#
   !!   #weightWindows  <logical>;#
+  !!   #maxSplit       <integer>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEimp
@@ -101,8 +103,8 @@ module neutronCEimp_class
     real(defReal) :: avWgt
     real(defReal) :: thresh_E
     real(defReal) :: thresh_A
-    ! Variance reduction options
     integer(shortInt) :: maxSplit
+    ! Variance reduction options
     logical(defBool)  :: weightWindows
     logical(defBool)  :: splitting
     logical(defBool)  :: roulette
@@ -565,23 +567,23 @@ contains
     mult = ceiling(p % w/maxWgt)
 
     ! Limit maximum split
-    if (mult > self % maxSplit - p % splitCount + 1) then
+    if (mult + p % splitCount > self % maxSplit) then
       mult = self % maxSplit  - p % splitCount + 1
     end if
 
     ! Decrease weight
     p % w = p % w/mult
-    p % splitCount = p % splitCount + mult
+
     ! Save current particle splitCount
-    !splitCount = p % splitCount
+    splitCount = p % splitCount
 
     ! Add split particle's to the dungeon
     do i = 1,mult-1
-      !p % splitCount = 0
+      p % splitCount = 0
       call thisCycle % detain(p)
     end do
 
-    !p % splitCount = splitCount + mult
+    p % splitCount = splitCount + mult
 
   end subroutine split
 

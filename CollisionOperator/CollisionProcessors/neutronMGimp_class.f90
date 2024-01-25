@@ -30,30 +30,26 @@ module neutronMGimp_class
   use geometryReg_mod,                only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
   use weightWindowsField_class,       only : weightWindowsField, weightWindowsField_TptrCast
 
-
-  ! Nuclear Data
-  !use nuclearData_inter,              only : nuclearData
-  !use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
-
-  ! Cross-section packages to interface with nuclear data
-  !use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
-
   implicit none
   private
 
   !!
-  !! Standard (default) scalar collision processor for MG neutrons
+  !! Scalar collision processor for MG neutrons
   !!   -> Preforms implicit fission site generation
   !!   -> Preforms analog capture
   !!   -> Treats fission as capture (only implicit generation of 2nd-ary neutrons)
   !!   -> Does not create secondary non-neutron projectiles
+  !!   -> Supports the use of weight windows
   !!
   !! Settings:
-  !!  NONE
+  !!  weightWindows -> uses a weight windows field (off by default)
+  !!  maxSplit -> maximum number of splits allowed per particle (default = 1000)
   !!
   !! Sample dictionary input:
   !!   collProcName {
   !!   type            neutronMGimp;
+  !!   #weightWindows  <logical>;#
+  !!   #maxSplit       <integer>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronMGimp
@@ -61,8 +57,10 @@ module neutronMGimp_class
     class(mgNeutronDatabase), pointer, public :: xsData => null()
     class(mgNeutronMaterial), pointer, public :: mat    => null()
 
-    ! Variance reduction options
+    !! Settings - private
     integer(shortInt) :: maxSplit
+
+    ! Variance reduction options
     logical(defBool)  :: weightWindows
     type(weightWindowsField), pointer :: weightWindowsMap
 
@@ -350,7 +348,7 @@ contains
     mult = ceiling(p % w/maxWgt)
 
     ! Limit maximum split
-    if (mult > self % maxSplit - p % splitCount + 1) then
+    if (mult + p % splitCount > self % maxSplit) then
       mult = self % maxSplit  - p % splitCount + 1
     end if
 

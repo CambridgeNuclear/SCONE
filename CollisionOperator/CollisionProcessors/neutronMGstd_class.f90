@@ -25,14 +25,6 @@ module neutronMGstd_class
   ! Cross section packages
   use neutronXsPackages_class,       only : neutronMacroXSs
 
-
-  ! Nuclear Data
-  !use nuclearData_inter,              only : nuclearData
-  !use perMaterialNuclearDataMG_inter, only : perMaterialNuclearDataMG
-
-  ! Cross-section packages to interface with nuclear data
-  !use xsMacroSet_class,               only : xsMacroSet, xsMacroSet_ptr
-
   implicit none
   private
 
