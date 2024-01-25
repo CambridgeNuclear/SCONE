@@ -30,6 +30,9 @@ module neutronMGimp_class
   use geometryReg_mod,                only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
   use weightWindowsField_class,       only : weightWindowsField, weightWindowsField_TptrCast
 
+  ! Tally interfaces
+  use tallyAdmin_class,       only : tallyAdmin
+
   implicit none
   private
 
@@ -112,9 +115,10 @@ contains
   !!
   !! Samples collision without any implicit treatment
   !!
-  subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
+  subroutine sampleCollision(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -146,9 +150,10 @@ contains
   !!
   !! Preform implicit treatment
   !!
-  subroutine implicit(self, p, collDat, thisCycle, nextCycle)
+  subroutine implicit(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -202,6 +207,10 @@ contains
         pTemp % wgt = wgt
 
         call nextCycle % detain(pTemp)
+
+        ! Report birth of new particle
+        call tally % reportSpawn(N_FISSION, p, pTemp)
+
       end do
     end if
 
@@ -210,9 +219,10 @@ contains
   !!
   !! Elastic Scattering
   !!
-  subroutine elastic(self, p , collDat, thisCycle, nextCycle)
+  subroutine elastic(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -224,9 +234,10 @@ contains
   !!
   !! Preform scattering
   !!
-  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
+  subroutine inelastic(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -259,9 +270,10 @@ contains
   !!
   !! Preform capture
   !!
-  subroutine capture(self, p, collDat, thisCycle, nextCycle)
+  subroutine capture(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -273,9 +285,10 @@ contains
   !!
   !! Preform fission
   !!
-  subroutine fission(self, p, collDat, thisCycle, nextCycle)
+  subroutine fission(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -287,9 +300,10 @@ contains
   !!
   !! Applay cutoffs or post-collision implicit treatment
   !!
-  subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
+  subroutine cutoffs(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronMGimp), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -309,9 +323,11 @@ contains
       ! If a particle is outside the WW map and all the weight limits
       ! are zero nothing happens. NOTE: this holds for positive weights only
       if ((p % w > maxWgt) .and. (maxWgt /= ZERO) .and. (p % splitCount < self % maxSplit)) then
-        call self % split(p, thisCycle, maxWgt)
+        call self % split(p, tally, thisCycle, maxWgt)
+
       elseif (p % w < minWgt) then
         call self % russianRoulette(p, avWgt)
+
       end if
 
     end if
@@ -337,34 +353,40 @@ contains
   !!
   !! Split particle which has too large a weight
   !!
-  subroutine split(self, p, thisCycle, maxWgt)
+  subroutine split(self, p, tally, thisCycle, maxWgt)
     class(neutronMGimp), intent(inout)    :: self
     class(particle), intent(inout)        :: p
+    type(tallyAdmin), intent(inout)       :: tally
     class(particleDungeon), intent(inout) :: thisCycle
     real(defReal), intent(in)             :: maxWgt
-    integer(shortInt)                     :: mult, i, splitCount
+    type(particleState)                   :: pTemp
+    integer(shortInt)                     :: mult, i
 
     ! This value must be at least 2
     mult = ceiling(p % w/maxWgt)
 
     ! Limit maximum split
     if (mult + p % splitCount > self % maxSplit) then
-      mult = self % maxSplit  - p % splitCount + 1
+      mult = self % maxSplit - p % splitCount + 1
     end if
 
-    ! Decrease weight
-    p % w = p % w/mult
-
-    ! Save current particle splitCount
-    splitCount = p % splitCount
+    ! Copy particle to a particle state
+    ! Note that particleState doesn't have property splitCount, so it is reset
+    ! to 0 for the new particle
+    pTemp = p
+    pTemp % wgt = p % w/mult
 
     ! Add split particle's to the dungeon
-    do i = 1,mult-1
-      p % splitCount = 0
-      call thisCycle % detain(p)
+    do i = 1, mult-1
+      call thisCycle % detain(pTemp)
+      call tally % reportSpawn(N_N_SPLIT, p, pTemp)
     end do
 
-    p % splitCount = splitCount + mult
+    ! Update particle split count
+    p % splitCount = p % splitCount + mult
+
+    ! Decrease original particle weight
+    p % w = p % w/mult
 
   end subroutine split
 
