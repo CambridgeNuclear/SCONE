@@ -99,7 +99,7 @@ contains
   end subroutine endFile
 
   !!
-  !! Return approperiate extension for the file
+  !! Return appropriate extension for the file
   !!
   !! See asciiOutput_inter for details
   !!
