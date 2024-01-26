@@ -78,7 +78,7 @@ Writing to an output file in SCONE is done through a series of calls to appropri
   call out % endBlock()
 
   !! We need to make sure that output file is properly finalised. We can skip
-  !! this line if we we are not in a `program` block e.g. in `subroutine` or `function`
+  !! this line if we are not in a `program` block e.g. in `subroutine` or `function`
   call out % finalise()
 
 
