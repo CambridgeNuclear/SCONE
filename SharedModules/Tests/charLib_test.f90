@@ -2,7 +2,7 @@ module charLib_test
 
   use numPrecision
   use charLib_func, only : splitChar
-  use pFUnit_mod
+  use funit
 
   implicit none
 

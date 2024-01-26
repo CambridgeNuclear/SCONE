@@ -1,7 +1,7 @@
 module intMap_test
   use numPrecision
   use intMap_class, only : intMap
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -42,8 +42,6 @@ contains
   !!
   subroutine setUp(this)
     class(test_intMap), intent(inout) :: this
-    integer(shortInt)                 :: temp
-    integer(shortInt)                 :: N, i
 
     ! Load entries
      call this % map % add(KEY1, VAL1)

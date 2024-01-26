@@ -8,7 +8,7 @@ module neutronScattering_iTest
   use neutronScatter_class,         only : neutronScatter, neutronScatter_TptrCast
   use aceCard_class,                only : aceCard
 
-  use pFUnit_mod
+  use funit
   implicit none
 
 
@@ -32,7 +32,6 @@ contains
     class(uncorrelatedReactionCE),pointer :: unCorrPtr
     type(neutronScatter),pointer          :: scatterPtr
     type(aceCard)                         :: ACE
-    type(RNG)                             :: rand
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
     ! Set pointers

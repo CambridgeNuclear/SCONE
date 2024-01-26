@@ -1,7 +1,7 @@
 module grid_test
   use numPrecision
   use universalVariables
-  use pfUnit_mod
+  use funit
   use grid_class, only : grid
 
   implicit none

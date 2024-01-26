@@ -5,7 +5,7 @@ module simpleCell_test
   use dictParser_func,    only : charToDict
   use surfaceShelf_class, only : surfaceShelf
   use simpleCell_class,   only : simpleCell
-  use pFUnit_mod
+  use funit
 
   implicit none
 

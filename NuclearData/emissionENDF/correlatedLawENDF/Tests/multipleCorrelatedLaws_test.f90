@@ -6,7 +6,7 @@ module multipleCorrelatedLaws_test
   use correlatedLawENDF_inter,      only : correlatedLawENDF
   use multipleCorrelatedLaws_class, only : multipleCorrelatedLaws
   use testCorrelatedLaw_class,      only : testCorrelatedLaw
-  use pFUnit_mod
+  use funit
   implicit none
 
 

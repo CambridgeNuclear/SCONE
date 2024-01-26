@@ -3,7 +3,7 @@ module particleDungeon_test
   use RNG_class,             only : RNG
   use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
-  use pFUnit_mod
+  use funit
 
   implicit none
 

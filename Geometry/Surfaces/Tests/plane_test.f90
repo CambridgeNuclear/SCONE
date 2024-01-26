@@ -5,7 +5,7 @@ module plane_test
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use plane_class,       only : plane
-  use pfUnit_mod
+  use funit
 
   implicit none
 

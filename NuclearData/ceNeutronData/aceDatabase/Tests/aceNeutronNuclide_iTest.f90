@@ -4,7 +4,7 @@ module aceNeutronNuclide_iTest
   use aceCard_class,           only : aceCard
   use ceNeutronDatabase_inter, only : ceNeutronDatabase
   use aceNeutronNuclide_class, only : aceNeutronNuclide
-  use pfUnit_mod
+  use funit
 
   implicit none
 

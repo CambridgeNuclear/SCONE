@@ -7,7 +7,7 @@ module pureCapture_test
   use pureCapture_class,            only : pureCapture, pureCapture_TptrCast
   use dictDeck_class,               only : dictDeck
 
-  use pFUnit_mod
+  use funit
 
   implicit none
 

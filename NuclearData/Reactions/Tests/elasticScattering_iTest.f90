@@ -7,7 +7,7 @@ module elasticScattering_iTest
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
   use elasticNeutronScatter_class,  only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use aceCard_class,                only : aceCard
-  use pFUnit_mod
+  use funit
   implicit none
 
 contains
@@ -28,7 +28,6 @@ contains
     class(uncorrelatedReactionCE),pointer :: unCorrPtr
     type(elasticNeutronScatter),pointer   :: elasticScatterPtr
     type(aceCard)                         :: ACE
-    type(RNG)                             :: rand
     real(defReal),parameter :: TOL = 1.0E-6_defReal
 
     ! Set pointers

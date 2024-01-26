@@ -4,6 +4,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(SCONE)
 
+# Set CMAKE Policies
+#   CMP0074: Starting with CMake 3.12, all `find_package` commands will use `<package>_ROOT`
+#            variables as hints for where to search. This policy provides compatibility
+#            with older projects.
+#            https://cmake.org/cmake/help/latest/policy/CMP0074.html
+cmake_policy(SET CMP0074 NEW)
+
 ####################################################################################################
 # DEFINE COMPILATION OPTIONS
 
@@ -86,7 +93,7 @@ if (BUILD_TESTS)
     # Sets PYTHONINTERP_FOUND & PYTHON_EXECUTABLE
     find_package(PythonInterp REQUIRED)
 
-    find_package(PFUNIT REQUIRED)
+    find_package(PFUNIT 4.7 REQUIRED)
     add_library(pFUnit STATIC IMPORTED)
     set_property(TARGET pFUnit PROPERTY IMPORTED_LOCATION ${PFUNIT_LIBRARIES})
 
@@ -144,112 +151,48 @@ target_link_libraries(scone.out scone )
 ####################################################################################################
 # COMPILE UNIT TESTS
 if(BUILD_TESTS)
+  enable_testing()
 
-  # Create directory in binary_dir for temporary preprocessed test files
-  file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
-
-  # Create required test suites listing file
-  file(WRITE ${PROJECT_BINARY_DIR}/generated/testSuites.inc "")
-
-  include_directories(
-      ${PFUNIT_MOD}
-      )
-
-  # Preprocess collected test files from global property into variable
-  # Copy files to the build folder
-
-  set(PREP_UNIT_TESTS)
   get_property(UNIT_TESTS GLOBAL PROPERTY UNIT_TESTS_LIST)
 
+  # Make absolute paths relative to source directory
   foreach(_testPath IN LISTS UNIT_TESTS)
-    # OBTAIN EXTENSION
-    string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
-
-    # REMOVE EXTENSION
-    string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
-
-    # OBTAIN FILE NAME WITHOUT EXTENSION
-    string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
-
-    # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR
-    add_custom_command(
-       OUTPUT ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
-       COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_PREPROC}/pFUnitParser.py ${_testPath}
-                                    ${PROJECT_BINARY_DIR}/generated/${testName}${extension}
-       DEPENDS pFUnit ${_testPath}
-       COMMENT "Preprocessing test ${testName}"
-       VERBATIM
-       )
-    # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc
-    set(PREP_UNIT_TESTS ${PREP_UNIT_TESTS} ${PROJECT_BINARY_DIR}/generated/${testName}${extension})
-    file(APPEND ${PROJECT_BINARY_DIR}/generated/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")
+    file(RELATIVE_PATH _testPath ${CMAKE_SOURCE_DIR} ${_testPath})
+    list(APPEND UNIT_TESTS_RELATIVE ${_testPath})
   endforeach()
 
-  add_executable(unitTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_UNIT_TESTS})
-  target_link_libraries(unitTests pFUnit scone)
-  target_include_directories(unitTests PUBLIC ${PROJECT_BINARY_DIR}/generated )
+  add_pfunit_ctest(unitTests
+    TEST_SOURCES ${UNIT_TESTS_RELATIVE}
+    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    )
 
-  # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor
-  # directives
-  # Select GNU compiler and Build Robust Test Suite
-  set_target_properties(unitTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
+  # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
+  # present if the suite contains only a TestCase and its methods
+  # We need to suppress this warning for clarity
+  target_compile_options(unitTests PRIVATE "-Wno-unused-variable" )
 
 ####################################################################################################
 # COMPILE INTEGRATION TESTS
 
-  # Create directory in binary_dir for temporary preprocessed test files
-  file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generatedInt)
-
-  # Create required test suites listing file
-  file(WRITE ${PROJECT_BINARY_DIR}/generatedInt/testSuites.inc "")
-
-  # Preprocess collected test files from global property into variable
-  # Copy files to the build folder
-
-  set(PREP_INTEGRATION_TESTS)
   get_property(INTEGRATION_TESTS GLOBAL PROPERTY INTEGRATION_TESTS_LIST)
 
+  # Make absolute paths relative to source directory
   foreach(_testPath IN LISTS INTEGRATION_TESTS)
-    # OBTAIN EXTENSION
-    string(REGEX MATCH "\\.[a-zA-Z0-9]+$" extension ${_testPath})
-
-    # REMOVE EXTENSION
-    string(REGEX REPLACE "${extension}$" "" _testPath_temp ${_testPath})
-
-    # OBTAIN FILE NAME WITHOUT EXTENSION
-    string(REGEX MATCH "[a-zA-Z0-9_]+$" testName ${_testPath_temp})
-
-    # ADD RULE PREPROCESS ALL TEST FILES TO A SINGLE FOLDER IN BINARY_DIR
-    add_custom_command(
-       OUTPUT ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension}
-       COMMAND ${PYTHON_EXECUTABLE} ${PFUNIT_PREPROC}/pFUnitParser.py ${_testPath}
-                                    ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension}
-       DEPENDS pFUnit ${_testPath}
-       COMMENT "Preprocessing test ${testName}"
-       VERBATIM
-       )
-    # APPEND LIST OF ALL PREPROCESSED UNIT TEST FILES & ADD TEST SUITE TO testSuites.inc
-    set(PREP_INTEGRATION_TESTS ${PREP_INTEGRATION_TESTS} ${PROJECT_BINARY_DIR}/generatedInt/${testName}${extension})
-    file(APPEND ${PROJECT_BINARY_DIR}/generatedInt/testSuites.inc "ADD_TEST_SUITE(${testName}_suite)\n")
+    file(RELATIVE_PATH _testPath ${CMAKE_SOURCE_DIR} ${_testPath})
+    list(APPEND INTEGRATION_TESTS_RELATIVE ${_testPath})
   endforeach()
 
+  add_pfunit_ctest(integrationTests
+    TEST_SOURCES ${INTEGRATION_TESTS_RELATIVE}
+    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
 
-  add_executable(integrationTests ${PFUNIT_INCLUDE_DIRS}/driver.F90  ${PREP_INTEGRATION_TESTS})
-  target_link_libraries(integrationTests pFUnit scone)
-  target_include_directories(integrationTests PUBLIC ${PROJECT_BINARY_DIR}/generatedInt )
+  # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
+  # present if the suite contains only a TestCase and its methods
+  # We need to suppress this warning for clarity
+  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable" )
 
-
-  # Switch off warnings when compiling tests. Has some unused variables and invalid preprocessor
-  # directives
-  # Select GNU compiler and Build Robust Test Suite
-  set_target_properties(integrationTests PROPERTIES COMPILE_FLAGS "-w -DGNU -DBUILD_ROBUST")
-
-  ##################################################################################################
-  # Register the test suites with CMake
-  # NOTE: Integration tests must be run from source directory
-  enable_testing()
-  add_test(NAME Unit_Tests COMMAND unitTests)
-  add_test(NAME Integration_Tests COMMAND integrationTests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 
 ####################################################################################################

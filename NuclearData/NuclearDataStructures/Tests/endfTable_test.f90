@@ -2,7 +2,7 @@ module endfTable_test
   use numPrecision
   use endfConstants
   use endfTable_class, only : endfTable, endf_bin_integral
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -267,7 +267,7 @@ contains
     real(defReal), dimension(7)            :: y
     type(endfTable)                        :: tab
     real(defReal), dimension(7)            :: out, val
-    real(defReal), dimension(3)            :: p, out2, val2
+    real(defReal), dimension(3)            :: p, val2
     real(defReal),parameter                :: TOL = 1.0E-6
 
     ! Calculate y values

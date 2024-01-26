@@ -1,7 +1,7 @@
 module timer_test
   use numPrecision
   use timer_mod, only : registerTimer, timerStart, timerStop, timerReset, timerTime
-  use pfUnit_mod
+  use funit
 
   implicit none
 

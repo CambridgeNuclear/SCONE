@@ -3,7 +3,7 @@ module tabularPdf_test
   use numPrecision
   use endfConstants
   use tabularPdf_class, only : tabularPdf
-  use pFUnit_mod
+  use funit
 
   implicit none
 

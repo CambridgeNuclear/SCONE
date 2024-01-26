@@ -6,7 +6,7 @@ module uniformScalarField_test
   use field_inter,              only : field
   use scalarField_inter,        only : scalarField, scalarField_CptrCast
   use uniformScalarField_class, only : uniformScalarField, uniformScalarField_TptrCast
-  use pFUnit_mod
+  use funit
 
   implicit none
 

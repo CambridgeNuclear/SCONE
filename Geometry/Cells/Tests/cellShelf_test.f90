@@ -7,7 +7,7 @@ module cellShelf_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use cell_inter,         only : cell
-  use pFUnit_mod
+  use funit
 
   implicit none
 

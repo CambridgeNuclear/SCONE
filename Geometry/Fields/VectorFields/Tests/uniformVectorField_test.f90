@@ -6,7 +6,7 @@ module uniformVectorField_test
   use field_inter,              only : field
   use vectorField_inter,        only : vectorField, vectorField_CptrCast
   use uniformVectorField_class, only : uniformVectorField, uniformVectorField_TptrCast
-  use pFUnit_mod
+  use funit
 
   implicit none
 

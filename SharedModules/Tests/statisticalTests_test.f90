@@ -2,7 +2,7 @@ module statisticalTests_test
 
   use numPrecision
   use statisticalTests_func, only : twoSampleKS
-  use pfUnit_mod
+  use funit
 
   implicit none
 

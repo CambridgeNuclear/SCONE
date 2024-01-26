@@ -18,7 +18,7 @@ module aceNeutronDatabase_iTest
   use aceNeutronNuclide_class,  only : aceNeutronNuclide, aceNeutronNuclide_TptrCast
   use neutronXSPackages_class,  only : neutronMicroXSs, neutronMacroXSs
   use materialMenu_mod,         only : mm_init => init, mm_kill => kill
-  use pFUnit_mod
+  use funit
 
   implicit none
 

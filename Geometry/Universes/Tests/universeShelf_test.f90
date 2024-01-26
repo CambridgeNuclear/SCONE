@@ -10,7 +10,7 @@ module universeShelf_test
   use universe_inter,      only : universe
   use uniFills_class,      only : uniFills
   use universeShelf_class, only : universeShelf
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -1,7 +1,7 @@
 module dictionary_test
   use numPrecision
   use dictionary_class, only : dictionary
-  use pFUnit_mod
+  use funit
   implicit none
 
 @TestCase

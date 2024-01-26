@@ -5,7 +5,7 @@ module sphere_test
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use sphere_class,       only : sphere
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -10,14 +10,14 @@ module latUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use latUniverse_class,  only : latUniverse
-  use pfUnit_mod
+  use funit
 
   implicit none
 
   ! Parameters
   character(*), parameter :: UNI1_DEF = &
   "id 1; type latUniverse; origin (0.0 0.0 0.0); rotation (0.0 0.0 0.0); &
-   pitch (1.0 2.0 3.0); shape (3 2 2); padMat void; &
+  &pitch (1.0 2.0 3.0); shape (3 2 2); padMat void; &
   &map ( 3 4 5 &
   &      7 4 8 &
   &            &
@@ -91,7 +91,6 @@ contains
   !!
 @Test
   subroutine test_misc()
-    real(defReal), dimension(3,3) :: mat
 
     ! * Single universe is fine here
     ! Get id
@@ -312,7 +311,6 @@ contains
 @Test
   subroutine test_cross()
     type(coord)       :: pos
-    integer(shortInt) :: idx
 
     ! *** 3D Lattice
     ! Cross inside

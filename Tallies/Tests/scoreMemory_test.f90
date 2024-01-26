@@ -2,7 +2,7 @@ module scoreMemory_test
   use numPrecision
   use genericProcedures, only : numToChar
   use scoreMemory_class, only : scoreMemory
-  use pFUnit_mod
+  use funit
 
   implicit none
 

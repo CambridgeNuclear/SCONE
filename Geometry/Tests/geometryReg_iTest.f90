@@ -11,7 +11,7 @@ module geometryReg_iTest
                                 gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, gr_kill => kill
   use geometryFactory_func, only : new_geometry
   use fieldFactory_func,    only : new_field
-  use pfUnit_mod
+  use funit
   implicit none
 
   ! Material definition

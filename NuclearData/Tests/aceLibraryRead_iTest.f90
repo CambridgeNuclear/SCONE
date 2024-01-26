@@ -3,7 +3,7 @@ module aceLibraryRead_iTest
   use numPrecision
   use aceLibrary_mod, only : load, new_neutronACE
   use aceCard_class,  only : aceCard
-  use pFUnit_mod
+  use funit
 
   implicit none
 

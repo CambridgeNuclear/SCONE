@@ -5,7 +5,7 @@ module uniFills_test
   use universalVariables, only : OUTSIDE_MAT, targetNotFound
   use intMap_class,       only : intMap
   use uniFills_class,     only : uniFills
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -180,7 +180,6 @@ contains
 @Test
   subroutine test_count_instances()
     type(intMap) :: map
-    integer(shortInt) :: idx
 
     ! Perform count
     call geom % countInstances(map)

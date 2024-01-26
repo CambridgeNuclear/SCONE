@@ -8,7 +8,7 @@ module multiScatterMG_test
   use reactionHandle_inter, only : reactionHandle
   use reactionMG_inter,     only : reactionMG, reactionMG_CptrCast
   use multiScatterMG_class, only : multiScatterMG, multiScatterMG_TptrCast, multiScatterMG_CptrCast
-  use pfUnit_mod
+  use funit
 
   implicit none
 

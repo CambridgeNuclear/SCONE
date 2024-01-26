@@ -2,7 +2,7 @@ module outputFile_test
 
   use numPrecision
   use outputFile_class, only : outputFile
-  use pFUnit_mod
+  use funit
 
   implicit none
 

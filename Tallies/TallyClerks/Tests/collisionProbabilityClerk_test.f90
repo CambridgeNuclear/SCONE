@@ -9,7 +9,7 @@ module collisionProbabilityClerk_test
   use scoreMemory_class,               only : scoreMemory
   use testNeutronDatabase_class,       only : testNeutronDatabase
   use outputFile_class,                only : outputFile
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -76,7 +76,6 @@ contains
     class(test_collisionProbabilityClerk), intent(inout) :: this
     type(scoreMemory)                                    :: mem
     type(particle)                                       :: p
-    type(particleState)                                  :: phase
     type(particleDungeon)                                :: pop
     type(testNeutronDatabase)                            :: xsData
     real(defReal)                                        :: val

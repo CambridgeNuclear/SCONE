@@ -7,7 +7,7 @@ module geometryStd_iTest
   use dictParser_func,   only : fileToDict
   use coord_class,       only : coordList
   use geometryStd_class, only : geometryStd
-  use pFUnit_mod
+  use funit
 
   implicit none
 

@@ -2,7 +2,7 @@ module RNG_test
 
   use numPrecision
   use RNG_class, only : RNG
-  use pFUnit_mod
+  use funit
 
   implicit none
 

@@ -2,7 +2,7 @@ module coord_test
 
   use numPrecision
   use coord_class, only : coord, coordList
-  use pfUnit_mod
+  use funit
 
   implicit none
 

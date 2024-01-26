@@ -7,7 +7,7 @@ module shannonEntropyClerk_test
   use dictionary_class,               only : dictionary
   use scoreMemory_class,              only : scoreMemory
   use outputFile_class,               only : outputFile
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -75,7 +75,6 @@ contains
     type(scoreMemory)                              :: mem
     type(particleState)                            :: phase
     type(particleDungeon)                          :: pop
-    real(defReal)                                  :: val
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! Create score memory

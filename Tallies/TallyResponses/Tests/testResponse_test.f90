@@ -5,7 +5,7 @@ module testResponse_test
   use particle_class,        only : particle
   use dictionary_class,      only : dictionary
   use nuclearDatabase_inter, only : nuclearDatabase
-  use pFUnit_mod
+  use funit
 
   implicit none
 
