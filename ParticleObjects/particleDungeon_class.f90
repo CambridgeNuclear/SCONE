@@ -491,10 +491,8 @@ contains
     count = 0
     do i = 1, self % pop
       id = self % prisoners(i) % broodID
-
       if (id < 1 .or. id > k) call fatalError(Here, 'Brood ID out of range: '//numToChar(id))
       count(id) = count(id) + 1
-
     end do
 
     ! Convert to starting index
