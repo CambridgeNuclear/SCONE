@@ -217,6 +217,7 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
+      p % showerID = 1       ! Avoid triggering error on sort by showerID
       call dungeon % detain(p)
     end do
 
@@ -254,6 +255,7 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
+      p % showerID = 1       ! Avoid triggering error on sort by showerID
       call dungeon % detain(p)
     end do
 
@@ -270,6 +272,76 @@ contains
     call dungeon % kill()
 
   end subroutine testNormPopUp
+
+  !!
+  !! Test sorting of the population by shower ID without duplicates
+  !!
+@Test
+  subroutine testSortingByShowerID()
+    type(particleDungeon)    :: dungeon
+    type(particle)           :: p
+    integer(shortInt)        :: i
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! Initialise
+    call dungeon % init(10)
+
+    ! Store some particles with shower ID in reverse order
+    do i = 1,10
+      p % showerID = 10 - i + 1
+      call dungeon % detain(p)
+    end do
+
+    ! Sort by shower ID
+    call dungeon % sortByShowerId(10)
+
+    ! Verify order
+    do i = 1,10
+      call dungeon % copy(p, i)
+      @assertEqual(i, p % showerID)
+    end do
+
+  end subroutine testSortingByShowerID
+
+
+  !!
+  !! Test sorting of the population by shower ID with duplicates
+  !!
+  @Test
+  subroutine testSortingByShowerID_withDuplicates()
+    type(particleDungeon)    :: dungeon
+    type(particle)           :: p
+    integer(shortInt)        :: i, j
+    integer(shortInt), parameter :: N_duplicates = 7
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! Initialise
+    call dungeon % init(10 * N_duplicates)
+
+    ! Store some particles with shower ID in reverse order
+    ! Use the group number to distinguish duplicates and make sure
+    ! that the insertion order is preserved (for particles with the same shower ID)
+    do j = 1,N_duplicates
+      do i = 1,10
+        p % showerID = 10 - i + 1
+        p % G = j
+        call dungeon % detain(p)
+      end do
+    end do
+
+    ! Sort by shower ID
+    call dungeon % sortByShowerId(10)
+
+    ! Verify order
+    do i = 1,10
+      do j = 1, N_duplicates
+        call dungeon % copy(p, j + (i-1) * N_duplicates)
+        @assertEqual(i, p % showerID)
+        @assertEqual(j, p % G)
+      end do
+    end do
+
+  end subroutine testSortingByShowerID_withDuplicates
 
 
 end module particleDungeon_test
