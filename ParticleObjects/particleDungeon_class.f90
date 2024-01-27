@@ -403,7 +403,7 @@ contains
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP, n_copies, n_duplicates
-    integer(shortInt)                     :: i, idx
+    integer(shortInt)                     :: i, idx, maxShowerID
     integer(shortInt), dimension(:), allocatable :: duplicates
     character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
 
@@ -415,7 +415,9 @@ contains
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
 
-    call self % sortByShowerID(N)
+    ! Determine the maximum shower ID and sort the dungeon
+    maxShowerID = maxval(self % prisoners(1:self % pop) % showerID)
+    call self % sortByShowerID(maxShowerID)
 
     ! Calculate excess particles to be removed
     excessP = self % pop - N
@@ -479,6 +481,9 @@ contains
     count = 0
     do i = 1, self % pop
       id = self % prisoners(i) % showerID
+
+      if (id < 1 .or. id > k) call fatalError(Here, 'Shower ID out of range: '//numToChar(id))
+
       count(id) = count(id) + 1
     end do
 
