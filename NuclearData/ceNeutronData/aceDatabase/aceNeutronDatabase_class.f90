@@ -4,8 +4,7 @@ module aceNeutronDatabase_class
   use endfConstants
   use universalVariables
   use errors_mod,         only : fatalError
-  use genericProcedures,  only : numToChar, concatenate, quickSort, &
-                                 removeDuplicatesSorted, binarySearch
+  use genericProcedures,  only : numToChar, removeDuplicatesSorted, binarySearch
   use dictionary_class,   only : dictionary
   use RNG_class,          only : RNG
   use charMap_class,      only : charMap
