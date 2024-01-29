@@ -19,6 +19,8 @@ option(LTO         "Enables link-time optimisation"     ON)
 option(COVERAGE    "Collect Coverage Info"              OFF)
 option(DEBUG       "Enable extra run-time checks"       OFF)
 option(OPENMP      "Enable parallelism with OpenMP"     ON)
+option(MPI         "Enable parallelism with MPI"        ON)
+
 
 # Include local cmake modules. TODO: Test on WINDOWS!!!
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -75,6 +77,12 @@ if(OPENMP)
                        "Use -DOPENMP=OFF to disable")
   endif()
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${OpenMP_Fortran_FLAGS}")
+endif()
+
+# Set up MPI
+if(MPI)
+  find_package(MPI COMPONENTS Fortran REQUIRED)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -DMPI")
 endif()
 
 
@@ -138,6 +146,9 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 add_library(scone STATIC ${SRCS})
 target_compile_options(scone PRIVATE ${scone_extra_flags} )
 target_link_libraries(scone  ${LAPACK_LIBRARIES} )
+if(MPI)
+  target_link_libraries(scone MPI::MPI_Fortran)
+endif()
 
 if(LTO)
   set_property(TARGET scone PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -147,6 +158,10 @@ endif()
 # COMPILE SOLVERS
 add_executable(scone.out ./Apps/scone.f90 )
 target_link_libraries(scone.out scone )
+if(MPI)
+  target_link_libraries(scone.out MPI::MPI_Fortran)
+endif()
+
 
 ####################################################################################################
 # COMPILE UNIT TESTS
@@ -206,6 +221,7 @@ message(STATUS "  Link-time optimisation:     " ${LTO})
 message(STATUS "  Code coverage logging:      " ${COVERAGE})
 message(STATUS "  Extra runtime debug checks: " ${DEBUG})
 message(STATUS "  OpenMP parallelism:         " ${OPENMP})
+message(STATUS "  MPI parallelism:            " ${MPI})
 message(STATUS "  Fortran compiler:     " ${CMAKE_Fortran_COMPILER})
 message(STATUS "  Compiler version:     " ${CMAKE_Fortran_COMPILER_VERSION})
 message(STATUS "  OpenMP version:       " ${OpenMP_CXX_VERSION})
