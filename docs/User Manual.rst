@@ -275,9 +275,9 @@ neutronCEstd, to perform analog collision processing
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
-  
+
 Example: ::
-  
+
       collisionOperator { neutronCE { type neutronCEstd; minEnergy 1.0e-12; maxEnergy 30.0;
       energyThreshold 200; massThreshold 2; DBRCeMin 1.0e-06; DBRCeMax 0.001; } }
 
@@ -301,6 +301,7 @@ neutronCEimp, to perform implicit collision processing
 * minWgt (*optional*, default = 0.25): minimum particle weight for rouletting
 * maxWgt (*optional*, default = 1.25): maximum particle weight for splitting
 * avgWgt (*optional*, default = 0.5): weight of a particle on surviving rouletting
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
 * impAbs (*optional*, default = 0): 1 for true; 0 for false; enables implicit capture
 * impGen (*optional*, default = 1): 1 for true; 0 for false; enables implicit fission
   sites generation
@@ -326,6 +327,19 @@ neutronMGstd, to perform analog collision processing
 Example: ::
 
       collisionOperator { neutronMG { type neutronMGstd; } }
+
+neutronMGimp
+############
+
+neutronMGimp, to perform implicit collision processing
+
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
+* weightWindows (*optional*, default = 0): 1 for true; 0 for false; enables the use of
+  weight windows
+
+Example: ::
+
+      collisionOperator { neutronMG { type neutronMGimp; weightWindows 1; maxSplit 50; } }
 
 Weight Windows
 --------------
@@ -679,6 +693,9 @@ bmp
 * what (*optional*, default = material): defines what is highlighted in the
   plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
   highlights unique cell IDs
+* offset (*optional*, default = random) An integer (positive or negative) that
+  shifts the sequence of colours assigned to materials. Allows to change colours
+  from the default sequence in a parametric way.
 
 Example: ::
 
@@ -736,7 +753,7 @@ Example: ::
 .. note::
    If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
    be included in the aceLibrary file.
-      
+
 baseMgNeutronDatabase
 #####################
 
@@ -792,6 +809,9 @@ Other options are:
 * xsFile: needed for multi-group simulations. Must contain the path to the file where
   the multi-group cross sections are stored.
 
+* rgb (*optional*): An array of three integers specifying the RGB colour e.g. ``(255 0 0)``. The
+  colour defined in this way will be used for visualisation of the material in the geometry plots.
+
 Example 1: ::
 
       materials {
@@ -802,6 +822,7 @@ Example 1: ::
       8016.03    0.018535464; }
       }
       water { temp 273;
+      rgb (0 0 200);
       composition {
       1001.03   0.0222222;
       8016.03   0.00535; }
@@ -1075,7 +1096,7 @@ Example: ::
       }
       }
 
-.. note:: 
+.. note::
    To calculate the average weight, one should divide weight moment 1 (weight1)
    by weight moment 0 (weight0). To calculate the variance of the weights, the
    tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2
