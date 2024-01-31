@@ -3,11 +3,12 @@ module visualiser_class
   use numPrecision
   use universalVariables
   use genericProcedures,  only : fatalError, numToChar
-  use hashFunctions_func, only : knuthHash
+  use hashFunctions_func, only : knuthHash, FNV_1
   use imgBmp_func,        only : imgBmp_toFile
   use commandLineUI,      only : getInputFile
   use dictionary_class,   only : dictionary
   use geometry_inter,     only : geometry
+  use materialMenu_mod,   only : mm_colourMap => colourMap
   use outputVTK_class
 
   implicit none
@@ -18,7 +19,7 @@ module visualiser_class
   !!
   !! Object that creates images relating to SCONE geometries
   !! Should be extensible for adding different visualisation methods
-  !! Recieves and generates data for visualisation
+  !! Receives and generates data for visualisation
   !! Requires a dictionary input which specifies the procedures to call
   !! Presently supports: VTK voxel mesh creation
   !!
@@ -59,7 +60,7 @@ contains
   !! Initialises visualiser
   !!
   !! Provides visualiser with filename for output,
-  !! geometry information, and the dictionary decribing
+  !! geometry information, and the dictionary describing
   !! what is to be plotted
   !!
   !! Args:
@@ -148,7 +149,7 @@ contains
   !!   }
   !!
   !! TODO: VTK output is placed in a input filename appended by '.vtk' extension.
-  !!   This prevents multiple VTK visualistions (due to overriding). Might also become
+  !!   This prevents multiple VTK visualisations (due to overriding). Might also become
   !!   weird for input files with extension e.g. 'input.dat'.
   !!   DEMAND USER TO GIVE OUTPUT NAME
   !!
@@ -211,11 +212,12 @@ contains
   !!     centre (0.0 0.0 0.0); // Coordinates of the centre of the plot
   !!     axis x;               // Must be 'x', 'y' or 'z'
   !!     res (300 300);        // Resolution of the image
+  !!     #offset 978; #        // Parameter to 'randomize' the colour map
   !!     #width (1.0 2.0);#    // Width of the plot from the centre
   !!   }
   !!
   !! NOTE: If 'width' is not given, the plot will extend to the bounds of the geometry.
-  !!   This may result in the provided centre beeing moved to the center of the geoemtry in the
+  !!   This may result in the provided centre being moved to the center of the geometry in the
   !!   plot plane. However, the position on the plot axis will be unchanged.
   !!
   subroutine makeBmpImg(self, dict)
@@ -230,6 +232,9 @@ contains
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempInt
     integer(shortInt), dimension(:,:), allocatable :: img
+    integer(shortInt)                              :: offset
+    character(10)                                  :: time
+    character(8)                                   :: date
     character(100), parameter :: Here = 'makeBmpImg (visualiser_class.f90)'
 
     ! Get plot parameters
@@ -245,7 +250,7 @@ contains
     call dict % get(temp, 'centre')
 
     if (size(temp) /= 3) then
-      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+      call fatalError(Here, "'centre' must have size 3. Has: "//numToChar(size(temp)))
     end if
 
     centre = temp
@@ -286,6 +291,17 @@ contains
 
     end if
 
+    ! Colourmap offset
+    ! If not given select randomly
+    if (dict % isPresent('offset')) then
+      call dict % get(offset, 'offset')
+
+    else
+      call date_and_time(date, time)
+      call FNV_1(date // time, offset)
+
+    end if
+
     ! Get plot
     if (useWidth) then
       call self % geom % slicePlot(img, centre, dir, what, width)
@@ -296,10 +312,10 @@ contains
     ! Translate to an image
     select case (what)
       case ('material')
-        img = materialColor(img)
+        img = materialColour(img, offset)
 
       case ('uniqueID')
-        img = uniqueIDColor(img)
+        img = uniqueIDColour(img)
 
       case default
         call fatalError(Here, "Invalid request for plot target. Must be 'material' or 'uniqueID'&
@@ -330,65 +346,53 @@ contains
 
 
   !!
-  !! Convert matIdx to a 24bit color
+  !! Convert matIdx to a 24bit colour
   !!
-  !! Special materials are associeted with special colors:
+  !! Special materials are associated with special colours:
   !!   OUTSIDE_MAT -> white (#ffffff)
   !!   VOID_MAT    -> black (#000000)
   !!   UNDEF_MAT   -> green (#00ff00)
   !!
   !! Args:
   !!   matIdx [in] -> Value of the material index
+  !!   offset [in] -> Offset to be used in the hash function
   !!
   !! Result:
-  !!   A 24-bit color specifing the material
+  !!   A 24-bit colour specifying the material
   !!
-  elemental function materialColor(matIdx) result(color)
+  elemental function materialColour(matIdx, offset) result(colour)
     integer(shortInt), intent(in) :: matIdx
-    integer(shortInt)             :: color
-    integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
-    integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
-    integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
+    integer(shortInt)             :: colour
+    integer(shortInt), intent(in) :: offset
 
-    select case (matIdx)
-      case (OUTSIDE_MAT)
-        color = COL_OUTSIDE
+    ! Since Knuth hash is cheap we can compute it anyway even if colour from
+    ! the map will end up being used
+    colour = mm_colourMap % getOrDefault(matIdx, knuthHash(matIdx + offset, 24))
 
-      case (VOID_MAT)
-        color = COL_VOID
-
-      case (UNDEF_MAT)
-        color = COL_UNDEF
-
-      case default
-        color = knuthHash(matIdx, 24)
-
-    end select
-
-  end function materialColor
+  end function materialColour
 
   !!
-  !! Convert uniqueID to 24bit color
+  !! Convert uniqueID to 24bit colour
   !!
   !! An elemental wrapper over Knuth Hash
   !!
-  !! We use a hash function to scatter colors accross all available.
+  !! We use a hash function to scatter colours across all available.
   !! Knuth multiplicative hash is very good at scattering integer
-  !! sequences e.g. {1, 2, 3...}. Thus, it is ideal for a colormap.
+  !! sequences e.g. {1, 2, 3...}. Thus, it is ideal for a colourmap.
   !!
   !! Args:
   !!   uniqueID [in] -> Value of the uniqueID
   !!
   !! Result:
-  !!   A 24-bit color specifing the uniqueID
+  !!   A 24-bit colour specifying the uniqueID
   !!
-  elemental function uniqueIDColor(uniqueID) result(color)
+  elemental function uniqueIDColour(uniqueID) result(colour)
     integer(shortInt), intent(in) :: uniqueID
-    integer(shortInt)             :: color
+    integer(shortInt)             :: colour
 
-    color = knuthHash(uniqueID, 24)
+    colour = knuthHash(uniqueID, 24)
 
-  end function uniqueIDColor
+  end function uniqueIDColour
 
 
 end module visualiser_class

@@ -21,7 +21,7 @@ module asciiJSON_class
   !! There is indentation for each block and entry, but long multi-dimensional (N-D) arrays
   !! are printed on a single line. Also N-D arrays are represented as a JSON array of arrays.
   !!
-  !! JSON output is fairly standard so it can be easlily read into Python and other enviroments
+  !! JSON output is fairly standard so it can be easily read into Python and other environments
   !!
   !! TODO:
   !!  Currently there is a dirty fix to remove commas at the end of a block, which requires to
@@ -39,7 +39,6 @@ module asciiJSON_class
   !!
   type, public, extends(asciiOutput) :: asciiJSON
     private
-    type(charTape)    :: output
     integer(shortInt) :: ind_lvl = 0
 
     integer(shortInt), dimension(:), allocatable :: shapeBuffer
@@ -49,8 +48,8 @@ module asciiJSON_class
 
   contains
     procedure :: init
+    procedure :: endFile
     procedure :: extension
-    procedure :: writeToFile
 
     procedure :: startBlock
     procedure :: endBlock
@@ -71,13 +70,33 @@ contains
     class(asciiJSON), intent(inout) :: self
 
     ! Add the initial bracket
-    call self % output % append( "{" // NEWLINE)
+    call self % append( "{" // NEWLINE)
     self % ind_lvl = 1
 
   end subroutine init
 
   !!
-  !! Return approperiate extension for the file
+  !! Finalise the printer
+  !!
+  !! See asciiOutput_inter for details
+  !!
+  subroutine endFile(self)
+    class(asciiJSON), intent(inout) :: self
+
+    ! Dirty fix
+    ! Remove comma from the last entry by rewind
+    ! Need to check that the character is a comma to avoid removing { when there is an empty block
+    ! TODO: Find better way. Will clash with any proper stream output
+    if (self % peek(2) == ",") then
+      call self % cut(2)
+      call self % append(NEWLINE)
+    end if
+    call self % append("}" // NEWLINE)
+
+  end subroutine endFile
+
+  !!
+  !! Return appropriate extension for the file
   !!
   !! See asciiOutput_inter for details
   !!
@@ -90,34 +109,6 @@ contains
   end function extension
 
   !!
-  !! Print the output to the given unit
-  !!
-  !! See asciiOutput_inter for details
-  !!
-  subroutine writeToFile(self, unit)
-    class(asciiJSON), intent(inout) :: self
-    integer(shortInt), intent(in)   :: unit
-    character(:),allocatable        :: form
-
-    ! Dirty fix
-    ! Remove comma from the last entry by rewind
-    ! Need to check that the character is a comma to avoid removing { when there is an empty block
-    ! TODO: Find better way. Will clash with any proper stream output
-    if (self % output % get(self % output % length() - 1) == ",") then
-      call self % output % cut(2)
-      call self % output % append(NEWLINE)
-    end if
-
-    ! Close the file
-    call self % output % append("}")
-
-    form = '(A' // numToChar(self % output % length()) // ')'
-
-    write(unit,form) self % output % expose()
-
-  end subroutine writeToFile
-
-  !!
   !! Change state to writing new block with "name"
   !!
   !! See asciiOutput_inter for details
@@ -127,10 +118,10 @@ contains
     character(nameLen), intent(in)  :: name
 
     ! Write indentation
-    call self % output % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
+    call self % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
 
     ! Open new block and increase indentation
-    call self % output % append(QUOTE // trim(name) // QUOTE // ":" // "{" // NEWLINE)
+    call self % append(QUOTE // trim(name) // QUOTE // ":" // "{" // NEWLINE)
     self % ind_lvl = self % ind_lvl + 1
 
   end subroutine startBlock
@@ -147,17 +138,17 @@ contains
     ! Remove comma from the last entry by rewind
     ! Need to check that the character is a comma to avoid removing { when there is an empty block
     ! TODO: Find better way. Will clash with any proper stream output
-    if (self % output % get(self % output % length() - 1) == ",") then
-      call self % output % cut(2)
-      call self % output % append(NEWLINE)
+    if (self % peek(2)  == ",") then
+      call self % cut(2)
+      call self % append(NEWLINE)
     end if
 
     ! Decrease and write indentation
     self % ind_lvl = self % ind_lvl - 1
-    call self % output % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
+    call self % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
 
     ! Close the block
-    call self % output % append("}" // ","// NEWLINE)
+    call self % append("}" // ","// NEWLINE)
 
   end subroutine endBlock
 
@@ -171,10 +162,10 @@ contains
     character(*), intent(in)        :: name
 
     ! Print indentation
-    call self % output % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
+    call self % append(repeat(BLANK, self % ind_lvl * IND_SIZE))
 
     ! Write the name
-    call self % output % append(QUOTE // trim(name) // QUOTE // ":")
+    call self % append(QUOTE // trim(name) // QUOTE // ":")
 
   end subroutine startEntry
 
@@ -188,7 +179,7 @@ contains
 
     ! End with NEWLINE
     ! Comma will be written together with a number/char
-    call self % output % append(NEWLINE)
+    call self % append(NEWLINE)
 
   end subroutine endEntry
 
@@ -235,12 +226,12 @@ contains
       mul = 1
       do i = 1, size(self % shapeBuffer)
         mul = mul * self % shapeBuffer(i)
-        if (modulo(self % count, mul) == 0) call self % output % append("[")
+        if (modulo(self % count, mul) == 0) call self % append("[")
       end do
     end if
 
     ! Print the number
-    call self % output % append(val)
+    call self % append(val)
 
     if (self % in_array) then
       ! Append the count
@@ -250,12 +241,12 @@ contains
       mul = 1
       do i = 1, size(self % shapeBuffer)
         mul = mul * self % shapeBuffer(i)
-        if (modulo(self % count, mul) == 0) call self % output % append("]")
+        if (modulo(self % count, mul) == 0) call self % append("]")
       end do
     end if
 
     ! Finish entry with a comma
-    call self % output % append(",")
+    call self % append(",")
 
   end subroutine printNum
 
@@ -274,12 +265,12 @@ contains
       mul = 1
       do i = 1, size(self % shapeBuffer)
         mul = mul * self % shapeBuffer(i)
-        if (modulo(self % count, mul) == 0) call self % output % append("[")
+        if (modulo(self % count, mul) == 0) call self % append("[")
       end do
     end if
 
     ! Print the character
-    call self % output % append(QUOTE // val // QUOTE)
+    call self % append(QUOTE // val // QUOTE)
 
     if (self % in_array) then
       ! Append the count
@@ -289,12 +280,12 @@ contains
       mul = 1
       do i = 1, size(self % shapeBuffer)
         mul = mul * self % shapeBuffer(i)
-        if (modulo(self % count, mul) == 0) call self % output % append("]")
+        if (modulo(self % count, mul) == 0) call self % append("]")
       end do
     end if
 
     ! Finish entry with a comma
-    call self % output % append(",")
+    call self % append(",")
 
   end subroutine printChar
 
