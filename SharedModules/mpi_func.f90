@@ -54,6 +54,18 @@ contains
   end function getMPIWorldSize
 
   !!
+  !! Return true if the process is the master process
+  !!
+  !! The master process is the one with rank 0
+  !!
+  function isMaster()
+    logical(defBool) :: isMaster
+
+    isMaster = (rank == 0)
+
+  end function isMaster
+
+  !!
   !! Get MPI rank
   !!
   !! It is the number of the process in the MPI world.

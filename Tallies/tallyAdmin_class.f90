@@ -731,6 +731,9 @@ contains
       call reportCycleEnd(self % atch, end)
     end if
 
+    ! Reduce the scores across the threads and processes
+    call self % mem % reduceBins()
+
     ! Go through all clerks that request the report
     !$omp parallel do
     do i=1,self % cycleEndClerks % getSize()

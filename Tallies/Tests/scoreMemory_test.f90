@@ -2,7 +2,7 @@ module scoreMemory_test
   use numPrecision
   use genericProcedures, only : numToChar
   use scoreMemory_class, only : scoreMemory
-  use funit
+  use pFUnit_mod
 
   implicit none
 
@@ -115,6 +115,7 @@ contains
         call mem % accumulate(int(this % scoresInt(j),longInt),6_longInt)
 
       end do
+      call mem % reduceBins()
       ! Close a single bin with diffrent normalisation
       call mem % closeBin(1.2_defReal, 3_longInt)
 
@@ -194,7 +195,7 @@ contains
     @assertEqual(ZERO, res2, TOL)
     @assertEqual(ZERO, STD, TOL)
 
-    ! Free memor y
+    ! Free memory
     call mem % kill()
 
   end subroutine testScoring
@@ -242,6 +243,7 @@ contains
     call mem % score(ONE,1_longInt)
     call mem % score(ONE,1_longInt)
     call mem % score(ONE,1_longInt)
+    call mem % reduceBins()
 
     @assertEqual(3*ONE, mem % getScore(1_longInt), TOL, 'Test getScore, valid bin:')
     @assertEqual(ZERO, mem % getScore(0_longInt), TOL, 'Test getScore, not +ve bin:')

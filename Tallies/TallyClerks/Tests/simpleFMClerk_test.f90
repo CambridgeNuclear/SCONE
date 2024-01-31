@@ -126,6 +126,7 @@ contains
     call this % clerk % reportCycleEnd(pop, mem)
 
     ! Close cycle
+    call mem % reduceBins()
     call mem % closeCycle(ONE)
 
     ! Verify results

@@ -131,9 +131,11 @@ contains
     p % w = 0.9
     p % preCollision % matIdx = 88
     call this % clerk % reportInColl(p, xsData, mem, .false.)
-    call this % clerk % reportCycleEnd(pop, mem)
+
 
     ! Close cycle
+    call mem % reduceBins()
+    call this % clerk % reportCycleEnd(pop, mem)
     call mem % closeCycle(ONE)
 
     ! Verify results

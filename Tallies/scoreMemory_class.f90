@@ -9,11 +9,12 @@ module scoreMemory_class
   private
 
   !! Parameters for indexes of per cycle SCORE, Cumulative Sum and Cumulative Sum of squares
-  integer(shortInt), parameter :: CSUM  = 1, &
-                                  CSUM2 = 2
+  integer(shortInt), parameter :: BIN = 1, &
+                                  CSUM  = 2, &
+                                  CSUM2 = 3
 
   !! Size of the 2nd Dimension of bins
-  integer(shortInt), parameter :: DIM2 = 2
+  integer(shortInt), parameter :: DIM2 = 3
 
 
   !!
@@ -59,6 +60,8 @@ module scoreMemory_class
   !!
   !!     getBatchSize(): Returns number of cycles that constitute a single batch.
   !!
+  !!     reduceBins(): Move the scores from parallelBins and different processes to bins.
+  !!
   !! Example use case:
   !!
   !!  do batches=1,20
@@ -99,6 +102,7 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: reduceBins
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -283,11 +287,10 @@ contains
       do i = 1, self % N
 
         ! Normalise scores
-        self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
-        res = sum(self % parallelBins(i,:))
+        res = self % bins(i, BIN) * normFactor
 
         ! Zero all score bins
-        self % parallelBins(i,:) = ZERO
+        self % bins(i, BIN) = ZERO
 
         ! Increment cumulative sums
         self % bins(i,CSUM)  = self % bins(i,CSUM) + res
@@ -321,15 +324,14 @@ contains
     end if
 
     ! Normalise score
-    self % parallelBins(idx, :) = self % parallelBins(idx, :) * normFactor
+    res = self % bins(idx, BIN) * normFactor
 
     ! Increment cumulative sum
-    res = sum(self % parallelBins(idx,:))
     self % bins(idx,CSUM)  = self % bins(idx,CSUM) + res
     self % bins(idx,CSUM2) = self % bins(idx,CSUM2) + res * res
 
     ! Zero the score
-    self % parallelBins(idx,:) = ZERO
+    self % bins(idx, BIN) = ZERO
 
   end subroutine closeBin
 
@@ -355,6 +357,28 @@ contains
     S = self % batchSize
 
   end function getBatchSize
+
+  !!
+  !! Combine the bins across threads and processes
+  !!
+  !! NOTE:
+  !!  Need to be called before reporting CycleEnd to the clerks or calling closeCycle.
+  !!  If it is not the case the results will be incorrect. This is not ideal design
+  !!  and probably should be improved in the future.
+  !!
+  subroutine reduceBins(self)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt)                  :: i
+
+    !$omp parallel do
+    do i = 1, self % N
+      self % bins(i, BIN) = sum(self % parallelBins(i,:))
+      self % parallelBins(i,:) = ZERO
+    end do
+    !$omp end parallel do
+
+  end subroutine reduceBins
+
 
   !!
   !! Load mean result and Standard deviation into provided arguments
@@ -441,7 +465,7 @@ contains
     if(idx <= 0_longInt .or. idx > self % N) then
       score = ZERO
     else
-      score = sum(self % parallelBins(idx, :))
+      score = self % bins(idx, BIN)
     end if
 
   end function getScore
