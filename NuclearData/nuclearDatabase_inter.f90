@@ -171,7 +171,7 @@ module nuclearDatabase_inter
     !!
     !! Return pointer to material in a database
     !!
-    !! Allows to retrive an access to material data for all databases types
+    !! Allows to retrieve an access to material data for all databases types
     !!
     !! NOTE: This function can be used to inquire about the presence of matIdx in the database!
     !!
@@ -194,7 +194,7 @@ module nuclearDatabase_inter
     !!
     !! Return pointer to nuclide in a database
     !!
-    !! Allows to retrive an access to nuclide data for all databases types
+    !! Allows to retrieve an access to nuclide data for all databases types
     !! If database does not contain nuclides (e.g. MG data) just returns null() pointer
     !!
     !! NOTE: This function can be used to inquire about the presence of nucIdx in the database!
@@ -218,7 +218,7 @@ module nuclearDatabase_inter
     !!
     !! Return a pointer to a reaction
     !!
-    !! Allows to retrive an access to reaction data for all databases types
+    !! Allows to retrieve an access to reaction data for all databases types
     !! Reactions can be associated either with nuclides or materials. Thus, there is ambiguity
     !! whether material or nuclide should be asked to provide reaction data (using matIdx or nuIdx)
     !!

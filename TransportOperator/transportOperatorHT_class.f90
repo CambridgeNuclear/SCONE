@@ -91,7 +91,7 @@ contains
     DTLoop:do
       distance = -log( p % pRNG % get() ) * majorant_inv
 
-      ! Move partice in the geometry
+      ! Move particle in the geometry
       call self % geom % teleport(p % coords, distance)
 
       ! If particle has leaked exit

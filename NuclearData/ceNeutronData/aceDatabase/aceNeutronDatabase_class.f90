@@ -63,16 +63,16 @@ module aceNeutronDatabase_class
   !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} }
   !!
   !! Public Members:
-  !!   nuclides   -> array of aceNeutronNuclides with data
-  !!   materials  -> array of ceNeutronMaterials with data
-  !!   Ebounds    -> array with bottom (1) and top (2) energy bound
-  !!   majorant   -> unionised majorant cross section
-  !!   eGridUnion -> unionised energy grid
-  !!   activeMat  -> array of materials present in the geometry
-  !!   nucToZaid  -> map to link nuclide index to zaid index
-  !!   hasUrr     -> ures probability tables flag, it's false by default
-  !!   hasDBRC    -> DBRC flag, it's false by default
-  !!   has majorant -> unionised majorant cross section flag
+  !!   nuclides    -> array of aceNeutronNuclides with data
+  !!   materials   -> array of ceNeutronMaterials with data
+  !!   Ebounds     -> array with bottom (1) and top (2) energy bound
+  !!   majorant    -> unionised majorant cross section
+  !!   eGridUnion  -> unionised energy grid
+  !!   activeMat   -> array of materials present in the geometry
+  !!   nucToZaid   -> map to link nuclide index to zaid index
+  !!   hasUrr      -> ures probability tables flag, it's false by default
+  !!   hasDBRC     -> DBRC flag, it's false by default
+  !!   hasMajorant -> unionised majorant cross section flag
   !!
   !! Interface:
   !!   nuclearData Interface
@@ -694,7 +694,7 @@ contains
     end do
 
     ! Read unionised majorant flag
-    call dict % getOrDefault(self % hasMajorant, 'majorant', .false.)
+    call dict % getOrDefault(self % hasMajorant, 'majorant', .true.)
 
     ! If on, initialise probability tables for ures
     if (self % hasUrr) then
