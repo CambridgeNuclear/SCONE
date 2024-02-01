@@ -4,6 +4,8 @@ module fixedSourcePhysicsPackage_class
   use universalVariables
   use endfConstants
   use genericProcedures,              only : fatalError, printFishLineR, numToChar, rotateVector
+  use mpi_func,                       only : isMPIMaster, getWorkshare, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD, &
+                                             MASTER_RANK, getOffset
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
@@ -80,6 +82,7 @@ module fixedSourcePhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
+    integer(shortInt)  :: totalPop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -116,7 +119,8 @@ contains
     print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
 
     call self % cycles(self % tally, self % N_cycles)
-    call self % collectResults()
+
+    if (isMPIMaster()) call self % collectResults()
 
     print *
     print *, "\/\/ END OF FIXED SOURCE CALCULATION \/\/"
@@ -130,7 +134,7 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, n, nParticles
+    integer(shortInt)                               :: i, n, nParticles, offset
     integer(shortInt), save                         :: j, bufferExtra
     type(particle), save                            :: p, transferP
     type(particleDungeon), save                     :: buffer
@@ -155,6 +159,10 @@ contains
     !$omp end parallel
 
     nParticles = self % pop
+    offset = getOffset(self % totalPop)
+
+    ! Skip RNG state forward based on the process rank
+    call self % pRNG % stride(offset)
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -235,7 +243,7 @@ contains
       !$omp end parallel do
 
       ! Update RNG
-      call self % pRNG % stride(self % pop)
+      call self % pRNG % stride(self % totalPop)
 
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
@@ -249,14 +257,16 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      call printFishLineR(i)
-      print *
-      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % pop)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      if (isMPIMaster()) then
+        call printFishLineR(i)
+        print *
+        print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
+        print *, 'Pop:          ', numToChar(self % pop)
+        print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+        print *, 'End time:     ', trim(secToChar(end_T))
+        print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+        call tally % display()
+      end if
     end do
 
   end subroutine cycles
@@ -272,20 +282,20 @@ contains
     call out % init(self % outputFormat, filename=self % outputFile)
 
     name = 'seed'
-    call out % printValue(self % pRNG % getSeed(),name)
+    call out % printValue(self % pRNG % getSeed(), name)
 
     name = 'pop'
-    call out % printValue(self % pop,name)
+    call out % printValue(self % totalPop, name)
 
     name = 'Source_batches'
-    call out % printValue(self % N_cycles,name)
+    call out % printValue(self % N_cycles, name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+    call out % printValue((self % CPU_time_end - self % CPU_time_start), name)
 
     name = 'Transport_time'
-    call out % printValue(timerTime(self % timerMain),name)
+    call out % printValue(timerTime(self % timerMain), name)
 
     ! Print tally
     call self % tally % print(out)
@@ -313,7 +323,9 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
+    call dict % get( self % totalPop,'pop')
+    self % pop = getWorkshare(self % totalPop)
+
     call dict % get( self % N_cycles,'cycles')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
@@ -354,9 +366,15 @@ contains
       ! Obtain time string and hash it to obtain random seed
       call date_and_time(date, time)
       string = date // time
-      call FNV_1(string,seed_temp)
+      call FNV_1(string, seed_temp)
 
     end if
+
+    ! Brodcast seed to all processes
+#ifdef MPI
+    call MPI_Bcast(seed_temp, 1, MPI_INTEGER, MASTER_RANK, MPI_COMM_WORLD)
+#endif
+
     seed = seed_temp
     call self % pRNG % init(seed)
 

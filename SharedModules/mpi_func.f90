@@ -57,6 +57,44 @@ contains
   end subroutine mpiFinalise
 
   !!
+  !! Get the share of work N for the current process
+  !!
+  !! Args:
+  !!  N [in] -> Total measure of work (e.g. number of particles)
+  !!
+  !! Result:
+  !!  The share of work for the current process
+  !!
+  function getWorkshare(N) result(share)
+    integer(shortInt), intent(in) :: N
+    integer(shortInt)             :: share
+
+    share = (N + rank) / worldSize
+
+  end function getWorkshare
+
+  !!
+  !! Get starting work offset for the current process
+  !!
+  !! Args:
+  !!  N [in] -> Total measure of work (e.g. number of particles)
+  !!
+  !! Result:
+  !!  The starting offset for the current process: offset = Sum_{i=0}^{rank-1} N_i
+  !!  where N_i is the share of work for process i
+  !!
+  function getOffset(N) result(offset)
+    integer(shortInt), intent(in) :: N
+    integer(shortInt)             :: offset
+    integer(shortInt)             :: remainder
+
+    remainder = mod(N, worldSize)
+    offset = N / worldSize * rank + max(0, remainder + rank - worldSize)
+
+  end function getOffset
+
+
+  !!
   !! Get MPI world size
   !!
   !! It is the number of processes launched concurrently and communicating
