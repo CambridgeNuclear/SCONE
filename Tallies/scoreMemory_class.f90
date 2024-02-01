@@ -1,6 +1,7 @@
 module scoreMemory_class
 
   use numPrecision
+  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
   use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
@@ -368,7 +369,9 @@ contains
   !!
   subroutine reduceBins(self)
     class(scoreMemory), intent(inout) :: self
-    integer(longInt)                  :: i
+    integer(longInt)                  :: i, start, chunk
+    integer(shortInt)                 :: error
+    character(100),parameter :: Here = 'reduceBins (scoreMemory_class.f90)'
 
     !$omp parallel do
     do i = 1, self % N
@@ -377,6 +380,31 @@ contains
     end do
     !$omp end parallel do
 
+    ! Reduce across processes
+    ! We use the parallelBins array as a temporary storage
+#ifdef MPI
+    ! Since the number of bins is limited by 64bit signed integer and the
+    ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
+    ! to split the reduction operation into chunks
+    start = 1
+    chunk = min(self % N, huge(start))
+
+    do while (start <= self % N)
+      call mpi_reduce(self % bins(start : start + chunk - 1, BIN), &
+                      self % parallelBins(start : start + chunk - 1, 1),&
+                      int(chunk, shortInt), &
+                      MPI_DEFREAL, &
+                      MPI_SUM, &
+                      MASTER_RANK, &
+                      MPI_COMM_WORLD, &
+                      error)
+      start = start + chunk
+    end do
+
+    ! Copy the result back to bins
+    self % bins(:,BIN) = self % parallelBins(1:self % N, 1)
+
+#endif
   end subroutine reduceBins
 
 

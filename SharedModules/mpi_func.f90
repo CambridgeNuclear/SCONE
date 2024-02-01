@@ -3,10 +3,16 @@ module mpi_func
 #ifdef MPI
   use mpi_f08
 #endif
+  use genericProcedures, only : numToChar
+  use errors_mod,        only : fatalError
   implicit none
 
   integer(shortInt), private :: worldSize
   integer(shortInt), private :: rank
+  integer(shortInt), parameter  :: MASTER_RANK = 0
+
+  !! Common MPI types
+  type(MPI_Datatype)            :: MPI_DEFREAL
 
 contains
 
@@ -18,11 +24,17 @@ contains
   subroutine mpiInit()
 #ifdef MPI
     integer(shortInt) :: ierr
+
     call mpi_init(ierr)
 
     call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
 
     call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
+
+    call mpi_type_create_f90_real(precision(1.0_defReal), range(1.0_defReal), &
+                                  MPI_DEFREAL, ierr)
+
+    call mpi_type_commit(MPI_DEFREAL, ierr)
 
 #else
     worldSize = 1
@@ -38,7 +50,9 @@ contains
   subroutine mpiFinalise()
 #ifdef MPI
     integer(shortInt) :: ierr
-    call MPI_Finalize(ierr)
+
+    call mpi_finalize(ierr)
+
 #endif
   end subroutine mpiFinalise
 
@@ -58,12 +72,12 @@ contains
   !!
   !! The master process is the one with rank 0
   !!
-  function isMaster()
-    logical(defBool) :: isMaster
+  function isMPIMaster()
+    logical(defBool) :: isMPIMaster
 
-    isMaster = (rank == 0)
+    isMPIMaster = (rank == 0)
 
-  end function isMaster
+  end function isMPIMaster
 
   !!
   !! Get MPI rank

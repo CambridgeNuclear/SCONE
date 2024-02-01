@@ -2,6 +2,7 @@ module tallyAdmin_class
 
   use numPrecision
   use tallyCodes
+  use mpi_func,               only : isMPIMaster
   use genericProcedures,      only : fatalError, charCmp
   use dictionary_class,       only : dictionary
   use dynArray_class,         only : dynIntArray
@@ -734,29 +735,31 @@ contains
     ! Reduce the scores across the threads and processes
     call self % mem % reduceBins()
 
-    ! Go through all clerks that request the report
-    !$omp parallel do
-    do i=1,self % cycleEndClerks % getSize()
-      idx = self % cycleEndClerks % get(i)
-      call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
-    end do
-    !$omp end parallel do
+    if (isMPIMaster()) then
+      ! Go through all clerks that request the report
+      !$omp parallel do
+      do i=1,self % cycleEndClerks % getSize()
+        idx = self % cycleEndClerks % get(i)
+        call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
+      end do
+      !$omp end parallel do
 
-    ! Calculate normalisation factor
-    if( self % normBInAddr /= NO_NORM ) then
-      normScore  = self % mem % getScore(self % normBinAddr)
-      if (normScore == ZERO) then
-        call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+      ! Calculate normalisation factor
+      if( self % normBInAddr /= NO_NORM ) then
+        normScore  = self % mem % getScore(self % normBinAddr)
+        if (normScore == ZERO) then
+          call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
 
+        end if
+        normFactor = self % normValue / normScore
+
+      else
+        normFactor = ONE
       end if
-      normFactor = self % normValue / normScore
 
-    else
-      normFactor = ONE
+      ! Close cycle multipling all scores by multiplication factor
+      call self % mem % closeCycle(normFactor)
     end if
-
-    ! Close cycle multipling all scores by multiplication factor
-    call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
 
