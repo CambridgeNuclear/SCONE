@@ -3,7 +3,8 @@ module eigenPhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, printFishLineR, numToChar, rotateVector
+  use genericProcedures,              only : fatalError, numToChar, rotateVector
+  use display_func,                   only : printFishLineR
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile

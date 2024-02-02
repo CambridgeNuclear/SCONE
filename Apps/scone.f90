@@ -1,7 +1,7 @@
 program scone
 
   use numPrecision
-  use genericProcedures,          only : printStart
+  use display_func,               only : printStart, statusMsg
   use openmp_func,                only : ompSetNumThreads
   use mpi_func,                   only : mpiInit, mpiFinalise
   use commandLineUI,              only : getInputFile, clOptionIsPresent, addClOption, getFromCL
@@ -63,6 +63,6 @@ program scone
 
   call mpiFinalise()
 
-  print *, 'Total calculation time: ', trim(secToChar(timerTime(timerIdx)))
-  print *, 'Have a good day and enjoy your result analysis!'
+  call statusMsg('Total calculation time: ' // trim(secToChar(timerTime(timerIdx))))
+  call statusMsg('Have a good day and enjoy your result analysis!')
 end program scone

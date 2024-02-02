@@ -3,9 +3,11 @@ module fixedSourcePhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, printFishLineR, numToChar, rotateVector
+  use genericProcedures,              only : fatalError, numToChar, rotateVector
+  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
+                                             printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD, &
-                                             MASTER_RANK, getOffset
+                                             MASTER_RANK, getOffset, getMPIRank
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
@@ -115,16 +117,17 @@ contains
   subroutine run(self)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
+    call printSeparatorLine()
+    call printSectionStart("FIXED SOURCE CALCULATION")
 
     call self % cycles(self % tally, self % N_cycles)
 
     if (isMPIMaster()) call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF FIXED SOURCE CALCULATION \/\/"
-    print *
+    call statusMsg("")
+    call printSectionEnd("END OF FIXED SOURCE CALCULATION")
+    call statusMsg("")
+
   end subroutine
 
   !!
@@ -257,16 +260,14 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      if (isMPIMaster()) then
-        call printFishLineR(i)
-        print *
-        print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-        print *, 'Pop:          ', numToChar(self % pop)
-        print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-        print *, 'End time:     ', trim(secToChar(end_T))
-        print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-        call tally % display()
-      end if
+      call printFishLineR(i)
+      call statusMsg("")
+      call statusMsg("Source batch: " // numToChar(i) // " of " // numToChar(N_cycles))
+      call statusMsg("Pop:          " // numToChar(self % pop))
+      call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
+      call statusMsg("End time:     " // trim(secToChar(end_T)))
+      call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
+      call tally % display()
     end do
 
   end subroutine cycles
@@ -396,11 +397,11 @@ contains
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
-    if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+    if (dict % isPresent('viz') .and. isMPIMaster()) then
+      call statusMsg("Initialising visualiser")
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      call statusMsg("Constructing visualisation")
       call viz % makeViz()
       call viz % kill()
     endif
@@ -467,13 +468,14 @@ contains
   subroutine printSettings(self)
     class(fixedSourcePhysicsPackage), intent(in) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
-    print *, "Source batches:       ", numToChar(self % N_cycles)
-    print *, "Population per batch: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:     ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    call printSeparatorLine()
+    call printSectionStart("FIXED SOURCE CALCULATION SETTINGS")
+    call statusMsg("Source batches:       " // numToChar(self % N_cycles))
+    call statusMsg("Population per batch: " // numToChar(self % pop))
+    call statusMsg("Initial RNG Seed:     " // numToChar(self % pRNG % getSeed()))
+    call statusMsg("")
+    call printSeparatorLine()
+
   end subroutine printSettings
 
 end module fixedSourcePhysicsPackage_class

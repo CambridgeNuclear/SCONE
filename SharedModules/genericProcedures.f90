@@ -1,10 +1,6 @@
 module genericProcedures
-  ! Intrinsic fortran Modules
-  use iso_fortran_env, only : compiler_version
-
   use numPrecision
-  use openmp_func, only : ompGetMaxThreads
-  use errors_mod,  only : fatalError
+  use errors_mod, only: fatalError
   use endfConstants
   use universalVariables
 
@@ -1430,55 +1426,5 @@ module genericProcedures
         str = "Unknown "// numToChar(type)
     end select
   end function printParticleType
-
-
-  !!
-  !! Prints Scone ACII Header
-  !!
-  subroutine printStart()
-    print *, repeat(" ><((((*> ",10)
-    print *, ''
-    print * ,"        _____ __________  _   ________  "
-    print * ,"       / ___// ____/ __ \/ | / / ____/  "
-    print * ,"       \__ \/ /   / / / /  |/ / __/     "
-    print * ,"      ___/ / /___/ /_/ / /|  / /___     "
-    print * ,"     /____/\____/\____/_/ |_/_____/     "
-    print * , ''
-    print * , ''
-    print * , "Compiler Info :   ", compiler_version()
-#ifdef _OPENMP
-    print '(A, I4)', " OpenMP Threads: ", ompGetMaxThreads()
-#endif
-    print *
-    print *, repeat(" <*((((>< ",10)
-
-    ! TODO: Add extra info like date & time
-
-  end subroutine printStart
-
-  !!
-  !! Prints line of fishes swiming right with an offset
-  !!
-  subroutine printFishLineR(offset)
-    integer(shortInt),intent(in) :: offset
-    integer(shortInt)            :: offset_L
-    character(100), parameter    :: line = repeat(" ><((((*> ",10)
-    character(100),dimension(10), parameter :: lines = [ &
-    " ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*> " ,&
-    "  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>" ,&
-    ">  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*" ,&
-    "*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((" ,&
-    "(*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(((" ,&
-    "((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((" ,&
-    "(((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(" ,&
-    "((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><" ,&
-    "<((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  >" ,&
-    "><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  " ]
-
-    offset_L = modulo(offset,10)
-
-    print *, lines(offset_L+1)
-
-  end subroutine  printFishLineR
 
 end module genericProcedures

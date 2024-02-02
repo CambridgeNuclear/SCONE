@@ -9,6 +9,7 @@ module errors_mod
 
   use numPrecision
   use universalVariables, only : MAX_COL
+  use mpi_func,           only : getMPIRank
 
   implicit none
 
@@ -36,7 +37,9 @@ contains
 
     ! Upper frame
     write(error_unit, *) repeat('<>', MAX_COL / 2)
-
+#ifdef MPI
+    write(error_unit, *) 'Process rank: ', getMPIRank()
+#endif
     write(error_unit, *) 'Fatal has occurred in:'
     write(error_unit, *) where, new_line('')
     write(error_unit, *) 'Because:'
@@ -63,6 +66,8 @@ contains
     write(error_unit, *) repeat('<>', MAX_COL / 2)
 
     ! Terminate with backtrace
+    ! NOTE: We assume MPI implementation will terminate all processes if one of them
+    ! returns with an error code.
     error stop
 
   end subroutine fatalError
