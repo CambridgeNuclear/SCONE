@@ -4,7 +4,6 @@ module testNeutronDatabase_class
   use particle_class,        only : particle
   use dictionary_class,      only : dictionary
   use charMap_class,         only : charMap
-  use RNG_class,             only : RNG
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter, only : nuclearDatabase

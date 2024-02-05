@@ -103,9 +103,9 @@ module aceNeutronNuclide_class
   !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
   !!   elScatteringMaj -> returns the elastic scattering majorant within an energy range given as input
   !!   init            -> build nuclide from aceCard
-  !!   init_urr        -> build list and mapping of nuclides to maintain temperature correlation
+  !!   initUrr         -> build list and mapping of nuclides to maintain temperature correlation
   !!                      when reading ures probability tables
-  !!   init_Sab        -> builds S(a,b) propertied from aceCard
+  !!   initSab         -> builds S(a,b) propertied from aceCard
   !!   display         -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
@@ -147,8 +147,8 @@ module aceNeutronNuclide_class
     procedure :: getThXSs
     procedure :: elScatteringMaj
     procedure :: init
-    procedure :: init_urr
-    procedure :: init_Sab
+    procedure :: initUrr
+    procedure :: initSab
     procedure :: display
 
   end type aceNeutronNuclide
@@ -476,6 +476,7 @@ contains
 
       ! Retrieve capture and fission cross sections as usual
       xss % capture = data(CAPTURE_XS, 2) * f + (ONE-f) * data(CAPTURE_XS, 1)
+
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
@@ -741,14 +742,14 @@ contains
     ! Create a stack of MT reactions, devide them into ones that produce 2nd-ary
     ! particlues and pure absorbtion
     associate (MTs => ACE % getScatterMTs())
-      do i=1,size(MTs)
+      do i = 1,size(MTs)
         if (MTs(i) == N_ANYTHING) cycle
         call scatterMT % push(MTs(i))
       end do
     end associate
 
     associate (MTs => [ACE % getFissionMTs(), ACE % getCaptureMTs()])
-      do i=1,size(MTs)
+      do i = 1,size(MTs)
         if(MTs(i) == N_FISSION) cycle ! MT=18 is already included with FIS block
         call absMT % push(MTs(i))
       end do
@@ -760,7 +761,7 @@ contains
     ! Load scattering reactions
     N = scatterMT % size()
     self % nMT = N
-    do i =1,N
+    do i = 1,N
       call scatterMT % pop(MT)
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
@@ -783,7 +784,7 @@ contains
     end do
 
     ! Calculate Inelastic scattering XS
-    do i=1,self % nMT
+    do i = 1,self % nMT
       do j=1,size(self % mainData, 2)
         ! Find bottom and Top of the grid
         bottom = self % MTdata(i) % firstIdx
@@ -804,7 +805,7 @@ contains
     self % mainData(TOTAL_XS, :) = sum(self % mainData(ESCATTER_XS:K,:),1)
 
     ! Load Map of MT -> local index of a reaction
-    do i=1,size(self % MTdata)
+    do i = 1,size(self % MTdata)
       call self % idxMT % add(self % MTdata(i) % MT, i)
     end do
 
@@ -830,7 +831,7 @@ contains
   !! Args:
   !!   ACE [inout]   -> ACE card
   !!
-  subroutine init_urr(self, ACE)
+  subroutine initUrr(self, ACE)
     class(aceNeutronNuclide), intent(inout) :: self
     class(aceCard), intent(inout)           :: ACE
 
@@ -841,19 +842,24 @@ contains
       ! Initialise probability tables
       call self % probTab % init(ACE)
       ! Check if probability tables were read correctly
+
       if (allocated(self % probTab % eGrid)) then
         self % urrE = self % probTab % getEbounds()
         self % IFF = self % probTab % getIFF()
+
       else
         ! Something went wrong!
         self % hasProbTab = .false.
         self % urrE = ZERO
+
       end if
+
     else
       self % urrE = ZERO
+
     end if
 
-  end subroutine init_urr
+  end subroutine initUrr
 
   !!
   !! Initialise thermal scattering tables from ACE card
@@ -865,14 +871,15 @@ contains
   !!   fatalError if the inelastic scattering S(a,b) energy grid starts at a
   !!   lower energy than the nuclide energy grid
   !!
-  subroutine init_Sab(self, ACE)
+  subroutine initSab(self, ACE)
     class(aceNeutronNuclide), intent(inout) :: self
     class(aceSabCard), intent(inout)        :: ACE
-    character(100), parameter :: Here = "init_Sab (aceNeutronNuclide_class.f90)"
+    character(100), parameter :: Here = "initSab (aceNeutronNuclide_class.f90)"
 
     ! Initialise S(a,b) class from ACE file
     call self % thData % init(ACE)
     self % hasThData = .true.
+
     ! Initialise energy boundaries
     self % SabInel = self % thData % getEbounds('inelastic')
     self % SabEl = self % thData % getEbounds('elastic')
@@ -882,7 +889,7 @@ contains
       call fatalError(Here, 'S(a,b) low energy boundary is lower than nuclide first energy point')
     end if
 
-  end subroutine init_Sab
+  end subroutine initSab
 
   !!
   !! A Procedure that displays information about the nuclide to the screen

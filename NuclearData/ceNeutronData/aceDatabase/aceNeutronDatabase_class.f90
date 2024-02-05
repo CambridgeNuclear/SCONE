@@ -52,9 +52,6 @@ module aceNeutronDatabase_class
   !! It's possible to use probability tables in the unresolved resonance range if
   !! ures is included in the input file
   !!
-  !! NOTE: the unionised majorant is not calculated and used if probability tables 
-  !!       are on 
-  !!
   !! Sample input:
   !!   nuclearData {
   !!   handles {
@@ -112,8 +109,8 @@ module aceNeutronDatabase_class
     procedure :: getScattMicroMajXS
 
     ! class Procedures
-    procedure :: init_urr
-    procedure :: init_DBRC
+    procedure :: initUrr
+    procedure :: initDBRC
     procedure :: initMajorant
 
   end type aceNeutronDatabase
@@ -446,16 +443,18 @@ contains
       ! Check if the nuclide needs ures probability tables at this energy
       nucCache % needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
       ! Check if the nuclide needs S(a,b) at this energy
-      nucCache % needsSabEl = (nuc % hasThData .and. E >= nuc % SabEl(1) .and. E < nuc % SabEl(2))
-      nucCache % needsSabInel = (nuc % hasThData .and. E >= nuc % SabInel(1) .and. E < nuc % SabInel(2))
+      nucCache % needsSabEl = (nuc % hasThData .and. E >= nuc % SabEl(1) .and. E <= nuc % SabEl(2))
+      nucCache % needsSabInel = (nuc % hasThData .and. E >= nuc % SabInel(1) .and. E <= nuc % SabInel(2))
       needsSab = (nucCache % needsSabEl .or. nucCache % needsSabInel)
 
       if (nucCache % needsUrr .or. needsSab) then
         call self % updateMicroXSs(E, nucIdx, rand)
+
       else
         nucCache % E_tot  = E
         call nuc % search(nucCache % idx, nucCache % f, E)
         nucCache % xss % total = nuc % totalXS(nucCache % idx, nucCache % f)
+
       end if
 
     end associate
@@ -489,17 +488,23 @@ contains
       ! Check if probability tables should be read
       if (nucCache % needsUrr) then
         associate(zaidCache => cache_zaidCache(self % nucToZaid(nucIdx)))
+
           if (zaidCache % E /= E) then
             ! Save random number for temperature correlation
             zaidCache % xi = rand % get()
             zaidCache % E = E
           end if
+
           call nuc % getUrrXSs(nucCache % xss, nucCache % idx, nucCache % f, E, zaidCache % xi)
+
         end associate
+
       elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
         call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E)
+
       else
         call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+
       end if
 
     end associate
@@ -642,11 +647,11 @@ contains
       ! Initialise S(alpha,beta) tables
       if (idx /= 0 ) then
         call new_moderACE(ACE_Sab, name_file)
-        call self % nuclides(nucIdx) % init_Sab(ACE_Sab)
+        call self % nuclides(nucIdx) % initSab(ACE_Sab)
       end if
 
       ! Initialise probability tables
-      if (self % hasUrr) call self % nuclides(nucIdx) % init_urr(ACE)
+      if (self % hasUrr) call self % nuclides(nucIdx) % initUrr(ACE)
 
       ! Store nucIdx in the dictionary
       call nucSet % atSet(nucIdx, i)
@@ -697,12 +702,12 @@ contains
 
     ! If on, initialise probability tables for ures
     if (self % hasUrr) then
-       call self % init_urr()
+       call self % initUrr()
     end if
 
     ! If on, initialise DBRC
     if (self % hasDBRC) then
-      call self % init_DBRC(nucDBRC, nucSet, self % mapDBRCnuc)
+      call self % initDBRC(nucDBRC, nucSet, self % mapDBRCnuc)
     end if
 
     !! Clean up
@@ -716,7 +721,7 @@ contains
   !!  NOTE: compares the first 5 letters of the ZAID.TT. It would be wrong with isotopes
   !!        with Z > 99
   !!
-  subroutine init_urr(self)
+  subroutine initUrr(self)
     class(aceNeutronDatabase), intent(inout) :: self
     integer(shortInt)                        :: i, j
     character(nameLen)                       :: zaid
@@ -747,12 +752,12 @@ contains
       end if
     end do
 
-  end subroutine init_urr
+  end subroutine initUrr
 
   !!
   !!  Checks through all nuclides, creates map with nuclides present and corresponding 0K nuclide
   !!
-  subroutine init_DBRC(self, nucDBRC, nucSet, map)
+  subroutine initDBRC(self, nucDBRC, nucSet, map)
     class(aceNeutronDatabase), intent(inout)     :: self
     character(nameLen), dimension(:), intent(in) :: nucDBRC
     type(charMap), intent(in)                    :: nucSet
@@ -796,7 +801,7 @@ contains
 
     end do
 
-  end subroutine init_DBRC
+  end subroutine initDBRC
 
   !!
   !! Activate this nuclearDatabase
@@ -830,23 +835,8 @@ contains
         loud = .true.
       end if
 
-      ! Check if probability tables are on
-      if (self % hasUrr) then
-
-        ! Switch off majorant
-        self % hasMajorant = .false.
-
-        if (loud) then
-          print '(A)', 'Unionised majorant cross section will not be contructed &
-                        & due to the use of URR probability tables treatment'
-        end if
-
-      else
-
-        ! Precompute majorant cross section
-        call self % initMajorant(loud)
-
-      end if
+      ! Precompute majorant cross section
+      call self % initMajorant(loud)
 
     end if
 
@@ -861,11 +851,15 @@ contains
     class(aceNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)             :: loud
     real(defReal), dimension(:), allocatable :: tmpGrid
-    integer(shortInt)                        :: i, j, matIdx, nNuc, nucIdx, isDone, &
-                                                sizeGrid, eIdx, nucIdxLast, eIdxLast
+    integer(shortInt)                        :: i, j, k, matIdx, nNuc, nucIdx, isDone, &
+                                                sizeGrid, eIdx, nucIdxLast, eIdxLast, &
+                                                urrIdx
     type(intMap)                             :: nucSet
-    real(defReal)                            :: eRef, eNuc, E, maj
+    real(defReal)                            :: eRef, eNuc, E, maj, total, dens, urrMaj, &
+                                                nucXS, f, eMax, eMin
+    logical(defBool)                         :: needsUrr
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
+    real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
 
     ! Find the size of the unionised energy grid (with duplicates)
     ! Initialise size
@@ -894,6 +888,11 @@ contains
           ! Update energy grid size
           sizeGrid = sizeGrid + size(self % nuclides(nucIdx) % eGrid)
 
+          ! If URR probability tables or S(a,b) tables are used, add their energy
+          ! boundary values to the grid to minimise interpolation errors
+          if (self % nuclides(nucIdx) % hasProbTab) sizeGrid = sizeGrid + 2
+          if (self % nuclides(nucIdx) % hasThData)  sizeGrid = sizeGrid + 3
+
         end if
 
       end do
@@ -904,7 +903,8 @@ contains
     tmpGrid = self % EBounds(2)
 
     ! Loop over the energy grid
-    do i = 1, sizeGrid
+    i = 1
+    do while (i < sizeGrid)
 
       ! Loop over all nuclides in the set - here the value of the intMap is used as an energy index
       j = nucSet % begin()
@@ -944,6 +944,76 @@ contains
       ! Increment the energy index saved in the intMap for the nuclides whose energy was added
       call nucSet % add(nucIdxLast, eIdxLast + 1)
 
+      ! Loop over all nuclides again to add S(a,b) and ures energy boundaries to grid
+      j = nucSet % begin()
+      do while (j /= nucSet % end())
+
+        ! Retrieve energy in the grid and nuclide information
+        eMin = tmpGrid(i - 1)
+        eMax = tmpGrid(i)
+        nucIdx  = nucSet % atKey(j)
+
+        ! Check for URR probability tables
+        if (self % nuclides(nucIdx) % hasProbTab) then
+
+          ! Lower energy boundary
+          E = self % nuclides(nucIdx) % urrE(1)
+          if (E >= eMin .and. E < eMax) then
+            tmpGrid(i) = E
+            tmpGrid(i + 1) = eMax
+            ! Update counter
+            i = i + 1
+          end if
+
+          ! Upper energy boundary
+          E = self % nuclides(nucIdx) % urrE(2)
+          if (E >= eMin .and. E < eMax) then
+            tmpGrid(i) = E
+            tmpGrid(i + 1) = eMax
+            ! Update counter
+            i = i + 1
+          end if
+
+        end if
+
+        ! Check for Sab tables
+        if (self % nuclides(nucIdx) % hasThData) then
+
+          ! Elastic upper energy boundary (NOTE: lower boundary is fixed)
+          E = self % nuclides(nucIdx) % SabEl(2)
+          if (E >= eMin .and. E < eMax ) then
+            tmpGrid(i) = E
+            tmpGrid(i + 1) = eMax
+            ! Update counter
+            i = i + 1
+          end if
+
+          ! Inelastic lower energy boundary
+          E = self % nuclides(nucIdx) % SabInel(1)
+          if (E >= eMin .and. E < eMax ) then
+            tmpGrid(i) = E
+            tmpGrid(i + 1) = eMax
+            ! Update counter
+            i = i + 1
+          end if
+
+          ! Inelastic upper energy boundary
+          E = self % nuclides(nucIdx) % SabInel(2)
+          if (E >= eMin .and. E < eMax ) then
+            tmpGrid(i) = E
+            tmpGrid(i + 1) = eMax
+            ! Update counter
+            i = i + 1
+          end if
+
+        end if
+
+        j = nucSet % next(j)
+
+      end do
+
+      i = i + 1
+
     end do
 
     ! Save final grid and remove duplicates
@@ -974,15 +1044,51 @@ contains
 
         ! Get material index
         matIdx = self % activeMat(j)
+        total  = ZERO
 
-        ! Calculate current material cross section and compare
-        call self % updateTotalMatXS(E, matIdx)
-        maj = max(maj, cache_materialCache(matIdx) % xss % total)
+        ! Loop over nuclides
+        do k = 1, size(self % materials(matIdx) % nuclides)
+          dens     = self % materials(matIdx) % dens(k)
+          nucIdx   = self % materials(matIdx) % nuclides(k)
+
+          associate (nuc => self % nuclides(nucIdx))
+
+            needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
+
+            ! Check if present nuclide uses URR tabes
+            if (needsUrr) then
+
+              ! Find maximum URR table total XS
+              urrIdx = binarySearch(nuc % probTab % eGrid, E)
+              urrMaj = nuc % probTab % majorant(urrIdx)
+
+              ! Check if URR tables contain xs or multiplicative factor
+              if (nuc % IFF == 1) then
+                call nuc % search(eIdx, f, E)
+                nucXS = nuc % totalXS(eIdx, f) * urrMaj
+              else
+                nucXS = urrMaj
+              end if
+
+            else
+              call self % updateTotalNucXS(E, nucIdx)
+              nucXS = cache_nuclideCache(nucIdx) % xss % total
+
+            end if
+
+          end associate
+
+          ! Update total material cross section
+          total = total + dens * nucXS
+
+        end do
+
+        maj = max(maj, total)
 
       end do
 
-      ! Save majorant for this energy
-      self % majorant(i) = maj
+      ! Save majorant for this energy. Nudge it up to avoid small discrepancies
+      self % majorant(i) = maj * (ONE + NUDGE)
 
     end do
 

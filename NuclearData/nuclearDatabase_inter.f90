@@ -71,6 +71,7 @@ module nuclearDatabase_inter
     !!
     !! Args:
     !!   activeMat [in] -> Array of matIdx of materials active in the simulation
+    !!   silent [in]    -> Optional. If set to .true. disables console output
     !!
     !! Errors:
     !!   fatalError if activeMat contains materials not defined in the instance
