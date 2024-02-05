@@ -949,7 +949,11 @@ contains
       do while (j /= nucSet % end())
 
         ! Retrieve energy in the grid and nuclide information
-        eMin = tmpGrid(i - 1)
+        if (i /= 1) then
+          eMin = tmpGrid(i - 1)
+        else
+          eMin = ZERO
+        end if
         eMax = tmpGrid(i)
         nucIdx  = nucSet % atKey(j)
 

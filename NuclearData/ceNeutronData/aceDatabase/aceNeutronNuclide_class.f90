@@ -105,7 +105,7 @@ module aceNeutronNuclide_class
   !!   init            -> build nuclide from aceCard
   !!   initUrr         -> build list and mapping of nuclides to maintain temperature correlation
   !!                      when reading ures probability tables
-  !!   initSab         -> builds S(a,b) propertied from aceCard
+  !!   initSab         -> builds S(a,b) properties from aceCard
   !!   display         -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
