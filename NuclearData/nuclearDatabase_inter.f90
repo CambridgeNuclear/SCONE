@@ -221,7 +221,7 @@ module nuclearDatabase_inter
     !!
     !! Allows to retrieve an access to reaction data for all databases types
     !! Reactions can be associated either with nuclides or materials. Thus, there is ambiguity
-    !! whether material or nuclide should be asked to provide reaction data (using matIdx or nuIdx)
+    !! whether material or nuclide should be asked to provide reaction data (using matIdx or nucIdx)
     !!
     !! This ambiguity is resolved by following convenction:
     !!   if MT < 0 then reaction is associated with material: idx -> matIdx

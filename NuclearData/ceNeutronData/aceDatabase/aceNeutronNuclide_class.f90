@@ -739,8 +739,8 @@ contains
 
     ! Read data for MT reaction
 
-    ! Create a stack of MT reactions, devide them into ones that produce 2nd-ary
-    ! particlues and pure absorbtion
+    ! Create a stack of MT reactions, divide them into ones that produce 2nd-ary
+    ! particles and pure absorption
     associate (MTs => ACE % getScatterMTs())
       do i = 1,size(MTs)
         if (MTs(i) == N_ANYTHING) cycle

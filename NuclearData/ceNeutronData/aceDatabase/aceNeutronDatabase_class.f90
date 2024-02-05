@@ -1059,7 +1059,7 @@ contains
 
             needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
 
-            ! Check if present nuclide uses URR tabes
+            ! Check if present nuclide uses URR tables
             if (needsUrr) then
 
               ! Find maximum URR table total XS
