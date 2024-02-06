@@ -742,7 +742,9 @@ from ACE files.
   resonance probability tables treatment
 * DBRC (*optional*, default = no DBRC): list of ZAIDs of nuclides for which DBRC has
   to be applied.
-
+* majorant (*optional*, default = 1): 1 for true; 0 for false; flag to activate the
+  pre-construction of a unionised majorant cross section
+  
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;

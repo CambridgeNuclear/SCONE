@@ -4,8 +4,8 @@
 module transportOperatorFactory_func
 
   use numPrecision
-  use genericProcedures, only : fatalError
-  use dictionary_class,  only : dictionary
+  use errors_mod,          only : fatalError
+  use dictionary_class,    only : dictionary
 
   ! Transport Operators
   use transportOperator_inter,          only : transportOperator
