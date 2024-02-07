@@ -206,7 +206,7 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 1)/1.1406745607419302_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 1)/6.539039844E-02_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p, 1, MATERIAL_XS)/6.539039844E-02_defReal , TOL)
 
 
     ! Total XS of UO2
@@ -214,14 +214,16 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 2)/4.4149556129495560_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 2)/0.21869599644_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 2, MATERIAL_XS)/0.21869599644_defReal , TOL)
 
     ! Majorant
     p % E = 1.1E-6_defReal
     @assertEqual(ONE, data % getMajorantXS(p) /4.4149556129495560_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 3, MAJORANT_XS) /4.4149556129495560_defReal , TOL)
 
     p % E = 19.9_defReal
     @assertEqual(ONE, data % getMajorantXS(p)/0.21869599644_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 3, MAJORANT_XS) /0.21869599644_defReal , TOL)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting Macroscopic XSs
