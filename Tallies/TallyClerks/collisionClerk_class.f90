@@ -23,6 +23,10 @@ module collisionClerk_class
   ! Tally Responses
   use tallyResponseSlot_class,    only : tallyResponseSlot
 
+  ! Cache
+  use ceNeutronCache_mod,         only : ceTrackingCache => trackingCache
+  use mgNeutronCache_mod,         only : mgTrackingCache => trackingCache
+
   implicit none
   private
 
@@ -59,6 +63,8 @@ module collisionClerk_class
 
     ! Useful data
     integer(shortInt)  :: width = 0
+
+    ! Settings
     logical(defBool)   :: virtual = .false.
 
   contains
@@ -146,7 +152,8 @@ contains
       deallocate(self % response)
     end if
 
-    self % width = 0
+    self % width   = 0
+    self % virtual = .false.
 
   end subroutine kill
 
@@ -191,15 +198,35 @@ contains
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
-    real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
+    real(defReal)                         :: scoreVal, flux
+    character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
 
-    ! Calculate flux sample based on physical or virtual collision
+    ! Return if collision is virtual but virtual collision handling is off
     if (self % virtual) then
-      flx = ONE / xsData % getMajorantXS(p)
+
+      ! Retrieve tracking cross section from cache
+      ! Select over CE and MG cache, and give error if cache was not updated properly
+      if (p % isMG) then
+        if (mgTrackingCache(1) % G == p % G) then
+          flux = p % w / mgTrackingCache(1) % xs
+        else
+          call fatalError(Here, 'MG tracking cache failed to update during tracking')
+        end if
+
+      else
+        if (ceTrackingCache(1) % E == p % E) then
+          flux = p % w / ceTrackingCache(1) % xs
+        else
+          call fatalError(Here, 'CE tracking cache failed to update during tracking')
+        end if
+
+      end if
+
     else
+
       if (virtual) return
-      flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+
     end if
 
     ! Get current particle state
@@ -224,8 +251,8 @@ contains
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Append all bins
-    do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
+    do i = 1,self % width
+      scoreVal = self % response(i) % get(p, xsData) * flux
       call mem % score(scoreVal, adrr + i)
 
     end do

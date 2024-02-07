@@ -45,13 +45,13 @@ module collisionProbabilityClerk_class
   !!    -> CPM is stored in column-major order [prodBin, startBin].
   !!    -> CPs are only non-zero within an energy group. It may be more efficient to
   !!       define a slightly different CPClerk which has a separate map for energy.
-  !!       With a fine energy and space discretisation, a large sparse matrix will be 
+  !!       With a fine energy and space discretisation, a large sparse matrix will be
   !!       produced by the current clerk which could be avoided with a slightly different
   !!       implementation.
   !!
   !! Private Members:
   !!   map      -> Map to divide phase-space into bins
-  !!   resp     -> Response for transfer function 
+  !!   resp     -> Response for transfer function
   !!               (Not presently used, would be macroTotal by default)
   !!   N        -> Number of Bins
   !!
@@ -185,13 +185,13 @@ contains
     if (virtual) return
 
     ! Get material or return if it is not a neutron
-    mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
 
-    if(.not.associated(mat)) return
+    if (.not.associated(mat)) return
 
     ! Find starting index in the map
     ! It is important that preCollision is not changed by a collisionProcessor
-    !before the particle is fed to the tally, otherwise results will be meaningless
+    ! before the particle is fed to the tally, otherwise results will be meaningless
     sIdx = self % map % map( p % preCollision)
 
     ! Find collision index in the map
@@ -202,7 +202,7 @@ contains
     ! neutrons which collide outside the mapped region of phase space
     ! These correspond to index = 0
 
-    ! Calculate collision probability 
+    ! Calculate collision probability
     ! Used the simple estimator - the commented line can allow CP to generalise to
     ! other responses
     ! For collision probability, top and bottom will cancel -- for other probabilities,
@@ -230,7 +230,7 @@ contains
     integer(longInt)                                :: addrCPM, addrCPM0
     real(defReal)                                   :: val, normFactor
 
-    if(mem % lastCycle()) then
+    if (mem % lastCycle()) then
       ! Set address to the start of collision probability matrix
       ! Decrease by 1 to get correct address on the first iteration of the loop
       addrCPM  = self % getMemAddress() - 1
@@ -248,7 +248,7 @@ contains
           normFactor = normFactor + val
         end do
 
-        if(normFactor /= ZERO) normFactor = ONE / normFactor
+        if (normFactor /= ZERO) normFactor = ONE / normFactor
 
         ! Normalise CPM column
         do j = 1, self % N
@@ -280,7 +280,7 @@ contains
     ! Allocate result to CPMresult
     ! Do not deallocate if already allocated to CPMresult
     ! Its not too nice -> clean up
-    if(allocated(res)) then
+    if (allocated(res)) then
       select type(res)
         class is (CPMresult)
           ! Do nothing

@@ -47,7 +47,7 @@ contains
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
@@ -66,7 +66,7 @@ contains
       end if
 
       ! Check for void
-      if(p % matIdx() == VOID_MAT) then
+      if (p % matIdx() == VOID_MAT) then
         call tally % reportInColl(p, .true.)
         cycle DTLoop
       end if
@@ -78,7 +78,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual

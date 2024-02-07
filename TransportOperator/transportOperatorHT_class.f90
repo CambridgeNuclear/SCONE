@@ -64,10 +64,10 @@ contains
     character(100), parameter :: Here = 'hybridTracking (transportOIperatorHT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
     ! Obtain the local cross-section
-    sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+    sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
 
     ! Calculate ratio between local cross-section and majorant
     ratio = sigmaT*majorant_inv
@@ -92,7 +92,7 @@ contains
     character(100), parameter :: Here = 'deltaTracking (transportOperatorHT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
@@ -123,7 +123,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
@@ -152,11 +152,11 @@ contains
     STLoop: do
 
       ! Obtain the local cross-section
-      if( p % matIdx() == VOID_MAT) then
+      if (p % matIdx() == VOID_MAT) then
         dist = INFINITY
 
       else
-        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 
         ! Should never happen! Catches NaN distances
@@ -174,7 +174,7 @@ contains
       call tally % reportPath(p, dist)
 
       ! Kill particle if it has leaked
-      if( p % matIdx() == OUTSIDE_FILL) then
+      if (p % matIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         p % fate = LEAK_FATE
       end if
@@ -186,7 +186,7 @@ contains
       end if
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( event == COLL_EV .or. p % isDead) exit STLoop
+      if (event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
 

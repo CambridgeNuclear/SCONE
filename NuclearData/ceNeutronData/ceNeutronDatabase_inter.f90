@@ -1,6 +1,7 @@
 module ceNeutronDatabase_inter
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError
   use RNG_class,         only : RNG
   use particle_class,    only : particle, P_NEUTRON, printType
@@ -14,7 +15,7 @@ module ceNeutronDatabase_inter
   use nuclearDatabase_inter, only : nuclearDatabase
 
   ! Cache
-  use ceNeutronCache_mod,    only : materialCache, majorantCache
+  use ceNeutronCache_mod,    only : materialCache, majorantCache, trackingCache
 
   implicit none
   private
@@ -51,7 +52,7 @@ module ceNeutronDatabase_inter
 
   contains
     ! nuclearDatabase Interface Implementation
-    procedure :: getTransMatXS
+    procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
 
@@ -222,22 +223,40 @@ module ceNeutronDatabase_inter
 contains
 
   !!
-  !! Return transport XS for material matIdx
+  !! Return tracking XS requested
   !!
   !! See nuclearDatabase_inter for details!
   !!
   !! Error:
   !!   fatalError if particle is not CE Neutron
   !!
-  function getTransMatXS(self, p, matIdx) result(xs)
+  function getTrackingXS(self, p, matIdx, what) result(xs)
     class(ceNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)             :: p
     integer(shortInt), intent(in)           :: matIdx
+    integer(shortInt), intent(in)           :: what
     real(defReal)                           :: xs
+    character(100),parameter :: Here = 'getTrackingXS (ceNeutronDatabase_inter.f90)'
 
-    xs = self % getTotalMatXS(p, matIdx)
+    ! Process request
+    select case(what)
 
-  end function getTransMatXS
+      case (MATERIAL_XS)
+        xs = self % getTotalMatXS(p, matIdx)
+
+      case (MAJORANT_XS)
+        xs = self % getMajorantXS(p)
+
+      case default
+        call fatalError(Here, 'Neither material xs nor majorant xs was asked')
+
+    end select
+
+    ! Update Cache
+    trackingCache(1) % E  = p % E
+    trackingCache(1) % xs = xs
+
+  end function getTrackingXS
 
   !!
   !! Return Total XS for matIdx
@@ -255,12 +274,12 @@ contains
     character(100),parameter :: Here = 'getTotalMatXS (ceNeutronDatabase_inter.f90)'
 
     ! Check dynamic type of the particle
-    if(p % isMG .or. p % type /= P_NEUTRON) then
+    if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check Cache and update if needed
-    if(materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total
@@ -282,12 +301,12 @@ contains
     character(100),parameter :: Here = 'getMajorantXS (ceNeutronDatabase_inter.f90)'
 
     ! Check dynamic type of the particle
-    if(p % isMG .or. p % type /= P_NEUTRON) then
+    if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check Cache and update if needed
-    if(majorantCache(1) % E /= p % E) call self % updateMajorantXS(p % E, p % pRNG)
+    if (majorantCache(1) % E /= p % E) call self % updateMajorantXS(p % E, p % pRNG)
 
     ! Return Cross-Section
     xs = majorantCache(1) % xs

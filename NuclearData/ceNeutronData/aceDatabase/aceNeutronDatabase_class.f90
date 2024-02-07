@@ -306,7 +306,7 @@ contains
         nucIdx = self % materials(matIdx) % nuclides(i)
 
         ! Update if needed
-        if(cache_nuclideCache(nucIdx) % E_tot /= E) then
+        if (cache_nuclideCache(nucIdx) % E_tot /= E) then
           call self % updateTotalNucXS(E, nucIdx, rand)
         end if
 
@@ -338,7 +338,7 @@ contains
         matIdx = self % activeMat(i)
 
         ! Update if needed
-        if( cache_materialCache(matIdx) % E_tot /= E) then
+        if (cache_materialCache(matIdx) % E_tot /= E) then
           call self % updateTotalMatXS(E, matIdx, rand)
         end if
 
@@ -457,10 +457,13 @@ contains
           end if
           call nuc % getUrrXSs(nucCache % xss, nucCache % idx, nucCache % f, E, zaidCache % xi)
         end associate
+
       elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
         call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E)
+
       else
         call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
+
       end if
 
     end associate

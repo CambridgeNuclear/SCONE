@@ -98,7 +98,7 @@ contains
     class(particle), intent(in)          :: p
     character(100), parameter :: Here = 'getMacroXSs_byP (ceNeutronMaterial_class.f90)'
 
-    if(.not.p % isMG) then
+    if (.not.p % isMG) then
       call self % getMacroXSs(xss, p % E, p % pRNG)
 
     else

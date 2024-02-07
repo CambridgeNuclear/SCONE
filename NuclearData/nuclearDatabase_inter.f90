@@ -21,8 +21,8 @@ module nuclearDatabase_inter
   !! subclasses of this type.
   !!
   !! Interface:
-  !!   getTransMatXS -> returns transport Material XS given a particle
-  !!   getTotalMatXS -> returns total Material XS fiven a particle
+  !!   getTrackingXS -> returns XS used to sample track lenght
+  !!   getTotalMatXS -> returns total Material XS given a particle
   !!   getMajorantXS -> returns majorant XS given particle and list of active materials
   !!   matNamesMap   -> returns pointer to map of material names to matIdx
   !!   getMaterial   -> returns a pointer to a material handle for given matIdx
@@ -34,7 +34,7 @@ module nuclearDatabase_inter
   contains
     procedure(init), deferred          :: init
     procedure(activate), deferred      :: activate
-    procedure(getTransMatXS), deferred :: getTransMatXS
+    procedure(getTrackingXS), deferred :: getTrackingXS
     procedure(getTotalMatXS), deferred :: getTotalMatXS
     procedure(getMajorantXS), deferred :: getMajorantXS
     procedure(matNamesMap), deferred   :: matNamesMap
@@ -82,29 +82,32 @@ module nuclearDatabase_inter
     end subroutine activate
 
     !!
-    !! Return value of Material Transport XS for a particle
+    !! Return value of Tracking XS for a particle and a given request
     !!
-    !! Reads all relevalnt state information from the particle (e.g. E or G)
-    !! Usually is the same as material total XS, but it may be not always the case
+    !! Reads all relevant state information from the particle (e.g. E or G)
+    !! It is the XS used to sample track length: it might be the same as the
+    !! material total XS, the majorant XS, or a temperature majorant
     !!
     !! Args:
-    !!   p [in]      -> particle at a given state
+    !!   p [in]      -> Particle at a given state
     !!   matIdx [in] -> Material index
+    !!   what [in]   -> Request index
     !!
     !! Result:
-    !!   Value of a material transport XS [1/cm]
+    !!   Value of XS used to sample path length [1/cm]
     !!
     !! Errors:
     !!   Undefined behaviour if the state of the particle is invalid e.g. -ve energy
     !!   Undefined behavior if matIdx does not correspond to a defined material
     !!
-    function getTransMatXS(self, p, matIdx) result(xs)
+    function getTrackingXS(self, p, matIdx, what) result(xs)
       import :: nuclearDatabase, particle, shortInt, defReal
       class(nuclearDatabase), intent(inout) :: self
       class(particle), intent(in)           :: p
       integer(shortInt), intent(in)         :: matIdx
+      integer(shortInt), intent(in)         :: what
       real(defReal)                         :: xs
-    end function getTransMatXS
+    end function getTrackingXS
 
     !!
     !! Return value of Material Total XS for a particle
