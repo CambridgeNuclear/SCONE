@@ -66,7 +66,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate(([1,2]))
+    call data % activate(([1,2]), silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests

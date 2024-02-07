@@ -105,7 +105,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalMatXS
 
     !!
@@ -125,7 +125,7 @@ module ceNeutronDatabase_inter
       import :: ceNeutronDatabase, defReal, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMajorantXS
 
     !!
@@ -147,7 +147,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMacroXSs
 
     !!
@@ -169,7 +169,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalXS
 
     !!
@@ -191,7 +191,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMicroXSs
 
     !!
