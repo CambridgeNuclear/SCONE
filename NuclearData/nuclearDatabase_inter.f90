@@ -71,14 +71,16 @@ module nuclearDatabase_inter
     !!
     !! Args:
     !!   activeMat [in] -> Array of matIdx of materials active in the simulation
+    !!   silent [in]    -> Optional. If set to .true. disables console output
     !!
     !! Errors:
     !!   fatalError if activeMat contains materials not defined in the instance
     !!
-    subroutine activate(self, activeMat)
-      import :: nuclearDatabase, shortInt
+    subroutine activate(self, activeMat, silent)
+      import :: nuclearDatabase, shortInt, defBool
       class(nuclearDatabase), intent(inout)       :: self
       integer(shortInt), dimension(:), intent(in) :: activeMat
+      logical(defBool), optional, intent(in)      :: silent
     end subroutine activate
 
     !!
@@ -173,7 +175,7 @@ module nuclearDatabase_inter
     !!
     !! Return pointer to material in a database
     !!
-    !! Allows to retrive an access to material data for all databases types
+    !! Allows to retrieve an access to material data for all databases types
     !!
     !! NOTE: This function can be used to inquire about the presence of matIdx in the database!
     !!
@@ -196,10 +198,10 @@ module nuclearDatabase_inter
     !!
     !! Return pointer to nuclide in a database
     !!
-    !! Allows to retrive an access to nuclide data for all databases types
+    !! Allows to retrieve an access to nuclide data for all databases types
     !! If database does not contain nuclides (e.g. MG data) just returns null() pointer
     !!
-    !! NOTE: This function can be used to inquire abou the presence of nucIdx in the database!
+    !! NOTE: This function can be used to inquire about the presence of nucIdx in the database!
     !!
     !! Args:
     !!   nucIdx [in] -> nuclide index of required material
@@ -220,15 +222,15 @@ module nuclearDatabase_inter
     !!
     !! Return a pointer to a reaction
     !!
-    !! Allows to retrive an access to reaction data for all databases types
+    !! Allows to retrieve an access to reaction data for all databases types
     !! Reactions can be associated either with nuclides or materials. Thus, there is ambiguity
-    !! whether material or nuclide should be asked to provide reaction data (using matIdx or nuIdx)
+    !! whether material or nuclide should be asked to provide reaction data (using matIdx or nucIdx)
     !!
     !! This ambiguity is resolved by following convenction:
     !!   if MT < 0 then reaction is associated with material: idx -> matIdx
     !!   if MT > 0 then reaction is associated with nuclide: idx -> nucIdx
     !!
-    !! NOTE: This function can be used to enquire abou the presence of data. If the data is
+    !! NOTE: This function can be used to enquire about the presence of data. If the data is
     !!       not present null() pointer is always returned!
     !!
     !! Args:

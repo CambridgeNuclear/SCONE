@@ -3,7 +3,8 @@ module baseMgNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar
+  use errors_mod,         only : fatalError
+  use genericProcedures,  only : numToChar
   use particle_class,     only : particle
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
@@ -73,6 +74,7 @@ module baseMgNeutronDatabase_class
     procedure :: activate
 
     ! Local interface
+    procedure :: initMajorant
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -346,26 +348,15 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine activate(self, activeMat)
+  subroutine activate(self, activeMat, silent)
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
-    integer(shortInt)                           :: g, i, idx
-    real(defReal)                               :: xs
-    integer(shortInt), parameter                :: TOTAL_XS = 1
+    logical(defBool), optional, intent(in)      :: silent
+    logical(defBool)                            :: loud
+    integer(shortInt)                           :: idx
 
     if(allocated(self % activeMats)) deallocate(self % activeMats)
     self % activeMats = activeMat
-
-    ! Precalculate majorant xs for delta tracking
-    allocate (self % majorant(self % nG))
-    do g = 1,self % nG
-      xs = ZERO
-      do i = 1,size(self % activeMats)
-        idx = self % activeMats(i)
-        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
-      end do
-      self % majorant(g) = xs
-    end do
 
     ! Initialies cross section cache
     call cache_init(size(self % mats))
@@ -377,7 +368,46 @@ contains
     end do
     !$omp end parallel
 
+    ! Set build console output flag
+    if (present(silent)) then
+      loud = .not. silent
+    else
+      loud = .true.
+    end if
+
+    ! Build unionised majorant
+    call self % initMajorant(loud)
+
   end subroutine activate
+
+  !!
+  !! Precomputes majorant cross section
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  subroutine initMajorant(self, loud)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    logical(defBool), intent(in)                :: loud
+    integer(shortInt)                           :: g, i, idx
+    real(defReal)                               :: xs
+    integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    ! Allocate majorant
+    allocate (self % majorant(self % nG))
+
+    ! Loop over energy groups
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,size(self % activeMats)
+        idx = self % activeMats(i)
+        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
+      end do
+      self % majorant(g) = xs
+    end do
+
+    if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
+
+  end subroutine initMajorant
 
   !!
   !! Return number of energy groups in this database
@@ -408,7 +438,7 @@ contains
   !!
   pure function baseMgNeutronDatabase_TptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    type(baseMgNeutronDatabase), pointer           :: ptr
+    type(baseMgNeutronDatabase), pointer        :: ptr
 
     select type(source)
       type is(baseMgNeutronDatabase)

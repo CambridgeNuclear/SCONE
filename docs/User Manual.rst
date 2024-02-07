@@ -742,7 +742,9 @@ from ACE files.
   resonance probability tables treatment
 * DBRC (*optional*, default = no DBRC): list of ZAIDs of nuclides for which DBRC has
   to be applied.
-
+* majorant (*optional*, default = 1): 1 for true; 0 for false; flag to activate the
+  pre-construction of a unionised majorant cross section
+  
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
@@ -1252,6 +1254,14 @@ Example: ::
 
       map1 { type cylindricalMap; orientation y; origin (7.0 0.0); rGrid lin; Rmax 5.0; rN 10; }
       map2 { type cylindricalMap; rGrid unstruct; bins (2.0 3.0 4.5 5.0); axGrid lin; axMin 0.0; axMax 6.0 axN 24; azimuthalN 8; }
+
+* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+
+  - collNumbers: list of collision numbers (integers) to be used as map bins
+
+Examples: ::
+
+      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
 
 * weightMap (1D map), divides weight into number of discrete bins
 

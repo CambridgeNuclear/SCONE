@@ -5,14 +5,14 @@ module transportOperatorDT_class
   use numPrecision
   use universalVariables
 
-  use genericProcedures,          only : fatalError, numToChar
+  use errors_mod,                 only : fatalError
+  use genericProcedures,          only : numToChar
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use rng_class,                  only : rng
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
@@ -22,6 +22,7 @@ module transportOperatorDT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -33,10 +34,15 @@ module transportOperatorDT_class
   type, public, extends(transportOperator) :: transportOperatorDT
   contains
     procedure :: transit => deltaTracking
+    ! Override procedure
+    procedure :: init
   end type transportOperatorDT
 
 contains
 
+  !!
+  !! Performs delta tracking until a real collision point is found
+  !!
   subroutine deltaTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorDT), intent(inout) :: self
     class(particle), intent(inout)            :: p
@@ -91,7 +97,22 @@ contains
     end do DTLoop
 
     call tally % reportTrans(p)
+
   end subroutine deltaTracking
+
+  !!
+  !! Initialise DT transport operator
+  !!
+  !! See transportOperator_inter for more details
+  !!
+  subroutine init(self, dict)
+    class(transportOperatorDT), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
+
+    ! Initialise superclass
+    call init_super(self, dict)
+
+  end subroutine init
 
 
 end module transportOperatorDT_class

@@ -75,7 +75,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate([1,2])
+    call data % activate([1,2], silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
@@ -224,6 +224,15 @@ contains
     p % E = 19.9_defReal
     @assertEqual(ONE, data % getMajorantXS(p)/0.21869599644_defReal , TOL)
     @assertEqual(ONE, data % getTrackingXS(p , 3, MAJORANT_XS) /0.21869599644_defReal , TOL)
+
+    ! Check that results are the same with on-the-fly majorant
+    data % hasMajorant = .false.
+
+    p % E = 1.1E-6_defReal
+    @assertEqual(ONE, data % getMajorantXS(p) /4.4149556129495560_defReal , TOL)
+
+    p % E = 19.9_defReal
+    @assertEqual(ONE, data % getMajorantXS(p)/0.21869599644_defReal , TOL)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting Macroscopic XSs
