@@ -247,6 +247,15 @@ contains
       case (MAJORANT_XS)
         xs = self % getMajorantXS(p)
 
+      case (TRACKING_XS)
+
+        ! READ ONLY - read from previously updated cache
+        if (p % E == trackingCache(1) % E) then
+          xs = trackingCache(1) % xs
+        else
+          call fatalError(Here, 'Tracking cache failed to update during tracking')
+        end if
+
       case default
         call fatalError(Here, 'Neither material xs nor majorant xs was asked')
 

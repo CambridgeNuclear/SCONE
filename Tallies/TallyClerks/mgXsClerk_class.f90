@@ -23,10 +23,6 @@ module mgXsClerk_class
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk, kill_super => kill
 
-  ! Cache
-  use ceNeutronCache_mod,         only : ceTrackingCache => trackingCache
-  use mgNeutronCache_mod,         only : mgTrackingCache => trackingCache
-
   implicit none
   private
 
@@ -233,30 +229,11 @@ contains
 
     ! Return if collision is virtual but virtual collision handling is off
     if (self % virtual) then
-
       ! Retrieve tracking cross section from cache
-      ! Select over CE and MG cache, and give error if cache was not updated properly
-      if (p % isMG) then
-        if (mgTrackingCache(1) % G == p % G) then
-          flux = p % w / mgTrackingCache(1) % xs
-        else
-          call fatalError(Here, 'MG tracking cache failed to update during tracking')
-        end if
-
-      else
-        if (ceTrackingCache(1) % E == p % E) then
-          flux = p % w / ceTrackingCache(1) % xs
-        else
-          call fatalError(Here, 'CE tracking cache failed to update during tracking')
-        end if
-
-      end if
-
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
     else
-
       if (virtual) return
       flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-
     end if
 
     ! Get current particle state
