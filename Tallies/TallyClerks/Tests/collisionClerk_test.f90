@@ -8,6 +8,7 @@ module collisionClerk_test
   use scoreMemory_class,              only : scoreMemory
   use testNeutronDatabase_class,      only : testNeutronDatabase
   use outputFile_class,               only : outputFile
+  use ceNeutronCache_mod,             only: cache_init => init, trackingCache
   use pFUnit_mod
 
   implicit none
@@ -321,10 +322,16 @@ contains
 
     ! Build nuclear data
     call nucData % build(0.3_defReal)
+    ! Build cache
+    call cache_init(1, 1, 1)
+    trackingCache % xs = 0.3_defReal
+    trackingCache % E  = 10.0_defReal
 
     ! Perform scoring, both virtual and physical should contribute
     call p % setMatIdx(1)
     p % w = 0.7_defReal
+    p % E = 10.0_defReal
+    p % isMG = .false.
     call clerk % reportInColl(p, nucData, mem, .true.)
 
     call p % setMatIdx(6)

@@ -2,6 +2,7 @@ module collisionClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -59,6 +60,8 @@ module collisionClerk_class
 
     ! Useful data
     integer(shortInt)  :: width = 0
+
+    ! Settings
     logical(defBool)   :: virtual = .false.
 
   contains
@@ -146,7 +149,8 @@ contains
       deallocate(self % response)
     end if
 
-    self % width = 0
+    self % width   = 0
+    self % virtual = .false.
 
   end subroutine kill
 
@@ -191,15 +195,16 @@ contains
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
-    real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
+    real(defReal)                         :: scoreVal, flux
+    character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
 
-    ! Calculate flux sample based on physical or virtual collision
+    ! Return if collision is virtual but virtual collision handling is off
     if (self % virtual) then
-      flx = ONE / xsData % getMajorantXS(p)
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
     else
       if (virtual) return
-      flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
     ! Get current particle state
@@ -224,8 +229,8 @@ contains
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Append all bins
-    do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
+    do i = 1,self % width
+      scoreVal = self % response(i) % get(p, xsData) * flux
       call mem % score(scoreVal, adrr + i)
 
     end do

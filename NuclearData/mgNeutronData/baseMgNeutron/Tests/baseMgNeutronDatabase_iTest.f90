@@ -3,6 +3,7 @@ module baseMgNeutronDatabase_iTest
   use numPrecision
   use endfConstants
   use pFUnit_mod
+  use universalVariables
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use particle_class,     only : particle
@@ -81,7 +82,7 @@ contains
 
     ! Test getting Transport XS
     p % G = 1
-    @assertEqual(2.1_defReal, database % getTransMatXS(p, 1), TOL)
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS
     p % G = 1
@@ -93,7 +94,7 @@ contains
     ! Test getting Majorant
     p % G = 1
     @assertEqual(2.1_defReal, database % getMajorantXS(p), TOL)
-
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MAJORANT_XS), TOL)
 
     ! Get a material and verify macroXSS
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))
@@ -207,7 +208,7 @@ contains
 
     ! Test getting Transport XS
     p % G = 1
-    @assertEqual(2.1_defReal, database % getTransMatXS(p, 1), TOL)
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS
     p % G = 1
@@ -219,7 +220,7 @@ contains
     ! Test getting Majorant
     p % G = 1
     @assertEqual(2.1_defReal, database % getMajorantXS(p), TOL)
-
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MAJORANT_XS), TOL)
 
     ! Get a material and verify macroXSS
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))

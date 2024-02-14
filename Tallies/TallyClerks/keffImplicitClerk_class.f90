@@ -3,6 +3,7 @@ module keffImplicitClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables
   use genericProcedures,          only : fatalError, charCmp
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle
@@ -54,7 +55,9 @@ module keffImplicitClerk_class
   !!
   type, public,extends(tallyClerk) :: keffImplicitClerk
     private
-    real(defReal) :: targetSTD = ZERO
+    real(defReal)    :: targetSTD = ZERO
+    ! Settings
+    logical(defBool) :: virtual = .false.
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -102,6 +105,9 @@ contains
 
     end if
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+
   end subroutine init
 
   !!
@@ -115,6 +121,7 @@ contains
 
     ! Kill self
     self % targetSTD = ZERO
+    self % virtual   = .false.
 
   end subroutine kill
 
@@ -157,24 +164,33 @@ contains
     logical(defBool), intent(in)             :: virtual
     type(neutronMacroXSs)                    :: xss
     class(neutronMaterial), pointer          :: mat
-    real(defReal)                            :: totalXS, nuFissXS, absXS, flux
+    real(defReal)                            :: nuFissXS, absXS, flux
     real(defReal)                            :: s1, s2
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
-    ! This clerk does not handle virtual scoring yet
-    if (virtual) return
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      if (virtual) return
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
-    ! Obtain XSs
-    mat => neutronMaterial_CptrCast(xsData % getMaterial( p % matIdx()))
-    if(.not.associated(mat)) call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    ! Ensure we're not in void (could happen when scoring virtual collisions)
+    if (p % matIdx() == VOID_MAT) return
+
+    ! Get material pointer
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    if (.not.associated(mat)) then
+      call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    end if
+
+    ! Obtain xss
     call mat % getMacroXSs(xss, p)
 
-    totalXS  = xss % total
     nuFissXS = xss % nuFission
     absXS    = xss % capture + xss % fission
-
-    ! Calculate flux and scores
-    flux = p % w / totalXS
 
     s1 = nuFissXS * flux
     s2 = absXS * flux

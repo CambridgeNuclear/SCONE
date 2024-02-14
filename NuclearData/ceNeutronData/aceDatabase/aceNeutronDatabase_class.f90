@@ -318,7 +318,7 @@ contains
         nucIdx = self % materials(matIdx) % nuclides(i)
 
         ! Update if needed
-        if(cache_nuclideCache(nucIdx) % E_tot /= E) then
+        if (cache_nuclideCache(nucIdx) % E_tot /= E) then
           call self % updateTotalNucXS(E, nucIdx, rand)
         end if
 
@@ -354,6 +354,7 @@ contains
         if(idx <= 0) then
           call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
                                ' in unionised majorant grid')
+
         end if
 
         associate(E_top => self % eGridUnion(idx + 1), E_low  => self % eGridUnion(idx))

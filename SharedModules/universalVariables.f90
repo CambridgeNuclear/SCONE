@@ -69,6 +69,11 @@ module universalVariables
                                   targetNotFound    = -3, &
                                   NOT_FOUND         = -3
 
+  ! Integer indexes for type of tracking cross section requested
+  integer(shortInt), parameter :: MATERIAL_XS = 1, &
+                                  MAJORANT_XS = 2, &
+                                  TRACKING_XS = 3
+
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s

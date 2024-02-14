@@ -59,11 +59,11 @@ contains
     STLoop: do
 
       ! Obtain the local cross-section
-      if( p % matIdx() == VOID_MAT) then
+      if (p % matIdx() == VOID_MAT) then
         dist = INFINITY
 
       else
-        sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
+        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 
         ! Should never happen! Catches NaN distances
@@ -87,7 +87,7 @@ contains
       call tally % reportPath(p, dist)
 
       ! Kill particle if it has leaked
-      if( p % matIdx() == OUTSIDE_FILL) then
+      if (p % matIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         p % fate = LEAK_FATE
       end if
@@ -99,7 +99,7 @@ contains
       end if
 
       ! Return if particle stoped at collision (not cell boundary)
-      if( event == COLL_EV .or. p % isDead) exit STLoop
+      if (event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
 
