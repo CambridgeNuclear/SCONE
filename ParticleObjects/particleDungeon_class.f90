@@ -91,7 +91,7 @@ module particleDungeon_class
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
-    procedure :: sortByShowerID
+    procedure  :: sortByBroodID
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -403,7 +403,7 @@ contains
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP, n_copies, n_duplicates
-    integer(shortInt)                     :: i, idx, maxShowerID
+    integer(shortInt)                     :: i, idx, maxBroodID
     integer(shortInt), dimension(:), allocatable :: duplicates
     character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
 
@@ -416,8 +416,8 @@ contains
     end if
 
     ! Determine the maximum shower ID and sort the dungeon
-    maxShowerID = maxval(self % prisoners(1:self % pop) % showerID)
-    call self % sortByShowerID(maxShowerID)
+    maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
+    call self % sortByBroodID(maxbroodID)
 
     ! Calculate excess particles to be removed
     excessP = self % pop - N
@@ -469,19 +469,19 @@ contains
   !! Args:
   !!   k [in] -> Maximum shower ID
   !!
-  subroutine sortByShowerID(self, k)
+  subroutine sortByBroodID(self, k)
     class(particleDungeon), intent(inout)        :: self
     integer(shortInt), intent(in)                :: k
     integer(shortInt), dimension(k)              :: count
     integer(shortInt)                            :: i, id, loc, c
     integer(shortInt), dimension(:), allocatable :: perm
     type(particleState)                          :: tmp
-    character(100), parameter :: Here = 'sortByShowerID (particleDungeon_class.f90)'
+    character(100), parameter :: Here = 'sortBybroodID (particleDungeon_class.f90)'
 
     ! Count number of particles with each shower ID
     count = 0
     do i = 1, self % pop
-      id = self % prisoners(i) % showerID
+      id = self % prisoners(i) % broodID
 
       if (id < 1 .or. id > k) call fatalError(Here, 'Shower ID out of range: '//numToChar(id))
 
@@ -499,7 +499,7 @@ contains
     ! Create the permutation array
     allocate(perm(self % pop))
     do i = 1, self % pop
-      id = self % prisoners(i) % showerID
+      id = self % prisoners(i) % broodID
       loc = count(id)
       count(id) = count(id) + 1
       perm(loc) = i
@@ -523,7 +523,7 @@ contains
 
     end do
 
-  end subroutine sortByShowerID
+  end subroutine sortByBroodID
 
 
   !!
@@ -617,7 +617,7 @@ contains
       !                  numToChar(self % prisoners(i) % G)
       write(10, *) self % prisoners(i) % r, self % prisoners(i) % dir, &
                    self % prisoners(i) % E, self % prisoners(i) % G, &
-                   self % prisoners(i) % showerID
+                   self % prisoners(i) % broodID
     end do
 
     ! Close the file
