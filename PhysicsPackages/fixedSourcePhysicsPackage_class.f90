@@ -181,7 +181,6 @@ contains
 
         ! Obtain particle from dungeon
         call self % thisCycle % copy(p, n)
-        p % broodID = n
 
         bufferLoop: do
 
