@@ -86,6 +86,10 @@ fixedSourcePhysicsPackage, used for fixed source calculations
   stored in a thread-private buffer, after which particles are shifted to
   the common buffer
 
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
+
 Example: ::
 
         type fixedSourcePhysicsPackage;
