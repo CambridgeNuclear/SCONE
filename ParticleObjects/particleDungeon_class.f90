@@ -326,8 +326,16 @@ contains
 
   !!
   !! Copy particle from a location inside the dungeon
-  !! Makes particle alive at exit
-  !! Gives fatalError if requested index is 0, -ve or above current population
+  !!
+  !! Makes particle alive at exit. Also sets the broodID of the particle
+  !! making it ready to be transported.
+  !!
+  !! Args:
+  !!  p   [inout] -> Particle to be filled with data
+  !!  idx [in]    -> Index of the particle to be copied
+  !!
+  !! Errors:
+  !!  fatalError if requested index is 0, -ve or above current population
   !!
   subroutine copy(self, p, idx)
     class(particleDungeon), intent(in) :: self
@@ -337,13 +345,14 @@ contains
 
     ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
     ! Load data into the particle
     p = self % prisoners(idx)
     p % isDead = .false.
+    p % broodID = idx
 
   end subroutine copy
 
@@ -610,10 +619,6 @@ contains
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      ! write(10,'(8A)') numToChar(self % prisoners(i) % r), &
-      !                  numToChar(self % prisoners(i) % dir), &
-      !                  numToChar(self % prisoners(i) % E), &
-      !                  numToChar(self % prisoners(i) % G)
       write(10, *) self % prisoners(i) % r, self % prisoners(i) % dir, &
                    self % prisoners(i) % E, self % prisoners(i) % G, &
                    self % prisoners(i) % broodID

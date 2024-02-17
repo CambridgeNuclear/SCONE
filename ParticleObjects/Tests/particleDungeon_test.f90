@@ -279,7 +279,7 @@ contains
 @Test
   subroutine testSortingByBroodID()
     type(particleDungeon)    :: dungeon
-    type(particle)           :: p
+    type(particleState)      :: p
     integer(shortInt)        :: i
     real(defReal), parameter :: TOL = 1.0E-9
 
@@ -297,7 +297,7 @@ contains
 
     ! Verify order
     do i = 1,10
-      call dungeon % copy(p, i)
+      p = dungeon % get(i)
       @assertEqual(i, p % broodID)
     end do
 
@@ -310,7 +310,7 @@ contains
   @Test
   subroutine testSortingByBroodID_withDuplicates()
     type(particleDungeon)    :: dungeon
-    type(particle)           :: p
+    type(particleState)      :: p
     integer(shortInt)        :: i, j
     integer(shortInt), parameter :: N_duplicates = 7
     real(defReal), parameter :: TOL = 1.0E-9
@@ -335,7 +335,7 @@ contains
     ! Verify order
     do i = 1,10
       do j = 1, N_duplicates
-        call dungeon % copy(p, j + (i-1) * N_duplicates)
+        p = dungeon % get(j + (i-1) * N_duplicates)
         @assertEqual(i, p % broodID)
         @assertEqual(j, p % G)
       end do
