@@ -195,8 +195,6 @@ contains
         ! Obtain particle current cycle dungeon
         call self % thisCycle % copy(neutron, n)
 
-        neutron % broodID = n
-
         bufferLoop: do
           call self % geom % placeCoord(neutron % coords)
 
