@@ -31,6 +31,7 @@ module rng_class
     procedure :: setSeed
     procedure :: getCount
     procedure :: getSeed
+    procedure :: currentState
   end type rng
 
   !! Parameters
@@ -347,5 +348,16 @@ contains
     seed = self % initialSeed
 
   end function getSeed
+
+  !!
+  !! Get current state of the RNG
+  !!
+  function currentState(self) result(state)
+    class(rng), intent(in) :: self
+    integer(int64)         :: state
+
+    state = self % rngSeed
+
+  end function currentState
 
 end module rng_class
