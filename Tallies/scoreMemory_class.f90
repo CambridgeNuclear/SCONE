@@ -2,7 +2,7 @@ module scoreMemory_class
 
   use numPrecision
 #ifdef MPI
-  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
+  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK, getMPIWorldSize
 #endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
@@ -85,14 +85,15 @@ module scoreMemory_class
   !!
   type, public :: scoreMemory
       !private
-      real(defReal),dimension(:,:),allocatable :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
-      real(defReal),dimension(:,:),allocatable :: parallelBins  !! Space for scoring for different threads
-      integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
-      integer(shortInt)                        :: nThreads = 0  !! Number of threads used for parallelBins
-      integer(shortInt)                        :: id            !! Id of the tally
-      integer(shortInt)                        :: batchN = 0    !! Number of Batches
-      integer(shortInt)                        :: cycles = 0    !! Cycles counter
-      integer(shortInt)                        :: batchSize = 1 !! Batch interval size (in cycles)
+      real(defReal),dimension(:,:),allocatable :: bins              !! Space for storing cumul data (2nd dim size is always 3!)
+      real(defReal),dimension(:,:),allocatable :: parallelBins      !! Space for scoring for different threads
+      integer(longInt)                         :: N = 0             !! Size of memory (number of bins)
+      integer(shortInt)                        :: nThreads = 0      !! Number of threads used for parallelBins
+      integer(shortInt)                        :: id                !! Id of the tally
+      integer(shortInt)                        :: batchN = 0        !! Number of Batches
+      integer(shortInt)                        :: cycles = 0        !! Cycles counter
+      integer(shortInt)                        :: batchSize = 1     !! Batch interval size (in cycles)
+      logical(defBool)                         :: reduced = .false. !! True if bins have been reduced
   contains
     ! Interface procedures
     procedure :: init
@@ -125,11 +126,12 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, batchSize )
+  subroutine init(self, N, id, batchSize, reduced)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
     integer(shortInt),intent(in)          :: id
     integer(shortInt),optional,intent(in) :: batchSize
+    logical(defBool),optional,intent(in)  :: reduced
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     ! Allocate space and zero all bins
@@ -159,6 +161,10 @@ contains
       else
         call fatalError(Here,'Batch Size of: '// numToChar(batchSize) //' is invalid')
       end if
+    end if
+
+    if (present(reduced)) then
+      self % reduced = reduced
     end if
 
   end subroutine init
@@ -391,24 +397,26 @@ contains
     ! Since the number of bins is limited by 64bit signed integer and the
     ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
     ! to split the reduction operation into chunks
-    start = 1
-    chunk = min(self % N, huge(start))
+    !if (getMPIWorldSize() /= 1) then
+    if (self % reduced) then
+      start = 1
+      chunk = min(self % N, huge(start))
 
-    do while (start <= self % N)
-      call mpi_reduce(self % bins(start : start + chunk - 1, BIN), &
-                      self % parallelBins(start : start + chunk - 1, 1),&
-                      int(chunk, shortInt), &
-                      MPI_DEFREAL, &
-                      MPI_SUM, &
-                      MASTER_RANK, &
-                      MPI_COMM_WORLD, &
-                      error)
-      start = start + chunk
-    end do
+      do while (start <= self % N)
+        call mpi_reduce(self % bins(start : start + chunk - 1, BIN), &
+                        self % parallelBins(start : start + chunk - 1, 1),&
+                        int(chunk, shortInt), &
+                        MPI_DEFREAL, &
+                        MPI_SUM, &
+                        MASTER_RANK, &
+                        MPI_COMM_WORLD, &
+                        error)
+        start = start + chunk
+      end do
 
-    ! Copy the result back to bins
-    self % bins(:,BIN) = self % parallelBins(1:self % N, 1)
-
+      ! Copy the result back to bins
+      self % bins(:,BIN) = self % parallelBins(1:self % N, 1)
+    end if
 #endif
   end subroutine reduceBins
 

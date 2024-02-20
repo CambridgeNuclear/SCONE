@@ -84,6 +84,7 @@ module tallyAdmin_class
   !!   #norm    clerk3;          #       ! Clerk should be size 1 (first bin of clerk is normalised)
   !!   #normVal 13.0;            #       ! Must be present if "norm" is present
   !!   #batchSize   4;           #       ! Default value 1
+  !!   #mpiSync     1;           #       ! Default value 0
   !!   clerk1 { <clerk definition here> }
   !!   clerk2 { <clerk definition here> }
   !!   clerk3 { <clerk definition here> }
@@ -99,6 +100,7 @@ module tallyAdmin_class
     integer(longInt)   :: normBinAddr  = NO_NORM
     real(defReal)      :: normValue
     character(nameLen) :: normClerkName
+    logical(defBool)   :: mpiSync
 
     ! Clerks and clerks name map
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
@@ -214,10 +216,14 @@ contains
     ! Read batching size
     call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
 
+    ! Check if the bins need to be synchronised across MPI processes
+    ! at the end of each batch
+    call dict % getOrDefault(self % mpiSync, 'mpiSync', .false.)
+
     ! Initialise score memory
     ! Calculate required size.
     memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
     memLoc = 1
@@ -735,7 +741,7 @@ contains
     ! Reduce the scores across the threads and processes
     call self % mem % reduceBins()
 
-    if (isMPIMaster()) then
+    if (isMPIMaster() .or. .not. self % mpiSync ) then
       ! Go through all clerks that request the report
       !$omp parallel do
       do i=1,self % cycleEndClerks % getSize()
