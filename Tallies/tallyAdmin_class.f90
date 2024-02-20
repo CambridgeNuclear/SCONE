@@ -25,6 +25,7 @@ module tallyAdmin_class
 
   !! Parameters
   integer(longInt), parameter :: NO_NORM = -17_longInt
+  real(defReal), parameter    :: TARGET_START_WGT = 1.0e4_defReal
 
   !!
   !! TallyAdmin is responsible for:
@@ -100,6 +101,8 @@ module tallyAdmin_class
     integer(longInt)   :: normBinAddr  = NO_NORM
     real(defReal)      :: normValue
     character(nameLen) :: normClerkName
+
+    ! Parallelisation settings
     logical(defBool)   :: mpiSync
 
     ! Clerks and clerks name map
@@ -214,7 +217,7 @@ contains
     end if
 
     ! Read batching size
-    call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+    call dict % getOrDefault(cyclesPerBatch,'batchSize', 1)
 
     ! Check if the bins need to be synchronised across MPI processes
     ! at the end of each batch
@@ -222,11 +225,11 @@ contains
 
     ! Initialise score memory
     ! Calculate required size.
-    memSize = sum( self % tallyClerks % getSize() )
+    memSize = sum( self % tallyClerks % getSize() ) + 1
     call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
-    memLoc = 1
+    memLoc = 2
     do i=1,size(self % tallyClerks)
       call self % tallyClerks(i) % setMemAddress(memLoc)
       memLoc = memLoc + self % tallyClerks(i) % getSize()
@@ -240,10 +243,13 @@ contains
 
     ! Read name of normalisation clerks if present
     if(dict % isPresent('norm')) then
-      call dict % get(self % normClerkName,'norm')
-      call dict % get(self % normValue,'normVal')
+      call dict % get(self % normClerkName, 'norm')
+      call dict % get(self % normValue, 'normVal')
       i = self % clerksNameMap % get(self % normClerkName)
       self % normBinAddr = self % tallyClerks(i) % getMemAddress()
+    else
+      self % normBinAddr = 1
+      self % normValue = TARGET_START_WGT
     end if
 
   end subroutine init
@@ -692,6 +698,9 @@ contains
     integer(shortInt)                  :: i
     integer(shortInt), save            :: idx
     !$omp threadprivate(idx)
+
+    ! Add the particles in this cycle to starting population of the batch
+    call self % mem % score(start % popWeight(), 1_longInt)
 
     ! Call attachment
     if(associated(self % atch)) then

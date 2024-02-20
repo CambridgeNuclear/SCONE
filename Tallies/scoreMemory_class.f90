@@ -2,7 +2,7 @@ module scoreMemory_class
 
   use numPrecision
 #ifdef MPI
-  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK, getMPIWorldSize
+  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
 #endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
@@ -397,7 +397,6 @@ contains
     ! Since the number of bins is limited by 64bit signed integer and the
     ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
     ! to split the reduction operation into chunks
-    !if (getMPIWorldSize() /= 1) then
     if (self % reduced) then
       start = 1
       chunk = min(self % N, huge(start))
@@ -416,6 +415,10 @@ contains
 
       ! Copy the result back to bins
       self % bins(:,BIN) = self % parallelBins(1:self % N, 1)
+
+      ! Clean buffer in parallel bin
+      self % parallelBins(1:self % N, 1) = ZERO
+
     end if
 #endif
   end subroutine reduceBins
