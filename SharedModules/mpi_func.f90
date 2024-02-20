@@ -3,7 +3,7 @@ module mpi_func
 #ifdef MPI
   use mpi_f08
 #endif
-  use genericProcedures, only : numToChar
+  !use genericProcedures, only : numToChar
   use errors_mod,        only : fatalError
   implicit none
 
