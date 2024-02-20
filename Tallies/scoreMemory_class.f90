@@ -1,7 +1,9 @@
 module scoreMemory_class
 
   use numPrecision
+#ifdef MPI
   use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
+#endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
   use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
@@ -369,8 +371,11 @@ contains
   !!
   subroutine reduceBins(self)
     class(scoreMemory), intent(inout) :: self
-    integer(longInt)                  :: i, start, chunk
+    integer(longInt)                  :: i
+#ifdef MPI
+    integer(longInt)                  :: start, chunk
     integer(shortInt)                 :: error
+#endif
     character(100),parameter :: Here = 'reduceBins (scoreMemory_class.f90)'
 
     !$omp parallel do

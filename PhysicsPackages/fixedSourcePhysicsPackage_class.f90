@@ -6,8 +6,10 @@ module fixedSourcePhysicsPackage_class
   use genericProcedures,              only : fatalError, numToChar, rotateVector
   use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
                                              printSeparatorLine
-  use mpi_func,                       only : isMPIMaster, getWorkshare, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD, &
-                                             MASTER_RANK, getOffset, getMPIRank
+  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
+#ifdef MPI
+  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD
+#endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile

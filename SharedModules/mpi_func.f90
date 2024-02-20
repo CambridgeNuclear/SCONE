@@ -12,7 +12,9 @@ module mpi_func
   integer(shortInt), parameter  :: MASTER_RANK = 0
 
   !! Common MPI types
+#ifdef MPI
   type(MPI_Datatype)            :: MPI_DEFREAL
+#endif
 
 contains
 
