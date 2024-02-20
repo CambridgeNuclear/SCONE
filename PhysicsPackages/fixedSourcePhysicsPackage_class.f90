@@ -175,6 +175,10 @@ contains
 
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
+
+      ! Update RNG after source generation
+      call self % pRNG % stride(self % totalPop)
+
       if(self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if

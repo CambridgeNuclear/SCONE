@@ -100,7 +100,6 @@ contains
       type(particleDungeon), intent(inout) :: dungeon
       integer(shortInt), intent(in)        :: n
       class(RNG), intent(in)               :: rand
-      type(RNG)                            :: originalRNG
       type(RNG), save                      :: pRand
       integer(shortInt)                    :: i
       !$omp threadprivate(pRand)
@@ -108,17 +107,12 @@ contains
       ! Set dungeon size to begin
       call dungeon % setSize(n)
 
-      ! Move back in the sequence to avoid reusing few first random numbers
-      ! in transport
-      originalRNG = rand
-      call originalRNG % stride(-n)
-
       ! Generate n particles to populate dungeon
       ! TODO: advance the rand after source generation!
       !       This should prevent reusing RNs during transport
       !$omp parallel do
       do i = 1, n
-        pRand = originalRNG
+        pRand = rand
         call pRand % stride(i)
         call dungeon % replace(self % sampleParticle(pRand), i)
       end do
