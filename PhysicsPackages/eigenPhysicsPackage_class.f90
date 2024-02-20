@@ -204,7 +204,7 @@ contains
           ! Save state
           call neutron % savePreHistory()
 
-          ! Transport particle untill its death
+          ! Transport particle until its death
           history: do
             call transOp % transport(neutron, tally, buffer, self % nextCycle)
             if(neutron % isDead) exit history
@@ -239,7 +239,7 @@ contains
       end if
 
       ! Normalise population
-      call self % nextCycle % normSize(self % pop, pRNG)
+      call self % nextCycle % normSize(self % pop, self % pRNG)
 
       if(self % printSource == 1) then
         call self % nextCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
@@ -308,7 +308,7 @@ contains
     call self % thisCycle % init(3 * self % pop)
     call self % nextCycle % init(3 * self % pop)
 
-    ! Generate initial surce
+    ! Generate initial source
     print *, "GENERATING INITIAL FISSION SOURCE"
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
     print *, "DONE!"
@@ -407,7 +407,7 @@ contains
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
 
     ! Get output format and verify
-    ! Initialise output file before calculation (so mistake in format will be cought early)
+    ! Initialise output file before calculation (so mistake in format will be caught early)
     call dict % getOrDefault(self % outputFormat, 'outputFormat', 'asciiMATLAB')
     call test_out % init(self % outputFormat)
 

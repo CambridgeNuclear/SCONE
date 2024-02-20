@@ -37,6 +37,9 @@ module particle_class
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
   !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
   !!   collisionN -> Number of collisions the particle went through
+  !!   broodID  -> ID of the source particle. It is used to indicate the primogenitor of the particles
+  !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
+  !!               with OpenMP
   !!
   !! Interface:
   !!   assignemnt(=)  -> Build particleState from particle
@@ -56,6 +59,7 @@ module particle_class
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
+    integer(shortInt)          :: broodID = 0       ! ID of the source particle
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -66,18 +70,6 @@ module particle_class
     ! Private procedures
     procedure,private :: equal_particleState
   end type particleState
-
-!  !!
-!  !! Archived state of the particle used for tallying transitions, fission matrixes etc.
-!  !!
-!  type, public,extends(phaseCoord) ::
-!  contains
-!    generic    :: operator(.eq.) => equal_particleState
-!    procedure :: fromParticle    => particleState_fromParticle
-!
-!    ! Private procedures
-!    procedure,private :: equal_particleState
-!  end type
 
   !!
   !! This type represents particle
@@ -111,6 +103,7 @@ module particle_class
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
+    integer(shortInt)          :: broodID = 0    ! ID of the shower (source particle number)
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -275,6 +268,7 @@ contains
     LHS % time                  = RHS % time
     LHS % collisionN            = RHS % collisionN
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
+    LHS % broodID               = RHS % broodID
 
   end subroutine particle_fromParticleState
 
@@ -618,6 +612,7 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
+    LHS % broodID = RHS % broodID
 
   end subroutine particleState_fromParticle
 
@@ -641,6 +636,7 @@ contains
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
+    isEqual = isEqual .and. LHS % broodID == RHS % broodID
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -648,31 +644,6 @@ contains
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
   end function equal_particleState
-
-!  !!
-!  !! Copy particle state into archive object
-!  !!
-!  subroutine particleState_fromParticle(LHS,RHS)
-!    class(particleState), intent(out) :: LHS
-!    class(particle), intent(in)       :: RHS
-!
-!    ! Call superclass procedure
-!    call phaseCoord_fromParticle(LHS,RHS)
-!
-!  end subroutine particleState_fromParticle
-
-!  !!
-!  !! Extend equality definition to particle state
-!  !!
-!  function equal_particleState(LHS,RHS) result(isEqual)
-!    class(particleState), intent(in) :: LHS
-!    type(particleState), intent(in)  :: RHS
-!    logical(defBool)                 :: isEqual
-!
-!    ! Call superclass procedure
-!    isEqual = equal_phaseCoord(LHS,RHS)
-!
-!  end function equal_particleState
 
   !!
   !! Prints state of the phaseCoord
@@ -708,6 +679,7 @@ contains
     self % cellIdx  = -1
     self % uniqueID = -1
     self % collisionN = 0
+    self % broodID = 0
 
   end subroutine kill_particleState
 
