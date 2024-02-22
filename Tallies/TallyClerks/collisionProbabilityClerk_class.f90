@@ -3,6 +3,7 @@ module collisionProbabilityClerk_class
   use numPrecision
   use tallyCodes
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -332,7 +333,7 @@ contains
     class(collisionProbabilityClerk), intent(in) :: self
     type(scoreMemory), intent(in)                :: mem
 
-    print *, 'collisionProbabilityClerk does not support display yet'
+    call statusMsg('collisionProbabilityClerk does not support display yet')
 
   end subroutine display
 

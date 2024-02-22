@@ -2,8 +2,10 @@ module keffAnalogClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables,    only : MAX_COL
   use dictionary_class,      only : dictionary
   use genericProcedures,     only : fatalError
+  use display_func,          only : statusMsg
   use particle_class,        only : particle
   use particleDungeon_class, only : particleDungeon
   use outputFile_class,      only : outputFile
@@ -177,11 +179,13 @@ contains
     class(keffAnalogClerk), intent(in)  :: self
     type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: k, STD
+    character(MAX_COL)                  :: buffer
 
     call mem % getResult(k, STD, self % getMemAddress())
 
     ! Print estimates to a console
-    print '(A,F8.5,A,F8.5)', 'k-eff (analog): ',  k, ' +/- ', STD
+    write(buffer, '(A,F8.5,A,F8.5)') 'k-eff (analog): ',  k, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 

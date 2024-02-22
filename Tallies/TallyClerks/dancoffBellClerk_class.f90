@@ -3,7 +3,9 @@ module dancoffBellClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables,         only : MAX_COL
   use genericProcedures,          only : fatalError, hasDuplicates
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -252,11 +254,13 @@ contains
     class(dancoffBellClerk), intent(in) :: self
     type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: mean, STD
+    character(MAX_COL)                  :: buffer
 
     call mem % getResult(mean, STD, self % getMemAddress() + D_EFF)
 
     ! Print to console
-    print '(A,ES15.5,A,ES15.5)', 'Dancoff-Bell: ', mean, ' +/- ', STD
+    write (buffer, '(A,ES15.5,A,ES15.5)') 'Dancoff-Bell: ', mean, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 

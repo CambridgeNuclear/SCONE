@@ -3,6 +3,7 @@ module shannonEntropyClerk_class
   use numPrecision
   use tallyCodes
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -164,7 +165,7 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     type(scoreMemory), intent(in)    :: mem
 
-    print *, 'shannonEntropyClerk does not support display yet'
+    call statusMsg('shannonEntropyClerk does not support display yet')
 
   end subroutine display
 

@@ -3,8 +3,9 @@ module keffImplicitClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
-  use universalVariables
+  use universalVariables,         only : MAX_COL
   use genericProcedures,          only : fatalError, charCmp
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
@@ -314,12 +315,14 @@ contains
     class(keffImplicitClerk), intent(in)  :: self
     type(scoreMemory), intent(in)         :: mem
     real(defReal)                         :: k, STD
+    character(MAX_COL)                    :: buffer
 
     ! Get current k-eff estimate
     call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
 
     ! Print to console
-    print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD
+    write (buffer, '(A,F8.5,A,F8.5)') 'k-eff (implicit): ', k, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 

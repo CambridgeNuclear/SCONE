@@ -5,6 +5,7 @@ module simpleFMClerk_class
   use endfConstants
   use universalVariables
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -354,7 +355,7 @@ contains
     class(simpleFMClerk), intent(in) :: self
     type(scoreMemory), intent(in)    :: mem
 
-    print *, 'simpleFMClerk does not support display yet'
+    call statusMsg('simpleFMClerk does not support display yet')
 
   end subroutine display
 

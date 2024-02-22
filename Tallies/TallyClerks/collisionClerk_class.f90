@@ -4,6 +4,7 @@ module collisionClerk_class
   use tallyCodes
   use universalVariables
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use outputFile_class,           only : outputFile
@@ -247,7 +248,7 @@ contains
     class(collisionClerk), intent(in)  :: self
     type(scoreMemory), intent(in)      :: mem
 
-    print *, 'collisionClerk does not support display yet'
+    call statusMsg('collisionClerk does not support display yet')
 
   end subroutine display
 
