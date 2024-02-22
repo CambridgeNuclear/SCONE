@@ -14,6 +14,7 @@ module mpi_func
   !! Common MPI types
 #ifdef MPI
   type(MPI_Datatype)            :: MPI_DEFREAL
+  type(MPI_Datatype)            :: MPI_SHORTINT
 #endif
 
 contains
@@ -33,10 +34,15 @@ contains
 
     call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
 
+    ! Define MPI Type for DEFREAL
     call mpi_type_create_f90_real(precision(1.0_defReal), range(1.0_defReal), &
                                   MPI_DEFREAL, ierr)
 
     call mpi_type_commit(MPI_DEFREAL, ierr)
+
+    ! Define MPI Type for SHORTINT
+    call mpi_type_create_f90_integer(range(1_shortInt), MPI_SHORTINT, ierr)
+    call mpi_type_commit(MPI_SHORTINT, ierr)
 
 #else
     worldSize = 1

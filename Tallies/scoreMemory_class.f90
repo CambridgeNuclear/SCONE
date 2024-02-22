@@ -2,7 +2,7 @@ module scoreMemory_class
 
   use numPrecision
 #ifdef MPI
-  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
+  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK, isMPIMaster, MPI_SHORTINT
 #endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
@@ -107,6 +107,7 @@ module scoreMemory_class
     procedure :: lastCycle
     procedure :: getBatchSize
     procedure :: reduceBins
+    procedure :: collectDistributed
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -378,10 +379,6 @@ contains
   subroutine reduceBins(self)
     class(scoreMemory), intent(inout) :: self
     integer(longInt)                  :: i
-#ifdef MPI
-    integer(longInt)                  :: start, chunk
-    integer(shortInt)                 :: error
-#endif
     character(100),parameter :: Here = 'reduceBins (scoreMemory_class.f90)'
 
     !$omp parallel do
@@ -398,31 +395,107 @@ contains
     ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
     ! to split the reduction operation into chunks
     if (self % reduced) then
-      start = 1
-      chunk = min(self % N, huge(start))
-
-      do while (start <= self % N)
-        call mpi_reduce(self % bins(start : start + chunk - 1, BIN), &
-                        self % parallelBins(start : start + chunk - 1, 1),&
-                        int(chunk, shortInt), &
-                        MPI_DEFREAL, &
-                        MPI_SUM, &
-                        MASTER_RANK, &
-                        MPI_COMM_WORLD, &
-                        error)
-        start = start + chunk
-      end do
-
-      ! Copy the result back to bins
-      self % bins(:,BIN) = self % parallelBins(1:self % N, 1)
-
-      ! Clean buffer in parallel bin
-      self % parallelBins(1:self % N, 1) = ZERO
-
+      call reduceArray(self % bins(:,BIN), self % parallelBins(:,1))
     end if
 #endif
+
   end subroutine reduceBins
 
+  !!
+  !! Reduce the accumulated results (csum and csum2) from different MPI processes
+  !!
+  !! If the bins are `reduced` that is scores are collected at the end of each cycle,
+  !! then this subroutine does nothing. Otherwise it collects the results from different
+  !! processes and stores them in the master process.
+  !!
+  !! The estimates from each process are treated as independent simulation, thus the
+  !! cumulative sums are added together and the batch count is summed.
+  !!
+  subroutine collectDistributed(self)
+    class(scoreMemory), intent(inout) :: self
+#ifdef MPI
+    integer(shortInt)                 :: error, buffer
+
+    if (.not. self % reduced) then
+      ! Reduce the batch count
+      ! Note we need to use size 1 arrays to fit the interface of mpi_reduce, which expects
+      ! to be given arrays
+      call mpi_reduce(self % batchN, buffer, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      if (isMPIMaster()) then
+        self % batchN = buffer
+      else
+        self % batchN = 0
+      end if
+
+      ! Reduce the cumulative sums
+      call reduceArray(self % bins(:,CSUM), self % parallelBins(:,1))
+
+      ! Reduce the cumulative sums of squares
+      call reduceArray(self % bins(:,CSUM2), self % parallelBins(:,1))
+    end if
+
+#endif
+  end subroutine collectDistributed
+
+  !!
+  !! Reduce the array across different processes
+  !!
+  !! Wrapper around MPI_Reduce to support arrays of defReal larger than 2^31
+  !! This function is only defined if MPI is enabled
+  !!
+  !! Args:
+  !!   data [inout] ->  Array with the date to be reduced
+  !!   buffer [inout] -> Buffer to store the reduced data (must be same size or larger than data)
+  !!
+  !! Result:
+  !!   The sum of the data across all processes in stored on master process `data`
+  !!   The buffer is set to ZERO on all processes ( only 1:size(data) range)!
+  !!
+  !! Errors:
+  !!   fatalError if size of the buffer is insufficient
+  !!
+#ifdef MPI
+  subroutine reduceArray(data, buffer)
+    real(defReal), dimension(:), intent(inout) :: data
+    real(defReal), dimension(:), intent(inout) :: buffer
+    integer(longInt)                           :: N, chunk, start
+    integer(shortInt)                          :: error
+    character(100),parameter :: Here = 'reduceArray (scoreMemory_class.f90)'
+    ! We need to be careful to support sizes larger than 2^31
+    N = size(data, kind=longInt)
+
+    ! Check if the buffer is large enough
+    if (size(buffer, kind=longInt) < N) then
+      call fatalError(Here, 'Buffer is too small to store the reduced data')
+    end if
+
+    ! Since the number of bins is limited by 64bit signed integer and the
+    ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
+    ! to split the reduction operation into chunks
+    start = 1
+
+    do while (start <= N)
+      chunk = min(N - start + 1, int(huge(1_shortInt), longInt))
+
+      call mpi_reduce(data(start : start + chunk - 1), &
+                      buffer(start : start + chunk - 1), &
+                      int(chunk, shortInt), &
+                      MPI_DEFREAL, &
+                      MPI_SUM, &
+                      MASTER_RANK, &
+                      MPI_COMM_WORLD, &
+                      error)
+      start = start + chunk
+    end do
+
+    ! Copy the result back to data
+    data = buffer(1:N)
+
+    ! Clean buffer
+    buffer(1:N) = ZERO
+
+  end subroutine reduceArray
+#endif
 
   !!
   !! Load mean result and Standard deviation into provided arguments

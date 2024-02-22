@@ -147,6 +147,7 @@ module tallyAdmin_class
 
     ! Interaction procedures
     procedure :: getResult
+    procedure :: collectDistributed
 
     ! Display procedures
     procedure :: display
@@ -814,6 +815,23 @@ contains
     end if
 
   end subroutine getResult
+
+  !!
+  !!
+  !!
+  recursive subroutine collectDistributed(self)
+    class(tallyAdmin), intent(inout) :: self
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call collectDistributed(self % atch)
+    end if
+
+    if (.not. self % mpiSync) then
+      call self % mem % collectDistributed()
+    end if
+
+  end subroutine collectDistributed
 
   !!
   !! Append sorting array identified with the code with tallyClerk idx

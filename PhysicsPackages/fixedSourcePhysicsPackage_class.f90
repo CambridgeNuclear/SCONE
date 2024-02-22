@@ -124,6 +124,9 @@ contains
 
     call self % cycles(self % tally, self % N_cycles)
 
+    ! Collect results from other processes
+    call self % tally % collectDistributed()
+
     if (isMPIMaster()) call self % collectResults()
 
     call statusMsg("")
