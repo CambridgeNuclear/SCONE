@@ -96,7 +96,7 @@ contains
   end subroutine init
 
   !!
-  !! Return TRUE is position is inside the cell
+  !! Return TRUE if position is inside the cell
   !!
   !! See cell_inter for details
   !!
