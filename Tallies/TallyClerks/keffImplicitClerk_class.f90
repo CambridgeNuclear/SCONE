@@ -33,7 +33,6 @@ module keffImplicitClerk_class
                                   IMP_ABS      = 2 ,&  ! Implicit neutron absorbtion
                                   ANA_LEAK     = 3 ,&  ! Analog Leakage
                                   K_EFF        = 4     ! k-eff estimate
-
   !!
   !! A simple implicit k-eff estimator based on collison estimator of reaction rates,
   !! and an analog estimators of (N,XN) reactions and leakage
@@ -169,13 +168,7 @@ contains
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      if (virtual) return
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-    end if
+    if ((.not. self % virtual) .and. virtual) return
 
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
@@ -188,6 +181,14 @@ contains
 
     ! Obtain xss
     call mat % getMacroXSs(xss, p)
+
+    ! Calculate flux
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xss % total
+    end if
 
     nuFissXS = xss % nuFission
     absXS    = xss % capture + xss % fission

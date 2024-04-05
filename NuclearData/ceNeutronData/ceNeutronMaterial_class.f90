@@ -1,6 +1,7 @@
 module ceNeutronMaterial_class
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError
   use RNG_class,         only : RNG
   use particle_class,    only : particle
@@ -12,9 +13,13 @@ module ceNeutronMaterial_class
 
   ! CE Neutron Interfaces
   use ceNeutronDatabase_inter, only : ceNeutronDatabase
+  use ceNeutronNuclide_inter,  only : ceNeutronNuclide, ceNeutronNuclide_CptrCast
 
   ! Cache
   use ceNeutronCache_mod,      only : materialCache, nuclideCache
+
+  ! Scattering procedures
+  use scatteringKernels_func,  only : relativeEnergy_constXS
 
   implicit none
   private
@@ -48,10 +53,12 @@ module ceNeutronMaterial_class
   !!
   type, public, extends(neutronMaterial) :: ceNeutronMaterial
     integer(shortInt)                            :: matIdx = 0
+    real(defReal)                                :: kT     = ZERO
     class(ceNeutronDatabase), pointer            :: data => null()
     real(defReal), dimension(:), allocatable     :: dens
     integer(shortInt), dimension(:), allocatable :: nuclides
-    logical(defBool)                             :: fissile =.false.
+    logical(defBool)                             :: fissile = .false.
+    logical(defBool)                             :: hasTMS  = .false.
 
   contains
     ! Superclass procedures
@@ -80,10 +87,12 @@ contains
     class(ceNeutronMaterial), intent(inout) :: self
 
     self % matIdx  = 0
+    self % kT      = ZERO
     self % data    => null()
     if(allocated(self % dens))     deallocate(self % dens )
     if(allocated(self % nuclides)) deallocate (self % nuclides)
     self % fissile = .false.
+    self % hasTMS  = .false.
 
   end subroutine kill
 
@@ -129,13 +138,13 @@ contains
     character(100), parameter :: Here = 'setComposition (ceNeutronMaterial_class.f90)'
 
     ! Check input
-    if(size(dens) /= size(nucIdxs)) call fatalError(Here,'Diffrent sizes of density and nuclide vector')
-    if(any(dens < ZERO)) call fatalError(Here,'-ve nuclide densities are present')
-    if(size(dens) == 0)  call fatalError(Here,'Empty composition is not allowed')
+    if (size(dens) /= size(nucIdxs)) call fatalError(Here,'Diffrent sizes of density and nuclide vector')
+    if (any(dens < ZERO)) call fatalError(Here,'-ve nuclide densities are present')
+    if (size(dens) == 0)  call fatalError(Here,'Empty composition is not allowed')
 
     ! Clean any current content
-    if(allocated(self % dens))     deallocate(self % dens)
-    if(allocated(self % nuclides)) deallocate(self % nuclides)
+    if (allocated(self % dens))     deallocate(self % dens)
+    if (allocated(self % nuclides)) deallocate(self % nuclides)
 
     ! Load values
     self % dens     = dens
@@ -147,7 +156,7 @@ contains
   !! Set matIdx, pointer to a database and fissile flag
   !!
   !! All arguments are optional. Use with keyword association e.g.
-  !!   call mat % set( matIdx = 7)
+  !!   call mat % set(matIdx = 7)
   !!
   !! Use this procedure ONLY during build. NEVER during transport.
   !! IT IS NOT THREAD SAFE!
@@ -155,17 +164,23 @@ contains
   !! Args:
   !!   matIdx [in]    -> material index
   !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
-  !!   fissile [in] -> flag indicating whether fission data is present
+  !!   fissile [in]   -> flag indicating whether fission data is present
+  !!   hasTMS [in]    -> flag indicating whether TMS is on
+  !!   temp [in]      -> TMS material temperature
   !!
-  subroutine set(self, matIdx, database, fissile)
-    class(ceNeutronMaterial), intent(inout)               :: self
-    integer(shortInt), intent(in),optional                :: matIdx
-    class(ceNeutronDatabase),pointer, optional,intent(in) :: database
-    logical(defBool),intent(in), optional                 :: fissile
+  subroutine set(self, matIdx, database, fissile, hasTMS, temp)
+    class(ceNeutronMaterial), intent(inout)                 :: self
+    integer(shortInt), intent(in), optional                 :: matIdx
+    class(ceNeutronDatabase), pointer, optional, intent(in) :: database
+    logical(defBool), intent(in), optional                  :: fissile
+    logical(defBool), intent(in), optional                  :: hasTMS
+    real(defReal), intent(in), optional                     :: temp
 
-    if(present(matIdx))    self % matIdx  = matIdx
-    if(present(database))  self % data    => database
-    if(present(fissile))   self % fissile = fissile
+    if (present(database)) self % data    => database
+    if (present(fissile))  self % fissile = fissile
+    if (present(matIdx))   self % matIdx  = matIdx
+    if (present(hasTMS))   self % hasTMS  = hasTMS
+    if (present(temp))     self % kT = (kBoltzmann * temp) / joulesPerMeV
 
   end subroutine set
 
@@ -224,42 +239,112 @@ contains
   !! Args:
   !!   E [in]       -> incident energy [MeV]
   !!   rand [inout] -> random number generator
-  !!
-  !! Result:
-  !!   nucIdx of the sampled nuclide for collision
+  !!   nucIdx [out] -> sampler nuclide index
+  !!   eOut [out]   -> energy used for the TMS rejection sampling
   !!
   !! Errors:
   !!   fatalError if sampling fails for some reason (E.G. random number > 1)
   !!   fatalError if E is out-of-bounds of the present data
   !!
-  function sampleNuclide(self, E, rand) result(nucIdx)
+  subroutine sampleNuclide(self, E, rand, nucIdx, eOut)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
-    integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs
+    integer(shortInt), intent(out)       :: nucIdx
+    real(defReal), intent(out)           :: eOut
+    class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: i
+    real(defReal)                        :: P_acc, deltakT, nuckT, eMin, eMax, &
+                                            A, totMatXS, totNucXS, dens, eRel
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get total material XS
-    if(E /= materialCache(self % matIdx) % E_tot) then
+    if (E /= materialCache(self % matIdx) % E_tot) then
       call self % data % updateTotalMatXS(E, self % matIdx, rand)
     end if
 
-    xs = materialCache(self % matIdx) % xss % total * rand % get()
+    totMatXS = materialCache(self % matIdx) % xss % total * rand % get()
 
-    ! Loop over all nuclides
-    do i=1,size(self % nuclides)
+    ! Loop over nuclides
+    do i = 1,size(self % nuclides)
+
       nucIdx = self % nuclides(i)
-      if (E /= nuclideCache(nucIdx) % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
-      xs = xs - nuclideCache(nucIdx) % xss % total * self % dens(i)
-      if(xs < ZERO) return
+      dens = self % dens(i)
+
+      associate (nucCache => nuclideCache(nucIdx))
+
+        ! Retrieve nuclide XS from cache
+        if (self % hasTMS) then
+
+          ! If the material is using TMS, the nuclide temperature majorant is needed
+          nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
+          if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+
+          nuckT = nuc % getkT()
+          deltakT = self % kT - nuckT
+          if (nucCache % deltakT == deltakT .or. nucCache % E_maj == E) then
+            call self % data % updateTotalTempNucXS(E, self % kT, nucIdx)
+          end if
+
+          totNucXS = nucCache % tempMajXS * nucCache % doppCorr
+
+        else
+
+          ! Update nuclide cache if needed
+          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
+          totNucXS = nucCache % xss % total
+
+        end if
+
+        totMatXS = totMatXS - totNucXS * dens
+
+        ! Nuclide temporarily accepted: check TMS condition
+        if (totMatXS < ZERO) then
+
+          ! Save energy to be used to sample reaction
+          eOut = E
+
+          if (self % hasTMS) then
+
+            A  = nuc % getMass()
+
+            ! Sample relative energy
+            eRel = relativeEnergy_constXS(E, A, deltakT, rand)
+
+            ! Call through system minimum and maximum energies
+            call self % data % energyBounds(eMin, eMax)
+
+            ! Ensure relative energy is within energy bounds
+            if (eRel < eMin) eRel = eMin
+            if (eMax < eRel) eRel = eMax
+
+            ! Get relative energy nuclide cross section
+            call self % data % updateMicroXSs(eRel, nucIdx, rand)
+
+            ! Calculate acceptance probability using ratio of relative energy xs to temperature majorant
+            P_acc = nucCache % xss % total * nucCache % doppCorr / totNucXS
+
+            ! Accept or reject the sampled nuclide
+            if (rand % get() >= P_acc) nucIdx = REJECTED
+
+            ! Overwrite energy to be used to sample reaction
+            eOut = eRel
+
+          end if
+
+          ! Exit function, return the sampled nucIdx
+          return
+
+        end if
+
+      end associate
+
     end do
 
     ! Print error message as the inversion failed
     call fatalError(Here,'Nuclide sampling loop failed to terminate')
 
-  end function sampleNuclide
+  end subroutine sampleNuclide
 
   !!
   !! Sample fission nuclide given that a fission neutron was produced
@@ -293,7 +378,7 @@ contains
     character(100), parameter :: Here = 'sampleFission (ceNeutronMaterial_class.f90)'
 
     ! Short-cut for nonFissile material
-    if(.not.self % fissile) then
+    if (.not.self % fissile) then
       nucIdx = 0
       return
     end if
@@ -306,7 +391,7 @@ contains
     xs = materialCache(self % matIdx) % xss % nuFission * rand % get()
 
     ! Loop over all nuclides
-    do i=1,size(self % nuclides)
+    do i = 1,size(self % nuclides)
       nucIdx = self % nuclides(i)
       if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i)

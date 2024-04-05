@@ -176,11 +176,11 @@ contains
     real(defReal)                       :: xs
 
     ! Check Cache and update if needed
-    if (nuclideCache(self % getNucIdx()) % E_tot /= E) then
+    if (nuclideCache(self % nucIdx) % E_tot /= E) then
       call self % data % updateTotalNucXS(E, self % nucIdx, rand)
     end if
 
-    xs = nuclideCache(self % getNucIdx()) % xss % total
+    xs = nuclideCache(self % nucIdx) % xss % total
 
   end function getTotalXS
 
@@ -202,11 +202,11 @@ contains
     class(RNG), intent(inout)           :: rand
 
     ! Check Cache and update if needed
-    if(nuclideCache(self % getNucIdx()) % E_tail /= E) then
+    if (nuclideCache(self % nucIdx) % E_tail /= E) then
       call self % data % updateMicroXSs(E, self % nucIdx, rand)
     end if
 
-    xss = nuclideCache(self % getNucIdx()) % xss
+    xss = nuclideCache(self % nucIdx) % xss
 
   end subroutine getMicroXSs
 
@@ -240,18 +240,18 @@ contains
     logical(defBool), intent(in), optional                  :: dbrc
     character(100), parameter :: Here = 'set (ceNuetronNuclide_inter.f90)'
 
-    if(present(nucIdx))    self % nucIdx  = nucIdx
-    if(present(database))  self % data    => database
-    if(present(fissile))   self % fissile = fissile
-    if(present(dbrc))      self % DBRC    = dbrc
+    if (present(nucIdx))    self % nucIdx  = nucIdx
+    if (present(database))  self % data    => database
+    if (present(fissile))   self % fissile = fissile
+    if (present(dbrc))      self % DBRC    = dbrc
 
-    if(present(mass)) then
-      if(mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
+    if (present(mass)) then
+      if (mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
       self % mass = mass
     end if
 
-    if(present(kT)) then
-      if(kT < ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
+    if (present(kT)) then
+      if (kT < ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
       self % kT = kT
     end if
 

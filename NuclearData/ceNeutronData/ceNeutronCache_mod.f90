@@ -68,6 +68,11 @@ module ceNeutronCache_mod
     logical(defBool)      :: needsSabInel = .false.
     logical(defBool)      :: needsSabEl = .false.
     logical(defBool)      :: needsUrr = .false.
+    ! TMS data
+    real(defReal)         :: E_maj
+    real(defReal)         :: deltakT
+    real(defReal)         :: tempMajXS
+    real(defReal)         :: doppCorr
   end type cacheNucDat
 
   !!
@@ -142,8 +147,8 @@ contains
 
     ! Chack the provided data
     if (nMat < 1) call fatalError(Here,'Number of materials must be +ve! Not: '//numToChar(nMat))
-    if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nMat))
-    if (nLoc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(nMat))
+    if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nNuc))
+    if (nLoc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(nLoc))
 
     ! Allocate space
     ! Need to do in parallel region to allocate each copy
@@ -168,6 +173,7 @@ contains
   !! Return Cache Module (Singleton) to uninitialised state
   !!
   subroutine kill()
+
     ! Need to deallocate on all threads
     !$omp parallel
     if (allocated(materialCache)) deallocate (materialCache)
@@ -176,6 +182,7 @@ contains
     if (allocated(trackingCache)) deallocate (trackingCache)
     if (allocated(zaidCache))     deallocate (zaidCache)
     !$omp end parallel
+
   end subroutine kill
 
 

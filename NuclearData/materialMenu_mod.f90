@@ -100,6 +100,7 @@ module materialMenu_mod
     real(defReal),dimension(:),allocatable     :: dens
     type(nuclideInfo),dimension(:),allocatable :: nuclides
     type(dictionary)                           :: extraInfo
+    logical(defBool)                           :: hasTMS = .false.
   contains
     procedure :: init    => init_materialItem
     procedure :: kill    => kill_materialItem
@@ -200,11 +201,13 @@ contains
 
     print '(A60)', repeat('<>',30)
     print '(A)', "^^ MATERIAL DEFINITIONS ^^"
+
     do i = 1,size(materialDefs)
       call materialDefs(i) % display()
       ! Print separation line
       print '(A)', " ><((((*>  +  <*))))><"
     end do
+
     print '(A60)', repeat('<>',30)
 
   end subroutine display
@@ -285,10 +288,13 @@ contains
     ! Return to initial state
     call self % kill()
 
-    ! Load easy components c
+    ! Load easy components properties
     self % name = name
     self % matIdx = idx
-    call dict % get(self % T,'temp')
+
+    ! If material temperature is present TMS is switched on
+    if (dict % isPresent('temp')) self % hasTMS = .true.
+    call dict % getOrDefault(self % T, 'temp', ZERO)
 
     ! Get composition dictionary and load composition
     compDict => dict % getDictPtr('composition')
@@ -298,12 +304,14 @@ contains
     allocate(self % nuclides(size(keys)))
     allocate(self % dens(size(keys)))
 
-    hasSab = .false.
+
     ! Check if S(a,b) files are specified
     if (dict % isPresent('moder')) then
       moderDict => dict % getDictPtr('moder')
       call moderDict % keys(moderKeys)
       hasSab = .true.
+    else
+      hasSab = .false.
     end if
 
     ! Load definitions

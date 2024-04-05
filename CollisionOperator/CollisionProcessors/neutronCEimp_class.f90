@@ -2,7 +2,7 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameUFS, nameWW
+  use universalVariables,            only : nameUFS, nameWW, REJECTED
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -63,11 +63,11 @@ module neutronCEimp_class
   !!  impGen  -> are fission sites generated implicitly? (on by default)
   !!  UFS     -> uniform fission sites variance reduction
   !!  maxSplit -> maximum number of splits allowed per particle (default = 1000)
-  !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
-  !!              Target movment is sampled if neutron energy E < kT * thresh_E where
+  !!  threshE  -> Energy threshold for explicit treatment of target nuclide movement [-].
+  !!              Target movment is sampled if neutron energy E < kT * threshE where
   !!              kT is target material temperature in [MeV]. (default = 400.0)
-  !!  thresh_A -> Mass threshold for explicit tratment of target nuclide movement [Mn].
-  !!              Target movment is sampled if target mass A < thresh_A. (default = 1.0)
+  !!  threshA  -> Mass threshold for explicit tratment of target nuclide movement [Mn].
+  !!              Target movment is sampled if target mass A < threshA. (default = 1.0)
   !!  DBRCeMin -> Minimum energy to which DBRC is applied
   !!  DBRCeMax -> Maximum energy to which DBRC is applied
   !!  splitting -> splits particles above certain weight (on by default)
@@ -107,8 +107,8 @@ module neutronCEimp_class
     real(defReal) :: minWgt
     real(defReal) :: maxWgt
     real(defReal) :: avWgt
-    real(defReal) :: thresh_E
-    real(defReal) :: thresh_A
+    real(defReal) :: threshE
+    real(defReal) :: threshA
     real(defReal) :: DBRCeMin
     real(defReal) :: DBRCeMax
     integer(shortInt) :: maxSplit
@@ -121,7 +121,11 @@ module neutronCEimp_class
     logical(defBool)  :: implicitSites ! Generates fission sites on every fissile collision
     logical(defBool)  :: uniFissSites
 
+    ! Variance reduction requirements
     type(weightWindowsField), pointer :: weightWindowsMap
+
+    ! Useful to store
+    real(defReal) :: eSample
 
   contains
     ! Initialisation procedure
@@ -166,8 +170,8 @@ contains
     call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
 
     ! Thermal scattering kernel thresholds
-    call dict % getOrDefault(self % thresh_E, 'energyThreshold', 400.0_defReal)
-    call dict % getOrDefault(self % thresh_A, 'massThreshold', 1.0_defReal)
+    call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)
+    call dict % getOrDefault(self % threshA, 'massThreshold', 1.0_defReal)
 
     ! Obtain settings for variance reduction
     call dict % getOrDefault(self % weightWindows,'weightWindows', .false.)
@@ -185,8 +189,8 @@ contains
     if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
     if( self % maxE < ZERO ) call fatalError(Here,'-ve maxEnergy')
     if( self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
-    if( self % thresh_E < 0) call fatalError(Here,' -ve energyThreshold')
-    if( self % thresh_A < 0) call fatalError(Here,' -ve massThreshold')
+    if( self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
+    if( self % threshA < 0) call fatalError(Here,' -ve massThreshold')
 
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
@@ -246,13 +250,19 @@ contains
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Select collision nuclide
-    collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
+    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, self % eSample)
+
+    ! If nuclide was rejected in TMS loop return to tracking
+    if (collDat % nucIdx == REJECTED) then
+      collDat % MT = noInteraction
+      return
+    end if
 
     self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
-    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
+    if (.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, p % E, p % pRNG)
+    call self % nuc % getMicroXSs(microXss, self % eSample, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -281,13 +291,17 @@ contains
 
     ! Generate fission sites if nuclide is fissile
     fiss_and_implicit = self % nuc % isFissile() .and. self % implicitSites
+
     if (fiss_and_implicit) then
+
       ! Obtain required data
       wgt   = p % w                ! Current weight
       k_eff = p % k_eff            ! k_eff for normalisation
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
-      call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
+      ! Retrieve cross section at the energy used for reaction sampling
+      call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
+
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
 
@@ -391,12 +405,15 @@ contains
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
     if (.not.self % implicitSites) then
+
       ! Obtain required data
       wgt   = p % w                ! Current weight
       k_eff = p % k_eff            ! k_eff for normalisation
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
-      call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
+      ! Retrieve cross section at the energy used for reaction sampling
+      call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
+
       sig_nufiss = microXSs % nuFission
       sig_fiss   = microXSs % fission
 
@@ -473,13 +490,19 @@ contains
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
-    collDat % kT = self % nuc % getkT()
+
+    ! Retrieve kT from either material or nuclide
+    if (self % mat % hasTMS) then
+      collDat % kT = self % mat % kT
+    else
+      collDat % kT = self % nuc % getkT()
+    end if
 
     ! Check is DBRC is on
     hasDBRC = self % nuc % hasDBRC()
 
-    isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % thresh_E) &
-              & .and. (collDat % A > self % thresh_A)
+    isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % threshE) &
+              & .and. (collDat % A > self % threshA)
 
     ! Apply criterion for Free-Gas vs Fixed Target scattering
     if (.not. reac % inCMFrame()) then

@@ -57,13 +57,14 @@ module ceNeutronDatabase_inter
     procedure :: getMajorantXS
 
     ! Procedures implemented by a specific CE Neutron Database
-    procedure(updateTotalMatXS),deferred   :: updateTotalMatXS
-    procedure(updateMajorantXS),deferred   :: updateMajorantXS
-    procedure(updateMacroXSs),deferred     :: updateMacroXSs
-    procedure(updateTotalXS),deferred      :: updateTotalNucXS
-    procedure(updateMicroXSs),deferred     :: updateMicroXSs
-    procedure(energyBounds),deferred       :: energyBounds
-    procedure(getScattMicroMajXS),deferred :: getScattMicroMajXS
+    procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
+    procedure(updateMajorantXS), deferred     :: updateMajorantXS
+    procedure(updateMacroXSs), deferred       :: updateMacroXSs
+    procedure(updateTotalXS), deferred        :: updateTotalNucXS
+    procedure(updateMicroXSs), deferred       :: updateMicroXSs
+    procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
+    procedure(energyBounds), deferred         :: energyBounds
+    procedure(getScattMicroMajXS), deferred   :: getScattMicroMajXS
   end type ceNeutronDatabase
 
   abstract interface
@@ -196,7 +197,31 @@ module ceNeutronDatabase_inter
     end subroutine updateMicroXSs
 
     !!
-    !! Subroutine to get the elastic scattering majorant cross section in a nuclide
+    !! Subroutine to retrieve the nuclide total majorant cross section
+    !! over a calculated energy range (needed for TMS) and update the nuclide
+    !! cache with majorant value, energy, deltakT and Doppler correction factor
+    !!
+    !! The energy range depends on the nuclide and TMS material kT, on the
+    !! atomic mass of the nuclide, and the incident neutron energy
+    !!
+    !! Args:
+    !!   E [in]      -> required energy [MeV]
+    !!   kT [in]     -> Thermal energy of TMS material
+    !!   nucIdx [in] -> material index that needs to be updated
+    !!
+    !! Errors:
+    !!   FatalError if material kT is smaller than the nuclide kT
+    !!
+    subroutine updateTotalTempNucXS(self, E, kT, nucIdx)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      real(defReal), intent(in)            :: kT
+      integer(shortInt), intent(in)        :: nucIdx
+    end subroutine updateTotalTempNucXS
+
+    !!
+    !! Function to get the elastic scattering majorant cross section in a nuclide
     !! over a certain energy range, defined as a function of a given temperature
     !!
     !! NOTE: This function is called by the collision operator to apply DBRC; nucIdx

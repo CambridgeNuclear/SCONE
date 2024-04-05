@@ -101,7 +101,7 @@ module aceNeutronNuclide_class
   !!   microXSs        -> return interpolated ceNeutronMicroXSs package given index and inter. factor
   !!   getUrrXSs       -> return ceNeutronMicroXSs accounting for ures probability tables
   !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
-  !!   elScatteringMaj -> returns the elastic scattering majorant within an energy range given as input
+  !!   getMajXS        -> returns a majorant cross section on request within an energy range given as input
   !!   init            -> build nuclide from aceCard
   !!   initUrr         -> build list and mapping of nuclides to maintain temperature correlation
   !!                      when reading ures probability tables
@@ -145,7 +145,7 @@ module aceNeutronNuclide_class
     procedure :: microXSs
     procedure :: getUrrXSs
     procedure :: getThXSs
-    procedure :: elScatteringMaj
+    procedure :: getMajXS
     procedure :: init
     procedure :: initUrr
     procedure :: initSab
@@ -589,24 +589,40 @@ contains
   !! an energy range given by an upper and lower energy bound.
   !!
   !! Args:
-  !!   upperE [in]  -> Upper bound of energy range
-  !!   upperE [in]  -> Upper bound of energy range
+  !!   eLower [in]  -> Lower bound of energy range
+  !!   eUpper [in]  -> Upper bound of energy range
+  !!   MT     [in]  -> MT number of the requested reaction cross section
   !!   maj [out]    -> Maximum scattering cross section within energy range
   !!
-  function elScatteringMaj(self, lowerE, upperE) result (maj)
+  function getMajXS(self, eLower, eUpper, MT) result (maj)
     class(aceNeutronNuclide), intent(in)  :: self
-    real(defReal), intent(in)             :: lowerE
-    real(defReal), intent(in)             :: upperE
+    real(defReal), intent(in)             :: eLower
+    real(defReal), intent(in)             :: eUpper
+    integer(shortInt), intent(in)         :: MT
     real(defReal)                         :: maj
-    integer(shortInt)                     :: idx
+    integer(shortInt)                     :: reaction, idx
     real(defReal)                         :: f, E, xs
+    character(100), parameter :: Here = 'getMajXS (aceNeutronNuclide_class.f90)'
+
+    ! Select desired reaction based on requested MT number
+    select case (MT)
+
+      case (N_TOTAL)
+        reaction = TOTAL_XS
+
+      case (N_N_ELASTIC)
+        reaction = ESCATTER_XS
+
+      case default
+        call fatalError(Here, 'Unsupported MT number requested: '//numToChar(MT))
+
+    end select
 
     ! Search for idx, f, and xs for the lower energy limit
-    call self % search(idx, f, lowerE)
+    call self % search(idx, f, eLower)
 
     ! Conservative: choose the xs at the energy point before the lower energy limit
-    f = 0
-    maj = self % scatterXS(idx, f)
+    maj = self % mainData(reaction, idx)
 
     majorantLoop: do
 
@@ -614,8 +630,8 @@ contains
       idx = idx + 1
 
       ! Find XS and energy at index
-      xs = self % mainData(ESCATTER_XS, idx)
-      E = self % eGrid(idx)
+      xs = self % mainData(reaction, idx)
+      E  = self % eGrid(idx)
 
       ! Compare cross sections and possibly update majorant
       if (xs > maj) then
@@ -623,11 +639,11 @@ contains
       end if
 
       ! Exit loop after getting to the upper energy limit
-      if (E > upperE) exit majorantLoop
+      if (E >= eUpper) exit majorantLoop
 
     end do majorantLoop
 
-  end function elScatteringMaj
+  end function getMajXS
 
   !!
   !! Initialise from an ACE Card
