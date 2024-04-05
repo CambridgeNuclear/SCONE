@@ -1,3 +1,11 @@
+!!
+!! OECD-NEA source convergence challenge problem 1.
+!! Spent fuel pool with a checkerboard layout of assemblies,
+!! separated by water, surrounded by both water and concrete.
+!! Requires ~2500 unaccelerated inactive cycles to converge.
+!! Has a keff ~0.889. The vast majority of fissions will take
+!! place in the top left assembly bordered by concrete.
+!!
 type eigenPhysicsPackage;
 
 pop      100000;
@@ -173,7 +181,7 @@ viz {
 
 nuclearData {
   handles {
-    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE; }
   }
   materials {
 
