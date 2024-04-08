@@ -92,7 +92,7 @@ contains
     self % matIdx  = 0
     self % kT      = ZERO
     self % data    => null()
-    if (allocated(self % dens))     deallocate(self % dens )
+    if (allocated(self % dens))     deallocate(self % dens)
     if (allocated(self % nuclides)) deallocate (self % nuclides)
     self % fissile = .false.
     self % hasTMS  = .false.
@@ -417,7 +417,7 @@ contains
     end if
 
     ! Calculate material macroscopic nuFission
-    if(E /= materialCache(self % matIdx) % E_tail) then
+    if (E /= materialCache(self % matIdx) % E_tail) then
       call self % data % updateMacroXSs(E, self % matIdx, rand)
     end if
 
@@ -426,9 +426,9 @@ contains
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
       nucIdx = self % nuclides(i)
-      if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i)
-      if(xs < ZERO) return
+      if (xs < ZERO) return
     end do
 
     ! Print error message as the inversion failed
@@ -464,7 +464,7 @@ contains
     character(100), parameter :: Here = 'sampleScatter (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
-    if(E /= materialCache(self % matIdx) % E_tail) then
+    if (E /= materialCache(self % matIdx) % E_tail) then
       call self % data % updateMacroXSs(E, self % matIdx, rand)
     end if
 
@@ -472,12 +472,12 @@ contains
                          materialCache(self % matIdx) % xss % inelasticScatter)
 
     ! Loop over all nuclides
-    do i=1,size(self % nuclides)
+    do i = 1,size(self % nuclides)
       nucIdx = self % nuclides(i)
-      if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i)
-      if(xs < ZERO) return
+      if (xs < ZERO) return
     end do
 
     ! Print error message as the inversion failed
@@ -513,7 +513,7 @@ contains
     character(100), parameter :: Here = 'sampleScatterWithFission (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
-    if(E /= materialCache(self % matIdx) % E_tail) then
+    if (E /= materialCache(self % matIdx) % E_tail) then
       call self % data % updateMacroXSs(E, self % matIdx, rand)
     end if
 
@@ -522,13 +522,13 @@ contains
                          materialCache(self % matIdx) % xss % fission)
 
     ! Loop over all nuclides
-    do i=1,size(self % nuclides)
+    do i = 1,size(self % nuclides)
       nucIdx = self % nuclides(i)
-      if(E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
                  nuclideCache(nucIdx) % xss % fission ) * self % dens(i)
-      if(xs < ZERO) return
+      if (xs < ZERO) return
     end do
 
     ! Print error message as the inversion failed

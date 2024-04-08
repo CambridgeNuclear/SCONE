@@ -192,7 +192,7 @@ contains
     ! Find starting index in the map
     ! It is important that preCollision is not changed by a collisionProcessor
     ! before the particle is fed to the tally, otherwise results will be meaningless
-    sIdx = self % map % map( p % preCollision)
+    sIdx = self % map % map(p % preCollision)
 
     ! Find collision index in the map
     state = p

@@ -33,7 +33,9 @@ module ceNeutronCache_mod
   !!   E_tail -> Energy of all XSs in xss except total
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
-  !!   xss    -> Cached Cross-Section values
+  !!   xss    -> Cached cross-section values
+  !!   E_rel  -> Base energy for which relative energy cross sections are found (for TMS)
+  !!   xssRel -> Cached effective cross-section values at energy relative to E_rel (for TMS)
   !!
   type, public :: cacheMatDat
     real(defReal)         :: E_tot  = ZERO
@@ -41,6 +43,9 @@ module ceNeutronCache_mod
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
+    ! TMS data
+    real(defReal)         :: E_rel
+    type(neutronMacroXSs) :: xssRel
   end type cacheMatDat
 
   !!
@@ -58,6 +63,10 @@ module ceNeutronCache_mod
   !!                   scattering data
   !!   needsUrr     -> Flag that tells if the nuclide is using unresolved resonance
   !!                   probability tables
+  !!   E_maj        -> Energy at which the nuclide temperature majorant xs is stored (for TMS)
+  !!   deltakT      -> Difference between TMS material and nuclide thermal energy (for TMS)
+  !!   tempMajXS    -> Temperature majorant xs value (for TMS)
+  !!   doppCorr     -> Doppler correction factor value (for TMS)
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -121,41 +130,30 @@ contains
   !! Args:
   !!   nMat [in]  -> Number of materials
   !!   nNuc [in]  -> Number of nuclides
-  !!   nMaj [in]  -> Optional. Number of majorant Xss (Default = 1)
   !!   nZaid [in] -> Optional. Number of nuclides with same ZAID
   !!
   !! Errors:
   !!   fatalError if nMat, nNuc or Nmaj is not a +ve value
   !!
-  subroutine init(nMat, nNuc, nMaj, nZaid)
+  subroutine init(nMat, nNuc, nZaid)
     integer(shortInt), intent(in)           :: nMat
     integer(shortInt), intent(in)           :: nNuc
-    integer(shortInt), optional, intent(in) :: nMaj
     integer(shortInt), optional, intent(in) :: nZaid
-    integer(shortInt)                       :: nLoc
     character(100),parameter :: Here = 'init (ceNeutronCache_mod.f90)'
 
     ! Make sure memory is clean
     call kill()
 
-    ! Read default value of majorant XSs
-    if (present(nMaj)) then
-      nLoc = nMaj
-    else
-      nLoc = 1
-    end if
-
     ! Chack the provided data
     if (nMat < 1) call fatalError(Here,'Number of materials must be +ve! Not: '//numToChar(nMat))
     if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nNuc))
-    if (nLoc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(nLoc))
 
     ! Allocate space
     ! Need to do in parallel region to allocate each copy
     !$omp parallel
     allocate(materialCache(nMat))
     allocate(nuclideCache(nNuc))
-    allocate(majorantCache(nLoc))
+    allocate(majorantCache(1))
     allocate(trackingCache(1))
 
     if (present(nZaid)) then

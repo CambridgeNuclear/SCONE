@@ -12,6 +12,8 @@ module collisionClerk_class
 
   ! Nuclear Data interface
   use nuclearDatabase_inter,      only : nuclearDatabase
+  use neutronMaterial_inter,      only : neutronMaterial,neutronMaterial_CptrCast
+  use neutronXSPackages_class,    only : neutronMacroXSs
 
   ! Tally Filters
   use tallyFilter_inter,          only : tallyFilter
@@ -194,29 +196,25 @@ contains
     logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
+    type(neutronMacroXSs)                 :: xss
+    class(neutronMaterial), pointer       :: mat
     integer(longInt)                      :: adrr
     real(defReal)                         :: scoreVal, flux
     character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      if (virtual) return
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-    end if
+    if ((.not. self % virtual) .and. virtual) return
 
     ! Get current particle state
     state = p
 
     ! Check if within filter
-    if(allocated( self % filter)) then
-      if(self % filter % isFail(state)) return
+    if (allocated(self % filter)) then
+      if (self % filter % isFail(state)) return
     end if
 
     ! Find bin index
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       binIdx = self % map % map(state)
     else
       binIdx = 1
@@ -224,6 +222,25 @@ contains
 
     ! Return if invalid bin index
     if (binIdx == 0) return
+
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+
+    else
+      ! Get material pointer
+      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+      if (.not.associated(mat)) then
+        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+      end if
+
+      ! Obtain xss
+      call mat % getMacroXSs(xss, p)
+
+      flux = p % w / xss % total
+
+    end if
 
     ! Calculate bin address
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1

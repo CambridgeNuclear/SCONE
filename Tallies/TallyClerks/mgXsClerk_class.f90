@@ -228,13 +228,10 @@ contains
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      if (virtual) return
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-    end if
+    if ((.not. self % virtual) .and. virtual) return
+
+    ! Ensure we're not in void (could happen when scoring virtual collisions)
+    if (p % matIdx() == VOID_MAT) return
 
     ! Get current particle state
     state = p
@@ -256,13 +253,6 @@ contains
     ! Return if invalid bin index
     if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
 
-    ! Calculate bin address
-    binIdx = self % energyN * (matIdx - 1) + enIdx
-    addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
-
-    ! Ensure we're not in void (could happen when scoring virtual collisions)
-    if (p % matIdx() == VOID_MAT) return
-
     ! Get material pointer
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
     if (.not.associated(mat)) then
@@ -271,6 +261,18 @@ contains
 
     ! Retrieve material cross sections
     call mat % getMacroXSs(xss, p)
+
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xss % total
+    end if
+
+    ! Calculate bin address
+    binIdx = self % energyN * (matIdx - 1) + enIdx
+    addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
     ! Calculate reaction rates
     nuFissXS = xss % nuFission * flux

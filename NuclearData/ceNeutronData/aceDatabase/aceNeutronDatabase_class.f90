@@ -509,43 +509,55 @@ contains
     associate(mat      => self % materials(matIdx), &
               matCache => cache_materialCache(matIdx))
 
-      ! Construct microscopic XSs
-      do i = 1, size(mat % nuclides)
+      ! Check if relative energy cross sections have been retrieved before
+      if (E /= matCache % E_rel) then
 
-        dens   = mat % dens(i)
-        nucIdx = mat % nuclides(i)
-        nuckT  = self % nuclides(nucIdx) % getkT()
-        A      = self % nuclides(nucIdx) % getMass()
-        deltakT = mat % kT - nuckT
+        ! Clean current xss
+        call matCache % xssRel % clean()
+        matCache % E_rel = E
 
-        ! Call fatal error if material temperature is lower then base nuclide temperature
-        if (deltakT < ZERO) then
-          call fatalError(Here,"Material temperature must be greater than the nuclear data temperature.")
-        end if
+        ! Construct microscopic XSs
+        do i = 1, size(mat % nuclides)
 
-        eRel = relativeEnergy_constXS(E, A, deltakT, rand)
+          dens   = mat % dens(i)
+          nucIdx = mat % nuclides(i)
+          nuckT  = self % nuclides(nucIdx) % getkT()
+          A      = self % nuclides(nucIdx) % getMass()
+          deltakT = mat % kT - nuckT
 
-        ! Call through system minimum and maximum energies
-        call self % energyBounds(eMin, eMax)
+          ! Call fatal error if material temperature is lower then base nuclide temperature
+          if (deltakT < ZERO) then
+            call fatalError(Here,"Material temperature must be greater than the nuclear data temperature.")
+          end if
 
-        ! avoid sampled relative energy from MB dist extending into energies outside system range
-        if (eRel < eMin) eRel = eMin
-        if (eMax < eRel) eRel = eMax
+          eRel = relativeEnergy_constXS(E, A, deltakT, rand)
 
-        ! Doppler correction factor for low energies
-        corrFact = dopplerCorrectionFactor(E, A, deltakT)
+          ! Call through system minimum and maximum energies
+          call self % energyBounds(eMin, eMax)
 
-        ! Update if needed
-        if (cache_nuclideCache(nucIdx) % E_tail /= eRel .or. cache_nuclideCache(nucIdx) % E_tot /= eRel) then
-          call self % updateMicroXSs(eRel, nucIdx, rand)
-        end if
+          ! avoid sampled relative energy from MB dist extending into energies outside system range
+          if (eRel < eMin) eRel = eMin
+          if (eMax < eRel) eRel = eMax
 
-        ! Add microscopic XSs
-        call matCache % xss % add(cache_nuclideCache(nucIdx) % xss, dens*corrFact)
-        matCache % E_tot  = ZERO
-        matCache % E_tail = ZERO
+          ! Doppler correction factor for low energies
+          corrFact = dopplerCorrectionFactor(E, A, deltakT)
 
-      end do
+          ! Update if needed
+          if (cache_nuclideCache(nucIdx) % E_tail /= eRel .or. cache_nuclideCache(nucIdx) % E_tot /= eRel) then
+            call self % updateMicroXSs(eRel, nucIdx, rand)
+          end if
+
+          ! Add microscopic XSs
+          call matCache % xssRel % add(cache_nuclideCache(nucIdx) % xss, dens*corrFact)
+
+        end do
+
+      end if
+
+      ! Update cache, and ensure that
+      matCache % xss = matCache % xssRel
+      matCache % E_tot  = ZERO
+      matCache % E_tail = ZERO
 
     end associate
 
@@ -666,27 +678,32 @@ contains
         call fatalError(Here, "Material temperature must be greater than the nuclear data temperature.")
       end if
 
-      ! Find energy limits to define majorant calculation range
-      alpha = 4.0_defReal * sqrt( deltakT / (E * A) )
-      eUpper = E * (ONE + alpha) * (ONE + alpha)
-      eLower = E * (ONE - alpha) * (ONE - alpha)
+      ! Check if an update is required
+      if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
 
-      ! Find system minimum and maximum energies
-      call self % energyBounds(eMin, eMax)
+        ! Find energy limits to define majorant calculation range
+        alpha = 4.0_defReal * sqrt( deltakT / (E * A) )
+        eUpper = E * (ONE + alpha) * (ONE + alpha)
+        eLower = E * (ONE - alpha) * (ONE - alpha)
 
-      ! Avoid energy limits being outside system range
-      if (eLower < eMin .or. sqrt(E) < alpha) eLower = eMin
-      if (eUpper > eMax) eUpper = eMax
+        ! Find system minimum and maximum energies
+        call self % energyBounds(eMin, eMax)
 
-      ! Doppler g correction factor for low energies
-      nucCache % doppCorr = dopplerCorrectionFactor(E, A, deltakT)
+        ! Avoid energy limits being outside system range
+        if (eLower < eMin .or. sqrt(E) < alpha) eLower = eMin
+        if (eUpper > eMax) eUpper = eMax
 
-      ! Get nuclide total majorant cross section in the energy range
-      nucCache % tempMajXS = nuc % getMajXS(eLower, eUpper, N_TOTAL)
+        ! Doppler g correction factor for low energies
+        nucCache % doppCorr = dopplerCorrectionFactor(E, A, deltakT)
 
-      ! Save additional info
-      nucCache % deltakT = deltakT
-      nucCache % E_maj   = E
+        ! Get nuclide total majorant cross section in the energy range
+        nucCache % tempMajXS = nuc % getMajXS(eLower, eUpper, N_TOTAL)
+
+        ! Save additional info
+        nucCache % deltakT = deltakT
+        nucCache % E_maj   = E
+
+      end if
 
     end associate
 
@@ -1021,7 +1038,7 @@ contains
 
     ! Configure Cache
     if (self % hasUrr) then
-      call cache_init(size(self % materials), size(self % nuclides), 1, maxval(self % nucToZaid))
+      call cache_init(size(self % materials), size(self % nuclides), maxval(self % nucToZaid))
     else
       call cache_init(size(self % materials), size(self % nuclides))
     end if
