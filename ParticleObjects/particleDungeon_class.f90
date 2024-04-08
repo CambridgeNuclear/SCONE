@@ -434,7 +434,7 @@ contains
 
       ! Copy all particle maximum possible number of times
       do i = 1, n_copies
-        self % prisoners(N * i + 1 : N * (i + 1)) = self % prisoners(1:N)
+        self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
       end do
 
       ! Choose the remainder particles to duplicate without replacement
@@ -445,6 +445,7 @@ contains
           duplicates(idx) = i
         end if
       end do
+      self % pop = self % pop * (n_copies + 1)
 
       ! Copy the duplicated particles at the end
       do i = 1, n_duplicates
