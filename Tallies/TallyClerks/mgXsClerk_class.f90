@@ -3,6 +3,7 @@ module mgXsClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -89,6 +90,9 @@ module mgXsClerk_class
     integer(shortInt) :: width = 0
     logical(defBool)  :: PN = .false.
 
+    ! Settings
+    logical(defBool) :: virtual = .false.
+
   contains
     ! Procedures used during build
     procedure  :: init
@@ -170,10 +174,11 @@ contains
     end if
 
     ! Reset parameters
-    self % matN = 0
+    self % matN    = 0
     self % energyN = 0
-    self % width = 0
-    self % PN = .false.
+    self % width   = 0
+    self % PN      = .false.
+    self % virtual = .false.
 
   end subroutine kill
 
@@ -217,13 +222,19 @@ contains
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
-    real(defReal)                         :: totalXS, nuFissXS, captXS, fissXS, scattXS, flux
+    real(defReal)                         :: nuFissXS, captXS, fissXS, scattXS, flux
     integer(shortInt)                     :: enIdx, matIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
 
-    ! This clerk does not handle virtual scoring yet
-    if (virtual) return
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      if (virtual) return
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
     ! Get current particle state
     state = p
@@ -249,6 +260,9 @@ contains
     binIdx = self % energyN * (matIdx - 1) + enIdx
     addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
+    ! Ensure we're not in void (could happen when scoring virtual collisions)
+    if (p % matIdx() == VOID_MAT) return
+
     ! Get material pointer
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
     if (.not.associated(mat)) then
@@ -257,10 +271,6 @@ contains
 
     ! Retrieve material cross sections
     call mat % getMacroXSs(xss, p)
-
-    ! Calculate flux
-    totalXS  = xss % total
-    flux = p % w / totalXS
 
     ! Calculate reaction rates
     nuFissXS = xss % nuFission * flux
