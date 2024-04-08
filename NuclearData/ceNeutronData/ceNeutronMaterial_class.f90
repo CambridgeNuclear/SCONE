@@ -59,6 +59,8 @@ module ceNeutronMaterial_class
     integer(shortInt), dimension(:), allocatable :: nuclides
     logical(defBool)                             :: fissile = .false.
     logical(defBool)                             :: hasTMS  = .false.
+    real(defReal)                                :: eUpperSab = ZERO
+    real(defReal)                                :: eLowerURR = ZERO
 
   contains
     ! Superclass procedures
@@ -71,6 +73,7 @@ module ceNeutronMaterial_class
     procedure, non_overridable :: setComposition
     procedure, non_overridable :: getMacroXSs_byE
     procedure                  :: isFissile
+    procedure                  :: inUresOrSabRange
     procedure, non_overridable :: sampleNuclide
     procedure, non_overridable :: sampleFission
     procedure, non_overridable :: sampleScatter
@@ -89,10 +92,12 @@ contains
     self % matIdx  = 0
     self % kT      = ZERO
     self % data    => null()
-    if(allocated(self % dens))     deallocate(self % dens )
-    if(allocated(self % nuclides)) deallocate (self % nuclides)
+    if (allocated(self % dens))     deallocate(self % dens )
+    if (allocated(self % nuclides)) deallocate (self % nuclides)
     self % fissile = .false.
     self % hasTMS  = .false.
+    self % eUpperSab = ZERO
+    self % eLowerURR = ZERO
 
   end subroutine kill
 
@@ -114,6 +119,7 @@ contains
       call fatalError(Here,'MG neutron given to CE data')
 
     end if
+
   end subroutine getMacroXSs_byP
 
   !!
@@ -167,20 +173,26 @@ contains
   !!   fissile [in]   -> flag indicating whether fission data is present
   !!   hasTMS [in]    -> flag indicating whether TMS is on
   !!   temp [in]      -> TMS material temperature
+  !!   eUpperSab [in] -> upper energy of S(a,b) range in the material
+  !!   eLowerURR [in] -> lower energy of ures range in the material
   !!
-  subroutine set(self, matIdx, database, fissile, hasTMS, temp)
+  subroutine set(self, matIdx, database, fissile, hasTMS, temp, eUpperSab, eLowerURR)
     class(ceNeutronMaterial), intent(inout)                 :: self
     integer(shortInt), intent(in), optional                 :: matIdx
     class(ceNeutronDatabase), pointer, optional, intent(in) :: database
     logical(defBool), intent(in), optional                  :: fissile
     logical(defBool), intent(in), optional                  :: hasTMS
     real(defReal), intent(in), optional                     :: temp
+    real(defReal), intent(in), optional                     :: eUpperSab
+    real(defReal), intent(in), optional                     :: eLowerURR
 
-    if (present(database)) self % data    => database
-    if (present(fissile))  self % fissile = fissile
-    if (present(matIdx))   self % matIdx  = matIdx
-    if (present(hasTMS))   self % hasTMS  = hasTMS
-    if (present(temp))     self % kT = (kBoltzmann * temp) / joulesPerMeV
+    if (present(database))  self % data    => database
+    if (present(fissile))   self % fissile = fissile
+    if (present(matIdx))    self % matIdx  = matIdx
+    if (present(hasTMS))    self % hasTMS  = hasTMS
+    if (present(temp))      self % kT = (kBoltzmann * temp) / joulesPerMeV
+    if (present(eUpperSab)) self % eUpperSab  = eUpperSab
+    if (present(eLowerURR)) self % eLowerURR  = eLowerURR
 
   end subroutine set
 
@@ -211,7 +223,7 @@ contains
   end subroutine getMacroXSs_byE
 
   !!
-  !! Return .true. if nuclide is fissile
+  !! Return .true. if material is fissile
   !!
   !! Args:
   !!   None
@@ -229,6 +241,27 @@ contains
     isIt = self % fissile
 
   end function isFissile
+
+  !!
+  !! Return .true. if the provided energy is within the ures or S(a,b) range in the material
+  !!
+  !! Args:
+  !!   E [in] -> test energy
+  !!
+  !! Result:
+  !!   .TRUE. if in energy range, .FALSE. otherwise
+  !!
+  !! Errors:
+  !!   None
+  !!
+  elemental function inUresOrSabRange(self, E) result(isIt)
+    class(ceNeutronMaterial), intent(in) :: self
+    real(defReal), intent(in)            :: E
+    logical(defBool)                     :: isIt
+
+    isIt = (E <= self % eUpperSab) .or. (E >= self % eLowerURR)
+
+  end function inUresOrSabRange
 
   !!
   !! Sample collision nuclide at energy E
@@ -274,7 +307,7 @@ contains
       associate (nucCache => nuclideCache(nucIdx))
 
         ! Retrieve nuclide XS from cache
-        if (self % hasTMS) then
+        if (self % hasTMS .and. .not. self % inUresOrSabRange(E)) then
 
           ! If the material is using TMS, the nuclide temperature majorant is needed
           nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
@@ -304,7 +337,7 @@ contains
           ! Save energy to be used to sample reaction
           eOut = E
 
-          if (self % hasTMS) then
+          if (self % hasTMS .and. .not. self % inUresOrSabRange(E)) then
 
             A  = nuc % getMass()
 

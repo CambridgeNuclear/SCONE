@@ -273,7 +273,7 @@ contains
     call self % energyBounds(eMin, eMax)
 
     ! Avoid energy limits being outside system range
-    if (eLower < eMin) eLower = eMin
+    if (eLower < eMin .or. sqrt(E) < alpha) eLower = eMin
     if (eUpper > eMax) eUpper = eMax
 
     ! Find largest elastic scattering xs in energy range given by E_lower and E_upper
@@ -358,7 +358,7 @@ contains
       matCache % E_tot = E
       matCache % xss % total = ZERO
 
-      if (mat % hasTMS) then
+      if (mat % hasTMS .and. .not. mat % inUresOrSabRange(E)) then
         call self % updateTotalTempMajXS(E, matIdx)
 
       else
@@ -404,13 +404,13 @@ contains
       if (self % hasMajorant) then
         idx = binarySearch(self % eGridUnion, E)
 
-        if(idx <= 0) then
+        if (idx <= 0) then
           call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
                                ' in unionised majorant grid')
 
         end if
 
-        associate(E_top => self % eGridUnion(idx + 1), E_low  => self % eGridUnion(idx))
+        associate (E_top => self % eGridUnion(idx + 1), E_low  => self % eGridUnion(idx))
           f = (E - E_low) / (E_top - E_low)
         end associate
 
@@ -425,7 +425,7 @@ contains
           matIdx = self % activeMat(i)
 
           ! Update if needed
-          if( cache_materialCache(matIdx) % E_tot /= E) then
+          if (cache_materialCache(matIdx) % E_tot /= E) then
             call self % updateTotalMatXS(E, matIdx, rand)
           end if
 
@@ -455,17 +455,17 @@ contains
     associate(mat      => self % materials(matIdx), &
               matCache => cache_materialCache(matIdx))
 
-      ! Set new energy
-      matCache % E_tot  = E
-      matCache % E_tail = E
-
       ! Clean current xss
       call matCache % xss % clean()
 
-      if (mat % hasTMS) then
+      if (mat % hasTMS .and. .not. mat % inUresOrSabRange(E)) then
         call self % updateRelEnMacroXSs(E, matIdx, rand)
 
       else
+
+        ! Set new energy
+        matCache % E_tot  = E
+        matCache % E_tail = E
 
         ! Construct microscopic XSs
         do i = 1, size(mat % nuclides)
@@ -488,8 +488,13 @@ contains
   end subroutine updateMacroXSs
 
   !!
+  !! Subroutine to update the macroscopic cross sections in a given material
+  !! at given temperature, sampling a relative energy per each nuclide and applying
+  !! a Doppler correction factor
   !!
-  !!
+  !! Args:
+  !!   E [in]         -> Incident neutron energy for which the relative energy xss are found
+  !!   matIdx [in]    -> Index of material for which the relative energy xss are found
   !!
   subroutine updateRelEnMacroXSs(self, E, matIdx, rand)
     class(aceNeutronDatabase), intent(in) :: self
@@ -538,6 +543,7 @@ contains
         ! Add microscopic XSs
         call matCache % xss % add(cache_nuclideCache(nucIdx) % xss, dens*corrFact)
         matCache % E_tot  = ZERO
+        matCache % E_tail = ZERO
 
       end do
 
@@ -710,6 +716,7 @@ contains
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
     character(nameLen),dimension(:),allocatable      :: nucDBRC
+    real(defReal)                                    :: eUpSab, eUpSabNuc, eLowURR
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
@@ -834,35 +841,6 @@ contains
       i = nucSet % next(i)
     end do
 
-    ! Build Material definitions
-    allocate(self % materials(mm_nMat()))
-    allocate(nucIdxs(maxNuc))
-    do i = 1, mm_nMat()
-      mat => mm_getMatPtr(i)
-
-      ! Load nuclide indices on storage space
-      isFissileMat = .false.
-      do j = 1, size(mat % nuclides)
-        name = trim(mat % nuclides(j) % toChar())
-        if (mat % nuclides(j) % hasSab) then
-          zaid = trim(mat % nuclides(j) % toChar())
-          file = trim(mat % nuclides(j) % file_Sab)
-          name = zaid // '+' // file
-          deallocate(zaid, file)
-        end if
-        nucIdxs(j) = nucSet % get(name)
-        isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
-      end do
-
-      ! Load data into material
-      call self % materials(i) % set( matIdx = i, &
-                                      database = ptr_ceDatabase, &
-                                      temp    = mat % T, &
-                                      hasTMS  = mat % hasTMS, &
-                                      fissile = isFissileMat )
-      call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
-    end do
-
     ! Calculate energy bounds
     self % Ebounds(1) = self % nuclides(1) % eGrid(1)
     j = size(self % nuclides(1) % eGrid)
@@ -872,6 +850,52 @@ contains
       self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
       self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
+    end do
+
+    ! Build Material definitions
+    allocate(self % materials(mm_nMat()))
+    allocate(nucIdxs(maxNuc))
+    do i = 1, mm_nMat()
+      mat => mm_getMatPtr(i)
+
+      ! Load nuclide indices on storage space
+      ! Find if material if fissile and useful energy limits
+      isFissileMat = .false.
+      eUpSab  = self % Ebounds(1)
+      eLowURR = self % Ebounds(2)
+      ! Loop over nuclides
+      do j = 1, size(mat % nuclides)
+        name = trim(mat % nuclides(j) % toChar())
+
+        if (mat % nuclides(j) % hasSab) then
+          zaid = trim(mat % nuclides(j) % toChar())
+          file = trim(mat % nuclides(j) % file_Sab)
+          name = zaid // '+' // file
+          deallocate(zaid, file)
+        end if
+
+        ! Find nuclide definition to see if fissile
+        nucIdxs(j) = nucSet % get(name)
+        isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
+
+        ! Find nuclide URR and SAB energy boundaries
+        eUpSabNuc = max(self % nuclides(nucIdxs(j)) % SabEl(2), self % nuclides(nucIdxs(j)) % SabInel(2))
+        eUpSab    = max(eUpSab, eUpSabNuc)
+        if (self % nuclides(nucIdxs(j)) % urrE(1) /= ZERO) then
+          eLowURR   = min(eLowURR, self % nuclides(nucIdxs(j)) % urrE(1))
+        end if
+
+      end do
+
+      ! Load data into material
+      call self % materials(i) % set( matIdx   = i,              &
+                                      database = ptr_ceDatabase, &
+                                      temp     = mat % T,      &
+                                      hasTMS   = mat % hasTMS, &
+                                      fissile  = isFissileMat, &
+                                      eUpperSab = eUpSab,      &
+                                      eLowerURR = eLowURR )
+      call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
     end do
 
     ! Read unionised majorant flag
@@ -1035,6 +1059,7 @@ contains
     real(defReal)                            :: eRef, eNuc, E, maj, total, dens, urrMaj, &
                                                 nucXS, f, eMax, eMin
     logical(defBool)                         :: needsUrr
+    class(RNG), pointer                      :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
 
@@ -1207,6 +1232,12 @@ contains
     ! Allocate unionised majorant
     allocate(self % majorant(size(self % eGridUnion)))
 
+    ! Initialise RNG needed to call update XS routines. The initial seed doesn't
+    ! matter because the RNG is only used to sample from probability tables, which
+    ! are corrected for the majorant anyway
+    allocate(rand)
+    call rand % init(1_longInt)
+
     ! Loop over all the energies
     do i = 1, size(self % eGridUnion)
 
@@ -1225,9 +1256,12 @@ contains
 
         ! Get material index
         matIdx = self % activeMat(j)
-        total  = ZERO
 
-        ! Loop over nuclides
+        ! Get material total cross section
+        call self % updateTotalMatXS(E, matIdx, rand)
+        total = cache_materialCache(matIdx) % xss % total
+
+        ! Loop over nuclides to check and correct for ures
         do k = 1, size(self % materials(matIdx) % nuclides)
           dens     = self % materials(matIdx) % dens(k)
           nucIdx   = self % materials(matIdx) % nuclides(k)
@@ -1246,24 +1280,21 @@ contains
               ! Check if URR tables contain xs or multiplicative factor
               if (nuc % IFF == 1) then
                 call nuc % search(eIdx, f, E)
-                nucXS = nuc % totalXS(eIdx, f) * urrMaj
+                nucXS  = nuc % totalXS(eIdx, f) * urrMaj
               else
                 nucXS = urrMaj
               end if
 
-            else
-              call self % updateTotalNucXS(E, nucIdx)
-              nucXS = cache_nuclideCache(nucIdx) % xss % total
+            ! Update total material cross section
+            total = total + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
 
             end if
 
           end associate
 
-          ! Update total material cross section
-          total = total + dens * nucXS
-
         end do
 
+        ! Select majorant cross section
         maj = max(maj, total)
 
       end do

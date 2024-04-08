@@ -36,6 +36,7 @@ module transportOperatorDT_class
     procedure :: transit => deltaTracking
     ! Override procedure
     procedure :: init
+
   end type transportOperatorDT
 
 contains
@@ -50,6 +51,7 @@ contains
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
+    integer(shortInt)                         :: virtual
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
@@ -57,6 +59,8 @@ contains
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
+
+    virtual = 0
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
@@ -92,6 +96,12 @@ contains
         exit DTLoop
       else
         call tally % reportInColl(p, .true.)
+        virtual = virtual + 1
+      end if
+
+      if (mod(virtual, 50000) == 0 .and. virtual /= 0) then
+        print*, numToChar(virtual)//' virtual collisions'
+        print*, 'material: ', p % matIdx()
       end if
 
     end do DTLoop

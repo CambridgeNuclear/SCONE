@@ -136,7 +136,7 @@ contains
       self % rejections = 0
     end if
 
-    if (mod(self % rejections, 100000) == 0 .and. self % rejections /= 0) then
+    if (mod(self % rejections, 50000) == 0 .and. self % rejections /= 0) then
       print*, numToChar(self % rejections)//' rejections'
     end if
 

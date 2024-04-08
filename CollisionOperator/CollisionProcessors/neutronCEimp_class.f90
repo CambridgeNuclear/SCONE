@@ -492,7 +492,7 @@ contains
     collDat % A =  self % nuc % getMass()
 
     ! Retrieve kT from either material or nuclide
-    if (self % mat % hasTMS) then
+    if (self % mat % hasTMS .and. .not. self % mat % inUresOrSabRange(p % E)) then
       collDat % kT = self % mat % kT
     else
       collDat % kT = self % nuc % getkT()
@@ -703,7 +703,7 @@ contains
     ! Save incident energy
     E_out = p % E
 
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call asymptoticScatter(E_out, mu, collDat % A)
 
     else
@@ -762,7 +762,7 @@ contains
 
       ! Assign pointer for the 0K nuclide
       ceNuc0K => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
-      if(.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
+      if (.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
       ! Get elastic scattering 0K majorant
       maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
