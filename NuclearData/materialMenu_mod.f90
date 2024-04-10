@@ -44,6 +44,10 @@ module materialMenu_mod
   !!   Z -> Atomic number
   !!   A -> Mass number
   !!   T -> Evaluation number
+  !!   hasSab -> Does the nuclide have S(a,b) data?
+  !!   sabMix -> Does the nuclide mix S(a,b) data?
+  !!   file_Sab1 -> First (and maybe only) S(a,b) file
+  !!   file_Sab2 -> Second S(a,b) file
   !!
   !! Interface:
   !!   init -> build from a string
@@ -53,7 +57,9 @@ module materialMenu_mod
     integer(shortInt)  :: A = -1
     integer(shortInt)  :: T = -1
     logical(defBool)   :: hasSab = .false.
-    character(nameLen) :: file_Sab
+    logical(defBool)   :: sabMix = .false.
+    character(nameLen) :: file_Sab1
+    character(nameLen) :: file_Sab2
   contains
     procedure :: init   => init_nuclideInfo
     procedure :: toChar => toChar_nuclideInfo
@@ -278,7 +284,7 @@ contains
     character(nameLen), dimension(:), allocatable :: keys, moderKeys
     integer(shortInt), dimension(:), allocatable  :: temp
     integer(shortInt)                             :: i
-    class(dictionary),pointer                     :: compDict, moderDict
+    class(dictionary),pointer                     :: compDict, moderDict, mixDict
     logical(defBool)                              :: hasSab
     character(100), parameter :: Here = 'init_materialItem (materialMenu_mod.f90)'
 
@@ -311,7 +317,17 @@ contains
       ! Check if S(a,b) is on and required for that nuclide
       if (hasSab .and. moderDict % isPresent(keys(i))) then
         self % nuclides(i) % hasSab = .true.
-        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
+
+        ! Check for stochastic mixing - this data will be in a dictionary
+        mixDict => moderDict % getDictPtr(keys(i))
+        if allocated(mixDict) then
+          call mixDict % get(self % nuclides(i) % file_Sab1,'file1')
+          call mixDict % get(self % nuclides(i) % file_Sab2,'file2')
+          self % nuclides(i) % sabMix = .true.
+        else
+          call moderDict % get(self % nuclides(i) % file_Sab1, keys(i))
+        end if
+        mixDict => null()
       end if
 
       ! Initialise the nuclides

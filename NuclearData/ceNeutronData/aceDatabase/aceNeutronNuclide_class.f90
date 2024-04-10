@@ -127,7 +127,9 @@ module aceNeutronNuclide_class
 
     ! S(alpha,beta)
     logical(defBool)            :: hasThData = .false.
-    type(thermalData)           :: thData
+    logical(defBool)            :: stochasticMixing = .false.
+    type(thermalData)           :: thData1
+    type(thermalData)           :: thData2
     real(defReal), dimension(2) :: SabEl = ZERO
     real(defReal), dimension(2) :: SabInel = ZERO
 
@@ -456,21 +458,27 @@ contains
   !! NOTE: It recalculates the total cross section given the partials
   !!
   !! Args:
-  !!   xss [out] -> XSs package to store interpolated values
-  !!   idx [in]  -> index of the bottom bin in nuclide Energy-Grid
-  !!   f [in]    -> interpolation factor in [0;1]
-  !!   E [in]    -> Energy of ingoing neutron
+  !!   xss [out]    -> XSs package to store interpolated values
+  !!   idx [in]     -> index of the bottom bin in nuclide Energy-Grid
+  !!   f [in]       -> interpolation factor in [0;1]
+  !!   E [in]       -> Energy of ingoing neutron
+  !!   T [in]       -> Local material temperature
+  !!   rand [inout] -> RNG for stochastic mixing
   !!
   !! Errors:
   !!   Invalid idx beyond array bounds -> undefined behaviour
   !!   Invalid f (outside [0;1]) -> incorrect value of XSs
   !!
-  elemental subroutine getThXSs(self, xss, idx, f, E)
+  elemental subroutine getThXSs(self, xss, idx, f, E, T, rand)
     class(aceNeutronNuclide), intent(in) :: self
     type(neutronMicroXSs), intent(out)   :: xss
     integer(shortInt), intent(in)        :: idx
     real(defReal), intent(in)            :: f
     real(defReal), intent(in)            :: E
+    class(RNG), intent(inout)            :: rand
+    real(defReal), intent(in)            :: T
+    real(defReal)                        :: T2, T1
+    logical(defBool)                     :: doTLow
 
     associate (data => self % mainData(:,idx:idx+1))
 
@@ -485,15 +493,45 @@ contains
         xss % nuFission = ZERO
       end if
 
-      ! Read S(a,b) tables for elastic scatter: return zero if eleastic scatter is off
-      xss % elasticScatter = self % thData % getElXS(E)
+      doTLow = .false.
+      if (self % stochasticMixing) then
 
-      ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
-      if (nuclideCache(self % getNucIdx()) % needsSabInel) then
-        xss % inelasticScatter = self % thData % getInelXS(E)
-      else
-        xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+        T1 = self % thData1 % getTemperature()
+        T2 = self % thData2 % getTemperature()
+
+        doTLow = (T2 - T)/(T2 - T1) > rand % get()
+
       end if
+
+      ! Take XSs from the lower temperature data
+      ! Default without stochastic mixing
+      if doTLow then
+        
+        ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
+        xss % elasticScatter = self % thData1 % getElXS(E)
+
+        ! If inelastic scatter is on, reads S(a,b) tables for inelastic scatter
+        if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+          xss % inelasticScatter = self % thData1 % getInelXS(E)
+        else
+          xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+        end if
+
+      ! Take XSs from higher temperature data
+      else
+
+        ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
+        xss % elasticScatter = self % thData2 % getElXS(E)
+
+        ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
+        if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+          xss % inelasticScatter = self % thData2 % getInelXS(E)
+        else
+          xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+        end if
+
+      end if
+
 
     end associate
 
@@ -865,24 +903,58 @@ contains
   !! Initialise thermal scattering tables from ACE card
   !!
   !! Args:
-  !!   ACE [inout]   -> ACE S(a,b) card
+  !!   ACE1 [inout]   -> ACE S(a,b) card
+  !!   ACE2 [inout]   -> Optional second ACE S(a,b) card
   !!
   !! Errors:
   !!   fatalError if the inelastic scattering S(a,b) energy grid starts at a
   !!   lower energy than the nuclide energy grid
   !!
-  subroutine initSab(self, ACE)
-    class(aceNeutronNuclide), intent(inout) :: self
-    class(aceSabCard), intent(inout)        :: ACE
+  subroutine initSab(self, ACE1, ACE2)
+    class(aceNeutronNuclide), intent(inout)    :: self
+    class(aceSabCard), intent(inout)           :: ACE1
+    class(aceSabCard), intent(inout), optional :: ACE2
+    real(defReal), dimension(2)                :: EBounds
+    real(defReal)                              :: T1, T2
+    type(thermalData)                          :: temp
     character(100), parameter :: Here = "initSab (aceNeutronNuclide_class.f90)"
 
+
     ! Initialise S(a,b) class from ACE file
-    call self % thData % init(ACE)
+    call self % thData1 % init(ACE1)
     self % hasThData = .true.
 
     ! Initialise energy boundaries
-    self % SabInel = self % thData % getEbounds('inelastic')
-    self % SabEl = self % thData % getEbounds('elastic')
+    self % SabInel = self % thData1 % getEBounds('inelastic')
+    self % SabEl = self % thData1 % getEBounds('elastic')
+    
+    ! Add second S(a,b) file for stochastic mixing
+    if (present(ACE2)) then
+      
+      self % stochasticMixing = .true.
+      call self % thData2 % init(ACE2)
+      
+      ! Ensure energy bounds are conservative
+      EBounds = self % thData2 % getEBounds('inelastic')
+      if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
+      if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
+      
+      EBounds = self % thData2 % getEbounds('elastic')
+      if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
+      if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
+
+      ! Identify which data is higher temperature and which is lower
+      ! 1 should be lower than 2 - swap if necessary
+      T1 = self % thData1 % getTemperature()
+      T2 = self % thData2 % getTemperature()
+
+      if (T1 > T2) then
+        temp = self % thData1
+        self % thData1 = self % thData2
+        self % thData2 = temp
+      end if
+
+    end if
 
     ! Check consistency of energy grid
     if (self % SabInel(1) < self % eGrid(1)) then

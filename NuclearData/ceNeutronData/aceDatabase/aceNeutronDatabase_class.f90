@@ -414,7 +414,7 @@ contains
 
         ! Update if needed
         if (cache_nuclideCache(nucIdx) % E_tail /= E .or. cache_nuclideCache(nucIdx) % E_tot /= E) then
-          call self % updateMicroXSs(E, nucIdx, rand)
+          call self % updateMicroXSs(E, nucIdx, T, rand)
         end if
 
         ! Add microscopic XSs
@@ -431,10 +431,11 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateTotalNucXS(self, E, nucIdx, rand)
+  subroutine updateTotalNucXS(self, E, nucIdx, T, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
+    real(defReal), intent(in)             :: T
     class(RNG), optional, intent(inout)   :: rand
     logical(defBool)                      :: needsSab
 
@@ -449,7 +450,7 @@ contains
       needsSab = (nucCache % needsSabEl .or. nucCache % needsSabInel)
 
       if (nucCache % needsUrr .or. needsSab) then
-        call self % updateMicroXSs(E, nucIdx, rand)
+        call self % updateMicroXSs(E, nucIdx, T, rand)
 
       else
         nucCache % E_tot  = E
@@ -468,10 +469,11 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateMicroXSs(self, E, nucIdx, rand)
+  subroutine updateMicroXSs(self, E, nucIdx, T, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
+    real(defReal), intent(in)             :: T
     class(RNG), optional, intent(inout)   :: rand
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
@@ -501,7 +503,7 @@ contains
         end associate
 
       elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
-        call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E)
+        call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E, T, rand)
 
       else
         call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
@@ -527,11 +529,11 @@ contains
     class(ceNeutronDatabase), pointer                :: ptr_ceDatabase
     type(charMap)                                    :: nucSet
     type(aceCard)                                    :: ACE
-    type(aceSabCard)                                 :: ACE_Sab
+    type(aceSabCard)                                 :: ACE_Sab1, ACE_Sab2
     character(pathLen)                               :: aceLibPath
-    character(nameLen)                               :: name, name_file, nucDBRC_temp
+    character(nameLen)                               :: name, name_file1, name_file2, nucDBRC_temp
     character(:), allocatable                        :: zaid, file
-    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx
+    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx1, idx2
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
@@ -566,9 +568,15 @@ contains
         name = trim(mat % nuclides(j) % toChar())
         if (mat % nuclides(j) % hasSab) then
           zaid = trim(mat % nuclides(j) % toChar())
-          file = trim(mat % nuclides(j) % file_Sab)
+          file = trim(mat % nuclides(j) % file_Sab1)
           name = zaid // '+' // file
           deallocate(zaid, file)
+          ! Attach second Sab file for stochastic mixing
+          if (mat % nuclides(j) % sabMix) then
+            file = trim(mat % nuclides(j) % file_Sab2)
+            name = name // '?' // file
+            deallocate(file)
+          end if
         end if
         call nucSet % add(name, IN_SET)
       end do
@@ -628,27 +636,41 @@ contains
     nucIdx = 1
     do while (i /= nucSet % end())
 
-      idx = index(nucSet % atKey(i),'+')
-      if (idx /= 0) then
+      idx1 = index(nucSet % atKey(i),'+')
+      idx2 = index(nucSet % atKey(i),'?')
+      if (idx1 /= 0) then
         name = trim(nucSet % atKey(i))
-        name_file = trim(name(idx+1:nameLen))
-        name = name(1:idx-1)
+        if (idx2 == 0) then
+          name_file1 = trim(name(idx1+1:nameLen))
+        else
+          name_file1 = trim(name(idx1+1:idx2-1))
+          name_file2 = trim(name(idx2+1:nameLen))
+        end if
+        name = name(1:idx1-1)
       else
         name = nucSet % atKey(i)
       end if
 
       if(loud) then
         print '(A)', "Building: "// trim(name)// " with index: " //numToChar(nucIdx)
-        if (idx /= 0) print '(A)', "including S(alpha,beta) tables with file: " //trim(name_file)
+        if (idx1 /= 0 .and. idx2 == 0) &
+                print '(A)', "including S(alpha,beta) tables with file: " //trim(name_file1)
+        if (idx1 /= 0 .and. idx2 /= 0) &
+                print '(A)', "including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2)
       end if
 
       call new_neutronACE(ACE, name)
       call self % nuclides(nucIdx) % init(ACE, nucIdx, ptr_ceDatabase)
 
       ! Initialise S(alpha,beta) tables
-      if (idx /= 0 ) then
-        call new_moderACE(ACE_Sab, name_file)
-        call self % nuclides(nucIdx) % initSab(ACE_Sab)
+      if (idx1 /= 0 ) then
+        call new_moderACE(ACE_Sab1, name_file1)
+        if (idx2 /= 0) then
+          call new_moderACE(ACE_Sab2, name_file2)
+          call self % nuclides(nucIdx) % initSab(ACE_Sab1, ACE_Sab2)
+        else
+          call self % nuclides(nucIdx) % initSab(ACE_Sab1)
+        end if
       end if
 
       ! Initialise probability tables
