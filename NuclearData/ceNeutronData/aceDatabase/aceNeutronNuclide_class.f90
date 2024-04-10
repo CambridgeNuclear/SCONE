@@ -487,7 +487,7 @@ contains
       xss % elasticScatter = self % thData % getElXS(E)
 
       ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
-      if (self % hasThData .and. E >= self % SabInel(1) .and. E <= self % SabInel(2)) then
+      if (self % needsSabInel(E)) then
         xss % inelasticScatter = self % thData % getInelXS(E)
       else
         xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
