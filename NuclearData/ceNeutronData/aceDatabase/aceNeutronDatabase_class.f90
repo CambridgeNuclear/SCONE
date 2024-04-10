@@ -214,37 +214,40 @@ contains
     !   MT < 0 -> material reaction
     !   MT = 0 -> does not exist
     !   MT = 1 -> N_total has no reaction object
-    if ( MT <= 1 ) then
+    if (MT <= 1) then
       reac => null()
       return
     end if
 
     ! Detect invalid indices
-    if( idx < 1 .or. idx > size(self % nuclides)) then
+    if (idx < 1 .or. idx > size(self % nuclides)) then
       reac => null()
       return
     end if
 
     ! Get nuclide reaction
-    if( MT == N_N_elastic) then
-      if (cache_nuclideCache(idx) % needsSabEl) then
-        reac => self % nuclides(idx) % thData % elasticOut
-      else
-        reac => self % nuclides(idx) % elasticScatter
-      end if
-    else if ( MT == N_fission) then
+    if (MT == N_N_elastic) then
+      reac => self % nuclides(idx) % elasticScatter
+
+    else if (MT == N_N_ThermEL) then
+      reac => self % nuclides(idx) % thData % elasticOut
+
+    else if (MT == N_fission) then
       reac => self % nuclides(idx) % fission
+
     else if (MT == N_N_ThermINEL) then
       reac => self % nuclides(idx) % thData % inelasticOut
+
     else
       ! Find index of MT reaction
       idxMT = self % nuclides(idx) % idxMT % getOrDefault(MT, 0)
       ! See if the MT is present or not
-      if(idxMT == 0) then
+      if (idxMT == 0) then
         reac => null()
       else
         reac => self % nuclides(idx) % MTdata(idxMT) % kinematics
       end if
+
     end if
 
   end function getReaction
@@ -574,19 +577,12 @@ contains
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
     class(RNG), optional, intent(inout)   :: rand
-    logical(defBool)                      :: needsSab
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
-      ! Check if the nuclide needs ures probability tables at this energy
-      nucCache % needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
-      ! Check if the nuclide needs S(a,b) at this energy
-      nucCache % needsSabEl = (nuc % hasThData .and. E >= nuc % SabEl(1) .and. E <= nuc % SabEl(2))
-      nucCache % needsSabInel = (nuc % hasThData .and. E >= nuc % SabInel(1) .and. E <= nuc % SabInel(2))
-      needsSab = (nucCache % needsSabEl .or. nucCache % needsSabInel)
-
-      if (nucCache % needsUrr .or. needsSab) then
+      ! Check if the nuclide needs ures probability tables or S(a,b) at this energy
+      if (nuc % needsUrr(E) .or. nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
         call self % updateMicroXSs(E, nucIdx, rand)
 
       else
@@ -625,7 +621,7 @@ contains
 
       ! Overwrites all the micro cross sections in cache
       ! Check if probability tables should be read
-      if (nucCache % needsUrr) then
+      if (nuc % needsUrr(E)) then
         associate(zaidCache => cache_zaidCache(self % nucToZaid(nucIdx)))
 
           if (zaidCache % E /= E) then
@@ -638,7 +634,8 @@ contains
 
         end associate
 
-      elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
+      ! Check if S(a,b) should be read
+      elseif (nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
         call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E)
 
       else
@@ -733,7 +730,9 @@ contains
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
     character(nameLen),dimension(:),allocatable      :: nucDBRC
-    real(defReal)                                    :: eUpSab, eUpSabNuc, eLowURR
+    real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
+                                                        eLowURR, eLowUrrNuc, alpha, &
+                                                        deltakT, eUpper, eLower
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
@@ -878,8 +877,6 @@ contains
       ! Load nuclide indices on storage space
       ! Find if material if fissile and useful energy limits
       isFissileMat = .false.
-      eUpSab  = self % Ebounds(1)
-      eLowURR = self % Ebounds(2)
       ! Loop over nuclides
       do j = 1, size(mat % nuclides)
         name = trim(mat % nuclides(j) % toChar())
@@ -895,24 +892,65 @@ contains
         nucIdxs(j) = nucSet % get(name)
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
 
-        ! Find nuclide URR and SAB energy boundaries
-        eUpSabNuc = max(self % nuclides(nucIdxs(j)) % SabEl(2), self % nuclides(nucIdxs(j)) % SabInel(2))
-        eUpSab    = max(eUpSab, eUpSabNuc)
-        if (self % nuclides(nucIdxs(j)) % urrE(1) /= ZERO) then
-          eLowURR   = min(eLowURR, self % nuclides(nucIdxs(j)) % urrE(1))
-        end if
-
       end do
 
       ! Load data into material
       call self % materials(i) % set( matIdx   = i,              &
                                       database = ptr_ceDatabase, &
-                                      temp     = mat % T,      &
-                                      hasTMS   = mat % hasTMS, &
-                                      fissile  = isFissileMat, &
-                                      eUpperSab = eUpSab,      &
-                                      eLowerURR = eLowURR )
+                                      temp     = mat % T,        &
+                                      hasTMS   = mat % hasTMS,   &
+                                      fissile  = isFissileMat )
       call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
+
+      eUpSab  = self % Ebounds(1)
+      eLowURR = self % Ebounds(2)
+
+      if (mat % hasTMS) then
+
+        ! Loop again to find energy limits of S(a,b) and URES for TMS applicability
+        do j = 1, size(mat % nuclides)
+
+          ! Find nuclide information
+          idx     = nucIdxs(j)
+          nuckT   = self % nuclides(idx) % getkT()
+          A       = self % nuclides(idx) % getMass()
+          deltakT = self % materials(i) % kT - nuckT
+
+          ! Call fatal error if material temperature is lower then base nuclide temperature
+          if (deltakT < ZERO) then
+            call fatalError(Here, "Material temperature must be greater than the nuclear data temperature.")
+          end if
+
+          ! Find nuclide upper S(a,b) energy
+          eUpSabNuc = max(self % nuclides(idx) % SabEl(2), self % nuclides(idx) % SabInel(2))
+
+          ! Find energy limits to define majorant calculation range
+          if (eUpSabNuc > ZERO) then
+            alpha = 4.0_defReal * sqrt( deltakT / (eUpSabNuc * A) )
+            eUpper = eUpSabNuc * (ONE + alpha) * (ONE + alpha)
+          else
+            eUpper = ZERO
+          end if
+
+          eLowUrrNuc = self % nuclides(idx) % urrE(1)
+
+          if (eLowUrrNuc /= ZERO) then
+            alpha = 4.0_defReal * sqrt( deltakT / (eLowUrrNuc * A) )
+            eLower = eLowUrrNuc * (ONE - alpha) * (ONE - alpha)
+          else
+            eLower = self % Ebounds(2)
+          end if
+
+          eUpSab  = max(eUpSab, eUpper)
+          eLowURR = min(eLowURR, eLower)
+
+        end do
+
+      end if
+
+      ! Load data into material
+      call self % materials(i) % set( eUpperSab = eUpSab, eLowerURR = eLowURR)
+
     end do
 
     ! Read unionised majorant flag

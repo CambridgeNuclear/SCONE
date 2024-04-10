@@ -136,6 +136,7 @@ module aceNeutronNuclide_class
     procedure :: invertInelastic
     procedure :: xsOf
     procedure :: elScatteringXS
+    procedure :: needsSabEl
     procedure :: kill
 
     ! Local interface
@@ -146,6 +147,8 @@ module aceNeutronNuclide_class
     procedure :: getUrrXSs
     procedure :: getThXSs
     procedure :: getMajXS
+    procedure :: needsUrr
+    procedure :: needsSabInel
     procedure :: init
     procedure :: initUrr
     procedure :: initSab
@@ -174,29 +177,24 @@ contains
     character(100), parameter :: Here = 'invertInelastic (aceNeutronNuclide_class.f90)'
 
     ! Check if it's thermal inelastic scattering or not
-    if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+    if (self % needsSabInel(E)) then
       MT = N_N_ThermINEL
       return
     end if
 
     ! Normal (without S(a,b)) inelastic scattering
     ! Obtain bin index and interpolation factor
-    if (nuclideCache(self % getNucIdx()) % E_tot == E) then
-      idx = nuclideCache(self % getNucIdx()) % idx
-      f   = nuclideCache(self % getNucIdx()) % f
-    else
-      call self % search(idx, f, E)
-    end if
+    call self % search(idx, f, E)
 
     ! Get inelastic XS
     XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
 
     ! Invert
     XS = XS * rand % get()
-    do i=1,self % nMT
+    do i = 1,self % nMT
       ! Get index in MT reaction grid
       idxT = idx - self % MTdata(i) % firstIdx + 1
-      if( idxT < 1 ) cycle
+      if ( idxT < 1 ) cycle
 
       ! Get top and bottom XS
       topXS = self % MTdata(i) % xs(idxT+1)
@@ -204,7 +202,7 @@ contains
 
       ! Decrement total inelastic and exit if sampling is finished
       XS = XS - topXS * f - (ONE-f) * bottomXS
-      if(XS <= ZERO) then
+      if (XS <= ZERO) then
         MT = self % MTdata(i) % MT
         return
       end if
@@ -489,7 +487,7 @@ contains
       xss % elasticScatter = self % thData % getElXS(E)
 
       ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
-      if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+      if (self % hasThData .and. E >= self % SabInel(1) .and. E <= self % SabInel(2)) then
         xss % inelasticScatter = self % thData % getInelXS(E)
       else
         xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
@@ -644,6 +642,57 @@ contains
     end do majorantLoop
 
   end function getMajXS
+
+  !!
+  !! Function that checks whether this nuclide at the provided energy should
+  !! read unresolved resonance probability tables or not
+  !!
+  !! Args:
+  !!   E [in] -> incident neutron energy
+  !!
+  !! Returns true or false
+  !!
+  elemental function needsUrr(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasProbTab .and. E >= self % urrE(1) .and. E <= self % urrE(2)
+
+  end function needsUrr
+
+  !!
+  !! Function that checks whether this nuclide at the provided energy should
+  !! has S(a,b) inelastic scattering data or not
+  !!
+  !! Args:
+  !!   E [in] -> incident neutron energy
+  !!
+  !! Returns true or false
+  !!
+  elemental function needsSabInel(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasThData .and. E >= self % SabInel(1) .and. E <= self % SabInel(2)
+
+  end function needsSabInel
+
+  !!
+  !! Function that checks whether this nuclide at the provided energy should
+  !! has S(a,b) elastic scattering data or not
+  !!
+  !! See ceNeutronNuclide documentation
+  !!
+  elemental function needsSabEl(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasThData .and. E >= self % SabEl(1) .and. E <= self % SabEl(2)
+
+  end function needsSabEl
 
   !!
   !! Initialise from an ACE Card

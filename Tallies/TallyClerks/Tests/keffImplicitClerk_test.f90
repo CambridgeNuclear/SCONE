@@ -129,6 +129,7 @@ contains
         @assertTrue(.false.,'Result is not a keffResult')
 
     end select
+
   end subroutine test1CycleBatch
 
   !!

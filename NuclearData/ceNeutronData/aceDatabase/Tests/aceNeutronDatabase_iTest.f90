@@ -24,13 +24,13 @@ module aceNeutronDatabase_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = &
-  & "water { temp 273;           &
+  & "water {                     &
   &       composition {          &
   &       1001.03 5.028E-02;     &
   &       8016.03 2.505E-02;     &
   &                   }          &
   &        }                     &
-  &  uo2  { temp 1;              &
+  &  uo2  {                      &
   &        composition {         &
   &        92233.03 2.286E-02;   &
   &        8016.03  4.572E-02;   &

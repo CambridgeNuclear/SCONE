@@ -484,6 +484,9 @@ contains
     logical(defBool)                       :: isFixed, hasDBRC
     character(100),parameter :: Here = 'elastic (neutronCEimp_class.f90)'
 
+    ! Assess if thermal scattering data is needed or not
+    if (self % nuc % needsSabEl(p % E)) collDat % MT = N_N_ThermEL
+
     ! Get reaction
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')

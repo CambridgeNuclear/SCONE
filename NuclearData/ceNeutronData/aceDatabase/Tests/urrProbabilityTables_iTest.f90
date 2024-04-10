@@ -17,7 +17,7 @@ module urrProbabilityTables_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = &
-  & " uo2  { temp 1;           &
+  & " uo2  {                   &
   &        composition {       &
   &        92235.03 1.0E-3;    &
   &        8016.03  2.0E-3;    &
@@ -101,7 +101,6 @@ contains
     zaidCache(1) % E = 9.1E-3_defReal
     zaidCache(1) % xi = 0.347_defReal
     nuclideCache(1) % E_tot = ONE
-    nuclideCache(1) % needsUrr = .true.
 
     call nuc % getMicroXSs(microXSs, 9.1E-3_defReal, p % pRNG)
 

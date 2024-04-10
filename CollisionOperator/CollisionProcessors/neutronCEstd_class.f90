@@ -308,9 +308,12 @@ contains
     logical(defBool)                       :: isFixed, hasDBRC
     character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
 
+    ! Assess if thermal scattering data is needed or not
+    if (self % nuc % needsSabEl(p % E)) collDat % MT = N_N_ThermEL
+
     ! Get reaction
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
-    if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
+    if (.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
@@ -352,10 +355,10 @@ contains
     class(uncorrelatedReactionCE), pointer :: reac
     character(100),parameter  :: Here =' inelastic (neutronCEstd_class.f90)'
 
-    ! Invert inelastic scattering and Get reaction
+    ! Invert inelastic scattering and get reaction
     collDat % MT = self % nuc % invertInelastic(p % E, p % pRNG)
-    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
-    if(.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
+    reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    if (.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
 
     ! Scatter particle
     if (reac % inCMFrame()) then
@@ -422,15 +425,15 @@ contains
     integer(shortInt)                          :: MT
 
     ! Read data
-    MT     = collDat % MT
+    MT = collDat % MT
 
-    ! Sample mu , phi and outgoing energy
+    ! Sample mu, phi and outgoing energy
     call reac % sampleOut(mu, phi, E_outCM, p % E, p % pRNG)
 
     ! Save incident energy
     E_out = p % E
 
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call asymptoticScatter(E_out, mu, collDat % A)
     else
       call asymptoticInelasticScatter(E_out, mu, E_outCM, collDat % A)

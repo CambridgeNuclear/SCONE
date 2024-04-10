@@ -79,6 +79,7 @@ module ceNeutronNuclide_inter
     procedure(invertInelastic),deferred :: invertInelastic
     procedure(xsOf), deferred           :: xsOf
     procedure(elScatteringXS), deferred :: elScatteringXS
+    procedure(needsSabEl), deferred     :: needsSabEl
 
   end type ceNeutronNuclide
 
@@ -153,7 +154,26 @@ module ceNeutronNuclide_inter
 
     end function elScatteringXS
 
+    !!
+    !! Function that checks whether this nuclide at the provided energy should
+    !! has S(a,b) elastic scattering data or not
+    !!
+    !! Args:
+    !!   E [in] -> incident neutron energy
+    !!
+    !! Result:
+    !!    True or false
+    !!
+    elemental function needsSabEl(self, E) result(doesIt)
+      import :: ceNeutronNuclide, defReal, defBool
+      class(ceNeutronNuclide), intent(in)  :: self
+      real(defReal), intent(in)            :: E
+      logical(defBool)                     :: doesIt
+
+    end function needsSabEl
+
   end interface
+
 contains
 
   !!
