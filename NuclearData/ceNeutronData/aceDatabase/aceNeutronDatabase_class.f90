@@ -265,7 +265,7 @@ contains
     real(defReal)                         :: alpha
 
     ! Find energy limits to define majorant calculation range
-    alpha = 4.0_defReal * sqrt( kT / (E * A) )
+    alpha = 3.0_defReal * sqrt( kT / (E * A) )
     eUpper = E * (ONE + alpha) * (ONE + alpha)
     eLower = E * (ONE - alpha) * (ONE - alpha)
 
@@ -273,7 +273,7 @@ contains
     call self % energyBounds(eMin, eMax)
 
     ! Avoid energy limits being outside system range
-    if (eLower < eMin .or. sqrt(E) < alpha) eLower = eMin
+    if (eLower < eMin .or. ONE < alpha) eLower = eMin
     if (eUpper > eMax) eUpper = eMax
 
     ! Find largest elastic scattering xs in energy range given by E_lower and E_upper
@@ -358,7 +358,7 @@ contains
       matCache % E_tot = E
       matCache % xss % total = ZERO
 
-      if (mat % hasTMS .and. .not. mat % inUresOrSabRange(E)) then
+      if (mat % useTMS(E)) then
         call self % updateTotalTempMajXS(E, matIdx)
 
       else
@@ -458,7 +458,7 @@ contains
       ! Clean current xss
       call matCache % xss % clean()
 
-      if (mat % hasTMS .and. .not. mat % inUresOrSabRange(E)) then
+      if (mat % useTMS(E)) then
         call self % updateRelEnMacroXSs(E, matIdx, rand)
 
       else
@@ -682,7 +682,7 @@ contains
       if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
 
         ! Find energy limits to define majorant calculation range
-        alpha = 4.0_defReal * sqrt( deltakT / (E * A) )
+        alpha = 3.0_defReal * sqrt( deltakT / (E * A) )
         eUpper = E * (ONE + alpha) * (ONE + alpha)
         eLower = E * (ONE - alpha) * (ONE - alpha)
 
@@ -690,7 +690,7 @@ contains
         call self % energyBounds(eMin, eMax)
 
         ! Avoid energy limits being outside system range
-        if (eLower < eMin .or. sqrt(E) < alpha) eLower = eMin
+        if (eLower < eMin .or. ONE < alpha) eLower = eMin
         if (eUpper > eMax) eUpper = eMax
 
         ! Doppler g correction factor for low energies

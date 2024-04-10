@@ -66,7 +66,7 @@ module simpleFMClerk_class
     real(defReal),dimension(:),allocatable :: startWgt
     integer(shortInt)                      :: N = 0 !! Number of bins
     ! Settings
-    logical(defBool) :: virtual = .false.
+    logical(defBool) :: virtual = .true.
 
   contains
     ! Procedures used during build
@@ -88,6 +88,7 @@ module simpleFMClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type simpleFMClerk
 
   !!
@@ -130,7 +131,7 @@ contains
     call self % resp % build(macroNuFission)
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -346,6 +347,7 @@ contains
         end do
 
     end select
+
   end subroutine getResult
 
   !!
@@ -413,7 +415,7 @@ contains
     if (allocated(self % startWgt)) deallocate(self % startWgt)
 
     self % N = 0
-    self % virtual = .false.
+    self % virtual = .true.
 
     call self % resp % kill()
 

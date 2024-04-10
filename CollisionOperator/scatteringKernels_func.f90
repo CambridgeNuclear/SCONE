@@ -115,7 +115,7 @@ contains
     Y = sqrt(A*E/kT)
 
     ! Calculate threshold factor alpha
-    alpha = 2.0/(Y*sqrt(PI)+2.0)
+    alpha = TWO/(Y*sqrt(PI) + TWO)
 
     rejectionLoop: do
 
@@ -129,7 +129,7 @@ contains
 
     ! Calculate azimithal angle for target and obtain target direction
     r1 = rand % get()
-    phi = 2.0 *PI * r1
+    phi = TWO * PI * r1
 
     V_t = rotateVector(dir, mu, phi)
 
@@ -225,7 +225,7 @@ contains
     Y = sqrt(A*E/kT)
 
     ! Calculate threshold factor alpha
-    alpha = 2.0/(Y*sqrt(PI)+2.0)
+    alpha = TWO/(Y*sqrt(PI) + TWO)
 
     rejectionLoop: do
 
@@ -362,10 +362,10 @@ contains
     end if
 
     ! Sample polar angle of target velocity wrt. neutron direction
-    mu = 2.0 * r2 - 1.0;
+    mu = TWO * r2 - ONE;
 
     ! Calculate relative velocity between neutron and target
-    rel_v = sqrt(Y * Y + X * X - 2.0 * X * Y * mu)
+    rel_v = sqrt(Y * Y + X * X - TWO * X * Y * mu)
 
     ! Calculate Acceptance Propability
     P_acc = rel_v / (Y + X)

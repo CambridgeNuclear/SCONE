@@ -73,7 +73,7 @@ module ceNeutronMaterial_class
     procedure, non_overridable :: setComposition
     procedure, non_overridable :: getMacroXSs_byE
     procedure                  :: isFissile
-    procedure                  :: inUresOrSabRange
+    procedure                  :: useTMS
     procedure, non_overridable :: sampleNuclide
     procedure, non_overridable :: sampleFission
     procedure, non_overridable :: sampleScatter
@@ -243,25 +243,26 @@ contains
   end function isFissile
 
   !!
-  !! Return .true. if the provided energy is within the ures or S(a,b) range in the material
+  !! Return .true. if TMS is on in the material and the provided energy is not
+  !! within the ures or S(a,b) range in the material
   !!
   !! Args:
   !!   E [in] -> test energy
   !!
   !! Result:
-  !!   .TRUE. if in energy range, .FALSE. otherwise
+  !!   .TRUE. if conditions for using TMS are satisfied, .FALSE. otherwise
   !!
   !! Errors:
   !!   None
   !!
-  elemental function inUresOrSabRange(self, E) result(isIt)
+  elemental function useTMS(self, E) result(shouldIt)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
-    logical(defBool)                     :: isIt
+    logical(defBool)                     :: shouldIt
 
-    isIt = (E <= self % eUpperSab) .or. (E >= self % eLowerURR)
+    shouldIt = self % hasTMS .and. (E > self % eUpperSab) .and. (E < self % eLowerURR)
 
-  end function inUresOrSabRange
+  end function useTMS
 
   !!
   !! Sample collision nuclide at energy E
@@ -307,7 +308,7 @@ contains
       associate (nucCache => nuclideCache(nucIdx))
 
         ! Retrieve nuclide XS from cache
-        if (self % hasTMS .and. .not. self % inUresOrSabRange(E)) then
+        if (self % useTMS(E)) then
 
           ! If the material is using TMS, the nuclide temperature majorant is needed
           nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
@@ -315,7 +316,7 @@ contains
 
           nuckT = nuc % getkT()
           deltakT = self % kT - nuckT
-          if (nucCache % deltakT == deltakT .or. nucCache % E_maj == E) then
+          if (nucCache % deltakT /= deltakT .or. nucCache % E_maj /= E) then
             call self % data % updateTotalTempNucXS(E, self % kT, nucIdx)
           end if
 
@@ -337,7 +338,7 @@ contains
           ! Save energy to be used to sample reaction
           eOut = E
 
-          if (self % hasTMS .and. .not. self % inUresOrSabRange(E)) then
+          if (self % useTMS(E)) then
 
             A  = nuc % getMass()
 
@@ -383,7 +384,7 @@ contains
   !! Sample fission nuclide given that a fission neutron was produced
   !!
   !! Basicly samples from P(nucIdx| fission neutron produced in material)
-  !! Usefull when generating fission sites
+  !! Useful when generating fission sites
   !!
   !! As such it uses nu*sigma_f
   !!
@@ -411,24 +412,28 @@ contains
     character(100), parameter :: Here = 'sampleFission (ceNeutronMaterial_class.f90)'
 
     ! Short-cut for nonFissile material
-    if (.not.self % fissile) then
+    if (.not. self % fissile) then
       nucIdx = 0
       return
     end if
 
     ! Calculate material macroscopic nuFission
-    if (E /= materialCache(self % matIdx) % E_tail) then
-      call self % data % updateMacroXSs(E, self % matIdx, rand)
-    end if
+    ! The cache is updated without checking the energy to get the correct results with TMS
+    call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = materialCache(self % matIdx) % xss % nuFission * rand % get()
 
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
+
       nucIdx = self % nuclides(i)
-      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i)
+
       if (xs < ZERO) return
+
     end do
 
     ! Print error message as the inversion failed
@@ -464,20 +469,24 @@ contains
     character(100), parameter :: Here = 'sampleScatter (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
-    if (E /= materialCache(self % matIdx) % E_tail) then
-      call self % data % updateMacroXSs(E, self % matIdx, rand)
-    end if
+    ! The cache is updated without checking the energy to get the correct results with TMS
+    call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
                          materialCache(self % matIdx) % xss % inelasticScatter)
 
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
+
       nucIdx = self % nuclides(i)
-      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i)
+
       if (xs < ZERO) return
+
     end do
 
     ! Print error message as the inversion failed
@@ -512,10 +521,9 @@ contains
     integer(shortInt)                    :: i
     character(100), parameter :: Here = 'sampleScatterWithFission (ceNeutronMaterial_class.f90)'
 
-    ! Calculate material macroscopic cross section of all scattering
-    if (E /= materialCache(self % matIdx) % E_tail) then
-      call self % data % updateMacroXSs(E, self % matIdx, rand)
-    end if
+    ! Calculate material macroscopic cross section of all scattering and fission
+    ! The cache is updated without checking the energy to get the correct results with TMS
+    call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
                          materialCache(self % matIdx) % xss % inelasticScatter + &
@@ -523,12 +531,17 @@ contains
 
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
+
       nucIdx = self % nuclides(i)
-      if (E /= nuclideCache(nucIdx) % E_tail) call self % data % updateMicroXSs(E, nucIdx, rand)
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
-                 nuclideCache(nucIdx) % xss % fission ) * self % dens(i)
+                 nuclideCache(nucIdx) % xss % fission) * self % dens(i)
+
       if (xs < ZERO) return
+
     end do
 
     ! Print error message as the inversion failed

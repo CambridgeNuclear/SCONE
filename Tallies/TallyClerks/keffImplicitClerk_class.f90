@@ -56,7 +56,7 @@ module keffImplicitClerk_class
     private
     real(defReal)    :: targetSTD = ZERO
     ! Settings
-    logical(defBool) :: virtual = .false.
+    logical(defBool) :: virtual = .true.
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -77,6 +77,7 @@ module keffImplicitClerk_class
     procedure :: display
     procedure :: print
     procedure :: getResult
+
   end type keffImplicitClerk
 
 contains
@@ -105,7 +106,7 @@ contains
     end if
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -120,7 +121,7 @@ contains
 
     ! Kill self
     self % targetSTD = ZERO
-    self % virtual   = .false.
+    self % virtual   = .true.
 
   end subroutine kill
 

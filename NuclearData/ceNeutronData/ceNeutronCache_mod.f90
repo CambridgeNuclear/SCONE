@@ -44,7 +44,7 @@ module ceNeutronCache_mod
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
     ! TMS data
-    real(defReal)         :: E_rel
+    real(defReal)         :: E_rel  = ZERO
     type(neutronMacroXSs) :: xssRel
   end type cacheMatDat
 
@@ -78,10 +78,10 @@ module ceNeutronCache_mod
     logical(defBool)      :: needsSabEl = .false.
     logical(defBool)      :: needsUrr = .false.
     ! TMS data
-    real(defReal)         :: E_maj
-    real(defReal)         :: deltakT
-    real(defReal)         :: tempMajXS
-    real(defReal)         :: doppCorr
+    real(defReal)         :: E_maj     = ZERO
+    real(defReal)         :: deltakT   = ZERO
+    real(defReal)         :: tempMajXS = ZERO
+    real(defReal)         :: doppCorr  = ZERO
   end type cacheNucDat
 
   !!
@@ -92,8 +92,8 @@ module ceNeutronCache_mod
   !!   xs -> value of the cross section
   !!
   type, public :: cacheSingleXS
-    real(defReal) :: E
-    real(defReal) :: xs
+    real(defReal) :: E  = ZERO
+    real(defReal) :: xs = ZERO
   end type cacheSingleXS
 
   !!

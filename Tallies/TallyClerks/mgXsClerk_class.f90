@@ -91,7 +91,7 @@ module mgXsClerk_class
     logical(defBool)  :: PN = .false.
 
     ! Settings
-    logical(defBool) :: virtual = .false.
+    logical(defBool) :: virtual = .true.
 
   contains
     ! Procedures used during build
@@ -154,6 +154,9 @@ contains
     else
       self % width = ARRAY_SCORE_SIZE + MATRIX_SCORE_SMALL * self % energyN
     end if
+
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
 
   end subroutine init
 

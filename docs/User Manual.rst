@@ -780,15 +780,16 @@ The *materials* definition is structured as: ::
       *keywords* }
       }
 
-In this case, ``materialName`` can be any name chosen by the user; ``temp`` is the
-material temperature in [K].
+In this case, ``materialName`` can be any name chosen by the user; the keyword ``temp`` 
+activate Target Motion Sampling (TMS) and its entry is the material temperature in [K].
 
 .. note::
-  At the moment ``temp`` is not used in any way since SCONE has no way to treat
-  the temperature dependence of cross-sections. It is included for future use.
-  To change the temperature, a user needs to set appropriate suffix to each
-  individual nuclide in the composition definition.
+  The temperature specified by ``temp`` must be higher than the temperatures of the 
+  nuclides in the material composition.
 
+.. note::
+  *IMPORTANT*: When using TMS, all the tallies based on the collision estimator have to
+  allow scoring virtual collisions, otherwise the results will be biased
 
 The ``composition`` dictionary must always be included, but it can be empty in
 multi-group simulations. In continuous energy simulations, it should include a
@@ -924,8 +925,12 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the collisionClerks is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 * trackClerk
 
@@ -951,14 +956,18 @@ Example: ::
 
 * keffAnalogClerk, analog k_eff estimator
 * keffImplicitClerk, implicit k_eff estimator
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the keffImplicitClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
       tally {
       k_eff1 { type keffAnalogClerk; }
-      k_eff2 { type keffImplicitClerk; handleVirtual 1; }
+      k_eff2 { type keffImplicitClerk; handleVirtual 0; }
       }
 
 * centreOfMassClerk, geometrical 3D center of mass estimator
@@ -1005,8 +1014,12 @@ Example: ::
     tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates
     whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``)
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the mgXsClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -1035,8 +1048,12 @@ Example: ::
 
   - map: contains a dictionary with the ``tallyMap`` definition, that defines
     the bins of the matrix
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the simpleFMClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 

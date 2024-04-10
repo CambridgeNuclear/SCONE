@@ -492,7 +492,7 @@ contains
     collDat % A =  self % nuc % getMass()
 
     ! Retrieve kT from either material or nuclide
-    if (self % mat % hasTMS .and. .not. self % mat % inUresOrSabRange(p % E)) then
+    if (self % mat % useTMS(p % E)) then
       collDat % kT = self % mat % kT
     else
       collDat % kT = self % nuc % getkT()

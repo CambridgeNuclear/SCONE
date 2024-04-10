@@ -64,7 +64,7 @@ module collisionClerk_class
     integer(shortInt)  :: width = 0
 
     ! Settings
-    logical(defBool)   :: virtual = .false.
+    logical(defBool)   :: virtual = .true.
 
   contains
     ! Procedures used during build
@@ -122,7 +122,7 @@ contains
     self % width = size(responseNames)
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -152,7 +152,7 @@ contains
     end if
 
     self % width   = 0
-    self % virtual = .false.
+    self % virtual = .true.
 
   end subroutine kill
 

@@ -21,9 +21,6 @@ module collisionProbabilityClerk_class
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
-  ! Tally Response
-  !use macroResponse_class,        only : macroResponse
-
   implicit none
   private
 
