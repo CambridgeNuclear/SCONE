@@ -177,7 +177,7 @@ contains
         rejection : do
           ! Protect against infinite loop
           j = j +1
-          if ( j > 200) then
+          if ( j > 1000) then
             call fatalError(Here, 'Infinite loop in sampling of fission sites. Please check that&
                                   & defined volume contains fissile material.')
           end if

@@ -53,6 +53,7 @@ activeTally {
 ! Uniform fission site map
 uniformFissionSites {
                    type uniFissSitesField;
+                   popVolumes 10000000;
                    map {type multiMap; maps (xax yax zax);
                       xax {type spaceMap;  axis x;  grid lin; N 17; min -182.07; max 182.07; }
                       yax {type spaceMap;  axis y;  grid lin; N 17; min -182.07; max 182.07; }
