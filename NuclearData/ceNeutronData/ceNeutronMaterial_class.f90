@@ -19,7 +19,7 @@ module ceNeutronMaterial_class
   use ceNeutronCache_mod,      only : materialCache, nuclideCache
 
   ! Scattering procedures
-  use scatteringKernels_func,  only : relativeEnergy_constXS
+  use scatteringKernels_func,  only : relativeEnergy_constXS, dopplerCorrectionFactor
 
   implicit none
   private
@@ -406,9 +406,9 @@ contains
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
-    integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs, doppCorr
-    integer(shortInt)                    :: i
+    class(ceNeutronNuclide), pointer     :: nuc
+    integer(shortInt)                    :: nucIdx, i
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
     character(100), parameter :: Here = 'sampleFission (ceNeutronMaterial_class.f90)'
 
     ! Short-cut for nonFissile material
@@ -429,16 +429,26 @@ contains
     do i = 1,size(self % nuclides)
 
       nucIdx = self % nuclides(i)
-      ! The nuclide cache should be at the right energy after updating the material
-      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
-      ! xss to be used are at the relative energy just sampled
-      ! If the material doesn't use TMS, the correction factor is ONE
+
+      ! If the material uses TMS, the Doppler correction factor is needed
       if (self % useTMS(E)) then
-        doppCorr = nuclideCache(nucIdx) % doppCorr
+
+        ! If the material is using TMS, the Doppler correction factor is needed
+        nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+
+        A     = nuc % getMass()
+        nuckT = nuc % getkT()
+        deltakT = self % kT - nuckT
+        doppCorr = dopplerCorrectionFactor(E, A, deltakT)
+
       else
         doppCorr = ONE
       end if
 
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i) * doppCorr
 
       if (xs < ZERO) return
@@ -472,9 +482,9 @@ contains
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
-    integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs, doppCorr
-    integer(shortInt)                    :: i
+    class(ceNeutronNuclide), pointer     :: nuc
+    integer(shortInt)                    :: nucIdx, i
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
     character(100), parameter :: Here = 'sampleScatter (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
@@ -490,16 +500,26 @@ contains
     do i = 1,size(self % nuclides)
 
       nucIdx = self % nuclides(i)
-      ! The nuclide cache should be at the right energy after updating the material
-      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
-      ! xss to be used are at the relative energy just sampled
-      ! If the material doesn't use TMS, the correction factor is ONE
+
+      ! If the material uses TMS, the Doppler correction factor is needed
       if (self % useTMS(E)) then
-        doppCorr = nuclideCache(nucIdx) % doppCorr
+
+        ! If the material is using TMS, the Doppler correction factor is needed
+        nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+
+        A     = nuc % getMass()
+        nuckT = nuc % getkT()
+        deltakT = self % kT - nuckT
+        doppCorr = dopplerCorrectionFactor(E, A, deltakT)
+
       else
         doppCorr = ONE
       end if
 
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i) * doppCorr
 
@@ -534,9 +554,9 @@ contains
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
-    integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs, doppCorr
-    integer(shortInt)                    :: i
+    class(ceNeutronNuclide), pointer     :: nuc
+    integer(shortInt)                    :: nucIdx, i
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
     character(100), parameter :: Here = 'sampleScatterWithFission (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering and fission
@@ -553,16 +573,26 @@ contains
     do i = 1,size(self % nuclides)
 
       nucIdx = self % nuclides(i)
-      ! The nuclide cache should be at the right energy after updating the material
-      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
-      ! xss to be used are at the relative energy just sampled
-      ! If the material doesn't use TMS, the correction factor is ONE
+
+      ! If the material uses TMS, the Doppler correction factor is needed
       if (self % useTMS(E)) then
-        doppCorr = nuclideCache(nucIdx) % doppCorr
+
+        ! If the material is using TMS, the Doppler correction factor is needed
+        nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+
+        A     = nuc % getMass()
+        nuckT = nuc % getkT()
+        deltakT = self % kT - nuckT
+        doppCorr = dopplerCorrectionFactor(E, A, deltakT)
+
       else
         doppCorr = ONE
       end if
 
+      ! The nuclide cache should be at the right energy after updating the material
+      ! In the case of TMS where the macro xss are at a relative energy, the nuclide
+      ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
                  nuclideCache(nucIdx) % xss % fission) * self % dens(i) * doppCorr

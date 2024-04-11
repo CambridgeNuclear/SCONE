@@ -505,7 +505,8 @@ contains
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), optional, intent(inout)   :: rand
     integer(shortInt)                     :: i, nucIdx
-    real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, eMax
+    real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, &
+                                             eMax, doppCorr
     character(100), parameter :: Here = 'updateRelEnMacroXSs (aceNeutronDatabase_class.f90)'
 
     associate(mat      => self % materials(matIdx), &
@@ -538,9 +539,8 @@ contains
 
           associate(nucCache => cache_nuclideCache(nucIdx))
 
-            ! Doppler correction factor for low energies; reset majorant energy for safety
-            nucCache % doppCorr = dopplerCorrectionFactor(E, A, deltakT)
-            nucCache % E_maj    = ZERO
+            ! Doppler correction factor for low energies
+            doppCorr = dopplerCorrectionFactor(E, A, deltakT)
 
             ! Update if needed
             if (nucCache % E_tail /= eRel .or. nucCache % E_tot /= eRel) then
@@ -548,7 +548,7 @@ contains
             end if
 
             ! Add microscopic XSs
-            call matCache % xssRel % add(nucCache % xss, dens*nucCache % doppCorr)
+            call matCache % xssRel % add(nucCache % xss, dens * doppCorr)
 
           end associate
 
