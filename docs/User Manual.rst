@@ -781,7 +781,7 @@ The *materials* definition is structured as: ::
       }
 
 In this case, ``materialName`` can be any name chosen by the user; the keyword ``temp`` 
-activate Target Motion Sampling (TMS) and its entry is the material temperature in [K].
+activates Target Motion Sampling (TMS) and its entry is the material temperature in [K].
 
 .. note::
   The temperature specified by ``temp`` must be higher than the temperatures of the 

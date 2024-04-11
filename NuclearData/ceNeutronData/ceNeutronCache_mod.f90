@@ -72,7 +72,7 @@ module ceNeutronCache_mod
     real(defReal)         :: E_maj     = ZERO
     real(defReal)         :: deltakT   = ZERO
     real(defReal)         :: tempMajXS = ZERO
-    real(defReal)         :: doppCorr  = ZERO
+    real(defReal)         :: doppCorr  = ONE
   end type cacheNucDat
 
   !!

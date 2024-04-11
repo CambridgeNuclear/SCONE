@@ -505,8 +505,7 @@ contains
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), optional, intent(inout)   :: rand
     integer(shortInt)                     :: i, nucIdx
-    real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, &
-                                             eMax, corrFact
+    real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, eMax
     character(100), parameter :: Here = 'updateRelEnMacroXSs (aceNeutronDatabase_class.f90)'
 
     associate(mat      => self % materials(matIdx), &
@@ -528,11 +527,6 @@ contains
           A      = self % nuclides(nucIdx) % getMass()
           deltakT = mat % kT - nuckT
 
-          ! Call fatal error if material temperature is lower then base nuclide temperature
-          if (deltakT < ZERO) then
-            call fatalError(Here,"Material temperature must be greater than the nuclear data temperature.")
-          end if
-
           eRel = relativeEnergy_constXS(E, A, deltakT, rand)
 
           ! Call through system minimum and maximum energies
@@ -542,16 +536,21 @@ contains
           if (eRel < eMin) eRel = eMin
           if (eMax < eRel) eRel = eMax
 
-          ! Doppler correction factor for low energies
-          corrFact = dopplerCorrectionFactor(E, A, deltakT)
+          associate(nucCache => cache_nuclideCache(nucIdx))
 
-          ! Update if needed
-          if (cache_nuclideCache(nucIdx) % E_tail /= eRel .or. cache_nuclideCache(nucIdx) % E_tot /= eRel) then
-            call self % updateMicroXSs(eRel, nucIdx, rand)
-          end if
+            ! Doppler correction factor for low energies; reset majorant energy for safety
+            nucCache % doppCorr = dopplerCorrectionFactor(E, A, deltakT)
+            nucCache % E_maj    = ZERO
 
-          ! Add microscopic XSs
-          call matCache % xssRel % add(cache_nuclideCache(nucIdx) % xss, dens*corrFact)
+            ! Update if needed
+            if (nucCache % E_tail /= eRel .or. nucCache % E_tot /= eRel) then
+              call self % updateMicroXSs(eRel, nucIdx, rand)
+            end if
+
+            ! Add microscopic XSs
+            call matCache % xssRel % add(nucCache % xss, dens*nucCache % doppCorr)
+
+          end associate
 
         end do
 
@@ -669,11 +668,6 @@ contains
       nuckT   = nuc % getkT()
       A       = nuc % getMass()
       deltakT = kT - nuckT
-
-      ! Call fatal error if material temperature is lower then base nuclide temperature
-      if (deltakT < ZERO) then
-        call fatalError(Here, "Material temperature must be greater than the nuclear data temperature.")
-      end if
 
       ! Check if an update is required
       if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
@@ -1113,7 +1107,6 @@ contains
     type(intMap)                             :: nucSet
     real(defReal)                            :: eRef, eNuc, E, maj, total, dens, urrMaj, &
                                                 nucXS, f, eMax, eMin
-    logical(defBool)                         :: needsUrr
     class(RNG), pointer                      :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
@@ -1323,10 +1316,8 @@ contains
 
           associate (nuc => self % nuclides(nucIdx))
 
-            needsUrr = (nuc % hasProbTab .and. E >= nuc % urrE(1) .and. E <= nuc % urrE(2))
-
             ! Check if present nuclide uses URR tables
-            if (needsUrr) then
+            if (nuc % needsUrr(E)) then
 
               ! Find maximum URR table total XS
               urrIdx = binarySearch(nuc % probTab % eGrid, E)

@@ -353,19 +353,23 @@ contains
 
     ! Perform implicit absorption
     if (self % implicitAbsorption) then
-      if(.not.fiss_and_implicit) then
-        call self % nuc % getMicroXSs(microXSs, p % E, p % pRNG)
+
+      if (.not.fiss_and_implicit) then
+        call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
       end if
+
       sig_scatter  = microXSs % elasticScatter + microXSs % inelasticScatter
       sig_tot      = microXSs % total
       p % w        = p % w * sig_scatter/sig_tot
       ! Sample between elastic and inelastic
       totalElastic = microXSs % elasticScatter + microXSs % inelasticScatter
+
       if (p % pRNG % get() < microXSs % elasticScatter/totalElastic) then
         collDat % MT = N_N_elastic
       else
         collDat % MT = N_N_inelastic
       end if
+
     end if
 
   end subroutine implicit

@@ -75,7 +75,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate([1,2], silent = .true.)
+    call data % activate([1,2,3], silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
@@ -88,10 +88,10 @@ contains
     ! Get invalid materials
     @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(0)))
     @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(-4)))
-    @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(3)))
+    @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(4)))
 
     ! Get water
-    mat => ceNeutronMaterial_TptrCast( data % getMaterial(1))
+    mat => ceNeutronMaterial_TptrCast(data % getMaterial(1))
     @assertAssociated(mat)
 
     ! Make sure densities are present
@@ -172,6 +172,8 @@ contains
     name = 'uo2'
     @assertTrue( 0 /= matNames % getOrDefault(name, 0))
 
+    name = 'uo2hot'
+    @assertTrue( 0 /= matNames % getOrDefault(name, 0))
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting nuclide XSs

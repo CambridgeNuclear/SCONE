@@ -59,8 +59,6 @@ module collisionProcessor_inter
   !!
   type, public, abstract :: collisionProcessor
     private
-    integer(shortInt) :: rejections = 0
-
   contains
     ! Master non-overridable procedures
     procedure, non_overridable :: collide
@@ -129,15 +127,9 @@ contains
     if (collDat % MT == noInteraction) then
       virtual = .true.
       thisCollision = 0
-      self % rejections = self % rejections + 1
     else
       virtual = .false.
       thisCollision = 1
-      self % rejections = 0
-    end if
-
-    if (mod(self % rejections, 50000) == 0 .and. self % rejections /= 0) then
-      print*, numToChar(self % rejections)//' rejections'
     end if
 
     ! Report in-collision & save pre-collison state

@@ -353,7 +353,7 @@ contains
             if (eMax < eRel) eRel = eMax
 
             ! Get relative energy nuclide cross section
-            call self % data % updateMicroXSs(eRel, nucIdx, rand)
+            call self % data % updateTotalNucXS(eRel, nucIdx, rand)
 
             ! Calculate acceptance probability using ratio of relative energy xs to temperature majorant
             P_acc = nucCache % xss % total * nucCache % doppCorr / totNucXS
@@ -407,7 +407,7 @@ contains
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
     integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs
+    real(defReal)                        :: xs, doppCorr
     integer(shortInt)                    :: i
     character(100), parameter :: Here = 'sampleFission (ceNeutronMaterial_class.f90)'
 
@@ -419,6 +419,8 @@ contains
 
     ! Calculate material macroscopic nuFission
     ! The cache is updated without checking the energy to get the correct results with TMS
+    ! The relative energy flag cached is cleaned to make sure cross sections are updated
+    materialCache(self % matIdx) % E_rel = ZERO
     call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = materialCache(self % matIdx) % xss % nuFission * rand % get()
@@ -430,7 +432,14 @@ contains
       ! The nuclide cache should be at the right energy after updating the material
       ! In the case of TMS where the macro xss are at a relative energy, the nuclide
       ! xss to be used are at the relative energy just sampled
-      xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i)
+      ! If the material doesn't use TMS, the correction factor is ONE
+      if (self % useTMS(E)) then
+        doppCorr = nuclideCache(nucIdx) % doppCorr
+      else
+        doppCorr = ONE
+      end if
+
+      xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i) * doppCorr
 
       if (xs < ZERO) return
 
@@ -464,12 +473,14 @@ contains
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
     integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs
+    real(defReal)                        :: xs, doppCorr
     integer(shortInt)                    :: i
     character(100), parameter :: Here = 'sampleScatter (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
     ! The cache is updated without checking the energy to get the correct results with TMS
+    ! The relative energy flag cached is cleaned to make sure cross sections are updated
+    materialCache(self % matIdx) % E_rel = ZERO
     call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
@@ -482,8 +493,15 @@ contains
       ! The nuclide cache should be at the right energy after updating the material
       ! In the case of TMS where the macro xss are at a relative energy, the nuclide
       ! xss to be used are at the relative energy just sampled
+      ! If the material doesn't use TMS, the correction factor is ONE
+      if (self % useTMS(E)) then
+        doppCorr = nuclideCache(nucIdx) % doppCorr
+      else
+        doppCorr = ONE
+      end if
+
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
-                 nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i)
+                 nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i) * doppCorr
 
       if (xs < ZERO) return
 
@@ -517,12 +535,14 @@ contains
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
     integer(shortInt)                    :: nucIdx
-    real(defReal)                        :: xs
+    real(defReal)                        :: xs, doppCorr
     integer(shortInt)                    :: i
     character(100), parameter :: Here = 'sampleScatterWithFission (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering and fission
     ! The cache is updated without checking the energy to get the correct results with TMS
+    ! The relative energy flag cached is cleaned to make sure cross sections are updated
+    materialCache(self % matIdx) % E_rel = ZERO
     call self % data % updateMacroXSs(E, self % matIdx, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
@@ -536,9 +556,16 @@ contains
       ! The nuclide cache should be at the right energy after updating the material
       ! In the case of TMS where the macro xss are at a relative energy, the nuclide
       ! xss to be used are at the relative energy just sampled
+      ! If the material doesn't use TMS, the correction factor is ONE
+      if (self % useTMS(E)) then
+        doppCorr = nuclideCache(nucIdx) % doppCorr
+      else
+        doppCorr = ONE
+      end if
+
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
-                 nuclideCache(nucIdx) % xss % fission) * self % dens(i)
+                 nuclideCache(nucIdx) % xss % fission) * self % dens(i) * doppCorr
 
       if (xs < ZERO) return
 
