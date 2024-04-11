@@ -46,7 +46,7 @@ contains
 
     ! Build material map definition
     call dict % store('type', 'uniFissSitesField')
-    call dict % store('uniformMap', 1)
+    call dict % store('uniformVolMap', 1)
     call dict % store('map', dictMap)
 
     call this % ufsField % init(dict)

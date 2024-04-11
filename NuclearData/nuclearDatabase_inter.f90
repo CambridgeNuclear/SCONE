@@ -21,7 +21,7 @@ module nuclearDatabase_inter
   !! subclasses of this type.
   !!
   !! Interface:
-  !!   getTrackingXS -> returns XS used to sample track lenght
+  !!   getTrackingXS -> returns XS used to sample track length
   !!   getTotalMatXS -> returns total Material XS given a particle
   !!   getMajorantXS -> returns majorant XS given particle and list of active materials
   !!   matNamesMap   -> returns pointer to map of material names to matIdx

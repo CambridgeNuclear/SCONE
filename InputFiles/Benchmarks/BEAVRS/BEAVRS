@@ -1,0 +1,2262 @@
+!!
+!! 3D BEAVRS benchmark
+!! This is not a fully faithful replica of BEAVRS at HZP:
+!! all rods are fully out and the temperature is 600K.
+!! In reality, some rods are partially inserted and the 
+!! isothermal temperature is 566K.
+!! TODO: add rods in the appropriate assemblies at the
+!!       correct heights!
+!! TODO: modify fuel temperature data to 300K and
+!!       Doppler broaden to 566K.
+!!
+type eigenPhysicsPackage;
+
+pop      10000000;
+active   50;
+inactive 200;
+XSdata ce;
+dataType ce;
+
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator {  
+                     !type transportOperatorDT;
+                     type transportOperatorHT; cache 1;
+                   }
+
+inactiveTally {
+  shannon {
+	    type shannonEntropyClerk;
+            map {type multiMap;
+            maps (xax yax zax);
+            xax { type spaceMap; grid lin; min -161.2773; max 161.2773; N 15; axis x;}
+            yax { type spaceMap; grid lin; min -161.2773; max 161.2773; N 15; axis y;}
+            zax { type spaceMap; grid lin; min 36.748; max 402.508; N 15; axis z;}
+                }
+           cycles 200;
+          }
+
+}
+
+activeTally {
+  pinFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax);
+                      xax {type spaceMap;  axis x;  grid lin; N 255; min -161.2773; max 161.2773; }
+                      yax {type spaceMap;  axis y;  grid lin; N 255; min -161.2773; max 161.2773; }
+                   }
+                 } 
+  assemblyFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax);
+                      xax {type spaceMap;  axis x;  grid lin; N 15; min -161.2773; max 161.2773; }
+                      yax {type spaceMap;  axis y;  grid lin; N 15; min -161.2773; max 161.2773; }
+                   }
+                 } 
+  fissionAxial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                  map {type spaceMap; axis z; grid lin; N 60; min 36.748; max 402.508;}
+                }
+  fissionYZ  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (yax zax);
+                      yax {type spaceMap;  axis y;  grid lin; N 255; min -161.2773; max 161.2773; }
+                      zax {type spaceMap; axis z; grid lin; N 60; min 36.748; max 402.508;}
+                   }
+             } 
+}
+
+geometry {
+  type geometryStd;
+  boundary ( 0 0 0 0 0 0);
+  graph {type shrunk;}
+
+  surfaces { 
+    
+    // thickness specifications for RPV and RPV liner 
+    outerRPV { id 1; type zTruncCylinder; radius 241.3; origin (0.0 0.0 230.0); halfwidth 230; }
+    innerRPV { id 2; type zCylinder; radius 219.710; origin (0.0 0.0 0.0); }
+    innerRPVLiner { id 3; type zCylinder; radius 219.150; origin (0.0 0.0 0.0); }
+
+    // thickness specifications for neutron shield
+    outerBoundNS { id 4; type zCylinder; radius 201.630; origin (0.0 0.0 0.0); }
+    innerBoundNS { id 5; type zCylinder; radius 194.84; origin (0.0 0.0 0.0); }
+
+    // thickness specifications for core barrel
+    outerCoreBarrel { id 6; type zCylinder; radius 193.675; origin (0.0 0.0 0.0); }
+    innerCoreBarrel { id 7; type zCylinder; radius 187.96; origin (0.0 0.0 0.0); }
+
+    // four planes that intersect to bound the Neutron shield panel 
+    P1 { id 8; type plane; coeffs (-0.48480962025 0.87461970714 0.0 0.0);}
+    P2 { id 9; type plane; coeffs (-0.87461970714 0.48480962025 0.0 0.0);}
+    P3 { id 10; type plane; coeffs (-0.87461970714 -0.48480962025 0.0 0.0);}
+    P4 { id 11; type plane; coeffs (-0.48480962025 -0.87461970714 0.0 0.0);}
+
+    // bounding widths for baffle on various sides
+    // right & left refers to the side of the reactor that it is on 
+    // close/away refers to its location in relation to the LATTICE it is a part of
+    // (NOT the reactor itself)
+    rightClose { id 50; type plane; coeffs (1.0 0.0 0.0 8.36662);}
+    rightAway { id 51; type plane; coeffs (1.0 0.0 0.0 10.58912);} 
+    leftClose { id 52; type plane; coeffs (-1.0 0.0 0.0 8.36662);}
+    leftAway { id 53; type plane; coeffs (-1.0 0.0 0.0 10.58912);}
+    bottomClose { id 54; type plane; coeffs (0.0 -1.0 0.0 8.36662);}
+    bottomAway { id 55; type plane; coeffs (0.0 -1.0 0.0 10.58912);}
+    topClose { id 56; type plane; coeffs (0.0 1.0 0.0 8.36662);}
+    topAway { id 57; type plane; coeffs (0.0 1.0 0.0 10.58912);}
+
+    // thickness specifications for grid with thickness of 0.0198cm (Inconel)
+    pinThickGridInner { id 90; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.61015 0.61015 0.0); }
+    pinThickGridOuter { id 91; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.62992 0.62992 0.0); }
+
+    // thickness specifications for grid with thickness of 0.0194cm (Zircaloy)
+    pinThinGridInner { id 92; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.61049 0.61049 0.0); }
+    pinThinGridOuter { id 93; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.62992 0.62992 0.0); }
+
+    // inner and outer surfaces of assembly sleeves (both SS and Zircaloy)
+    assemblySleeveInner { id 94; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.70864 10.70864 0.0); }
+    assemblySleeveOuter { id 95; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.74798 10.74798 0.0); }
+
+
+    // Axial planes across core height
+    // Names are based on axial heights
+    plane460     { id 100; type plane; coeffs (0.0 0.0 1.0 460.0  ); }
+    plane431p876 { id 101; type plane; coeffs (0.0 0.0 1.0 431.876); }
+    plane423p049 { id 102; type plane; coeffs (0.0 0.0 1.0 423.049); }
+    plane421p532 { id 103; type plane; coeffs (0.0 0.0 1.0 421.532); }
+    plane419p704 { id 104; type plane; coeffs (0.0 0.0 1.0 419.704); }
+    plane417p164 { id 105; type plane; coeffs (0.0 0.0 1.0 417.164); }
+    plane415p164 { id 106; type plane; coeffs (0.0 0.0 1.0 415.164); }
+    plane411p806 { id 107; type plane; coeffs (0.0 0.0 1.0 411.806); }
+    plane403p778 { id 108; type plane; coeffs (0.0 0.0 1.0 403.778); }
+    plane402p508 { id 109; type plane; coeffs (0.0 0.0 1.0 402.508); }
+    plane401p238 { id 110; type plane; coeffs (0.0 0.0 1.0 401.238); }
+    plane364p725 { id 111; type plane; coeffs (0.0 0.0 1.0 364.725); }
+    plane359p01  { id 112; type plane; coeffs (0.0 0.0 1.0 359.01 ); }
+    plane312p528 { id 113; type plane; coeffs (0.0 0.0 1.0 312.528); }
+    plane306p813 { id 114; type plane; coeffs (0.0 0.0 1.0 306.813); }
+    plane260p331 { id 115; type plane; coeffs (0.0 0.0 1.0 260.331); }
+    plane254p616 { id 116; type plane; coeffs (0.0 0.0 1.0 254.616); }
+    plane208p134 { id 117; type plane; coeffs (0.0 0.0 1.0 208.134); }
+    plane202p419 { id 118; type plane; coeffs (0.0 0.0 1.0 202.419); }
+    plane155p937 { id 119; type plane; coeffs (0.0 0.0 1.0 155.937); }
+    plane150p222 { id 120; type plane; coeffs (0.0 0.0 1.0 150.222); }
+    plane143p428 { id 121; type plane; coeffs (0.0 0.0 1.0 143.428); }
+    plane103p74  { id 122; type plane; coeffs (0.0 0.0 1.0 103.74 ); }
+    plane98p025  { id 123; type plane; coeffs (0.0 0.0 1.0 98.025 ); }
+    plane41p828  { id 124; type plane; coeffs (0.0 0.0 1.0 41.828 ); }
+    plane40p558  { id 125; type plane; coeffs (0.0 0.0 1.0 40.558 ); }
+    plane40p52   { id 126; type plane; coeffs (0.0 0.0 1.0 40.52  ); }
+    plane39p958  { id 127; type plane; coeffs (0.0 0.0 1.0 39.958 ); }
+    plane38p66   { id 128; type plane; coeffs (0.0 0.0 1.0 38.66  ); }
+    plane37p1621 { id 129; type plane; coeffs (0.0 0.0 1.0 37.1621); }
+    plane36p748  { id 130; type plane; coeffs (0.0 0.0 1.0 36.748 ); }
+    plane35      { id 131; type plane; coeffs (0.0 0.0 1.0 35.0   ); }
+    plane20      { id 132; type plane; coeffs (0.0 0.0 1.0 20.0   ); }
+    plane0       { id 133; type plane; coeffs (0.0 0.0 1.0 0.0    ); }
+
+    planeSteelBottom   { id 134; type plane; coeffs (0.0 0.0 1.0 400.638); }
+    planeCRLowerBottom { id 135; type plane; coeffs (0.0 0.0 1.0 402.508); } // same as 109 on withdrawal
+    planeCRUpperBottom { id 136; type plane; coeffs (0.0 0.0 1.0 504.108); } // out of core on withdrawal
+
+
+  }
+
+  cells {
+
+    // assembly wrappers and surrounding water at various heights
+    wrapper1 {type simpleCell; id 2001; surfaces (94 -95 129 -126); filltype mat; material SS304;}
+    wrapper2 {type simpleCell; id 2002; surfaces (94 -95 123 -122); filltype mat; material Zircaloy;}
+    wrapper3 {type simpleCell; id 2003; surfaces (94 -95 120 -119); filltype mat; material Zircaloy;}
+    wrapper4 {type simpleCell; id 2004; surfaces (94 -95 118 -117); filltype mat; material Zircaloy;}
+    wrapper5 {type simpleCell; id 2005; surfaces (94 -95 116 -115); filltype mat; material Zircaloy;}
+    wrapper6 {type simpleCell; id 2006; surfaces (94 -95 114 -113); filltype mat; material Zircaloy;}
+    wrapper7 {type simpleCell; id 2007; surfaces (94 -95 112 -111); filltype mat; material Zircaloy;}
+    wrapper8 {type simpleCell; id 2008; surfaces (94 -95 107 -106); filltype mat; material SS304;}
+    
+    assemWater0 {type simpleCell; id 2009; surfaces (94 -129); filltype mat; material Water;}
+    assemWater1 {type simpleCell; id 2010; surfaces (94 -95 126 -123); filltype mat; material Water;}
+    assemWater2 {type simpleCell; id 2011; surfaces (94 -95 122 -120); filltype mat; material Water;}
+    assemWater3 {type simpleCell; id 2012; surfaces (94 -95 119 -118); filltype mat; material Water;}
+    assemWater4 {type simpleCell; id 2013; surfaces (94 -95 117 -116); filltype mat; material Water;}
+    assemWater5 {type simpleCell; id 2014; surfaces (94 -95 115 -114); filltype mat; material Water;}
+    assemWater6 {type simpleCell; id 2015; surfaces (94 -95 113 -112); filltype mat; material Water;}
+    assemWater7 {type simpleCell; id 2016; surfaces (94 -95 111 -107); filltype mat; material Water;}
+    assemWater8 {type simpleCell; id 2017; surfaces (94 -95 106); filltype mat; material Water;}
+    assemWaterEx {type simpleCell; id 2018; surfaces (95); filltype mat; material Water;}
+
+    // assemblies inside the wrappers
+    assem1424    {type simpleCell; id 2019; surfaces (-94); filltype uni; universe 1424;}
+    assem1416    {type simpleCell; id 2020; surfaces (-94); filltype uni; universe 1416;}
+    assem1431    {type simpleCell; id 2021; surfaces (-94); filltype uni; universe 1431;}
+    assem60316   {type simpleCell; id 2022; surfaces (-94); filltype uni; universe 60316;}
+    assem603112  {type simpleCell; id 2023; surfaces (-94); filltype uni; universe 603112;}
+    assem60313   {type simpleCell; id 2024; surfaces (-94); filltype uni; universe 60313;}
+    assem60319   {type simpleCell; id 2025; surfaces (-94); filltype uni; universe 60319;}
+    assem15315   {type simpleCell; id 2026; surfaces (-94); filltype uni; universe 15315;}
+    assem15317   {type simpleCell; id 2027; surfaces (-94); filltype uni; universe 15317;}
+    assem15311   {type simpleCell; id 2028; surfaces (-94); filltype uni; universe 15311;}
+    assem153111  {type simpleCell; id 2029; surfaces (-94); filltype uni; universe 153111;}
+    assem1631    {type simpleCell; id 2030; surfaces (-94); filltype uni; universe 1631;}
+    assem2031    {type simpleCell; id 2031; surfaces (-94); filltype uni; universe 2031;}
+    assem1224    {type simpleCell; id 2032; surfaces (-94); filltype uni; universe 1224;}
+    assem1624    {type simpleCell; id 2033; surfaces (-94); filltype uni; universe 1624;}
+    
+    // unrodded assemblies in wrappers
+    assem2424    {type simpleCell; id 2034; surfaces (-94); filltype uni; universe 2424;}
+    assem2416    {type simpleCell; id 2035; surfaces (-94); filltype uni; universe 2416;}
+    assem2431    {type simpleCell; id 2036; surfaces (-94); filltype uni; universe 2431;}
+    assem70316   {type simpleCell; id 2037; surfaces (-94); filltype uni; universe 70316;}
+    assem703112  {type simpleCell; id 2038; surfaces (-94); filltype uni; universe 703112;}
+    assem70313   {type simpleCell; id 2039; surfaces (-94); filltype uni; universe 70313;}
+    assem70319   {type simpleCell; id 2040; surfaces (-94); filltype uni; universe 70319;}
+    assem25315   {type simpleCell; id 2041; surfaces (-94); filltype uni; universe 25315;}
+    assem25317   {type simpleCell; id 2042; surfaces (-94); filltype uni; universe 25317;}
+    assem25311   {type simpleCell; id 2043; surfaces (-94); filltype uni; universe 25311;}
+    assem253111  {type simpleCell; id 2044; surfaces (-94); filltype uni; universe 253111;}
+    assem2631    {type simpleCell; id 2045; surfaces (-94); filltype uni; universe 2631;}
+    assem3031    {type simpleCell; id 2046; surfaces (-94); filltype uni; universe 3031;}
+    assem2224    {type simpleCell; id 2047; surfaces (-94); filltype uni; universe 2224;}
+    assem2624    {type simpleCell; id 2048; surfaces (-94); filltype uni; universe 2624;}
+    
+    // pin grids - thick at the top and bottom, thin in fuelled region
+    thickGrid {type simpleCell; id 555; surfaces (90 ); filltype mat; material Inconel;}
+    thinGrid {type simpleCell; id 556; surfaces (92 ); filltype mat; material Zircaloy;}
+
+    pressureVessel { type simpleCell; id 7; surfaces (-1 2); filltype mat; material CarbonSteel;}
+    RPVLiner { type simpleCell; id 8; surfaces (-2 3); filltype mat; material SS304;}
+    outerWater1 {type simpleCell; id 9; surfaces (-3 4 ); filltype mat; material Water;}
+
+    // Neutron shields
+    NS1 { type simpleCell; id 10; surfaces (-4 5 -8 9); filltype mat; material SS304;}
+    NS2 { type simpleCell; id 11; surfaces (-4 5 8 -9); filltype mat; material SS304;}
+    NS3 { type simpleCell; id 12; surfaces (-4 5 -10 11); filltype mat; material SS304;}
+    NS4 { type simpleCell; id 13; surfaces (-4 5 10 -11); filltype mat; material SS304;}
+    
+    // Water in the arc between neutron shields
+    outerWaterSeg1 {type simpleCell; id 14; surfaces (-4 5  ); filltype mat; material Water;}
+    outerWater2 {type simpleCell; id 15; surfaces (-5 6 ); filltype mat; material Water;}
+
+    // Outer core
+    coreBarrel { type simpleCell; id 16; surfaces (-6 7); filltype mat; material SS304;}
+    core {type simpleCell; id 17; surfaces (-5); filltype uni; universe 9999;}
+
+
+    // Gridded pins
+
+    // THICK GRID 
+    // 2.4% in grid
+    grid24Thick {type simpleCell; id 253; surfaces (-90); filltype uni; universe 24000;}
+    // guide tube in grid
+    gridGTThick {type simpleCell; id 254; surfaces (-90); filltype uni; universe 12000;}
+    // 3.1% in grid
+    grid31Thick {type simpleCell; id 255; surfaces (-90); filltype uni; universe 31000;}
+    // 1.6 % in grid
+    grid16Thick {type simpleCell; id 256; surfaces (-90); filltype uni; universe 16000;}
+    // instrumentation tube in grid
+    gridITThick {type simpleCell; id 257; surfaces (-90); filltype uni; universe 14000;}
+    // empty GT at dashpot in grid
+    gridGTDPThick {type simpleCell; id 258; surfaces (-90); filltype uni; universe 1010;}
+    // pin upper fuel plenum in grid
+    gridFPPThick {type simpleCell; id 259; surfaces (-90); filltype uni; universe 1008;}
+    // stainless steel in guide tube in grid
+    gridSSGThick {type simpleCell; id 260; surfaces (-90); filltype uni; universe 1023;}
+    // stainless steel in dash pot in grid
+    gridSSDPThick {type simpleCell; id 261; surfaces (-90); filltype uni; universe 1024;}
+    // BP plenum in grid
+    gridBPPThick {type simpleCell; id 262; surfaces (-90); filltype uni; universe 1012;}
+    // Rodded GT in grid
+    gridRGTThick {type simpleCell; id 263; surfaces (-90); filltype uni; universe 1014;}
+    
+    // THIN GRID
+    // 2.4% in grid
+    grid24Thin {type simpleCell; id 264; surfaces (-92); filltype uni; universe 24000;}
+    // guide tube in grid
+    gridGTThin {type simpleCell; id 265; surfaces (-92); filltype uni; universe 12000;}
+    // burnable poison in grid
+    gridBPThin {type simpleCell; id 266; surfaces (-92); filltype uni; universe 1000;}
+    // 3.1% in grid
+    grid31Thin {type simpleCell; id 267; surfaces (-92); filltype uni; universe 31000;}
+    // 1.6 % in grid
+    grid16Thin {type simpleCell; id 268; surfaces (-92); filltype uni; universe 16000;}
+    // instrumentation tube in grid
+    gridITThin {type simpleCell; id 269; surfaces (-92); filltype uni; universe 14000;}
+    // empty GT at dashpot in grid
+    gridGTDPThin {type simpleCell; id 270; surfaces (-92); filltype uni; universe 1010;}
+    // pin upper fuel plenum in grid
+    gridFPPThin {type simpleCell; id 271; surfaces (-92); filltype uni; universe 1008;}
+    // stainless steel in guide tube in grid
+    gridSSGTThin {type simpleCell; id 272; surfaces (-92); filltype uni; universe 1023;}
+    // stainless steel in dash pot in grid
+    gridSSDPThin {type simpleCell; id 273; surfaces (-92); filltype uni; universe 1024;}
+    // BP plenum in grid
+    gridBPPThin {type simpleCell; id 274; surfaces (-92); filltype uni; universe 1012;}
+    // Rodded GT in grid (not used when rods fully withdrawn)
+    gridRGTThin {type simpleCell; id 275; surfaces (-92); filltype uni; universe 1014;}
+
+
+    // 3.1% enriched pins, axial layering
+    31FP460  {type simpleCell; id 100; surfaces ( 101);     filltype uni; universe 1001;}
+    31FP431  {type simpleCell; id 101; surfaces (-101 102); filltype uni; universe 1003;}
+    31FP423  {type simpleCell; id 102; surfaces (-102 104); filltype uni; universe 1001;}
+    31FP419  {type simpleCell; id 103; surfaces (-104 105); filltype uni; universe 1006;}      
+    31FP417  {type simpleCell; id 104; surfaces (-105 106); filltype uni; universe 1008;}
+    31FP415  {type simpleCell; id 105; surfaces (-106 107); filltype uni; universe 1017;}
+    31FP411  {type simpleCell; id 106; surfaces (-107 109); filltype uni; universe 1008;}
+    31FP402  {type simpleCell; id 107; surfaces (-109 111); filltype uni; universe 31000;}
+    31FP364  {type simpleCell; id 108; surfaces (-111 112); filltype uni; universe 9231;}
+    31FP359  {type simpleCell; id 109; surfaces (-112 113); filltype uni; universe 31000;}
+    31FP312  {type simpleCell; id 110; surfaces (-113 114); filltype uni; universe 9231;}
+    31FP306  {type simpleCell; id 111; surfaces (-114 115); filltype uni; universe 31000;}
+    31FP260  {type simpleCell; id 112; surfaces (-115 116); filltype uni; universe 9231;}
+    31FP254  {type simpleCell; id 113; surfaces (-116 117); filltype uni; universe 31000;}
+    31FP208  {type simpleCell; id 114; surfaces (-117 118); filltype uni; universe 9231;}
+    31FP202  {type simpleCell; id 115; surfaces (-118 119); filltype uni; universe 31000;}
+    31FP155  {type simpleCell; id 116; surfaces (-119 120); filltype uni; universe 9231;}
+    31FP150  {type simpleCell; id 117; surfaces (-120 122); filltype uni; universe 31000;}
+    31FP103  {type simpleCell; id 118; surfaces (-122 123); filltype uni; universe 9231;}
+    31FP98   {type simpleCell; id 119; surfaces (-123 126); filltype uni; universe 31000;}
+    31FP4052 {type simpleCell; id 120; surfaces (-126 129); filltype uni; universe 1131;}
+    31FP37   {type simpleCell; id 121; surfaces (-129 130); filltype uni; universe 31000;}
+    31FP36   {type simpleCell; id 122; surfaces (-130 131); filltype uni; universe 1006;}
+    31FP35   {type simpleCell; id 123; surfaces (-131 132); filltype uni; universe 1003;}
+    31FP20   {type simpleCell; id 124; surfaces (-132 );    filltype uni; universe 1001;}
+
+
+    //2.4% enriched pins, axial layering 
+    24FP460  {type simpleCell; id 125; surfaces ( 101);     filltype uni; universe 1001;}
+    24FP431  {type simpleCell; id 126; surfaces (-101 102); filltype uni; universe 1003;}
+    24FP423  {type simpleCell; id 127; surfaces (-102 104); filltype uni; universe 1001;}
+    24FP419  {type simpleCell; id 128; surfaces (-104 105); filltype uni; universe 1006;}   
+    24FP417  {type simpleCell; id 129; surfaces (-105 106); filltype uni; universe 1008;}
+    24FP415  {type simpleCell; id 130; surfaces (-106 107); filltype uni; universe 1017;}
+    24FP411  {type simpleCell; id 131; surfaces (-107 109); filltype uni; universe 1008;}
+    24FP402  {type simpleCell; id 132; surfaces (-109 111); filltype uni; universe 24000;}
+    24FP364  {type simpleCell; id 133; surfaces (-111 112); filltype uni; universe 9224;}
+    24FP359  {type simpleCell; id 134; surfaces (-112 113); filltype uni; universe 24000;}
+    24FP312  {type simpleCell; id 135; surfaces (-113 114); filltype uni; universe 9224;}
+    24FP306  {type simpleCell; id 136; surfaces (-114 115); filltype uni; universe 24000;}
+    24FP260  {type simpleCell; id 137; surfaces (-115 116); filltype uni; universe 9224;}
+    24FP254  {type simpleCell; id 138; surfaces (-116 117); filltype uni; universe 24000;}
+    24FP208  {type simpleCell; id 139; surfaces (-117 118); filltype uni; universe 9224;}
+    24FP202  {type simpleCell; id 140; surfaces (-118 119); filltype uni; universe 24000;}
+    24FP155  {type simpleCell; id 141; surfaces (-119 120); filltype uni; universe 9224;}
+    24FP150  {type simpleCell; id 142; surfaces (-120 122); filltype uni; universe 24000;}
+    24FP103  {type simpleCell; id 143; surfaces (-122 123); filltype uni; universe 9224;}
+    24FP98   {type simpleCell; id 144; surfaces (-123 126); filltype uni; universe 24000;}
+    24FP4052 {type simpleCell; id 145; surfaces (-126 129); filltype uni; universe 1124;}
+    24FP37   {type simpleCell; id 146; surfaces (-129 130); filltype uni; universe 24000;}
+    24FP36   {type simpleCell; id 147; surfaces (-130 131); filltype uni; universe 1006;}
+    24FP35   {type simpleCell; id 148; surfaces (-131 132); filltype uni; universe 1003;}
+    24FP20   {type simpleCell; id 149; surfaces (-132);     filltype uni; universe 1001;}
+
+    //1.6% enriched pins, axial layering 
+    16FP460  {type simpleCell; id 150; surfaces ( 101);     filltype uni; universe 1001;}
+    16FP431  {type simpleCell; id 151; surfaces (-101 102); filltype uni; universe 1003;}
+    16FP423  {type simpleCell; id 152; surfaces (-102 104); filltype uni; universe 1001;}
+    16FP419  {type simpleCell; id 153; surfaces (-104 105); filltype uni; universe 1006;}   
+    16FP417  {type simpleCell; id 154; surfaces (-105 106); filltype uni; universe 1008;}
+    16FP415  {type simpleCell; id 155; surfaces (-106 107); filltype uni; universe 1017;}
+    16FP411  {type simpleCell; id 156; surfaces (-107 109); filltype uni; universe 1008;}
+    16FP402  {type simpleCell; id 157; surfaces (-109 111); filltype uni; universe 16000;}
+    16FP364  {type simpleCell; id 158; surfaces (-111 112); filltype uni; universe 9216;}
+    16FP359  {type simpleCell; id 159; surfaces (-112 113); filltype uni; universe 16000;}
+    16FP312  {type simpleCell; id 160; surfaces (-113 114); filltype uni; universe 9216;}
+    16FP306  {type simpleCell; id 161; surfaces (-114 115); filltype uni; universe 16000;}
+    16FP260  {type simpleCell; id 162; surfaces (-115 116); filltype uni; universe 9216;}
+    16FP254  {type simpleCell; id 163; surfaces (-116 117); filltype uni; universe 16000;}
+    16FP208  {type simpleCell; id 164; surfaces (-117 118); filltype uni; universe 9216;}
+    16FP202  {type simpleCell; id 165; surfaces (-118 119); filltype uni; universe 16000;}
+    16FP155  {type simpleCell; id 166; surfaces (-119 120); filltype uni; universe 9216;}
+    16FP150  {type simpleCell; id 167; surfaces (-120 122); filltype uni; universe 16000;}
+    16FP103  {type simpleCell; id 168; surfaces (-122 123); filltype uni; universe 9216;}
+    16FP98   {type simpleCell; id 169; surfaces (-123 126); filltype uni; universe 16000;}
+    16FP4052 {type simpleCell; id 170; surfaces (-126 129); filltype uni; universe 1116;}
+    16FP37   {type simpleCell; id 171; surfaces (-129 130); filltype uni; universe 16000;}
+    16FP36   {type simpleCell; id 172; surfaces (-130 131); filltype uni; universe 1006;}
+    16FP35   {type simpleCell; id 173; surfaces (-131 132); filltype uni; universe 1003;}
+    16FP20   {type simpleCell; id 174; surfaces (-132);     filltype uni; universe 1001;}
+
+
+    //guide tube, with CR, axial layering
+    GC460  {type simpleCell; id 175; surfaces ( 101);     filltype uni; universe 1014;}
+    GC431  {type simpleCell; id 176; surfaces (-101 106); filltype uni; universe 1014;} // Nozzle/support plate BW? Replaced just with rod 
+    GC415  {type simpleCell; id 177; surfaces (-106 107); filltype uni; universe 1018;} // Rodded w/ grid
+    GC411  {type simpleCell; id 178; surfaces (-107 109); filltype uni; universe 1014;}
+    GC402  {type simpleCell; id 179; surfaces (-109 134); filltype uni; universe 1015;}
+    GC400  {type simpleCell; id 180; surfaces (-134 111); filltype uni; universe 12000;}
+    GC364  {type simpleCell; id 181; surfaces (-111 112); filltype uni; universe 9112;}
+    GC359  {type simpleCell; id 182; surfaces (-112 113); filltype uni; universe 12000;}
+    GC312  {type simpleCell; id 183; surfaces (-113 114); filltype uni; universe 9112;}
+    GC306  {type simpleCell; id 184; surfaces (-114 115); filltype uni; universe 12000;}
+    GC260  {type simpleCell; id 185; surfaces (-115 116); filltype uni; universe 9112;}
+    GC254  {type simpleCell; id 186; surfaces (-116 117); filltype uni; universe 12000;}
+    GC208  {type simpleCell; id 187; surfaces (-117 118); filltype uni; universe 9112;}
+    GC202  {type simpleCell; id 188; surfaces (-118 119); filltype uni; universe 12000;}
+    GC155  {type simpleCell; id 189; surfaces (-119 120); filltype uni; universe 9112;}
+    GC150  {type simpleCell; id 190; surfaces (-120 122); filltype uni; universe 12000;}
+    GC103  {type simpleCell; id 191; surfaces (-122 123); filltype uni; universe 9112;}
+    GC98   {type simpleCell; id 192; surfaces (-123 126); filltype uni; universe 1010;}
+    GC4052 {type simpleCell; id 193; surfaces (-126 127); filltype uni; universe 12000;}
+    GC39   {type simpleCell; id 194; surfaces (-127 129); filltype uni; universe 1019;}
+    GC37   {type simpleCell; id 195; surfaces (-129 131); filltype uni; universe 1010;}
+    GC35   {type simpleCell; id 196; surfaces (-131 132); filltype uni; universe 1005;}
+    GC20   {type simpleCell; id 197; surfaces (-132);     filltype uni; universe 1001;}
+
+
+    // instrumentation tube, axial layering
+    IT460  {type simpleCell; id 198; surfaces ( 102);     filltype uni; universe 1001;}
+    IT423  {type simpleCell; id 199; surfaces (-102 106); filltype uni; universe 14000;}
+    IT415  {type simpleCell; id 200; surfaces (-106 107); filltype uni; universe 1114;}
+    IT411  {type simpleCell; id 201; surfaces (-107 111); filltype uni; universe 14000;}
+    IT364  {type simpleCell; id 202; surfaces (-111 112); filltype uni; universe 9114;}
+    IT359  {type simpleCell; id 203; surfaces (-112 113); filltype uni; universe 14000;}
+    IT312  {type simpleCell; id 204; surfaces (-113 114); filltype uni; universe 9114;}
+    IT306  {type simpleCell; id 205; surfaces (-114 115); filltype uni; universe 14000;}
+    IT260  {type simpleCell; id 206; surfaces (-115 116); filltype uni; universe 9114;}
+    IT254  {type simpleCell; id 207; surfaces (-116 117); filltype uni; universe 14000;}
+    IT208  {type simpleCell; id 208; surfaces (-117 118); filltype uni; universe 9114;}
+    IT202  {type simpleCell; id 209; surfaces (-118 119); filltype uni; universe 14000;}
+    IT155  {type simpleCell; id 210; surfaces (-119 120); filltype uni; universe 9114;}
+    IT150  {type simpleCell; id 211; surfaces (-120 122); filltype uni; universe 14000;}
+    IT103  {type simpleCell; id 212; surfaces (-122 123); filltype uni; universe 9114;}
+    IT98   {type simpleCell; id 213; surfaces (-123 126); filltype uni; universe 14000;}
+    IT4052 {type simpleCell; id 214; surfaces (-126 129); filltype uni; universe 1114;}
+    IT37   {type simpleCell; id 215; surfaces (-129 131); filltype uni; universe 14000;}
+    IT35   {type simpleCell; id 216; surfaces (-131 132); filltype uni; universe 1005;}
+    IT20   {type simpleCell; id 217; surfaces (-132 );    filltype uni; universe 1011;} 
+
+
+    // burnable absorber, axial layering 
+    BA460  {type simpleCell; id 218; surfaces ( 101);     filltype uni; universe 1001;}
+    BA431  {type simpleCell; id 219; surfaces (-101 102); filltype uni; universe 1002;}
+    BA423  {type simpleCell; id 220; surfaces (-102 103); filltype uni; universe 1023;}
+    BA421  {type simpleCell; id 230; surfaces (-103 106); filltype uni; universe 1012;}
+    BA415  {type simpleCell; id 231; surfaces (-106 107); filltype uni; universe 1027;}
+    BA411  {type simpleCell; id 232; surfaces (-107 110); filltype uni; universe 1012;}
+    BA401  {type simpleCell; id 233; surfaces (-110 111); filltype uni; universe 1000;}
+    BA364  {type simpleCell; id 234; surfaces (-111 112); filltype uni; universe 1110;}
+    BA359  {type simpleCell; id 235; surfaces (-112 113); filltype uni; universe 1000;}
+    BA312  {type simpleCell; id 236; surfaces (-113 114); filltype uni; universe 1110;}
+    BA306  {type simpleCell; id 237; surfaces (-114 115); filltype uni; universe 1000;}
+    BA260  {type simpleCell; id 238; surfaces (-115 116); filltype uni; universe 1110;}
+    BA254  {type simpleCell; id 239; surfaces (-116 117); filltype uni; universe 1000;}
+    BA208  {type simpleCell; id 240; surfaces (-117 118); filltype uni; universe 1110;}
+    BA202  {type simpleCell; id 241; surfaces (-118 119); filltype uni; universe 1000;}
+    BA155  {type simpleCell; id 242; surfaces (-119 120); filltype uni; universe 1110;}
+    BA150  {type simpleCell; id 243; surfaces (-120 122); filltype uni; universe 1000;}
+    BA103  {type simpleCell; id 244; surfaces (-122 123); filltype uni; universe 1110;}
+    BA98   {type simpleCell; id 245; surfaces (-123 125); filltype uni; universe 1000;}
+    BA4055 {type simpleCell; id 246; surfaces (-125 126); filltype uni; universe 1023;}
+    BA4052 {type simpleCell; id 247; surfaces (-126 127); filltype uni; universe 1021;}
+    BA39   {type simpleCell; id 248; surfaces (-127 128); filltype uni; universe 1025;}
+    BA38   {type simpleCell; id 249; surfaces (-128 129); filltype uni; universe 1019;}
+    BA37   {type simpleCell; id 250; surfaces (-129 131); filltype uni; universe 1010;}
+    BA35   {type simpleCell; id 251; surfaces (-131 132); filltype uni; universe 1005;}
+    BA20   {type simpleCell; id 252; surfaces (-132 );    filltype uni; universe 1001;}
+
+    //guide tube, no CR, axial layering
+    GT460  {type simpleCell; id 353; surfaces ( 101);     filltype uni; universe 1001;}
+    GT431  {type simpleCell; id 354; surfaces (-101 102); filltype uni; universe 1005;} 
+    GT423  {type simpleCell; id 355; surfaces (-102 106); filltype uni; universe 12000;}
+    GT415  {type simpleCell; id 356; surfaces (-106 107); filltype uni; universe 1112;}
+    GT411  {type simpleCell; id 357; surfaces (-107 111); filltype uni; universe 12000;}
+    GT364  {type simpleCell; id 358; surfaces (-111 112); filltype uni; universe 9112;}
+    GT359  {type simpleCell; id 359; surfaces (-112 113); filltype uni; universe 12000;}
+    GT312  {type simpleCell; id 360; surfaces (-113 114); filltype uni; universe 9112;}
+    GT306  {type simpleCell; id 361; surfaces (-114 115); filltype uni; universe 12000;}
+    GT260  {type simpleCell; id 362; surfaces (-115 116); filltype uni; universe 9112;}
+    GT254  {type simpleCell; id 363; surfaces (-116 117); filltype uni; universe 12000;}
+    GT208  {type simpleCell; id 364; surfaces (-117 118); filltype uni; universe 9112;}
+    GT202  {type simpleCell; id 365; surfaces (-118 119); filltype uni; universe 12000;}
+    GT155  {type simpleCell; id 366; surfaces (-119 120); filltype uni; universe 9112;}
+    GT150  {type simpleCell; id 367; surfaces (-120 122); filltype uni; universe 12000;}
+    GT103  {type simpleCell; id 368; surfaces (-122 123); filltype uni; universe 9112;}
+    GT98   {type simpleCell; id 369; surfaces (-123 126); filltype uni; universe 1010;}
+    GT4052 {type simpleCell; id 370; surfaces (-126 127); filltype uni; universe 12000;}
+    GT39   {type simpleCell; id 371; surfaces (-127 129); filltype uni; universe 1019;}
+    GT37   {type simpleCell; id 372; surfaces (-129 131); filltype uni; universe 1010;}
+    GT35   {type simpleCell; id 373; surfaces (-131 132); filltype uni; universe 1005;}
+    GT20   {type simpleCell; id 374; surfaces (-132);     filltype uni; universe 1001;}
+
+    // control rod, axial layering 
+    // Used (probably with some modification) only when fully inserted
+    //CR460 {type simpleCell; id 448; surfaces (-120 121); filltype uni; universe 1002;}
+    //CR415 {type simpleCell; id 449; surfaces (-126 403); filltype uni; universe 1013;}
+    //CR403 {type simpleCell; id 450; surfaces (-403 402); filltype uni; universe 1015;}
+    //CR402 {type simpleCell; id 451; surfaces (-402 1430); filltype uni; universe 1013;}
+    //CR143 {type simpleCell; id 452; surfaces (-1430  41); filltype uni; universe 1014;}
+    //CR41 {type simpleCell; id 453; surfaces  (-41  143); filltype uni; universe 1002;}
+    //CR39 {type simpleCell; id 454; surfaces  (-143 147); filltype uni; universe 1001;}
+    //CR35 {type simpleCell; id 455; surfaces  (-147 148); filltype uni; universe 1005;}
+    //CR20 {type simpleCell; id 456; surfaces  (-148 149); filltype uni; universe 1001;}
+
+
+
+    outsideLeftBaffle { type simpleCell; id 52; surfaces (-50); filltype mat; material Water;}
+    leftBaffle { type simpleCell; id 53; surfaces (50 -51); filltype mat; material SS304;}
+    insideLeftBaffle { type simpleCell; id 54; surfaces (51); filltype mat; material Water;}
+
+    outsideRightBaffle { type simpleCell; id 55; surfaces (-52); filltype mat; material Water;}
+    RightBaffle { type simpleCell; id 56; surfaces (52 -53); filltype mat; material SS304;}
+    insideRightBaffle { type simpleCell; id 57; surfaces (53); filltype mat; material Water;}
+
+    outsideTopBaffle { type simpleCell; id 58; surfaces (-54); filltype mat; material Water;}
+    TopBaffle { type simpleCell; id 59; surfaces (54 -55); filltype mat; material SS304;}
+    insideTopBaffle { type simpleCell; id 60; surfaces (55); filltype mat; material Water;}
+
+    outsideBottomBaffle { type simpleCell; id 61; surfaces (-56); filltype mat; material Water;}
+    BottomBaffle { type simpleCell; id 62; surfaces (56 -57); filltype mat; material SS304;}
+    insideBottomBaffle { type simpleCell; id 63; surfaces (57); filltype mat; material Water;}
+
+    topLeftCornerBaffle1 { type simpleCell; id 64; surfaces (52 -53 -57); filltype mat; material SS304;}
+    topLeftCornerBaffle2 { type simpleCell; id 65; surfaces (56 -57 -52); filltype mat; material SS304;}
+    topLeftCornerGap1 { type simpleCell; id 66; surfaces (57); filltype mat; material Water;}
+    topLeftCornerGap2 { type simpleCell; id 67; surfaces (53); filltype mat; material Water;}
+    topLeftMajorGap { type simpleCell; id 68; surfaces (-56 -52); filltype mat; material Water;}
+
+    topRightCornerBaffle1 { type simpleCell; id 69; surfaces (-57 50 -51); filltype mat; material SS304;}
+    topRightCornerBaffle2 { type simpleCell; id 70; surfaces (-50 56 -57); filltype mat; material SS304;}
+    topRightCornerGap1 { type simpleCell; id 71; surfaces (57); filltype mat; material Water;}
+    topRightCornerGap2 { type simpleCell; id 72; surfaces (51); filltype mat; material Water;}
+    topRightMajorGap { type simpleCell; id 73; surfaces (-56 -50); filltype mat; material Water;}
+
+    bottomLeftCornerBaffle1 { type simpleCell; id 74; surfaces (-55 52 -53); filltype mat; material SS304;}
+    bottomLeftCornerBaffle2 { type simpleCell; id 75; surfaces (-55 54 -52); filltype mat; material SS304;}
+    bottomLeftCornerGap1 { type simpleCell; id 76; surfaces (55); filltype mat; material Water;}
+    bottomLeftCornerGap2 { type simpleCell; id 77; surfaces (53); filltype mat; material Water;}
+    bottomLeftMajorGap { type simpleCell; id 78; surfaces (-54 -52); filltype mat; material Water;}
+
+    bottomRightCornerBaffle1 { type simpleCell; id 79; surfaces (-51 50 -55); filltype mat; material SS304;}
+    bottomRightCornerBaffle2 { type simpleCell; id 80; surfaces (-55 54 -50); filltype mat; material SS304;}
+    bottomRightCornerGap1 { type simpleCell; id 81; surfaces (51); filltype mat; material Water;}
+    bottomRightCornerGap2 { type simpleCell; id 82; surfaces (55); filltype mat; material Water;}    
+    bottomRightMajorGap { type simpleCell; id 83; surfaces (-50 -54); filltype mat; material Water;}
+
+
+    TLSG1 { type simpleCell; id 84; surfaces (-56 -52); filltype mat; material Water;}
+    TLSG2 { type simpleCell; id 85; surfaces (-56 52); filltype mat; material Water;}
+    TLSG3 { type simpleCell; id 86; surfaces (56 -52); filltype mat; material Water;}
+    topLeftSquare { type simpleCell; id 87; surfaces (56 52); filltype mat; material SS304;}
+
+    TRSG1 { type simpleCell; id 88; surfaces (-56 50); filltype mat; material Water;}
+    TRSG2 { type simpleCell; id 89; surfaces (-56 -50); filltype mat; material Water;}
+    TRSG3 { type simpleCell; id 90; surfaces (56 -50); filltype mat; material Water;}
+    topRightSquare { type simpleCell; id 91; surfaces (56 50); filltype mat; material SS304;}
+
+    BLSG1 { type simpleCell; id 92; surfaces (54 -52); filltype mat; material Water;}
+    BLSG2 { type simpleCell; id 93; surfaces (-54 52); filltype mat; material Water;}
+    BLSG3 { type simpleCell; id 94; surfaces (-54 -52); filltype mat; material Water;}
+    bottomLeftSquare { type simpleCell; id 95; surfaces (54 52); filltype mat; material SS304;}
+
+    BRSG1 { type simpleCell; id 96; surfaces (-54 50); filltype mat; material Water;}
+    BRSG2 { type simpleCell; id 97; surfaces (54 -50); filltype mat; material Water;}
+    BRSG3 { type simpleCell; id 98; surfaces (-54 -50); filltype mat; material Water;}
+    bottomRightSquare { type simpleCell; id 99; surfaces (54 50); filltype mat; material SS304;}
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<8888>; }
+
+    // Pin universes
+
+    //Burnable poison
+    pinBPaboveDP { id 1000; type pinUniverse; radii (0.21400 0.23051 0.24130 0.42672 0.43688 0.48387 0.56134 0.60198 0.0);
+                                     fills (Air SS304 Helium BorosilicateGlass Helium SS304 Water Zircaloy Water);}
+    pinBPPlenumGeometry { id 1012; type pinUniverse;  radii ( 0.21400 0.23051 0.43688 0.48387 0.50419 0.54610 0.0); 
+                                     fills (Air SS304 Helium SS304 Water Zircaloy Water);}
+    
+    //guide tubes
+    pinGTaboveDP { id 12000; type pinUniverse; radii (0.56134 0.60198 0.0 ); fills (Water Zircaloy Water);}
+    pinGTatDP { id 1010; type pinUniverse;  radii (0.50419 0.54610 0.0); fills (Water Zircaloy Water);}
+    
+    //INST Tube
+    pinIT { id 14000; type pinUniverse; radii (0.43688 0.48387 0.56134 0.60198 0.0 );
+                                     fills (Air Zircaloy Water Zircaloy Water);}
+    pinBareInstrumentThimble { id 1011; type pinUniverse;  radii (0.43688 0.48387 0.0); fills (Air Zircaloy Water);}
+
+    // Fuel pins
+    pin16 { id 16000; type pinUniverse; radii (0.39218 0.40005 0.45720 0.0);
+                                     fills (UO2-16 Helium Zircaloy Water);}
+    pin24 { id 24000; type pinUniverse; radii (0.39218 0.40005 0.45720 0.0);
+                                     fills (UO2-24 Helium Zircaloy Water);}
+    pin31 { id 31000; type pinUniverse; radii (0.39218 0.40005 0.45720 0.0);
+                                     fills (UO2-31 Helium Zircaloy Water);}
+    // Higher enrichments not used
+    //pin32 { id 32000; type pinUniverse;  radii (0.39218 0.40005 0.45720 0.0); 
+    //                                 fills (UO2-32 Helium Zircaloy Water);}
+    //pin34 { id 34000; type pinUniverse;  radii (0.39218 0.40005 0.45720 0.0); 
+    //                                 fills (UO2-34 Helium Zircaloy Water);}
+
+    pinWater { id 1001; type pinUniverse;  radii ( 0.0); fills (Water);}
+
+
+    // Solid pins, assumed radius to be that of a fuel pin (0.45720)
+    pinNozzle_SupportSteel { id 1003; type pinUniverse;  radii ( 0.45720 0.0); fills (SupportPlateSS Water);}
+    pinSupportPlateBW { id 1005; type pinUniverse;  radii ( 0.45720 0.0); fills (SupportPlateBW Water);}
+    pinZircaloy { id 1006; type pinUniverse;  radii ( 0.45720 0.0); fills (Zircaloy Water);}
+
+
+    SSinDashPot { id 1024; type pinUniverse;  radii (0.50419 0.54610 0.0); fills (SS304 Zircaloy Water);}
+    SSinGuideTube { id 1023; type pinUniverse;  radii ( 0.56134 0.60198 0.0); fills (SS304 Zircaloy Water);}
+    SSnoGuideTube { id 1002; type pinUniverse;  radii ( 0.56134 0.0); fills (SS304 Water);}
+
+
+    pinUpperFuelPlenum { id 1008; type pinUniverse;  radii ( 0.06459 0.40005 0.45720 0.0); 
+                                                     fills (Inconel Helium Zircaloy Water);}
+
+    // Control rod pins
+    pinControlRodUpper { id 1013; type pinUniverse;  radii ( 0.37338 0.38608 0.48387 0.56134 0.60198 0.0); 
+                                                     fills (B4C Helium SS304 Water Zircaloy Water);}
+    pinControlRodLower { id 1014; type pinUniverse;  radii ( 0.38227 0.38608 0.48387 0.56134 0.60198 0.0); 
+                                                     fills (Ag-In-Cd Helium SS304 Water Zircaloy Water);}
+    pinControlRodSpacer { id 1015; type pinUniverse; radii ( 0.37845 0.38608 0.48387 0.56134 0.60198 0.0); 
+                                                     fills (SS304 Helium SS304 Water Zircaloy Water);}
+    pinControlRodPlenum { id 1016; type pinUniverse; radii ( 0.06459 0.38608 0.48387 0.56134 0.60198 0.0); 
+                                                     fills (Inconel Helium SS304 Water Zircaloy Water);}
+
+    // pins that have grids 
+    fuelRodPlenumWithGridThick {
+      id 1017; 
+      type cellUniverse;  
+      cells ( 259 555);}  
+    
+    GTRodThick {
+      id 1018; 
+      type cellUniverse;  
+      cells (263 555);}    
+
+    dashPotGuideTubeGridThick {
+      id 1019; 
+      type cellUniverse;  
+      cells ( 258 555);}  
+
+    dashPotGuideTubeGridThin {
+      id 1020; 
+      type cellUniverse;  
+      cells ( 270 556);}  
+
+    SSinGuideTubeThick {
+      id 1021; 
+      type cellUniverse;  
+      cells ( 260 555);}  
+
+    SSinGuideTubeThin {
+      id 1022; 
+      type cellUniverse;  
+      cells ( 272 556);}  
+
+    SSinDashPotThick {
+      id 1025; 
+      type cellUniverse;  
+      cells ( 261 555);}  
+
+    SSinDashPotThin {
+      id 1026; 
+      type cellUniverse;  
+      cells ( 273 556);}  
+
+    BPPlenumThick {
+      id 1027; 
+      type cellUniverse;  
+      cells ( 262 555);}  
+
+    BPPlenumThin {
+      id 1028; 
+      type cellUniverse;  
+      cells ( 274 556);} 
+
+    BPaboveDPThin {
+      id 1110; 
+      type cellUniverse;  
+      cells (266 556);}  
+
+    GTThick {
+      id 1112; 
+      type cellUniverse;  
+      cells (254 555);}  
+    
+    ITThick {
+      id 1114; 
+      type cellUniverse;  
+      cells (257 555);}  
+    
+    pin16Thick {
+      id 1116; 
+      type cellUniverse;  
+      cells (256 555);}    
+
+    pin24Thick {
+      id 1124; 
+      type cellUniverse;  
+      cells (253 555);}    
+
+    pin31Thick {
+      id 1131; 
+      type cellUniverse;  
+      cells (255 555);}    
+
+    BPThin {          // Is this necessary given 1110, BPaboveDPThin???
+      id 9110; 
+      type cellUniverse;  
+      cells (266 556);}  
+
+    GTThin {
+      id 9112; 
+      type cellUniverse;  
+      cells (265 556);}  
+    
+    ITThin {
+      id 9114; 
+      type cellUniverse;  
+      cells (269 556);}  
+
+    pin16Thin {
+      id 9216; 
+      type cellUniverse;  
+      cells (268 556);}    
+
+    pin24Thin {
+      id 9224; 
+      type cellUniverse;  
+      cells (264 556);}    
+
+    pin31Thin {
+      id 9231; 
+      type cellUniverse;  
+      cells (267 556);}    
+
+    // Axial stacks of universes to make up full pins 
+
+    // 3.1 %
+    fuelPin31 {
+      id 31; 
+      type cellUniverse;  
+      cells ( 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124);} 
+ 
+    // 2.4 %
+    fuelPin24 {
+      id 24; 
+      type cellUniverse;  
+      cells ( 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149);} 
+
+    //1.6 %
+    fuelPin16 {
+      id 16; 
+      type cellUniverse;  
+      cells ( 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174);} 
+
+    // guide tube, with CR
+    GuideTubeRodded {
+      id 12; 
+      type cellUniverse;  
+      cells (175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197);}
+    
+    //control rod, fully retracted
+    GuideTubeEmpty {
+      id 13; 
+      type cellUniverse;  
+      cells (353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374);}
+
+    //instr. tube 
+    instrumentTube {
+      id 14; 
+      type cellUniverse;  
+      cells (198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217);}
+
+    //burnable absorber 
+    BP {
+      id 10; 
+      type cellUniverse;  
+      cells (218 219 220 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252);}
+
+
+
+    
+    // Lattices w/o grid
+    // Names represent A<Name of assembly in document>E<enrichment><orientation><optional U for unrodded>
+    A0E24 {
+      id 1424;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 12 24 24 12 24 24 12 24 24 24 24 24 
+        24 24 24 12 24 24 24 24 24 24 24 24 24 12 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 12 24 24 12 24 24 12 24 24 12 24 24 12 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 12 24 24 12 24 24 14 24 24 12 24 24 12 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 12 24 24 12 24 24 12 24 24 12 24 24 12 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 12 24 24 24 24 24 24 24 24 24 12 24 24 24
+        24 24 24 24 24 12 24 24 12 24 24 12 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }
+      
+    // assembly with sleeves at different heights
+    A0E24Sleeve {
+      id 14240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2019 
+      );}
+  
+    A0E16 {
+      id 1416;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 12 16 16 12 16 16 12 16 16 16 16 16 
+        16 16 16 12 16 16 16 16 16 16 16 16 16 12 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 12 16 16 12 16 16 12 16 16 12 16 16 12 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 12 16 16 12 16 16 14 16 16 12 16 16 12 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 12 16 16 12 16 16 12 16 16 12 16 16 12 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 12 16 16 16 16 16 16 16 16 16 12 16 16 16
+        16 16 16 16 16 12 16 16 12 16 16 12 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16); }
+    
+    A0E16Sleeve {
+      id 14160;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2020 
+      );
+    }
+
+    A0E31 {
+      id 1431;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 12 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 12 31 31 14 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+   
+    A0E31Sleeve {
+      id 14310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2021
+      );
+    }
+
+    
+    A6BE31B {
+      id 60316;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 12 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 12 31 31 14 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+
+   
+    A6BE31BSleeve {
+      id 603160;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2022
+      );
+    }
+   
+   A6BE31T {
+      id 603112;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 12 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 12 31 31 14 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 12 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A6BE31TSleeve {
+      id 6031120;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2023
+      );
+    }
+
+    A6BE31R {
+      id 60313;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 12 31 31 12 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 12 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 12 31 31 14 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 10 31 31 12 31 31 12 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }  
+        
+    A6BE31RSleeve {
+      id 603130;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2024
+      );
+    }
+    
+    A6BE31L {
+      id 60319;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 12 31 31 12 31 31 10 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 12 31 31 14 31 31 12 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 12 31 31 12 31 31 12 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 12 31 31 12 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A6BE31LSleeve {
+      id 603190;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2025
+      );
+    }
+
+    A15BE31BR {
+      id 15315;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 12 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 10 31 31 14 31 31 10 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A15BE31BRSleeve {
+      id 153150;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2026
+      );
+    }
+
+    A15BE31BL {
+      id 15317;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 10 31 31 10 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 10 31 31 14 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 10 31 31 10 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31BLSleeve {
+      id 153170;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2027
+      );
+    }
+      
+    A15BE31TR {
+      id 15311;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 12 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 10 31 31 14 31 31 10 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 12 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 12 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31TRSleeve {
+      id 153110;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2028
+      );
+    }
+      
+    A15BE31TL {
+      id 153111;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 12 31 31 12 31 31 12 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 12 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 10 31 31 10 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 12 31 31 10 31 31 14 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 12 31 31 10 31 31 10 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 12 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31TLSleeve {
+      id 1531110;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2029
+      );
+    }
+    
+    A16BE31 {
+      id 1631;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 12 31 31 14 31 31 12 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 12 31 31 12 31 31 12 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+    
+    A16BE31Sleeve {
+      id 16310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2030
+      );
+    }
+
+    A20BE31 {
+      id 2031;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 12 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 12 31 31 14 31 31 12 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 12 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+    
+    A20BE31Sleeve {
+      id 20310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2031
+      );
+    }
+
+    A12BE24 {
+      id 1224;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 10 24 24 12 24 24 10 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 10 24 24 12 24 24 12 24 24 12 24 24 10 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 12 24 24 12 24 24 14 24 24 12 24 24 12 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 12 24 24 12 24 24 12 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24
+        24 24 24 24 24 10 24 24 12 24 24 10 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }
+    
+    A12BE24Sleeve {
+      id 12240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2032
+      );
+    }
+   
+    A16BE24 {
+      id 1624;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 10 24 24 10 24 24 10 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 10 24 24 12 24 24 12 24 24 12 24 24 10 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 12 24 24 14 24 24 12 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 12 24 24 12 24 24 12 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24
+        24 24 24 24 24 10 24 24 10 24 24 10 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }        
+      
+    A16BE24Sleeve {
+      id 16240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2033
+      );
+    }
+
+    // Unrodded assemblies
+    A0E24U {
+      id 2424;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 13 24 24 13 24 24 13 24 24 24 24 24 
+        24 24 24 13 24 24 24 24 24 24 24 24 24 13 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 13 24 24 13 24 24 13 24 24 13 24 24 13 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 13 24 24 13 24 24 14 24 24 13 24 24 13 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 13 24 24 13 24 24 13 24 24 13 24 24 13 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 13 24 24 24 24 24 24 24 24 24 13 24 24 24
+        24 24 24 24 24 13 24 24 13 24 24 13 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }
+      
+    A0E24USleeve {
+      id 24240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2034 
+      );}
+  
+    A0E16U {
+      id 2416;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 13 16 16 13 16 16 13 16 16 16 16 16 
+        16 16 16 13 16 16 16 16 16 16 16 16 16 13 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 13 16 16 13 16 16 13 16 16 13 16 16 13 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 13 16 16 13 16 16 14 16 16 13 16 16 13 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 13 16 16 13 16 16 13 16 16 13 16 16 13 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 13 16 16 16 16 16 16 16 16 16 13 16 16 16
+        16 16 16 16 16 13 16 16 13 16 16 13 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16); }
+    
+    // sleeved
+    A0E16USleeve {
+      id 24160;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2035 
+      );
+    }
+
+    A0E31U {
+      id 2431;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 13 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 13 31 31 14 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+   
+    A0E31USleeve {
+      id 24310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2036
+      );
+    }
+
+    
+    A6BE31BU {
+      id 70316;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 13 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 13 31 31 14 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+
+   
+    A6BE31BUSleeve {
+      id 703160;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2037
+      );
+    }
+   
+   A6BE31TU {
+      id 703112;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 13 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 13 31 31 14 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 13 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A6BE31TUSleeve {
+      id 7031120;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2038
+      );
+    }
+
+    A6BE31RU {
+      id 70313;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 13 31 31 13 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 13 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 13 31 31 14 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 10 31 31 13 31 31 13 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }  
+        
+    A6BE31RUSleeve {
+      id 703130;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2039
+      );
+    }
+    
+    A6BE31LU {
+      id 70319;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 13 31 31 13 31 31 10 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 13 31 31 14 31 31 13 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 13 31 31 13 31 31 13 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 13 31 31 13 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A6BE31LUSleeve {
+      id 703190;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2040
+      );
+    }
+
+    A15BE31BRU {
+      id 25315;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 13 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 10 31 31 14 31 31 10 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+        
+    A15BE31BRUSleeve {
+      id 253150;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2041
+      );
+    }
+
+    A15BE31BLU {
+      id 25317;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 10 31 31 10 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 10 31 31 14 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 10 31 31 10 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31BLUSleeve {
+      id 253170;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2042
+      );
+    }
+      
+    A15BE31TRU {
+      id 25311;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 13 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 10 31 31 14 31 31 10 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 10 31 31 10 31 31 13 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 13 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31TRUSleeve {
+      id 253110;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2043
+      );
+    }
+      
+    A15BE31TLU {
+      id 253111;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 13 31 31 13 31 31 13 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 13 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 10 31 31 10 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 13 31 31 10 31 31 14 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 13 31 31 10 31 31 10 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 13 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }    
+        
+    A15BE31TLUSleeve {
+      id 2531110;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2044
+      );
+    }
+    
+    A16BE31U {
+      id 2631;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 13 31 31 14 31 31 13 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 13 31 31 13 31 31 13 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+    
+    A16BE31USleeve {
+      id 26310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2045
+      );
+    }
+
+    A20BE31U {
+      id 3031;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 13 31 31 10 31 31 10 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 10 31 31 13 31 31 14 31 31 13 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 10 31 31 10 31 31 13 31 31 10 31 31 10 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+        31 31 31 10 31 31 31 31 31 31 31 31 31 10 31 31 31
+        31 31 31 31 31 10 31 31 10 31 31 10 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31
+        31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 ); }
+    
+    A20BE31USleeve {
+      id 30310;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2046
+      );
+    }
+
+    A12BE24U {
+      id 2224;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 10 24 24 13 24 24 10 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 10 24 24 13 24 24 13 24 24 13 24 24 10 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 13 24 24 13 24 24 14 24 24 13 24 24 13 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 13 24 24 13 24 24 13 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24
+        24 24 24 24 24 10 24 24 13 24 24 10 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }
+    
+    A12BE24USleeve {
+      id 22240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2047
+      );
+    }
+   
+    A16BE24U {
+      id 2624;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 10 24 24 10 24 24 10 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 10 24 24 13 24 24 13 24 24 13 24 24 10 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 13 24 24 14 24 24 13 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 10 24 24 13 24 24 13 24 24 13 24 24 10 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 10 24 24 24 24 24 24 24 24 24 10 24 24 24
+        24 24 24 24 24 10 24 24 10 24 24 10 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }        
+      
+    A16BE24USleeve {
+      id 26240;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2048
+      );
+    }
+
+      
+      leftBaffleUni {
+      id 5222; 
+      type cellUniverse;  
+      cells (52 53 54);}
+
+
+      rightBaffleUni {
+      id 5223; 
+      type cellUniverse;  
+      cells (55 56 57);}
+
+      topBaffleUni {
+      id 5224; 
+      type cellUniverse;  
+      cells (58 59 60);}
+
+      bottomBaffleUni {
+      id 5225; 
+      type cellUniverse;  
+      cells (61 62 63);}
+
+
+      topLeft {
+      id 5226; 
+      type cellUniverse;  
+      cells (64 65 66 67 68);}
+
+      topRight {
+      id 5227; 
+      type cellUniverse;  
+      cells ( 69 70 71 72 73);}
+
+      BottomLeft {
+      id 5228; 
+      type cellUniverse;  
+      cells ( 74 75 76 77 78);}
+
+      BottomRight {
+      id 5229; 
+      type cellUniverse;  
+      cells ( 79 80 81 82 83);}
+
+
+      SQTL {
+      id 1500;  
+      type cellUniverse;  
+      cells (84 85 86 87);}   
+
+
+      SQTR {
+      id 1600; 
+      type cellUniverse;  
+      cells (88 89 90 91);}  
+      
+      SQBL {
+      id 1700; 
+      type cellUniverse;  
+      cells (92 93 94 95);}  
+      
+      SQBR {
+      id 1800; 
+      type cellUniverse;  
+      cells (96 97 98 99);}       
+
+
+      latCore {
+      id 9999;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (21.50364 21.50364 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        1001 1001   1001   1001    1800    5224    5224    5224   5224    5224    5224    5224    1700   1001    1001   1001    1001   
+        1001 1001   1800   5224    5229    24310   7031120 24310  7031120 24310   7031120 24310   5228   5224    1700   1001    1001 
+        1001 1800   5229   24310   14310   26310   14160   30310  14160   30310   14160   26310   14310  24310   5228   1700    1001 
+        1001 5222   24310  2531110 26240   14160   26240   14160  26240   14160   26240   14160   26240  25311   24310  5223    1001
+        1800 5229   14310  26240   14240   26240   24160   22240  14160   22240   24160   26240   14240  26240   14310  5228    1700
+        5222 24310  26310  14160   26240   24160   22240   24160  22240   24160   22240   24160   26240  14160   26310  24310   5223 
+        5222 703190 14160  26240   24160   22240   14160   22240  14160   22240   14160   22240   24160  26240   14160  703130  5223 
+        5222 24310  30310  14160   22240   24160   22240   24160  26240   24160   22240   24160   22240  14160   30310  24310   5223 
+        5222 703190 14160  26240   14160   22240   14160   26240  14160   26240   14160   22240   14160  26240   14160  703130  5223 
+        5222 24310  30310  14160   22240   24160   22240   24160  26240   24160   22240   24160   22240  14160   30310  24310   5223 
+        5222 703190 14160  26240   24160   22240   14160   22240  14160   22240   14160   22240   24160  26240   14160  703130  5223 
+        5222 24310  26310  14160   26240   24160   22240   24160  22240   24160   22240   24160   26240  14160   26310  24310   5223   
+        1600 5227   14310  26240   14240   26240   24160   22240  14160   22240   24160   26240   14240  26240   14310  5226    1500 
+        1001 5222   24310  253170  26240   14160   26240   14160  26240   14160   26240   14160   26240  253150  24310  5223    1001 
+        1001 1600   5227   24310   14310   26310   14160   30310  14160   30310   14160   26310   14310  24310   5226   1500    1001  
+        1001 1001   1600   5225    5227    24310   703160  24310  703160  24310   703160  24310   5226   5225    1500   1001    1001  
+        1001 1001   1001   1001    1600    5225    5225    5225   5225    5225    5225    5225    1500   1001    1001   1001    1001  ); }
+   
+   
+      coreAndStructures {
+      id 8888;
+      type cellUniverse;  
+      cells (7 8 9 10 11 12 13 14 15 16 17);}
+
+
+
+  }
+}
+
+
+viz {
+  bmpZ {
+    type bmp;
+    output imgZ;
+    what material;
+    centre (0.0 0.0 232.0);
+    //width (400.0 400.0);
+    axis z;
+    res (4000 4000);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE; ures 0; }
+  }
+
+  materials {
+
+    // Note that commented nuclide densities are included in the specification
+    // but are not available in the JEFF-3.11 data library
+
+    Air {
+      temp 566;
+      composition {
+      18036.06 7.8730E-09;
+      18038.06 1.4844E-09;
+      18040.06 2.3506E-06;
+      6012.06  6.7539E-08;
+      //6013.06  7.5658E-10;
+      7014.06  1.9680E-04;
+      7015.06  7.2354E-07;
+      8016.06  5.2866E-05;
+      8017.06  2.0084E-08;
+      //8018.06  1.0601E-07; 
+      }
+      }
+
+    SS304 {
+      temp 566;
+      composition {
+      24050.06 7.6778E-04;
+      24052.06 1.4806E-02;
+      24053.06 1.6789E-03;
+      24054.06 4.1791E-04;
+      26054.06 3.4620E-03;
+      26056.06 5.4345E-02;
+      26057.06 1.2551E-03;
+      26058.06 1.6703E-04;
+      25055.06 1.7604E-03;
+      28058.06 5.6089E-03;
+      28060.06 2.1605E-03;
+      28061.06 9.3917E-05;
+      28062.06 2.9945E-04;
+      28064.06 7.6261E-05;
+      14028.06 9.5281E-04;
+      14029.06 4.8381E-05;
+      14030.06 3.1893E-05; }
+      }
+
+    Helium {
+      temp 566;
+      composition {
+      2003.06 4.8089E-10;
+      2004.06 2.4044E-04; }
+      }
+
+    BorosilicateGlass {
+      temp 566;
+      composition {
+      13027.06 1.7352E-03;
+      5010.06  9.6506E-04;
+      5011.06  3.9189E-03;
+      8016.06  4.6514E-02;
+      8017.06  1.7671E-05;
+      //8018.06  9.3268E-05;
+      14028.06 1.6926E-02;
+      14029.06 8.5944E-04;
+      14030.06 5.6654E-04; }
+      }
+
+    Water {
+      temp 566;
+      moder {1001.06 lwj3.11; }
+      composition {
+      5010.06 7.9714E-06;
+      5011.06 3.2247E-05;
+      1001.06 4.9456E-02; 
+      1002.06 7.7035E-06;
+      8016.06 2.4673E-02;
+      8017.06 9.3734E-06;
+      //8018.06 4.9474E-05; 
+      }
+      }
+
+    Zircaloy {
+      temp 566;
+      composition {
+      24050.06 3.2962E-06;
+      24052.06 6.3564E-05;
+      24053.06 7.2076E-06;
+      24054.06 1.7941E-06;
+      26054.06 8.6698E-06;
+      26056.06 1.3610E-04;
+      26057.06 3.1431E-06;
+      26058.06 4.1829E-07;
+      8016.06  3.0744E-04;
+      8017.06  1.1680E-07;
+      //8018.06  6.1648E-07;
+      50112.06 4.6735E-06;
+      50114.06 3.1799E-06;
+      50115.06 1.6381E-06;
+      50116.06 7.0055E-05;
+      50117.06 3.7003E-05;
+      50118.06 1.1669E-04;
+      50119.06 4.1387E-05;
+      50120.06 1.5697E-04;
+      50122.06 2.2308E-05;
+      50124.06 2.7897E-05;
+      40090.06 2.1828E-02;
+      40091.06 4.7601E-03;
+      40092.06 7.2759E-03;
+      40094.06 7.3734E-03;
+      40096.06 1.1879E-03; }
+      }
+
+    Inconel{
+      temp 566;
+      composition {
+      24050.06 7.8239E-04;
+      24052.06 1.5088E-02;
+      24053.06 1.7108E-03;
+      24054.06 4.2586E-04;
+      26054.06 1.4797E-03;
+      26056.06 2.3229E-02;
+      26057.06 5.3645E-04;
+      26058.06 7.1392E-05;
+      25055.06 7.8201E-04;
+      28058.06 2.9320E-02;
+      28060.06 1.1294E-02;
+      28061.06 4.9094E-04;
+      28062.06 1.5653E-03;
+      28064.06 3.9864E-04;
+      14028.06 5.6757E-04;
+      14029.06 2.8820E-05;
+      14030.06 1.8998E-05; }
+      }
+
+    B4C{
+      temp 566;
+      composition {
+      5010.06 1.5206E-02;
+      5011.06 6.1514E-02;
+      6012.06 1.8972E-02;
+      //6013.06 2.1252E-04; 
+      }
+      }
+
+    Ag-In-Cd{
+      temp 566;
+      composition {
+      47107.06 2.3523E-02;
+      47109.06 2.1854E-02;
+      48106.06 3.3882E-05;
+      48108.06 2.4166E-05;
+      48110.06 3.3936E-04;
+      48111.06 3.4821E-04;
+      48112.06 6.5611E-04;
+      48113.06 3.3275E-04;
+      48114.06 7.8252E-04;
+      48116.06 2.0443E-04;
+      49113.06 3.4219E-04;
+      49115.06 7.6511E-03; }
+      }
+
+    //mox fuel used 
+    UO2-16 {
+      temp 566;
+      composition {
+      8016.06   4.5897E-02;
+      8017.06   1.7436E-05;
+      //8018.06   9.2032E-05;
+      92234.06  3.0131E-06;
+      92235.06  3.7503E-04;
+      92238.06  2.2625E-02;}
+      }
+
+    UO2-24 {
+      temp 566;
+      composition {
+      8016.06   4.5830E-02;
+      8017.06   1.7411E-05;
+      //8018.06   9.1898E-05;
+      92234.06  4.4842E-06;
+      92235.06  5.5814E-04;
+      92238.06  2.2407E-02;}
+       }
+
+    UO2-31 {
+      temp 566;
+      composition {
+      8016.06   4.5853E-02;
+      8017.06   1.7420E-05;
+      //8018.06   9.1942E-05;
+      92234.06  5.7987E-06;
+      92235.06  7.2175E-04;
+      92238.06  2.2253E-02;}
+       }
+
+    UO2-32 {
+      temp 566;
+      composition {
+      8016.06   4.6029E-02;
+      8017.06   1.7487E-05;
+      //8018.06   9.2296E-05;
+      92234.06  5.9959E-06;
+      92235.06  7.4630E-04;
+      92238.06  2.2317E-02;
+       }
+    }
+
+    UO2-34 {
+      temp 566;
+      composition {
+      8016.06   4.6110E-02;
+      8017.06   1.7517E-05;
+      //8018.06   9.2459E-05;
+      92234.06  6.4018E-06;
+      92235.06  7.9681E-04;
+      92238.06  2.2307E-02;}
+       }  
+
+  // vanadium51 was stated twice in carbonsteel below
+  // in the beavrs pdf - typo?
+    CarbonSteel {
+      temp 566;
+      composition {
+      13027.06      4.3523E-05; 
+      5010.06       2.5833E-06;
+      5011.06       1.0450E-05;
+      6012.06       1.0442E-03;
+      //6013.06      1.1697E-05 ;
+      20040.06      1.7043E-05;
+      20042.06      1.1375E-07; 
+      20043.06      2.3734E-08;
+      20044.06      3.6673E-07; 
+      20046.06      7.0322E-10;
+      20048.06      3.2875E-08; 
+      24050.06      1.3738E-05;
+      24052.06      2.6493E-04; 
+      24053.06      3.0041E-05;
+      24054.06      7.4778E-06; 
+      29063.06      1.0223E-04;
+      29065.06      4.5608E-05; 
+      26054.06      4.7437E-03;
+      26056.06      7.4465E-02; 
+      26057.06      1.7197E-03;
+      26058.06      2.2886E-04; 
+      25055.06      6.4126E-04;
+      42100.06      2.9814E-05; 
+      42092.06      4.4822E-05;
+      42094.06      2.8110E-05; 
+      42095.06      4.8567E-05;
+      42096.06      5.1015E-05; 
+      42097.06      2.9319E-05;
+      42098.06      7.4327E-05; 
+      41093.06      5.0559E-06;
+      28058.06      4.0862E-04; 
+      28060.06      1.5740E-04;
+      28061.06      6.8420E-06; 
+      28062.06      2.1815E-05;
+      28064.06      5.5557E-06; 
+      15031.06      3.7913E-05;
+      16032.06      3.4808E-05;
+      16033.06      2.7420E-07;
+      16034.06      1.5368E-06;
+      16036.06      5.3398E-09;
+      14028.06      6.1702E-04; 
+      14029.06      3.1330E-05;
+      14030.06      2.0653E-05; 
+      22046.06      1.2144E-06;
+      22047.06      1.0952E-06; 
+      22048.06      1.0851E-05;
+      22049.06      7.9634E-07; 
+      22050.06      7.6249E-07;
+      //23050.06       1.1526E-07;
+      23051.06       4.5989E-05;
+        }
+       }  
+
+    SupportPlateSS {
+      temp 566;
+      composition {
+      24050.06 3.5223E-04;
+      24052.06 6.7924E-03;
+      24053.06 7.7020E-04;
+      24054.06 1.9172E-04;
+      26054.06 1.5882E-03;
+      26056.06 2.4931E-02;
+      26057.06 5.7578E-04;
+      26058.06 7.6625E-05;
+      25055.06 8.0762E-04;
+      28058.06 2.5731E-03;
+      28060.06 9.9117E-04;
+      28061.06 4.3085E-05;
+      28062.06 1.3738E-04;
+      28064.06 3.4985E-05;
+      14028.06 4.3711E-04;
+      14029.06 2.2195E-05;
+      14030.06 1.4631E-05;}
+    }
+
+    SupportPlateBW {
+      temp 566;
+      moder {1001.06 lwj3.11; }
+      composition {
+      5010.06 1.0559E-05;
+      5011.06 4.2716E-05;
+      1001.06 6.5512E-02;
+      1002.06 1.0204E-05;
+      8016.06 3.2683E-02;
+      8017.06 1.2416E-05;
+      //8018.06 6.5535E-05; 
+      }
+    }
+   
+
+}
+}

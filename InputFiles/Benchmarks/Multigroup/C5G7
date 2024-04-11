@@ -1,0 +1,192 @@
+type eigenPhysicsPackage; 
+pop     80000;
+active  1040;
+inactive 50;
+XSdata   mg; 
+dataType mg;
+outputFile C5G7 ;
+
+collisionOperator { neutronMG {type neutronMGstd; } } 
+transportOperator { type transportOperatorHT; cache 1;}         
+
+inactiveTally {} 
+activeTally {
+  fissionMap {type collisionClerk;
+              map {type multiMap;
+              maps (xax yax);
+              xax { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;}
+              yax { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;}
+              }
+         response (fiss);
+         fiss { type macroResponse; MT -6; }
+         }
+} 
+
+geometry { 
+  type geometryStd; 
+  // ( -x, +x, -y, +y, -z, +z)
+  boundary ( 1 0 0 1 1 1); 
+  graph {type extended;}
+
+  surfaces { 
+             Domain { id 3; type box; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 32.13);}  	
+  }
+  
+  cells {}
+  
+  universes { 
+    	root { id 1000; type rootUniverse; border 3; fill u<100>; }  
+    
+    // Pin universes 
+    pin1 { id 1; type pinUniverse; radii (0.5400  0.0  );  fills (UO2    water);}
+    pin2 { id 2; type pinUniverse; radii (0.5400  0.0  );  fills (GT     water);}
+    pin3 { id 3; type pinUniverse; radii (0.5400  0.0  );  fills (mox43  water);}
+    pin4 { id 4; type pinUniverse; radii (0.5400  0.0  );  fills (mox7   water);}    
+    pin5 { id 5; type pinUniverse; radii (0.5400  0.0  );  fills (mox87  water);}           
+    pin6 { id 6; type pinUniverse; radii (0.5400  0.0  );  fills (FC     water);}
+
+    // Infinite moderator
+    pin30 { id 30; type pinUniverse; radii (0.0); fills (water);}      
+
+// Lattices
+latUO2{
+      id 10; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 6 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+);
+}
+
+latMOX{
+      id 20; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 6 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3   
+);
+}
+
+latCore
+{
+  id 100;
+  type latUniverse; 
+  origin (0.0 0.0 0.0); 
+  pitch (21.42 21.42 0.0);
+  shape (3 3 0); 
+  padMat water; 
+  map ( 
+10 20 30
+20 10 30
+30 30 30
+);
+}
+		
+} 
+
+}
+
+viz {
+  bmp1 { 
+    type bmp; 
+    output C5G7_xy; 
+    what material; 
+    centre (0.0 0.0 10.0); 
+    axis z; 
+    res (1000 1000);  }
+} 
+
+
+nuclearData {
+  handles { 
+    mg { type baseMgNeutronDatabase; PN P0;} 
+  } 
+  materials { 
+
+    mox43 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX43;
+       composition {  }
+   }
+	  
+    mox7 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX7;
+       composition { }
+    } 
+		
+    mox87 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX87;
+       composition { }
+    } 
+		
+    UO2 {
+       temp 300; 
+       xsFile ./XS_C5G7/UO2;
+	composition { }
+    }
+
+    // Fission chamber
+    FC {
+       temp 300; 
+       xsFile ./XS_C5G7/FC;
+	composition { }
+    }
+    
+    // Guide tube
+    GT {
+       temp 300; 
+       xsFile ./XS_C5G7/GT;
+	composition { }
+    }
+
+    water { 
+      temp 300;
+      xsFile ./XS_C5G7/moder;
+      composition { } 
+   }
+	   
+}
+}
+
+

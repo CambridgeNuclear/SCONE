@@ -379,7 +379,7 @@ keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 In the input above, ``map`` is the geometrical map used for UFS. The map has to contain
 fissile material for the method to make sense. Other keywords are:
 
-* uniformVolMap (*optional*, default = 1): 1 for true; 0 for false; flag that states
+* uniformVolMap (*optional*, default = 0): 1 for true; 0 for false; flag that states
   whether the bins of the map contain equal volumes of fissile material or not
 * popVolumes (*optional*, default = 1.0e7): if ``uniformVolMap`` is false, a Monte Carlo
   calculation is run to estimate the fissile material volumes in each map bin. This entry
