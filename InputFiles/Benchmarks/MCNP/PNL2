@@ -75,7 +75,7 @@ materials {
 
 
     solution {
-      temp       293;
+      !temp       293;
       composition {
         94238.03  2.6153E-8;
         94239.03  4.1249E-4;

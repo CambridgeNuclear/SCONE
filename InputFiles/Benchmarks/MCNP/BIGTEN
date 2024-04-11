@@ -74,7 +74,7 @@ nuclearData {
   materials {
 
     core {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  4.8416E-5;
         92235.03  4.8151E-3;
@@ -83,7 +83,7 @@ nuclearData {
       }
     }
     refl {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  2.8672E-7;
         92235.03  1.0058E-4;
