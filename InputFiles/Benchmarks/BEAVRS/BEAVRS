@@ -598,7 +598,7 @@ geometry {
     SSnoGuideTube { id 1002; type pinUniverse;  radii ( 0.56134 0.0); fills (SS304 Water);}
 
 
-    pinUpperFuelPlenum { id 1008; type pinUniverse;  radii ( 0.03459 0.40005 0.45720 0.0); 
+    pinUpperFuelPlenum { id 1008; type pinUniverse;  radii ( 0.06459 0.40005 0.45720 0.0); 
                                                      fills (Inconel Helium Zircaloy Water);}
 
     // Control rod pins
@@ -608,7 +608,7 @@ geometry {
                                                      fills (Ag-In-Cd Helium SS304 Water Zircaloy Water);}
     pinControlRodSpacer { id 1015; type pinUniverse; radii ( 0.37845 0.38608 0.48387 0.56134 0.60198 0.0); 
                                                      fills (SS304 Helium SS304 Water Zircaloy Water);}
-    pinControlRodPlenum { id 1016; type pinUniverse; radii ( 0.03459 0.38608 0.48387 0.56134 0.60198 0.0); 
+    pinControlRodPlenum { id 1016; type pinUniverse; radii ( 0.06459 0.38608 0.48387 0.56134 0.60198 0.0); 
                                                      fills (Inconel Helium SS304 Water Zircaloy Water);}
 
     // pins that have grids 
@@ -1965,7 +1965,7 @@ nuclearData {
       7015.03  7.2354E-07;
       8016.03  5.2866E-05;
       8017.03  2.0084E-08;
-      //8018.03  1.0301E-07; 
+      //8018.03  1.0601E-07; 
       }
       }
 
@@ -2210,7 +2210,7 @@ nuclearData {
       16036.03      5.3398E-09;
       14028.03      6.1702E-04; 
       14029.03      3.1330E-05;
-      14030.03      2.0353E-05; 
+      14030.03      2.0653E-05; 
       22046.03      1.2144E-06;
       22047.03      1.0952E-06; 
       22048.03      1.0851E-05;
