@@ -536,7 +536,7 @@ contains
     character(100),parameter  :: Here =' inelastic (neutronCEimp_class.f90)'
 
     ! Invert inelastic scattering and Get reaction
-    collDat % MT = self % nuc % invertInelastic(p % E, p % pRNG)
+    collDat % MT = self % nuc % invertInelastic(self % eSample, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
 
