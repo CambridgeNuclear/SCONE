@@ -4,7 +4,12 @@ module eigenPhysicsPackage_class
   use universalVariables
   use endfConstants
   use genericProcedures,              only : fatalError, numToChar, rotateVector
-  use display_func,                   only : printFishLineR
+  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
+                                             printSeparatorLine
+  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
+#ifdef MPI
+  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD
+#endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
@@ -89,6 +94,7 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: N_inactive
     integer(shortInt)  :: N_active
     integer(shortInt)  :: pop
+    integer(shortInt)  :: totalPop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -124,17 +130,22 @@ contains
   subroutine run(self)
     class(eigenPhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION /\/\"
+    call printSeparatorLine()
+    call printSectionStart("EIGENVALUE CALCULATION")
+
+    ! Skip RNG state forward based on the process rank
+    call self % pRNG % stride(getOffset(self % totalPop))
 
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
-    call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF EIGENVALUE CALCULATION \/\/"
-    print *
+    if (isMpiMaster()) call self % collectResults()
+
+    call statusMsg("")
+    call printSectionEnd("END OF EIGENVALUE CALCULATION")
+    call statusMsg("")
+
   end subroutine
 
   !!
@@ -229,7 +240,7 @@ contains
       call self % thisCycle % cleanPop()
 
       ! Update RNG
-      call self % pRNG % stride(self % pop + 1)
+      call self % pRNG % stride(self % totalPop + 1)
 
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
@@ -281,12 +292,12 @@ contains
 
       ! Display progress
       call printFishLineR(i)
-      print *
-      print *, 'Cycle: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop: ', numToChar(Nstart) , ' -> ', numToChar(Nend)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      call statusMsg("")
+      call statusMsg("Cycle: " // numToChar(i) // " of " // numToChar(N_cycles))
+      call statusMsg("Pop: " // numToChar(Nstart) // " -> " // numToChar(Nend))
+      call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
+      call statusMsg("End time:     " // trim(secToChar(end_T)))
+      call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
     end do
 
@@ -310,9 +321,12 @@ contains
     call self % nextCycle % init(3 * self % pop)
 
     ! Generate initial source
-    print *, "GENERATING INITIAL FISSION SOURCE"
+    call statusMsg("GENERATING INITIAL FISSION SOURCE")
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
-    print *, "DONE!"
+    call statusMsg("DONE!")
+
+    ! Update RNG after source generation
+    call self % pRNG % stride(self % totalPop)
 
   end subroutine generateInitialState
 
@@ -330,7 +344,7 @@ contains
     call out % printValue(self % pRNG % getSeed(),name)
 
     name = 'pop'
-    call out % printValue(self % pop,name)
+    call out % printValue(self % totalPop, name)
 
     name = 'Inactive_Cycles'
     call out % printValue(self % N_inactive,name)
@@ -385,7 +399,9 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
+    call dict % get( self % totalPop, 'pop')
+    self % pop = getWorkshare(self % totalPop)
+
     call dict % get( self % N_inactive,'inactive')
     call dict % get( self % N_active,'active')
     call dict % get( nucData, 'XSdata')
@@ -430,6 +446,12 @@ contains
       call FNV_1(string,seed_temp)
 
     end if
+
+    ! Broadcast seed to all processes
+#ifdef MPI
+    call MPI_Bcast(seed_temp, 1, MPI_INTEGER, MASTER_RANK, MPI_COMM_WORLD)
+#endif
+
     seed = seed_temp
     call self % pRNG % init(seed)
 
@@ -454,11 +476,11 @@ contains
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
-    if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+    if (dict % isPresent('viz') .and. isMPIMaster()) then
+      call statusMsg("Initialising visualiser")
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      call statusMsg("Constructing visualisation")
       call viz % makeViz()
       call viz % kill()
     endif
@@ -567,14 +589,15 @@ contains
   subroutine printSettings(self)
     class(eigenPhysicsPackage), intent(in) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ EIGENVALUE CALCULATION WITH POWER ITERATION METHOD /\/\"
-    print *, "Inactive Cycles:    ", numToChar(self % N_inactive)
-    print *, "Active Cycles:      ", numToChar(self % N_active)
-    print *, "Neutron Population: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    call printSeparatorLine()
+    call printSectionStart("EIGENVALUE CALCULATION WITH POWER ITERATION METHOD")
+    call statusMsg("Inactive Cycles:    " // numToChar(self % N_inactive))
+    call statusMsg("Active Cycles:      " // numToChar(self % N_active))
+    call statusMsg("Neutron Population: " // numToChar(self % pop))
+    call statusMsg("Initial RNG Seed:   " // numToChar(self % pRNG % getSeed()))
+    call statusMsg("")
+    call printSeparatorLine()
+
   end subroutine printSettings
 
 end module eigenPhysicsPackage_class

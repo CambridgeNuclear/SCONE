@@ -122,6 +122,9 @@ contains
     call printSeparatorLine()
     call printSectionStart("FIXED SOURCE CALCULATION")
 
+    ! Skip RNG state forward based on the process rank
+    call self % pRNG % stride(getOffset(self % totalPop))
+
     call self % cycles(self % tally, self % N_cycles)
 
     ! Collect results from other processes
@@ -142,7 +145,7 @@ contains
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)         :: tally
     integer(shortInt), intent(in)                   :: N_cycles
-    integer(shortInt)                               :: i, n, nParticles, offset
+    integer(shortInt)                               :: i, n, nParticles
     integer(shortInt), save                         :: j, bufferExtra
     type(particle), save                            :: p, transferP
     type(particleDungeon), save                     :: buffer
@@ -167,10 +170,6 @@ contains
     !$omp end parallel
 
     nParticles = self % pop
-    offset = getOffset(self % totalPop)
-
-    ! Skip RNG state forward based on the process rank
-    call self % pRNG % stride(offset)
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -380,7 +379,7 @@ contains
 
     end if
 
-    ! Brodcast seed to all processes
+    ! Broadcast seed to all processes
 #ifdef MPI
     call MPI_Bcast(seed_temp, 1, MPI_INTEGER, MASTER_RANK, MPI_COMM_WORLD)
 #endif
