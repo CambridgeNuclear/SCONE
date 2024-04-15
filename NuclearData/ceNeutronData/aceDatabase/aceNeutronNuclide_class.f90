@@ -479,6 +479,7 @@ contains
     real(defReal), intent(in)            :: T
     real(defReal)                        :: T2, T1
     logical(defBool)                     :: doTLow
+    type(thermalData), pointer           :: sabPtr
 
     associate (data => self % mainData(:,idx:idx+1))
 
@@ -493,7 +494,7 @@ contains
         xss % nuFission = ZERO
       end if
 
-      doTLow = .false.
+      doTLow = .true.
       if (self % stochasticMixing) then
 
         T1 = self % thData1 % getTemperature()
@@ -503,35 +504,25 @@ contains
 
       end if
 
-      ! Take XSs from the lower temperature data
-      ! Default without stochastic mixing
+      ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
+      ! Default to low temperature without stochastic mixing.
+      ! The choice of data should be stored somewhere for consist handling of 
+      ! angular distributions, e.g., a cache
       if doTLow then
-        
-        ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
-        xss % elasticScatter = self % thData1 % getElXS(E)
-
-        ! If inelastic scatter is on, reads S(a,b) tables for inelastic scatter
-        if (nuclideCache(self % getNucIdx()) % needsSabInel) then
-          xss % inelasticScatter = self % thData1 % getInelXS(E)
-        else
-          xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
-        end if
-
-      ! Take XSs from higher temperature data
+        sabPtr => self % thData1
       else
-
-        ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
-        xss % elasticScatter = self % thData2 % getElXS(E)
-
-        ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
-        if (nuclideCache(self % getNucIdx()) % needsSabInel) then
-          xss % inelasticScatter = self % thData2 % getInelXS(E)
-        else
-          xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
-        end if
-
+        sabPtr => self % thData2
       end if
 
+      ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
+      xss % elasticScatter = sabPtr % getElXS(E)
+
+      ! If inelastic scatter is on, reads S(a,b) tables for inelastic scatter
+      if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+        xss % inelasticScatter = self % thData1 % getInelXS(E)
+      else
+        xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      end if
 
     end associate
 
@@ -962,6 +953,29 @@ contains
     end if
 
   end subroutine initSab
+
+  !!
+  !! Return pointer to Sab reaction data.
+  !! If stochastic mixing is active, samples which
+  !! set of reaction data to point towards.
+  !!
+  function returnSabPointer(self, T, rand) result(ptr)
+    class(aceNeutronNuclide), intent(in) :: self
+    real(defReal), intent(in)            :: T
+    class(RNG), intent(inout)            :: rand
+    type(thermalData), pointer           :: ptr
+    real(defReal)                        :: prob
+
+    if (self % stochasticMixing) then
+      prob = (self % T2 - T)/(self % T2 - self % T1)
+
+      if (prob
+
+    else
+      ptr => self % thData1
+    end if
+
+  end function returnSabPointer
 
   !!
   !! A Procedure that displays information about the nuclide to the screen
