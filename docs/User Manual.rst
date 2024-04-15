@@ -379,7 +379,7 @@ keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 In the input above, ``map`` is the geometrical map used for UFS. The map has to contain
 fissile material for the method to make sense. Other keywords are:
 
-* uniformVolMap (*optional*, default = 1): 1 for true; 0 for false; flag that states
+* uniformVolMap (*optional*, default = 0): 1 for true; 0 for false; flag that states
   whether the bins of the map contain equal volumes of fissile material or not
 * popVolumes (*optional*, default = 1.0e7): if ``uniformVolMap`` is false, a Monte Carlo
   calculation is run to estimate the fissile material volumes in each map bin. This entry
@@ -951,12 +951,14 @@ Example: ::
 
 * keffAnalogClerk, analog k_eff estimator
 * keffImplicitClerk, implicit k_eff estimator
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    are tallied with a collisionClerk as well as physical collisions
 
 Example: ::
 
       tally {
       k_eff1 { type keffAnalogClerk; }
-      k_eff2 { type keffImplicitClerk; }
+      k_eff2 { type keffImplicitClerk; handleVirtual 1; }
       }
 
 * centreOfMassClerk, geometrical 3D center of mass estimator
@@ -1003,6 +1005,8 @@ Example: ::
     tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates
     whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``)
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    are tallied with a collisionClerk as well as physical collisions
 
 Example: ::
 
@@ -1031,6 +1035,8 @@ Example: ::
 
   - map: contains a dictionary with the ``tallyMap`` definition, that defines
     the bins of the matrix
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    are tallied with a collisionClerk as well as physical collisions
 
 Example: ::
 

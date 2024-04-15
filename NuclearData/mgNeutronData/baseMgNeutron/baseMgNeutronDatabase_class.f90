@@ -2,6 +2,7 @@ module baseMgNeutronDatabase_class
 
   use numPrecision
   use endfConstants
+  use universalVariables
   use errors_mod,         only : fatalError
   use genericProcedures,  only : numToChar
   use particle_class,     only : particle
@@ -21,8 +22,8 @@ module baseMgNeutronDatabase_class
   ! baseMgNeutron Objects
   use baseMgNeutronMaterial_class, only : baseMgNeutronMaterial
 
-  ! MG NEUTRON CACHE
-  use mgNeutronCache_mod,           only : cache_materialCache => materialCache, &
+  ! Cache
+  use mgNeutronCache_mod,           only : materialCache, trackingCache, &
                                            cache_init => init
 
   implicit none
@@ -61,7 +62,7 @@ module baseMgNeutronDatabase_class
 
   contains
     ! Superclass Interface
-    procedure :: getTransMatXS
+    procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -81,7 +82,7 @@ module baseMgNeutronDatabase_class
 contains
 
   !!
-  !! Get Transport XS given a particle
+  !! Get tracking XS requested
   !!
   !! See nuclearDatabase documentation for details
   !!
@@ -89,15 +90,42 @@ contains
   !!   DOES NOT check if particle is MG. Will refer to G in the particle and give error
   !!   if the value is invalid
   !!
-  function getTransMatXS(self, p, matIdx) result(xs)
+  function getTrackingXS(self, p, matIdx, what) result(xs)
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
+    integer(shortInt), intent(in)               :: what
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackingXS (baseMgNeutronDatabase_class.f90)'
 
-    xs = self % getTotalMatXS(p, matIdx)
+    ! Process request
+    select case(what)
 
-  end function getTransMatXS
+      case (MATERIAL_XS)
+        xs = self % getTotalMatXS(p, matIdx)
+
+      case (MAJORANT_XS)
+        xs = self % getMajorantXS(p)
+
+      case (TRACKING_XS)
+
+        ! READ ONLY - read from previously updated cache
+        if (p % G == trackingCache(1) % G) then
+          xs = trackingCache(1) % xs
+        else
+          call fatalError(Here, 'Tracking cache failed to update during tracking')
+        end if
+
+      case default
+        call fatalError(Here, 'Neither material nor majorant xs was asked')
+
+    end select
+
+    ! Update Cache
+    trackingCache(1) % G  = p % G
+    trackingCache(1) % xs = xs
+
+  end function getTrackingXS
 
   !!
   !! Get Total XS given a particle
@@ -114,7 +142,7 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    associate (matCache => cache_materialCache(matIdx))
+    associate (matCache => materialCache(matIdx))
 
       if (matCache % G_tot /= p % G) then
         ! Get cross section
@@ -182,11 +210,11 @@ contains
     integer(shortInt), intent(in)            :: matIdx
     class(materialHandle), pointer           :: mat
 
-    if(matIdx < 1 .or. matIdx > size(self % mats)) then
+    if (matIdx < 1 .or. matIdx > size(self % mats)) then
       mat => null()
     else
       ! Retrieve pointer from cache
-      mat => cache_materialCache(matIdx) % mat
+      mat => materialCache(matIdx) % mat
     end if
 
   end function getMaterial
@@ -345,7 +373,7 @@ contains
     ! Store the material pointer in the material cache
     !$omp parallel
     do idx = 1,size(self % mats)
-      cache_materialCache(idx) % mat => self % mats(idx)
+      materialCache(idx) % mat => self % mats(idx)
     end do
     !$omp end parallel
 
