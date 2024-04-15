@@ -1,35 +1,35 @@
-module sphericalMap_test
+module sphericalRadMap_test
   use numPrecision
   use pFUnit_mod
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
   use outputFile_class,        only : outputFile
 
-  use sphericalMap_class,      only : sphericalMap
+  use sphericalRadMap_class,   only : sphericalRadMap
 
   implicit none
 
 
 @testCase
-  type, extends(TestCase) :: test_sphericalMap
+  type, extends(TestCase) :: test_sphericalRadMap
     private
-    type(sphericalMap) :: map_lin_from_zero
-    type(sphericalMap) :: map_lin_from_min
-    type(sphericalMap) :: map_unstruct
-    type(sphericalMap) :: map_equivol
+    type(sphericalRadMap) :: map_lin_from_zero
+    type(sphericalRadMap) :: map_lin_from_min
+    type(sphericalRadMap) :: map_unstruct
+    type(sphericalRadMap) :: map_equivol
 
   contains
     procedure :: setUp
     procedure :: tearDown
-  end type test_sphericalMap
+  end type test_sphericalRadMap
 
 contains
 
   !!
-  !! Sets up test_sphericalMap object we can use in a number of tests
+  !! Sets up test_sphericalRadMap object we can use in a number of tests
   !!
   subroutine setUp(this)
-    class(test_sphericalMap), intent(inout) :: this
+    class(test_sphericalRadMap), intent(inout) :: this
     type(dictionary)                     :: tempDict
 
     ! Build map with default origin & minimum radius
@@ -73,10 +73,10 @@ contains
   end subroutine setUp
 
   !!
-  !! Kills test_sphericalMap object we can use in a number of tests
+  !! Kills test_sphericalRadMap object we can use in a number of tests
   !!
   subroutine tearDown(this)
-    class(test_sphericalMap), intent(inout) :: this
+    class(test_sphericalRadMap), intent(inout) :: this
 
     call this % map_lin_from_zero % kill()
     call this % map_lin_from_min % kill()
@@ -94,13 +94,13 @@ contains
   !!
 @Test
   subroutine testFromOrigin(this)
-    class(test_sphericalMap), intent(inout) :: this
-    real(defReal),dimension(4),parameter     :: r = [0.4_defReal, 3.58_defReal, 8.9_defReal, 11.0_defReal]
-    real(defReal), dimension(4),parameter    :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
-    real(defReal), dimension(4), parameter   :: tht = [ZERO, PI/2, PI/4, -PI/2]
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [1, 8, 18, 0]
-    integer(shortInt),dimension(4)           :: idx
-    type(particleState),dimension(4)         :: states
+    class(test_sphericalRadMap), intent(inout) :: this
+    real(defReal),dimension(4),parameter       :: r = [0.4_defReal, 3.58_defReal, 8.9_defReal, 11.0_defReal]
+    real(defReal), dimension(4),parameter      :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
+    real(defReal), dimension(4), parameter     :: tht = [ZERO, PI/2, PI/4, -PI/2]
+    integer(shortInt),dimension(4),parameter   :: RES_IDX = [1, 8, 18, 0]
+    integer(shortInt),dimension(4)             :: idx
+    type(particleState),dimension(4)           :: states
 
     ! Initialise states
     states(:) % r(1) = r * cos(phi) * sin(tht)
@@ -117,13 +117,13 @@ contains
   !!
 @Test
   subroutine testFromMin(this)
-    class(test_sphericalMap), intent(inout) :: this
-    real(defReal),dimension(4),parameter     :: r = [1.5_defReal, 5.5_defReal, 8.9_defReal, 11.0_defReal]
-    real(defReal), dimension(4),parameter    :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
-    real(defReal), dimension(4), parameter   :: tht = [ZERO, PI/2, PI/4, -PI/2]
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [0, 1, 4, 0]
-    integer(shortInt),dimension(4)           :: idx
-    type(particleState),dimension(4)         :: states
+    class(test_sphericalRadMap), intent(inout) :: this
+    real(defReal),dimension(4),parameter       :: r = [1.5_defReal, 5.5_defReal, 8.9_defReal, 11.0_defReal]
+    real(defReal), dimension(4),parameter      :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
+    real(defReal), dimension(4), parameter     :: tht = [ZERO, PI/2, PI/4, -PI/2]
+    integer(shortInt),dimension(4),parameter   :: RES_IDX = [0, 1, 4, 0]
+    integer(shortInt),dimension(4)             :: idx
+    type(particleState),dimension(4)           :: states
 
     ! Initialise states
     states(:) % r(1) = r * cos(phi) * sin(tht)
@@ -145,13 +145,13 @@ contains
   !!
 @Test
   subroutine testUnstruct(this)
-    class(test_sphericalMap), intent(inout) :: this
-    real(defReal),dimension(4),parameter     :: r = [4.5_defReal, 15.5_defReal, 8.9_defReal, 11.0_defReal]
-    real(defReal), dimension(4),parameter    :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
-    real(defReal), dimension(4), parameter   :: tht = [ZERO, PI/2, PI/4, -PI/2]
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [1, 0, 3, 4]
-    integer(shortInt),dimension(4)           :: idx
-    type(particleState),dimension(4)         :: states
+    class(test_sphericalRadMap), intent(inout) :: this
+    real(defReal),dimension(4),parameter       :: r = [4.5_defReal, 15.5_defReal, 8.9_defReal, 11.0_defReal]
+    real(defReal), dimension(4),parameter      :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
+    real(defReal), dimension(4), parameter     :: tht = [ZERO, PI/2, PI/4, -PI/2]
+    integer(shortInt),dimension(4),parameter   :: RES_IDX = [1, 0, 3, 4]
+    integer(shortInt),dimension(4)             :: idx
+    type(particleState),dimension(4)           :: states
 
     ! Initialise states
     states(:) % r(1) = r * cos(phi) * sin(tht)
@@ -168,13 +168,13 @@ contains
   !!
 @Test
   subroutine testEquiVol(this)
-    class(test_sphericalMap), intent(inout) :: this
-    real(defReal),dimension(4),parameter     :: r = [1.5_defReal, 5.5_defReal, 18.9_defReal, 11.0_defReal]
-    real(defReal), dimension(4),parameter    :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
-    real(defReal), dimension(4), parameter   :: tht = [ZERO, PI/2, PI/4, -PI/2]
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [0, 1, 7, 2]
-    integer(shortInt),dimension(4)           :: idx
-    type(particleState),dimension(4)         :: states
+    class(test_sphericalRadMap), intent(inout) :: this
+    real(defReal),dimension(4),parameter       :: r = [1.5_defReal, 5.5_defReal, 18.9_defReal, 11.0_defReal]
+    real(defReal), dimension(4),parameter      :: phi = [1.4_defReal, 3.98_defReal, 0.5_defReal, PI/2]
+    real(defReal), dimension(4), parameter     :: tht = [ZERO, PI/2, PI/4, -PI/2]
+    integer(shortInt),dimension(4),parameter   :: RES_IDX = [0, 1, 7, 2]
+    integer(shortInt),dimension(4)             :: idx
+    type(particleState),dimension(4)           :: states
 
     ! Initialise states
     states(:) % r(1) = r * cos(phi) * sin(tht)
@@ -191,7 +191,7 @@ contains
   !!
 @Test
   subroutine testBinNumber(this)
-    class(test_sphericalMap), intent(inout) :: this
+    class(test_sphericalRadMap), intent(inout) :: this
 
     @assertEqual(20, this % map_lin_from_zero % bins(1),'1st Dimension')
     @assertEqual(4,  this % map_unstruct % bins(1),'1st Dimension')
@@ -209,8 +209,8 @@ contains
   !!
 @Test
   subroutine testPrint(this)
-    class(test_sphericalMap), intent(inout) :: this
-    type(outputFile)                        :: out
+    class(test_sphericalRadMap), intent(inout) :: this
+    type(outputFile)                           :: out
 
     call out % init('dummyPrinter', fatalErrors = .false.)
 
@@ -233,4 +233,4 @@ contains
   end subroutine testPrint
 
 
-end module sphericalMap_test
+end module sphericalRadMap_test

@@ -1,4 +1,4 @@
-module sphericalMap_class
+module sphericalRadMap_class
 
   use numPrecision
   use universalVariables, only : valueOutsideArray
@@ -7,28 +7,24 @@ module sphericalMap_class
   use grid_class,         only : grid
   use particle_class,     only : particleState
   use outputFile_class,   only : outputFile
-  use tallyMap_inter,     only : tallyMap, kill_super => kill
+  use tallyMap1D_inter,   only : tallyMap1D, kill_super => kill
 
   implicit none
   private
 
-
   !!
   !! Divides space into a mesh in spherical co-ordinates
   !!
-  !! TODO:
-  !!   Implement polar & azimuthal subdivision
-  !!
   !! Interface:
-  !!   tallyMap interface
+  !!   tallyMap1D interface
   !!
   !! NOTE:
   !!   Behaviour of points exactly at the boundary of bins is undefined.
   !!   particle can end-up in either of the two
   !!
   !! Sample Dictionary Input:
-  !!  sphericalMap {
-  !!    type sphericalMap;
+  !!  sphericalRadMap {
+  !!    type sphericalRadMap;
   !!    #origin (1.0 0.0 0.0);# // Optional. Default (0 0 0)
   !!    grid lin;
   !!    #Rmin 2.0;#  // Optional. Default 0.0
@@ -37,21 +33,22 @@ module sphericalMap_class
   !!    }
   !!
   !!
-  type, public, extends (tallyMap) :: sphericalMap
+  type, public, extends (tallyMap1D) :: sphericalRadMap
     private
     real(defReal), dimension(3) :: origin = ZERO
     type(grid)                  :: rBounds
     integer(shortInt)           :: N = 0
+
   contains
     ! Superclass
     procedure :: init
     procedure :: bins
-    procedure :: dimensions
     procedure :: getAxisName
     procedure :: map
     procedure :: print
     procedure :: kill
-  end type sphericalMap
+
+  end type sphericalRadMap
 
 contains
 
@@ -61,13 +58,13 @@ contains
   !! See tallyMap for specification.
   !!
   subroutine init(self, dict)
-    class(sphericalMap), intent(inout)       :: self
+    class(sphericalRadMap), intent(inout)    :: self
     class(dictionary), intent(in)            :: dict
     real(defReal), dimension(:), allocatable :: temp, grid
     character(nameLen)                       :: type
     real(defReal)                            :: Rmin, Rmax, vol
     integer(shortInt)                        :: i
-    character(100), parameter :: Here = 'init (sphericalmap_class.f90)'
+    character(100), parameter :: Here = 'init (sphericalRadMap_class.f90)'
 
     ! Check & load origin
     call dict % getOrDefault(temp, 'origin', [ZERO, ZERO, ZERO])
@@ -140,9 +137,9 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function bins(self, D) result(N)
-    class(sphericalMap), intent(in) :: self
-    integer(shortInt), intent(in)   :: D
-    integer(shortInt)               :: N
+    class(sphericalRadMap), intent(in) :: self
+    integer(shortInt), intent(in)      :: D
+    integer(shortInt)                  :: N
 
     if (D == 1 .or. D == 0) then
       N = self % N
@@ -153,28 +150,15 @@ contains
   end function bins
 
   !!
-  !! Return number of dimensions
-  !!
-  !! See tallyMap for specification.
-  !!
-  elemental function dimensions(self) result(D)
-    class(sphericalMap), intent(in)    :: self
-    integer(shortInt)                  :: D
-
-    D = 1
-
-  end function dimensions
-
-  !!
   !! Return string that describes variable used to divide event space
   !!
   !! See tallyMap for specification
   !!
   function getAxisName(self) result(name)
-    class(sphericalMap), intent(in) :: self
-    character(nameLen)          :: name
+    class(sphericalRadMap), intent(in) :: self
+    character(nameLen)                 :: name
 
-    name ='sphericalMap'
+    name ='sphericalRadMap'
 
   end function getAxisName
 
@@ -184,10 +168,10 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function map(self, state) result(idx)
-    class(sphericalMap), intent(in)  :: self
-    class(particleState), intent(in) :: state
-    integer(shortInt)                :: idx
-    real(defReal)                    :: r
+    class(sphericalRadMap), intent(in) :: self
+    class(particleState), intent(in)   :: state
+    integer(shortInt)                  :: idx
+    real(defReal)                      :: r
 
     ! Calculate the distance from the origin
     r = norm2(state % r - self % origin)
@@ -204,10 +188,10 @@ contains
   !! See tallyMap for specification.
   !!
   subroutine print(self,out)
-    class(sphericalMap), intent(in)  :: self
-    class(outputFile), intent(inout) :: out
-    character(nameLen)               :: name
-    integer(shortInt)                :: i
+    class(sphericalRadMap), intent(in) :: self
+    class(outputFile), intent(inout)   :: out
+    character(nameLen)                 :: name
+    integer(shortInt)                  :: i
 
     ! Name the array
     name = trim(self % getAxisName()) //'Bounds'
@@ -229,7 +213,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(sphericalMap), intent(inout) :: self
+    class(sphericalRadMap), intent(inout) :: self
 
     call kill_super(self)
 
@@ -239,4 +223,4 @@ contains
 
   end subroutine kill
 
-end module sphericalMap_class
+end module sphericalRadMap_class

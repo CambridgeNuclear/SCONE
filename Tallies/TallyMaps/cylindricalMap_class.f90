@@ -51,7 +51,7 @@ module cylindricalMap_class
     type(grid)                  :: rBounds
     type(grid)                  :: axBounds
     type(grid)                  :: azBounds
-    integer(shortInt)           :: rN = 0
+    integer(shortInt)           :: rN  = 0
     integer(shortInt)           :: axN = 0
     integer(shortInt)           :: azN = 0
     integer(shortInt)           :: DIM1 = 0

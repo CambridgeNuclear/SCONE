@@ -25,15 +25,16 @@ module tallyMap1DFactory_func
   use tallyMap1D_inter,    only : tallyMap1D
 
   ! TallyMap implementations
-  use energyMap_class,   only : energyMap
-  use spaceMap_class,    only : spaceMap
-  use materialMap_class, only : materialMap
-  use homogMatMap_class, only : homogMatMap
-  use weightMap_class,   only : weightMap
-  use cellMap_class,     only : cellMap
-  use testMap_class,     only : testMap
-  use collNumMap_class,  only : collNumMap
-!  use matXsMap_class,    only : matXsMap
+  use energyMap_class,       only : energyMap
+  use spaceMap_class,        only : spaceMap
+  use materialMap_class,     only : materialMap
+  use homogMatMap_class,     only : homogMatMap
+  use weightMap_class,       only : weightMap
+  use cellMap_class,         only : cellMap
+  use testMap_class,         only : testMap
+  use collNumMap_class,      only : collNumMap
+  use sphericalRadMap_class, only : sphericalRadMap
+  use directionMap_class,    only : directionMap
 
   implicit none
   private
@@ -45,14 +46,16 @@ module tallyMap1DFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter, public :: AVALIBLE_tallyMaps1D = [ 'energyMap  ',&
-                                                                                'spaceMap   ',&
-                                                                                'materialMap',&
-                                                                                'homogMatMap',&
-                                                                                'weightMap  ',&
-                                                                                'cellMap    ',&
-                                                                                'testMap    ',&
-                                                                                'collNumMap ']
+  character(nameLen),dimension(*),parameter, public :: AVALIBLE_tallyMaps1D = [ 'energyMap      ',&
+                                                                                'spaceMap       ',&
+                                                                                'materialMap    ',&
+                                                                                'homogMatMap    ',&
+                                                                                'weightMap      ',&
+                                                                                'cellMap        ',&
+                                                                                'collNumMap     ',&
+                                                                                'sphericalRadMap',&
+                                                                                'directionMap   ',&
+                                                                                'testMap        ']
 
 contains
 
@@ -100,11 +103,17 @@ contains
       case('cellMap')
         allocate(cellMap :: new)
 
-      case('testMap')
-        allocate(testMap :: new)
-
       case('collNumMap')
         allocate(collNumMap :: new)
+
+      case('sphericalRadMap')
+        allocate(sphericalRadMap :: new)
+
+      case('directionMap')
+        allocate(directionMap :: new)
+
+      case('testMap')
+        allocate(testMap :: new)
 
       case default
         print *, AVALIBLE_tallyMaps1D
