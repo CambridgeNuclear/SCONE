@@ -11,9 +11,8 @@ add_sources(./tallyMap_inter.f90
             ./Maps1D/materialMap_class.f90
             ./Maps1D/homogMatMap_class.f90
             ./Maps1D/weightMap_class.f90
-	    ./Maps1D/sphericalRadMap_class.f90
             ./Maps1D/cellMap_class.f90
-	    ./Maps1D/cylindricalRadMap_class.f90
+	          ./Maps1D/radialMap_class.f90
             ./Maps1D/collNumMap_class.f90
             ./Maps1D/directionMap_class.f90
             )
@@ -26,8 +25,7 @@ add_unit_tests(./Tests/multiMap_test.f90
                ./Maps1D/Tests/spaceMap_test.f90
                ./Maps1D/Tests/testMap_test.f90
                ./Maps1D/Tests/homogMatMap_test.f90
-               ./Maps1D/Tests/sphericalRadMap_test.f90
-               ./Maps1D/Tests/cylindricalRadMap_test.f90
+               ./Maps1D/Tests/radialMap_test.f90
                ./Maps1D/Tests/cellMap_test.f90
                ./Maps1D/Tests/collNumMap_test.f90
-	       ./Maps1D/Tests/directionMap_test.f90)
+               ./Maps1D/Tests/directionMap_test.f90)

@@ -166,10 +166,10 @@ contains
 
     do i = 1, self % N
       ! Print lower bin boundary
-      call out % addValue(self % bounds % bin(i) + PI)
+      call out % addValue(self % bounds % bin(i))
 
       ! Print upper bin boundar
-      call out % addValue(self % bounds % bin(i + 1) + PI)
+      call out % addValue(self % bounds % bin(i + 1))
     end do
 
     call out % endArray()

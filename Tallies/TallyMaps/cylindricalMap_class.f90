@@ -376,10 +376,10 @@ contains
       call out % startArray(name, [2,self % azN])
       do i = 1, self % azN
         ! Print lower bin boundary
-        call out % addValue(self % azBounds % bin(i) + PI)
+        call out % addValue(self % azBounds % bin(i))
 
         ! Print upper bin boundar
-        call out % addValue(self % azBounds % bin(i + 1) + PI)
+        call out % addValue(self % azBounds % bin(i + 1))
 
       end do
       call out % endArray()
