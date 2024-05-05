@@ -27,7 +27,7 @@ module cylindricalMap_class
   !!  cylindricalMap {
   !!    type cylindricalMap;
   !!    #orientation x;# // Optional. Defeult z
-  !!    #origin (1.0 0.0);# // Optional. Default (0 0). Order is xy, xz or yz.
+  !!    #origin (1.0 0.0 0.0);# // Optional. Default (0 0 0)
   !!    rGrid lin;
   !!    #Rmin 2.0;#  // Optional. Default 0.0
   !!    Rmax  10.0;
@@ -66,6 +66,7 @@ module cylindricalMap_class
     procedure :: map
     procedure :: print
     procedure :: kill
+
   end type cylindricalMap
 
 contains
@@ -83,14 +84,6 @@ contains
     real(defReal)                            :: Rmin, Rmax, axMin, axMax, vol
     integer(shortInt)                        :: i
     character(100), parameter :: Here = 'init (cylindricalMap_class.f90)'
-
-    ! Check & load origin
-    call dict % getOrDefault(temp, 'origin', [ZERO, ZERO])
-
-    if (size(temp) /= 2) then
-      call fatalError(Here, 'Expected 2 values for origin. Got: ' // numToChar(size(temp)))
-    end if
-    self % origin = temp
 
     ! Check orientation of the cylinder
     if (dict % isPresent('orientation')) then
@@ -119,6 +112,15 @@ contains
         call fatalError(Here, 'Keyword orientation must be x, y or z. It is: '//type)
 
       end select
+
+      ! Check & load origin
+      call dict % getOrDefault(temp, 'origin', [ZERO, ZERO, ZERO])
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, 'Expected 3 values for origin. Got: ' // numToChar(size(temp)))
+      end if
+
+      self % origin = temp([self % DIM1, self % DIM2])
 
     ! Load radial grid information
     if (.not. dict % isPresent('rGrid')) call fatalError(Here, 'Keyword rGrid must be present')

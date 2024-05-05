@@ -40,8 +40,10 @@ contains
     call tempDict % kill()
 
     ! Build map with default plane
-    call tempDict % init(1)
-    call tempDict % store('N', 8)
+    call tempDict % init(3)
+    call tempDict % store('N', 9)
+    call tempDict % store('min', 90)
+    call tempDict % store('max', 180)
 
     call this % map2 % init(tempDict)
     call tempDict % kill()
@@ -70,8 +72,8 @@ contains
   subroutine testMap1(this)
     class(test_directionMap), intent(inout)  :: this
     real(defReal),dimension(4),parameter     :: x   = [0.44_defReal, 15.8_defReal, 83.2_defReal, 999.1_defReal]
-    real(defReal),dimension(4),parameter     :: phi = [-0.1_defReal, 0.84_defReal, 0.33_defReal, 0.64_defReal]*PI
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [2, 4, 3, 4]
+    real(defReal),dimension(4),parameter     :: phi = [100.1_defReal, 20.84_defReal, 333.9_defReal, 264.8_defReal]*PI/180.0_defReal
+    integer(shortInt),dimension(4),parameter :: RES_IDX = [4, 3, 2, 1]
     integer(shortInt),dimension(4)           :: idx
     type(particleState),dimension(4)         :: states
 
@@ -92,19 +94,19 @@ contains
 @Test
   subroutine testMap2(this)
     class(test_directionMap), intent(inout)  :: this
-    real(defReal),dimension(4),parameter     :: x = [0.9999_defReal, 0.87_defReal, -0.3_defReal, 0.18_defReal]
-    real(defReal),dimension(4),parameter     :: y = [0.45_defReal, 0.88_defReal, 0.51_defReal, -0.92_defReal]
-    real(defReal),dimension(4),parameter     :: z = [1.0_defReal, 39.8_defReal, 0.05_defReal, -12.2_defReal]
-    integer(shortInt),dimension(4),parameter :: RES_IDX = [5, 6, 7, 3]
+    real(defReal),dimension(4),parameter     :: z   = [0.44_defReal, 15.8_defReal, 83.2_defReal, 999.1_defReal]
+    real(defReal),dimension(4),parameter     :: phi = [170.1_defReal, 90.84_defReal, 133.9_defReal, 264.8_defReal]*PI/180.0_defReal
+    integer(shortInt),dimension(4),parameter :: RES_IDX = [9, 1, 5, 0]
     integer(shortInt),dimension(4)           :: idx
     type(particleState),dimension(4)         :: states
 
     ! Initialise states
-    states(:) % dir(1) = x
-    states(:) % dir(2) = y
+    states(:) % dir(1) = cos(phi)
+    states(:) % dir(2) = sin(phi)
     states(:) % dir(3) = z
 
     idx = this % map2 % map(states)
+
     @assertEqual(RES_IDX, idx)
 
   end subroutine testMap2
@@ -120,7 +122,7 @@ contains
     @assertEqual(4, this % map1 % bins(0),'All bins')
     @assertEqual(4, this % map1 % bins(1),'1st dimension')
     @assertEqual(0, this % map2 % bins(2),'2nd dimension')
-    @assertEqual(8, this % map2 % bins(1),'1st dimension')
+    @assertEqual(9, this % map2 % bins(1),'1st dimension')
 
     ! Get dimensionality
     @assertEqual(1, this % map1 % dimensions())
@@ -130,7 +132,7 @@ contains
 
   !!
   !! Test correctness of print subroutine
-  !! Does not checks that values are correct, but that calls sequence is without errors
+  !! Does not check that values are correct, but that call sequence is without errors
   !!
 @Test
   subroutine testPrint(this)

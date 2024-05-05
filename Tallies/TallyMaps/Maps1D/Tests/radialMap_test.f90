@@ -59,7 +59,7 @@ contains
     ! Build cylindrical map with different origin & unstruct bins
     call tempDict % init(4)
     call tempDict % store('axis','z')
-    call tempDict % store('origin',[ONE, ONE])
+    call tempDict % store('origin',[ONE, ONE, ZERO])
     call tempDict % store('grid','unstruct')
     call tempDict % store('bins', [1.5_defReal, 2.3_defReal, 3.8_defReal, 8.0_defReal])
 
@@ -292,7 +292,7 @@ contains
 
   !!
   !! Test correctness of print subroutine
-  !! Does not checks that values are correct, but that calls sequence is without errors
+  !! Does not check that values are correct, but that call sequence is without errors
   !!
 @Test
   subroutine testPrint(this)

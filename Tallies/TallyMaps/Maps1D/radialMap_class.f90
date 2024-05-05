@@ -25,7 +25,7 @@ module radialMap_class
   !! Sample Dictionary Input:
   !!  radialMap {
   !!    type radialMap;
-  !!    axis x;                 // Optional. Default is spherical map
+  !!    axis x;                 // Optional. Default is 'xyz' (spherical map)
   !!    #origin (1.0 0.0 0.0);# // Optional. Default (0.0 0.0 0.0)
   !!    grid lin;
   !!    #min 2.0;#              // Optional. Default 0.0
@@ -61,7 +61,7 @@ contains
   subroutine init(self, dict)
     class(radialMap), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
-    real(defReal), dimension(:), allocatable :: grid
+    real(defReal), dimension(:), allocatable :: temp, grid
     character(nameLen)                       :: type
     real(defReal)                            :: min, max, vol, exp
     integer(shortInt)                        :: i
@@ -91,16 +91,18 @@ contains
         spherical = .true.
 
       case default
-        call fatalError(Here, 'Keyword orientation must be x, y, z or nothing for spherical. It is: '//type)
+        call fatalError(Here, 'Keyword orientation must be x, y, z or xyz for spherical. It is: '//type)
 
     end select
 
     ! Check & load origin
-    if (spherical) then
-      call dict % getOrDefault(self % origin, 'origin', [ZERO, ZERO, ZERO])
-    else
-      call dict % getOrDefault(self % origin, 'origin', [ZERO, ZERO])
+    call dict % getOrDefault(temp, 'origin', [ZERO, ZERO, ZERO])
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, 'Expected 3 values for origin. Got: ' // numToChar(size(temp)))
     end if
+
+    self % origin = temp(self % axis)
 
     ! Load radial grid information
     if (.not. dict % isPresent('grid')) call fatalError(Here, 'Keyword grid must be present')
@@ -208,10 +210,10 @@ contains
   !! See tallyMap for specification.
   !!
   elemental function map(self, state) result(idx)
-    class(radialMap), intent(in) :: self
-    class(particleState), intent(in)     :: state
-    integer(shortInt)                    :: idx
-    real(defReal)                        :: r
+    class(radialMap), intent(in)     :: self
+    class(particleState), intent(in) :: state
+    integer(shortInt)                :: idx
+    real(defReal)                    :: r
 
     ! Calculate the distance from the origin
     r = norm2(state % r(self % axis) - self % origin)

@@ -1123,6 +1123,27 @@ Example: ::
 
       map { type cellMap; cells (1 5 3 2 4 100); undefBin T; }
 
+* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+
+  - collNumbers: list of collision numbers (integers) to be used as map bins
+
+Examples: ::
+
+      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
+
+* directionMap (1D map), angular map for the particle's direction with a linear grid
+
+  - axis (*optional*, default = ``xy``): ``xy``, ``yz``, ``xz`` define the plane
+    of the direction to map
+  - N: number of bins
+  - min (*optional*, default = -180): grid lower limit [degrees]
+  - max (*optional*, default = 180): grid upper limit [degrees]
+
+Examples: ::
+
+      map1 { type directionMap; axis xz; min 0.0; max 90.0; N 6; }
+      map2 { type directionMap; N 36; }
+
 * energyMap (1D map), defines an energy group structure
 
   - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
@@ -1177,23 +1198,33 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* multiMap, ensemble of multiple 1D maps
+* radialMap, spherical or cylindrical radial map
 
-  - maps: list of the names of the maps that will compose the ``multiMap``. This
-    is followed by dictionaries that define the requested maps
+  - axis (*optional*, default = ``xyz``): ``x``, ``y``, ``z``, is the normal of
+    the cylindrical plane, or ``xyz`` to indicate spherical coordinates
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) vector with the origin
+    of the radial map. If the map is cylindrical, only the two coordinates perpendicular
+    to the cylinder's normal matter
+  - grid: ``lin`` for linearly spaced bins or ``equivolume``
 
-Example: ::
+    + min (*optional*, default = 0.0): minimum radius [cm]
+    + max: maximum radius [cm]
+    + N: number of radial bins
 
-      map { type multiMap; maps (map1 map2 map10);
-      map1 { <1D map definition> }
-      map2 { <1D map definition> }
-      map10 { <1D map definition> }
-      }
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the spherical bin boundaries
+      to be used
+
+Examples: ::
+
+      map1 { type radialMap; axis xyz; origin (2.0 1.0 0.0); grid lin; min 3.0; max 10.0; N 14; }
+      map2 { type radialMap; axis z; grid equivolume; max 20.0; N 10; }
+      map3 { type radialMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
 
 * spaceMap (1D map), geometric cartesian map
 
   - axis: ``x``, ``y`` or ``z``
-
   - grid: ``lin`` for linearly spaced bins
 
     + min: bottom coordinate [cm]
@@ -1209,27 +1240,23 @@ Examples: ::
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
-* sphericalMap, geometric spherical map
+* weightMap (1D map), divides weight into number of discrete bins
 
-  - origin (*optional*, default = (0.0 0.0 .0.)): (x y z) vector with the origin
-    of the spherical map
+  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
 
-  - grid: ``lin`` for linearly spaced bins or ``equivolume`` for spherical shells
-
-    + Rmin (*optional*, default = 0.0): minimum radius [cm]
-    + Rmax: maximum radius [cm]
-    + N: number of radial bins
+    + min: bottom weight
+    + max: top weight
+    + N: number of bins
 
   - grid: ``unstruct`` for unstructured grids, to be manually defined
 
-    + bins: array with the explicit definition of the spherical bin boundaries
-      to be used
+    + bins: array with the explicit definition of the weight bin boundaries to be used
 
 Examples: ::
 
-      map1 { type sphericalMap; origin (2.0 1.0 0.0); grid lin; Rmin 3.0; Rmax 10.0; N 14; }
-      map2 { type sphericalMap; grid equivolume; Rmax 20.0; N 10; }
-      map3 { type sphericalMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
+      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
+      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
+      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
 
 * cylindricalMap, geometric cylindrical map; other than the radial discretisation,
   one could add axial and azimuthal discretisation
@@ -1261,31 +1288,18 @@ Example: ::
       map1 { type cylindricalMap; orientation y; origin (7.0 0.0); rGrid lin; Rmax 5.0; rN 10; }
       map2 { type cylindricalMap; rGrid unstruct; bins (2.0 3.0 4.5 5.0); axGrid lin; axMin 0.0; axMax 6.0 axN 24; azimuthalN 8; }
 
-* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+* multiMap, ensemble of multiple 1D maps
 
-  - collNumbers: list of collision numbers (integers) to be used as map bins
+  - maps: list of the names of the maps that will compose the ``multiMap``. This
+    is followed by dictionaries that define the requested maps
 
-Examples: ::
+Example: ::
 
-      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
-
-* weightMap (1D map), divides weight into number of discrete bins
-
-  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
-
-    + min: bottom weight
-    + max: top weight
-    + N: number of bins
-
-  - grid: ``unstruct`` for unstructured grids, to be manually defined
-
-    + bins: array with the explicit definition of the weight bin boundaries to be used
-
-Examples: ::
-
-      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
-      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
-      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
+      map { type multiMap; maps (map1 map2 map10);
+      map1 { <1D map definition> }
+      map2 { <1D map definition> }
+      map10 { <1D map definition> }
+      }
 
 Tally Filters
 #############

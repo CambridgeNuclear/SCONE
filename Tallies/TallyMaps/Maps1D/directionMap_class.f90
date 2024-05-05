@@ -13,20 +13,29 @@ module directionMap_class
   private
 
   !!
-  !! Maps the particle direction in linear bins in the range 0-360 degrees
+  !! Maps the particle direction in linear bins in the range -180 -> 180 degrees (default)
+  !! or boundaries defined by the user
+  !!
+  !! The angle is calculated using as a reference the positive direction of the
+  !! axis x in the 'xy' and 'xz' cases, or y in the 'yz' case
+  !!
+  !! NOTE: the map is built in radians for convenience when using the function atan2, but
+  !!       the user input and the results are in degrees for easy of interpretation
   !!
   !! Interface:
   !!   tallyMap1D interface
   !!
   !! NOTE:
   !!   Behaviour of points exactly at the boundary of bins is undefined.
-  !!   particle can end-up in either of the two
+  !!   Particle can end-up in either of the two
   !!
   !! Sample Dictionary Input:
   !!  directionMap {
   !!    type directionMap;
-  !!    #plane xz;#            // Optional. Default xy
+  !!    #plane xz;#          // Optional. Default xy
   !!    N 10;
+  !!    #min 60;#           // Optional. Default -180
+  !!    #max 120;#          // Optional. Default 180
   !!    }
   !!
   type, public, extends (tallyMap1D) :: directionMap
@@ -55,9 +64,10 @@ contains
   !! See tallyMap for specification.
   !!
   subroutine init(self, dict)
-    class(directionMap), intent(inout)       :: self
-    class(dictionary), intent(in)            :: dict
-    character(nameLen)                       :: type
+    class(directionMap), intent(inout) :: self
+    class(dictionary), intent(in)      :: dict
+    character(nameLen)                 :: type
+    real(defReal)                      :: min, max
     character(100), parameter :: Here = 'init (directionMap_class.f90)'
 
     ! Check orientation of the cylinder
@@ -81,13 +91,28 @@ contains
         self % DIM2 = Y_AXIS
 
       case default
-        call fatalError(Here, 'Keyword orientation must be x, y or z. It is: '//type)
+        call fatalError(Here, 'Keyword orientation must be xy, yz or xz. It is: '//type)
 
     end select
 
-    ! Build grid
+    ! Get grid details
     call dict % get(self % N, 'N')
-    call self % bounds % init(-PI, PI, self % N, 'lin')
+    call dict % getOrDefault(min, 'min', -180.0_defReal)
+    call dict % getOrDefault(max, 'max', 180.0_defReal)
+
+    ! Check boundaries
+    if (min < -180.0_defReal .or. min > 180.0_defReal) then
+      call fatalError(Here, 'Minimum angle must be between -180 and 180 degrees. It is: '//type)
+    end if
+
+    if (max < -180.0_defReal .or. max > 180.0_defReal) then
+      call fatalError(Here, 'Maximum angle must be between -180 and 180 degrees. It is: '//type)
+    end if
+
+    ! Build map in radians
+    min = min*PI/180.0_defReal
+    max = max*PI/180.0_defReal
+    call self % bounds % init(min, max, self % N, 'lin')
 
   end subroutine init
 
@@ -133,11 +158,14 @@ contains
     integer(shortInt)                :: idx
     real(defReal)                    :: x, y, theta
 
+    ! Map the angle
     x = state % dir(self % DIM1)
     y = state % dir(self % DIM2)
 
+    ! Returns angle in radians in the range -PI to PI
     theta = atan2(y,x)
-    ! Search along the azimuthal dimension and return 0 if index is out-of-bounds
+
+    ! Search in the grid return 0 if index is out-of-bounds
     idx = self % bounds % search(theta)
 
     ! Should never happen
@@ -165,11 +193,11 @@ contains
     call out % startArray(name, [2,self % N])
 
     do i = 1, self % N
-      ! Print lower bin boundary
-      call out % addValue(self % bounds % bin(i))
+      ! Print lower bin boundary in degrees
+      call out % addValue(self % bounds % bin(i)/PI*180.0_defReal)
 
-      ! Print upper bin boundar
-      call out % addValue(self % bounds % bin(i + 1))
+      ! Print upper bin boundary in degrees
+      call out % addValue(self % bounds % bin(i + 1)/PI*180.0_defReal)
     end do
 
     call out % endArray()
