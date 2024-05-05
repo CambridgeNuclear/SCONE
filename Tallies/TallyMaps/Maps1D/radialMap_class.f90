@@ -35,10 +35,10 @@ module radialMap_class
   !!
   type, public, extends (tallyMap1D) :: radialMap
     private
-    real(defReal), dimension(:), allocatable     :: origin
     integer(shortInt), dimension(:), allocatable :: axis
-    type(grid)         :: bounds
-    integer(shortInt)  :: N = 0
+    real(defReal), dimension(3) :: origin
+    type(grid)                  :: bounds
+    integer(shortInt)           :: N = 0
 
   contains
     ! Superclass
@@ -74,19 +74,19 @@ contains
 
     select case(type)
       case('x')
-        allocate(self % axis(2), self % origin(2))
+        allocate(self % axis(2))
         self % axis = [Y_AXIS, Z_AXIS]
 
       case('y')
-        allocate(self % axis(2), self % origin(2))
+        allocate(self % axis(2))
         self % axis = [X_AXIS, Z_AXIS]
 
       case('z')
-        allocate(self % axis(2), self % origin(2))
+        allocate(self % axis(2))
         self % axis = [X_AXIS, Y_AXIS]
 
       case('xyz')
-        allocate(self % axis(3), self % origin(3))
+        allocate(self % axis(3))
         self % axis = [X_AXIS, Y_AXIS, Z_AXIS]
         spherical = .true.
 
@@ -102,7 +102,7 @@ contains
       call fatalError(Here, 'Expected 3 values for origin. Got: ' // numToChar(size(temp)))
     end if
 
-    self % origin = temp(self % axis)
+    self % origin = temp
 
     ! Load radial grid information
     if (.not. dict % isPresent('grid')) call fatalError(Here, 'Keyword grid must be present')
@@ -216,7 +216,7 @@ contains
     real(defReal)                    :: r
 
     ! Calculate the distance from the origin
-    r = norm2(state % r(self % axis) - self % origin)
+    r = norm2(state % r(self % axis) - self % origin(self % axis))
 
     ! Search and return 0 if r is out-of-bounds
     idx = self % bounds % search(r)
