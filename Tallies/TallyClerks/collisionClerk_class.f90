@@ -64,7 +64,7 @@ module collisionClerk_class
     integer(shortInt)  :: width = 0
 
     ! Settings
-    logical(defBool)   :: virtual = .true.
+    logical(defBool)   :: handleVirtual = .true.
 
   contains
     ! Procedures used during build
@@ -122,7 +122,7 @@ contains
     self % width = size(responseNames)
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -136,23 +136,23 @@ contains
     call kill_super(self)
 
     ! Kill and deallocate filter
-    if(allocated(self % filter)) then
+    if (allocated(self % filter)) then
       deallocate(self % filter)
     end if
 
     ! Kill and deallocate map
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       call self % map % kill()
       deallocate(self % map)
     end if
 
     ! Kill and deallocate responses
-    if(allocated(self % response)) then
+    if (allocated(self % response)) then
       deallocate(self % response)
     end if
 
     self % width   = 0
-    self % virtual = .true.
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -198,12 +198,12 @@ contains
     integer(shortInt)                     :: binIdx, i
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
-    integer(longInt)                      :: adrr
+    integer(longInt)                      :: addr
     real(defReal)                         :: scoreVal, flux
     character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if ((.not. self % virtual) .and. virtual) return
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Get current particle state
     state = p
@@ -224,7 +224,7 @@ contains
     if (binIdx == 0) return
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
+    if (self % handleVirtual) then
       ! Retrieve tracking cross section from cache
       flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
 
@@ -243,12 +243,12 @@ contains
     end if
 
     ! Calculate bin address
-    adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
+    addr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
     ! Append all bins
     do i = 1,self % width
       scoreVal = self % response(i) % get(p, xsData) * flux
-      call mem % score(scoreVal, adrr + i)
+      call mem % score(scoreVal, addr + i)
 
     end do
 

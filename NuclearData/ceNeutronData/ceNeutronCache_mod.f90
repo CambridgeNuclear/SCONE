@@ -135,7 +135,7 @@ contains
     ! Make sure memory is clean
     call kill()
 
-    ! Chack the provided data
+    ! Check the provided data
     if (nMat < 1) call fatalError(Here,'Number of materials must be +ve! Not: '//numToChar(nMat))
     if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nNuc))
 

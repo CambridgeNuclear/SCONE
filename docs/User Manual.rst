@@ -772,7 +772,7 @@ Materials definition
 The *materials* definition is structured as: ::
 
       materials {
-      <materialName1> { temp <temp1>;
+      <materialName1> { tms <0 or 1>; temp <temp1>;
       composition { <Composition definition> }
       *keywords* }
       <materialName2> { temp <temp2>;
@@ -780,16 +780,19 @@ The *materials* definition is structured as: ::
       *keywords* }
       }
 
-In this case, ``materialName`` can be any name chosen by the user; the keyword ``temp`` 
-activates Target Motion Sampling (TMS) and its entry is the material temperature in [K].
+In this case, ``materialName`` can be any name chosen by the user; the keyword ``tms``
+(*optional*, default = 0) activates Target Motion Sampling (TMS) if set to 1; TMS uses 
+the material temperature defined under ``temp`` [K]. ``temp`` is *optional* unless TMS
+is used.
 
 .. note::
-  The temperature specified by ``temp`` must be higher than the temperatures of the 
-  nuclides in the material composition.
+  When using TMS, the temperature specified by ``temp`` must be higher than the 
+  temperatures of the nuclides in the material composition.
 
 .. note::
   *IMPORTANT*: When using TMS, all the tallies based on the collision estimator have to
-  allow scoring virtual collisions, otherwise the results will be biased
+  allow scoring virtual collisions, otherwise the results will be biased. The tallies
+  based on the track length estimator will be biased too.
 
 The ``composition`` dictionary must always be included, but it can be empty in
 multi-group simulations. In continuous energy simulations, it should include a
@@ -929,7 +932,7 @@ The **tally clerks** determine which kind of estimator will be used. The options
     and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
 
 .. note::
-  If TMS is on, the collisionClerks is biased for results in the TMS materials unless virtual 
+  If TMS is on, the collisionClerk is biased for results in the TMS materials unless virtual 
   collisions are scored (use <handleVirtual 1;>)
 
 * trackClerk
@@ -940,6 +943,9 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+
+.. note::
+  If TMS is on, the trackClerk is biased for results in the TMS materials
 
 Example: ::
 

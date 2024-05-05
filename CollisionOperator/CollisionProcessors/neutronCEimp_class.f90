@@ -64,9 +64,9 @@ module neutronCEimp_class
   !!  UFS     -> uniform fission sites variance reduction
   !!  maxSplit -> maximum number of splits allowed per particle (default = 1000)
   !!  threshE  -> Energy threshold for explicit treatment of target nuclide movement [-].
-  !!              Target movment is sampled if neutron energy E < kT * threshE where
+  !!              Target movement is sampled if neutron energy E < kT * threshE where
   !!              kT is target material temperature in [MeV]. (default = 400.0)
-  !!  threshA  -> Mass threshold for explicit tratment of target nuclide movement [Mn].
+  !!  threshA  -> Mass threshold for explicit treatment of target nuclide movement [Mn].
   !!              Target movment is sampled if target mass A < threshA. (default = 1.0)
   !!  DBRCeMin -> Minimum energy to which DBRC is applied
   !!  DBRCeMax -> Maximum energy to which DBRC is applied
@@ -123,9 +123,6 @@ module neutronCEimp_class
 
     ! Variance reduction requirements
     type(weightWindowsField), pointer :: weightWindowsMap
-
-    ! Useful to store
-    real(defReal) :: eSample
 
   contains
     ! Initialisation procedure
@@ -250,7 +247,7 @@ contains
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Select collision nuclide
-    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, self % eSample)
+    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, p % collisionE)
 
     ! If nuclide was rejected in TMS loop return to tracking
     if (collDat % nucIdx == REJECTED) then
@@ -262,7 +259,7 @@ contains
     if (.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, self % eSample, p % pRNG)
+    call self % nuc % getMicroXSs(microXss, p % collisionE, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -300,7 +297,7 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
+      call self % nuc % getMicroXSs(microXSs, p % collisionE, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
@@ -355,7 +352,7 @@ contains
     if (self % implicitAbsorption) then
 
       if (.not.fiss_and_implicit) then
-        call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
+        call self % nuc % getMicroXSs(microXSs, p % collisionE, p % pRNG)
       end if
 
       sig_scatter  = microXSs % elasticScatter + microXSs % inelasticScatter
@@ -416,7 +413,7 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, self % eSample, p % pRNG)
+      call self % nuc % getMicroXSs(microXSs, p % collisionE, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_fiss   = microXSs % fission
@@ -536,7 +533,7 @@ contains
     character(100),parameter  :: Here =' inelastic (neutronCEimp_class.f90)'
 
     ! Invert inelastic scattering and Get reaction
-    collDat % MT = self % nuc % invertInelastic(self % eSample, p % pRNG)
+    collDat % MT = self % nuc % invertInelastic(p % collisionE, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
 

@@ -64,7 +64,7 @@ module aceNeutronDatabase_class
   !! Public Members:
   !!   nuclides    -> array of aceNeutronNuclides with data
   !!   materials   -> array of ceNeutronMaterials with data
-  !!   Ebounds     -> array with bottom (1) and top (2) energy bound
+  !!   eBounds     -> array with bottom (1) and top (2) energy bound
   !!   majorant    -> unionised majorant cross section
   !!   eGridUnion  -> unionised energy grid
   !!   activeMat   -> array of materials present in the geometry
@@ -82,7 +82,7 @@ module aceNeutronDatabase_class
     type(ceNeutronMaterial),dimension(:),pointer :: materials => null()
     real(defReal), dimension(:), allocatable     :: majorant
     real(defReal), dimension(:), allocatable     :: eGridUnion
-    real(defReal), dimension(2)                  :: Ebounds   = ZERO
+    real(defReal), dimension(2)                  :: eBounds   = ZERO
     integer(shortInt),dimension(:),allocatable   :: activeMat
 
     ! Probability tables data
@@ -141,7 +141,7 @@ contains
       deallocate(self % materials)
     end if
 
-    self % EBounds = ZERO
+    self % eBounds = ZERO
 
     if(allocated(self % activeMat)) deallocate(self % activeMat)
 
@@ -289,13 +289,13 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine energyBounds(self, E_min, E_max)
+  subroutine energyBounds(self, eMin, eMax)
     class(aceNeutronDatabase), intent(in) :: self
-    real(defReal), intent(out)            :: E_min
-    real(defReal), intent(out)            :: E_max
+    real(defReal), intent(out)            :: eMin
+    real(defReal), intent(out)            :: eMax
 
-    E_min = self % Ebounds(1)
-    E_max = self % Ebounds(2)
+    eMin = self % eBounds(1)
+    eMax = self % eBounds(2)
 
   end subroutine energyBounds
 
@@ -342,7 +342,7 @@ contains
 
   !!
   !! Make sure that totalXS of material with matIdx is at energy E
-  !! in ceNeutronChache
+  !! in ceNeutronCache
   !!
   !! See ceNeutronDatabase for more details
   !!
@@ -388,7 +388,7 @@ contains
 
   !!
   !! Make sure that the majorant of ALL Active materials is at energy E
-  !! in ceNeutronChache
+  !! in ceNeutronCache
   !!
   !! See ceNeutronDatabase for more details
   !!
@@ -556,7 +556,7 @@ contains
 
       end if
 
-      ! Update cache, and ensure that
+      ! Update cache, and ensure that the energy indicators are reset to avoid wrong look-ups
       matCache % xss = matCache % xssRel
       matCache % E_tot  = ZERO
       matCache % E_tail = ZERO
@@ -567,7 +567,7 @@ contains
 
   !!
   !! Make sure that totalXS of nuclide with nucIdx is at energy E
-  !! in ceNeutronChache
+  !! in ceNeutronCache
   !!
   !! See ceNeutronDatabase for more details
   !!
@@ -852,14 +852,14 @@ contains
     end do
 
     ! Calculate energy bounds
-    self % Ebounds(1) = self % nuclides(1) % eGrid(1)
+    self % eBounds(1) = self % nuclides(1) % eGrid(1)
     j = size(self % nuclides(1) % eGrid)
-    self % Ebounds(2) = self % nuclides(1) % eGrid(j)
+    self % eBounds(2) = self % nuclides(1) % eGrid(j)
 
     do i = 2, size(self % nuclides)
-      self % Ebounds(1) = max(self % Ebounds(1), self % nuclides(i) % eGrid(1))
+      self % eBounds(1) = max(self % eBounds(1), self % nuclides(i) % eGrid(1))
       j = size(self % nuclides(i) % eGrid)
-      self % Ebounds(2) = min(self % Ebounds(2), self % nuclides(i) % eGrid(j))
+      self % eBounds(2) = min(self % eBounds(2), self % nuclides(i) % eGrid(j))
     end do
 
     ! Build Material definitions
@@ -869,7 +869,7 @@ contains
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
-      ! Find if material if fissile and useful energy limits
+      ! Find if material is fissile
       isFissileMat = .false.
       ! Loop over nuclides
       do j = 1, size(mat % nuclides)
@@ -896,8 +896,8 @@ contains
                                       fissile  = isFissileMat )
       call self % materials(i) % setComposition( mat % dens, nucIdxs(1:size(mat % nuclides)))
 
-      eUpSab  = self % Ebounds(1)
-      eLowURR = self % Ebounds(2)
+      eUpSab  = self % eBounds(1)
+      eLowURR = self % eBounds(2)
 
       if (mat % hasTMS) then
 
@@ -932,7 +932,7 @@ contains
             alpha = 4.0_defReal * sqrt( deltakT / (eLowUrrNuc * A) )
             eLower = eLowUrrNuc * (ONE - alpha) * (ONE - alpha)
           else
-            eLower = self % Ebounds(2)
+            eLower = self % eBounds(2)
           end if
 
           eUpSab  = max(eUpSab, eUpper)
@@ -943,7 +943,7 @@ contains
       end if
 
       ! Load data into material
-      call self % materials(i) % set( eUpperSab = eUpSab, eLowerURR = eLowURR)
+      call self % materials(i) % set(eUpperSab = eUpSab, eLowerURR = eLowURR)
 
     end do
 
@@ -1150,7 +1150,7 @@ contains
 
     ! Allocate temporary grid vector and initialise to largest value allowed
     allocate(tmpGrid(sizeGrid))
-    tmpGrid = self % EBounds(2)
+    tmpGrid = self % eBounds(2)
 
     ! Loop over the energy grid
     i = 1
@@ -1175,7 +1175,7 @@ contains
         eNuc = self % nuclides(nucIdx) % eGrid(eIdx)
 
         ! Check if the energy from the nuclide grid is out of bounds
-        if (eNuc < self % EBounds(1) .or. eNuc > self % EBounds(2)) then
+        if (eNuc < self % eBounds(1) .or. eNuc > self % eBounds(2)) then
           j = nucSet % next(j)
           cycle
         end if
@@ -1293,8 +1293,8 @@ contains
       E = self % eGridUnion(i)
 
       ! Correct for energies higher or lower than the allowed boundaries
-      if (E < self % EBounds(1)) E = self % EBounds(1)
-      if (E > self % EBounds(2)) E = self % EBounds(2)
+      if (E < self % eBounds(1)) E = self % eBounds(1)
+      if (E > self % eBounds(2)) E = self % eBounds(2)
 
       ! Initialise majorant value for this energy
       maj = ZERO

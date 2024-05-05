@@ -632,9 +632,7 @@ contains
       E  = self % eGrid(idx)
 
       ! Compare cross sections and possibly update majorant
-      if (xs > maj) then
-        maj = xs
-      end if
+      xs = max(xs, maj)
 
       ! Exit loop after getting to the upper energy limit
       if (E >= eUpper) exit majorantLoop
@@ -850,11 +848,11 @@ contains
 
     ! Calculate Inelastic scattering XS
     do i = 1,self % nMT
-      do j=1,size(self % mainData, 2)
+      do j = 1,size(self % mainData, 2)
         ! Find bottom and Top of the grid
         bottom = self % MTdata(i) % firstIdx
         top    = size(self % MTdata(i) % xs)
-        if( j>= bottom .and. j <= top + bottom) then
+        if (j>= bottom .and. j <= top + bottom) then
           self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
                                              self % MTdata(i) % xs(j-bottom + 1)
         end if
@@ -862,7 +860,7 @@ contains
     end do
 
     ! Recalculate totalXS
-    if(self % isFissile()) then
+    if (self % isFissile()) then
       K = FISSION_XS
     else
       K = CAPTURE_XS
@@ -879,7 +877,7 @@ contains
     call self % idxMT % add(N_N_ELASTIC, -ESCATTER_XS)
     call self % idxMT % add(N_DISAP, -CAPTURE_XS)
 
-    if(self % isFissile()) then
+    if (self % isFissile()) then
       call self % idxMT % add(N_FISSION, -FISSION_XS)
     end if
 

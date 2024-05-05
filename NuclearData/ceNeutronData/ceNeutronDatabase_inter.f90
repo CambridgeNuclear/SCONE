@@ -45,7 +45,8 @@ module ceNeutronDatabase_inter
   !!   updateMacroXSs     -> update Macroscopic XSs for a selected material
   !!   updateTotalXS      -> update Total XS for a selected nuclide
   !!   updateMicroXSs     -> update Microscopic XSs for a selected nuclide
-  !!   getScattMicroMajXS -> returns elastic scattering microscopic xs majorant
+  !!   getScattMicroMajXS -> returns nuclide elastic scattering temperature majorant (for DBRC)
+  !!   updateTotalTempNucXS -> returns nuclide total temperature majorant (for TMS)
   !!
   type, public, abstract, extends(nuclearDatabase) :: ceNeutronDatabase
     type(intMap) :: mapDBRCnuc
@@ -71,21 +72,21 @@ module ceNeutronDatabase_inter
     !!
     !! Return energy bounds for data in the database
     !!
-    !! E_min and E_max are minimun and maximumum energy such that data
+    !! eMin and eMax are minimun and maximumum energy such that data
     !! for ALL nuclides if avalible
     !!
     !! Args:
-    !!   E_min [out] -> minimum value of energy [MeV]
-    !!   E_max [out] -> maximum value of energy [MeV]
+    !!   eMin [out] -> minimum value of energy [MeV]
+    !!   eMax [out] -> maximum value of energy [MeV]
     !!
     !! Errors:
     !!   None
     !!
-    subroutine energyBounds(self, E_min, E_max)
+    subroutine energyBounds(self, eMin, eMax)
       import :: ceNeutronDatabase, defReal
       class(ceNeutronDatabase), intent(in) :: self
-      real(defReal), intent(out)           :: E_min
-      real(defReal), intent(out)           :: E_max
+      real(defReal), intent(out)           :: eMin
+      real(defReal), intent(out)           :: eMax
     end subroutine energyBounds
 
     !!
@@ -206,7 +207,7 @@ module ceNeutronDatabase_inter
     !!
     !! Args:
     !!   E [in]      -> required energy [MeV]
-    !!   kT [in]     -> Thermal energy of TMS material
+    !!   kT [in]     -> thermal energy of TMS material
     !!   nucIdx [in] -> material index that needs to be updated
     !!
     !! Errors:

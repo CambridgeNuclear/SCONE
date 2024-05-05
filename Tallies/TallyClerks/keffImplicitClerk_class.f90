@@ -35,7 +35,7 @@ module keffImplicitClerk_class
                                   K_EFF        = 4     ! k-eff estimate
   !!
   !! A simple implicit k-eff estimator based on collison estimator of reaction rates,
-  !! and an analog estimators of (N,XN) reactions and leakage
+  !! and on analog estimators of (N,XN) reactions and leakage
   !!
   !! Private Members:
   !!   targetSTD -> Target Standard Deviation for convergance check
@@ -56,7 +56,7 @@ module keffImplicitClerk_class
     private
     real(defReal)    :: targetSTD = ZERO
     ! Settings
-    logical(defBool) :: virtual = .true.
+    logical(defBool) :: handleVirtual = .true.
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -106,7 +106,7 @@ contains
     end if
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -121,7 +121,7 @@ contains
 
     ! Kill self
     self % targetSTD = ZERO
-    self % virtual   = .true.
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -169,7 +169,7 @@ contains
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if ((.not. self % virtual) .and. virtual) return
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
@@ -184,7 +184,7 @@ contains
     call mat % getMacroXSs(xss, p)
 
     ! Calculate flux
-    if (self % virtual) then
+    if (self % handleVirtual) then
       ! Retrieve tracking cross section from cache
       flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
     else
@@ -253,7 +253,7 @@ contains
     type(scoreMemory), intent(inout)        :: mem
     real(defReal)                           :: histWgt
 
-    if( p % fate == leak_FATE) then
+    if (p % fate == leak_FATE) then
       ! Obtain and score history weight
       histWgt = p % w
 
@@ -276,7 +276,7 @@ contains
     integer(longInt)                        :: addr
     real(defReal)                           :: nuFiss, absorb, leakage, scatterMul, k_est
 
-    if( mem % lastCycle()) then
+    if (mem % lastCycle()) then
       addr = self % getMemAddress()
       nuFiss     = mem % getScore(addr + IMP_PROD)
       absorb     = mem % getScore(addr + IMP_ABS)

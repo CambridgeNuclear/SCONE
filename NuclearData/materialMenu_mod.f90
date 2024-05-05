@@ -292,8 +292,13 @@ contains
     self % name = name
     self % matIdx = idx
 
-    ! If material temperature is present TMS is switched on
-    if (dict % isPresent('temp')) self % hasTMS = .true.
+    ! Check TMS flag and read temperature
+    call dict % getOrDefault(self % hasTMS, 'tms', .false.)
+
+    if (self % hasTMS .and. .not. dict % isPresent('temp')) then
+      call fatalError(Here, 'The material temperature must be specified when TMS is on')
+    end if
+
     call dict % getOrDefault(self % T, 'temp', ZERO)
 
     ! Get composition dictionary and load composition

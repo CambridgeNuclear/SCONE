@@ -114,7 +114,7 @@ contains
     class(particleDungeon),intent(inout)     :: nextCycle
     type(collisionData)                      :: collDat
     logical(defBool)                         :: virtual
-    integer(shortInt)                        :: thisCollision
+    integer(shortInt)                        :: addCollision
     character(100),parameter                 :: Here = 'collide (collisionProcessor.f90)'
 
     ! Load material index into data package
@@ -126,10 +126,10 @@ contains
     ! In case of a TMS rejection, set collision as virtual
     if (collDat % MT == noInteraction) then
       virtual = .true.
-      thisCollision = 0
+      addCollision = 0
     else
       virtual = .false.
-      thisCollision = 1
+      addCollision = 1
     end if
 
     ! Report in-collision & save pre-collison state
@@ -169,7 +169,7 @@ contains
     call self % cutoffs(p, tally, collDat, thisCycle, nextCycle)
 
     ! Update particle collision counter
-    p % collisionN = p % collisionN + thisCollision
+    p % collisionN = p % collisionN + addCollision
 
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)

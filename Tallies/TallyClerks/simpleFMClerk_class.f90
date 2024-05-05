@@ -66,7 +66,7 @@ module simpleFMClerk_class
     real(defReal),dimension(:),allocatable :: startWgt
     integer(shortInt)                      :: N = 0 !! Number of bins
     ! Settings
-    logical(defBool) :: virtual = .true.
+    logical(defBool) :: handleVirtual = .true.
 
   contains
     ! Procedures used during build
@@ -131,7 +131,7 @@ contains
     call self % resp % build(macroNuFission)
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .true.)
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -202,10 +202,10 @@ contains
     integer(shortInt)                    :: sIdx, cIdx
     integer(longInt)                     :: addr
     real(defReal)                        :: score, flux
-    character(100), parameter :: Here = 'reportInColl simpleFMClear_class.f90'
+    character(100), parameter :: Here = 'reportInColl simpleFMClerk_class.f90'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if ((.not. self % virtual) .and. virtual) return
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
@@ -220,7 +220,7 @@ contains
     if (.not. mat % isFissile()) return
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
+    if (self % handleVirtual) then
       ! Retrieve tracking cross section from cache
       flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
 
@@ -265,7 +265,7 @@ contains
 
     if (mem % lastCycle()) then
       ! Set address to the start of Fission Matrix
-      ! Decrease by 1 to get correct addres on the fisrt iteration of the loop
+      ! Decrease by 1 to get correct address on the first iteration of the loop
       addrFM  = self % getMemAddress() - 1
 
       ! Normalise and accumulate estimates
@@ -415,7 +415,7 @@ contains
     if (allocated(self % startWgt)) deallocate(self % startWgt)
 
     self % N = 0
-    self % virtual = .true.
+    self % handleVirtual = .true.
 
     call self % resp % kill()
 

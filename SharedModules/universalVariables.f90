@@ -78,7 +78,7 @@ module universalVariables
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal,   & ! Neutron mass in MeV/c^2
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
-                              kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztman constant in J/K
+                              kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
                               energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion

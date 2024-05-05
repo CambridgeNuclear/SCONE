@@ -115,7 +115,7 @@ contains
     Y = sqrt(A*E/kT)
 
     ! Calculate threshold factor alpha
-    alpha = TWO/(Y*sqrt(PI) + TWO)
+    alpha = TWO / (Y * SQRT_PI + TWO)
 
     rejectionLoop: do
 
@@ -127,7 +127,7 @@ contains
 
     end do rejectionLoop
 
-    ! Calculate azimithal angle for target and obtain target direction
+    ! Calculate azimuthal angle for target and obtain target direction
     r1 = rand % get()
     phi = TWO * PI * r1
 
@@ -166,7 +166,7 @@ contains
 
     ! Calculate threshold factor alpha
     ! In MCNP, alpha is p1
-    alpha = 2.0 / (Y * sqrt(PI) + 2.0)
+    alpha = TWO / (Y * SQRT_PI + TWO)
 
     rejectionLoop: do
 
@@ -193,7 +193,7 @@ contains
 
     end do rejectionLoop
 
-    ! Calculate azimithal angle for target and obtain target direction
+    ! Calculate azimuthal angle for target and obtain target direction
     r2 = rand % get()
     phi = 2.0 * PI * r2
 
@@ -225,7 +225,7 @@ contains
     Y = sqrt(A*E/kT)
 
     ! Calculate threshold factor alpha
-    alpha = TWO/(Y*sqrt(PI) + TWO)
+    alpha = TWO / (Y * SQRT_PI + TWO)
 
     rejectionLoop: do
 
@@ -265,7 +265,7 @@ contains
     else if (alpha > 2.568) then
       g = ONE + HALF * invAlph * invAlph
     else
-      g = (ONE + HALF * invAlph * invAlph) * ERF(alpha) + EXP(-alpha * alpha) * invAlph / sqrt(PI)
+      g = (ONE + HALF * invAlph * invAlph) * erf(alpha) + exp(-alpha * alpha) * invAlph / SQRT_PI
     end if
 
   end function dopplerCorrectionFactor

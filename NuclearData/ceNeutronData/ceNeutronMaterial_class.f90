@@ -133,7 +133,7 @@ contains
   !!   nucIdxs [in] -> correpsonding array with nucIdxs
   !!
   !! Errors:
-  !!   FatalError if arrays have diffrent size
+  !!   FatalError if arrays have different size
   !!   FatalError if dens contains -ve values
   !!   FatalError if dens has size of 0 -> no composition
   !!
@@ -144,7 +144,7 @@ contains
     character(100), parameter :: Here = 'setComposition (ceNeutronMaterial_class.f90)'
 
     ! Check input
-    if (size(dens) /= size(nucIdxs)) call fatalError(Here,'Diffrent sizes of density and nuclide vector')
+    if (size(dens) /= size(nucIdxs)) call fatalError(Here,'Different sizes of density and nuclide vector')
     if (any(dens < ZERO)) call fatalError(Here,'-ve nuclide densities are present')
     if (size(dens) == 0)  call fatalError(Here,'Empty composition is not allowed')
 
@@ -229,7 +229,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   .TRUE. if fissile, .FALSE. otherwise
+  !!   .true. if fissile, .false. otherwise
   !!
   !! Errors:
   !!   None
@@ -250,7 +250,7 @@ contains
   !!   E [in] -> test energy
   !!
   !! Result:
-  !!   .TRUE. if conditions for using TMS are satisfied, .FALSE. otherwise
+  !!   .true. if conditions for using TMS are satisfied, .false. otherwise
   !!
   !! Errors:
   !!   None
@@ -273,7 +273,7 @@ contains
   !! Args:
   !!   E [in]       -> incident energy [MeV]
   !!   rand [inout] -> random number generator
-  !!   nucIdx [out] -> sampler nuclide index
+  !!   nucIdx [out] -> sampled nuclide index
   !!   eOut [out]   -> energy used for the TMS rejection sampling
   !!
   !! Errors:
@@ -312,7 +312,7 @@ contains
 
           ! If the material is using TMS, the nuclide temperature majorant is needed
           nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
-          if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+          if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
           nuckT = nuc % getkT()
           deltakT = self % kT - nuckT
@@ -383,7 +383,7 @@ contains
   !!
   !! Sample fission nuclide given that a fission neutron was produced
   !!
-  !! Basicly samples from P(nucIdx| fission neutron produced in material)
+  !! Basically samples from P(nucIdx| fission neutron produced in material)
   !! Useful when generating fission sites
   !!
   !! As such it uses nu*sigma_f
@@ -433,9 +433,8 @@ contains
       ! If the material uses TMS, the Doppler correction factor is needed
       if (self % useTMS(E)) then
 
-        ! If the material is using TMS, the Doppler correction factor is needed
         nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
-        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()
@@ -506,7 +505,7 @@ contains
 
         ! If the material is using TMS, the Doppler correction factor is needed
         nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
-        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()
@@ -579,7 +578,7 @@ contains
 
         ! If the material is using TMS, the Doppler correction factor is needed
         nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
-        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+        if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()

@@ -156,7 +156,7 @@ module ceNeutronNuclide_inter
 
     !!
     !! Function that checks whether this nuclide at the provided energy should
-    !! has S(a,b) elastic scattering data or not
+    !! have S(a,b) elastic scattering data or not
     !!
     !! Args:
     !!   E [in] -> incident neutron energy
