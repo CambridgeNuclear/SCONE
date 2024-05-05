@@ -37,6 +37,7 @@ module particle_class
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
   !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
   !!   collisionN -> Number of collisions the particle went through
+  !!   collisionE -> Energy of the collision; useful for TMS: could be relative energy
   !!
   !! Interface:
   !!   assignemnt(=)  -> Build particleState from particle
@@ -56,6 +57,7 @@ module particle_class
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
+    real(defReal)              :: collisionE = ZERO ! Collision energy
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -65,6 +67,7 @@ module particle_class
 
     ! Private procedures
     procedure,private :: equal_particleState
+
   end type particleState
 
 !  !!
@@ -111,6 +114,7 @@ module particle_class
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
+    real(defReal)              :: collisionE = ZERO ! Collision energy
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -274,6 +278,7 @@ contains
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
     LHS % collisionN            = RHS % collisionN
+    LHS % collisionE            = RHS % collisionE
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
 
   end subroutine particle_fromParticleState
@@ -618,6 +623,7 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
+    LHS % collisionE = RHS % collisionE
 
   end subroutine particleState_fromParticle
 
@@ -641,6 +647,7 @@ contains
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
+    isEqual = isEqual .and. LHS % collisionE == RHS % collisionE
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -708,6 +715,7 @@ contains
     self % cellIdx  = -1
     self % uniqueID = -1
     self % collisionN = 0
+    self % collisionE = ZERO
 
   end subroutine kill_particleState
 
