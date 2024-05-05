@@ -20,7 +20,6 @@ module surfaceFactory_func
   implicit none
   private
 
-  ! ** ADD NAME OF NEW SURFACE TO THE LIST **!
   ! List that contains all accaptable types of surfaces
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
   character(nameLen), dimension(*), parameter :: AVAILABLE_SURFACE = ['xPlane         ',&
@@ -71,7 +70,6 @@ contains
     call dict % get(type, 'type')
 
     ! Allocate approperiate subclass
-    ! *** FOR NEW SURFACE ADD CASE STATEMENT HERE ***!
     select case (type)
       case ('xPlane', 'yPlane', 'zPlane')
         allocate (aPlane :: new)
@@ -101,6 +99,7 @@ contains
         print '(A)' , ' AVAILABLE SURFACES: '
         print '(A)' , AVAILABLE_SURFACE
         call fatalError(Here, 'Unrecognised type of a surface: '//trim(type))
+
       end select
 
       ! Initialise surface

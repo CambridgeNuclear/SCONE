@@ -19,6 +19,11 @@ module geometryStd_class
   private
 
   !!
+  !! Public Pointer Cast
+  !!
+  public :: geometryStd_CptrCast
+
+  !!
   !! Standard Geometry Model
   !!
   !! Typical geometry of a MC Neutron Transport code composed of multiple nested
@@ -572,5 +577,28 @@ contains
     end do
   end subroutine closestDist_cache
 
+  !!
+  !! Cast geometry pointer to geometryStd class pointer
+  !!
+  !! Args:
+  !!   source [in]    -> source pointer of class geometry
+  !!
+  !! Result:
+  !!   Null if source is not of geometryStd class
+  !!   Target points to source if source is geometryStd class
+  !!
+  pure function geometryStd_CptrCast(source) result(ptr)
+    class(geometry), pointer, intent(in) :: source
+    class(geometryStd), pointer          :: ptr
+
+    select type(source)
+      class is(geometryStd)
+        ptr => source
+
+      class default
+        ptr => null()
+    end select
+
+  end function geometryStd_CptrCast
 
 end module geometryStd_class

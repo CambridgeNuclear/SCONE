@@ -44,7 +44,7 @@ module testNeutronDatabase_class
     ! Superclass Interface
     procedure :: init
     procedure :: activate
-    procedure :: getTransMatXS
+    procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -153,28 +153,30 @@ contains
   !!
   !! See nuclearDatabase_inter for details
   !!
-  subroutine activate(self, activeMat)
+  subroutine activate(self, activeMat, silent)
     class(testNeutronDatabase), intent(inout)   :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
+    logical(defBool), optional, intent(in)      :: silent
 
     ! Do nothing
 
   end subroutine activate
 
   !!
-  !! Return value of Material Transport XS for a particle
+  !! Return value of Tracking XS for a particle and a given request
   !!
   !! See nuclearDatabase_inter for details
   !!
-  function getTransMatXS(self, p, matIdx) result(xs)
+  function getTrackingXS(self, p, matIdx, what) result(xs)
     class(testNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)               :: p
     integer(shortInt), intent(in)             :: matIdx
+    integer(shortInt), intent(in)             :: what
     real(defReal)                             :: xs
 
     xs = self % xsVal
 
-  end function getTransMatXS
+  end function getTrackingXS
 
   !!
   !! Return value of Material Total XS for a particle

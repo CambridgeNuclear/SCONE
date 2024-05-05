@@ -106,6 +106,7 @@ viz {
     centre (0.0 0.0 0.0);
     //width (25.0 25.0);
     axis z;
+    offset -17;
     res (500 500);
   }
 }
@@ -113,13 +114,14 @@ viz {
 
 nuclearData {
   handles {
-    ce {type aceNeutronDatabase; aceLibrary /home/mak60/myACE/JEF311.aceXS;}
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
   }
   materials {
-    numberOfGroups 69;
 
     water {
       temp 75675;
+      rgb (0 0 139); // Colour of water is dark blue
+      moder { 1001.03 h-h2o.42; }
       composition {
       1001.03    6.700E-002;
       8016.03    3.350E-002;

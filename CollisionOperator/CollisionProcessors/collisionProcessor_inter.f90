@@ -86,13 +86,15 @@ module collisionProcessor_inter
     !! Procedure interface for all customisable actions associated with
     !! processing of sollision event (scatter, fission etc.)
     !!
-    subroutine collisionAction(self, p, collDat, thisCycle, nextCycle)
+    subroutine collisionAction(self, p, tally, collDat, thisCycle, nextCycle)
       import :: collisionProcessor, &
                 collisionData, &
+                tallyAdmin, &
                 particle,&
                 particleDungeon
       class(collisionProcessor), intent(inout) :: self
       class(particle), intent(inout)           :: p
+      type(tallyAdmin), intent(inout)          :: tally
       type(collisionData), intent(inout)       :: collDat
       class(particleDungeon),intent(inout)     :: thisCycle
       class(particleDungeon),intent(inout)     :: nextCycle
@@ -104,7 +106,7 @@ contains
   !!
   !! Generic flow of collision processing
   !!
-  subroutine collide(self, p, tally ,thisCycle, nextCycle)
+  subroutine collide(self, p, tally, thisCycle, nextCycle)
     class(collisionProcessor), intent(inout) :: self
     class(particle), intent(inout)           :: p
     type(tallyAdmin), intent(inout)          :: tally
@@ -118,30 +120,32 @@ contains
 
     ! Report in-collision & save pre-collison state
     ! Note: the ordering must not be changed between feeding the particle to the tally
-    ! and updating the particle's preCollision state, otherwise this may cause certain 
+    ! and updating the particle's preCollision state, otherwise this may cause certain
     ! tallies (e.g., collisionProbability) to return dubious results
-    call tally % reportInColl(p)
+
+    call tally % reportInColl(p, .false.)
+
     call p % savePreCollision()
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
-    call self % sampleCollision(p, collDat, thisCycle, nextCycle)
+    call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)
 
     ! Perform implicit treatment
-    call self % implicit(p, collDat, thisCycle, nextCycle)
+    call self % implicit(p, tally, collDat, thisCycle, nextCycle)
 
     ! Select physics to be processed based on MT number
     select case(collDat % MT)
       case(N_N_elastic, macroAllScatter)
-        call self % elastic(p, collDat, thisCycle, nextCycle)
+        call self % elastic(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_N_inelastic, macroIEScatter)
-        call self % inelastic(p, collDat, thisCycle, nextCycle)
+        call self % inelastic(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_DISAP, macroCapture)
-        call self % capture(p, collDat, thisCycle, nextCycle)
+        call self % capture(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_FISSION, macroFission)
-        call self % fission(p, collDat, thisCycle, nextCycle)
+        call self % fission(p, tally, collDat, thisCycle, nextCycle)
 
       case(noInteraction)
         ! Do nothing
@@ -152,7 +156,10 @@ contains
     end select
 
     ! Apply post collision implicit treatments
-    call self % cutoffs(p, collDat, thisCycle, nextCycle)
+    call self % cutoffs(p, tally, collDat, thisCycle, nextCycle)
+
+    ! Update particle collision counter
+    p % collisionN = p % collisionN + 1
 
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)

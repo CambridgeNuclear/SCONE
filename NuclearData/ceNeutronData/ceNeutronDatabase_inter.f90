@@ -1,10 +1,12 @@
 module ceNeutronDatabase_inter
 
   use numPrecision
+  use universalVariables
   use genericProcedures, only : fatalError
   use RNG_class,         only : RNG
   use particle_class,    only : particle, P_NEUTRON, printType
   use charMap_class,     only : charMap
+  use intMap_class,      only : intMap
 
   ! Nuclear Data Handles
   use nuclideHandle_inter,   only : nuclideHandle
@@ -13,7 +15,7 @@ module ceNeutronDatabase_inter
   use nuclearDatabase_inter, only : nuclearDatabase
 
   ! Cache
-  use ceNeutronCache_mod,    only : materialCache, majorantCache
+  use ceNeutronCache_mod,    only : materialCache, majorantCache, trackingCache
 
   implicit none
   private
@@ -32,30 +34,36 @@ module ceNeutronDatabase_inter
   !! It is also used by material and nuclide handles for CE Neutron data to order an
   !! update of XSs on the cache
   !!
+  !! Public Members:
+  !!   mapDBRCnuc -> map to link indexes of DBRC nuclides with their corresponding 0K
+  !!
   !! Interface:
   !!   nuclearDatabase Interface
-  !!   energyBounds     -> return maximum and minimum energy
-  !!   updateTotalMatXS -> update Total Material XS on CE Neutron Cache
-  !!   updateMajorantXS -> update Majorant XS on CE Neutron Cache
-  !!   updateMacroXSs   -> update Macroscopic XSs for a selected material
-  !!   updateTotalXS    -> update Total XS for a selected nuclide
-  !!   updateMicroXSs   -> update Microscopic XSs for a selected nuclide
+  !!   energyBounds       -> return maximum and minimum energy
+  !!   updateTotalMatXS   -> update Total Material XS on CE Neutron Cache
+  !!   updateMajorantXS   -> update Majorant XS on CE Neutron Cache
+  !!   updateMacroXSs     -> update Macroscopic XSs for a selected material
+  !!   updateTotalXS      -> update Total XS for a selected nuclide
+  !!   updateMicroXSs     -> update Microscopic XSs for a selected nuclide
+  !!   getScattMicroMajXS -> returns elastic scattering microscopic xs majorant
   !!
   type, public, abstract, extends(nuclearDatabase) :: ceNeutronDatabase
+    type(intMap) :: mapDBRCnuc
 
   contains
     ! nuclearDatabase Interface Implementation
-    procedure :: getTransMatXS
+    procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
 
     ! Procedures implemented by a specific CE Neutron Database
-    procedure(updateTotalMatXS),deferred :: updateTotalMatXS
-    procedure(updateMajorantXS),deferred :: updateMajorantXS
-    procedure(updateMacroXSs),deferred   :: updateMacroXSs
-    procedure(updateTotalXS),deferred    :: updateTotalNucXS
-    procedure(updateMicroXSs),deferred   :: updateMicroXSs
-    procedure(energyBounds),deferred     :: energyBounds
+    procedure(updateTotalMatXS),deferred   :: updateTotalMatXS
+    procedure(updateMajorantXS),deferred   :: updateMajorantXS
+    procedure(updateMacroXSs),deferred     :: updateMacroXSs
+    procedure(updateTotalXS),deferred      :: updateTotalNucXS
+    procedure(updateMicroXSs),deferred     :: updateMicroXSs
+    procedure(energyBounds),deferred       :: energyBounds
+    procedure(getScattMicroMajXS),deferred :: getScattMicroMajXS
   end type ceNeutronDatabase
 
   abstract interface
@@ -98,7 +106,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalMatXS
 
     !!
@@ -118,7 +126,7 @@ module ceNeutronDatabase_inter
       import :: ceNeutronDatabase, defReal, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMajorantXS
 
     !!
@@ -140,7 +148,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMacroXSs
 
     !!
@@ -162,7 +170,7 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalXS
 
     !!
@@ -184,29 +192,80 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
-      class(RNG), intent(inout)            :: rand
+      class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMicroXSs
-  end interface
 
+    !!
+    !! Subroutine to get the elastic scattering majorant cross section in a nuclide
+    !! over a certain energy range, defined as a function of a given temperature
+    !!
+    !! NOTE: This function is called by the collision operator to apply DBRC; nucIdx
+    !!       should correspond to a nuclide with temperature 0K, while kT is the
+    !!       temperature of the target nuclide the neutron is colliding with
+    !!
+    !! Args:
+    !!   A  [in]   -> Nuclide atomic weight ratio
+    !!   kT [in]   -> Thermal energy of nuclide
+    !!   E  [in]   -> Energy of neutron incident to target for which majorant needs to be found
+    !!   maj [out] -> Majorant cross section
+    !!
+    function getScattMicroMajXS(self, E, kT, A, nucIdx) result(maj)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      real(defReal), intent(in)            :: kT
+      real(defReal), intent(in)            :: A
+      integer(shortInt), intent(in)        :: nucIdx
+      real(defReal)                        :: maj
+    end function getScattMicroMajXS
+
+  end interface
 contains
 
   !!
-  !! Return transport XS for material matIdx
+  !! Return tracking XS requested
   !!
   !! See nuclearDatabase_inter for details!
   !!
   !! Error:
   !!   fatalError if particle is not CE Neutron
   !!
-  function getTransMatXS(self, p, matIdx) result(xs)
+  function getTrackingXS(self, p, matIdx, what) result(xs)
     class(ceNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)             :: p
     integer(shortInt), intent(in)           :: matIdx
+    integer(shortInt), intent(in)           :: what
     real(defReal)                           :: xs
+    character(100),parameter :: Here = 'getTrackingXS (ceNeutronDatabase_inter.f90)'
 
-    xs = self % getTotalMatXS(p, matIdx)
+    ! Process request
+    select case(what)
 
-  end function getTransMatXS
+      case (MATERIAL_XS)
+        xs = self % getTotalMatXS(p, matIdx)
+
+      case (MAJORANT_XS)
+        xs = self % getMajorantXS(p)
+
+      case (TRACKING_XS)
+
+        ! READ ONLY - read from previously updated cache
+        if (p % E == trackingCache(1) % E) then
+          xs = trackingCache(1) % xs
+        else
+          call fatalError(Here, 'Tracking cache failed to update during tracking')
+        end if
+
+      case default
+        call fatalError(Here, 'Neither material xs nor majorant xs was asked')
+
+    end select
+
+    ! Update Cache
+    trackingCache(1) % E  = p % E
+    trackingCache(1) % xs = xs
+
+  end function getTrackingXS
 
   !!
   !! Return Total XS for matIdx
@@ -224,12 +283,12 @@ contains
     character(100),parameter :: Here = 'getTotalMatXS (ceNeutronDatabase_inter.f90)'
 
     ! Check dynamic type of the particle
-    if(p % isMG .or. p % type /= P_NEUTRON) then
+    if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check Cache and update if needed
-    if(materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total
@@ -251,12 +310,12 @@ contains
     character(100),parameter :: Here = 'getMajorantXS (ceNeutronDatabase_inter.f90)'
 
     ! Check dynamic type of the particle
-    if(p % isMG .or. p % type /= P_NEUTRON) then
+    if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check Cache and update if needed
-    if(majorantCache(1) % E /= p % E) call self % updateMajorantXS(p % E, p % pRNG)
+    if (majorantCache(1) % E /= p % E) call self % updateMajorantXS(p % E, p % pRNG)
 
     ! Return Cross-Section
     xs = majorantCache(1) % xs
@@ -287,5 +346,5 @@ contains
 
   end function ceNeutronDatabase_CptrCast
 
-    
+
 end module ceNeutronDatabase_inter

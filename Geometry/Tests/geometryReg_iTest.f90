@@ -7,9 +7,10 @@ module geometryReg_iTest
   use geometry_inter,    only : geometry
   use field_inter,       only : field
   use materialMenu_mod,  only : mm_init => init, mm_kill => kill
-  use geometryReg_mod,   only : gr_addGeom => addGeom, gr_geomIdx => geomIdx, gr_geomPtr => geomPtr,&
-                                gr_addField => addField, gr_fieldIdx => fieldIdx, &
-                                gr_fieldPtr => fieldPtr, gr_kill => kill
+  use geometryReg_mod,   only : gr_geomIdx => geomIdx, gr_geomPtr => geomPtr,&
+                                gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, gr_kill => kill
+  use geometryFactory_func, only : new_geometry
+  use fieldFactory_func,    only : new_field
   use pfUnit_mod
   implicit none
 
@@ -73,7 +74,7 @@ contains
     ! Build 10 instances of geometry
     do i = 1, 10
       name = 'geom'//numToChar(i)
-      call gr_addGeom(name, dict, silent=.true.)
+      call new_geometry(dict, name, silent=.true.)
     end do
 
     ! Get some indexes
@@ -111,7 +112,7 @@ contains
     ! Build 10 instances of fields
     do i = 1, 10
       name = 'field'//numToChar(i)
-      call gr_addField(name, dict)
+      call new_field(dict, name)
     end do
 
     ! Get some indexes

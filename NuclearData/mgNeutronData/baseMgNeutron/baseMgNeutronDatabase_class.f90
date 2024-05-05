@@ -2,7 +2,9 @@ module baseMgNeutronDatabase_class
 
   use numPrecision
   use endfConstants
-  use genericProcedures,  only : fatalError, numToChar
+  use universalVariables
+  use errors_mod,         only : fatalError
+  use genericProcedures,  only : numToChar
   use particle_class,     only : particle
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
@@ -20,6 +22,10 @@ module baseMgNeutronDatabase_class
   ! baseMgNeutron Objects
   use baseMgNeutronMaterial_class, only : baseMgNeutronMaterial
 
+  ! Cache
+  use mgNeutronCache_mod,           only : materialCache, trackingCache, &
+                                           cache_init => init
+
   implicit none
   private
 
@@ -32,11 +38,18 @@ module baseMgNeutronDatabase_class
   !!
   !! Basic type of MG nuclear Data for neutrons
   !!
-  !! All materials in aproblem are baseMgMaterials. See its documentation for
+  !! All materials in a problem are baseMgMaterials. See its documentation for
   !! details on how the physics is handled
+  !!
+  !! Sample input dictionary:
+  !!   nucData {
+  !!     type baseMgNeutronDatabase;
+  !!     PN P0;                        // or P1
+  !!   }
   !!
   !! Public Members:
   !!   mats       -> array containing all defined materials (by matIdx)
+  !!   majorant   -> majorant xs for delta tracking
   !!   activeMats -> list of matIdxs of materials active in the problem
   !!
   !! Interface:
@@ -44,12 +57,12 @@ module baseMgNeutronDatabase_class
   !!
   type, public, extends(mgNeutronDatabase) :: baseMgNeutronDatabase
     type(baseMgNeutronMaterial), dimension(:), pointer :: mats => null()
+    real(defReal), dimension(:), allocatable           :: majorant
     integer(shortInt), dimension(:), allocatable       :: activeMats
-    integer(shortInt)                                  :: nG = 0
 
   contains
     ! Superclass Interface
-    procedure :: getTransMatXS
+    procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -61,6 +74,7 @@ module baseMgNeutronDatabase_class
     procedure :: activate
 
     ! Local interface
+    procedure :: initMajorant
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -68,7 +82,7 @@ module baseMgNeutronDatabase_class
 contains
 
   !!
-  !! Get Transport XS given a particle
+  !! Get tracking XS requested
   !!
   !! See nuclearDatabase documentation for details
   !!
@@ -76,21 +90,42 @@ contains
   !!   DOES NOT check if particle is MG. Will refer to G in the particle and give error
   !!   if the value is invalid
   !!
-  !! Sample input dictionary:
-  !!   nucData {
-  !!     type baseMgNeutronDatabase;
-  !!     PN P0;                        // or P1
-  !!   }
-  !!
-  function getTransMatXS(self, p, matIdx) result(xs)
+  function getTrackingXS(self, p, matIdx, what) result(xs)
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
+    integer(shortInt), intent(in)               :: what
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackingXS (baseMgNeutronDatabase_class.f90)'
 
-    xs = self % getTotalMatXS(p, matIdx)
+    ! Process request
+    select case(what)
 
-  end function getTransMatXS
+      case (MATERIAL_XS)
+        xs = self % getTotalMatXS(p, matIdx)
+
+      case (MAJORANT_XS)
+        xs = self % getMajorantXS(p)
+
+      case (TRACKING_XS)
+
+        ! READ ONLY - read from previously updated cache
+        if (p % G == trackingCache(1) % G) then
+          xs = trackingCache(1) % xs
+        else
+          call fatalError(Here, 'Tracking cache failed to update during tracking')
+        end if
+
+      case default
+        call fatalError(Here, 'Neither material nor majorant xs was asked')
+
+    end select
+
+    ! Update Cache
+    trackingCache(1) % G  = p % G
+    trackingCache(1) % xs = xs
+
+  end function getTrackingXS
 
   !!
   !! Get Total XS given a particle
@@ -107,7 +142,22 @@ contains
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
 
-    xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+    associate (matCache => materialCache(matIdx))
+
+      if (matCache % G_tot /= p % G) then
+        ! Get cross section
+        xs = self % mats(matIdx) % getTotalXS(p % G, p % pRNG)
+        ! Update cache
+        matCache % xss % total = xs
+        matCache % G_tot = p % G
+
+      else
+        ! Retrieve cross section from cache
+        xs = matCache % xss % total
+
+      end if
+
+    end associate
 
   end function getTotalMatXS
 
@@ -124,13 +174,16 @@ contains
     class(baseMgNeutronDatabase), intent(inout) :: self
     class(particle), intent(in)                 :: p
     real(defReal)                               :: xs
-    integer(shortInt)                           :: i, idx
+    character(100), parameter :: Here = ' getMajorantXS (baseMgNeutronDatabase_class.f90)'
 
-    xs = ZERO
-    do i=1,size(self % activeMats)
-      idx = self % activeMats(i)
-      xs = max(xs, self % getTotalMatXS(p, idx))
-    end do
+    ! Verify bounds
+    if (p % G < 1 .or. self % nG < p % G) then
+      call fatalError(Here,'Invalid group number: '//numToChar(p % G)// &
+                           ' Data has only: ' // numToChar(self % nG))
+      xs = ZERO ! Avoid warning
+    end if
+
+    xs = self % majorant(p % G)
 
   end function getMajorantXS
 
@@ -157,10 +210,11 @@ contains
     integer(shortInt), intent(in)            :: matIdx
     class(materialHandle), pointer           :: mat
 
-    if(matIdx < 1 .or. matIdx > size(self % mats)) then
+    if (matIdx < 1 .or. matIdx > size(self % mats)) then
       mat => null()
     else
-      mat => self % mats(matIdx)
+      ! Retrieve pointer from cache
+      mat => materialCache(matIdx) % mat
     end if
 
   end function getMaterial
@@ -290,7 +344,7 @@ contains
 
     ! Load and verify number of groups
     self % nG = self % mats(1) % nGroups()
-    do i=2,nMat
+    do i = 2,nMat
       if(self % nG /= self % mats(i) % nGroups()) then
         call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
       end if
@@ -303,14 +357,66 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine activate(self, activeMat)
+  subroutine activate(self, activeMat, silent)
     class(baseMgNeutronDatabase), intent(inout) :: self
     integer(shortInt), dimension(:), intent(in) :: activeMat
+    logical(defBool), optional, intent(in)      :: silent
+    logical(defBool)                            :: loud
+    integer(shortInt)                           :: idx
 
     if(allocated(self % activeMats)) deallocate(self % activeMats)
     self % activeMats = activeMat
 
+    ! Initialies cross section cache
+    call cache_init(size(self % mats))
+
+    ! Store the material pointer in the material cache
+    !$omp parallel
+    do idx = 1,size(self % mats)
+      materialCache(idx) % mat => self % mats(idx)
+    end do
+    !$omp end parallel
+
+    ! Set build console output flag
+    if (present(silent)) then
+      loud = .not. silent
+    else
+      loud = .true.
+    end if
+
+    ! Build unionised majorant
+    call self % initMajorant(loud)
+
   end subroutine activate
+
+  !!
+  !! Precomputes majorant cross section
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  subroutine initMajorant(self, loud)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    logical(defBool), intent(in)                :: loud
+    integer(shortInt)                           :: g, i, idx
+    real(defReal)                               :: xs
+    integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    ! Allocate majorant
+    allocate (self % majorant(self % nG))
+
+    ! Loop over energy groups
+    do g = 1,self % nG
+      xs = ZERO
+      do i = 1,size(self % activeMats)
+        idx = self % activeMats(i)
+        xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
+      end do
+      self % majorant(g) = xs
+    end do
+
+    if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
+
+  end subroutine initMajorant
 
   !!
   !! Return number of energy groups in this database
@@ -341,7 +447,7 @@ contains
   !!
   pure function baseMgNeutronDatabase_TptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source
-    type(baseMgNeutronDatabase), pointer           :: ptr
+    type(baseMgNeutronDatabase), pointer        :: ptr
 
     select type(source)
       type is(baseMgNeutronDatabase)

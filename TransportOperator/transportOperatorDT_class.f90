@@ -5,14 +5,14 @@ module transportOperatorDT_class
   use numPrecision
   use universalVariables
 
-  use genericProcedures,          only : fatalError, numToChar
+  use errors_mod,                 only : fatalError
+  use genericProcedures,          only : numToChar
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
-  use rng_class,                  only : rng
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator
+  use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
   use geometry_inter,             only : geometry
@@ -22,6 +22,7 @@ module transportOperatorDT_class
   use tallyAdmin_class,           only : tallyAdmin
 
   ! Nuclear data interfaces
+  use nuclearDataReg_mod,         only : ndReg_get => get
   use nuclearDatabase_inter,      only : nuclearDatabase
 
   implicit none
@@ -33,10 +34,15 @@ module transportOperatorDT_class
   type, public, extends(transportOperator) :: transportOperatorDT
   contains
     procedure :: transit => deltaTracking
+    ! Override procedure
+    procedure :: init
   end type transportOperatorDT
 
 contains
 
+  !!
+  !! Performs delta tracking until a real collision point is found
+  !!
   subroutine deltaTracking(self, p, tally, thisCycle, nextCycle)
     class(transportOperatorDT), intent(inout) :: self
     class(particle), intent(inout)            :: p
@@ -44,10 +50,13 @@ contains
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
     real(defReal)                             :: majorant_inv, sigmaT, distance
-    character(100), parameter :: Here = 'deltaTracking (transportOIperatorDT_class.f90)'
+    character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
-    ! Get majornat XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getMajorantXS(p)
+    ! Get majorant XS inverse: 1/Sigma_majorant
+    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
+
+   ! Should never happen! Prevents Inf distances
+    if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
@@ -55,7 +64,7 @@ contains
       ! Move partice in the geometry
       call self % geom % teleport(p % coords, distance)
 
-      ! If particle has leaked exit
+      ! If particle has leaked, exit
       if (p % matIdx() == OUTSIDE_FILL) then
         p % fate = LEAK_FATE
         p % isDead = .true.
@@ -63,24 +72,47 @@ contains
       end if
 
       ! Check for void
-      if( p % matIdx() == VOID_MAT) cycle DTLoop
+      if (p % matIdx() == VOID_MAT) then
+        call tally % reportInColl(p, .true.)
+        cycle DTLoop
+      end if
+
+      ! Give error if the particle somehow ended in an undefined material
+      if (p % matIdx() == UNDEF_MAT) then
+        print *, p % rGlobal()
+        call fatalError(Here, "Particle is in undefined material")
+      end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTransMatXS(p, p % matIdx())
-
-      ! Protect Against Sillines
-      !if( sigmaT*majorant_inv < ZERO .or. ONE < sigmaT*majorant_inv) then
-      !  call fatalError(Here, "TotalXS/MajorantXS is silly: "//numToChar(sigmaT*majorant_inv))
-      !end if
+      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
-      ! Exit the loop if the collision is real
-      if (p % pRNG % get() < sigmaT*majorant_inv) exit DTLoop
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (p % pRNG % get() < sigmaT*majorant_inv) then
+        exit DTLoop
+      else
+        call tally % reportInColl(p, .true.)
+      end if
 
     end do DTLoop
 
     call tally % reportTrans(p)
+
   end subroutine deltaTracking
+
+  !!
+  !! Initialise DT transport operator
+  !!
+  !! See transportOperator_inter for more details
+  !!
+  subroutine init(self, dict)
+    class(transportOperatorDT), intent(inout) :: self
+    class(dictionary), intent(in)             :: dict
+
+    ! Initialise superclass
+    call init_super(self, dict)
+
+  end subroutine init
 
 
 end module transportOperatorDT_class

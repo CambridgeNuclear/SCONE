@@ -23,23 +23,23 @@ module aceNeutronDatabase_iTest
   implicit none
 
   ! Material definitions
-  character(*),parameter :: MAT_INPUT_STR = " &
-  water { temp 273;                           &
-         composition {                        &
-         1001.03 5.028E-02;                   &
-         8016.03 2.505E-02;                   &
-         }                                    &
-       }                                      &
-  uo2  { temp 1;                              &
-          composition {                       &
-          92233.03 2.286E-02;                 &
-          8016.03  4.572E-02;                 &
-          }                                   &
-        }"
+  character(*),parameter :: MAT_INPUT_STR = &
+  & "water { temp 273;           &
+  &       composition {          &
+  &       1001.03 5.028E-02;     &
+  &       8016.03 2.505E-02;     &
+  &                   }          &
+  &        }                     &
+  &  uo2  { temp 1;              &
+  &        composition {         &
+  &        92233.03 2.286E-02;   &
+  &        8016.03  4.572E-02;   &
+  &                    }         &
+  &       }"
 
   ! CE Neutron Database specification
-  character(*),parameter :: ACE_INPUT_STR = " &
-  aceLibrary ./IntegrationTestFiles/testLib; "
+  character(*),parameter :: ACE_INPUT_STR = &
+  & "aceLibrary ./IntegrationTestFiles/testLib; "
 
 contains
 
@@ -75,7 +75,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate([1,2])
+    call data % activate([1,2], silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
@@ -206,7 +206,7 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 1)/1.1406745607419302_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 1)/6.539039844E-02_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p, 1, MATERIAL_XS)/6.539039844E-02_defReal , TOL)
 
 
     ! Total XS of UO2
@@ -214,9 +214,20 @@ contains
     @assertEqual(ONE, data % getTotalMatXS(p , 2)/4.4149556129495560_defReal , TOL)
 
     p % E = 19.9_defReal
-    @assertEqual(ONE, data % getTransMatXS(p , 2)/0.21869599644_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 2, MATERIAL_XS)/0.21869599644_defReal , TOL)
 
     ! Majorant
+    p % E = 1.1E-6_defReal
+    @assertEqual(ONE, data % getMajorantXS(p) /4.4149556129495560_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 3, MAJORANT_XS) /4.4149556129495560_defReal , TOL)
+
+    p % E = 19.9_defReal
+    @assertEqual(ONE, data % getMajorantXS(p)/0.21869599644_defReal , TOL)
+    @assertEqual(ONE, data % getTrackingXS(p , 3, MAJORANT_XS) /0.21869599644_defReal , TOL)
+
+    ! Check that results are the same with on-the-fly majorant
+    data % hasMajorant = .false.
+
     p % E = 1.1E-6_defReal
     @assertEqual(ONE, data % getMajorantXS(p) /4.4149556129495560_defReal , TOL)
 

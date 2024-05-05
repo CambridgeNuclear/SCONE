@@ -17,6 +17,7 @@ to quickly test their ideas.
 
    Installation
    Dictionary Input
+   User Manual
    Unit Testing
    Style Guide
    Geometry

@@ -23,7 +23,6 @@ module neutronCEstd_class
   ! Nuclear reactions
   use reactionHandle_inter,          only : reactionHandle
   use uncorrelatedReactionCE_inter,  only : uncorrelatedReactionCE, uncorrelatedReactionCE_CptrCast
-  use elasticNeutronScatter_class,   only : elasticNeutronScatter, elasticNeutronScatter_TptrCast
   use neutronScatter_class,          only : neutronScatter, neutronScatter_TptrCast
   use fissionCE_class,               only : fissionCE, fissionCE_TptrCast
 
@@ -32,7 +31,11 @@ module neutronCEstd_class
 
   ! Scattering procedures
   use scatteringKernels_func, only : asymptoticScatter, targetVelocity_constXS, &
-                                     asymptoticInelasticScatter
+                                     asymptoticInelasticScatter, targetVelocity_DBRCXS
+
+  ! Tally interfaces
+  use tallyAdmin_class,       only : tallyAdmin
+
   implicit none
   private
 
@@ -47,19 +50,21 @@ module neutronCEstd_class
   !!  minE    -> minimum energy cut-off [MeV] (default = 1.0E-11)
   !!  maxE    -> maximum energy. Higher energies are set to maximum (not re-rolled) [MeV]
   !!             (default = 20.0)
-  !!  tresh_E -> Energy treshold for explicit treatment of target nuclide movement [-].
-  !!             Target movment is sampled if neutron energy E < kT * tresh_E where
-  !!             kT is target material temperature in [MeV]. (default = 400.0)
-  !!  tresh_A -> Mass treshold for explicit tratment of target nuclide movement [Mn].
-  !!             Target movment is sampled if target mass A < tresh_A. (default = 1.0)
+  !!  thresh_E -> Energy threshold for explicit treatment of target nuclide movement [-].
+  !!              Target movment is sampled if neutron energy E < kT * thresh_E where
+  !!              kT is target material temperature in [MeV]. (default = 400.0)
+  !!  thresh_A -> Mass threshold for explicit tratment of target nuclide movement [Mn].
+  !!              Target movment is sampled if target mass A < thresh_A. (default = 1.0)
+  !!  DBRCeMin -> Minimum energy to which DBRC is applied
+  !!  DBRCeMax -> Maximum energy to which DBRC is applied
   !!
   !! Sample dictionary input:
   !!   collProcName {
-  !!   type            neutronCEstd;
-  !!   #minEnergy      <real>;#
-  !!   #maxEnergy      <real>;#
-  !!   #energyTreshold <real>;#
-  !!   #massTreshold   <real>;#
+  !!   type             neutronCEstd;
+  !!   #minEnergy       <real>;#
+  !!   #maxEnergy       <real>;#
+  !!   #energyThreshold <real>;#
+  !!   #massThreshold   <real>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEstd
@@ -72,8 +77,10 @@ module neutronCEstd_class
     !! Settings - private
     real(defReal) :: minE
     real(defReal) :: maxE
-    real(defReal) :: tresh_E
-    real(defReal) :: tresh_A
+    real(defReal) :: thresh_E
+    real(defReal) :: thresh_A
+    real(defReal) :: DBRCeMin
+    real(defReal) :: DBRCeMax
 
   contains
     ! Initialisation procedure
@@ -113,24 +120,29 @@ contains
     call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
 
     ! Thermal scattering kernel thresholds
-    call dict % getOrDefault(self % tresh_E, 'energyTreshold', 400.0_defReal)
-    call dict % getOrDefault(self % tresh_A, 'massTreshold', 1.0_defReal)
+    call dict % getOrDefault(self % thresh_E, 'energyThreshold', 400.0_defReal)
+    call dict % getOrDefault(self % thresh_A, 'massThreshold', 1.0_defReal)
 
     ! Verify settings
     if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
     if( self % maxE < ZERO ) call fatalError(Here,'-ve maxEnergy')
     if( self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
-    if( self % tresh_E < 0) call fatalError(Here,' -ve energyTreshold')
-    if( self % tresh_A < 0) call fatalError(Here,' -ve massTreshold')
+    if( self % thresh_E < 0) call fatalError(Here,' -ve energyThreshold')
+    if( self % thresh_A < 0) call fatalError(Here,' -ve massThreshold')
+
+    ! DBRC energy limits
+    call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
+    call dict % getOrDefault(self % DBRCeMax,'DBRCeMax', (200E-6_defReal))
 
   end subroutine init
 
   !!
   !! Samples collision without any implicit treatment
   !!
-  subroutine sampleCollision(self, p, collDat, thisCycle, nextCycle)
+  subroutine sampleCollision(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -155,7 +167,7 @@ contains
     collDat % nucIdx = self % mat % sampleNuclide(p % E, p % pRNG)
 
     self % nuc => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(collDat % nucIdx))
-    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retive CE Neutron Nuclide')
+    if(.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
     call self % nuc % getMicroXSs(microXss, p % E, p % pRNG)
@@ -167,15 +179,15 @@ contains
   !!
   !! Perform implicit treatment
   !!
-  subroutine implicit(self, p, collDat, thisCycle, nextCycle)
+  subroutine implicit(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(fissionCE), pointer             :: fission
     type(neutronMicroXSs)                :: microXSs
-
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
@@ -210,7 +222,7 @@ contains
       wgt =  sign(w0, wgt)
       r   = p % rGlobal()
 
-      do i=1,n
+      do i = 1,n
         call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
         dir = rotateVector(p % dirGlobal(), mu, phi)
 
@@ -224,8 +236,13 @@ contains
         pTemp % dir = dir
         pTemp % E   = E_out
         pTemp % wgt = wgt
+        pTemp % collisionN = 0
 
         call nextCycle % detain(pTemp)
+
+        ! Report birth of new particle
+        call tally % reportSpawn(N_FISSION, p, pTemp)
+
       end do
     end if
 
@@ -234,9 +251,10 @@ contains
   !!
   !! Process capture reaction
   !!
-  subroutine capture(self, p, collDat, thisCycle, nextCycle)
+  subroutine capture(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -248,9 +266,10 @@ contains
   !!
   !! Process fission reaction
   !!
-  subroutine fission(self, p, collDat, thisCycle, nextCycle)
+  subroutine fission(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -264,30 +283,38 @@ contains
   !!
   !! All CE elastic scattering happens in the CM frame
   !!
-  subroutine elastic(self, p, collDat, thisCycle, nextCycle)
-    class(neutronCEstd), intent(inout)   :: self
-    class(particle), intent(inout)       :: p
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    type(elasticNeutronScatter),pointer  :: reac
+  subroutine elastic(self, p, tally, collDat, thisCycle, nextCycle)
+    class(neutronCEstd), intent(inout)     :: self
+    class(particle), intent(inout)         :: p
+    type(tallyAdmin), intent(inout)        :: tally
+    type(collisionData), intent(inout)     :: collDat
+    class(particleDungeon),intent(inout)   :: thisCycle
+    class(particleDungeon),intent(inout)   :: nextCycle
+    class(uncorrelatedReactionCE), pointer :: reac
+    logical(defBool)                       :: isFixed, hasDBRC
     character(100),parameter :: Here = 'elastic (neutronCEstd_class.f90)'
 
     ! Get reaction
-    reac => elasticNeutronScatter_TptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
+    reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if(.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
     collDat % kT = self % nuc % getkT()
 
-    ! Apply criterion for Free-Gas vs Fixed Target scattering
-    if ((p % E > collDat % kT * self % tresh_E) .and. (collDat % A > self % tresh_A)) then
-      call self % scatterFromFixed(p, collDat, reac)
+    ! Check is DBRC is on
+    hasDBRC = self % nuc % hasDBRC()
 
+    isFixed = (.not. hasDBRC) .and. (p % E > collDat % kT * self % thresh_E) &
+              & .and. (collDat % A > self % thresh_A)
+
+    ! Apply criterion for Free-Gas vs Fixed Target scattering
+    if (.not. reac % inCMFrame()) then
+      call self % scatterInLAB(p, collDat, reac)
+    elseif (isFixed) then
+      call self % scatterFromFixed(p, collDat, reac)
     else
       call self % scatterFromMoving(p, collDat, reac)
-
     end if
 
   end subroutine elastic
@@ -295,9 +322,10 @@ contains
   !!
   !! Process inelastic scattering
   !!
-  subroutine inelastic(self, p, collDat, thisCycle, nextCycle)
+  subroutine inelastic(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)     :: self
     class(particle), intent(inout)         :: p
+    type(tallyAdmin), intent(inout)        :: tally
     type(collisionData), intent(inout)     :: collDat
     class(particleDungeon),intent(inout)   :: thisCycle
     class(particleDungeon),intent(inout)   :: nextCycle
@@ -313,10 +341,8 @@ contains
     if (reac % inCMFrame()) then
       collDat % A =  self % nuc % getMass()
       call self % scatterFromFixed(p, collDat, reac)
-
     else
       call self % scatterInLAB(p, collDat, reac)
-
     end if
 
     ! Apply weigth change
@@ -327,9 +353,10 @@ contains
   !!
   !! Apply cutoffs
   !!
-  subroutine cutoffs(self, p, collDat, thisCycle, nextCycle)
+  subroutine cutoffs(self, p, tally, collDat, thisCycle, nextCycle)
     class(neutronCEstd), intent(inout)   :: self
     class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
     type(collisionData), intent(inout)   :: collDat
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
@@ -349,11 +376,6 @@ contains
     class(uncorrelatedReactionCE), intent(in) :: reac
     real(defReal)                             :: phi    ! Azimuthal scatter angle
     real(defReal)                             :: E_out, mu
-    integer(shortInt)                         :: MT, nucIdx
-
-    ! Read data
-    MT = collDat % MT
-    nucIdx = collDat % nucIdx
 
     ! Sample scattering angles and post-collision energy
     call reac % sampleOut(mu, phi, E_out, p % E, p % pRNG)
@@ -377,11 +399,10 @@ contains
     real(defReal)                              :: phi
     real(defReal)                              :: E_out
     real(defReal)                              :: E_outCM, mu
-    integer(shortInt)                          :: MT, nucIdx
+    integer(shortInt)                          :: MT
 
     ! Read data
     MT     = collDat % MT
-    nucIdx = collDat % nucIdx
 
     ! Sample mu , phi and outgoing energy
     call reac % sampleOut(mu, phi, E_outCM, p % E, p % pRNG)
@@ -391,10 +412,8 @@ contains
 
     if( MT == N_N_elastic) then
       call asymptoticScatter(E_out, mu, collDat % A)
-
     else
       call asymptoticInelasticScatter(E_out, mu, E_outCM, collDat % A)
-
     end if
 
     ! Update particle state
@@ -412,8 +431,9 @@ contains
     class(neutronCEstd), intent(inout)         :: self
     class(particle), intent(inout)             :: p
     type(collisionData),intent(inout)          :: collDat
-    type(elasticNeutronScatter), intent(in)    :: reac
-    integer(shortInt)                          :: MT, nucIdx
+    class(uncorrelatedReactionCE), intent(in)  :: reac
+    class(ceNeutronNuclide), pointer           :: ceNuc0K
+    integer(shortInt)                          :: nucIdx
     real(defReal)                              :: A, kT, mu
     real(defReal),dimension(3)                 :: V_n           ! Neutron velocity (vector)
     real(defReal)                              :: U_n           ! Neutron speed (scalar)
@@ -421,19 +441,45 @@ contains
     real(defReal),dimension(3)                 :: dir_post      ! Post-collicion direction
     real(defReal),dimension(3)                 :: V_t, V_cm     ! Target and CM velocity
     real(defReal)                              :: phi, dummy
+    real(defReal)                              :: maj
+    logical(defBool)                           :: inEnergyRange, hasDBRC
+    character(100), parameter :: Here = 'ScatterFromMoving (neutronCEstd_class.f90)'
 
-    ! Read data
-    MT     = collDat % MT
-    nucIdx = collDat % nucIdx
+    ! Read collision data
     A      = collDat % A
     kT     = collDat % kT
+    nucIdx = collDat % nucIdx
 
     ! Get neutron direction and velocity
     dir_pre = p % dirGlobal()
     V_n     = dir_pre * sqrt(p % E)
 
-    ! Sample velocity of target
-    V_t = targetVelocity_constXS(p % E, dir_pre, A, kT, p % pRNG)
+    ! Sample target velocity with constant XS or with DBRC
+    ! Check energy range
+    inEnergyRange = ((p % E <= self % DBRCeMax) .and. (self % DBRCeMin <= p % E))
+    ! Check if DBRC is on for this target nuclide
+    hasDBRC = self % nuc % hasDBRC()
+
+    if (inEnergyRange .and. hasDBRC) then
+
+      ! Retrieve 0K nuclide index from DBRC nuclide map
+      nucIdx = self % xsData % mapDBRCnuc % get(nucIdx)
+
+      ! Assign pointer for the 0K nuclide
+      ceNuc0K => ceNeutronNuclide_CptrCast(self % xsData % getNuclide(nucIdx))
+      if(.not.associated(ceNuc0K)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
+
+      ! Get elastic scattering 0K majorant
+      maj = self % xsData % getScattMicroMajXS(p % E, kT, A, nucIdx)
+
+      ! Use DBRC to sample target velocity
+      V_t = targetVelocity_DBRCXS(ceNuc0K, p % E, dir_pre, A, kT, p % pRNG, maj)
+
+    else
+      ! Constant cross section approximation
+      V_t = targetVelocity_constXS(p % E, dir_pre, A, kT, p % pRNG)
+
+    end if
 
     ! Calculate Centre-of-Mass velocity
     V_cm = (V_n + V_t *A)/(A+1)
@@ -460,6 +506,7 @@ contains
     p % E = U_n * U_n
     call p % point(dir_post)
     collDat % muL = dot_product(dir_pre, dir_post)
+
   end subroutine scatterFromMoving
 
 

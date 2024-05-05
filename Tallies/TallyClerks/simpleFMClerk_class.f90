@@ -3,6 +3,7 @@ module simpleFMClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -63,6 +64,8 @@ module simpleFMClerk_class
     type(macroResponse)                    :: resp
     real(defReal),dimension(:),allocatable :: startWgt
     integer(shortInt)                      :: N = 0 !! Number of bins
+    ! Settings
+    logical(defBool) :: virtual = .false.
 
   contains
     ! Procedures used during build
@@ -125,6 +128,9 @@ contains
     ! Initialise response
     call self % resp % build(macroNuFission)
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+
   end subroutine init
 
   !!
@@ -182,28 +188,42 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(simpleFMClerk), intent(inout)  :: self
     class(particle), intent(in)          :: p
     class(nuclearDatabase),intent(inout) :: xsData
     type(scoreMemory), intent(inout)     :: mem
+    logical(defBool), intent(in)         :: virtual
     type(particleState)                  :: state
     integer(shortInt)                    :: sIdx, cIdx
     integer(longInt)                     :: addr
-    real(defReal)                        :: score
+    real(defReal)                        :: score, flux
     class(neutronMaterial), pointer      :: mat
     character(100), parameter :: Here = 'reportInColl simpleFMClear_class.f90'
 
-    ! Get material or return if it is not a neutron
-    mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      if (virtual) return
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
-    if(.not.associated(mat)) return
+    ! Ensure we're not in void (could happen when scoring virtual collisions)
+    if (p % matIdx() == VOID_MAT) return
+
+    ! Get material pointer
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    if (.not.associated(mat)) then
+      call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    end if
 
     ! Return if material is not fissile
-    if(.not.mat % isFissile()) return
+    if (.not. mat % isFissile()) return
 
     ! Find starting index in the map
-    sIdx = self % map % map( p % preHistory)
+    sIdx = self % map % map(p % preHistory)
 
     ! Find collision index in the map
     state = p
@@ -213,7 +233,7 @@ contains
     if(cIdx == 0 .or. sIdx == 0 ) return
 
     ! Calculate fission neutron production
-    score = self % resp % get(p, xsData) * p % w / xsData % getTotalMatXS(p, p % matIdx())
+    score = self % resp % get(p, xsData) * flux
 
     ! Score element of the matrix
     addr = self % getMemAddress() + (sIdx - 1) * self % N + cIdx - 1
@@ -383,7 +403,10 @@ contains
 
     if(allocated(self % map)) deallocate(self % map)
     if(allocated(self % startWgt)) deallocate(self % startWgt)
+
     self % N = 0
+    self % virtual = .false.
+
     call self % resp % kill()
 
   end subroutine kill

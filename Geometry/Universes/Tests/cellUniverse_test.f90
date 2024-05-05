@@ -42,7 +42,7 @@ module cellUniverse_test
 contains
 
   !!
-  !! Setup enviroment
+  !! Setup environment
   !!
 @Before
   subroutine setUp()
@@ -73,7 +73,7 @@ contains
   end subroutine setUp
 
   !!
-  !! Clean enviroment
+  !! Clean environment
   !!
 @After
   subroutine clean()
@@ -201,7 +201,7 @@ contains
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(surfs % getIdx(2), surfIdx )
 
-    ! ** In local cell 2 distance to infintity
+    ! ** In local cell 2 distance to infinity
     ! surfIdx must be set to 0
     pos % dir = [ONE, ZERO, ZERO]
     call uni % distance(d, surfIdx, pos)

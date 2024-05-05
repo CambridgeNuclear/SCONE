@@ -15,9 +15,9 @@ module particleDungeon_class
   !! Store: MONK and Serpent(?)
   !! Fission Bank: OpenMC and MCNP(?)
   !!
-  !! NOTE INCONSISTANT DEFINITIONS
+  !! NOTE INCONSISTENT DEFINITIONS
   !! ****
-  !! For convinience it allows to store value of k-eff that can be retrieved to adjust fission site
+  !! For convenience it allows storing the value of k-eff that can be retrieved to adjust fission site
   !! generation rate during a calculation. It is not currently used during normalisation but
   !! is used by analog k-eff tally. It is necessary to clarify behaviour.
   !! ****
@@ -26,15 +26,19 @@ module particleDungeon_class
   !!
   !! Dungeon can work like stacks or arrays. Stack-like behaviour is not really thread safe
   !! so it can be utilised when collecting and processing secondary particles in history
-  !! that should be processed during the course of one cycle. Array-like behaviour allows to
-  !! easily distribute particles among threads. As long as indices assign to diffrent threads
-  !! do not overlap, reading is thread-safe (I hope-MAK).
+  !! that should be processed during the course of one cycle. Alternatively, one can use the
+  !! critical variations of the stack-like procedures.
+  !! Array-like behaviour allows to easily distribute particles among threads. As long as indices
+  !! assigned to different threads do not overlap, reading is thread-safe (I hope-MAK).
   !!
   !!
   !! INTERFACE:
   !!   Stack-like interface:
-  !!     detain(particle)   -> adda a particle to the top
-  !!     release(particle)  -> removes a particle from the top. Sets p % isDead = .false.
+  !!     detain(particle)          -> add a particle to the top
+  !!     detainCritical(particle)  -> add a particle to the top with a critical operation
+  !!     release(particle)         -> removes a particle from the top. Sets p % isDead = .false.
+  !!     releaseCritical(particle) -> removes a particle from the top with a critical operation.
+  !!                                   Sets p % isDead = .false.
   !!
   !!   Array-like interface:
   !!     replace(particle, i) -> overwrite prisoner data at index i
@@ -46,7 +50,7 @@ module particleDungeon_class
   !!     cleanPop()        -> kill or prisoners
   !!     normWeight(totWgt)-> normalise dungeon population so its total weight is totWgt
   !!     normSize(N)       -> normalise dungeon population so it contains N particles
-  !!                          does not take ununiform weight of particles into account
+  !!                          does not take nonuniform weight of particles into account
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!
@@ -60,7 +64,7 @@ module particleDungeon_class
     integer(shortInt)    :: pop = 0     ! Current population size of the dungeon
 
     ! Storage space
-    type(particleState), dimension(:), allocatable :: prisoners
+    type(particleState), dimension(:), allocatable, public :: prisoners
 
   contains
     !! Build procedures
@@ -68,8 +72,10 @@ module particleDungeon_class
     procedure  :: kill
 
     !! Stack-like interface
-    generic    :: detain  => detain_particle, detain_particleState
+    generic    :: detain => detain_particle, detain_particleState
+    generic    :: detainCritical => detainCritical_particle, detainCritical_particleState
     procedure  :: release
+    procedure  :: releaseCritical
 
     !! Array-like interface
     generic    :: replace => replace_particle, replace_particleState
@@ -89,6 +95,8 @@ module particleDungeon_class
     ! Private procedures
     procedure, private :: detain_particle
     procedure, private :: detain_particleState
+    procedure, private :: detainCritical_particle
+    procedure, private :: detainCritical_particleState
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
   end type particleDungeon
@@ -133,21 +141,48 @@ contains
 
     !$omp atomic capture
     ! Increase population and weight
-    self % pop = self % pop +1
+    self % pop = self % pop + 1
     pop = self % pop
     !$omp end atomic
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-    
+
     ! Load new particle
     self % prisoners(pop) = p
-    
+
   end subroutine detain_particle
+
+  !!
+  !! Store particle in the dungeon with a critical operation
+  !!
+  subroutine detainCritical_particle(self,p)
+    class(particleDungeon), intent(inout) :: self
+    class(particle), intent(in)           :: p
+    integer(shortInt)                     :: pop
+    character(100),parameter              :: Here = 'detainCritical_particle (particleDungeon_class.f90)'
+
+    !$omp critical (dungeon)
+    ! Increase population and weight
+    self % pop = self % pop + 1
+    pop = self % pop
+
+    ! Check for population overflow
+    if (pop > size(self % prisoners)) then
+      call fatalError(Here,'Run out of space for particles.&
+                           & Max size:'//numToChar(size(self % prisoners)) //&
+                            ' Current population: ' // numToChar(self % pop))
+    end if
+
+    ! Load new particle
+    self % prisoners(pop) = p
+    !$omp end critical (dungeon)
+
+  end subroutine detainCritical_particle
 
   !!
   !! Store phaseCoord in the dungeon
@@ -160,21 +195,48 @@ contains
 
     ! Increase population
     !$omp atomic capture
-    self % pop = self % pop +1
+    self % pop = self % pop + 1
     pop = self % pop
     !$omp end atomic
-    
+
     ! Check for population overflow
     if (pop > size(self % prisoners)) then
       call fatalError(Here,'Run out of space for particles.&
                            & Max size:'//numToChar(size(self % prisoners)) //&
                             ' Current population: ' // numToChar(self % pop))
     end if
-   
+
     ! Load new particle
-    self % prisoners(pop) = p_state 
+    self % prisoners(pop) = p_state
 
   end subroutine detain_particleState
+
+  !!
+  !! Store phaseCoord in the dungeon with a critical operation
+  !!
+  subroutine detainCritical_particleState(self,p_state)
+    class(particleDungeon), intent(inout) :: self
+    type(particleState), intent(in)       :: p_state
+    integer(shortInt)                     :: pop
+    character(100), parameter    :: Here = 'detainCritical_particleState (particleDungeon_class.f90)'
+
+    ! Increase population
+    !$omp critical (dungeon)
+    self % pop = self % pop + 1
+    pop = self % pop
+
+    ! Check for population overflow
+    if (pop > size(self % prisoners)) then
+      call fatalError(Here,'Run out of space for particles.&
+                           & Max size:'//numToChar(size(self % prisoners)) //&
+                            ' Current population: ' // numToChar(self % pop))
+    end if
+
+    ! Load new particle
+    self % prisoners(pop) = p_state
+    !$omp end critical (dungeon)
+
+  end subroutine detainCritical_particleState
 
   !!
   !! Pop the particle from the top of the dungeon.
@@ -190,12 +252,34 @@ contains
     pop = self % pop
     self % pop = self % pop - 1
     !$omp end atomic
-    
+
     ! Load data into the particle
     p = self % prisoners(pop)
     p % isDead = .false.
 
   end subroutine release
+
+  !!
+  !! Pop the particle from the top of the dungeon with a critical operation.
+  !! Makes particle alive at exit
+  !!
+  subroutine releaseCritical(self, p)
+    class(particleDungeon), intent(inout) :: self
+    type(particle), intent(inout)         :: p
+    integer(shortInt)                     :: pop
+
+    !$omp critical (dungeon)
+    ! Decrease population
+    pop = self % pop
+    self % pop = self % pop - 1
+
+    ! Load data into the particle
+    p = self % prisoners(pop)
+    !$omp end critical (dungeon)
+
+    p % isDead = .false.
+
+  end subroutine releaseCritical
 
   !!
   !! Replace data of particle prisoner at the index idx with particle
@@ -204,11 +288,11 @@ contains
     class(particleDungeon), intent(inout) :: self
     class(particle), intent(in)           :: p
     integer(shortInt), intent(in)         :: idx
-    character(100),parameter :: Here = 'relplace_particle (particleDungeon_class.f90)'
+    character(100),parameter :: Here = 'replace_particle (particleDungeon_class.f90)'
 
-    ! Protect agoinst out-of-bounds acces
+    ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
@@ -224,11 +308,11 @@ contains
     class(particleDungeon), intent(inout) :: self
     type(particleState), intent(in)       :: p
     integer(shortInt), intent(in)         :: idx
-    character(100),parameter :: Here = 'relplace_particleState (particleDungeon_class.f90)'
+    character(100),parameter :: Here = 'replace_particleState (particleDungeon_class.f90)'
 
-    ! Protect agoinst out-of-bounds acces
+    ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
@@ -249,7 +333,7 @@ contains
     integer(shortInt), intent(in)      :: idx
     character(100), parameter :: Here = 'copy (particleDungeon_class.f90)'
 
-    ! Protect agoinst out-of-bounds acces
+    ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
       call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
@@ -271,9 +355,9 @@ contains
     type(particleState)                :: state
     character(100), parameter :: Here = 'get (particleDungeon_class.f90)'
 
-    ! Protect agoinst out-of-bounds acces
+    ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
@@ -308,22 +392,23 @@ contains
   end subroutine normWeight
 
   !!
-  !! Normalise total number of particles in the dungeon to match the provided number
-  !! Randomly duplicate or remove particles to match the number
+  !! Normalise total number of particles in the dungeon to match the provided number.
+  !! Randomly duplicate or remove particles to match the number.
   !! Does not take weight of a particle into account!
   !!
-  subroutine normSize(self,N,rand)
+  subroutine normSize(self, N, rand)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: excessP
+    integer(shortInt)                     :: excessP, n_copies, n_duplicates
     integer(shortInt)                     :: i, idx
+    integer(shortInt), dimension(:), allocatable :: duplicates
     character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
 
     ! Protect against invalid N
     if( N > size(self % prisoners)) then
       call fatalError(Here,'Requested size: '//numToChar(N) //&
-                           'is greather then max size: '//numToChar(size(self % prisoners)))
+                           'is greater then max size: '//numToChar(size(self % prisoners)))
     else if ( N <= 0 ) then
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
@@ -332,9 +417,9 @@ contains
     excessP = self % pop - N
 
     if (excessP > 0 ) then ! Reduce population with reservoir sampling
-      do i=N,self % pop
+      do i = N + 1, self % pop
         ! Select new index. Copy data if it is in the safe zone (<= N).
-        idx = int(i * rand % get())+1
+        idx = int(i * rand % get()) + 1
         if (idx <= N) then
           self % prisoners(idx) = self % prisoners(i)
         end if
@@ -342,9 +427,29 @@ contains
       self % pop = N
 
     else if (excessP < 0) then ! Clone randomly selected particles
-      do i = self % pop, N
-        idx = int(self % pop * rand % get()) + 1
-        self % prisoners(i) = self % prisoners(idx)
+      ! For a massive undersampling duplicate (or n-plicate) particles
+      excessP = -excessP
+      n_copies = excessP / self % pop
+      n_duplicates = modulo(excessP, self % pop)
+
+      ! Copy all particle maximum possible number of times
+      do i = 1, n_copies
+        self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
+      end do
+
+      ! Choose the remainder particles to duplicate without replacement
+      duplicates = [(i, i = 1, n_duplicates)]
+      do i = n_duplicates + 1, self % pop
+        idx = int(i * rand % get()) + 1
+        if (idx <= n_duplicates) then
+          duplicates(idx) = i
+        end if
+      end do
+      self % pop = self % pop * (n_copies + 1)
+
+      ! Copy the duplicated particles at the end
+      do i = 1, n_duplicates
+        self % prisoners(self % pop + i) = self % prisoners(duplicates(i))
       end do
       self % pop = N
 
@@ -406,7 +511,7 @@ contains
     ! Set population
     self % pop = n
 
-    ! Make shure enough space is avaliable
+    ! Make sure enough space is avaliable
     if (allocated(self % prisoners)) then
       if (size(self % prisoners) < n) then
         deallocate(self % prisoners)

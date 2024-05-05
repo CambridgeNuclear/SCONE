@@ -2,11 +2,12 @@ module transportOperator_inter
 
   use numPrecision
   use universalVariables
-  use genericProcedures,          only : fatalError
+  use errors_mod,                 only : fatalError
 
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
   use dictionary_class,           only : dictionary
+
 
   ! Geometry interfaces
   use geometryReg_mod,            only : gr_geomPtr => geomPtr
@@ -61,7 +62,7 @@ module transportOperator_inter
 
   end type transportOperator
 
-  ! Extandable procedures
+  ! Extendable procedures
   public :: init
   public :: kill
 

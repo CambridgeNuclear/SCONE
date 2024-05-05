@@ -7,8 +7,12 @@ module universalVariables
   ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
-  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 5
+  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 8
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
+
+  ! CHANGE THIS: NUMBER WILL DEPEND ON SYSTEM ARCHITECTURE
+  ! WILL AFFECT PARALLEL SCALING
+  integer(shortInt), parameter, public :: array_pad = 64
 
   ! Display information
   integer(shortInt), parameter, public :: MAX_COL = 70 ! Maximum number of columns in console display
@@ -24,7 +28,7 @@ module universalVariables
   integer(shortINt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
-                                          LOST_EV  = 4 
+                                          LOST_EV  = 4
 
   ! Create definitions for readability when dealing with positions relative to surfaces
   logical(defBool), parameter, public :: behind = .FALSE., &
@@ -65,6 +69,11 @@ module universalVariables
                                   targetNotFound    = -3, &
                                   NOT_FOUND         = -3
 
+  ! Integer indexes for type of tracking cross section requested
+  integer(shortInt), parameter :: MATERIAL_XS = 1, &
+                                  MAJORANT_XS = 2, &
+                                  TRACKING_XS = 3
+
   ! Physical constants
   real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
@@ -72,5 +81,9 @@ module universalVariables
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
+
+  ! Global name variables used to define specific geometry or field types
+  character(nameLen), parameter :: nameUFS  = 'uniFissSites'
+  character(nameLen), parameter :: nameWW   = 'WeightWindows'
 
 end module universalVariables

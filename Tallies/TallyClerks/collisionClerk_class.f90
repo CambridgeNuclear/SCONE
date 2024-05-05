@@ -2,6 +2,7 @@ module collisionClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -27,7 +28,7 @@ module collisionClerk_class
   private
 
   !!
-  !! Colision estimator of reaction rates
+  !! Collision estimator of reaction rates
   !! Calculates flux weighted integral from collisions
   !!
   !! Private Members:
@@ -59,6 +60,9 @@ module collisionClerk_class
 
     ! Useful data
     integer(shortInt)  :: width = 0
+
+    ! Settings
+    logical(defBool)   :: virtual = .false.
 
   contains
     ! Procedures used during build
@@ -115,6 +119,9 @@ contains
     ! Set width
     self % width = size(responseNames)
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+
   end subroutine init
 
   !!
@@ -142,7 +149,8 @@ contains
       deallocate(self % response)
     end if
 
-    self % width = 0
+    self % width   = 0
+    self % virtual = .false.
 
   end subroutine kill
 
@@ -178,16 +186,26 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(collisionClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: adrr
-    real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
+    real(defReal)                         :: scoreVal, flux
+    character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
+
+    ! Return if collision is virtual but virtual collision handling is off
+    if (self % virtual) then
+      ! Retrieve tracking cross section from cache
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      if (virtual) return
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
     ! Get current particle state
     state = p
@@ -210,12 +228,9 @@ contains
     ! Calculate bin address
     adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
 
-    ! Calculate flux sample 1/totXs
-    flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
-
     ! Append all bins
-    do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
+    do i = 1,self % width
+      scoreVal = self % response(i) % get(p, xsData) * flux
       call mem % score(scoreVal, adrr + i)
 
     end do

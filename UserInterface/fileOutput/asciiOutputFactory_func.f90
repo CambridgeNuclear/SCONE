@@ -14,7 +14,6 @@ module asciiOutputFactory_func
   implicit none
   private
 
-  ! *** ADD NAME OF A NEW ASCII OUTPUT HERE ***!
   ! List that contains all accaptable types of ascii Output printers
   ! It is printed if type was unrecognised
   ! NOTE:
@@ -36,7 +35,6 @@ contains
     character(100),parameter :: Here = 'new_asciiOutput (asciiOutputFactory_func.f90)'
 
     ! Allocate approperiate subclass of asciiOutput
-    ! *** ADD CASE STATEMENT FOR A NEW ASCII OUTPUT BELOW ***!
     select case(type)
       case('asciiMATLAB')
         allocate(asciiMATLAB :: new)

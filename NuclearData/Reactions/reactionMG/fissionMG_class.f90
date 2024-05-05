@@ -238,8 +238,10 @@ contains
 
     ! Check normalisation of chi
     S = sum(self % data(:,CHI_DAT))
-    if( abs(S-ONE) > FP_REL_TOL) then
-      call fatalError(Here,'Chi is not normalised. Relative error wrt ONE:'// numToChar(abs(S-ONE)))
+    if( abs(S-ONE) > 0.01 * FP_REL_TOL) then
+      print *,'Chi is not normalised. Relative error wrt ONE:'// numToChar(abs(S-ONE))//&
+              ' The normalisation has been adjusted automatically'
+      self % data(:,CHI_DAT) = self % data(:,CHI_DAT) / S
     end if
 
   end subroutine buildFromDict

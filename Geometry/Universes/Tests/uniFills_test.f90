@@ -110,7 +110,7 @@ contains
 
     @assertTrue(graph % hasCycles())
 
-    ! Move recursion to 3rd diffrent universe (loop from 3rd to 2nd)
+    ! Move recursion to 3rd different universe (loop from 3rd to 2nd)
     !
     graph % uni(2) % fill(1) = 3
     graph % uni(3) % fill(1) = -2

@@ -14,8 +14,8 @@ module vizPhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_addGeom => addGeom, &
-                                             gr_geomIdx  => geomIdx
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx
+  use geometryFactory_func,           only : new_geometry
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -83,7 +83,7 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'visualGeom'
-    call gr_addGeom(geomName, tempDict)
+    call new_geometry(tempDict, geomName)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 

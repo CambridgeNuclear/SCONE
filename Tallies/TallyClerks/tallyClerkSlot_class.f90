@@ -3,7 +3,7 @@ module tallyClerkSlot_class
   use numPrecision
   use genericProcedures,      only : fatalError
   use dictionary_class,       only : dictionary
-  use particle_class,         only : particle
+  use particle_class,         only : particle, particleState
   use particleDungeon_class,  only : particleDungeon
   use tallyClerk_inter,       only : tallyClerk, setMemAddress_super => setMemAddress, &
                                                  setName_super       => setName, &
@@ -45,6 +45,7 @@ module tallyClerkSlot_class
     procedure :: reportOutColl
     procedure :: reportPath
     procedure :: reportTrans
+    procedure :: reportSpawn
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
@@ -165,14 +166,15 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(tallyClerkSlot), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
 
     ! Pass call to instance in the slot
-    call self % slot % reportInColl(p, xsData, mem)
+    call self % slot % reportInColl(p, xsData, mem, virtual)
 
   end subroutine reportInColl
 
@@ -227,6 +229,24 @@ contains
     call self % slot % reportTrans(p, xsData, mem)
 
   end subroutine reportTrans
+
+  !!
+  !! Process particle creation report
+  !!
+  !! See tallyClerk_inter for details
+  !!
+  subroutine reportSpawn(self, MT, pOld, pNew, xsData, mem)
+    class(tallyClerkSlot), intent(inout)  :: self
+    integer(shortInt), intent(in)         :: MT
+    class(particle), intent(in)           :: pOld
+    class(particleState), intent(in)      :: pNew
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
+
+    ! Pass call to instance in the slot
+    call self % slot % reportSpawn(MT, pOld, pNew, xsData, mem)
+
+  end subroutine reportSpawn
 
   !!
   !! Process history report

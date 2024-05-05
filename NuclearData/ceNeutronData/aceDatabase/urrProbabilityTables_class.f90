@@ -35,8 +35,9 @@ module urrProbabilityTables_class
   !!   ILF    -> Inelatic competition flag (only used to check if inelatic scattering is zero)
   !!   IOA    -> Other absorption flag. NOTE: not used in the code
   !!   IFF    -> Multiplication factor flag
-  !!   eGrid  -> Energy grid
-  !!   table  -> Array of probability tables
+  !!   majorant -> Array of maximum table total xs entry per each energy
+  !!   eGrid    -> Energy grid
+  !!   table    -> Array of probability tables
   !!
   !!
   type, public :: urrProbabilityTables
@@ -46,12 +47,14 @@ module urrProbabilityTables_class
     integer(shortInt) :: ILF
     integer(shortInt) :: IOA
     integer(shortInt) :: IFF
+    real(defReal), dimension(:), allocatable  :: majorant
     real(defReal), dimension(:), allocatable  :: eGrid
     type(urrTable), dimension(:), allocatable :: table
 
   contains
 
     procedure :: init
+    procedure :: computeMajorant
     procedure :: kill
     procedure :: getEbounds
     procedure :: getIFF
@@ -82,8 +85,11 @@ contains
         call self % buildFromACE(data)
 
       class default
-        call fatalError(Here,'Elastic neutron scattering cannot be build from '//data % myType())
+        call fatalError(Here,'Probability tables cannot be build from '//data % myType())
     end select
+
+    ! Find majorant
+    if (allocated(self % table)) call self % computeMajorant
 
   end subroutine init
 
@@ -215,21 +221,67 @@ contains
         print '(A)', "Probability table discarded because CDF is not sorted"
         call self % kill()
         return
+
       elseif (abs(self % table(i) % CDF(self % nTable) - ONE) > 1.0E-6_defReal) then
         print '(A)', "Probability table discarded because CDF does not end with 1.0 "
         call self % kill()
         return
+
       elseif (self % table(i) % CDF(self % nTable) < ONE) then
         ! Adjust CDF if it is within tolerance but smaller than 1 due to floating point error
         self % table(i) % CDF(self % nTable) = ONE
+
       elseif (any(self % table(i) % tot < ZERO) .or. any(self % table(i) % el < ZERO) .or. &
               any(self % table(i) % fiss < ZERO) .or. any(self % table(i) % capt < ZERO) ) then
         print '(A)', "Probability table discarded because negative cross-sections present "
         call self % kill()
         return
+
       end if
     end do
 
   end subroutine buildFromACE
+
+  !!
+  !! Build majorant
+  !!
+  !! Finds the largest entry stored in each probability table (i.e., per each energy).
+  !! Each table entry is also compared with the equivalent entry for the following
+  !! energy; this is done so that interpolation between energies will not be needed
+  !! when using this majorant to compute the overall cross section majorant
+  !!
+  subroutine computeMajorant(self)
+    class(urrProbabilityTables), intent(inout) :: self
+    real(defReal)                              :: majorant
+    integer(shortInt)                          :: i, j
+
+    ! Allocate majorant
+    allocate(self % majorant(self % nGrid))
+
+    ! Loop over energy grid
+    do i = 1,self % nGrid
+
+      ! Initialise majorant value
+      majorant = ZERO
+
+      ! Loop over table elements
+      do j = 1,self % nTable
+
+        ! Update majorant if needed
+        majorant = max(majorant,self % table(i) % tot(j))
+
+        ! Check energy above (avoids the need for energy interpolation later)
+        if (i < self % nGrid) then
+          majorant = max(majorant,self % table(i + 1) % tot(j))
+        end if
+
+      end do
+
+      ! Save majorant for this energy
+      self % majorant(i) = majorant
+
+    end do
+
+  end subroutine computeMajorant
 
 end module urrProbabilityTables_class
