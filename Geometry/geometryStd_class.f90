@@ -422,7 +422,7 @@ contains
   !! Descend down the geometry structure until material is reached
   !!
   !! Requires starting level to be specified.
-  !! It is private procedure common to all movment types in geometry.
+  !! It is private procedure common to all movement types in geometry.
   !!
   !! Args:
   !!   coords [inout] -> CoordList of a particle. Assume that coords are already valid for all

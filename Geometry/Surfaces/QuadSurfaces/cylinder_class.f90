@@ -59,6 +59,7 @@ module cylinder_class
 
     ! Local procedures
     procedure :: build
+
   end type cylinder
 
 contains
@@ -86,6 +87,7 @@ contains
         str = 'unknown cylinder'
 
     end select
+
   end function myType
 
   !!

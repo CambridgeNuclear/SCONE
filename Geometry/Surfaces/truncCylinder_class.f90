@@ -66,6 +66,7 @@ module truncCylinder_class
     procedure :: setBC
     procedure :: explicitBC
     procedure :: transformBC
+
   end type truncCylinder
 
 contains
@@ -130,7 +131,7 @@ contains
 
     ! Read halfwidth
     call dict % get(a, 'halfwidth')
-    if ( a <= ZERO) call fatalError(Here, 'Halfwidth must be +ve. Is: '//numToChar(a))
+    if (a <= ZERO) call fatalError(Here, 'Halfwidth must be +ve. Is: '//numToChar(a))
     self % a = a
 
     ! Read type

@@ -60,6 +60,7 @@ contains
        case default
          string ="Unknown"
       end select
+
   end function toString
 
   !!
@@ -103,9 +104,11 @@ contains
     call dict % store('id', 52)
     call dict % store('type', type)
     call dict % store('vertex', [ONE, ONE, ONE])
-    call dict % store('tangent', ONE)
-    call dict % store('orientation', -1)
+    call dict % store('angle', 45.0_defReal)
+    call dict % store('hMin', ONE)
+    call dict % store('hMax', 10.0_defReal)
     call tst % surf % init(dict)
+
   end function newTestCase
 
   !!
@@ -153,8 +156,10 @@ contains
     @assertEqual(name, this % surf % myType())
 
     ! Bounding Box
-    ref = [-INF, -INF, -INF, INF, INF, INF]
-    ref( 3 + this % axis) = ONE
+    ref(this % axis)      = TWO
+    ref(this % axis + 3)  = 11.0_defReal
+    ref(this % plane)     = -9.0_defReal
+    ref(this % plane + 3) = 11.0_defReal
     aabb = this % surf % boundingBox()
     @assertEqual(ref, aabb, TOL)
 
@@ -168,7 +173,7 @@ contains
     class(test_cone), intent(inout) :: this
     real(defReal), dimension(3)     :: r, u, r_pre, u_pre
 
-    ! Set Boundary Contidions
+    ! Set boundary conditions
     ! Should ignore extra entries
     call this % surf % setBC([VACUUM_BC, REFLECTIVE_BC, REFLECTIVE_BC])
 
@@ -204,25 +209,26 @@ contains
     real(defReal)                   :: eps
 
     ! Set axis and plane axis indices
-    a = this % axis
+    a  = this % axis
     p1 = this % plane(1)
     p2 = this % plane(2)
 
-    ! Choose point at the surface moving in
+    ! Choose point at the surface of the cone moving in
     ! Direction is at 45deg to the plane
-    r = ONE
-    r(a) = ZERO
-    r(p1) = TWO
-    u(p2) = ZERO
+    r         = ONE
+    r([a,p1]) = 5.0_defReal
+    u     = ZERO
+    u(a)  = ONE
     u(p1) = -ONE
-    u(a)  = -ONE
     u = u / norm2(u)
 
     ! At the surface
     @assertFalse(this % surf % halfspace(r, u))
 
     ! Out within SURF_TOL
-    eps = -HALF * SURF_TOL
+    ! NOTE THAT the tolerance is very sensitive: if using eps = HALF * TOL, the
+    ! particle is outside tolerance
+    eps = -0.05_defReal * SURF_TOL
     @assertFalse(this % surf % halfspace(r + eps*u, u))
 
     ! Out outside SURF_TOL
@@ -230,15 +236,47 @@ contains
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
     ! Well Outside
-    eps = -TWO
+    eps = -HALF
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
     ! Well withn
-    eps = TWO
+    eps = HALF
     @assertFalse(this % surf % halfspace(r + eps*u, u))
 
     ! Tangent particle should be outside
-    u = ZERO
+    u     = ZERO
+    u(p2) = -ONE
+    u = u /norm2(u)
+    @assertTrue(this % surf % halfspace(r, u))
+
+    ! Choose point on one of the basis of the cone, moving out
+    r(a)       = 11.0_defReal
+    r([p1,p2]) = 4.0_defReal
+    u(a)       = ONE
+    u([p1,p2]) = -ONE
+    u = u / norm2(u)
+
+    ! At the surface
+    @assertTrue(this % surf % halfspace(r, u))
+
+    ! In within SURF_TOL
+    eps = -HALF * SURF_TOL
+    @assertTrue(this % surf % halfspace(r + eps*u, u))
+
+    ! In outside SURF_TOL
+    eps = -TWO * SURF_TOL
+    @assertFalse(this % surf % halfspace(r + eps*u, u))
+
+    ! Well inside
+    eps = -HALF
+    @assertFalse(this % surf % halfspace(r + eps*u, u))
+
+    ! Well outside
+    eps = HALF
+    @assertTrue(this % surf % halfspace(r + eps*u, u))
+
+    ! Tangent particle should be outside
+    u     = ZERO
     u(p2) = -ONE
     u = u /norm2(u)
     @assertTrue(this % surf % halfspace(r, u))
@@ -262,86 +300,98 @@ contains
     p2 = this % plane(2)
 
     ! **Outside the cone
-    r(a) = ZERO
-    r(p1) = 3.0_defReal
+    r(a)  = ZERO
+    r(p1) = 4.0_defReal
     r(p2) = ONE
 
     ! Impact at an angle, direction of flight on an axis
-    u(a) = ZERO
-    u(p1) = -ONE
+    u(a)  = ONE
+    u(p1) = ZERO
     u(p2) = ZERO
-    u = u/norm2(u)
-    ref = ONE
+    ref   = 4.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! Almost Parallel
-    u(a) = -ONE
-    u(p1) = 1.0_defReal + 1.0E+20_defReal
+    ! Impacting the basis
+    u(a) = TWO
+    u(p1) = -3.0_defReal
     u(p2) = ZERO
-    u = u/norm2(u)
+    u   = u/norm2(u)
+    ref = sqrt(13.0_defReal)
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! Almost parallel
+    u(a)  = ONE
+    u(p1) = ONE
+    u(p2) = ZERO
+    u   = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! Going in the opposite direction
+    u(a)  = -ONE
+    u(p1) = ZERO
+    u(p2) = ZERO
+    u   = u/norm2(u)
     @assertEqual(INF, this % surf % distance(r, u))
 
     ! **Exactly at the surface
-    r(p1) = TWO
+    r(a) = 4.0_defReal
 
     ! Particle going inside
-    u(a) = ZERO
+    u(a)  = ZERO
     u(p1) = -ONE
     u(p2) = ZERO
     u = u/norm2(u)
-    ref = TWO
+    ref = 6.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
     ! Particle going outside
     @assertEqual(INF, this % surf % distance(r, -u))
 
     ! Tangent particle
-    u(a) = ZERO
+    u(a)  = ZERO
     u(p1) = ZERO
     u(p2) = ONE
     u = u/norm2(u)
     @assertEqual(INF, this % surf % distance(r, u))
 
     ! **Outside within surface tolerance
-    r(p1) = TWO + HALF * SURF_TOL
-    u(a) = ZERO
+    r(p1) = 4.0_defReal + HALF * SURF_TOL
+    u(a)  = ZERO
     u(p1) = -ONE
     u(p2) = ZERO
     u = u/norm2(u)
-    ref = TWO + HALF * SURF_TOL
+    ref = 6.0_defReal + HALF * SURF_TOL
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! ** Inside the surface
-    r = ONE
-    r(a) = ZERO
-
-    ! Parallel to second plane direction
-    u(a) = ZERO
-    u(p1) = ZERO
-    u(p2) = ONE
-    u = u/norm2(u)
-    ref = ONE
-    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
-
-    ! Parallel to axis
-    u(a) = ONE
+    ! **Inside within surface tolerance
+    r(a)  = 4.0_defReal + HALF * SURF_TOL
+    r(p1) = 4.0_defReal
+    u(a)  = -ONE
     u(p1) = ZERO
     u(p2) = ZERO
     u = u/norm2(u)
-    ref = ONE
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! ** Inside the surface
+    r(a)  = 8.0_defReal
+    r(p1) = 3.0_defReal
+    r(p2) = ONE
+
+    ! Parallel to axis
+    u(a)  = ONE
+    u(p1) = ZERO
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = 3.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
     u(a) = -ONE
     u = u/norm2(u)
-    @assertEqual(INF, this % surf % distance(r, u), TOL * ref)
+    ref = 5.0_defReal
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! At an angle
-    u(a) = ONE
-    u(p1) = ONE
-    u(p2) = ZERO
-    u = u/norm2(u)
-    ref = HALF * SQRT2
-
+    r(p1) = HALF
+    ref = 6.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
   end subroutine testDistance
