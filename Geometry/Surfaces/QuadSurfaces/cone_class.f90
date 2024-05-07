@@ -28,12 +28,12 @@ module cone_class
   !! The opening angle of the cone must be provided in degrees, and be in the
   !! range 0 - 90 degrees
   !!
-  !! Three different types are avaliable
+  !! Three different types are available
   !!   xCone -> aligned with X-axis
   !!   yCone -> aligned with Y-axis
   !!   zCone -> aligned with Z-axis
   !!
-  !! Surface tolerance: SURF_TOL. Radial dependence is not added since the radius 
+  !! Surface tolerance: SURF_TOL. Radial dependence is not added since the radius
   !! of the cone is not constant. Tolerance should be space dependent.
   !!
   !! Sample dictionary input:
@@ -365,10 +365,11 @@ contains
 
     diff = r - self % vertex
 
+    ! Check the location of the particle, i.e., basis or cone surface, to calculate
+    ! the normal
     if (abs(diff(self % axis) - self % hMin) < self % surfTol()) then
       norm(self % axis)  = -ONE
       norm(self % plane) = ZERO
-      !halfspace = u(self % axis) <= ZERO
 
     elseif (abs(diff(self % axis) - self % hMax) < self % surfTol()) then
       norm(self % axis)  = ONE
@@ -382,7 +383,8 @@ contains
 
     norm = norm/norm2(norm)
     proj = dot_product(norm,u)
-    ! Determine next halfspace
+
+    ! Determine halfspace
     halfspace = proj > ZERO
 
     ! Parallel direction
