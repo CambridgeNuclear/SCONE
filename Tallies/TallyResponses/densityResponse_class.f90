@@ -3,7 +3,7 @@ module densityResponse_class
   use numPrecision
   use universalVariables,  only : neutronMass, lightSpeed
   use dictionary_class,    only : dictionary
-  use particle_class,      only : particle
+  use particle_class,      only : particle, P_NEUTRON, P_PHOTON
   use tallyResponse_inter, only : tallyResponse
 
   ! Nuclear Data interface
@@ -15,7 +15,10 @@ module densityResponse_class
   !!
   !! tallyResponse to score particle density contribution
   !!
-  !! Returns the inverse of the particle velocity in [cm/s], calculated from its energy
+  !! Returns the inverse of the particle velocity in [cm/s]
+  !!
+  !! The velocity is calculated from the particle energy for neutrons, and it is
+  !! the speed of light for photons
   !!
   !! Interface:
   !!   tallyResponse Interface
@@ -44,7 +47,12 @@ contains
   end subroutine init
 
   !!
-  !! Calculate the particle velocity and return the inverse (response to score particle density)
+  !! Calculates the particle velocity for neutron and photons
+  !! NOTE: neutronMass: [MeV]
+  !!       lightSpeed:  [cm/s]
+  !!
+  !! The function returns the inverse of the velocity (response to score particle density)
+  !! if the particle type is neutron or photon, and zero otherwise
   !!
   !! See tallyResponse_inter for details
   !!
@@ -55,10 +63,22 @@ contains
     real(defReal)                         :: val
     real(defReal)                         :: velocity
 
-    ! Calculate the velocity in [cm/s]
-    ! neutronMass: [MeV]
-    ! lightSpeed:  [cm/s]
-    velocity = sqrt(TWO * p % E / neutronMass) * lightSpeed
+    ! Initialise response
+    val = ZERO
+
+    ! Calculates the velocity for the relevant particle [cm/s]
+    if (p % type == P_NEUTRON) then
+      velocity = sqrt(TWO * p % E / neutronMass) * lightSpeed
+
+    elseif (p % type == P_PHOTON) then
+      velocity = lightSpeed
+
+    else
+      return
+
+    end if
+
+    ! Returns the inverse of the velocity
     val = ONE / velocity
 
   end function get

@@ -1,8 +1,9 @@
 module densityResponse_test
 
   use numPrecision
+  use universalVariables,    only : lightSpeed
   use densityResponse_class, only : densityResponse
-  use particle_class,        only : particle
+  use particle_class,        only : particle, P_NEUTRON, P_PHOTON
   use dictionary_class,      only : dictionary
   use nuclearDatabase_inter, only : nuclearDatabase
   use pFUnit_mod
@@ -52,7 +53,8 @@ contains
     class(nuclearDatabase),pointer             :: xsData
     real(defReal)                              :: res
 
-    ! Test with different particle energies
+    ! Test neutron density with different particle energies
+    p % type = P_NEUTRON
     p % E = ONE
     res   = ONE/1.3831592645e+09_defReal
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
@@ -60,6 +62,16 @@ contains
     p % E = 1.6e-06_defReal
     res   = ONE/1.7495734571e+06_defReal
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
+
+    ! Test photon density
+    p % type = P_PHOTON
+    res   = ONE/lightSpeed
+    @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
+
+    ! Test response for unknown particle type
+    p % type = 345
+    res = ZERO
+    @assertEqual(res, this % response % get(p, xsData))
 
   end subroutine densityResponseing
 
