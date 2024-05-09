@@ -15,7 +15,7 @@ module densityResponse_class
   !!
   !! tallyResponse to score particle density contribution
   !!
-  !! Returns the velocity of the particle, calculated from its energy
+  !! Returns the velocity of the particle in [cm/s], calculated from its energy
   !!
   !! Interface:
   !!   tallyResponse Interface
@@ -55,7 +55,7 @@ contains
     real(defReal)                         :: val
 
     ! Calculate the velocity in [cm/s]
-    ! neutronMass: [MeV/c^2]
+    ! neutronMass: [MeV]
     ! lightSpeed:  [cm/s]
     val = sqrt(TWO * p % E / neutronMass) * lightSpeed
 

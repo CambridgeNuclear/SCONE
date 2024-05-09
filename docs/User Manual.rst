@@ -1058,6 +1058,15 @@ Example: ::
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
       }
 
+* densityResponse: used to calculate the particle desnsity, i.e., the response function is 
+  the particle velocity in [cm/s]
+
+Example: ::
+
+      tally {
+      collision_estimator { type collisionClerk; response (dens); dens { type densityResponse; } }
+      }
+
 * macroResponse: used to score macroscopic reaction rates
 
   - MT: MT number of the desired reaction. The options are: -1 total, -2 capture,
