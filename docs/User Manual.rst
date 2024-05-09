@@ -1059,7 +1059,7 @@ Example: ::
       }
 
 * densityResponse: used to calculate the particle desnsity, i.e., the response function is 
-  the particle velocity in [cm/s]
+  the inverse of the particle velocity in [cm/s]
 
 Example: ::
 

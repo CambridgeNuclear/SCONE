@@ -54,11 +54,11 @@ contains
 
     ! Test with different particle energies
     p % E = ONE
-    res   = 1.3831592645e+09_defReal
+    res   = ONE/1.3831592645e+09_defReal
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
 
     p % E = 1.6e-06_defReal
-    res   = 1.7495734571e+06_defReal
+    res   = ONE/1.7495734571e+06_defReal
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
 
   end subroutine densityResponseing

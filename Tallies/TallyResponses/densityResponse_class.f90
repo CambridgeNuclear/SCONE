@@ -15,7 +15,7 @@ module densityResponse_class
   !!
   !! tallyResponse to score particle density contribution
   !!
-  !! Returns the velocity of the particle in [cm/s], calculated from its energy
+  !! Returns the inverse of the particle velocity in [cm/s], calculated from its energy
   !!
   !! Interface:
   !!   tallyResponse Interface
@@ -44,7 +44,7 @@ contains
   end subroutine init
 
   !!
-  !! Get the particle velocity (Response to score particle density)
+  !! Calculate the particle velocity and return the inverse (response to score particle density)
   !!
   !! See tallyResponse_inter for details
   !!
@@ -53,11 +53,13 @@ contains
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
+    real(defReal)                         :: velocity
 
     ! Calculate the velocity in [cm/s]
     ! neutronMass: [MeV]
     ! lightSpeed:  [cm/s]
-    val = sqrt(TWO * p % E / neutronMass) * lightSpeed
+    velocity = sqrt(TWO * p % E / neutronMass) * lightSpeed
+    val = ONE / velocity
 
   end function get
 
