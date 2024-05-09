@@ -75,7 +75,7 @@ module universalVariables
                                   TRACKING_XS = 3
 
   ! Physical constants
-  real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
+  real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
                               energyPerFission = 200.0_defReal       ! MeV
 
