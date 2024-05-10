@@ -424,7 +424,7 @@ contains
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
 
-    ! Determine the maximum shower ID and sort the dungeon
+    ! Determine the maximum brood ID and sort the dungeon
     maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
     call self % sortByBroodID(maxbroodID)
 
@@ -473,10 +473,10 @@ contains
   end subroutine normSize
 
   !!
-  !! Reorder the dungeon so the shower ID is in the ascending order
+  !! Reorder the dungeon so the brood ID is in the ascending order
   !!
   !! Args:
-  !!   k [in] -> Maximum shower ID
+  !!   k [in] -> Maximum brood ID
   !!
   subroutine sortByBroodID(self, k)
     class(particleDungeon), intent(inout)        :: self
@@ -487,12 +487,12 @@ contains
     type(particleState)                          :: tmp
     character(100), parameter :: Here = 'sortBybroodID (particleDungeon_class.f90)'
 
-    ! Count number of particles with each shower ID
+    ! Count number of particles with each brood ID
     count = 0
     do i = 1, self % pop
       id = self % prisoners(i) % broodID
 
-      if (id < 1 .or. id > k) call fatalError(Here, 'Shower ID out of range: '//numToChar(id))
+      if (id < 1 .or. id > k) call fatalError(Here, 'Brood ID out of range: '//numToChar(id))
 
       count(id) = count(id) + 1
     end do

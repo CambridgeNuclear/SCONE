@@ -274,7 +274,7 @@ contains
   end subroutine testNormPopUp
 
   !!
-  !! Test sorting of the population by shower ID without duplicates
+  !! Test sorting of the population by brood ID without duplicates
   !!
 @Test
   subroutine testSortingByBroodID()
@@ -286,13 +286,13 @@ contains
     ! Initialise
     call dungeon % init(10)
 
-    ! Store some particles with shower ID in reverse order
+    ! Store some particles with brood ID in reverse order
     do i = 1,10
       p % broodID = 10 - i + 1
       call dungeon % detain(p)
     end do
 
-    ! Sort by shower ID
+    ! Sort by brood ID
     call dungeon % sortByBroodID(10)
 
     ! Verify order
@@ -305,7 +305,7 @@ contains
 
 
   !!
-  !! Test sorting of the population by shower ID with duplicates
+  !! Test sorting of the population by brood ID with duplicates
   !!
   @Test
   subroutine testSortingByBroodID_withDuplicates()
@@ -318,18 +318,18 @@ contains
     ! Initialise
     call dungeon % init(10 * N_duplicates)
 
-    ! Store some particles with shower ID in reverse order
+    ! Store some particles with brood ID in reverse order
     ! Use the group number to distinguish duplicates and make sure
-    ! that the insertion order is preserved (for particles with the same shower ID)
-    do j = 1,N_duplicates
-      do i = 1,10
+    ! that the insertion order is preserved (for particles with the same brood ID)
+    do j = 1, N_duplicates
+      do i = 1, 10
         p % broodID = 10 - i + 1
         p % G = j
         call dungeon % detain(p)
       end do
     end do
 
-    ! Sort by shower ID
+    ! Sort by brood ID
     call dungeon % sortByBroodID(10)
 
     ! Verify order

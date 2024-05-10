@@ -103,7 +103,7 @@ module particle_class
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
-    integer(shortInt)          :: broodID = 0    ! ID of the shower (source particle number)
+    integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
