@@ -1,7 +1,7 @@
 module densityResponse_test
 
   use numPrecision
-  use universalVariables,    only : lightSpeed
+  use universalVariables,    only : neutronMass, lightSpeed
   use densityResponse_class, only : densityResponse
   use particle_class,        only : particle, P_NEUTRON, P_PHOTON
   use dictionary_class,      only : dictionary
@@ -55,23 +55,19 @@ contains
 
     ! Test neutron density with different particle energies
     p % type = P_NEUTRON
+    p % isMG = .false.
     p % E = ONE
-    res   = ONE/1.3831592645e+09_defReal
+    res   = ONE / lightSpeed / sqrt(TWO * p % E / neutronMass)
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
 
     p % E = 1.6e-06_defReal
-    res   = ONE/1.7495734571e+06_defReal
+    res   = ONE / lightSpeed / sqrt(TWO * p % E / neutronMass)
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
 
     ! Test photon density
     p % type = P_PHOTON
     res   = ONE/lightSpeed
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
-
-    ! Test response for unknown particle type
-    p % type = 345
-    res = ZERO
-    @assertEqual(res, this % response % get(p, xsData))
 
   end subroutine densityResponseing
 

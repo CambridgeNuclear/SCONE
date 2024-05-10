@@ -4,7 +4,7 @@ module genericProcedures
 
   use numPrecision
   use openmp_func, only : ompGetMaxThreads
-  use errors_mod, only: fatalError
+  use errors_mod,  only : fatalError
   use endfConstants
   use universalVariables
 

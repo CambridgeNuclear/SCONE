@@ -17,8 +17,9 @@ module densityResponse_class
   !!
   !! Returns the inverse of the particle velocity in [cm/s]
   !!
-  !! The velocity is calculated from the particle energy for neutrons, and it is
-  !! the speed of light for photons
+  !! NOTE:
+  !!  The velocities are computed from non-relativistic formula for massive particles.
+  !!  The small error might appear in MeV range (e.g. for fusion applications)
   !!
   !! Interface:
   !!   tallyResponse Interface
@@ -29,6 +30,7 @@ module densityResponse_class
     procedure :: init
     procedure :: get
     procedure :: kill
+
   end type densityResponse
 
 contains
@@ -47,12 +49,7 @@ contains
   end subroutine init
 
   !!
-  !! Calculates the particle velocity for neutron and photons
-  !! NOTE: neutronMass: [MeV]
-  !!       lightSpeed:  [cm/s]
-  !!
-  !! The function returns the inverse of the velocity (response to score particle density)
-  !! if the particle type is neutron or photon, and zero otherwise
+  !! Returns the inverse of the particle velocity (response to score particle density)
   !!
   !! See tallyResponse_inter for details
   !!
@@ -61,25 +58,9 @@ contains
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
-    real(defReal)                         :: velocity
 
-    ! Initialise response
-    val = ZERO
-
-    ! Calculates the velocity for the relevant particle [cm/s]
-    if (p % type == P_NEUTRON) then
-      velocity = sqrt(TWO * p % E / neutronMass) * lightSpeed
-
-    elseif (p % type == P_PHOTON) then
-      velocity = lightSpeed
-
-    else
-      return
-
-    end if
-
-    ! Returns the inverse of the velocity
-    val = ONE / velocity
+    ! Gets the particle velocity from the particle
+    val = ONE / p % getVelocity()
 
   end function get
 
