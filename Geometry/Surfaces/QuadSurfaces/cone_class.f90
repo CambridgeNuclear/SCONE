@@ -22,11 +22,14 @@ module cone_class
   !! the tangent of the cone opening angle (defined as the angle between the axis
   !! and the cone surface). The point V(vx, vy, vz) is the cone vertex.
   !!
-  !! The cone is truncated defining hMin and hMax, which are the distances between
-  !! the faces and the vertex, and can be positive or negative.
+  !! The cone is truncated by two faces given by their coordinates along the axis
+  !! of the cone (hMin and hMax) with the vertex being 0. The sign of hMin and hMax
+  !! determines the orientation of the cone.
+  !! NOTE: Both entries must have the same sign (single truncated cone), and
+  !! hMin < hMax must be true.
   !!
   !! The opening angle of the cone must be provided in degrees, and be in the
-  !! range 0 - 90 degrees
+  !! range 0 - 90 degrees (extremes excluded)
   !!
   !! Three different types are available
   !!   xCone -> aligned with X-axis
@@ -45,12 +48,12 @@ module cone_class
   !!          hMax 10.0; }
   !!
   !! Private Members:
-  !!   axis   -> Index of an alignment axis in {X_AXIS, Y_AXIS, Z_AXIS}
-  !!   plane  -> Indexes of axis in plane of cone {X_AXIS, Y_AXIS, Z_AXIS}\{axis}
-  !!   vertex -> Location of the vertex of the cone
-  !!   tan2   -> Square of the tangent of the opening angle
-  !!   hMin   -> Cone lower boundary
-  !!   hMax   -> Cone upper boundary
+  !!   axis      -> Index of an alignment axis in {X_AXIS, Y_AXIS, Z_AXIS}
+  !!   plane     -> Indexes of axis in plane of cone {X_AXIS, Y_AXIS, Z_AXIS}\{axis}
+  !!   vertex    -> Location of the vertex of the cone
+  !!   tanSquare -> Square of the tangent of the opening angle
+  !!   hMin      -> Cone lower boundary
+  !!   hMax      -> Cone upper boundary
   !!
   !! Interface:
   !!   surface interface
@@ -60,9 +63,9 @@ module cone_class
     integer(shortInt)               :: axis   = 0
     integer(shortInt), dimension(2) :: plane  = 0
     real(defReal), dimension(3)     :: vertex = ZERO
-    real(defReal)                   :: tan2   = ZERO
-    real(defReal)                   :: hMin   = ZERO
-    real(defReal)                   :: hMax   = ZERO
+    real(defReal)                   :: tanSquare = ZERO
+    real(defReal)                   :: hMin      = ZERO
+    real(defReal)                   :: hMax      = ZERO
   contains
     ! Superclass procedures
     procedure :: myType
@@ -136,11 +139,12 @@ contains
     end if
 
     if (angle <= ZERO .or. angle >= 90.0_defReal) then
-      call fatalError(Here, 'Opening angle of cone must be in the range 0-90 degrees. &
-                            & It is: '//numToChar(angle))
+      call fatalError(Here, 'Opening angle of cone must be in the range 0-90 degrees &
+                            & (extremes excluded). It is: '//numToChar(angle))
     end if
 
-    if (hMin >= hMax) call fatalError(Here, 'Cone lower and upper bases were swopped')
+    if (hMin >= hMax) call fatalError(Here, 'hMin is greater or equal hMax.')
+    if (sign(hMin,hMax) /= hMin) call fatalError(Here, 'hMin and hMax have different signs.')
 
     ! Load properties
     self % vertex = vertex
@@ -194,7 +198,7 @@ contains
    call self % setID(id)
 
    tangent = tan(angle * PI / 180.0_defReal)
-   self % tan2 = tangent * tangent
+   self % tanSquare = tangent * tangent
 
    ! Set surface tolerance
    call self % setTol(SURF_TOL)
@@ -216,9 +220,9 @@ contains
     aabb(self % axis + 3) = self % vertex(self % axis) + self % hMax
 
     ! On the plane of the basis
-    maxRadius = max(abs(self % hMin), abs(self % hMax))
-    aabb(self % plane)     = self % vertex(self % plane) - maxRadius * sqrt(self % tan2)
-    aabb(self % plane + 3) = self % vertex(self % plane) + maxRadius * sqrt(self % tan2)
+    maxRadius = max(abs(self % hMin), abs(self % hMax)) * sqrt(self % tanSquare)
+    aabb(self % plane)     = self % vertex(self % plane) - maxRadius
+    aabb(self % plane + 3) = self % vertex(self % plane) + maxRadius
 
   end function boundingBox
 
@@ -238,7 +242,7 @@ contains
 
     ! Evaluate the expression for the surface of the cone
     c = dot_product(diff(self % plane), diff(self % plane)) - &
-        self % tan2 * diff(self % axis) ** 2
+        self % tanSquare * diff(self % axis) ** 2
 
     ! Evaluate the expressions for the two basis of the cone and find the maximum
     cMin = - diff(self % axis) + self % hMin
@@ -268,85 +272,85 @@ contains
     real(defReal)                           :: dist
     real(defReal), dimension(3)             :: diff
     real(defReal), dimension(2)             :: testPoint2
-    real(defReal)                           :: a, b, c, delta, d1, d2, testPoint1, &
-                                               testRadius, maxRadius, distBasis
+    real(defReal)                           :: a, b, c, delta, near, far, &
+                                               test_near, test_far
+    real(defReal), parameter :: FP_MISS_TOL = ONE + 10.0_defReal * epsilon(ONE)
 
     ! Vector for the difference between position provided and vertex
     diff = r - self % vertex
 
     ! Calculate quadratic components in the cone
     a = dot_product(u(self % plane), u(self % plane)) - &
-        self % tan2 * u(self % axis)**2
+        self % tanSquare * u(self % axis)**2
     b = dot_product(diff(self % plane) , u(self % plane)) - &
-        self % tan2 * diff(self % axis) * u(self % axis)
+        self % tanSquare * diff(self % axis) * u(self % axis)
     c = dot_product(diff(self % plane), diff(self % plane)) - &
-        self % tan2 * diff(self % axis) ** 2
+        self % tanSquare * diff(self % axis) ** 2
 
     ! Calculate delta/4
     delta = b * b - a * c
 
     ! Calculate the distances from the cone surface
-    if (a == ZERO) then
-      d1 = - HALF * c / b
-      d2 = d1
+    if (a == ZERO) then                   ! One intersection
+      near = - HALF * c / b
+      far  = -sign(INF, near)
 
-    elseif (delta < ZERO) then
-      d1 = INF
-      d2 = d1
+    elseif (delta < ZERO) then            ! No intersection (should never happen)
+      far  = INF
+      near = -INF
 
-    else
-      d1 = - (b + sqrt(delta)) / a
-      d2 = - (b - sqrt(delta)) / a
+    else                                  ! Two intersections
+      far  = - (b + sqrt(delta)) / a
+      near = - (b - sqrt(delta)) / a
 
     end if
 
-    ! If one the distance found is smaller than the surface tolerance, then the particles
-    ! is on a surface: set that distance to infinity
-    if (d1 < self % surfTol()) d1 = INF
-    if (d2 < self % surfTol()) d2 = INF
-
-    ! Keep the smallest positive distance between the two calculated (cone surface)
-    if (d1 >= ZERO .and. d2 >= ZERO) then
-      dist = min(d1, d2)
-    elseif (d1 < ZERO .and. d2 < ZERO) then
-      dist = INF
-    else
-      dist = max(d1, d2)
-    end if
-
-    ! Check that point found would be inside the cone
-    testPoint1 = r(self % axis) + dist * u(self % axis) - self % vertex(self % axis)
-    if (testPoint1 > self % hMax .or. testPoint1 < self % hMin) dist = INF
+    ! Ensure correct order for any orientation
+    if (far < near) call swap(far, near)
 
     ! Calculate the distances from the basis of the cone
-    d1 = (self % hMax - diff(self % axis)) / u(self % axis)
-    d2 = (self % hMin - diff(self % axis)) / u(self % axis)
+    if (u(self % axis) /= ZERO) then
+      test_far  = (self % hMax - diff(self % axis)) / u(self % axis)
+      test_near = (self % hMin - diff(self % axis)) / u(self % axis)
 
-    ! Verify if the points found would fall inside the cone
-    testPoint2 = r(self % plane) + d1 * u(self % plane) - self % vertex(self % plane)
-    testRadius = dot_product(testPoint2, testPoint2)
-    maxRadius  = self % hMax * self % hMax * self % tan2
-    if (testRadius > maxRadius) d1 = INF
-
-    testPoint2 = r(self % plane) + d2 * u(self % plane) - self % vertex(self % plane)
-    testRadius = dot_product(testPoint2, testPoint2)
-    maxRadius  = self % hMin * self % hMin * self % tan2
-    if (testRadius > maxRadius) d2 = INF
-
-    ! Keep the smallest positive distance between the two calculated (basis)
-    if (d1 >= ZERO .and. d2 >= ZERO) then
-      distBasis = min(d1, d2)
-    elseif (d1 < ZERO .and. d2 < ZERO) then
-      distBasis = INF
     else
-      distBasis = max(d1, d2)
+      test_far  = sign(INF, diff(self % axis))
+      test_near = -sign(INF, diff(self % axis))
+
     end if
 
-    ! Choose the smallest distance
-    dist = min(dist, distBasis)
+    ! Ensure correct order for any orientation
+    if (test_far < test_near) call swap(test_far, test_near)
 
-    ! Cap distance at infinity for safety
-    dist = min(dist, INF)
+    ! Get intersection between sets of distances
+    far = min(far, test_far)
+    near = max(near, test_near)
+
+    ! Choose correct distance
+    if (far <= near * FP_MISS_TOL) then      ! There is no intersection
+      dist = INF
+
+    else if (abs(c) < self % surfTol()) then ! Point at the surface
+      ! Choose distance with largest absolute value
+      if (abs(far) >= abs(near)) then
+        dist = far
+      else
+        dist = near
+      end if
+
+    else                                     ! Normal hit. Closest distance
+      if (near <= ZERO) then
+        d = far
+      else
+        d = near
+      end if
+
+    end if
+
+    ! Cap the distance
+    if (d <= ZERO .or. d > INF) then
+      d = INF
+    end if
 
   end function distance
 
@@ -377,7 +381,7 @@ contains
 
     else
       norm(self % plane) = diff(self % plane)
-      norm(self % axis)  = - self % tan2 * diff(self % axis)
+      norm(self % axis)  = - self % tanSquare * diff(self % axis)
 
     end if
 
@@ -408,9 +412,9 @@ contains
     self % axis   = 0
     self % plane  = 0
     self % vertex = ZERO
-    self % tan2   = ZERO
-    self % hMin   = ZERO
-    self % hMax   = ZERO
+    self % tanSquare = ZERO
+    self % hMin      = ZERO
+    self % hMax      = ZERO
 
   end subroutine kill
 
