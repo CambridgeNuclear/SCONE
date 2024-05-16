@@ -7,6 +7,7 @@ module cellMap_class
   use particle_class,          only : particleState
   use outputFile_class,        only : outputFile
   use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
+
   ! Geometry
   use geometryStd_class,       only : geometryStd, geometryStd_CptrCast
   use geometry_inter,          only : geometry

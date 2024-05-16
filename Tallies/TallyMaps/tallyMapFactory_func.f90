@@ -20,7 +20,6 @@ module tallyMapFactory_func
 
   ! TallyMap implementations
   use multiMap_class,         only : multiMap
-  use sphericalMap_class,     only : sphericalMap
   use cylindricalMap_class,   only : cylindricalMap
 
   implicit none
@@ -33,7 +32,6 @@ module tallyMapFactory_func
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_tallyMaps = [ 'multiMap      ', &
-                                                                      'sphericalMap  ', &
                                                                       'cylindricalMap']
 
 
@@ -71,9 +69,6 @@ contains
       select case(type)
         case('multiMap')
           allocate( multiMap :: new)
-
-        case('sphericalMap')
-          allocate( sphericalMap :: new)
 
         case('cylindricalMap')
           allocate( cylindricalMap :: new)
