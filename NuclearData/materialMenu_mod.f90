@@ -300,6 +300,8 @@ contains
     end if
 
     call dict % getOrDefault(self % T, 'temp', ZERO)
+    if (self % T < ZERO) call fatalError(Here, 'The temperature of material '//numToChar(idx)//&
+                                                ' is negative: '//numToChar(self % T))
 
     ! Get composition dictionary and load composition
     compDict => dict % getDictPtr('composition')

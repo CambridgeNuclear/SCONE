@@ -2,9 +2,9 @@ module ceNeutronMaterial_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError
-  use RNG_class,         only : RNG
-  use particle_class,    only : particle
+  use genericProcedures,  only : fatalError, numToChar
+  use RNG_class,          only : RNG
+  use particle_class,     only : particle
 
   ! Nuclear Data Handles
   use materialHandle_inter,    only : materialHandle
@@ -167,6 +167,10 @@ contains
   !! Use this procedure ONLY during build. NEVER during transport.
   !! IT IS NOT THREAD SAFE!
   !!
+  !! NOTE: eUpperSab and eLowerURR are fed by the aceNeutronDatabase, and they are the
+  !! strictest (respecitvely highest and lowest) energy limits among all nuclides
+  !! in the material composition.
+  !!
   !! Args:
   !!   matIdx [in]    -> material index
   !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
@@ -185,14 +189,25 @@ contains
     real(defReal), intent(in), optional                     :: temp
     real(defReal), intent(in), optional                     :: eUpperSab
     real(defReal), intent(in), optional                     :: eLowerURR
+    character(100), parameter :: Here = 'set (ceNeutronMaterial_class.f90)'
 
     if (present(database))  self % data    => database
     if (present(fissile))   self % fissile = fissile
     if (present(matIdx))    self % matIdx  = matIdx
     if (present(hasTMS))    self % hasTMS  = hasTMS
     if (present(temp))      self % kT = (kBoltzmann * temp) / joulesPerMeV
-    if (present(eUpperSab)) self % eUpperSab  = eUpperSab
-    if (present(eLowerURR)) self % eLowerURR  = eLowerURR
+
+    if (present(eUpperSab)) then
+      if (eUpperSab < ZERO) call fatalError (Here, 'Upper Sab energy limit of material '&
+                                             &//numToChar(matIdx)//' is negative.')
+      self % eUpperSab  = eUpperSab
+    end if
+
+    if (present(eLowerURR)) then
+      if (eLowerURR < ZERO) call fatalError (Here, 'Lower URR energy limit of material '&
+                                             &//numToChar(matIdx)//' is negative.')
+      self % eLowerURR  = eLowerURR
+    end if
 
   end subroutine set
 
@@ -244,7 +259,7 @@ contains
 
   !!
   !! Return .true. if TMS is on in the material and the provided energy is not
-  !! within the ures or S(a,b) range in the material
+  !! within the ures or S(a,b) range of any nuclide in the material.
   !!
   !! Args:
   !!   E [in] -> test energy
@@ -274,7 +289,7 @@ contains
   !!   E [in]       -> incident energy [MeV]
   !!   rand [inout] -> random number generator
   !!   nucIdx [out] -> sampled nuclide index
-  !!   eOut [out]   -> energy used for the TMS rejection sampling
+  !!   eOut [out]   -> relative energy between neutron and target (may be /= E in case of TMS)
   !!
   !! Errors:
   !!   fatalError if sampling fails for some reason (E.G. random number > 1)
@@ -289,15 +304,15 @@ contains
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: i
     real(defReal)                        :: P_acc, deltakT, nuckT, eMin, eMax, &
-                                            A, totMatXS, totNucXS, dens, eRel
+                                            A, trackMatXS, totNucXS, dens, eRel
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
-    ! Get total material XS
-    if (E /= materialCache(self % matIdx) % E_tot) then
-      call self % data % updateTotalMatXS(E, self % matIdx, rand)
+    ! Get material tracking XS
+    if (E /= materialCache(self % matIdx) % E_track) then
+      call self % data % updateTrackMatXS(E, self % matIdx, rand)
     end if
 
-    totMatXS = materialCache(self % matIdx) % xss % total * rand % get()
+    trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
 
     ! Loop over nuclides
     do i = 1,size(self % nuclides)
@@ -330,10 +345,10 @@ contains
 
         end if
 
-        totMatXS = totMatXS - totNucXS * dens
+        trackMatXS = trackMatXS - totNucXS * dens
 
         ! Nuclide temporarily accepted: check TMS condition
-        if (totMatXS < ZERO) then
+        if (trackMatXS < ZERO) then
 
           ! Save energy to be used to sample reaction
           eOut = E

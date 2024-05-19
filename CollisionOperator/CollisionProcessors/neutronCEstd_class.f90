@@ -167,7 +167,7 @@ contains
     if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Select collision nuclide
-    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, p % collisionE)
+    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E)
 
     ! If nuclide was rejected in TMS loop return to tracking
     if (collDat % nucIdx == REJECTED) then
@@ -179,7 +179,7 @@ contains
     if (.not.associated(self % nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, p % collisionE, p % pRNG)
+    call self % nuc % getMicroXSs(microXss, collDat % E, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -214,7 +214,7 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, p % collisionE, p % pRNG)
+      call self % nuc % getMicroXSs(microXSs, collDat % E, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
@@ -354,7 +354,7 @@ contains
     character(100),parameter  :: Here =' inelastic (neutronCEstd_class.f90)'
 
     ! Invert inelastic scattering and get reaction
-    collDat % MT = self % nuc % invertInelastic(p % collisionE, p % pRNG)
+    collDat % MT = self % nuc % invertInelastic(collDat % E, p % pRNG)
     reac => uncorrelatedReactionCE_CptrCast(self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here, "Failed to get scattering reaction")
 

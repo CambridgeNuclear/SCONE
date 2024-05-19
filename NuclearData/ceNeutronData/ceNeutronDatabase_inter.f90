@@ -52,14 +52,18 @@ module ceNeutronDatabase_inter
     type(intMap) :: mapDBRCnuc
 
   contains
+    ! local implementation
+    procedure :: getTrackMatXS
+
     ! nuclearDatabase Interface Implementation
     procedure :: getTrackingXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
 
     ! Procedures implemented by a specific CE Neutron Database
-    procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
     procedure(updateMajorantXS), deferred     :: updateMajorantXS
+    procedure(updateTotalMatXS), deferred     :: updateTrackMatXS
+    procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
     procedure(updateMacroXSs), deferred       :: updateMacroXSs
     procedure(updateTotalXS), deferred        :: updateTotalNucXS
     procedure(updateMicroXSs), deferred       :: updateMicroXSs
@@ -88,6 +92,28 @@ module ceNeutronDatabase_inter
       real(defReal), intent(out)           :: eMin
       real(defReal), intent(out)           :: eMax
     end subroutine energyBounds
+
+    !!
+    !! Make sure that trackXS of material with matIdx is at energy E = E_track
+    !! in ceNeutronChache
+    !!
+    !! The tracking xs correspons to the material total cross section unless TMS
+    !! is used. In that case, this is the material temperature majorant xs.
+    !!
+    !! Assume that call to this procedure implies that data is NOT up-to-date
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   matIdx [in]  -> material index that needs to be updated
+    !!   rand [inout] -> random number generator
+    !!
+    subroutine updateTrackMatXS(self, E, matIdx, rand)
+      import :: ceNeutronDatabase, defReal, shortInt, RNG
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: matIdx
+      class(RNG), optional, intent(inout)  :: rand
+    end subroutine updateTrackMatXS
 
     !!
     !! Make sure that totalXS of material with matIdx is at energy E
@@ -198,12 +224,13 @@ module ceNeutronDatabase_inter
     end subroutine updateMicroXSs
 
     !!
-    !! Subroutine to retrieve the nuclide total majorant cross section
-    !! over a calculated energy range (needed for TMS) and update the nuclide
-    !! cache with majorant value, energy, deltakT and Doppler correction factor
+    !! Subroutine to retrieve the nuclide total majorant cross section over a range
+    !! of relative energies a nuclide can see given the material temperature. The
+    !! energy range is calculated based on the nuclide and material kT, on the atomic
+    !! mass of the nuclide, and the incident neutron energy
     !!
-    !! The energy range depends on the nuclide and TMS material kT, on the
-    !! atomic mass of the nuclide, and the incident neutron energy
+    !! The nuclide cache is updated with the 'temperature' majorant value, incident
+    !! neutron energy, deltakT and Doppler correction factor
     !!
     !! Args:
     !!   E [in]      -> required energy [MeV]
@@ -268,7 +295,7 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTotalMatXS(p, matIdx)
+        xs = self % getTrackMatXS(p, matIdx)
 
       case (MAJORANT_XS)
         xs = self % getMajorantXS(p)
@@ -347,6 +374,35 @@ contains
     xs = majorantCache(1) % xs
 
   end function getMajorantXS
+
+  !!
+  !! Return tracking XS for matIdx
+  !!
+  !! This is the regular material total cross section unless TMS is used.
+  !! If TMS is used, this is the material temperature majorant cross section.
+  !!
+  !! Error:
+  !!   fatalError if particle is not CE Neutron
+  !!
+  function getTrackMatXS(self, p, matIdx) result(xs)
+    class(ceNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)             :: p
+    integer(shortInt), intent(in)           :: matIdx
+    real(defReal)                           :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (ceNeutronDatabase_inter.f90)'
+
+    ! Check dynamic type of the particle
+    if (p % isMG .or. p % type /= P_NEUTRON) then
+      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+    end if
+
+    ! Check Cache and update if needed
+    if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
+
+    ! Return Cross-Section
+    xs = materialCache(matIdx) % trackXS
+
+  end function getTrackMatXS
 
   !!
   !! Cast nuclearDatabase pointer to ceNeutronDatabase pointer

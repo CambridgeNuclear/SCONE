@@ -69,7 +69,6 @@ module collisionProbabilityClerk_class
     integer(shortInt)                      :: N = 0 !! Number of bins
     !type(macroResponse)                    :: resp
 
-
   contains
     ! Procedures used during build
     procedure  :: init
@@ -89,6 +88,7 @@ module collisionProbabilityClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type collisionProbabilityClerk
 
   !!

@@ -12,8 +12,6 @@ module collisionClerk_class
 
   ! Nuclear Data interface
   use nuclearDatabase_inter,      only : nuclearDatabase
-  use neutronMaterial_inter,      only : neutronMaterial,neutronMaterial_CptrCast
-  use neutronXSPackages_class,    only : neutronMacroXSs
 
   ! Tally Filters
   use tallyFilter_inter,          only : tallyFilter
@@ -196,8 +194,6 @@ contains
     logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
-    type(neutronMacroXSs)                 :: xss
-    class(neutronMaterial), pointer       :: mat
     integer(longInt)                      :: addr
     real(defReal)                         :: scoreVal, flux
     character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
@@ -223,30 +219,18 @@ contains
     ! Return if invalid bin index
     if (binIdx == 0) return
 
-    ! Return if collision is virtual but virtual collision handling is off
+    ! Calculate flux with the right cross section according to virtual collision handling
     if (self % handleVirtual) then
-      ! Retrieve tracking cross section from cache
       flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-
     else
-      ! Get material pointer
-      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
-      if (.not.associated(mat)) then
-        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
-      end if
-
-      ! Obtain xss
-      call mat % getMacroXSs(xss, p)
-
-      flux = p % w / xss % total
-
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
     ! Calculate bin address
-    addr = self % getMemAddress() + self % width * (binIdx -1)  - 1
+    addr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
 
     ! Append all bins
-    do i = 1,self % width
+    do i = 1, self % width
       scoreVal = self % response(i) % get(p, xsData) * flux
       call mem % score(scoreVal, addr + i)
 
@@ -285,13 +269,13 @@ contains
     call outFile % startBlock(self % getName())
 
     ! If collision clerk has map print map information
-    if( allocated(self % map)) then
+    if (allocated(self % map)) then
       call self % map % print(outFile)
     end if
 
     ! Write results.
     ! Get shape of result array
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       resArrayShape = [size(self % response), self % map % binArrayShape()]
     else
       resArrayShape = [size(self % response)]
@@ -302,7 +286,7 @@ contains
     call outFile % startArray(name, resArrayShape)
 
     ! Print results to the file
-    do i=1,product(resArrayShape)
+    do i = 1, product(resArrayShape)
       call mem % getResult(val, std, self % getMemAddress() - 1 + i)
       call outFile % addResult(val,std)
 

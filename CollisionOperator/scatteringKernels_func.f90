@@ -243,11 +243,13 @@ contains
   end function relativeEnergy_constXS
 
   !!
-  !! Function to return the Doppler Broadening low energy correction factor
-  !! Common notation for this constant is g_E(E, A, kT) or g(v).
-  !! Energy Limits taken from Serpent 2.1.31
+  !! Returns the Doppler Broadening low energy correction factor. When performing Doppler
+  !! broadening (e.g., TMS), this is multiplied to the cross sections at the base temperature
+  !! to give the effective cross section.
   !!
-  !! This is used in Doppler Broadening of cross sections used with TMS
+  !! Common notation for this constant is g_E(E, A, kT) or g(v, A, kT).
+  !!
+  !! The energy Limits are taken from Serpent 2.1.31
   !!
   function dopplerCorrectionFactor(E, A, kT) result(g)
     real(defReal), intent(in) :: E
@@ -260,9 +262,9 @@ contains
 
     invAlph = ONE / alpha
 
-    if (alpha > 250) then
+    if (alpha > 250.0_defReal) then
       g = ONE
-    else if (alpha > 2.568) then
+    else if (alpha > 2.568_defReal) then
       g = ONE + HALF * invAlph * invAlph
     else
       g = (ONE + HALF * invAlph * invAlph) * erf(alpha) + exp(-alpha * alpha) * invAlph / SQRT_PI

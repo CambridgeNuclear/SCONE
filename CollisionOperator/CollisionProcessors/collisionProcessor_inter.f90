@@ -26,6 +26,7 @@ module collisionProcessor_inter
     real(defReal)     :: muL     = ONE  !! Cosine of deflection angle in LAB-frame
     real(defReal)     :: A       = ZERO !! Target Mass [Neutron Mass]
     real(defReal)     :: kT      = ZERO !! Target temperature [MeV]
+    real(defReal)     :: E       = ZERO !! Collision energy (could be relative to target) [MeV]
   end type
 
 

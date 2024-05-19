@@ -174,6 +174,13 @@ contains
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
 
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
+
     ! Get material pointer
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
     if (.not.associated(mat)) then
@@ -182,14 +189,6 @@ contains
 
     ! Obtain xss
     call mat % getMacroXSs(xss, p)
-
-    ! Calculate flux
-    if (self % handleVirtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      flux = p % w / xss % total
-    end if
 
     nuFissXS = xss % nuFission
     absXS    = xss % capture + xss % fission
@@ -258,7 +257,7 @@ contains
       histWgt = p % w
 
       ! Score analog leakage
-      call mem % score( histWgt, self % getMemAddress() + ANA_LEAK)
+      call mem % score(histWgt, self % getMemAddress() + ANA_LEAK)
 
     end if
 
@@ -283,7 +282,7 @@ contains
       leakage    = mem % getScore(addr + ANA_LEAK)
       scatterMul = mem % getScore(addr + SCATTER_PROD)
 
-      k_est = nuFiss / (absorb + leakage - scatterMul )
+      k_est = nuFiss / (absorb + leakage - scatterMul)
       call mem % accumulate(k_est, addr + K_EFF)
     end if
 
@@ -317,7 +316,7 @@ contains
     real(defReal)                         :: k, STD
 
     ! Get current k-eff estimate
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF )
+    call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
 
     ! Print to console
     print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD

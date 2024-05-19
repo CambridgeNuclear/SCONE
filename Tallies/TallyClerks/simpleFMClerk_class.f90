@@ -18,7 +18,6 @@ module simpleFMClerk_class
   ! Nuclear Data
   use nuclearDatabase_inter,      only : nuclearDatabase
   use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
-  use neutronXSPackages_class,    only : neutronMacroXSs
 
   ! Tally Maps
   use tallyMap_inter,             only : tallyMap
@@ -100,7 +99,7 @@ module simpleFMClerk_class
   !!
   type,public, extends( tallyResult) :: FMresult
     integer(shortInt)                           :: N  = 0 ! Size of FM
-    real(defReal), dimension(:,:,:),allocatable :: FM  ! FM proper
+    real(defReal), dimension(:,:,:),allocatable :: FM     ! FM proper
   end type FMResult
 
 contains
@@ -177,10 +176,12 @@ contains
 
     ! Loop through a population and calculate starting weight in each bin
     do i = 1,start % popSize()
+
       associate (state => start % get(i))
         idx = self % map % map(state)
         if (idx > 0) self % startWgt(idx) = self % startWgt(idx) + state % wgt
       end associate
+
     end do
 
   end subroutine reportCycleStart
@@ -196,7 +197,6 @@ contains
     class(nuclearDatabase),intent(inout) :: xsData
     type(scoreMemory), intent(inout)     :: mem
     logical(defBool), intent(in)         :: virtual
-    type(neutronMacroXSs)                :: xss
     class(neutronMaterial), pointer      :: mat
     type(particleState)                  :: state
     integer(shortInt)                    :: sIdx, cIdx
@@ -219,16 +219,11 @@ contains
     ! Return if material is not fissile
     if (.not. mat % isFissile()) return
 
-    ! Return if collision is virtual but virtual collision handling is off
+    ! Calculate flux with the right cross section according to virtual collision handling
     if (self % handleVirtual) then
-      ! Retrieve tracking cross section from cache
       flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-
     else
-      ! Obtain xss
-      call mat % getMacroXSs(xss, p)
-      flux = p % w / xss % total
-
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
     ! Find starting index in the map

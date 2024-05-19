@@ -104,8 +104,9 @@ module aceNeutronDatabase_class
 
     ! ceNeutronDatabase Procedures
     procedure :: energyBounds
-    procedure :: updateTotalMatXS
     procedure :: updateMajorantXS
+    procedure :: updateTrackMatXS
+    procedure :: updateTotalMatXS
     procedure :: updateMacroXSs
     procedure :: updateTotalNucXS
     procedure :: updateMicroXSs
@@ -300,6 +301,95 @@ contains
   end subroutine energyBounds
 
   !!
+  !! Make sure that the majorant of ALL active materials is at energy E
+  !! in ceNeutronCache
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  subroutine updateMajorantXS(self, E, rand)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    class(RNG), optional, intent(inout)   :: rand
+    integer(shortInt)                     :: idx, i, matIdx
+    real(defReal)                         :: f
+    character(100), parameter :: Here = 'updateMajorantXS (aceNeutronDatabase_class.f90)'
+
+    associate (maj => cache_majorantCache(1))
+      maj % E  = E
+
+      ! Get majorant via the precomputed unionised cross section
+      if (self % hasMajorant) then
+        idx = binarySearch(self % eGridUnion, E)
+
+        if (idx <= 0) then
+          call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
+                               ' in unionised majorant grid')
+
+        end if
+
+        associate (E_top => self % eGridUnion(idx + 1), E_low  => self % eGridUnion(idx))
+          f = (E - E_low) / (E_top - E_low)
+        end associate
+
+        maj % xs = self % majorant(idx+1) * f + (ONE - f) * self % majorant(idx)
+
+      else ! Compute majorant on the fly
+
+        maj % xs = ZERO
+
+        ! Loop over materials
+        do i = 1, size(self % activeMat)
+          matIdx = self % activeMat(i)
+
+          ! Update if needed
+          if (cache_materialCache(matIdx) % E_track /= E) then
+            call self % updateTrackMatXS(E, matIdx, rand)
+          end if
+
+          maj % xs = max(maj % xs, cache_materialCache(matIdx) % trackXS)
+        end do
+
+      end if
+
+    end associate
+
+  end subroutine updateMajorantXS
+
+  !!
+  !! Make sure that trackXS of material with matIdx is at energy E = E_track
+  !! in ceNeutronChache
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  subroutine updateTrackMatXS(self, E, matIdx, rand)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    integer(shortInt), intent(in)         :: matIdx
+    class(RNG), optional, intent(inout)   :: rand
+
+    associate (matCache => cache_materialCache(matIdx), &
+               mat      => self % materials(matIdx))
+
+      ! Set new energy and clean current total XS
+      matCache % E_track = E
+      matCache % trackXS = ZERO
+
+      if (mat % useTMS(E)) then
+        ! The material tracking xs is the temperature majorant in the case of TMS
+        call self % updateTotalTempMajXS(E, matIdx)
+
+      else
+        ! When TMS is not in use, the material tracking xs is equivalent to the total
+        call self % updateTotalMatXS(E, matIdx, rand)
+        matCache % trackXS = matCache % xss % total
+
+      end if
+
+    end associate
+
+  end subroutine updateTrackMatXS
+
+  !!
   !! Subroutine to update the temperature majorant in a given material at given temperature
   !!
   !! The function finds the upper and lower limits of the energy range the nuclide majorant
@@ -332,7 +422,7 @@ contains
         ! Sum nuclide majorants to find material majorant
         corrFact   = cache_nuclideCache(nucIdx) % doppCorr
         nucTempMaj = cache_nuclideCache(nucIdx) % tempMajXS * corrFact
-        matCache % xss % total = matCache % xss % total + dens * nucTempMaj
+        matCache % trackXS = matCache % trackXS + dens * nucTempMaj
 
       end do
 
@@ -362,7 +452,10 @@ contains
       matCache % xss % total = ZERO
 
       if (mat % useTMS(E)) then
-        call self % updateTotalTempMajXS(E, matIdx)
+        ! When TMS is in use, the total xs is retrieved sampling the nuclides' relative
+        ! energies given the temperature difference between material temperature and
+        ! temperature of the nuclides' base cross sections
+        call self % updateRelEnMacroXSs(E, matIdx, rand)
 
       else
         ! Construct total macro XS
@@ -387,61 +480,6 @@ contains
   end subroutine updateTotalMatXS
 
   !!
-  !! Make sure that the majorant of ALL Active materials is at energy E
-  !! in ceNeutronCache
-  !!
-  !! See ceNeutronDatabase for more details
-  !!
-  subroutine updateMajorantXS(self, E, rand)
-    class(aceNeutronDatabase), intent(in) :: self
-    real(defReal), intent(in)             :: E
-    class(RNG), optional, intent(inout)   :: rand
-    integer(shortInt)                     :: idx, i, matIdx
-    real(defReal)                         :: f
-    character(100), parameter :: Here = 'updateMajorantXS (aceNeutronDatabase_class.f90)'
-
-    associate (maj => cache_majorantCache(1) )
-      maj % E  = E
-
-      ! Get majorant via the precomputed unionised cross section
-      if (self % hasMajorant) then
-        idx = binarySearch(self % eGridUnion, E)
-
-        if (idx <= 0) then
-          call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
-                               ' in unionised majorant grid')
-
-        end if
-
-        associate (E_top => self % eGridUnion(idx + 1), E_low  => self % eGridUnion(idx))
-          f = (E - E_low) / (E_top - E_low)
-        end associate
-
-        maj % xs = self % majorant(idx+1) * f + (ONE - f) * self % majorant(idx)
-
-      else ! Compute majorant on the fly
-
-        maj % xs = ZERO
-
-        ! Loop over materials
-        do i = 1, size(self % activeMat)
-          matIdx = self % activeMat(i)
-
-          ! Update if needed
-          if (cache_materialCache(matIdx) % E_tot /= E) then
-            call self % updateTotalMatXS(E, matIdx, rand)
-          end if
-
-          maj % xs = max(maj % xs, cache_materialCache(matIdx) % xss % total)
-        end do
-
-      end if
-
-    end associate
-
-  end subroutine updateMajorantXS
-
-  !!
   !! Make sure that the macroscopic XSs for the material with matIdx are set
   !! to energy E in ceNeutronCache
   !!
@@ -462,6 +500,9 @@ contains
       call matCache % xss % clean()
 
       if (mat % useTMS(E)) then
+        ! When TMS is in use, the xss are retrieved sampling the nuclides' relative
+        ! energies given the temperature difference between material temperature and
+        ! temperature of the nuclides' base cross sections
         call self % updateRelEnMacroXSs(E, matIdx, rand)
 
       else
@@ -1070,7 +1111,7 @@ contains
 
     ! Configure Cache
     if (self % hasUrr) then
-      call cache_init(size(self % materials), size(self % nuclides), maxval(self % nucToZaid))
+      call cache_init(size(self % materials), size(self % nuclides), nZaid = maxval(self % nucToZaid))
     else
       call cache_init(size(self % materials), size(self % nuclides))
     end if
@@ -1105,9 +1146,9 @@ contains
                                                 sizeGrid, eIdx, nucIdxLast, eIdxLast, &
                                                 urrIdx
     type(intMap)                             :: nucSet
-    real(defReal)                            :: eRef, eNuc, E, maj, total, dens, urrMaj, &
+    real(defReal)                            :: eRef, eNuc, E, maj, trackXS, dens, urrMaj, &
                                                 nucXS, f, eMax, eMin
-    class(RNG), pointer                      :: rand
+    class(RNG), allocatable                  :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
 
@@ -1305,9 +1346,9 @@ contains
         ! Get material index
         matIdx = self % activeMat(j)
 
-        ! Get material total cross section
-        call self % updateTotalMatXS(E, matIdx, rand)
-        total = cache_materialCache(matIdx) % xss % total
+        ! Get material tracking cross section
+        call self % updateTrackMatXS(E, matIdx, rand)
+        trackXS = cache_materialCache(matIdx) % trackXS
 
         ! Loop over nuclides to check and correct for ures
         do k = 1, size(self % materials(matIdx) % nuclides)
@@ -1332,7 +1373,7 @@ contains
               end if
 
             ! Update total material cross section
-            total = total + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
+            trackXS = trackXS + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
 
             end if
 
@@ -1341,7 +1382,7 @@ contains
         end do
 
         ! Select majorant cross section
-        maj = max(maj, total)
+        maj = max(maj, trackXS)
 
       end do
 

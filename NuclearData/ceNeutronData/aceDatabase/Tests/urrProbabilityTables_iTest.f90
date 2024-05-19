@@ -26,7 +26,7 @@ module urrProbabilityTables_iTest
 
   ! CE Neutron Database specification
   character(*),parameter :: ACE_INPUT_STR = &
-  & "aceLibrary ./IntegrationTestFiles/testLib; ures 1 ;"
+  & "aceLibrary ./IntegrationTestFiles/testLib; ures 1 ; majorant 1; "
 
 contains
 
@@ -98,7 +98,7 @@ contains
 
     ! U-235
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(1))
-    zaidCache(1) % E = 9.1E-3_defReal
+    zaidCache(1) % E  = 9.1E-3_defReal
     zaidCache(1) % xi = 0.347_defReal
     nuclideCache(1) % E_tot = ONE
 
