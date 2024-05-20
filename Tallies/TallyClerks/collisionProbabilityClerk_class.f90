@@ -21,9 +21,6 @@ module collisionProbabilityClerk_class
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
-  ! Tally Response
-  !use macroResponse_class,        only : macroResponse
-
   implicit none
   private
 
@@ -72,7 +69,6 @@ module collisionProbabilityClerk_class
     integer(shortInt)                      :: N = 0 !! Number of bins
     !type(macroResponse)                    :: resp
 
-
   contains
     ! Procedures used during build
     procedure  :: init
@@ -92,6 +88,7 @@ module collisionProbabilityClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type collisionProbabilityClerk
 
   !!
@@ -192,7 +189,7 @@ contains
     ! Find starting index in the map
     ! It is important that preCollision is not changed by a collisionProcessor
     ! before the particle is fed to the tally, otherwise results will be meaningless
-    sIdx = self % map % map( p % preCollision)
+    sIdx = self % map % map(p % preCollision)
 
     ! Find collision index in the map
     state = p

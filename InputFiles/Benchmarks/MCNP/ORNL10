@@ -73,7 +73,7 @@ materials {
 
 
     solution {
-      temp       293;
+      !temp       293;
       composition {
         92233.03  3.9124E-9;
         92234.03  4.0905E-7;
@@ -87,7 +87,7 @@ materials {
       moder {1001.03 hh2o.04; }
     }
     shell {
-      temp       293;
+      !temp       293;
       composition {
         13027.03  5.9881E-2;
         14000.03  2.1790E-4;

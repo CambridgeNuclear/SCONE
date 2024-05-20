@@ -74,7 +74,7 @@ nuclearData {
 materials {
 
     solution {
-      temp       293;
+      !temp       293;
       composition {
         92232.03  0.000000045608;
         92233.03  0.0022379;
@@ -88,7 +88,7 @@ materials {
       moder {01001.03  hh2o.04; }
     }
     steel {
-      temp       293;
+      !temp       293;
       composition {
         26000.03  0.061248;
         24000.03  0.016678;
@@ -96,7 +96,7 @@ materials {
       }
     }
     reflector {
-      temp       293;
+      !temp       293;
       composition {
         04009.03  0.12161;
       }

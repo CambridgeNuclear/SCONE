@@ -91,7 +91,7 @@ module mgXsClerk_class
     logical(defBool)  :: PN = .false.
 
     ! Settings
-    logical(defBool) :: virtual = .false.
+    logical(defBool) :: handleVirtual = .true.
 
   contains
     ! Procedures used during build
@@ -155,6 +155,9 @@ contains
       self % width = ARRAY_SCORE_SIZE + MATRIX_SCORE_SMALL * self % energyN
     end if
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
+
   end subroutine init
 
   !!
@@ -178,7 +181,7 @@ contains
     self % energyN = 0
     self % width   = 0
     self % PN      = .false.
-    self % virtual = .false.
+    self % handleVirtual = .false.
 
   end subroutine kill
 
@@ -223,18 +226,12 @@ contains
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
     real(defReal)                         :: nuFissXS, captXS, fissXS, scattXS, flux
-    integer(shortInt)                     :: enIdx, matIdx, binIdx
+    integer(shortInt)                     :: enIdx, locIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      if (virtual) return
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-    end if
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Get current particle state
     state = p
@@ -248,35 +245,54 @@ contains
     end if
     ! Space
     if (allocated(self % spaceMap)) then
-      matIdx = self % spaceMap % map(state)
+      locIdx = self % spaceMap % map(state)
     else
-      matIdx = 1
+      locIdx = 1
     end if
 
     ! Return if invalid bin index
-    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+    if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
     ! Calculate bin address
-    binIdx = self % energyN * (matIdx - 1) + enIdx
+    binIdx = self % energyN * (locIdx - 1) + enIdx
     addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
-    ! Ensure we're not in void (could happen when scoring virtual collisions)
-    if (p % matIdx() == VOID_MAT) return
-
-    ! Get material pointer
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
-    if (.not.associated(mat)) then
-      call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
-    ! Retrieve material cross sections
-    call mat % getMacroXSs(xss, p)
+    ! Check if the particle is in void. This call might happen when handling virtual collisions.
+    ! This is relevant in the case of homogenising materials that include void: the flux
+    ! in void will be different than zero, and the zero reaction rates have to be averaged
+    if (p % matIdx() /= VOID_MAT) then
 
-    ! Calculate reaction rates
-    nuFissXS = xss % nuFission * flux
-    captXS   = xss % capture * flux
-    fissXS   = xss % fission * flux
-    scattXS  = (xss % elasticScatter + xss % inelasticScatter) * flux
+      ! Get material pointer
+      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+      if (.not.associated(mat)) then
+        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+      end if
+
+      ! Retrieve material cross sections
+      call mat % getMacroXSs(xss, p)
+
+      ! Calculate reaction rates
+      nuFissXS = xss % nuFission * flux
+      captXS   = xss % capture * flux
+      fissXS   = xss % fission * flux
+      scattXS  = (xss % elasticScatter + xss % inelasticScatter) * flux
+
+    else
+
+      ! Reaction rates in void are zero
+      nuFissXS = ZERO
+      captXS   = ZERO
+      fissXS   = ZERO
+      scattXS  = ZERO
+
+    end if
 
     ! Add scores to counters
     call mem % score(flux,     addr + FLUX_idx)
@@ -301,7 +317,7 @@ contains
     type(scoreMemory), intent(inout)     :: mem
     type(particleState)                  :: preColl, postColl
     real(defReal)                        :: score, prod, mu, mu2, mu3, mu4, mu5
-    integer(shortInt)                    :: enIdx, matIdx, binIdx, binEnOut
+    integer(shortInt)                    :: enIdx, locIdx, binIdx, binEnOut
     integer(longInt)                     :: addr
 
     ! Get pre and post collision particle state
@@ -335,16 +351,16 @@ contains
         end if
         ! Space
         if (allocated(self % spaceMap)) then
-          matIdx = self % spaceMap % map(preColl)
+          locIdx = self % spaceMap % map(preColl)
         else
-          matIdx = 1
+          locIdx = 1
         end if
 
         ! Return if invalid bin index
-        if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+        if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
         ! Calculate bin address
-        binIdx = self % energyN * (matIdx - 1) + enIdx
+        binIdx = self % energyN * (locIdx - 1) + enIdx
         addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
         ! Score a scattering event from group g
@@ -427,7 +443,7 @@ contains
     class(particleState), intent(in)      :: pNew
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
-    integer(longInt)                      :: addr, binIdx, enIdx, matIdx
+    integer(longInt)                      :: addr, binIdx, enIdx, locIdx
 
     if (MT == N_FISSION) then
 
@@ -440,16 +456,16 @@ contains
       end if
       ! Space
       if (allocated(self % spaceMap)) then
-        matIdx = self % spaceMap % map(pNew)
+        locIdx = self % spaceMap % map(pNew)
       else
-        matIdx = 1
+        locIdx = 1
       end if
 
       ! Return if invalid bin index
-      if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+      if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
       ! Calculate bin address
-      binIdx = self % energyN * (matIdx - 1) + enIdx
+      binIdx = self % energyN * (locIdx - 1) + enIdx
       addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
       ! Score energy group of fission neutron

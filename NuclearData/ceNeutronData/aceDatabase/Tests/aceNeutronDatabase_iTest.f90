@@ -24,13 +24,13 @@ module aceNeutronDatabase_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = &
-  & "water { temp 273;           &
+  & "water {                     &
   &       composition {          &
   &       1001.03 5.028E-02;     &
   &       8016.03 2.505E-02;     &
   &                   }          &
   &        }                     &
-  &  uo2  { temp 1;              &
+  &  uo2  {                      &
   &        composition {         &
   &        92233.03 2.286E-02;   &
   &        8016.03  4.572E-02;   &
@@ -91,7 +91,7 @@ contains
     @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(3)))
 
     ! Get water
-    mat => ceNeutronMaterial_TptrCast( data % getMaterial(1))
+    mat => ceNeutronMaterial_TptrCast(data % getMaterial(1))
     @assertAssociated(mat)
 
     ! Make sure densities are present
@@ -171,7 +171,6 @@ contains
 
     name = 'uo2'
     @assertTrue( 0 /= matNames % getOrDefault(name, 0))
-
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting nuclide XSs

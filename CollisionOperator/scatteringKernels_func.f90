@@ -12,9 +12,11 @@ module scatteringKernels_func
   private
 
   public  :: asymptoticScatter
+  public  :: asymptoticInelasticScatter
   public  :: targetVelocity_constXS
   public  :: targetVelocity_DBRCXS
-  public  :: asymptoticInelasticScatter
+  public  :: relativeEnergy_constXS
+  public  :: dopplerCorrectionFactor
 
   private :: sample_x2expx2
   private :: sample_x3expx2
@@ -113,7 +115,7 @@ contains
     Y = sqrt(A*E/kT)
 
     ! Calculate threshold factor alpha
-    alpha = 2.0/(Y*sqrt(PI)+2.0)
+    alpha = TWO / (Y * SQRT_PI + TWO)
 
     rejectionLoop: do
 
@@ -125,9 +127,9 @@ contains
 
     end do rejectionLoop
 
-    ! Calculate azimithal angle for target and obtain target direction
+    ! Calculate azimuthal angle for target and obtain target direction
     r1 = rand % get()
-    phi = 2.0 *PI * r1
+    phi = TWO * PI * r1
 
     V_t = rotateVector(dir, mu, phi)
 
@@ -164,7 +166,7 @@ contains
 
     ! Calculate threshold factor alpha
     ! In MCNP, alpha is p1
-    alpha = 2.0 / (Y * sqrt(PI) + 2.0)
+    alpha = TWO / (Y * SQRT_PI + TWO)
 
     rejectionLoop: do
 
@@ -191,7 +193,7 @@ contains
 
     end do rejectionLoop
 
-    ! Calculate azimithal angle for target and obtain target direction
+    ! Calculate azimuthal angle for target and obtain target direction
     r2 = rand % get()
     phi = 2.0 * PI * r2
 
@@ -202,6 +204,73 @@ contains
 
   end function targetVelocity_DBRCXS
 
+  !!
+  !! Function that returns a sample of target frame neutron energy using constant XS approximation
+  !! V_t is a vector. The velocity is scaled by a factor sqrt(Mn/2) where Mn is mass of a neutron
+  !! so that V_t*V_t=E_t with E_t beeing kinetic energy of a NEUTRON traveling with TARGET VELOCITY
+  !! (note that it is not a kinetic energy of the target).
+  !!
+  function relativeEnergy_constXS(E, A, kT, rand) result(relE)
+    real(defReal), intent(in)               :: E
+    real(defReal), intent(in)               :: A
+    real(defReal), intent(in)               :: kT
+    class(RNG), intent(inout)               :: rand
+    logical(defBool)                        :: accept
+    real(defReal)                           :: alpha, mu
+    real(defReal)                           :: X, Y
+    real(defReal)                           :: relV, relE
+
+    ! Calculate neutron Y = beta *V_n
+    ! beta = sqrt(A*Mn/2kT). Note velocity scaling by sqrt(Mn/2).
+    Y = sqrt(A*E/kT)
+
+    ! Calculate threshold factor alpha
+    alpha = TWO / (Y * SQRT_PI + TWO)
+
+    rejectionLoop: do
+
+      ! Sample velocity and calculate angle and acceptance probability
+      call sample_targetVelocity(X, accept, relV, mu, rand, Y, alpha)
+
+      ! Accept or reject mu
+      if (accept) exit rejectionLoop
+
+    end do rejectionLoop
+
+    ! Relative energy
+    relE = (relV**2 * kT / A)
+
+  end function relativeEnergy_constXS
+
+  !!
+  !! Returns the Doppler Broadening low energy correction factor. When performing Doppler
+  !! broadening (e.g., TMS), this is multiplied to the cross sections at the base temperature
+  !! to give the effective cross section.
+  !!
+  !! Common notation for this constant is g_E(E, A, kT) or g(v, A, kT).
+  !!
+  !! The energy Limits are taken from Serpent 2.1.31
+  !!
+  function dopplerCorrectionFactor(E, A, kT) result(g)
+    real(defReal), intent(in) :: E
+    real(defReal), intent(in) :: A
+    real(defReal), intent(in) :: kT
+    real(defReal)             :: alpha, invAlph
+    real(defReal)             :: g
+
+    alpha = sqrt(A * E / kT)
+
+    invAlph = ONE / alpha
+
+    if (alpha > 250.0_defReal) then
+      g = ONE
+    else if (alpha > 2.568_defReal) then
+      g = ONE + HALF * invAlph * invAlph
+    else
+      g = (ONE + HALF * invAlph * invAlph) * erf(alpha) + exp(-alpha * alpha) * invAlph / SQRT_PI
+    end if
+
+  end function dopplerCorrectionFactor
 
   !!
   !! Helper function to sample x^2 * exp( - x^2) probability distribution
@@ -295,10 +364,10 @@ contains
     end if
 
     ! Sample polar angle of target velocity wrt. neutron direction
-    mu = 2.0 * r2 - 1.0;
+    mu = TWO * r2 - ONE;
 
     ! Calculate relative velocity between neutron and target
-    rel_v = sqrt(Y * Y + X * X - 2.0 * X * Y * mu)
+    rel_v = sqrt(Y * Y + X * X - TWO * X * Y * mu)
 
     ! Calculate Acceptance Propability
     P_acc = rel_v / (Y + X)
@@ -307,6 +376,5 @@ contains
     accept = P_acc > r3
 
   end subroutine sample_targetVelocity
-
 
 end module scatteringKernels_func

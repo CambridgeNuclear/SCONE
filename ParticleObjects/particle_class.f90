@@ -69,6 +69,7 @@ module particle_class
 
     ! Private procedures
     procedure,private :: equal_particleState
+
   end type particleState
 
   !!

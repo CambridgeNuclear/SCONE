@@ -63,6 +63,7 @@ module baseMgNeutronDatabase_class
   contains
     ! Superclass Interface
     procedure :: getTrackingXS
+    procedure :: getTrackMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -102,7 +103,7 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTotalMatXS(p, matIdx)
+        xs = self % getTrackMatXS(p, matIdx)
 
       case (MAJORANT_XS)
         xs = self % getMajorantXS(p)
@@ -112,6 +113,7 @@ contains
         ! READ ONLY - read from previously updated cache
         if (p % G == trackingCache(1) % G) then
           xs = trackingCache(1) % xs
+          return
         else
           call fatalError(Here, 'Tracking cache failed to update during tracking')
         end if
@@ -128,7 +130,23 @@ contains
   end function getTrackingXS
 
   !!
-  !! Get Total XS given a particle
+  !! Get tracking XS given a particle. In MG, it is always identical to the material
+  !! total XS.
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  function getTrackMatXS(self, p, matIdx) result(xs)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)                 :: p
+    integer(shortInt), intent(in)               :: matIdx
+    real(defReal)                               :: xs
+
+    xs = self % getTotalMatXS(p, matIdx)
+
+  end function getTrackMatXS
+
+  !!
+  !! Get total XS given a particle
   !!
   !! See nuclearDatabase documentation for details
   !!
@@ -162,7 +180,7 @@ contains
   end function getTotalMatXS
 
   !!
-  !! Get Majorant XS given a particle
+  !! Get majorant XS given a particle
   !!
   !! See nuclearDatabase documentation for details
   !!

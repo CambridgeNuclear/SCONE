@@ -2,6 +2,7 @@ module macroResponse_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,         only : VOID_MAT
   use genericProcedures,          only : fatalError, numToChar
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, P_NEUTRON
@@ -121,14 +122,15 @@ contains
 
     val = ZERO
 
-    ! Return 0.0 if particle is not neutron
-    if(p % type /= P_NEUTRON) return
+    ! Return zero if particle is not neutron or if the particle is in void
+    if (p % type /= P_NEUTRON) return
+    if (p % matIdx() == VOID_MAT) return
 
     ! Get pointer to active material data
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
 
     ! Return if material is not a neutronMaterial
-    if(.not.associated(mat)) return
+    if (.not.associated(mat)) return
 
     call mat % getMacroXSs(xss, p)
     val = xss % get(self % MT)

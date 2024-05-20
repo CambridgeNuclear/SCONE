@@ -73,7 +73,7 @@ materials {
 
 
     fuel {
-      temp       293;
+      !temp       293;
       composition {
         92233.03  0.046712;
         92234.03  0.00059026;
