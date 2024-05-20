@@ -112,7 +112,7 @@ contains
     call self % transit(p, tally, thisCycle, nextCycle)
 
     ! Send history reports if particle died
-    if( p  % isDead) then
+    if (p  % isDead) then
       call tally % reportHist(p)
     end if
 

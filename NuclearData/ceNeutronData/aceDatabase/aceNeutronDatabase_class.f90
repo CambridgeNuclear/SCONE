@@ -370,9 +370,8 @@ contains
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
 
-      ! Set new energy and clean current total XS
+      ! Set new energy
       matCache % E_track = E
-      matCache % trackXS = ZERO
 
       if (mat % useTMS(E)) then
         ! The material tracking xs is the temperature majorant in the case of TMS
@@ -409,6 +408,9 @@ contains
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
+
+      ! Clean current total XS
+      matCache % trackXS = ZERO
 
       ! loop through all nuclides in material and find sum of majorants
       do i = 1, size(mat % nuclides)

@@ -52,11 +52,10 @@ module ceNeutronDatabase_inter
     type(intMap) :: mapDBRCnuc
 
   contains
-    ! local implementation
-    procedure :: getTrackMatXS
 
     ! nuclearDatabase Interface Implementation
     procedure :: getTrackingXS
+    procedure :: getTrackMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
 
@@ -305,6 +304,7 @@ contains
         ! READ ONLY - read from previously updated cache
         if (p % E == trackingCache(1) % E) then
           xs = trackingCache(1) % xs
+          return
         else
           call fatalError(Here, 'Tracking cache failed to update during tracking')
         end if
@@ -319,6 +319,37 @@ contains
     trackingCache(1) % xs = xs
 
   end function getTrackingXS
+
+  !!
+  !! Return tracking XS for matIdx
+  !!
+  !! This is the regular material total cross section unless TMS is used.
+  !! If TMS is used, this is the material temperature majorant cross section.
+  !!
+  !! See nuclearDatabase_inter for details!
+  !!
+  !! Error:
+  !!   fatalError if particle is not CE Neutron
+  !!
+  function getTrackMatXS(self, p, matIdx) result(xs)
+    class(ceNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)             :: p
+    integer(shortInt), intent(in)           :: matIdx
+    real(defReal)                           :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (ceNeutronDatabase_inter.f90)'
+
+    ! Check dynamic type of the particle
+    if (p % isMG .or. p % type /= P_NEUTRON) then
+      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+    end if
+
+    ! Check Cache and update if needed
+    if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
+
+    ! Return Cross-Section
+    xs = materialCache(matIdx) % trackXS
+
+  end function getTrackMatXS
 
   !!
   !! Return Total XS for matIdx
@@ -374,35 +405,6 @@ contains
     xs = majorantCache(1) % xs
 
   end function getMajorantXS
-
-  !!
-  !! Return tracking XS for matIdx
-  !!
-  !! This is the regular material total cross section unless TMS is used.
-  !! If TMS is used, this is the material temperature majorant cross section.
-  !!
-  !! Error:
-  !!   fatalError if particle is not CE Neutron
-  !!
-  function getTrackMatXS(self, p, matIdx) result(xs)
-    class(ceNeutronDatabase), intent(inout) :: self
-    class(particle), intent(in)             :: p
-    integer(shortInt), intent(in)           :: matIdx
-    real(defReal)                           :: xs
-    character(100),parameter :: Here = 'getTrackMatXS (ceNeutronDatabase_inter.f90)'
-
-    ! Check dynamic type of the particle
-    if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
-    end if
-
-    ! Check Cache and update if needed
-    if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
-
-    ! Return Cross-Section
-    xs = materialCache(matIdx) % trackXS
-
-  end function getTrackMatXS
 
   !!
   !! Cast nuclearDatabase pointer to ceNeutronDatabase pointer

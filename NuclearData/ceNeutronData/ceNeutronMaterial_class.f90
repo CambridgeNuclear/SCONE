@@ -303,8 +303,8 @@ contains
     real(defReal), intent(out)           :: eOut
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: i
-    real(defReal)                        :: P_acc, deltakT, nuckT, eMin, eMax, &
-                                            A, trackMatXS, totNucXS, dens, eRel
+    real(defReal)                        :: P_acc, eMin, eMax, A, eRel, &
+                                            trackMatXS, totNucXS, dens
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get material tracking XS
@@ -326,14 +326,8 @@ contains
         if (self % useTMS(E)) then
 
           ! If the material is using TMS, the nuclide temperature majorant is needed
-          nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
-          if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
-
-          nuckT = nuc % getkT()
-          deltakT = self % kT - nuckT
-          if (nucCache % deltakT /= deltakT .or. nucCache % E_maj /= E) then
-            call self % data % updateTotalTempNucXS(E, self % kT, nucIdx)
-          end if
+          ! The check for the right values stored in cache happens inside the subroutine
+          call self % data % updateTotalTempNucXS(E, self % kT, nucIdx)
 
           totNucXS = nucCache % tempMajXS * nucCache % doppCorr
 
@@ -355,10 +349,14 @@ contains
 
           if (self % useTMS(E)) then
 
-            A  = nuc % getMass()
+            ! If the material is using TMS, retrieve nuclide and nuclide information
+            nuc => ceNeutronNuclide_CptrCast(self % data % getNuclide(nucIdx))
+            if (.not. associated(nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
+
+            A = nuc % getMass()
 
             ! Sample relative energy
-            eRel = relativeEnergy_constXS(E, A, deltakT, rand)
+            eRel = relativeEnergy_constXS(E, A, nucCache % deltakT, rand)
 
             ! Call through system minimum and maximum energies
             call self % data % energyBounds(eMin, eMax)

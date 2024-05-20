@@ -127,11 +127,11 @@ contains
     call dict % getOrDefault(self % threshA, 'massThreshold', 1.0_defReal)
 
     ! Verify settings
-    if( self % minE < ZERO ) call fatalError(Here,'-ve minEnergy')
-    if( self % maxE < ZERO ) call fatalError(Here,'-ve maxEnergy')
-    if( self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
-    if( self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
-    if( self % threshA < 0) call fatalError(Here,' -ve massThreshold')
+    if (self % minE < ZERO) call fatalError(Here,'-ve minEnergy')
+    if (self % maxE < ZERO) call fatalError(Here,'-ve maxEnergy')
+    if (self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
+    if (self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
+    if (self % threshA < 0) call fatalError(Here,' -ve massThreshold')
 
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))

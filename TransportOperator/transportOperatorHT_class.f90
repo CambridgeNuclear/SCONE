@@ -116,7 +116,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
+      sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
