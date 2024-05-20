@@ -174,6 +174,13 @@ contains
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
 
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
+
     ! Get material pointer
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
     if (.not.associated(mat)) then
@@ -182,13 +189,6 @@ contains
 
     ! Obtain xss
     call mat % getMacroXSs(xss, p)
-
-    ! Calculate flux with the right cross section according to virtual collision handling
-    if (self % handleVirtual) then
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      flux = p % w / xss % total
-    end if
 
     nuFissXS = xss % nuFission
     absXS    = xss % capture + xss % fission

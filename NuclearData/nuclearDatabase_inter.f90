@@ -22,6 +22,7 @@ module nuclearDatabase_inter
   !!
   !! Interface:
   !!   getTrackingXS -> returns XS used to sample track length
+  !!   getTrackMatXS -> returns material tracking xs, which could be different from the total (e.g., with TMS)
   !!   getTotalMatXS -> returns total Material XS given a particle
   !!   getMajorantXS -> returns majorant XS given particle and list of active materials
   !!   matNamesMap   -> returns pointer to map of material names to matIdx
@@ -35,6 +36,7 @@ module nuclearDatabase_inter
     procedure(init), deferred          :: init
     procedure(activate), deferred      :: activate
     procedure(getTrackingXS), deferred :: getTrackingXS
+    procedure(getTrackMatXS), deferred :: getTrackMatXS
     procedure(getTotalMatXS), deferred :: getTotalMatXS
     procedure(getMajorantXS), deferred :: getMajorantXS
     procedure(matNamesMap), deferred   :: matNamesMap
@@ -110,6 +112,32 @@ module nuclearDatabase_inter
       integer(shortInt), intent(in)         :: what
       real(defReal)                         :: xs
     end function getTrackingXS
+
+    !!
+    !! Return value of materials tracking XS for a particle
+    !!
+    !! Reads all relevant state information from the particle (e.g. E or G)
+    !! It is the XS used to sample track length in a material: it might be the same
+    !! as the material total XS, or a material temperature majorant when TMS is used
+    !!
+    !! Args:
+    !!   p [in]      -> Particle at a given state
+    !!   matIdx [in] -> Material index
+    !!
+    !! Result:
+    !!   Value of material tracking XS [1/cm]
+    !!
+    !! Errors:
+    !!   Undefined behaviour if the state of the particle is invalid e.g. -ve energy
+    !!   Undefined behavior if matIdx does not correspond to a defined material
+    !!
+    function getTrackMatXS(self, p, matIdx) result(xs)
+      import :: nuclearDatabase, particle, shortInt, defReal
+      class(nuclearDatabase), intent(inout) :: self
+      class(particle), intent(in)           :: p
+      integer(shortInt), intent(in)         :: matIdx
+      real(defReal)                         :: xs
+    end function getTrackMatXS
 
     !!
     !! Return value of material total XS for a particle

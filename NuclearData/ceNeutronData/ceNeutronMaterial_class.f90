@@ -304,15 +304,15 @@ contains
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: i
     real(defReal)                        :: P_acc, eMin, eMax, A, eRel, &
-                                            totMatXS, totNucXS, dens
+                                            trackMatXS, totNucXS, dens
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get material tracking XS
-    if (E /= materialCache(self % matIdx) % E_tot) then
-      call self % data % updateTotalMatXS(E, self % matIdx, rand)
+    if (E /= materialCache(self % matIdx) % E_track) then
+      call self % data % updateTrackMatXS(E, self % matIdx, rand)
     end if
 
-    totMatXS = materialCache(self % matIdx) % xss % total * rand % get()
+    trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
 
     ! Loop over nuclides
     do i = 1,size(self % nuclides)
@@ -339,10 +339,10 @@ contains
 
         end if
 
-        totMatXS = totMatXS - totNucXS * dens
+        trackMatXS = trackMatXS - totNucXS * dens
 
         ! Nuclide temporarily accepted: check TMS condition
-        if (totMatXS < ZERO) then
+        if (trackMatXS < ZERO) then
 
           ! Save energy to be used to sample reaction
           eOut = E

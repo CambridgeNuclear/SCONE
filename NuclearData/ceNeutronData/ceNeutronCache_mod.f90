@@ -46,6 +46,10 @@ module ceNeutronCache_mod
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
 
+    ! Tracking data
+    real(defReal)         :: E_track = ZERO
+    real(defReal)         :: trackXS = ZERO
+
     ! TMS data
     real(defReal)         :: E_rel  = ZERO
     type(neutronMacroXSs) :: xssRel
