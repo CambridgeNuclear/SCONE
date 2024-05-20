@@ -632,7 +632,7 @@ contains
       E  = self % eGrid(idx)
 
       ! Compare cross sections and possibly update majorant
-      xs = max(xs, maj)
+      maj = max(xs, maj)
 
       ! Exit loop after getting to the upper energy limit
       if (E >= eUpper) exit majorantLoop

@@ -58,7 +58,7 @@ contains
     majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
     ! Obtain the local cross-section
-    sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
+    sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
     ! Calculate ratio between local cross-section and majorant
     ratio = sigmaT*majorant_inv
