@@ -5,6 +5,7 @@ module particle_class
   use genericProcedures
   use coord_class,       only : coordList
   use RNG_class,         only : RNG
+  use errors_mod,        only : fatalError
 
   implicit none
   private
@@ -12,7 +13,7 @@ module particle_class
   !!
   !! Particle types paramethers
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 1,&
+  integer(shortInt), parameter,public :: P_NEUTRON = 1, &
                                          P_PHOTON  = 2
 
   !!
@@ -122,7 +123,7 @@ module particle_class
     generic              :: build => buildCE, buildMG
     generic              :: assignment(=) => particle_fromParticleState
 
-    ! Inquiry about coordinates
+    ! Enquiry about coordinates
     procedure                  :: rLocal
     procedure                  :: rGlobal
     procedure                  :: dirLocal
@@ -133,14 +134,17 @@ module particle_class
     procedure                  :: matIdx
     procedure, non_overridable :: getType
 
+    ! Enquiry about physical state
+    procedure :: getVelocity
+
     ! Operations on coordinates
-    procedure            :: moveGlobal
-    procedure            :: moveLocal
-    procedure            :: rotate
-    procedure            :: teleport
-    procedure            :: point
-    procedure            :: takeAboveGeom
-    procedure            :: setMatIdx
+    procedure :: moveGlobal
+    procedure :: moveLocal
+    procedure :: rotate
+    procedure :: teleport
+    procedure :: point
+    procedure :: takeAboveGeom
+    procedure :: setMatIdx
 
     ! Save particle state information
     procedure, non_overridable  :: savePreHistory
@@ -420,6 +424,48 @@ contains
     end if
 
   end function getType
+
+  !!
+  !! Return the particle velocity in [cm/s]
+  !! neutronMass: [MeV]
+  !! lightSpeed:  [cm/s]
+  !!
+  !! NOTE:
+  !!   The velocities are computed from non-relativistic formula for massive particles.
+  !!   A small error might appear in MeV range (e.g. for fusion applications)
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Particle velocity
+  !!
+  !! Errors:
+  !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
+  !!   fatalError if the particle is MG
+  !!
+  function getVelocity(self) result(velocity)
+    class(particle), intent(in) :: self
+    real(defReal)               :: velocity
+    character(100), parameter   :: Here = 'getVelocity (particle_class.f90)'
+
+    ! Verify the particle is not MG
+    if (self % isMG) call fatalError(Here, 'Velocity cannot be calculated for MG particle')
+
+    ! Calculates the velocity for the relevant particle [cm/s]
+    if (self % type == P_NEUTRON) then
+      velocity = sqrt(TWO * self % E / neutronMass) * lightSpeed
+
+    elseif (self % type == P_PHOTON) then
+      velocity = lightSpeed
+
+    else
+      call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
+                            & //numToChar(self % type))
+
+    end if
+
+  end function getVelocity
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
