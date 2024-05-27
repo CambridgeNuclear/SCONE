@@ -36,8 +36,9 @@ module cone_class
   !!   yCone -> aligned with Y-axis
   !!   zCone -> aligned with Z-axis
   !!
-  !! Surface tolerance: SURF_TOL. Radial dependence is not added since the radius
-  !! of the cone is not constant. Tolerance should be space dependent.
+  !! Surface tolerance: SURF_TOL * meanRadius. meanRadius is the radius of the cone at
+  !! mid height, between hMin and hMax. Ideally, the tolerance would be space dependent
+  !! and vary with height.
   !!
   !! Sample dictionary input:
   !!   cone { type xCone; // could be yCone or zCone as well
@@ -172,7 +173,7 @@ contains
     integer(shortInt), intent(in)           :: id
     character(*), intent(in)                :: type
     real(defReal), intent(in)               :: angle
-    real(defReal)                           :: tangent
+    real(defReal)                           :: tangent, meanRadius
     character(100), parameter :: Here = 'build (cylinder_class.f90)'
 
    ! Select type of cylinder
@@ -200,8 +201,9 @@ contains
    tangent = tan(angle * PI / 180.0_defReal)
    self % tanSquare = tangent * tangent
 
-   ! Set surface tolerance
-   call self % setTol(SURF_TOL)
+   ! Set surface tolerance depending on the cone radius at mid height
+   meanRadius = (abs(self % hMin) + abs(self % hMax)) * HALF * tangent
+   call self % setTol(SURF_TOL * meanRadius)
 
   end subroutine build
 
@@ -270,14 +272,18 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
-    real(defReal), dimension(3)             :: diff
-    real(defReal), dimension(2)             :: testPoint2
-    real(defReal)                           :: a, b, c, delta, near, far, &
+    real(defReal), dimension(3)             :: diff, orientation
+    real(defReal)                           :: a, b, c, delta, d1, d2, near, far, &
                                                test_near, test_far
+    logical(defBool)                        :: check
     real(defReal), parameter :: FP_MISS_TOL = ONE + 10.0_defReal * epsilon(ONE)
 
     ! Vector for the difference between position provided and vertex
     diff = r - self % vertex
+
+    ! Explicitly specify cone orientation
+    orientation(self % plane) = ZERO
+    orientation(self % axis)  = sign(ONE, self % hMin)
 
     ! Calculate quadratic components in the cone
     a = dot_product(u(self % plane), u(self % plane)) - &
@@ -291,46 +297,70 @@ contains
     delta = b * b - a * c
 
     ! Calculate the distances from the cone surface
-    if (a == ZERO) then                   ! One intersection
-      near = - HALF * c / b
-      far  = -sign(INF, near)
+    if (abs(a) < epsilon(ONE)) then   ! One intersection: particle direction tangent to cone opening
+      d1 = - HALF * c / b
+      d2 = sign(INF, dot_product(u, orientation))
 
-    elseif (delta < ZERO) then            ! No intersection (should never happen)
-      far  = INF
-      near = -INF
+      ! Check that the intersection found is in the right hemicone. Otherwise set both to INF
+      ! The sign of inf depends on the direction of the particle and the orientation of the cone
+      check = dot_product((diff + d1 * u), orientation) > ZERO
+      if (.not. check) d1 = d2
 
-    else                                  ! Two intersections
-      far  = - (b + sqrt(delta)) / a
-      near = - (b - sqrt(delta)) / a
+    elseif (delta < epsilon(ONE)) then        ! No intersection (should never happen)
+      d1 = -INF
+      d2 = INF
+
+    else                              ! Two intersections
+      d1 = - (b + sqrt(delta)) / a
+      d2 = - (b - sqrt(delta)) / a
+
+      ! Check that the intersections found are in the right hemicone. Otherwise set to INF
+      ! The sign of inf depends on the direction of the particle and the orientation of the cone
+      check = dot_product((diff + d1 * u), orientation) > ZERO
+      if (.not. check) d1 = sign(INF, dot_product(u, orientation))
+
+      check = dot_product((diff + d2 * u), orientation) > ZERO
+      if (.not. check) d2 = sign(INF, dot_product(u, orientation))
 
     end if
 
-    ! Ensure correct order for any orientation
-    if (far < near) call swap(far, near)
+    ! Save minimum and maximum distance from cone surface
+    near = min(d1, d2)
+    far  = max(d1, d2)
 
     ! Calculate the distances from the basis of the cone
-    if (u(self % axis) /= ZERO) then
-      test_far  = (self % hMax - diff(self % axis)) / u(self % axis)
-      test_near = (self % hMin - diff(self % axis)) / u(self % axis)
+    if (abs(u(self % axis)) > epsilon(ONE)) then    ! Normal intersection
 
-    else
-      test_far  = sign(INF, diff(self % axis))
-      test_near = -sign(INF, diff(self % axis))
+      d1 = (self % hMax - diff(self % axis)) / u(self % axis)
+      d2 = (self % hMin - diff(self % axis)) / u(self % axis)
+
+    else                                            ! Particle parallel to axis: check location
+
+      if (diff(self % axis) > self % hMin .and. diff(self % axis) < self % hMax) then
+        ! Inside the cone: basis intersection segment is -INF:+INF
+        d1 = -INF
+        d2 = INF
+      else
+        ! Outside the cone: basis intersection segment doesn't exist
+        d1 = -INF
+        d2 = -INF
+      end if
 
     end if
 
-    ! Ensure correct order for any orientation
-    if (test_far < test_near) call swap(test_far, test_near)
+    ! Save minimum and maximum distance from cone basis
+    test_near = min(d1, d2)
+    test_far  = max(d1, d2)
 
     ! Get intersection between sets of distances
-    far = min(far, test_far)
+    far  = min(far, test_far)
     near = max(near, test_near)
 
     ! Choose correct distance
     if (far <= near * FP_MISS_TOL) then      ! There is no intersection
       dist = INF
 
-    else if (abs(c) < self % surfTol()) then ! Point at the surface
+    else if (abs(self % evaluate(r)) < self % surfTol()) then ! Point at the surface
       ! Choose distance with largest absolute value
       if (abs(far) >= abs(near)) then
         dist = far
@@ -340,16 +370,16 @@ contains
 
     else                                     ! Normal hit. Closest distance
       if (near <= ZERO) then
-        d = far
+        dist = far
       else
-        d = near
+        dist = near
       end if
 
     end if
 
     ! Cap the distance
-    if (d <= ZERO .or. d > INF) then
-      d = INF
+    if (dist <= ZERO .or. dist > INF) then
+      dist = INF
     end if
 
   end function distance

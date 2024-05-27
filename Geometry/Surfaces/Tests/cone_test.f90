@@ -163,6 +163,9 @@ contains
     aabb = this % surf % boundingBox()
     @assertEqual(ref, aabb, TOL)
 
+    ! Tolerance
+    @assertEqual(this % surf % surfTol(), SURF_TOL*5.50_defReal, TOL)
+
   end subroutine testMisc
 
   !!
@@ -206,7 +209,10 @@ contains
     class(test_cone), intent(inout) :: this
     integer(shortInt)               :: a, p1, p2
     real(defReal), dimension(3)     :: r, u
-    real(defReal)                   :: eps
+    real(defReal)                   :: eps, tolerance
+
+    ! Get surface tolerance
+    tolerance = this % surf % surfTol()
 
     ! Set axis and plane axis indices
     a  = this % axis
@@ -225,14 +231,14 @@ contains
     ! At the surface
     @assertFalse(this % surf % halfspace(r, u))
 
-    ! Out within SURF_TOL
+    ! Out within tolerance
     ! NOTE THAT the tolerance is very sensitive: if using eps = HALF * TOL, the
     ! particle is outside tolerance
-    eps = -0.05_defReal * SURF_TOL
+    eps = -0.01_defReal * tolerance
     @assertFalse(this % surf % halfspace(r + eps*u, u))
 
-    ! Out outside SURF_TOL
-    eps = -TWO * SURF_TOL
+    ! Out outside tolerance
+    eps = -TWO * tolerance
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
     ! Well Outside
@@ -259,12 +265,12 @@ contains
     ! At the surface
     @assertTrue(this % surf % halfspace(r, u))
 
-    ! In within SURF_TOL
-    eps = -HALF * SURF_TOL
+    ! In within tolerance
+    eps = -HALF * tolerance
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
-    ! In outside SURF_TOL
-    eps = -TWO * SURF_TOL
+    ! In outside tolerance
+    eps = -TWO * tolerance
     @assertFalse(this % surf % halfspace(r + eps*u, u))
 
     ! Well inside
@@ -291,8 +297,11 @@ contains
     class(test_cone), intent(inout) :: this
     integer(shortInt)               :: a, p1, p2
     real(defReal), dimension(3)     :: r, u
-    real(defReal)                   :: ref
+    real(defReal)                   :: ref, tolerance
     real(defReal), parameter :: TOL = 1.0E-7
+
+    ! Get surface tolerance
+    tolerance = this % surf % surfTol()
 
     ! Set axis and plane axis indices
     a = this % axis
@@ -319,7 +328,7 @@ contains
     ref = sqrt(13.0_defReal)
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! Almost parallel
+    ! Parallel outside
     u(a)  = ONE
     u(p1) = ONE
     u(p2) = ZERO
@@ -329,6 +338,13 @@ contains
     ! Going in the opposite direction
     u(a)  = -ONE
     u(p1) = ZERO
+    u(p2) = ZERO
+    u   = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! Parallel to the basis
+    u(a)  = ZERO
+    u(p1) = ONE
     u(p2) = ZERO
     u   = u/norm2(u)
     @assertEqual(INF, this % surf % distance(r, u))
@@ -355,16 +371,16 @@ contains
     @assertEqual(INF, this % surf % distance(r, u))
 
     ! **Outside within surface tolerance
-    r(p1) = 4.0_defReal + HALF * SURF_TOL
+    r(p1) = 4.0_defReal + 0.1_defReal * tolerance
     u(a)  = ZERO
     u(p1) = -ONE
     u(p2) = ZERO
     u = u/norm2(u)
-    ref = 6.0_defReal + HALF * SURF_TOL
+    ref = 6.0_defReal + HALF * tolerance
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
     ! **Inside within surface tolerance
-    r(a)  = 4.0_defReal + HALF * SURF_TOL
+    r(a)  = 4.0_defReal + 0.1_defReal * tolerance
     r(p1) = 4.0_defReal
     u(a)  = -ONE
     u(p1) = ZERO
@@ -385,13 +401,79 @@ contains
     ref = 3.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    u(a) = -ONE
+    ! Parallel to basis
+    u(a)  = ZERO
+    u(p1) = -ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = 9.0_defReal
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! Hitting at an angle
+    u(a)  = -ONE
+    u(p1) = ZERO
     u = u/norm2(u)
     ref = 5.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
+    ! Hitting at an angle, parallel to cone
+    u(a)  = ONE
+    u(p1) = -ONE
+    u = u/norm2(u)
+    ref = sqrt(TWO) * 3.0_defReal
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! ** Inside, hitting the lower base
     r(p1) = HALF
+    u(a)  = -ONE
+    u(p1) = ZERO
     ref = 6.0_defReal
+    @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
+
+    ! ** Outside the surface and on top
+    r(a)  = 10.0_defReal
+    r(p1) = 13.0_defReal
+    r(p2) = ONE
+
+    ! Parallel to axis
+    u(a)  = -ONE
+    u(p1) = ZERO
+    u(p2) = ZERO
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! Other direction
+    u(a)  = ONE
+    u(p1) = ZERO
+    u(p2) = ZERO
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! At an angle
+    u(a)  = ONE
+    u(p1) = -ONE - HALF
+    u(p2) = ZERO
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! At an angle parallel to cone
+    u(a)  = ONE
+    u(p1) = -ONE
+    u(p2) = ZERO
+    u = u/norm2(u)
+    @assertEqual(INF, this % surf % distance(r, u))
+
+    ! ** To the right of the cone
+    r(a)  = 16.0_defReal
+    r(p1) = 4.0_defReal
+    r(p2) = ONE
+
+    ! Going in at an angle
+    u(a)  = -5.0_defReal
+    u(p1) = -2.0_defReal
+    u(p2) = ZERO
+    u = u/norm2(u)
+    ref = sqrt(29.0_defReal)
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
   end subroutine testDistance
