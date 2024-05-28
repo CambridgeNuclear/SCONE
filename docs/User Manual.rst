@@ -524,9 +524,9 @@ Example: ::
   - vertex: (x y z) vector with the vertex absolute coordinates. [cm]
   - angle: cone openining angle, i.e., the angle between the axis and the cone
     surface. [degrees]
-  - hMin: coordinate along the cone axis corresponding at the position of the
+  - hMin: coordinate along the cone axis corresponding to the position of the
     cone lower basis with respect to the vertex. It could be positive or negative. [cm]
-  - hMax: coordinate along the cone axis corresponding at the position of the
+  - hMax: coordinate along the cone axis corresponding to the position of the
     cone upper basis with respect to the vertex. It could be positive or negative.
     Must be of the same sign as hMin, and always larger. [cm]
 
