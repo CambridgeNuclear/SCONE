@@ -86,7 +86,7 @@ module cell_inter
     !! Args:
     !!   d [out]       -> Distance to the boundary
     !!   surfIdx [out] -> Index of a surface that will be crossed. If the surface is not defined on
-    !!     the surface shelf its value should be -ve. If no surface is hit return 0. 
+    !!     the surface shelf its value should be -ve. If no surface is hit return 0.
     !!   r [in]        -> Position
     !!   u [in]        -> ormalised direction (norm2(u) = 1.0)
     !!

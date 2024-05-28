@@ -149,7 +149,7 @@ contains
   !!   1) Note that the box is intersection of space between parallel planes
   !!   2) For each pair of planes calculate the section of the distance line, which lies
   !!      between the planes
-  !!   3) Find intersection of theese sections (by keeping maximum near distance and minimum
+  !!   3) Find intersection of these sections (by keeping maximum near distance and minimum
   !!      far distance)
   !!   4) If set is empty (far <= near) {well... has measure 0.0 technically} ray is a miss.
   !!      Otherwise either near or far will be the closest distance depending on whether

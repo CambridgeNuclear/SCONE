@@ -66,6 +66,7 @@ module truncCylinder_class
     procedure :: setBC
     procedure :: explicitBC
     procedure :: transformBC
+
   end type truncCylinder
 
 contains
@@ -130,7 +131,7 @@ contains
 
     ! Read halfwidth
     call dict % get(a, 'halfwidth')
-    if ( a <= ZERO) call fatalError(Here, 'Halfwidth must be +ve. Is: '//numToChar(a))
+    if (a <= ZERO) call fatalError(Here, 'Halfwidth must be +ve. Is: '//numToChar(a))
     self % a = a
 
     ! Read type
@@ -233,7 +234,7 @@ contains
     else
       far = (-k + sqrt(delta)) / a
       near = (-k - sqrt(delta)) / a
-      if (far < near) call swap(far, near) ! Ensure corect order for any orientation
+      if (far < near) call swap(far, near) ! Ensure correct order for any orientation
 
     end if
 
@@ -249,7 +250,7 @@ contains
 
     end if
 
-    ! Ensure corect order for any orientation
+    ! Ensure correct order for any orientation
     if (test_far < test_near) call swap(test_far, test_near)
 
     ! Get intersection
