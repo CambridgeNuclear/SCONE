@@ -11,10 +11,11 @@ module physicsPackageFactory_func
   use physicsPackage_inter,            only : physicsPackage
 
   ! Implementations
-  use eigenPhysicsPackage_class,       only : eigenPhysicsPackage
-  use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
-  use vizPhysicsPackage_class,         only : vizPhysicsPackage
-  use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
+  use eigenPhysicsPackage_class,           only : eigenPhysicsPackage
+  use fixedSourcePhysicsPackage_class,     only : fixedSourcePhysicsPackage
+  use vizPhysicsPackage_class,             only : vizPhysicsPackage
+  use rayVolPhysicsPackage_class,          only : rayVolPhysicsPackage
+  use randomRayPhysicsPackage_class,       only : randomRayPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -24,10 +25,11 @@ module physicsPackageFactory_func
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
-                                                                             'fixedSourcePhysicsPackage',&
-                                                                             'vizPhysicsPackage        ',&
-                                                                             'rayVolPhysicsPackage     ']
+  character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage          ',&
+                                                                             'fixedSourcePhysicsPackage    ',&
+                                                                             'vizPhysicsPackage            ',&
+                                                                             'randomRayPhysicsPackage      ',&
+                                                                             'rayVolPhysicsPackage         ']
 
   !!
   !! Public interface
@@ -59,6 +61,9 @@ contains
 
       case('vizPhysicsPackage')
         allocate( vizPhysicsPackage :: new)
+
+      case('randomRayPhysicsPackage')
+        allocate( randomRayPhysicsPackage :: new)
 
       case('rayVolPhysicsPackage')
         allocate( rayVolPhysicsPackage :: new)

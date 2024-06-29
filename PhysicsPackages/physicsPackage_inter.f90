@@ -9,10 +9,12 @@ module physicsPackage_inter
   !!
   !! Abstract interface of physics Package
   !! Physics package is controles a calculation flow
-  !! Each type of calculation has diffrent physics package
+  !! Each type of calculation has different physics package
+  !! Loud is for displaying calculation progress
   !!
   type, public,abstract :: physicsPackage
     private
+    logical(defBool), public :: loud
   contains
     procedure(init), deferred :: init
     procedure(run),deferred   :: run
@@ -23,11 +25,13 @@ module physicsPackage_inter
     !!
     !! Initialise Physics Package from dictionary
     !!
-    subroutine init(self,dict)
+    subroutine init(self,dict,loud)
       import :: physicsPackage, &
-                dictionary
-      class(physicsPackage), intent(inout) :: self
-      class(dictionary), intent(inout)     :: dict
+                dictionary, &
+                defBool
+      class(physicsPackage), intent(inout)   :: self
+      class(dictionary), intent(inout)       :: dict
+      logical(defBool), intent(in), optional :: loud
     end subroutine init
 
     !!

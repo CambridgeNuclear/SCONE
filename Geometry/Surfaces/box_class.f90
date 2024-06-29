@@ -51,6 +51,7 @@ module box_class
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
+    procedure :: explicitRayBC
     procedure :: transformBC
   end type box
 
@@ -324,6 +325,61 @@ contains
     end if
 
   end subroutine setBC
+
+  !!
+  !! Apply explicit BCs, treating vacuums as reflective.
+  !!
+  !! See surface_inter for details
+  !!
+  !! Note:
+  !!   - Go through all directions in order to account for corners
+  !!
+  subroutine explicitRayBC(self, r, u, hitVacuum)
+    class(box), intent(in)                     :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(out)              :: hitVacuum
+    integer(shortInt)                          :: ax, bc
+    real(defReal)                              :: r0
+    character(100), parameter :: Here = 'explicitRayBC (box_class.f90)'
+
+    hitVacuum = .FALSE.
+
+    ! Loop over directions
+    axis : do ax = 1, 3
+      ! Find position wrt origin
+      r0 = r(ax) - self % origin(ax)
+
+      ! Skip if particle is well inside the domain
+      if (abs(r0)  <= self % halfwidth(ax) - self % surfTol()) cycle axis
+
+      ! Choose correct BC
+      if (r0 < ZERO) then
+        bc = self % BC(2*ax - 1)
+      else
+        bc = self % BC(2*ax)
+      end if
+
+      ! Apply BC
+      select case(bc)
+        case (VACUUM_BC)
+          ! Treat as reflective but note the vacuum hit
+          u(ax) = -u(ax)
+          hitVacuum = .TRUE.
+
+        case (REFLECTIVE_BC)
+          u(ax) = -u(ax)
+
+        case (PERIODIC_BC)
+          ! Calculate displacement and perform translation
+          r(ax) = r(ax) - TWO * sign(self % halfwidth(ax), r0)
+
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(bc))
+      end select
+    end do axis
+
+  end subroutine explicitRayBC
 
   !!
   !! Apply explicit BCs

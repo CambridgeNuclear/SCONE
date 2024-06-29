@@ -112,15 +112,19 @@ contains
   subroutine run(self)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
+    if (self % loud) then
+      print *, repeat("<>",50)
+      print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
+    end if
 
     call self % cycles(self % tally, self % N_cycles)
     call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF FIXED SOURCE CALCULATION \/\/"
-    print *
+    if (self % loud) then
+      print *
+      print *, "\/\/ END OF FIXED SOURCE CALCULATION \/\/"
+      print *
+    end if
   end subroutine
 
   !!
@@ -236,7 +240,7 @@ contains
 
       ! Update RNG
       call self % pRNG % stride(self % pop)
-
+      
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
 
@@ -249,14 +253,16 @@ contains
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
       ! Display progress
-      call printFishLineR(i)
-      print *
-      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % pop)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
-      call tally % display()
+      if (self % loud) then
+        call printFishLineR(i)
+        print *
+        print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
+        print *, 'Pop:          ', numToChar(self % pop)
+        print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
+        print *, 'End time:     ', trim(secToChar(end_T))
+        print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+        call tally % display()
+      end if
     end do
 
   end subroutine cycles
@@ -296,9 +302,10 @@ contains
   !!
   !! Initialise from individual components and dictionaries for source and tally
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, loud)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)                :: dict
+    logical(defBool), intent(in), optional          :: loud
     class(dictionary),pointer                       :: tempDict
     integer(shortInt)                               :: seed_temp, commonBufferSize
     integer(longInt)                                :: seed
@@ -311,6 +318,12 @@ contains
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
+
+    if (present(loud)) then
+      self % loud = loud
+    else
+      self % loud = .true.
+    end if
 
     ! Read calculation settings
     call dict % get( self % pop,'pop')
@@ -369,20 +382,20 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'fixedSourceGeom'
-    call new_geometry(tempDict, geomName)
+    call new_geometry(tempDict, geomName, .not. self % loud)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Activate Nuclear Data *** All materials are active
-    call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
+    call ndReg_activate(self % particleType, nucData, self % geom % activeMats(), .not. self % loud)
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+      if (self % loud) print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      if (self % loud) print *, "Constructing visualisation"
       call viz % makeViz()
       call viz % kill()
     endif
@@ -429,7 +442,7 @@ contains
               'Buffer size should be greater than the shift threshold')
     end if
 
-    call self % printSettings()
+    if (self % loud) call self % printSettings()
 
   end subroutine init
 

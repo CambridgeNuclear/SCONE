@@ -1,7 +1,7 @@
 module mgNeutronDatabase_inter
 
   use numPrecision
-
+  
   ! Nuclear Data Interfaces & Objects
   use nuclearDatabase_inter, only : nuclearDatabase
 
@@ -16,7 +16,7 @@ module mgNeutronDatabase_inter
   !!
   !! An abstract class that groups all MG Neutron Data objects
   !!
-  !! It does nothing, It adds nothing,
+  !! It does nothing, It adds nothing, (other than give the number of groups)
   !! It just provides a common superclass for related classes
   !! and holds the number of energy groups
   !!
@@ -25,7 +25,28 @@ module mgNeutronDatabase_inter
   !!
   type, public, abstract, extends(nuclearDatabase) :: mgNeutronDatabase
     integer(shortInt)  :: nG = 0
+  contains
   end type mgNeutronDatabase
+
+  abstract interface
+
+    !!
+    !! Returns the number of energy groups used
+    !!
+    !! Args:
+    !!   None
+    !!
+    !! Result:
+    !!   Integer number of energy groups
+    !!
+    pure function nGroups(self) result(ng)
+      import :: mgNeutronDatabase, shortInt
+      class(mgNeutronDatabase), intent(in) :: self
+      integer(shortInt)                    :: ng
+    end function nGroups
+
+
+  end interface
 
 contains
 

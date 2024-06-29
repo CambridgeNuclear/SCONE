@@ -298,7 +298,7 @@ contains
     if(.not.allocated(databases(idx) % nd)) call make(name, silent = silent_loc)
 
     ! Activate
-    call databases(idx) % nd % activate(activeMat)
+    call databases(idx) % nd % activate(activeMat, silent_loc)
     ptr => databases(idx) % nd
 
     ! Register as active
@@ -415,13 +415,13 @@ contains
   end function getNeutronCE
 
   !!
-  !! Return pointer to an active Neutron CE Database
+  !! Return pointer to an active Neutron MG Database
   !!
   !! Args:
   !!   None
   !!
   !! Result:
-  !!   ceNeutronDatabase class pointer
+  !!   mgNeutronDatabase class pointer
   !!
   !! Errors:
   !!   If there is no active database returns NULL ptr

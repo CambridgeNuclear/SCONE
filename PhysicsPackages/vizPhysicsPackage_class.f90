@@ -57,7 +57,7 @@ contains
   subroutine run(self)
     class(vizPhysicsPackage), intent(inout) :: self
 
-    print *, "Constructing visualisation"
+    if (self % loud) print *, "Constructing visualisation"
     call self % viz % makeViz()
     call self % viz % kill()
 
@@ -66,13 +66,20 @@ contains
   !!
   !! Initialise from individual components and dictionaries
   !!
-  subroutine init(self, dict)
+  subroutine init(self, dict, loud)
     class(vizPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)        :: dict
+    logical(defBool), intent(in), optional  :: loud
     class(dictionary),pointer               :: tempDict
     class(geometry), pointer                :: geom
     character(nameLen)                      :: geomName
     character(100), parameter :: Here ='init (vizPhysicsPackage_class.f90)'
+
+    if (present(loud)) then
+      self % loud = loud
+    else
+      self % loud = .true.
+    end if
 
     ! Register timer
     self % timerMain = registerTimer('transportTime')
@@ -83,13 +90,13 @@ contains
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
     geomName = 'visualGeom'
-    call new_geometry(tempDict, geomName)
+    call new_geometry(tempDict, geomName, .not. self % loud)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+      if (self % loud) print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       geom => self % geom
       call self % viz % init(geom, tempDict)
