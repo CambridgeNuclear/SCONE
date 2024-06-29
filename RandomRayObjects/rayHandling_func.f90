@@ -153,6 +153,12 @@ contains
     select case(simType)
       case (flatIso)
         call transportSweepFlatIso(r, ints, nG, doCache, dead, termination, arrays)
+      case (linearIso)
+        call transportSweepLinIso(r, ints, nG, doCache, dead, termination, arrays)
+      case (flatAni)
+        call transportSweepFlatAni(r, ints, nG, doCache, dead, termination, arrays)
+      case (linearAni)
+        call transportSweepLIFA(r, ints, nG, doCache, dead, termination, arrays)
       case default
         call fatalError(Here,'Unsupported simulation type')
     end select

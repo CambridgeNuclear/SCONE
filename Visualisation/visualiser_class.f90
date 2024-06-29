@@ -83,7 +83,7 @@ contains
     class(visualiser), intent(inout)         :: self
     class(geometry), pointer, intent(inout)  :: geom
     class(dictionary), intent(in)            :: vizDict
-    character(namelen), intent(in), optional :: str
+    character(nameLen), intent(in), optional :: str
     character(:), allocatable                :: string
 
     ! Obtain file name

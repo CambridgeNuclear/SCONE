@@ -246,7 +246,9 @@ contains
     ! Initialise OMP locks
     allocate(self % locks(self % nCells))
     do i = 1, self % nCells
+#ifdef _OPENMP
       call OMP_init_lock(self % locks(i))
+#endif
     end do
 
   end subroutine init
@@ -572,7 +574,9 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt), intent(in)  :: cIdx
 
+#ifdef _OPENMP
     call OMP_set_lock(self % locks(cIdx))
+#endif
 
   end subroutine setLock
   
@@ -583,7 +587,9 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt), intent(in)  :: cIdx
 
+#ifdef _OPENMP
     call OMP_unset_lock(self % locks(cIdx))
+#endif
 
   end subroutine unsetLock
 
@@ -1194,7 +1200,9 @@ contains
     
     if(allocated(self % locks)) then
       do i = 1, self % nCells
+#ifdef _OPENMP
         call OMP_destroy_lock(self % locks(i))
+#endif
       end do
       deallocate(self % locks)
     end if

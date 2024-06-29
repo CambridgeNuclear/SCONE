@@ -87,7 +87,8 @@ contains
     ! Construct visualiser and verify slice plotting
     geomP => geom
     call charToDict(vizDict, ' ')
-    call viz % init(geomP, vizDict, 'test')
+    name = 'test'
+    call viz % init(geomP, vizDict, name)
     
     ! Slice plot -> Material
     call viz % slicePlot(img, [ZERO, ZERO, ZERO], 'z', 'material')
@@ -274,7 +275,8 @@ contains
     ! Construct visualiser and verify slice plotting
     geomP => geom
     call charToDict(vizDict, ' ')
-    call viz % init(geomP, vizDict, 'test')
+    name = 'test'
+    call viz % init(geomP, vizDict, name)
 
     !*** Test slice normal to x & y
     ! X-axis at 1.0
