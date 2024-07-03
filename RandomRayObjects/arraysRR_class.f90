@@ -62,6 +62,20 @@ module arraysRR_class
   !!   cellFound -> Array of logicals whether a cell was ever visited [nCells]
   !!   cellPos   -> Array of cell positions [3 * nCells]
   !!
+  !!   scalarX   -> Array of x-spatial moments of scalar flux [nG * nCells]
+  !!   scalarY   -> Array of y-spatial moments of scalar flux [nG * nCells]
+  !!   scalarZ   -> Array of z-spatial moments of scalar flux [nG * nCells]
+  !!   prevX     -> Array of previous x-spatial moments of scalar flux [nG * nCells]
+  !!   prevY     -> Array of previous y-spatial moments of scalar flux [nG * nCells]
+  !!   prevZ     -> Array of previous z-spatial moments of scalar flux [nG * nCells]
+  !!   sourceX   -> Array of source x-spatial moments of scalar flux [nG * nCells]
+  !!   sourceY   -> Array of source y-spatial moments of scalar flux [nG * nCells]
+  !!   sourceZ   -> Array of source z-spatial moments of scalar flux [nG * nCells]
+  !!   momMat    -> Array of symmetric spatial moment matrices [nCells * matSize]
+  !!   momTracks -> Array of weighted tracks used to computer spatial moment matrices [nCells * matSize]
+  !!   centroid       -> Array of cell centroid values [nCells * nDim]
+  !!   centroidTracks -> Array of weighted tracks used to computer centroids [nCells * nDim]
+  !!
   !!   locks -> Array of OpenMP locks for each geometric cell
   !!
   type, public :: arraysRR
@@ -93,6 +107,21 @@ module arraysRR_class
     integer(shortInt), dimension(:), allocatable :: cellHit
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
+
+    ! Linear source arrays
+    real(defFlt), dimension(:), allocatable    :: scalarX
+    real(defFlt), dimension(:), allocatable    :: scalarY
+    real(defFlt), dimension(:), allocatable    :: scalarZ
+    real(defFlt), dimension(:), allocatable    :: prevX
+    real(defFlt), dimension(:), allocatable    :: prevY
+    real(defFlt), dimension(:), allocatable    :: prevZ
+    real(defFlt), dimension(:), allocatable    :: sourceX
+    real(defFlt), dimension(:), allocatable    :: sourceY
+    real(defFlt), dimension(:), allocatable    :: sourceZ
+    real(defReal), dimension(:), allocatable   :: momMat
+    real(defReal), dimension(:), allocatable   :: momTracks
+    real(defReal), dimension(:), allocatable   :: centroid
+    real(defReal), dimension(:), allocatable   :: centroidTracks
     
     ! OMP locks
     integer(kind=omp_lock_kind), dimension(:), allocatable :: locks
@@ -106,8 +135,8 @@ module arraysRR_class
     ! Access procedures
     procedure :: getDataPointer
     procedure :: getGeomPointer
-    procedure :: getSourcePointer
     procedure :: getFluxPointer
+    procedure :: getSourcePointer
     procedure :: getSource
     procedure :: getPrevFlux
     procedure :: getFluxScore
@@ -118,11 +147,17 @@ module arraysRR_class
     procedure :: getCellHitRate
     procedure :: getSimulationType
     procedure :: found
+    
+    procedure :: getFluxXYZPointers
+    procedure :: getSourceXYZPointers
+    procedure :: getCentroid
 
     ! Change individual elements of the type
     ! Predominantly for use in the transport sweep
     procedure :: incrementVolume
     procedure :: incrementLengthSquared
+    procedure :: incrementCentroid
+    procedure :: incrementMoments
     procedure :: hitCell
     procedure :: wipeCellHits
     procedure :: newFound
@@ -145,21 +180,23 @@ module arraysRR_class
     procedure, private :: initialiseFixedSource
     
     procedure, private :: resetFluxesFlatIso
-    procedure, private :: resetFluxesLinIso
+    procedure, private :: resetFluxesLinearIso
     procedure, private :: resetFluxesLIFA
     procedure, private :: resetFluxesFlatAni
     
     procedure, private :: normaliseFluxAndVolumeFlatIso
-    procedure, private :: normaliseFluxAndVolumeLinIso
+    procedure, private :: normaliseFluxAndVolumeLinearIso
     procedure, private :: normaliseFluxAndVolumeLIFA
     procedure, private :: normaliseFluxAndVolumeFlatAni
     
     procedure, private :: sourceUpdateKernelFlatIso
-    procedure, private :: sourceUpdateKernelLinIso
+    procedure, private :: sourceUpdateKernelLinearIso
     procedure, private :: sourceUpdateKernelLIFA
     procedure, private :: sourceUpdateKernelFlatAni
     
     procedure, private :: calculateKeffKernel
+
+    procedure, private :: invertMatrix
 
   end type arraysRR
 
@@ -215,7 +252,7 @@ contains
     allocate(self % volume(self % nCells))
     allocate(self % cellHit(self % nCells))
     allocate(self % cellFound(self % nCells))
-    allocate(self % cellPos(3, self % nCells))
+    allocate(self % cellPos(nDim, self % nCells))
     
     self % scalarFlux    = 0.0_defFlt
     self % prevFlux      = 1.0_defFlt
@@ -236,6 +273,34 @@ contains
 
     ! TODO: allocate linear and anisotropic components, if present
     if (lin) then
+    
+      allocate(self % scalarX(self % nCells * self % nG))
+      allocate(self % scalarY(self % nCells * self % nG))
+      allocate(self % scalarZ(self % nCells * self % nG))
+      allocate(self % prevX(self % nCells * self % nG))
+      allocate(self % prevY(self % nCells * self % nG))
+      allocate(self % prevZ(self % nCells * self % nG))
+      allocate(self % sourceX(self % nCells * self % nG))
+      allocate(self % sourceY(self % nCells * self % nG))
+      allocate(self % sourceZ(self % nCells * self % nG))
+      allocate(self % momMat(self % nCells * matSize))
+      allocate(self % momTracks(self % nCells * matSize))
+      allocate(self % centroid(self % nCells * nDim))
+      allocate(self % centroidTracks(self % nCells * nDim))
+      
+      self % scalarX        = 0.0_defFlt
+      self % scalarY        = 0.0_defFlt
+      self % scalarZ        = 0.0_defFlt
+      self % prevX          = 0.0_defFlt
+      self % prevY          = 0.0_defFlt
+      self % prevZ          = 0.0_defFlt
+      self % sourceX        = 0.0_defFlt
+      self % sourceY        = 0.0_defFlt
+      self % sourceZ        = 0.0_defFlt
+      self % momMat         = ZERO
+      self % momTracks      = ZERO
+      self % centroid       = ZERO
+      self % centroidTracks = ZERO
 
     end if
 
@@ -343,6 +408,25 @@ contains
   end subroutine getFluxPointer
   
   !!
+  !! Return a pointer to the flux spatial moment vectors for a given cell
+  !!
+  subroutine getFluxXYZPointers(self, cIdx, xVec, yVec, zVec)
+    class(arraysRR), intent(in), target              :: self
+    integer(shortInt), intent(in)                    :: cIdx
+    real(defFlt), dimension(:), pointer, intent(out) :: xVec
+    real(defFlt), dimension(:), pointer, intent(out) :: yVec
+    real(defFlt), dimension(:), pointer, intent(out) :: zVec
+    integer(shortInt)                                :: baseIdx1, baseIdx2
+
+    baseIdx1 = self % nG * (cIdx - 1) + 1
+    baseIdx2 = self % nG * cIdx
+    xVec => self % scalarX(baseIdx1:baseIdx2)
+    yVec => self % scalarY(baseIdx1:baseIdx2)
+    zVec => self % scalarZ(baseIdx1:baseIdx2)
+
+  end subroutine getFluxXYZPointers
+  
+  !!
   !! Return a pointer to the nuclear data object
   !!
   function getDataPointer(self) result(dataPtr)
@@ -378,6 +462,26 @@ contains
     sourceVec => self % source(baseIdx1:baseIdx2)
 
   end subroutine getSourcePointer
+  
+  !!
+  !! Return pointers to the source moment vectors for a given cell
+  !!
+  subroutine getSourceXYZPointers(self, cIdx, xVec, yVec, zVec)
+    class(arraysRR), intent(in), target              :: self
+    integer(shortInt), intent(in)                    :: cIdx
+    real(defFlt), dimension(:), pointer, intent(out) :: xVec
+    real(defFlt), dimension(:), pointer, intent(out) :: yVec
+    real(defFlt), dimension(:), pointer, intent(out) :: zVec
+    integer(shortInt)                                :: baseIdx1, baseIdx2
+
+    baseIdx1 = self % nG * (cIdx - 1) + 1
+    baseIdx2 = self % nG * cIdx
+    xVec => self % sourceX(baseIdx1:baseIdx2)
+    yVec => self % sourceY(baseIdx1:baseIdx2)
+    zVec => self % sourceZ(baseIdx1:baseIdx2)
+
+  end subroutine getSourceXYZPointers
+  
   
   !!
   !! Return source value given cell and group
@@ -435,15 +539,29 @@ contains
   !!
   !! Return cell position given cell ID
   !!
-  function getCellPos(self, cIdx, g) result(x)
-    class(arraysRR), intent(in)   :: self
-    integer(shortInt), intent(in) :: cIdx
-    integer(shortInt), intent(in) :: g
-    real(defReal), dimension(3)   :: x
+  function getCellPos(self, cIdx) result(pos)
+    class(arraysRR), intent(in)    :: self
+    integer(shortInt), intent(in)  :: cIdx
+    real(defReal), dimension(nDim) :: pos
 
-    x = self % cellPos(1:3, cIdx)
+    pos = self % cellPos(1:nDim, cIdx)
 
   end function getCellPos
+  
+  !!
+  !! Return cell centroid given cell ID
+  !!
+  function getCentroid(self, cIdx) result(cent)
+    class(arraysRR), intent(in)    :: self
+    integer(shortInt), intent(in)  :: cIdx
+    real(defReal), dimension(nDim) :: cent
+    integer(shortInt)              :: idx0, idx1
+
+    idx0 = nDim * (cIdx - 1) + 1
+    idx1 = nDim * (cIdx - 1) + nDim
+    cent = self % centroid(idx0:idx1)
+
+  end function getCentroid
   
   !!
   !! Return the simulation type
@@ -469,6 +587,7 @@ contains
   
   end subroutine incrementVolume
   
+  
   !!
   !! Increment the sum of length squared in cell cIdx.
   !! Assumes this is being called inside a lock for thread privacy.
@@ -482,6 +601,39 @@ contains
   
   end subroutine incrementLengthSquared
   
+  !!
+  !! Increment the local centroid estimate in cell cIdx.
+  !! rL is the tracklength-weighted centroid
+  !! Assumes this is being called inside a lock for thread privacy.
+  !!
+  subroutine incrementCentroid(self, cIdx, rL)
+    class(arraysRR), intent(inout)             :: self
+    integer(shortInt), intent(in)              :: cIdx
+    real(defReal), dimension(nDim), intent(in) :: rL
+    integer(shortInt)                          :: idx0, idx1
+
+    idx0 = nDim * (cIdx - 1) + 1
+    idx1 = nDim * (cIdx - 1) + nDim
+    self % centroidTracks(idx0:idx1) = self % centroidTracks(idx0:idx1) + rL
+  
+  end subroutine incrementCentroid
+  
+  !!
+  !! Increment the local moment matrix estimate in cell cIdx.
+  !! mat is the tracklength-weighted matrix
+  !! Assumes this is being called inside a lock for thread privacy.
+  !!
+  subroutine incrementMoments(self, cIdx, mat)
+    class(arraysRR), intent(inout)                :: self
+    integer(shortInt), intent(in)                 :: cIdx
+    real(defReal), dimension(matSize), intent(in) :: mat
+    integer(shortInt)                             :: idx0, idx1
+
+    idx0 = matSize * (cIdx - 1) + 1
+    idx1 = matSize * (cIdx - 1) + matSize
+    self % momTracks(idx0:idx1) = self % momTracks(idx0:idx1) + mat
+  
+  end subroutine incrementMoments
   
   !!
   !! Check if a cell has been hit
@@ -604,6 +756,8 @@ contains
     select case(self % simulationType)
       case(flatIso)
         call self % normaliseFluxAndVolumeFlatIso(it)
+      case(LinearIso)
+        call self % normaliseFluxAndVolumeLinearIso(it)
       case default
         call fatalError(Here,'Unsupported simulation type requested')
     end select
@@ -659,9 +813,8 @@ contains
           
           self % scalarFlux(idx) = self % scalarFlux(idx) / total(g)
           
-          sigGG = self % XSData % getScatterXS(matIdx, g, g)
-
           ! Presumes non-zero total XS
+          sigGG = self % XSData % getScatterXS(matIdx, g, g)
           if ((sigGG < 0) .and. (total(g) > 0)) then
             D = -self % rho * sigGG / total(g)
           else
@@ -686,11 +839,120 @@ contains
   !! Normalise flux and volume by total track length and increments
   !! the flux by the neutron source for linear isotropic sources
   !!
-  subroutine normaliseFluxAndVolumeLinIso(self, it)
+  subroutine normaliseFluxAndVolumeLinearIso(self, it)
     class(arraysRR), intent(inout)            :: self
     integer(shortInt), intent(in)             :: it
+    real(defFlt)                              :: norm
+    real(defReal)                             :: normVol
+    real(defReal), save                       :: invVol
+    real(defFlt), save                        :: vol, norm_V, D, sigGG
+    real(defFlt), dimension(:), pointer, save :: total
+    integer(shortInt)                         :: cIdx
+    integer(shortInt), save                   :: g, matIdx, idx, dIdx, mIdx
+    !$omp threadprivate(total, vol, idx, mIdx, dIdx, g, matIdx, invVol, norm_V, D, sigGG)
 
-  end subroutine normaliseFluxAndVolumeLinIso
+    norm = real(ONE / self % lengthPerIt, defFlt)
+    normVol = ONE / (self % lengthPerIt * it)
+
+    !$omp parallel do schedule(static)
+    do cIdx = 1, self % nCells
+      matIdx =  self % geom % geom % graph % getMatFromUID(cIdx)
+      dIdx = (cIdx - 1) * nDim
+      mIdx = (cIdx - 1) * matSize
+      
+      ! Update volume
+      self % volume(cIdx) = self % volumeTracks(cIdx) * normVol
+      vol = real(self % volume(cIdx),defFlt)
+      
+      ! Save effort by skipping normalisation if volume is too small
+      if (vol < volume_tolerance) then
+        do g = 1, self % nG
+          idx   = self % nG * (cIdx - 1) + g
+          self % scalarFlux(idx) = 0.0_defFlt
+          self % scalarX(idx) = 0.0_defFlt
+          self % scalarY(idx) = 0.0_defFlt
+          self % scalarZ(idx) = 0.0_defFlt
+        end do
+        cycle
+      end if
+      
+      if (self % volume(cIdx) > volume_tolerance) then
+        invVol = ONE / self % volumeTracks(cIdx)
+        
+        ! Update centroids
+        self % centroid(dIdx + x) =  self % centroidTracks(dIdx + x) * invVol
+        self % centroid(dIdx + y) =  self % centroidTracks(dIdx + y) * invVol
+        self % centroid(dIdx + z) =  self % centroidTracks(dIdx + z) * invVol
+      
+        ! Update spatial moments
+        self % momMat(mIdx + xx) = self % momTracks(mIdx + xx) * invVol
+        self % momMat(mIdx + xy) = self % momTracks(mIdx + xy) * invVol
+        self % momMat(mIdx + xz) = self % momTracks(mIdx + xz) * invVol
+        self % momMat(mIdx + yy) = self % momTracks(mIdx + yy) * invVol
+        self % momMat(mIdx + yz) = self % momTracks(mIdx + yz) * invVol
+        self % momMat(mIdx + zz) = self % momTracks(mIdx + zz) * invVol
+
+      else
+        self % centroid(dIdx + x) =  ZERO
+        self % centroid(dIdx + y) =  ZERO
+        self % centroid(dIdx + z) =  ZERO
+
+        self % momMat(mIdx + xx) = ZERO
+        self % momMat(mIdx + xy) = ZERO
+        self % momMat(mIdx + xz) = ZERO
+        self % momMat(mIdx + yy) = ZERO
+        self % momMat(mIdx + yz) = ZERO
+        self % momMat(mIdx + zz) = ZERO
+
+      end if
+      
+      call self % XSData % getTotalPointer(matIdx, total)
+      norm_V = real(norm / vol, defFlt)
+      
+      do g = 1, self % nG
+
+        idx = self % nG * (cIdx - 1) + g
+        if (vol > volume_tolerance) then
+          self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V
+          self % scalarX(idx) = self % scalarX(idx) * norm_V
+          self % scalarY(idx) = self % scalarY(idx) * norm_V
+          self % scalarZ(idx) = self % scalarZ(idx) * norm_V 
+        end if
+
+        ! Apply the standard MoC post-sweep treatment and
+        ! stabilisation for negative XSs
+        if (matIdx <= self % XSData % getNMat() .and. total(g) > 0) then
+          
+          self % scalarFlux(idx) = self % scalarFlux(idx) / total(g)
+          self % scalarX(idx) = self % scalarX(idx) / total(g)
+          self % scalarY(idx) = self % scalarY(idx) / total(g)
+          self % scalarZ(idx) = self % scalarZ(idx) / total(g)
+          !self % scalarX(idx) = 0.0_defFlt
+          !self % scalarY(idx) = 0.0_defFlt
+          !self % scalarZ(idx) = 0.0_defFlt
+          
+          ! Presumes non-zero total XS
+          sigGG = self % XSData % getScatterXS(matIdx, g, g)
+          if ((sigGG < 0) .and. (total(g) > 0)) then
+            D = -self % rho * sigGG / total(g)
+          else
+            D = 0.0_defFlt
+          end if
+          self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx)/total(g) &
+                + D * self % prevFlux(idx) ) / (1 + D)
+        
+        ! Alternatively, handle unidentified/void regions
+        else
+          self % scalarFlux(idx) = self % scalarFlux(idx) + &
+               real(self % source(idx) * self % lengthSquared(cIdx) * norm / (2 * vol), defFlt)
+        end if
+
+      end do
+
+    end do
+    !$omp end parallel do
+
+  end subroutine normaliseFluxAndVolumeLinearIso
   
   !!
   !! Normalise flux and volume by total track length and increments
@@ -731,6 +993,12 @@ contains
         !$omp parallel do 
         do cIdx = 1, self % nCells
           call self % sourceUpdateKernelFlatIso(cIdx, ONE_K)
+        end do
+        !$omp end parallel do
+      case(linearIso)
+        !$omp parallel do 
+        do cIdx = 1, self % nCells
+          call self % sourceUpdateKernelLinearIso(cIdx, ONE_K)
         end do
         !$omp end parallel do
       case default
@@ -808,12 +1076,91 @@ contains
   !! Kernel to update sources given a cell index for linear sources
   !! with isotropic scattering
   !!
-  subroutine sourceUpdateKernelLinIso(self, cIdx, ONE_KEFF)
+  subroutine sourceUpdateKernelLinearIso(self, cIdx, ONE_KEFF)
     class(arraysRR), target, intent(inout)   :: self
     integer(shortInt), intent(in)            :: cIdx
     real(defFlt), intent(in)                 :: ONE_KEFF
+    real(defFlt)                             :: scatter, xScatter, yScatter, zScatter, &
+                                                fission, xFission, yFission, zFission, &
+                                                xSource, ySource, zSource
+    real(defFlt)                             :: invMxx, invMxy, invMxz, invMyy, invMyz, invMzz
+    real(defFlt), dimension(:), pointer      :: nuFission, chi, scatterXS 
+    integer(shortInt)                        :: matIdx, g, gIn, baseIdx, idx, sIdx1, sIdx2
+    real(defFlt), pointer, dimension(:)      :: fluxVec, xFluxVec, yFluxVec, zFluxVec
 
-  end subroutine sourceUpdateKernelLinIso
+    ! invert moment matrices
+    call self % invertMatrix(cIdx, invMxx, invMxy, invMxz, invMyy, invMyz, invMzz)
+    
+    ! Identify material
+    matIdx = self % geom % geom % graph % getMatFromUID(cIdx)
+     
+    ! Obtain XSs
+    call self % XSData % getProdPointers(matIdx, nuFission, scatterXS, chi)
+
+    baseIdx = self % nG * (cIdx - 1)
+    fluxVec => self % prevFlux((baseIdx+1):(baseIdx + self % nG))
+    xFluxVec => self % prevX((baseIdx + 1):(baseIdx + self % nG))
+    yFluxVec => self % prevY((baseIdx + 1):(baseIdx + self % nG))
+    zFluxVec => self % prevZ((baseIdx + 1):(baseIdx + self % nG))
+    
+    ! Calculate fission source
+    fission = 0.0_defFlt
+    xFission = 0.0_defFlt
+    yFission = 0.0_defFlt
+    zFission = 0.0_defFlt
+
+    !$omp simd reduction(+:fission, xFission, yFission, zFission) aligned(fluxVec, xFluxVec, yFluxVec, zFluxVec, nuFission)
+    do gIn = 1, self % nG
+      fission = fission + fluxVec(gIn) * nuFission(gIn)
+      xFission = xFission + xFluxVec(gIn) * nuFission(gIn)
+      yFission = yFission + yFluxVec(gIn) * nuFission(gIn)
+      zFission = zFission + zFluxVec(gIn) * nuFission(gIn)
+    end do
+    fission = fission * ONE_KEFF
+    xFission = xFission * ONE_KEFF
+    yFission = yFission * ONE_KEFF
+    zFission = zFission * ONE_KEFF
+
+    do g = 1, self % nG
+
+      sIdx1 = self % nG * (g - 1) + 1
+      sIdx2 = self % nG * g
+      associate(scatterVec => scatterXS(sIdx1:sIdx2))
+
+        ! Calculate scattering source
+        scatter = 0.0_defFlt
+        xScatter = 0.0_defFlt
+        yScatter = 0.0_defFlt
+        zScatter = 0.0_defFlt
+        !$omp simd reduction(+:scatter, xScatter, yScatter, zScatter)
+        do gIn = 1, self % nG
+          scatter = scatter + fluxVec(gIn) * scatterVec(gIn)
+          xScatter = xScatter + xFluxVec(gIn) * scatterVec(gIn)
+          yScatter = yScatter + yFluxVec(gIn) * scatterVec(gIn)
+          zScatter = zScatter + zFluxVec(gIn) * scatterVec(gIn)
+        end do
+
+      end associate
+
+      ! Output index
+      idx = baseIdx + g
+
+      self % source(idx) = chi(g) * fission + scatter
+      xSource = chi(g) * xFission + xScatter
+      ySource = chi(g) * yFission + yScatter
+      zSource = chi(g) * zFission + zScatter
+        
+      ! Calculate source gradients by inverting the moment matrix
+      self % sourceX(baseIdx + g) = invMxx * xSource + &
+              invMxy * ySource + invMxz * zSource
+      self % sourceY(baseIdx + g) = invMxy * xSource + &
+              invMyy * ySource + invMyz * zSource
+      self % sourceZ(baseIdx + g) = invMxz * xSource + &
+           invMyz * ySource + invMzz * zSource
+
+    end do
+
+  end subroutine sourceUpdateKernelLinearIso
   
   !!
   !! Kernel to update sources given a cell index for flat sources
@@ -837,7 +1184,129 @@ contains
 
   end subroutine sourceUpdateKernelLIFA
   
-  
+  !!
+  !! Inverts the spatial moment matrix for use in linear source calculations.
+  !!
+  subroutine invertMatrix(self, cIdx, invMxx, invMxy, invMxz, invMyy, invMyz, invMzz)
+    class(arraysRR), target, intent(in) :: self
+    integer(shortInt), intent(in)       :: cIdx
+    real(defFlt), intent(out)           :: invMxx, invMxy, invMxz, invMyy, invMyz, invMzz
+    integer(shortInt)                   :: condX, condY, condZ, inversionTest
+    real(defReal)                       :: det, one_det  
+
+    associate(momVec => self % momMat(((cIdx - 1) * matSize + 1):(cIdx * matSize)))
+
+    ! Pre-invert the moment matrix
+    ! Need to check for poor conditioning by evaluating the
+    ! diagonal elements of the matrix
+    condX = 0
+    condY = 0
+    condZ = 0
+
+    if (momVec(xx) > condition_tolerance) condX = 1
+    if (momVec(yy) > condition_tolerance) condY = 1
+    if (momVec(zz) > condition_tolerance) condZ = 1
+
+    ! Map conditions to test variable
+    inversionTest = condX * 4 + condY * 2 + condZ
+
+    select case(inversionTest)
+    case(invertXYZ)
+      det = momVec(xx) * (momVec(yy) * momVec(zz) - momVec(yz) * momVec(yz)) &
+            - momVec(yy) * momVec(xz) * momVec(xz) - momVec(zz) * momVec(xy) * momVec(xy) &
+            + 2 * momVec(xy) * momVec(xz) * momVec(yz)
+      one_det = ONE/det
+      invMxx = real(one_det * (momVec(yy) * momVec(zz) - momVec(yz) * momVec(yz)),defFlt)
+      invMxy = real(one_det * (momVec(xz) * momVec(yz) - momVec(xy) * momVec(zz)),defFlt)
+      invMxz = real(one_det * (momVec(xy) * momVec(yz) - momVec(yy) * momVec(xz)),defFlt)
+      invMyy = real(one_det * (momVec(xx) * momVec(zz) - momVec(xz) * momVec(xz)),defFlt)
+      invMyz = real(one_det * (momVec(xy) * momVec(xz) - momVec(xx) * momVec(yz)),defFlt)
+      invMzz = real(one_det * (momVec(xx) * momVec(yy) - momVec(xy) * momVec(xy)),defFlt)
+
+    case(invertYZ)
+      det = momVec(yy) * momVec(zz) - momVec(yz) * momVec(yz)
+      one_det = ONE/det
+      invMxx = 0.0_defFlt
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = real(one_det * momVec(zz),defFlt)
+      invMyz = real(-one_det * momVec(yz),defFlt)
+      invMzz = real(one_det * momVec(yy),defFlt)
+
+    case(invertXY)
+      det = momVec(xx) * momVec(yy) - momVec(xy) * momVec(xy)
+      one_det = ONE/det
+      invMxx = real(one_det * momVec(yy),defFlt)
+      invMxy = real(-one_det * momVec(xy),defFlt)
+      invMxz = 0.0_defFlt
+      invMyy = real(one_det * momVec(xx),defFlt)
+      invMyz = 0.0_defFlt
+      invMzz = 0.0_defFlt
+
+    case(invertXZ)
+      det = momVec(xx) * momVec(zz) - momVec(xz) * momVec(xz)
+      one_det = ONE/det
+      invMxx = real(one_det * momVec(zz),defFlt)
+      invMxy = 0.0_defFlt
+      invMxz = real(-one_det * momVec(xz),defFlt)
+      invMyy = 0.0_defFlt
+      invMyz = 0.0_defFlt
+      invMzz = real(one_det * momVec(xx),defFlt)
+
+    case(invertX)
+      det = momVec(xx)
+      one_det = ONE/det
+      invMxx = real(one_det,defFlt)
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = 0.0_defFlt
+      invMyz = 0.0_defFlt
+      invMzz = 0.0_defFLt
+
+    case(invertY)
+      det = momVec(yy)
+      one_det = ONE/det
+      invMxx = 0.0_defFlt
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = real(one_det,defFlt)
+      invMyz = 0.0_defFlt
+      invMzz = 0.0_defFlt
+
+    case(invertZ)
+      det = momVec(zz)
+      one_det = ONE/det
+      invMxx = 0.0_defFlt
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = 0.0_defFlt
+      invMyz = 0.0_defFlt
+      invMzz = real(one_det,defFlt)
+
+    case default
+      invMxx = 0.0_defFlt
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = 0.0_defFlt
+      invMyz = 0.0_defFlt
+      invMzz = 0.0_defFlt
+      det = ONE
+    end select
+
+    ! Check for zero determinant
+    if (abs(det) < det_tolerance) then
+      invMxx = 0.0_defFlt
+      invMxy = 0.0_defFlt
+      invMxz = 0.0_defFlt
+      invMyy = 0.0_defFlt
+      invMyz = 0.0_defFlt
+      invMzz = 0.0_defFlt
+    end if
+
+    end associate
+
+  end subroutine invertMatrix
+
   !! 
   !! Calculate keff
   !! Wraps the main kernel call to allow for OMP + SIMD (thanks Fortran)
@@ -913,6 +1382,8 @@ contains
     select case(self % simulationType)
       case(flatIso)
         call self % resetFluxesFlatIso()
+      case(linearIso)
+        call self % resetFluxesLinearIso()
       case default
         call fatalError(Here,'Unsupported simulation type requested')
     end select
@@ -939,7 +1410,7 @@ contains
   !! Sets prevFlux to scalarFlux and zero's scalarFlux
   !! for linear sources with isotropic scattering
   !!
-  subroutine resetFluxesLinIso(self)
+  subroutine resetFluxesLinearIso(self)
     class(arraysRR), intent(inout) :: self
     integer(shortInt)              :: idx
 
@@ -947,10 +1418,16 @@ contains
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = 0.0_defFlt
+      self % prevX(idx) = self % scalarX(idx)
+      self % scalarX(idx) = 0.0_defFlt
+      self % prevY(idx) = self % scalarY(idx)
+      self % scalarY(idx) = 0.0_defFlt
+      self % prevZ(idx) = self % scalarZ(idx)
+      self % scalarZ(idx) = 0.0_defFlt
     end do
     !$omp end parallel do
 
-  end subroutine resetFluxesLinIso
+  end subroutine resetFluxesLinearIso
 
   !!
   !! Sets prevFlux to scalarFlux and zero's scalarFlux
@@ -1184,7 +1661,7 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt) :: i
 
-    ! Clean contents
+    ! Clean standard contents
     if(allocated(self % scalarFlux)) deallocate(self % scalarFlux)
     if(allocated(self % prevFlux)) deallocate(self % prevFlux)
     if(allocated(self % fluxScores)) deallocate(self % fluxScores)
@@ -1198,6 +1675,21 @@ contains
     if(allocated(self % cellFound)) deallocate(self % cellFound)
     if(allocated(self % cellPos)) deallocate(self % cellPos)
     
+    ! Clean LS contents
+    if(allocated(self % scalarX)) deallocate(self % scalarX)
+    if(allocated(self % scalarX)) deallocate(self % scalarY)
+    if(allocated(self % scalarX)) deallocate(self % scalarZ)
+    if(allocated(self % prevX)) deallocate(self % prevX)
+    if(allocated(self % prevY)) deallocate(self % prevY)
+    if(allocated(self % prevZ)) deallocate(self % prevZ)
+    if(allocated(self % sourceX)) deallocate(self % sourceX)
+    if(allocated(self % sourceY)) deallocate(self % sourceY)
+    if(allocated(self % sourceZ)) deallocate(self % sourceZ)
+    if(allocated(self % momMat)) deallocate(self % momMat)
+    if(allocated(self % momTracks)) deallocate(self % momTracks)
+    if(allocated(self % centroid)) deallocate(self % centroid)
+    if(allocated(self % centroidTracks)) deallocate(self % centroidTracks)
+
     if(allocated(self % locks)) then
       do i = 1, self % nCells
 #ifdef _OPENMP

@@ -32,6 +32,11 @@ module azimPinUniverse_class
   !! segments. Proceeding radially outwards, the ID is incremented by the 
   !! number of azimuthal regions.
   !!
+  !! This has been generalised to allow different numbers of azimuthal divisions
+  !! in each radial division, e.g., a pin cell with 4 azimuthal divisions in the
+  !! fuel but 8 azimuthal divisions in the moderator
+  !!
+  !! Simplified input for uniform azimuthal division
   !! Sample Dictionary Input:
   !!   azimPinUni {
   !!     id 7;
@@ -43,9 +48,25 @@ module azimPinUniverse_class
   !!     fills (u<3> void clad u<4>);
   !!   }
   !!
+  !! Input for non-uniform azimuthal division
+  !! Sample Dictionary Input:
+  !!   azimPinUni {
+  !!     id 7;
+  !!     type azimPinUniverse;
+  !!     nazR (4 8);
+  !!     #origin (1.0 0.0 0.1);#
+  !!     #rotation (30.0 0.0 0.0);#
+  !!     radii (3.0 0.0 );
+  !!     fills (u<3> water );
+  !!   }
+  !!
   !!  naz corresponds to the number of azimuthal regions produced. Must be a multiple of 2.
   !!  Takes origin at 0 degrees, i.e., the centre of the first azimuthal slice.
   !!  There must be 0.0 entry, which indicates outermost annulus (infinite radius).
+  !!
+  !!  Alternatively, nazR is the number of azimuthal divisions per radial region, from
+  !!  the centre radiating outwards.
+  !!
   !!  `fills` and `radii` are given as pairs by position in the input arrays. Thus, fills
   !!  are sorted together with the `radii`. As a result, in the example, local cells 1 to 4
   !!  are filled with u<4>, cell 5 to 8 with u<3> etc.
@@ -55,7 +76,7 @@ module azimPinUniverse_class
   !!  !!!!!
   !!
   !! Public Members:
-  !!  nAz     -> Number of azimuthal regions
+  !!  nAz     -> Number of azimuthal regions in each radial ring
   !!  r_sqr   -> Array of radius^2 for each annulus
   !!  theta   -> Array of azimuthal boundary angles in radians. 
   !!  annuli  -> Array of cylinder surfaces that represent diffrent annuli
@@ -67,12 +88,12 @@ module azimPinUniverse_class
   !!
   type, public, extends(universe) :: azimPinUniverse
     private
-    integer(shortInt)                          :: nAz
-    real(defReal), dimension(:), allocatable   :: r_sq
-    real(defReal), dimension(:), allocatable   :: theta
-    type(cylinder), dimension(:), allocatable  :: annuli
-    type(plane), dimension(:), allocatable     :: planes
-    real(defReal), dimension(:,:), allocatable :: normals
+    integer(shortInt), dimension(:), allocatable :: nAz
+    real(defReal), dimension(:), allocatable     :: r_sq
+    real(defReal), dimension(:), allocatable     :: theta
+    type(cylinder), dimension(:), allocatable    :: annuli
+    type(plane), dimension(:), allocatable       :: planes
+    real(defReal), dimension(:,:), allocatable   :: normals
   contains
     ! Superclass procedures
     procedure :: init
@@ -100,8 +121,9 @@ contains
     type(cellShelf), intent(inout)                            :: cells
     type(surfaceShelf), intent(inout)                         :: surfs
     type(charMap), intent(in)                                 :: mats
-    integer(shortInt)                             :: id, idx, N, i, j
+    integer(shortInt)                             :: id, idx, N, i, j, r, nAzTotal
     real(defReal), dimension(:), allocatable      :: radii, temp
+    integer(shortInt), dimension(:), allocatable  :: tempInt
     character(nameLen), dimension(:), allocatable :: fillNames
     real(defReal)                                 :: dTheta, theta0
     character(100), parameter :: Here = 'init (azimPinUniverse_class.f90)'
@@ -110,13 +132,46 @@ contains
     call dict % get(id, 'id')
     if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
     call self % setId(id)
+    
+    ! Load radii and fill data
+    call dict % get(radii, 'radii')
+    call dict % get(fillNames, 'fills')
+
+    ! Check values
+    if (size(radii) /= size(fillNames)) then
+      call fatalError(Here, 'Size of radii and fills does not match')
+
+    else if (any(radii < ZERO)) then
+      call fatalError(Here, 'Found -ve value of radius.')
+
+    end if
 
     ! Load azimuthal division
-    call dict % get(self % naz, 'naz')
-    if (self % nAz < 2) call fatalError(Here,'Number of azimuthal regions must be 2 or more')
+    if (dict % isPresent('naz') .and. dict % isPresent('nazR')) then
+      call fatalError(Here,'Cannot have both a naz and nazR entry')
+
+    ! Only one azimuthal discretisation
+    elseif (dict % isPresent('naz')) then
+      allocate(self % nAz(size(radii)))
+      call dict % get(N, 'naz')
+      self % nAz = N
+
+    ! Variable azimuthal discretisation
+    elseif (dict % isPresent('nazR')) then
+      call dict % get(tempInt, 'nazR')
+      if (size(tempInt) /= size(radii)) call fatalError(Here,'Number of radial regions is not consistent '//&
+              'between nazR and radii')
+      allocate(self % nAz(size(tempInt)))
+      self % nAz = tempInt
+    else
+      call fatalError(Here,'Must have either a naz or nazR entry')
+    end if
+    if (any(self % nAz < 2)) call fatalError(Here,'Number of azimuthal regions must be 2 or more')  
 
     ! Use binary logic to check if nAz is a power of 2
-    if (IAND(self % nAz, self % nAz - 1) /= 0) call fatalError(Here, 'Number of azimuthal regions must be a power of 2')
+    do r = 1, size(self % naz)
+      if (IAND(self % nAz(r), self % nAz(r) - 1) /= 0) call fatalError(Here, 'Number of azimuthal regions must be a power of 2')
+    end do
 
     ! Load origin
     if (dict % isPresent('origin')) then
@@ -139,18 +194,6 @@ contains
       call self % setTransform(rotation=temp)
     end if
 
-    ! Load radii and fill data
-    call dict % get(radii, 'radii')
-    call dict % get(fillNames, 'fills')
-
-    ! Check values
-    if (size(radii) /= size(fillNames)) then
-      call fatalError(Here, 'Size of radii and fills does not match')
-
-    else if (any(radii < ZERO)) then
-      call fatalError(Here, 'Found -ve value of radius.')
-
-    end if
 
     ! Sort radii with selection sort
     ! Start with value 0.0 that represents outermost element
@@ -185,31 +228,40 @@ contains
     end do
 
     ! Load data and build planes
-    allocate(self % theta(self % nAz))
-    allocate(self % planes(self % nAz/2))
-    allocate(self % normals(self % nAz/2,2))
-    dTheta = TWO_PI / self % nAz
-    theta0 = HALF * dTheta
-    do i = 1, self % nAz
-      self % theta(i) = theta0 
-      theta0 = theta0 + dTheta
-    end do
+    allocate(self % theta(sum(self % nAz)))
+    allocate(self % planes(sum(self % nAz)/2))
+    allocate(self % normals(sum(self % nAz)/2,2))
 
-    ! Build the planes, rotated at angle theta from the line x = 0
-    do i = 1, self % nAz/2
-      self % normals(i,1) = -sin(self % theta(i)) 
-      self % normals(i,2) = cos(self % theta(i))
-      call self % planes(i) % build(id=1, &
-              norm = [self % normals(i,1), self % normals(i,2), ZERO], offset=ZERO)
+    nAzTotal = 0
+    do r = 1, N
+    
+      dTheta = TWO_PI / self % nAz(r)
+      theta0 = HALF * dTheta
+      do i = 1, self % nAz(r)
+        self % theta(nAzTotal + i) = theta0 
+        theta0 = theta0 + dTheta
+      end do
+
+      ! Build the planes, rotated at angle theta from the line x = 0
+      do i = 1, self % nAz(r)/2
+        self % normals(nAzTotal/2 + i,1) = -sin(self % theta(nAzTotal + i)) 
+        self % normals(nAzTotal/2 + i,2) = cos(self % theta(nAzTotal + i))
+        call self % planes(nAzTotal/2 + i) % build(id=1, &
+                norm = [self % normals(nAzTotal/2 + i,1), self % normals(nAzTotal/2 + i,2), ZERO], offset=ZERO)
+      end do
+
+      nAzTotal = nAzTotal + self % nAz(r)
     end do
 
     ! Create fill array
-    allocate(fill(self % nAz * N))
+    allocate(fill(nAzTotal))
 
+    nAzTotal = 0
     do i = 1, N
-      do j = 1, self % nAz
-        fill((i-1)*self % nAz + j) = charToFill(fillNames(i), mats, Here)
+      do j = 1, self % nAz(i)
+        fill(nAzTotal + j) = charToFill(fillNames(i), mats, Here)
       end do
+      nAzTotal = nAzTotal + self % nAz(i)
     end do
 
   end subroutine init
@@ -226,7 +278,7 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: r_sq, theta, mul, planeDir
-    integer(shortInt)                       :: aIdx, rIdx, pIdx
+    integer(shortInt)                       :: aIdx, rIdx, pIdx, baseAIdx
 
     r_sq = r(1)*r(1) + r(2)*r(2)
     theta = atan2(r(2),r(1))
@@ -249,10 +301,14 @@ contains
     end do
     ! If reached here without exiting, rIdx = size(self % r_sq) + 1
 
+    ! Find base azimuthal index given radial zone
+    baseAIdx = 0
+    if (rIdx > 1) baseAIdx = sum(self % nAz(1:(rIdx-1)))
+
     ! Find azimuthal segment
-    do aIdx = 1, self % nAz
-      if (aIdx > self % nAz/2) then
-        pIdx = aIdx - self % nAz/2
+    do aIdx = 1, self % nAz(rIdx)
+      if (aIdx > self % nAz(rIdx)/2) then
+        pIdx = aIdx - self % nAz(rIdx)/2
         planeDir = -ONE
       else
         pIdx = aIdx
@@ -260,17 +316,17 @@ contains
       end if
       ! Surface tolerance multiplier determined by relative direction of particle
       ! and theta
-      if (planeDir*self % normals(pIdx,1)*u(1) + planeDir*self % normals(pIdx,2)*u(2) >= ZERO) then
+      if (planeDir*self % normals(baseAIdx/2 + pIdx,1)*u(1) + planeDir*self % normals(baseAIdx/2 + pIdx,2)*u(2) >= ZERO) then
         mul = -ONE
       else
         mul = ONE
       end if
-      if (theta < self % theta(aIdx) + mul * self % planes(pIdx) % surfTol() ) exit
+      if (theta < self % theta(baseAIdx + aIdx) + mul * self % planes(baseAIdx/2 + pIdx) % surfTol() ) exit
     end do
     ! If exceeded the search, theta is <2pi but greater than the largest theta.
     ! Therefore, it lies in the negative theta portion of the first segment.
-    if (aIdx == self % nAz + 1) aIdx = 1
-    localID = aIdx + self % nAz * (rIdx - 1)
+    if (aIdx == self % nAz(rIdx) + 1) aIdx = 1
+    localID = aIdx + baseAIdx
 
   end subroutine findCell
 
@@ -289,20 +345,29 @@ contains
     type(coord), intent(in)               :: coords
     real(defReal)                         :: d_out_annul, d_in_annul
     real(defReal)                         :: d_plus, d_minus, dAz
-    integer(shortInt)                     :: id, aIdx, rIdx, searchIdxP, searchIdxM
-    integer(shortInt)                     :: sense, minus_sense, plus_sense
+    integer(shortInt)                     :: id, aIdx, rIdx, i, searchIdxP, searchIdxM
+    integer(shortInt)                     :: sense, minus_sense, plus_sense, baseIdx
     character(100), parameter :: Here = 'distance (azimPinUniverse_class.f90)'
 
     ! Get local id
     id = coords % localID
 
-    if (id < 1 .or. id > (size(self % r_sq) + 1) * self % nAz) then
+    if (id < 1 .or. id > sum(self % nAz)) then
       call fatalError(Here, 'Invalid local ID: '//numToChar(id))
     end if
 
     ! Identify annulus index and azimuthal index
-    rIdx = (id - 1) / self % nAz + 1
-    aIdx = id - (self % nAz * (rIdx - 1))
+    do i = 1, size(self % annuli)
+      id = id - self % nAz(i)
+      if (id < 1) then
+        rIdx = i
+        aIdx = id + self % nAz(i) 
+        exit
+      end if
+    end do
+
+    baseIdx = 0
+    if (rIdx > 1) baseIdx = sum(self % nAz(1:(rIdx-1)))/2
 
     ! Check distance to annuli
     ! Outer distance
@@ -333,8 +398,8 @@ contains
 
     ! Check whether in the first or second half of azimuthal segments
     ! If in second half, find the same azimuthal indices as in the first half
-    searchIdxP = aIdx
-    if (aIdx > self % nAz/2) searchIdxP = searchIdxP - self % nAz/2
+    searchIdxP = aIdx + baseIdx
+    if (aIdx > self % nAz(rIdx)/2) searchIdxP = searchIdxP - self % nAz(rIdx)/2
 
     ! Set default senses for which cell will be entered
     minus_sense = MOVING_CLOCK
@@ -343,24 +408,24 @@ contains
     ! Check for first or last cells circling round
     if (aIdx == 1) then
       minus_sense = MOVING_CLOCK_BACK
-    else if (aIdx == self % nAz) then
+    else if (aIdx == self % nAz(rIdx)) then
       plus_sense = MOVING_CLOCK_FORWARD
     end if
 
     ! If in the first cell or nAz/2 + 1 cell, find correct plane
-    if (searchIdxP == 1) then
-      searchIdxM = self % nAz/2
+    if (searchIdxP == baseIdx + 1) then
+      searchIdxM = self % nAz(rIdx)/2 + baseIdx
     else
       searchIdxM = searchIdxP - 1
     end if
 
     ! Identify which two planes (or only one if nAz = 2)
     ! Check to see if in second half of azimuthal segments
-    if (self % nAz > 2) then
+    if (self % nAz(rIdx) > 2) then
       d_plus  = self % planes(searchIdxP) % distance(coords % r, coords % dir)
       d_minus = self % planes(searchIdxM) % distance(coords % r, coords % dir)
     else
-      d_plus  = self % planes(1) % distance(coords % r, coords % dir)
+      d_plus  = self % planes(baseIdx + 1) % distance(coords % r, coords % dir)
       d_minus = INF
     end if
 
@@ -393,7 +458,16 @@ contains
     class(azimPinUniverse), intent(inout) :: self
     type(coord), intent(inout)            :: coords
     integer(shortInt), intent(in)         :: surfIdx
+    integer(shortInt)                     :: aIdx, i
     character(100), parameter :: Here = 'cross (azimPinUniverse_class.f90)'
+    
+    ! Need radial region to work out how much to increment the clock by
+    ! Identify annulus index and azimuthal index
+    aIdx = coords % localID
+    do i = 1, size(self % annuli)
+      aIdx = aIdx - self % nAz(i)
+      if (aIdx < 1) exit
+    end do
 
     ! Need to determine whether completing a circle, i.e., moving from
     ! the last azimuthal segment to the first and vice versa
@@ -404,17 +478,24 @@ contains
       coords % localID = coords % localID + 1
 
     else if (surfIdx == MOVING_CLOCK_BACK) then
-      coords % localID = coords % localID + self % nAz - 1
+      coords % localID = coords % localID + self % nAz(i) - 1
 
     else if (surfIdx == MOVING_CLOCK_FORWARD) then
-      coords % localID = coords % localID - self % nAz + 1
+      coords % localID = coords % localID - self % nAz(i) + 1
 
+    ! Need to be replaced with find subroutines in the general case, sadly
     else if (surfIdx == MOVING_IN) then
-      coords % localID = coords % localID - self % nAz
-
+      if (self % nAz(i) == self % nAz(i-1)) then
+        coords % localID = coords % localID - self % nAz(i)
+      else
+        call self % findCell(coords % localID, coords % cellIdx, coords % r, coords % dir)
+      end if
     else if (surfIdx == MOVING_OUT) then
-      coords % localID = coords % localID + self % nAz
-
+      if (self % nAz(i) == self % nAz(i+1)) then
+        coords % localID = coords % localID + self % nAz(i)
+      else
+        call self % findCell(coords % localID, coords % cellIdx, coords % r, coords % dir)
+      end if
     else
       call fatalError(Here, 'Unknown surface memento: '//numToChar(surfIdx))
 
@@ -452,7 +533,7 @@ contains
     if(allocated(self % theta)) deallocate(self % theta)
     if(allocated(self % planes)) deallocate(self % planes)
     if(allocated(self % normals)) deallocate(self % normals)
-    self % nAz = 0
+    if(allocated(self % nAz)) deallocate(self % nAz)
 
   end subroutine kill
 
