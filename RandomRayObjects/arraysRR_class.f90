@@ -151,6 +151,7 @@ module arraysRR_class
     procedure :: getFluxXYZPointers
     procedure :: getSourceXYZPointers
     procedure :: getCentroid
+    procedure :: getVolumePointers
 
     ! Change individual elements of the type
     ! Predominantly for use in the transport sweep
@@ -613,9 +614,9 @@ contains
     integer(shortInt)                          :: idx0, idx1
 
     idx0 = nDim * (cIdx - 1) + 1
-    idx1 = nDim * (cIdx - 1) + nDim
+    idx1 = nDim * cIdx 
     self % centroidTracks(idx0:idx1) = self % centroidTracks(idx0:idx1) + rL
-  
+
   end subroutine incrementCentroid
   
   !!
@@ -630,11 +631,27 @@ contains
     integer(shortInt)                             :: idx0, idx1
 
     idx0 = matSize * (cIdx - 1) + 1
-    idx1 = matSize * (cIdx - 1) + matSize
+    idx1 = matSize * cIdx 
     self % momTracks(idx0:idx1) = self % momTracks(idx0:idx1) + mat
   
   end subroutine incrementMoments
-  
+ 
+  !!
+  !!
+  !!
+  subroutine getVolumePointers(self, cIdx, volTracks, centroidTracks, momTracks)
+    class(arraysRR), intent(in), target      :: self
+    integer(shortInt), intent(in)            :: cIdx
+    real(defReal), dimension(:), pointer     :: centroidTracks, momTracks
+    real(defReal), pointer                   :: volTracks
+
+    volTracks => self % volumeTracks(cIdx)
+    centroidTracks => self % centroidTracks((nDim*(cIdx-1)+1):nDim*cIdx)
+    momTracks => self % momTracks((matSize*(cIdx-1)+1):matSize*cIdx)
+
+  end subroutine getVolumePointers
+
+
   !!
   !! Check if a cell has been hit
   !!

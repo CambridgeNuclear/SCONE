@@ -332,6 +332,8 @@ contains
     real(defFlt), pointer, dimension(:)                   :: scalar, source, total, &
                                                              scalarX, scalarY, scalarZ, &
                                                              sourceX, sourceY, sourceZ
+    !real(defReal), pointer, dimension(:)                  :: cPtr, mPtr
+    !real(defReal), pointer                                :: vPtr
     
     XSData => arrays % getDataPointer()
     geom => arrays % getGeomPointer()
@@ -353,6 +355,10 @@ contains
         angular(g) = arrays % getPrevFlux(cIdx,g)
       end do
     end if
+      
+    ! Obtain ray direction for LS calculations
+    mu0 = r % dirGlobal()
+    muFlt = real(mu0,defFlt)
 
     ints = 0
     matIdx0 = matIdx
@@ -360,8 +366,7 @@ contains
     activeRay = .false.
     do while (totalLength < termination)
 
-      ! Get ray coords for LS calculations
-      mu0 = r % dirGlobal()
+      ! Get ray entry position for LS calculations
       r0  = r % rGlobal()
 
       ! Get material and cell the ray is moving through
@@ -398,7 +403,6 @@ contains
       rNorm = rC - mid
       rNormFlt = real(rNorm,defFlt)
       r0NormFlt = real(r0 - mid,defFlt)
-      muFlt = real(mu0,defFlt)
 
       ! Calculate source terms
       !$omp simd aligned(sourceX, sourceY, sourceZ)
@@ -414,9 +418,10 @@ contains
       end do
 
       lenFlt = real(length,defFlt)
+      lenFlt2_2 = lenFlt * lenFlt * one_two
       
       ! Compute exponentials necessary for angular flux update
-      !$omp simd
+      !$omp simd aligned(total)
       do g = 1, nG
         tau(g) = max(total(g) * lenFlt, 1.0E-8)
       end do
@@ -433,14 +438,13 @@ contains
       
       !$omp simd
       do g = 1, nG
-        !F2(g)  = (G0(g) - F1(g) * one_two) * lenFlt
-        F2(g)  = G0(g) - F1(g) * one_two
+        F2(g)  = 2.0_defFlt * G0(g) - F1(g)
       end do
       
       !$omp simd
       do g = 1, nG
         delta(g) = (tau(g) * angular(g) - lenFlt * flatQ(g)) * F1(g) &
-                   - gradQ(g) * F2(g) * lenFlt * lenFlt
+                   - gradQ(g) * F2(g) * lenFlt2_2
       end do
       
       ! Create an intermediate flux variable for use in LS scores
@@ -458,7 +462,7 @@ contains
       if (activeRay) then
       
         ! Precompute geometric info to keep it out of the lock
-        len2_12 = length * length / 12
+        len2_12 = length * length * one_twelve
         matScore(xx) = length * (rNorm(x) * rNorm(x) + mu0(x) * mu0(x) * len2_12)
         matScore(xy) = length * (rNorm(x) * rNorm(y) + mu0(x) * mu0(y) * len2_12)
         matScore(xz) = length * (rNorm(x) * rNorm(z) + mu0(x) * mu0(z) * len2_12)
@@ -469,7 +473,6 @@ contains
         
         ! Compute necessary exponentials outside of the lock
         ! Follows those in Gunow
-        lenFlt2_2 = lenFlt * lenFlt * one_two
         
         !$omp simd
         do g = 1, nG
@@ -486,7 +489,6 @@ contains
           G2(g) = expG2(tau(g)) 
         end do
      
-
         ! Make some more condensed variables to help vectorisation
         !$omp simd 
         do g = 1, nG
@@ -505,7 +507,7 @@ contains
         end do
 
         call arrays % setLock(cIdx)
-        
+          
           call arrays % getFluxPointer(cIdx, scalar)
           call arrays % getFluxXYZPointers(cIdx, scalarX, scalarY, scalarZ)
 
@@ -521,6 +523,17 @@ contains
           call arrays % incrementVolume(cIdx, length)
           call arrays % incrementCentroid(cIdx, rC)
           call arrays % incrementMoments(cIdx, matScore)
+
+          !call arrays % getVolumePointers(cIdx, vPtr, cPtr, mPtr)
+          !vPtr = vPtr + length
+          !!$omp simd
+          !do g = 1,nDim
+          !  cPtr(g) = cPtr(g) + rC(g)
+          !end do
+          !!$omp simd
+          !do g = 1,nDim
+          !  mPtr(g) = mPtr(g) + matScore(g)
+          !end do
         
         call arrays % unsetLock(cIdx)
         if (arrays % hasHit(cIdx) == 0) call arrays % hitCell(cIdx)
@@ -533,6 +546,10 @@ contains
         do g = 1, nG
           angular(g) = 0.0_defFlt
         end do
+    
+        ! Update ray direction on reflecting from boundary
+        mu0 = r % dirGlobal()
+        muFlt = real(mu0,defFlt)
       end if
 
     end do

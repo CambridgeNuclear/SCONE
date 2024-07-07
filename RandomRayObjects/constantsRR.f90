@@ -31,6 +31,8 @@ module constantsRR
   real(defFlt), parameter :: one_two = real(HALF,defFlt), &
                              two_three = real(2.0_defFlt/3.0_defFlt,defFlt)
 
+  real(defReal), parameter :: one_twelve = ONE / 12
+
 
 contains
     

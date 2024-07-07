@@ -141,6 +141,8 @@ module randomRayPhysicsPackage_class
     integer(shortInt)  :: active      = 0
     logical(defBool)   :: cache       = .false.
     real(defReal)      :: rho         = ZERO
+    logical(defBool)   :: lin         = .false.
+    integer(shortInt)  :: ani         = 0
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .false.
@@ -190,8 +192,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)              :: dict
     logical(defBool), intent(in), optional        :: loud
-    integer(shortInt)                             :: seed_temp, ani
-    logical(defBool)                              :: lin
+    integer(shortInt)                             :: seed_temp
     integer(longInt)                              :: seed
     character(10)                                 :: time
     character(8)                                  :: date
@@ -227,10 +228,10 @@ contains
     call dict % getOrDefault(self % rho, 'rho', ZERO)
     
     ! Use linear sources?
-    call dict % getOrDefault(lin, 'lin', .false.)
+    call dict % getOrDefault(self % lin, 'lin', .false.)
     
     ! Use anisotropic scattering?
-    call dict % getOrDefault(ani, 'ani', 0)
+    call dict % getOrDefault(self % ani, 'ani', 0)
 
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -247,7 +248,7 @@ contains
     if (self % dead < ZERO) call fatalError(Here, 'Dead length must be positive.')
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
-    if (ani < 0 .or. ani > 3) call fatalError(Here, 'Anisotropy order must be between 0 and 3')
+    if (self % ani < 0 .or. self % ani > 3) call fatalError(Here, 'Anisotropy order must be between 0 and 3')
 
     ! Check whether there is a map for outputting fission rates
     ! If so, read and initialise the map to be used
@@ -354,7 +355,7 @@ contains
 
     ! Initialise RR arrays and nuclear data
     call self % arrays % init(self % mgData, self % geom, &
-            self % pop * (self % termination - self % dead), self % rho, lin, ani, .false., self % loud)
+            self % pop * (self % termination - self % dead), self % rho, self % lin, self % ani, .false., self % loud)
     
   end subroutine init
 
@@ -600,6 +601,8 @@ contains
 
     print *, repeat("<>", MAX_COL/2)
     print *, "/\/\ RANDOM RAY EIGENVALUE CALCULATION /\/\"
+    if (self % lin) print *, "Using linear source"
+    if (self % ani > 0) print *, "Using anisotropy order "//numToChar(self % ani)
     print *, "Using "//numToChar(self % inactive)// " iterations for "&
               //"the inactive cycles"
     print *, "Using "//numToChar(self % active)// " iterations for "&
@@ -641,6 +644,8 @@ contains
     self % inactive    = 0
     self % active      = 0
     self % cache       = .false.
+    self % lin         = .false.
+    self % ani         = 0
     self % mapFission  = .false.
     self % mapFlux     = .false.
     self % plotResults = .false.
