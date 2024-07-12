@@ -75,6 +75,7 @@ module dataRR_class
     procedure :: getNMat
     procedure :: getNPrec
     procedure :: getName
+    procedure :: getIdxFromName
     procedure :: isFissile
 
     ! Private procedures
@@ -91,13 +92,12 @@ contains
   !! Initialise necessary nuclear data.
   !! Can optionally include kinetic parameters.
   !!
-  subroutine init(self, db, doKinetics, aniOrder, loud)
+  subroutine init(self, db, doKinetics, loud)
     class(dataRR), intent(inout)                     :: self
     class(baseMgNeutronDatabase),pointer, intent(in) :: db
     logical(defBool), intent(in)                     :: doKinetics
-    integer(shortInt), intent(in)                    :: aniOrder
     logical(defBool), intent(in)                     :: loud
-    integer(shortInt)                                :: g, g1, m, matP1
+    integer(shortInt)                                :: g, g1, m, matP1, aniOrder
     type(RNG)                                        :: rand
     logical(defBool)                                 :: fiss
     class(baseMgNeutronMaterial), pointer            :: mat
@@ -163,6 +163,8 @@ contains
     end if
 
     ! Initialise higher-order scattering matrices
+    ! TODO: read anisotropy order from database
+    aniOrder = 0
     if (aniOrder > 0) then
       print *,'Including anisotropic scattering data'
       call fatalError(Here,'Anisotropy not yet supported')
@@ -255,12 +257,32 @@ contains
   elemental function getName(self, matIdx) result(matName)
     class(dataRR), intent(in)     :: self
     integer(shortInt), intent(in) :: matIdx
+    integer(shortInt)             :: mIdx
     character(nameLen)            :: matName
 
-    matName = self % names(matIdx)
+    if (matIdx > self % nMat) then
+      mIdx = self % nMat + 1
+    else
+      mIdx = matIdx
+    end if
+    matName = self % names(mIdx)
 
   end function getName
   
+  !!
+  !! Return the index of a material given its name
+  !!
+  elemental function getIdxFromName(self, matName) result(matIdx)
+    class(dataRR), intent(in)      :: self
+    character(nameLen), intent(in) :: matName
+    integer(shortInt)              :: matIdx
+
+    do matIdx = 1, self % nMat 
+      if (self % names(matIdx) == matName) return
+    end do
+    matIdx = -1
+
+  end function getIdxFromName
   
   !!
   !! Get scatter pointer

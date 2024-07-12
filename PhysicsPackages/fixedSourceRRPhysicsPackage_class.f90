@@ -1,4 +1,4 @@
-module randomRayPhysicsPackage_class
+module fixedSourceRRPhysicsPackage_class
 
   use numPrecision
   use universalVariables
@@ -49,7 +49,9 @@ module randomRayPhysicsPackage_class
   private
 
   !!
-  !! Physics package to perform The Random Ray Method (TRRM) eigenvalue calculations
+  !! Physics package to perform The Random Ray Method (TRRM) fixed source calculations
+  !!
+  !! TODO: introduce uncollided transport sweep
   !!
   !! Tracks rays across the geometry, attenuating their flux. After some dead length,
   !! rays begin scoring to estimates of the scalar flux and volume. Each ray has a
@@ -57,9 +59,9 @@ module randomRayPhysicsPackage_class
   !! Once all rays have been tracked, a cycle concludes and fluxes, sources, and keff
   !! are updated.
   !!
-  !! Both inactive and active cycles occur, as in Monte Carlo. These can be terminated
-  !! after a specified number of iterations or on reaching some chosen convergence
-  !! criterion (though the latter hasn't been implemented yet).
+  !! Both inactive and active cycles occur, as in Monte Carlo eigenvalue calculations. 
+  !! These can be terminated after a specified number of iterations or on reaching some 
+  !! chosen convergence criterion (though the latter hasn't been implemented yet).
   !!
   !! Calculates relative volume of different materials in the problem by performing
   !! random ray tracing in the geometry. The volume is normalised such that the total domain
@@ -72,7 +74,7 @@ module randomRayPhysicsPackage_class
   !!
   !! Sample Input Dictionary:
   !!   PP {
-  !!     type randomRayPhysicsPackage;
+  !!     type fixedSourceRRPhysicsPackage;
   !!     dead 10;              // Dead length where rays do not score to scalar fluxes
   !!     termination 100;      // Length a ray travels before it is terminated
   !!     rays 1000;            // Number of rays to sample per iteration
@@ -108,20 +110,15 @@ module randomRayPhysicsPackage_class
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
   !!   viz         -> Output visualiser
-  !!   mapFission  -> Output fission rates across a given map?
-  !!   fissionMap  -> The map across which to output fission rate results
   !!   mapFlux     -> Output 1G flux across a given map?
   !!   fluxMap     -> The map across which to output 1G flux results
-  !!
-  !!   keff        -> Estimated value of keff
-  !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
   !!
   !!   intersectionsTotal -> Total number of ray traces for the calculation
   !!
   !! Interface:
   !!   physicsPackage interface
   !!
-  type, public, extends(physicsPackage) :: randomRayPhysicsPackage
+  type, public, extends(physicsPackage) :: fixedSourceRRPhysicsPackage
     private
     ! Components
     class(geometryStd), pointer           :: geom
@@ -142,6 +139,7 @@ module randomRayPhysicsPackage_class
     logical(defBool)   :: cache       = .false.
     real(defReal)      :: rho         = ZERO
     logical(defBool)   :: lin         = .false.
+    real(defReal)      :: keff        = ONE
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     logical(defBool)   :: plotResults = .false.
@@ -149,16 +147,14 @@ module randomRayPhysicsPackage_class
     logical(defBool)   :: printVolume = .false.
     logical(defBool)   :: printCells  = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFission  = .false.
-    class(tallyMap), allocatable :: fissionMap
     logical(defBool)   :: mapFlux     = .false.
     class(tallyMap), allocatable :: fluxMap
+    character(nameLen),dimension(:), allocatable :: intMatNames
+    real(defReal), dimension(:,:), allocatable   :: samplePoints
+    character(nameLen),dimension(:), allocatable :: sampleNames
 
     ! Results space
-    ! keffScore is public for integration testing
-    real(defReal)                        :: keff = ONE
-    real(defReal), dimension(2), public  :: keffScore = ZERO
-    integer(longInt)                     :: intersectionsTotal = 0
+    integer(longInt)   :: intersectionsTotal = 0
 
     ! Timer bins
     integer(shortInt) :: timerMain
@@ -178,7 +174,7 @@ module randomRayPhysicsPackage_class
     procedure, private :: printResults
     procedure, private :: printSettings
 
-  end type randomRayPhysicsPackage
+  end type fixedSourceRRPhysicsPackage
 
 contains
 
@@ -188,20 +184,22 @@ contains
   !! See physicsPackage_inter for details
   !!
   subroutine init(self, dict, loud)
-    class(randomRayPhysicsPackage), intent(inout) :: self
-    class(dictionary), intent(inout)              :: dict
-    logical(defBool), intent(in), optional        :: loud
-    integer(shortInt)                             :: seed_temp
-    integer(longInt)                              :: seed
-    character(10)                                 :: time
-    character(8)                                  :: date
-    character(:),allocatable                      :: string
-    class(dictionary),pointer                     :: tempDict, graphDict
-    class(mgNeutronDatabase),pointer              :: db
-    character(nameLen)                            :: geomName, graphType, nucData
-    class(geometry), pointer                      :: geom
-    type(outputFile)                              :: test_out
-    character(100), parameter :: Here = 'init (randomRayPhysicsPackage_class.f90)'
+    class(fixedSourceRRPhysicsPackage), intent(inout) :: self
+    class(dictionary), intent(inout)                  :: dict
+    logical(defBool), intent(in), optional            :: loud
+    integer(shortInt)                                 :: seed_temp, n, nPoints
+    integer(longInt)                                  :: seed
+    character(10)                                     :: time
+    character(8)                                      :: date
+    character(:),allocatable                          :: string
+    class(dictionary),pointer                         :: tempDict, graphDict
+    real(defReal), dimension(:), allocatable          :: tempArray
+    class(mgNeutronDatabase),pointer                  :: db
+    character(nameLen)                                :: geomName, graphType, nucData
+    class(geometry), pointer                          :: geom
+    type(outputFile)                                  :: test_out
+    character(nameLen),dimension(:), allocatable      :: names
+    character(100), parameter :: Here = 'init (fixedSourceRRPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
 
@@ -245,16 +243,6 @@ contains
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
 
-    ! Check whether there is a map for outputting fission rates
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fissionMap')) then
-      self % mapFission = .true.
-      tempDict => dict % getDictPtr('fissionMap')
-      call new_tallyMap(self % fissionMap, tempDict)
-    else
-      self % mapFission = .false.
-    end if
-    
     ! Check whether there is a map for outputting one-group fluxes
     ! If so, read and initialise the map to be used
     if (dict % isPresent('fluxMap')) then
@@ -263,6 +251,33 @@ contains
       call new_tallyMap(self % fluxMap, tempDict)
     else
       self % mapFlux = .false.
+    end if
+
+    ! Check for materials to integrate over
+    if (dict % isPresent('integrate')) then
+      call dict % get(names,'integrate')
+
+      allocate(self % intMatNames(size(names)))
+      self % intMatNames = names
+
+    end if
+
+    ! Return flux values at sample points?
+    ! Store a set of points to return values at on concluding the simulation
+    if (dict % isPresent('samplePoints')) then
+
+      tempDict => dict % getDictPtr('samplePoints')
+      call tempDict % keys(self % sampleNames)
+      nPoints = size(self % sampleNames)
+      allocate(self % samplePoints(3, nPoints))
+      do n = 1, nPoints
+
+        call tempDict % get(tempArray, self % sampleNames(n))
+        if (size(tempArray) /= 3) call fatalError(Here, 'Sample points must be 3 dimensional')
+        self % samplePoints(:, n) = tempArray
+
+      end do
+
     end if
 
     ! Register timer
@@ -347,10 +362,17 @@ contains
 
     ! Store number of cells in geometry for convenience
     self % nCells = self % geom % numberOfCells()
+      
+    ! Read fixed source dictionary
+    tempDict => dict % getDictPtr('source')
 
     ! Initialise RR arrays and nuclear data
     call self % arrays % init(self % mgData, self % geom, &
-            self % pop * (self % termination - self % dead), self % rho, self % lin, .false., self % loud)
+            self % pop * (self % termination - self % dead), self % rho, self % lin, &
+            .false., self % loud, tempDict)
+
+    ! Zeros the prevFlux - makes for a better initial guess than 1's in eigenvalue!
+    call self % arrays % resetFluxes()
     
   end subroutine init
 
@@ -360,7 +382,7 @@ contains
   !! See physicsPackage_inter for details
   !!
   subroutine run(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
+    class(fixedSourceRRPhysicsPackage), intent(inout) :: self
 
     if (self % loud) call self % printSettings()
     call self % cycles()
@@ -381,17 +403,17 @@ contains
   !! given criteria or when a fixed number of iterations has been passed.
   !!
   subroutine cycles(self)
-    class(randomRayPhysicsPackage), target, intent(inout) :: self
-    type(ray), save                               :: r
-    type(RNG), target, save                       :: pRNG
-    real(defReal)                                 :: hitRate 
-    real(defReal)                                 :: ONE_KEFF, elapsed_T, end_T, T_toEnd, transport_T, &
-                                                     N1, Nm1
-    logical(defBool)                              :: keepRunning, isActive
-    integer(shortInt)                             :: i, itInac, itAct, it
-    integer(longInt), save                        :: ints
-    integer(longInt)                              :: intersections
-    class(arraysRR), pointer                      :: arrayPtr
+    class(fixedSourceRRPhysicsPackage), target, intent(inout) :: self
+    type(ray), save                                           :: r
+    type(RNG), target, save                                   :: pRNG
+    real(defReal)                                             :: hitRate 
+    real(defReal)                                             :: ONE_KEFF, elapsed_T, end_T, &
+                                                                 T_toEnd, transport_T
+    logical(defBool)                                          :: keepRunning, isActive
+    integer(shortInt)                                         :: i, itInac, itAct, it
+    integer(longInt), save                                    :: ints
+    integer(longInt)                                          :: intersections
+    class(arraysRR), pointer                                  :: arrayPtr
     !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
@@ -407,6 +429,9 @@ contains
     isActive = .false.
     keepRunning = .true.
     
+    ! Keep a fixed keff
+    ONE_KEFF = ONE / self % keff
+    
     ! Power iteration
     do while( keepRunning )
       
@@ -417,7 +442,6 @@ contains
       end if
       it = itInac + itAct
       
-      ONE_KEFF = ONE / self % keff
       call arrayPtr % updateSource(ONE_KEFF)
 
       ! Reset and start transport timer
@@ -453,13 +477,6 @@ contains
 
       ! Normalise flux estimate and combines with source
       call arrayPtr % normaliseFluxAndVolume(it)
-
-      ! Calculate new k and accumulate stats
-      self % keff = arrayPtr % calculateKeff(self % keff)
-      if (isActive) then
-        self % keffScore(1) = self % keffScore(1) + self % keff
-        self % keffScore(2) = self % keffScore(2) + self % keff * self % keff
-      end if
 
       ! Accumulate flux scores
       if (isActive) call arrayPtr % accumulateFluxScores()
@@ -500,7 +517,6 @@ contains
           print *,'Inactive iterations'
         end if
         print *, 'Cell hit rate: ', trim(numToChar(real(hitRate,defReal)))
-        print *, 'keff: ', trim(numToChar(real(self % keff,defReal)))
         print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
         print *, 'End time:     ', trim(secToChar(end_T))
         print *, 'Time to end:  ', trim(secToChar(T_toEnd))
@@ -512,16 +528,6 @@ contains
 
     ! Finalise flux and keff scores
     call arrayPtr % finaliseFluxScores(itAct)
-    if (itAct /= 1) then
-      Nm1 = 1.0_defReal/(itAct - 1)
-    else
-      Nm1 = 1.0_defReal
-    end if
-    N1 = 1.0_defReal/itAct
-    self % keffScore(1) = self % keffScore(1) * N1
-    self % keffScore(2) = self % keffScore(2) * N1
-    self % keffScore(2) = sqrt(Nm1*(self % keffScore(2) - &
-            self % keffScore(1) * self % keffScore(1))) 
 
   end subroutine cycles
 
@@ -532,11 +538,11 @@ contains
   !!   None
   !!
   subroutine printResults(self)
-    class(randomRayPhysicsPackage), target, intent(inout) :: self
-    type(outputFile), target                              :: out
-    character(nameLen)                                    :: name
-    class(outputFile), pointer                            :: outPtr
-    class(visualiser), pointer                            :: vizPtr
+    class(fixedSourceRRPhysicsPackage), target, intent(inout) :: self
+    type(outputFile), target                                  :: out
+    character(nameLen)                                        :: name
+    class(outputFile), pointer                                :: outPtr
+    class(visualiser), pointer                                :: vizPtr
 
     call out % init(self % outputFormat, filename = self % outputFile)
     
@@ -565,18 +571,17 @@ contains
     name = 'Clock_Time'
     call out % printValue(timerTime(self % timerMain),name)
 
-    ! Print keff
-    name = 'keff'
-    call out % startBlock(name)
-    call out % printResult(self % keffScore(1), self % keffScore(2), name)
-    call out % endBlock()
-    
     outPtr => out
-    ! Send fission rates to map output
-    if (self % mapFission) call self % arrays % outputMap(outPtr, self % fissionMap, .true.)
 
     ! Send fluxes to map output
     if (self % mapFlux) call self % arrays % outputMap(outPtr, self % fluxMap, .false.)
+
+    ! Output fluxes at a point
+    if (allocated(self % samplePoints)) call self % arrays % outputPointFluxes(outPtr, self % samplePoints, self % sampleNames)
+
+    ! Output material integral fluxes
+    if (allocated(self % intMatNames)) call self % arrays % outputMaterialIntegrals(outptr, self % intMatNames)
+
     outPtr => null()
 
     ! Send all fluxes and SDs to VTK
@@ -592,10 +597,10 @@ contains
   !!   None
   !!
   subroutine printSettings(self)
-    class(randomRayPhysicsPackage), intent(in) :: self
+    class(fixedSourceRRPhysicsPackage), intent(in) :: self
 
     print *, repeat("<>", MAX_COL/2)
-    print *, "/\/\ RANDOM RAY EIGENVALUE CALCULATION /\/\"
+    print *, "/\/\ RANDOM RAY FIXED SOURCE CALCULATION /\/\"
     if (self % lin) print *, "Using linear source"
     print *, "Using "//numToChar(self % inactive)// " iterations for "&
               //"the inactive cycles"
@@ -618,7 +623,7 @@ contains
   !! Return to uninitialised state
   !!
   subroutine kill(self)
-    class(randomRayPhysicsPackage), intent(inout) :: self
+    class(fixedSourceRRPhysicsPackage), intent(inout) :: self
 
     ! Clean Nuclear Data, Geometry and visualisation
     call ndreg_kill()
@@ -639,22 +644,19 @@ contains
     self % active      = 0
     self % cache       = .false.
     self % lin         = .false.
-    self % mapFission  = .false.
     self % mapFlux     = .false.
     self % plotResults = .false.
     self % keff        = ONE
-    self % keffScore   = ZERO
     call self % arrays % kill()
     call self % XSData % kill()
-    if(allocated(self % fissionMap)) then
-      call self % fissionMap % kill()
-      deallocate(self % fissionMap)
-    end if
     if(allocated(self % fluxMap)) then
       call self % fluxMap % kill()
       deallocate(self % fluxMap)
     end if
+    if(allocated(self % samplePoints)) deallocate(self % samplePoints)
+    if(allocated(self % sampleNames)) deallocate(self % sampleNames)
+    if(allocated(self % intMatNames)) deallocate(self % intMatNames)
 
   end subroutine kill
 
-end module randomRayPhysicsPackage_class
+end module fixedSourceRRPhysicsPackage_class

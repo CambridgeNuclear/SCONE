@@ -41,6 +41,7 @@ module latUniverse_class
   !!          type latUniverse;
   !!          #origin (0.0 0.0 0.0); #
   !!          #rotation (30.0 0.0 0.0); #
+  !!          #offset 1; #
   !!          shape (3 2 2);
   !!          pitch (1.0 1.0 1.0);
   !!          padMat <u13>;
@@ -82,6 +83,7 @@ module latUniverse_class
     real(defReal), dimension(3)     :: a_bar  = ZERO
     type(box)                       :: outline
     integer(shortInt)               :: outLocalID = 0
+    logical(defBool)                :: offset = .true.
   contains
     ! Superclass procedures
     procedure :: init
@@ -120,6 +122,9 @@ contains
     ! Setup the base class
     ! With: id, origin rotations...
     call self % setupBase(dict)
+
+    ! Perform offsets?
+    call dict % getOrDefault(self % offset, 'offset', .true.)
 
     ! Load pitch
     call dict % get(temp, 'pitch')
@@ -332,7 +337,7 @@ contains
     type(coord), intent(in)         :: coords
     real(defReal), dimension(3)     :: offset
 
-    if (coords % localID == self % outLocalID) then
+    if ((coords % localID == self % outLocalID) .or. .not. self % offset) then
       offset = ZERO
 
     else
@@ -358,6 +363,7 @@ contains
     self % a_bar  = ZERO
     call self % outline % kill()
     self % outLocalID = 0
+    self % offset = .true.
 
   end subroutine kill
 

@@ -6,7 +6,7 @@ active   2600;
 inactive 1000; 
 dead     20;  
 termination 220;  
-plot 0;
+plot 1;
 cache 1;
 XSdata   mg; 
 dataType mg;
@@ -30,10 +30,10 @@ geometry {
   graph {type extended;}
 
   surfaces { 
-             Domain        { id 3; type box; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 32.13);}  	
+             Domain { id 3; type box; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 32.13);}  	
   }
   
-  cells {  }
+  cells {}
   
   universes { 
     	root { id 1000; type rootUniverse; border 3; fill u<100>; }  

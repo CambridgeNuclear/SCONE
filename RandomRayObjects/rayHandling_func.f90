@@ -138,14 +138,14 @@ contains
   !! Records the number of integrations/ray movements.
   !!
   subroutine transportSweep(r, ints, nG, doCache, dead, termination, arrays)
-    type(ray), intent(inout)                              :: r
-    integer(longInt), intent(out)                         :: ints
-    integer(shortInt), intent(in)                         :: nG
-    logical(defBool), intent(in)                          :: doCache
-    real(defReal), intent(in)                             :: dead
-    real(defReal), intent(in)                             :: termination
-    class(arraysRR), pointer, intent(inout)               :: arrays
-    integer(shortInt)                                     :: simType
+    type(ray), intent(inout)                :: r
+    integer(longInt), intent(out)           :: ints
+    integer(shortInt), intent(in)           :: nG
+    logical(defBool), intent(in)            :: doCache
+    real(defReal), intent(in)               :: dead
+    real(defReal), intent(in)               :: termination
+    class(arraysRR), pointer, intent(inout) :: arrays
+    integer(shortInt)                       :: simType
     character(100), parameter :: Here = 'transportSweep (rayHandling_func.f90)'
 
     simType = arrays % getSimulationType()
@@ -169,22 +169,22 @@ contains
   !! Transport sweep for flat isotropic sources
   !!
   subroutine transportSweepFlatIso(r, ints, nG, doCache, dead, termination, arrays)
-    type(ray), intent(inout)                              :: r
-    integer(longInt), intent(out)                         :: ints
-    integer(shortInt), intent(in)                         :: nG
-    logical(defBool), intent(in)                          :: doCache
-    real(defReal), intent(in)                             :: dead
-    real(defReal), intent(in)                             :: termination
-    class(arraysRR), pointer, intent(in)                  :: arrays
-    class(dataRR), pointer                                :: XSData
-    class(geometryStd), pointer                           :: geom
-    integer(shortInt)                                     :: matIdx, g, cIdx, event, matIdx0
-    real(defReal)                                         :: totalLength, length
-    logical(defBool)                                      :: activeRay, hitVacuum
-    type(distCache)                                       :: cache
-    real(defFlt)                                          :: lenFlt
-    real(defFlt), dimension(nG)                           :: attenuate, delta, angular, tau
-    real(defFlt), pointer, dimension(:)                   :: scalar, source, total
+    type(ray), intent(inout)             :: r
+    integer(longInt), intent(out)        :: ints
+    integer(shortInt), intent(in)        :: nG
+    logical(defBool), intent(in)         :: doCache
+    real(defReal), intent(in)            :: dead
+    real(defReal), intent(in)            :: termination
+    class(arraysRR), pointer, intent(in) :: arrays
+    class(dataRR), pointer               :: XSData
+    class(geometryStd), pointer          :: geom
+    integer(shortInt)                    :: matIdx, g, cIdx, event, matIdx0
+    real(defReal)                        :: totalLength, length
+    logical(defBool)                     :: activeRay, hitVacuum
+    type(distCache)                      :: cache
+    real(defFlt)                         :: lenFlt
+    real(defFlt), dimension(nG)          :: attenuate, delta, angular, tau
+    real(defFlt), pointer, dimension(:)  :: scalar, source, total
     
     XSData => arrays % getDataPointer()
     geom => arrays % getGeomPointer()
@@ -309,31 +309,29 @@ contains
   !! Transport sweep for linear isotropic sources
   !!
   subroutine transportSweepLinearIso(r, ints, nG, doCache, dead, termination, arrays)
-    type(ray), intent(inout)                              :: r
-    integer(longInt), intent(out)                         :: ints
-    integer(shortInt), intent(in)                         :: nG
-    logical(defBool), intent(in)                          :: doCache
-    real(defReal), intent(in)                             :: dead
-    real(defReal), intent(in)                             :: termination
-    class(arraysRR), pointer, intent(inout)               :: arrays
-    class(dataRR), pointer                                :: XSData
-    class(geometryStd), pointer                           :: geom
-    integer(shortInt)                                     :: matIdx, g, cIdx, event, matIdx0
-    real(defReal)                                         :: totalLength, length, len2_12
-    real(defReal), dimension(nDim)                        :: mid, r0, rC, mu0, rNorm
-    real(defReal), dimension(matSize)                     :: matScore
-    logical(defBool)                                      :: activeRay, hitVacuum
-    type(distCache)                                       :: cache
-    real(defFlt)                                          :: lenFlt, lenFlt2_2
-    real(defFlt), dimension(nDim)                         :: muFlt, r0NormFlt, rNormFlt
-    real(defFlt), dimension(nG)                           :: delta, angular, tau, flatQ, gradQ, &
-                                                             F1, F2, angular0, G0, G1, G2, H, &
-                                                             xInc, yInc, zInc
-    real(defFlt), pointer, dimension(:)                   :: scalar, source, total, &
-                                                             scalarX, scalarY, scalarZ, &
-                                                             sourceX, sourceY, sourceZ
-    !real(defReal), pointer, dimension(:)                  :: cPtr, mPtr
-    !real(defReal), pointer                                :: vPtr
+    type(ray), intent(inout)                :: r
+    integer(longInt), intent(out)           :: ints
+    integer(shortInt), intent(in)           :: nG
+    logical(defBool), intent(in)            :: doCache
+    real(defReal), intent(in)               :: dead
+    real(defReal), intent(in)               :: termination
+    class(arraysRR), pointer, intent(inout) :: arrays
+    class(dataRR), pointer                  :: XSData
+    class(geometryStd), pointer             :: geom
+    integer(shortInt)                       :: matIdx, g, cIdx, event, matIdx0
+    real(defReal)                           :: totalLength, length, len2_12
+    real(defReal), dimension(nDim)          :: mid, r0, rC, mu0, rNorm
+    real(defReal), dimension(matSize)       :: matScore
+    logical(defBool)                        :: activeRay, hitVacuum
+    type(distCache)                         :: cache
+    real(defFlt)                            :: lenFlt, lenFlt2_2
+    real(defFlt), dimension(nDim)           :: muFlt, r0NormFlt, rNormFlt
+    real(defFlt), dimension(nG)             :: delta, angular, tau, flatQ, gradQ, &
+                                               F1, F2, angular0, G0, G1, G2, H, &
+                                               xInc, yInc, zInc
+    real(defFlt), pointer, dimension(:)     :: scalar, source, total, scalarX, &
+                                               scalarY, scalarZ, sourceX, sourceY, &
+                                               sourceZ
     
     XSData => arrays % getDataPointer()
     geom => arrays % getGeomPointer()
@@ -356,18 +354,16 @@ contains
       end do
     end if
       
-    ! Obtain ray direction for LS calculations
-    mu0 = r % dirGlobal()
-    muFlt = real(mu0,defFlt)
-
     ints = 0
     matIdx0 = matIdx
     totalLength = ZERO
     activeRay = .false.
     do while (totalLength < termination)
 
-      ! Get ray entry position for LS calculations
+      ! Get ray entry position and direction for LS calculations
       r0  = r % rGlobal()
+      mu0 = r % dirGlobal()
+      muFlt = real(mu0,defFlt)
 
       ! Get material and cell the ray is moving through
       matIdx  = r % coords % matIdx
@@ -421,7 +417,7 @@ contains
       lenFlt2_2 = lenFlt * lenFlt * one_two
       
       ! Compute exponentials necessary for angular flux update
-      !$omp simd aligned(total)
+      !$omp simd
       do g = 1, nG
         tau(g) = max(total(g) * lenFlt, 1.0E-8)
       end do
@@ -455,7 +451,7 @@ contains
       
       !$omp simd
       do g = 1, nG
-        angular(g) = angular(g) - delta(g) 
+        angular(g) = angular(g) - delta(g)
       end do
 
       ! Accumulate to scalar flux
@@ -524,17 +520,6 @@ contains
           call arrays % incrementCentroid(cIdx, rC)
           call arrays % incrementMoments(cIdx, matScore)
 
-          !call arrays % getVolumePointers(cIdx, vPtr, cPtr, mPtr)
-          !vPtr = vPtr + length
-          !!$omp simd
-          !do g = 1,nDim
-          !  cPtr(g) = cPtr(g) + rC(g)
-          !end do
-          !!$omp simd
-          !do g = 1,nDim
-          !  mPtr(g) = mPtr(g) + matScore(g)
-          !end do
-        
         call arrays % unsetLock(cIdx)
         if (arrays % hasHit(cIdx) == 0) call arrays % hitCell(cIdx)
       
@@ -546,10 +531,6 @@ contains
         do g = 1, nG
           angular(g) = 0.0_defFlt
         end do
-    
-        ! Update ray direction on reflecting from boundary
-        mu0 = r % dirGlobal()
-        muFlt = real(mu0,defFlt)
       end if
 
     end do
