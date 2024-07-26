@@ -26,6 +26,7 @@ module collisionProcessor_inter
     real(defReal)     :: muL     = ONE  !! Cosine of deflection angle in LAB-frame
     real(defReal)     :: A       = ZERO !! Target Mass [Neutron Mass]
     real(defReal)     :: kT      = ZERO !! Target temperature [MeV]
+    real(defReal)     :: E       = ZERO !! Collision energy (could be relative to target) [MeV]
   end type
 
 
@@ -113,25 +114,35 @@ contains
     class(particleDungeon),intent(inout)     :: thisCycle
     class(particleDungeon),intent(inout)     :: nextCycle
     type(collisionData)                      :: collDat
-    character(100),parameter                 :: Here = ' collide (collisionProcessor.f90)'
+    logical(defBool)                         :: virtual
+    integer(shortInt)                        :: addCollision
+    character(100),parameter                 :: Here = 'collide (collisionProcessor.f90)'
 
     ! Load material index into data package
     collDat % matIdx = p % matIdx()
+
+    ! Choose collision nuclide and general type (Scatter, Capture or Fission)
+    call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)
+
+    ! In case of a TMS rejection, set collision as virtual
+    if (collDat % MT == noInteraction) then
+      virtual = .true.
+      addCollision = 0
+    else
+      virtual = .false.
+      addCollision = 1
+    end if
 
     ! Report in-collision & save pre-collison state
     ! Note: the ordering must not be changed between feeding the particle to the tally
     ! and updating the particle's preCollision state, otherwise this may cause certain
     ! tallies (e.g., collisionProbability) to return dubious results
-
-    call tally % reportInColl(p, .false.)
+    call tally % reportInColl(p, virtual)
 
     call p % savePreCollision()
 
-    ! Choose collision nuclide and general type (Scatter, Capture or Fission)
-    call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)
-
     ! Perform implicit treatment
-    call self % implicit(p, tally, collDat, thisCycle, nextCycle)
+    if (collDat % MT /= noInteraction) call self % implicit(p, tally, collDat, thisCycle, nextCycle)
 
     ! Select physics to be processed based on MT number
     select case(collDat % MT)
@@ -159,13 +170,13 @@ contains
     call self % cutoffs(p, tally, collDat, thisCycle, nextCycle)
 
     ! Update particle collision counter
-    p % collisionN = p % collisionN + 1
+    p % collisionN = p % collisionN + addCollision
 
     ! Report out-of-collision
     call tally % reportOutColl(p, collDat % MT, collDat % muL)
 
     ! Report end-of-history if particle was killed
-    if( p % isDead) then
+    if (p % isDead) then
       p % fate = ABS_FATE
       call tally % reportHist(p)
     end if

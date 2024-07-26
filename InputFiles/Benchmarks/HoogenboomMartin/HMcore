@@ -289,7 +289,6 @@ materials {
     
  
 UOXfuel {
-      temp 16486;
       composition {
       92234.03 4.9476e-6;
       92235.03 4.8218e-4;
@@ -328,7 +327,6 @@ UOXfuel {
 }
 
 Zrcladding {
-      temp 31628;
       composition {
       40090.03 0.019578;
       40091.03 0.0042689;
@@ -338,7 +336,6 @@ Zrcladding {
   }    
   
 coldwater {
-      temp 45286;
       moder { 1001.03 lwj3.00; }
       composition {
       1001.03 0.04938;
@@ -350,7 +347,6 @@ coldwater {
    
 
 hotwater {
-      temp 46865;
       moder { 1001.03 lwj3.00; }
       composition {
       1001.03 0.04404;
@@ -363,7 +359,6 @@ hotwater {
 
 
 reactorvessel  {
-      temp 51694;
       composition {
 	26054.03		4.79006E-03;
 	26056.03		7.5184E-02;
@@ -397,7 +392,6 @@ reactorvessel  {
       
       
 reflectorbottom  {
-      temp 56982;
       moder { 1001.03 lwj3.00; }
       composition {    
 	1001.03		2.4886E-02;
@@ -426,7 +420,6 @@ reflectorbottom  {
  
  
 reflectortop  {
-      temp 54357;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03		2.2196E-02;
@@ -455,7 +448,6 @@ reflectortop  {
 
 
 coreplate   {
-      temp 54687;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03		4.9773E-03;
@@ -483,7 +475,6 @@ coreplate   {
 } 
  
 nozzlebottom   {
-      temp 87648;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03		3.733E-2;
@@ -512,7 +503,6 @@ nozzlebottom   {
 
 
 nozzletop  {
-      temp 87064;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03	                3.7733E-2;
@@ -540,7 +530,6 @@ nozzletop  {
 }
  
 FAbottom {
-      temp 45034;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03		2.986E-02;
@@ -556,7 +545,6 @@ FAbottom {
 }
  
 FAtop {
-      temp 43053;
       moder { 1001.03 lwj3.00; }
       composition {
 	1001.03		3.107E-02;

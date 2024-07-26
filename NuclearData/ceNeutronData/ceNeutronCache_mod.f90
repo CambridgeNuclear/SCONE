@@ -33,7 +33,11 @@ module ceNeutronCache_mod
   !!   E_tail -> Energy of all XSs in xss except total
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
-  !!   xss    -> Cached Cross-Section values
+  !!   xss    -> Cached cross-section values
+  !!   E_track -> Energy of the tracking xs
+  !!   trackXS -> Cached tracking xs; this can be different to xss % total when using TMS
+  !!   E_rel  -> Base energy for which relative energy cross sections are found (for TMS)
+  !!   xssRel -> Cached effective cross-section values at energy relative to E_rel (for TMS)
   !!
   type, public :: cacheMatDat
     real(defReal)         :: E_tot  = ZERO
@@ -41,6 +45,15 @@ module ceNeutronCache_mod
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
+
+    ! Tracking data
+    real(defReal)         :: E_track = ZERO
+    real(defReal)         :: trackXS = ZERO
+
+    ! TMS data
+    real(defReal)         :: E_rel  = ZERO
+    type(neutronMacroXSs) :: xssRel
+
   end type cacheMatDat
 
   !!
@@ -52,12 +65,10 @@ module ceNeutronCache_mod
   !!   f      -> Interpolation factor for the nuclide at energy E_tot
   !!   idx    -> Index on a nuclide grid for energy E_tot
   !!   xss    -> Cached Cross-Sections values
-  !!   needsSabInel -> Flag that tells if the nuclide is using thermal inelastic
-  !!                   scattering data
-  !!   needsSabEl   -> Flag that tells if the nuclide is using thermal elastic
-  !!                   scattering data
-  !!   needsUrr     -> Flag that tells if the nuclide is using unresolved resonance
-  !!                   probability tables
+  !!   E_maj     -> Energy at which the nuclide temperature majorant xs is stored (for TMS)
+  !!   deltakT   -> Difference between TMS material and nuclide thermal energy (for TMS) [MeV]
+  !!   tempMajXS -> Temperature majorant xs value (for TMS)
+  !!   doppCorr  -> Doppler correction factor value (for TMS)
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -65,9 +76,13 @@ module ceNeutronCache_mod
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMicroXSs) :: xss
-    logical(defBool)      :: needsSabInel = .false.
-    logical(defBool)      :: needsSabEl = .false.
-    logical(defBool)      :: needsUrr = .false.
+
+    ! TMS data
+    real(defReal)         :: E_maj     = ZERO
+    real(defReal)         :: deltakT   = ZERO
+    real(defReal)         :: tempMajXS = ZERO
+    real(defReal)         :: doppCorr  = ONE
+
   end type cacheNucDat
 
   !!
@@ -78,8 +93,8 @@ module ceNeutronCache_mod
   !!   xs -> value of the cross section
   !!
   type, public :: cacheSingleXS
-    real(defReal) :: E
-    real(defReal) :: xs
+    real(defReal) :: E  = ZERO
+    real(defReal) :: xs = ZERO
   end type cacheSingleXS
 
   !!
@@ -140,10 +155,10 @@ contains
       nLoc = 1
     end if
 
-    ! Chack the provided data
+    ! Check the provided data
     if (nMat < 1) call fatalError(Here,'Number of materials must be +ve! Not: '//numToChar(nMat))
-    if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nMat))
-    if (nLoc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(nMat))
+    if (nNuc < 1) call fatalError(Here,'Number of nuclides must be +ve! Not: '//numToChar(nNuc))
+    if (nLoc < 1) call fatalError(Here,'Number of majorant XSs must be +ve! Not: '//numToChar(nLoc))
 
     ! Allocate space
     ! Need to do in parallel region to allocate each copy
@@ -168,6 +183,7 @@ contains
   !! Return Cache Module (Singleton) to uninitialised state
   !!
   subroutine kill()
+
     ! Need to deallocate on all threads
     !$omp parallel
     if (allocated(materialCache)) deallocate (materialCache)
@@ -176,6 +192,7 @@ contains
     if (allocated(trackingCache)) deallocate (trackingCache)
     if (allocated(zaidCache))     deallocate (zaidCache)
     !$omp end parallel
+
   end subroutine kill
 
 

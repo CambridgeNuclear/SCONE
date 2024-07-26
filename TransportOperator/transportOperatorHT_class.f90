@@ -33,12 +33,14 @@ module transportOperatorHT_class
   !!
   type, public, extends(transportOperator) :: transportOperatorHT
     real(defReal) :: cutoff   ! Cutoff threshold between ST and DT
+
   contains
     procedure :: transit => tracking_selection
     procedure, private :: deltaTracking
     procedure, private :: surfaceTracking
     ! Override procedure
     procedure :: init
+
   end type transportOperatorHT
 
 contains
@@ -56,7 +58,7 @@ contains
     majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
     ! Obtain the local cross-section
-    sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
+    sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
     ! Calculate ratio between local cross-section and majorant
     ratio = sigmaT*majorant_inv
@@ -114,7 +116,7 @@ contains
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTotalMatXS(p, p % matIdx())
+      sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
@@ -127,6 +129,7 @@ contains
     end do DTLoop
 
     call tally % reportTrans(p)
+
   end subroutine deltaTracking
 
   !!

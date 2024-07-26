@@ -186,7 +186,6 @@ nuclearData {
   materials {
 
     water {
-      temp 75675;
       rgb (0 0 139); // Colour of water is dark blue
       moder { 1001.03 lwj3.00; }
       composition {
@@ -196,21 +195,19 @@ nuclearData {
     }
 
      clad {
-       temp 12345;
        composition {
        40000.03  4.291E-002;
        }
      }
 
     fuel {
-      temp 87476;
        composition {
       92235.03  8.2213E-004;
       92238.03  2.238E-002;
       8016.03  4.6054E-002; }
       }
+
      concrete {
-       temp 6786;
        composition {
         1001.03 5.5437E-03;
         6012.03 6.9793E-03;
@@ -218,8 +215,8 @@ nuclearData {
         20000.03 8.9591E-03;
         8016.03  4.3383E-002;}
        }
+
      steel {
-       temp 8765;
        composition {
          26000.03 8.377E-02;
        }
