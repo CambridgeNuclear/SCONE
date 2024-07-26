@@ -88,7 +88,7 @@ nuclearData {
 
 
     layer1 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.5926E-4;
         92235.03  1.7443E-2;
@@ -99,7 +99,7 @@ nuclearData {
      }
     }
     layer2 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.5878E-4;
         92235.03  1.7415E-2;
@@ -110,7 +110,7 @@ nuclearData {
      }
     }
     layer3 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.5803E-4;
         92235.03  1.7418E-2;
@@ -121,7 +121,7 @@ nuclearData {
       }
     }
     layer4 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.3423E-4;
         92235.03  1.7356E-2;
@@ -132,7 +132,7 @@ nuclearData {
       }
     }
     layer5 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.6281E-4;
         92235.03  1.7417E-2;
@@ -143,7 +143,7 @@ nuclearData {
       }
     }
     layer6 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.7609E-4;
         92235.03  1.7326E-2;
@@ -154,7 +154,7 @@ nuclearData {
       }
     }
     layer7 {
-      temp       293;
+      !temp       293;
       composition {
         92234.03  1.5156E-4;
         92235.03  1.7266E-2;
@@ -165,7 +165,7 @@ nuclearData {
       }
     }
     refl {
-      temp       293;
+      !temp       293;
       composition {
         06012.03  7.7716E-2;
       }

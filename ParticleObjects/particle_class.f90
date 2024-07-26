@@ -70,6 +70,7 @@ module particle_class
 
     ! Private procedures
     procedure,private :: equal_particleState
+
   end type particleState
 
   !!
@@ -658,7 +659,7 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
-    LHS % broodID = RHS % broodID
+    LHS % broodID    = RHS % broodID
 
   end subroutine particleState_fromParticle
 
@@ -682,7 +683,7 @@ contains
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
-    isEqual = isEqual .and. LHS % broodID == RHS % broodID
+    isEqual = isEqual .and. LHS % broodID    == RHS % broodID
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -725,7 +726,7 @@ contains
     self % cellIdx  = -1
     self % uniqueID = -1
     self % collisionN = 0
-    self % broodID = 0
+    self % broodID    = 0
 
   end subroutine kill_particleState
 
