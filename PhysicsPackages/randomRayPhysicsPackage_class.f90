@@ -191,7 +191,7 @@ contains
     class(randomRayPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)              :: dict
     logical(defBool), intent(in), optional        :: loud
-    integer(shortInt)                             :: seed_temp
+    integer(shortInt)                             :: seed_temp, volP, missP
     integer(longInt)                              :: seed
     character(10)                                 :: time
     character(8)                                  :: date
@@ -219,6 +219,9 @@ contains
     call dict % get(self % active, 'active')
     call dict % get(self % inactive, 'inactive')
     call dict % getOrDefault(self % keff, 'keff', ONE)
+    
+    call dict % getOrDefault(volP, 'volPolicy', 1)
+    call dict % getOrDefault(missP, 'missPolicy', 1)
     
     ! Perform distance caching?
     call dict % getOrDefault(self % cache, 'cache', .false.)
@@ -350,7 +353,8 @@ contains
 
     ! Initialise RR arrays and nuclear data
     call self % arrays % init(self % mgData, self % geom, &
-            self % pop * (self % termination - self % dead), self % rho, self % lin, .false., self % loud)
+            self % pop * (self % termination - self % dead), self % rho, self % lin, &
+            .false., self % loud, volPolicy = volP, missPolicy = missP)
     
   end subroutine init
 
@@ -465,7 +469,7 @@ contains
       if (isActive) call arrayPtr % accumulateFluxScores()
 
       ! Calculate proportion of cells that were hit
-      hitRate = arrayPtr % getCellHitRate()
+      hitRate = arrayPtr % getCellHitRate(it)
       call arrayPtr % wipeCellHits()
 
       ! Evaluate stopping criterion for active or inactive iterations
@@ -511,7 +515,7 @@ contains
     end do
 
     ! Finalise flux and keff scores
-    call arrayPtr % finaliseFluxScores(itAct)
+    call arrayPtr % finaliseFluxScores(itAct, it)
     if (itAct /= 1) then
       Nm1 = 1.0_defReal/(itAct - 1)
     else

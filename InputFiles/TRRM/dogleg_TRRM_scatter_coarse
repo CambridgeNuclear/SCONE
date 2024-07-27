@@ -2,16 +2,16 @@ type fixedSourceRRPhysicsPackage;
 
 lin 1;
 pop      2000;
-active   2500;  
-inactive 500; 
-dead     120; 
-termination 1220; 
+pop      120;
+active   4000;  
+inactive 1000; 
+dead     100; 
+termination 500; 
 plot 1;
 cache 1;
 XSdata   mg; 
 dataType mg;
 outputFile dogleg_TRRM_scatter_coarse;
-volume 360000;
 
 source { sourceMat ( 1.0 ); }
 integrate (sourceMat absorber);

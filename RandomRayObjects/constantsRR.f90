@@ -3,6 +3,10 @@ module constantsRR
   use numPrecision
   
   implicit none
+  
+  ! Parameters for volume/no-hit policy
+  integer(shortInt), parameter :: hybrid = 3, srcPolicy = 1, prevPolicy = 2, &
+                                  naive = 2, simAverage = 1
 
   ! Parameters to identify the simulation type
   integer(shortInt), parameter, public :: flatIso = 1, linearIso = 2, flatAni = 3, linearAni = 4

@@ -263,7 +263,7 @@ contains
             end do
             call arrays % incrementVolume(cIdx, length)
           call arrays % unsetLock(cIdx)
-          if (arrays % hasHit(cIdx) == 0) call arrays % hitCell(cIdx)
+          if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
         end if
 
@@ -282,7 +282,7 @@ contains
             call arrays % incrementVolume(cIdx, length)
             call arrays % incrementLengthSquared(cIdx, length)
           call arrays % unsetLock(cIdx)
-          if (arrays % hasHit(cIdx) == 0) call arrays % hitCell(cIdx)
+          if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
         end if
 
@@ -521,7 +521,7 @@ contains
           call arrays % incrementMoments(cIdx, matScore)
 
         call arrays % unsetLock(cIdx)
-        if (arrays % hasHit(cIdx) == 0) call arrays % hitCell(cIdx)
+        if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
       end if
 
