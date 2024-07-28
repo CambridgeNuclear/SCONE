@@ -91,6 +91,7 @@ module particleDungeon_class
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
+    procedure  :: sortByBroodID
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -99,6 +100,7 @@ module particleDungeon_class
     procedure, private :: detainCritical_particleState
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
+
   end type particleDungeon
 
 contains
@@ -324,8 +326,16 @@ contains
 
   !!
   !! Copy particle from a location inside the dungeon
-  !! Makes particle alive at exit
-  !! Gives fatalError if requested index is 0, -ve or above current population
+  !!
+  !! Makes particle alive at exit. Also sets the broodID of the particle
+  !! making it ready to be transported.
+  !!
+  !! Args:
+  !!  p   [inout] -> Particle to be filled with data
+  !!  idx [in]    -> Index of the particle to be copied
+  !!
+  !! Errors:
+  !!  fatalError if requested index is 0, -ve or above current population
   !!
   subroutine copy(self, p, idx)
     class(particleDungeon), intent(in) :: self
@@ -335,13 +345,14 @@ contains
 
     ! Protect against out-of-bounds access
     if( idx <= 0 .or. idx > self % pop ) then
-      call fatalError(Here,'Out of bounds acces with idx: '// numToChar(idx)// &
+      call fatalError(Here,'Out of bounds access with idx: '// numToChar(idx)// &
                            ' with particle population of: '// numToChar(self % pop))
     end if
 
     ! Load data into the particle
     p = self % prisoners(idx)
     p % isDead = .false.
+    p % broodID = idx
 
   end subroutine copy
 
@@ -401,7 +412,7 @@ contains
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
     integer(shortInt)                     :: excessP, n_copies, n_duplicates
-    integer(shortInt)                     :: i, idx
+    integer(shortInt)                     :: i, idx, maxBroodID
     integer(shortInt), dimension(:), allocatable :: duplicates
     character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
 
@@ -412,6 +423,10 @@ contains
     else if ( N <= 0 ) then
       call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
     end if
+
+    ! Determine the maximum brood ID and sort the dungeon
+    maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
+    call self % sortByBroodID(maxbroodID)
 
     ! Calculate excess particles to be removed
     excessP = self % pop - N
@@ -434,7 +449,7 @@ contains
 
       ! Copy all particle maximum possible number of times
       do i = 1, n_copies
-        self % prisoners(N * i + 1 : N * (i + 1)) = self % prisoners(1:N)
+        self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
       end do
 
       ! Choose the remainder particles to duplicate without replacement
@@ -445,6 +460,7 @@ contains
           duplicates(idx) = i
         end if
       end do
+      self % pop = self % pop * (n_copies + 1)
 
       ! Copy the duplicated particles at the end
       do i = 1, n_duplicates
@@ -455,6 +471,69 @@ contains
     end if
 
   end subroutine normSize
+
+  !!
+  !! Reorder the dungeon so the brood ID is in the ascending order
+  !!
+  !! Args:
+  !!   k [in] -> Maximum brood ID
+  !!
+  subroutine sortByBroodID(self, k)
+    class(particleDungeon), intent(inout)        :: self
+    integer(shortInt), intent(in)                :: k
+    integer(shortInt), dimension(k)              :: count
+    integer(shortInt)                            :: i, id, loc, c
+    integer(shortInt), dimension(:), allocatable :: perm
+    type(particleState)                          :: tmp
+    character(100), parameter :: Here = 'sortBybroodID (particleDungeon_class.f90)'
+
+    ! Count number of particles with each brood ID
+    count = 0
+    do i = 1, self % pop
+      id = self % prisoners(i) % broodID
+
+      if (id < 1 .or. id > k) call fatalError(Here, 'Brood ID out of range: '//numToChar(id))
+
+      count(id) = count(id) + 1
+    end do
+
+    ! Convert to starting index
+    loc = 1
+    do i = 1, k
+      c = count(i)
+      count(i) = loc
+      loc = loc + c
+    end do
+
+    ! Create the permutation array
+    allocate(perm(self % pop))
+    do i = 1, self % pop
+      id = self % prisoners(i) % broodID
+      loc = count(id)
+      count(id) = count(id) + 1
+      perm(loc) = i
+    end do
+
+    ! Permute particles
+    do i = 1, self % pop
+      loc = perm(i)
+
+      ! If the element was already swapped follow it to its location
+      do while (loc < i)
+        loc = perm(loc)
+      end do
+
+      ! Swap elements
+      if (loc /= i) then
+        tmp = self % prisoners(i)
+        self % prisoners(i) = self % prisoners(loc)
+        self % prisoners(loc) = tmp
+      end if
+
+    end do
+
+  end subroutine sortByBroodID
+
 
   !!
   !! Kill or particles in the dungeon
@@ -541,10 +620,9 @@ contains
 
     ! Print out each particle co-ordinate
     do i = 1, self % pop
-      write(10,'(8A)') numToChar(self % prisoners(i) % r), &
-                       numToChar(self % prisoners(i) % dir), &
-                       numToChar(self % prisoners(i) % E), &
-                       numToChar(self % prisoners(i) % G)
+      write(10, *) self % prisoners(i) % r, self % prisoners(i) % dir, &
+                   self % prisoners(i) % E, self % prisoners(i) % G, &
+                   self % prisoners(i) % broodID
     end do
 
     ! Close the file

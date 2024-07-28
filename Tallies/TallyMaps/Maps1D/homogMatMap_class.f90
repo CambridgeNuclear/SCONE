@@ -193,7 +193,7 @@ contains
     integer(shortInt)                  :: idx, isThere
 
     do idx = 1,size(self % binMap)
-      isThere = self % binMap(idx) % getOrDefault( state % matIdx, self % default)
+      isThere = self % binMap(idx) % getOrDefault(state % matIdx, self % default)
       if (isThere == 1) return
     end do
 

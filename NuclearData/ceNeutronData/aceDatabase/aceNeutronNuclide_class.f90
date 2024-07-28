@@ -101,7 +101,7 @@ module aceNeutronNuclide_class
   !!   microXSs        -> return interpolated ceNeutronMicroXSs package given index and inter. factor
   !!   getUrrXSs       -> return ceNeutronMicroXSs accounting for ures probability tables
   !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
-  !!   elScatteringMaj -> returns the elastic scattering majorant within an energy range given as input
+  !!   getMajXS        -> returns a majorant cross section on request within an energy range given as input
   !!   init            -> build nuclide from aceCard
   !!   initUrr         -> build list and mapping of nuclides to maintain temperature correlation
   !!                      when reading ures probability tables
@@ -138,6 +138,7 @@ module aceNeutronNuclide_class
     procedure :: invertInelastic
     procedure :: xsOf
     procedure :: elScatteringXS
+    procedure :: needsSabEl
     procedure :: kill
 
     ! Local interface
@@ -147,10 +148,13 @@ module aceNeutronNuclide_class
     procedure :: microXSs
     procedure :: getUrrXSs
     procedure :: getThXSs
-    procedure :: elScatteringMaj
+    procedure :: getMajXS
+    procedure :: needsUrr
+    procedure :: needsSabInel
     procedure :: init
     procedure :: initUrr
     procedure :: initSab
+    procedure :: returnSabPointer
     procedure :: display
 
   end type aceNeutronNuclide
@@ -176,29 +180,24 @@ contains
     character(100), parameter :: Here = 'invertInelastic (aceNeutronNuclide_class.f90)'
 
     ! Check if it's thermal inelastic scattering or not
-    if (nuclideCache(self % getNucIdx()) % needsSabInel) then
+    if (self % needsSabInel(E)) then
       MT = N_N_ThermINEL
       return
     end if
 
     ! Normal (without S(a,b)) inelastic scattering
     ! Obtain bin index and interpolation factor
-    if (nuclideCache(self % getNucIdx()) % E_tot == E) then
-      idx = nuclideCache(self % getNucIdx()) % idx
-      f   = nuclideCache(self % getNucIdx()) % f
-    else
-      call self % search(idx, f, E)
-    end if
+    call self % search(idx, f, E)
 
     ! Get inelastic XS
     XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
 
     ! Invert
     XS = XS * rand % get()
-    do i=1,self % nMT
+    do i = 1,self % nMT
       ! Get index in MT reaction grid
       idxT = idx - self % MTdata(i) % firstIdx + 1
-      if( idxT < 1 ) cycle
+      if ( idxT < 1 ) cycle
 
       ! Get top and bottom XS
       topXS = self % MTdata(i) % xs(idxT+1)
@@ -206,7 +205,7 @@ contains
 
       ! Decrement total inelastic and exit if sampling is finished
       XS = XS - topXS * f - (ONE-f) * bottomXS
-      if(XS <= ZERO) then
+      if (XS <= ZERO) then
         MT = self % MTdata(i) % MT
         return
       end if
@@ -223,7 +222,7 @@ contains
   !!
   !! Needs to use ceNeutronCache
   !!
-  !! TODO: This is quite rought implementation. Improve it!
+  !! TODO: This is quite rough implementation. Improve it!
   !!
   !! See ceNeutronNuclide documentation
   !!
@@ -477,9 +476,8 @@ contains
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
     real(defReal), intent(in)            :: T
-    real(defReal)                        :: T2, T1
-    logical(defBool)                     :: doTLow
     type(thermalData), pointer           :: sabPtr
+    integer(shortInt)                    :: sabIdx
 
     associate (data => self % mainData(:,idx:idx+1))
 
@@ -494,32 +492,20 @@ contains
         xss % nuFission = ZERO
       end if
 
-      doTLow = .true.
-      if (self % stochasticMixing) then
-
-        T1 = self % thData1 % getTemperature()
-        T2 = self % thData2 % getTemperature()
-
-        doTLow = (T2 - T)/(T2 - T1) > rand % get()
-
-      end if
-
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
       ! Default to low temperature without stochastic mixing.
-      ! The choice of data should be stored somewhere for consist handling of 
+      ! IMPORTANT
+      ! The choice of data should be stored somewhere for consistent handling of 
       ! angular distributions, e.g., a cache
-      if doTLow then
-        sabPtr => self % thData1
-      else
-        sabPtr => self % thData2
-      end if
+      call self % returnSabPointer(T, rand, sabPtr, sabIdx)
+      nuclideCache(self % getNucIdx()) % sabIdx = sabIdx
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
       xss % elasticScatter = sabPtr % getElXS(E)
 
       ! If inelastic scatter is on, reads S(a,b) tables for inelastic scatter
       if (nuclideCache(self % getNucIdx()) % needsSabInel) then
-        xss % inelasticScatter = self % thData1 % getInelXS(E)
+        xss % inelasticScatter = sabPtr % getInelXS(E)
       else
         xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
       end if
@@ -618,24 +604,40 @@ contains
   !! an energy range given by an upper and lower energy bound.
   !!
   !! Args:
-  !!   upperE [in]  -> Upper bound of energy range
-  !!   upperE [in]  -> Upper bound of energy range
+  !!   eLower [in]  -> Lower bound of energy range
+  !!   eUpper [in]  -> Upper bound of energy range
+  !!   MT     [in]  -> MT number of the requested reaction cross section
   !!   maj [out]    -> Maximum scattering cross section within energy range
   !!
-  function elScatteringMaj(self, lowerE, upperE) result (maj)
+  function getMajXS(self, eLower, eUpper, MT) result (maj)
     class(aceNeutronNuclide), intent(in)  :: self
-    real(defReal), intent(in)             :: lowerE
-    real(defReal), intent(in)             :: upperE
+    real(defReal), intent(in)             :: eLower
+    real(defReal), intent(in)             :: eUpper
+    integer(shortInt), intent(in)         :: MT
     real(defReal)                         :: maj
-    integer(shortInt)                     :: idx
+    integer(shortInt)                     :: reaction, idx
     real(defReal)                         :: f, E, xs
+    character(100), parameter :: Here = 'getMajXS (aceNeutronNuclide_class.f90)'
+
+    ! Select desired reaction based on requested MT number
+    select case (MT)
+
+      case (N_TOTAL)
+        reaction = TOTAL_XS
+
+      case (N_N_ELASTIC)
+        reaction = ESCATTER_XS
+
+      case default
+        call fatalError(Here, 'Unsupported MT number requested: '//numToChar(MT))
+
+    end select
 
     ! Search for idx, f, and xs for the lower energy limit
-    call self % search(idx, f, lowerE)
+    call self % search(idx, f, eLower)
 
     ! Conservative: choose the xs at the energy point before the lower energy limit
-    f = 0
-    maj = self % scatterXS(idx, f)
+    maj = self % mainData(reaction, idx)
 
     majorantLoop: do
 
@@ -643,20 +645,69 @@ contains
       idx = idx + 1
 
       ! Find XS and energy at index
-      xs = self % mainData(ESCATTER_XS, idx)
-      E = self % eGrid(idx)
+      xs = self % mainData(reaction, idx)
+      E  = self % eGrid(idx)
 
       ! Compare cross sections and possibly update majorant
-      if (xs > maj) then
-        maj = xs
-      end if
+      maj = max(xs, maj)
 
       ! Exit loop after getting to the upper energy limit
-      if (E > upperE) exit majorantLoop
+      if (E >= eUpper) exit majorantLoop
 
     end do majorantLoop
 
-  end function elScatteringMaj
+  end function getMajXS
+
+  !!
+  !! Function that checks whether this nuclide at the provided energy should
+  !! read unresolved resonance probability tables or not
+  !!
+  !! Args:
+  !!   E [in] -> incident neutron energy
+  !!
+  !! Returns true or false
+  !!
+  elemental function needsUrr(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasProbTab .and. E >= self % urrE(1) .and. E <= self % urrE(2)
+
+  end function needsUrr
+
+  !!
+  !! Function that checks whether or not this nuclide at the provided energy should
+  !! have S(a,b) inelastic scattering data
+  !!
+  !! Args:
+  !!   E [in] -> incident neutron energy
+  !!
+  !! Returns true or false
+  !!
+  elemental function needsSabInel(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasThData .and. E >= self % SabInel(1) .and. E <= self % SabInel(2)
+
+  end function needsSabInel
+
+  !!
+  !! Function that checks whether or not this nuclide at the provided energy should
+  !! have S(a,b) elastic scattering data
+  !!
+  !! See ceNeutronNuclide documentation
+  !!
+  elemental function needsSabEl(self, E) result(doesIt)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), intent(in)             :: E
+    logical(defBool)                      :: doesIt
+
+    doesIt = self % hasThData .and. E >= self % SabEl(1) .and. E <= self % SabEl(2)
+
+  end function needsSabEl
 
   !!
   !! Initialise from an ACE Card
@@ -814,11 +865,11 @@ contains
 
     ! Calculate Inelastic scattering XS
     do i = 1,self % nMT
-      do j=1,size(self % mainData, 2)
+      do j = 1,size(self % mainData, 2)
         ! Find bottom and Top of the grid
         bottom = self % MTdata(i) % firstIdx
         top    = size(self % MTdata(i) % xs)
-        if( j>= bottom .and. j <= top + bottom) then
+        if (j>= bottom .and. j <= top + bottom) then
           self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
                                              self % MTdata(i) % xs(j-bottom + 1)
         end if
@@ -826,7 +877,7 @@ contains
     end do
 
     ! Recalculate totalXS
-    if(self % isFissile()) then
+    if (self % isFissile()) then
       K = FISSION_XS
     else
       K = CAPTURE_XS
@@ -843,7 +894,7 @@ contains
     call self % idxMT % add(N_N_ELASTIC, -ESCATTER_XS)
     call self % idxMT % add(N_DISAP, -CAPTURE_XS)
 
-    if(self % isFissile()) then
+    if (self % isFissile()) then
       call self % idxMT % add(N_FISSION, -FISSION_XS)
     end if
 
@@ -910,7 +961,6 @@ contains
     type(thermalData)                          :: temp
     character(100), parameter :: Here = "initSab (aceNeutronNuclide_class.f90)"
 
-
     ! Initialise S(a,b) class from ACE file
     call self % thData1 % init(ACE1)
     self % hasThData = .true.
@@ -959,23 +1009,34 @@ contains
   !! If stochastic mixing is active, samples which
   !! set of reaction data to point towards.
   !!
-  function returnSabPointer(self, T, rand) result(ptr)
-    class(aceNeutronNuclide), intent(in) :: self
-    real(defReal), intent(in)            :: T
-    class(RNG), intent(inout)            :: rand
-    type(thermalData), pointer           :: ptr
-    real(defReal)                        :: prob
+  !! Returns the Sab index for later consistent handling
+  !! of angular distributions by storing in a cache
+  !!
+  subroutine returnSabPointer(self, T, rand, ptr, idx)
+    class(aceNeutronNuclide), intent(in)    :: self
+    real(defReal), intent(in)               :: T
+    class(RNG), intent(inout)               :: rand
+    type(thermalData), pointer, intent(out) :: ptr
+    integer(shortInt), intent(out)          :: idx
+    real(defReal)                           :: T1, T2
 
     if (self % stochasticMixing) then
-      prob = (self % T2 - T)/(self % T2 - self % T1)
+      T1 = self % thData1 % getTemperature()
+      T2 = self % thData2 % getTemperature()
 
-      if (prob
-
+      if ((T2 - T)/(T2 - T1) > rand % get()) then
+        ptr => self % thData1
+        idx = 1
+      else
+        ptr => self % thData2
+        idx = 2
+      end if
     else
       ptr => self % thData1
+      idx = 1
     end if
 
-  end function returnSabPointer
+  end subroutine returnSabPointer
 
   !!
   !! A Procedure that displays information about the nuclide to the screen

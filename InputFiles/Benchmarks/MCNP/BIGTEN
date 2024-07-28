@@ -1,8 +1,10 @@
 
-// MCNP benchmark case U233-MF-05(2)
+// MCNP benchmark case BIG TEN
 //
-// U233 sphere (to 4.5999cm radius) with uranium reflector (to 8.7960cm radius)
-// Benchmark keff = 1.0000 +/- 0.0030
+// Model with required benchmark keff is found in Appendix D.2 of IEU-MET-FAST-007
+//
+// Homogenised two-zone model, cylindrical core inside cylinder of depleted-uranium reflector
+// Benchmark keff = 0.9948 +/- 0.0013
 
 
 type eigenPhysicsPackage;
@@ -14,13 +16,10 @@ XSdata   ceData;
 dataType ce;
 
 collisionOperator { neutronCE {type neutronCEstd;}
-
                   }
 
 transportOperator { type transportOperatorST;
                   }
-
-source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
               }
@@ -44,21 +43,24 @@ geometry {
 
     surfaces
     {
-      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 4.5999; }
-      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 8.7960; }
+      core { id 1; type zTruncCylinder; origin (0.0 0.0 0.0); halfwidth 28.8169; radius 26.67; }
+
+      refl { id 2; type zTruncCylinder; origin (0.0 0.0 0.0); halfwidth 48.26;   radius 41.91; }
     }
 
 
     cells
     {
-      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material fuel; }
-      refl  { type simpleCell; id 4; surfaces (1 ); filltype mat; material reflector; }
+      core  { type simpleCell; id 1; surfaces (-1); filltype mat; material core; }
+
+      refl  { type simpleCell; id 2; surfaces (1);  filltype mat; material refl; }
     }
 
     universes
     {
       root { id 1; type rootUniverse; border 2; fill u<2>; }
-      uni  { id 2; type cellUniverse; cells ( 3  4); }
+
+      uni  { id 2; type cellUniverse; cells (1 2); }
     }
 }
 
@@ -69,26 +71,27 @@ nuclearData {
   }
 
 
-materials {
+  materials {
 
-
-    fuel {
-      temp       293;
+    core {
+      !temp       293;
       composition {
-        92233.03  0.047312;
-        92234.03  0.00052770;
-        92238.03  0.00033015;
+        92234.03  4.8416E-5;
+        92235.03  4.8151E-3;
+        92236.03  1.7407E-5;
+        92238.03  4.3181E-2;
       }
     }
-    reflector {
-      temp       293;
+    refl {
+      !temp       293;
       composition {
-        04009.03  0.11984;
-        08016.03  0.0013776;
+        92234.03  2.8672E-7;
+        92235.03  1.0058E-4;
+        92236.03  1.1468E-6;
+        92238.03  4.7677E-2;
       }
     }
-
-}
+  }
 
 }
 

@@ -86,6 +86,10 @@ fixedSourcePhysicsPackage, used for fixed source calculations
   stored in a thread-private buffer, after which particles are shifted to
   the common buffer
 
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
+
 Example: ::
 
         type fixedSourcePhysicsPackage;
@@ -379,7 +383,7 @@ keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 In the input above, ``map`` is the geometrical map used for UFS. The map has to contain
 fissile material for the method to make sense. Other keywords are:
 
-* uniformVolMap (*optional*, default = 1): 1 for true; 0 for false; flag that states
+* uniformVolMap (*optional*, default = 0): 1 for true; 0 for false; flag that states
   whether the bins of the map contain equal volumes of fissile material or not
 * popVolumes (*optional*, default = 1.0e7): if ``uniformVolMap`` is false, a Monte Carlo
   calculation is run to estimate the fissile material volumes in each map bin. This entry
@@ -772,7 +776,7 @@ Materials definition
 The *materials* definition is structured as: ::
 
       materials {
-      <materialName1> { temp <temp1>;
+      <materialName1> { tms <0 or 1>; temp <temp1>;
       composition { <Composition definition> }
       *keywords* }
       <materialName2> { temp <temp2>;
@@ -780,15 +784,19 @@ The *materials* definition is structured as: ::
       *keywords* }
       }
 
-In this case, ``materialName`` can be any name chosen by the user; ``temp`` is the
-material temperature in [K].
+In this case, ``materialName`` can be any name chosen by the user; the keyword ``tms``
+(*optional*, default = 0) activates Target Motion Sampling (TMS) if set to 1; TMS uses 
+the material temperature defined under ``temp`` [K]. ``temp`` is *optional* unless TMS
+is used.
 
 .. note::
-  At the moment ``temp`` is not used in any way since SCONE has no way to treat
-  the temperature dependence of cross-sections. It is included for future use.
-  To change the temperature, a user needs to set appropriate suffix to each
-  individual nuclide in the composition definition.
+  When using TMS, the temperature specified by ``temp`` must be higher than the 
+  temperatures of the nuclides in the material composition.
 
+.. note::
+  *IMPORTANT*: When using TMS, all the tallies based on the collision estimator have to
+  allow scoring virtual collisions, otherwise the results will be biased. The tallies
+  based on the track length estimator will be biased too.
 
 The ``composition`` dictionary must always be included, but it can be empty in
 multi-group simulations. In continuous energy simulations, it should include a
@@ -924,8 +932,12 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the collisionClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 * trackClerk
 
@@ -935,6 +947,9 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+
+.. note::
+  If TMS is on, the trackClerk is biased for results in the TMS materials
 
 Example: ::
 
@@ -951,14 +966,18 @@ Example: ::
 
 * keffAnalogClerk, analog k_eff estimator
 * keffImplicitClerk, implicit k_eff estimator
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the keffImplicitClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
       tally {
       k_eff1 { type keffAnalogClerk; }
-      k_eff2 { type keffImplicitClerk; handleVirtual 1; }
+      k_eff2 { type keffImplicitClerk; handleVirtual 0; }
       }
 
 * centreOfMassClerk, geometrical 3D center of mass estimator
@@ -1005,8 +1024,12 @@ Example: ::
     tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates
     whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``)
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the mgXsClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -1035,8 +1058,12 @@ Example: ::
 
   - map: contains a dictionary with the ``tallyMap`` definition, that defines
     the bins of the matrix
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the simpleFMClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -1056,6 +1083,15 @@ Example: ::
 
       tally {
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
+      }
+
+* densityResponse: used to calculate the particle desnsity, i.e., the response function is 
+  the inverse of the particle velocity in [cm/s]
+
+Example: ::
+
+      tally {
+      collision_estimator { type collisionClerk; response (dens); dens { type densityResponse; } }
       }
 
 * macroResponse: used to score macroscopic reaction rates
@@ -1123,6 +1159,27 @@ Example: ::
 
       map { type cellMap; cells (1 5 3 2 4 100); undefBin T; }
 
+* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+
+  - collNumbers: list of collision numbers (integers) to be used as map bins
+
+Examples: ::
+
+      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
+
+* directionMap (1D map), angular map for the particle's direction with a linear grid
+
+  - axis (*optional*, default = ``xy``): ``xy``, ``yz``, ``xz`` define the plane
+    of the direction to map
+  - N: number of bins
+  - min (*optional*, default = -180): grid lower limit [degrees]
+  - max (*optional*, default = 180): grid upper limit [degrees]
+
+Examples: ::
+
+      map1 { type directionMap; axis xz; min 0.0; max 90.0; N 6; }
+      map2 { type directionMap; N 36; }
+
 * energyMap (1D map), defines an energy group structure
 
   - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
@@ -1177,23 +1234,33 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* multiMap, ensemble of multiple 1D maps
+* radialMap, spherical or cylindrical radial map
 
-  - maps: list of the names of the maps that will compose the ``multiMap``. This
-    is followed by dictionaries that define the requested maps
+  - axis (*optional*, default = ``xyz``): ``x``, ``y``, ``z``, is the normal of
+    the cylindrical plane, or ``xyz`` to indicate spherical coordinates
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) vector with the origin
+    of the radial map. If the map is cylindrical, only the two coordinates perpendicular
+    to the cylinder's normal matter
+  - grid: ``lin`` for linearly spaced bins or ``equivolume``
 
-Example: ::
+    + min (*optional*, default = 0.0): minimum radius [cm]
+    + max: maximum radius [cm]
+    + N: number of radial bins
 
-      map { type multiMap; maps (map1 map2 map10);
-      map1 { <1D map definition> }
-      map2 { <1D map definition> }
-      map10 { <1D map definition> }
-      }
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the spherical bin boundaries
+      to be used
+
+Examples: ::
+
+      map1 { type radialMap; axis xyz; origin (2.0 1.0 0.0); grid lin; min 3.0; max 10.0; N 14; }
+      map2 { type radialMap; axis z; grid equivolume; max 20.0; N 10; }
+      map3 { type radialMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
 
 * spaceMap (1D map), geometric cartesian map
 
   - axis: ``x``, ``y`` or ``z``
-
   - grid: ``lin`` for linearly spaced bins
 
     + min: bottom coordinate [cm]
@@ -1209,27 +1276,23 @@ Examples: ::
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
-* sphericalMap, geometric spherical map
+* weightMap (1D map), divides weight into number of discrete bins
 
-  - origin (*optional*, default = (0.0 0.0 .0.)): (x y z) vector with the origin
-    of the spherical map
+  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
 
-  - grid: ``lin`` for linearly spaced bins or ``equivolume`` for spherical shells
-
-    + Rmin (*optional*, default = 0.0): minimum radius [cm]
-    + Rmax: maximum radius [cm]
-    + N: number of radial bins
+    + min: bottom weight
+    + max: top weight
+    + N: number of bins
 
   - grid: ``unstruct`` for unstructured grids, to be manually defined
 
-    + bins: array with the explicit definition of the spherical bin boundaries
-      to be used
+    + bins: array with the explicit definition of the weight bin boundaries to be used
 
 Examples: ::
 
-      map1 { type sphericalMap; origin (2.0 1.0 0.0); grid lin; Rmin 3.0; Rmax 10.0; N 14; }
-      map2 { type sphericalMap; grid equivolume; Rmax 20.0; N 10; }
-      map3 { type sphericalMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
+      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
+      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
+      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
 
 * cylindricalMap, geometric cylindrical map; other than the radial discretisation,
   one could add axial and azimuthal discretisation
@@ -1261,31 +1324,18 @@ Example: ::
       map1 { type cylindricalMap; orientation y; origin (7.0 0.0); rGrid lin; Rmax 5.0; rN 10; }
       map2 { type cylindricalMap; rGrid unstruct; bins (2.0 3.0 4.5 5.0); axGrid lin; axMin 0.0; axMax 6.0 axN 24; azimuthalN 8; }
 
-* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+* multiMap, ensemble of multiple 1D maps
 
-  - collNumbers: list of collision numbers (integers) to be used as map bins
+  - maps: list of the names of the maps that will compose the ``multiMap``. This
+    is followed by dictionaries that define the requested maps
 
-Examples: ::
+Example: ::
 
-      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
-
-* weightMap (1D map), divides weight into number of discrete bins
-
-  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
-
-    + min: bottom weight
-    + max: top weight
-    + N: number of bins
-
-  - grid: ``unstruct`` for unstructured grids, to be manually defined
-
-    + bins: array with the explicit definition of the weight bin boundaries to be used
-
-Examples: ::
-
-      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
-      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
-      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
+      map { type multiMap; maps (map1 map2 map10);
+      map1 { <1D map definition> }
+      map2 { <1D map definition> }
+      map10 { <1D map definition> }
+      }
 
 Tally Filters
 #############

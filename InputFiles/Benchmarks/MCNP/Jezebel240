@@ -1,8 +1,8 @@
 
-// MCNP benchmark case Jezebel-233
+// MCNP benchmark case Jezebel-240
 //
-// Bare U233 sphere, 5.9838cm radius
-// Benchmark keff = 1.0000 +/- 0.0010
+// Bare Pu240 sphere, 6.6595cm radius
+// Benchmark keff = 1.0000 +/- 0.0020
 
 
 type eigenPhysicsPackage;
@@ -42,11 +42,14 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 5.9838; }
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 6.6595; }
     }
 
 
-    cells {
+    cells
+    {
+      out     { type simpleCell; id 3; surfaces (1 ); filltype outside; }
+      inside  { type simpleCell; id 4; surfaces (-1); filltype mat; material fuel; }
     }
 
     universes
@@ -73,12 +76,13 @@ materials {
 
 
     fuel {
-      temp       293;
+      !temp       293;
       composition {
-        92233.03  0.046712;
-        92234.03  0.00059026;
-        92235.03  0.000014281;
-        92238.03  0.00028561;
+        94239.03  2.9934E-2;
+        94240.03  7.8754E-3;
+        94241.03  1.2146E-3;
+        94242.03  1.5672E-4;
+        31000.03  1.3722E-3;
       }
     }
 

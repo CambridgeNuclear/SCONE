@@ -1,0 +1,226 @@
+!!
+!! OECD-NEA source convergence challenge problem 1.
+!! Spent fuel pool with a checkerboard layout of assemblies,
+!! separated by water, surrounded by both water and concrete.
+!! Requires ~2500 unaccelerated inactive cycles to converge.
+!! Has a keff ~0.889. The vast majority of fissions will take
+!! place in the top left assembly bordered by concrete.
+!!
+type eigenPhysicsPackage;
+
+pop      100000;
+active   200;
+inactive 3000;
+XSdata ce;
+dataType ce;
+
+// Specify output format default asciiMATLAB
+//outputFormat asciiJSON;
+
+collisionOperator { neutronCE {type neutronCEstd;} }
+
+transportOperator { //type transportOperatorDT;
+                    cache 1;
+                   // type transportOperatorST;
+                    type transportOperatorHT;
+                   }
+
+inactiveTally {
+    shannon {
+        type shannonEntropyClerk;
+         map {type multiMap;
+              maps (xax yax zax);
+              xax { type spaceMap; grid lin; min -324; max 324; N 24; axis x;}
+              yax { type spaceMap; grid lin; min -45.5; max 35.5; N 3; axis y;}
+              zax { type spaceMap; grid lin; min -180.0; max 180; N 10; axis z;}
+              }
+        cycles 3000;
+    }
+
+}
+
+activeTally {
+  totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}}
+  ResMap {type collisionClerk;
+         map {type multiMap;
+              maps (xax yax);
+              xax { type spaceMap; grid lin; min -324; max 324; N 24; axis x;}
+              yax { type spaceMap; grid lin; min -45.5; max 35.5; N 3; axis y;}
+              }
+         response (fission);
+         fission { type macroResponse; MT -6;}
+         }
+}
+
+geometry {
+  type geometryStd;
+  boundary ( 0 0 0 0 0 0);
+  graph {type shrunk;}
+
+  surfaces {
+    ! Geometry boundary
+    boundary { id 1; type box; origin (0.0 0.0 0.0); halfwidth (364 75.5 210.0);}
+
+    ! Lattice boundary
+    checkerBoundary {id 2; type box; origin (0.0 -0.5 0.0); halfwidth (324 40.5 180 );}
+
+    ! Boundary of the wet region
+    wetBoundary {id 3; type box; origin (0.0 -15.5 0.0); halfwidth (324 55.5 210);}
+
+    ! Assembly surfaces
+    assemblyOuter {id 4; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.5 10.5 0.0);}
+    waterOuter {id 5; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (13.0 13.0 0.0);}
+    
+
+  }
+
+  cells {
+    checker  {id 1; type simpleCell; surfaces ( -2); filltype uni; universe 11;}
+    water    {id 2; type simpleCell; surfaces (2); filltype mat; material water;}
+    concrete {id 3; type simpleCell; surfaces (3); filltype mat; material concrete;}
+    wetCell {id 4; type simpleCell; surfaces (-3); filltype uni; universe 9;}
+
+    ! Assembly cells
+    assemblyInner {id 5; type simpleCell; surfaces (-4); filltype uni; universe 10;}
+    waterGap {id 6; type simpleCell; surfaces (4 -5); filltype mat; material water;}
+    steelLiner {id 7; type simpleCell; surfaces (5); filltype mat; material steel;}
+    waterOnly {id 8; type simpleCell; surfaces (-5); filltype mat; material water;}
+
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<8>; }
+
+    // Cell universes
+    everything {id 8; type cellUniverse; cells (3 4);}
+    wetUni {id 9; type cellUniverse; cells (1 2);}
+    assemblyUni {id 7; type cellUniverse; cells (5 6 7 );}
+    channelUni {id 6; type cellUniverse; cells (7 8);}
+
+
+    // Pin universes
+    pin { id 5; type pinUniverse; radii (0.440 0.49 0.0 ); fills (fuel clad water);}
+
+    // Lattices
+    assembly {
+      id 10;
+      type latUniverse;
+      origin (0.0 0 0.0);
+      pitch (1.4 1.4 0.0);
+      shape (15 15 0);
+      padMat water;
+      map (
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      ); }
+
+    checker {
+      id 11;
+      type latUniverse;
+      origin (0.0 -0.5 0.0);
+      pitch (27 27 0);
+      shape (24 3 0);
+      padMat steel;
+      map (
+      7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6
+      6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7
+      7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6 7 6
+      );
+    }
+
+    
+
+
+  }
+
+}
+
+
+viz {
+  myVTK {
+    type vtk;
+    corner (-364 -75.5 -210);
+    width (728 151 420);
+    vox (300 100 200);
+  }
+  bmp {
+    type bmp;
+    output xy;
+    what material;
+    centre (0.0 0.0 0.0);
+    //width (25.0 25.0);
+    axis z;
+    //offset -17;
+    res (5000 1000);
+  }
+  bmp2 {
+    type bmp;
+    output xz;
+    what material;
+    centre (0.0 0.0 0.0);
+    //width (25.0 25.0);
+    axis y;
+    //offset -17;
+    res (5000 3000);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE; }
+  }
+  materials {
+
+    water {
+      rgb (0 0 139); // Colour of water is dark blue
+      moder { 1001.03 lwj3.00; }
+      composition {
+      1001.03    6.6706E-002;
+      8016.03    3.350E-002;
+      }
+    }
+
+     clad {
+       composition {
+       40000.03  4.291E-002;
+       }
+     }
+
+    fuel {
+       composition {
+      92235.03  8.2213E-004;
+      92238.03  2.238E-002;
+      8016.03  4.6054E-002; }
+      }
+
+     concrete {
+       composition {
+        1001.03 5.5437E-03;
+        6012.03 6.9793E-03;
+        14000.03 7.7106E-03;
+        20000.03 8.9591E-03;
+        8016.03  4.3383E-002;}
+       }
+
+     steel {
+       composition {
+         26000.03 8.377E-02;
+       }
+       }
+
+}
+}

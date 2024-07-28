@@ -5,6 +5,7 @@ module particle_class
   use genericProcedures
   use coord_class,       only : coordList
   use RNG_class,         only : RNG
+  use errors_mod,        only : fatalError
 
   implicit none
   private
@@ -12,7 +13,7 @@ module particle_class
   !!
   !! Particle types paramethers
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 1,&
+  integer(shortInt), parameter,public :: P_NEUTRON = 1, &
                                          P_PHOTON  = 2
 
   !!
@@ -37,6 +38,9 @@ module particle_class
   !!   cellIdx  -> Cell Index at the lowest level in which particle is present
   !!   uniqueID -> Unique ID of the cell at the lowest level in which particle is present
   !!   collisionN -> Number of collisions the particle went through
+  !!   broodID  -> ID of the source particle. It is used to indicate the primogenitor of the particles
+  !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
+  !!               with OpenMP
   !!
   !! Interface:
   !!   assignemnt(=)  -> Build particleState from particle
@@ -56,6 +60,7 @@ module particle_class
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
+    integer(shortInt)          :: broodID = 0       ! ID of the source particle
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -65,19 +70,8 @@ module particle_class
 
     ! Private procedures
     procedure,private :: equal_particleState
-  end type particleState
 
-!  !!
-!  !! Archived state of the particle used for tallying transitions, fission matrixes etc.
-!  !!
-!  type, public,extends(phaseCoord) ::
-!  contains
-!    generic    :: operator(.eq.) => equal_particleState
-!    procedure :: fromParticle    => particleState_fromParticle
-!
-!    ! Private procedures
-!    procedure,private :: equal_particleState
-!  end type
+  end type particleState
 
   !!
   !! This type represents particle
@@ -111,6 +105,7 @@ module particle_class
     integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
+    integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -129,7 +124,7 @@ module particle_class
     generic              :: build => buildCE, buildMG
     generic              :: assignment(=) => particle_fromParticleState
 
-    ! Inquiry about coordinates
+    ! Enquiry about coordinates
     procedure                  :: rLocal
     procedure                  :: rGlobal
     procedure                  :: dirLocal
@@ -140,14 +135,17 @@ module particle_class
     procedure                  :: matIdx
     procedure, non_overridable :: getType
 
+    ! Enquiry about physical state
+    procedure :: getVelocity
+
     ! Operations on coordinates
-    procedure            :: moveGlobal
-    procedure            :: moveLocal
-    procedure            :: rotate
-    procedure            :: teleport
-    procedure            :: point
-    procedure            :: takeAboveGeom
-    procedure            :: setMatIdx
+    procedure :: moveGlobal
+    procedure :: moveLocal
+    procedure :: rotate
+    procedure :: teleport
+    procedure :: point
+    procedure :: takeAboveGeom
+    procedure :: setMatIdx
 
     ! Save particle state information
     procedure, non_overridable  :: savePreHistory
@@ -275,6 +273,7 @@ contains
     LHS % time                  = RHS % time
     LHS % collisionN            = RHS % collisionN
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
+    LHS % broodID               = RHS % broodID
 
   end subroutine particle_fromParticleState
 
@@ -426,6 +425,48 @@ contains
     end if
 
   end function getType
+
+  !!
+  !! Return the particle velocity in [cm/s]
+  !! neutronMass: [MeV]
+  !! lightSpeed:  [cm/s]
+  !!
+  !! NOTE:
+  !!   The velocities are computed from non-relativistic formula for massive particles.
+  !!   A small error might appear in MeV range (e.g. for fusion applications)
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   Particle velocity
+  !!
+  !! Errors:
+  !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
+  !!   fatalError if the particle is MG
+  !!
+  function getVelocity(self) result(velocity)
+    class(particle), intent(in) :: self
+    real(defReal)               :: velocity
+    character(100), parameter   :: Here = 'getVelocity (particle_class.f90)'
+
+    ! Verify the particle is not MG
+    if (self % isMG) call fatalError(Here, 'Velocity cannot be calculated for MG particle')
+
+    ! Calculates the velocity for the relevant particle [cm/s]
+    if (self % type == P_NEUTRON) then
+      velocity = sqrt(TWO * self % E / neutronMass) * lightSpeed
+
+    elseif (self % type == P_PHOTON) then
+      velocity = lightSpeed
+
+    else
+      call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
+                            & //numToChar(self % type))
+
+    end if
+
+  end function getVelocity
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
@@ -618,6 +659,7 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
+    LHS % broodID    = RHS % broodID
 
   end subroutine particleState_fromParticle
 
@@ -641,6 +683,7 @@ contains
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
+    isEqual = isEqual .and. LHS % broodID    == RHS % broodID
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -648,31 +691,6 @@ contains
       isEqual = isEqual .and. LHS % E == RHS % E
     end if
   end function equal_particleState
-
-!  !!
-!  !! Copy particle state into archive object
-!  !!
-!  subroutine particleState_fromParticle(LHS,RHS)
-!    class(particleState), intent(out) :: LHS
-!    class(particle), intent(in)       :: RHS
-!
-!    ! Call superclass procedure
-!    call phaseCoord_fromParticle(LHS,RHS)
-!
-!  end subroutine particleState_fromParticle
-
-!  !!
-!  !! Extend equality definition to particle state
-!  !!
-!  function equal_particleState(LHS,RHS) result(isEqual)
-!    class(particleState), intent(in) :: LHS
-!    type(particleState), intent(in)  :: RHS
-!    logical(defBool)                 :: isEqual
-!
-!    ! Call superclass procedure
-!    isEqual = equal_phaseCoord(LHS,RHS)
-!
-!  end function equal_particleState
 
   !!
   !! Prints state of the phaseCoord
@@ -708,6 +726,7 @@ contains
     self % cellIdx  = -1
     self % uniqueID = -1
     self % collisionN = 0
+    self % broodID    = 0
 
   end subroutine kill_particleState
 

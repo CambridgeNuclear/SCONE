@@ -45,6 +45,7 @@ module testNeutronDatabase_class
     procedure :: init
     procedure :: activate
     procedure :: getTrackingXS
+    procedure :: getTrackMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -179,7 +180,22 @@ contains
   end function getTrackingXS
 
   !!
-  !! Return value of Material Total XS for a particle
+  !! Return value of material tracking XS for a particle
+  !!
+  !! See nuclearDatabase_inter for details
+  !!
+  function getTrackMatXS(self, p, matIdx) result(xs)
+    class(testNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)               :: p
+    integer(shortInt), intent(in)             :: matIdx
+    real(defReal)                             :: xs
+
+    xs = self % xsVal
+
+  end function getTrackMatXS
+
+  !!
+  !! Return value of material total XS for a particle
   !!
   !! See nuclearDatabase_inter for details
   !!

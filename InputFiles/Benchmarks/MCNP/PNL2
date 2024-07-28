@@ -1,8 +1,8 @@
 
-// MCNP benchmark case Pu-MF-11
+// MCNP benchmark case PNL-2
 //
-// Alpha-phase Pu sphere (to 4.1217cm radius) reflected by 10 inches of water (to 29.5217cm radius)
-// Benchmark keff = 1.0000 +/- 0.0010
+// Bare solution sphere, 19.5064cm radius
+// Benchmark keff = 1.0000 +/- 0.0065
 
 
 type eigenPhysicsPackage;
@@ -12,7 +12,7 @@ active 400;
 inactive 200;
 XSdata   ceData;
 dataType ce;
-outputFile PUMF11 ;
+outputFile PNL2;
 
 collisionOperator { neutronCE {type neutronCEstd;}
 
@@ -20,8 +20,6 @@ collisionOperator { neutronCE {type neutronCEstd;}
 
 transportOperator { type transportOperatorST;
                   }
-
-source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
 
 inactiveTally {
               }
@@ -45,21 +43,24 @@ geometry {
 
     surfaces
     {
-      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 4.1217; }
-      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 29.5217; }
+      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 19.5064; }
     }
 
 
     cells
     {
-      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material fuel; }
-      wat  { type simpleCell; id 4; surfaces (1 ); filltype mat; material water; }
     }
 
     universes
     {
-      root { id 1; type rootUniverse; border 2; fill u<2>; }
-      uni  { id 2; type cellUniverse; cells ( 3  4); }
+
+      root
+      {
+          id 1;
+          type rootUniverse;
+          border 1;
+          fill solution;
+      }
     }
 }
 
@@ -73,22 +74,19 @@ nuclearData {
 materials {
 
 
-    fuel {
-      temp       293;
+    solution {
+      !temp       293;
       composition {
-        94239.03  4.6982E-2;
-        94240.03  2.5852E-3;
-        94241.03  1.4915E-4;
-        94242.03  9.9432E-6;
+        94238.03  2.6153E-8;
+        94239.03  4.1249E-4;
+        94240.03  2.0181E-5;
+        94241.03  1.2181E-6;
+        94242.03  3.8579E-8;
+        07014.03  4.7228E-3;
+        08016.03  3.9755E-2;
+        1001.03  5.4160E-2;
       }
-    }
-    water {
-      temp       293;
-      composition {
-        1001.03  6.6766E-2;
-        08016.03  3.3383E-2;
-      }
-      moder {1001.03 hh2o.04; }
+      moder {1001.03  hh2o.04; }
     }
 
 }
