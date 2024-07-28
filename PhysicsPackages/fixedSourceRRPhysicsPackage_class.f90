@@ -86,6 +86,7 @@ module fixedSourceRRPhysicsPackage_class
   !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!     #rho 0;#              // Optional stabilisation for negative in-group scattering XSs
+  !!     #cadis 0;#            // Optionally generate adjoints for global variance reduction
   !!
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
@@ -152,6 +153,7 @@ module fixedSourceRRPhysicsPackage_class
     character(nameLen),dimension(:), allocatable :: intMatNames
     real(defReal), dimension(:,:), allocatable   :: samplePoints
     character(nameLen),dimension(:), allocatable :: sampleNames
+    logical(defBool)   :: doCADIS = .false.
 
     ! Results space
     integer(longInt)   :: intersectionsTotal = 0
@@ -220,6 +222,8 @@ contains
     
     call dict % getOrDefault(volP, 'volPolicy', 1)
     call dict % getOrDefault(missP, 'missPolicy', 1)
+
+    call dict % getOrDefault(self % doCadis, 'cadis', .false.)
     
     ! Perform distance caching?
     call dict % getOrDefault(self % cache, 'cache', .false.)
@@ -390,6 +394,15 @@ contains
     if (self % loud) call self % printSettings()
     call self % cycles()
     call self % printResults()
+    if (self % doCadis) then
+      print *,'Performing adjoint calculation'
+      ! Reinitialise VTK
+      !if (self % plotResults) call self % viz % initVTK()
+      call self % arrays % initAdjoint()
+      call self % cycles()
+      self % outputFile = trim(self % outputFile)//'_adj'
+      call self % printResults()
+    end if
 
   end subroutine run
 
@@ -604,6 +617,7 @@ contains
 
     print *, repeat("<>", MAX_COL/2)
     print *, "/\/\ RANDOM RAY FIXED SOURCE CALCULATION /\/\"
+    if (self % doCadis) print *, "Will run a subsequent adjoint calculation"
     if (self % lin) print *, "Using linear source"
     print *, "Using "//numToChar(self % inactive)// " iterations for "&
               //"the inactive cycles"

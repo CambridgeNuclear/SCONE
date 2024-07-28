@@ -122,6 +122,9 @@ module arraysRR_class
     real(defFlt), dimension(:), allocatable    :: sourceX
     real(defFlt), dimension(:), allocatable    :: sourceY
     real(defFlt), dimension(:), allocatable    :: sourceZ
+    real(defFlt), dimension(:), allocatable    :: fixedX
+    real(defFlt), dimension(:), allocatable    :: fixedY
+    real(defFlt), dimension(:), allocatable    :: fixedZ
     real(defReal), dimension(:), allocatable   :: momMat
     real(defReal), dimension(:), allocatable   :: momTracks
     real(defReal), dimension(:), allocatable   :: centroid
@@ -138,6 +141,7 @@ module arraysRR_class
     
     ! Public procedures
     procedure :: init
+    procedure :: initAdjoint
     procedure :: kill
 
     ! Access procedures
@@ -373,6 +377,114 @@ contains
 
   end subroutine init
   
+  !!
+  !! Initialise the adjoint source and update nuclear data.
+  !! For now, assumes the adjoint is for global variance reduction.
+  !!
+  subroutine initAdjoint(self)
+    class(arraysRR), intent(inout)         :: self
+    integer(shortInt)                      :: cIdx
+    logical(defBool)                       :: doLinear
+    integer(shortInt), save                :: i, g
+    real(defFlt), dimension(matSize), save :: invM
+    real(defFlt), save                     :: xMom, yMom, zMom
+    !$omp threadprivate(i, g, invM, xMom, yMom, zMom)
+
+    doLinear = .false.
+    invM = 0.0_defFlt
+
+    call self % xsData % setAdjointXS()
+
+    if (.not. allocated(self % fixedSource)) then
+      allocate(self % fixedSource(size(self % scalarFlux)))
+    end if
+    self % fixedSource = 0.0_defFlt
+
+    if (allocated(self % scalarX)) then
+      doLinear = .true.
+      if (.not. allocated(self % fixedX)) then
+        allocate(self % fixedX(size(self % scalarFlux)))
+        allocate(self % fixedY(size(self % scalarFlux)))
+        allocate(self % fixedZ(size(self % scalarFlux)))
+      end if
+      self % fixedX = 0.0_defFlt
+      self % fixedY = 0.0_defFlt
+      self % fixedZ = 0.0_defFlt
+    end if 
+
+    ! Create fixed source from the flux scores
+    ! Presently assumes the response of interest is global flux
+    !$omp parallel do
+    do cIdx = 1, self % nCells
+
+      if (.not. self % found(cIdx)) cycle
+      if (doLinear) invM = self % invertMatrix(cIdx)
+
+      do g = 1, self % nG
+
+        i = (cIdx - 1) * self % nG + g
+
+        ! Check for inordinately small flux values.
+        ! Note, these can have arbitrarily low magnitude.
+        ! Maybe should be something more robust.
+        if (self % fluxScores(1, i) == 0.0_defFlt) cycle
+        self % fixedSource(i) = real(ONE / self % fluxScores(1, i), defFlt)
+
+        ! Linear source treatment relies on performing a Taylor expansion
+        ! of q' = 1/phi = 1/(phi_0 + grad phi * (r - r0)) 
+        ! = 1/phi_0 - 1/phi^2_0 * gradPhi * (r - r0)
+        if (doLinear) then
+          xMom = real(self % xScores(1, i), defFlt)
+          yMom = real(self % yScores(1, i), defFlt)
+          zMom = real(self % zScores(1, i), defFlt)
+          self % fixedX(i) = invM(xx) * xMom + invM(xy) * yMom + invM(xz) * zMom 
+          self % fixedY(i) = invM(xy) * xMom + invM(yy) * yMom + invM(yz) * zMom 
+          self % fixedZ(i) = invM(xz) * xMom + invM(yz) * yMom + invM(zz) * zMom 
+
+          self % fixedX(i) = -self % fixedX(i) * self % fixedSource(i) ** 2
+          self % fixedY(i) = -self % fixedY(i) * self % fixedSource(i) ** 2
+          self % fixedZ(i) = -self % fixedZ(i) * self % fixedSource(i) ** 2
+        end if
+
+      end do
+
+    end do 
+    !$omp end parallel do
+    
+    ! Reinitialise arrays to be used during transport
+    self % scalarFlux      = 0.0_defFlt
+    self % prevFlux        = 0.0_defFlt
+    self % fluxScores      = ZERO
+    self % source          = 0.0_defFlt
+    
+    ! Ideally we would have a way of reusing the volume estimators
+    ! No compact ideas at the moment, so these will simply be reinitialised
+    self % volumeTracks    = ZERO
+    self % allVolumeTracks = ZERO
+    self % lengthSquared   = ZERO
+    self % volume          = ZERO
+
+    if (doLinear) then
+      self % scalarX        = 0.0_defFlt
+      self % scalarY        = 0.0_defFlt
+      self % scalarZ        = 0.0_defFlt
+      self % prevX          = 0.0_defFlt
+      self % prevY          = 0.0_defFlt
+      self % prevZ          = 0.0_defFlt
+      self % sourceX        = 0.0_defFlt
+      self % sourceY        = 0.0_defFlt
+      self % sourceZ        = 0.0_defFlt
+      self % momMat         = ZERO
+      self % momTracks      = ZERO
+      self % centroid       = ZERO
+      self % centroidTracks = ZERO
+      self % xScores        = ZERO
+      self % yScores        = ZERO
+      self % zScores        = ZERO
+    end if
+
+  end subroutine initAdjoint
+
   !!
   !! Initialises fixed sources to be used in the simulation.
   !! Takes a dictionary containing names of materials in the geometry and
@@ -914,7 +1026,7 @@ contains
     select case(self % simulationType)
       case(flatIso)
         call self % normaliseFluxAndVolumeFlatIso(it)
-      case(LinearIso)
+      case(linearIso)
         call self % normaliseFluxAndVolumeLinearIso(it)
       case default
         call fatalError(Here,'Unsupported simulation type requested')
@@ -1420,6 +1532,11 @@ contains
               invM(yy) * ySource + invM(yz) * zSource
       self % sourceZ(idx) = invM(xz) * xSource + &
            invM(yz) * ySource + invM(zz) * zSource
+      if (allocated(self % fixedX)) then
+        self % sourceX(idx) = self % sourceX(idx) + self % fixedX(idx)
+        self % sourceY(idx) = self % sourceY(idx) + self % fixedY(idx)
+        self % sourceZ(idx) = self % sourceZ(idx) + self % fixedZ(idx)
+      end if
 
     end do
 
@@ -2035,7 +2152,7 @@ contains
     !$omp end parallel do
     call viz % addVTKData(resVec,name)
 
-    call viz % finaliseVTK
+    call viz % finaliseVTK()
 
   end subroutine outputToVTK
 

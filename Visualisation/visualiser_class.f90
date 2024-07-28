@@ -222,7 +222,7 @@ contains
     class(visualiser), intent(inout) :: self
 
     call self % vtk % output(self % name)
-    call self % vtk % kill()
+    !call self % vtk % kill()
 
   end subroutine finaliseVTK
 

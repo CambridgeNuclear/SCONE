@@ -54,6 +54,7 @@ module dataRR_class
   contains
     
     procedure :: init
+    procedure :: setAdjointXS
     procedure :: kill
 
     ! TODO: add an XS update procedure, e.g., given multiphysics
@@ -172,6 +173,40 @@ contains
     end if
 
   end subroutine init
+  
+  !!
+  !! Change cross sections for adjoints simulations:
+  !! - swap chi and nuSigmaF
+  !! - transpose scattering matrices
+  !!
+  subroutine setAdjointXS(self)
+    class(dataRR), intent(inout)            :: self
+    integer(shortInt)                       :: g, g1, m
+    real(defFlt), dimension(:), allocatable :: buffer
+
+    ! Swap chi and nuSigmaF
+    allocate(buffer(self % nMat * self % nG))
+    buffer = self % chi
+    self % chi = self % nuSigmaF
+    self % nuSigmaF = self % chi
+    deallocate(buffer)
+
+    ! Transpose scattering matrix
+    allocate(buffer(self % nMat * self % nG * self % nG))
+    buffer = self % sigmaS
+
+    do m = 1, self % nMat
+      do g = 1, self % nG
+        do g1 = 1, self % nG
+          self % sigmaS(self % nG * self % nG * (m - 1) + self % nG * (g1 - 1) + g)  = &
+                  buffer(self % nG * self % nG * (m - 1) + self % nG * (g - 1) + g1)
+        end do
+      end do
+    end do
+
+    ! TODO: apply the same treatment to anisotropic scattering matrices
+
+  end subroutine setAdjointXS
 
   !!
   !! Calculate the lower and upper indices for accessing the XS array
