@@ -952,7 +952,8 @@ contains
       end do
 
       ! Load data into material
-      call self % materials(i) % set( matIdx   = i,              &
+      call self % materials(i) % set( name     = mat % name,     &
+                                      matIdx   = i,              &
                                       database = ptr_ceDatabase, &
                                       temp     = mat % T,        &
                                       hasTMS   = mat % hasTMS,   &

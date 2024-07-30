@@ -83,7 +83,8 @@ module universalVariables
                               energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
+                              shakesPerS   = 1.0e-8            ! Convert shakes to s
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'
