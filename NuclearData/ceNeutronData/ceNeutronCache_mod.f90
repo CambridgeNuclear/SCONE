@@ -69,6 +69,7 @@ module ceNeutronCache_mod
   !!   deltakT   -> Difference between TMS material and nuclide thermal energy (for TMS) [MeV]
   !!   tempMajXS -> Temperature majorant xs value (for TMS)
   !!   doppCorr  -> Doppler correction factor value (for TMS)
+  !!   sabIdx    -> S(alpha,beta) index (for stochastic mixing)
   !!
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
@@ -82,6 +83,9 @@ module ceNeutronCache_mod
     real(defReal)         :: deltakT   = ZERO
     real(defReal)         :: tempMajXS = ZERO
     real(defReal)         :: doppCorr  = ONE
+
+    ! S(alpha,beta) data
+    integer(shortInt)     :: sabIdx = 0
 
   end type cacheNucDat
 

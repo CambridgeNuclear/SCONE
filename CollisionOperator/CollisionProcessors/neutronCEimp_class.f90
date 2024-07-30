@@ -259,7 +259,7 @@ contains
     if (.not.associated(self % mat)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, collDat % E, p % pRNG)
+    call self % nuc % getMicroXSs(microXss, collDat % E, self % mat % kT, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -297,7 +297,7 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, collDat % E, p % pRNG)
+      call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
@@ -352,7 +352,7 @@ contains
     if (self % implicitAbsorption) then
 
       if (.not.fiss_and_implicit) then
-        call self % nuc % getMicroXSs(microXSs, collDat % E, p % pRNG)
+        call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
       end if
 
       sig_scatter  = microXSs % elasticScatter + microXSs % inelasticScatter
@@ -413,7 +413,7 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, collDat % E, p % pRNG)
+      call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_fiss   = microXSs % fission

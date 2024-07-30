@@ -336,7 +336,7 @@ Zrcladding {
   }    
   
 coldwater {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
       1001.03 0.04938;
       8016.03 0.02469;
@@ -347,7 +347,7 @@ coldwater {
    
 
 hotwater {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
       1001.03 0.04404;
       8016.03 0.02202;
@@ -392,7 +392,7 @@ reactorvessel  {
       
       
 reflectorbottom  {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {    
 	1001.03		2.4886E-02;
 	8016.03		1.2343E-02;
@@ -420,7 +420,7 @@ reflectorbottom  {
  
  
 reflectortop  {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03		2.2196E-02;
 	8016.03		1.1008E-02;
@@ -448,7 +448,7 @@ reflectortop  {
 
 
 coreplate   {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03		4.9773E-03;
 	8016.03		2.4685E-03;
@@ -475,7 +475,7 @@ coreplate   {
 } 
  
 nozzlebottom   {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03		3.733E-2;
 	8016.03		1.851E-2;
@@ -503,7 +503,7 @@ nozzlebottom   {
 
 
 nozzletop  {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03	                3.7733E-2;
 	8016.03	                1.8714E-2;
@@ -530,7 +530,7 @@ nozzletop  {
 }
  
 FAbottom {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03		2.986E-02;
 	8016.03		1.481E-02;
@@ -545,7 +545,7 @@ FAbottom {
 }
  
 FAtop {
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
 	1001.03		3.107E-02;
 	8016.03		1.541E-02;

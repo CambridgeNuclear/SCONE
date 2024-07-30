@@ -44,6 +44,10 @@ module materialMenu_mod
   !!   Z -> Atomic number
   !!   A -> Mass number
   !!   T -> Evaluation number
+  !!   hasSab -> Does the nuclide have S(a,b) data?
+  !!   sabMix -> Does the nuclide mix S(a,b) data?
+  !!   file_Sab1 -> First (and maybe only) S(a,b) file
+  !!   file_Sab2 -> Second S(a,b) file
   !!
   !! Interface:
   !!   init -> build from a string
@@ -53,7 +57,9 @@ module materialMenu_mod
     integer(shortInt)  :: A = -1
     integer(shortInt)  :: T = -1
     logical(defBool)   :: hasSab = .false.
-    character(nameLen) :: file_Sab
+    logical(defBool)   :: sabMix = .false.
+    character(nameLen) :: file_Sab1
+    character(nameLen) :: file_Sab2
   contains
     procedure :: init   => init_nuclideInfo
     procedure :: toChar => toChar_nuclideInfo
@@ -79,7 +85,8 @@ module materialMenu_mod
   !!
   !!   matDef {
   !!     temp 273;
-  !!     moder {1001.03 h-h2o.43;}
+  !!     #moder {1001.03 (h-h2o.43);}#
+  !!     #tms 1;#
   !!     composition {
   !!       1001.03  5.028E-02;
   !!       8016.03  2.505E-02;
@@ -89,9 +96,22 @@ module materialMenu_mod
   !!     #rgb (255 0 0); # // RGB colour to be used in visualisation
   !!   }
   !!
+  !! Sample with stochastic mixing:
+  !!   matDef {
+  !!     temp 300;
+  !!     moder {1001.03 (h-h2o.43 h-h2o.53);}
+  !!     composition {
+  !!       1001.03  5.028E-02;
+  !!       8016.03  2.505E-02;
+  !!       5010.03  2.0E-005;
+  !!     }
+  !!   }
+  !!
   !! NOTE: the moder dictionary is optional, necessary only if S(a,b) thermal scattering
   !!       data are used. If some nuclides are included in moder but not in composition,
-  !!       those are ignored.
+  !!       an error is raised.
+  !!       Including two entries in moder will invoke stochastic mixing, i.e.,
+  !!       stochastic interpolation between the two data libraries.
   !!
   type, public :: materialItem
     character(nameLen)                         :: name   = ''
@@ -282,7 +302,8 @@ contains
     integer(shortInt), dimension(:), allocatable  :: temp
     integer(shortInt)                             :: i
     class(dictionary),pointer                     :: compDict, moderDict
-    logical(defBool)                              :: hasSab
+    logical(defBool)                              :: hasSab, foundModer
+    character(nameLen), dimension(:), allocatable :: filenames
     character(100), parameter :: Here = 'init_materialItem (materialMenu_mod.f90)'
 
     ! Return to initial state
@@ -311,8 +332,7 @@ contains
     allocate(self % nuclides(size(keys)))
     allocate(self % dens(size(keys)))
 
-
-    ! Check if S(a,b) files are specified
+    ! Check if S(a,b) files are specified.
     if (dict % isPresent('moder')) then
       moderDict => dict % getDictPtr('moder')
       call moderDict % keys(moderKeys)
@@ -322,17 +342,39 @@ contains
     end if
 
     ! Load definitions
+    foundModer = .false.
     do i =1,size(keys)
       ! Check if S(a,b) is on and required for that nuclide
       if (hasSab .and. moderDict % isPresent(keys(i))) then
         self % nuclides(i) % hasSab = .true.
-        call moderDict % get(self % nuclides(i) % file_Sab, keys(i))
+        foundModer = .true.
+
+        ! Check for stochastic mixing - this will depend on the
+        ! size of the array of files produce
+        call moderDict % get(filenames, keys(i))
+        if (size(filenames) == 2) then
+          self % nuclides(i) % file_Sab1 = filenames(1)
+          self % nuclides(i) % file_Sab2 = filenames(2)
+          self % nuclides(i) % sabMix = .true.
+        elseif (size(filenames) == 1) then
+          self % nuclides(i) % file_Sab1 = filenames(1)
+        else
+          print *,filenames
+          call fatalError(Here,'Unexpectedly long moder contents. Should be 1 or 2 '//&
+                  'entries.')
+        end if
       end if
 
       ! Initialise the nuclides
       call compDict % get(self % dens(i), keys(i))
       call self % nuclides(i) % init(keys(i))
     end do
+    ! Make sure if a moderator is provided the nuclide is present
+    ! in the composition
+    if ((.not. foundModer) .and. hasSab) then
+      print *,moderKeys
+      call fatalError(Here, 'Nuclides requested for S(alpha,beta) are not present in composition')
+    end if
 
     ! Add colour info if present
     if(dict % isPresent('rgb')) then

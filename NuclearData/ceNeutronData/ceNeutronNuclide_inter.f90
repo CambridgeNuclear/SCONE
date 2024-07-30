@@ -181,6 +181,7 @@ contains
   !!
   !! Args:
   !!   E [in]       -> required energy [MeV]
+  !!   kT [in]      -> material thermal energy [MeV]
   !!   rand [inout] -> random number generator
   !!
   !! Result:
@@ -189,15 +190,16 @@ contains
   !! Errors:
   !!   fatalError if E is out-of-bounds of the present data
   !!
-  function getTotalXS(self, E, rand) result(xs)
+  function getTotalXS(self, E, kT, rand) result(xs)
     class(ceNeutronNuclide), intent(in) :: self
     real(defReal), intent(in)           :: E
+    real(defReal), intent(in)           :: kT
     class(RNG), intent(inout)           :: rand
     real(defReal)                       :: xs
 
     ! Check Cache and update if needed
     if (nuclideCache(self % nucIdx) % E_tot /= E) then
-      call self % data % updateTotalNucXS(E, self % nucIdx, rand)
+      call self % data % updateTotalNucXS(E, self % nucIdx, kT, rand)
     end if
 
     xs = nuclideCache(self % nucIdx) % xss % total
@@ -210,20 +212,22 @@ contains
   !! Args:
   !!   xss [out]    -> Cross section package to store the data
   !!   E [in]       -> Requested energy [MeV]
+  !!   kT [in]      -> Material thermal energy [MeV]
   !!   rand [inout] -> Random Number Generator
   !!
   !! Errors:
   !!   fatalError if E is out-of-bounds for the stored data
   !!
-  subroutine getMicroXSs(self, xss, E, rand)
+  subroutine getMicroXSs(self, xss, E, kT, rand)
     class(ceNeutronNuclide), intent(in) :: self
     type(neutronMicroXSs), intent(out)  :: xss
     real(defReal), intent(in)           :: E
+    real(defReal), intent(in)           :: kT
     class(RNG), intent(inout)           :: rand
 
     ! Check Cache and update if needed
     if (nuclideCache(self % nucIdx) % E_tail /= E) then
-      call self % data % updateMicroXSs(E, self % nucIdx, rand)
+      call self % data % updateMicroXSs(E, self % nucIdx, kT, rand)
     end if
 
     xss = nuclideCache(self % nucIdx) % xss

@@ -811,8 +811,11 @@ Other options are:
 * moder: dictionary that includes information on thermal scattering data. It has to
   include a list of ZAIDs for which S(a,b) has to be used, and the name of the file
   that contains the data. The file has to be included in the list of files in the *.aceXS*
-  input file. Note that this input is ignored if the nuclide or nuclides listed are not
-  included in the material. Only needed for continuous energy simulations.
+  input file. The file must be in an array, e.g., ``1001.03 (h-h2o49);``. Two files can be
+  included in this array, invoking stochastic interpolation to the provided ``temp``. If
+  the given temperature is not bracketed by the thermal scattering evaluation temperatures
+  an error will be produced. An error will be produced if the nuclide or nuclides listed in
+  the moder dictionary are not included in the material. Only needed for continuous energy simulations.
 
 * xsFile: needed for multi-group simulations. Must contain the path to the file where
   the multi-group cross sections are stored.
@@ -823,18 +826,19 @@ Other options are:
 Example 1: ::
 
       materials {
-      fuel { temp 273;
+      fuel { temp 473;
+      tms 1;
       composition {
       92238.03   0.021;
       92235.03   0.004;
       8016.03    0.018535464; }
       }
-      water { temp 273;
+      water {
       rgb (0 0 200);
       composition {
       1001.03   0.0222222;
       8016.03   0.00535; }
-      moder { 1001.03 h-h2o.42; }
+      moder { 1001.03 (h-h2o.42); }
       }
       }
 
@@ -844,6 +848,12 @@ Example 2: ::
       fuel { temp 573;
       composition { }
       xsFile ./xss/fuel.txt
+      }
+      water { temp 500;
+      composition {
+      1001.03   0.0222222;
+      8016.03   0.00535; }
+      moder { 1001.03 (h-h2o.50 h-h2o.49); }
       }
       }
 
