@@ -81,7 +81,7 @@ nuclearData {
         08016.03  3.3331E-2;
         1001.03  6.1683E-2;
       }
-      moder {1001.03 hh2o.04; }
+      moder {1001.03 (hh2o.04); }
     }
     aluminium {
       !temp       293;

@@ -189,14 +189,16 @@ module ceNeutronDatabase_inter
     !!
     !! Args:
     !!   E [in]       -> required energy [MeV]
-    !!   nucIdx [in]  -> material index that needs to be updated
+    !!   nucIdx [in]  -> nuclide index that needs to be updated
+    !!   kT [in]      -> thermal energy of material [MeV]
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTotalXS(self, E, nucIdx, rand)
+    subroutine updateTotalXS(self, E, nucIdx, kT, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
+      real(defReal), intent(in)            :: kT
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalXS
 
@@ -212,13 +214,15 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   nucIdx [in]  -> material index that needs to be updated
+    !!   kT [in]      -> thermal energy of material [MeV]
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateMicroXSs(self, E, nucIdx, rand)
+    subroutine updateMicroXSs(self, E, nucIdx, kT, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
+      real(defReal), intent(in)            :: kT
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMicroXSs
 
@@ -233,7 +237,7 @@ module ceNeutronDatabase_inter
     !!
     !! Args:
     !!   E [in]      -> required energy [MeV]
-    !!   kT [in]     -> thermal energy of TMS material
+    !!   kT [in]     -> thermal energy of TMS material [MeV]
     !!   nucIdx [in] -> material index that needs to be updated
     !!
     !! Errors:
@@ -257,7 +261,7 @@ module ceNeutronDatabase_inter
     !!
     !! Args:
     !!   A  [in]   -> Nuclide atomic weight ratio
-    !!   kT [in]   -> Thermal energy of nuclide
+    !!   kT [in]   -> Thermal energy of nuclide [MeV]
     !!   E  [in]   -> Energy of neutron incident to target for which majorant needs to be found
     !!   maj [out] -> Majorant cross section
     !!

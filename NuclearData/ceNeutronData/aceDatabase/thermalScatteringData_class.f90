@@ -34,7 +34,7 @@ module thermalScatteringData_class
   !!   elastic      -> tables for elastic scattering
   !!   hasElastic   -> flag that indicates if elastic scattering is on
   !!   isCoherent   -> flag that indicates if elastic scatter is coherent or incoherent
-  !!   temperature  -> evaluation temperature in MeV
+  !!   kT           -> evaluation temperature in MeV
   !!
   !! Class Procedures:
   !!   init           -> initialises scattering tables
@@ -52,7 +52,7 @@ module thermalScatteringData_class
     type(scatteringTable)  :: elastic
     logical(defBool)       :: hasElastic = .false.
     logical(defBool)       :: isCoherent = .false.
-    real(defReal)          :: temperature = -ONE
+    real(defReal)          :: kT = -ONE
 
   contains
 
@@ -61,6 +61,7 @@ module thermalScatteringData_class
     procedure :: getEbounds
     procedure :: getInelXS
     procedure :: getElXS
+    procedure :: getTemperature
     procedure :: buildFromACE
 
   end type thermalData
@@ -110,7 +111,7 @@ contains
 
     self % hasElastic = .false.
     self % isCoherent = .false.
-    self % temperature = -ONE
+    self % kT = -ONE
 
     call self % inelasticOut % kill()
     call self % elasticOut % kill()
@@ -171,12 +172,13 @@ contains
 
   !!
   !! Return the temperature of the evaluated S(a,b) data
+  !! Returns as kT - thermal energy in MeV
   !!
-  function getTemperature(self) result(T)
+  pure function getTemperature(self) result(kT)
     class(thermalData), intent(in) :: self
-    real(defReal)                  :: T
+    real(defReal)                  :: kT
 
-    T = self % temperature 
+    kT = self % kT 
 
   end function getTemperature
 
@@ -275,7 +277,7 @@ contains
     self % inelastic % xs = ACE % ESZ_inelastic('inelasticXS')
     
     ! Read temperature
-    self % temperature = ACE % TZ
+    self % kT = ACE % TZ
 
     ! Check if elastic scattering data is present
     self % hasElastic = ACE % hasElastic()

@@ -180,9 +180,9 @@ contains
 
     ! H-1
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(H1))
-    @assertEqual(ONE, 20.765855864000002_defReal/ nuc % getTotalXS(1.1E-6_defReal, p % pRNG), TOL)
+    @assertEqual(ONE, 20.765855864000002_defReal/ nuc % getTotalXS(1.1E-6_defReal, ONE, p % pRNG), TOL)
 
-    call nuc % getMicroXSs(microXSs, 5.6E-3_defReal, p % pRNG)
+    call nuc % getMicroXSs(microXSs, 5.6E-3_defReal, ONE, p % pRNG)
 
     ! Absent XSs
     @assertEqual(ZERO, microXSs % fission)

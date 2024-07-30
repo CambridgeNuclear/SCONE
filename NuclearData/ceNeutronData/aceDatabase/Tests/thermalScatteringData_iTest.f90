@@ -18,17 +18,17 @@ module thermalScatteringData_iTest
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR =        &
   & "water {                                       &
-  &       moder {1001.03 h-h2o.49; }               &
+  &       moder {1001.03 (h-h2o.49); }             &
   &       composition {                            &
   &       1001.03  2.0E-3;                         &
   &       8016.03  1.0E-3;                         &
   &                   }                            &
   &      }                                         &
-  &  graphite {                                        &
-  &          moder {6012.06  grph30.46;}               &
-  &          composition {                             &
-  &          6012.06 2.0E-3;                           &
-  &                       }                            &
+  &  graphite {                                    &
+  &          moder {6012.06  (grph30.46);}         &
+  &          composition {                         &
+  &          6012.06 2.0E-3;                       &
+  &                       }                        &
   &            }"
 
   ! CE Neutron Database specification
@@ -83,15 +83,15 @@ contains
     @assertTrue(H1 % hasThData)
     @assertFalse(O16 % hasThData)
 
-    @assertFalse(H1 % thData % hasElastic)
+    @assertFalse(H1 % thData(1) % hasElastic)
 
     @assertTrue(C12 % hasThData)
-    @assertTrue(C12 % thData % hasElastic)
-    @assertTrue(C12 % thData % isCoherent)
+    @assertTrue(C12 % thData(1) % hasElastic)
+    @assertTrue(C12 % thData(1) % isCoherent)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test energy bounds
-    eBounds = H1 % thData % getEbounds('inelastic')
+    eBounds = H1 % thData(1) % getEbounds('inelastic')
 
     @assertEqual(1.000E-11_defReal, eBounds(1), TOL)
     @assertEqual(1.000E-5_defReal,  eBounds(2), TOL)
@@ -99,7 +99,7 @@ contains
     @assertEqual(O16 % SabInel(1), ZERO)
     @assertEqual(O16 % SabInel(2), ZERO)
 
-    eBounds = C12 % thData % getEbounds('elastic')
+    eBounds = C12 % thData(1) % getEbounds('elastic')
 
     @assertEqual(1.000E-11_defReal, eBounds(1), TOL)
     @assertEqual(4.9000E-06,  eBounds(2), TOL)
@@ -107,10 +107,10 @@ contains
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test sampling from tables
 
-    val = H1 % thData % getInelXS(1.8E-6_defReal)
+    val = H1 % thData(1) % getInelXS(1.8E-6_defReal)
     @assertEqual(21.018654322_defReal, val, TOL)
 
-    val = H1 % thData % getElXS(1.8E-6_defReal)
+    val = H1 % thData(1) % getElXS(1.8E-6_defReal)
     @assertEqual(ZERO, val, TOL)
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
@@ -129,7 +129,7 @@ contains
     nuc  => ceNeutronNuclide_CptrCast(data % getNuclide(2))
     nuclideCache(2) % E_tot = ONE
 
-    call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, p % pRNG)
+    call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, ZERO, p % pRNG)
 
     @assertEqual(ONE, 21.05810233858_defReal/ microXSs % total,          TOL)
     @assertEqual(ONE, 21.01865432_defReal / microXSs % inelasticScatter, TOL)

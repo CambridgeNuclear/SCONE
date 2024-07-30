@@ -195,7 +195,7 @@ contains
     if (present(fissile))   self % fissile = fissile
     if (present(matIdx))    self % matIdx  = matIdx
     if (present(hasTMS))    self % hasTMS  = hasTMS
-    if (present(temp))      self % kT = (kBoltzmann * temp) / joulesPerMeV
+    if (present(temp))      self % kT      = (kBoltzmann * temp) / joulesPerMeV
 
     if (present(eUpperSab)) then
       if (eUpperSab < ZERO) call fatalError (Here, 'Upper Sab energy limit of material '&
@@ -334,7 +334,7 @@ contains
         else
 
           ! Update nuclide cache if needed
-          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
+          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, self % kT, rand)
           totNucXS = nucCache % xss % total
 
         end if
@@ -366,7 +366,7 @@ contains
             if (eMax < eRel) eRel = eMax
 
             ! Get relative energy nuclide cross section
-            call self % data % updateTotalNucXS(eRel, nucIdx, rand)
+            call self % data % updateTotalNucXS(eRel, nucIdx, self % kT, rand)
 
             ! Calculate acceptance probability using ratio of relative energy xs to temperature majorant
             P_acc = nucCache % xss % total * nucCache % doppCorr / totNucXS

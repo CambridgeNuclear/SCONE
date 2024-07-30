@@ -119,6 +119,7 @@ module aceNeutronDatabase_class
     procedure :: initMajorant
     procedure :: updateTotalTempMajXS
     procedure :: updateRelEnMacroXSs
+    procedure :: makeNuclideName
 
   end type aceNeutronDatabase
 
@@ -209,7 +210,7 @@ contains
     integer(shortInt), intent(in)         :: MT
     integer(shortInt), intent(in)         :: idx
     class(reactionHandle), pointer        :: reac
-    integer(shortInt)                     :: idxMT
+    integer(shortInt)                     :: idxMT, sabIdx
 
     ! Catch case of invalid reaction
     !   MT < 0 -> material reaction
@@ -231,13 +232,15 @@ contains
       reac => self % nuclides(idx) % elasticScatter
 
     else if (MT == N_N_ThermEL) then
-      reac => self % nuclides(idx) % thData % elasticOut
+      sabIdx  = cache_nuclideCache(idx) % sabIdx
+      reac => self % nuclides(idx) % thData(sabIdx) % elasticOut
 
     else if (MT == N_fission) then
       reac => self % nuclides(idx) % fission
 
     else if (MT == N_N_ThermINEL) then
-      reac => self % nuclides(idx) % thData % inelasticOut
+      sabIdx  = cache_nuclideCache(idx) % sabIdx
+      reac => self % nuclides(idx) % thData(sabIdx) % inelasticOut
 
     else
       ! Find index of MT reaction
@@ -467,7 +470,7 @@ contains
 
           ! Update if needed
           if (cache_nuclideCache(nucIdx) % E_tot /= E) then
-            call self % updateTotalNucXS(E, nucIdx, mat % T, rand)
+            call self % updateTotalNucXS(E, nucIdx, mat % kT, rand)
           end if
 
           ! Add microscopic XSs
@@ -520,7 +523,7 @@ contains
 
           ! Update if needed
           if (cache_nuclideCache(nucIdx) % E_tail /= E .or. cache_nuclideCache(nucIdx) % E_tot /= E) then
-            call self % updateMicroXSs(E, nucIdx, mat % T, rand)
+            call self % updateMicroXSs(E, nucIdx, mat % kT, rand)
           end if
 
           ! Add microscopic XSs
@@ -587,7 +590,7 @@ contains
 
             ! Update if needed
             if (nucCache % E_tail /= eRel .or. nucCache % E_tot /= eRel) then
-              call self % updateMicroXSs(eRel, nucIdx, mat % T, rand)
+              call self % updateMicroXSs(eRel, nucIdx, mat % kT, rand)
             end if
 
             ! Add microscopic XSs
@@ -614,11 +617,11 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateTotalNucXS(self, E, nucIdx, T, rand)
+  subroutine updateTotalNucXS(self, E, nucIdx, kT, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
-    real(defReal), intent(in)             :: T
+    real(defReal), intent(in)             :: kT
     class(RNG), optional, intent(inout)   :: rand
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
@@ -626,7 +629,7 @@ contains
 
       ! Check if the nuclide needs ures probability tables or S(a,b) at this energy
       if (nuc % needsUrr(E) .or. nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
-        call self % updateMicroXSs(E, nucIdx, T, rand)
+        call self % updateMicroXSs(E, nucIdx, kT, rand)
 
       else
         nucCache % E_tot  = E
@@ -645,11 +648,11 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateMicroXSs(self, E, nucIdx, T, rand)
+  subroutine updateMicroXSs(self, E, nucIdx, kT, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: nucIdx
-    real(defReal), intent(in)             :: T
+    real(defReal), intent(in)             :: kT
     class(RNG), optional, intent(inout)   :: rand
 
     associate (nucCache => cache_nuclideCache(nucIdx), &
@@ -679,8 +682,8 @@ contains
         end associate
 
       ! Check if S(a,b) should be read
-      elseif (nucCache % needsSabEl .or. nucCache % needsSabInel) then
-        call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E, T, rand)
+      elseif (nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
+        call nuc % getThXSs(nucCache % xss, nucCache % idx, nucCache % f, E, kT, rand)
 
       else
         call nuc % microXSs(nucCache % xss, nucCache % idx, nucCache % f)
@@ -763,15 +766,15 @@ contains
     type(aceSabCard)                                 :: ACE_Sab1, ACE_Sab2
     character(pathLen)                               :: aceLibPath
     character(nameLen)                               :: name, name_file1, name_file2, nucDBRC_temp
-    character(:), allocatable                        :: zaid, file
-    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx1, idx2
+    integer(shortInt)                                :: i, j, envFlag, nucIdx, idx, idx1, idx2
     integer(shortInt)                                :: maxNuc
     logical(defBool)                                 :: isFissileMat
     integer(shortInt),dimension(:),allocatable       :: nucIdxs, zaidDBRC
     character(nameLen),dimension(:),allocatable      :: nucDBRC
     real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
                                                         eLowURR, eLowUrrNuc, alpha, &
-                                                        deltakT, eUpper, eLower
+                                                        deltakT, eUpper, eLower, kT
+    real(defReal), dimension(2)                      :: sabT
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
 
@@ -799,19 +802,7 @@ contains
 
       ! Add all nuclides in material to the map
       do j = 1, size(mat % nuclides)
-        name = trim(mat % nuclides(j) % toChar())
-        if (mat % nuclides(j) % hasSab) then
-          zaid = trim(mat % nuclides(j) % toChar())
-          file = trim(mat % nuclides(j) % file_Sab1)
-          name = zaid // '+' // file
-          deallocate(zaid, file)
-          ! Attach second Sab file for stochastic mixing
-          if (mat % nuclides(j) % sabMix) then
-            file = trim(mat % nuclides(j) % file_Sab2)
-            name = name // '?' // file
-            deallocate(file)
-          end if
-        end if
+        name = self % makeNuclideName(mat % nuclides(j))
         call nucSet % add(name, IN_SET)
       end do
     end do
@@ -871,7 +862,7 @@ contains
     do while (i /= nucSet % end())
 
       idx1 = index(nucSet % atKey(i),'+')
-      idx2 = index(nucSet % atKey(i),'?')
+      idx2 = index(nucSet % atKey(i),'#')
       if (idx1 /= 0) then
         name = trim(nucSet % atKey(i))
         if (idx2 == 0) then
@@ -888,7 +879,7 @@ contains
       if(loud) then
         print '(A)', "Building: "// trim(name)// " with index: " //numToChar(nucIdx)
         if (idx1 /= 0 .and. idx2 == 0) &
-                print '(A)', "including S(alpha,beta) tables with file: " //trim(name_file1)
+                print '(A)', "including S(alpha,beta) table with file: " //trim(name_file1)
         if (idx1 /= 0 .and. idx2 /= 0) &
                 print '(A)', "including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2)
       end if
@@ -934,22 +925,29 @@ contains
       mat => mm_getMatPtr(i)
 
       ! Load nuclide indices on storage space
-      ! Find if material is fissile
+      ! Find if material is fissile and if stochastic
+      ! mixing temperature bounds are respected
       isFissileMat = .false.
       ! Loop over nuclides
       do j = 1, size(mat % nuclides)
-        name = trim(mat % nuclides(j) % toChar())
-
-        if (mat % nuclides(j) % hasSab) then
-          zaid = trim(mat % nuclides(j) % toChar())
-          file = trim(mat % nuclides(j) % file_Sab)
-          name = zaid // '+' // file
-          deallocate(zaid, file)
-        end if
-
+        name = self % makeNuclideName(mat % nuclides(j))
+        
         ! Find nuclide definition to see if fissile
+        ! Also used for checking stochastic mixing bounds
         nucIdxs(j) = nucSet % get(name)
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
+          
+        ! Check to ensure stochastic mixing temperature 
+        ! is bounded by Sab temperatures
+        if (mat % nuclides(j) % sabMix) then
+          sabT = self % nuclides(nucIdxs(j)) % getSabTBounds()
+          kT = mat % T * kBoltzmann / joulesPerMeV
+          if ((kT < sabT(1)) .or. (kT > sabT(2))) call fatalError(Here,&
+                'Material temperature must be bounded by the provided S(alpha,beta) data. '//&
+                'The material temperature is '//numToChar(kT * joulesPerMeV / kBoltzmann)//&
+                'K while the data bounds are '//numToChar(sabT(1) * joulesPerMeV / kBoltzmann)//&
+                'K and '//numToChar(sabT(2) * joulesPerMeV / kBoltzmann)//'K.')
+        end if
 
       end do
 
@@ -1029,6 +1027,39 @@ contains
     call aceLib_kill()
 
   end subroutine init
+
+  !!
+  !! Makes a nuclide's name 
+  !! Uniquely identifies nuclides with S(alpha,beta) data
+  !! variants, including stochastic mixing
+  !!
+  function makeNuclideName(self, nuclide) result(name)
+    class(aceNeutronDatabase), intent(in) :: self
+    type(nuclideInfo), intent(in)         :: nuclide
+    character(nameLen)                    :: name
+    character(:), allocatable             :: file
+        
+    name = trim(nuclide % toChar())
+
+    ! Name is extended if there is S(alpha,beta) to 
+    ! uniquely identify from data without thermal
+    ! scattering
+    if (nuclide % hasSab) then
+ 
+      file = trim(nuclide % file_Sab1)
+      name = trim(name) // '+' // file
+      deallocate(file)
+     
+      ! Attach second Sab file for stochastic mixing
+      if (nuclide % sabMix) then
+        file = trim(nuclide % file_Sab2)
+        name = trim(name) // '#' // file
+        deallocate(file)
+      end if
+ 
+    end if
+
+  end function makeNuclideName
 
   !!
   !!  Create list of nuclides with same ZAID, but possibly different temperatures
