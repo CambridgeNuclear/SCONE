@@ -385,20 +385,25 @@ contains
       ! Calculate the track centre
       rC = r0 + length * HALF * mu0
       
-      ! Set new cell's position
-      if (.not. arrays % found(cIdx)) then
+      ! Compute the track centroid and entry point in local co-ordinates
+      ! Convert to floats for speed
+      ! If region has not been visited, use ray's halfway point as centroid
+      if (arrays % found(cIdx)) then
+        mid = arrays % getCentroid(cIdx)
+        rNorm = rC - mid
+        rNormFlt = real(rNorm,defFlt)
+        r0NormFlt = real(r0 - mid,defFlt)
+      else
+        ! Set new cell's position
         call arrays % newFound(cIdx, rC)
+        rNorm = ZERO
+        rNormFlt = 0.0_defFlt
+        r0NormFlt = -real(HALF * mu0 * length,defFlt)
       end if
       
       call arrays % getSourcePointer(cIdx, source)
       call arrays % getSourceXYZPointers(cIdx, sourceX, sourceY, sourceZ)
-      mid = arrays % getCentroid(cIdx)
 
-      ! Compute the track centroid and entry point in local co-ordinates
-      ! Convert to floats for speed
-      rNorm = rC - mid
-      rNormFlt = real(rNorm,defFlt)
-      r0NormFlt = real(r0 - mid,defFlt)
 
       ! Calculate source terms
       !$omp simd aligned(sourceX, sourceY, sourceZ)

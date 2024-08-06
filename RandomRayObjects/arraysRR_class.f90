@@ -266,9 +266,6 @@ contains
       self % missPolicy = srcPolicy
     end if
 
-    print *, self % volPolicy
-    print *, self % missPolicy
-
     ! Assume bounding box of the geometry is filled (and a box)
     ! Can this be relaxed in future?
     bb = self % geom % bounds()
@@ -1082,7 +1079,7 @@ contains
       vol = real(self % volume(cIdx), defFlt)
       
       ! Save effort by skipping normalisation if volume is too small
-      if (vol < volume_tolerance) then
+      if (.not. self % found(cIdx)) then
         do g = 1, self % nG
           idx = self % nG * (cIdx - 1) + g
           self % scalarFlux(idx) = 0.0_defFlt
@@ -1095,6 +1092,7 @@ contains
         cycle
       end if
       
+      if (vol < volume_tolerance) cycle
       invVol = ONE / self % allVolumeTracks(cIdx)
         
       ! Update centroids
@@ -1117,7 +1115,7 @@ contains
 
         idx = self % nG * (cIdx - 1) + g
         
-        if (hit) then
+        if (hit .and. (vol > volume_tolerance)) then
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V
           self % scalarX(idx) = self % scalarX(idx) * norm_V
           self % scalarY(idx) = self % scalarY(idx) * norm_V
@@ -1134,7 +1132,7 @@ contains
           
             ! Presumes non-zero total XS
             sigGG = self % XSData % getScatterXS(matIdx, g, g)
-            if ((sigGG < 0) .and. (total(g) > 0)) then
+            if (sigGG < 0) then
               D = -self % rho * sigGG / total(g)
             else
               D = 0.0_defFlt
@@ -1186,6 +1184,11 @@ contains
         !else
         !  self % scalarFlux(idx) = self % scalarFlux(idx) + &
         !       real(self % source(idx) * self % lengthSquared(cIdx) * norm / (2 * vol), defFlt)
+        !end if
+        !if (it < 20) then
+        !  self % scalarX(idx) = 0.0_defFlt
+        !  self % scalarY(idx) = 0.0_defFlt
+        !  self % scalarZ(idx) = 0.0_defFlt
         !end if
 
       end do
@@ -1467,9 +1470,14 @@ contains
     condY = 0
     condZ = 0
 
+    ! Trying out simpler matrix test
     if (momVec(xx) > condition_tolerance) condX = 1
     if (momVec(yy) > condition_tolerance) condY = 1
     if (momVec(zz) > condition_tolerance) condZ = 1
+    !condX = 1
+    !condY = 1
+    !DEFINITELY DO THIS FOR C5G7 WITH LOW POP
+    !condZ = 0
 
     ! Map conditions to test variable
     inversionTest = condX * 4 + condY * 2 + condZ
@@ -1579,6 +1587,7 @@ contains
     ! Check whether to continue in this cell
     if (matIdx > self % XSData % getNMat()) return
     if (.not. self % XSData % isFissile(matIdx)) return
+    if (.not. self % found(cIdx)) return
     vol = self % volume(cIdx)
     if (vol < volume_tolerance) return
 
