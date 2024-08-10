@@ -283,7 +283,7 @@ contains
     else
       self % simulationType = linearAni
     end if
-    if (ani >= 0) self % ani = ani
+    self % ani = ani
 
     ! Allocate and initialise arrays
     allocate(self % scalarFlux(self % nG * self % nCells))
@@ -837,6 +837,7 @@ contains
     integer(shortInt), intent(in)           :: cIdx
     real(defReal), dimension(3), intent(in) :: r
 
+    ! Remove critical if this is to go in the lock
     !$omp critical 
     self % cellFound(cIdx) = .true.
     self % cellPos(:,cIdx) = r
@@ -1062,10 +1063,10 @@ contains
 
       ! Decide volume to use
       select case(self % volPolicy)
-        case(simAverage)
-          self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
         case(naive)
           self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
+        case(simAverage)
+          self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
         case(hybrid)
           if (isSrc) then
             self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
@@ -1079,7 +1080,8 @@ contains
       vol = real(self % volume(cIdx), defFlt)
       
       ! Save effort by skipping normalisation if volume is too small
-      if (.not. self % found(cIdx)) then
+      !if ((.not. self % found(cIdx)) .or. (vol < volume_tolerance)) then
+      if (vol < volume_tolerance) then
         do g = 1, self % nG
           idx = self % nG * (cIdx - 1) + g
           self % scalarFlux(idx) = 0.0_defFlt
@@ -1092,7 +1094,6 @@ contains
         cycle
       end if
       
-      if (vol < volume_tolerance) cycle
       invVol = ONE / self % allVolumeTracks(cIdx)
         
       ! Update centroids
@@ -1115,7 +1116,8 @@ contains
 
         idx = self % nG * (cIdx - 1) + g
         
-        if (hit .and. (vol > volume_tolerance)) then
+        !if (hit .and. (vol > volume_tolerance)) then
+        if (hit) then
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V
           self % scalarX(idx) = self % scalarX(idx) * norm_V
           self % scalarY(idx) = self % scalarY(idx) * norm_V
@@ -1145,15 +1147,20 @@ contains
           ! Decide flux treatment to use
           associate(mat => self % momMat((mIdx + 1):(mIdx + matSize)))
           select case(self % missPolicy)
+            ! Note: this is policy to use the source, not policy for hitting a fixed source
             case(srcPolicy)
               self % scalarFlux(idx) = self % source(idx) / total(g)
+              ! I THINK OPENMC SETS MOMENTS TO ZERO
+              self % scalarX(idx) = 0.0_defFlt
+              self % scalarY(idx) = 0.0_defFlt
+              self % scalarZ(idx) = 0.0_defFlt
               ! Need to multiply source gradients by moment matrix
-              self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
-                      mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
-              self % scalarY(idx) = real(mat(xy) *self % sourceX(idx) + &
-                      mat(yy) * self % sourceY(idx) + mat(yz) * self % sourceZ(idx),defFlt)/ total(g)
-              self % scalarZ(idx) = real(mat(xz) *self % sourceX(idx) + &
-                      mat(yz) * self % sourceY(idx) + mat(zz) * self % sourceZ(idx),defFlt)/ total(g)
+              !self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
+              !        mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
+              !self % scalarY(idx) = real(mat(xy) *self % sourceX(idx) + &
+              !        mat(yy) * self % sourceY(idx) + mat(yz) * self % sourceZ(idx),defFlt)/ total(g)
+              !self % scalarZ(idx) = real(mat(xz) *self % sourceX(idx) + &
+              !        mat(yz) * self % sourceY(idx) + mat(zz) * self % sourceZ(idx),defFlt)/ total(g)
             case(prevPolicy)
               self % scalarFlux(idx) = self % prevFlux(idx)
               self % scalarX(idx) = self % prevX(idx)
@@ -1167,29 +1174,29 @@ contains
                 self % scalarZ(idx) = self % prevZ(idx)
               else
                 self % scalarFlux(idx) = self % source(idx) / total(g)
+                ! I THINK OPENMC SETS MOMENTS TO ZERO
+                self % scalarX(idx) = 0.0_defFlt
+                self % scalarY(idx) = 0.0_defFlt
+                self % scalarZ(idx) = 0.0_defFlt
                 ! Need to multiply source gradients by moment matrix
-                self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
-                      mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
-                self % scalarY(idx) = real(mat(xy) *self % sourceX(idx) + &
-                      mat(yy) * self % sourceY(idx) + mat(yz) * self % sourceZ(idx),defFlt)/ total(g)
-                self % scalarZ(idx) = real(mat(xz) *self % sourceX(idx) + &
-                      mat(yz) * self % sourceY(idx) + mat(zz) * self % sourceZ(idx),defFlt)/ total(g)
+                !self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
+                !      mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
+                !self % scalarY(idx) = real(mat(xy) *self % sourceX(idx) + &
+                !      mat(yy) * self % sourceY(idx) + mat(yz) * self % sourceZ(idx),defFlt)/ total(g)
+                !self % scalarZ(idx) = real(mat(xz) *self % sourceX(idx) + &
+                !      mat(yz) * self % sourceY(idx) + mat(zz) * self % sourceZ(idx),defFlt)/ total(g)
               end if
             case default
               call fatalError(Here,'Unsupported miss handling requested')
           end select
           end associate
         end if
-        !! Alternatively, handle unidentified/void regions
-        !else
-        !  self % scalarFlux(idx) = self % scalarFlux(idx) + &
-        !       real(self % source(idx) * self % lengthSquared(cIdx) * norm / (2 * vol), defFlt)
-        !end if
-        !if (it < 20) then
-        !  self % scalarX(idx) = 0.0_defFlt
-        !  self % scalarY(idx) = 0.0_defFlt
-        !  self % scalarZ(idx) = 0.0_defFlt
-        !end if
+        
+        if (it < 10) then
+          self % scalarX(idx) = 0.0_defFlt
+          self % scalarY(idx) = 0.0_defFlt
+          self % scalarZ(idx) = 0.0_defFlt
+        end if
 
       end do
 
@@ -1564,6 +1571,7 @@ contains
     !$omp end parallel do
 
     k1 = k0 * fissTotal / prevFissTotal 
+    if ((k1 <= 0) .or. (k1 > 5)) k1 = k0
 
   end function calculateKeff
   
@@ -1587,7 +1595,7 @@ contains
     ! Check whether to continue in this cell
     if (matIdx > self % XSData % getNMat()) return
     if (.not. self % XSData % isFissile(matIdx)) return
-    if (.not. self % found(cIdx)) return
+    !if (.not. self % found(cIdx)) return
     vol = self % volume(cIdx)
     if (vol < volume_tolerance) return
 

@@ -17,7 +17,7 @@ module constantsRR
   ! Parameter for when to ignore components of spatial moment matrices
   ! or when the matrix is poorly conditioned
   real(defReal), parameter, public :: condition_tolerance = 1.0E-6, &
-                                      det_tolerance = 1.0E-10
+                                      det_tolerance = 1.0E-8
   
   ! Parameters for indexing into matrices and spatial moments with linear sources
   integer(shortInt), parameter :: x = 1, y = 2, z = 3, nDim = 3, &
