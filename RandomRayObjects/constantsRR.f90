@@ -12,12 +12,12 @@ module constantsRR
   integer(shortInt), parameter, public :: flatIso = 1, linearIso = 2, flatAni = 3, linearAni = 4
   
   ! Parameter for when to skip a tiny volume
-  real(defReal), parameter, public :: volume_tolerance = 1.0E-12
+  real(defReal), parameter, public :: volume_tolerance = 1.0E-10
 
   ! Parameter for when to ignore components of spatial moment matrices
   ! or when the matrix is poorly conditioned
-  real(defReal), parameter, public :: condition_tolerance = 1.0E-10, &
-                                      det_tolerance = 1.0E-12
+  real(defReal), parameter, public :: condition_tolerance = 1.0E-6, &
+                                      det_tolerance = 1.0E-8
   
   ! Parameters for indexing into matrices and spatial moments with linear sources
   integer(shortInt), parameter :: x = 1, y = 2, z = 3, nDim = 3, &

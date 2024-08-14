@@ -160,7 +160,7 @@ module arraysRR_class
     procedure :: wasHit
     procedure :: getCellHitRate
     procedure :: getSimulationType
-    procedure :: found
+    procedure :: wasFound
     procedure :: hasFixedSource
     procedure :: getFluxAtAPoint
     
@@ -270,9 +270,6 @@ contains
       self % missPolicy = srcPolicy
     end if
 
-    print *, self % volPolicy
-    print *, self % missPolicy
-
     ! Assume bounding box of the geometry is filled (and a box)
     ! Can this be relaxed in future?
     bb = self % geom % bounds()
@@ -290,7 +287,7 @@ contains
     else
       self % simulationType = linearAni
     end if
-    if (ani >= 0) self % ani = ani
+    self % ani = ani
 
     ! Allocate and initialise arrays
     allocate(self % scalarFlux(self % nG * self % nCells))
@@ -935,14 +932,14 @@ contains
   !!
   !! Has a cell ever been found?
   !!
-  elemental function found(self, cIdx) result(wasFound)
+  elemental function wasFound(self, cIdx) result(found)
     class(arraysRR), intent(in)   :: self
     integer(shortInt), intent(in) :: cIdx
-    logical(defBool)              :: wasFound
+    logical(defBool)              :: found
     
-    wasFound = self % cellFound(cIdx)
+    found = self % cellFound(cIdx)
   
-  end function found
+  end function wasFound
 
   !!
   !! Note that a new cell has been found
@@ -952,6 +949,7 @@ contains
     integer(shortInt), intent(in)           :: cIdx
     real(defReal), dimension(3), intent(in) :: r
 
+    ! Remove critical if this is to go in the lock
     !$omp critical 
     self % cellFound(cIdx) = .true.
     self % cellPos(:,cIdx) = r
@@ -1042,14 +1040,14 @@ contains
     class(arraysRR), intent(inout)            :: self
     integer(shortInt), intent(in)             :: it
     real(defReal)                             :: norm, normVol
-    real(defReal), save                       :: vol
+    real(defReal), save                       :: vol, volAve, volNaive
     real(defFlt), save                        :: sigGG, D, norm_V
     real(defFlt), dimension(:), pointer, save :: total
     integer(shortInt), save                   :: g, matIdx, idx
     integer(shortInt)                         :: cIdx
     logical(defBool), save                    :: hit, isSrc
     character(100), parameter :: Here = 'normaliseFluxAndVolumeLinearIso (arraysRR_class.f90)'
-    !$omp threadprivate(total, vol, norm_V, idx, g, matIdx, sigGG, D, hit, isSrc)
+    !$omp threadprivate(total, vol, norm_V, idx, g, matIdx, sigGG, D, hit, isSrc, volAve, volNaive)
 
     norm = ONE / self % lengthPerIt
     normVol = ONE / (self % lengthPerIt * it)
@@ -1060,49 +1058,48 @@ contains
       
       hit = self % wasHit(cIdx)
       isSrc = self % hasFixedSource(cIdx)
+      
       self % allVolumeTracks(cIdx) = self % allVolumeTracks(cIdx) + &
               self % volumeTracks(cIdx)
+      self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
+      volAve = self % volume(cIdx)
+      volNaive = self % volumeTracks(cIdx) * norm
+      self % volumeTracks(cIdx) = ZERO
 
       ! Decide volume to use
       select case(self % volPolicy)
         case(simAverage)
-          self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
+          vol = volAve
         case(naive)
-          self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
+          vol = volNaive
         case(hybrid)
           if (isSrc) then
-            self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
+            vol = volNaive
           else
-            self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
+            vol = volAve
           end if
         case default
           call fatalError(Here,'Unsupported volume handling requested')
       end select
-      self % volumeTracks(cIdx) = ZERO
-      vol = self % volume(cIdx)
-
-      ! Save effort by skipping normalisation if volume is too small
+      norm_V = real(norm / vol, defFlt)
+      
       if (vol < volume_tolerance) then
         do g = 1, self % nG
-          idx   = self % nG * (cIdx - 1) + g
+          idx = self % nG * (cIdx - 1) + g
           self % scalarFlux(idx) = 0.0_defFlt
         end do
-        cycle
+        cycle 
       end if
-      norm_V = real(norm / vol, defFlt)
 
       call self % XSData % getTotalPointer(matIdx, total)
 
       do g = 1, self % nG
 
         idx   = self % nG * (cIdx - 1) + g
-        self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V 
 
-        ! Apply the standard MoC post-sweep treatment and
-        ! stabilisation for negative XSs
-        !if (matIdx <= self % XSData % getNMat() .and. total(g) > 0) then
-          
         if (hit) then
+          
+          self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V 
           self % scalarFlux(idx) = self % scalarFlux(idx) / total(g)
           
           ! Presumes non-zero total XS
@@ -1130,9 +1127,11 @@ contains
             case default
               call fatalError(Here,'Unsupported miss handling requested')
           end select
+
         end if
         ! Alternatively, handle unidentified/void regions
         !else
+        !  self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V 
         !  self % scalarFlux(idx) = self % scalarFlux(idx) + &
         !       real(self % source(idx) * self % lengthSquared(cIdx) * norm / (2 * vol), defFlt)
         !end if
@@ -1150,18 +1149,17 @@ contains
   subroutine normaliseFluxAndVolumeLinearIso(self, it)
     class(arraysRR), intent(inout)            :: self
     integer(shortInt), intent(in)             :: it
-    real(defFlt)                              :: norm
-    real(defReal)                             :: normVol
-    real(defReal), save                       :: invVol
-    real(defFlt), save                        :: vol, norm_V, D, sigGG
+    real(defReal)                             :: norm, normVol
+    real(defReal), save                       :: vol, invVol, volNaive, volAve
+    real(defFlt), save                        :: norm_V, D, sigGG
     real(defFlt), dimension(:), pointer, save :: total
     integer(shortInt)                         :: cIdx
     integer(shortInt), save                   :: g, matIdx, idx, dIdx, mIdx
     logical(defBool), save                    :: hit, isSrc
     character(100), parameter :: Here = 'normaliseFluxAndVolumeLinearIso (arraysRR_class.f90)'
-    !$omp threadprivate(total, vol, idx, mIdx, dIdx, g, matIdx, invVol, norm_V, D, sigGG, hit, isSrc)
+    !$omp threadprivate(total, vol, idx, mIdx, dIdx, g, matIdx, invVol, norm_V, D, sigGG, hit, isSrc, volNaive, volAve)
 
-    norm = real(ONE / self % lengthPerIt, defFlt)
+    norm = ONE / self % lengthPerIt
     normVol = ONE / (self % lengthPerIt * it)
 
     !$omp parallel do schedule(static)
@@ -1172,28 +1170,48 @@ contains
 
       hit = self % wasHit(cIdx)
       isSrc = self % hasFixedSource(cIdx)
+
       self % allVolumeTracks(cIdx) = self % allVolumeTracks(cIdx) + &
               self % volumeTracks(cIdx)
+      self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
+      volAve = self % volume(cIdx)
+      volNaive = self % volumeTracks(cIdx) * norm
+      self % volumeTracks(cIdx) = ZERO
 
       ! Decide volume to use
       select case(self % volPolicy)
-        case(simAverage)
-          self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
         case(naive)
-          self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
+          vol = volNaive
+        case(simAverage)
+          vol = volAve
         case(hybrid)
           if (isSrc) then
-            self % volume(cIdx) = self % volumeTracks(cIdx) / self % lengthPerIt
+            vol = volNaive
           else
-            self % volume(cIdx) = self % allVolumeTracks(cIdx) * normVol
+            vol = volAve
           end if
         case default
           call fatalError(Here,'Unsupported volume handling requested')
       end select
-      self % volumeTracks(cIdx) = ZERO
-      vol = real(self % volume(cIdx), defFlt)
+      invVol = ONE / self % allVolumeTracks(cIdx)
+       
+      ! Update geometric information provided volume has been visited
+      if (self % allVolumeTracks(cIdx) > ZERO) then
+        ! Update centroids
+        self % centroid(dIdx + x) =  self % centroidTracks(dIdx + x) * invVol
+        self % centroid(dIdx + y) =  self % centroidTracks(dIdx + y) * invVol
+        self % centroid(dIdx + z) =  self % centroidTracks(dIdx + z) * invVol
       
-      ! Save effort by skipping normalisation if volume is too small
+        ! Update spatial moments
+        self % momMat(mIdx + xx) = self % momTracks(mIdx + xx) * invVol
+        self % momMat(mIdx + xy) = self % momTracks(mIdx + xy) * invVol
+        self % momMat(mIdx + xz) = self % momTracks(mIdx + xz) * invVol
+        self % momMat(mIdx + yy) = self % momTracks(mIdx + yy) * invVol
+        self % momMat(mIdx + yz) = self % momTracks(mIdx + yz) * invVol
+        self % momMat(mIdx + zz) = self % momTracks(mIdx + zz) * invVol
+
+      end if
+
       if (vol < volume_tolerance) then
         do g = 1, self % nG
           idx = self % nG * (cIdx - 1) + g
@@ -1202,25 +1220,8 @@ contains
           self % scalarY(idx) = 0.0_defFlt
           self % scalarZ(idx) = 0.0_defFlt
         end do
-        self % centroid((dIdx + x):(dIdx + z)) =  ZERO
-        self % momMat((mIdx + xx):(mIdx + zz)) = ZERO
-        cycle
+        cycle 
       end if
-      
-      invVol = ONE / self % allVolumeTracks(cIdx)
-        
-      ! Update centroids
-      self % centroid(dIdx + x) =  self % centroidTracks(dIdx + x) * invVol
-      self % centroid(dIdx + y) =  self % centroidTracks(dIdx + y) * invVol
-      self % centroid(dIdx + z) =  self % centroidTracks(dIdx + z) * invVol
-      
-      ! Update spatial moments
-      self % momMat(mIdx + xx) = self % momTracks(mIdx + xx) * invVol
-      self % momMat(mIdx + xy) = self % momTracks(mIdx + xy) * invVol
-      self % momMat(mIdx + xz) = self % momTracks(mIdx + xz) * invVol
-      self % momMat(mIdx + yy) = self % momTracks(mIdx + yy) * invVol
-      self % momMat(mIdx + yz) = self % momTracks(mIdx + yz) * invVol
-      self % momMat(mIdx + zz) = self % momTracks(mIdx + zz) * invVol
 
       call self % XSData % getTotalPointer(matIdx, total)
       norm_V = real(norm / vol, defFlt)
@@ -1237,7 +1238,7 @@ contains
 
           ! Apply the standard MoC post-sweep treatment and
           ! stabilisation for negative XSs
-          if (matIdx <= self % XSData % getNMat() .and. total(g) > 0) then
+          !if (matIdx <= self % XSData % getNMat() .and. total(g) > 0) then
           
             self % scalarFlux(idx) = self % scalarFlux(idx) / total(g)
             self % scalarX(idx) = self % scalarX(idx) / total(g)
@@ -1246,7 +1247,7 @@ contains
           
             ! Presumes non-zero total XS
             sigGG = self % XSData % getScatterXS(matIdx, g, g)
-            if ((sigGG < 0) .and. (total(g) > 0)) then
+            if (sigGG < 0) then
               D = -self % rho * sigGG / total(g)
             else
               D = 0.0_defFlt
@@ -1254,13 +1255,18 @@ contains
            
             self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx)/total(g) &
                   + D * self % prevFlux(idx) ) / (1 + D)
-          end if
+          !end if
         else
           ! Decide flux treatment to use
           associate(mat => self % momMat((mIdx + 1):(mIdx + matSize)))
           select case(self % missPolicy)
+            ! Note: this is policy to use the source, not policy for hitting a fixed source
             case(srcPolicy)
               self % scalarFlux(idx) = self % source(idx) / total(g)
+              ! OPENMC SETS MOMENTS TO ZERO
+              !self % scalarX(idx) = 0.0_defFlt
+              !self % scalarY(idx) = 0.0_defFlt
+              !self % scalarZ(idx) = 0.0_defFlt
               ! Need to multiply source gradients by moment matrix
               self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
                       mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
@@ -1281,6 +1287,10 @@ contains
                 self % scalarZ(idx) = self % prevZ(idx)
               else
                 self % scalarFlux(idx) = self % source(idx) / total(g)
+                ! OPENMC SETS MOMENTS TO ZERO
+                !self % scalarX(idx) = 0.0_defFlt
+                !self % scalarY(idx) = 0.0_defFlt
+                !self % scalarZ(idx) = 0.0_defFlt
                 ! Need to multiply source gradients by moment matrix
                 self % scalarX(idx) = real(mat(xx) *self % sourceX(idx) + &
                       mat(xy) * self % sourceY(idx) + mat(xz) * self % sourceZ(idx),defFlt)/ total(g)
@@ -1294,11 +1304,12 @@ contains
           end select
           end associate
         end if
-        !! Alternatively, handle unidentified/void regions
-        !else
-        !  self % scalarFlux(idx) = self % scalarFlux(idx) + &
-        !       real(self % source(idx) * self % lengthSquared(cIdx) * norm / (2 * vol), defFlt)
-        !end if
+        
+        if (it < 10) then
+          self % scalarX(idx) = 0.0_defFlt
+          self % scalarY(idx) = 0.0_defFlt
+          self % scalarZ(idx) = 0.0_defFlt
+        end if
 
       end do
 
@@ -1584,9 +1595,14 @@ contains
     condY = 0
     condZ = 0
 
+    ! Trying out simpler matrix test
     if (momVec(xx) > condition_tolerance) condX = 1
     if (momVec(yy) > condition_tolerance) condY = 1
     if (momVec(zz) > condition_tolerance) condZ = 1
+    !condX = 1
+    !condY = 1
+    !DEFINITELY DO THIS FOR C5G7 WITH LOW POP
+    !condZ = 0
 
     ! Map conditions to test variable
     inversionTest = condX * 4 + condY * 2 + condZ
@@ -1673,6 +1689,7 @@ contains
     !$omp end parallel do
 
     k1 = k0 * fissTotal / prevFissTotal 
+    if ((k1 <= 0) .or. (k1 > 5)) k1 = k0
 
   end function calculateKeff
   
@@ -1696,8 +1713,8 @@ contains
     ! Check whether to continue in this cell
     if (matIdx > self % XSData % getNMat()) return
     if (.not. self % XSData % isFissile(matIdx)) return
+    if (.not. self % wasFound(cIdx)) return
     vol = self % volume(cIdx)
-    if (vol < volume_tolerance) return
 
     call self % XSData % getNuFissPointer(matIdx, nuSigmaF)
     flux => self % scalarFlux((self % nG * (cIdx - 1) + 1):(self % nG * cIdx))
@@ -1880,7 +1897,6 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt), intent(in)  :: it
     integer(shortInt), intent(in)  :: totalIt
-    integer(shortInt)              :: cIdx
     character(100), parameter      :: Here = 'finaliseFLuxScores (arraysRR_class.f90)'
 
     select case(self % simulationType)
@@ -1891,14 +1907,6 @@ contains
       case default
         call fatalError(Here,'Unsupported simulation type requested')
     end select
-
-    ! Also finalise volume scores
-    ! Ensures naive estimate is not used for post-processed results
-    !$omp parallel do schedule(static)
-    do cIdx = 1, self % nCells
-      self % volume(cIdx) = self % allVolumeTracks(cIdx) / (totalIt * self % lengthPerIt)
-    end do
-    !$omp end parallel do
 
   end subroutine finaliseFluxScores
   

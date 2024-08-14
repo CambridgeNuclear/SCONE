@@ -81,7 +81,7 @@ contains
     call r % build(x, u, 1, ONE)
     call geom % placeCoord(r % coords)
 
-    if (.not. arrays % found(cIdx)) call arrays % newFound(cIdx, x)
+    if (.not. arrays % wasFound(cIdx)) call arrays % newFound(cIdx, x)
 
   end subroutine initialiseRay
   
@@ -232,8 +232,8 @@ contains
       
       ! Set new cell's position. Use half distance across cell
       ! to try and avoid FP error
-      if (.not. arrays % found(cIdx)) then
-        call arrays % newFound(cIdx, r % rGlobal() + length * HALF * r % dirGlobal())
+      if (.not. arrays % wasFound(cIdx)) then
+        call arrays % newFound(cIdx, r % rGlobal() - length * HALF * r % dirGlobal())
       end if
 
       lenFlt = real(length,defFlt)
@@ -386,19 +386,25 @@ contains
       rC = r0 + length * HALF * mu0
       
       ! Set new cell's position
-      if (.not. arrays % found(cIdx)) then
-        call arrays % newFound(cIdx, rC)
+      if (.not. arrays % wasFound(cIdx)) call arrays % newFound(cIdx, rC)
+      
+      ! Compute the track centroid and entry point in local co-ordinates
+      ! Convert to floats for speed
+      ! If region is rarely visited, use ray's halfway point as centroid
+      ! Prevents numerical trouble
+      if (arrays % getVolume(cIdx) > ZERO) then
+        mid = arrays % getCentroid(cIdx)
+        rNorm = rC - mid
+        rNormFlt = real(rNorm,defFlt)
+        r0NormFlt = real(r0 - mid,defFlt)
+      else
+        rNorm = ZERO
+        rNormFlt = 0.0_defFlt
+        r0NormFlt = -real(HALF * mu0 * length,defFlt)
       end if
       
       call arrays % getSourcePointer(cIdx, source)
       call arrays % getSourceXYZPointers(cIdx, sourceX, sourceY, sourceZ)
-      mid = arrays % getCentroid(cIdx)
-
-      ! Compute the track centroid and entry point in local co-ordinates
-      ! Convert to floats for speed
-      rNorm = rC - mid
-      rNormFlt = real(rNorm,defFlt)
-      r0NormFlt = real(r0 - mid,defFlt)
 
       ! Calculate source terms
       !$omp simd aligned(sourceX, sourceY, sourceZ)
@@ -419,7 +425,7 @@ contains
       ! Compute exponentials necessary for angular flux update
       !$omp simd
       do g = 1, nG
-        tau(g) = max(total(g) * lenFlt, 1.0E-8)
+        tau(g) = max(total(g) * lenFlt, 1.0e-8_defFlt)
       end do
       
       !$omp simd
@@ -519,6 +525,7 @@ contains
           call arrays % incrementVolume(cIdx, length)
           call arrays % incrementCentroid(cIdx, rC)
           call arrays % incrementMoments(cIdx, matScore)
+          
 
         call arrays % unsetLock(cIdx)
         if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
