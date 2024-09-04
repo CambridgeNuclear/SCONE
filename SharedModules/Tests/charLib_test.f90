@@ -57,5 +57,5 @@ contains
   end subroutine testSplitChar
 
 
-    
+
 end module charLib_test

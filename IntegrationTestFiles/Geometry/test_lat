@@ -1,23 +1,23 @@
-boundary ( 1 1 2 2 0 0); 
-graph { type shrunk; } 
+boundary ( 1 1 2 2 0 0);
+graph { type shrunk; }
 
 
-surfaces { 
-  squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (1.26 1.26 0.0);} 
-  sqPinBound { id 2; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth  (0.5 0.5 0.0);} 
+surfaces {
+  squareBound { id 1; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (1.26 1.26 0.0);}
+  sqPinBound { id 2; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth  (0.5 0.5 0.0);}
  }
-  
-cells { 
+
+cells {
   sqPinIn {id 1; type simpleCell; surfaces (-2); filltype mat; material uox; }
-  sqPinOut {id 2; type simpleCell; surfaces (2); filltype mat; material water;}  
+  sqPinOut {id 2; type simpleCell; surfaces (2); filltype mat; material water;}
  }
-  
-universes { 
-  root { id 1; type rootUniverse; border 1; fill u<10>;} 
-    
-  // Pin universes 
+
+universes {
+  root { id 1; type rootUniverse; border 1; fill u<10>;}
+
+  // Pin universes
   pin31 { id 31; type pinUniverse; radii (0.5400 0.0 ); fills (mox43 water);}
-  sqPin { id 32; type cellUniverse; cells (1 2);} 
+  sqPin { id 32; type cellUniverse; cells (1 2);}
 
   lat10 {id 10; type latUniverse; shape (2 2 0); pitch (1.26 1.26 0.0); padMat water; map (31 32 32 31);}
 
@@ -25,23 +25,23 @@ universes {
 
 
 nuclearData {
-  materials { 
- 
-    water { 
+  materials {
+
+    water {
       temp 75675;
       composition {  }
       }
-         
-    mox43 { 
-      temp 87476; 
+
+    mox43 {
+      temp 87476;
        composition { }
       }
 
-    uox { 
-       temp 6786; 
+    uox {
+       temp 6786;
        composition { }
-       } 
-   
+       }
+
   }
 }
 

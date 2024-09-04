@@ -135,7 +135,7 @@ contains
 
   end subroutine clean_shortInt
 
-    
+
   !!
   !! Increases size of the stack
   !!

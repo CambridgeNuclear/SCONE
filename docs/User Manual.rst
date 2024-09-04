@@ -703,7 +703,8 @@ bmp
 
 Example: ::
 
-      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10); res (1000 200); output geomZ; what material; }
+      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10);
+                res (1000 200); output geomZ; what material; }
 
 .. note::
    SCONE can be run to visualise geometry without actually doing transport, by
@@ -1234,7 +1235,7 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* radialMap, spherical or cylindrical radial map
+* radialMap (1D map), spherical or cylindrical radial map
 
   - axis (*optional*, default = ``xyz``): ``x``, ``y``, ``z``, is the normal of
     the cylindrical plane, or ``xyz`` to indicate spherical coordinates

@@ -14,7 +14,7 @@ module dictionary_test
 
   !! Parameters
   real(defReal),parameter                  :: realVal     = 3.3_defReal
-  integer(shortInt),parameter              :: boolVal     = 1 
+  integer(shortInt),parameter              :: boolVal     = 1
   integer(shortInt), parameter             :: intVal      = 1_shortInt
   character(nameLen),parameter             :: charNameLen = 'GoFortran_DownWithCpp'
   character(pathLen), parameter            :: charPathLen ='/home/KyloRen/VaderFanFic'
