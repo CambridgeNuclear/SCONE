@@ -74,7 +74,7 @@ materials {
 
 
     fuel {
-      !temp       293;
+      temp       293;
       composition {
         94239.03  4.6982E-2;
         94240.03  2.5852E-3;
@@ -83,10 +83,10 @@ materials {
       }
     }
     water {
-      !temp       293;
+      temp       293;
       composition {
         1001.03  6.6766E-2;
-        08016.03  3.3383E-2;
+        8016.03  3.3383E-2;
       }
       moder {1001.03 (hh2o.04); }
     }

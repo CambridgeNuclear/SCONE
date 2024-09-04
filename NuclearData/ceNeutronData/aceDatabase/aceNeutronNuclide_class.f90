@@ -1027,10 +1027,15 @@ contains
     type(thermalData), pointer, intent(out)      :: ptr
     integer(shortInt), intent(out)               :: idx
     real(defReal)                                :: kT1, kT2
+    character(100), parameter :: Here = "getSabPointer (aceNeutronNuclide_class.f90)"
 
     if (self % stochasticMixing) then
       kT1 = self % thData(1) % getTemperature()
       kT2 = self % thData(2) % getTemperature()
+
+      if ((kT < kT1) .or. (kT > kT2)) call fatalError(Here,&
+              'Requested temperature '//numToChar(kT)//' not in temperature bounds: '//&
+              numToChar(kT1)//' and '//numToChar(kT2))
 
       if ((kT2 - kT)/(kT2 - kT1) > rand % get()) then
         ptr => self % thData(1)

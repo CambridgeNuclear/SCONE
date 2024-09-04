@@ -298,12 +298,10 @@ contains
     character(nameLen), intent(in)                :: name
     integer(shortInt), intent(in)                 :: idx
     class(dictionary), intent(in)                 :: dict
-    character(nameLen), dimension(:), allocatable :: keys, moderKeys
+    character(nameLen), dimension(:), allocatable :: keys, moderKeys, filenames
     integer(shortInt), dimension(:), allocatable  :: temp
-    integer(shortInt)                             :: i
+    integer(shortInt)                             :: i, nSab, foundModer
     class(dictionary),pointer                     :: compDict, moderDict
-    logical(defBool)                              :: hasSab, foundModer
-    character(nameLen), dimension(:), allocatable :: filenames
     character(100), parameter :: Here = 'init_materialItem (materialMenu_mod.f90)'
 
     ! Return to initial state
@@ -336,18 +334,18 @@ contains
     if (dict % isPresent('moder')) then
       moderDict => dict % getDictPtr('moder')
       call moderDict % keys(moderKeys)
-      hasSab = .true.
+      nSab = size(moderKeys)
     else
-      hasSab = .false.
+      nSab = 0
     end if
 
     ! Load definitions
-    foundModer = .false.
+    foundModer = 0
     do i =1,size(keys)
       ! Check if S(a,b) is on and required for that nuclide
-      if (hasSab .and. moderDict % isPresent(keys(i))) then
+      if ((nSab > 0) .and. moderDict % isPresent(keys(i))) then
         self % nuclides(i) % hasSab = .true.
-        foundModer = .true.
+        foundModer = foundModer + 1
 
         ! Check for stochastic mixing - this will depend on the
         ! size of the array of files produce
@@ -371,9 +369,10 @@ contains
     end do
     ! Make sure if a moderator is provided the nuclide is present
     ! in the composition
-    if ((.not. foundModer) .and. hasSab) then
+    if (foundModer /= nSab) then
       print *,moderKeys
-      call fatalError(Here, 'Nuclides requested for S(alpha,beta) are not present in composition')
+      call fatalError(Here, 'Nuclides requested for S(alpha,beta) are not present in composition. '// &
+              numToChar(nSab)//' nuclides requested but '//numToChar(foundModer)//' nuclides found.')
     end if
 
     ! Add colour info if present
@@ -508,6 +507,9 @@ contains
 
     ! Find location of the dot
     dot = scan(str,'.')
+
+    ! Catch leading zeros in ZAID
+    if (str(1:1) == '0') call fatalError(Here, 'ZA ID begins with a 0')
 
     self % Z = charToInt(str(1:dot-4), error = flag)
     self % A = charToInt(str(dot-3:dot-1), error = flag )

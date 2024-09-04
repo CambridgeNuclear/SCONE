@@ -32,7 +32,7 @@ module thermalScatteringData_iTest
   &            }                                   &
   & waterMix {                                     &
   &       temp 500;                                &
-  &       moder {1001.03 (h-h2o.49 h-h2o.50); }    &
+  &       moder {1001.03 (h-h2o.50 h-h2o.49); }    &
   &       composition {                            &
   &       1001.03  2.0E-3;                         &
   &       8016.03  1.0E-3;                         &
@@ -104,6 +104,7 @@ contains
     @assertTrue(H1_2 % hasThData)
     @assertTrue(H1_2 % stochasticMixing)
     @assertEqual(size(H1_2 % thData), 2)
+    @assertFalse(H1_2 % thData(2) % hasElastic)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test energy bounds
@@ -142,6 +143,9 @@ contains
     
     val = H1_2 % thData(1) % getInelXS(1.8E-6_defReal)
     @assertEqual(21.018654322_defReal, val, TOL)
+    
+    val = H1_2 % thData(2) % getInelXS(1.8E-6_defReal)
+    @assertEqual(21.024875613_defReal, val, TOL)
     
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test Getting material XSs

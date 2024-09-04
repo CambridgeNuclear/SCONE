@@ -1,7 +1,7 @@
 !!
 !! 3D BEAVRS benchmark
 !! This is not a fully faithful replica of BEAVRS at HZP:
-!! all rods are fully.
+!! all rods are fully withdrawn.
 !! In reality, some rods are partially inserted.
 !! TODO: add rods in the appropriate assemblies at the
 !!       correct heights!
