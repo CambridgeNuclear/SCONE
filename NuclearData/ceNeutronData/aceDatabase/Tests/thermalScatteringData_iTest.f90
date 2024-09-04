@@ -11,7 +11,7 @@ module thermalScatteringData_iTest
   use neutronXSPackages_class,  only : neutronMicroXSs
   use materialMenu_mod,         only : mm_init => init
   use ceNeutronCache_mod,       only : nuclideCache
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -52,8 +52,6 @@ contains
     class(ceNeutronNuclide), pointer  :: nuc
     type(particle)                    :: p
     type(neutronMicroXSs)             :: microXSs
-    integer(shortInt)                 :: Nin
-    logical(defBool)                  :: gotIt
     real(defReal), parameter          :: TOL = 1.0E-6
 
     ! Prepare dictionaries

@@ -5,7 +5,7 @@ module surfaceShelf_test
   use dictParser_func,    only : charToDict
   use surface_inter,      only : surface
   use surfaceShelf_class, only : surfaceShelf
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -6,7 +6,7 @@ module geomGraph_test
   use intMap_class,       only : intMap
   use uniFills_class,     only : uniFills
   use geomGraph_class,    only : geomGraph
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -91,7 +91,7 @@ contains
 @Test
   subroutine test_shrunk()
     type(geomGraph)   :: graph
-    integer(shortInt) :: i, idx, id
+    integer(shortInt) :: idx, id
     type(dictionary)  :: dict
 
     ! Create input dictionary
@@ -138,7 +138,7 @@ contains
 @Test
   subroutine test_extended()
     type(geomGraph)   :: graph
-    integer(shortInt) :: i, idx, id
+    integer(shortInt) :: idx, id
     type(dictionary)  :: dict
 
     ! Create input dictionary

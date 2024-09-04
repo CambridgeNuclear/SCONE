@@ -13,7 +13,7 @@ jobs:
         compiler: [gfortran8, gfortran9, gfortran10]
     runs-on: ubuntu-20.04
     container:
-      image: mikolajkowalski/scone-test:${{matrix.compiler}}
+      image: mikolajkowalski/scone-test:${{matrix.compiler}}_pfu4
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -27,7 +27,7 @@ jobs:
   build-and-test-debug:
     runs-on: ubuntu-20.04
     container:
-      image: mikolajkowalski/scone-test:gfortran10
+      image: mikolajkowalski/scone-test:gfortran10_pfu4
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -41,7 +41,7 @@ jobs:
   build-and-test-no-openmp:
     runs-on: ubuntu-20.04
     container:
-      image: mikolajkowalski/scone-test:gfortran10
+      image: mikolajkowalski/scone-test:gfortran10_pfu4
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest

@@ -8,7 +8,7 @@ module fissionMG_test
   use reactionHandle_inter, only : reactionHandle
   use reactionMG_inter,     only : reactionMG, reactionMG_CptrCast
   use fissionMG_class,      only : fissionMG, fissionMG_TptrCast
-  use pfUnit_mod
+  use funit
 
   implicit none
 
@@ -33,7 +33,6 @@ contains
     class(reactionMG),pointer     :: mgPtr
     type(fissionMG),pointer       :: fissPtr
     type(dictionary),target       :: dictT
-    type(dictionary),pointer      :: dictPtr
     type(dictDeck)                :: data
     type(RNG)                     :: rand
     real(defReal),parameter :: TOL = 1.0E-6_defReal

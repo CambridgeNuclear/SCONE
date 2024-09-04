@@ -1,7 +1,7 @@
 module energyGrid_test
   use numPrecision
   use universalVariables
-  use pfUnit_mod
+  use funit
   use energyGrid_class, only : energyGrid
 
   implicit none

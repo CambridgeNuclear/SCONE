@@ -1,7 +1,7 @@
 module colours_test
   use numPrecision
   use colours_func, only : rgb24bit
-  use pFUnit_mod
+  use funit
 
   implicit none
 

@@ -7,7 +7,7 @@ module energyGridRegistry_test
                                      define_multipleEnergyGrids, &
                                      get_energyGrid, &
                                      kill_energyGrids
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -2,8 +2,8 @@ module baseMgNeutronDatabase_iTest
 
   use numPrecision
   use endfConstants
-  use pFUnit_mod
   use universalVariables
+  use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use particle_class,     only : particle
@@ -30,20 +30,20 @@ module baseMgNeutronDatabase_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = "   &
-  mat1 { temp 273;                              &
-         composition {                          &
-         1001.03 5.028E-02;                     &
-         8016.03 2.505E-02;                     &
-         }                                      &
-         xsFile ./IntegrationTestFiles/mgMat1;  &
-       }                                        &
-  mat2  { temp 1;                               &
-          composition {                         &
-          92233.03 2.286E-02;                   &
-          8016.03  4.572E-02;                   &
-          }                                     &
-          xsFile ./IntegrationTestFiles/mgMat2; &
-        }"
+  &mat1 { temp 273;                              &
+  &       composition {                          &
+  &       1001.03 5.028E-02;                     &
+  &       8016.03 2.505E-02;                     &
+  &       }                                      &
+  &       xsFile ./IntegrationTestFiles/mgMat1;  &
+  &     }                                        &
+  &mat2  { temp 1;                               &
+  &        composition {                         &
+  &        92233.03 2.286E-02;                   &
+  &        8016.03  4.572E-02;                   &
+  &        }                                     &
+  &        xsFile ./IntegrationTestFiles/mgMat2; &
+  &      }"
 
 
 contains

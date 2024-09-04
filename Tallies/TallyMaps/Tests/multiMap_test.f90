@@ -1,6 +1,6 @@
 module multiMap_test
   use numPrecision
-  use pFUnit_mod
+  use funit
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
   use dictParser_func,         only : charToDict
@@ -26,12 +26,12 @@ contains
   subroutine setUp(this)
     class(test_multiMap), intent(inout) :: this
     type(dictionary)                    :: tempDict
-    character(*),parameter :: def = "                                       &
-      type multiMap;                                                        &
-      maps (map1 map2 map3);                                                &
-      map1 {type spaceMap; axis x; grid unstruct; bins (0.0 1.0 2.0); }     &
-      map2 {type spaceMap; axis y; grid unstruct; bins (0.0 2.0 4.0 6.0); } &
-      map3 {type spaceMap; axis z; grid unstruct; bins (0.0 3.0 6.0); }     "
+    character(*),parameter :: def = "                                        &
+      &type multiMap;                                                        &
+      &maps (map1 map2 map3);                                                &
+      &map1 {type spaceMap; axis x; grid unstruct; bins (0.0 1.0 2.0); }     &
+      &map2 {type spaceMap; axis y; grid unstruct; bins (0.0 2.0 4.0 6.0); } &
+      &map3 {type spaceMap; axis z; grid unstruct; bins (0.0 3.0 6.0); }     "
 
 
     call charToDict(tempDict, def)

@@ -2,7 +2,7 @@ module particle_test
   use numPrecision
   use universalVariables
   use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, verifyType
-  use pFUnit_mod
+  use funit
 
   implicit none
 

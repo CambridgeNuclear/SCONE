@@ -2,7 +2,7 @@ module aceCard_iTest
 
   use numPrecision
   use aceCard_class, only : aceCard
-  use pFUnit_mod
+  use funit
 
   implicit none
 

@@ -6,7 +6,7 @@ module densityResponse_test
   use particle_class,        only : particle, P_NEUTRON, P_PHOTON
   use dictionary_class,      only : dictionary
   use nuclearDatabase_inter, only : nuclearDatabase
-  use pFUnit_mod
+  use funit
 
   implicit none
 

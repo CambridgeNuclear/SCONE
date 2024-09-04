@@ -7,7 +7,7 @@ module microResponse_test
   use dictionary_class,               only : dictionary
   use testNeutronDatabase_class,      only : testNeutronDatabase
   use materialMenu_mod,               only : init
-  use pFUnit_mod
+  use funit
 
   implicit none
 

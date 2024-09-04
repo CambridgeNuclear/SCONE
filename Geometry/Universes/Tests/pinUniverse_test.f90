@@ -9,7 +9,7 @@ module pinUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use pinUniverse_class,  only : pinUniverse, MOVING_IN, MOVING_OUT
-  use pfUnit_mod
+  use funit
   implicit none
 
   ! Parameters
@@ -70,7 +70,6 @@ contains
   !!
 @Test
   subroutine test_misc()
-    real(defReal), dimension(3,3) :: mat
 
     ! Get id
     @assertEqual(7, uni % id())
