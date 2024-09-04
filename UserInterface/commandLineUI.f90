@@ -482,7 +482,7 @@ contains
 
         case default
           call parseError("Unrecognised argument type: "//trim(argTypes(i))//" Must be &
-                              & 'int', 'real' or 'char' ") 
+                              & 'int', 'real' or 'char' ")
       end select
     end do
 

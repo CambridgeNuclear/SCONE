@@ -1,5 +1,5 @@
 
-# Add Source Files to the global list 
+# Add Source Files to the global list
 add_sources( ./energyLawENDF_inter.f90
              ./energyLawENDFslot_class.f90
              ./energyLawENDFfactory_func.f90
@@ -11,7 +11,7 @@ add_sources( ./energyLawENDF_inter.f90
              ./evaporationSpectrum_class.f90
              ./multipleEnergyLaws_class.f90
              ./testEnergyLaw_class.f90)
-             
-# Add Tests to global list 
-add_unit_tests( ./Tests/multipleEnergyLaws_test.f90) 
-             
+
+# Add Tests to global list
+add_unit_tests( ./Tests/multipleEnergyLaws_test.f90)
+

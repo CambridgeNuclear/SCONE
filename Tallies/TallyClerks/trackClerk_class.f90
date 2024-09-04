@@ -36,7 +36,7 @@ module trackClerk_class
   !!   response -> Array of responses
   !!   width    -> Number of responses (# of result bins for each map position)
   !!
-  !! NOTE that maps and filters refer to the pre-transition particle state! This 
+  !! NOTE that maps and filters refer to the pre-transition particle state! This
   !! would lead to wrong results in case of spatial grids (e.g. a Cartesian x-y grid)
   !!
   !! Interface
