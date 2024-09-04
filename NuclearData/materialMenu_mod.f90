@@ -369,6 +369,7 @@ contains
       call compDict % get(self % dens(i), keys(i))
       call self % nuclides(i) % init(keys(i))
     end do
+
     ! Make sure if a moderator is provided the nuclide is present
     ! in the composition
     if ((.not. foundModer) .and. hasSab) then
