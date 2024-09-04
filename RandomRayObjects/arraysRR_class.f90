@@ -414,7 +414,7 @@ contains
     !$omp parallel do
     do cIdx = 1, self % nCells
 
-      if (.not. self % found(cIdx)) cycle
+      if (.not. self % wasFound(cIdx)) cycle
       if (doLinear) invM = self % invertMatrix(cIdx)
 
       do g = 1, self % nG
@@ -430,7 +430,8 @@ contains
         ! Linear source treatment relies on performing a Taylor expansion
         ! of q' = 1/phi = 1/(phi_0 + grad phi * (r - r0)) 
         ! = 1/phi_0 - 1/phi^2_0 * gradPhi * (r - r0)
-        if (doLinear) then
+        !if (doLinear) then
+        if (1 == 0) then
           xMom = real(self % xScores(1, i), defFlt)
           yMom = real(self % yScores(1, i), defFlt)
           zMom = real(self % zScores(1, i), defFlt)
@@ -916,6 +917,7 @@ contains
       realCells = self % nCells
     end if
     hitRate = real(totalHit,defReal) / realCells 
+    !print *, realCells
 
   end function getCellHitRate
 
@@ -980,7 +982,8 @@ contains
     if (allocated(self % fixedSource)) then
       idx1 = self % nG * (cIdx - 1) + 1
       idx2 = self % nG * cIdx
-      hasSrc = any(self % fixedSource(idx1:idx2) > 0.0_defFlt)
+      ! Take an absolute value in case of (possibly desirable?) negative sources
+      hasSrc = any(abs(self % fixedSource(idx1:idx2)) > 0.0_defFlt)
     else
       hasSrc = .false.
     end if
@@ -1083,14 +1086,6 @@ contains
       end select
       norm_V = real(norm / vol, defFlt)
       
-      if (vol < volume_tolerance) then
-        do g = 1, self % nG
-          idx = self % nG * (cIdx - 1) + g
-          self % scalarFlux(idx) = 0.0_defFlt
-        end do
-        cycle 
-      end if
-
       call self % XSData % getTotalPointer(matIdx, total)
 
       do g = 1, self % nG
@@ -1098,6 +1093,14 @@ contains
         idx   = self % nG * (cIdx - 1) + g
 
         if (hit) then
+
+          ! Can hit a cell but with a tiny volume, such that 
+          ! things break a bit - would rather remove this arbitrary
+          ! check in future
+          if (vol < volume_tolerance) then
+            self % scalarFlux(idx) = 0.0_defFlt
+            cycle 
+          end if
           
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V 
           self % scalarFlux(idx) = self % scalarFlux(idx) / total(g)
@@ -1212,17 +1215,6 @@ contains
 
       end if
 
-      if (vol < volume_tolerance) then
-        do g = 1, self % nG
-          idx = self % nG * (cIdx - 1) + g
-          self % scalarFlux(idx) = 0.0_defFlt
-          self % scalarX(idx) = 0.0_defFlt
-          self % scalarY(idx) = 0.0_defFlt
-          self % scalarZ(idx) = 0.0_defFlt
-        end do
-        cycle 
-      end if
-
       call self % XSData % getTotalPointer(matIdx, total)
       norm_V = real(norm / vol, defFlt)
 
@@ -1231,6 +1223,18 @@ contains
         idx = self % nG * (cIdx - 1) + g
         
         if (hit) then
+      
+          ! Can hit a cell but with a tiny volume, such that 
+          ! things break a bit - would rather remove this arbitrary
+          ! check in future
+          if (vol < volume_tolerance) then
+            self % scalarFlux(idx) = 0.0_defFlt
+            self % scalarX(idx) = 0.0_defFlt
+            self % scalarY(idx) = 0.0_defFlt
+            self % scalarZ(idx) = 0.0_defFlt
+            cycle
+          end if
+          
           self % scalarFlux(idx) = self % scalarFlux(idx) * norm_V
           self % scalarX(idx) = self % scalarX(idx) * norm_V
           self % scalarY(idx) = self % scalarY(idx) * norm_V
@@ -1715,6 +1719,7 @@ contains
     if (.not. self % XSData % isFissile(matIdx)) return
     if (.not. self % wasFound(cIdx)) return
     vol = self % volume(cIdx)
+    if (vol < volume_tolerance) return
 
     call self % XSData % getNuFissPointer(matIdx, nuSigmaF)
     flux => self % scalarFlux((self % nG * (cIdx - 1) + 1):(self % nG * cIdx))
@@ -2034,8 +2039,10 @@ contains
     !$omp parallel do reduction(+: res, resSD)
     do cIdx = 1, self % nCells
         
-      vol = self % volume(cIdx) * self % totalVolume
-      if (vol < volume_tolerance) cycle
+      vol = self % volume(cIdx)
+      !if (vol < volume_tolerance) cycle
+      vol = vol * self % totalVolume
+      if (.not. self % wasFound(cIdx)) cycle
 
       ! Fudge a particle state to search tally map
       s % r = self % cellPos(:,cIdx)
@@ -2222,8 +2229,10 @@ contains
       mIdx = self % geom % geom % graph % getMatFromUID(cIdx) 
       if (mIdx /= matIdx) cycle
 
-      vol = self % volume(cIdx) * self % totalVolume
-      if (vol < volume_tolerance) cycle
+      vol = self % volume(cIdx)
+      !if (vol < volume_tolerance) cycle
+      vol = vol * self % totalVolume
+      if (.not. self % wasFound(cIdx)) cycle
 
       do g = 1, self % nG
         integral = integral + self % getFluxScore(cIdx, g) * vol

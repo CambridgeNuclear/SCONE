@@ -243,10 +243,15 @@ contains
       ! TODO: Should use a better branching criterion. Maybe create it in data?
       ! Standard route
       if (matIdx <= XSData % getNMat()) then
+      
+        !$omp simd
+        do g = 1, nG
+          tau(g) = max(total(g) * lenFlt, 1.0e-8_defFlt)
+        end do
 
         !$omp simd
         do g = 1, nG
-          tau(g) = total(g) * lenFlt
+          !tau(g) = total(g) * lenFlt
           attenuate(g) = lenFlt * expF1(tau(g))
           delta(g) = (total(g) * angular(g) - source(g)) * attenuate(g)
           angular(g) = angular(g) - delta(g)
