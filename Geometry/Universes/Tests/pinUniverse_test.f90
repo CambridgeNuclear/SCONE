@@ -27,7 +27,7 @@ module pinUniverse_test
 contains
 
   !!
-  !! Set-up test enviroment
+  !! Set-up test environment
   !!
 @Before
   subroutine setup()

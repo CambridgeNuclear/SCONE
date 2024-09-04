@@ -100,37 +100,37 @@ contains
     call p % setMatIdx(2)
     p % w = 0.7
     p % preCollision % matIdx = 2
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     ! Particle starts in material 1 and collides in material 2
     call p % setMatIdx(2)
     p % w = 1.1
     p % preCollision % matIdx = 1
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     ! Particle starts in material 1 and collides in material 1
     call p % setMatIdx(1)
     p % w = 1.0
     p % preCollision % matIdx = 1
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     ! Particle starts in material 2 and collides in material 1
     call p % setMatIdx(1)
     p % w = 1.4
     p % preCollision % matIdx = 2
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     ! Particle starts in material 2 and collides in another, unknown material
     call p % setMatIdx(7)
     p % w = 1.0
     p % preCollision % matIdx = 2
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     ! Particle starts in an unknown material and collides in material 1
     call p % setMatIdx(1)
     p % w = 0.9
     p % preCollision % matIdx = 88
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
     call this % clerk % reportCycleEnd(pop, mem)
 
     ! Close cycle

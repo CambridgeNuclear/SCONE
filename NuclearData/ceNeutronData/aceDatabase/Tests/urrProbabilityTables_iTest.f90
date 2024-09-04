@@ -17,7 +17,7 @@ module urrProbabilityTables_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = &
-  & " uo2  { temp 1;           &
+  & " uo2  {                   &
   &        composition {       &
   &        92235.03 1.0E-3;    &
   &        8016.03  2.0E-3;    &
@@ -26,7 +26,7 @@ module urrProbabilityTables_iTest
 
   ! CE Neutron Database specification
   character(*),parameter :: ACE_INPUT_STR = &
-  & "aceLibrary ./IntegrationTestFiles/testLib; ures 1 ;"
+  & "aceLibrary ./IntegrationTestFiles/testLib; ures 1 ; majorant 1; "
 
 contains
 
@@ -57,7 +57,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate([1])
+    call data % activate([1], silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
@@ -98,10 +98,9 @@ contains
 
     ! U-235
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(1))
-    zaidCache(1) % E = 9.1E-3_defReal
+    zaidCache(1) % E  = 9.1E-3_defReal
     zaidCache(1) % xi = 0.347_defReal
     nuclideCache(1) % E_tot = ONE
-    nuclideCache(1) % needsUrr = .true.
 
     call nuc % getMicroXSs(microXSs, 9.1E-3_defReal, p % pRNG)
 

@@ -1,0 +1,99 @@
+
+// MCNP benchmark case Pu-MF-11
+//
+// Alpha-phase Pu sphere (to 4.1217cm radius) reflected by 10 inches of water (to 29.5217cm radius)
+// Benchmark keff = 1.0000 +/- 0.0010
+
+
+type eigenPhysicsPackage;
+
+pop      200000;
+active 400;
+inactive 200;
+XSdata   ceData;
+dataType ce;
+outputFile PUMF11 ;
+
+collisionOperator { neutronCE {type neutronCEstd;}
+
+                  }
+
+transportOperator { type transportOperatorST;
+                  }
+
+source { type pointSource; r (0.0 0.0 0.0); particle neutron; E 0.6E-6; }
+
+inactiveTally {
+              }
+
+activeTally  {
+                display (keff);
+                norm fiss;
+                normVal 100.0;
+                keff { type keffAnalogClerk;}
+                fiss { type collisionClerk; response (fiss); fiss {type macroResponse; MT -6;}}
+                flux { type collisionClerk;
+                       map { type energyMap; grid log; min 0.001; max 20; N 300;}
+                       response (flux); flux {type fluxResponse;}
+                      }
+        }
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      inner { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 4.1217; }
+      outer { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 29.5217; }
+    }
+
+
+    cells
+    {
+      core  { type simpleCell; id 3; surfaces (-1); filltype mat; material fuel; }
+      wat  { type simpleCell; id 4; surfaces (1 ); filltype mat; material water; }
+    }
+
+    universes
+    {
+      root { id 1; type rootUniverse; border 2; fill u<2>; }
+      uni  { id 2; type cellUniverse; cells ( 3  4); }
+    }
+}
+
+nuclearData {
+
+  handles {
+     ceData { type aceNeutronDatabase; ures 1; aceLibrary $SCONE_ACE;}
+  }
+
+
+materials {
+
+
+    fuel {
+      !temp       293;
+      composition {
+        94239.03  4.6982E-2;
+        94240.03  2.5852E-3;
+        94241.03  1.4915E-4;
+        94242.03  9.9432E-6;
+      }
+    }
+    water {
+      !temp       293;
+      composition {
+        1001.03  6.6766E-2;
+        08016.03  3.3383E-2;
+      }
+      moder {1001.03 hh2o.04; }
+    }
+
+}
+
+}
+
+
+

@@ -42,7 +42,7 @@ contains
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
   !!
-  !! Test correct behaviour of the filter
+  !! Test correct behaviour of the response
   !!
 @Test
   subroutine fluxResponseing(this)

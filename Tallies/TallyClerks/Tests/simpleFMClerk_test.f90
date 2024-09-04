@@ -111,17 +111,17 @@ contains
     call p % setMatIdx(2)
     p % w = 0.7
     p % preHistory % matIdx = 2
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     call p % setMatIdx(1)
     p % w = 1.1
     p % preHistory % matIdx = 2
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     call p % setMatIdx(1)
     p % w = 1.0
     p % preHistory % matIdx = 1
-    call this % clerk % reportInColl(p, xsData, mem)
+    call this % clerk % reportInColl(p, xsData, mem, .false.)
 
     call this % clerk % reportCycleEnd(pop, mem)
 

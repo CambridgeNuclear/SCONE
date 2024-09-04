@@ -2,6 +2,7 @@ module collisionClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -60,6 +61,9 @@ module collisionClerk_class
     ! Useful data
     integer(shortInt)  :: width = 0
 
+    ! Settings
+    logical(defBool)   :: handleVirtual = .true.
+
   contains
     ! Procedures used during build
     procedure  :: init
@@ -115,6 +119,9 @@ contains
     ! Set width
     self % width = size(responseNames)
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
+
   end subroutine init
 
   !!
@@ -127,22 +134,23 @@ contains
     call kill_super(self)
 
     ! Kill and deallocate filter
-    if(allocated(self % filter)) then
+    if (allocated(self % filter)) then
       deallocate(self % filter)
     end if
 
     ! Kill and deallocate map
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       call self % map % kill()
       deallocate(self % map)
     end if
 
     ! Kill and deallocate responses
-    if(allocated(self % response)) then
+    if (allocated(self % response)) then
       deallocate(self % response)
     end if
 
-    self % width = 0
+    self % width   = 0
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -178,27 +186,31 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(collisionClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx, i
-    integer(longInt)                      :: adrr
-    real(defReal)                         :: scoreVal, flx
-    character(100), parameter :: Here =' reportInColl (collisionClerk_class.f90)'
+    integer(longInt)                      :: addr
+    real(defReal)                         :: scoreVal, flux
+    character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
+
+    ! Return if collision is virtual but virtual collision handling is off
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Get current particle state
     state = p
 
     ! Check if within filter
-    if(allocated( self % filter)) then
-      if(self % filter % isFail(state)) return
+    if (allocated(self % filter)) then
+      if (self % filter % isFail(state)) return
     end if
 
     ! Find bin index
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       binIdx = self % map % map(state)
     else
       binIdx = 1
@@ -207,16 +219,20 @@ contains
     ! Return if invalid bin index
     if (binIdx == 0) return
 
-    ! Calculate bin address
-    adrr = self % getMemAddress() + self % width * (binIdx -1)  - 1
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
-    ! Calculate flux sample 1/totXs
-    flx = ONE / xsData % getTotalMatXS(p, p % matIdx())
+    ! Calculate bin address
+    addr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
 
     ! Append all bins
-    do i=1,self % width
-      scoreVal = self % response(i) % get(p, xsData) * p % w *flx
-      call mem % score(scoreVal, adrr + i)
+    do i = 1, self % width
+      scoreVal = self % response(i) % get(p, xsData) * flux
+      call mem % score(scoreVal, addr + i)
 
     end do
 
@@ -253,13 +269,13 @@ contains
     call outFile % startBlock(self % getName())
 
     ! If collision clerk has map print map information
-    if( allocated(self % map)) then
+    if (allocated(self % map)) then
       call self % map % print(outFile)
     end if
 
     ! Write results.
     ! Get shape of result array
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       resArrayShape = [size(self % response), self % map % binArrayShape()]
     else
       resArrayShape = [size(self % response)]
@@ -270,7 +286,7 @@ contains
     call outFile % startArray(name, resArrayShape)
 
     ! Print results to the file
-    do i=1,product(resArrayShape)
+    do i = 1, product(resArrayShape)
       call mem % getResult(val, std, self % getMemAddress() - 1 + i)
       call outFile % addResult(val,std)
 

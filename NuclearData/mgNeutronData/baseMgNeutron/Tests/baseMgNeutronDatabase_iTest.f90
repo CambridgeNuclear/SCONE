@@ -2,6 +2,7 @@ module baseMgNeutronDatabase_iTest
 
   use numPrecision
   use endfConstants
+  use universalVariables
   use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
@@ -74,14 +75,14 @@ contains
     call databaseDef % init(1)
     call databaseDef % store('PN','P0')
     call database % init(databaseDef, data_ptr, silent = .true.)
-    call database % activate([1])
+    call database % activate([1], silent = .true.)
 
     ! Varify number of groups
     @assertEqual(4, database % nGroups())
 
     ! Test getting Transport XS
     p % G = 1
-    @assertEqual(2.1_defReal, database % getTransMatXS(p, 1), TOL)
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS
     p % G = 1
@@ -93,7 +94,7 @@ contains
     ! Test getting Majorant
     p % G = 1
     @assertEqual(2.1_defReal, database % getMajorantXS(p), TOL)
-
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MAJORANT_XS), TOL)
 
     ! Get a material and verify macroXSS
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))
@@ -200,14 +201,14 @@ contains
     call databaseDef % init(1)
     call databaseDef % store('PN','P1')
     call database % init(databaseDef, data_ptr, silent = .true.)
-    call database % activate([1])
+    call database % activate([1], silent = .true.)
 
     ! Varify number of groups
     @assertEqual(4, database % nGroups())
 
     ! Test getting Transport XS
     p % G = 1
-    @assertEqual(2.1_defReal, database % getTransMatXS(p, 1), TOL)
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
     ! Test getting Total XS
     p % G = 1
@@ -219,7 +220,7 @@ contains
     ! Test getting Majorant
     p % G = 1
     @assertEqual(2.1_defReal, database % getMajorantXS(p), TOL)
-
+    @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MAJORANT_XS), TOL)
 
     ! Get a material and verify macroXSS
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(2))

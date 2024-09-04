@@ -35,9 +35,10 @@ module ceNeutronNuclide_inter
   !! mantain and optimise.
   !!
   !! Private Members
-  !!   nucIdx    -> nucIdx for this nuclide
-  !!   data      -> pointer to a database to request update of XSs
-  !!   fissile   -> flag that specifies if the nuclide is fissile
+  !!   nucIdx  -> nucIdx for this nuclide
+  !!   data    -> pointer to a database to request update of XSs
+  !!   fissile -> flag that specifies if the nuclide is fissile
+  !!   DBRC    -> Doppler Broadening Rejection Correction flag
   !!
   !! Interface:
   !!   nuclideHandle Interface
@@ -48,6 +49,8 @@ module ceNeutronNuclide_inter
   !!   isFissile       -> Return .true. if nuclide can fission
   !!   invertInelastic -> Selects type of inelastic neutron scattering
   !!   xsOf            -> Returns microscopic XS given MT number
+  !!   elScatteringXS  -> Returns elastic scattering XS for the nuclide
+  !!   hasDBRC         -> Returns the value of the hasDBRC flag
   !!
   type, public, abstract, extends(nuclideHandle) :: ceNeutronNuclide
     private
@@ -56,6 +59,10 @@ module ceNeutronNuclide_inter
     logical(defBool)                 :: fissile = .false.
     real(defReal)                    :: mass    =  ZERO
     real(defReal)                    :: kT      =  ZERO
+
+    ! DBRC nuclide flag
+    logical(defBool)                 :: DBRC = .false.
+
   contains
 
     procedure, non_overridable :: getTotalXS
@@ -63,6 +70,7 @@ module ceNeutronNuclide_inter
     procedure, non_overridable :: set
     procedure, non_overridable :: getNucIdx
     procedure, non_overridable :: isFissile
+    procedure, non_overridable :: hasDBRC
     procedure                  :: getMass
     procedure                  :: getkT
     procedure                  :: kill
@@ -70,6 +78,8 @@ module ceNeutronNuclide_inter
     ! Procedures for specific implementations
     procedure(invertInelastic),deferred :: invertInelastic
     procedure(xsOf), deferred           :: xsOf
+    procedure(elScatteringXS), deferred :: elScatteringXS
+    procedure(needsSabEl), deferred     :: needsSabEl
 
   end type ceNeutronNuclide
 
@@ -122,7 +132,48 @@ module ceNeutronNuclide_inter
 
     end function xsOf
 
+    !!
+    !! Return elastic scattering XS for the nuclide
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!
+    !! Result:
+    !!   Elastic scattering nuclide microscopic cross-section [barn]
+    !!
+    !! Errors:
+    !!   fatalError if E is out-of-bounds of the present data
+    !!   Invalid idx beyond array bounds -> undefined behaviour
+    !!   Invalid f (outside [0;1]) -> incorrect value of XS
+    !!
+    function elScatteringXS(self, E) result(xs)
+      import :: ceNeutronNuclide, defReal
+      class(ceNeutronNuclide), intent(in) :: self
+      real(defReal), intent(in)           :: E
+      real(defReal)                       :: xs
+
+    end function elScatteringXS
+
+    !!
+    !! Function that checks whether this nuclide at the provided energy should
+    !! have S(a,b) elastic scattering data or not
+    !!
+    !! Args:
+    !!   E [in] -> incident neutron energy
+    !!
+    !! Result:
+    !!    True or false
+    !!
+    elemental function needsSabEl(self, E) result(doesIt)
+      import :: ceNeutronNuclide, defReal, defBool
+      class(ceNeutronNuclide), intent(in)  :: self
+      real(defReal), intent(in)            :: E
+      logical(defBool)                     :: doesIt
+
+    end function needsSabEl
+
   end interface
+
 contains
 
   !!
@@ -145,11 +196,11 @@ contains
     real(defReal)                       :: xs
 
     ! Check Cache and update if needed
-    if (nuclideCache(self % getNucIdx()) % E_tot /= E) then
+    if (nuclideCache(self % nucIdx) % E_tot /= E) then
       call self % data % updateTotalNucXS(E, self % nucIdx, rand)
     end if
 
-    xs = nuclideCache(self % getNucIdx()) % xss % total
+    xs = nuclideCache(self % nucIdx) % xss % total
 
   end function getTotalXS
 
@@ -171,11 +222,11 @@ contains
     class(RNG), intent(inout)           :: rand
 
     ! Check Cache and update if needed
-    if(nuclideCache(self % getNucIdx()) % E_tail /= E) then
+    if (nuclideCache(self % nucIdx) % E_tail /= E) then
       call self % data % updateMicroXSs(E, self % nucIdx, rand)
     end if
 
-    xss = nuclideCache(self % getNucIdx()) % xss
+    xss = nuclideCache(self % nucIdx) % xss
 
   end subroutine getMicroXSs
 
@@ -199,26 +250,28 @@ contains
   !!   fatalError if kT <= 0.0
   !!   fatalError if mass <= 0.0
   !!
-  subroutine set(self, nucIdx, database, fissile, mass, kT)
+  subroutine set(self, nucIdx, database, fissile, mass, kT, dbrc)
     class(ceNeutronNuclide), intent(inout)                  :: self
     integer(shortInt), intent(in),optional                  :: nucIdx
     class(ceNeutronDatabase), pointer, optional, intent(in) :: database
     logical(defBool), intent(in), optional                  :: fissile
     real(defReal), intent(in), optional                     :: mass
     real(defReal), intent(in), optional                     :: kT
+    logical(defBool), intent(in), optional                  :: dbrc
     character(100), parameter :: Here = 'set (ceNuetronNuclide_inter.f90)'
 
-    if(present(nucIdx))    self % nucIdx  = nucIdx
-    if(present(database))  self % data    => database
-    if(present(fissile))   self % fissile = fissile
+    if (present(nucIdx))    self % nucIdx  = nucIdx
+    if (present(database))  self % data    => database
+    if (present(fissile))   self % fissile = fissile
+    if (present(dbrc))      self % DBRC    = dbrc
 
-    if(present(mass)) then
-      if(mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
+    if (present(mass)) then
+      if (mass <= ZERO) call fatalError(Here,"Mass of nuclide cannot be -ve: "//numToChar(mass))
       self % mass = mass
     end if
 
-    if(present(kT)) then
-      if(kT <= ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
+    if (present(kT)) then
+      if (kT < ZERO) call fatalError(Here, "Temperature of nuclide cannot be -ve: "//numToChar(kT))
       self % kT = kT
     end if
 
@@ -261,6 +314,26 @@ contains
     isIt = self % fissile
 
   end function isFissile
+
+  !!
+  !! Return .true. if the nuclide needs to use DBRC
+  !!
+  !! Args:
+  !!   None
+  !!
+  !! Result:
+  !!   .TRUE. if DBRC is on, .FALSE. otherwise
+  !!
+  !! Errors:
+  !!   None
+  !!
+  pure function hasDBRC(self) result(hasIt)
+    class(ceNeutronNuclide), intent(in) :: self
+    logical(defBool)                    :: hasIt
+
+    hasIt = self % DBRC
+
+  end function hasDBRC
 
     !!
     !! Return a mass of the nuclide

@@ -1,5 +1,6 @@
 module particle_test
   use numPrecision
+  use universalVariables
   use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, verifyType
   use funit
 
@@ -247,6 +248,9 @@ contains
     @assertEqual(3, cellIdx, 'Cell Index. Level 1.')
     @assertEqual(1, uniIdx, 'Universe Index. Level 1.')
 
+    ! Verify getting velocity
+    @assertEqual(lightSpeed, this % p_CE % getVelocity())
+
   end subroutine testMiscAccess
 
   !!
@@ -306,6 +310,7 @@ contains
 
     @assertEqual(r0_lvl1, r_lvl1, 'Global position after global teleport')
     @assertTrue(this % p_CE % coords % isAbove(), 'Particle is above geometry')
+
   end subroutine testMovementProcedures
 
   !!

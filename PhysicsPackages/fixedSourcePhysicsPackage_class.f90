@@ -57,6 +57,9 @@ module fixedSourcePhysicsPackage_class
   use transportOperatorFactory_func,  only : new_transportOperator
   use sourceFactory_func,             only : new_source
 
+  ! Visualisation
+  use visualiser_class,               only : visualiser
+
   implicit none
   private
 
@@ -266,7 +269,7 @@ contains
     type(outputFile)                                :: out
     character(nameLen)                              :: name
 
-    call out % init(self % outputFormat)
+    call out % init(self % outputFormat, filename=self % outputFile)
 
     name = 'seed'
     call out % printValue(self % pRNG % getSeed(),name)
@@ -287,8 +290,6 @@ contains
     ! Print tally
     call self % tally % print(out)
 
-    call out % writeToFile(self % outputFile)
-
   end subroutine collectResults
 
 
@@ -306,6 +307,7 @@ contains
     character(:),allocatable                        :: string
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
+    type(visualiser)                                :: viz
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -374,6 +376,16 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+
+    ! Call visualisation
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
+      tempDict => dict % getDictPtr('viz')
+      call viz % init(self % geom, tempDict)
+      print *, "Constructing visualisation"
+      call viz % makeViz()
+      call viz % kill()
+    endif
 
     ! Read variance reduction option as a geometry field
     if (dict % isPresent('varianceReduction')) then

@@ -83,7 +83,7 @@ contains
     !*** Start cycle 1
     ! Score implicit reaction rates
     p % w = 0.7_defReal
-    call this % clerk % reportInColl(p, this % nucData, mem)
+    call this % clerk % reportInColl(p, this % nucData, mem, .false.)
 
     ! Score analog production
     p % preCollision % wgt = 0.1_defReal
@@ -102,7 +102,7 @@ contains
     !*** Start cycle 2
     ! Score implicit reaction rates
     p % w = 0.6_defReal
-    call this % clerk % reportInColl(p, this % nucData, mem)
+    call this % clerk % reportInColl(p, this % nucData, mem, .false.)
 
     ! Score analog production
     p % preCollision % wgt = 0.1_defReal
@@ -129,6 +129,7 @@ contains
         @assertTrue(.false.,'Result is not a keffResult')
 
     end select
+
   end subroutine test1CycleBatch
 
   !!

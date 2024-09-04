@@ -95,11 +95,13 @@ contains
       !
       if (buffer == '!') then
         read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+        buffer = ' '
 
       else if (lastChar == '/' .and. buffer == '/') then
         ! We need to remove the last character
         call file % cut(1)
         read(unit=unit, fmt='(A)', iostat=stat, advance='yes') buffer
+        buffer = ' '
 
       end if
 

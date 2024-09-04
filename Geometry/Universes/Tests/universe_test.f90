@@ -7,7 +7,7 @@ module universe_test
 
 
   !!
-  !! Note that universe is abstract thus it canot be tested by itself
+  !! Note that universe is abstract thus it cannot be tested by itself
   !!
   !! Tests for universe non-overridable procedures are in cellUniverse_test
   !!
@@ -36,7 +36,7 @@ contains
     name = 'mat47'
     call mats % add(name, 47)
 
-    ! Test material converstion
+    ! Test material conversion
     name = 'mat13'
     @assertEqual(13, charToFill(name, mats, Here))
 

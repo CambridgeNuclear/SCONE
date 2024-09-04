@@ -12,6 +12,7 @@ module tallyResponseFactory_func
   use macroResponse_class,    only : macroResponse
   use microResponse_class,    only : microResponse
   use weightResponse_class,   only : weightResponse
+  use densityResponse_class,  only : densityResponse
   use testResponse_class,     only : testResponse
 
   implicit none
@@ -19,15 +20,15 @@ module tallyResponseFactory_func
 
   public :: new_tallyResponse
 
-  ! *** ADD NAME OF A NEW TALLY FILTER HERE ***!
   ! List that contains all accaptable types of tallyResponses
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
-  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyResponses = ['fluxResponse  ',&
-                                                                          'macroResponse ',&
-                                                                          'microResponse ',&
-                                                                          'weightResponse']
+  character(nameLen),dimension(*),parameter :: AVALIBLE_tallyResponses = ['fluxResponse   ',&
+                                                                          'macroResponse  ',&
+                                                                          'microResponse  ',&
+                                                                          'weightResponse ',&
+                                                                          'densityResponse']
 
 contains
 
@@ -49,38 +50,33 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of tallyResponse
-    ! *** ADD CASE STATEMENT FOR A NEW TALLY MAP BELOW ***!
     select case(type)
       case('fluxResponse')
         allocate(fluxResponse :: new)
-        call new % init(dict)
 
       case('macroResponse')
         allocate(macroResponse :: new)
-        call new % init(dict)
 
       case('microResponse')
         allocate(microResponse :: new)
-        call new % init(dict)
 
       case('weightResponse')
         allocate(weightResponse :: new)
-        call new % init(dict)
+
+      case('densityResponse')
+        allocate(densityResponse :: new)
 
       case('testResponse')
         allocate(testResponse :: new)
-        call new % init(dict)
 
-     !*** NEW TALLY MAP TEMPLATE ***!
-     !case('<newtallyResponseName>')
-     !  allocate(<newtallyResponseName> :: new)
-     !  call new % init(dict)
-     !
       case default
         print *, AVALIBLE_tallyResponses
         call fatalError(Here, 'Unrecognised type of tallyResponse: ' // trim(type))
 
     end select
+
+  ! Initialise new response
+  call new % init(dict)
 
   end subroutine new_tallyResponse
 

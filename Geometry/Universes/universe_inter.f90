@@ -12,7 +12,7 @@ module universe_inter
   private
 
 
-  ! Extandable methods
+  ! Extendable methods
   public :: kill
 
   ! Universe utility functions
@@ -29,10 +29,18 @@ module universe_inter
   !!
   !! Rotation is applied before translation to the origin.
   !!
+  !! Sample Dictionary Input:
+  !!   uni {
+  !!     id 7;
+  !!     #origin (1.0 0.0 0.1);#
+  !!     #rotation (30.0 0.0 0.0);#
+  !!     <subclass specific data>
+  !!   }
+  !!
   !! Private Members:
   !!   uniId   -> Id of the universe
   !!   uniIdx  -> Index of the universe
-  !!   origin  -> Location of the origin of the univere co-ordinates in the frame of higher universe
+  !!   origin  -> Location of the origin of the universe co-ordinates in the frame of higher universe
   !!   rotMat  -> Rotation matrix for rotation with respect to the higher universe
   !!   rot     -> rotation flag. True is universe is rotated
   !!
@@ -42,7 +50,7 @@ module universe_inter
   !!   setIdx       -> Set index of the universe
   !!   setTransfrom -> Set origin and/or rotation of the universe. Rotation angles are in [deg]
   !!   init         -> Initialise universe and return fillArray with content of local cells.
-  !!     Requires surface/cell shelfs and map of material names to matIdxs
+  !!     Requires surface/cell shelves and map of material names to matIdxs
   !!   kill         -> Return to uninitialised state
   !!   enter        -> Generate new coord after entering a universe from higher level coord.
   !!   findCell     -> Return local cell ID and cellIdx in cellShelf for a given position.
@@ -64,6 +72,7 @@ module universe_inter
     procedure, non_overridable :: setIdx
     procedure, non_overridable :: setTransform
     procedure(init), deferred  :: init
+    procedure                  :: setupBase
     procedure                  :: kill
 
     ! Runtime procedures
@@ -79,7 +88,7 @@ module universe_inter
     !!
     !! Initialise Universe
     !!
-    !! Must ruturn a fill array, that contains content in each local cell of the universe.
+    !! Must return a fill array, that contains content in each local cell of the universe.
     !! Array is indexed by local cell ID. Universe content is -uniID and material content
     !! is +ve matIdx.
     !!
@@ -114,7 +123,7 @@ module universe_inter
     !!   cellIdx [out] -> cellIdx in cellShelf, if the cell point is in is defined there.
     !!     If the cell exists only in the universe return 0.
     !!   r [in]        -> Position of a point
-    !!   u [in]        -> Normalised direaction (norm2(u) = 1.0)
+    !!   u [in]        -> Normalised direction (norm2(u) = 1.0)
     !!
     !! Note: Self is intent(inout), but if a state of the universe is to be changed
     !!   it is necessary to consider issues related to parallel calculations with shared
@@ -143,7 +152,7 @@ module universe_inter
     !! Args:
     !!   d [out]       -> Distance to the next surface
     !!   surfIdx [out] -> Index of the surface that will be crossed. If +ve than surface
-    !!     is defined on surfaceSHelf. If -ve surface is local to this univerese.
+    !!     is defined on surfaceSHelf. If -ve surface is local to this universe.
     !!   coords [in]   -> Coordinates of the point inside the universe (after transformations
     !!     and with localID already set)
     !!
@@ -163,12 +172,12 @@ module universe_inter
     !! Cross between local cells
     !!
     !! Procedure assumes that the point is ON THE SURFACE between cells within under/overshoot as
-    !! a result of finate FP precision.
+    !! a result of finite FP precision.
     !!
     !! Args:
     !!   coords [inout] -> Coordinates placed in the universe (after transformations and with
     !!     local ID set). On exit localID will be changed
-    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is beeing
+    !!   surfIdx [in]   -> surfIdx from distance procedure, which hints which surface is being
     !!     crossed.
     !!
     !! Note: Self is intent(inout), but if a state of the universe is to be changed
@@ -266,6 +275,50 @@ contains
   end subroutine setIdx
 
   !!
+  !! Read the data common to all universes from the dictionary
+  !!
+  !! Sets-up the base universe class with translations, ids and rotations (if any).
+  !! Is used to avoid the code repeat in each subclass of the universe.
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary with the universe definition
+  !!
+  subroutine setupBase(self, dict)
+    class(universe), intent(inout)           :: self
+    type(dictionary), intent(in)             :: dict
+    integer(shortInt)                        :: id
+    real(defReal), dimension(:), allocatable :: temp
+    character(100), parameter :: Here = 'setupBase (universe_inter.f90)'
+
+    ! Load basic data
+    call dict % get(id, 'id')
+    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: ' // numToChar(id))
+    call self % setId(id)
+
+    ! Load origin
+    if (dict % isPresent('origin')) then
+      call dict % get(temp, 'origin')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, 'Origin must have size 3. Has: ' // numToChar(size(temp)))
+      end if
+      call self % setTransform(origin=temp)
+
+    end if
+
+    ! Load rotation
+    if (dict % isPresent('rotation')) then
+      call dict % get(temp, 'rotation')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, '3 rotation angles must be given. Has only: ' // numToChar(size(temp)))
+      end if
+      call self % setTransform(rotation=temp)
+    end if
+
+  end subroutine setupBase
+
+  !!
   !! Set universe origin & rotation
   !!
   !! Note that rotation is defined by Euler angles with ZXZ convention
@@ -299,7 +352,7 @@ contains
   !! Sets:
   !!   - New position (r)
   !!   - New direction (dir)
-  !!   - Rotation infor (isRotated + rotMat)
+  !!   - Rotation info (isRotated + rotMat)
   !!   - Local cell (localID)
   !!   - Cell info (cellIdx)
   !!
@@ -309,7 +362,7 @@ contains
   !!
   !! Args:
   !!   new [out] -> New coordinates for the level.
-  !!   r [in] -> Position affter cellOffset in upper univere is applied
+  !!   r [in] -> Position after cellOffset in upper universe is applied
   !!   u [in] -> Normalised direction (norm2(u) = 1.0)
   !!
   !! Note: Self is intent(inout), but if a state of the universe is to be changed

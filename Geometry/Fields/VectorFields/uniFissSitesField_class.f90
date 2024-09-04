@@ -66,7 +66,7 @@ module uniFissSitesField_class
     private
     class(tallyMap), allocatable :: map
     integer(shortInt)            :: N = 0
-    logical(defBool)             :: uniformVolMap
+    logical(defBool)             :: uniformVolMap = .false.
     integer(shortInt)            :: pop
     real(defReal), dimension(:), allocatable     :: volFraction
     real(defReal), dimension(:), allocatable     :: sourceFraction
@@ -104,7 +104,7 @@ contains
     self % buildSource = ZERO
 
     ! Settings for volume calculation
-    call dict % getOrDefault(self % uniformVolMap,'uniformVolMap', .true.)
+    call dict % getOrDefault(self % uniformVolMap,'uniformVolMap', .false.)
     if (.not. self % uniformVolMap) call dict % getOrDefault(self % pop,'popVolumes', 1000000)
 
   end subroutine init
@@ -121,6 +121,7 @@ contains
     deallocate(self % buildSource)
 
     self % N = 0
+    self % uniformVolMap = .false.
 
   end subroutine kill
 
@@ -176,7 +177,7 @@ contains
         rejection : do
           ! Protect against infinite loop
           j = j +1
-          if ( j > 200) then
+          if ( j > 1000) then
             call fatalError(Here, 'Infinite loop in sampling of fission sites. Please check that&
                                   & defined volume contains fissile material.')
           end if

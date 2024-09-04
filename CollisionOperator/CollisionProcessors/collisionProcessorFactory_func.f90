@@ -11,20 +11,21 @@ module collisionProcessorFactory_func
   use neutronCEstd_class, only : neutronCEstd
   use neutronCEimp_class, only : neutronCEimp
   use neutronMGstd_class, only : neutronMGstd
+  use neutronMGimp_class, only : neutronMGimp
 
   implicit none
   private
 
   public :: new_collisionProcessor
 
-  ! *** ADD NAME OF A NEW COLLISION PROCESSOR HERE ***!
   ! List that contains all accaptable types of collisionProcessors
   ! It is printed if type was unrecognised
   ! NOTE:
   ! For now  it is necessary to adjust trailing blanks so all enteries have the same length
   character(nameLen),dimension(*),parameter :: AVALIBLE_collisionProcessors = [ 'neutronCEstd',&
                                                                                 'neutronCEimp',&
-                                                                                'neutronMGstd']
+                                                                                'neutronMGstd',&
+                                                                                'neutronMGimp']
 
 contains
 
@@ -45,30 +46,28 @@ contains
     call dict % get(type,'type')
 
     ! Allocate approperiate subclass of collisionProcessor
-    ! *** ADD CASE STATEMENT FOR A NEW COLLISION PROCESSOR BELOW ***!
     select case(type)
       case('neutronCEstd')
         allocate(neutronCEstd :: new)
-        call new % init(dict)
 
       case('neutronCEimp')
         allocate(neutronCEimp :: new)
-        call new % init(dict)
 
       case('neutronMGstd')
         allocate(neutronMGstd :: new)
+
+      case('neutronMGimp')
+        allocate(neutronMGimp :: new)
         call new % init(dict)
 
-     !*** NEW COLLISION PROCESSOR TEMPLATE ***!
-     !case('<newcollisionProcessorName>')
-     !  allocate(<newcollisionProcessorName> :: new)
-     !  call new % init(dict)
-     !
       case default
         print *, AVALIBLE_collisionProcessors
         call fatalError(Here, 'Unrecognised type of collisionProcessor: ' // trim(type))
 
     end select
+
+    ! Initialise new processor
+    call new % init(dict)
 
   end subroutine new_collisionProcessor
 
