@@ -5,7 +5,7 @@ module box_test
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use box_class,          only : box
-  use pfUnit_mod
+  use funit
 
   implicit none
 
@@ -267,7 +267,7 @@ contains
   !!
 @Test
   subroutine testEdgeCases()
-    real(defReal), dimension(3) :: r, u, u2
+    real(defReal), dimension(3) :: r, u
     real(defReal)               :: eps, d
     logical(defBool)            :: hs
 

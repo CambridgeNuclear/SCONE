@@ -2,7 +2,7 @@ module imgBmp_iTest
 
   use numPrecision
   use imgBmp_func, only : intToByte, imgBmp
-  use pFUnit_mod
+  use funit
 
   implicit none
 

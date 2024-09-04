@@ -9,7 +9,7 @@ module collisionClerk_test
   use testNeutronDatabase_class,      only : testNeutronDatabase
   use outputFile_class,               only : outputFile
   use ceNeutronCache_mod,             only: cache_init => init, trackingCache
-  use pFUnit_mod
+  use funit
 
   implicit none
 

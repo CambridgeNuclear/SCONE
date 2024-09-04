@@ -1,7 +1,7 @@
 module sort_test
   use numPrecision
   use genericProcedures, only : swap, quickSort
-  use pfUnit_mod
+  use funit
 
   implicit none
 
@@ -24,7 +24,7 @@ contains
 
     @assertEqual(4_shortInt, i1)
     @assertEqual(-7_shortInt, i2)
-    
+
     ! Swap same integers (If one tries XOR swap this can fail)
     i1 = 4
     i2 = 4
@@ -157,7 +157,6 @@ contains
   subroutine testQuickSortRealReal()
     real(defReal), dimension(4) :: R1 = [2.1_defReal, 1.4_defReal, 4.9_defReal, 3.4_defReal]
     real(defReal), dimension(4) :: R2 = [1.0_defReal, 2.0_defReal, 3.0_defReal, 4.0_defReal]
-    real(defReal), dimension(3) :: R = ZERO
 
     ! Ordinary sort
     call quickSort(R1, R2)

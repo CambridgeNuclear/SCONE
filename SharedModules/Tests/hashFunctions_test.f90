@@ -2,7 +2,7 @@ module hashFunctions_test
 
   use numPrecision
   use hashFunctions_func, only : FNV_1, knuthHash
-  use pfUnit_mod
+  use funit
 
   implicit none
 

@@ -1,7 +1,7 @@
 module radialMap_test
 
   use numPrecision
-  use pFUnit_mod
+  use funit
   use particle_class,   only : particleState
   use dictionary_class, only : dictionary
   use outputFile_class, only : outputFile

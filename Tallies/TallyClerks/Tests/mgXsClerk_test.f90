@@ -9,7 +9,7 @@ module mgXsClerk_test
   use scoreMemory_class,         only : scoreMemory
   use testNeutronDatabase_class, only : testNeutronDatabase
   use outputFile_class,          only : outputFile
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -100,7 +100,6 @@ contains
 @Test
   subroutine testScoring_clerk1(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleState)                  :: pFiss
@@ -180,7 +179,6 @@ contains
 @Test
   subroutine testScoring_clerk2(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleState)                  :: pFiss

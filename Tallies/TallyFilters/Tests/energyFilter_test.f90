@@ -4,7 +4,7 @@ module energyFilter_test
   use energyFilter_class, only : energyFilter
   use particle_class,     only : particleState
   use dictionary_class,   only : dictionary
-  use pFUnit_mod
+  use funit
 
   implicit none
 
