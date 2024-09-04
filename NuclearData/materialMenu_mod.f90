@@ -1,13 +1,14 @@
 !!
-!! Material Menu is a module (Singleton) that contains global definitions of diffrent materials
+!! Material Menu is a module (Singleton) that contains global definitions of different materials
 !!
 !! It exists to make it easier for all databases to refer to the same materials by the same
-!! name and index. This is necessary to avoid confusion resulting from diffrent materials with the
-!! same name or index in diffrent databases.
+!! name and index. This is necessary to avoid confusion resulting from different materials with the
+!! same name or index in different databases.
 !!
 !! Public Members:
 !!   materialDefs -> array of material definitions of type materialItem
 !!   nameMap      -> Map that maps material name to matIdx
+!!   colourMap    -> Map that maps matIdx to 24bit colour (to use for visualisation)
 !!
 !! Interface:
 !!   init      -> Load material definitions from a dictionary
@@ -21,8 +22,10 @@
 module materialMenu_mod
 
   use numPrecision
-  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT
+  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT, UNDEF_MAT
   use genericProcedures,  only : fatalError, charToInt, numToChar
+  use colours_func,       only : rgb24bit
+  use intMap_class,       only : intMap
   use charMap_class,      only : charMap
   use dictionary_class,   only : dictionary
 
@@ -33,9 +36,9 @@ module materialMenu_mod
   !! Information about a single nuclide
   !!
   !! Based somewhat on MCNP conventions.
-  !! Atomic and Mass number identify cleary a nuclide species
+  !! Atomic and Mass number identify clearly a nuclide species
   !! Evaluation number T allows to refer to multiple states/evaluations of the same nuclide species
-  !! E.G. at a Diffrent temperature as in MCNP Library.
+  !! E.G. at a Different temperature as in MCNP Library.
   !!
   !! Public members:
   !!   Z -> Atomic number
@@ -83,6 +86,7 @@ module materialMenu_mod
   !!       5010.03  2.0E-005;
   !!     }
   !!     xsFile /home/uberMoffTarkin/XS/mat1.xs;
+  !!     #rgb (255 0 0); # // RGB colour to be used in visualisation
   !!   }
   !!
   !! NOTE: the moder dictionary is optional, necessary only if S(a,b) thermal scattering
@@ -96,15 +100,23 @@ module materialMenu_mod
     real(defReal),dimension(:),allocatable     :: dens
     type(nuclideInfo),dimension(:),allocatable :: nuclides
     type(dictionary)                           :: extraInfo
+    logical(defBool)                           :: hasTMS = .false.
   contains
     procedure :: init    => init_materialItem
     procedure :: kill    => kill_materialItem
     procedure :: display => display_materialItem
   end type materialItem
 
-!! MODULE COMPONENTS
+  !! Parameters
+  integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
+  integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
+  integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
+
+
+  !! MODULE COMPONENTS
   type(materialItem),dimension(:),allocatable,target,public :: materialDefs
-  type(charMap),target,public                               :: nameMap
+  type(charMap), target, public                             :: nameMap
+  type(intMap), public                                      :: colourMap
 
   public :: init
   public :: kill
@@ -131,7 +143,7 @@ contains
     integer(shortInt)                           :: i
     character(nameLen)                          :: temp
 
-    ! Clean whatever may be alrady present
+    ! Clean whatever may be already present
     call kill()
 
     ! Load all material names
@@ -142,17 +154,20 @@ contains
 
     ! Load definitions
     do i=1,size(matNames)
-      call materialDefs(i) % init(matNames(i), dict % getDictPtr(matNames(i)))
-      materialDefs(i) % matIdx = i
+      call materialDefs(i) % init(matNames(i), i, dict % getDictPtr(matNames(i)))
       call nameMap % add(matNames(i), i)
     end do
 
-    ! Add special Material keywords to thedictionary
+    ! Add special Material keywords to the dictionary
     temp = 'void'
     call nameMap % add(temp, VOID_MAT)
     temp = 'outside'
     call nameMap % add(temp, OUTSIDE_MAT)
 
+    !! Load colours for the special materials
+    call colourMap % add(VOID_MAT, COL_VOID)
+    call colourMap % add(OUTSIDE_MAT, COL_OUTSIDE)
+    call colourMap % add(UNDEF_MAT, COL_UNDEF)
 
   end subroutine init
 
@@ -186,11 +201,13 @@ contains
 
     print '(A60)', repeat('<>',30)
     print '(A)', "^^ MATERIAL DEFINITIONS ^^"
+
     do i = 1,size(materialDefs)
       call materialDefs(i) % display()
       ! Print separation line
       print '(A)', " ><((((*>  +  <*))))><"
     end do
+
     print '(A60)', repeat('<>',30)
 
   end subroutine display
@@ -204,7 +221,7 @@ contains
   !! Result:
   !!   nameLen long character with material name
   !!
-  !! Erorrs:
+  !! Error:
   !!   If idx is -ve or larger then number of defined materials
   !!   Empty string '' is returned as its name
   !!
@@ -250,26 +267,41 @@ contains
   !!
   !! Args:
   !!   name [in] -> character with material name
+  !!   idx  [in] -> material index
   !!   dict [in] -> dictionary with material definition
   !!
   !! Errors:
   !!   FatalError if dictionary does not contain valid material definition.
   !!
-  subroutine init_materialItem(self, name, dict)
-    class(materialItem), intent(inout)          :: self
-    character(nameLen),intent(in)               :: name
-    class(dictionary), intent(in)               :: dict
-    character(nameLen),dimension(:),allocatable :: keys, moderKeys
-    integer(shortInt)                           :: i
-    class(dictionary),pointer                   :: compDict, moderDict
-    logical(defBool)                            :: hasSab
+  subroutine init_materialItem(self, name, idx, dict)
+    class(materialItem), intent(inout)            :: self
+    character(nameLen), intent(in)                :: name
+    integer(shortInt), intent(in)                 :: idx
+    class(dictionary), intent(in)                 :: dict
+    character(nameLen), dimension(:), allocatable :: keys, moderKeys
+    integer(shortInt), dimension(:), allocatable  :: temp
+    integer(shortInt)                             :: i
+    class(dictionary),pointer                     :: compDict, moderDict
+    logical(defBool)                              :: hasSab
+    character(100), parameter :: Here = 'init_materialItem (materialMenu_mod.f90)'
 
     ! Return to initial state
     call self % kill()
 
-    ! Load easy components c
+    ! Load easy components properties
     self % name = name
-    call dict % get(self % T,'temp')
+    self % matIdx = idx
+
+    ! Check TMS flag and read temperature
+    call dict % getOrDefault(self % hasTMS, 'tms', .false.)
+
+    if (self % hasTMS .and. .not. dict % isPresent('temp')) then
+      call fatalError(Here, 'The material temperature must be specified when TMS is on')
+    end if
+
+    call dict % getOrDefault(self % T, 'temp', ZERO)
+    if (self % T < ZERO) call fatalError(Here, 'The temperature of material '//numToChar(idx)//&
+                                                ' is negative: '//numToChar(self % T))
 
     ! Get composition dictionary and load composition
     compDict => dict % getDictPtr('composition')
@@ -279,12 +311,14 @@ contains
     allocate(self % nuclides(size(keys)))
     allocate(self % dens(size(keys)))
 
-    hasSab = .false.
+
     ! Check if S(a,b) files are specified
     if (dict % isPresent('moder')) then
       moderDict => dict % getDictPtr('moder')
       call moderDict % keys(moderKeys)
       hasSab = .true.
+    else
+      hasSab = .false.
     end if
 
     ! Load definitions
@@ -299,6 +333,17 @@ contains
       call compDict % get(self % dens(i), keys(i))
       call self % nuclides(i) % init(keys(i))
     end do
+
+    ! Add colour info if present
+    if(dict % isPresent('rgb')) then
+      call dict % get(temp, 'rgb')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'rgb' keyword must have 3 values")
+      end if
+
+      call colourMap % add(idx, rgb24bit(temp(1), temp(2), temp(3)))
+    end if
 
     ! Save dictionary
     self % extraInfo = dict
@@ -392,7 +437,7 @@ contains
     za = verify(key(1:L),'0123456789')
     tt = verify(key(1:L),'0123456789', back = .true.)
 
-    ! Verify that the location of the dot is consistant
+    ! Verify that the location of the dot is consistent
     isIt = dot == za .and. dot == tt
 
   end function isNucDefinition
@@ -437,7 +482,7 @@ contains
   !!   None
   !!
   !! Result:
-  !!   Character in format ZZAAA.TT that dscribes nuclide definition
+  !!   Character in format ZZAAA.TT that describes nuclide definition
   !!
   !! Errors:
   !!   None
@@ -461,17 +506,17 @@ contains
   !! Get pointer to a material definition under matIdx
   !!
   !! Args:
-  !!   matIdx [in] -> Index of the material
+  !!   idx [in] -> Index of the material
   !!
   !! Result:
   !!   Pointer to a materialItem with the definition
   !!
   !! Errors:
-  !!   FatalError if matIdx does not correspond to any defined material
+  !!   FatalError if idx does not correspond to any defined material
   !!   FatalError if material definitions were not loaded
   !!
-  function getMatPtr(matIdx) result(ptr)
-    integer(shortInt), intent(in) :: matIdx
+  function getMatPtr(idx) result(ptr)
+    integer(shortInt), intent(in) :: idx
     type(materialItem), pointer   :: ptr
     character(100), parameter :: Here = 'getMatPtr (materialMenu_mod.f90)'
 
@@ -481,13 +526,13 @@ contains
     end if
 
     ! Verify matIdx
-    if( matIdx <= 0 .or. matIdx > nMat()) then
-      call fatalError(Here,"matIdx: "//numToChar(matIdx)// &
+    if( idx <= 0 .or. idx > nMat()) then
+      call fatalError(Here,"matIdx: "//numToChar(idx)// &
                            " does not correspond to any defined material")
     end if
 
     ! Attach pointer
-    ptr => materialDefs(matIdx)
+    ptr => materialDefs(idx)
 
   end function getMatPtr
 

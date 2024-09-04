@@ -27,6 +27,9 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
 
 Example: ::
 
@@ -70,6 +73,22 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
+* buffer (*optional*, default = 50): size of the particle bank used by each
+  OpenMP thread to store secondary particles
+* commonBufferSize (*optional*): if not included, the common buffer is not
+  used; if included, after each particle history the particles in each
+  thread-private buffer (or bank, or dungeon) are moved to a buffer
+  common to all threads to avoid long histories
+* bufferShift (*optional*, default = 10): threshold of particles to be
+  stored in a thread-private buffer, after which particles are shifted to
+  the common buffer
+
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
 
 Example: ::
 
@@ -80,6 +99,9 @@ Example: ::
         XSdata   ceData;
         seed     2829741;
         outputFile shield_type11;
+
+        buffer 10000;
+        commonBufferSize 50000;
 
         transportOperator { <Transport operator definition> }
         collisionOperator { <Collision operator definition> }
@@ -136,7 +158,12 @@ Example: ::
 Source
 ------
 
-For the moment, the only possible external **source** type in SCONE in a point source.
+For the moment, the only possible external **source** types in SCONE are point source
+and material source.
+
+pointSource
+############
+
 The properties of a point source are:
 
 * r: (x y z) vector with the origin position. [cm]
@@ -145,7 +172,7 @@ The properties of a point source are:
 * E or G: emission energy
 
   - E: energy of the particles emitted, for continuous energy calculations. [MeV]
-  - G: energy group of the particles emitted, for multi-group calculations
+  - G: energy group of the particles emitted, for multi-group calculations.
 
 * dir (*optional*, default = isotropic): (u v w) vector with the direction of the source
   particles
@@ -153,6 +180,50 @@ The properties of a point source are:
 Hence, an input would look like: ::
 
       source { type pointSource; r (0.0 1.0 5.2); particle neutron; E 14.1; dir (0.0 1.0 0.0); }
+
+materialSource
+##############
+
+A material source is a particle source which can only be produced in a given material.
+It is a type of volumetric source. For the moment it is constrained to neutrons.
+The properties of a material source are:
+
+* mat: the name of the material from which to sample (must be defined in materials).
+* data (*optional*, default = continuous energy): data type for source particles. Can be ``ce``
+  or ``mg``.
+* E (*optional*, default = 1E-6): energy of the particles emitted, for continuous energy
+  calculations. [MeV]
+* G (*optional*, default = 1): energy group of the particles emitted, for multi-group
+  calculations.
+* boundingBox (*optional*, default is the geometry bounding box):
+  (x_min y_min z_min x_max y_max z_max) vector describing a bounding box to improve sampling
+  efficiency or to localise material sampling to a particular region.
+
+Hence, an input would look like: ::
+
+      source { type materialSource; mat myMat; data ce; E 2.0;
+      boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
+
+fissionSource
+#############
+
+A source intended to initialise eigenvalue calculations. If it is not defined in the input file, it is
+used with the default settings. It is a type of volumetric source, which uniformly distributes fission
+sites in the geometry. The energy spectrum of the fission neutrons is based on a fixed incident
+energy provided by the user. The properties of a fission source are:
+
+* data (*optional*, default='ce'): data type for source particles. Can be ``ce``
+  or ``mg``.
+* E (*optional*, default=1E-6): energy of the incident neutron causing fission [MeV]. Makes
+  sense for continuous energy source only.
+* G (*optional*, default=1): energy group of the incident neutron causing fission. Makes
+  sense for multi-group source only.
+* attempts (*optional*, default=10000): number of attempts to sample a fission site in a cell
+  before throwing an error.
+* bottom (*optional*): Lower point determining axis-aligned bounding box where to sample points. If
+  provided ``top`` must also be provided.
+* top (*optional*): Upper point determining axis-aligned bounding box where to sample points. If
+  provided ``bottom`` must also be provided.
 
 Transport Operator
 ------------------
@@ -206,11 +277,13 @@ neutronCEstd, to perform analog collision processing
   energyThreshold where kT is target material temperature in [MeV]. [-]
 * massThreshold (*optional*, default = 1): mass threshold for explicit treatment of
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
 
 Example: ::
 
       collisionOperator { neutronCE { type neutronCEstd; minEnergy 1.0e-12; maxEnergy 30.0;
-      energyThreshold 200; massThreshold 2; } }
+      energyThreshold 200; massThreshold 2; DBRCeMin 1.0e-06; DBRCeMax 0.001; } }
 
 neutronCEimp
 ############
@@ -232,6 +305,7 @@ neutronCEimp, to perform implicit collision processing
 * minWgt (*optional*, default = 0.25): minimum particle weight for rouletting
 * maxWgt (*optional*, default = 1.25): maximum particle weight for splitting
 * avgWgt (*optional*, default = 0.5): weight of a particle on surviving rouletting
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
 * impAbs (*optional*, default = 0): 1 for true; 0 for false; enables implicit capture
 * impGen (*optional*, default = 1): 1 for true; 0 for false; enables implicit fission
   sites generation
@@ -239,6 +313,8 @@ neutronCEimp, to perform implicit collision processing
   weight windows
 * UFS (*optional*, default = 0): 1 for true; 0 for false; enables the use of uniform
   fission sites
+* DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
+* DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
 
 Example: ::
 
@@ -256,10 +332,23 @@ Example: ::
 
       collisionOperator { neutronMG { type neutronMGstd; } }
 
+neutronMGimp
+############
+
+neutronMGimp, to perform implicit collision processing
+
+* maxSplit (*optional*, default = 1000): maximum number of splits allowed per particle
+* weightWindows (*optional*, default = 0): 1 for true; 0 for false; enables the use of
+  weight windows
+
+Example: ::
+
+      collisionOperator { neutronMG { type neutronMGimp; weightWindows 1; maxSplit 50; } }
+
 Weight Windows
 --------------
 
-Weight windows can be used if, inside the collision operator ``CEneutronimp``, the
+Weight windows can be used if, inside the collision operator ``neutronCEimp``, the
 keyword ``weightWindows`` is set to 1. Then, in the input file, one needs to add: ::
 
         varianceReduction { type weightWindowsField; file <pathToWeightWindowsFile>; }
@@ -286,7 +375,7 @@ Example: ::
 Uniform Fission Sites
 ---------------------
 
-Weight windows can be used if, inside the collision operator ``CEneutronimp``, the
+Uniform Fission Sites can be used if, inside the collision operator ``neutronCEimp``, the
 keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 
       uniformFissionSites { type uniFissSitesField; map { <Map definition> } *keywords* }
@@ -294,7 +383,7 @@ keyword ``UFS`` is set to 1. Then, in the input file, one needs to add: ::
 In the input above, ``map`` is the geometrical map used for UFS. The map has to contain
 fissile material for the method to make sense. Other keywords are:
 
-* uniformVolMap (*optional*, default = 1): 1 for true; 0 for false; flag that states
+* uniformVolMap (*optional*, default = 0): 1 for true; 0 for false; flag that states
   whether the bins of the map contain equal volumes of fissile material or not
 * popVolumes (*optional*, default = 1.0e7): if ``uniformVolMap`` is false, a Monte Carlo
   calculation is run to estimate the fissile material volumes in each map bin. This entry
@@ -531,7 +620,7 @@ Example: ::
 
 Example: ::
 
-      uni3 { id 3; type pinlUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
+      uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
 
 * latUniverse, cartesian lattice of constant pitch
 
@@ -589,11 +678,12 @@ vtk
 * width: (x y z) array with the width of the mesh in each direction [cm]
 * vox: (x y z) array with the number of voxels requested in each direction
 * what (*optional*, default = material): defines what is highlighted in the
-  plot; options are ``material`` and ``cellID``
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
+  highlights unique cell IDs
 
 Example: ::
 
-      plotVTK { type vtk; corner (10.0 6.0 2.0); width (20.0 12.0 4.0); vox (4000 120 400); what cellID; }
+      plotVTK { type vtk; corner (10.0 6.0 2.0); width (20.0 12.0 4.0); vox (4000 120 400); what uniqueID; }
 
 bmp
 ###
@@ -605,11 +695,16 @@ bmp
 * res: (y z), (x z) or (x y) array with the resolution of the mesh in each direction
 * output: name of the output file, with extension ``.bmp``
 * what (*optional*, default = material): defines what is highlighted in the
-  plot; options are ``material`` and ``cellID``
+  plot; options are ``material`` and ``uniqueID``, where ``uniqueID``
+  highlights unique cell IDs
+* offset (*optional*, default = random) An integer (positive or negative) that
+  shifts the sequence of colours assigned to materials. Allows to change colours
+  from the default sequence in a parametric way.
 
 Example: ::
 
-      plotBMP { type bmp; axis z; width (50 10); res (1000 200); output geomZ; what material; }
+      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10);
+                res (1000 200); output geomZ; what material; }
 
 .. note::
    SCONE can be run to visualise geometry without actually doing transport, by
@@ -650,10 +745,19 @@ from ACE files.
   the ACE files
 * ures (*optional*, default = 0): 1 for true; 0 for false; activates the unresolved
   resonance probability tables treatment
-
+* DBRC (*optional*, default = no DBRC): list of ZAIDs of nuclides for which DBRC has
+  to be applied.
+* majorant (*optional*, default = 1): 1 for true; 0 for false; flag to activate the
+  pre-construction of a unionised majorant cross section
+  
 Example: ::
 
-      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS; ures 1; }
+      ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
+      ures 1; DBRC (92238 94242)}
+
+.. note::
+   If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
+   be included in the aceLibrary file.
 
 baseMgNeutronDatabase
 #####################
@@ -667,10 +771,13 @@ Example: ::
 
       mgData { type baseMgNeutronDatabase; PN P1; }
 
+Materials definition
+####################
+
 The *materials* definition is structured as: ::
 
       materials {
-      <materialName1> { temp <temp1>;
+      <materialName1> { tms <0 or 1>; temp <temp1>;
       composition { <Composition definition> }
       *keywords* }
       <materialName2> { temp <temp2>;
@@ -678,8 +785,19 @@ The *materials* definition is structured as: ::
       *keywords* }
       }
 
-In this case, ``materialName`` can be any name chosen by the user; ``temp`` is the
-material temperature in [K].
+In this case, ``materialName`` can be any name chosen by the user; the keyword ``tms``
+(*optional*, default = 0) activates Target Motion Sampling (TMS) if set to 1; TMS uses 
+the material temperature defined under ``temp`` [K]. ``temp`` is *optional* unless TMS
+is used.
+
+.. note::
+  When using TMS, the temperature specified by ``temp`` must be higher than the 
+  temperatures of the nuclides in the material composition.
+
+.. note::
+  *IMPORTANT*: When using TMS, all the tallies based on the collision estimator have to
+  allow scoring virtual collisions, otherwise the results will be biased. The tallies
+  based on the track length estimator will be biased too.
 
 The ``composition`` dictionary must always be included, but it can be empty in
 multi-group simulations. In continuous energy simulations, it should include a
@@ -700,6 +818,9 @@ Other options are:
 * xsFile: needed for multi-group simulations. Must contain the path to the file where
   the multi-group cross sections are stored.
 
+* rgb (*optional*): An array of three integers specifying the RGB colour e.g. ``(255 0 0)``. The
+  colour defined in this way will be used for visualisation of the material in the geometry plots.
+
 Example 1: ::
 
       materials {
@@ -710,6 +831,7 @@ Example 1: ::
       8016.03    0.018535464; }
       }
       water { temp 273;
+      rgb (0 0 200);
       composition {
       1001.03   0.0222222;
       8016.03   0.00535; }
@@ -811,6 +933,12 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the collisionClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 * trackClerk
 
@@ -820,6 +948,9 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+
+.. note::
+  If TMS is on, the trackClerk is biased for results in the TMS materials
 
 Example: ::
 
@@ -836,12 +967,18 @@ Example: ::
 
 * keffAnalogClerk, analog k_eff estimator
 * keffImplicitClerk, implicit k_eff estimator
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the keffImplicitClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
       tally {
       k_eff1 { type keffAnalogClerk; }
-      k_eff2 { type keffImplicitClerk; }
+      k_eff2 { type keffImplicitClerk; handleVirtual 0; }
       }
 
 * centreOfMassClerk, geometrical 3D center of mass estimator
@@ -888,6 +1025,12 @@ Example: ::
     tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates
     whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``)
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the mgXsClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -916,6 +1059,12 @@ Example: ::
 
   - map: contains a dictionary with the ``tallyMap`` definition, that defines
     the bins of the matrix
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the simpleFMClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -935,6 +1084,15 @@ Example: ::
 
       tally {
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
+      }
+
+* densityResponse: used to calculate the particle desnsity, i.e., the response function is 
+  the inverse of the particle velocity in [cm/s]
+
+Example: ::
+
+      tally {
+      collision_estimator { type collisionClerk; response (dens); dens { type densityResponse; } }
       }
 
 * macroResponse: used to score macroscopic reaction rates
@@ -983,8 +1141,8 @@ Example: ::
 
 .. note::
    To calculate the average weight, one should divide weight moment 1 (weight1)
-    by weight moment 0 (weight0). To calculate the variance of the weights, the
-    tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2
+   by weight moment 0 (weight0). To calculate the variance of the weights, the
+   tally results have to be post-processed as: var = weight2/weight0 - (weight1/weight0)^2
 
 Tally Maps
 ##########
@@ -1002,6 +1160,27 @@ Example: ::
 
       map { type cellMap; cells (1 5 3 2 4 100); undefBin T; }
 
+* collNumMap (1D map), filters the particles tallied over number of collisions they underwent
+
+  - collNumbers: list of collision numbers (integers) to be used as map bins
+
+Examples: ::
+
+      map1 { type collNumMap; collNumbers ( 0 1 2 3 4 5 10 20); }
+
+* directionMap (1D map), angular map for the particle's direction with a linear grid
+
+  - axis (*optional*, default = ``xy``): ``xy``, ``yz``, ``xz`` define the plane
+    of the direction to map
+  - N: number of bins
+  - min (*optional*, default = -180): grid lower limit [degrees]
+  - max (*optional*, default = 180): grid upper limit [degrees]
+
+Examples: ::
+
+      map1 { type directionMap; axis xz; min 0.0; max 90.0; N 6; }
+      map2 { type directionMap; N 36; }
+
 * energyMap (1D map), defines an energy group structure
 
   - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
@@ -1017,14 +1196,14 @@ Example: ::
   - grid: ``predef``
 
     + name: name of the predefined group structure. Options are: ``wims69``,
-      ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``vitaminj``
+      ``wims172``, ``casmo40``, ``casmo23``, ``casmo12``, ``casmo7``, ``ecco33``, ``vitaminj``
 
 Examples: ::
 
       map1 { type energyMap; grid log; min 1.0e-11; max 20.0; N 300; }
       map2 { type energyMap; grid lin; min 1.0; max 20.0; N 100; }
-      map3 { type energyMap; bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0); }
-      map4 { type energyMap; name casmo12; }
+      map3 { type energyMap; grid unstruct; bins (1.0E-9 1.0E-8 0.6E-6 0.3 20.0); }
+      map4 { type energyMap; grid predef; name casmo12; }
 
 * homogMatMap (1D map), divides based on the material a particle is in with the
   possibility of grouping some materials together
@@ -1056,23 +1235,33 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* multiMap, ensemble of multiple 1D maps
+* radialMap (1D map), spherical or cylindrical radial map
 
-  - maps: list of the names of the maps that will compose the ``multiMap``. This
-    is followed by dictionaries that define the requested maps
+  - axis (*optional*, default = ``xyz``): ``x``, ``y``, ``z``, is the normal of
+    the cylindrical plane, or ``xyz`` to indicate spherical coordinates
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) vector with the origin
+    of the radial map. If the map is cylindrical, only the two coordinates perpendicular
+    to the cylinder's normal matter
+  - grid: ``lin`` for linearly spaced bins or ``equivolume``
 
-Example: ::
+    + min (*optional*, default = 0.0): minimum radius [cm]
+    + max: maximum radius [cm]
+    + N: number of radial bins
 
-      map { type multiMap; maps (map1 map2 map10);
-      map1 { <1D map definition> }
-      map2 { <1D map definition> }
-      map10 { <1D map definition> }
-      }
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the spherical bin boundaries
+      to be used
+
+Examples: ::
+
+      map1 { type radialMap; axis xyz; origin (2.0 1.0 0.0); grid lin; min 3.0; max 10.0; N 14; }
+      map2 { type radialMap; axis z; grid equivolume; max 20.0; N 10; }
+      map3 { type radialMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
 
 * spaceMap (1D map), geometric cartesian map
 
   - axis: ``x``, ``y`` or ``z``
-
   - grid: ``lin`` for linearly spaced bins
 
     + min: bottom coordinate [cm]
@@ -1088,27 +1277,23 @@ Examples: ::
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
-* sphericalMap, geometric spherical map
+* weightMap (1D map), divides weight into number of discrete bins
 
-  - origin (*optional*, default = (0.0 0.0 .0.)): (x y z) vector with the origin
-    of the spherical map
+  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
 
-  - grid: ``lin`` for linearly spaced bins or ``equivolume`` for spherical shells
-
-    + Rmin (*optional*, default = 0.0): minimum radius [cm]
-    + Rmax: maximum radius [cm]
-    + N: number of radial bins
+    + min: bottom weight
+    + max: top weight
+    + N: number of bins
 
   - grid: ``unstruct`` for unstructured grids, to be manually defined
 
-    + bins: array with the explicit definition of the spherical bin boundaries
-      to be used
+    + bins: array with the explicit definition of the weight bin boundaries to be used
 
 Examples: ::
 
-      map1 { type sphericalMap; origin (2.0 1.0 0.0); grid lin; Rmin 3.0; Rmax 10.0; N 14; }
-      map2 { type sphericalMap; grid equivolume; Rmax 20.0; N 10; }
-      map3 { type sphericalMap; grid unstruct; bins (1.0 2.0 2.5 3.0 5.0); }
+      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
+      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
+      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
 
 * cylindricalMap, geometric cylindrical map; other than the radial discretisation,
   one could add axial and azimuthal discretisation
@@ -1140,23 +1325,18 @@ Example: ::
       map1 { type cylindricalMap; orientation y; origin (7.0 0.0); rGrid lin; Rmax 5.0; rN 10; }
       map2 { type cylindricalMap; rGrid unstruct; bins (2.0 3.0 4.5 5.0); axGrid lin; axMin 0.0; axMax 6.0 axN 24; azimuthalN 8; }
 
-* weightMap (1D map), divides weight into number of discrete bins
+* multiMap, ensemble of multiple 1D maps
 
-  - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
+  - maps: list of the names of the maps that will compose the ``multiMap``. This
+    is followed by dictionaries that define the requested maps
 
-    + min: bottom weight
-    + max: top weight
-    + N: number of bins
+Example: ::
 
-  - grid: ``unstruct`` for unstructured grids, to be manually defined
-
-    + bins: array with the explicit definition of the weight bin boundaries to be used
-
-Examples: ::
-
-      map1 { type weightMap; grid log; min 1.0e-3; max 100.0; N 100; }
-      map2 { type weightMap; grid lin; min 0.1; max 2.0; N 20; }
-      map3 { type weightMap; bins (0.0 0.2 0.4 0.6 0.8 1.0 2.0 5.0 10.0); }
+      map { type multiMap; maps (map1 map2 map10);
+      map1 { <1D map definition> }
+      map2 { <1D map definition> }
+      map10 { <1D map definition> }
+      }
 
 Tally Filters
 #############

@@ -217,6 +217,7 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
+      p % broodID = 1       ! Avoid triggering error on sort by broodID
       call dungeon % detain(p)
     end do
 
@@ -254,6 +255,7 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
+      p % broodID = 1       ! Avoid triggering error on sort by broodID
       call dungeon % detain(p)
     end do
 
@@ -270,6 +272,76 @@ contains
     call dungeon % kill()
 
   end subroutine testNormPopUp
+
+  !!
+  !! Test sorting of the population by brood ID without duplicates
+  !!
+@Test
+  subroutine testSortingByBroodID()
+    type(particleDungeon)    :: dungeon
+    type(particleState)      :: p
+    integer(shortInt)        :: i
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! Initialise
+    call dungeon % init(10)
+
+    ! Store some particles with brood ID in reverse order
+    do i = 1,10
+      p % broodID = 10 - i + 1
+      call dungeon % detain(p)
+    end do
+
+    ! Sort by brood ID
+    call dungeon % sortByBroodID(10)
+
+    ! Verify order
+    do i = 1,10
+      p = dungeon % get(i)
+      @assertEqual(i, p % broodID)
+    end do
+
+  end subroutine testSortingByBroodID
+
+
+  !!
+  !! Test sorting of the population by brood ID with duplicates
+  !!
+  @Test
+  subroutine testSortingByBroodID_withDuplicates()
+    type(particleDungeon)    :: dungeon
+    type(particleState)      :: p
+    integer(shortInt)        :: i, j
+    integer(shortInt), parameter :: N_duplicates = 7
+    real(defReal), parameter :: TOL = 1.0E-9
+
+    ! Initialise
+    call dungeon % init(10 * N_duplicates)
+
+    ! Store some particles with brood ID in reverse order
+    ! Use the group number to distinguish duplicates and make sure
+    ! that the insertion order is preserved (for particles with the same brood ID)
+    do j = 1, N_duplicates
+      do i = 1, 10
+        p % broodID = 10 - i + 1
+        p % G = j
+        call dungeon % detain(p)
+      end do
+    end do
+
+    ! Sort by brood ID
+    call dungeon % sortByBroodID(10)
+
+    ! Verify order
+    do i = 1,10
+      do j = 1, N_duplicates
+        p = dungeon % get(j + (i-1) * N_duplicates)
+        @assertEqual(i, p % broodID)
+        @assertEqual(j, p % G)
+      end do
+    end do
+
+  end subroutine testSortingByBroodID_withDuplicates
 
 
 end module particleDungeon_test

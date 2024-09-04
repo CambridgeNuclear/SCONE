@@ -52,7 +52,7 @@ module universeShelf_class
   !!   getSize -> Return the number of universes (max uniIdx)
   !!   kill    -> Return to uninitialised state
   !!
-  !! NOTE: Becoue universes are stored as pointers, calling `kill` is crucial
+  !! NOTE: Because universes are stored as pointers, calling `kill` is crucial
   !!   to prevent memory leaks. TODO: Add `final` procedure here?
   !!
   type, public :: universeShelf
@@ -132,7 +132,7 @@ contains
       ! Store content info in fills
       call fills % addUniverse(i, id, fillInfo)
 
-      ! Load index infor into the universe
+      ! Load index info into the universe
       call self % unis(i) % ptr % setIdx(i)
 
     end do
@@ -153,7 +153,7 @@ contains
   !!
   !! Errors:
   !!   Pointer will have undefined status if the idx is not valid (will point to some place
-  !!   it is unlikley it will be null so associated procedure may return true!)
+  !!   it is unlikely it will be null so associated procedure may return true!)
   !!
   function getPtr_fast(self, idx) result(ptr)
     class(universeShelf), intent(in) :: self

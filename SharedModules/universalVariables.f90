@@ -64,14 +64,22 @@ module universalVariables
                                   P_NEUTRON_MG = 2
 
   ! Search error codes
-  integer(shortInt), parameter :: valueOutsideArray = -1,&
-                                  tooManyIter       = -2,&
+  integer(shortInt), parameter :: valueOutsideArray = -1, &
+                                  tooManyIter       = -2, &
                                   targetNotFound    = -3, &
-                                  NOT_FOUND         = -3
+                                  NOT_FOUND         = -3, &
+                                  REJECTED          = -4
+
+  ! Integer indexes for type of tracking cross section requested
+  integer(shortInt), parameter :: MATERIAL_XS = 1, &
+                                  MAJORANT_XS = 2, &
+                                  TRACKING_XS = 3
 
   ! Physical constants
-  real(defReal), parameter :: neutronMass = 939.5654133_defReal, &   ! Neutron mass in MeV/c^2
+  ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
+  real(defReal), parameter :: neutronMass = 939.56542194_defReal,  & ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
+                              kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
                               energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion

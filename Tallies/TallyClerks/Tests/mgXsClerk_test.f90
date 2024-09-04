@@ -4,8 +4,7 @@ module mgXsClerk_test
   use endfConstants
   use genericProcedures,         only : numToChar
   use mgXsClerk_class,           only : mgXsClerk
-  use particle_class,            only : particle
-  use particleDungeon_class,     only : particleDungeon
+  use particle_class,            only : particle, particleState
   use dictionary_class,          only : dictionary
   use scoreMemory_class,         only : scoreMemory
   use testNeutronDatabase_class, only : testNeutronDatabase
@@ -104,7 +103,7 @@ contains
     character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
-    type(particleDungeon)                :: pit
+    type(particleState)                  :: pFiss
     type(outputFile)                     :: out
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
                                                   nu, chi, P0, P1, P2, P3, P4,  &
@@ -115,21 +114,24 @@ contains
     call mem % init(1000_longInt, 1)
     call this % clerk_test1 % setMemAddress(1_longInt)
 
-    ! Configure particle dungeon
-    call pit % init(3)
-
+    ! Report fission particles
     p % isMG = .false.
     p % w    = 0.5_defReal
     p % E    = 0.3_defReal
     call p % setMatIdx(2)
-    call pit % detain(p)
-
-    p % E = 3.0_defReal
-    call pit % detain(p)
 
     ! Scoring
-    call this % clerk_test1 % reportInColl(p, this % nucData, mem)
-    call this % clerk_test1 % reportCycleEnd(pit, mem)
+    pFiss = p
+    call this % clerk_test1 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
+
+    p % E = 3.0_defReal
+
+    ! Scoring
+    pFiss = p
+    call this % clerk_test1 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
+
+    ! Scoring
+    call this % clerk_test1 % reportInColl(p, this % nucData, mem, .false.)
 
     p % preCollision % wgt = 0.2_defReal
     p % preCollision % E   = 3.0_defReal
@@ -181,7 +183,7 @@ contains
     character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
-    type(particleDungeon)                :: pit
+    type(particleState)                  :: pFiss
     type(outputFile)                     :: out
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
                                                   nu, chi, P0, P1, prod
@@ -191,20 +193,24 @@ contains
     call mem % init(1000_longInt, 1)
     call this % clerk_test2 % setMemAddress(1_longInt)
 
-    ! Configure particle dungeon
-    call pit % init(3)
-
+    ! Report fission particles
     p % isMG = .false.
     p % w    = 0.5_defReal
     p % E    = 3.0_defReal
-    call pit % detain(p)
-
-    p % E = 0.3_defReal
-    call pit % detain(p)
+    call p % setMatIdx(2)
 
     ! Scoring
-    call this % clerk_test2 % reportInColl(p, this % nucData, mem)
-    call this % clerk_test2 % reportCycleEnd(pit, mem)
+    pFiss = p
+    call this % clerk_test2 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
+
+    p % E = 0.3_defReal
+
+    ! Scoring
+    pFiss = p
+    call this % clerk_test2 % reportSpawn(N_FISSION, p, pFiss, this % nucData, mem)
+
+    ! Scoring
+    call this % clerk_test2 % reportInColl(p, this % nucData, mem, .false.)
 
     p % preCollision % wgt = 0.2_defReal
     p % preCollision % E   = 0.3_defReal
@@ -224,7 +230,7 @@ contains
     @assertEqual([HALF, ZERO, HALF], chi(1,:), TOL, 'Chi' )
     @assertEqual([ZERO, ZERO, 4.0_defReal], transOS(1,:), TOL, 'Transport XS O.S.' )
     @assertEqual([ZERO, ZERO, 5.5_defReal], transFL(1,:), TOL, 'Transport XS F.L.' )
-      @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO], P0(1,:), TOL, 'P0' )
+    @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO], P0(1,:), TOL, 'P0' )
     @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, 1.5_defReal, ZERO], P1(1,:), TOL, 'P1' )
     @assertEqual([ONE, ONE, ONE, ONE, ONE, ONE, ONE, TWO, ONE], prod(1,:), TOL, 'prod' )
 

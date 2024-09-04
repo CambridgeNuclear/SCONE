@@ -114,7 +114,7 @@ contains
     class(particleDungeon),intent(inout)     :: thisCycle
     class(particleDungeon),intent(inout)     :: nextCycle
     integer(shortInt)                        :: idx, procType
-    character(100), parameter :: Here = 'collide ( collisionOperator_class.f90)'
+    character(100), parameter :: Here = 'collide (collisionOperator_class.f90)'
 
     ! Select processing index with ternary expression
     if(p % isMG) then

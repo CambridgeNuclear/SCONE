@@ -1,0 +1,564 @@
+!!
+!! Hoogenboom-Martin PWR core with specified tallies
+!!
+type eigenPhysicsPackage;
+
+pop      5000000; 
+active   150;  
+inactive 200;  
+XSdata ce; 
+dataType ce;
+
+
+// Specify output format default asciiMATLAB
+//outputFormat asciiJSON;
+
+collisionOperator { neutronCE {type neutronCEstd;} }
+
+transportOperator {
+                   type transportOperatorHT;
+                   }
+
+inactiveTally {
+  shannon {
+	    type shannonEntropyClerk;
+            map {type multiMap;
+            maps (xax yax zax);
+            xax { type spaceMap; grid lin; min -182.07; max 182.07; N 21; axis x;}
+            yax { type spaceMap; grid lin; min -182.07; max 182.07; N 21; axis y;}
+            zax { type spaceMap; grid lin; min -183; max 183; N 20; axis z;}
+                }
+           cycles 200;
+          }
+}
+
+activeTally {
+  
+  pinFiss  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax zax);
+                      xax {type spaceMap;  axis x;  grid lin; N 289; min -182.07; max 182.07; }
+                      yax {type spaceMap;  axis y;  grid lin; N 289; min -182.07; max 182.07; }
+                      zax {type spaceMap;  axis z;  grid lin; N 100; min -183; max 183; }
+                   }
+                 } 
+  assemblyFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax);
+                      xax {type spaceMap;  axis x;  grid lin; N 17; min -182.07; max 182.07; }
+                      yax {type spaceMap;  axis y;  grid lin; N 17; min -182.07; max 182.07; }
+                   }
+                 } 
+
+}
+
+! Uniform fission site map
+uniformFissionSites {
+                   type uniFissSitesField;
+                   popVolumes 10000000;
+                   map {type multiMap; maps (xax yax zax);
+                      xax {type spaceMap;  axis x;  grid lin; N 17; min -182.07; max 182.07; }
+                      yax {type spaceMap;  axis y;  grid lin; N 17; min -182.07; max 182.07; }
+                      zax {type spaceMap;  axis y;  grid lin; N 17; min -183; max 183; }
+                       }
+}
+
+geometry {
+  type geometryStd;
+  boundary (0 0 0 0 0 0); 
+  graph {type shrunk;} 
+
+surfaces {
+
+  boundingSurface { id 80; type zTruncCylinder; origin (0.0 0.0 -3.0); halfwidth 226.0; radius 249.0; }
+
+  surf5 { id 5; type zCylinder; origin (0.0 0.0 0.0); radius 187.6;}
+  surf6 { id 6; type zCylinder; origin (0.0 0.0 0.0); radius 209.0;}
+  surf7 { id 7; type zCylinder; origin (0.0 0.0 0.0); radius 229.0;}
+  
+  !lowerPlateBottom { id 31; type zPlane; z0 -229.0;}
+  lowerNozzleBottom { id 32; type zPlane; z0 -199.0;}
+  rodPlugBottom { id 33; type zPlane; z0 -193.0;}
+  FAbottom { id 34; type zPlane; z0 -183.0;}
+  centre { id 35; type zPlane; z0    0.0;}
+  FAtop { id 36; type zPlane; z0 183.0;}
+  upperPlenumTop { id 37; type zPlane; z0 203.0;}
+  upperNozzleTop { id 38; type zPlane; z0 215.0;}
+  !upperCorePlateTop { id 39; type zPlane; z0 223.0;}
+  }
+
+
+  cells { 
+   lowercoreplate { id 103; type simpleCell; surfaces (-7 -32); filltype mat; material coreplate; }
+   bottomnozzle { id 104; type simpleCell; surfaces (-5 32 -33); filltype mat; material nozzlebottom; } 
+   belowFA { id 105; type simpleCell; surfaces (-5 33 -34); filltype mat; material FAbottom; } 
+   aboveFA { id 106; type simpleCell; surfaces (-5 36 -37); filltype mat; material FAtop; } 
+   topnozzle { id 107; type simpleCell; surfaces (-5 37 -38); filltype mat; material nozzletop; } 
+   upperplate { id 108; type simpleCell; surfaces (-7 38); filltype mat; material reflectortop; } 
+   downcomer { id 109; type simpleCell; surfaces (6 -7 32 -38); filltype mat; material coldwater; } 
+   reactorvessel { id 110; type simpleCell; surfaces (7); filltype mat; material reactorvessel; } 
+   bottomreflector { id 111; type simpleCell; surfaces (5 -6 32 -34); filltype mat; material reflectorbottom; } 
+   topreflector { id 112; type simpleCell; surfaces (5 -6 36 -38); filltype mat; material reflectortop; }
+ 
+   corelower { id 210; type simpleCell; surfaces (-6 34 -35); filltype uni; universe 10; }
+   coreupper { id 220; type simpleCell; surfaces (-6 35 -36); filltype uni; universe 20; }
+  }
+
+
+
+universes {
+    root { id 1000; type rootUniverse; border 80; fill u<100>; }
+    uni_cellcore  { id 100; type cellUniverse; cells (103 104 105 106 107 108 109 110 111 112 210 220); }
+    
+   //Pin universes  
+     UO2bottom { id 1; type pinUniverse; radii ( 0.41 0.475 0.0 ); fills (UOXfuel  Zrcladding coldwater);} 
+     GTbottom { id 2; type pinUniverse; radii (0.56 0.62 0.0 ); fills (coldwater  Zrcladding coldwater);}
+     UO2top { id 3; type pinUniverse; radii ( 0.41 0.475 0.0 ); fills (UOXfuel  Zrcladding hotwater);} 
+     GTtop { id 4; type pinUniverse; radii (0.56 0.62 0.0 ); fills (hotwater  Zrcladding hotwater);}
+
+     bottomReflPin { id 5; type pinUniverse; radii (0.0 ); fills (reflectorbottom);} 
+     topReflPin { id 7; type pinUniverse; radii (0.0 ); fills (reflectortop);}   
+    
+   
+   
+   
+    //  Fuel Assembly Lattice (Lower half)
+    bottomAssembly {
+      id 6;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat coldwater; 
+      map (
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1
+      1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1
+      1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 ); }
+      
+    //  Fuel Assembly Lattice (Upper half)
+    topAssembly {
+      id 8;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat hotwater;  
+      map (
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3
+      3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 4 3 3 4 3 3 4 3 3 4 3 3 4 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 4 3 3 3 3 3 3 3 3 3 4 3 3 3
+      3 3 3 3 3 4 3 3 4 3 3 4 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3
+      3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 ); }      
+     
+   
+     //  Core Lattice (Lower Half)
+     lowerCore {
+      id 10;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (21.42 21.42 0.0);
+      shape (21 21 0);
+      padMat coldwater;  
+      map (
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5
+      5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5
+      5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5
+      5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5
+      5 5 5 5 5 6 6 6 6 6 6 6 6 6 6 6 5 5 5 5 5
+      5 5 5 5 5 5 5 6 6 6 6 6 6 6 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5
+      5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5); }        
+      
+      //  Core Lattice (Upper Half)
+    upperCore {
+      id 20;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (21.42 21.42 0.0);
+      shape (21 21 0);
+      padMat hotwater;  
+      map (
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7
+      7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7
+      7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7
+      7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7
+      7 7 7 7 7 8 8 8 8 8 8 8 8 8 8 8 7 7 7 7 7
+      7 7 7 7 7 7 7 8 8 8 8 8 8 8 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+      7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7); }     
+      
+        
+  }
+
+
+}
+
+
+viz {
+
+  bmpz {
+    type bmp;
+    output radial;
+    what material;
+    centre (0.0 0.0 0.0);
+    axis z;
+    res (1000 1000);
+  }
+  
+  bmpx {
+    type bmp;
+    output axial;
+    what material;
+    centre (0.0 0.0 0.0);
+    width (500.0 500.0);
+    axis x;
+    res (1000 1000);
+  }
+  
+      assembly {
+    type bmp;
+    output assembly;
+    what material;
+    centre (21.42 21.42 0.0);
+    width (21.42 21.42);
+    axis z;
+    res (1000 1000);
+  }
+  
+
+}
+
+
+
+nuclearData {
+  handles {
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
+  }
+
+materials {
+    
+ 
+UOXfuel {
+      composition {
+      92234.03 4.9476e-6;
+      92235.03 4.8218e-4;
+      92236.03 9.0402e-5;
+      92238.03 2.1504e-2;
+      93237.03 7.3733e-6;
+      94238.03 1.5148e-6;
+      94239.03 1.3955e-4;
+      94240.03 3.4405e-5;
+      94241.03 2.1439e-5;
+      94242.03 3.7422e-6;
+      95241.03 4.5041e-7;
+      95242.03 9.2301e-9;
+      95243.03 4.7878e-7;
+      96242.03 1.0485e-7;
+      96243.03 1.4268e-9;
+      96244.03 8.8756e-8;
+      96245.03 3.5285e-9;
+      42095.03 2.6497e-5;
+      43099.03 3.2772e-5;
+      44101.03 3.0742e-5;
+      44103.03 2.3505e-6;
+      47109.03 2.0009e-6;
+      54135.03 1.0801e-8;
+      55133.03 3.4612e-5;
+      60143.03 2.6078e-5;
+      60145.03 1.9898e-5;
+      62147.03 1.6128e-6;
+      62149.03 1.1627e-7;
+      62150.03 7.1727e-6;
+      62151.03 5.4947e-7;
+      62152.03 3.0221e-6;
+      63153.03 2.6209e-6;
+      64155.03 1.5369e-9;
+      8016.03 4.5737e-2;}
+}
+
+Zrcladding {
+      composition {
+      40090.03 0.019578;
+      40091.03 0.0042689;
+      40092.03 0.00652638;
+      40094.03 0.00661301;
+      40096.03 0.00106413;}
+  }    
+  
+coldwater {
+      moder { 1001.03 lwj3.00; }
+      composition {
+      1001.03 0.04938;
+      8016.03 0.02469;
+      5010.03 1.60238E-05;
+      5011.03 6.63914E-05;}
+}
+
+   
+
+hotwater {
+      moder { 1001.03 lwj3.00; }
+      composition {
+      1001.03 0.04404;
+      8016.03 0.02202;
+      5010.03 1.4291E-05;
+      5011.03 5.92118E-05;}
+}
+
+
+
+
+reactorvessel  {
+      composition {
+	26054.03		4.79006E-03;
+	26056.03		7.5184E-02;
+	26057.03		1.7361E-03;
+	26058.03		2.314E-04;
+	28058.03		5.5118E-04;
+	28060.03		2.1231E-04;
+	28061.03		9.226E-06;
+	28062.03		2.943E-05;
+	28064.03		7.493E-06;
+	25055.03		8.6498E-04;
+	42092.03		4.3902E-05;
+	42094.03		2.7421E-05;
+	42095.03		4.7263E-05;
+	42096.03		4.9566E-05;
+	42097.03		2.8427E-05;
+	42098.03		7.1914E-05;
+	42100.03		2.8744E-05;
+	14028.03		6.2434E-04;
+	14029.03		3.172E-05;
+	14030.03		2.093E-05;
+	24050.03		9.929E-06;
+	24052.03		1.9144E-04;
+	24053.03		2.1709E-05;
+	24054.03		5.403E-06;
+	6012.03		        9.9112E-04;
+	29063.03		1.03424E-04;
+	29065.03		4.6139E-05;
+      }
+}
+      
+      
+reflectorbottom  {
+      moder { 1001.03 lwj3.00; }
+      composition {    
+	1001.03		2.4886E-02;
+	8016.03		1.2343E-02;
+	5010.03		8.0233E-06;
+	5011.03		3.3228E-05;
+	26054.03		1.7161E-03;
+	26056.03		2.69351E-02;
+	26057.03		6.22E-04;
+	26058.03		8.291E-05;
+	28058.03		2.4803E-03;
+	28060.03		9.554E-04;
+	28061.03		4.152E-05;
+	28062.03		1.324E-04;
+	28064.03		3.372E-05;
+	25055.03		8.65E-04;
+	14028.03		7.8043E-04;
+	14029.03		3.965E-05;
+	14030.03		2.617E-05;
+	24050.03		3.773E-04;
+	24052.03		7.2746E-03;
+	24053.03		8.249E-04;
+	24054.03		2.053E-04;
+     }
+}
+ 
+ 
+reflectortop  {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03		2.2196E-02;
+	8016.03		1.1008E-02;
+	5010.03		7.156E-06;
+	5011.03		2.964E-05;
+	26054.03		1.716E-03;
+	26056.03		2.6935E-02;
+	26057.03		6.2196E-04;
+	26058.03		8.291E-05;
+	28058.03		2.4803E-03;
+	28060.03		9.554E-04;
+	28061.03		4.152E-05;
+	28062.03		1.3242E-04;
+	28064.03		3.372E-05;
+	25055.03		8.6498E-04;
+	14028.03		7.8043E-04;
+	14029.03		3.965E-05;
+	14030.03		2.617E-05;
+	24050.03		3.7729E-04;
+	24052.03		7.27459E-03;
+	24053.03		8.2494E-04;
+	24054.03		2.053E-04;
+     }
+}
+
+
+coreplate   {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03		4.9773E-03;
+	8016.03		2.4685E-03;
+	5010.03		1.605E-06;
+	5011.03		6.646E-06;
+	26054.03		3.08892E-03;
+	26056.03		4.8483E-02;
+	26057.03		1.1195E-03;
+	26058.03		1.492E-04;
+	28058.03		4.4646E-03;
+	28060.03		1.71968E-03;
+	28061.03		7.473E-05;
+	28062.03		2.38356E-04;
+	28064.03		6.0692E-05;
+	25055.03		1.55696E-03;
+	14028.03		1.4048E-03;
+	14029.03		7.1371E-05;
+	14030.03		4.7098E-05;
+	24050.03		6.7912E-04;
+	24052.03		1.3094E-02;
+	24053.03		1.48489E-03;
+	24054.03		3.69545E-04;
+     }
+} 
+ 
+nozzlebottom   {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03		3.733E-2;
+	8016.03		1.851E-2;
+	5010.03		1.203E-5;
+	5011.03		4.984E-5;
+	26054.03		8.580E-4;
+	26056.03		1.347E-02;
+	26057.03		3.110E-04;
+	26058.03		4.146E-05;
+	28058.03		1.240E-03;
+	28060.03		4.777E-04;
+	28061.03		2.076E-05;
+	28062.03		6.621E-05;
+	28064.03		1.686E-05;
+	25055.03		4.325E-04;
+	14028.03		3.902E-04;
+	14029.03		1.983E-05;
+	14030.03		1.308E-05;
+	24050.03		1.886E-04;
+	24052.03		3.637E-03;
+	24053.03		4.125E-04;
+	24054.03		1.027E-04;
+     }
+}
+
+
+nozzletop  {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03	                3.7733E-2;
+	8016.03	                1.8714E-2;
+	5010.03		        1.2165E-5;
+	5011.03	        	5.0381E-5;
+	26054.03		5.1482E-4;
+	26056.03		8.0805E-3;
+	26057.03		1.8659E-4;
+	26058.03		2.4874E-5;
+	28058.03		7.441E-4;
+	28060.03		2.8661E-4;
+	28061.03		1.2455E-5;
+	28062.03		3.9726E-05;
+	28064.03		1.0115E-05;
+	25055.03		2.5949E-04;
+	14028.03		2.3413E-04;
+	14029.03		1.1895E-05;
+	14030.03		7.8496E-6;
+	24050.03		1.1319E-04;
+	24052.03		2.1824E-03;
+	24053.03		2.4748E-04;
+	24054.03		6.1591E-05;
+     }
+}
+ 
+FAbottom {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03		2.986E-02;
+	8016.03		1.481E-02;
+	5010.03		9.628E-06;
+	5011.03		3.987E-05;
+	40090.03		8.822E-03;
+	40091.03		1.924E-03;
+	40092.03		2.941E-03;
+	40094.03		2.980E-03;
+	40096.03		4.795E-04;
+      }  
+}
+ 
+FAtop {
+      moder { 1001.03 lwj3.00; }
+      composition {
+	1001.03		3.107E-02;
+	8016.03		1.541E-02;
+	5010.03		1.002E-05;
+	5011.03		4.149E-05;
+	40090.03		4.411E-03;
+	40091.03		9.618E-04;
+	40092.03		1.470E-03;
+	40094.03		1.490E-03;
+	40096.03		2.398E-04;
+      }
+}
+
+
+}
+}

@@ -31,7 +31,7 @@ module latUniverse_class
   !! Cells inside the lattice can only be filled with a universe (given as integer ID).
   !! Background cell can have any filling given by keyword (material or universe)
   !!
-  !! Every lattice cell has an offset to its centere (so the centre of the nested universe
+  !! Every lattice cell has an offset to its centre (so the centre of the nested universe
   !! is in the center of the lattice cell).
   !!
   !! Minimum lattice pitch is set to 10 * SURF_TOL
@@ -66,7 +66,7 @@ module latUniverse_class
   !! Private Members:
   !!  pitch      -> Values of lattice pitch in x, y & z directions
   !!  sizeN      -> Number of lattice cells in x, y & z directions
-  !!  corner     -> Location of the minumum corner
+  !!  corner     -> Location of the minimum corner
   !!  a_bar      -> Halfwidth of lattice cell reduced by surface tolerance
   !!  outline    -> Box type surface that is a boundary between lattice & background
   !!  outLocalID -> LocalID of the background cell
@@ -111,37 +111,15 @@ contains
     type(charMap), intent(in)                                 :: mats
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempI
-    integer(shortInt)                              :: id, N, i, j, outFill
+    integer(shortInt)                              :: N, i, j, outFill
     type(dictionary)                               :: tempDict
     integer(shortInt), dimension(:,:), allocatable :: tempMap
     character(nameLen)                             :: name
     character(100), parameter :: Here = 'init (latUniverse_class.f90)'
 
-    ! Load basic data
-    call dict % get(id, 'id')
-    if (id <= 0) call fatalError(Here, 'Universe ID must be +ve. Is: '//numToChar(id))
-    call self % setId(id)
-
-    ! Load origin
-    if (dict % isPresent('origin')) then
-      call dict % get(temp, 'origin')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, 'Origin must have size 3. Has: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(origin=temp)
-
-    end if
-
-    ! Load rotation
-    if (dict % isPresent('rotation')) then
-      call dict % get(temp, 'rotation')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, '3 rotation angles must be given. Has only: '//numToChar(size(temp)))
-      end if
-      call self % setTransform(rotation=temp)
-    end if
+    ! Setup the base class
+    ! With: id, origin rotations...
+    call self % setupBase(dict)
 
     ! Load pitch
     call dict % get(temp, 'pitch')
@@ -310,7 +288,7 @@ contains
     d = INF
     ax = 1
     do i = 1, 3
-      ! Nominator and denominator will have the same sign (by ealier bounds selection)
+      ! Nominator and denominator will have the same sign (by earlier bounds selection)
       test_d = (bounds(i) - r_bar(i)) / u(i)
 
       if (test_d < d) then

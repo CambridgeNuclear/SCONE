@@ -21,9 +21,6 @@ module collisionProbabilityClerk_class
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
-  ! Tally Response
-  !use macroResponse_class,        only : macroResponse
-
   implicit none
   private
 
@@ -72,7 +69,6 @@ module collisionProbabilityClerk_class
     integer(shortInt)                      :: N = 0 !! Number of bins
     !type(macroResponse)                    :: resp
 
-
   contains
     ! Procedures used during build
     procedure  :: init
@@ -92,6 +88,7 @@ module collisionProbabilityClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type collisionProbabilityClerk
 
   !!
@@ -168,11 +165,12 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(collisionProbabilityClerk), intent(inout) :: self
     class(particle), intent(in)                     :: p
     class(nuclearDatabase),intent(inout)            :: xsData
     type(scoreMemory), intent(inout)                :: mem
+    logical(defBool), intent(in)                    :: virtual
     type(particleState)                             :: state
     integer(shortInt)                               :: sIdx, cIdx
     integer(longInt)                                :: addr
@@ -180,15 +178,18 @@ contains
     class(neutronMaterial), pointer                 :: mat
     character(100), parameter :: Here = 'reportInColl (collisionProbabilityClerk_class.f90)'
 
-    ! Get material or return if it is not a neutron
-    mat    => neutronMaterial_CptrCast( xsData % getMaterial(p % matIdx()))
+    ! This clerk does not handle virtual scoring yet
+    if (virtual) return
 
-    if(.not.associated(mat)) return
+    ! Get material or return if it is not a neutron
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+
+    if (.not.associated(mat)) return
 
     ! Find starting index in the map
     ! It is important that preCollision is not changed by a collisionProcessor
-    !before the particle is fed to the tally, otherwise results will be meaningless
-    sIdx = self % map % map( p % preCollision)
+    ! before the particle is fed to the tally, otherwise results will be meaningless
+    sIdx = self % map % map(p % preCollision)
 
     ! Find collision index in the map
     state = p
@@ -226,7 +227,7 @@ contains
     integer(longInt)                                :: addrCPM, addrCPM0
     real(defReal)                                   :: val, normFactor
 
-    if(mem % lastCycle()) then
+    if (mem % lastCycle()) then
       ! Set address to the start of collision probability matrix
       ! Decrease by 1 to get correct address on the first iteration of the loop
       addrCPM  = self % getMemAddress() - 1
@@ -244,7 +245,7 @@ contains
           normFactor = normFactor + val
         end do
 
-        if(normFactor /= ZERO) normFactor = ONE / normFactor
+        if (normFactor /= ZERO) normFactor = ONE / normFactor
 
         ! Normalise CPM column
         do j = 1, self % N
@@ -276,7 +277,7 @@ contains
     ! Allocate result to CPMresult
     ! Do not deallocate if already allocated to CPMresult
     ! Its not too nice -> clean up
-    if(allocated(res)) then
+    if (allocated(res)) then
       select type(res)
         class is (CPMresult)
           ! Do nothing

@@ -3,6 +3,7 @@ module keffImplicitClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables
   use genericProcedures,          only : fatalError, charCmp
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle
@@ -32,10 +33,9 @@ module keffImplicitClerk_class
                                   IMP_ABS      = 2 ,&  ! Implicit neutron absorbtion
                                   ANA_LEAK     = 3 ,&  ! Analog Leakage
                                   K_EFF        = 4     ! k-eff estimate
-
   !!
   !! A simple implicit k-eff estimator based on collison estimator of reaction rates,
-  !! and an analog estimators of (N,XN) reactions and leakage
+  !! and on analog estimators of (N,XN) reactions and leakage
   !!
   !! Private Members:
   !!   targetSTD -> Target Standard Deviation for convergance check
@@ -54,7 +54,9 @@ module keffImplicitClerk_class
   !!
   type, public,extends(tallyClerk) :: keffImplicitClerk
     private
-    real(defReal) :: targetSTD = ZERO
+    real(defReal)    :: targetSTD = ZERO
+    ! Settings
+    logical(defBool) :: handleVirtual = .true.
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -75,6 +77,7 @@ module keffImplicitClerk_class
     procedure :: display
     procedure :: print
     procedure :: getResult
+
   end type keffImplicitClerk
 
 contains
@@ -102,6 +105,9 @@ contains
 
     end if
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
+
   end subroutine init
 
   !!
@@ -115,6 +121,7 @@ contains
 
     ! Kill self
     self % targetSTD = ZERO
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -149,42 +156,42 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(keffImplicitClerk), intent(inout)  :: self
     class(particle), intent(in)              :: p
     class(nuclearDatabase),intent(inout)     :: xsData
     type(scoreMemory), intent(inout)         :: mem
+    logical(defBool), intent(in)             :: virtual
     type(neutronMacroXSs)                    :: xss
     class(neutronMaterial), pointer          :: mat
-    real(defReal)                            :: totalXS, nuFissXS, absXS, flux
+    real(defReal)                            :: nuFissXS, absXS, flux
     real(defReal)                            :: s1, s2
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
-    ! Obatin XSs
-!    select type( mat => xsData % getMaterial( p % matIdx()))
-!      class is(ceNeutronMaterial)
-!        call mat % getMacroXSs(xss, p % E, p % pRNG)
-!
-!      class is(mgNeutronMaterial)
-!        call mat % getMacroXSs(xss, p % G, p % pRNG)
-!
-!      class default
-!        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
-!
-!    end select
+    ! Return if collision is virtual but virtual collision handling is off
+    if ((.not. self % handleVirtual) .and. virtual) return
 
-    ! Obtain XSs
-    mat => neutronMaterial_CptrCast(xsData % getMaterial( p % matIdx()))
-    if(.not.associated(mat)) call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    ! Ensure we're not in void (could happen when scoring virtual collisions)
+    if (p % matIdx() == VOID_MAT) return
+
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
+
+    ! Get material pointer
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    if (.not.associated(mat)) then
+      call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    end if
+
+    ! Obtain xss
     call mat % getMacroXSs(xss, p)
 
-
-    totalXS  = xss % total
     nuFissXS = xss % nuFission
     absXS    = xss % capture + xss % fission
-
-    ! Calculate flux and scores
-    flux = p % w / totalXS
 
     s1 = nuFissXS * flux
     s2 = absXS * flux
@@ -245,12 +252,12 @@ contains
     type(scoreMemory), intent(inout)        :: mem
     real(defReal)                           :: histWgt
 
-    if( p % fate == leak_FATE) then
+    if (p % fate == leak_FATE) then
       ! Obtain and score history weight
       histWgt = p % w
 
       ! Score analog leakage
-      call mem % score( histWgt, self % getMemAddress() + ANA_LEAK)
+      call mem % score(histWgt, self % getMemAddress() + ANA_LEAK)
 
     end if
 
@@ -268,14 +275,14 @@ contains
     integer(longInt)                        :: addr
     real(defReal)                           :: nuFiss, absorb, leakage, scatterMul, k_est
 
-    if( mem % lastCycle()) then
+    if (mem % lastCycle()) then
       addr = self % getMemAddress()
       nuFiss     = mem % getScore(addr + IMP_PROD)
       absorb     = mem % getScore(addr + IMP_ABS)
       leakage    = mem % getScore(addr + ANA_LEAK)
       scatterMul = mem % getScore(addr + SCATTER_PROD)
 
-      k_est = nuFiss / (absorb + leakage - scatterMul )
+      k_est = nuFiss / (absorb + leakage - scatterMul)
       call mem % accumulate(k_est, addr + K_EFF)
     end if
 
@@ -309,7 +316,7 @@ contains
     real(defReal)                         :: k, STD
 
     ! Get current k-eff estimate
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF )
+    call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
 
     ! Print to console
     print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD

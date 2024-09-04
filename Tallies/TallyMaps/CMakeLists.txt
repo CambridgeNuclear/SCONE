@@ -1,29 +1,31 @@
 # Add Source Files to the global list
 add_sources(./tallyMap_inter.f90
-            ./tallyMap1D_inter.f90
-            ./tallyMap1DFactory_func.f90
             ./tallyMapFactory_func.f90
-            ./tallyMapSlot_class.f90
-            ./testMap_class.f90
-            ./energyMap_class.f90
-            ./spaceMap_class.f90
-            ./materialMap_class.f90
-            ./homogMatMap_class.f90
             ./multiMap_class.f90
-            ./weightMap_class.f90
-            ./sphericalMap_class.f90
-            ./cellMap_class.f90
-            ./cylindricalMap_class.f90
- #          ./matXsMap_class.f90
+            ./cylindricalMap_class.f90            
+            ./Maps1D/tallyMap1D_inter.f90
+            ./Maps1D/tallyMap1DFactory_func.f90
+            ./Maps1D/testMap_class.f90
+            ./Maps1D/energyMap_class.f90
+            ./Maps1D/spaceMap_class.f90
+            ./Maps1D/materialMap_class.f90
+            ./Maps1D/homogMatMap_class.f90
+            ./Maps1D/weightMap_class.f90
+            ./Maps1D/cellMap_class.f90
+	          ./Maps1D/radialMap_class.f90
+            ./Maps1D/collNumMap_class.f90
+            ./Maps1D/directionMap_class.f90
             )
 
-add_unit_tests(./Tests/materialMap_test.f90
-               ./Tests/energyMap_test.f90
-               ./Tests/weightMap_test.f90
-               ./Tests/spaceMap_test.f90
-               ./Tests/testMap_test.f90
-               ./Tests/multiMap_test.f90
-               ./Tests/homogMatMap_test.f90
-               ./Tests/sphericalMap_test.f90
-               ./Tests/cellMap_test.f90
-               ./Tests/cylindricalMap_test.f90)
+add_unit_tests(./Tests/multiMap_test.f90
+               ./Tests/cylindricalMap_test.f90
+               ./Maps1D/Tests/materialMap_test.f90
+               ./Maps1D/Tests/energyMap_test.f90
+               ./Maps1D/Tests/weightMap_test.f90
+               ./Maps1D/Tests/spaceMap_test.f90
+               ./Maps1D/Tests/testMap_test.f90
+               ./Maps1D/Tests/homogMatMap_test.f90
+               ./Maps1D/Tests/radialMap_test.f90
+               ./Maps1D/Tests/cellMap_test.f90
+               ./Maps1D/Tests/collNumMap_test.f90
+               ./Maps1D/Tests/directionMap_test.f90)

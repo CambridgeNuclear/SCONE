@@ -6,6 +6,7 @@ add_sources(./tallyResponse_inter.f90
             ./macroResponse_class.f90
             ./microResponse_class.f90
             ./weightResponse_class.f90
+            ./densityResponse_class.f90
             ./testResponse_class.f90
             )
 
@@ -15,4 +16,5 @@ add_unit_tests(./Tests/fluxResponse_test.f90
                ./Tests/macroResponse_test.f90
                ./Tests/microResponse_test.f90
                ./Tests/weightResponse_test.f90
-                )
+               ./Tests/densityResponse_test.f90
+               )

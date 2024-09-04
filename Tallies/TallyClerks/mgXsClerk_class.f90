@@ -3,6 +3,7 @@ module mgXsClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
@@ -89,6 +90,9 @@ module mgXsClerk_class
     integer(shortInt) :: width = 0
     logical(defBool)  :: PN = .false.
 
+    ! Settings
+    logical(defBool) :: handleVirtual = .true.
+
   contains
     ! Procedures used during build
     procedure  :: init
@@ -99,7 +103,7 @@ module mgXsClerk_class
     ! File reports -> run-time procedures
     procedure  :: reportInColl
     procedure  :: reportOutColl
-    procedure  :: reportCycleEnd
+    procedure  :: reportSpawn
 
     ! Output procedures
     procedure  :: print
@@ -151,6 +155,9 @@ contains
       self % width = ARRAY_SCORE_SIZE + MATRIX_SCORE_SMALL * self % energyN
     end if
 
+    ! Handle virtual collisions
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
+
   end subroutine init
 
   !!
@@ -170,10 +177,11 @@ contains
     end if
 
     ! Reset parameters
-    self % matN = 0
+    self % matN    = 0
     self % energyN = 0
-    self % width = 0
-    self % PN = .false.
+    self % width   = 0
+    self % PN      = .false.
+    self % handleVirtual = .false.
 
   end subroutine kill
 
@@ -186,7 +194,7 @@ contains
     class(mgXsClerk),intent(in)                :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, outColl_CODE, cycleEnd_CODE]
+    validCodes = [inColl_CODE, outColl_CODE, spawn_CODE]
 
   end function validReports
 
@@ -208,18 +216,22 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportInColl(self, p, xsData, mem)
+  subroutine reportInColl(self, p, xsData, mem, virtual)
     class(mgXsClerk), intent(inout)       :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
+    logical(defBool), intent(in)          :: virtual
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
-    real(defReal)                         :: totalXS, nuFissXS, captXS, fissXS, scattXS, flux
-    integer(shortInt)                     :: enIdx, matIdx, binIdx
+    real(defReal)                         :: nuFissXS, captXS, fissXS, scattXS, flux
+    integer(shortInt)                     :: enIdx, locIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
+
+    ! Return if collision is virtual but virtual collision handling is off
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Get current particle state
     state = p
@@ -233,36 +245,54 @@ contains
     end if
     ! Space
     if (allocated(self % spaceMap)) then
-      matIdx = self % spaceMap % map(state)
+      locIdx = self % spaceMap % map(state)
     else
-      matIdx = 1
+      locIdx = 1
     end if
 
     ! Return if invalid bin index
-    if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+    if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
     ! Calculate bin address
-    binIdx = self % energyN * (matIdx - 1) + enIdx
+    binIdx = self % energyN * (locIdx - 1) + enIdx
     addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
-    ! Get material pointer
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
-    if (.not.associated(mat)) then
-      call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
-    ! Retrieve material cross sections
-    call mat % getMacroXSs(xss, p)
+    ! Check if the particle is in void. This call might happen when handling virtual collisions.
+    ! This is relevant in the case of homogenising materials that include void: the flux
+    ! in void will be different than zero, and the zero reaction rates have to be averaged
+    if (p % matIdx() /= VOID_MAT) then
 
-    ! Calculate flux
-    totalXS  = xss % total
-    flux = p % w / totalXS
+      ! Get material pointer
+      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+      if (.not.associated(mat)) then
+        call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
+      end if
 
-    ! Calculate reaction rates
-    nuFissXS = xss % nuFission * flux
-    captXS   = xss % capture * flux
-    fissXS   = xss % fission * flux
-    scattXS  = (xss % elasticScatter + xss % inelasticScatter) * flux
+      ! Retrieve material cross sections
+      call mat % getMacroXSs(xss, p)
+
+      ! Calculate reaction rates
+      nuFissXS = xss % nuFission * flux
+      captXS   = xss % capture * flux
+      fissXS   = xss % fission * flux
+      scattXS  = (xss % elasticScatter + xss % inelasticScatter) * flux
+
+    else
+
+      ! Reaction rates in void are zero
+      nuFissXS = ZERO
+      captXS   = ZERO
+      fissXS   = ZERO
+      scattXS  = ZERO
+
+    end if
 
     ! Add scores to counters
     call mem % score(flux,     addr + FLUX_idx)
@@ -279,16 +309,16 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportOutColl(self, p, MT, muL, xsData, mem)
-    class(mgXsClerk), intent(inout) :: self
-    class(particle), intent(in)             :: p
-    integer(shortInt), intent(in)           :: MT
-    real(defReal), intent(in)               :: muL
-    class(nuclearDatabase),intent(inout)    :: xsData
-    type(scoreMemory), intent(inout)        :: mem
-    type(particleState)                     :: preColl, postColl
-    real(defReal)                           :: score, prod, mu, mu2, mu3, mu4, mu5
-    integer(shortInt)                       :: enIdx, matIdx, binIdx, binEnOut
-    integer(longInt)                        :: addr
+    class(mgXsClerk), intent(inout)      :: self
+    class(particle), intent(in)          :: p
+    integer(shortInt), intent(in)        :: MT
+    real(defReal), intent(in)            :: muL
+    class(nuclearDatabase),intent(inout) :: xsData
+    type(scoreMemory), intent(inout)     :: mem
+    type(particleState)                  :: preColl, postColl
+    real(defReal)                        :: score, prod, mu, mu2, mu3, mu4, mu5
+    integer(shortInt)                    :: enIdx, locIdx, binIdx, binEnOut
+    integer(longInt)                     :: addr
 
     ! Get pre and post collision particle state
     preColl  = p % preCollision
@@ -308,7 +338,7 @@ contains
 
     ! Score in case of scattering events
     select case(MT)
-      case ( N_N_ELASTIC, N_N_INELASTIC, N_Nl(1):N_Nl(40), N_Ncont,         &
+      case ( N_N_ELASTIC, N_N_INELASTIC, N_N_ThermINEL, N_Nl(1):N_Nl(40), N_Ncont, &
              N_2N, N_2Na, N_2Nd, N_2Nf, N_2Np, N_2N2a, N_2Nl(1):N_2Nl(16),  &
              N_3N, N_3Na, N_3Nf, N_3Np, N_4N, N_Na, N_Np, N_Nd, N_Nt)
 
@@ -321,16 +351,16 @@ contains
         end if
         ! Space
         if (allocated(self % spaceMap)) then
-          matIdx = self % spaceMap % map(preColl)
+          locIdx = self % spaceMap % map(preColl)
         else
-          matIdx = 1
+          locIdx = 1
         end if
 
         ! Return if invalid bin index
-        if ((enIdx == self % energyN + 1) .or. matIdx == 0) return
+        if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
         ! Calculate bin address
-        binIdx = self % energyN * (matIdx - 1) + enIdx
+        binIdx = self % energyN * (locIdx - 1) + enIdx
         addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
         ! Score a scattering event from group g
@@ -402,48 +432,48 @@ contains
   end subroutine reportOutColl
 
   !!
-  !! Process end of the cycle to score fission spectrum with an analog estimator
+  !! Process fission report
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
-    class(mgXsClerk), intent(inout)     :: self
-    class(particleDungeon), intent(in)  :: end
-    type(scoreMemory), intent(inout)    :: mem
-    integer(longInt)                    :: addr, binIdx, enIdx, matIdx
-    integer(shortInt)                   :: N, i
+  subroutine reportSpawn(self, MT, pOld, pNew, xsData, mem)
+    class(mgXsClerk), intent(inout)       :: self
+    integer(shortInt), intent(in)         :: MT
+    class(particle), intent(in)           :: pOld
+    class(particleState), intent(in)      :: pNew
+    class(nuclearDatabase), intent(inout) :: xsData
+    type(scoreMemory), intent(inout)      :: mem
+    integer(longInt)                      :: addr, binIdx, enIdx, locIdx
 
-    ! Loop over the whole neutron population
-    N = end % popSize()
-    do i = 1,N
+    if (MT == N_FISSION) then
 
       ! Find bin indexes
       ! Energy
       if (allocated(self % energyMap)) then
-        enIdx = self % energyN + 1 - self % energyMap % map(end % get(i))
+        enIdx = self % energyN + 1 - self % energyMap % map(pNew)
       else
         enIdx = 1
       end if
       ! Space
       if (allocated(self % spaceMap)) then
-        matIdx = self % spaceMap % map(end % get(i))
+        locIdx = self % spaceMap % map(pNew)
       else
-        matIdx = 1
+        locIdx = 1
       end if
 
       ! Return if invalid bin index
-      if ((enIdx == self % energyN + 1) .or. matIdx == 0) cycle
+      if ((enIdx == self % energyN + 1) .or. locIdx == 0) return
 
       ! Calculate bin address
-      binIdx = self % energyN * (matIdx - 1) + enIdx
+      binIdx = self % energyN * (locIdx - 1) + enIdx
       addr = self % getMemAddress() + self % width * (binIdx - 1) - 1
 
       ! Score energy group of fission neutron
       call mem % score(ONE,  addr + CHI_idx)
 
-    end do
+    end if
 
-  end subroutine reportCycleEnd
+  end subroutine reportSpawn
 
   !!
   !! Final processing to calculate the multi-group cross sections, fission data and
@@ -552,7 +582,7 @@ contains
 
       ! Store total cross section and flux for this energy group
       tot(i)    = capt_res(1,i) + fiss_res(1,i) + scattXS
-      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(1,i)**2 + scattXSstd**2)
+      totStd(i) = sqrt(capt_res(2,i)**2 + fiss_res(2,i)**2 + scattXSstd**2)
       fluxG(i)  = flux
       fluxGstd(i) = fluxStd
 

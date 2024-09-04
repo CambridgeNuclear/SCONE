@@ -58,7 +58,7 @@ do
 
   elif [[ $MODE =~ ^SAB$ ]]; then
     awk -v FILE=$FULL_PATH \
-    '/^[[:space:]]*[[:alnum:]]+.[[:digit:]][[:digit:]]t/\
+    '/^[[:space:]]*([[:alnum:]]|_|\-)+.[[:digit:]][[:digit:]]t/\
       {print $1 "; " NR "; " FILE "; "}' $var >> $OUTNAME
 
   else

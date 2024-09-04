@@ -17,14 +17,14 @@ module thermalScatteringData_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR =        &
-  & "water { temp 1;                               &
+  & "water {                                       &
   &       moder {1001.03 h-h2o.49; }               &
   &       composition {                            &
   &       1001.03  2.0E-3;                         &
   &       8016.03  1.0E-3;                         &
   &                   }                            &
   &      }                                         &
-  &  graphite { temp 1;                                &
+  &  graphite {                                        &
   &          moder {6012.06  grph30.46;}               &
   &          composition {                             &
   &          6012.06 2.0E-3;                           &
@@ -66,7 +66,7 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate(([1,2]))
+    call data % activate(([1,2]), silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
@@ -126,9 +126,8 @@ contains
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting XSs
     ! H-1
-    nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(2))
+    nuc  => ceNeutronNuclide_CptrCast(data % getNuclide(2))
     nuclideCache(2) % E_tot = ONE
-    nuclideCache(2) % needsSabInel = .true.
 
     call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, p % pRNG)
 
