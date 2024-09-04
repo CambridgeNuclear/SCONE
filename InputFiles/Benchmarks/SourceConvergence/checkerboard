@@ -187,7 +187,7 @@ nuclearData {
 
     water {
       rgb (0 0 139); // Colour of water is dark blue
-      moder { 1001.03 lwj3.00; }
+      moder { 1001.03 (lwj3.00); }
       composition {
       1001.03    6.6706E-002;
       8016.03    3.350E-002;

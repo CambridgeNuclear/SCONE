@@ -166,7 +166,7 @@ materials {
 
 
     fuel {                    // 233UO2-ZrO2
-      !temp       293;
+      temp       293;
       composition {
         92233.03  3.9891E-3;
         92234.03  6.3690E-5;
@@ -177,27 +177,27 @@ materials {
     }
 
     blade {
-      !temp       293;
+      temp       293;
       composition {
         26000.03  5.9259E-2;  // Fe
         24000.03  1.7428E-2;  // Cr
         25055.03  8.6816E-4;  // Mn
         28000.03  7.5171E-3;  // Ni
-        05010.03  3.7488E-3;  // 10B
+        5010.03  3.7488E-3;  // 10B
       }
     }
 
     water {
-      !temp       293;
+      temp       293;
       composition {
-        08016.03  3.3368E-2;
+        8016.03  3.3368E-2;
         1001.03  6.6735E-2;
       }
-      moder {1001.03  hh2o.04; }
+      moder {1001.03  (hh2o.04); }
     }
 
     zirc {                    // Zircaloy
-      !temp       293;
+      temp       293;
       composition {
         40000.03  4.2537E-2;  // Zr
         50000.03  4.9918E-4;  // Sn

@@ -102,7 +102,7 @@ contains
     zaidCache(1) % xi = 0.347_defReal
     nuclideCache(1) % E_tot = ONE
 
-    call nuc % getMicroXSs(microXSs, 9.1E-3_defReal, p % pRNG)
+    call nuc % getMicroXSs(microXSs, 9.1E-3_defReal, ZERO, p % pRNG)
 
     @assertEqual(ONE, 15.317184903738868_defReal/ microXSs % total,            TOL)
     @assertEqual(ONE, 11.662135262310867_defReal/ microXSs % elasticScatter,   TOL)

@@ -140,7 +140,7 @@ nuclearData {
 materials {
 
     fuel {
-      !temp       293;
+      temp       293;
       composition {
         92234.03  4.8271E-4;
         92235.03  4.4797E-2;
@@ -150,9 +150,9 @@ materials {
     }
 
     steel {
-      !temp       293;
+      temp       293;
       composition {
-        06012.03  3.1691E-4;  // C
+        6012.03  3.1691E-4;  // C
         25055.03  1.7321E-3;  // Mn
         14028.03  1.6940E-3;  // Si
         24052.03  1.6472E-2;  // Cr
@@ -162,11 +162,11 @@ materials {
     }
 
     concrete {
-      !temp       293;
+      temp       293;
       composition {
-        01001.03  1.4868E-2;  // H
-        06012.03  3.8144E-3;  // C
-        08016.03  4.1519E-2;  // O
+        1001.03  1.4868E-2;  // H
+        6012.03  3.8144E-3;  // C
+        8016.03  4.1519E-2;  // O
         11023.03  3.0400E-4;  // Na
         12024.03  5.8700E-4;  // Mg
         13027.03  7.3500E-4;  // Al
@@ -177,19 +177,19 @@ materials {
     }
 
    paraffin {
-      !temp       293;
+      temp       293;
       composition {
-        01001.03  8.2574E-2;  // H
-        06012.03  3.9699E-2;  // C
+        1001.03  8.2574E-2;  // H
+        6012.03  3.9699E-2;  // C
       }
     }
 
     air {   // No data for air given, this composition taken from:
             // https://www.researchgate.net/figure/contd-Atom-Densities-for-Basic-Materials-atom-barn-cm_tbl17_267562651
-      !temp       293;
+      temp       293;
       composition {
-        07014.03  4.1985E-5;
-        08016.03  1.1263E-5;
+        7014.03  4.1985E-5;
+        8016.03  1.1263E-5;
       }
     }
 

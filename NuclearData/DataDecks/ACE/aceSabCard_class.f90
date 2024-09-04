@@ -228,7 +228,7 @@ contains
   end function ESZ_inelastic
 
   !!
-  !! Return number of elastic scattering ingoing energies groups
+  !! Return number of elastic scattering ingoing energy groups
   !!
   !! Args:
   !!   None
@@ -240,7 +240,7 @@ contains
     class(aceSabCard), intent(in) :: self
     integer(shortInt)             :: N
 
-    N = self % XSS(self % JXS(4))
+    N = int(self % XSS(self % JXS(4)), shortInt)
 
   end function elasticEnergies
 
@@ -257,7 +257,7 @@ contains
     class(aceSabCard), intent(in) :: self
     integer(shortInt)             :: N
 
-    N = self % XSS(self % JXS(1))
+    N = int(self % XSS(self % JXS(1)), shortInt)
 
   end function inelasticEnergies
 

@@ -52,6 +52,7 @@ module ceNeutronMaterial_class
   !!     happened
   !!
   type, public, extends(neutronMaterial) :: ceNeutronMaterial
+    character(nameLen)                           :: name = ''
     integer(shortInt)                            :: matIdx = 0
     real(defReal)                                :: kT     = ZERO
     class(ceNeutronDatabase), pointer            :: data => null()
@@ -172,6 +173,7 @@ contains
   !! in the material composition.
   !!
   !! Args:
+  !!   name [in]      -> material name
   !!   matIdx [in]    -> material index
   !!   database [in]  -> pointer to a database that updates XSs on the ceNeutronCache
   !!   fissile [in]   -> flag indicating whether fission data is present
@@ -180,8 +182,9 @@ contains
   !!   eUpperSab [in] -> upper energy of S(a,b) range in the material
   !!   eLowerURR [in] -> lower energy of ures range in the material
   !!
-  subroutine set(self, matIdx, database, fissile, hasTMS, temp, eUpperSab, eLowerURR)
+  subroutine set(self, name, matIdx, database, fissile, hasTMS, temp, eUpperSab, eLowerURR)
     class(ceNeutronMaterial), intent(inout)                 :: self
+    character(nameLen), intent(in), optional                :: name
     integer(shortInt), intent(in), optional                 :: matIdx
     class(ceNeutronDatabase), pointer, optional, intent(in) :: database
     logical(defBool), intent(in), optional                  :: fissile
@@ -191,11 +194,12 @@ contains
     real(defReal), intent(in), optional                     :: eLowerURR
     character(100), parameter :: Here = 'set (ceNeutronMaterial_class.f90)'
 
+    if (present(name))      self % name    = name
     if (present(database))  self % data    => database
     if (present(fissile))   self % fissile = fissile
     if (present(matIdx))    self % matIdx  = matIdx
     if (present(hasTMS))    self % hasTMS  = hasTMS
-    if (present(temp))      self % kT = (kBoltzmann * temp) / joulesPerMeV
+    if (present(temp))      self % kT      = (kBoltzmann * temp) / joulesPerMeV
 
     if (present(eUpperSab)) then
       if (eUpperSab < ZERO) call fatalError (Here, 'Upper Sab energy limit of material '&
@@ -207,6 +211,13 @@ contains
       if (eLowerURR < ZERO) call fatalError (Here, 'Lower URR energy limit of material '&
                                              &//numToChar(matIdx)//' is negative.')
       self % eLowerURR  = eLowerURR
+    end if
+
+    ! Check to make sure URR energy and S(a,b) energy do not overlap
+    ! Possible in principle, but would be quite strange...
+    if (present(eLowerURR) .and. present(eUpperSab)) then
+      if (eUpperSab > eLowerUrr) call fatalError(Here,self % name//&
+              ' has an overlap in URR and S(alpha,beta) energy ranges. Dodgy data?')
     end if
 
   end subroutine set
@@ -334,7 +345,7 @@ contains
         else
 
           ! Update nuclide cache if needed
-          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, rand)
+          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, self % kT, rand)
           totNucXS = nucCache % xss % total
 
         end if
@@ -366,7 +377,7 @@ contains
             if (eMax < eRel) eRel = eMax
 
             ! Get relative energy nuclide cross section
-            call self % data % updateTotalNucXS(eRel, nucIdx, rand)
+            call self % data % updateTotalNucXS(eRel, nucIdx, self % kT, rand)
 
             ! Calculate acceptance probability using ratio of relative energy xs to temperature majorant
             P_acc = nucCache % xss % total * nucCache % doppCorr / totNucXS

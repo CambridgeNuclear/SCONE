@@ -74,39 +74,41 @@ module aceNeutronNuclide_class
   !!   IN JEF 3.1.1 It will Reduce accuracy of Tc99 collision processing
   !!
   !! Public Members:
-  !!   ZAID           -> ZZAAA.TTc ID of the ACE card of the nuclide
-  !!   eGrid          -> Energy grid for the XSs
-  !!   mainData       -> Array of XSs that are required in ceNeutronMicroXSs, that is
+  !!   ZAID             -> ZZAAA.TTc ID of the ACE card of the nuclide
+  !!   eGrid            -> Energy grid for the XSs
+  !!   mainData         -> Array of XSs that are required in ceNeutronMicroXSs, that is
   !!     (total, capture, escatter, iescatter, fission, nuFission)
-  !!   MTdata         -> array of 'reactionMT's with data for all MT reactions in the nuclide
+  !!   MTdata           -> array of 'reactionMT's with data for all MT reactions in the nuclide
   !!     only reactions 1:nMT are active, that is can be sampled during tracking
-  !!   nMT            -> number of active MT reactions that produce 2nd-ary neutrons
-  !!   idxMT          -> intMap that maps MT -> index in MTdata array
-  !!   elasticScatter -> reactionHandle with data for elastic scattering
-  !!   fission        -> reactionHandle with fission data (may be uninitialised)
-  !!   urrE           -> energy boundaries of probability tables. It's zero if tables are off
-  !!   probTab        -> probability tables for ures
-  !!   hasProbTab     -> probability tables flag, it's false by default
-  !!   IFF            -> ures probability tables multiplication factor flag
-  !!   hasThData      -> thermal scattering flag, it's false by default
-  !!   thData         -> S(a,b) thermal data class to store XSs and outgoing distributions
-  !!   SabEl          -> energy boundaries of elastic S(a,b) data
-  !!   SabInel        -> energy boundaries of inelastic S(a,b) data
+  !!   nMT              -> number of active MT reactions that produce 2nd-ary neutrons
+  !!   idxMT            -> intMap that maps MT -> index in MTdata array
+  !!   elasticScatter   -> reactionHandle with data for elastic scattering
+  !!   fission          -> reactionHandle with fission data (may be uninitialised)
+  !!   urrE             -> energy boundaries of probability tables. It's zero if tables are off
+  !!   probTab          -> probability tables for ures
+  !!   hasProbTab       -> probability tables flag, it's false by default
+  !!   IFF              -> ures probability tables multiplication factor flag
+  !!   hasThData        -> thermal scattering flag, it's false by default
+  !!   thData           -> S(a,b) thermal data array to store XSs and outgoing distributions
+  !!   stochasticMixing -> flag to indicate whether S(a,b) stochastic interpolation is performed
+  !!   SabEl            -> energy boundaries of elastic S(a,b) data
+  !!   SabInel          -> energy boundaries of inelastic S(a,b) data
   !!
   !! Interface:
   !!   ceNeutronNuclide Interface
-  !!   search          -> search energy grid and return index and interpolation factor
-  !!   totalXS         -> return totalXS given index and interpolation factor
-  !!   scatterXS       -> return elastic scattering XS given index and interpolation factor
-  !!   microXSs        -> return interpolated ceNeutronMicroXSs package given index and inter. factor
-  !!   getUrrXSs       -> return ceNeutronMicroXSs accounting for ures probability tables
-  !!   getThXSs        -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
-  !!   getMajXS        -> returns a majorant cross section on request within an energy range given as input
-  !!   init            -> build nuclide from aceCard
-  !!   initUrr         -> build list and mapping of nuclides to maintain temperature correlation
-  !!                      when reading ures probability tables
-  !!   initSab         -> builds S(a,b) properties from aceCard
-  !!   display         -> print information about the nuclide to the console
+  !!   search           -> search energy grid and return index and interpolation factor
+  !!   totalXS          -> return totalXS given index and interpolation factor
+  !!   scatterXS        -> return elastic scattering XS given index and interpolation factor
+  !!   microXSs         -> return interpolated ceNeutronMicroXSs package given index and inter. factor
+  !!   getUrrXSs        -> return ceNeutronMicroXSs accounting for ures probability tables
+  !!   getThXSs         -> return ceNeutronMicroXSs accounting for S(a,b) scattering treatment
+  !!   getMajXS         -> returns a majorant cross section on request within an energy range given as input
+  !!   init             -> build nuclide from aceCard
+  !!   initUrr          -> build list and mapping of nuclides to maintain temperature correlation
+  !!                       when reading ures probability tables
+  !!   initSab          -> builds S(a,b) properties from aceCard
+  !!   returnSabPointer -> returns pointer to the appropriate S(a,b) data during stochastic mixing
+  !!   display          -> print information about the nuclide to the console
   !!
   type, public, extends(ceNeutronNuclide) :: aceNeutronNuclide
     character(nameLen)                          :: ZAID    = ''
@@ -127,9 +129,10 @@ module aceNeutronNuclide_class
 
     ! S(alpha,beta)
     logical(defBool)            :: hasThData = .false.
-    type(thermalData)           :: thData
+    logical(defBool)            :: stochasticMixing = .false.
     real(defReal), dimension(2) :: SabEl = ZERO
     real(defReal), dimension(2) :: SabInel = ZERO
+    type(thermalData), dimension(:), allocatable :: thData
 
   contains
     ! Superclass Interface
@@ -152,6 +155,8 @@ module aceNeutronNuclide_class
     procedure :: init
     procedure :: initUrr
     procedure :: initSab
+    procedure :: getSabPointer
+    procedure :: getSabTBounds
     procedure :: display
 
   end type aceNeutronNuclide
@@ -219,7 +224,7 @@ contains
   !!
   !! Needs to use ceNeutronCache
   !!
-  !! TODO: This is quite rought implementation. Improve it!
+  !! TODO: This is quite rough implementation. Improve it!
   !!
   !! See ceNeutronNuclide documentation
   !!
@@ -454,21 +459,27 @@ contains
   !! NOTE: It recalculates the total cross section given the partials
   !!
   !! Args:
-  !!   xss [out] -> XSs package to store interpolated values
-  !!   idx [in]  -> index of the bottom bin in nuclide Energy-Grid
-  !!   f [in]    -> interpolation factor in [0;1]
-  !!   E [in]    -> Energy of ingoing neutron
+  !!   xss [out]    -> XSs package to store interpolated values
+  !!   idx [in]     -> index of the bottom bin in nuclide Energy-Grid
+  !!   f [in]       -> interpolation factor in [0;1]
+  !!   E [in]       -> Energy of ingoing neutron
+  !!   kT [in]      -> Local material thermal energy
+  !!   rand [inout] -> RNG for stochastic mixing
   !!
   !! Errors:
   !!   Invalid idx beyond array bounds -> undefined behaviour
   !!   Invalid f (outside [0;1]) -> incorrect value of XSs
   !!
-  elemental subroutine getThXSs(self, xss, idx, f, E)
+  subroutine getThXSs(self, xss, idx, f, E, kT, rand)
     class(aceNeutronNuclide), intent(in) :: self
     type(neutronMicroXSs), intent(out)   :: xss
     integer(shortInt), intent(in)        :: idx
     real(defReal), intent(in)            :: f
     real(defReal), intent(in)            :: E
+    class(RNG), intent(inout)            :: rand
+    real(defReal), intent(in)            :: kT
+    type(thermalData), pointer           :: sabPtr
+    integer(shortInt)                    :: sabIdx
 
     associate (data => self % mainData(:,idx:idx+1))
 
@@ -483,12 +494,20 @@ contains
         xss % nuFission = ZERO
       end if
 
-      ! Read S(a,b) tables for elastic scatter: return zero if eleastic scatter is off
-      xss % elasticScatter = self % thData % getElXS(E)
+      ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
+      ! Default to low temperature without stochastic mixing.
+      ! IMPORTANT
+      ! The choice of data should be stored somewhere for consistent handling of 
+      ! angular distributions, e.g., a cache
+      call self % getSabPointer(kT, rand, sabPtr, sabIdx)
+      nuclideCache(self % getNucIdx()) % sabIdx = sabIdx
 
-      ! If ineleastic scatter is on, reads S(a,b) tables for inelastic scatter
+      ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off
+      xss % elasticScatter = sabPtr % getElXS(E)
+
+      ! If inelastic scatter is on, reads S(a,b) tables for inelastic scatter
       if (self % needsSabInel(E)) then
-        xss % inelasticScatter = self % thData % getInelXS(E)
+        xss % inelasticScatter = sabPtr % getInelXS(E)
       else
         xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
       end if
@@ -660,8 +679,8 @@ contains
   end function needsUrr
 
   !!
-  !! Function that checks whether this nuclide at the provided energy should
-  !! has S(a,b) inelastic scattering data or not
+  !! Function that checks whether or not this nuclide at the provided energy should
+  !! have S(a,b) inelastic scattering data
   !!
   !! Args:
   !!   E [in] -> incident neutron energy
@@ -678,8 +697,8 @@ contains
   end function needsSabInel
 
   !!
-  !! Function that checks whether this nuclide at the provided energy should
-  !! has S(a,b) elastic scattering data or not
+  !! Function that checks whether or not this nuclide at the provided energy should
+  !! have S(a,b) elastic scattering data
   !!
   !! See ceNeutronNuclide documentation
   !!
@@ -928,24 +947,63 @@ contains
   !! Initialise thermal scattering tables from ACE card
   !!
   !! Args:
-  !!   ACE [inout]   -> ACE S(a,b) card
+  !!   ACE1 [inout]   -> ACE S(a,b) card
+  !!   ACE2 [inout]   -> Optional second ACE S(a,b) card
   !!
   !! Errors:
   !!   fatalError if the inelastic scattering S(a,b) energy grid starts at a
   !!   lower energy than the nuclide energy grid
   !!
-  subroutine initSab(self, ACE)
-    class(aceNeutronNuclide), intent(inout) :: self
-    class(aceSabCard), intent(inout)        :: ACE
+  subroutine initSab(self, ACE1, ACE2)
+    class(aceNeutronNuclide), intent(inout)    :: self
+    class(aceSabCard), intent(inout)           :: ACE1
+    class(aceSabCard), intent(inout), optional :: ACE2
+    real(defReal), dimension(2)                :: EBounds
+    real(defReal)                              :: T1, T2
+    type(thermalData)                          :: temp
     character(100), parameter :: Here = "initSab (aceNeutronNuclide_class.f90)"
 
+    if (present(ACE2)) then
+      allocate(self % thData(2))
+    else
+      allocate(self % thData(1))
+    end if
+
     ! Initialise S(a,b) class from ACE file
-    call self % thData % init(ACE)
+    call self % thData(1) % init(ACE1)
     self % hasThData = .true.
 
     ! Initialise energy boundaries
-    self % SabInel = self % thData % getEbounds('inelastic')
-    self % SabEl = self % thData % getEbounds('elastic')
+    self % SabInel = self % thData(1) % getEBounds('inelastic')
+    self % SabEl = self % thData(1) % getEBounds('elastic')
+    
+    ! Add second S(a,b) file for stochastic mixing
+    if (present(ACE2)) then
+      
+      self % stochasticMixing = .true.
+      call self % thData(2) % init(ACE2)
+      
+      ! Ensure energy bounds are conservative
+      EBounds = self % thData(2) % getEBounds('inelastic')
+      if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
+      if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
+      
+      EBounds = self % thData(2) % getEbounds('elastic')
+      if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
+      if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
+
+      ! Identify which data is higher temperature and which is lower
+      ! 1 should be lower than 2 - swap if necessary
+      T1 = self % thData(1) % getTemperature()
+      T2 = self % thData(2) % getTemperature()
+
+      if (T1 > T2) then
+        temp = self % thData(1)
+        self % thData(1) = self % thData(2)
+        self % thData(2) = temp
+      end if
+
+    end if
 
     ! Check consistency of energy grid
     if (self % SabInel(1) < self % eGrid(1)) then
@@ -953,6 +1011,62 @@ contains
     end if
 
   end subroutine initSab
+
+  !!
+  !! Return pointer to Sab reaction data.
+  !! If stochastic mixing is active, samples which
+  !! set of reaction data to point towards.
+  !!
+  !! Returns the Sab index for later consistent handling
+  !! of angular distributions by storing in a cache
+  !!
+  subroutine getSabPointer(self, kT, rand, ptr, idx)
+    class(aceNeutronNuclide), intent(in), target :: self
+    real(defReal), intent(in)                    :: kT
+    class(RNG), intent(inout)                    :: rand
+    type(thermalData), pointer, intent(out)      :: ptr
+    integer(shortInt), intent(out)               :: idx
+    real(defReal)                                :: kT1, kT2
+    character(100), parameter :: Here = "getSabPointer (aceNeutronNuclide_class.f90)"
+
+    if (self % stochasticMixing) then
+      kT1 = self % thData(1) % getTemperature()
+      kT2 = self % thData(2) % getTemperature()
+
+      if ((kT < kT1) .or. (kT > kT2)) call fatalError(Here,&
+              'Requested temperature '//numToChar(kT)//' not in temperature bounds: '//&
+              numToChar(kT1)//' and '//numToChar(kT2))
+
+      if ((kT2 - kT)/(kT2 - kT1) > rand % get()) then
+        ptr => self % thData(1)
+        idx = 1
+      else
+        ptr => self % thData(2)
+        idx = 2
+      end if
+    else
+      ptr => self % thData(1)
+      idx = 1
+    end if
+
+  end subroutine getSabPointer
+
+  !!
+  !! Return the temperature bounds of S(alpha,beta) data
+  !! If only one library, both bounds are the same temperature
+  !!
+  function getSabTBounds(self) result(kT)
+    class(aceNeutronNuclide), intent(in)  :: self
+    real(defReal), dimension(2)           :: kT
+
+    kT(1) = self % thData(1) % getTemperature()
+    if (self % stochasticMixing) then
+      kT(2) = self % thData(2) % getTemperature()
+    else
+      kT(2) = kT(1)
+    end if
+
+  end function getSabTBounds
 
   !!
   !! A Procedure that displays information about the nuclide to the screen
