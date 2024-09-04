@@ -86,7 +86,7 @@ contains
       factor = (E_out- E_min_low)/(E_max_low - E_min_low)
 
     end if
-    
+
     ! Interpolate outgoing energy
     E_out = E_min *(ONE - factor) + factor * E_max
 

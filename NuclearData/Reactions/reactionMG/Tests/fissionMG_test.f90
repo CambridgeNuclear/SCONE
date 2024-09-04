@@ -76,5 +76,5 @@ contains
     call reaction % kill()
 
   end subroutine fissionMG_Build_And_Functionality
-    
+
 end module fissionMG_test

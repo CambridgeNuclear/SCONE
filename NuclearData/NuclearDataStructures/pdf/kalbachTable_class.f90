@@ -292,5 +292,5 @@ contains
     end select
 
   end subroutine initCDF
-    
+
 end module kalbachTable_class

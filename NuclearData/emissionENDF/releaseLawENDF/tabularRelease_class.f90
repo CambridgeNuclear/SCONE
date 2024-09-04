@@ -122,7 +122,7 @@ contains
     call new % init(eGrid, releaseValues)
 
   end function new_tabularRelease_simple
-    
+
   !!
   !! Constructor with multiple interpolation regions
   !!

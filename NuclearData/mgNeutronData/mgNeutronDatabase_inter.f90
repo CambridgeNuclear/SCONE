@@ -20,7 +20,7 @@ module mgNeutronDatabase_inter
   !! It just provides a common superclass for related classes
   !! and holds the number of energy groups
   !!
-  !! Public members: 
+  !! Public members:
   !!   nG -> number of energy groups
   !!
   type, public, abstract, extends(nuclearDatabase) :: mgNeutronDatabase

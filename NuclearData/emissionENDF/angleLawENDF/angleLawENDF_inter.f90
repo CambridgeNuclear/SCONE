@@ -68,5 +68,5 @@ module angleLawENDF_inter
 
 
   end interface
-    
+
 end module angleLawENDF_inter

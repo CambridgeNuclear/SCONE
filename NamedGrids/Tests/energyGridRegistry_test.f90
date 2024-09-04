@@ -172,5 +172,5 @@ contains
 
   end subroutine testGettingUndefinedGrid
 
-    
+
 end module energyGridRegistry_test
