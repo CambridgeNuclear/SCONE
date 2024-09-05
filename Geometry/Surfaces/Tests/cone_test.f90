@@ -3,7 +3,7 @@ module cone_test
   use universalVariables
   use dictionary_class,  only : dictionary
   use cone_class,        only : cone
-  use pfUnit_mod
+  use funit
 
   implicit none
 
