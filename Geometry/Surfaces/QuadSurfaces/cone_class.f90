@@ -140,11 +140,11 @@ contains
     end if
 
     if (angle <= ZERO .or. angle >= 90.0_defReal) then
-      call fatalError(Here, 'Opening angle of cone must be in the range 0-90 degrees &
-                            & (extremes excluded). It is: '//numToChar(angle))
+      call fatalError(Here, 'Opening angle of cone must be in the range 0-90 degrees '//&
+                            & '(extremes excluded). It is: '//numToChar(angle))
     end if
 
-    if (hMin >= hMax) call fatalError(Here, 'hMin is greater or equal hMax.')
+    if (hMin >= hMax) call fatalError(Here, 'hMin is greater than or equal to hMax.')
     if (sign(hMin,hMax) /= hMin) call fatalError(Here, 'hMin and hMax have different signs.')
 
     ! Load properties
@@ -221,7 +221,7 @@ contains
     aabb(self % axis) = self % vertex(self % axis) + self % hMin
     aabb(self % axis + 3) = self % vertex(self % axis) + self % hMax
 
-    ! On the plane of the basis
+    ! On the plane of the bases
     maxRadius = max(abs(self % hMin), abs(self % hMax)) * sqrt(self % tanSquare)
     aabb(self % plane)     = self % vertex(self % plane) - maxRadius
     aabb(self % plane + 3) = self % vertex(self % plane) + maxRadius
@@ -236,23 +236,23 @@ contains
   pure function evaluate(self, r) result(c)
     class(cone), intent(in)                 :: self
     real(defReal), dimension(3), intent(in) :: r
-    real(defReal)                           :: c, cMin, cMax, cBasis
+    real(defReal)                           :: c, cMin, cMax, cBase
     real(defReal), dimension(3)             :: diff
 
     ! Vector for the difference between position provided and vertex
     diff = r - self % vertex
 
-    ! Evaluate the expression for the surface of the cone
+    ! Evaluate the expression for the slanted surface of the cone
     c = dot_product(diff(self % plane), diff(self % plane)) - &
         self % tanSquare * diff(self % axis) ** 2
 
-    ! Evaluate the expressions for the two basis of the cone and find the maximum
+    ! Evaluate the expressions for the two bases of the cone and find the maximum
     cMin = - diff(self % axis) + self % hMin
     cMax = diff(self % axis) - self % hMax
-    cBasis = max(cMin, cMax)
+    cBase = max(cMin, cMax)
 
     ! Find the overall maximum
-    c = max(c, cBasis)
+    c = max(c, cBase)
 
   end function evaluate
 
@@ -296,7 +296,7 @@ contains
     ! Calculate delta/4
     delta = b * b - a * c
 
-    ! Calculate the distances from the cone surface
+    ! Calculate the distances from the slanted surface
     if (abs(a) < epsilon(ONE)) then   ! One intersection: particle direction tangent to cone opening
       d1 = - HALF * c / b
       d2 = sign(INF, dot_product(u, orientation))
@@ -328,7 +328,7 @@ contains
     near = min(d1, d2)
     far  = max(d1, d2)
 
-    ! Calculate the distances from the basis of the cone
+    ! Calculate the distances from the bases of the cone
     if (abs(u(self % axis)) > epsilon(ONE)) then    ! Normal intersection
 
       d1 = (self % hMax - diff(self % axis)) / u(self % axis)
@@ -337,18 +337,18 @@ contains
     else                                            ! Particle parallel to axis: check location
 
       if (diff(self % axis) > self % hMin .and. diff(self % axis) < self % hMax) then
-        ! Inside the cone: basis intersection segment is -INF:+INF
+        ! Inside the cone: base intersection segment is -INF:+INF
         d1 = -INF
         d2 = INF
       else
-        ! Outside the cone: basis intersection segment doesn't exist
+        ! Outside the cone: base intersection segment doesn't exist
         d1 = -INF
         d2 = -INF
       end if
 
     end if
 
-    ! Save minimum and maximum distance from cone basis
+    ! Save minimum and maximum distance from cone bases
     test_near = min(d1, d2)
     test_far  = max(d1, d2)
 
@@ -399,7 +399,7 @@ contains
 
     diff = r - self % vertex
 
-    ! Check the location of the particle, i.e., basis or cone surface, to calculate
+    ! Check the location of the particle, i.e., base or cone surface, to calculate
     ! the normal
     if (abs(diff(self % axis) - self % hMin) < self % surfTol()) then
       norm(self % axis)  = -ONE
