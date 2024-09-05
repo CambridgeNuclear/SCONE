@@ -518,7 +518,7 @@ Example: ::
       billy { id 92; type xCylinder; origin (0.0 0.0 9.0); radius 4.8; }
 
 * cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
-  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The orientation of the
+  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
   cone is determined by the sign of ``hMin`` and ``hMax``.
 
   - vertex: (x y z) vector with the vertex absolute coordinates. [cm]
@@ -532,7 +532,7 @@ Example: ::
 
 Example: ::
 
-      billy { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
+      connor { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
 
 * sphere
 
