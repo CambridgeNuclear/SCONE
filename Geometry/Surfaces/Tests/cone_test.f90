@@ -232,7 +232,7 @@ contains
     @assertFalse(this % surf % halfspace(r, u))
 
     ! Out within tolerance
-    ! NOTE THAT the tolerance is very sensitive: if using eps = HALF * TOL, the
+    ! NOTE that the tolerance is very sensitive: if using eps = HALF * TOL, the
     ! particle is outside tolerance
     eps = -0.01_defReal * tolerance
     @assertFalse(this % surf % halfspace(r + eps*u, u))
@@ -241,11 +241,11 @@ contains
     eps = -TWO * tolerance
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
-    ! Well Outside
+    ! Well outside
     eps = -HALF
     @assertTrue(this % surf % halfspace(r + eps*u, u))
 
-    ! Well withn
+    ! Well within
     eps = HALF
     @assertFalse(this % surf % halfspace(r + eps*u, u))
 
@@ -255,7 +255,7 @@ contains
     u = u /norm2(u)
     @assertTrue(this % surf % halfspace(r, u))
 
-    ! Choose point on one of the basis of the cone, moving out
+    ! Choose point on one of the bases of the cone, moving out
     r(a)       = 11.0_defReal
     r([p1,p2]) = 4.0_defReal
     u(a)       = ONE
@@ -320,7 +320,7 @@ contains
     ref   = 4.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! Impacting the basis
+    ! Impacting the bases
     u(a) = TWO
     u(p1) = -3.0_defReal
     u(p2) = ZERO
@@ -342,7 +342,7 @@ contains
     u   = u/norm2(u)
     @assertEqual(INF, this % surf % distance(r, u))
 
-    ! Parallel to the basis
+    ! Parallel to the bases
     u(a)  = ZERO
     u(p1) = ONE
     u(p2) = ZERO
@@ -401,7 +401,7 @@ contains
     ref = 3.0_defReal
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
-    ! Parallel to basis
+    ! Parallel to bases
     u(a)  = ZERO
     u(p1) = -ONE
     u(p2) = ZERO
