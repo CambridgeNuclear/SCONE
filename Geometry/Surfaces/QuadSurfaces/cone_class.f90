@@ -293,7 +293,7 @@ contains
     c = dot_product(diff(self % plane), diff(self % plane)) - &
         self % tanSquare * diff(self % axis) ** 2
 
-    ! Calculate delta/4
+    ! Calculate delta/4 (discriminant of the quadratic equation: a*d^2 + 2b*d + c = 0)
     delta = b * b - a * c
 
     ! Calculate the distances from the slanted surface
@@ -337,7 +337,7 @@ contains
     else                                            ! Particle parallel to axis: check location
 
       if (diff(self % axis) > self % hMin .and. diff(self % axis) < self % hMax) then
-        ! Inside the cone: base intersection segment is -INF:+INF
+        ! Inside the cone: base intersection segment lies between -INF:+INF
         d1 = -INF
         d2 = INF
       else
