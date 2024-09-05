@@ -521,6 +521,23 @@ Example: ::
 
       billy { id 92; type xCylinder; origin (0.0 0.0 9.0); radius 4.8; }
 
+* cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
+  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
+  cone is determined by the sign of ``hMin`` and ``hMax``.
+
+  - vertex: (x y z) vector with the vertex absolute coordinates. [cm]
+  - angle: cone openining angle, i.e., the angle between the axis and the cone
+    surface. [degrees]
+  - hMin: coordinate along the cone axis corresponding to the position of the
+    cone lower basis with respect to the vertex. It could be positive or negative. [cm]
+  - hMax: coordinate along the cone axis corresponding to the position of the
+    cone upper basis with respect to the vertex. It could be positive or negative.
+    Must be of the same sign as hMin, and always larger. [cm]
+
+Example: ::
+
+      connor { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
+
 * sphere
 
   - origin: (x y z) vector with the origin position. [cm]

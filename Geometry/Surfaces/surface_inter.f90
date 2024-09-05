@@ -284,7 +284,7 @@ contains
   !! To change this override this procedure in a subclass.
   !!
   !! Allowable BCs:
-  !!   BC(1) -> entire surface (Only Vaccum)
+  !!   BC(1) -> entire surface (only vacuum)
   !!
   !! Args:
   !!   BC [in] -> Integer array with BC flags for diffrent faces. Order is determined

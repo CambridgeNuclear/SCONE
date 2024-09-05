@@ -31,10 +31,10 @@ module cylinder_class
   !!         radius 7.34; }
   !!
   !! Private Members:
-  !!   axis -> Index of an alignment axis in {X_AXIS, Y_AXIS, Z_AXIS}
-  !!   plane -> Indexes of axis in plane of cylinder {X_AXIS, Y_AXIS, Z_AXIS}\{axis}
+  !!   axis   -> Index of an alignment axis in {X_AXIS, Y_AXIS, Z_AXIS}
+  !!   plane  -> Indexes of axis in plane of cylinder {X_AXIS, Y_AXIS, Z_AXIS}\{axis}
   !!   origin -> Location of the middle of the cylinder (component in axis has no significance)
-  !!   r      -> Sphere radius
+  !!   r      -> Cylinder radius
   !!   r_sq   -> Square of radius r (r^2)
   !!
   !! Interface:
@@ -59,6 +59,7 @@ module cylinder_class
 
     ! Local procedures
     procedure :: build
+
   end type cylinder
 
 contains
@@ -86,6 +87,7 @@ contains
         str = 'unknown cylinder'
 
     end select
+
   end function myType
 
   !!
@@ -125,7 +127,7 @@ contains
   !! Build cylinder from components
   !!
   !! Args:
-  !!   id [in] -> Surface ID
+  !!   id [in]   -> Surface ID
   !!   type [in] -> Cylinder type {'xCylinder', 'yCylinder' or 'zCylinder'}
   !!   origin [in] -> Cylinder origin
   !!   radius [in] -> Cylinder radius
@@ -165,7 +167,7 @@ contains
        self % plane = [X_AXIS, Y_AXIS]
 
      case default
-       call fatalError(Here, 'Uknown type of cylinder: '//type)
+       call fatalError(Here, 'Unknown type of cylinder: '//type)
 
    end select
 
@@ -205,7 +207,7 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(cylinder), intent(in)               :: self
+    class(cylinder), intent(in)             :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
     real(defReal), dimension(2)             :: diff
