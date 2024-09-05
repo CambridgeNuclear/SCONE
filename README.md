@@ -14,13 +14,13 @@ SCONE documentation is hosted at: <https://scone.readthedocs.io>
 Required
 
 * Cmake (>=3.10)
-* Fortran compiler, gfortran (>=6.3)
+* Fortran compiler, gfortran (>=8.3)
 * LAPACK and BLAS Libraries
 * GNU/Linux operating system
 
 Optional
 
-* pFUnit test framework
+* pFUnit 4 test framework
 * Python 3 interpreter
 
 ## Installation
