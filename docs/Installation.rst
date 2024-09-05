@@ -9,7 +9,7 @@ Requirements
 .. admonition:: Required
 
    Fortran Compiler
-     Currently SCONE requires gfortran (>=6.3). Support for other compilers is pending.
+     Currently SCONE requires gfortran (>=8.3). Support for other compilers is pending.
 
    CMake
      CMake cross-platform build system is used to run all configuration scripts. Version (>=3.10)
@@ -29,7 +29,7 @@ Requirements
 
    pFUnit 4 test framework and Python interpreter
      Both the unit and the integration tests in SCONE use pFUnit framework. To run it requires a
-     python interpreter. NOTE that version 4.0 (contrarily to the older 3.0) requires the use of
+     python interpreter. NOTE that version 4 (contrarily to the older 3.0) requires the use of
      gfortran version 8.3 or newer. 
 
 Getting gfortran
