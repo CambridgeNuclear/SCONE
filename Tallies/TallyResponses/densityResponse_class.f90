@@ -15,10 +15,10 @@ module densityResponse_class
   !!
   !! tallyResponse to score particle density contribution
   !!
-  !! Returns the inverse of the particle velocity in [cm/s]
+  !! Returns the inverse of the particle speed in [cm/s]
   !!
   !! NOTE:
-  !!  The velocities are computed from non-relativistic formula for massive particles.
+  !!  The speeds are computed from non-relativistic formula for massive particles.
   !!  The small error might appear in MeV range (e.g. for fusion applications)
   !!
   !! Interface:
@@ -49,7 +49,7 @@ contains
   end subroutine init
 
   !!
-  !! Returns the inverse of the particle velocity (response to score particle density)
+  !! Returns the inverse of the particle speed (response to score particle density)
   !!
   !! See tallyResponse_inter for details
   !!
@@ -59,8 +59,8 @@ contains
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
 
-    ! Gets the particle velocity from the particle
-    val = ONE / p % getVelocity()
+    ! Gets the particle speed from the particle
+    val = ONE / p % getSpeed()
 
   end function get
 

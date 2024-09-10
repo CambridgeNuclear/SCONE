@@ -248,8 +248,8 @@ contains
     @assertEqual(3, cellIdx, 'Cell Index. Level 1.')
     @assertEqual(1, uniIdx, 'Universe Index. Level 1.')
 
-    ! Verify getting velocity
-    @assertEqual(lightSpeed, this % p_CE % getVelocity())
+    ! Verify getting speed
+    @assertEqual(lightSpeed, this % p_CE % getSpeed())
 
   end subroutine testMiscAccess
 
