@@ -90,8 +90,10 @@ module arraysRR_class
     integer(shortInt)           :: ani         = 0
     integer(shortInt)           :: simulationType = 0
     real(defReal)               :: totalVolume = ONE
-    integer(shortInt)           :: volPolicy   = simAverage
-    integer(shortInt)           :: missPolicy  = srcPolicy
+    integer(shortInt)           :: volPolicy   = hybrid !simAverage
+    integer(shortInt)           :: missPolicy  = hybrid !srcPolicy
+    integer(shortInt)           :: tempVolPolicy   = hybrid !simAverage
+    integer(shortInt)           :: tempMissPolicy  = hybrid !srcPolicy
     
     ! Flux arrays
     real(defFlt), dimension(:), allocatable    :: scalarFlux
@@ -260,14 +262,14 @@ contains
     self % rho = real(rho, defFlt)
 
     if (present(volPolicy)) then
-      self % volPolicy = volPolicy
+      self % tempVolPolicy = volPolicy
     else
-      self % volPolicy = simAverage
+      self % tempVolPolicy = simAverage
     end if
     if (present(missPolicy)) then
-      self % missPolicy = missPolicy
+      self % tempMissPolicy = missPolicy
     else
-      self % missPolicy = srcPolicy
+      self % tempMissPolicy = srcPolicy
     end if
 
     ! Assume bounding box of the geometry is filled (and a box)
@@ -389,6 +391,10 @@ contains
 
     doLinear = .false.
     invM = 0.0_defFlt
+
+    ! Reset volume and miss policies - assume hybrid policy is used before
+    self % volPolicy = self % tempVolPolicy 
+    self % missPolicy = self % tempMissPolicy 
 
     call self % xsData % setAdjointXS()
 
