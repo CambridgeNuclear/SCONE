@@ -114,7 +114,7 @@ contains
 
       ! Loop through population, scoring probabilities
       do i = 1,end % popSize()
-        associate( state => end % get(i) )
+        associate(state => end % get(i))
           self % value(cc,:) = self % value(cc,:) + state % wgt * state % r
         end associate
       end do
@@ -181,7 +181,7 @@ contains
   elemental subroutine kill(self)
     class(centreOfMassClerk), intent(inout) :: self
 
-    if(allocated(self % value)) deallocate(self % value)
+    if (allocated(self % value)) deallocate(self % value)
     self % currentCycle = 0
     self % maxCycles = 0
 

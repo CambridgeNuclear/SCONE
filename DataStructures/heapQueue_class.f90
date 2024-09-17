@@ -1,7 +1,9 @@
 module heapQueue_class
+
   use numPrecision
   use genericProcedures, only : swap
   use errors_mod,        only : fatalError
+
   implicit none
   private
 
@@ -94,7 +96,7 @@ contains
     self % size = self % size + 1
     self % heap(self % size) = val
 
-    ! Sift the new value up the heap to restore the heap property
+    ! Shift the new value up the heap to restore the heap property
     child = self % size
     parent = child / 2
 
@@ -122,7 +124,7 @@ contains
     parent = 1
     child = 2
 
-    ! Sift down the new value until heap property is restored be comparing
+    ! Shift down the new value until heap property is restored be comparing
     ! with the largest child and swapping if necessary
     do while (child <= self % size)
 

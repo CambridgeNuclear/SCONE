@@ -22,15 +22,15 @@ contains
 
     call hq % init(8)
 
-    @assertEqual(hq % getSize() , 0)
+    @assertEqual(hq % getSize(), 0)
 
     do i = 1, size(seq)
       call hq % pushReplace(seq(i))
     end do
 
     ! Check that the maximum value is the maximum value in the sequence
-    @assertEqual(hq % maxValue() , maxval(seq))
-    @assertEqual(hq % getSize() , size(seq))
+    @assertEqual(hq % maxValue(), maxval(seq))
+    @assertEqual(hq % getSize(), size(seq))
 
   end subroutine testBelowMaximum
 
@@ -57,7 +57,7 @@ contains
     end do
 
     ! Check that the threshold is correct
-    @assertEqual(hq % maxValue() , 2.0_defReal)
+    @assertEqual(hq % maxValue(), 2.0_defReal)
 
   end subroutine testAboveMaximum
 

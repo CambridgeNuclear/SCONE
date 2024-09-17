@@ -1230,16 +1230,16 @@ module genericProcedures
     integer(shortInt)                              :: pivot
     integer(shortInt)                              :: i, maxSmall
 
-    if (size(array) > 1 ) then
+    if (size(array) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1,size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1259,16 +1259,16 @@ module genericProcedures
     real(defReal), dimension(:), intent(inout) :: array
     integer(shortInt)                          :: i, maxSmall, pivot
 
-    if (size(array) > 1 ) then
+    if (size(array) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1,size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1292,20 +1292,20 @@ module genericProcedures
     integer(shortInt)                          :: i, maxSmall, pivot
     character(100),parameter :: Here = 'quickSort_defReal_defReal (genericProcdures.f90)'
 
-    if(size(array1) /= size(array2)) then
+    if (size(array1) /= size(array2)) then
       call fatalError(Here,'Arrays have diffrent size!')
     end if
 
-    if (size(array1) > 1 ) then
+    if (size(array1) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array1)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array1 at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array1)
+      do i = 1,size(array1)
 
-        if( array1(i) <= array1(pivot)) then
+        if (array1(i) <= array1(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array1(i), array2(i), array1(maxSmall), array2(maxSmall))
         end if

@@ -7,7 +7,7 @@ module rng_class
   !!
   !! Linear congruential 63 bit random number generator
   !!
-  !! Follows recurrance formula: xi(i+1) = (g * xi(i) + c) mod M
+  !! Follows recurrence formula: xi(i+1) = (g * xi(i) + c) mod M
   !!
   !! Global Parameters (values based on OpenMC):
   !!    g: multiplier = 2806196910506780709
@@ -201,7 +201,7 @@ contains
   !! Justification for why the algorithim for evaluation of Ck works is made by me. [MAK]
   !!
   !! Assume that we are given a LCG in a state S0 and we are interested to find its state S_k after
-  !! k steps. Then starting with recurrence relation we can expand the recurrance k times:
+  !! k steps. Then starting with recurrence relation we can expand the recurrence k times:
   !!
   !! S_k = g * S_(k-1) + c (mod M)
   !! S_k = g * ([ g * S_(k-2) + c (mod M)]) + c (mod M) = g**2 * S_(k-2) + c * ( g + 1) (mod M)
@@ -220,7 +220,7 @@ contains
   !! Where k_i denotes the i-th bit of k binary representation and can be 0 or 1. Now the evaluation
   !! of Gk is trivial by noting that (g**n)**k = 1 if k=0 or (g**n)**k = g**n if k = 1.
   !!
-  !! The evaluation of Ck is slightly more compilcated and it is based on two recurrance relations
+  !! The evaluation of Ck is slightly more compilcated and it is based on two recurrence relations
   !! for the sum of geometric series. Denote L(k) to be a geometric series such that
   !! L(k) = 1 + g + g**2 + g**3 + ... + g**(k-1). And define L(0) = 0.
   !! Then following relations hold:
@@ -233,8 +233,8 @@ contains
   !!
   !! Relation 2) can be proven by expanding the sum and using (x**2-1) = (x+1)(x-1)
   !!
-  !! Using the binary expansion of k.  Denote highest bit index of k to be m.
-  !! Than using the recurrance relation 1) it can be shown that:
+  !! Using the binary expansion of k. Denote highest bit index of k to be m.
+  !! Than using the recurrence relation 1) it can be shown that:
   !!
   !! C(k) = C(k_m * 2**m + R_m)= C(R_m) * g**(2**m * k_m) + c * L(2**m * k_m)
   !!
@@ -270,9 +270,9 @@ contains
       if (k_in >= 0) then
         k = k_in
       else
-        ! Line below Must be like that
+        ! Line below must be like that
         ! It is fully standard conforming
-        ! k = k + M which is more elegant can brake under compiler optimisation
+        ! k = k + M which is more elegant can break under compiler optimisation
         ! For example gfortran 8.3 with -O3
         ! NOTE: This assumes that M is 64bit and huge gives 2^63-1 !
         k = huge(M) - abs(k_in) + 1
@@ -284,17 +284,18 @@ contains
 
       i = 1
       do while( k > 0)
-        if(iand(k, 1_int64) == 1) then ! Right-most bit is 1
+        if (iand(k, 1_int64) == 1) then ! Right-most bit is 1
           Gk = iand(Gk * gSq_to_i, bitMask)  ! Add to Gk
           Ck = iand(Ck * gSq_to_i, bitMask)  ! Add to Ck
           Ck = iand(Ck + L, bitMask)
-
         end if
+
         L = iand(L * (gSq_to_i+1), bitMask)           ! Calculate next value of L
         !gSq_to_i = iand(gSq_to_i*gSq_to_i, bitMask)  ! Calculate next power of g**2
         gSq_to_i = pow_of_gsq(i)                      ! Use tabulated values to avoid compiler bugs (Temporary)
         k = ishft(k, -1)                              ! Right shift k by 1
         i = i + 1
+
       end do
 
       ! Jump forward

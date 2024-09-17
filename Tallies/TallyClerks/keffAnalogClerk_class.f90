@@ -14,6 +14,11 @@ module keffAnalogClerk_class
   use tallyResult_class,     only : tallyResult, tallyResultEmpty
   use tallyClerk_inter,      only : tallyClerk, kill_super => kill
 
+#ifdef MPI
+  use mpi_func,              only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, &
+                                    MASTER_RANK, isMPIMaster
+#endif
+
   implicit none
   private
 
@@ -135,10 +140,18 @@ contains
     class(keffAnalogClerk), intent(inout) :: self
     class(particleDungeon), intent(in)    :: start
     type(scoreMemory), intent(inout)      :: mem
+#ifdef MPI
+    integer(shortInt)                     :: error
+    real(defReal)                         :: buffer
+#endif
 
     ! Update start population weight
     self % startPopWgt = self % startPopWgt + start % popWeight()
 
+#ifdef MPI
+    call mpi_reduce(self % startPopWgt, buffer, 1, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+    if (isMPIMaster()) self % startPopWgt = buffer
+#endif
 
   end subroutine reportCycleStart
 
@@ -152,20 +165,34 @@ contains
     class(particleDungeon), intent(in)    :: end
     type(scoreMemory), intent(inout)      :: mem
     real(defReal)                         :: k_norm, k_eff
+#ifdef MPI
+    integer(shortInt)                     :: error
+    real(defReal)                         :: buffer
+#endif
 
     ! Update end population weight
     self % endPopWgt = self % endPopWgt + end % popWeight()
 
+#ifdef MPI
+    call mpi_reduce(self % endPopWgt, buffer, 1, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+    if (isMPIMaster()) then
+      self % endPopWgt = buffer
+    else
+      self % endPopWgt = ZERO
+    end if
+#endif
+
     ! Close batch
-    if( mem % lastCycle() ) then
+    if (mem % lastCycle()) then
       k_norm = end % k_eff
 
       ! Calculate and score analog estimate of k-eff
       k_eff =  self % endPopWgt / self % startPopWgt * k_norm
-      call mem % accumulate(k_eff, self % getMemAddress() )
+      call mem % accumulate(k_eff, self % getMemAddress())
 
       self % startPopWgt = ZERO
       self % endPopWgt   = ZERO
+
     end if
 
   end subroutine reportCycleEnd

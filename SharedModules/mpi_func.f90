@@ -3,18 +3,41 @@ module mpi_func
 #ifdef MPI
   use mpi_f08
 #endif
-  !use genericProcedures, only : numToChar
   use errors_mod,        only : fatalError
+
   implicit none
 
-  integer(shortInt), private :: worldSize
-  integer(shortInt), private :: rank
-  integer(shortInt), parameter  :: MASTER_RANK = 0
+  integer(shortInt), private   :: worldSize = 1
+  integer(shortInt), private   :: rank = 0
+  integer(shortInt), parameter :: MASTER_RANK = 0
+
+  !! Public type that replicates exactly particleState
+  !!
+  !! It is necessary for load balancing in the dungeon: particles have to be
+  !! transferred betwen processes, and MPI doesn't allow to transfer types with
+  !! type-bound procedures
+  type, public :: particleStateDummy
+    real(defReal)              :: wgt
+    real(defReal),dimension(3) :: r
+    real(defReal),dimension(3) :: dir
+    real(defReal)              :: E
+    integer(shortInt)          :: G
+    logical(defBool)           :: isMG
+    integer(shortInt)          :: type
+    real(defReal)              :: time
+    integer(shortInt)          :: matIdx
+    integer(shortInt)          :: cellIdx
+    integer(shortInt)          :: uniqueID
+    integer(shortInt)          :: collisionN
+    integer(shortInt)          :: broodID
+  end type particleStateDummy
 
   !! Common MPI types
 #ifdef MPI
-  type(MPI_Datatype)            :: MPI_DEFREAL
-  type(MPI_Datatype)            :: MPI_SHORTINT
+  type(MPI_Datatype)   :: MPI_DEFREAL
+  type(MPI_Datatype)   :: MPI_SHORTINT
+  type(MPI_Datatype)   :: MPI_LONGINT
+  type(MPI_Datatype)   :: MPI_PARTICLE_STATE
 #endif
 
 contains
@@ -26,28 +49,64 @@ contains
   !!
   subroutine mpiInit()
 #ifdef MPI
-    integer(shortInt) :: ierr
+    integer(shortInt)        :: ierr, stateSize
+    type(particleStateDummy) :: state
+    integer(kind = MPI_ADDRESS_KIND), dimension(:), allocatable :: displacements
+    integer(shortInt), dimension(:), allocatable                :: blockLengths
+    type(MPI_Datatype), dimension(:), allocatable               :: types
 
     call mpi_init(ierr)
 
+    ! Read number of processes and rank of each process
     call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
-
     call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
 
-    ! Define MPI Type for DEFREAL
+    ! Define MPI type for DEFREAL
     call mpi_type_create_f90_real(precision(1.0_defReal), range(1.0_defReal), &
                                   MPI_DEFREAL, ierr)
-
     call mpi_type_commit(MPI_DEFREAL, ierr)
 
-    ! Define MPI Type for SHORTINT
+    ! Define MPI type for SHORTINT
     call mpi_type_create_f90_integer(range(1_shortInt), MPI_SHORTINT, ierr)
     call mpi_type_commit(MPI_SHORTINT, ierr)
 
-#else
-    worldSize = 1
-    rank = 0
+    ! Define MPI type for LONGINT
+    call mpi_type_create_f90_integer(range(1_longInt), MPI_LONGINT, ierr)
+    call mpi_type_commit(MPI_LONGINT, ierr)
+
+    ! Define MPI type for particleState
+    ! Note that particleState has stateSize = 13 attributes; if an attribute is
+    ! added to particleState, it had to be added here too
+    stateSize = 13
+    allocate(displacements(stateSize), blockLengths(stateSize), types(stateSize))
+
+    ! Create arrays with dimension and type of each property of particleStateDummy
+    blockLengths = (/1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1/)
+    types = (/MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_SHORTINT, MPI_LOGICAL, MPI_SHORTINT, &
+              MPI_DEFREAL, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT/)
+
+    ! Create array of memory byte displacements
+    call mpi_get_address(state % wgt, displacements(1), ierr)
+    call mpi_get_address(state % r, displacements(2), ierr)
+    call mpi_get_address(state % dir, displacements(3), ierr)
+    call mpi_get_address(state % E, displacements(4), ierr)
+    call mpi_get_address(state % G, displacements(5), ierr)
+    call mpi_get_address(state % isMG, displacements(6), ierr)
+    call mpi_get_address(state % type, displacements(7), ierr)
+    call mpi_get_address(state % time, displacements(8), ierr)
+    call mpi_get_address(state % matIdx, displacements(9), ierr)
+    call mpi_get_address(state % cellIdx, displacements(10), ierr)
+    call mpi_get_address(state % uniqueID, displacements(11), ierr)
+    call mpi_get_address(state % collisionN, displacements(12), ierr)
+    call mpi_get_address(state % broodID, displacements(13), ierr)
+    displacements = displacements - displacements(1)
+
+    ! Define new type
+    call mpi_type_create_struct(stateSize, blockLengths, displacements, types, MPI_PARTICLE_STATE, ierr)
+    call mpi_type_commit(MPI_PARTICLE_STATE, ierr)
+
 #endif
+
   end subroutine mpiInit
 
   !!
@@ -101,7 +160,6 @@ contains
 
   end function getOffset
 
-
   !!
   !! Get MPI world size
   !!
@@ -110,7 +168,9 @@ contains
   !!
   function getMPIWorldSize() result(size)
     integer(shortInt) :: size
+
     size = worldSize
+
   end function getMPIWorldSize
 
   !!
@@ -133,7 +193,10 @@ contains
   !!
   function getMPIRank() result(r)
     integer(shortInt) :: r
+
     r = rank
+
   end function getMPIRank
+
 
 end module mpi_func

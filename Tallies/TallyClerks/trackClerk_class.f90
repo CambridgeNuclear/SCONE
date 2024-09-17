@@ -98,12 +98,12 @@ contains
     call self % setName(name)
 
     ! Load filetr
-    if( dict % isPresent('filter')) then
+    if (dict % isPresent('filter')) then
       call new_tallyFilter(self % filter, dict % getDictPtr('filter'))
     end if
 
     ! Load map
-    if( dict % isPresent('map')) then
+    if (dict % isPresent('map')) then
       call new_tallyMap(self % map, dict % getDictPtr('map'))
     end if
 
@@ -112,7 +112,7 @@ contains
 
     ! Load responses
     allocate(self % response(size(responseNames)))
-    do i=1, size(responseNames)
+    do i = 1, size(responseNames)
       call self % response(i) % init(dict % getDictPtr( responseNames(i) ))
     end do
 
@@ -131,18 +131,18 @@ contains
     call kill_super(self)
 
     ! Kill and deallocate filter
-    if(allocated(self % filter)) then
+    if (allocated(self % filter)) then
       deallocate(self % filter)
     end if
 
     ! Kill and deallocate map
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       call self % map % kill()
       deallocate(self % map)
     end if
 
     ! Kill and deallocate responses
-    if(allocated(self % response)) then
+    if (allocated(self % response)) then
       deallocate(self % response)
     end if
 
@@ -173,7 +173,7 @@ contains
     integer(shortInt)                 :: S
 
     S = size(self % response)
-    if(allocated(self % map)) S = S * self % map % bins(0)
+    if (allocated(self % map)) S = S * self % map % bins(0)
 
   end function getSize
 
@@ -199,12 +199,12 @@ contains
     state = p % prePath
 
     ! Check if within filter
-    if(allocated( self % filter)) then
-      if(self % filter % isFail(state)) return
+    if (allocated( self % filter)) then
+      if (self % filter % isFail(state)) return
     end if
 
     ! Find bin index
-    if(allocated(self % map)) then
+    if (allocated(self % map)) then
       binIdx = self % map % map(state)
     else
       binIdx = 1
@@ -224,7 +224,7 @@ contains
     flx = L
 
     ! Append all bins
-    do i=1,self % width
+    do i = 1,self % width
       scoreVal = self % response(i) % get(pTmp, xsData) * p % w * flx
       call mem % score(scoreVal, adrr + i)
     end do

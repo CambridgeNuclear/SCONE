@@ -3,7 +3,7 @@ module fixedSourcePhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, numToChar, rotateVector
+  use genericProcedures,              only : numToChar, rotateVector
   use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
                                              printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
@@ -13,6 +13,7 @@ module fixedSourcePhysicsPackage_class
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
+  use errors_mod,                     only : fatalError
 
   ! Timers
   use timer_mod,                      only : registerTimer, timerStart, timerStop, &
@@ -175,7 +176,7 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do i=1,N_cycles
+    do i = 1, N_cycles
 
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
@@ -183,7 +184,7 @@ contains
       ! Update RNG after source generation
       call self % pRNG % stride(self % totalPop)
 
-      if(self % printSource == 1) then
+      if (self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
@@ -211,10 +212,10 @@ contains
           ! Transport particle until its death
           history: do
             call transOp % transport(p, tally, buffer, buffer)
-            if(p % isDead) exit history
+            if (p % isDead) exit history
 
             call collOp % collide(p, tally, buffer, buffer)
-            if(p % isDead) exit history
+            if (p % isDead) exit history
           end do history
 
           ! If buffer is quite full, shift some particles to the commonBuffer
@@ -332,7 +333,7 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % totalPop,'pop')
+    call dict % get(self % totalPop,'pop')
     self % pop = getWorkshare(self % totalPop)
 
     call dict % get( self % N_cycles,'cycles')
@@ -368,7 +369,7 @@ contains
 
     ! *** It is a bit silly but dictionary cannot store longInt for now
     !     so seeds are limited to 32 bits (can be -ve)
-    if( dict % isPresent('seed')) then
+    if (dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
 
     else

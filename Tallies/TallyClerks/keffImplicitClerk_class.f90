@@ -3,7 +3,7 @@ module keffImplicitClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
-  use universalVariables,         only : MAX_COL
+  use universalVariables,         only : VOID_MAT, TRACKING_XS, MAX_COL
   use genericProcedures,          only : fatalError, charCmp
   use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary

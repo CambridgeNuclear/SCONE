@@ -3,12 +3,13 @@ module aceNeutronDatabase_class
   use numPrecision
   use endfConstants
   use universalVariables
-  use display_func,      only : statusMsg
-  use genericProcedures, only : fatalError, numToChar
-  use dictionary_class,  only : dictionary
-  use RNG_class,         only : RNG
-  use charMap_class,     only : charMap
-  use intMap_class,      only : intMap
+  use errors_mod,         only : fatalError
+  use genericProcedures,  only : numToChar, removeDuplicatesSorted, binarySearch
+  use display_func,       only : statusMsg
+  use dictionary_class,   only : dictionary
+  use RNG_class,          only : RNG
+  use charMap_class,      only : charMap
+  use intMap_class,       only : intMap
 
   ! Nuclear Data Interfaces
   use nuclearDatabase_inter,        only : nuclearDatabase
@@ -1371,7 +1372,7 @@ contains
     self % eGridUnion = removeDuplicatesSorted(tmpGrid)
 
     if (loud) then
-      print '(A)', 'CE unionised energy grid has size: '//numToChar(size(self % eGridUnion))
+      call statusMsg("CE unionised energy grid has size: "//numToChar(size(self % eGridUnion)))
     end if
 
     ! Allocate unionised majorant
@@ -1447,7 +1448,7 @@ contains
 
     end do
 
-    if (loud) print '(A)', 'CE unionised majorant cross section calculation completed'
+    if (loud) call statusMsg("CE unionised majorant cross section calculation completed")
 
   end subroutine initMajorant
 

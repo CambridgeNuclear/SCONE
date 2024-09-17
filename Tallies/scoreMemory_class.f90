@@ -2,7 +2,8 @@ module scoreMemory_class
 
   use numPrecision
 #ifdef MPI
-  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK, isMPIMaster, MPI_SHORTINT
+  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, &
+                                 MASTER_RANK, isMPIMaster, MPI_SHORTINT
 #endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
@@ -136,13 +137,13 @@ contains
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     ! Allocate space and zero all bins
-    allocate( self % bins(N, DIM2))
+    allocate(self % bins(N, DIM2))
     self % bins = ZERO
 
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(N + array_pad, self % nThreads))
+    allocate(self % parallelBins(N + array_pad, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -156,8 +157,8 @@ contains
     self % cycles    = 0
     self % batchSize = 1
 
-    if(present(batchSize)) then
-      if(batchSize > 0) then
+    if (present(batchSize)) then
+      if (batchSize > 0) then
         self % batchSize = batchSize
       else
         call fatalError(Here,'Batch Size of: '// numToChar(batchSize) //' is invalid')
@@ -291,7 +292,7 @@ contains
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
-    if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
+    if (mod(self % cycles, self % batchSize) == 0) then ! Close Batch
 
       !$omp parallel do
       do i = 1, self % N
@@ -328,7 +329,7 @@ contains
     character(100),parameter :: Here = 'closeBin (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
@@ -404,7 +405,7 @@ contains
   !!
   !! Reduce the accumulated results (csum and csum2) from different MPI processes
   !!
-  !! If the bins are `reduced` that is scores are collected at the end of each cycle,
+  !! If the bins are `reduced` (that is, scores are collected at the end of each cycle),
   !! then this subroutine does nothing. Otherwise it collects the results from different
   !! processes and stores them in the master process.
   !!
@@ -449,7 +450,7 @@ contains
   !!
   !! Result:
   !!   The sum of the data across all processes in stored on master process `data`
-  !!   The buffer is set to ZERO on all processes ( only 1:size(data) range)!
+  !!   The buffer is set to ZERO on all processes (only 1:size(data) range)!
   !!
   !! Errors:
   !!   fatalError if size of the buffer is insufficient
@@ -461,11 +462,12 @@ contains
     integer(longInt)                           :: N, chunk, start
     integer(shortInt)                          :: error
     character(100),parameter :: Here = 'reduceArray (scoreMemory_class.f90)'
+
     ! We need to be careful to support sizes larger than 2^31
-    N = size(data, kind=longInt)
+    N = size(data, kind = longInt)
 
     ! Check if the buffer is large enough
-    if (size(buffer, kind=longInt) < N) then
+    if (size(buffer, kind = longInt) < N) then
       call fatalError(Here, 'Buffer is too small to store the reduced data')
     end if
 
@@ -475,8 +477,8 @@ contains
     start = 1
 
     do while (start <= N)
-      chunk = min(N - start + 1, int(huge(1_shortInt), longInt))
 
+      chunk = min(N - start + 1, int(huge(1_shortInt), longInt))
       call mpi_reduce(data(start : start + chunk - 1), &
                       buffer(start : start + chunk - 1), &
                       int(chunk, shortInt), &
@@ -485,7 +487,9 @@ contains
                       MASTER_RANK, &
                       MPI_COMM_WORLD, &
                       error)
+
       start = start + chunk
+
     end do
 
     ! Copy the result back to data
@@ -512,14 +516,14 @@ contains
     real(defReal)                          :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       STD = ZERO
       return
     end if
 
     ! Check if # of samples is provided
-    if( present(samples)) then
+    if (present(samples)) then
       N = samples
     else
       N = self % batchN
@@ -530,7 +534,7 @@ contains
 
     ! Calculate STD
     inv_N   = ONE / N
-    if( N /= 1) then
+    if (N /= 1) then
       inv_Nm1 = ONE / (N - 1)
     else
       inv_Nm1 = ONE
@@ -579,7 +583,7 @@ contains
     integer(longInt), intent(in)   :: idx
     real(defReal)                  :: score
 
-    if(idx <= 0_longInt .or. idx > self % N) then
+    if (idx <= 0_longInt .or. idx > self % N) then
       score = ZERO
     else
       score = self % bins(idx, BIN)

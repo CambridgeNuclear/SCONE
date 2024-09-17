@@ -3,16 +3,18 @@ module eigenPhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, numToChar, rotateVector
-  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
-                                             printSeparatorLine
+  use genericProcedures,              only : numToChar, rotateVector
+  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, &
+                                             printSectionEnd, printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
 #ifdef MPI
-  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD
+  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD, &
+                                             MPI_DEFREAL, mpi_reduce, MPI_SUM
 #endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
+  use errors_mod,                     only : fatalError
 
   ! Timers
   use timer_mod,                      only : registerTimer, timerStart, timerStop, &
@@ -137,8 +139,13 @@ contains
     call self % pRNG % stride(getOffset(self % totalPop))
 
     call self % generateInitialState()
+
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
+
+    ! Collect results from other processes
+    call self % inactiveTally % collectDistributed()
+    call self % activeTally % collectDistributed()
 
     if (isMpiMaster()) call self % collectResults()
 
@@ -157,7 +164,7 @@ contains
     type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
     integer(shortInt), intent(in)             :: N_cycles
     type(particleDungeon), save               :: buffer
-    integer(shortInt)                         :: i, n, Nstart, Nend, nParticles
+    integer(shortInt)                         :: i, n, nStart, nEnd, nParticles
     class(tallyResult),allocatable            :: res
     type(collisionOperator), save             :: collOp
     class(transportOperator),allocatable,save :: transOp
@@ -165,6 +172,9 @@ contains
     type(particle), save                      :: neutron
     real(defReal)                             :: k_old, k_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
+#ifdef MPI
+    integer(shortInt)                         :: error, nTemp
+#endif
     character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
@@ -187,10 +197,10 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do i=1,N_cycles
+    do i = 1, N_cycles
 
       ! Send start of cycle report
-      Nstart = self % thisCycle % popSize()
+      nStart = self % thisCycle % popSize()
       call tally % reportCycleStart(self % thisCycle)
 
       nParticles = self % thisCycle % popSize()
@@ -219,10 +229,10 @@ contains
           ! Transport particle until its death
           history: do
             call transOp % transport(neutron, tally, buffer, self % nextCycle)
-            if(neutron % isDead) exit history
+            if (neutron % isDead) exit history
 
             call collOp % collide(neutron, tally, buffer, self % nextCycle)
-            if(neutron % isDead) exit history
+            if (neutron % isDead) exit history
           end do history
 
           ! Clear out buffer
@@ -243,7 +253,7 @@ contains
       call self % pRNG % stride(self % totalPop + 1)
 
       ! Send end of cycle report
-      Nend = self % nextCycle % popSize()
+      nEnd = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
 
       if (self % UFS) then
@@ -251,9 +261,12 @@ contains
       end if
 
       ! Normalise population
-      call self % nextCycle % normSize(self % pop, self % pRNG)
+      call self % nextCycle % normSize(self % totalPop, self % pRNG)
 
-      if(self % printSource == 1) then
+      ! Update RNG after it was used to normalise particle population
+      call self % pRNG % stride(1)
+
+      if (self % printSource == 1) then
         call self % nextCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
@@ -274,6 +287,11 @@ contains
 
       end select
 
+#ifdef MPI
+      ! Broadcast k_eff obtained in the master to all processes
+      call MPI_Bcast(k_new, 1, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
+#endif
+
       ! Load new k-eff estimate into next cycle dungeon
       k_old = self % nextCycle % k_eff
       self % nextCycle % k_eff = k_new
@@ -289,21 +307,28 @@ contains
       end_T = real(N_cycles,defReal) * elapsed_T / i
       T_toEnd = max(ZERO, end_T - elapsed_T)
 
+#ifdef MPI
+      ! Print the population numbers referred to all processes to screen
+      call mpi_reduce(nStart, nTemp, 1, MPI_INTEGER, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      nStart = nTemp
+      call mpi_reduce(nEnd, nTemp, 1, MPI_INTEGER, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      nEnd = nTemp
+#endif
 
       ! Display progress
       call printFishLineR(i)
       call statusMsg("")
       call statusMsg("Cycle: " // numToChar(i) // " of " // numToChar(N_cycles))
-      call statusMsg("Pop: " // numToChar(Nstart) // " -> " // numToChar(Nend))
+      call statusMsg("Pop: " // numToChar(nStart) // " -> " // numToChar(nEnd))
       call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
       call statusMsg("End time:     " // trim(secToChar(end_T)))
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
+
     end do
 
     ! Load elapsed time
     self % time_transport = self % time_transport + elapsed_T
-
 
   end subroutine cycles
 
@@ -338,26 +363,26 @@ contains
     type(outputFile)                          :: out
     character(nameLen)                        :: name
 
-    call out % init(self % outputFormat, filename=self % outputFile)
+    call out % init(self % outputFormat, filename = self % outputFile)
 
     name = 'seed'
-    call out % printValue(self % pRNG % getSeed(),name)
+    call out % printValue(self % pRNG % getSeed(), name)
 
     name = 'pop'
     call out % printValue(self % totalPop, name)
 
     name = 'Inactive_Cycles'
-    call out % printValue(self % N_inactive,name)
+    call out % printValue(self % N_inactive, name)
 
     name = 'Active_Cycles'
-    call out % printValue(self % N_active,name)
+    call out % printValue(self % N_active, name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+    call out % printValue((self % CPU_time_end - self % CPU_time_start), name)
 
     name = 'Total_Transport_Time'
-    call out % printValue(self % time_transport,name)
+    call out % printValue(self % time_transport, name)
 
     ! Print Inactive tally
     name = 'inactive'
@@ -375,7 +400,6 @@ contains
     call out % endBlock()
 
   end subroutine collectResults
-
 
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
@@ -399,7 +423,7 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % totalPop, 'pop')
+    call dict % get(self % totalPop, 'pop')
     self % pop = getWorkshare(self % totalPop)
 
     call dict % get( self % N_inactive,'inactive')
@@ -436,7 +460,7 @@ contains
 
     ! *** It is a bit silly but dictionary cannot store longInt for now
     !     so seeds are limited to 32 bits (can be -ve)
-    if( dict % isPresent('seed')) then
+    if (dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
 
     else
@@ -537,7 +561,7 @@ contains
 
     ! Initialise active and inactive tally attachments
     ! Inactive tally attachment
-    call locDict1 % init(2)
+    call locDict1 % init(3)
     call locDict2 % init(2)
 
     call locDict2 % store('type','keffAnalogClerk')
@@ -551,12 +575,14 @@ contains
     call locDict1 % kill()
 
     ! Active tally attachment
-    call locDict1 % init(2)
+    ! Note: mpiSync ensures that k_eff is synchronised between all processes each cycle
+    call locDict1 % init(3)
     call locDict2 % init(2)
 
     call locDict2 % store('type','keffImplicitClerk')
     call locDict1 % store('keff', locDict2)
     call locDict1 % store('display',['keff'])
+    call locDict1 % store('mpiSync', 1)
 
     allocate(self % activeAtch)
     call self % activeAtch % init(locDict1)
@@ -599,5 +625,6 @@ contains
     call printSeparatorLine()
 
   end subroutine printSettings
+
 
 end module eigenPhysicsPackage_class

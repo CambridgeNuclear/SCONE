@@ -187,7 +187,7 @@ contains
 
     call outFile % startArray(name, [self % maxCycles])
 
-    do i=1,self % maxCycles
+    do i = 1,self % maxCycles
       call outFile % addValue(self % value(i))
     end do
     call outFile % endArray()
@@ -202,9 +202,9 @@ contains
   elemental subroutine kill(self)
     class(shannonEntropyClerk), intent(inout) :: self
 
-    if(allocated(self % map)) deallocate(self % map)
-    if(allocated(self % prob)) deallocate(self % prob)
-    if(allocated(self % value)) deallocate(self % value)
+    if (allocated(self % map)) deallocate(self % map)
+    if (allocated(self % prob)) deallocate(self % prob)
+    if (allocated(self % value)) deallocate(self % value)
     self % N = 0
     self % currentCycle = 0
     self % maxCycles = 0
