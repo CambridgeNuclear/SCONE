@@ -17,6 +17,11 @@ module shannonEntropyClerk_class
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
+  use mpi_func,                   only : isMPIMaster
+#ifdef MPI
+  use mpi_func,                   only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
+#endif
+
   implicit none
   private
 
@@ -29,8 +34,9 @@ module shannonEntropyClerk_class
   !!
   !! Scores Shannon entropy for a user-specified number of cycles
   !!
-  !! NOTE: when using multiple MPI processes, this will give wrong results unless
-  !!       mpiSync is set to 1 for the tallyAdmin that contains this clerk
+  !! NOTE: when using MPI with multiple processes, the scores from all processes are
+  !!       collected (brute-force) in the master process. Only the master process
+  !!       results are correct and accessible
   !!
   !! Sample dictionary input:
   !!
@@ -43,12 +49,10 @@ module shannonEntropyClerk_class
   type, public, extends(tallyClerk) :: shannonEntropyClerk
     private
     !! Map defining the discretisation
-    class(tallyMap), allocatable                   :: map
-    real(defReal),dimension(:),allocatable         :: prob             !! probability of being in a given bin
-    real(defReal),dimension(:),allocatable, public :: value            !! cycle-wise value of entropy
-    integer(shortInt)                              :: N = 0            !! Number of bins
-    integer(shortInt)                              :: maxCycles = 0    !! Number of tally cycles
-    integer(shortInt)                              :: currentCycle = 0 !! track current cycle
+    class(tallyMap), allocatable  :: map
+    integer(shortInt)             :: N = 0            !! Number of bins
+    integer(shortInt)             :: maxCycles = 0    !! Number of tally cycles
+    integer(shortInt)             :: currentCycle = 0 !! track current cycle
 
   contains
     ! Procedures used during build
@@ -88,16 +92,8 @@ contains
     ! Read number of cycles for which to track entropy
     call dict % get(self % maxCycles, 'cycles')
 
-    ! Allocate space for storing entropy
-    allocate(self % value(self % maxCycles))
-    self % value = ZERO
-
     ! Read size of the map
     self % N = self % map % bins(0)
-
-    ! Allocate space for storing probabilities
-    allocate(self % prob(self % N))
-    self % prob = ZERO
 
   end subroutine init
 
@@ -119,7 +115,7 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     integer(shortInt)                      :: S
 
-    S = self % N + self % maxCycles + 1
+    S = self % N + self % maxCycles
 
   end function getSize
 
@@ -131,25 +127,46 @@ contains
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
     integer(shortInt)                         :: i, idx
-    real(defReal)                             :: totWgt, prob
+    real(defReal), dimension(self % N)        :: prob, bufferArray
+    real(defReal)                             :: totWgt, buffer
+#ifdef MPI
+    integer(shortInt)                         :: error
+#endif
 
-    if (self % currentCycle < self % maxCycles) then
+    self % currentCycle = self % currentCycle + 1
 
-      totWgt = end % popWeight()
-      call mem % score(prob, self % getMemAddress())
+    if (self % currentCycle <= self % maxCycles) then
+
+      prob = ZERO
 
       ! Loop through population, scoring probabilities
       do i = 1, end % popSize()
 
         associate(state => end % get(i))
           idx = self % map % map(state)
-          if (idx > 0) then
-            prob = state % wgt
-            call mem % score(prob, self % getMemAddress() + idx)
-          end if
+          if (idx > 0) prob(idx) = prob(idx) + state % wgt
         end associate
 
       end do
+
+      totWgt = end % popWeight()
+
+      buffer = totWgt
+      bufferArray = prob
+
+#ifdef MPI
+      call mpi_reduce(totWgt, buffer, 1, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(prob, bufferArray, self % N, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+#endif
+
+      if (isMPIMaster()) then
+
+        prob = bufferArray / buffer
+        do i = 1, self % N
+          call mem % score(prob(i), self % getMemAddress() - 1 + i)
+        end do
+
+      end if
 
     end if
 
@@ -163,30 +180,31 @@ contains
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
     integer(shortInt)                         :: i
-    integer(longInt)                          :: ccIdx, idx
-    real(defReal)                             :: totWgt, one_log2, prob, val
+    integer(longInt)                          :: ccIdx
+    real(defReal)                             :: one_log2, prob, val
 
-    if (self % currentCycle < self % maxCycles) then
+    if (isMPIMaster()) then
 
-      self % currentCycle = self % currentCycle + 1
-      ccIdx = self % getMemAddress() + self % N + self % currentCycle
+      if (self % currentCycle <= self % maxCycles) then
 
-      totWgt = mem % getScore(self % getMemAddress())
-      one_log2 = ONE/log(TWO)
+        ccIdx = self % getMemAddress() + self % N - 1 + self % currentCycle
 
-      ! Loop through bins, summing entropy
-      do i = 1, self % N
-        idx = i
-        prob = mem % getScore(self % getMemAddress() + idx)
+        val = ZERO
+        one_log2 = ONE/log(TWO)
 
-        if ((prob > ZERO) .and. (prob < ONE)) then
-          prob = prob / totWgt
-          val = val + prob * log(prob) * one_log2
-        end if
+        ! Loop through bins, summing entropy
+        do i = 1, self % N
+          prob = mem % getScore(self % getMemAddress() - 1 + i)
 
-      end do
+          if ((prob > ZERO) .and. (prob < ONE)) then
+            val = val - prob * log(prob) * one_log2
+          end if
 
-      call mem % accumulate(val, ccIdx)
+        end do
+
+        call mem % accumulate(val, ccIdx)
+
+      end if
 
     end if
 
@@ -215,23 +233,27 @@ contains
     integer(longInt)                       :: ccIdx
     real(defReal)                          :: val
 
-    ! Begin block
-    call outFile % startBlock(self % getName())
+    if (isMPIMaster()) then
 
-    ! Print entropy
-    name = 'shannonEntropy'
+      ! Begin block
+      call outFile % startBlock(self % getName())
 
-    call outFile % startArray(name, [self % maxCycles])
+      ! Print entropy
+      name = 'shannonEntropy'
 
-    do i = 1, self % maxCycles
-      ccIdx = self % getMemAddress() + self % N + i
-      call mem % getResult(val, ccIdx, samples = 1)
-      call outFile % addValue(self % value(i))
-    end do
+      call outFile % startArray(name, [self % maxCycles])
 
-    call outFile % endArray()
+      do i = 1, self % maxCycles
+        ccIdx = self % getMemAddress() + self % N - 1 + i
+        call mem % getResult(val, ccIdx, samples = 1)
+        call outFile % addValue(val)
+      end do
 
-    call outFile % endBlock()
+      call outFile % endArray()
+
+      call outFile % endBlock()
+
+    end if
 
   end subroutine print
 
