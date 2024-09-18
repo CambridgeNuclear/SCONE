@@ -96,7 +96,7 @@ contains
     ! End cycle
     call mem % reduceBins()
     call pit % detain(p)
-    call this % clerk % reportCycleEnd(pit, mem)
+    call this % clerk % closeCycle(pit, mem)
     call pit % release(p)
     call mem % closeCycle(ONE)
 
@@ -116,7 +116,7 @@ contains
     ! End cycle
     call mem % reduceBins()
     call pit % detain(p)
-    call this % clerk % reportCycleEnd(pit, mem)
+    call this % clerk % closeCycle(pit, mem)
     call pit % release(p)
     call mem % closeCycle(ONE)
 

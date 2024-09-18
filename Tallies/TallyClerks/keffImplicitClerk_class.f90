@@ -70,7 +70,7 @@ module keffImplicitClerk_class
     procedure :: reportInColl
     procedure :: reportOutColl
     procedure :: reportHist
-    procedure :: reportCycleEnd
+    procedure :: closeCycle
     procedure :: isConverged
 
     ! Output procedures
@@ -135,7 +135,7 @@ contains
     class(keffImplicitClerk),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, outColl_CODE, cycleEnd_CODE, hist_CODE]
+    validCodes = [inColl_CODE, outColl_CODE, hist_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -269,7 +269,7 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
+  subroutine closeCycle(self, end, mem)
     class(keffImplicitClerk), intent(inout) :: self
     class(particleDungeon), intent(in)      :: end
     type(scoreMemory), intent(inout)        :: mem
@@ -277,6 +277,7 @@ contains
     real(defReal)                           :: nuFiss, absorb, leakage, scatterMul, k_est
 
     if (mem % lastCycle()) then
+
       addr = self % getMemAddress()
       nuFiss     = mem % getScore(addr + IMP_PROD)
       absorb     = mem % getScore(addr + IMP_ABS)
@@ -285,9 +286,10 @@ contains
 
       k_est = nuFiss / (absorb + leakage - scatterMul)
       call mem % accumulate(k_est, addr + K_EFF)
+
     end if
 
-  end subroutine reportCycleEnd
+  end subroutine closeCycle
 
   !!
   !! Perform convergance check in the Clerk

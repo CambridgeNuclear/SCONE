@@ -77,7 +77,7 @@ module dancoffBellClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportTrans
-    procedure  :: reportCycleEnd
+    procedure  :: closeCycle
 
     ! Output procedures
     procedure  :: display
@@ -158,7 +158,7 @@ contains
     class(dancoffBellClerk),intent(in)         :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [trans_CODE, cycleEnd_CODE]
+    validCodes = [trans_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -189,7 +189,6 @@ contains
     integer(shortInt)                      :: T_end, T_start
     real(defReal)                          :: w_end
     type(particleState)                    :: state
-
     character(100),parameter :: Here = 'reportTrans (dancoffBellClerk_class.f90)'
 
     ! Find start material type; Exit if not fuel
@@ -226,11 +225,11 @@ contains
   end subroutine reportTrans
 
   !!
-  !! Process end of the cycle
+  !! Close cycle
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
+  subroutine closeCycle(self, end, mem)
     class(dancoffBellClerk), intent(inout)  :: self
     class(particleDungeon), intent(in)      :: end
     type(scoreMemory), intent(inout)        :: mem
@@ -242,7 +241,7 @@ contains
       call mem % accumulate(escSigmaT / fuelWgt, self % getMemAddress() + D_EFF)
     end if
 
-  end subroutine reportCycleEnd
+  end subroutine closeCycle
 
   !!
   !! Display convergance progress on the console

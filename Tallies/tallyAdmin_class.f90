@@ -56,6 +56,7 @@ module tallyAdmin_class
   !!   histClerks       -> List of indices of all clerks that require histReport
   !!   cycleStartClerks -> List of indices of all clerks that require cycleStartReport
   !!   cycleEndClerks   -> List of indices of all clerks that require cycleEndReport
+  !!   closeCycleClerks -> List of indices of all clerks that require closeCycle
   !!   displayList      -> List of indices of all clerks that are registered for display
   !!   mem              -> Score Memory for all defined clerks
   !!   mpiSync          ->
@@ -119,6 +120,7 @@ module tallyAdmin_class
     type(dynIntArray)  :: histClerks
     type(dynIntArray)  :: cycleStartClerks
     type(dynIntArray)  :: cycleEndClerks
+    type(dynIntArray)  :: closeCycleClerks
 
     ! List of clerks to display
     type(dynIntArray)  :: displayList
@@ -200,7 +202,7 @@ contains
 
     ! Register all clerks to recive their reports
     do i = 1,size(self % tallyClerks)
-      associate( reports => self % tallyClerks(i) % validReports() )
+      associate(reports => self % tallyClerks(i) % validReports())
         do j = 1,size(reports)
           call self % addToReports(reports(j), i)
         end do
@@ -227,7 +229,7 @@ contains
 
     ! Initialise score memory
     ! Calculate required size.
-    memSize = sum( self % tallyClerks % getSize() ) + 1
+    memSize = sum(self % tallyClerks % getSize()) + 1
     call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
@@ -286,6 +288,7 @@ contains
     call self % histClerks % kill()
     call self % cycleStartClerks % kill()
     call self % cycleEndClerks % kill()
+    call self % closeCycleClerks % kill()
 
     ! Kill score memory
     call self % mem % kill()
@@ -307,7 +310,7 @@ contains
     class(tallyAdmin), intent(inout)      :: self
     type(tallyAdmin), pointer, intent(in) :: atch
 
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call self % atch % push(atch)
 
     else
@@ -331,10 +334,10 @@ contains
     class(tallyAdmin), intent(inout)       :: self
     type(tallyAdmin), pointer, intent(out) :: atch
 
-    if(.not. associated(self % atch)) then ! Single element list
+    if (.not. associated(self % atch)) then ! Single element list
       atch => null()
 
-    elseif( associated(self % atch % atch)) then ! Go down the list
+    elseif (associated(self % atch % atch)) then ! Go down the list
       call self % atch % pop(atch)
 
     else ! Remove last element
@@ -361,16 +364,17 @@ contains
     class(tallyAdmin), intent(in)    :: self
     type(tallyAdmin),pointer         :: atch
 
-    if(.not. associated(self % atch)) then
+    if (.not. associated(self % atch)) then
       atch => null()
 
-    elseif( associated(self % atch % atch)) then
+    elseif (associated(self % atch % atch)) then
       atch => self % atch % getEnd()
 
     else
       atch => self % atch
 
     end if
+
   end function getEnd
 
   !!
@@ -749,15 +753,24 @@ contains
       call reportCycleEnd(self % atch, end)
     end if
 
+    ! Go through all clerks that request the reportCycleEnd
+    !$omp parallel do
+    do i = 1,self % cycleEndClerks % getSize()
+      idx = self % cycleEndClerks % get(i)
+      call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
+    end do
+    !$omp end parallel do
+
     ! Reduce the scores across the threads and processes
     call self % mem % reduceBins()
 
     if (isMPIMaster() .or. .not. self % mpiSync) then
-      ! Go through all clerks that request the report
+
+      ! Go through all clerks that request closeCycle
       !$omp parallel do
-      do i = 1,self % cycleEndClerks % getSize()
-        idx = self % cycleEndClerks % get(i)
-        call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
+      do i = 1, self % closeCycleClerks % getSize()
+        idx = self % closeCycleClerks % get(i)
+        call self % tallyClerks(idx) % closeCycle(end, self % mem)
       end do
       !$omp end parallel do
 
@@ -877,6 +890,9 @@ contains
 
       case(cycleEnd_CODE)
         call self % cycleEndClerks % add(idx)
+
+      case(closeCycle_CODE)
+        call self % closeCycleClerks % add(idx)
 
       case default
         call fatalError(Here, 'Undefined reportCode')

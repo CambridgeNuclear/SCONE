@@ -65,8 +65,8 @@ contains
 
     ! Initialise objects
     call pit % init(4)
-    call mem % init(2_longInt,1)
-    call this  % clerk % setMemAddress(1_longInt)
+    call mem % init(3_longInt, 1)
+    call this % clerk % setMemAddress(1_longInt)
 
     ! Start cycle 1
     p % w = 1000.0_defReal
@@ -79,7 +79,9 @@ contains
     call pit % detain(p)
     pit % k_eff = ONE
 
-    call this % clerk % reportCycleEnd(pit,mem)
+    call this % clerk % reportCycleEnd(pit, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Start cycle 2
@@ -94,14 +96,15 @@ contains
     call pit % detain(p)
     pit % k_eff = 1.2_defReal
 
-    call mem % reduceBins()
     call this % clerk % reportCycleEnd(pit, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Validate results
 
     ! Directly from memory
-    call mem % getResult(k, STD, 1_longInt)
+    call mem % getResult(k, STD, 3_longInt)
     @assertEqual(1.1400_defReal, k, TOL, '1 Cycle Batch, keff from memory:')
     @assertEqual(0.0600_defReal, STD, TOL, '1 Cycle Batch, keff STD from memory:')
 
@@ -136,8 +139,8 @@ contains
 
     ! Initialise objects
     call pit % init(4)
-    call mem % init(2_longInt,1, batchSize = 2 )
-    call this  % clerk % setMemAddress(1_longInt)
+    call mem % init(3_longInt, 1, batchSize = 2)
+    call this % clerk % setMemAddress(1_longInt)
 
     ! Start cycle 1
     p % w = 500.0_defReal
@@ -150,7 +153,8 @@ contains
     call pit % detain(p)
     pit % k_eff = ONE
 
-    call this % clerk % reportCycleEnd(pit,mem)
+    call this % clerk % reportCycleEnd(pit, mem)
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Start cycle 2
@@ -165,7 +169,9 @@ contains
     call pit % detain(p)
     pit % k_eff = ONE
 
-    call this % clerk % reportCycleEnd(pit,mem)
+    call this % clerk % reportCycleEnd(pit, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Start cycle 3
@@ -181,6 +187,7 @@ contains
     pit % k_eff = 1.2_defReal
 
     call this % clerk % reportCycleEnd(pit,mem)
+    call this % clerk % closeCycle(pit,mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Start cycle 4
@@ -196,13 +203,14 @@ contains
     pit % k_eff = 1.2_defReal
 
     call this % clerk % reportCycleEnd(pit,mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pit,mem)
     call mem % closeCycle(0.8_defReal)
-
 
     ! Validate results
 
     ! Directly from memory
-    call mem % getResult(k, STD, 1_longInt)
+    call mem % getResult(k, STD, 3_longInt)
     @assertEqual(1.1400_defReal, k, TOL, '1 Cycle Batch, keff from memory:')
     @assertEqual(0.0600_defReal, STD, TOL, '1 Cycle Batch, keff STD from memory:')
 
@@ -231,11 +239,11 @@ contains
     type(scoreMemory)                          :: mem
 
     ! Initialise objects
-    call mem % init(2_longInt,1)
-    call this  % clerk % setMemAddress(1_longInt)
+    call mem % init(2_longInt, 1)
+    call this % clerk % setMemAddress(1_longInt)
 
     ! Test getting size
-    @assertEqual(1, this % clerk % getSize(),'Test getSize() :')
+    @assertEqual(3, this % clerk % getSize(), 'Test getSize() :')
 
     ! Test output printing correctness
     call out % init('dummyPrinter', fatalErrors = .false.)

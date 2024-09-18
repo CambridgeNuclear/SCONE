@@ -382,23 +382,27 @@ contains
     integer(longInt)                  :: i
     character(100),parameter :: Here = 'reduceBins (scoreMemory_class.f90)'
 
-    !$omp parallel do
-    do i = 1, self % N
-      self % bins(i, BIN) = sum(self % parallelBins(i,:))
-      self % parallelBins(i,:) = ZERO
-    end do
-    !$omp end parallel do
+    if (self % lastCycle()) then
 
-    ! Reduce across processes
-    ! We use the parallelBins array as a temporary storage
+      !$omp parallel do
+      do i = 1, self % N
+        self % bins(i, BIN) = sum(self % parallelBins(i,:))
+        self % parallelBins(i,:) = ZERO
+      end do
+      !$omp end parallel do
+
+      ! Reduce across processes
+      ! We use the parallelBins array as a temporary storage
 #ifdef MPI
-    ! Since the number of bins is limited by 64bit signed integer and the
-    ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
-    ! to split the reduction operation into chunks
-    if (self % reduced) then
-      call reduceArray(self % bins(:,BIN), self % parallelBins(:,1))
-    end if
+      ! Since the number of bins is limited by 64bit signed integer and the
+      ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
+      ! to split the reduction operation into chunks
+      if (self % reduced) then
+        call reduceArray(self % bins(:,BIN), self % parallelBins(:,1))
+      end if
 #endif
+
+    end if
 
   end subroutine reduceBins
 
@@ -507,13 +511,13 @@ contains
   !! Returns 0 if index is invalid
   !!
   elemental subroutine getResult_withSTD(self, mean, STD, idx, samples)
-    class(scoreMemory), intent(in)         :: self
-    real(defReal), intent(out)             :: mean
-    real(defReal),intent(out)              :: STD
-    integer(longInt), intent(in)           :: idx
-    integer(shortInt), intent(in),optional :: samples
-    integer(shortInt)                      :: N
-    real(defReal)                          :: inv_N, inv_Nm1
+    class(scoreMemory), intent(in)          :: self
+    real(defReal), intent(out)              :: mean
+    real(defReal),intent(out)               :: STD
+    integer(longInt), intent(in)            :: idx
+    integer(shortInt), intent(in), optional :: samples
+    integer(shortInt)                       :: N
+    real(defReal)                           :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
     if (idx < 0_longInt .or. idx > self % N) then
@@ -550,14 +554,14 @@ contains
   !! Returns 0 if index is invalid
   !!
   elemental subroutine getResult_withoutSTD(self, mean, idx, samples)
-    class(scoreMemory), intent(in)         :: self
-    real(defReal), intent(out)             :: mean
-    integer(longInt), intent(in)           :: idx
-    integer(shortInt), intent(in),optional :: samples
-    integer(shortInt)                      :: N
+    class(scoreMemory), intent(in)          :: self
+    real(defReal), intent(out)              :: mean
+    integer(longInt), intent(in)            :: idx
+    integer(shortInt), intent(in), optional :: samples
+    integer(shortInt)                       :: N
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       return
     end if

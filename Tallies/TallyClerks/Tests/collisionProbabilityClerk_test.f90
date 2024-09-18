@@ -39,7 +39,6 @@ contains
     call mapDict % store('type','testMap')
     call mapDict % store('maxIdx',2)
 
-
     ! Build intput dictionary
     call dict % init(2)
     call dict % store('type','collisionProbabilityClerk')
@@ -48,9 +47,9 @@ contains
     name = 'testClerk'
     call this % clerk % init(dict,name)
 
-
     call mapDict % kill()
     call dict % kill()
+
   end subroutine setUp
 
   !!
@@ -82,9 +81,8 @@ contains
     class(tallyResult), allocatable                      :: res
     real(defReal), parameter :: TOL = 1.0E-7
 
-
     ! Create score memory
-    call mem % init(int(this % clerk % getSize(), longInt) , 1, batchSize = 1)
+    call mem % init(int(this % clerk % getSize(), longInt), 1, batchSize = 1)
     call this % clerk % setMemAddress(1_longInt)
 
     ! Create test transport Nuclear Data
@@ -132,11 +130,10 @@ contains
     p % preCollision % matIdx = 88
     call this % clerk % reportInColl(p, xsData, mem, .false.)
 
-
     ! Close cycle
     call mem % reduceBins()
-    call this % clerk % reportCycleEnd(pop, mem)
-    call mem % closeCycle(ONE)
+    call this % clerk % closeCycle(pop, mem)
+    call mem % closeCycle(TWO)
 
     ! Verify results
 
@@ -247,8 +244,6 @@ contains
     call pop % kill()
 
   end subroutine testSimpleUseCase
-
-
 
   !!
   !! Test correctness of the printing calls

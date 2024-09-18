@@ -78,7 +78,7 @@ module collisionProbabilityClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportInColl
-    procedure  :: reportCycleEnd
+    procedure  :: closeCycle
 
     ! Overwrite default run-time result procedure
     procedure  :: getResult
@@ -144,7 +144,7 @@ contains
     class(collisionProbabilityClerk),intent(in) :: self
     integer(shortInt),dimension(:),allocatable  :: validCodes
 
-    validCodes = [inColl_CODE, cycleEnd_Code]
+    validCodes = [inColl_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -208,7 +208,6 @@ contains
     !score = self % resp % get(p, xsData) * p % w / xsData % getTotalMatXS(p, p % matIdx())
     score = p % w
 
-    ! I think this is right but I need to double check!
     ! Score element of the matrix
     addr = self % getMemAddress() + sIdx * self % N + cIdx
     call mem % score(score, addr)
@@ -220,7 +219,7 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
+  subroutine closeCycle(self, end, mem)
     class(collisionProbabilityClerk), intent(inout) :: self
     class(particleDungeon), intent(in)              :: end
     type(scoreMemory), intent(inout)                :: mem
@@ -229,6 +228,7 @@ contains
     real(defReal)                                   :: val, normFactor
 
     if (mem % lastCycle()) then
+
       ! Set address to the start of collision probability matrix
       ! Decrease by 1 to get correct address on the first iteration of the loop
       addrCPM  = self % getMemAddress() - 1
@@ -257,7 +257,7 @@ contains
       end do
     end if
 
-  end subroutine reportCycleEnd
+  end subroutine closeCycle
 
   !!
   !! Return result from the clerk for interaction with Physics Package
@@ -322,6 +322,7 @@ contains
         end do
 
     end select
+
   end subroutine getResult
 
   !!

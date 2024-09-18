@@ -13,6 +13,7 @@ program scone
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none
+
   type(dictionary)                  :: input
   class(physicsPackage),allocatable :: core
   character(:),allocatable          :: inputPath
@@ -65,4 +66,5 @@ program scone
 
   call statusMsg('Total calculation time: ' // trim(secToChar(timerTime(timerIdx))))
   call statusMsg('Have a good day and enjoy your result analysis!')
+
 end program scone

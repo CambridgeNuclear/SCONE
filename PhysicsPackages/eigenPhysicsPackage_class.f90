@@ -561,12 +561,14 @@ contains
 
     ! Initialise active and inactive tally attachments
     ! Inactive tally attachment
+    ! Note: mpiSync ensures that k_eff is synchronised between all processes each cycle
     call locDict1 % init(3)
     call locDict2 % init(2)
 
     call locDict2 % store('type','keffAnalogClerk')
     call locDict1 % store('keff', locDict2)
     call locDict1 % store('display',['keff'])
+    call locDict1 % store('mpiSync', 1)
 
     allocate(self % inactiveAtch)
     call self % inactiveAtch % init(locDict1)
