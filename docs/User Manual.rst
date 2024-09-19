@@ -523,16 +523,19 @@ Example: ::
 
 * cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
   The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
-  cone is determined by the sign of ``hMin`` and ``hMax``.
+  cone is determined by the sign of ``hMin`` and ``hMax``. ``hMin`` and ``hMax``
+  must have the same sign, i.e., there can only be a single cone, not a double
+  cone reflected about the vertex.
 
   - vertex: (x y z) vector with the vertex absolute coordinates. [cm]
   - angle: cone openining angle, i.e., the angle between the axis and the cone
-    surface. [degrees]
-  - hMin: coordinate along the cone axis corresponding to the position of the
-    cone lower basis with respect to the vertex. It could be positive or negative. [cm]
-  - hMax: coordinate along the cone axis corresponding to the position of the
-    cone upper basis with respect to the vertex. It could be positive or negative.
-    Must be of the same sign as hMin, and always larger. [cm]
+    surface. Must be positive and between 0-90. [degrees]
+  - hMin: the relative position of the lower truncated surface of the cone. 
+    The absolute position is given by hMin + the component of the vertex along the cone axis. 
+    Can be positive or negative but must be less than hMax and have the same sign. [cm]
+  - hMax: the relative position of the upper truncated surface of the cone. 
+    The absolute position is given by hMax + the component of the vertex along the cone axis. 
+    Can be positive or negative but must be greater than hMin and have the same sign. [cm]
 
 Example: ::
 
@@ -564,7 +567,7 @@ In the surface definition, one should include the indexes of the corresponding
 surfaces with no sign to indicate a positive half-space, or minus sign to indicate
 a negative half-space. The space in between cells corresponds to an intersection.
 
-The possible ``fillTypes`` are:
+The possible ``filltypes`` are:
 
 * mat: if the cells is filled with a homogeneous material
 
