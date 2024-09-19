@@ -547,6 +547,17 @@ Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
 
+* quadric: a generic quadratic surfaces defined by
+  F(x,y,z) = Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Iz + J.
+  
+  - coeffs: (A B C D E F G H I J) vector, following the general equation.
+
+Example: ::
+
+      quad { id 12; type quadric; coeffs (1.0 1.0 1.0 0 0 0 0 0 0 -25); }
+
+This defines a sphere with a radius of 5 cm.
+
 Cells
 #####
 
