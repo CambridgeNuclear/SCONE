@@ -1,7 +1,8 @@
 module particleDungeon_class
 
   use numPrecision
-  use genericProcedures,     only : fatalError, numToChar, swap
+  use errors_mod,            only : fatalError
+  use genericProcedures,     only : numToChar, swap
   use particle_class,        only : particle, particleState
   use RNG_class,             only : RNG
   use heapQueue_class,       only : heapQueue
@@ -9,8 +10,8 @@ module particleDungeon_class
   use mpi_func,              only : isMPIMaster, getMPIWorldSize, getMPIRank, getOffset
 #ifdef MPI
   use mpi_func,              only : mpi_gather, mpi_allgather, mpi_send, mpi_recv, &
-                                    mpi_Bcast, MPI_COMM_WORLD, MASTER_RANK, MPI_DEFREAL, &
-                                    MPI_SHORTINT, MPI_LONGINT, MPI_PARTICLE_STATE, &
+                                    mpi_Bcast, MPI_COMM_WORLD, MASTER_RANK, MPI_DOUBLE, &
+                                    MPI_INT, MPI_LONG_LONG, MPI_PARTICLE_STATE, &
                                     MPI_STATUS_IGNORE, particleStateDummy
 #endif
 
@@ -452,7 +453,7 @@ contains
 
 #ifdef MPI
     ! Get the population sizes of all ranks into the array popSizes in master branch
-    call mpi_gather(self % pop, 1, MPI_SHORTINT, popSizes, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD, error)
+    call mpi_gather(self % pop, 1, MPI_INT, popSizes, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD, error)
 #endif
 
     ! In the master process, calculate sampling threshold for the whole population
@@ -504,9 +505,9 @@ contains
 
     ! Broadcast threshold, excess and random number seeds to all processes
 #ifdef MPI
-    call MPI_Bcast(threshold, 1, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
-    call MPI_Bcast(excess, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD)
-    call MPI_Bcast(seeds, nRanks, MPI_LONGINT, MASTER_RANK, MPI_COMM_WORLD)
+    call MPI_Bcast(threshold, 1, MPI_DOUBLE, MASTER_RANK, MPI_COMM_WORLD)
+    call MPI_Bcast(excess, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD)
+    call MPI_Bcast(seeds, nRanks, MPI_LONG_LONG, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
     ! Get local process rank and initialise local rng with the correct seed
@@ -581,7 +582,7 @@ contains
 
 #ifdef MPI
     ! Get the updated population numbers from all processes
-    call mpi_allgather(self % pop, 1, MPI_SHORTINT, popSizes, 1, MPI_SHORTINT, MPI_COMM_WORLD, error)
+    call mpi_allgather(self % pop, 1, MPI_INT, popSizes, 1, MPI_INT, MPI_COMM_WORLD, error)
 #endif
 
     ! Check that normalisation worked
@@ -615,7 +616,7 @@ contains
 
     ! Communicates the offset from all processes to all processes
     allocate(rankOffsets(nRanks))
-    call mpi_allgather(mpiOffset, 1, MPI_SHORTINT, rankOffsets, 1, MPI_SHORTINT, MPI_COMM_WORLD, error)
+    call mpi_allgather(mpiOffset, 1, MPI_INT, rankOffsets, 1, MPI_INT, MPI_COMM_WORLD, error)
 
     ! Calculate actual and target cumulative number of sites in the processes before
     offset(1)       = sum(popSizes(1 : rank))

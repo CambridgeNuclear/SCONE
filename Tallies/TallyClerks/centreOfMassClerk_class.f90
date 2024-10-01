@@ -27,7 +27,7 @@ module centreOfMassClerk_class
   !! Sample dictionary input:
   !!
   !!  clerkName {
-  !!      type comClerk;
+  !!      type centreOfMassClerk;
   !!      cycles 900;
   !!  }
   !!

@@ -1,8 +1,10 @@
 module particleDungeon_test
   use numPrecision
+  use errors_mod,            only : fatalError
   use RNG_class,             only : RNG
   use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
+  use mpi_func,              only : mpiInitTypes, MPI_COMM_WORLD
   use funit
 
   implicit none
@@ -194,6 +196,7 @@ contains
 
     ! Clean
     call dungeon % kill()
+
   end subroutine testWeightNorm
 
   !!
@@ -206,9 +209,17 @@ contains
     type(particleDungeon)    :: dungeon
     type(particle)           :: p
     type(RNG)                :: pRNG
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, worldSize, ierr
     real(defReal), parameter :: TOL = 1.0E-9
+    character(100),parameter :: Here = 'testNormPopDown (particleDungeon_test.f90)'
 
+    call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
+
+    if (worldSize > 1) &
+      call fatalError(Here, 'This test cannot be run with multiple MPI processes')
+
+    ! Initialise MPI types needed for this procedure
+    call mpiInitTypes()
 
     ! Initialise
     call dungeon % init(10)
@@ -245,8 +256,14 @@ contains
     type(particleDungeon)    :: dungeon
     type(particle)           :: p
     type(RNG)                :: pRNG
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, worldSize, ierr
     real(defReal), parameter :: TOL = 1.0E-9
+    character(100),parameter :: Here = 'testNormPopUp (particleDungeon_test.f90)'
+
+    call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
+
+    if (worldSize > 1) &
+      call fatalError(Here, 'This test cannot be run with multiple MPI processes')
 
     ! Initialise
     call dungeon % init(20)

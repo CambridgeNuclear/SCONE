@@ -8,7 +8,7 @@ module fixedSourcePhysicsPackage_class
                                              printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
 #ifdef MPI
-  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD
+  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INT, MPI_COMM_WORLD
 #endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
@@ -382,7 +382,7 @@ contains
 
     ! Broadcast seed to all processes
 #ifdef MPI
-    call MPI_Bcast(seed_temp, 1, MPI_INTEGER, MASTER_RANK, MPI_COMM_WORLD)
+    call MPI_Bcast(seed_temp, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
     seed = seed_temp

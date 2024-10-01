@@ -34,9 +34,6 @@ module mpi_func
 
   !! Common MPI types
 #ifdef MPI
-  type(MPI_Datatype)   :: MPI_DEFREAL
-  type(MPI_Datatype)   :: MPI_SHORTINT
-  type(MPI_Datatype)   :: MPI_LONGINT
   type(MPI_Datatype)   :: MPI_PARTICLE_STATE
 #endif
 
@@ -49,11 +46,7 @@ contains
   !!
   subroutine mpiInit()
 #ifdef MPI
-    integer(shortInt)        :: ierr, stateSize
-    type(particleStateDummy) :: state
-    integer(kind = MPI_ADDRESS_KIND), dimension(:), allocatable :: displacements
-    integer(shortInt), dimension(:), allocatable                :: blockLengths
-    type(MPI_Datatype), dimension(:), allocatable               :: types
+    integer(shortInt)        :: ierr
 
     call mpi_init(ierr)
 
@@ -61,18 +54,36 @@ contains
     call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
     call mpi_comm_rank(MPI_COMM_WORLD, rank, ierr)
 
-    ! Define MPI type for DEFREAL
-    call mpi_type_create_f90_real(precision(1.0_defReal), range(1.0_defReal), &
-                                  MPI_DEFREAL, ierr)
-    call mpi_type_commit(MPI_DEFREAL, ierr)
+    ! Defines types
+    call mpiInitTypes()
+#endif
 
-    ! Define MPI type for SHORTINT
-    call mpi_type_create_f90_integer(range(1_shortInt), MPI_SHORTINT, ierr)
-    call mpi_type_commit(MPI_SHORTINT, ierr)
+  end subroutine mpiInit
 
-    ! Define MPI type for LONGINT
-    call mpi_type_create_f90_integer(range(1_longInt), MPI_LONGINT, ierr)
-    call mpi_type_commit(MPI_LONGINT, ierr)
+  !!
+  !! Finalise MPI environment
+  !!
+  !! Needs to be called at the end of calculation after all MPI calls
+  !!
+  subroutine mpiFinalise()
+#ifdef MPI
+    integer(shortInt) :: ierr
+
+    call mpi_finalize(ierr)
+
+#endif
+  end subroutine mpiFinalise
+
+  !!
+  !! Initialise types used by the MPI environment
+  !!
+  subroutine mpiInitTypes()
+#ifdef MPI
+    integer(shortInt)        :: ierr, stateSize
+    type(particleStateDummy) :: state
+    integer(kind = MPI_ADDRESS_KIND), dimension(:), allocatable :: displacements
+    integer(shortInt), dimension(:), allocatable                :: blockLengths
+    type(MPI_Datatype), dimension(:), allocatable               :: types
 
     ! Define MPI type for particleState
     ! Note that particleState has stateSize = 13 attributes; if an attribute is
@@ -82,8 +93,8 @@ contains
 
     ! Create arrays with dimension and type of each property of particleStateDummy
     blockLengths = (/1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1/)
-    types = (/MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_SHORTINT, MPI_LOGICAL, MPI_SHORTINT, &
-              MPI_DEFREAL, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT/)
+    types = (/MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_LOGICAL, MPI_INT, &
+              MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT/)
 
     ! Create array of memory byte displacements
     call mpi_get_address(state % wgt, displacements(1), ierr)
@@ -104,24 +115,9 @@ contains
     ! Define new type
     call mpi_type_create_struct(stateSize, blockLengths, displacements, types, MPI_PARTICLE_STATE, ierr)
     call mpi_type_commit(MPI_PARTICLE_STATE, ierr)
-
 #endif
 
-  end subroutine mpiInit
-
-  !!
-  !! Finalise MPI environment
-  !!
-  !! Needs to be called at the end of calculation after all MPI calls
-  !!
-  subroutine mpiFinalise()
-#ifdef MPI
-    integer(shortInt) :: ierr
-
-    call mpi_finalize(ierr)
-
-#endif
-  end subroutine mpiFinalise
+  end subroutine mpiInitTypes
 
   !!
   !! Get the share of work N for the current process

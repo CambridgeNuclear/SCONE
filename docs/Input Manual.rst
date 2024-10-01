@@ -1,7 +1,7 @@
-.. _user-manual:
+.. _input-manual:
 
-User Manual
-===========
+Input Manual
+============
 
 Generic information about how to use dictionaries in writing an input file can be found
 in :ref:`Dictionary Input <dictSyntax>`. Here, more specific information about the input

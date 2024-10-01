@@ -19,7 +19,7 @@ module shannonEntropyClerk_class
 
   use mpi_func,                   only : isMPIMaster
 #ifdef MPI
-  use mpi_func,                   only : mpi_reduce, MPI_SUM, MPI_DEFREAL, MPI_COMM_WORLD, MASTER_RANK
+  use mpi_func,                   only : mpi_reduce, MPI_SUM, MPI_DOUBLE, MPI_COMM_WORLD, MASTER_RANK
 #endif
 
   implicit none
@@ -155,8 +155,8 @@ contains
       bufferArray = prob
 
 #ifdef MPI
-      call mpi_reduce(totWgt, buffer, 1, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
-      call mpi_reduce(prob, bufferArray, self % N, MPI_DEFREAL, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(totWgt, buffer, 1, MPI_DOUBLE, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(prob, bufferArray, self % N, MPI_DOUBLE, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
 #endif
 
       if (isMPIMaster()) then

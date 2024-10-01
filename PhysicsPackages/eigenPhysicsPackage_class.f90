@@ -8,8 +8,8 @@ module eigenPhysicsPackage_class
                                              printSectionEnd, printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
 #ifdef MPI
-  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INTEGER, MPI_COMM_WORLD, &
-                                             MPI_DEFREAL, mpi_reduce, MPI_SUM
+  use mpi_func,                       only : MASTER_RANK, MPI_Bcast, MPI_INT, MPI_COMM_WORLD, &
+                                             MPI_DOUBLE, mpi_reduce, MPI_SUM
 #endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
@@ -289,7 +289,7 @@ contains
 
 #ifdef MPI
       ! Broadcast k_eff obtained in the master to all processes
-      call MPI_Bcast(k_new, 1, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
+      call MPI_Bcast(k_new, 1, MPI_DOUBLE, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
       ! Load new k-eff estimate into next cycle dungeon
@@ -309,9 +309,9 @@ contains
 
 #ifdef MPI
       ! Print the population numbers referred to all processes to screen
-      call mpi_reduce(nStart, nTemp, 1, MPI_INTEGER, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(nStart, nTemp, 1, MPI_INT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
       nStart = nTemp
-      call mpi_reduce(nEnd, nTemp, 1, MPI_INTEGER, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(nEnd, nTemp, 1, MPI_INT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
       nEnd = nTemp
 #endif
 
@@ -473,7 +473,7 @@ contains
 
     ! Broadcast seed to all processes
 #ifdef MPI
-    call MPI_Bcast(seed_temp, 1, MPI_INTEGER, MASTER_RANK, MPI_COMM_WORLD)
+    call MPI_Bcast(seed_temp, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
     seed = seed_temp

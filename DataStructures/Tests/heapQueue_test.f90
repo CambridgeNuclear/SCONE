@@ -1,7 +1,7 @@
 module heapQueue_test
   use numPrecision
   use heapQueue_class, only: heapQueue
-  use pFUnit_mod
+  use funit
 
   implicit none
 

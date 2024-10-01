@@ -145,9 +145,9 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 # Compile library
 add_library(scone STATIC ${SRCS})
 target_compile_options(scone PRIVATE ${scone_extra_flags} )
-target_link_libraries(scone  ${LAPACK_LIBRARIES} )
+target_link_libraries(scone PUBLIC ${LAPACK_LIBRARIES} )
 if(MPI)
-  target_link_libraries(scone MPI::MPI_Fortran)
+  target_link_libraries(scone PUBLIC MPI::MPI_Fortran)
 endif()
 
 if(LTO)
@@ -158,10 +158,6 @@ endif()
 # COMPILE SOLVERS
 add_executable(scone.out ./Apps/scone.f90 )
 target_link_libraries(scone.out scone )
-if(MPI)
-  target_link_libraries(scone.out MPI::MPI_Fortran)
-endif()
-
 
 ####################################################################################################
 # COMPILE UNIT TESTS
@@ -178,7 +174,8 @@ if(BUILD_TESTS)
 
   add_pfunit_ctest(unitTests
     TEST_SOURCES ${UNIT_TESTS_RELATIVE}
-    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    LINK_LIBRARIES scone
+    MAX_PES 1
     )
 
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
@@ -199,7 +196,7 @@ if(BUILD_TESTS)
 
   add_pfunit_ctest(integrationTests
     TEST_SOURCES ${INTEGRATION_TESTS_RELATIVE}
-    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    LINK_LIBRARIES scone
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 
