@@ -10,13 +10,15 @@ module cellFactory_func
 
   ! Cells
   use simpleCell_class,   only : simpleCell
+  use unionCell_class,    only : unionCell
 
   implicit none
   private
 
   ! List that contains acceptable types of cells
   ! NOTE: It is necessary to adjust trailing blanks so all entries have the same length
-  character(nameLen), dimension(*), parameter :: AVAILABLE_CELL = ['simpleCell']
+  character(nameLen), dimension(*), parameter :: AVAILABLE_CELL = ['simpleCell', &
+                                                                   'unionCell ']
 
   ! Public Interface
   public :: new_cell_ptr
@@ -51,6 +53,9 @@ contains
     select case (type)
       case ('simpleCell')
         allocate(simpleCell :: new)
+      
+      case ('unionCell')
+        allocate(unionCell :: new)
 
       case default
         print '(A)', 'AVAILABLE CELLS: '

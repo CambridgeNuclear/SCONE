@@ -6,24 +6,10 @@ module simpleCell_class
   use dictionary_class,   only : dictionary
   use surfaceShelf_class, only : surfaceShelf
   use surface_inter,      only : surface
-  use cell_inter,         only : cell, kill_super => kill
+  use cell_inter,         only : cell, surfInfo, kill_super => kill
 
   implicit none
   private
-
-  !!
-  !! Local type to hold pointer to a surface together with a halfspace information
-  !!
-  !! Public Members:
-  !!   surfIdx -> Index of the surface (+ve if +ve halspace is used to define the
-  !!     cell, -ve otherwise)
-  !!   ptr -> Pointer to a surface
-  !!
-  type :: surfInfo
-    integer(shortInt)       :: surfIdx = 0
-    class(surface), pointer :: ptr => null()
-  end type
-
 
   !!
   !! CSG cell defined by intersection of halfspaces
@@ -108,7 +94,7 @@ contains
     integer(shortInt)                       :: i
     logical(defBool)                        :: halfspace, sense
 
-    ! Keep compiler happy (in immpossible case of cell with no surfaces)
+    ! Keep compiler happy (in impossible case of cell with no surfaces)
     isIt = .false.
 
     do i= 1, size(self % surfaces)
