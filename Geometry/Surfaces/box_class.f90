@@ -2,7 +2,7 @@ module box_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar, swap
+  use genericProcedures,  only : fatalError, numToChar, swap, isEqual
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 
@@ -264,13 +264,14 @@ contains
     ! Projection of direction on the normal
     proj = u(maxCom) * sign(ONE, rl(maxCom))
 
-    halfspace = proj > ZERO
-
-    ! Parallel direction
-    ! Need to use position to determine halfspace
-    if (proj == ZERO) then
+    ! Parallel direction. Need to use position to determine halfspace.
+    if (isEqual(proj, ZERO)) then
       halfspace = self % evaluate(r) >= ZERO
+      return
+      
     end if
+
+    halfspace = proj > ZERO
 
   end function going
 

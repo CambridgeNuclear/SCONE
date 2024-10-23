@@ -172,17 +172,17 @@ contains
     if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Ensure we're not in void (could happen when scoring virtual collisions)
-    if (p % matIdx() == VOID_MAT) return
+    if (p % getMatIdx() == VOID_MAT) return
 
     ! Calculate flux with the right cross section according to virtual collision handling
     if (self % handleVirtual) then
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+      flux = p % w / xsData % getTrackingXS(p, p % getMatIdx(), TRACKING_XS)
     else
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+      flux = p % w / xsData % getTotalMatXS(p, p % getMatIdx())
     end if
 
     ! Get material pointer
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % getMatIdx()))
     if (.not.associated(mat)) then
       call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
     end if

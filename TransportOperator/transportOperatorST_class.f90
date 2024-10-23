@@ -59,11 +59,11 @@ contains
     STLoop: do
 
       ! Obtain the local cross-section
-      if (p % matIdx() == VOID_MAT) then
+      if (p % getMatIdx() == VOID_MAT) then
         dist = INFINITY
 
       else
-        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
+        sigmaT = self % xsData % getTrackingXS(p, p % getMatIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 
         ! Should never happen! Catches NaN distances
@@ -87,13 +87,13 @@ contains
       call tally % reportPath(p, dist)
 
       ! Kill particle if it has leaked
-      if (p % matIdx() == OUTSIDE_FILL) then
+      if (p % getMatIdx() == OUTSIDE_FILL) then
         p % isDead = .true.
         p % fate = LEAK_FATE
       end if
 
       ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
+      if (p % getMatIdx() == UNDEF_MAT) then
         print *, p % rGlobal()
         call fatalError(Here, "Particle is in undefined material")
       end if

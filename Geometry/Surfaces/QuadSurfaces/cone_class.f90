@@ -2,7 +2,7 @@ module cone_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, numToChar, dotProduct
+  use genericProcedures,  only : fatalError, numToChar, isEqual
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -418,14 +418,15 @@ contains
     norm = norm/norm2(norm)
     proj = dot_product(norm,u)
 
+    ! Parallel direction. Need to use position to determine halfspace.
+    if (isEqual(proj, ZERO)) then
+      halfspace = self % evaluate(r) >= ZERO
+      return
+    
+    end if
+
     ! Determine halfspace
     halfspace = proj > ZERO
-
-    ! Parallel direction
-    ! Need to use position to determine halfspace
-    if (proj == ZERO) then
-      halfspace = self % evaluate(r) >= ZERO
-    end if
 
   end function going
 

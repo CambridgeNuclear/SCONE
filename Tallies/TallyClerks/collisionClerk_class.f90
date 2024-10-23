@@ -221,9 +221,9 @@ contains
 
     ! Calculate flux with the right cross section according to virtual collision handling
     if (self % handleVirtual) then
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+      flux = p % w / xsData % getTrackingXS(p, p % getMatIdx(), TRACKING_XS)
     else
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+      flux = p % w / xsData % getTotalMatXS(p, p % getMatIdx())
     end if
 
     ! Calculate bin address

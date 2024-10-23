@@ -156,7 +156,7 @@ contains
 
     ! Return zero if particle is not neutron or if the particle is in void
     if (p % type /= P_NEUTRON) return
-    if (p % matIdx() == VOID_MAT) return
+    if (p % getMatIdx() == VOID_MAT) return
 
     ! Get pointer to active material data
     mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))

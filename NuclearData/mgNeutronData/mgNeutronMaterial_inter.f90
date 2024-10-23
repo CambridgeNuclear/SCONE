@@ -119,7 +119,7 @@ contains
     !!
     !! Here it is necessary to store p % matIdx() in a dedicated variable to avoid compilation errors with gfortran >= 13.2
     !!
-    matIdx = p % matIdx()
+    matIdx = p % getMatIdx()
     associate (matCache => cache_materialCache(matIdx))
 
       if (matCache % G_tail /= p % G) then

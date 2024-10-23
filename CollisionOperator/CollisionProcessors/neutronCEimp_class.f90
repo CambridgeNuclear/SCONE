@@ -243,7 +243,7 @@ contains
     if(.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
 
     ! Verify and load material pointer
-    self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
+    self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % getMatIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
 
     ! Select collision nuclide

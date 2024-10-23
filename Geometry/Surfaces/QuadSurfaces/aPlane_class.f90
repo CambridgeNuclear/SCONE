@@ -2,7 +2,7 @@ module aPlane_class
 
   use numPrecision
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
-  use genericProcedures,  only : fatalError
+  use genericProcedures,  only : fatalError, isEqual
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -196,13 +196,15 @@ contains
     real(defReal)                           :: ua
 
     ua = u(self % axis)
-    halfspace = ua > ZERO
 
-    ! Special case of parallel direction
-    ! Partilce stays in its current halfspace
-    if (ua == ZERO) then
+    ! Special case of parallel direction. Particle stays in its current halfspace.
+    if (isEqual(ua, ZERO)) then 
       halfspace = (r(self % axis) - self % a0) >= ZERO
+      return
+      
     end if
+
+    halfspace = ua > ZERO
 
   end function going
 

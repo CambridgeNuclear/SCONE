@@ -132,7 +132,7 @@ module particle_class
     procedure                  :: nesting
     procedure                  :: getCellIdx
     procedure                  :: getUniIdx
-    procedure                  :: matIdx
+    procedure                  :: getMatIdx
     procedure, non_overridable :: getType
 
     ! Enquiry about physical state
@@ -394,13 +394,13 @@ contains
   !!
   !! Return current material index
   !!
-  pure function matIdx(self) result(Idx)
+  pure function getMatIdx(self) result(matIdx)
     class(particle), intent(in) :: self
-    integer(shortInt)           :: idx
+    integer(shortInt)           :: matIdx
 
-    idx = self % coords % matIdx
+    matIdx = self % coords % matIdx
 
-  end function matIdx
+  end function getMatIdx
 
   !!
   !! Return one of the particle Tpes defined in universal variables
@@ -667,28 +667,28 @@ contains
   !! Define equal operation on phase coordinates
   !!  Phase coords are equal if all their components are the same
   !!
-  function equal_particleState(LHS,RHS) result(isEqual)
+  function equal_particleState(LHS,RHS) result(equal)
     class(particleState), intent(in) :: LHS
     class(particleState), intent(in) :: RHS
-    logical(defBool)              :: isEqual
+    logical(defBool)              :: equal
 
-    isEqual = .true.
-    isEqual = isEqual .and. LHS % wgt == RHS % wgt
-    isEqual = isEqual .and. all(LHS % r   == RHS % r)
-    isEqual = isEqual .and. all(LHS % dir == RHS % dir)
-    isEqual = isEqual .and. LHS % time == RHS % time
-    isEqual = isEqual .and. LHS % isMG .eqv. RHS % isMG
-    isEqual = isEqual .and. LHS % type == RHS % type
-    isEqual = isEqual .and. LHS % matIdx   == RHS % matIdx
-    isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
-    isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
-    isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
-    isEqual = isEqual .and. LHS % broodID    == RHS % broodID
+    equal = .true.
+    equal = equal .and. LHS % wgt == RHS % wgt
+    equal = equal .and. all(LHS % r   == RHS % r)
+    equal = equal .and. all(LHS % dir == RHS % dir)
+    equal = equal .and. LHS % time == RHS % time
+    equal = equal .and. LHS % isMG .eqv. RHS % isMG
+    equal = equal .and. LHS % type == RHS % type
+    equal = equal .and. LHS % matIdx   == RHS % matIdx
+    equal = equal .and. LHS % cellIdx  == RHS % cellIdx
+    equal = equal .and. LHS % uniqueID == RHS % uniqueID
+    equal = equal .and. LHS % collisionN == RHS % collisionN
+    equal = equal .and. LHS % broodID    == RHS % broodID
 
     if( LHS % isMG ) then
-      isEqual = isEqual .and. LHS % G == RHS % G
+      equal = equal .and. LHS % G == RHS % G
     else
-      isEqual = isEqual .and. LHS % E == RHS % E
+      equal = equal .and. LHS % E == RHS % E
     end if
   end function equal_particleState
 

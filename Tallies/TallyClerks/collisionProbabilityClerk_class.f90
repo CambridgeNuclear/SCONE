@@ -182,7 +182,7 @@ contains
     if (virtual) return
 
     ! Get material or return if it is not a neutron
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % getMatIdx()))
 
     if (.not.associated(mat)) return
 
