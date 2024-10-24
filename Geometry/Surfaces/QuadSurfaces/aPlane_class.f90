@@ -2,7 +2,7 @@ module aPlane_class
 
   use numPrecision
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
-  use genericProcedures,  only : fatalError, isEqual
+  use genericProcedures,  only : fatalError, areEqual
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -198,7 +198,7 @@ contains
     ua = u(self % axis)
 
     ! Special case of parallel direction. Particle stays in its current halfspace.
-    if (isEqual(ua, ZERO)) then 
+    if (areEqual(ua, ZERO)) then 
       halfspace = (r(self % axis) - self % a0) >= ZERO
       return
       

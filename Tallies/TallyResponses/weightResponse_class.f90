@@ -78,15 +78,15 @@ contains
     if(p % type /= P_NEUTRON) return
 
     ! Get pointer to active material data
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % getMatIdx()))
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
 
     ! Return if material is not a neutronMaterial
     if(.not.associated(mat)) return
 
     if (self % moment == 0) then
-      val = xsData % getTotalMatXS(p, p % getMatIdx()) / (p % w)
+      val = xsData % getTotalMatXS(p, p % matIdx()) / (p % w)
     else
-      val = xsData % getTotalMatXS(p, p % getMatIdx()) * ((p % w) ** (self % moment - 1))
+      val = xsData % getTotalMatXS(p, p % matIdx()) * ((p % w) ** (self % moment - 1))
     end if
 
   end function get

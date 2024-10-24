@@ -2,7 +2,7 @@ module box_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar, swap, isEqual
+  use genericProcedures,  only : fatalError, numToChar, swap, areEqual
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 
@@ -265,7 +265,7 @@ contains
     proj = u(maxCom) * sign(ONE, rl(maxCom))
 
     ! Parallel direction. Need to use position to determine halfspace.
-    if (isEqual(proj, ZERO)) then
+    if (areEqual(proj, ZERO)) then
       halfspace = self % evaluate(r) >= ZERO
       return
       

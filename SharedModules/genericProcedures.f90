@@ -91,9 +91,9 @@ module genericProcedures
     module procedure concatenateArrays_Real
   end interface
 
-  interface isEqual
-    module procedure isEqual_defReal
-    module procedure isEqual_defRealArray
+  interface areEqual
+    module procedure areEqual_defReal
+    module procedure areEqual_defRealArray
   end interface
 
 contains
@@ -599,84 +599,86 @@ contains
   end function concatenateArrays_Real
 
   !!
-  !! Returns .true. if two floating point numbers are equal. 
+  !! Returns .true. if value and target are equal. 
   !!
   !! Due to floating point artihmetic and rounding-off errors being slightly different 
   !! across different architectures (eg, Intel vs ARM), it is necessary to use some small 
   !! tolerances to assert equality between two floating point numbers. These tolerances 
   !! are specified in numPrecision.f90.
   !!
-  elemental function isEqual_defReal(a, b) result(equal)
-    real(defReal), intent(in) :: a, b
+  elemental function areEqual_defReal(value, target) result(equal)
+    real(defReal), intent(in) :: value, target
     logical(defBool)          :: equal
     real(defReal)             :: absDiff
 
     ! Initialise equal = .true. and check for perfect (to the bit) equality, since we can 
     ! return early in this case.
     equal = .true.
-    if (a == b) return
+    if (value == target) return
 
     ! Compute the absolute value of the difference between the two floating point numbers.
-    ! Note that if a and b are both very large and of opposite signs this can cause overflow.
-    absDiff = abs(a - b)
+    ! Note that if value and target are both very large and of opposite signs this can 
+    ! cause overflow.
+    absDiff = abs(value - target)
 
     ! Check if absDiff is less than some absolute very small tolerance first and return if yes.
     if (absDiff < floatTol) return
 
-    ! Check if a and b are within some small relative tolerance of each other and return if
-    ! yes. Note that if a and b are both very small numbers, then multiplying by a small
-    ! tolerance can cause underflow. This is why we check absolute tolerance first.
-    if (absDiff < max(abs(a), abs(b)) * FP_REL_TOL) return
+    ! Check if value and target are within some small relative tolerance of each other and 
+    ! return if yes. Note that if value and target are both very small numbers, then multiplying 
+    ! by a small tolerance can cause underflow. This is why we check absolute tolerance first.
+    if (absDiff < max(abs(value), abs(target)) * FP_REL_TOL) return
 
-    ! If reached here, a and b are not within absolute or relative tolerance of each other.
-    ! update equal = .false.
+    ! If reached here, value and target are not within absolute or relative tolerance of each 
+    ! other. Update equal = .false.
     equal = .false.
 
-  end function isEqual_defReal
+  end function areEqual_defReal
 
   !!
-  !! Returns .true. if all floating point numbers in an array are equal to a given value. 
+  !! Returns .true. if all elements of an array are equal to target. 
   !!
   !! Due to floating point artihmetic and rounding-off errors being slightly different 
   !! across different architectures (eg, Intel vs ARM), it is necessary to use some small 
   !! tolerances to assert equality between two floating point numbers. These tolerances 
   !! are specified in numPrecision.f90.
   !!
-  pure function isEqual_defRealArray(array, b) result(equal)
+  pure function areEqual_defRealArray(array, target) result(equal)
     real(defReal), dimension(:), intent(in)     :: array
-    real(defReal), intent(in)                   :: b
+    real(defReal), intent(in)                   :: target
     logical(defBool)                            :: equal
     integer(shortInt)                           :: i
-    real(defReal)                               :: a, absDiff
+    real(defReal)                               :: value, absDiff
 
     ! Initialise equal = .true. and loop over all element in the array.
     equal = .true.
     do i = 1, size(array)
       ! Retrieve current element of the array and check for perfect (to the bit) equality. 
       ! Cycle to the next element if yes.
-      a = array(i)
-      if (a == b) cycle
+      value = array(i)
+      if (value == target) cycle
 
       ! Compute the absolute value of the difference between the two floating point numbers.
-      ! Note that if a and b are both very large and of opposite signs this can cause overflow.
-      absDiff = abs(a - b)
+      ! Note that if value and target are both very large and of opposite signs this can 
+      ! cause overflow.
+      absDiff = abs(value - target)
 
       ! Check if absDiff is less than some absolute very small tolerance first and cycle if yes.
       if (absDiff < floatTol) cycle
 
-      ! Check if a and b are within some small relative tolerance of each other and cycle if
-      ! yes. Note that if a and b are both very small numbers, then multiplying by a small
-      ! tolerance can cause underflow. This is why we check absolute tolerance first.
-      if (absDiff < max(abs(a), abs(b)) * FP_REL_TOL) cycle
+      ! Check if value and targer are within some small relative tolerance of each other and 
+      ! cycle if yes. Note that if value and target are both very small numbers, then multiplying 
+      ! by a small tolerance can cause underflow. This is why we check absolute tolerance first.
+      if (absDiff < max(abs(value), abs(target)) * FP_REL_TOL) cycle
 
-      ! If reached here, a and b are not within absolute or relative tolerance of each other.
-      ! update equal = .false. and return.
+      ! If reached here, value and target are not within absolute or relative tolerance of each 
+      ! other. Update equal = .false. and return.
       equal = .false.
       return
 
     end do
 
-  end function isEqual_defRealArray
+  end function areEqual_defRealArray
 
   !!
   !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
@@ -830,12 +832,12 @@ contains
   !!
   !! Compares strings for equality. Ignores leading blanks.
   !!
-  elemental function charCmp(char1, char2) result(areEqual)
+  elemental function charCmp(char1, char2) result(isEqual)
     character(*), intent(in)  :: char1
     character(*), intent(in)  :: char2
-    logical(defBool)          :: areEqual
+    logical(defBool)          :: isEqual
 
-    areEqual = (trim(adjustl(char1)) == trim(adjustl(char2)))
+    isEqual = (trim(adjustl(char1)) == trim(adjustl(char2)))
 
   end function charCmp
 

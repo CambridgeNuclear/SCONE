@@ -136,7 +136,7 @@ contains
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
 
     ! Get and verify material pointer
-    self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % getMatIdx()))
+    self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
 
     ! Select Main reaction channel

@@ -2,7 +2,7 @@ module plane_class
 
   use numPrecision
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
-  use genericProcedures,  only : fatalError, numToChar, isEqual
+  use genericProcedures,  only : fatalError, numToChar, areEqual
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -154,7 +154,7 @@ contains
     k = dot_product(u, self % norm)
     c = self % evaluate(r)
 
-    if (isEqual(k, ZERO) .or. abs(c) < self % surfTol()) then ! Parallel or at the surface
+    if (areEqual(k, ZERO) .or. abs(c) < self % surfTol()) then ! Parallel or at the surface
       d = INF
 
     else
@@ -183,7 +183,7 @@ contains
     proj = dot_product(u, self % norm)
     
     ! Special case of parallel direction. Particle stays in its current halfspace
-    if (isEqual(proj, ZERO)) then
+    if (areEqual(proj, ZERO)) then
       halfspace = self % evaluate(r) >= ZERO
       return
       

@@ -119,7 +119,7 @@ contains
     character(100),parameter                 :: Here = 'collide (collisionProcessor.f90)'
 
     ! Load material index into data package
-    collDat % matIdx = p % getMatIdx()
+    collDat % matIdx = p % matIdx()
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
     call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)

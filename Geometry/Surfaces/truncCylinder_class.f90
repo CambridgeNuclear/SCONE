@@ -2,7 +2,7 @@ module truncCylinder_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar, swap, isEqual
+  use genericProcedures,  only : fatalError, numToChar, swap, areEqual
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 
@@ -227,7 +227,7 @@ contains
     delta = k*k - a*c1  ! Technically delta/4
 
     ! Find closes & furthest distance
-    if (delta <= ZERO .or. isEqual(a, ZERO)) then ! No intersection
+    if (delta <= ZERO .or. areEqual(a, ZERO)) then ! No intersection
       far = INF
       near = sign(INF, c1) ! If ray is parallel inside the cylinder it must be fully contained
 
@@ -329,7 +329,7 @@ contains
     end if
 
     ! Parallel direction. Need to use position to determine halfspace.
-    if (isEqual(proj, ZERO)) then
+    if (areEqual(proj, ZERO)) then
       halfspace = c >= ZERO
       return
       

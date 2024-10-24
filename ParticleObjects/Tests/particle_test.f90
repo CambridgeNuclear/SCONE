@@ -223,7 +223,7 @@ contains
     @assertEqual(3, this % p_CE % nesting(), 'Nesting Level')
 
     ! Level 3
-    matIdx  = this % p_CE % getMatIdx()
+    matIdx  = this % p_CE % matIdx()
     cellIdx = this % p_CE % getCellIdx()
     uniIdx  = this % p_CE % getUniIdx()
 
@@ -262,7 +262,7 @@ contains
 
     call this % p_CE % setMatIdx(3)
 
-    @assertEqual(3, this % p_CE % getMatIdx())
+    @assertEqual(3, this % p_CE % matIdx())
 
   end subroutine testSetMatIdx
 

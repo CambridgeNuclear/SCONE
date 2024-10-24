@@ -199,7 +199,7 @@ contains
     if(.not.self % filter % isPass(state)) return
 
     ! Find end material type; Exit if not fuel or moderator
-    T_end = self % materialSet % getOrDefault(p % getMatIdx(), OUTSIDE)
+    T_end = self % materialSet % getOrDefault(p % matIdx(), OUTSIDE)
     if(T_end == OUTSIDE) return
 
     ! Obtain starting and ending weights

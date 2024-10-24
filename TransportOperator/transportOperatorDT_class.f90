@@ -54,7 +54,7 @@ contains
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
-    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % getMatIdx(), MAJORANT_XS)
+    majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
@@ -66,26 +66,26 @@ contains
       call self % geom % teleport(p % coords, distance)
 
       ! If particle has leaked, exit
-      if (p % getMatIdx() == OUTSIDE_FILL) then
+      if (p % matIdx() == OUTSIDE_FILL) then
         p % fate = LEAK_FATE
         p % isDead = .true.
         return
       end if
 
       ! Check for void
-      if (p % getMatIdx() == VOID_MAT) then
+      if (p % matIdx() == VOID_MAT) then
         call tally % reportInColl(p, .true.)
         cycle DTLoop
       end if
 
       ! Give error if the particle somehow ended in an undefined material
-      if (p % getMatIdx() == UNDEF_MAT) then
+      if (p % matIdx() == UNDEF_MAT) then
         print *, p % rGlobal()
         call fatalError(Here, "Particle is in undefined material")
       end if
 
       ! Obtain the local cross-section
-      sigmaT = self % xsData % getTrackMatXS(p, p % getMatIdx())
+      sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual

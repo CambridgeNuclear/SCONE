@@ -259,18 +259,18 @@ contains
 
     ! Calculate flux with the right cross section according to virtual collision handling
     if (self % handleVirtual) then
-      flux = p % w / xsData % getTrackingXS(p, p % getMatIdx(), TRACKING_XS)
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
     else
-      flux = p % w / xsData % getTotalMatXS(p, p % getMatIdx())
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
     end if
 
     ! Check if the particle is in void. This call might happen when handling virtual collisions.
     ! This is relevant in the case of homogenising materials that include void: the flux
     ! in void will be different than zero, and the zero reaction rates have to be averaged
-    if (p % getMatIdx() /= VOID_MAT) then
+    if (p % matIdx() /= VOID_MAT) then
 
       ! Get material pointer
-      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % getMatIdx()))
+      mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
       if (.not.associated(mat)) then
         call fatalError(Here,'Unrecognised type of material was retrived from nuclearDatabase')
       end if
