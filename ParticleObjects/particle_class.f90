@@ -394,7 +394,7 @@ contains
   !!
   !! Return current material index
   !!
-  pure function matIdx(self) result(Idx)
+  pure function matIdx(self) result(idx)
     class(particle), intent(in) :: self
     integer(shortInt)           :: idx
 
@@ -670,7 +670,7 @@ contains
   function equal_particleState(LHS,RHS) result(isEqual)
     class(particleState), intent(in) :: LHS
     class(particleState), intent(in) :: RHS
-    logical(defBool)              :: isEqual
+    logical(defBool)                 :: isEqual
 
     isEqual = .true.
     isEqual = isEqual .and. LHS % wgt == RHS % wgt
