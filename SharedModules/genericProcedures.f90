@@ -638,7 +638,7 @@ contains
   !!
   !! Returns .true. if all elements of an array are equal to target. 
   !!
-  !! Due to floating point artihmetic and rounding-off errors being slightly different 
+  !! Due to floating point arithmetic and rounding-off errors being slightly different 
   !! across different architectures (eg, Intel vs ARM), it is necessary to use some small 
   !! tolerances to assert equality between two floating point numbers. These tolerances 
   !! are specified in numPrecision.f90.
