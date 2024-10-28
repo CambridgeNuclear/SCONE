@@ -194,7 +194,7 @@ different package manager (e.g. `Anaconda`) if you are more familiar with it.
    (⌘ + ⇧ + h). Display hidden files (⌘ + ⇧ + .) and find the ``.zprofile`` file (this is the macOS 
    equivalent of the ``.bashrc`` file on Linux distributions). Open it and insert **any of the 
    following lines which are not already present** (note: this depends on whether you have a Mac 
-   running on an Intel CPU or an ARM -- Apple Silicon -- chip):
+   running on an Intel CPU or an ARM - Apple Silicon - chip):
    
    * Intel::
    
@@ -358,7 +358,7 @@ verify that it correctly works by running the automated test suites. Note that s
 integration tests use files in the ``IntegrationTestFiles`` directory and have 
 hard-coded relative paths. **As such, you must execute the following commands 
 from the** ``scone`` **directory. Integration tests may fail if they are run from 
-other directories**.
+other directories**::
 
     ./Build/unitTests
     ./Build/integrationTests
