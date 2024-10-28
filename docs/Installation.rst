@@ -19,6 +19,10 @@ Requirements
      For the moment, SCONE requires the linear algebra libraries LAPACK and BLAS. However, they are
      not extensively used in the code and this dependency will become optional or be removed.
 
+   UNIX operating system
+     In principles, SCONE is supported on any UNIX-like operating system. This includes Linux
+     distributions such as Ubuntu or Debian, and macOS.
+
 .. admonition:: Optional
 
    pFUnit 4 test framework and Python interpreter
@@ -30,7 +34,7 @@ Linux distributions
 -------------------
 
 Installing gfortran
-'''''''''''''''''''
+###################
 
 Check that gfortran is available by typing::
 
@@ -82,7 +86,7 @@ C compiler.
       export LD_LIBRARY_PATH=/path/to/install/lib64:$LD_LIBRARY_PATH
 
 Installing CMake
-''''''''''''''''
+################
 
 If you have root access to your machine use your package manager to obtain the latest
 version of CMake. Else, you can follow the instructions below.
@@ -99,9 +103,9 @@ version of CMake. Else, you can follow the instructions below.
       export PATH=/cmake/install/folder/bin:$PATH
 
 Installing pFUnit
-'''''''''''''''''
+#################
 
-This is only required if unit tests are to be built.
+Note: the following is only required if unit tests are to be built.
 
 #. Check that python can be invoked by typing::
 
@@ -126,7 +130,7 @@ This is only required if unit tests are to be built.
      export F90_VENDOR=GNU
 
 LAPACK and BLAS
-'''''''''''''''
+###############
 
 If you have root access it is recommended to install these with your package manager.
 Follow the instructions below only if you want to compile LAPACK and BLAS from source.
@@ -354,7 +358,7 @@ verify that it correctly works by running the automated test suites. Note that s
 integration tests use files in the ``IntegrationTestFiles`` directory and have 
 hard-coded relative paths. **As such, you must execute the following commands 
 from the** ``scone`` **directory. Integration tests may fail if they are run from 
-other directories**.:
+other directories**.
 
     ./Build/unitTests
     ./Build/integrationTests
