@@ -26,8 +26,8 @@ Requirements
      python interpreter to be run. NOTE: version 4 (contrarily to the older 3.0) requires the use of
      gfortran version 8.3 or newer.
 
-Windows & Linux operating systems
-=================================
+Linux distributions
+-------------------
 
 Installing gfortran
 '''''''''''''''''''
@@ -38,14 +38,13 @@ Check that gfortran is available by typing::
 
 If you do not have gfortran, or if its version is too old you will need to get/update it. If you
 have root access to your machine you may use your package manager to install/update gfortran. 
-On Debian / Ubuntu Linux distributions a command like the one below will suffice::
+On Debian/Ubuntu distributions a command like the one below will suffice::
 
    sudo apt-get install gfortran
 
 Other operating systems may require different commands, and you may need to find information on how
 to use the package manager in your specific Linux distribution. Pre-compiled gfortran packages can be 
-found 
-`here <https://gcc.gnu.org/wiki/GFortranBinaries>`_
+found `here <https://gcc.gnu.org/wiki/GFortranBinaries>`_
 
 Without administrator privileges you may need to compile GCC from source, which requires the use of a
 C compiler.
@@ -158,7 +157,7 @@ Follow the instructions below only if you want to compile LAPACK and BLAS from s
      make install
 
 macOS
-=====
+-----
 
 Note: the installation tutorial for macOS assumes that you have root access to your
 machine and makes use of the `Homebrew` package manager; however, you may use a
@@ -169,7 +168,7 @@ different package manager (e.g. `Anaconda`) if you are more familiar with it.
    > *Software Update*.
 
 #. Install `Xcode` from the App Store. `Xcode` contains crucial headers which are read 
-   and interpreted when compiling software containing C / C++ languages. Once installed, 
+   and interpreted when compiling software containing C/C++ languages. Once installed, 
    launch `Xcode` so that it can complete its initialisation. A dialog will be presented 
    indicating which Simulator runtimes are built-in, and which Simulator runtimes you may 
    download. Choose `Continue` to finish setting up `Xcode`.
@@ -282,7 +281,7 @@ different package manager (e.g. `Anaconda`) if you are more familiar with it.
 	make install
 
 Compiling SCONE
-'''''''''''''''
+---------------
 
 #. If you want to install SCONE with unit tests, set the PFUNIT_INSTALL environmental 
    variable to the directory in which pFUnit was installed. It may be worth adding the
@@ -348,14 +347,14 @@ Compiling SCONE
        cmake -DDEBUG=ON
 
 Running automated tests
-'''''''''''''''''''''''
+-----------------------
 
 If tests were enabled during the compilation of SCONE (recommended), you may now 
 verify that it correctly works by running the automated test suites. Note that some
 integration tests use files in the ``IntegrationTestFiles`` directory and have 
 hard-coded relative paths. **As such, you must execute the following commands 
 from the** ``scone`` **directory. Integration tests may fail if they are run from 
-other directories**.::
+other directories**.:
 
     ./Build/unitTests
     ./Build/integrationTests
@@ -371,7 +370,7 @@ Unfortunately, we do not have access to Intel Fortran compilers so we cannot tes
 SCONE on them. We are planning to add support for Flang soon.
 
 Obtaining nuclear data
-''''''''''''''''''''''
+----------------------
 
 SCONE requires ACE-formatted nuclear data to run actual simulations. The necessary data can be
 downloaded from the OACD NEA `website <https://www.oecd-nea.org/dbdata/jeff/jeff33/>`__. Please
@@ -391,7 +390,7 @@ contain more than one entry, and each component must be delimited by a ';'. An e
 is given in *IntegrationTestFiles/testLib*.
 
 To generate the library file from the collection of downloaded raw ACE files, one can use the
-``scripts/make_ace_lib.sh`` bash script, which can be run using the following command (To get extra 
+``scripts/make_ace_lib.sh`` bash script, which can be run using the following command (to get extra 
 help, run the script without any arguments):
 
 .. code-block:: bash
@@ -409,7 +408,7 @@ a full library with thermal scattering data included one needs to run the follow
   cat tempCE tempSAB > fullLib.xsfile
 
 Running your first simulation with SCONE
-''''''''''''''''''''''''''''''''''''''''
+----------------------------------------
 
 Once the ``fullLib.xsfile`` has been generated, we can run our first actual simulation. SCONE uses text files as
 simulation inputs. Instances of such files are included in the ``InputFiles`` directory. For this example, we will
@@ -425,12 +424,12 @@ lines::
           ...
 
 You may replace the ``$SCONE_ACE`` environmental variable in the `JEZ` file with the absolute path to the ``fullLib.xsfile`` 
-file or, better yet, export this variable in your ``.bashrc`` / ``.zprofile`` file (depending on your OS) by adding the 
+file or, better yet, export this variable in your ``.bashrc``/``.zprofile`` file (depending on your OS) by adding the 
 following line::
      
      export SCONE_ACE=path_to_fullLib.xsfile
 
-and saving the changes in either case. Note that if you export this variable in your ``.bashrc`` / ``.zprofile`` file, you
+and saving the changes in either case. Note that if you export this variable in your ``.bashrc``/``.zprofile`` file, you
 will need to close and re-open your `Terminal` window to apply the changes. Once this is done, from your `Terminal` window
 navigate to the ``SCONE/Build`` directory and run the following command::
 
