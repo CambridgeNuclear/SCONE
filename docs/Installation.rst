@@ -6,7 +6,7 @@ Installation
 Requirements
 ''''''''''''
 
-.. admonition:: **Required**
+.. admonition:: Required
 
    Fortran Compiler
      Currently SCONE requires gfortran (>=8.3). Support for other compilers is pending.
@@ -19,7 +19,7 @@ Requirements
      For the moment, SCONE requires the linear algebra libraries LAPACK and BLAS. However, they are
      not extensively used in the code and this dependency will become optional or be removed.
 
-.. admonition:: **Optional**
+.. admonition:: Optional
 
    pFUnit 4 test framework and Python interpreter
      Both the unit and the integration tests in SCONE use the pFUnit framework, which requires a 
@@ -31,12 +31,13 @@ Windows & Linux operating systems
 
 Installing gfortran
 '''''''''''''''''''
+
 Check that gfortran is available by typing::
 
     gfortran --version
 
-If you do not have gfortran, or if its version is too old you will need to get / update it. If you
-have root access to your machine you may use your package manager to install / update gfortran. 
+If you do not have gfortran, or if its version is too old you will need to get/update it. If you
+have root access to your machine you may use your package manager to install/update gfortran. 
 On Debian / Ubuntu Linux distributions a command like the one below will suffice::
 
    sudo apt-get install gfortran
@@ -49,8 +50,7 @@ found
 Without administrator privileges you may need to compile GCC from source, which requires the use of a
 C compiler.
 
-#. Download the GCC source code from one of the
-   `mirrors <https://gcc.gnu.org/mirrors.html>`_
+#. Download the GCC source code from one of the `mirrors <https://gcc.gnu.org/mirrors.html>`_
 
 #. Extract the archive and use the provided script to download all prerequisites::
 
@@ -65,7 +65,7 @@ C compiler.
 
       ./configure --prefix=/path/to/install --enable-languages=c,c++,fortran
 
-#. Providing that the configuration was successful, you can now compile GCC.
+#. Provided that the configuration was successful, you can now compile GCC.
    Note that it is a large code base and the process can take up to a few hours;
    to speed it up you can use parallel compilation with ``make -j 8``, assuming
    that you have 8 processor cores available. You can use ``nproc`` in the console 
@@ -76,14 +76,15 @@ C compiler.
 
 #. Once compilation is complete, you will need to modify some of your environmental
    variables to allow the operating system to find the executables and relevant 
-   libraries. In your `.bashrc` file, add the following lines 
-   (depending on your install directory)::
+   libraries. In your ``.bashrc`` file, add the following lines (depending on your 
+   install directory)::
 
       export export PATH=/path/to/install/bin:$PATH
       export LD_LIBRARY_PATH=/path/to/install/lib64:$LD_LIBRARY_PATH
 
 Installing CMake
 ''''''''''''''''
+
 If you have root access to your machine use your package manager to obtain the latest
 version of CMake. Else, you can follow the instructions below.
 
@@ -100,6 +101,7 @@ version of CMake. Else, you can follow the instructions below.
 
 Installing pFUnit
 '''''''''''''''''
+
 This is only required if unit tests are to be built.
 
 #. Check that python can be invoked by typing::
@@ -126,6 +128,7 @@ This is only required if unit tests are to be built.
 
 LAPACK and BLAS
 '''''''''''''''
+
 If you have root access it is recommended to install these with your package manager.
 Follow the instructions below only if you want to compile LAPACK and BLAS from source.
 
@@ -192,45 +195,45 @@ different package manager (e.g. `Anaconda`) if you are more familiar with it.
    
    * Intel::
    
-     # Setting PATH for Python 3.13. The original version is saved in .zprofile.pysave.
-     PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin:${PATH}"
-     export PATH
+          # Setting PATH for Python 3.13. The original version is saved in .zprofile.pysave.
+          PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin:${PATH}"
+          export PATH
 
-     # Set shell environment for Homebrew.
-     eval "$(/usr/local/bin/brew shellenv)"
+          # Set shell environment for Homebrew.
+          eval "$(/usr/local/bin/brew shellenv)"
 
-     # Export pFUnit installation folder.
-     export PFUNIT_DIR=~/pFUnit/build/
+          # Export pFUnit installation folder.
+          export PFUNIT_DIR=~/pFUnit/build/
 
-     # Export environmental variables required by pFUnit.
-     export F90=gfortran
-     export F90_VENDOR=GNU
+          # Export environmental variables required by pFUnit.
+          export F90=gfortran
+          export F90_VENDOR=GNU
 
-     # Export OpenMP root path and flags.
-     export OpenMP_ROOT=$(brew --prefix)/opt/libomp
-     export LDFLAGS="-L/usr/local/opt/libomp/lib"
-     export CPPFLAGS="-I/usr/local/opt/libomp/include"
+          # Export OpenMP root path and flags.
+          export OpenMP_ROOT=$(brew --prefix)/opt/libomp
+          export LDFLAGS="-L/usr/local/opt/libomp/lib"
+          export CPPFLAGS="-I/usr/local/opt/libomp/include"
 
    * ARM::
    
-     # Setting PATH for Python 3.13. The original version is saved in .zprofile.pysave.
-     PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin:${PATH}"
-     export PATH
+          # Setting PATH for Python 3.13. The original version is saved in .zprofile.pysave.
+          PATH="/Library/Frameworks/Python.framework/Versions/3.13/bin:${PATH}"
+          export PATH
 
-     # Set shell environment for Homebrew.
-     eval "$(/opt/homebrew/bin/brew shellenv)"
+          # Set shell environment for Homebrew.
+          eval "$(/opt/homebrew/bin/brew shellenv)"
 
-     # Export pFUnit installation folder.
-     export PFUNIT_DIR=~/pFUnit/build/
+          # Export pFUnit installation folder.
+          export PFUNIT_DIR=~/pFUnit/build/
 
-     # Export environmental variables required by pFUnit.
-     export F90=gfortran
-     export F90_VENDOR=GNU
+          # Export environmental variables required by pFUnit.
+          export F90=gfortran
+          export F90_VENDOR=GNU
 
-     # Export OpenMP root path and flags.
-     export OpenMP_ROOT=$(brew --prefix)/opt/libomp
-     export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
-     export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
+          # Export OpenMP root path and flags.
+          export OpenMP_ROOT=$(brew --prefix)/opt/libomp
+          export LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
+          export CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
 
 #. Save the changes you made in your ``.zprofile`` file and close it. 
    You may now hide hidden files (⌘ + ⇧ + .).
