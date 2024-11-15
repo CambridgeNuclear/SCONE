@@ -103,7 +103,7 @@ contains
     call mem % closeCycle(ONE)
 
     ! Verify results for uniform distribution
-    idx = this % clerk % getMemAddress() + 2
+    idx = this % clerk % getMemAddress() + 3
     call mem % getResult(val, idx, samples = 1)
     @assertEqual(ONE, val, TOL)
 
@@ -121,7 +121,7 @@ contains
     call mem % closeCycle(ONE)
 
     ! Verify results for all particles in one bin
-    idx = this % clerk % getMemAddress() + 3
+    idx = this % clerk % getMemAddress() + 4
     call mem % getResult(val, idx, samples = 1)
     @assertEqual(ZERO, val, TOL)
 

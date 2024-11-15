@@ -95,10 +95,13 @@ module scoreMemory_class
       integer(shortInt)                        :: cycles = 0        !! Cycles counter
       integer(shortInt)                        :: batchSize = 1     !! Batch interval size (in cycles)
       logical(defBool)                         :: reduced = .false. !! True if bins have been reduced
+
   contains
+
     ! Interface procedures
     procedure :: init
     procedure :: kill
+    procedure :: resetBin
     generic   :: score      => score_defReal, score_shortInt, score_longInt
     generic   :: accumulate => accumulate_defReal, accumulate_shortInt, accumulate_longInt
     generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
@@ -184,6 +187,27 @@ contains
    self % batchN = 0
 
   end subroutine kill
+
+  !!
+  !! Reset the data of a given memory slot
+  !!
+  subroutine resetBin(self, idx)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt), intent(in)      :: idx
+    character(100),parameter :: Here = 'resetBin (scoreMemory_class.f90)'
+
+    ! Verify bounds for the index
+    if( idx < 0_longInt .or. idx > self % N) then
+      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
+                            & memory with size '//numToChar(self % N))
+    end if
+
+    ! Reset scores
+    self % bins(idx, BIN)   = ZERO
+    self % bins(idx, CSUM)  = ZERO
+    self % bins(idx, CSUM2) = ZERO
+
+  end subroutine resetBin
 
   !!
   !! Score a result on a given single bin under idx

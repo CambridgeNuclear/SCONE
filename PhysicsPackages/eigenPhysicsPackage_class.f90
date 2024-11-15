@@ -225,6 +225,7 @@ contains
 
           ! Save state
           call neutron % savePreHistory()
+          call neutron % savePreCollision()
 
           ! Transport particle until its death
           history: do

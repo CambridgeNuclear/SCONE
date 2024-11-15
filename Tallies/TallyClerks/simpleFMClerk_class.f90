@@ -177,8 +177,8 @@ contains
       associate (state => start % get(i))
 
         idx = self % map % map(state)
-        if (idx == 0) return
-        call mem % score(state % wgt, self % getMemAddress() - 1 + idx)
+        if (idx == 0) cycle
+        call mem % score(state % wgt, self % getMemAddress() + idx - 1)
 
       end associate
 
@@ -243,7 +243,7 @@ contains
     score = self % resp % get(p, xsData) * flux
 
     ! Score element of the matrix
-    ! Note that matrix memory location starts from memAddress + N
+    ! Note that the matrix memory location starts from memAddress + N
     addr = self % getMemAddress() + sIdx * self % N + cIdx - 1
     call mem % score(score, addr)
 
@@ -271,7 +271,7 @@ contains
       do i = 1, self % N
 
         ! Calculate normalisation factor
-        normFactor = mem % getScore(self % getMemAddress() - 1 + i)
+        normFactor = mem % getScore(self % getMemAddress() + i - 1)
         if (normFactor /= ZERO) normFactor = ONE / normFactor
 
         do j = 1, self % N
@@ -342,7 +342,7 @@ contains
 
         ! Load entries
         addr = self % getMemAddress() + self % N - 1
-        do i = 1,self % N
+        do i = 1, self % N
           do j = 1, self % N
             addr = addr + 1
             call mem % getResult(val, STD, addr)
@@ -394,7 +394,7 @@ contains
 
     call outFile % startArray(name, [self % N, self % N])
 
-    do i = 1,self % N * self % N
+    do i = 1, self % N * self % N
       addr = addr + 1
       call mem % getResult(val, std, addr)
       call outFile % addResult(val, std)

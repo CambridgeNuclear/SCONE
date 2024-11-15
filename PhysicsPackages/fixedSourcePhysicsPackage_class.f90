@@ -208,6 +208,7 @@ contains
 
           ! Save state
           call p % savePreHistory()
+          call p % savePreCollision()
 
           ! Transport particle until its death
           history: do

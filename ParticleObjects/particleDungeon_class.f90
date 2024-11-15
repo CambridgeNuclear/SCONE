@@ -21,7 +21,7 @@ module particleDungeon_class
   !!
   !! particleDungeon stores particle phase-space
   !! Used in eigenvalue calculation to store fission sites generated in a cycle
-  !! Similar structures are refered to as:
+  !! Similar structures are referred to as:
   !! Store: MONK and Serpent(?)
   !! Fission Bank: OpenMC and MCNP(?)
   !!
@@ -898,7 +898,6 @@ contains
     end do
 
   end subroutine sortByBroodID
-
 
   !!
   !! Kill or particles in the dungeon

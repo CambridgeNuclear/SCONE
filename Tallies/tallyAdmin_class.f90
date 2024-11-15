@@ -779,8 +779,8 @@ contains
         normScore  = self % mem % getScore(self % normBinAddr)
         if (normScore == ZERO) then
           call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
-
         end if
+
         normFactor = self % normValue / normScore
 
       else

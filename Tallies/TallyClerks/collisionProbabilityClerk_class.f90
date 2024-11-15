@@ -196,6 +196,7 @@ contains
     state = p
     cIdx = self % map % map(state)
 
+
     ! Invalid indices are allowed given that CPs must sum to one - this will include
     ! neutrons which collide outside the mapped region of phase space
     ! These correspond to index = 0

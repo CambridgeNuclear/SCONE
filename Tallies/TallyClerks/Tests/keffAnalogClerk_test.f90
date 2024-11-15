@@ -186,8 +186,8 @@ contains
     call pit % detain(p)
     pit % k_eff = 1.2_defReal
 
-    call this % clerk % reportCycleEnd(pit,mem)
-    call this % clerk % closeCycle(pit,mem)
+    call this % clerk % reportCycleEnd(pit, mem)
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Start cycle 4
@@ -202,9 +202,9 @@ contains
     call pit % detain(p)
     pit % k_eff = 1.2_defReal
 
-    call this % clerk % reportCycleEnd(pit,mem)
+    call this % clerk % reportCycleEnd(pit, mem)
     call mem % reduceBins()
-    call this % clerk % closeCycle(pit,mem)
+    call this % clerk % closeCycle(pit, mem)
     call mem % closeCycle(0.8_defReal)
 
     ! Validate results

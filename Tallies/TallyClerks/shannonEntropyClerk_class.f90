@@ -8,6 +8,7 @@ module shannonEntropyClerk_class
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
+  use mpi_func,                   only : getMPIWorldSize
 
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
@@ -16,11 +17,6 @@ module shannonEntropyClerk_class
   ! Tally Maps
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
-
-  use mpi_func,                   only : isMPIMaster
-#ifdef MPI
-  use mpi_func,                   only : mpi_reduce, MPI_SUM, MPI_DOUBLE, MPI_COMM_WORLD, MASTER_RANK
-#endif
 
   implicit none
   private
@@ -33,10 +29,6 @@ module shannonEntropyClerk_class
   !! Contains only a single map for discretisation
   !!
   !! Scores Shannon entropy for a user-specified number of cycles
-  !!
-  !! NOTE: when using MPI with multiple processes, the scores from all processes are
-  !!       collected (brute-force) in the master process. Only the master process
-  !!       results are correct and accessible
   !!
   !! Sample dictionary input:
   !!
@@ -115,7 +107,7 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     integer(shortInt)                      :: S
 
-    S = self % N + self % maxCycles
+    S = self % N + 1 + self % maxCycles
 
   end function getSize
 
@@ -127,46 +119,25 @@ contains
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
     integer(shortInt)                         :: i, idx
-    real(defReal), dimension(self % N)        :: prob, bufferArray
-    real(defReal)                             :: totWgt, buffer
-#ifdef MPI
-    integer(shortInt)                         :: error
-#endif
 
+    ! Increment cycle number
     self % currentCycle = self % currentCycle + 1
 
     if (self % currentCycle <= self % maxCycles) then
 
-      prob = ZERO
+      ! Sample population weight for MPI
+      call mem % score(end % popWeight(), self % getMemAddress())
 
       ! Loop through population, scoring probabilities
       do i = 1, end % popSize()
 
         associate(state => end % get(i))
           idx = self % map % map(state)
-          if (idx > 0) prob(idx) = prob(idx) + state % wgt
+          if (idx == 0) cycle
+          call mem % score(state % wgt, self % getMemAddress() + idx)
         end associate
 
       end do
-
-      totWgt = end % popWeight()
-
-      buffer = totWgt
-      bufferArray = prob
-
-#ifdef MPI
-      call mpi_reduce(totWgt, buffer, 1, MPI_DOUBLE, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
-      call mpi_reduce(prob, bufferArray, self % N, MPI_DOUBLE, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
-#endif
-
-      if (isMPIMaster()) then
-
-        prob = bufferArray / buffer
-        do i = 1, self % N
-          call mem % score(prob(i), self % getMemAddress() - 1 + i)
-        end do
-
-      end if
 
     end if
 
@@ -181,30 +152,36 @@ contains
     type(scoreMemory), intent(inout)          :: mem
     integer(shortInt)                         :: i
     integer(longInt)                          :: ccIdx
-    real(defReal)                             :: one_log2, prob, val
+    real(defReal)                             :: totWgt, one_log2, prob, val
 
-    if (isMPIMaster()) then
+    if (self % currentCycle <= self % maxCycles) then
 
-      if (self % currentCycle <= self % maxCycles) then
+      ! Get total population weight for this cycle
+      totWgt = mem % getScore(self % getMemAddress())
 
-        ccIdx = self % getMemAddress() + self % N - 1 + self % currentCycle
+      ! Initialise contants and counters
+      val = ZERO
+      one_log2 = ONE/log(TWO)
 
-        val = ZERO
-        one_log2 = ONE/log(TWO)
+      ! Loop through bins, summing entropy
+      do i = 1, self % N
 
-        ! Loop through bins, summing entropy
-        do i = 1, self % N
-          prob = mem % getScore(self % getMemAddress() - 1 + i)
+        prob = mem % getScore(self % getMemAddress() + i)
+        prob = prob / totWgt
 
-          if ((prob > ZERO) .and. (prob < ONE)) then
-            val = val - prob * log(prob) * one_log2
-          end if
+        if ((prob > ZERO) .and. (prob < ONE)) then
+          val = val - prob * log(prob) * one_log2
+        end if
 
-        end do
+      end do
 
-        call mem % accumulate(val, ccIdx)
+      ccIdx = self % getMemAddress() + self % N + self % currentCycle
+      call mem % accumulate(val, ccIdx)
 
-      end if
+      ! Reset memory bins in preparation for next cycle
+      do i = 0, self % N
+        call mem % resetBin(self % getMemAddress() + i)
+      end do
 
     end if
 
@@ -228,32 +205,35 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     class(outputFile), intent(inout)       :: outFile
     type(scoreMemory), intent(in)          :: mem
-    integer(shortInt)                      :: i
+    integer(shortInt)                      :: i, batches
     character(nameLen)                     :: name
     integer(longInt)                       :: ccIdx
     real(defReal)                          :: val
 
-    if (isMPIMaster()) then
-
-      ! Begin block
-      call outFile % startBlock(self % getName())
-
-      ! Print entropy
-      name = 'shannonEntropy'
-
-      call outFile % startArray(name, [self % maxCycles])
-
-      do i = 1, self % maxCycles
-        ccIdx = self % getMemAddress() + self % N - 1 + i
-        call mem % getResult(val, ccIdx, samples = 1)
-        call outFile % addValue(val)
-      end do
-
-      call outFile % endArray()
-
-      call outFile % endBlock()
-
+    ! Determine number of batches for normalisation with MPI
+    if (mem % reduced) then
+      batches = 1
+    else
+      batches = getMPIWorldSize()
     end if
+
+    ! Begin block
+    call outFile % startBlock(self % getName())
+
+    ! Print entropy
+    name = 'shannonEntropy'
+
+    call outFile % startArray(name, [self % maxCycles])
+
+    do i = 1, self % maxCycles
+      ccIdx = self % getMemAddress() + self % N + i
+      call mem % getResult(val, ccIdx, samples = batches)
+      call outFile % addValue(val)
+    end do
+
+    call outFile % endArray()
+
+    call outFile % endBlock()
 
   end subroutine print
 
