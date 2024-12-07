@@ -44,7 +44,7 @@ module dictParser_func
 contains
 
   !!
-  !! Reads a contents of the file in a stream fashion
+  !! Reads contents of the file in a stream fashion
   !!
   !! All relevant preprocessing is done while reading:
   !!   - TABS are replaced with SPACE
@@ -125,13 +125,15 @@ contains
   !! <DICTIONARY> ::= <ITEM>+                           ! Dictionary consists of 1 or more ITEMS
   !! <ITEM>       ::= <ENTRY>|<KEYWORD>{<DICTIONARY>}
   !! <ENTRY>      ::= <KEYWORD>' '<CONTENT>;            ! At least 1 space in-between <keyword> & <content>
-  !! <CONTENT>    ::= <SINGLE_CONTENT>|(<LIST_CONTENT>)
+  !! <CONTENT>    ::= <SINGLE_CONTENT>|(<LIST_CONTENT>)|(<TOKENARRAY_CONTENT>)
   !! <SINGLE_CONTENT> ::= Int|Real|Word
   !! <LIST_CONTENT> ::= <IntList>|<realList>|<charList>
-  !! <IntList> ::= Space Separated Integers e.g.: 1 2   3
-  !! <realList> ::= Space separated Numbers e.g.: 1.0 2   3.0E+2
-  !! <charList> ::= Space separated not-numbers e.g.: 1.0\ word       char
-  !! <KEYWORD>  ::= Character string with len_trim < nameLen constant
+  !! <TOKENARRAY_CONTENT> ::= <tokenArray>
+  !! <IntList>    ::= Space Separated Integers e.g.: 1 2   3
+  !! <realList>   ::= Space separated Numbers e.g.: 1.0 2   3.0E+2
+  !! <charList>   ::= Space separated not-numbers e.g.: 1.0\ word       char
+  !! <tokenArray> ::= Space separated anything, converted to chars e.g.: 3  -eight <    () 
+  !! <KEYWORD>    ::= Character string with len_trim < nameLen constant
   !!
   !! Important facts to note:
   !!  1) Keywords are Case Sensitive keYwORD /= keyword
@@ -346,7 +348,7 @@ contains
     integer(shortInt), intent(in)    :: start
     integer(shortInt), intent(in)    :: end
     type(charTape), intent(in)       :: tape
-    integer(shortInt)                :: p1, l1, l2, temp
+    integer(shortInt)                :: p1, l1, l2, l3, l4, temp
     character(pathLen)               :: buffer
     character(nameLen)               :: name
     type(reader)                     :: converter
@@ -378,7 +380,11 @@ contains
     l1 = tape % scanFrom(p1, '(', end)
     l2 = tape % scanFrom(p1, ')', end)
 
-    if(l1 == 0 .and. l2 == 0) then ! Read single entry
+    ! Check if content is a tokenArray
+    l3 = tape % scanFrom(p1, '[', end)
+    l4 = tape % scanFrom(p1, ']', end)
+
+    if(l1 == 0 .and. l2 == 0 .and. l3 == 0 .and. l4 == 0) then ! Read single entry
       buffer = readWord( p1, end, tape)
       ! Convert
       call converter % convert(buffer)
@@ -413,12 +419,12 @@ contains
     elseif (l2 < l1) then ! Brackets are in wrong order
       call fatalError(Here,'Entry: '//trim(name)//' has wrong order of brackets: ) ( ')
 
-    else ! Try to read a list
+    elseif (l1 > 0 .and. l2 > 0) then ! Try to read a list
       l1 = p1 + l1 - 1
       l2 = p1 + l2 - 1
       call readList(dict, name, l1 + 1, l2 - 1, tape )
 
-      ! Verify that there are no multiple entries
+      ! Verify that there are not multiple entries
       ! After List
       if(l2 /= end) then
         l2 = l2 + 1
@@ -437,7 +443,39 @@ contains
         end if
       end if
 
+    elseif (l3 == 0 .neqv. l4 == 0) then ! Only single bracket is present
+      call fatalError(Here,'Entry: '//trim(name)//' has only one bracket. Two are needed for a tokenArray')
+
+    elseif (l4 < l3) then ! Brackets are in wrong order
+      call fatalError(Here,'Entry: '//trim(name)//' has wrong order of brackets: ] [ ')
+
+    else ! Try to read a tokenArray
+      l3 = p1 + l3 - 1
+      l4 = p1 + l4 - 1
+      call readTokenArray(dict, name, l3 + 1, l4 - 1, tape )
+
+      ! Verify that there are not multiple entries
+      ! After tokenArray
+      if(l4 /= end) then
+        l4 = l4 + 1
+        buffer = readWord(l4, end, tape)
+        if (len_trim(buffer) > 0) then
+          call fatalError(Here,'Entry: '//trim(name)//' has unexpected content after tokenArray: '//trim(buffer))
+        end if
+      end if
+
+      ! Before tokenArray
+      if (l3 /= start) then
+        temp = p1
+        buffer = readWord(temp, l3 - 1, tape)
+        if (len_trim(buffer) > 0) then
+          call fatalError(Here,'Entry: '//trim(name)//' has unexpected content before tokenArray: '//trim(buffer))
+        end if
+      end if
+
     end if
+    
+
   end subroutine readEntry
 
   !!
@@ -558,7 +596,7 @@ contains
           if(len_trim(converter % c) <= nameLen ) then
             temp_char(i) = trim(converter % c)
           else
-            call fatalError(Here,'In: '//trim(name)//' CharList Entry: '//converter % c//' is to &
+            call fatalError(Here,'In: '//trim(name)//' CharList Entry: '//converter % c//' is too &
                                 &long. Maximum length of characters in a charList is:'//&
                                  numToChar(nameLen))
           end if
@@ -567,6 +605,73 @@ contains
 
     end select
   end subroutine readList
+  
+  !!
+  !! Read TokenArray Content of an entry
+  !!
+  !! TokenArrays contain whitespace-separated entries of any form, read as a character array
+  !!
+  !! E.g., myTokens [7 -pi &*( \\\ 0.2];
+  !!
+  !! Args:
+  !!   dict [inout] -> Initialise dictionary to load content into
+  !!   name [in]    -> Name of the tokenArray entry
+  !!   start [in]   -> Starting position on the tape
+  !!   end [in]     -> Ending position on the tape
+  !!   tape [in]    -> charTape with file contents
+  !!
+  !! Errors:
+  !!   fatalError if input syntax is incorrect
+  !!   fatalError if input character string is too long
+  !!
+  subroutine readTokenArray(dict, name, start, end, tape)
+    class(dictionary), intent(inout) :: dict
+    character(nameLen), intent(in)   :: name
+    integer(shortInt), intent(in)    :: start
+    integer(shortInt), intent(in)    :: end
+    type(charTape), intent(in)       :: tape
+    integer(shortInt)                :: p1, N, i
+    character(pathLen)               :: buffer, token
+    character(nameLen), dimension(:), allocatable :: temp_char
+    character(100), parameter :: Here = 'readTokenArray (dictParser_func.f90)'
+
+    if (end < start) then
+      call fatalError(Here,'In: '//trim(name)//' End: '//numToChar(end)//' < Start: '//&
+                           numToChar(start)//'. It means that [] is present. Empty &
+                           &tokenArrays are not allowed.' )
+    end if
+    
+    p1 = start
+    buffer = readWord(p1, end, tape)
+    if (len_trim(buffer) == 0) call fatalError(Here,'In: '//trim(name)//' Empty tokenArrays are not allowed')
+
+    ! First pass to size the array
+    N = 1    
+    do while (p1 < end)
+      buffer = readWord(p1, end, tape)
+      if (len_trim(buffer) == 0) exit  ! Empty string -> no more entries
+      N = N + 1
+    end do
+        
+    allocate(temp_char(N))
+    
+    ! Second pass to fill the array
+    p1 = start
+    do i = 1, N
+      token = readWord(p1, end, tape)
+      
+      if(len_trim(token) <= nameLen ) then
+        temp_char(i) = trim(token)
+      else
+        call fatalError(Here,'In: '//trim(name)//' TokenArray Entry: '//token//' is too &
+                            &long. Maximum length of characters in a tokenArray is:'//&
+                             numToChar(nameLen))
+      end if
+
+    end do
+    call dict % store(name, temp_char)
+
+  end subroutine readTokenArray
 
   !!
   !! Read Word

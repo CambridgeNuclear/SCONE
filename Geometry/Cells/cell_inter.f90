@@ -3,6 +3,7 @@ module cell_inter
   use numPrecision
   use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
+  use surface_inter,      only : surface
   use surfaceShelf_class, only : surfaceShelf
 
   implicit none
@@ -10,6 +11,20 @@ module cell_inter
 
   ! Extendable procedures
   public :: kill
+  
+
+  !!
+  !! Type to hold pointer to a surface together with a halfspace information
+  !!
+  !! Public Members:
+  !!   surfIdx -> Index of the surface (+ve if +ve halspace is used to define the
+  !!     cell, -ve otherwise)
+  !!   ptr -> Pointer to a surface
+  !!
+  type, public :: surfInfo
+    integer(shortInt)       :: surfIdx = 0
+    class(surface), pointer :: ptr => null()
+  end type surfInfo
 
   !!
   !! Abstract interface for all cells
