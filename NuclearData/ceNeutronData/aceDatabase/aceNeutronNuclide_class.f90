@@ -134,6 +134,9 @@ module aceNeutronNuclide_class
     real(defReal), dimension(2) :: SabInel = ZERO
     type(thermalData), dimension(:), allocatable :: thData
 
+    ! Energy Deposition
+    real(defReal)               :: Qfiss = ZERO ! ejw89
+
   contains
     ! Superclass Interface
     procedure :: invertInelastic
@@ -442,9 +445,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
     end associate
 
@@ -489,9 +494,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
@@ -561,9 +568,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
 
       ! Check if flag for multiplication factor (IFF) is true, and apply it to elastic scattering,
@@ -737,6 +746,7 @@ contains
     ! Load ACE ZAID
     self % ZAID = ACE % ZAID
 
+
     ! Read key data into the superclass
     call self % set( fissile  = ACE % isFissile(), &
                      mass     = ACE % AW,          &
@@ -770,6 +780,9 @@ contains
     ! Set 'bottom' variable to the start index of fission data
     if (self % isFissile()) then
 
+      ! Load Qfission value
+      self % Qfiss = ACE % QforMT(N_FISSION)
+
       if (ACE % hasFIS()) then
         ! Generic fission reaction MT=18 is provided
         ! Read XS from the FIS block in ACE card
@@ -777,6 +790,8 @@ contains
         bottom = N
         K = ACE % numXSPointsFiss()
         self % mainData(FISSION_XS, N:N+K-1) = ACE % xsFiss()
+
+
 
       else
         ! FIS block is missing, so MT=18 is unavaliable
