@@ -96,14 +96,21 @@ contains
     self % size = self % size + 1
     self % heap(self % size) = val
 
+    ! If the heap is of size 1 there is no need to order it
+    ! Also, avoid test fail in debug mode, since parent would be 0 and the
+    ! code is looking for self % heap(parent) inside the while condition
+    if (self % size == 1) return
+
     ! Shift the new value up the heap to restore the heap property
     child = self % size
     parent = child / 2
 
-    do while (child > 1 .and. self % heap(parent) < self % heap(child))
+    do while (self % heap(parent) < self % heap(child))
       call swap(self % heap(parent), self % heap(child))
       child = parent
       parent = child / 2
+      ! As above: avoid error in debug mode, caused by trying to access self % heap(0)
+      if (parent == 0) return
     end do
 
   end subroutine push

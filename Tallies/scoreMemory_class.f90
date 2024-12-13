@@ -2,8 +2,8 @@ module scoreMemory_class
 
   use numPrecision
 #ifdef MPI
-  use mpi_func,           only : mpi_reduce, MPI_SUM, MPI_DOUBLE, MPI_COMM_WORLD, &
-                                 MASTER_RANK, isMPIMaster, MPI_INT
+  use mpi_func,           only : mpi_reduce, isMPIMaster, MPI_SUM, &
+                                 MPI_COMM_WORLD, MASTER_RANK, MPI_DEFREAL, MPI_SHORTINT
 #endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
@@ -449,7 +449,7 @@ contains
       ! Reduce the batch count
       ! Note we need to use size 1 arrays to fit the interface of mpi_reduce, which expects
       ! to be given arrays
-      call mpi_reduce(self % batchN, buffer, 1, MPI_INT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      call mpi_reduce(self % batchN, buffer, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
       if (isMPIMaster()) then
         self % batchN = buffer
       else
@@ -510,7 +510,7 @@ contains
       call mpi_reduce(data(start : start + chunk - 1), &
                       buffer(start : start + chunk - 1), &
                       int(chunk, shortInt), &
-                      MPI_DOUBLE, &
+                      MPI_DEFREAL, &
                       MPI_SUM, &
                       MASTER_RANK, &
                       MPI_COMM_WORLD, &

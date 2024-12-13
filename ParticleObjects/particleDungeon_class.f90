@@ -3,16 +3,17 @@ module particleDungeon_class
   use numPrecision
   use errors_mod,            only : fatalError
   use genericProcedures,     only : numToChar, swap
-  use particle_class,        only : particle, particleState
+  use particle_class,        only : particle, particleStateData, particleState
   use RNG_class,             only : RNG
   use heapQueue_class,       only : heapQueue
 
   use mpi_func,              only : isMPIMaster, getMPIWorldSize, getMPIRank, getOffset
 #ifdef MPI
   use mpi_func,              only : mpi_gather, mpi_allgather, mpi_send, mpi_recv, &
-                                    mpi_Bcast, MPI_COMM_WORLD, MASTER_RANK, MPI_DOUBLE, &
-                                    MPI_INT, MPI_LONG_LONG, MPI_PARTICLE_STATE, &
-                                    MPI_STATUS_IGNORE, particleStateDummy
+                                    mpi_bcast, MPI_COMM_WORLD, MPI_STATUS_IGNORE,  &
+                                    MASTER_RANK, MPI_PARTICLE_STATE, MPI_DEFREAL,  &
+                                    MPI_SHORTINT, MPI_LONGINT
+
 #endif
 
   implicit none
@@ -102,7 +103,6 @@ module particleDungeon_class
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: sortByBroodID
-    procedure  :: samplingWoReplacement
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -429,8 +429,8 @@ contains
     real(defReal)                         :: threshold, rn
     integer(longInt)                      :: seedTemp
     integer(shortInt)                     :: maxbroodID, totSites, excess, heapSize, &
-                                             n_duplicates, i, j, n_copies, count, nRanks, &
-                                             rank
+                                             n_duplicates, n_copies, count, nRanks,  &
+                                             rank, i, j
     integer(longInt), dimension(:), allocatable  :: seeds
     integer(shortInt), dimension(:), allocatable :: keepers, popSizes
 #ifdef MPI
@@ -453,7 +453,7 @@ contains
 
 #ifdef MPI
     ! Get the population sizes of all ranks into the array popSizes in master branch
-    call mpi_gather(self % pop, 1, MPI_INT, popSizes, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD, error)
+    call mpi_gather(self % pop, 1, MPI_SHORTINT, popSizes, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD, error)
 #endif
 
     ! In the master process, calculate sampling threshold for the whole population
@@ -505,9 +505,9 @@ contains
 
     ! Broadcast threshold, excess and random number seeds to all processes
 #ifdef MPI
-    call MPI_Bcast(threshold, 1, MPI_DOUBLE, MASTER_RANK, MPI_COMM_WORLD)
-    call MPI_Bcast(excess, 1, MPI_INT, MASTER_RANK, MPI_COMM_WORLD)
-    call MPI_Bcast(seeds, nRanks, MPI_LONG_LONG, MASTER_RANK, MPI_COMM_WORLD)
+    call mpi_bcast(threshold, 1, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
+    call mpi_bcast(excess, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD)
+    call mpi_bcast(seeds, nRanks, MPI_LONGINT, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
     ! Get local process rank and initialise local rng with the correct seed
@@ -582,7 +582,7 @@ contains
 
 #ifdef MPI
     ! Get the updated population numbers from all processes
-    call mpi_allgather(self % pop, 1, MPI_INT, popSizes, 1, MPI_INT, MPI_COMM_WORLD, error)
+    call mpi_allgather(self % pop, 1, MPI_SHORTINT, popSizes, 1, MPI_SHORTINT, MPI_COMM_WORLD, error)
 #endif
 
     ! Check that normalisation worked
@@ -607,16 +607,16 @@ contains
     integer(shortInt), dimension(:), intent(in)  :: popSizes
     integer(shortInt), dimension(:), allocatable :: rankOffsets
     integer(shortInt), dimension(2)              :: offset, targetOffset
-    integer(shortInt)                            :: mpiOffset, excess, error
-    type(particleState), dimension(:), allocatable      :: stateBuffer
-    type(particleStateDummy), dimension(:), allocatable :: dummyBuffer
+    integer(shortInt)                            :: mpiOffset, excess, error, i
+    class(particleState), dimension(:), allocatable     :: stateBuffer
+    class(particleStateData), dimension(:), allocatable :: dataBuffer
 
     ! Get expected particle population in each process via the offset
     mpiOffset = getOffset(totPop)
 
     ! Communicates the offset from all processes to all processes
     allocate(rankOffsets(nRanks))
-    call mpi_allgather(mpiOffset, 1, MPI_INT, rankOffsets, 1, MPI_INT, MPI_COMM_WORLD, error)
+    call mpi_allgather(mpiOffset, 1, MPI_SHORTINT, rankOffsets, 1, MPI_SHORTINT, MPI_COMM_WORLD, error)
 
     ! Calculate actual and target cumulative number of sites in the processes before
     offset(1)       = sum(popSizes(1 : rank))
@@ -634,25 +634,26 @@ contains
     if (excess > 0) then
 
       ! Send particles from the end of the dungeon to the rank above
-      stateBuffer = self % prisoners(self % pop - excess + 1 : self % pop)
-      call initStateDummies(stateBuffer, dummyBuffer)
-      call mpi_send(dummyBuffer, excess, MPI_PARTICLE_STATE, rank + 1, rank, MPI_COMM_WORLD, error)
+      dataBuffer = self % prisoners(self % pop - excess + 1 : self % pop)
+      call mpi_send(dataBuffer, excess, MPI_PARTICLE_STATE, rank + 1, rank, MPI_COMM_WORLD, error)
       self % pop = self % pop - excess
 
     elseif (excess < 0) then
 
       ! Receive particles from the rank above and store them at the end of the dungeon
       excess = -excess
-      allocate(dummyBuffer(excess))
-      call mpi_recv(dummyBuffer, excess, MPI_PARTICLE_STATE, rank + 1, rank + 1, &
+      allocate(dataBuffer(excess), stateBuffer(excess))
+      call mpi_recv(dataBuffer, excess, MPI_PARTICLE_STATE, rank + 1, rank + 1, &
                     MPI_COMM_WORLD, MPI_STATUS_IGNORE, error)
-      call createStatesFromDummies(dummyBuffer, stateBuffer)
+      do i = 1, abs(excess)
+        stateBuffer(i) = dataBuffer(i)
+      end do
       self % prisoners(self % pop + 1 : self % pop + excess) = stateBuffer
       self % pop = self % pop + excess
 
     end if
 
-    if (excess /= 0) deallocate(stateBuffer, dummyBuffer)
+    if (allocated(dataBuffer)) deallocate(dataBuffer)
 
     ! If needed, send/receive particle states from/to the beginning of the dungeon
     excess = offset(1) - targetOffset(1)
@@ -661,9 +662,8 @@ contains
 
       ! Send particles from the beginning of the dungeon to the rank below
       excess = -excess
-      stateBuffer = self % prisoners(1 : excess)
-      call initStateDummies(stateBuffer, dummyBuffer)
-      call mpi_send(dummyBuffer, excess, MPI_PARTICLE_STATE, rank - 1, rank, MPI_COMM_WORLD, error)
+      dataBuffer = self % prisoners(1 : excess)
+      call mpi_send(dataBuffer, excess, MPI_PARTICLE_STATE, rank - 1, rank, MPI_COMM_WORLD, error)
 
       ! Move the remaining particles to the beginning of the dungeon
       self % prisoners(1 : self % pop - excess) = self % prisoners(excess + 1 : self % pop)
@@ -672,10 +672,12 @@ contains
     elseif (excess > 0) then
 
       ! Receive particles from the rank below and store them at the beginning of the dungeon
-      allocate(dummyBuffer(excess))
-      call mpi_recv(dummyBuffer, excess, MPI_PARTICLE_STATE, rank - 1, rank - 1, &
+      allocate(dataBuffer(excess), stateBuffer(excess))
+      call mpi_recv(dataBuffer, excess, MPI_PARTICLE_STATE, rank - 1, rank - 1, &
                     MPI_COMM_WORLD, MPI_STATUS_IGNORE, error)
-      call createStatesFromDummies(dummyBuffer, stateBuffer)
+      do i = 1, abs(excess)
+        stateBuffer(i) = dataBuffer(i)
+      end do
       self % prisoners(excess + 1 : self % pop + excess) = self % prisoners(1 : self % pop)
       self % prisoners(1 : excess) = stateBuffer
       self % pop = self % pop + excess
@@ -684,157 +686,6 @@ contains
 
   end subroutine loadBalancing
 #endif
-
-  !!
-  !! Helper procedure for MPI loadBalancing
-  !!
-  !! Given an input array of particleState, it allocates a vector of particleStateDummy
-  !! of the same length and copies all the particleState variables. It returns
-  !! the array of particleStateDummy
-  !!
-#ifdef MPI
-  subroutine initStateDummies(states, dummies)
-    type(particleState), dimension(:), intent(in)                    :: states
-    type(particleStateDummy), dimension(:), allocatable, intent(out) :: dummies
-    integer(shortInt)                                                :: i, N
-
-    ! Allocate particleStateDummy array
-    N = size(states)
-    allocate(dummies(N))
-
-    ! Copy particleState attributes
-    do i = 1, N
-      dummies(i) % r   = states(i) % r
-      dummies(i) % dir = states(i) % dir
-    end do
-
-    dummies % wgt  = states % wgt
-    dummies % E    = states % E
-    dummies % G    = states % G
-    dummies % isMG = states % isMG
-    dummies % type = states % type
-    dummies % time = states % time
-    dummies % matIdx     = states % matIdx
-    dummies % uniqueID   = states % uniqueID
-    dummies % cellIdx    = states % cellIdx
-    dummies % collisionN = states % collisionN
-    dummies % broodID    = states % broodID
-
-  end subroutine initStateDummies
-#endif
-
-  !!
-  !! Helper procedure for MPI loadBalancing
-  !!
-  !! Given an input array of particleStateDummy, it allocates a vector of particleState
-  !! of the same length and copies all the particleStateDummy variables. It returns
-  !! the array of particleState
-  !!
-#ifdef MPI
-  subroutine createStatesFromDummies(dummies, states)
-    type(particleStateDummy), dimension(:), intent(in)          :: dummies
-    type(particleState), dimension(:), allocatable, intent(out) :: states
-    integer(shortInt)                                           :: i, N
-
-    ! Allocate particleState array
-    N = size(dummies)
-    allocate(states(N))
-
-    ! Copy particleStateDummy attributes
-    do i = 1, N
-      states(i) % r   = dummies(i) % r
-      states(i) % dir = dummies(i) % dir
-    end do
-
-    states % wgt  = dummies % wgt
-    states % E    = dummies % E
-    states % G    = dummies % G
-    states % isMG = dummies % isMG
-    states % type = dummies % type
-    states % time = dummies % time
-    states % matIdx     = dummies % matIdx
-    states % uniqueID   = dummies % uniqueID
-    states % cellIdx    = dummies % cellIdx
-    states % collisionN = dummies % collisionN
-    states % broodID    = dummies % broodID
-
-  end subroutine createStatesFromDummies
-#endif
-
-
-  !!
-  !! Normalise total number of particles in the dungeon to match the provided number.
-  !! Randomly duplicate or remove particles to match the number, performing
-  !! sampling without replacement (Knuth S algorithm).
-  !!
-  !! Does not take weight of a particle into account!
-  !!
-  !! NOTE: this procedure is not currently used
-  !!
-  subroutine samplingWoReplacement(self, N, rand)
-    class(particleDungeon), intent(inout) :: self
-    integer(shortInt), intent(in)         :: N
-    class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: excessP, n_copies, n_duplicates
-    integer(shortInt)                     :: i, idx, maxBroodID
-    integer(shortInt), dimension(:), allocatable :: duplicates
-    character(100), parameter :: Here = 'samplingWoReplacement (particleDungeon_class.f90)'
-
-    ! Protect against invalid N
-    if (N > size(self % prisoners)) then
-      call fatalError(Here,'Requested size: '//numToChar(N) //&
-                           'is greater then max size: '//numToChar(size(self % prisoners)))
-    else if (N <= 0) then
-      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
-    end if
-
-    ! Determine the maximum brood ID and sort the dungeon
-    maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
-    call self % sortByBroodID(maxbroodID)
-
-    ! Calculate excess particles to be removed
-    excessP = self % pop - N
-
-    if (excessP > 0) then ! Reduce population with reservoir sampling
-      do i = N + 1, self % pop
-        ! Select new index. Copy data if it is in the safe zone (<= N).
-        idx = int(i * rand % get()) + 1
-        if (idx <= N) then
-          self % prisoners(idx) = self % prisoners(i)
-        end if
-      end do
-      self % pop = N
-
-    else if (excessP < 0) then ! Clone randomly selected particles
-      ! For a massive undersampling duplicate (or n-plicate) particles
-      excessP = -excessP
-      n_copies = excessP / self % pop
-      n_duplicates = modulo(excessP, self % pop)
-
-      ! Copy all particles the maximum possible number of times
-      do i = 1, n_copies
-        self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
-      end do
-
-      ! Choose the remainder particles to duplicate without replacement
-      duplicates = [(i, i = 1, n_duplicates)]
-      do i = n_duplicates + 1, self % pop
-        idx = int(i * rand % get()) + 1
-        if (idx <= n_duplicates) then
-          duplicates(idx) = i
-        end if
-      end do
-      self % pop = self % pop * (n_copies + 1)
-
-      ! Copy the duplicated particles at the end
-      do i = 1, n_duplicates
-        self % prisoners(self % pop + i) = self % prisoners(duplicates(i))
-      end do
-      self % pop = N
-
-    end if
-
-  end subroutine samplingWoReplacement
 
   !!
   !! Reorder the dungeon so the brood ID is in the ascending order

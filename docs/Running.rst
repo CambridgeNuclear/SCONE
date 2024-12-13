@@ -18,7 +18,7 @@ and to the input file::
 
 .. admonition:: Options
 
-   OpenMPI
+   OpenMP
      Specifies the number ``<n>`` of OpenMP threads to be used::
 
 	--omp <n>
@@ -34,4 +34,6 @@ and to the input file::
 
 	<path_to_mpirun>/mpirun -np <n> <path_to_build_folder>/scone.out <input_file>
 
+     OpenMP and MPI can be run together too::
 
+	<path_to_mpirun>/mpirun -np <n> <path_to_build_folder>/scone.out --omp <n> <input_file>

@@ -92,7 +92,7 @@ endif()
 # Add environmental variable to default search directories
 list(APPEND CMAKE_PREFIX_PATH $ENV{LAPACK_INSTALL})
 
-find_package(LAPACK REQUIRED )
+find_package(LAPACK REQUIRED)
 message(STATUS ${LAPACK_LIBRARIES})
 
 # Dependencies for BUILD_TESTS
@@ -144,9 +144,10 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
 # Compile library
 add_library(scone STATIC ${SRCS})
-target_compile_options(scone PRIVATE ${scone_extra_flags} )
-target_link_libraries(scone PUBLIC ${LAPACK_LIBRARIES} )
+target_compile_options(scone PRIVATE ${scone_extra_flags})
+target_link_libraries(scone PUBLIC ${LAPACK_LIBRARIES})
 if(MPI)
+  add_compile_definitions(MPI)
   target_link_libraries(scone PUBLIC MPI::MPI_Fortran)
 endif()
 
@@ -156,8 +157,8 @@ endif()
 
 ####################################################################################################
 # COMPILE SOLVERS
-add_executable(scone.out ./Apps/scone.f90 )
-target_link_libraries(scone.out scone )
+add_executable(scone.out ./Apps/scone.f90)
+target_link_libraries(scone.out scone)
 
 ####################################################################################################
 # COMPILE UNIT TESTS
@@ -172,16 +173,22 @@ if(BUILD_TESTS)
     list(APPEND UNIT_TESTS_RELATIVE ${_testPath})
   endforeach()
 
+  if(MPI)
+    set(MAX_PES_OPTION MAX_PES 1)
+  else()
+    set(MAX_PES_OPTION "")
+  endif()
+
   add_pfunit_ctest(unitTests
     TEST_SOURCES ${UNIT_TESTS_RELATIVE}
     LINK_LIBRARIES scone
-    MAX_PES 1
+    ${MAX_PES_OPTION}
     )
 
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
   # We need to suppress this warning for clarity
-  target_compile_options(unitTests PRIVATE "-Wno-unused-variable" )
+  target_compile_options(unitTests PRIVATE "-Wno-unused-variable")
 
 ####################################################################################################
 # COMPILE INTEGRATION TESTS
@@ -203,7 +210,7 @@ if(BUILD_TESTS)
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
   # We need to suppress this warning for clarity
-  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable" )
+  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable")
 
 endif()
 

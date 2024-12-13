@@ -4,6 +4,7 @@ module mpi_func
   use mpi_f08
 #endif
   use errors_mod,        only : fatalError
+  use particle_class,    only : particleStateData
 
   implicit none
 
@@ -11,30 +12,13 @@ module mpi_func
   integer(shortInt), private   :: rank = 0
   integer(shortInt), parameter :: MASTER_RANK = 0
 
-  !! Public type that replicates exactly particleState
-  !!
-  !! It is necessary for load balancing in the dungeon: particles have to be
-  !! transferred betwen processes, and MPI doesn't allow to transfer types with
-  !! type-bound procedures
-  type, public :: particleStateDummy
-    real(defReal)              :: wgt
-    real(defReal),dimension(3) :: r
-    real(defReal),dimension(3) :: dir
-    real(defReal)              :: E
-    integer(shortInt)          :: G
-    logical(defBool)           :: isMG
-    integer(shortInt)          :: type
-    real(defReal)              :: time
-    integer(shortInt)          :: matIdx
-    integer(shortInt)          :: cellIdx
-    integer(shortInt)          :: uniqueID
-    integer(shortInt)          :: collisionN
-    integer(shortInt)          :: broodID
-  end type particleStateDummy
-
-  !! Common MPI types
+  !! MPI types
 #ifdef MPI
-  type(MPI_Datatype)   :: MPI_PARTICLE_STATE
+  type(MPI_Datatype)    :: MPI_DEFREAL
+  type(MPI_Datatype)    :: MPI_SHORTINT
+  type(MPI_Datatype)    :: MPI_LONGINT
+  type(MPI_Datatype)    :: MPI_DEFBOOL
+  type(MPI_Datatype)    :: MPI_PARTICLE_STATE
 #endif
 
 contains
@@ -46,7 +30,7 @@ contains
   !!
   subroutine mpiInit()
 #ifdef MPI
-    integer(shortInt)        :: ierr
+    integer(shortInt) :: ierr
 
     call mpi_init(ierr)
 
@@ -79,11 +63,27 @@ contains
   !!
   subroutine mpiInitTypes()
 #ifdef MPI
-    integer(shortInt)        :: ierr, stateSize
-    type(particleStateDummy) :: state
+    integer(shortInt)       :: ierr, stateSize
+    type(particleStateData) :: state
     integer(kind = MPI_ADDRESS_KIND), dimension(:), allocatable :: displacements
     integer(shortInt), dimension(:), allocatable                :: blockLengths
     type(MPI_Datatype), dimension(:), allocatable               :: types
+
+    ! Define MPI type for DEFREAL
+    call mpi_type_create_f90_real(precision(1.0_defReal), range(1.0_defReal), MPI_DEFREAL, ierr)
+    call mpi_type_commit(MPI_DEFREAL, ierr)
+
+    ! Define MPI type for SHORTINT
+    call mpi_type_create_f90_integer(range(1_shortInt), MPI_SHORTINT, ierr)
+    call mpi_type_commit(MPI_SHORTINT, ierr)
+
+    ! Define MPI type for LONGINT
+    call mpi_type_create_f90_integer(range(1_longInt), MPI_LONGINT, ierr)
+    call mpi_type_commit(MPI_LONGINT, ierr)
+
+    ! Define MPI type for DEFBOOL
+    call MPI_type_contiguous(defBool, MPI_BYTE, MPI_DEFBOOL, ierr)
+    call MPI_type_commit(MPI_DEFBOOL, ierr)
 
     ! Define MPI type for particleState
     ! Note that particleState has stateSize = 13 attributes; if an attribute is
@@ -93,8 +93,9 @@ contains
 
     ! Create arrays with dimension and type of each property of particleStateDummy
     blockLengths = (/1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1/)
-    types = (/MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_LOGICAL, MPI_INT, &
-              MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT/)
+    types = (/MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_DEFREAL, MPI_SHORTINT,   &
+              MPI_DEFBOOL, MPI_SHORTINT, MPI_DEFREAL, MPI_SHORTINT, MPI_SHORTINT, &
+              MPI_SHORTINT, MPI_SHORTINT, MPI_SHORTINT/)
 
     ! Create array of memory byte displacements
     call mpi_get_address(state % wgt, displacements(1), ierr)
@@ -115,6 +116,7 @@ contains
     ! Define new type
     call mpi_type_create_struct(stateSize, blockLengths, displacements, types, MPI_PARTICLE_STATE, ierr)
     call mpi_type_commit(MPI_PARTICLE_STATE, ierr)
+
 #endif
 
   end subroutine mpiInitTypes
