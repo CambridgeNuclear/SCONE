@@ -116,7 +116,7 @@ contains
 
     if (.not. p % isMG) call fatalError(Here, 'CE particle was given to MG data')
 
-    ! Make compiler happy
+    ! Store p % matIdx() in a dedicated variable to avoid compilation errors with gfortran >= 13.2
     matIdx = p % matIdx()
 
     associate (matCache => cache_materialCache(matIdx))
