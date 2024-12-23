@@ -3,10 +3,12 @@ module shannonEntropyClerk_class
   use numPrecision
   use tallyCodes
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
+  use mpi_func,                   only : getMPIWorldSize
 
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
@@ -21,13 +23,13 @@ module shannonEntropyClerk_class
 
   !!
   !! Shannon entropy estimator
+  !!
   !! This is a prototype implementation of an implicit Shannon entropy estimator
   !! Takes cycle end reports to generate cycle-wise entropy
   !! Contains only a single map for discretisation
+  !!
   !! Scores Shannon entropy for a user-specified number of cycles
   !!
-  !! Notes:
-  !!    ->
   !! Sample dictionary input:
   !!
   !!  clerkName {
@@ -39,12 +41,10 @@ module shannonEntropyClerk_class
   type, public, extends(tallyClerk) :: shannonEntropyClerk
     private
     !! Map defining the discretisation
-    class(tallyMap), allocatable                   :: map
-    real(defReal),dimension(:),allocatable         :: prob             !! probability of being in a given bin
-    real(defReal),dimension(:),allocatable, public :: value            !! cycle-wise value of entropy
-    integer(shortInt)                              :: N = 0            !! Number of bins
-    integer(shortInt)                              :: maxCycles = 0    !! Number of tally cycles
-    integer(shortInt)                              :: currentCycle = 0 !! track current cycle
+    class(tallyMap), allocatable  :: map
+    integer(shortInt)             :: N = 0            !! Number of bins
+    integer(shortInt)             :: maxCycles = 0    !! Number of tally cycles
+    integer(shortInt)             :: currentCycle = 0 !! track current cycle
 
   contains
     ! Procedures used during build
@@ -54,6 +54,7 @@ module shannonEntropyClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportCycleEnd
+    procedure  :: closeCycle
 
     ! Output procedures
     procedure  :: display
@@ -61,6 +62,7 @@ module shannonEntropyClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type shannonEntropyClerk
 
 contains
@@ -82,16 +84,8 @@ contains
     ! Read number of cycles for which to track entropy
     call dict % get(self % maxCycles, 'cycles')
 
-    ! Allocate space for storing entropy
-    allocate(self % value(self % maxCycles))
-    self % value = ZERO
-
     ! Read size of the map
     self % N = self % map % bins(0)
-
-    ! Allocate space for storing probabilities
-    allocate(self % prob(self % N))
-    self % prob = ZERO
 
   end subroutine init
 
@@ -102,7 +96,7 @@ contains
     class(shannonEntropyClerk),intent(in)      :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [cycleEnd_Code]
+    validCodes = [cycleEnd_Code, closeCycle_CODE]
 
   end function validReports
 
@@ -113,10 +107,9 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     integer(shortInt)                      :: S
 
-    S = self % N + self % maxCycles
+    S = self % N + 1 + self % maxCycles
 
   end function getSize
-
 
   !!
   !! Process cycle end
@@ -125,37 +118,74 @@ contains
     class(shannonEntropyClerk), intent(inout) :: self
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
-    integer(shortInt)                         :: i, j, cc, idx
-    real(defReal)                             :: totWgt, one_log2
+    integer(shortInt)                         :: i, idx
 
-    if (self % currentCycle < self % maxCycles) then
+    ! Increment cycle number
+    self % currentCycle = self % currentCycle + 1
 
-      self % currentCycle = self % currentCycle + 1
-      cc = self % currentCycle
+    if (self % currentCycle <= self % maxCycles) then
+
+      ! Sample population weight for MPI
+      call mem % score(end % popWeight(), self % getMemAddress())
 
       ! Loop through population, scoring probabilities
-      do i = 1,end % popSize()
-        associate( state => end % get(i) )
+      do i = 1, end % popSize()
+
+        associate(state => end % get(i))
           idx = self % map % map(state)
-          if( idx > 0) self % prob(idx) = self % prob(idx) + state % wgt
+          if (idx == 0) cycle
+          call mem % score(state % wgt, self % getMemAddress() + idx)
         end associate
-      end do
 
-      totWgt = end % popWeight()
-      one_log2 = ONE/log(TWO)
-
-      ! Loop through bins, summing entropy
-      do j = 1,self % N
-        self % prob(j) = self % prob(j)/totWgt
-        if ((self % prob(j) > ZERO) .AND. (self % prob(j) < ONE)) then
-          self % value(cc) = self % value(cc) - self % prob(j) * log(self % prob(j)) * one_log2
-        end if
-        self % prob(j) = ZERO
       end do
 
     end if
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Close cycle
+  !!
+  subroutine closeCycle(self, end, mem)
+    class(shannonEntropyClerk), intent(inout) :: self
+    class(particleDungeon), intent(in)        :: end
+    type(scoreMemory), intent(inout)          :: mem
+    integer(shortInt)                         :: i
+    integer(longInt)                          :: ccIdx
+    real(defReal)                             :: totWgt, one_log2, prob, val
+
+    if (self % currentCycle <= self % maxCycles) then
+
+      ! Get total population weight for this cycle
+      totWgt = mem % getScore(self % getMemAddress())
+
+      ! Initialise contants and counters
+      val = ZERO
+      one_log2 = ONE/log(TWO)
+
+      ! Loop through bins, summing entropy
+      do i = 1, self % N
+
+        prob = mem % getScore(self % getMemAddress() + i)
+        prob = prob / totWgt
+
+        if ((prob > ZERO) .and. (prob < ONE)) then
+          val = val - prob * log(prob) * one_log2
+        end if
+
+      end do
+
+      ccIdx = self % getMemAddress() + self % N + self % currentCycle
+      call mem % accumulate(val, ccIdx)
+
+      ! Reset memory bins in preparation for next cycle
+      do i = 0, self % N
+        call mem % resetBin(self % getMemAddress() + i)
+      end do
+
+    end if
+
+  end subroutine closeCycle
 
   !!
   !! Display convergance progress on the console
@@ -164,7 +194,7 @@ contains
     class(shannonEntropyClerk), intent(in) :: self
     type(scoreMemory), intent(in)    :: mem
 
-    print *, 'shannonEntropyClerk does not support display yet'
+    call statusMsg('shannonEntropyClerk does not support display yet')
 
   end subroutine display
 
@@ -173,10 +203,19 @@ contains
   !!
   subroutine print(self, outFile, mem)
     class(shannonEntropyClerk), intent(in) :: self
-    class(outputFile), intent(inout) :: outFile
-    type(scoreMemory), intent(in)    :: mem
-    integer(shortInt)                :: i
-    character(nameLen)               :: name
+    class(outputFile), intent(inout)       :: outFile
+    type(scoreMemory), intent(in)          :: mem
+    integer(shortInt)                      :: i, batches
+    character(nameLen)                     :: name
+    integer(longInt)                       :: ccIdx
+    real(defReal)                          :: val
+
+    ! Determine number of batches for normalisation with MPI
+    if (mem % reduced) then
+      batches = 1
+    else
+      batches = getMPIWorldSize()
+    end if
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -186,9 +225,12 @@ contains
 
     call outFile % startArray(name, [self % maxCycles])
 
-    do i=1,self % maxCycles
-      call outFile % addValue(self % value(i))
+    do i = 1, self % maxCycles
+      ccIdx = self % getMemAddress() + self % N + i
+      call mem % getResult(val, ccIdx, samples = batches)
+      call outFile % addValue(val)
     end do
+
     call outFile % endArray()
 
     call outFile % endBlock()
@@ -201,9 +243,7 @@ contains
   elemental subroutine kill(self)
     class(shannonEntropyClerk), intent(inout) :: self
 
-    if(allocated(self % map)) deallocate(self % map)
-    if(allocated(self % prob)) deallocate(self % prob)
-    if(allocated(self % value)) deallocate(self % value)
+    if (allocated(self % map)) deallocate(self % map)
     self % N = 0
     self % currentCycle = 0
     self % maxCycles = 0

@@ -1,10 +1,6 @@
 module genericProcedures
-  ! Intrinsic fortran Modules
-  use iso_fortran_env, only : compiler_version
-
   use numPrecision
-  use openmp_func, only : ompGetMaxThreads
-  use errors_mod,  only : fatalError
+  use errors_mod, only: fatalError
   use endfConstants
   use universalVariables
 
@@ -1234,16 +1230,16 @@ module genericProcedures
     integer(shortInt)                              :: pivot
     integer(shortInt)                              :: i, maxSmall
 
-    if (size(array) > 1 ) then
+    if (size(array) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1,size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1263,16 +1259,16 @@ module genericProcedures
     real(defReal), dimension(:), intent(inout) :: array
     integer(shortInt)                          :: i, maxSmall, pivot
 
-    if (size(array) > 1 ) then
+    if (size(array) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1,size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1296,20 +1292,20 @@ module genericProcedures
     integer(shortInt)                          :: i, maxSmall, pivot
     character(100),parameter :: Here = 'quickSort_defReal_defReal (genericProcdures.f90)'
 
-    if(size(array1) /= size(array2)) then
+    if (size(array1) /= size(array2)) then
       call fatalError(Here,'Arrays have diffrent size!')
     end if
 
-    if (size(array1) > 1 ) then
+    if (size(array1) > 1) then
       ! Set a pivot to the rightmost element
       pivot = size(array1)
 
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array1 at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array1)
+      do i = 1,size(array1)
 
-        if( array1(i) <= array1(pivot)) then
+        if (array1(i) <= array1(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array1(i), array2(i), array1(maxSmall), array2(maxSmall))
         end if
@@ -1430,55 +1426,5 @@ module genericProcedures
         str = "Unknown "// numToChar(type)
     end select
   end function printParticleType
-
-
-  !!
-  !! Prints Scone ACII Header
-  !!
-  subroutine printStart()
-    print *, repeat(" ><((((*> ",10)
-    print *, ''
-    print * ,"        _____ __________  _   ________  "
-    print * ,"       / ___// ____/ __ \/ | / / ____/  "
-    print * ,"       \__ \/ /   / / / /  |/ / __/     "
-    print * ,"      ___/ / /___/ /_/ / /|  / /___     "
-    print * ,"     /____/\____/\____/_/ |_/_____/     "
-    print * , ''
-    print * , ''
-    print * , "Compiler Info :   ", compiler_version()
-#ifdef _OPENMP
-    print '(A, I4)', " OpenMP Threads: ", ompGetMaxThreads()
-#endif
-    print *
-    print *, repeat(" <*((((>< ",10)
-
-    ! TODO: Add extra info like date & time
-
-  end subroutine printStart
-
-  !!
-  !! Prints line of fishes swiming right with an offset
-  !!
-  subroutine printFishLineR(offset)
-    integer(shortInt),intent(in) :: offset
-    integer(shortInt)            :: offset_L
-    character(100), parameter    :: line = repeat(" ><((((*> ",10)
-    character(100),dimension(10), parameter :: lines = [ &
-    " ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*> " ,&
-    "  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>" ,&
-    ">  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*" ,&
-    "*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((" ,&
-    "(*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(((" ,&
-    "((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((" ,&
-    "(((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><(" ,&
-    "((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><" ,&
-    "<((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  >" ,&
-    "><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  ><((((*>  " ]
-
-    offset_L = modulo(offset,10)
-
-    print *, lines(offset_L+1)
-
-  end subroutine  printFishLineR
 
 end module genericProcedures

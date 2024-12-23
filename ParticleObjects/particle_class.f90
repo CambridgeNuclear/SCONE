@@ -25,6 +25,9 @@ module particle_class
   !!
   !! Particle compressed for storage
   !!
+  !! particleStateData contains only the properties (useful for MPI); it is extended into
+  !! particleState which includes the procedures too and is used for tallying.
+  !!
   !! Public Members:
   !!   wgt      -> Weight of the particle
   !!   r        -> Global Position of the particle [cm]
@@ -42,12 +45,7 @@ module particle_class
   !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
   !!               with OpenMP
   !!
-  !! Interface:
-  !!   assignemnt(=)  -> Build particleState from particle
-  !!   operator(.eq.) -> Return True if particle are exactly the same
-  !!   display        -> Print debug information about the state to the console
-  !!
-  type, public :: particleState
+  type, public :: particleStateData
     real(defReal)              :: wgt  = ZERO       ! Particle weight
     real(defReal),dimension(3) :: r    = ZERO       ! Global position
     real(defReal),dimension(3) :: dir  = ZERO       ! Global direction
@@ -61,15 +59,28 @@ module particle_class
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
     integer(shortInt)          :: broodID = 0       ! ID of the source particle
+  end type particleStateData
+
+  !!
+  !! Extension of particleStateData, which includes procedure
+  !!
+  !! Interface:
+  !!   assignemnt(=)  -> Build particleState from particle
+  !!   operator(.eq.) -> Return True if particle are exactly the same
+  !!   display        -> Print debug information about the state to the console
+  !!
+  type, public, extends(particleStateData) :: particleState
   contains
     generic    :: assignment(=)  => fromParticle
+    generic    :: assignment(=)  => fromParticleStateData
     generic    :: operator(.eq.) => equal_particleState
     procedure  :: display        => display_particleState
-    procedure  :: fromParticle   => particleState_fromParticle
     procedure  :: kill           => kill_particleState
+    procedure  :: fromParticle   => particleState_fromParticle
+    procedure  :: fromParticleStateData => particleState_fromParticleStateData
 
     ! Private procedures
-    procedure,private :: equal_particleState
+    procedure, private :: equal_particleState
 
   end type particleState
 
@@ -662,6 +673,31 @@ contains
     LHS % broodID    = RHS % broodID
 
   end subroutine particleState_fromParticle
+
+  !!
+  !! Copy particleStateData into phase coordinates
+  !!
+  subroutine particleState_fromParticleStateData(LHS,RHS)
+    class(particleState), intent(out)    :: LHS
+    class(particleStateData), intent(in) :: RHS
+
+    LHS % wgt  = RHS % wgt
+    LHS % r    = RHS % r
+    LHS % dir  = RHS % dir
+    LHS % E    = RHS % E
+    LHS % G    = RHS % G
+    LHS % isMG = RHS % isMG
+    LHS % type = RHS % type
+    LHS % time = RHS % time
+
+    ! Save all indexes
+    LHS % matIdx   = RHS % matIdx
+    LHS % uniqueID = RHS % uniqueId
+    LHS % cellIdx  = RHS % cellIdx
+    LHS % collisionN = RHS % collisionN
+    LHS % broodID    = RHS % broodID
+
+  end subroutine particleState_fromParticleStateData
 
   !!
   !! Define equal operation on phase coordinates

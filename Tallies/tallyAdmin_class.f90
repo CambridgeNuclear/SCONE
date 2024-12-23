@@ -2,6 +2,7 @@ module tallyAdmin_class
 
   use numPrecision
   use tallyCodes
+  use mpi_func,               only : isMPIMaster
   use genericProcedures,      only : fatalError, charCmp
   use dictionary_class,       only : dictionary
   use dynArray_class,         only : dynIntArray
@@ -24,6 +25,7 @@ module tallyAdmin_class
 
   !! Parameters
   integer(longInt), parameter :: NO_NORM = -17_longInt
+  real(defReal), parameter    :: TARGET_START_WGT = 1.0e4_defReal
 
   !!
   !! TallyAdmin is responsible for:
@@ -54,8 +56,10 @@ module tallyAdmin_class
   !!   histClerks       -> List of indices of all clerks that require histReport
   !!   cycleStartClerks -> List of indices of all clerks that require cycleStartReport
   !!   cycleEndClerks   -> List of indices of all clerks that require cycleEndReport
+  !!   closeCycleClerks -> List of indices of all clerks that require closeCycle
   !!   displayList      -> List of indices of all clerks that are registered for display
   !!   mem              -> Score Memory for all defined clerks
+  !!   mpiSync          ->
   !!
   !! Interface:
   !!   init   -> Initialise from dictionary
@@ -83,6 +87,7 @@ module tallyAdmin_class
   !!   #norm    clerk3;          #       ! Clerk should be size 1 (first bin of clerk is normalised)
   !!   #normVal 13.0;            #       ! Must be present if "norm" is present
   !!   #batchSize   4;           #       ! Default value 1
+  !!   #mpiSync     1;           #       ! Default value 0
   !!   clerk1 { <clerk definition here> }
   !!   clerk2 { <clerk definition here> }
   !!   clerk3 { <clerk definition here> }
@@ -99,6 +104,9 @@ module tallyAdmin_class
     real(defReal)      :: normValue
     character(nameLen) :: normClerkName
 
+    ! Parallelisation settings
+    logical(defBool)   :: mpiSync
+
     ! Clerks and clerks name map
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
     type(charMap)                                 :: clerksNameMap
@@ -112,6 +120,7 @@ module tallyAdmin_class
     type(dynIntArray)  :: histClerks
     type(dynIntArray)  :: cycleStartClerks
     type(dynIntArray)  :: cycleEndClerks
+    type(dynIntArray)  :: closeCycleClerks
 
     ! List of clerks to display
     type(dynIntArray)  :: displayList
@@ -141,6 +150,7 @@ module tallyAdmin_class
 
     ! Interaction procedures
     procedure :: getResult
+    procedure :: collectDistributed
 
     ! Display procedures
     procedure :: display
@@ -184,59 +194,66 @@ contains
     allocate(self % tallyClerks(size(names)))
 
     ! Load clerks into slots and clerk names into map
-    do i=1,size(names)
+    do i = 1,size(names)
       call self % tallyClerks(i) % init(dict % getDictPtr(names(i)), names(i))
       call self % clerksNameMap % add(names(i),i)
 
     end do
 
     ! Register all clerks to recive their reports
-    do i=1,size(self % tallyClerks)
-      associate( reports => self % tallyClerks(i) % validReports() )
-        do j=1,size(reports)
+    do i = 1,size(self % tallyClerks)
+      associate(reports => self % tallyClerks(i) % validReports())
+        do j = 1,size(reports)
           call self % addToReports(reports(j), i)
-
         end do
       end associate
     end do
 
     ! Obtain names of clerks to display
-    if( dict % isPresent('display')) then
+    if (dict % isPresent('display')) then
       call dict % get(names,'display')
 
       ! Register all clerks to display
-      do i=1,size(names)
-        call self % displayList % add( self % clerksNameMap % get(names(i)))
+      do i = 1,size(names)
+        call self % displayList % add(self % clerksNameMap % get(names(i)))
       end do
+
     end if
 
     ! Read batching size
-    call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+    call dict % getOrDefault(cyclesPerBatch,'batchSize', 1)
+
+    ! Check if the bins need to be synchronised across MPI processes
+    ! at the end of each batch
+    call dict % getOrDefault(self % mpiSync, 'mpiSync', .false.)
 
     ! Initialise score memory
     ! Calculate required size.
-    memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+    memSize = sum(self % tallyClerks % getSize()) + 1
+    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
-    memLoc = 1
-    do i=1,size(self % tallyClerks)
+    memLoc = 2
+    do i = 1,size(self % tallyClerks)
       call self % tallyClerks(i) % setMemAddress(memLoc)
       memLoc = memLoc + self % tallyClerks(i) % getSize()
 
     end do
 
     ! Verify that final memLoc and memSize are consistant
-    if(memLoc - 1 /= memSize) then
+    if (memLoc - 1 /= memSize) then
       call fatalError(Here, 'Memory addressing failed.')
     end if
 
     ! Read name of normalisation clerks if present
-    if(dict % isPresent('norm')) then
-      call dict % get(self % normClerkName,'norm')
-      call dict % get(self % normValue,'normVal')
+    if (dict % isPresent('norm')) then
+      call dict % get(self % normClerkName, 'norm')
+      call dict % get(self % normValue, 'normVal')
       i = self % clerksNameMap % get(self % normClerkName)
       self % normBinAddr = self % tallyClerks(i) % getMemAddress()
+    else
+      self % normBinAddr = 1
+      self % normValue = TARGET_START_WGT
     end if
 
   end subroutine init
@@ -271,6 +288,7 @@ contains
     call self % histClerks % kill()
     call self % cycleStartClerks % kill()
     call self % cycleEndClerks % kill()
+    call self % closeCycleClerks % kill()
 
     ! Kill score memory
     call self % mem % kill()
@@ -292,7 +310,7 @@ contains
     class(tallyAdmin), intent(inout)      :: self
     type(tallyAdmin), pointer, intent(in) :: atch
 
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call self % atch % push(atch)
 
     else
@@ -316,10 +334,10 @@ contains
     class(tallyAdmin), intent(inout)       :: self
     type(tallyAdmin), pointer, intent(out) :: atch
 
-    if(.not. associated(self % atch)) then ! Single element list
+    if (.not. associated(self % atch)) then ! Single element list
       atch => null()
 
-    elseif( associated(self % atch % atch)) then ! Go down the list
+    elseif (associated(self % atch % atch)) then ! Go down the list
       call self % atch % pop(atch)
 
     else ! Remove last element
@@ -346,16 +364,17 @@ contains
     class(tallyAdmin), intent(in)    :: self
     type(tallyAdmin),pointer         :: atch
 
-    if(.not. associated(self % atch)) then
+    if (.not. associated(self % atch)) then
       atch => null()
 
-    elseif( associated(self % atch % atch)) then
+    elseif (associated(self % atch % atch)) then
       atch => self % atch % getEnd()
 
     else
       atch => self % atch
 
     end if
+
   end function getEnd
 
   !!
@@ -373,12 +392,12 @@ contains
     integer(shortInt)             :: idx
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call display(self % atch)
     end if
 
     ! Go through all clerks marked as part of the display
-    do i=1,self % displayList % getSize()
+    do i = 1,self % displayList % getSize()
       idx = self % displayList % get(i)
       call self % tallyClerks(idx) % display(self % mem)
 
@@ -429,7 +448,7 @@ contains
     call output % printValue(self % mem % getBatchSize(), name)
 
     ! Print Clerk results
-    do i=1,size(self % tallyClerks)
+    do i = 1,size(self % tallyClerks)
       call self % tallyClerks(i) % print(output, self % mem)
     end do
 
@@ -457,7 +476,7 @@ contains
     character(100), parameter :: Here = "reportInColl (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportInColl(self % atch, p, virtual)
     end if
 
@@ -465,7 +484,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % inCollClerks % getSize()
+    do i = 1,self % inCollClerks % getSize()
       idx = self % inCollClerks % get(i)
       call self % tallyClerks(idx) % reportInColl(p, xsData, self % mem, virtual)
 
@@ -497,7 +516,7 @@ contains
     character(100), parameter :: Here = "reportOutColl (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportOutColl(self % atch, p, MT, muL)
     end if
 
@@ -505,7 +524,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % outCollClerks % getSize()
+    do i = 1,self % outCollClerks % getSize()
       idx = self % outCollClerks % get(i)
       call self % tallyClerks(idx) % reportOutColl(p, MT, muL, xsData, self % mem)
 
@@ -536,7 +555,7 @@ contains
     character(100), parameter :: Here = "reportPath (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportPath(self % atch, p, L)
     end if
 
@@ -544,7 +563,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % pathClerks % getSize()
+    do i = 1,self % pathClerks % getSize()
       idx = self % pathClerks % get(i)
       call self % tallyClerks(idx) % reportPath(p, L, xsData, self % mem)
 
@@ -572,7 +591,7 @@ contains
     character(100), parameter :: Here = "reportTrans (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportTrans(self % atch, p)
     end if
 
@@ -580,7 +599,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % transClerks % getSize()
+    do i = 1,self % transClerks % getSize()
       idx = self % transClerks % get(i)
       call self % tallyClerks(idx) % reportTrans(p, xsData, self % mem)
 
@@ -613,7 +632,7 @@ contains
     character(100), parameter :: Here = "reportSpwan (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportSpawn(self % atch, MT, pOld, pNew)
     end if
 
@@ -621,7 +640,7 @@ contains
     xsData => ndReg_get(pOld % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % spawnClerks % getSize()
+    do i = 1,self % spawnClerks % getSize()
       idx = self % spawnClerks % get(i)
       call self % tallyClerks(idx) % reportSpawn(MT, pOld, pNew, xsData, self % mem)
     end do
@@ -648,7 +667,7 @@ contains
     character(100), parameter :: Here = "reportHist (tallyAdmin_class.f90)"
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportHist(self % atch, p)
     end if
 
@@ -656,7 +675,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i=1,self % histClerks % getSize()
+    do i = 1,self % histClerks % getSize()
       idx = self % histClerks % get(i)
       call self % tallyClerks(idx) % reportHist(p, xsData, self % mem)
 
@@ -686,14 +705,17 @@ contains
     integer(shortInt), save            :: idx
     !$omp threadprivate(idx)
 
+    ! Add the particles in this cycle to starting population of the batch
+    call self % mem % score(start % popWeight(), 1_longInt)
+
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportCycleStart(self % atch, start)
     end if
 
     ! Go through all clerks that request the report
     !$omp parallel do
-    do i=1,self % cycleStartClerks % getSize()
+    do i = 1,self % cycleStartClerks % getSize()
       idx = self % cycleStartClerks % get(i)
       call self % tallyClerks(idx) % reportCycleStart(start, self % mem)
     end do
@@ -708,8 +730,8 @@ contains
   !!   All particles given in "reportCycleStart" have been already transported
   !!   It is called after "reportCycleStart"
   !!   No modification or normalisation was applied to "end" particle Dungeon
-  !!   "k_eff" member of end is set to criticality used to adjust fission source (implicit
-  !!     fission site generation)
+  !!   "k_eff" member of end is set to criticality used to adjust fission source
+  !!   (implicit fission site generation)
   !!
   !! Args:
   !!   end [in] -> Particle Dungeon at the end of a cycle (before any normalisations)
@@ -717,7 +739,7 @@ contains
   !! Errors:
   !!   None
   !!
-  recursive subroutine reportCycleEnd(self,end)
+  recursive subroutine reportCycleEnd(self, end)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: end
     integer(shortInt)                  :: i
@@ -727,33 +749,48 @@ contains
     !$omp threadprivate(idx)
 
     ! Call attachment
-    if(associated(self % atch)) then
+    if (associated(self % atch)) then
       call reportCycleEnd(self % atch, end)
     end if
 
-    ! Go through all clerks that request the report
+    ! Go through all clerks that request the reportCycleEnd
     !$omp parallel do
-    do i=1,self % cycleEndClerks % getSize()
+    do i = 1,self % cycleEndClerks % getSize()
       idx = self % cycleEndClerks % get(i)
       call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
     end do
     !$omp end parallel do
 
-    ! Calculate normalisation factor
-    if( self % normBInAddr /= NO_NORM ) then
-      normScore  = self % mem % getScore(self % normBinAddr)
-      if (normScore == ZERO) then
-        call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+    ! Reduce the scores across the threads and processes
+    call self % mem % reduceBins()
 
+    if (isMPIMaster() .or. .not. self % mpiSync) then
+
+      ! Go through all clerks that request closeCycle
+      !$omp parallel do
+      do i = 1, self % closeCycleClerks % getSize()
+        idx = self % closeCycleClerks % get(i)
+        call self % tallyClerks(idx) % closeCycle(end, self % mem)
+      end do
+      !$omp end parallel do
+
+      ! Calculate normalisation factor
+      if (self % normBInAddr /= NO_NORM) then
+        normScore  = self % mem % getScore(self % normBinAddr)
+        if (normScore == ZERO) then
+          call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+        end if
+
+        normFactor = self % normValue / normScore
+
+      else
+        normFactor = ONE
       end if
-      normFactor = self % normValue / normScore
 
-    else
-      normFactor = ONE
+      ! Close cycle multipling all scores by a multiplication factor
+      call self % mem % closeCycle(normFactor)
+
     end if
-
-    ! Close cycle multipling all scores by multiplication factor
-    call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
 
@@ -776,7 +813,7 @@ contains
     integer(shortInt),parameter                   :: NOT_PRESENT = -3
 
     ! Deallocate if allocated result
-    if(allocated(res)) deallocate(res)
+    if (allocated(res)) deallocate(res)
 
     ! Copy name to character with nameLen
     name_loc = name
@@ -784,7 +821,7 @@ contains
     ! Find clerk index
     idx = self % clerksNameMap % getOrDefault(name_loc, NOT_PRESENT)
 
-    if(idx == NOT_PRESENT) then ! Return empty result
+    if (idx == NOT_PRESENT) then ! Return empty result
       allocate(res, source = tallyResultEmpty() )
 
     else ! Return result from the clerk named == name
@@ -793,6 +830,23 @@ contains
     end if
 
   end subroutine getResult
+
+  !!
+  !!
+  !!
+  recursive subroutine collectDistributed(self)
+    class(tallyAdmin), intent(inout) :: self
+
+    ! Call attachment
+    if (associated(self % atch)) then
+      call collectDistributed(self % atch)
+    end if
+
+    if (.not. self % mpiSync) then
+      call self % mem % collectDistributed()
+    end if
+
+  end subroutine collectDistributed
 
   !!
   !! Append sorting array identified with the code with tallyClerk idx
@@ -836,6 +890,9 @@ contains
 
       case(cycleEnd_CODE)
         call self % cycleEndClerks % add(idx)
+
+      case(closeCycle_CODE)
+        call self % closeCycleClerks % add(idx)
 
       case default
         call fatalError(Here, 'Undefined reportCode')

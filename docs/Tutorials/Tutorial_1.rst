@@ -12,7 +12,7 @@ In this tutorial you will learn:
 This tutorial assumes that you use a UNIX-like environment.
 Some knowledge of basic UNIX command line commands is essential.
 
-Creating new Git Branch
+Creating a new Git Branch
 -----------------------
 #. We assume that you have already cloned SCONE on to your machine. Information
    on how to do that is available in (:ref:`installation`)
@@ -52,7 +52,7 @@ Creating new Git Branch
      missingENDFLaws
      newNuclearData
 
-Creating new Fortran module
+Creating a new Fortran module
 ---------------------------
 
 #. Now that we have created space where we can easily separate our modifications
