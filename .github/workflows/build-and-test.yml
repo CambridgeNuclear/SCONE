@@ -10,7 +10,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        compiler: [gfortran8, gfortran9, gfortran10]
+        compiler: [gfortran10, gfortran11, gfortran12]
     runs-on: ubuntu-20.04
     container:
       image: mikolajkowalski/scone-test:${{matrix.compiler}}_pfu4
@@ -22,12 +22,12 @@ jobs:
           cd build
           cmake ..
           make -j
-          make test
+          ctest --output-on-faliure
           cd -
   build-and-test-debug:
     runs-on: ubuntu-20.04
     container:
-      image: mikolajkowalski/scone-test:gfortran10_pfu4
+      image: mikolajkowalski/scone-test:gfortran12_pfu4
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -36,12 +36,12 @@ jobs:
           cd build
           cmake -DDEBUG=ON ..
           make -j
-          make test
+          ctest --output-on-faliure
           cd -
   build-and-test-no-openmp:
     runs-on: ubuntu-20.04
     container:
-      image: mikolajkowalski/scone-test:gfortran10_pfu4
+      image: mikolajkowalski/scone-test:gfortran12_pfu4
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -50,5 +50,5 @@ jobs:
           cd build
           cmake -DOPENMP=OFF ..
           make -j
-          make test
+          ctest --output-on-faliure
           cd -
