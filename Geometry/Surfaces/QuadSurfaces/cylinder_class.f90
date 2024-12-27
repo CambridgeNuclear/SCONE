@@ -2,7 +2,7 @@ module cylinder_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, numToChar, dotProduct
+  use genericProcedures,  only : fatalError, numToChar, areEqual
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -242,7 +242,7 @@ contains
     delta = k*k - a*c  ! Technically delta/4
 
     ! Calculate the distance
-    if (delta < ZERO .or. a == ZERO) then ! No intersection
+    if (delta < ZERO .or. areEqual(a, ZERO)) then ! No intersection
       d = INF
 
     else if (abs(c) < self % surfTol()) then ! Point at a surface
