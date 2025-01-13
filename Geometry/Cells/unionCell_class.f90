@@ -20,13 +20,15 @@ module unionCell_class
 
 
   !!
-  !! CSG cell defined by intersections and unions of halfspaces
-  !!
+  !! CSG cell defined by intersections, unions, and complements of halfspaces
   !! This cell is a generalisation of the simpleCell.
-  !! It allows intersections, unions, and complements.
+  !!
+  !! The implementation follows that given in the paper by Romano et al. (2024).
+  !! "Point containment algorithms for constructive solid geometry with
+  !!  unbounded primitives"
   !!
   !! It is equipped with its own syntax to perform parentheses and to
-  !! denote a union.
+  !! denote a union and complement.
   !! These are:
   !!   union = :
   !!   open parenthesis = <
@@ -39,7 +41,7 @@ module unionCell_class
   !!   cell {
   !!     type unionCell;
   !!     id 17;
-  !!     surfaces [ 3 ~ < -1 + 2 > ];
+  !!     surfaces [ 3 # < -1 : 2 > ];
   !!     <content info as defined in cellShelf_class >
   !!   }
   !! NOTE: surfaces is not a list but a tokenArray, using [ ], not ( )
