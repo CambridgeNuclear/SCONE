@@ -18,10 +18,11 @@ module unionCell_test
   & surf5 { id 6;  type zTruncCylinder; origin (0 0 0); halfwidth 5.1; radius 1.0;} "
 
   ! Note that fill is not really needed to build a cell. It is used by cellShelf only
+  ! Also note that the init procedure does not actually use the type, so it is left out.
   character(*), parameter :: EASYCELL_DEF = "&
-  & id 2; type unionCell; surfaces [-13 -15 ]; filltype outside; "
+  & id 2; surfaces [-13 -15 ]; filltype outside; "
   character(*), parameter :: COMPLEXCELL_DEF = "&
-  & id 3; type simpleCell; surfaces [< -13 -15 > # < -4 : -5 : -6 > ]; filltype outside; "
+  & id 3; surfaces [< -13 -15 > # < -4 : -5 : -6 > ]; filltype outside; "
 
 
   ! Variables
@@ -40,9 +41,11 @@ contains
     call charToDict(dict, SURF_DEF)
     call surfs % init(dict)
     call dict % kill()
+
     call charToDict(dict, EASYCELL_DEF)
     call easyCell % init(dict, surfs)
     call dict % kill()
+
     call charToDict(dict, COMPLEXCELL_DEF)
     call complexCell % init(dict, surfs)
 

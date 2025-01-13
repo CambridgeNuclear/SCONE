@@ -8,7 +8,7 @@ ASCII Dictionary Syntax
 
 SCONE uses a hierarchical input that is composed of nested dictionaries
 that contain some content associated with a keyword unique within the scope
-of a single dictionarya. The following content is available:
+of a single dictionary. The following content is available:
 
 * Word with no spaces or ";" e.g. ThisIsContent
 * Integer number e.g. 1

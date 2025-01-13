@@ -16,8 +16,9 @@ module simpleCell_test
   & surf3 { id 99; type yPlane; y0 0.0;}"
 
   ! Note that fill is not really needed to build a cell. It is used by cellShelf only
+  ! Also note that the init procedure does not actually use the type, so it is left out.
   character(*), parameter :: CELL_DEF = "&
-  & id 2; type simpleCell; surfaces (-13 4 99 ); filltype outside; "
+  & id 2; surfaces (-13 4 99 ); filltype outside; "
 
 
   ! Variables
