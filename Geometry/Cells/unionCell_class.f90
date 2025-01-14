@@ -202,8 +202,8 @@ contains
     call dict % get(id, 'id')
     call self % setId(id)
 
-    ! Check surfaces for duplicates
-    if (hasDuplicates(abs(self % surfaces % surfIdx))) then
+    ! If a simple cell, check surfaces for duplicates
+    if (hasDuplicates(abs(self % surfaces % surfIdx)) .and. self % isSimple) then
       call fatalError(Here, 'There are repeated surfaces in definition of cell: '//numToChar(id))
     end if
 
