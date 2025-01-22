@@ -57,11 +57,15 @@ contains
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
-    ! Obtain the local cross-section
-    sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
+    ! Obtain the local cross-section. Always choose ST in void
+    if (p % matIdx() == VOID_MAT) then
+      sigmaT = ZERO
+    else
+      sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
+    end if
 
     ! Calculate ratio between local cross-section and majorant
-    ratio = sigmaT*majorant_inv
+    ratio = sigmaT * majorant_inv
 
     ! Cut-off criterion to decide on tracking method
     if (ratio > (ONE - self % cutoff)) then
@@ -104,7 +108,7 @@ contains
       end if
 
       ! Check for void
-      if(p % matIdx() == VOID_MAT) then
+      if (p % matIdx() == VOID_MAT) then
         call tally % reportInColl(p, .true.)
         cycle DTLoop
       end if
