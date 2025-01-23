@@ -5,4 +5,5 @@ add_sources( source_inter.f90
 	           pointSource_class.f90
              fissionSource_class.f90
              materialSource_class.f90
+             mixSource_class.f90
              )
