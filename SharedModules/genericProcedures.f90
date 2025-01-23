@@ -61,6 +61,15 @@ module genericProcedures
     module procedure binaryFloorIdxClosed_Real
   end interface
 
+  interface linearSearchFloor
+    module procedure linearFloorIdxClosed_shortInt
+    module procedure linearFloorIdxClosed_Real
+  end interface
+
+  interface linearSearchCeil
+    module procedure linearCeilingIdxOpen_shortInt
+  end interface
+
   interface endfInterpolate
     module procedure RealReal_endf_interpolate
   end interface
@@ -536,6 +545,7 @@ module genericProcedures
       if (defRealArray(idx) == target) return
     end do
     idx = targetNotFound
+
   end function linFind_defReal
 
   !!
@@ -707,7 +717,7 @@ module genericProcedures
     stringCopy = ''
     j = 1
 
-    do i=1,len(string)
+    do i = 1,len(string)
       if (lastBlank) then
         if (string(i:i) /= " ") then
           lastBlank = .false.
@@ -717,7 +727,7 @@ module genericProcedures
 
       else
         stringCopy(j:j) = string(i:i)
-        j=j+1
+        j = j+1
         if (string(i:i) == " ") then
           lastBlank = .true.
         endif
@@ -737,7 +747,7 @@ module genericProcedures
     character(1), intent(in)    :: newS
     integer(shortInt)           :: i
 
-    do i=1,len(string)
+    do i = 1,len(string)
       if(string(i:i) == oldS) string(i:i) = newS
     end do
 
@@ -826,7 +836,7 @@ module genericProcedures
     logical(defBool)                      :: isIt
     integer(shortInt)                     :: i
 
-    do i=2,size(array)
+    do i = 2,size(array)
       if (array(i) < array(i-1)) then
         isIt = .false.
         return
@@ -845,7 +855,7 @@ module genericProcedures
     logical(defBool)                          :: isIt
     integer(shortInt)                         :: i
 
-    do i=2,size(array)
+    do i = 2,size(array)
       if (array(i) < array(i-1)) then
         isIt = .false.
         return
@@ -864,7 +874,7 @@ module genericProcedures
     logical(defBool)                      :: isIt
     integer(shortInt)                     :: i
 
-    do i=2,size(array)
+    do i = 2,size(array)
       if (array(i) > array(i-1)) then
         isIt = .false.
         return
@@ -883,7 +893,7 @@ module genericProcedures
     logical(defBool)                          :: isIt
     integer(shortInt)                         :: i
 
-    do i=2,size(array)
+    do i = 2,size(array)
       if (array(i) > array(i-1)) then
         isIt = .false.
         return
@@ -925,7 +935,7 @@ module genericProcedures
       c = trim(tempChar)
     end if
 
-    do i=2,size(x)
+    do i = 2,size(x)
       write(tempChar,'(I0)') x(i)
       c = c//' '//trim(tempChar)
     end do
@@ -977,7 +987,7 @@ module genericProcedures
       c = trim(tempChar)
     end if
 
-    do i=2,size(x)
+    do i = 2,size(x)
       write(tempChar,*) x(i)
       c = c//' '//trim(tempChar)
     end do
@@ -1032,7 +1042,7 @@ module genericProcedures
     real(defReal), intent(in)                  :: mu
     real(defReal), intent(in)                  :: phi
     real(defReal), dimension(3)                :: newDir
-    real(defReal)                              :: u,v,w
+    real(defReal)                              :: u, v, w
     real(defReal)                              :: sinPol, cosPol, A, B
 
     ! Precalculate cosine and sine of polar angle
@@ -1044,12 +1054,12 @@ module genericProcedures
     v = dir(2)
     w = dir(3)
 
-    ! Perform standard roatation. Note that indexes are parametrised
+    ! Perform standard rotation. Note that indexes are parametrised
     A = sqrt(max(ZERO, ONE - mu*mu))
     B = sqrt(max(ZERO, ONE - w*w  ))
 
 
-    if ( B > 1E-8) then
+    if (B > 1E-8) then
       newDir(1) = mu * u + A * (u*w*cosPol - v * sinPol) / B
       newDir(2) = mu * v + A * (v*w*cosPol + u * sinPol) / B
       newDir(3) = mu * w - A * B * cosPol
@@ -1180,7 +1190,7 @@ module genericProcedures
 
     ! Search through the array looking for duplicates
     doesIt = .false.
-    do i=2,size(array)
+    do i = 2, size(array)
       doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
 
     end do
@@ -1202,7 +1212,7 @@ module genericProcedures
 
     ! Search through the array looking for duplicates
     doesIt = .false.
-    do i=2,size(array)
+    do i = 2, size(array)
       doesIt = doesIt .or. arrayCopy(i) == arrayCopy(i-1)
 
     end do
@@ -1220,7 +1230,7 @@ module genericProcedures
 
     ! Search through the array looking for duplicates
     doesIt = .false.
-    do i=2,size(array)
+    do i = 2, size(array)
       doesIt = doesIt .or. array(i) == array(i-1)
     end do
 
@@ -1241,9 +1251,9 @@ module genericProcedures
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1, size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1270,9 +1280,9 @@ module genericProcedures
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array)
+      do i = 1, size(array)
 
-        if( array(i) <= array(pivot)) then
+        if (array(i) <= array(pivot)) then
           maxSmall = maxSmall + 1
           call swap(array(i),array(maxSmall))
         end if
@@ -1296,7 +1306,7 @@ module genericProcedures
     integer(shortInt)                          :: i, maxSmall, pivot
     character(100),parameter :: Here = 'quickSort_defReal_defReal (genericProcdures.f90)'
 
-    if(size(array1) /= size(array2)) then
+    if (size(array1) /= size(array2)) then
       call fatalError(Here,'Arrays have diffrent size!')
     end if
 
@@ -1307,7 +1317,7 @@ module genericProcedures
       ! Move all elements <= pivot to the LHS of the pivot
       ! Find position of the pivot in the array1 at the end (maxSmall)
       maxSmall = 0
-      do i=1,size(array1)
+      do i = 1, size(array1)
 
         if( array1(i) <= array1(pivot)) then
           maxSmall = maxSmall + 1
@@ -1396,7 +1406,7 @@ module genericProcedures
     integer(shortInt)             :: i, i_swap
 
     ! Loop over character and copy character with an offset
-    do i=1,len(string)
+    do i = 1, len(string)
       i_swap = modulo(i+N-1,len(string))+1
       shifted(i_swap:i_swap) = string(i:i)
     end do

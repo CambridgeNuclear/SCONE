@@ -417,7 +417,7 @@ contains
   !!   source [in]    -> source pointer of class nuclearDatabase
   !!
   !! Result:
-  !!   Null is source is not of ceNuclearDatabase class
+  !!   Null if source is not of ceNuclearDatabase class
   !!   Target points to source if source is ceNuclearDatabase class
   !!
   pure function ceNeutronDatabase_CptrCast(source) result(ptr)

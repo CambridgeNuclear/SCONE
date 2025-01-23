@@ -96,7 +96,7 @@ module configSource_inter
     end subroutine sampleEnergy
 
     !!
-    !! Sample particle Energy/Group and angle Angle
+    !! Sample particle Energy/Group and angle
     !!
     !! Sets diraction of a particle together with its energy.
     !! Sampling of energy is optional if Angle & Energy are uncorrelated
