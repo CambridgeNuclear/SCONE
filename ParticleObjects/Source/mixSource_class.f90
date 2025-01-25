@@ -82,7 +82,7 @@ contains
     character(100), parameter :: Here = 'init (mixSource_class.f90)'
 
     ! Get number of sources
-    ! Note that sources have been allocated and initialised in sourceFactory 
+    ! Note that sources have been allocated and initialised in sourceFactory
     N = size(self % sources)
 
     ! Retrieve weights relative to each source and check size
