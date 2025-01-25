@@ -2,7 +2,8 @@ module tabularPdf_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
+  use errors_mod,        only : fatalError
+  use genericProcedures, only : searchError, linearSearchFloor, interpolate, &
                                 isSorted, numToChar
   use endfConstants
 
@@ -12,10 +13,6 @@ module tabularPdf_class
   integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
                                   linLin     = tabPdfLinLin
   real(defReal),parameter      :: TOL = 1.0e-6
-
-  interface linearSearch
-    module procedure linearFloorIdxClosed_Real
-  end interface
 
   !!
   !! Simple probability table for one quantity x
@@ -59,7 +56,7 @@ contains
     real(defReal)                            :: f, delta, ci, pi
     character(100),parameter :: Here='sample (tabularPdf_class.f90)'
 
-    idx = linearSearch(self % cdf,r)
+    idx = linearSearchFloor(self % cdf,r)
     call searchError(idx,Here)
 
     idx = min(idx, size(self % x) - 1)
@@ -129,7 +126,7 @@ contains
     integer(shortInt)                        :: idx
     character(100),parameter :: Here = 'probabilityOf (tabularPdf_class.f90)'
 
-    idx = linearSearch(self % x, x)
+    idx = linearSearchFloor(self % x, x)
     if (idx == valueOutsideArray) then
       prob = ZERO
       return
@@ -181,7 +178,7 @@ contains
     real(defReal)                 :: f
     integer(shortInt)             :: bin
 
-    bin = linearSearch(self % x, x)
+    bin = linearSearchFloor(self % x, x)
     f = self % getInterF_withBin(x, bin)
 
   end function getInterF_withoutBin
