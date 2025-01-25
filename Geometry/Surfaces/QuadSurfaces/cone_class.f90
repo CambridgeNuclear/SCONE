@@ -145,7 +145,9 @@ contains
     end if
 
     if (hMin >= hMax) call fatalError(Here, 'hMin is greater than or equal to hMax.')
-    if (sign(hMin,hMax) /= hMin) call fatalError(Here, 'hMin and hMax have different signs.')
+    if ((sign(hMin,hMax) /= hMin) .and. hMin /= ZERO .and. hMax /= ZERO) then
+      call fatalError(Here, 'hMin and hMax have different signs.')
+    end if
 
     ! Load properties
     self % vertex = vertex
