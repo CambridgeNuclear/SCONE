@@ -44,7 +44,7 @@ module microResponse_class
   !!   The material <matName> must include only one nuclide. The final estimate
   !!   is independent of the nuclide atomic density, which can be any value but zero.
   !!
-  type, public,extends(tallyResponse) :: microResponse
+  type, public, extends(tallyResponse) :: microResponse
     private
     !! Response MT number
     integer(shortInt)        :: MT
@@ -117,16 +117,25 @@ contains
     integer(shortInt), intent(in)       :: MT
     character(100), parameter :: Here = 'build ( microResponse_class.f90)'
 
+    ! Check that the MT number is an available choice
+    if (.not. any(availableMicroMTs) == MT) then
+      call fatalError(Here, 'Not there!')
+    end if
+
     ! Check that MT number is valid and load MT
     select case(MT)
       case(N_TOTAL)
         self % MT = macroTotal
       case(N_N_ELASTIC)
-        self % MT = macroEScatter
+        self % MT = macroEscatter
+      case(N_N_INELASTIC)
+        self % MT = macroIEscatter
       case(N_GAMMA)
         self % MT = macroCapture
       case(N_FISSION)
         self % MT = macroFission
+      case(nubar_tot)
+        self % MT = macroNuFission
       case(N_ABSORPTION)
         self % MT = macroAbsorbtion
       case default

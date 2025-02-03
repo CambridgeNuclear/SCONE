@@ -144,6 +144,9 @@ contains
       case(macroEscatter)
         xs = self % elasticScatter
 
+      case(macroIEscatter)
+        xs = self % inelasticScatter
+
       case(macroFission)
         xs = self % fission
 

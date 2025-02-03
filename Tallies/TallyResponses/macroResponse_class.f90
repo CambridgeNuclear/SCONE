@@ -34,10 +34,11 @@ module macroResponse_class
   !!     MT   <int>;
   !!  }
   !!
-  type, public,extends(tallyResponse) :: macroResponse
+  type, public, extends(tallyResponse) :: macroResponse
     private
     !! Response MT number
     integer(shortInt) :: MT = 0
+    logical(defBool)  :: mainData = .true.
   contains
     ! Superclass Procedures
     procedure  :: init
@@ -87,17 +88,13 @@ contains
     integer(shortInt), intent(in)       :: MT
     character(100), parameter :: Here = 'build ( macroResponse_class.f90)'
 
-    ! Check that MT number is valid
-    select case(MT)
-      case(macroTotal, macroCapture, macroFission, macroNuFission, macroAbsorbtion)
-        ! Do nothing. MT is Valid
+    ! Check that the MT number is an available choice
+    if ((.not. any(availableMacroMTs) == MT) .and. (.not. any(availableMicroMTs) == MT)) then
+      call fatalError(Here, 'Not there!')
+    end if
 
-      case(macroEscatter)
-        call fatalError(Here,'Macroscopic Elastic scattering is not implemented yet')
-
-      case default
-        call fatalError(Here,'Unrecognised MT number: '// numToChar(self % MT))
-    end select
+    ! Check if the MT number is positive or negative
+    if (MT > 0) self % mainData = .false.
 
     ! Load MT
     self % MT = MT
@@ -132,8 +129,13 @@ contains
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
 
-    call mat % getMacroXSs(xss, p)
-    val = xss % get(self % MT)
+    if (self % mainData) then
+      call mat % getMacroXSs(xss, p)
+      val = xss % get(self % MT)
+    else
+      if (p % isMG) return
+      val = mat % getMTxs(p)
+    end if
 
   end function get
 
