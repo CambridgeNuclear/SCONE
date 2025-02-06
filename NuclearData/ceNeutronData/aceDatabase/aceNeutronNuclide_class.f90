@@ -242,23 +242,21 @@ contains
 
     ! Error message if not found
     if (idxMT == 0) then
-      call fatalError(Here, 'Requested MT: '//numToChar(MT)// &
-                             ' is not present in nuclide '//trim(self % ZAID))
+      xs = ZERO
+      return
     end if
 
     ! Obtain bin index and interpolation factor
     if (nuclideCache(self % getNucIdx()) % E_tot == E) then
       idx = nuclideCache(self % getNucIdx()) % idx
       f   = nuclideCache(self % getNucIdx()) % f
-
     else
       call self % search(idx, f, E)
-
     end if
 
     ! Obtain value
     if (idxMT > 0) then
-      idx = idx - self % MTdata(idxMT) % firstIdx
+      idx = idx - self % MTdata(idxMT) % firstIdx + 1
       if (idx < 0) then
         topXS = ZERO
         bottomXS = ZERO

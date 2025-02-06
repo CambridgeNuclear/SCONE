@@ -62,10 +62,8 @@ module endfConstants
                                   N_3Np         = 42  ,&
                                   N_N2p         = 44  ,&
                                   N_Npa         = 45  ,&
-                                  N_Nl1         = 51  ,&
                                  !N_Nl(:) 51-90
                                  !Inelastic scattering from levels 1-40 is defined at the end
-                                  N_Nl40        = 90  ,&
                                   N_Ncont       = 91  ,&
                                   N_DISAP       = 101 ,&
                                   N_GAMMA       = 102 ,&
@@ -115,14 +113,15 @@ module endfConstants
                                   noInteraction   = -901
 
   ! List of all available MT numbers
-  integer(shortInt), dimension(106) :: availableMicroMTs = &
-                                      [1, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, &
-                                       23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35, &
-                                       36, 37, 38, 41, 42, 44, 45, 51, 90, 91, 101, &
-                                       102, 103, 104, 105, 106, 107, 108, 109, 111, &
-                                       112, 113, 114, 115, 116, 117, 452, N_Nl, N_2Nl]
+  integer(shortInt), dimension(*), parameter :: availableMicroMTs = &
+                                      [1, 2, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22,  &
+                                       23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,  &
+                                       36, 37, 38, 41, 42, 44, 45, 91, 101, 102,    &
+                                       103, 104, 105, 106, 107, 108, 109, 111, 112, &
+                                       113, 114, 115, 116, 117, 452, N_Nl, N_2Nl]
 
- integer(shortInt), dimension(7) :: availableMacroMTs = [-1, -2, -3, -4, -6, -7, -21]
+  integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
+                                      [-1, -2, -3, -4, -6, -7, -21]
 
 
 

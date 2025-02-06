@@ -225,6 +225,24 @@ energy provided by the user. The properties of a fission source are:
 * top (*optional*): Upper point determining axis-aligned bounding box where to sample points. If
   provided ``bottom`` must also be provided.
 
+mixSource
+#########
+
+A mixture of sources. Each source is sampled from given its user defined relative weight.
+
+* sources :: list of arbitrary source names
+* weights :: relative weights assigned to each source; they do not need to sum up to 1.
+  Each weight is assigned to a source according to the order they are written in, which
+  should match the corresponding source in the ``sources`` definition. This is followed 
+  by dictionaries that define each source individually.
+
+Hence, an input would look like: ::
+
+      source { type mixSource; sources (src1 src2); weights (2 1);
+      src1 {<Source definition>}
+      src2 {<Source definition>} 
+      }
+
 Transport Operator
 ------------------
 
@@ -1137,8 +1155,9 @@ Example: ::
 
 * macroResponse: used to score macroscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: -1 total, -2 capture,
-    -6 fission, -7 nu*fission, -21 absorption
+  - MT: MT number of the desired reaction. The options are: -1 total, -2 disappearance,
+    -3 elastic scattering, -4 total inelastic scattering, -6 fission, -7 nu*fission, -21 absorption.
+    Additionally, all the MT numbers allowed by microResponse can be used here.
 
 Example: ::
 
@@ -1150,8 +1169,9 @@ Example: ::
 
 * microResponse: used to score microscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: 1 total, 2 elastic
-    scattering, 18 fission, 27 absorption, 102 capture
+  - MT: MT number of the desired reaction. The options are: 1, 2, 4, 5, 11, 16-25, 27-30,
+    32-38, 41, 42, 44, 45, 51-90, 91, 101-109, 111-117, 452, 875-890. These MT numbers
+    are defined in the conventional way, i.e., following the ENDF standard
   - material: material name where to score the reaction. The material must be
     defined to include only one nuclide; its density could be anything, it doesn't
     affect the result

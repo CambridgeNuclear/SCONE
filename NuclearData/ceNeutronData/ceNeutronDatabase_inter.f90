@@ -69,6 +69,8 @@ module ceNeutronDatabase_inter
     procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
     procedure(energyBounds), deferred         :: energyBounds
     procedure(getScattMicroMajXS), deferred   :: getScattMicroMajXS
+    procedure(getMaterialMTxs), deferred      :: getMaterialMTxs
+
   end type ceNeutronDatabase
 
   abstract interface
@@ -274,6 +276,25 @@ module ceNeutronDatabase_inter
       integer(shortInt), intent(in)        :: nucIdx
       real(defReal)                        :: maj
     end function getScattMicroMajXS
+
+    !!
+    !! Retrieves the material cross sections for an MT number
+    !!
+    !! That is, it sums up the contributions of the constituent nuclides for
+    !! that MT number
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   matIdx [in]  -> material index that needs to be updated
+    !!
+    function getMaterialMTxs(self, E, matIdx, MT) result(xs)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: matIdx
+      integer(shortInt), intent(in)        :: MT
+      real(defReal)                        :: xs
+    end function getMaterialMTxs
 
   end interface
 contains

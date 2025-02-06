@@ -27,6 +27,7 @@ module testNeutronMaterial_class
     procedure :: kill
     procedure :: isFissile
     procedure :: getMacroXSs_byP
+    procedure :: getMTxs
 
   end type testNeutronMaterial
 
@@ -68,5 +69,20 @@ contains
    xss = self % xss
 
   end subroutine getMacroXSs_byP
+
+  !!
+  !! Return Macroscopic XS for the material given particle and an MT number
+  !!
+  !! See neutronMaterial_inter for more details
+  !!
+  function getMTxs(self, MT, p) result(xs)
+   class(testNeutronMaterial), intent(in) :: self
+   integer(shortInt), intent(in)          :: MT
+   class(particle), intent(in)            :: p
+   real(defReal)                          :: xs
+
+   xs = ZERO
+
+ end function getMTxs
 
 end module testNeutronMaterial_class

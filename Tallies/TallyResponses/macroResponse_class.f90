@@ -64,7 +64,7 @@ contains
     class(macroResponse), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
     integer(shortInt)                   :: MT
-    character(100), parameter :: Here = 'init ( macroResponse_class.f90)'
+    character(100), parameter :: Here = 'init (macroResponse_class.f90)'
 
     ! Load MT number
     call dict % get(MT, 'MT')
@@ -86,11 +86,11 @@ contains
   subroutine build(self, MT)
     class(macroResponse), intent(inout) :: self
     integer(shortInt), intent(in)       :: MT
-    character(100), parameter :: Here = 'build ( macroResponse_class.f90)'
+    character(100), parameter :: Here = 'build (macroResponse_class.f90)'
 
     ! Check that the MT number is an available choice
-    if ((.not. any(availableMacroMTs) == MT) .and. (.not. any(availableMicroMTs) == MT)) then
-      call fatalError(Here, 'Not there!')
+    if ((.not. any(availableMacroMTs == MT)) .and. (.not. any(availableMicroMTs == MT))) then
+      call fatalError(Here, 'Unrecognised MT number: '// numToChar(MT))
     end if
 
     ! Check if the MT number is positive or negative
@@ -129,12 +129,15 @@ contains
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
 
+    ! Check where to get the xs
     if (self % mainData) then
       call mat % getMacroXSs(xss, p)
       val = xss % get(self % MT)
+
     else
       if (p % isMG) return
-      val = mat % getMTxs(p)
+      val = mat % getMTxs(self % MT, p)
+
     end if
 
   end function get
@@ -146,6 +149,7 @@ contains
     class(macroResponse), intent(inout) :: self
 
     self % MT = 0
+    self % mainData = .true.
 
   end subroutine kill
 
