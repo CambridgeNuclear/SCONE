@@ -114,7 +114,8 @@ geometry {
     thickGrid {type simpleCell; id 55; surfaces (90 -91); filltype mat; material Inconel;}
     thinGrid {type simpleCell; id 56; surfaces (-92 93); filltype mat; material Inconel;}
 
-    pressureVessel { type simpleCell; id 7; surfaces (-1 2); filltype mat; material CarbonSteel;}
+    ! Does not use surface 1 to define it as that bounds the geometry
+    pressureVessel { type simpleCell; id 7; surfaces (2); filltype mat; material CarbonSteel;}
     RPVLiner { type simpleCell; id 8; surfaces (-2 3); filltype mat; material SS304;}
     outerWater1 {type simpleCell; id 9; surfaces (-3 4 ); filltype mat; material Water;}
 
