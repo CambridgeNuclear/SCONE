@@ -11,6 +11,7 @@ module microResponse_class
   ! Nuclear Data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
   use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
+  use ceNeutronMaterial_class,    only : ceNeutronMaterial_TptrCast, ceNeutronMaterial
   use neutronXsPackages_class,    only : neutronMacroXSs
 
   ! Material interface
@@ -129,6 +130,8 @@ contains
         self % MT = macroFission
       case(N_ABSORPTION)
         self % MT = macroAbsorbtion
+      case(N_ENERGYDEPO_ZERO)
+        self % MT = macroEnergyDepoZero
       case default
         call fatalError(Here,'Unrecognised MT number: '// numToChar(MT))
     end select
@@ -148,7 +151,8 @@ contains
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
-    class(neutronMaterial), pointer       :: mat
+    ! class(neutronMaterial), pointer       :: mat
+    class(ceNeutronMaterial), pointer     :: mat
     type(neutronMacroXSs)                 :: xss
     character(100), parameter :: Here = 'get ( microResponse_class.f90)'
 
@@ -159,7 +163,8 @@ contains
     if (p % matIdx() == VOID_MAT) return
 
     ! Get pointer to active material data
-    mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))
+    ! mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))
+    mat => ceNeutronMaterial_TptrCast(xsData % getMaterial(self % matIdx))
 
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
@@ -167,8 +172,21 @@ contains
     ! Get the macroscopic cross section for the material
     call mat % getMacroXSs(xss, p)
 
+    ! Testing ceNeutronMaterial access
+    ! mat => ceNeutronMaterial_TptrCast(xsData % getMaterial(p % matIdx()))
+    ! print *, 'testing print ejw89'
+    ! print *, mat % nuclides(:)
+    ! print *, 'matIdx'
+    ! print *, mat % matIdx
+    ! print *, 'dens'
+    ! print *, mat % dens
+
     ! Normalise the macroscopic cross section with the atomic density
+    ! if (p % matIdx() == self % matIdx) then
     val = xss % get(self % MT) / self % dens
+    ! else 
+    !    val = ZERO
+    ! end if
 
   end function get
 

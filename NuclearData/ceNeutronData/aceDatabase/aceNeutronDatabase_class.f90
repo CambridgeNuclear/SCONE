@@ -509,6 +509,7 @@ contains
         ! energies given the temperature difference between material temperature and
         ! temperature of the nuclides' base cross sections
         call self % updateRelEnMacroXSs(E, matIdx, rand)
+        ! ejw89 Sort useTMS part
 
       else
 
