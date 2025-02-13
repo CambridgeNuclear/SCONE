@@ -64,17 +64,19 @@ contains
   !! Build testNeutronDatabase from the individual XSs Values
   !!
   !! Args:
-  !!   xsVal [in]       -> Default Value of all XSs
-  !!   eScatterXS [in]  -> Optional. Value of Elastic Scatter XS
-  !!   ieScatterXS [in] -> Oprional. Value of Inelastic Scatter XS
-  !!   captureXS [in]   -> Optional. Value of Capture XS
-  !!   fissionXS [in]   -> Optional. Value of Fission XS
-  !!   nuFissionXS [in] -> Optional Value of nuFission
+  !!   xsVal [in]           -> Default Value of all XSs
+  !!   eScatterXS [in]      -> Optional. Value of Elastic Scatter XS
+  !!   ieScatterXS [in]     -> Oprional. Value of Inelastic Scatter XS
+  !!   captureXS [in]       -> Optional. Value of Capture XS
+  !!   fissionXS [in]       -> Optional. Value of Fission XS
+  !!   nuFissionXS [in]     -> Optional Value of nuFission
+  !!   energyDepoZeroXS [in]  -> Optional value for mode 0 energy deposition: 
+  !!                           Fission XS * Qfiss * H(U235)/U(235)
   !!
   !! Errors:
   !!   None
   !!
-  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS)
+  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS, energyDepoZeroXS)
     class(testNeutroNDatabase), intent(inout) :: self
     real(defReal), intent(in)                 :: xsVal
     real(defReal), intent(in),optional        :: eScatterXS
@@ -82,6 +84,7 @@ contains
     real(defReal), intent(in),optional        :: captureXS
     real(defReal), intent(in),optional        :: fissionXS
     real(defReal), intent(in),optional        :: nuFissionXS
+    real(defReal), intent(in),optional        :: energyDepoZeroXS
 
     self % xsVal = xsVal
 
@@ -124,6 +127,13 @@ contains
       self % mat % xss % nuFission = nuFissionXS
     else
       self % mat % xss % nuFission = xsVal
+    end if
+
+    ! Energy Deposition Mode Zero
+    if(present(energyDepoZeroXS)) then
+      self % mat % xss % energyDepoZero = energyDepoZeroXS
+    else
+      self % mat % xss % energyDepoZero = ZERO
     end if
 
   end subroutine build

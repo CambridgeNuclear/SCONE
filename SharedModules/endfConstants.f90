@@ -87,7 +87,9 @@ module endfConstants
                                   N_N_ThermEL     = 1002 ,&
                                   N_N_ThermINEL   = 1004 ,&
                                   ! SCONE's fake MT for particle splitting event
-                                  N_N_SPLIT       = 1005
+                                  N_N_SPLIT       = 1005 ,&
+                                  ! SCONE's fake MT for energy deposition
+                                  N_ENERGYDEPO_ZERO = 1100
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
   integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
@@ -110,6 +112,8 @@ module endfConstants
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
                                   macroAbsorbtion = -21 ,&
                                   noInteraction   = -901
+  ! List of Macro Energy Deposition numbers for different energy deposition modes. Unique to SCONE
+  integer(shortInt), parameter :: macroEnergyDepoZero = -1100
 
 
 
