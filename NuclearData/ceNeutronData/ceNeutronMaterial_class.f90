@@ -156,11 +156,6 @@ contains
     ! Load values
     self % dens     = dens
     self % nuclides = nucIdxs
-    ! ejw89
-    print *, "setting nucIdxs"
-    print *, nucIdxs
-    print *, "setting nuclides"
-    print *, self % nuclides
 
   end subroutine setComposition
 

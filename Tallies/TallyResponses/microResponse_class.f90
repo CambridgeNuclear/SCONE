@@ -11,7 +11,6 @@ module microResponse_class
   ! Nuclear Data interfaces
   use nuclearDatabase_inter,      only : nuclearDatabase
   use neutronMaterial_inter,      only : neutronMaterial, neutronMaterial_CptrCast
-  use ceNeutronMaterial_class,    only : ceNeutronMaterial_TptrCast, ceNeutronMaterial
   use neutronXsPackages_class,    only : neutronMacroXSs
 
   ! Material interface
@@ -151,20 +150,22 @@ contains
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
-    ! class(neutronMaterial), pointer       :: mat
-    class(ceNeutronMaterial), pointer     :: mat
+    class(neutronMaterial), pointer       :: mat
     type(neutronMacroXSs)                 :: xss
-    character(100), parameter :: Here = 'get ( microResponse_class.f90)'
+    character(100), parameter :: Here = 'get (microResponse_class.f90)'
 
     val = ZERO
 
     ! Return zero if particle is not neutron or if the particle is in void
     if (p % type /= P_NEUTRON) return
     if (p % matIdx() == VOID_MAT) return
+    if ((self % MT == macroEnergyDepoZero) .and. (p % isMG .eqv. .true.)) then
+      call fatalError(Here,'Selected tally does not work with MG')
+    end if
+
 
     ! Get pointer to active material data
-    ! mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))
-    mat => ceNeutronMaterial_TptrCast(xsData % getMaterial(self % matIdx))
+    mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))
 
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
@@ -172,21 +173,9 @@ contains
     ! Get the macroscopic cross section for the material
     call mat % getMacroXSs(xss, p)
 
-    ! Testing ceNeutronMaterial access
-    ! mat => ceNeutronMaterial_TptrCast(xsData % getMaterial(p % matIdx()))
-    ! print *, 'testing print ejw89'
-    ! print *, mat % nuclides(:)
-    ! print *, 'matIdx'
-    ! print *, mat % matIdx
-    ! print *, 'dens'
-    ! print *, mat % dens
 
     ! Normalise the macroscopic cross section with the atomic density
-    ! if (p % matIdx() == self % matIdx) then
     val = xss % get(self % MT) / self % dens
-    ! else 
-    !    val = ZERO
-    ! end if
 
   end function get
 

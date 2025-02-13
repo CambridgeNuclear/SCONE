@@ -562,10 +562,6 @@ contains
     idx = self % getMTidx(MT)
 
     Q = self % MTdata(idx) % Q
-    
-    ! ejw89 temporary debug printing
-    call self % print()
-    ! ejw89 end of temp
 
   end function QforMT
 

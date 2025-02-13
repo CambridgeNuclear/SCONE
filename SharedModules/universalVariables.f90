@@ -80,8 +80,8 @@ module universalVariables
   real(defReal), parameter :: neutronMass = 939.56542194_defReal,  & ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
                               kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
-                              energyPerFission = 202.27_defReal,    &   ! MeV
-                              energyDepositionPerFission = 202.27_defReal ! MeV depo ejw89
+                              energyPerFission = 200.0_defReal,    &   ! MeV
+                              energyDepoZeroScale = 1.04583_defReal ! Ratio of Energy Depos per Fiss in LWR, and Qfiss for U235
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J

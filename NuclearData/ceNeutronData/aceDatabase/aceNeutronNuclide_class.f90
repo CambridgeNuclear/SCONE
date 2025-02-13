@@ -134,8 +134,8 @@ module aceNeutronNuclide_class
     real(defReal), dimension(2) :: SabInel = ZERO
     type(thermalData), dimension(:), allocatable :: thData
 
-    ! Energy Deposition
-    real(defReal)               :: Qfiss = ZERO ! ejw89
+    ! Energy Deposition for fission
+    real(defReal)               :: Qfiss = ZERO
 
   contains
     ! Superclass Interface
@@ -445,7 +445,7 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
+        xss % energyDepoZero = (xss % fission) * energyDepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
@@ -494,7 +494,7 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
+        xss % energyDepoZero = (xss % fission) * energyDepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
@@ -568,7 +568,7 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % energyDepoZero = (xss % fission) * energyPerFission * self % Qfiss
+        xss % energyDepoZero = (xss % fission) * energydepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
@@ -746,7 +746,6 @@ contains
     ! Load ACE ZAID
     self % ZAID = ACE % ZAID
 
-
     ! Read key data into the superclass
     call self % set( fissile  = ACE % isFissile(), &
                      mass     = ACE % AW,          &
@@ -790,8 +789,6 @@ contains
         bottom = N
         K = ACE % numXSPointsFiss()
         self % mainData(FISSION_XS, N:N+K-1) = ACE % xsFiss()
-
-
 
       else
         ! FIS block is missing, so MT=18 is unavaliable

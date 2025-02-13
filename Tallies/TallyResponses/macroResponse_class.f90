@@ -119,12 +119,16 @@ contains
     real(defReal)                         :: val
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
+    character(100), parameter :: Here = 'get (macroResponse_class.f90)'        
 
     val = ZERO
 
     ! Return zero if particle is not neutron or if the particle is in void
     if (p % type /= P_NEUTRON) return
     if (p % matIdx() == VOID_MAT) return
+    if ((self % MT == macroEnergyDepoZero) .and. (p % isMG .eqv. .true.)) then
+      call fatalError(Here,'Selected tally does not work with MG')
+    end if
 
     ! Get pointer to active material data
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))

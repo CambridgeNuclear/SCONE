@@ -22,7 +22,7 @@ module neutronXsPackages_class
   !!   capture          -> sum of all reactions without secendary neutrons excluding fission [1/cm]
   !!   fission          -> total Fission MT=18 Cross-section [1/cm]
   !!   nuFission        -> total average neutron production Cross-section [1/cm]
-  !!   energyDepoZero   -> energy deposition, for mode zero. ejw89
+  !!   energyDepoZero   -> energy deposition, for mode zero.  [MeV/cm]
   !!
   !!  Interface:
   !!    clean -> Set all XSs to 0.0
@@ -56,7 +56,7 @@ module neutronXsPackages_class
   !!   capture          -> all reactions without secendary neutrons excluding fission [barn]
   !!   fission          -> total Fission MT=18 Cross-section [barn]
   !!   nuFission        -> total average neutron production Cross-section [barn]
-  !!   energyDepoZero   -> Energy Deposition using mode 0
+  !!   energyDepoZero   -> energy deposition, for mode zero. xss % fission * Qfiss * scalefactor [MeV*barn]
   !!
   type, public :: neutronMicroXSs
     real(defReal) :: total            = ZERO
@@ -119,7 +119,7 @@ contains
     self % capture          = self % capture          + dens * micro % capture
     self % fission          = self % fission          + dens * micro % fission
     self % nuFission        = self % nuFission        + dens * micro % nuFission
-    self % energyDepoZero   = self % energyDepoZero   + dens * micro % energyDepoZero ! ejw89
+    self % energyDepoZero   = self % energyDepoZero   + dens * micro % energyDepoZero
 
   end subroutine add_neutronMacroXSs
 
@@ -233,7 +233,7 @@ contains
   !!
   !! Use a real r in <0;1> to sample reaction from Microscopic XSs
   !!
-  !! This function involves a bit of code so is written for conviniance
+  !! This function involves a bit of code so is written for convenience
   !!
   !! Args:
   !!   r [in] -> Real number in <0;1>
