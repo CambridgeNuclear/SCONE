@@ -347,7 +347,7 @@ contains
     character(100), parameter :: Here = 'search (aceNeutronNuclide_class.f90)'
 
     idx = binarySearch(self % eGrid, E)
-    if(idx <= 0) then
+    if (idx <= 0) then
       call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
                            ' for nuclide '// trim(self % ZAID))
     end if
@@ -846,6 +846,13 @@ contains
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
       self % MTdata(i) % xs       = ACE % xsMT(MT)
+
+      !!!!!!!!!!!!! DIRTY PERTURBATION TRICK !!!!!!!!!!!!!!!!
+      if (MT == 16 .and. nucIdx == 95) then
+        print*,'-10% modification!!!!'
+        self % MTdata(i) % xs = ZERO !self % MTdata(i) % xs * 0.9_defReal
+      end if
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       allocate(neutronScatter :: self % MTdata(i) % kinematics)
       call self % MTdata(i) % kinematics % init(ACE, MT)
