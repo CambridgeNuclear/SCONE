@@ -233,7 +233,7 @@ contains
       ! Set new cell's position. Use half distance across cell
       ! to try and avoid FP error
       if (.not. arrays % found(cIdx)) then
-        call arrays % newFound(cIdx, r % rGlobal() + length * HALF * r % dirGlobal())
+        call arrays % newFound(cIdx, r % rGlobal() - length * HALF * r % dirGlobal())
       end if
 
       lenFlt = real(length,defFlt)
