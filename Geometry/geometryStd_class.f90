@@ -233,7 +233,7 @@ contains
       ! Place back in geometry
       call self % placeCoord(coords)
 
-    else ! Crosses to diffrent local cell
+    else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV

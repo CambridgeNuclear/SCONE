@@ -10,6 +10,9 @@ module cellUniverse_class
   use cell_inter,         only : cell
   use cellShelf_class,    only : cellShelf
   use universe_inter,     only : universe, kill_super => kill
+  use omp_lib,            only : omp_test_lock, omp_unset_lock, &
+                                 omp_init_lock, omp_destroy_lock, &
+                                 omp_lock_kind
   implicit none
   private
 
@@ -22,6 +25,8 @@ module cellUniverse_class
   !!
   type, private :: localCell
     integer(shortInt)    :: idx = 0
+    integer(longInt)     :: visits = 0
+    integer(shortInt), dimension(:), allocatable :: neighb
     class(cell), pointer :: ptr => null()
   end type localCell
 
@@ -53,6 +58,9 @@ module cellUniverse_class
   !!
   type, public, extends(universe) :: cellUniverse
     type(localCell), dimension(:), allocatable :: cells
+#ifdef _OPENMP
+    integer(kind=omp_lock_kind), dimension(:), allocatable :: cellLocks
+#endif
   contains
     ! Superclass procedures
     procedure :: init
@@ -107,6 +115,14 @@ contains
     end do
     fill(N+1) = UNDEF_MAT
 
+    ! Create OMP locks for the cells
+#ifdef _OPENMP
+    allocate(self % cellLocks(N))
+    do i = 1, N
+      call OMP_init_lock(self % cellLocks)
+    end do
+#endif
+
   end subroutine init
 
   !!
@@ -114,17 +130,44 @@ contains
   !!
   !! See universe_inter for details.
   !!
-  subroutine findCell(self, localID, cellIdx, r, u)
+  subroutine findCell(self, localID, cellIdx, r, u, initID, newNeighb)
     class(cellUniverse), intent(inout)      :: self
     integer(shortInt), intent(out)          :: localID
     integer(shortInt), intent(out)          :: cellIdx
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
+    logical(defReal), intent(out), optional :: newNeighb
+    integer(shortInt)                       :: initID, i
+
+    newNeighb = .true.
+
+    ! Search neighbours if starting cell is given
+    if (present(initID)) then
+            
+      if ((initID > 0) .and. allocated(self % cells(initID) % neighb)) then
+        do i = 1, size(self % cells(initID) % neighb)
+        
+          localID = self % cells(initID) % neighb(i)
+        
+          if (self % cells(localID) % ptr % inside(r, u)) then
+            cellIdx = self % cells(localID) % idx
+            newNeighb = .false.
+            !$omp atomic
+            self % cells(localID) % visits = self % cells(localID) % visits + 1
+            return
+
+          end if
+
+        end do
+      end if
+    end if
 
     ! Search all cells
     do localID = 1, size(self % cells)
       if (self % cells(localID) % ptr % inside(r, u)) then
         cellIdx = self % cells(localID) % idx
+        !$omp atomic
+        self % cells(localID) % visits = self % cells(localID) % visits + 1
         return
 
       end if
@@ -175,6 +218,11 @@ contains
     class(cellUniverse), intent(inout) :: self
     type(coord), intent(inout)         :: coords
     integer(shortInt), intent(in)      :: surfIdx
+    integer(shortInt)                  :: local0
+    logical(defBool)                   :: lockSet
+
+    ! Keep initial cell ID to add to neighbour lists
+    local0 = coords % localID
 
     ! NUDGE position slightly forward to escape surface tolerance
     ! and avoid calculating normal and extra dot-products
@@ -185,9 +233,71 @@ contains
     call self % findCell(coords % localID, &
                          coords % cellIdx, &
                          coords % r,       &
-                         coords % dir)
+                         coords % dir,     &
+                         initID = local0,  &
+                         newNeighb = newNeighb)
+
+    ! Add to neighbour list
+    if (newNeighb) then
+      lockSet = .true.
+
+#ifdef _OPENMP
+      lockSet = OMP_test_lock(self % cellLocks(local0))
+#endif
+      if (lockSet) then
+         call self % addNeighbour(local0, coords % localID)
+#ifdef _OPENMP
+         call OMP_unset_lock(self % cellLocks(local0))
+#endif
+      end if
+
+#ifdef _OPENMP
+      lockSet = OMP_test_lock(self % cellLocks(coords % localID))
+#endif
+      if (lockSet) then
+         call self % addNeighbour(coords % localID, local0)
+#ifdef _OPENMP
+         call OMP_unset_lock(self % cellLocks(coords % localID))
+#endif
+      end if
+
+    end if
 
   end subroutine cross
+
+  !!
+  !! Add one cell to another's neighbour list
+  !!
+  subroutine addNeighbour(self, id1, id2)
+    class(cellUniverse), intent(inout)           :: self
+    integer(shortInt), intent(in)                :: id1
+    integer(shortInt), intent(in)                :: id2
+    integer(shortInt)                            :: sz
+    integer(shortInt), dimension(:), allocatable :: temp
+
+    associate(neighb => self % cells(id1) % neighb)
+    
+      ! Size list
+      sz = size(neighb)
+
+      ! Handle case where array is not allocated
+      if (sz1 == 0) then
+        allocate(neighb)
+        neighb(1) = id2
+      else
+      
+        ! Ensure neighbour isn't already present
+        if (any(neighb == id2)) return
+        
+        temp = neighb
+        deallocate(neighb)
+        allocate(neighb(sz + 1))
+        neighb(sz + 1) = temp
+      end if
+
+    end associate
+
+  end subroutine addNeighbour
 
   !!
   !! Return offset for the current cell
@@ -215,6 +325,9 @@ contains
 
     ! Local
     if(allocated(self % cells)) deallocate(self % cells)
+#ifdef _OPENMP
+    if(allocated(self % cellLocks)) deallocate(self % cellLocks)
+#endif
 
   end subroutine kill
 
