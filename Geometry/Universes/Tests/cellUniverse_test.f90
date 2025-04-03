@@ -13,7 +13,7 @@ module cellUniverse_test
   use funit
 
   implicit none
-
+  
   ! Parameters
   character(*), parameter :: SURF_DEF = &
   " surf1 { id 1; type sphere; origin (0.0 0.0 0.0); radius 2;}&
@@ -160,7 +160,6 @@ contains
     @assertEqual([ZERO, ZERO,  ONE], new % rotMat(1,:), TOL)
     @assertEqual([ZERO, -ONE, ZERO], new % rotMat(2,:), TOL)
     @assertEqual([ONE , ZERO, ZERO], new % rotMat(3,:), TOL)
-
 
   end subroutine test_enter
 
