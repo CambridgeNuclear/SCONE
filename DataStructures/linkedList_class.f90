@@ -58,7 +58,7 @@ module linkedList_class
 contains
 
   !!
-  !! Add entry at the end of linked list
+  !! Add entry at the end of linked list.
   !!
   !! Enclosed in a critical statement to prevent corruption.
   !!

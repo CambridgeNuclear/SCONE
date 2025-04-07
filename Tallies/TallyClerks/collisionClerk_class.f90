@@ -36,6 +36,7 @@ module collisionClerk_class
   !!   map      -> Space to store tally Map
   !!   response -> Array of responses
   !!   width    -> Number of responses (# of result bins for each map position)
+  !!   handleVirtual -> score on virtual collisions (due to TMS or delta tracking)
   !!
   !! Interface
   !!   tallyClerk Interface
@@ -44,6 +45,7 @@ module collisionClerk_class
   !!
   !! myCollisionClerk {
   !!   type collisionClerk;
+  !!   # handleVirtual 1; #
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
   !!   response (resName1 #resName2 ... #)

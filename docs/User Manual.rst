@@ -616,13 +616,17 @@ Similarly to the surfaces and cells, the **universes** in the geometry can be de
 Several ``universeTypes`` are possible:
 
 * cellUniverse, composed of the union of different cells. Note that overlaps are
-  forbidden, but there is no check to find overlaps
+  forbidden, but there is no check to find overlaps by default. This can be enabled
+  at the cost of slower particle transport.
 
   - cells: array containing the ``cellIds`` as used in the cell definition
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin
     of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - checkOverlap (*optional*, default = 0): enables checking for overlaps between cells, useful
+    for debugging and plotting. However, this slows down particle transport by making exhaustive
+    cell searches mandatory.
 
 .. note::
    When creating a ``cellUniverse`` a user needs to take care to avoid leaving
@@ -632,7 +636,7 @@ Several ``universeTypes`` are possible:
 
 Example: ::
 
-      uni3 { id 3; type cellUniverse; cells (1 2 55); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); }
+      uni3 {id 3; type cellUniverse; cells (1 7); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); checkOverlap 0;}
 
 * pinUniverse, composed of infinite co-centred cylinders
 
@@ -740,6 +744,9 @@ Example: ::
    SCONE can be run to visualise geometry without actually doing transport, by
    including ``--plot`` when running the application. In this case the visualiser
    has to be included in the file.
+   Certain special materials use particular colours during plotting. Void regions
+   are plotted in black. Regions outside the geometry are plotted in white.
+   Undefined regions are plotted in light green. Overlap regions are plotted in red.
 
 Nuclear Data
 ------------

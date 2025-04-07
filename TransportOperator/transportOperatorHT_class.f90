@@ -100,24 +100,30 @@ contains
       ! Move particle in the geometry
       call self % geom % teleport(p % coords, distance)
 
-      ! If particle has leaked exit
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % fate = LEAK_FATE
-        p % isDead = .true.
-        return
-      end if
+      select case(p % matIdx())
 
-      ! Check for void
-      if (p % matIdx() == VOID_MAT) then
-        call tally % reportInColl(p, .true.)
-        cycle DTLoop
-      end if
+        ! If particle has leaked exit
+        case(OUTSIDE_FILL)
+          p % fate = LEAK_FATE
+          p % isDead = .true.
+          return
 
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
-      end if
+        ! Check for void
+        case(VOID_MAT)
+          call tally % reportInColl(p, .true.)
+          cycle DTLoop
+
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+        case(OVERLAP_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+
+        case default
+
+      end select
 
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
@@ -150,19 +156,28 @@ contains
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
+      
+      ! Obtain the local cross-section, depending on the material
+      select case(p % matIdx())
+        case(VOID_MAT)
+          dist = INFINITY
 
-      ! Obtain the local cross-section
-      if (p % matIdx() == VOID_MAT) then
-        dist = INFINITY
+        case(UNDEF_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+      
+        case(OVERLAP_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
 
-      else
-        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-        dist = -log( p % pRNG % get()) / sigmaT
+        case default
+          sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
+          dist = -log( p % pRNG % get()) / sigmaT
 
-        ! Should never happen! Catches NaN distances
-        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+          ! Should never happen! Catches NaN distances
+          if (dist /= dist) call fatalError(Here, "Distance is NaN")
 
-      end if
+      end select
 
       ! Save state before movement
       call p % savePrePath()
@@ -172,18 +187,25 @@ contains
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
+      
+      select case(p % matIdx())
+      
+        ! Kill particle if it has leaked
+        case(OUTSIDE_FILL)
+          p % isDead = .true.
+          p % fate = LEAK_FATE
 
-      ! Kill particle if it has leaked
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % isDead = .true.
-        p % fate = LEAK_FATE
-      end if
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+        case(OVERLAP_MAT)
+          print *, p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+      
+        case default
 
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
-      end if
+      end select
 
       ! Return if particle stoped at collision (not cell boundary)
       if (event == COLL_EV .or. p % isDead) exit STLoop
