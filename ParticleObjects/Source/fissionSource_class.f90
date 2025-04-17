@@ -2,7 +2,7 @@ module fissionSource_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,      only : OUTSIDE_MAT, VOID_MAT
+  use universalVariables,      only : OUTSIDE_MAT, VOID_MAT, UNDEF_MAT, OVERLAP_MAT
   use genericProcedures,       only : rotateVector, numToChar
   use errors_mod,              only : fatalError
   use dictionary_class,        only : dictionary
@@ -187,6 +187,15 @@ contains
 
       ! Reject if there is no material
       if (matIdx == VOID_MAT .or. matIdx == OUTSIDE_MAT) cycle rejection
+
+      ! Terminate if there is an error in the geometry
+      if (matIdx == UNDEF_MAT) then
+        print *, r
+        call fatalError(Here, 'Particle position was sampled in an undefined material')
+      elseif (matIdx == OVERLAP_MAT) then
+        print *, r
+        call fatalError(Here, 'Particle position was sampled in an overlapping cell region')
+      end if
 
       mat => neutronMaterial_CptrCast(nucData % getMaterial(matIdx))
       if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")

@@ -147,7 +147,7 @@ contains
     print *, "R: ", self % r
     print *, "U: ", self % dir
     print *, "UniIdx: ", numToChar(self % uniIDx), " LocalID: ", numToChar(self % localID), &
-             "UniRootId", numToChar(self % uniRootID)
+             " UniRootId: ", numToChar(self % uniRootID)
 
   end subroutine display_coord
 

@@ -40,7 +40,7 @@ module rayVolPhysicsPackage_class
   !!
   !! Rays travel by a random, exponentially distributed distance with a user-defined mean free
   !! path. After each segment, the ray scatters isotropically. At each scattering event
-  !! ray mat be terminated with provided probability `abs_prob`. Ray will also be killed
+  !! ray may be terminated with provided probability `abs_prob`. Ray will also be killed
   !! if it has reached the OUTSIDE material.
   !!
   !! Simulation can be performed in the ROBUST mode, which is intended to be used for debugging.
@@ -59,7 +59,7 @@ module rayVolPhysicsPackage_class
   !!     pop 2000;      // Number of rays per cycle
   !!     cycles 100;    // Number of cycles
   !!     robust 1;      // 1 for true; 0 for false; Enable robust mode
-  !!     cache  1;      // 1 for treu; 0 for false; Enable distance caching
+  !!     cache  1;      // 1 for true; 0 for false; Enable distance caching
   !!     #seed 86868;#  // Optional RNG seed
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition. Requires material names only>}
@@ -270,7 +270,7 @@ contains
 
           i = i + 1
           if (i > 1000) then
-            call fatalError(Here, 'Infinate loop when searching ray start in the geometry.')
+            call fatalError(Here, 'Infinite loop when searching ray start in the geometry.')
           end if
         end do rejection
 

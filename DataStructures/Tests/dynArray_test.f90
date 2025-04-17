@@ -22,7 +22,7 @@ contains
     @assertEqual(0, array % capacity(), 'Capacity of unallocated array')
     @assertTrue(array % isEmpty(),'isEmpty on unallocated array')
 
-    ! Make shure no SEG ERR happens
+    ! Make sure no SEG ERR happens
     call array % shrink()
 
   end subroutine testUnallocatedInt
@@ -40,7 +40,7 @@ contains
     @assertEqual(0, array % getSize(),'Size of empty array')
     @assertTrue(array % isEmpty(),'isEmpty on empty array')
 
-    ! Make shure no SEG ERR happens
+    ! Make sure no SEG ERR happens
     call array % shrink()
     @assertEqual(0, array % capacity(),'Capacity of shrunk empty array')
 
@@ -101,7 +101,7 @@ contains
       @assertEqual(2*i, array % pop())
     end do
 
-   ! Test building by emelent and vector
+   ! Test building by element and vector
    call array % add(1)
    call array % add([8,3])
 

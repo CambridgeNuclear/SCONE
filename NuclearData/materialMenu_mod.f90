@@ -22,7 +22,7 @@
 module materialMenu_mod
 
   use numPrecision
-  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT, UNDEF_MAT
+  use universalVariables, only : NOT_FOUND, VOID_MAT, OUTSIDE_MAT, UNDEF_MAT, OVERLAP_MAT
   use genericProcedures,  only : fatalError, charToInt, numToChar
   use colours_func,       only : rgb24bit
   use intMap_class,       only : intMap
@@ -131,6 +131,7 @@ module materialMenu_mod
   integer(shortInt), parameter :: COL_OUTSIDE = int(z'ffffff', shortInt)
   integer(shortInt), parameter :: COL_VOID    = int(z'000000', shortInt)
   integer(shortInt), parameter :: COL_UNDEF   = int(z'00ff00', shortInt)
+  integer(shortInt), parameter :: COL_OVERLAP = int(z'ff0000', shortInt)
 
 
   !! MODULE COMPONENTS
@@ -183,11 +184,14 @@ contains
     call nameMap % add(temp, VOID_MAT)
     temp = 'outside'
     call nameMap % add(temp, OUTSIDE_MAT)
+    temp = 'overlap'
+    call nameMap % add(temp, OVERLAP_MAT)
 
     !! Load colours for the special materials
     call colourMap % add(VOID_MAT, COL_VOID)
     call colourMap % add(OUTSIDE_MAT, COL_OUTSIDE)
     call colourMap % add(UNDEF_MAT, COL_UNDEF)
+    call colourMap % add(OVERLAP_MAT, COL_OVERLAP)
 
   end subroutine init
 

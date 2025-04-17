@@ -114,7 +114,8 @@ geometry {
     thickGrid {type simpleCell; id 55; surfaces (90 -91); filltype mat; material Inconel;}
     thinGrid {type simpleCell; id 56; surfaces (-92 93); filltype mat; material Inconel;}
 
-    pressureVessel { type simpleCell; id 7; surfaces (-1 2); filltype mat; material CarbonSteel;}
+    ! Does not use surface 1 to define it as that bounds the geometry
+    pressureVessel { type simpleCell; id 7; surfaces (2); filltype mat; material CarbonSteel;}
     RPVLiner { type simpleCell; id 8; surfaces (-2 3); filltype mat; material SS304;}
     outerWater1 {type simpleCell; id 9; surfaces (-3 4 ); filltype mat; material Water;}
 
@@ -122,15 +123,25 @@ geometry {
     NS2{ type simpleCell; id 11; surfaces (-4 5 8 -9); filltype mat; material SS304;}
     NS3{ type simpleCell; id 12; surfaces (-4 5 -10 11); filltype mat; material SS304;}
     NS4{ type simpleCell; id 13; surfaces (-4 5 10 -11); filltype mat; material SS304;}
-    outerWaterSeg1 {type simpleCell; id 14; surfaces (-4 5  ); filltype mat; material Water;}
+    
+    // Water in the radial sliver between neutron shields and core
+    waterSliver1 {type simpleCell; id 14; surfaces (6 -5 -8 9); filltype mat; material Water;}
+    waterSliver2 {type simpleCell; id 15; surfaces (6 -5 8 -9); filltype mat; material Water;}
+    waterSliver3 {type simpleCell; id 16; surfaces (6 -5 -10 11); filltype mat; material Water;}
+    waterSliver4 {type simpleCell; id 17; surfaces (6 -5 10 -11); filltype mat; material Water;}
+    
+    // Water in the arc between neutron shields
+    outerWaterSeg1 {type simpleCell; id 18; surfaces (-4 6 8 11); filltype mat; material Water;}
+    outerWaterSeg2 {type simpleCell; id 19; surfaces (-4 6 -8 -11); filltype mat; material Water;}
+    outerWaterSeg3 {type simpleCell; id 20; surfaces (-4 6 -9 10); filltype mat; material Water;}
+    outerWaterSeg4 {type simpleCell; id 21; surfaces (-4 6 9 -10); filltype mat; material Water;}
 
-    outerWater2 {type simpleCell; id 15; surfaces (-5 6 ); filltype mat; material Water;}
-
-    coreBarrel { type simpleCell; id 16; surfaces (-6 7); filltype mat; material SS304;}
-
+    // Outer core
+    coreBarrel { type simpleCell; id 22; surfaces (-6 7); filltype mat; material SS304;}
+    
     ! Choose whether to include a grid by commenting/uncommenting
-    !coreWithGrid {type simpleCell; id 17; surfaces (-5); filltype uni; universe 9999;}
-    coreWithoutGrid {type simpleCell; id 17; surfaces (-5); filltype uni; universe 10000;}
+    !coreWithGrid {type simpleCell; id 23; surfaces (-7); filltype uni; universe 9999;}
+    coreWithoutGrid {type simpleCell; id 23; surfaces (-7); filltype uni; universe 10000;}
 
 
     grid1 {type simpleCell; id 124; surfaces (-90); filltype uni; universe 24;}
@@ -1238,7 +1249,7 @@ geometry {
       coreAndStructures {
       id 8888;
       type cellUniverse;  
-      cells (7 8 9 10 11 12 13 14 15 16 17);}
+      cells (7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23);}
 
 
 
