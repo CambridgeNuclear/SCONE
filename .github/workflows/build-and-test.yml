@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         compiler: [gfortran10, gfortran11, gfortran12]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:${{matrix.compiler}}_pfu4
     steps:
@@ -25,7 +25,7 @@ jobs:
           ctest --output-on-faliure
           cd -
   build-and-test-debug:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
     steps:
@@ -39,7 +39,7 @@ jobs:
           ctest --output-on-faliure
           cd -
   build-and-test-no-openmp:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
     steps:
