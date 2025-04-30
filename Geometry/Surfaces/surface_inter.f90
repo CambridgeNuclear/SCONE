@@ -42,6 +42,7 @@ module surface_inter
   !!   evaluate    -> Return remainder of the surface equation c = F(r)
   !!   distance    -> Return distance to the surface
   !!   going       -> Determine to which halfspace particle is currently going
+  !!   normal      -> Return the normal of the surface on which the particle is sat
   !!   explicitBC  -> Apply explicit BCs
   !!   transformBC -> Apply transform BCs
   !!
@@ -67,6 +68,7 @@ module surface_inter
     procedure(evaluate), deferred :: evaluate
     procedure(distance), deferred :: distance
     procedure(going), deferred    :: going
+    procedure(normal), deferred   :: normal
     procedure                     :: explicitBC
     procedure                     :: transformBC
   end type surface
@@ -104,7 +106,7 @@ module surface_inter
     !! Return axis-aligned bounding box
     !!
     !! Note:
-    !!   If bounding box is infinate in any axis its smalles value is -INF and highest INF
+    !!   If bounding box is infinite in any axis its smallest value is -INF and highest INF
     !!
     !! Args:
     !!   None
@@ -180,6 +182,25 @@ module surface_inter
       real(defReal), dimension(3), intent(in) :: u
       logical(defBool)                        :: halfspace
     end function going
+    
+    !!
+    !! Return normal to the surface at the given point
+    !!
+    !! Args:
+    !!  r [in] -> Position of the particle
+    !!  u [in] -> DIrection of the particle. Assume norm2(u) = 1.0
+    !!
+    !! Result:
+    !!   Normal vector at the point, normalised
+    !!   in +ve direction, returns INF
+    !!
+    pure function normal(self, r, u) result(n)
+      import :: surface, defReal
+      class(surface), intent(in)              :: self
+      real(defReal), dimension(3), intent(in) :: r
+      real(defReal), dimension(3), intent(in) :: u
+      real(defReal), dimension(3)             :: n
+    end function normal
   end interface
 
 contains

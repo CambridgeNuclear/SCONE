@@ -192,6 +192,25 @@ contains
 
   end subroutine test_cellOffset
 
+  !!
+  !! Test getting normal
+  !!
+@Test
+  subroutine test_normal()
+    type(coord)                 :: pos
+    integer(shortInt)           :: idx
+    real(defReal), dimension(3) :: n
+
+    ! Cross into outside
+    pos % r = [2.0_defReal, 0.0_defReal, 0.0_defReal]
+    pos % dir = [ONE, ZERO, ZERO]
+
+    idx = surfs % getIdx(1)
+
+    n = uni % getNormal(idx, pos)
+    @assertEqual([1, 0, 0], n)
+
+  end subroutine test_normal
 
 
 end module rootUniverse_test

@@ -4,7 +4,7 @@ module plane_test
   use universalVariables, only : SURF_TOL, VACUUM_BC, REFLECTIVE_BC, INF
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
-  use plane_class,       only : plane
+  use plane_class,        only : plane
   use funit
 
   implicit none
@@ -179,5 +179,25 @@ contains
     @assertEqual(INF, surf % distance(r, u2))
 
   end subroutine testDistance
+  
+  !!
+  !! Test producing the normal vector
+  !!
+@Test
+  subroutine testNormal()
+    real(defReal), dimension(3) :: n
+    real(defReal), dimension(3) :: r, u
+    real(defReal), parameter    :: TOL = 1.0E-7
+
+    r = [99.92, -6.0, 4.0]
+    u = [100, 200, 400]
+
+    n = surf % normal(r, u)
+
+    @assertEqual(ONE/sqrt(3.0), n(1), TOL)
+    @assertEqual(ONE/sqrt(3.0), n(2), TOL)
+    @assertEqual(ONE/sqrt(3.0), n(3), TOL)
+
+  end subroutine testNormal
 
 end module plane_test

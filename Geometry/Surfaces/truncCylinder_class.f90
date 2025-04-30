@@ -9,6 +9,8 @@ module truncCylinder_class
   implicit none
   private
 
+  real(defReal), parameter :: EDGE_TOL = 1.0E-6
+  
   !!
   !! Finite length cylinder aligned with one of the co-ord axis (x,y or z)
   !!
@@ -62,6 +64,7 @@ module truncCylinder_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
@@ -226,7 +229,7 @@ contains
     a = ONE - u(ax)**2
     delta = k*k - a*c1  ! Technically delta/4
 
-    ! Find closes & furthest distance
+    ! Find closest & furthest distance
     if (delta <= ZERO .or. a == ZERO) then ! No intersection
       far = INF
       near = sign(INF, c1) ! If ray is parallel inside the cylinder it must be fully contained
@@ -338,6 +341,49 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Produces the normal for the truncated cylinder. Makes sure to check edges.
+  !! Does so by checking each cardinal direction and comparing.
+  !!
+  pure function normal(self, r, u) result(n)
+    class(truncCylinder), intent(in)        :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(2)             :: rp
+    integer(shortInt), dimension(2)         :: p
+    real(defReal)                           :: dCirc0, dCirc, dCyl
+    integer(shortInt)                       :: a
+    
+    n = ZERO
+    
+    ! Get plane and axis indexes into shorter variables (for clarity)
+    p = self % plane
+    a = self % axis
+
+    ! Check distances to see whether intersecting the circle or cylinder or both
+    ! Cylinder distance
+    rp = r(p) - self % origin(p)
+    dCyl = sum(rp**2) - self % r * self % r
+
+    ! Circle distance
+    dCirc0 = r(a) - self % origin(a)
+    dCirc = abs(dCirc0) - self % a
+
+    ! Check for overlap
+    if (abs(dCyl - dCirc) < EDGE_TOL) then
+      n(p) = rp / norm2(rp)
+      n(a) = sign(ONE, dCirc0)
+    elseif (abs(dCyl) < abs(dCirc)) then
+      n(p) = rp
+    else
+      n(a) = sign(ONE, dCirc0)
+    end if
+
+    n = n / norm2(n)
+
+  end function normal
 
   !!
   !! Return to uninitialised state

@@ -81,6 +81,7 @@ module universe_inter
     procedure(distance), deferred   :: distance
     procedure(cross), deferred      :: cross
     procedure(cellOffset), deferred :: cellOffset
+    procedure(getNormal), deferred  :: getNormal
   end type universe
 
   abstract interface
@@ -208,6 +209,25 @@ module universe_inter
       type(coord), intent(in)     :: coords
       real(defReal), dimension(3) :: offset
     end function cellOffset
+    
+    !!
+    !! Return normal for the given surfIdx at a given point
+    !!
+    !! Args:
+    !!   surfIdx [in] -> Idx of surface being crossed
+    !!   coords [in]  -> Coordinates placed in the universe (after transformations and with
+    !!     local ID set).
+    !!
+    !! Result:
+    !!   Surface normal (3D position vector).
+    !!
+    function getNormal(self, surfIdx, coords) result (normal)
+      import :: universe, shortInt, coord, defReal
+      class(universe), intent(in)   :: self
+      integer(shortInt), intent(in) :: surfIdx
+      type(coord), intent(in)       :: coords
+      real(defReal), dimension(3)   :: normal
+    end function getNormal
 
   end interface
 

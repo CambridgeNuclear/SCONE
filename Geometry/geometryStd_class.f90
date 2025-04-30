@@ -60,6 +60,7 @@ module geometryStd_class
     procedure :: move_noCache
     procedure :: move_withCache
     procedure :: moveGlobal
+    procedure :: moveNoBC
     procedure :: teleport
     procedure :: activeMats
 
@@ -356,6 +357,95 @@ contains
     call self % placeCoord(coords)
 
   end subroutine moveGlobal
+  
+  !!
+  !! Given coordinates placed in the geometry move point through the geometry.
+  !! Does not apply boundary conditions. Also provides normal of struck surfaces.
+  !! Used for ray plotting.
+  !!
+  !! See geometry_inter for details
+  !!
+  subroutine moveNoBC(self, coords, maxDist, event, n)
+    class(geometryStd), intent(in)           :: self
+    type(coordList), intent(inout)           :: coords
+    real(defReal), intent(inout)             :: maxDist
+    integer(shortInt), intent(out)           :: event
+    real(defReal), dimension(3), intent(out) :: n
+    integer(shortInt)                        :: surfIdx, level
+    real(defReal)                            :: dist
+    class(surface), pointer                  :: surf
+    class(universe), pointer                 :: uni
+    type(coordList)                          :: coordsTemp
+    character(100), parameter :: Here = 'moveNoBC (geometryStd_class.f90)'
+
+    n = ZERO
+
+    ! Find distance to the next surface
+    call self % closestDist(dist, surfIdx, level, coords)
+
+    ! Moves within cell
+    ! Note: no normal should be produced since there is no
+    !       collision with a surface
+    if (maxDist <= dist .or. level == 0) then
+      
+      if (level > 1) then
+        call coords % moveLocal(maxDist, coords % nesting)
+      
+      ! Catch in case moving through the outside region
+      else
+        call coords % moveGlobal(dist)
+        
+        ! Place back in geometry
+        call self % placeCoord(coords)
+      end if
+      maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
+      event = COLL_EV
+
+    else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
+      ! Move global to the boundary
+      call coords % moveGlobal(dist)
+      event = BOUNDARY_EV
+      maxDist = dist
+
+      ! Place back in geometry
+      call self % placeCoord(coords)
+
+      ! Produce normal at domain boundary
+      surf => self % geom % surfs % getPtr(self % geom % borderIdx)
+      n = surf % normal(coords % lvl(1) % r, coords % lvl(1) % dir)
+    
+    else ! Crosses to different local cell
+      ! Move to boundary at hit level
+      call coords % moveLocal(dist, level)
+      event = CROSS_EV
+      maxDist = dist
+
+      ! Get universe and cross to the next cell
+      uni => self % geom % unis % getPtr_fast(coords % lvl(level) % uniIdx)
+      call uni % cross(coords % lvl(level), surfIdx)
+
+      ! Get material
+      call self % diveToMat(coords, level)
+
+      ! Obtain surface normal in the local reference frame
+      ! If surfIdx is positive, this is an actual surface
+      if (surfIdx > 0) then
+        surf => self % geom % surfs % getPtr(surfIdx)
+        n = surf % normal(coords % lvl(level) % r, coords % lvl(level) % dir)
+      
+      ! If negative, this is an implied surface from a structured universe, e.g., lattice
+      else
+        n = uni % getNormal(surfIdx, coords % lvl(level))
+      end if
+        
+      ! Rotate normal to the top universe reference frame
+      coordsTemp = coords
+      call coordsTemp % assignDirectionLevel(n, level)
+      n = coordsTemp % lvl(1) % dir
+
+    end if
+
+  end subroutine moveNoBC
 
   !!
   !! Move a particle in the top level without stopping

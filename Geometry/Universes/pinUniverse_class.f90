@@ -58,6 +58,7 @@ module pinUniverse_class
     procedure :: distance
     procedure :: cross
     procedure :: cellOffset
+    procedure :: getNormal
   end type pinUniverse
 
 contains
@@ -234,8 +235,8 @@ contains
   !!
   subroutine cross(self, coords, surfIdx)
     class(pinUniverse), intent(inout) :: self
-    type(coord), intent(inout)         :: coords
-    integer(shortInt), intent(in)      :: surfIdx
+    type(coord), intent(inout)        :: coords
+    integer(shortInt), intent(in)     :: surfIdx
     character(100), parameter :: Here = 'cross (pinUniverse_class.f90)'
 
     if (surfIdx == MOVING_IN) then
@@ -265,6 +266,38 @@ contains
     offset = ZERO
 
   end function cellOffset
+  
+  !!
+  !! Return normal for the given surfIdx at a given point
+  !!
+  !! See universe_inter for details.
+  !!
+  function getNormal(self, surfIdx, coords) result (normal)
+    class(pinUniverse), intent(in) :: self
+    integer(shortInt), intent(in)  :: surfIdx
+    type(coord), intent(in)        :: coords
+    real(defReal), dimension(3)    :: normal
+    integer(shortInt)               :: cIdx
+    character(100), parameter :: Here = 'getNormal (pinUniverse_class.f90)'
+
+    ! Local ID and surfIdx should be sufficient to identify which annulus
+    ! is being crossed and therefore which normal to produce
+    cIdx = coords % localID
+
+    if (surfIdx == MOVING_IN) then
+      cIdx = cIdx
+    elseif (surfIdx == MOVING_OUT) then
+      cIdx = cIdx - 1
+    else
+      call fatalError(Here, 'Unrecognised surfIdx: '//numToChar(surfIdx))
+    end if
+
+    if (cIdx > size(self % annuli) .or. cIdx < 1) call fatalError(Here,&
+            'Invalid cIdx requested: '// numToChar(cIdx))
+
+    normal = self % annuli(cIdx) % normal(coords % r, coords % dir)   
+
+  end function getNormal
 
   !!
   !! Return to uninitialised state

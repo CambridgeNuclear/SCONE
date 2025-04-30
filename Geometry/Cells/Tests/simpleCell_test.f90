@@ -129,5 +129,32 @@ contains
     @assertEqual(idx_ref, idx)
 
   end subroutine test_distance
+  
+  !!
+  !! Test getting a normal
+  !!
+@Test
+  subroutine test_normal()
+    real(defReal), dimension(3) :: r, u
+    integer(shortInt)           :: idx
+    real(defReal), dimension(3) :: n
+
+    ! Y-Plane normal
+    r = [0.3_defReal, 0.4_defReal, 0.0_defReal]
+    u = [-ONE, ZERO, ZERO]
+    idx = surfs % getIdx(99)
+
+    n = cell % getNormal(idx, r, u)
+    @assertEqual([0, 1, 0], n)
+    
+    ! Sphere normal
+    r = [0.0_defReal, 0.0_defReal, -2.0_defReal]
+    u = [-ONE, ZERO, ZERO]
+    idx = surfs % getIdx(13)
+
+    n = cell % getNormal(idx, r, u)
+    @assertEqual([0, 0, -1], n)
+
+  end subroutine test_normal
 
 end module simpleCell_test

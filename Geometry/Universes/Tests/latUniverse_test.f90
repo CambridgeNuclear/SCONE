@@ -9,7 +9,7 @@ module latUniverse_test
   use coord_class,        only : coord
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
-  use latUniverse_class,  only : latUniverse
+  use latUniverse_class
   use funit
 
   implicit none
@@ -420,6 +420,43 @@ contains
     @assertEqual(ref, uni2 % cellOffset(pos), TOL)
 
   end subroutine test_cellOffset
+
+  !!
+  !! Test getting a normal
+  !!
+@Test
+  subroutine test_normal()
+    type(coord)       :: pos
+    real(defReal), dimension(3) :: n
+
+    ! Get normals at each edge
+    pos % r = [-1.0_defReal, 0.0_defReal, -0.5_defReal]
+    pos % dir = [-ONE, ONE, -ONE]
+    pos % dir = pos % dir / norm2(pos % dir)
+
+    n = uni1 % getNormal(X_MIN, pos)
+    @assertEqual([-1, 0, 0], n)
+    
+    n = uni1 % getNormal(X_MAX, pos)
+    @assertEqual([1, 0, 0], n)
+    
+    n = uni1 % getNormal(Y_MIN, pos)
+    @assertEqual([0, -1, 0], n)
+
+    n = uni1 % getNormal(Y_MAX, pos)
+    @assertEqual([0, 1, 0], n)
+
+    n = uni1 % getNormal(Z_MIN, pos)
+    @assertEqual([0, 0, -1], n)
+
+    n = uni1 % getNormal(Z_MAX, pos)
+    @assertEqual([0, 0, 1], n)
+    
+    pos % r = [3.0_defReal, 0.0_defReal, 0.0_defReal]
+    n = uni1 % getNormal(OUTLINE_SURF, pos)
+    @assertEqual([1, 0, 0], n)
+
+  end subroutine test_normal
 
 
 end module latUniverse_test
