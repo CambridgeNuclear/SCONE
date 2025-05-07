@@ -81,6 +81,11 @@ module endfConstants
                                   N_pd          = 115 ,&
                                   N_pt          = 116 ,&
                                   N_da          = 117 ,&
+                                  N_Xp          = 203 ,&
+                                  N_Xd          = 204 ,&
+                                  N_Xt          = 205 ,&
+                                  N_X3He        = 206 ,&
+                                  N_Xa          = 207 ,&
                                   nubar_tot     = 452 ,&
                                   nubar_del     = 455 ,&
                                   nubar_prompt  = 456 ,&
@@ -118,7 +123,8 @@ module endfConstants
                                        23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,  &
                                        36, 37, 38, 41, 42, 44, 45, 91, 101, 102,    &
                                        103, 104, 105, 106, 107, 108, 109, 111, 112, &
-                                       113, 114, 115, 116, 117, 452, N_Nl, N_2Nl]
+                                       113, 114, 115, 116, 117, 203, 204, 205, 206, &
+                                       207, 452, N_Nl, N_2Nl]
 
   integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
                                       [-1, -2, -3, -4, -6, -7, -21]
