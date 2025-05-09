@@ -567,7 +567,6 @@ contains
         value = self % entries(idx) % int0_alloc
 
       case default
-        print *, self % address // keyword
         call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
                               keyword // ' is not an integer')
 
