@@ -134,6 +134,9 @@ module aceNeutronNuclide_class
     real(defReal), dimension(2) :: SabInel = ZERO
     type(thermalData), dimension(:), allocatable :: thData
 
+    ! Energy Deposition for fission
+    real(defReal)               :: Qfiss = ZERO
+
   contains
     ! Superclass Interface
     procedure :: invertInelastic
@@ -442,9 +445,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energyDepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
     end associate
 
@@ -489,9 +494,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energyDepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
@@ -561,9 +568,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % energyDepoZero = (xss % fission) * energydepoZeroScale * self % Qfiss
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % energyDepoZero = ZERO
       end if
 
       ! Check if flag for multiplication factor (IFF) is true, and apply it to elastic scattering,
@@ -769,6 +778,9 @@ contains
     ! Load Fission XS data
     ! Set 'bottom' variable to the start index of fission data
     if (self % isFissile()) then
+
+      ! Load Qfission value
+      self % Qfiss = ACE % QforMT(N_FISSION)
 
       if (ACE % hasFIS()) then
         ! Generic fission reaction MT=18 is provided

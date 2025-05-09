@@ -19,6 +19,7 @@ module microResponse_test
     type(microResponse)        :: response_capture
     type(microResponse)        :: response_fission
     type(microResponse)        :: response_absorbtion
+    type(microResponse)        :: response_energyDepoZero 
     type(testNeutronDatabase)  :: xsData
   contains
     procedure :: setUp
@@ -37,8 +38,8 @@ contains
 
     ! Allocate and initialise test nuclearData
 
-    ! Cross-sections:         Total        eScatering   IeScatter  Capture     Fission       nuFission
-    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal)
+    ! Cross-sections:         Total        eScatering   IeScatter  Capture     Fission       nuFission    Energy Deposition 
+    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal, 9.0_defReal)
 
     ! Set dictionaries to initialise material
     call dictMat1 % init(1)
@@ -96,6 +97,14 @@ contains
     call this % response_absorbtion % init(tempDict)
     call tempDict % kill()
 
+    ! Energy Deposition Mode Zero
+    call tempDict % init(3)
+    call tempDict % store('type', 'microResponse')
+    call tempDict % store('MT', N_ENERGYDEPO_ZERO)
+    call tempDict % store('material', 'Xenon')
+    call this % response_energyDepoZero % init(tempDict)
+    call tempDict % kill()
+
   end subroutine setUp
 
   !!
@@ -123,6 +132,7 @@ contains
     real(defReal), parameter :: TOL = 1.0E-9
 
     p % type = P_NEUTRON
+    p % isMG = .false.
 
     ! Test response values
     @assertEqual(3.0_defReal, this % response_total % get(p, this % xsData), TOL)
@@ -130,6 +140,7 @@ contains
     @assertEqual(0.5_defReal, this % response_fission % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_eScatter % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_absorbtion % get(p, this % xsData), TOL)
+    @assertEqual(4.5_defReal, this % response_energyDepoZero % get(p, this % xsData), TOL)
 
   end subroutine testGettingResponse
 
