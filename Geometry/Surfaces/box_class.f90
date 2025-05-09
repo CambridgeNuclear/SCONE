@@ -9,6 +9,8 @@ module box_class
   implicit none
   private
 
+  real(defReal), parameter :: EDGE_TOL = 1.0E-6
+
   !!
   !! Axis Aligned Box
   !!
@@ -48,6 +50,7 @@ module box_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
@@ -155,12 +158,12 @@ contains
   !!      Otherwise either near or far will be the closest distance depending on whether
   !!      the particle is in or outside the box
   !!
-  !! NOTE: The algorithim as implemented may have some problems in the corners. If particle
+  !! NOTE: The algorithm as implemented may have some problems in the corners. If particle
   !!  is EXACTLY (to the bit) in the corner, or it goes through corner while being PERFECTLY
   !!  (again to the bit) in one of the planes
   !!
   !!  The reason for this is that a ray contained EXACTLY in one of the boundary planes
-  !!  may be assigned with an empty section (instead of infinate length).
+  !!  may be assigned with an empty section (instead of infinite length).
   !!
   pure function distance(self, r, u) result(d)
     class(box), intent(in)              :: self
@@ -241,13 +244,13 @@ contains
   !! Works by:
   !!  1) Determine a plane in which direction is the closest
   !!  2) Use normal for this plane and project distance
-  !!  3) Determinie halfspace based on sign of the projection
+  !!  3) Determine halfspace based on sign of the projection
   !!
   !! Note:
-  !!   For parallel direction halfspace is asigned by the sign of `evaluate` result.
+  !!   For parallel direction halfspace is assigned by the sign of `evaluate` result.
   !!
   pure function going(self, r, u) result(halfspace)
-    class(box), intent(in)              :: self
+    class(box), intent(in)                  :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
@@ -273,6 +276,47 @@ contains
     end if
 
   end function going
+
+  !!
+  !! Produces the normal for the box. Makes sure to check edges and corners.
+  !! Does so by checking each cardinal direction and comparing.
+  !!
+  pure function normal(self, r, u) result(n)
+    class(box), intent(in)              :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(3)             :: rl, rAbs
+    real(defReal)                           :: maxDist
+    integer(shortInt)                       :: i
+
+    rl = r - self % origin
+    rAbs = abs(rl) - self % halfwidth
+
+    ! Check each dimension, with a tolerance to detect corners/edges
+    n = ZERO
+    maxDist = ZERO
+
+    do i = 1, 3
+
+      ! Intersecting an edge/corner
+      if (abs(rAbs(i) - maxDist) < EDGE_TOL) then
+        n(i) = sign(ONE, rl(i))
+
+      ! Intersecting a regular plane
+      elseif (rAbs(i) > maxDist) then
+        maxDist = rAbs(i)
+        n = ZERO
+        n(i) = sign(ONE, rl(i))
+      end if
+
+    end do
+    
+    ! Normalise
+    n = n / norm2(n)
+
+  end function normal
+
 
   !!
   !! Return to uninitialised state
@@ -396,6 +440,8 @@ contains
 
     ! Calculate halfwidth reduced by the surface_tolerance
     ! Necessary to capture particles at the boundary
+    ! SHOULD THE SURFTOL BE RELATIVE? MIGHT RISK LOSING PARTICLES IN SMALL GEOMETRIES IF NOT
+    !a_bar = self % halfwidth *(ONE - self % surfTol())
     a_bar = self % halfwidth - self % surfTol()
 
     ! Calculate distance (in # of transformations) in each direction

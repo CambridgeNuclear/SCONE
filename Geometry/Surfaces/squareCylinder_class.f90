@@ -9,6 +9,8 @@ module squareCylinder_class
   implicit none
   private
 
+  real(defReal), parameter :: EDGE_TOL = 1.0E-6
+  
   !!
   !! Square cylinder aligned with x,y or z axis
   !!
@@ -64,6 +66,7 @@ module squareCylinder_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
@@ -288,7 +291,7 @@ contains
   !! Works by:
   !!  1) Determine a plane in which direction is the closest
   !!  2) Use normal for this plane and project distance
-  !!  3) Determinie halfspace based on sign of the projection
+  !!  3) Determine halfspace based on sign of the projection
   !!
   !! Note:
   !!   For parallel direction halfspace is asigned by the sign of `evaluate` result.
@@ -312,7 +315,7 @@ contains
 
     ! Projection of direction on the normal
     proj = ul(maxCom) * sign(ONE, rl(maxCom))
-
+    
     halfspace = proj > ZERO
 
     ! Parallel direction
@@ -322,6 +325,43 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Produces the normal for the square cylinder. Makes sure to check edges.
+  !! Does so by checking each cardinal direction and comparing.
+  !!
+  pure function normal(self, r, u) result(n)
+    class(squareCylinder), intent(in)       :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(2)             :: rl, rAbs
+    integer(shortInt), dimension(2)         :: p
+    integer(shortInt)                       :: i
+
+    p = self % plane
+
+    rl = r(self % plane) - self % origin
+    rAbs = abs(rl) - self % halfwidth
+
+    ! Check each dimension, with a tolerance to detect edges
+    n = ZERO
+
+    ! Intersecting an edge
+    if (abs(rAbs(1) - rAbs(2)) < EDGE_TOL) then
+      n(p(1)) = sign(ONE, rl(1))
+      n(p(2)) = sign(ONE, rl(2))
+
+    ! Intersecting a plane
+    else
+      i = maxloc(rAbs,1)
+      n(p(i)) = sign(ONE, rl(i))
+    end if
+
+    ! Normalise
+    n = n / norm2(n)
+
+  end function normal
 
   !!
   !! Return to uninitialised state
@@ -458,7 +498,7 @@ contains
     Ri = ceiling(abs(r(self % plane) - self % origin) / a_bar) / 2
 
     ! Loop over directions & number of transformations
-    ! Becouse of the mix of 2D and 3D vectors to get right component use:
+    ! Because of the mix of 2D and 3D vectors to get right component use:
     !   i -> for 2D vectors
     !   ax -> for 3D vectors (r & u)
     axis : do i = 1, 2

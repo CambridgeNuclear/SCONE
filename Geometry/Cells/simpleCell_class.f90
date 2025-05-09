@@ -39,6 +39,7 @@ module simpleCell_class
     procedure :: init
     procedure :: inside
     procedure :: distance
+    procedure :: getNormal
     procedure :: kill
   end type simpleCell
 
@@ -138,6 +139,35 @@ contains
     end do
 
   end subroutine distance
+  
+  !!
+  !! Return normal of surfIdx at given co-ordinate
+  !!
+  !! See cell_inter for details
+  !!
+  function getNormal(self, surfIdx, r, u) result(normal)
+    class(simpleCell), intent(in)           :: self
+    integer(shortInt), intent(in)           :: surfIdx
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: normal
+    integer(shortInt)                       :: i
+    character(100), parameter :: Here = 'getNormal (simpleCell_class.f90)'
+
+    ! To avoid compiler warnings
+    normal = ZERO
+
+    do i = 1, size(self % surfaces)
+      if (abs(self % surfaces(i) % surfIdx) == surfIdx) then
+        normal = self % surfaces(i) % ptr % normal(r, u)
+        return
+      end if
+    end do
+
+    ! Matching surface wasn't found
+    call fatalError(Here,'Provided surfIdx is not a member of the cell: '//numToChar(surfIdx))
+
+  end function getNormal
 
   !!
   !! Return to uninitialised state

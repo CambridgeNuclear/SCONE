@@ -2,7 +2,7 @@ module cylinder_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, numToChar, dotProduct
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
@@ -55,6 +55,7 @@ module cylinder_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
 
     ! Local procedures
@@ -275,7 +276,7 @@ contains
   !! See surface_inter for details
   !!
   pure function going(self, r, u) result(halfspace)
-    class(cylinder), intent(in)              :: self
+    class(cylinder), intent(in)             :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
@@ -287,6 +288,26 @@ contains
     halfspace = dot_product(rp , up ) >= ZERO
 
   end function going
+  
+  !!
+  !! Return the normal corresponding to the cylinder rim
+  !!
+  pure function normal(self, r, u) result(n)
+    class(cylinder), intent(in)             :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    integer(shortInt), dimension(2)         :: p
+
+    n = ZERO
+
+    ! Define for short-hand
+    p = self % plane
+
+    n(p) = r(p) - self % origin(p)
+    n = n / norm2(n)
+
+  end function normal
 
   !!
   !! Return to uninitialised state

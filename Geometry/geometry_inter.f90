@@ -1,7 +1,7 @@
 module geometry_inter
 
   use numPrecision
-  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST
+  use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, HARDCODED_MAX_NEST, INFINITY, COLL_EV
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
   use charMap_class,      only : charMap
@@ -41,12 +41,15 @@ module geometry_inter
     procedure(move_noCache), deferred    :: move_noCache
     procedure(move_withCache), deferred  :: move_withCache
     procedure(moveGlobal), deferred      :: moveGlobal
+    procedure(moveNoBC), deferred        :: moveNoBC
     procedure(teleport), deferred        :: teleport
     procedure(activeMats), deferred      :: activeMats
 
     ! Common procedures
     procedure :: slicePlot
-    procedure :: voxelplot
+    procedure :: voxelPlot
+    procedure :: rayPlot
+    procedure :: phongTrace
   end type geometry
 
   abstract interface
@@ -224,6 +227,41 @@ module geometry_inter
       real(defReal), intent(inout)   :: maxDist
       integer(shortInt), intent(out) :: event
     end subroutine moveGlobal
+
+    !!
+    !! Given coordinates placed in the geometry move point through the geometry
+    !!
+    !! Move by up to maxDis stopping at domain boundary or until matIdx or uniqueID changes
+    !! When particle hits boundary, boundary conditions are NOT applied before returning.
+    !! Also supplies the normal of the surface struck. Normal is not defined if a surface is
+    !! not struck, i.e., event is not either BOUNDARY_EV or CROSS_EV
+    !!
+    !! Following events can be returned:
+    !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
+    !!   BOUNDARY_EV  -> Particle hit domain boundary
+    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
+    !!
+    !! Args:
+    !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
+    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
+    !!     moved by.
+    !!   event [out] -> Event flag that specifies what finished the movement.
+    !!   n [out]     -> Normal vector of the surface struck at the end of the movement
+    !!
+    !! Errors:
+    !!   If coords is not placed in the geometry behaviour is unspecified
+    !!   If maxDist < 0.0 behaviour is unspecified
+    !!
+    subroutine moveNoBC(self, coords, maxDist, event, n)
+      import :: geometry, coordList, defReal, shortInt
+      class(geometry), intent(in)              :: self
+      type(coordList), intent(inout)           :: coords
+      real(defReal), intent(inout)             :: maxDist
+      integer(shortInt), intent(out)           :: event
+      real(defReal), dimension(3), intent(out) :: n
+    end subroutine moveNoBC
 
     !!
     !! Move a particle in the top level without stopping
@@ -425,5 +463,146 @@ contains
 
   end subroutine voxelPlot
 
+  !!
+  !! Generates images by ray tracing using Phong's approximation, as described in
+  !! Gavin Ridley's SNA 2024 paper.
+  !!
+  subroutine rayPlot(self, brightness, matIDs, camera, light, M, mats, fov, diffuse)
+    class(geometry), intent(in)                       :: self
+    real(defReal), dimension(:,:), intent(inout)      :: brightness
+    integer(shortInt), dimension(:,:), intent(inout)  :: matIDs
+    real(defReal), dimension(3), intent(in)           :: camera
+    real(defReal), dimension(3), intent(in)           :: light
+    real(defReal), dimension(3,3), intent(in)         :: M
+    integer(shortInt), dimension(:), intent(in)       :: mats
+    real(defReal), intent(in)                         :: fov
+    real(defReal), intent(in)                         :: diffuse
+    integer(shortInt)                                 :: iv, nh, nv
+    integer(shortInt), save                           :: ih, matIdx
+    real(defReal), save                               :: bright
+    real(defReal)                                     :: focalDist, dx, dy
+    real(defReal), dimension(3), save                 :: vec
+    type(coordlist), save                             :: ray
+    !$omp threadprivate(vec, ih, ray, matIdx, bright)
+
+    ! The results is apparently insensitive to this value, as recommended by Ridley
+    focalDist = 10
+
+    nh = size(brightness, 1)
+    nv = size(brightness, 2)
+    dx = 2 * focalDist * tan(HALF * fov)
+    dy = real(nv, defReal) * dx / nh
+
+    ! Loop over vertical pixels
+    !$omp parallel do
+    do iv = 1, nv
+      do ih = 1, nh
+
+        vec = [focalDist, -dx * HALF + dx * real((ih - 1), defReal) / nh, -dy * HALF + dy * real((iv - 1), defReal) / nv]
+        vec = vec / norm2(vec)
+
+        ! Place the ray in the right position and direction
+        call ray % init(camera, matmul(M,vec))
+
+        ! Get local material and its illumination
+        call self % phongTrace(ray, matIdx, bright, mats, diffuse, light)
+        matIDs(ih, iv) = matIdx
+        brightness(ih, iv) = bright
+
+      end do
+    end do
+    !$omp end parallel do
+
+
+  end subroutine rayPlot
+
+  !!
+  !! Procedure for tracing from a camera until an opaque object is hit. 
+  !! Then calculates the luminous contribution from a light source.
+  !!
+  subroutine phongTrace(self, ray, matIdx, bright, mats, diffuse, light)
+    class(geometry), intent(in)                 :: self
+    type(coordlist), intent(inout)              :: ray
+    integer(shortInt), intent(out)              :: matIdx
+    real(defReal), intent(out)                  :: bright
+    integer(shortInt), dimension(:), intent(in) :: mats
+    real(defReal), intent(in)                   :: diffuse
+    real(defReal), dimension(3), intent(in)     :: light
+    logical(defBool)                            :: lightTrace
+    real(defReal)                               :: dist, dotP, dNudge
+    integer(shortInt)                           :: event, matIdx0
+    real(defReal), dimension(3)                 :: dir, normal0, normal
+
+    lightTrace = .true.
+
+    call self % placeCoord(ray)
+
+    matIdx = ray % matIdx
+
+    ! Trace until an opaque material is hit
+    do while (any(mats == matIdx))
+
+      dist = INFINITY
+      call self % moveNoBC(ray, dist, event, normal0)
+
+      matIdx = ray % matIdx
+
+      ! If distance is infinite or particle collided, not pointing towards anything.
+      ! Hence, short circuit the trace
+      if ((dist == INFINITY) .or. (event == COLL_EV)) then
+        lightTrace = .false.
+        exit
+      end if
+
+    end do
+
+    bright = ZERO
+
+    ! Trace to light source to calculate brightness at the struck point
+    if (lightTrace) then
+
+      ! Make sure normal is oriented correctly
+      dotP = dot_product(ray % lvl(1) % dir, normal0)
+      if (dotP > ZERO) normal0 = -normal0
+      
+      ! Flip ray and nudge it backwards to get it out of the opaque material
+      ! This nudge may cause problems! Any better solutions?
+      dNudge = 1.0E-7
+      call ray % assignDirection(-ray % lvl(1) % dir)
+      call self % moveNoBC(ray, dNudge, event, normal)
+
+      ! Reorient ray towards light
+      dir = light - ray % lvl(1) % r
+      dir = dir / norm2(dir)
+      call ray % assignDirection(dir)
+      call self % placeCoord(ray)
+      
+      ! Compute product betwen normal and light direction
+      dotP = max(dot_product(normal0, dir), ZERO)
+
+      ! Does the ray fly directly to the light?
+      matIdx0 = ray % matIdx
+      do while (any(mats == matIdx0))
+      
+        ! Find maximum flight distance
+        dist = norm2(ray % lvl(1) % r - light)
+        call self % moveNoBC(ray, dist, event, normal)
+        
+        matIdx0 = ray % matIdx
+
+        ! The ray flew straight to the light
+        if (event == COLL_EV) then
+          bright = (ONE - diffuse) * dotP
+          exit
+        end if
+      
+      end do
+
+      ! Add diffuse/ambient contribution
+      bright = bright + diffuse
+   
+    end if
+
+  end subroutine phongTrace
 
 end module geometry_inter

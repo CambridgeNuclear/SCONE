@@ -48,12 +48,13 @@ module cell_inter
     private
     integer(shortInt) :: cellId = 0
   contains
-    procedure(init), deferred     :: init
-    procedure(inside), deferred   :: inside
-    procedure(distance), deferred :: distance
-    procedure, non_overridable    :: setId
-    procedure, non_overridable    :: id
-    procedure                     :: kill
+    procedure(init), deferred      :: init
+    procedure(inside), deferred    :: inside
+    procedure(distance), deferred  :: distance
+    procedure(getNormal), deferred :: getNormal
+    procedure, non_overridable     :: setId
+    procedure, non_overridable     :: id
+    procedure                      :: kill
   end type cell
 
   abstract interface
@@ -117,6 +118,31 @@ module cell_inter
       real(defReal), dimension(3), intent(in) :: r
       real(defReal), dimension(3), intent(in) :: u
     end subroutine distance
+    
+    !!
+    !! Return normal of provided surface at provided point
+    !!
+    !! Args:
+    !!   surfIdx [in] -> Index of the surface to be crossed. If the surface is not defined on
+    !!     the surface shelf its value should be -ve.
+    !!   r [in]        -> Position
+    !!   u [in]        -> normalised direction (norm2(u) = 1.0)
+    !!
+    !! Output:
+    !!   normal -> outward normal from the given surface
+    !!
+    !! Errors:
+    !!   Throw a fatal error if the surfIdx is not a part of the cell
+    !!
+    function getNormal(self, surfIdx, r, u) result(normal)
+      import :: cell, defReal, shortInt
+      class(cell), intent(in)                 :: self
+      integer(shortInt), intent(in)           :: surfIdx
+      real(defReal), dimension(3), intent(in) :: r
+      real(defReal), dimension(3), intent(in) :: u
+      real(defReal), dimension(3)             :: normal
+
+    end function getNormal
 
   end interface
 

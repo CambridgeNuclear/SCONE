@@ -131,7 +131,7 @@ contains
     u = [ZERO, -ONE, ZERO]
     call coords % init(r, u)
 
-    ! Collosion movement
+    ! Collision movement
     maxDist = 1.0_defReal
     call geom % moveGlobal(coords, maxDist, event)
 
@@ -161,7 +161,7 @@ contains
     @assertEqual(idx, coords % matIdx)
     @assertEqual(0.26_defReal, maxDist, TOL)
 
-    !*** Normal Movment (easy case)
+    !*** Normal Movement (easy case)
     r = [-0.63_defReal, -0.63_defReal, 0.0_defReal]
     u = [ZERO, -ONE, ZERO]
     call coords % init(r, u)
