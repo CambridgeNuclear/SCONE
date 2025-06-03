@@ -121,6 +121,10 @@ module dictionary_class
     character(nameLen),dimension(:),allocatable  :: keywords
     type(dictContent),dimension(:), allocatable  :: entries
 
+    ! Meta data
+    ! TODO: public is bad! Get a getter!
+    character(:), allocatable, public :: address
+
     ! Dictionary state information
     integer(shortInt)                            :: maxSize = 0         ! Maximum size of a dictionary
     integer(shortInt)                            :: dictLen = 0         ! Current size of the dictionary
@@ -137,6 +141,8 @@ module dictionary_class
     procedure  :: isPresent
     procedure  :: getSize
     procedure  :: getDictPtr
+    procedure  :: updateAddress
+    procedure  :: errorMsgPrefix
     procedure  :: length => length_dictionary
 
     generic    :: get => getReal_new,&
@@ -307,6 +313,9 @@ contains
     allocate(self % keywords(maxSize))
     allocate(self % entries(maxSize))
 
+    ! Set initial address
+    self % address = "/"
+
     ! Keywords can (perhaps?) allocate with some garbage inside. Make sure all entries are blank.
     self % keywords = ''
 
@@ -347,6 +356,8 @@ contains
 
     end if
 
+    if (allocated(self % address)) deallocate(self % address)
+
   end subroutine kill_dictionary
 
   !!
@@ -377,7 +388,7 @@ contains
     rhsSize = size( RHS % keywords)
     stride = RHS % stride
 
-    call LHS % init(rhsSize,stride)
+    call LHS % init(rhsSize, stride)
 
     ! Copy Keywords and entries
     LHS % keywords = RHS % keywords
@@ -390,6 +401,9 @@ contains
     LHS % dictLen = RHS % dictLen
     LHS % maxSize = RHS % maxSize
     LHS % stride  = RHS % stride
+
+    ! After a copy we set the current dictionary as a root
+    call LHS % updateAddress("", "")
 
   end subroutine copy_dictionary
 
@@ -420,7 +434,8 @@ contains
 
     idx = linFind(self % keywords, keyword)
     if (idx == targetNotFound) then
-      call fatalError(Here,'Target: '//trim(keyword)//' is not in dictionary')
+      call fatalError(Here, self % errorMsgPrefix() // &
+                            "Target: "//trim(keyword)//" is not present")
     end if
 
     S = self % entries(idx) % getSize()
@@ -460,7 +475,8 @@ contains
         value = real(self % entries(idx) % int0_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a real or int')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real or int')
 
     end select
 
@@ -490,7 +506,8 @@ contains
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a real array or int array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real array or int array')
 
     end select
 
@@ -525,7 +542,8 @@ contains
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a real array or int array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real array or int array')
 
     end select
 
@@ -549,7 +567,8 @@ contains
         value = self % entries(idx) % int0_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an integer')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not an integer')
 
     end select
 
@@ -576,7 +595,8 @@ contains
         value = self % entries(idx) % int1_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not integer array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not integer array')
 
     end select
 
@@ -606,7 +626,8 @@ contains
         value = self % entries(idx) % int1_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not integer array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not integer array')
 
     end select
 
@@ -628,13 +649,15 @@ contains
       case(word)
         ! Check if the content character fits into value
         if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
-          call fatalError(Here,'value character is too short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         value = self % entries(idx) % char0_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a character')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character')
 
     end select
 
@@ -660,13 +683,15 @@ contains
         ! Check if the content character fits into value. Any is required becouse len_trim returns
         ! an array
         if( any(len(value) < len_trim(self % entries(idx) % char1_alloc))) then
-          call fatalError(Here,'value character is too short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         value = self % entries(idx) % char1_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a character array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character array')
 
     end select
 
@@ -692,7 +717,8 @@ contains
         ! Check if the content character fits into value. Any is required becouse len_trim returns
         ! an array
         if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         ! Use mold to approperiatly allocate the pointer
@@ -700,7 +726,8 @@ contains
         value = self % entries(idx) % char1_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a character array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character array')
 
     end select
 
@@ -723,7 +750,8 @@ contains
         value = self % entries(idx) % dict0_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a dictionary')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a dictionary')
 
     end select
 
@@ -746,12 +774,62 @@ contains
         ptr => self % entries(idx) % dict0_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a dictionary')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a dictionary')
 
     end select
 
   end function getDictPtr
 
+  !!
+  !! Update the address of the dictionary and all dictionaries inside
+  !!
+  !! Args:
+  !!  parentAddress [in] -> Address of the dictionary owning the 'self' ("" if self is a root)
+  !!  keyword       [in] -> keyword under 'self' is stored ("" if self is a root)
+  !!
+  recursive subroutine updateAddress(self, parentAddress, keyword)
+    class(dictionary), intent(inout) :: self
+    character(*), intent(in)         :: parentAddress
+    character(*), intent(in)         :: keyword
+    integer(shortInt)                :: i
+
+    self % address = trim(parentAddress) // trim(keyword) // "/"
+
+    !! Propagate to all nested dictionaries
+    do i=1,self % dictLen
+      if (self % entries(i) % getType() == nestDict) then
+        call self % entries(i) % dict0_alloc % updateAddress(self % address, self % keywords(i))
+      end if
+    end do
+
+  end subroutine updateAddress
+
+  !!
+  !! Returns prefix for error messages with address of the dictionary
+  !!
+  function errorMsgPrefix(self) result(msg)
+    class(dictionary), intent(in) :: self
+    character(:), allocatable     :: msg
+    integer(shortInt)             :: i_end
+
+    ! Check invalid states
+    if (.not. allocated(self % address)) then
+      msg = "In dictionary [NOT ALLOCATED ADDRESS :-/ ] "
+      return
+    end if
+    if (len(self % address) == 0) then
+      msg = "In dictionary [EMPTY ADDRESS :-/] "
+      return
+    end if
+
+    ! We wish to trim the final '/' from the address
+    ! We assume that things were not corrupted and don't check that final
+    ! character is really a '/'
+    i_end = len(self % address) - 1
+    msg = "In dictionary [" // self % address(1:i_end) // "] "
+
+  end function errorMsgPrefix
 
   !!
   !! Loads a boolean from a dictionary
@@ -773,10 +851,12 @@ contains
         elseif (i == 0) then
           value = .false.
         else
-          call fatalError(Here,'Entry under keyword ' // keyword // ' is neither 0 nor 1')
+          call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                                keyword // ' is neither 0 nor 1')
         end if
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an integer')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not an integer')
     end select
   end subroutine getBool_new
 
@@ -1094,7 +1174,7 @@ contains
         case('dict')
           mask = (self % entries(1:L) % getType() == nestDict)
         case default
-          call fatalError(Here,'Unrecognised type of content type: '//type )
+          call fatalError(Here, self % errorMsgPrefix() // 'Unrecognised type of content type: '//type )
       end select
     end if
 
@@ -1232,7 +1312,7 @@ contains
   !!
   !! Stores a dictionary rank 0 in dictionary
   !!
-  subroutine store_dict(self,keywordArgument,entry)
+  subroutine store_dict(self, keywordArgument, entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
     class(dictionary), intent(in)               :: entry
@@ -1243,13 +1323,16 @@ contains
 
     idx = self % getEmptyIdx(keyword)
 
-    self % keywords(idx)  = keyword
+    self % keywords(idx) = keyword
 
     ! Load into dictionary content
     allocate(self % entries(idx) % dict0_alloc)
 
     self % entries(idx) % dict0_alloc = entry
     self % entries(idx) % type = nestDict
+
+    ! Update address of the nested dictionary
+    call self % entries(idx) % dict0_alloc % updateAddress(self % address, keyword)
 
   end subroutine store_dict
 
@@ -1289,7 +1372,8 @@ contains
     idx = linFind(self % keywords, keyword)
 
     if(idx == targetNotFound .and. fatal_loc) then
-      call fatalError(Where,'Keyword: '// trim(keyword) //' was requested but is not in the dictionary')
+      call fatalError(Where, self % errorMsgPrefix() // &
+         "Keyword: '" // trim(keyword) // "' was requested but not found.")
     end if
 
   end function search
