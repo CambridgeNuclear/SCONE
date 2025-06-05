@@ -311,7 +311,7 @@ contains
 
       call ACE % setToElasticOut()
       do i = 1, Nin
-        self % muMatrix(i,:) = ACE % readIntArray(Nin)
+        self % muMatrix(i,:) = ACE % readRealArray(self % N_muOut)
       end do
 
     end if
