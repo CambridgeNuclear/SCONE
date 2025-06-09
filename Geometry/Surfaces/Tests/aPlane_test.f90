@@ -283,5 +283,23 @@ contains
     @assertEqual(INF, this % surf % distance(r, u2))
 
   end subroutine testDistance
+  
+  !!
+  !! Test producing the normal vector
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testNormal(this)
+    class(test_aPlane), intent(inout) :: this
+    real(defReal), dimension(3)       :: n
+    real(defReal), dimension(3)       :: r, u
+
+    r = [99.92_defReal, -6.0_defReal, 4.0_defReal]
+    u = [100, 200, 400]
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ONE, n(this % axis))
+
+  end subroutine testNormal
 
 end module aPlane_test

@@ -187,7 +187,6 @@ contains
     @assertEqual(ref, d, TOL * ref)
     @assertEqual(surfs % getIdx(1), surfIdx )
 
-
     ! ** In local cell 2 distance to surface 2
     pos % r = [7.0_defReal, 0.0_defReal, 0.0_defReal]
     pos % dir = [-ONE, ZERO, ZERO]
@@ -260,6 +259,27 @@ contains
 
   end subroutine test_cellOffset
 
+  !!
+  !! Test getting a surface normal
+  !!
+@Test
+  subroutine test_normal()
+    type(coord)       :: pos
+    integer(shortInt) :: idx
+    real(defReal), dimension(3) :: n
+
+    ! Cross from cell 1 to cell 2
+    pos % r   = [0.0_defReal, 2.0_defReal, 0.0_defReal]
+    pos % dir = [ONE, ZERO, ZERO]
+    pos % cellIdx = cells % getIdx(1)
+    pos % localId = 1
+    
+    idx = surfs % getIdx(1)
+    n = uni % getNormal(idx, pos)
+
+    @assertEqual([0, 1, 0], n)
+
+  end subroutine test_normal
 
 
 end module cellUniverse_test

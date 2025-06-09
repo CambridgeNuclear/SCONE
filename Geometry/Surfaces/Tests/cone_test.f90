@@ -70,6 +70,7 @@ contains
   !! Vertex 1.0, 1.0, 1.0
   !! Tangent 1.0
   !! ID 52
+  !! Base 11.0
   !!
   function newTestCase(dir) result(tst)
     type(dirParam), intent(in) :: dir
@@ -477,5 +478,46 @@ contains
     @assertEqual(ref, this % surf % distance(r, u), TOL * ref)
 
   end subroutine testDistance
+  
+  !!
+  !! Test normal calculation
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testNormal(this)
+    class(test_cone), intent(inout) :: this
+    integer(shortInt)               :: a, p1, p2
+    real(defReal), dimension(3)     :: r, u, n
+    real(defReal), parameter :: TOL = 1.0E-7
+    
+    ! Get axis and different planar directions
+    a = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    u = [0.3, 0.2, 5.0]
+
+    ! Test on cylindrical surface/base
+    r(p1) = ONE
+    r(p2) = ONE
+    r(a) = ONE + 10.0_defReal
+
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ONE, n(a), TOL)
+
+    ! Test on the slope
+    r(p1) = ONE + ZERO
+    r(p2) = ONE + TWO
+    r(a) = ONE + TWO
+    
+    n = this % surf % normal(r, u)
+
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ONE/sqrt(TWO), n(p2), TOL)
+    @assertEqual(-ONE/sqrt(TWO), n(a), TOL)
+
+  end subroutine testNormal
 
 end module cone_test
