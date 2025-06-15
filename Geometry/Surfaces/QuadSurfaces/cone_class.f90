@@ -2,7 +2,7 @@ module cone_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, numToChar, dotProduct
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use quadSurface_inter,  only : quadSurface
   use surface_inter,      only : kill_super => kill
