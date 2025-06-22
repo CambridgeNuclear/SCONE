@@ -18,6 +18,7 @@ module macroResponse_test
     type(macroResponse)        :: response_fission
     type(macroResponse)        :: response_nuFission
     type(macroResponse)        :: response_absorbtion
+    type(macroResponse)        :: response_energyDepoZero
     type(testNeutronDatabase)  :: xsData
   contains
     procedure :: setUp
@@ -36,8 +37,8 @@ contains
 
     ! Allocate and initialise test nuclearData
 
-    ! Cross-sections:         Total        eScatering   IeScatter  Capture     Fission       nuFission
-    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal)
+    ! Cross-sections:         Total        eScatering   IeScatter  Capture     Fission       nuFission    Energy Deposition
+    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal, 9.0_defReal)
 
     ! Set up responses
     ! Total
@@ -75,6 +76,14 @@ contains
     call this % response_absorbtion % init(tempDict)
     call tempDict % kill()
 
+    ! Energy Deposition Mode Zero
+    call tempDict % init(2)
+    call tempDict % store('type','macroResponse')
+    call tempDict % store('MT', macroEnergyDepoZero)
+    call this % response_energyDepoZero % init(tempDict)
+    call tempDict % kill()
+
+
   end subroutine setUp
 
   !!
@@ -102,6 +111,7 @@ contains
     real(defReal), parameter :: TOL = 1.0E-9
 
     p % type = P_NEUTRON
+    p % isMG = .false.
 
     ! Test response values
     @assertEqual(6.0_defReal, this % response_total % get(p, this % xsData), TOL)
@@ -109,6 +119,7 @@ contains
     @assertEqual(1.0_defReal, this % response_fission % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_nuFission % get(p, this % xsData), TOL)
     @assertEqual(3.0_defReal, this % response_absorbtion % get(p, this % xsData), TOL)
+    @assertEqual(9.0_defReal, this % response_energyDepoZero % get(p, this % xsData), TOL)
 
   end subroutine testGettingResponse
 
