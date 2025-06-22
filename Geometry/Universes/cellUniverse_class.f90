@@ -61,6 +61,7 @@ module cellUniverse_class
     procedure :: distance
     procedure :: cross
     procedure :: cellOffset
+    procedure :: getNormal
   end type cellUniverse
 
 contains
@@ -203,6 +204,34 @@ contains
     offset = ZERO
 
   end function cellOffset
+    
+  !!
+  !! Return normal for the given surfIdx at a given point
+  !!
+  !! See universe_inter for details.
+  !!
+  function getNormal(self, surfIdx, coords) result (normal)
+    class(cellUniverse), intent(in) :: self
+    integer(shortInt), intent(in)   :: surfIdx
+    type(coord), intent(in)         :: coords
+    real(defReal), dimension(3)     :: normal
+    integer(shortInt)               :: cIdx
+    character(100), parameter :: Here = 'getNormal (cellUniverse_class.f90)'
+
+    ! Ensure that the current cell of coords has surfIdx as a component
+    cIdx = coords % localID
+
+    ! Ensure that there are this many cells
+    if (cIdx > size(self % cells) .or. cIdx < 1) call fatalError(Here, &
+           'cIdx is invalid: '//numToChar(cIdx))
+
+    ! Ensure that the surfIdx is valid
+    if (surfIdx < 1) call fatalError(Here, &
+           'surfIdx is invalid: '//numToChar(surfIdx)) 
+
+    normal = self % cells(cIdx) % ptr % getNormal(surfIdx, coords % r, coords % dir)   
+
+  end function getNormal
 
   !!
   !! Return to uninitialised state

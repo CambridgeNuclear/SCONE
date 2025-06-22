@@ -258,6 +258,46 @@ contains
     @assertEqual(ref, surf % distance(r, -u), TOL*ref)
 
   end subroutine testDistance
+  
+  !!
+  !! Test normal calculation
+  !!
+@Test
+  subroutine testNormal()
+    real(defReal), dimension(3) :: r, u, n
+    real(defReal), parameter    :: TOL = 1.0E-7
+    
+    u = [0.3, 0.2, 5.0]
+    
+    ! Test on a plane
+    r = [TWO, TWO, ONE]
+
+    n = surf % normal(r, u)
+
+    @assertEqual(ONE, n(1), TOL)
+    @assertEqual(ZERO, n(2), TOL)
+    @assertEqual(ZERO, n(3), TOL)
+
+
+    ! Test on an edge
+    r = [ONE, 4.0_defReal, -2.0_defReal]
+    
+    n = surf % normal(r, u)
+
+    @assertEqual(ZERO, n(1), TOL)
+    @assertEqual(ONE / sqrt(TWO), n(2), TOL)
+    @assertEqual(-ONE / sqrt(TWO), n(3), TOL)
+
+    ! Test on a corner
+    r = [ZERO, ZERO, -TWO]
+    
+    n = surf % normal(r, u)
+
+    @assertEqual(-ONE / sqrt(3.0_defReal), n(1), TOL)
+    @assertEqual(-ONE / sqrt(3.0_defReal), n(2), TOL)
+    @assertEqual(-ONE / sqrt(3.0_defReal), n(3), TOL)
+
+  end subroutine testNormal
 
   !!
   !! Test Edge Cases
@@ -273,7 +313,7 @@ contains
 
     ! ** Corner
     ! * Particle is almost at the corner
-    !   Either it is outside or can escape with a short movment in next step
+    !   Either it is outside or can escape with a short movement in next step
     !
     ! Currently does not work for Y-position in plane (r(2) == ZERO)
     ! See `distance` documentation in box_class
@@ -281,10 +321,11 @@ contains
     !
     eps =  5.0_defReal * epsilon(eps)
     r = [2.0_defReal-eps, eps, 4.0_defReal-eps]
-    u = [HALF, ZERO, -ONE]
+    !u = [HALF, ZERO, -ONE]
+    u = [ONE/sqrt(3.0), ONE/sqrt(3.0), ONE/sqrt(3.0)]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(surf % halfspace(r + d*u, u))
@@ -294,24 +335,24 @@ contains
     u = [-ONE, ZERO, HALF]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(surf % halfspace(r + d*u, u))
     end if
 
-    ! Try asymertic corner
+    ! Try asymmetric corner
     r = [2.0_defReal-TWO*eps, eps, 4.0_defReal-eps]
     u = [HALF, ZERO, -ONE]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(surf % halfspace(r + d*u, u))
     end if
 
-    ! Asymetric corner position
+    ! Asymmetric corner position
     ! Try other direction
     r = [2.0_defReal-eps, eps, 4.0_defReal-TWO*eps]
     u = [-ONE, ZERO, HALF]

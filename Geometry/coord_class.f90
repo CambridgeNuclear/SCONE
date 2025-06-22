@@ -1,7 +1,7 @@
 module coord_class
 
   use numPrecision
-  use universalVariables, only : HARDCODED_MAX_NEST, FP_REL_TOL
+  use universalVariables, only : HARDCODED_MAX_NEST, FP_REL_TOL, UNDEF_MAT
   use genericProcedures,  only : rotateVector, fatalError, numToChar
 
   implicit none
@@ -81,11 +81,12 @@ module coord_class
   !!   cell              -> Return cellIdx at the lowest level
   !!   assignPosition    -> Set position and take ABOVE GEOMETRY
   !!   assignDirection   -> Set direction and do not change coordList state
+  !!   assignDirectionBottom -> Set direction in the lowest universe level and do not change coordList state
   !!
   type, public :: coordList
     integer(shortInt)                          :: nesting = 0
     type(coord), dimension(HARDCODED_MAX_NEST) :: lvl
-    integer(shortInt)                          :: matIdx   = -3
+    integer(shortInt)                          :: matIdx   = UNDEF_MAT
     integer(shortInt)                          :: uniqueId = -3
   contains
     ! Build procedures
@@ -107,6 +108,7 @@ module coord_class
     procedure :: cell
     procedure :: assignPosition
     procedure :: assignDirection
+    procedure :: assignDirectionLevel
 
   end type coordList
 
@@ -205,7 +207,7 @@ contains
     class(coordList), intent(inout) :: self
 
     self % nesting  = 0
-    self % matIdx   = -3
+    self % matIdx   = UNDEF_MAT
     self % uniqueID = -3
 
     ! Kill coordinates
@@ -243,7 +245,7 @@ contains
     class(coordList), intent(in) :: self
     logical(defBool)             :: isIt
 
-    isIt = (self % matIdx < 0) .and. (self % uniqueID < 0) .and. (self % nesting == 1)
+    isIt = (self % matIdx == UNDEF_MAT) .and. (self % uniqueID < 0) .and. (self % nesting == 1)
 
   end function isAbove
 
@@ -294,7 +296,7 @@ contains
     class(coordList), intent(inout) :: self
 
     self % nesting  = 1
-    self % matIdx   = -3
+    self % matIdx   = UNDEF_MAT
     self % uniqueID = -3
 
   end subroutine takeAboveGeom
@@ -465,5 +467,41 @@ contains
     end do
 
   end subroutine assignDirection
+
+  !!
+  !! Assign new direction at given universe level, propagating changes to the top.
+  !! Sets the level of the coordList to that provided
+  !!
+  !! Args:
+  !!   u [in]     -> New normalised direction at given level
+  !!   level [in] -> Level at which the direction is set
+  !!
+  !! NOTE:
+  !!   Does not check if u is normalised!
+  !!
+  subroutine assignDirectionLevel(self, u, level)
+    class(coordList), intent(inout)         :: self
+    real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt), intent(in)           :: level
+    integer(shortInt)                       :: i
+    character(100),parameter :: Here = 'assignDirectionLevel (coord_class.f90)'
+
+    if (level > self % nesting) call fatalError(Here,'Input level exceeded current nesting')
+
+    ! Assign new direction in lowest level
+    self % lvl(level) % dir = u
+
+    ! Propage the change to higher levels
+    do i = level - 1, 1, -1
+      if(self % lvl(i+1) % isRotated) then
+        self % lvl(i) % dir = matmul(transpose(self % lvl(i+1) % rotMat), self % lvl(i+1) % dir)
+      else
+        self % lvl(i) % dir = self % lvl(i+1) % dir
+      end if
+    end do
+
+    self % nesting = level
+
+  end subroutine assignDirectionLevel
 
 end module coord_class

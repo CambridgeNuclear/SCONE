@@ -2,13 +2,13 @@ module visualiser_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,  only : fatalError, numToChar
+  use genericProcedures,  only : fatalError, numToChar, crossProduct
   use hashFunctions_func, only : knuthHash, FNV_1
   use imgBmp_func,        only : imgBmp_toFile
   use commandLineUI,      only : getInputFile
   use dictionary_class,   only : dictionary
   use geometry_inter,     only : geometry
-  use materialMenu_mod,   only : mm_colourMap => colourMap
+  use materialMenu_mod,   only : mm_colourMap => colourMap, mm_nameMap => nameMap
   use outputVTK_class
 
   implicit none
@@ -52,6 +52,7 @@ module visualiser_class
     procedure :: kill
     procedure, private :: makeVTK
     procedure, private :: makeBmpImg
+    procedure, private :: makeRayPlot
   end type
 
 contains
@@ -121,9 +122,12 @@ contains
 
         case('bmp')
           call self % makeBmpImg(tempDict)
+        
+        case('ray')
+          call self % makeRayPlot(tempDict)
 
         case default
-          call fatalError(here, 'Unrecognised visualisation - presently only accept vtk')
+          call fatalError(here, 'Unrecognised visualisation - presently only accept vtk, bmp, and ray')
 
       end select
 
@@ -326,6 +330,191 @@ contains
     call imgBmp_toFile(img, outputFile)
 
   end subroutine makeBmpImg
+  
+  !!
+  !! Generate a ray traced image of the geometry using Phong's approximation
+  !!
+  !! Follows the papers from Gavin Ridley and Brian Nease at SNA+MC 2024.
+  !!
+  !! The user can input the point *towards which* the camera is pointed, the point from which
+  !! the target is viewed, the horizontal field of view (defaults to recommended 70 degrees),
+  !! the point from which the light originates, and the number of pixels in 2D.
+  !! Additionally, the user may specify which materials are transparent. Otherwise the plot may
+  !! be quite boring.
+  !!
+  !! Optionally, the user can specify which direction is 'up' to determine the orientation of
+  !! the camera, the relative amount of diffuse light, the field of view, and the colour offset.
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary with settings
+  !!
+  !! Sample dictionary input:
+  !!   ray_plot {
+  !!     type ray;
+  !!     output img;             // Name of output file without extension
+  !!     centre (0.0 0.0 0.0);   // Coordinates of the centre/target of the plot
+  !!     camera (0.0 0.0 0.0);   // Coordinates of the camera
+  !!     res (300 300);          // Resolution of the image
+  !!     #light  (0.0 0.0 0.0);# // Coordinates of the light source, defaults to camera position
+  !!     #up (0.0 0.0 1.0);#     // Which way is 'up'? Determines the rotation of the camera
+  !!     #diffuse 0.3;#          // Fraction of light which is diffuse rather than direct
+  !!     #fov 70;#               // Field-of-view in the horizontal axis in degrees
+  !!     #offset 978; #          // Parameter to 'randomize' the colour map
+  !!     #transparent (mat1, mat2, ... );# // Names of transparent materials
+  !!   }
+  !!
+  !!
+  subroutine makeRayPlot(self, dict)
+    class(visualiser), intent(inout) :: self
+    class(dictionary), intent(in)    :: dict
+    real(defReal)                    :: fov, diffuse
+    real(defReal), dimension(3) :: centre, up, camera, light, cv, ch, d
+    real(defReal), dimension(:), allocatable       :: temp
+    integer(shortInt), dimension(:), allocatable   :: tempInt
+    character(nameLen), dimension(:), allocatable  :: matNames
+    integer(shortInt), dimension(:), allocatable   :: mats
+    integer(shortInt), dimension(:,:), allocatable :: img, matIDs
+    real(defReal), dimension(:,:), allocatable     :: lum
+    real(defReal), dimension(3,3)                  :: M
+    integer(shortInt)                              :: i, offset
+    character(10)                                  :: time
+    character(8)                                   :: date
+    character(nameLen)                             :: outputFile
+    character(100), parameter :: Here = 'makeRayPlot (visualiser_class.f90)'
+    
+    ! Get name of the output file
+    call dict % get(outputFile, 'output')
+    outputFile = trim(outputFile) // '.bmp'
+
+    ! Central/target point
+    call dict % get(temp, 'centre')
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'centre' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+
+    centre = temp
+    deallocate(temp)
+
+    ! Camera origin
+    call dict % get(temp, 'camera')
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'camera' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    camera = temp
+    deallocate(temp)
+    
+    ! Get light location or default to camera location
+    if (dict % isPresent('light')) then
+      call dict % get(temp, 'light')
+    
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'light' must have size 3. Has: "//numToChar(size(temp)))
+      end if
+      light = temp
+      deallocate(temp)
+
+    else
+      light = camera
+    end if
+    
+    ! The up direction, which sets the camera rotation
+    if (dict % isPresent('up')) then
+      call dict % get(temp, 'up')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'up' must have size 3. Has: "//numToChar(size(temp)))
+      end if
+      up = temp
+      up = up / norm2(up)
+      deallocate(temp)
+
+    else
+      up = [0, 0, 1]
+    end if
+
+    ! Optional field of view in degrees
+    ! Convert to radians
+    call dict % getOrDefault(fov, 'fov', 70.0_defReal)
+    fov = fov * PI / 180
+
+    ! Optional fraction of diffuse light
+    call dict % getOrDefault(diffuse, 'diffuse', 0.3_defReal)
+    if ((diffuse > 1) .or. (diffuse < 0)) call fatalError(Here,'The fraction of diffuse light must be between 0 and 1')
+
+    ! Create governing vectors for the plot
+    d = (centre - camera)
+    d = d/norm2(d)
+    
+    ! Ensure that up is not colinear with the view direction
+    if (all(abs(crossProduct(up, d)) < 1E-6)) call fatalError(Here,"View direction is co-linear with 'up'.")
+    
+    cv = crossProduct(d, up)
+    cv = cv / norm2(cv)
+    
+    ch = crossProduct(cv, d)
+    ch = ch / norm2(ch)
+
+    ! Create coordinate matrix
+    M(:,1) = d
+    M(:,2) = cv
+    M(:,3) = ch
+
+    ! Resolution
+    call dict % get(tempInt, 'res')
+
+    if (size(tempInt) /= 2) then
+      call fatalError(Here, "'res' must have size 2. Has: "//numToChar(size(tempInt)))
+    else if (any(tempInt <= 0)) then
+      call fatalError(Here, "Resolution must be +ve. There is 0 or -ve entry!")
+    end if
+
+    allocate(matIDs(tempInt(1), tempInt(2)))
+    allocate(lum(tempInt(1), tempInt(2)))
+
+    ! Transparent materials
+    ! Defaults to an array containing only VOID and OUTSIDE
+    if (dict % isPresent('transparent')) then
+      call dict % get(matNames, 'transparent')
+      allocate(mats(size(matNames) + 2))
+      do i = 1, size(matNames)
+        mats(i) = mm_nameMap % get(matNames(i))
+      end do
+      mats(i)   = OUTSIDE_MAT
+      mats(i+1) = VOID_MAT
+    else
+      allocate(mats(2))
+      mats(1) = OUTSIDE_MAT
+      mats(2) = VOID_MAT
+    end if
+    
+    ! Colourmap offset
+    ! If not given select randomly
+    if (dict % isPresent('offset')) then
+      call dict % get(offset, 'offset')
+
+    else
+      call date_and_time(date, time)
+      call FNV_1(date // time, offset)
+
+    end if
+
+    ! Img contains luminosity values, matIDs identifies which materials were hit
+    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, diffuse)
+
+    ! Translate to an image.
+    ! Obtain material colours and scale by luminosity
+    matIDs = materialColour(matIDs, offset)
+    img = matIDs
+
+    ! Scale image by brightness
+    img = brightnessScale(img, lum)
+
+    ! Print image
+    call imgBmp_toFile(img, outputFile)
+
+  end subroutine makeRayPlot
 
   !!
   !! Terminates visualiser
@@ -394,5 +583,28 @@ contains
 
   end function uniqueIDColour
 
+  !!
+  !! Scales an integer image by the provided value of brightness
+  !!
+  elemental function brightnessScale(img0, brightness) result(img)
+    integer(shortInt), intent(in) :: img0
+    real(defReal), intent(in)     :: brightness
+    integer(shortInt)             :: img
+    integer(shortInt)             :: r, g, b
+
+    ! Extract RGB components (assuming 0x00RRGGBB)
+    r = ishft(iand(img0, Z'00FF0000'), -16)
+    g = ishft(iand(img0, Z'0000FF00'), -8)
+    b = iand(img0, Z'000000FF')
+
+    ! Scale and clamp to 0–255
+    r = max(0, min(255, int(r * brightness)))
+    g = max(0, min(255, int(g * brightness)))
+    b = max(0, min(255, int(b * brightness)))
+
+    ! Reassemble RGB integer
+    img = ior(ior(ishft(r, 16), ishft(g, 8)), b)
+
+  end function brightnessScale
 
 end module visualiser_class
