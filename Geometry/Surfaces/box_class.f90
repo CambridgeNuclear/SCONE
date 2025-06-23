@@ -347,7 +347,7 @@ contains
       r0 = r(ax) - self % origin(ax)
 
       ! Skip if particle is well inside the domain
-      if (abs(r0)  <= self % halfwidth(ax) - self % surfTol()) cycle axis
+      if (abs(r0)  <= self % halfwidth(ax) * (ONE - self % surfTol())) cycle axis
 
       ! Choose correct BC
       if (r0 < ZERO) then
@@ -396,7 +396,7 @@ contains
 
     ! Calculate halfwidth reduced by the surface_tolerance
     ! Necessary to capture particles at the boundary
-    a_bar = self % halfwidth - self % surfTol()
+    a_bar = self % halfwidth * (ONE - self % surfTol())
 
     ! Calculate distance (in # of transformations) in each direction
     Ri = ceiling(abs(r - self % origin) / a_bar) / 2

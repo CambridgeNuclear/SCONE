@@ -18,6 +18,7 @@ module coord_class
   !!   r -> Position
   !!   dir -> Direction
   !!   isRotated -> Is rotated wrt previous (higher by 1) level
+  !!   isGlobal  -> Is the coordinate reverted to level 1?
   !!   rotMat    -> Rotation matrix wrt previous level
   !!   uniIdx    -> Index of the occupied universe
   !!   uniRootID -> Location of the occupied universe in geometry graph
@@ -33,6 +34,7 @@ module coord_class
     real(defReal), dimension(3)   :: r         = ZERO
     real(defReal), dimension(3)   :: dir       = ZERO
     logical(defBool)              :: isRotated = .false.
+    logical(defBool)              :: isGlobal  = .false.
     real(defReal), dimension(3,3) :: rotMat    = ZERO
     integer(shortInt)             :: uniIdx    = 0
     integer(shortInt)             :: uniRootID = 0
@@ -45,7 +47,7 @@ module coord_class
   end type coord
 
   !!
-  !! List of co-ordinates at diffrent level of a geometry
+  !! List of co-ordinates at different level of a geometry
   !!
   !! Specifies the position of a particle in space
   !!
@@ -160,6 +162,7 @@ contains
     self % r         = ZERO
     self % dir       = ZERO
     self % isRotated = .false.
+    self % isGlobal  = .false.
     self % rotMat    = ZERO
     self % uniIdx    = 0
     self % uniRootID = 0

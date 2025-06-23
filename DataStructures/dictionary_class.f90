@@ -32,6 +32,8 @@ module dictionary_class
   ! ->   1D array of shortInt                                  - integer(shortInt)  :: i(:)
   ! ->   scalar character of length "charLen" defined below    - character(charLen) :: c
   ! ->   array of characters of length "charLen" defined below - character(charLen) :: c(:)
+  ! ->   boolean logical                                       - logical(defBool)   :: b
+  ! ->   array of boolean logicals                             - logical(defBool)   :: b(:)
   ! ->   another dictionary                                    - type(dictionary)   :: dict
   !
   ! To add additional structure <type> to store it is necessary to :
@@ -100,7 +102,7 @@ module dictionary_class
     ! *** Note that dictionary is defined as pointer not allocatable
     ! *** This is because gfortran < 7.0 does not supports circular derived types with
     ! *** allocatable keyword. This line may change in the future
-    type(dictionary), pointer                  :: dict0_alloc => null()
+    type(dictionary), pointer                   :: dict0_alloc => null()
 
     ! dictContent type ID
     integer(shortInt)                           :: type = empty
@@ -149,7 +151,9 @@ module dictionary_class
                          getCharArray_alloc_new,&
                          getCharArray_ptr_new,&
                          getDict_new,&
-                         getBool_new
+                         getBool_new, &
+                         getBoolArray_alloc_new,&
+                         getBoolArray_ptr_new
 
     procedure,private :: getReal_new
     procedure,private :: getRealArray_alloc_new
@@ -162,6 +166,8 @@ module dictionary_class
     procedure,private :: getCharArray_ptr_new
     procedure,private :: getDict_new
     procedure,private :: getBool_new
+    procedure,private :: getBoolArray_alloc_new
+    procedure,private :: getBoolArray_ptr_new
 
     generic :: getOrDefault => getOrDefault_real ,&
                                getOrDefault_realArray_alloc ,&
@@ -172,7 +178,9 @@ module dictionary_class
                                getOrDefault_char ,&
                                getOrDefault_charArray_alloc ,&
                                getOrDefault_charArray_ptr, &
-                               getOrDefault_bool
+                               getOrDefault_bool, &
+                               getOrDefault_boolArray_alloc, &
+                               getOrDefault_boolArray_ptr
 
     procedure,private :: getOrDefault_real
     procedure,private :: getOrDefault_realArray_alloc
@@ -184,6 +192,8 @@ module dictionary_class
     procedure,private :: getOrDefault_charArray_alloc
     procedure,private :: getOrDefault_charArray_ptr
     procedure,private :: getOrDefault_bool
+    procedure,private :: getOrDefault_boolArray_alloc
+    procedure,private :: getOrDefault_boolArray_ptr
 
     ! Keys inquiry procedures
     procedure  :: keys
@@ -779,6 +789,83 @@ contains
         call fatalError(Here,'Entry under keyword ' // keyword // ' is not an integer')
     end select
   end subroutine getBool_new
+  
+  !!
+  !! Loads a boolean rank 1 from dictionary into provided variable
+  !! If keyword is associated with an integer which is not 1 or 0, it returns an error.
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getBoolArray_alloc_new(self,value,keyword)
+    class(dictionary), intent(in)                            :: self
+    logical(defBool),dimension(:),allocatable,intent(inout)  :: value
+    character(*),intent(in)                                  :: keyword
+    integer(shortInt)                                        :: idx
+    integer(shortInt),dimension(:),allocatable               :: tempInt
+    character(100),parameter                                 :: Here='getBoolArray_alloc_new (dictionary_class.f90)'
+
+    idx = self % search(keyword, Here, fatal =.true.)
+
+    if(allocated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        tempInt = self % entries(idx) % int1_alloc
+        allocate(value(size(tempInt)))
+        
+        if (any(tempInt < 0) .or. any(tempInt > 1)) then
+          call fatalError(Here,'Entry under keyword ' // keyword // ' has non-logical values (not 0 or 1).')
+        else
+          do idx = 1, size(tempInt)
+            value(idx) = tempInt(idx) == 1
+          end do
+        end if
+
+      case default
+        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an int array.')
+
+    end select
+
+  end subroutine getBoolArray_alloc_new
+
+  !!
+  !! Loads a boolean rank 1 from dictionary into provided variable.
+  !! If keyword is associated with an integer which is not 1 or 0, it returns an error.
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  subroutine getBoolArray_ptr_new(self,value,keyword)
+    class(dictionary), intent(in)                       :: self
+    logical(defBool),dimension(:),pointer,intent(inout) :: value
+    character(*),intent(in)                             :: keyword
+    integer(shortInt)                                   :: idx, N
+    integer(shortInt),dimension(:),allocatable          :: tempInt
+    character(100),parameter                            :: Here='getBoolArray_ptr_new (dictionary_class.f90)'
+
+    idx = self % search(keyword, Here, fatal =.true.)
+
+    if(associated(value)) deallocate(value)
+
+    select case (self % entries(idx) % getType())
+      case(arrInt)
+        
+        N = size(self % entries(idx) % int1_alloc)
+        allocate(value(N))
+        allocate(tempInt(N))
+        tempInt = self % entries(idx) % int1_alloc
+        
+        if (any(tempInt < 0) .or. any(tempInt > 1)) then
+          call fatalError(Here,'Entry under keyword ' // keyword // ' has non-logical values (not 0 or 1).')
+        else
+          do idx = 1, N
+            value(idx) = tempInt(idx) == 1
+          end do
+        end if
+
+      case default
+        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an int array.')
+
+    end select
+
+  end subroutine getBoolArray_ptr_new
 
   !!
   !! Loads a real rank 0 from a dictionary into provided variable
@@ -1043,6 +1130,57 @@ contains
       call self % get(value, keyword)
     end if
   end subroutine getOrDefault_bool
+
+  !!
+  !! Loads a boolean rank 1 from a dictionary.
+  !! Variable needs to be allocatable. It will be deallocated before assignment
+  !!
+  subroutine getOrDefault_boolArray_alloc(self, value, keyword, default)
+    class(dictionary), intent(in)                            :: self
+    logical(defBool),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                                  :: keyword
+    logical(defBool),dimension(:),intent(in)                 :: default
+    integer(shortInt)                                        :: idx
+    character(100),parameter           :: Here='getOrDefault_boolArray_alloc (dictionary_class.f90)'
+
+    idx = self % search(keyword, Here, fatal =.false.)
+
+    if(allocated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      value = default
+    else
+      call self % get(value, keyword)
+    end if
+  end subroutine getOrDefault_boolArray_alloc
+
+
+  !!
+  !! Loads a boolean rank 1 from a dictionary.
+  !! Variable needs to be pointer. It will be deallocated before assignment
+  !!
+  !! For further details refer to doc of getOrDefault_real
+  !!
+  subroutine getOrDefault_boolArray_ptr(self, value, keyword, default)
+    class(dictionary), intent(in)                            :: self
+    logical(defBool),dimension(:),pointer,intent(inout)      :: value
+    character(*),intent(in)                                  :: keyword
+    logical(defBool),dimension(:),intent(in)                 :: default
+    integer(shortInt)                                        :: idx
+    character(100),parameter             :: Here='getOrDefault_boolArray_ptr (dictionary_class.f90)'
+
+    idx = self % search(keyword, Here, fatal =.false.)
+
+    if(associated(value)) deallocate(value)
+
+    if (idx == targetNotFound) then
+      allocate(value(size(default)))
+      value = default
+    else
+      call self % get(value, keyword)
+    end if
+
+  end subroutine getOrDefault_boolArray_ptr
 
   !!
   !! Returns an array of all keywords

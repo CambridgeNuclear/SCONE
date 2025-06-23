@@ -13,8 +13,10 @@ module genericProcedures
   interface swap
     module procedure swap_shortInt
     module procedure swap_defReal
+    module procedure swap_defBool
     module procedure swap_char_nameLen
     module procedure swap_defReal_defReal
+    module procedure swap_defBool_defBool
   end interface
 
   interface quickSort
@@ -1348,7 +1350,7 @@ module genericProcedures
   end subroutine swap_shortInt
 
   !!
-  !! Swap to reals
+  !! Swap two reals
   !!
   elemental subroutine swap_defReal(r1,r2)
     real(defReal), intent(inout) :: r1
@@ -1384,6 +1386,44 @@ module genericProcedures
     r2_2 = temp2
 
   end subroutine swap_defReal_defReal
+  
+  !!
+  !! Swap two bools
+  !!
+  elemental subroutine swap_defBool(r1,r2)
+    logical(defBool), intent(inout) :: r1
+    logical(defBool), intent(inout) :: r2
+    logical(defBool)                :: temp
+
+    temp = r1
+    r1 = r2
+    r2 = temp
+
+  end subroutine swap_defBool
+  
+  !!
+  !! Swap two pair of bools
+  !!
+  elemental subroutine swap_defBool_defBool(r1_1, r1_2, r2_1, r2_2)
+    logical(defBool), intent(inout) :: r1_1
+    logical(defBool), intent(inout) :: r1_2
+    logical(defBool), intent(inout) :: r2_1
+    logical(defBool), intent(inout) :: r2_2
+    logical(defBool)                :: temp1, temp2
+
+    ! Load first pair into temps
+    temp1 = r1_1
+    temp2 = r1_2
+
+    ! Assign values of 2nd pair to 1st pair
+    r1_1 = r2_1
+    r1_2 = r2_2
+
+    ! Assign values of 1st pair to 2nd pair
+    r2_1 = temp1
+    r2_2 = temp2
+
+  end subroutine swap_defBool_defBool
 
   !!
   !! Swap character of length nameLen

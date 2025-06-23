@@ -20,6 +20,9 @@ module latUniverse_class
   integer(shortInt), parameter :: X_MIN = -1, X_MAX = -2, Y_MIN = -3, Y_MAX = -4, Z_MIN = -5, &
                                   Z_MAX = -6, OUTLINE_SURF = -7
 
+  ! Options for the offset map
+  integer(shortInt), parameter :: local = 1, noOffset = 0
+
   !!
   !! 2D or 3D Cartesian lattice with constant pitch
   !!
@@ -32,7 +35,9 @@ module latUniverse_class
   !! Background cell can have any filling given by keyword (material or universe)
   !!
   !! Every lattice cell has an offset to its centre (so the centre of the nested universe
-  !! is in the center of the lattice cell).
+  !! is in the center of the lattice cell). Optionally an offset map can be provided, determining
+  !! whether to apply an offset in a given cell position. This can disables the local universe
+  !! offset. Alternatively a single offset flag can be provided, disabling offset in all cells.
   !!
   !! Minimum lattice pitch is set to 10 * SURF_TOL
   !!
@@ -47,7 +52,12 @@ module latUniverse_class
   !!          map (  1  2  3    // Top layer
   !!                 4  5  6    // Lower Y row
   !!                 7  8  9    // Bottom layer
-  !!                10 11 12  )
+  !!                10 11 12  );
+  !!          #offsetMap ( 1 1 1
+  !!          #            1 0 1
+  !!          #            1 0 1
+  !!          #            1 1 1 );
+  !!          # offset 1;
   !!   }
   !!
   !! Sample Input Dictionary (2D):
@@ -70,18 +80,22 @@ module latUniverse_class
   !!  a_bar      -> Halfwidth of lattice cell reduced by surface tolerance
   !!  outline    -> Box type surface that is a boundary between lattice & background
   !!  outLocalID -> LocalID of the background cell
+  !!  offset     -> Flag to disable all offsets
+  !!  offsetMap  -> Map determining which cells have a lattice offset or not
   !!
   !! Interface:
   !!   universe interface
   !!
   type, public, extends(universe) :: latUniverse
     private
-    real(defReal), dimension(3)     :: pitch = ZERO
-    integer(shortInt), dimension(3) :: sizeN = 0
-    real(defReal), dimension(3)     :: corner = ZERO
-    real(defReal), dimension(3)     :: a_bar  = ZERO
-    type(box)                       :: outline
-    integer(shortInt)               :: outLocalID = 0
+    real(defReal), dimension(3)                  :: pitch = ZERO
+    integer(shortInt), dimension(3)              :: sizeN = 0
+    real(defReal), dimension(3)                  :: corner = ZERO
+    real(defReal), dimension(3)                  :: a_bar  = ZERO
+    type(box)                                    :: outline
+    integer(shortInt)                            :: outLocalID = 0
+    logical(defBool)                             :: offset = .true.
+    integer(shortInt), dimension(:), allocatable :: offsetMap
   contains
     ! Superclass procedures
     procedure :: init
@@ -111,7 +125,7 @@ contains
     type(charMap), intent(in)                                 :: mats
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempI
-    integer(shortInt)                              :: N, i, j, outFill
+    integer(shortInt)                              :: N, i, j, outFill, val
     type(dictionary)                               :: tempDict
     integer(shortInt), dimension(:,:), allocatable :: tempMap
     character(nameLen)                             :: name
@@ -120,6 +134,9 @@ contains
     ! Setup the base class
     ! With: id, origin rotations...
     call self % setupBase(dict)
+    
+    ! Perform offsets on every cell?
+    call dict % getOrDefault(self % offset, 'offset', .true.)
 
     ! Load pitch
     call dict % get(temp, 'pitch')
@@ -152,11 +169,11 @@ contains
 
     ! Check for invalid pitch
     if (any(self % pitch < 10 * SURF_TOL)) then
-     call fatalError(Here, 'Pitch size must be larger than: '//numToChar( 10 * SURF_TOL))
-   end if
+      call fatalError(Here, 'Pitch size must be larger than: '//numToChar( 10 * SURF_TOL))
+    end if
 
     ! Calculate halfwidth and corner
-    self % a_bar = self % pitch * HALF - SURF_TOL
+    self % a_bar = self % pitch * HALF - self % pitch * SURF_TOL
     self % corner = -(self % sizeN * HALF * self % pitch)
 
     ! Calculate local ID of the background
@@ -172,6 +189,11 @@ contains
 
     ! Construct fill array
     call dict % get(tempI, 'map')
+
+    ! Ensure size matches sizeN
+    if (size(tempI) /= product(self % sizeN)) call fatalError(Here, &
+            'Lattice map size not equal to size implied by shape. Respectively: '//&
+            numToChar(size(tempI))//' '//numToChar(product(self % sizeN)))
 
     ! Flip array up-down for more natural input
     ! Reshape into rank 2 array
@@ -195,6 +217,46 @@ contains
       end do
     end do
     fill(self % outLocalID) = outFill
+    deallocate(tempI, tempMap)
+    
+    ! Check whether there is an offset map
+    if (dict % isPresent('offsetMap')) then
+
+      if (.not. self % offset) call fatalError(Here, 'Cannot have both an offset map '//&
+              'and no offset.')
+
+      call dict % get(tempI, 'offsetMap')
+    
+      ! Ensure size matches sizeN
+      if (size(tempI) /= product(self % sizeN)) call fatalError(Here, &
+            'Offset map size not equal to size implied by shape. Respectively: '//&
+            numToChar(size(tempI))//' '//numToChar(product(self % sizeN)))
+
+      ! Flip array up-down for more natural input
+      ! Reshape into rank 2 array
+      tempMap = reshape(tempI, [self % sizeN(1), self % sizeN(2) * self % sizeN(3)])
+      N = size(tempMap, 2)
+      do i = 1, N/2
+        call swap(tempMap(:,i), tempMap(:,N - i + 1))
+      end do
+
+      allocate(self % offsetMap(product(self % sizeN) + 1))
+      N = size(tempMap, 1)
+      do j = 1, size(tempMap, 2)
+        do i = 1, N
+          val = tempMap(i,j)
+          self % offsetMap(i + (j-1) * N) = val
+
+          ! Check that the entries are valid
+          if (val /= local .and. val /= noOffset) call fatalError(Here,&
+                  'Invalid entry to the offset map. Must be one of '//numToChar(local)//&
+                  ' '//numToChar(noOffset)//'. Contains: '//numToChar(val))
+        end do
+      end do
+      ! Add an entry for the padMat
+      self % offsetMap(self % outLocalID) = noOffset
+
+    end if
 
   end subroutine init
 
@@ -254,12 +316,12 @@ contains
   !!
   subroutine distance(self, d, surfIdx, coords)
     class(latUniverse), intent(inout) :: self
-    real(defReal), intent(out)         :: d
-    integer(shortInt), intent(out)     :: surfIdx
-    type(coord), intent(in)            :: coords
-    real(defReal), dimension(3)        :: r_bar, u, bounds
-    real(defReal)                      :: test_d
-    integer(shortInt)                  :: i, ax
+    real(defReal), intent(out)        :: d
+    integer(shortInt), intent(out)    :: surfIdx
+    type(coord), intent(in)           :: coords
+    real(defReal), dimension(3)       :: r_bar, u, bounds
+    real(defReal)                     :: test_d
+    integer(shortInt)                 :: i, ax
 
     ! Catch case if particle is outside the lattice
     if (coords % localID == self % outLocalID) then
@@ -331,12 +393,19 @@ contains
     class(latUniverse), intent(in)  :: self
     type(coord), intent(in)         :: coords
     real(defReal), dimension(3)     :: offset
+    logical(defBool)                :: doOffset
 
-    if (coords % localID == self % outLocalID) then
-      offset = ZERO
+    if (allocated(self % offsetMap)) then
+      doOffset = self % offsetMap(coords % localID) == noOffset
+    else
+      doOffset = self % offset
+    end if
+
+    if (doOffset .and. coords % localID /= self % outLocalID) then
+      offset = (get_ijk(coords % localID, self % sizeN) - HALF) * self % pitch + self % corner
 
     else
-      offset = (get_ijk(coords % localID, self % sizeN) - HALF) * self % pitch + self % corner
+      offset = ZERO
 
     end if
 
@@ -358,6 +427,8 @@ contains
     self % a_bar  = ZERO
     call self % outline % kill()
     self % outLocalID = 0
+    if (allocated(self % offsetMap)) deallocate(self % offsetMap)
+    self % offset = .true.
 
   end subroutine kill
 

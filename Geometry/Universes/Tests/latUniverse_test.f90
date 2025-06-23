@@ -18,11 +18,15 @@ module latUniverse_test
   character(*), parameter :: UNI1_DEF = &
   "id 1; type latUniverse; origin (0.0 0.0 0.0); rotation (0.0 0.0 0.0); &
   &pitch (1.0 2.0 3.0); shape (3 2 2); padMat void; &
-  &map ( 3 4 5 &
+  & map ( 3 4 5 &
   &      7 4 8 &
   &            &
   &      1 2 3 &
   &      4 5 6); "
+  !& offsetMap ( 1 1 1   &
+  !&            0 1 1    &
+  !&            1 1 1    &
+  !&            1 1 1 ); &
 
   character(*), parameter :: UNI2_DEF = &
   "id 2; type latUniverse; pitch (1.0 2.0 0.0); shape (2 1 0); padMat u<1>; &
@@ -389,6 +393,17 @@ contains
 
     ref = [0.0_defReal, 1.0_defReal, 1.5_defReal]
     @assertEqual(ref, uni1 % cellOffset(pos), TOL)
+    
+    !! Inside but at the position without an offset
+    !pos % r = [-1.5_defReal, 1.0_defReal, -0.5_defReal]
+    !pos % dir = [-ONE, ONE, -ONE]
+    !pos % dir = pos % dir / norm2(pos % dir)
+    !pos % uniIdx  = 8
+    !pos % cellIdx = 0
+    !pos % localId = 4
+
+    !ref = [0.0_defReal, 0.0_defReal, 0.0_defReal]
+    !@assertEqual(ref, uni1 % cellOffset(pos), TOL)
 
     ! Outside
     pos % r = [-7.0_defReal, 0.0_defReal, 0.5_defReal]

@@ -438,7 +438,7 @@ contains
     integer(shortInt), intent(in)  :: start
     integer(shortInt)              :: rootID, localID, fill, id, i
     class(universe), pointer       :: uni
-    real(defReal), dimension(3)    :: offset
+    real(defReal), dimension(3)    :: offset, r
     character(100), parameter :: Here = 'diveToMat (geometryStd_class.f90)'
 
     do i = start, HARDCODED_MAX_NEST
@@ -462,13 +462,21 @@ contains
 
         ! Get cell offset
         offset = uni % cellOffset(coords % lvl(i))
-
+        
         ! Get nested universe
         uni => self % geom % unis % getPtr_fast(fill)
+        
+        ! Does this level revert to the global frame?
+        ! Unrotate direction as well?
+        if (uni % transformToGlobal()) then
+          r = coords % lvl(1) % r
+        else
+          r = coords % lvl(i) % r - offset
+        end if
 
         ! Enter nested univers
         call coords % addLevel()
-        call uni % enter(coords % lvl(i+1), coords % lvl(i) % r - offset, coords % lvl(i) % dir)
+        call uni % enter(coords % lvl(i+1), r, coords % lvl(i) % dir)
         coords % lvl(i+1) % uniRootID = id ! Must be after enter where coord has intent out
 
       end if
