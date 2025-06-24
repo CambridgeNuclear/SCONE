@@ -396,7 +396,7 @@ contains
     logical(defBool)                :: doOffset
 
     if (allocated(self % offsetMap)) then
-      doOffset = self % offsetMap(coords % localID) == noOffset
+      doOffset = self % offsetMap(coords % localID) == local
     else
       doOffset = self % offset
     end if

@@ -613,6 +613,10 @@ Similarly to the surfaces and cells, the **universes** in the geometry can be de
       <nameN> { id <idNumberN>; type <universeType>; *keywords* }
       }
 
+One can disable the translation of a given universe, should it be nested in others, by the use
+of the keyword ``global 1;``. This evaluates a particle's position in the universe using the
+global frame of reference.
+
 Several ``universeTypes`` are possible:
 
 * cellUniverse, composed of the union of different cells. Note that overlaps are
@@ -667,6 +671,13 @@ Example: ::
     origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - offsetMap (*optional*, default = all elements offset): map that specifies which elements
+    of the lattice are offset with respect to the lattice origin. Elements with 1 are offset,
+    while elements with a 0 are not. Must have the same size as the map. Allows creating, e.g.,
+    BWR assemblies with water rods covering multiple lattice elements.
+  - offset (*optional*, default = true): enables/disables the offset of all entries in
+    the latUniverse. Has relatively specialised use cases, e.g., imposing a discretisation
+    by placing another universe inside the lattice.
 
 Example: ::
 
