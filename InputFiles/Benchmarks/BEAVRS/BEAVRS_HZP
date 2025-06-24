@@ -21,7 +21,7 @@ collisionOperator { neutronCE {type neutronCEstd;}}
 
 transportOperator {  
                      !type transportOperatorDT;
-                     type transportOperatorST; cache 1;
+                     type transportOperatorHT; cache 1;
                    }
 
 inactiveTally {
@@ -43,6 +43,13 @@ activeTally {
                    map {type multiMap; maps (xax yax);
                       xax {type spaceMap;  axis x;  grid lin; N 255; min -161.2773; max 161.2773; }
                       yax {type spaceMap;  axis y;  grid lin; N 255; min -161.2773; max 161.2773; }
+                   }
+                 } 
+  pinFlxRadial  { type collisionClerk; response (flx); flx { type fluxResponse;}
+                   map {type multiMap; maps (xax yax emap);
+                      xax {type spaceMap;  axis x;  grid lin; N 255; min -161.2773; max 161.2773; }
+                      yax {type spaceMap;  axis y;  grid lin; N 255; min -161.2773; max 161.2773; }
+                      emap {type energyMap; grid unstruct; bins (1.0E-11 0.625E-6 20); }
                    }
                  } 
   assemblyFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
