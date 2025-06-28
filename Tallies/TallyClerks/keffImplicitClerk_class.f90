@@ -219,9 +219,9 @@ contains
     ! Select analog score
     ! Assumes N_XNs are by implicit weight change
     select case(MT)
-      case(N_2N)
+      case(N_2Nd, N_2N, N_2Na, N_2N2a, N_2Np, N_3Np, N_2N0:N_2Ncont)
         score = 1.0_defReal * p % preCollision % wgt
-      case(N_3N)
+      case(N_3N, N_3Na)
         score = 2.0_defReal * p % preCollision % wgt
       case(N_4N)
         score = 3.0_defReal * p % preCollision % wgt
