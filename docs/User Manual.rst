@@ -117,7 +117,7 @@ Example: ::
 rayVolPhysicsPackage
 ####################
 
-rayVolPhysicsPackage, used to perform ray-tracing based volume calculation
+rayVolPhysicsPackage, used to perform ray-tracing based volume calculations.
 
 * pop: number of rays used per cycle
 * cycles: number of cycles
@@ -139,6 +139,24 @@ Example: ::
         abs_prob 0.1;
         robust   1;
         cache    1;
+
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition. Requires material names only> }
+
+pointVolPhysicsPackage
+######################
+
+pointVolPhysicsPackage, used to perform point-sampling based volume calculations.
+
+* pop: number of points used per cycle
+* cycles: number of cycles
+* seed (*optional*): initial seed for the pseudo random number generator
+
+Example: ::
+
+        type pointVolPhysicsPackage;
+        pop    1000000;
+        cycles 100;
 
         geometry { <Geometry definition> }
         nuclearData { <Nuclear data definition. Requires material names only> }
