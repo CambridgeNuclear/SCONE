@@ -56,6 +56,7 @@ module rootUniverse_class
     procedure :: distance
     procedure :: cross
     procedure :: cellOffset
+    procedure :: getNormal
 
     ! Subclass procedures
     procedure :: border
@@ -193,6 +194,26 @@ contains
     offset = ZERO
 
   end function cellOffset
+  
+  !!
+  !! Return normal for the given surfIdx at a given point
+  !!
+  !! See universe_inter for details.
+  !!
+  function getNormal(self, surfIdx, coords) result (normal)
+    class(rootUniverse), intent(in) :: self
+    integer(shortInt), intent(in)   :: surfIdx
+    type(coord), intent(in)         :: coords
+    real(defReal), dimension(3)     :: normal
+    character(100), parameter       :: Here = 'getNormal (rootUniverse_class.f90)'
+
+    ! Ensure surfIdx is the border
+    if (surfIdx /= self % border()) call fatalError(Here, &
+            'Provided surfIdx is not the border. SurfIdx: '//numToChar(surfIdx))
+
+    normal = self % surf % normal(coords % r, coords % dir)
+
+  end function getNormal
 
   !!
   !! Return to uninitialised state

@@ -41,6 +41,7 @@ module aPlane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
   end type aPlane
 
@@ -119,7 +120,7 @@ contains
   end subroutine init
 
   !!
-  !! Return axix-align bounding box for the surface
+  !! Return axis-aligned bounding box for the surface
   !!
   !! See surface_inter for details
   !!
@@ -189,7 +190,7 @@ contains
   !!   For parallel direction halfspace is asigned by the sign of `evaluate` result.
   !!
   pure function going(self, r, u) result(halfspace)
-    class(aPlane), intent(in)              :: self
+    class(aPlane), intent(in)               :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
@@ -199,12 +200,26 @@ contains
     halfspace = ua > ZERO
 
     ! Special case of parallel direction
-    ! Partilce stays in its current halfspace
+    ! Particle stays in its current halfspace
     if (ua == ZERO) then
       halfspace = (r(self % axis) - self % a0) >= ZERO
     end if
 
   end function going
+  
+  !!
+  !! Provides the normal for the plane
+  !!
+  pure function normal(self, r, u) result(n)
+    class(aPlane), intent(in)               :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+
+    n = ZERO
+    n(self % axis) = ONE
+
+  end function normal
 
   !!
   !! Return to uninitialised state
