@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cream"
+version = "0.1.0"
+description = "Command Line Utility for SCONE MC Code"
+license = "MIT"
+dependencies = ["click"]
+requires-python = ">= 3.9"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+cream = "cream:main"
