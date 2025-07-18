@@ -83,22 +83,6 @@ module endfConstants
                                   N_pd          = 115 ,&
                                   N_pt          = 116 ,&
                                   N_da          = 117 ,&
-                                  N_2N0         = 875 ,&
-                                  N_2N1         = 876 ,&
-                                  N_2N2         = 877 ,&
-                                  N_2N3         = 878 ,&
-                                  N_2N4         = 879 ,&
-                                  N_2N5         = 880 ,&
-                                  N_2N6         = 881 ,&
-                                  N_2N7         = 882 ,&
-                                  N_2N8         = 883 ,&
-                                  N_2N9         = 884 ,&
-                                  N_2N10        = 885 ,&
-                                  N_2N11        = 886 ,&
-                                  N_2N12        = 887 ,&
-                                  N_2N13        = 888 ,&
-                                  N_2N14        = 889 ,&
-                                  N_2N15        = 890 ,&
                                   N_2Ncont      = 891 ,&
                                   ! SCONE's fake MT for thermal inelastic scattering
                                   N_N_ThermEL     = 1002 ,&
