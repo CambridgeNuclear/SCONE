@@ -221,7 +221,7 @@ contains
     select case(MT)
       case(N_2Nd, N_2N, N_2Na, N_2N2a, N_2Np, N_2Nl)
         score = 1.0_defReal * p % preCollision % wgt
-      case(N_3N, N_3Na)
+      case(N_3N, N_3Na, N_3Np)
         score = 2.0_defReal * p % preCollision % wgt
       case(N_4N)
         score = 3.0_defReal * p % preCollision % wgt
