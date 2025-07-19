@@ -16,6 +16,7 @@ module surfaceFactory_func
   use box_class,            only : box
   use squareCylinder_class, only : squareCylinder
   use truncCylinder_class,  only : truncCylinder
+  use hexagon_class,        only : hexagon
 
   implicit none
   private
@@ -37,6 +38,9 @@ module surfaceFactory_func
                                                                       'xSquareCylinder',&
                                                                       'ySquareCylinder',&
                                                                       'zSquareCylinder',&
+                                                                      'xHexagon       ',&
+                                                                      'yHexagon       ',&
+                                                                      'zHexagon       ',&
                                                                       'xTruncCylinder ',&
                                                                       'yTruncCylinder ',&
                                                                       'zTruncCylinder ' ]
@@ -91,6 +95,9 @@ contains
 
       case ('xSquareCylinder', 'ySquareCylinder', 'zSquareCylinder')
         allocate (squareCylinder :: new)
+
+      case ('xHexagon', 'yHexagon', 'zHexagon')
+        allocate (hexagon :: new)
 
       case ('xTruncCylinder', 'yTruncCylinder', 'zTruncCylinder')
         allocate (truncCylinder :: new)

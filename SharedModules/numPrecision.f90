@@ -21,7 +21,8 @@ module numPrecision
                                       TWO = 2.0_defReal, &
                                       TWO_PI  = TWO * PI, &
                                       SQRT_PI = sqrt(PI), &
-                                      HALF    = 0.5_defReal
+                                      HALF    = 0.5_defReal, &
+                                      TWO_SQRT3 = TWO / sqrt(3._defReal)
 
   real(defReal), public, parameter  :: floatTol = 1.0e-12 !*** Should be replaced
   real(defReal), public, parameter  :: FP_REL_TOL = 1.0e-7_defReal
