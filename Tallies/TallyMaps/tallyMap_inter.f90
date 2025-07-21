@@ -1,9 +1,10 @@
 module tallyMap_inter
 
   use numPrecision
-  use particle_class,   only : particleState
-  use dictionary_class, only : dictionary
-  use outputFile_class, only : outputFile
+  use universalVariables, only : INF
+  use particle_class,     only : particleState
+  use dictionary_class,   only : dictionary
+  use outputFile_class,   only : outputFile
 
   implicit none
   private
@@ -32,13 +33,14 @@ module tallyMap_inter
     procedure(getAxisName),deferred :: getAxisName
     procedure                       :: binArrayShape
     procedure(map),deferred         :: map
+    procedure                       :: distance
     procedure(print),deferred       :: print
     procedure                       :: kill
   end type tallyMap
 
   ! Procedures extendable in subclasses
   public :: kill
-
+  public :: distance
 
   abstract interface
 
@@ -178,6 +180,27 @@ contains
 
   end subroutine kill
 
+  !!
+  !! Returns distance to tally map bounds in space
+  !!
+  !! Args:
+  !!   particleState
+  !!
+  !! Result:
+  !!   distance to nearest spatial tally boundary
+  !!
+  !! NOTE:
+  !!   For certain maps, this is nonsensical. These should not overwrite
+  !!   this distance.
+  !!
+  elemental function distance(self, state) result(d)
+    class(tallyMap), intent(in)      :: self
+    class(particleState), intent(in) :: state
+    real(defReal)                    :: d
+
+    d = INF
+
+  end function distance
 
 
 end module tallyMap_inter

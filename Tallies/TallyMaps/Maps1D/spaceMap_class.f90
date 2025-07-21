@@ -62,6 +62,7 @@ module spaceMap_class
     procedure  :: init
     procedure  :: bins
     procedure  :: map
+    procedure  :: distance
     procedure  :: getAxisName
     procedure  :: print
     procedure  :: kill
@@ -219,6 +220,46 @@ contains
     if (idx == valueOutsideArray) idx = 0
 
   end function map
+  
+  !!
+  !! Compute particle's distance to boundary
+  !!
+  !! See tallyMap for specification
+  !!
+  elemental function distance(self, state) result(d)
+    class(spaceMap), intent(in)      :: self
+    class(particleState), intent(in) :: state
+    real(defReal)                    :: d
+    integer(shortInt)                :: idx
+    real(defReal)                    :: r, u, rMin, rMax, rNext
+
+    d = INF
+    r = state % r(self % dir)
+    u = state % dir(self % dir)
+    idx = self % binBounds % search(r)
+
+    ! Out of bounds: either above or below
+    if (idx == valueOutsideArray) then
+      rMin = self % binBounds % bin(1)
+      rMax = self % binBounds % bin(self % N + 1)
+
+      if (r < rMin) then
+        if (u > ZERO) d = (rMin - r) / u
+      else
+        if (u < ZERO) d = (rMax - r) / u
+      end if
+
+    ! In bounds: travelling left or right?
+    else
+
+      if (u > ZERO) idx = idx + 1
+      rNext = self % binBounds % bin(idx)
+
+      d = (rNext - r) / u
+
+    end if
+
+  end function distance
 
   !!
   !! Return string that describes variable used to divide event space

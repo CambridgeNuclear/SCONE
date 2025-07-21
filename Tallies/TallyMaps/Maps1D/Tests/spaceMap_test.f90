@@ -148,6 +148,27 @@ contains
     @assertEqual(RES, idx)
 
   end subroutine testUnstructuredGrid
+  
+  !!
+  !! Test distance calculation
+  !!
+@Test(testParameters={getParameters()})
+  subroutine testDistance(this)
+    class(test_spaceMap), intent(inout)  :: this
+    real(defReal),dimension(2),parameter :: POS = [0.5_defReal, -10.1_defReal]
+    real(defReal),dimension(2),parameter :: MU  = [-0.01_defReal, 0.2_defReal]
+    real(defReal),dimension(2),parameter :: RES = [50.0_defReal, HALF]
+    real(defReal), dimension(2)          :: d
+    type(particleState),dimension(2)     :: states
+    real(defReal), parameter :: TOL = 1.0E-7
+
+    states % r(this % dir) = POS
+    states % dir(this % dir) = MU
+    d = this % map_unstruct % distance(states)
+
+    @assertEqual(RES, d, TOL)
+
+  end subroutine testDistance
 
  !!
  !! Test bin output
