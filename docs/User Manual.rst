@@ -1126,13 +1126,13 @@ Example: ::
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
       }
 
-* densityResponse: used to calculate the particle desnsity, i.e., the response function is 
-  the inverse of the particle velocity in [cm/s]
+* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the response function is 
+  the inverse of the particle speed in [cm/s]
 
 Example: ::
 
       tally {
-      collision_estimator { type collisionClerk; response (dens); dens { type densityResponse; } }
+      collision_estimator { type collisionClerk; response (is); is { type invSpeedResponse; } }
       }
 
 * macroResponse: used to score macroscopic reaction rates
