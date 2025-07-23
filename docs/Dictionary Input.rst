@@ -8,12 +8,13 @@ ASCII Dictionary Syntax
 
 SCONE uses a hierarchical input that is composed of nested dictionaries
 that contain some content associated with a keyword unique within the scope
-of a single dictionary. Following content is available:
+of a single dictionary. The following content is available:
 
 * Word with no spaces or ";" e.g. ThisIsContent
 * Integer number e.g. 1
 * Real number e.g. 2.78
 * List of Words, Integers or Reals
+* `TokenArray`, a possibly mixed list of words and numbers
 * Subdictionary
 
 Hierarchical structure of dictionaries can be loaded from ASCII files and be
@@ -34,6 +35,8 @@ OpenFOAM syntax is supported. An example of the correct input dictionary is::
 
       word Horace;
       words (Non omnis moriar);
+
+      tokens [I can count to 3.1415]; ! Read as an array of characters
 
       ! Subdictionary
       greeks{ poet Homer; politician Pericles; hero Theseus; }
@@ -81,6 +84,7 @@ of SCONE dictionary grammar in BNF notation is::
     <intList>     ::= (" "* <int> " "+)+
     <realList>    ::= (" "* (<int>|<real>)" "+)* (" "* <real>" "+)+ (" "* (<int>|<real>)" "+)*
     <wordList>    ::= (" "* <word> " "+)+
+    <tokenArray>  ::= [" "* <int>|<real>|word> " "+]+
 
 For compactness definitions of ``<int>``, ``<real>`` and ``<word>`` are omitted.
 They have the following meaning::

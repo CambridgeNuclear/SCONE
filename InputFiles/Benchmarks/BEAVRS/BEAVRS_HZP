@@ -1,16 +1,14 @@
 !!
 !! 3D BEAVRS benchmark
-!! This is not a fully faithful replica of BEAVRS at HZP:
-!! all rods are fully withdrawn.
-!! In reality, some rods are partially inserted.
-!! TODO: add rods in the appropriate assemblies at the
-!!       correct heights!
+!! At HZP, the D bank of rods is partially inserted up
+!! to 115 steps inserted / 113 steps withdrawn.
+!! A step corresponds to an increment of 1.58193cm
 !!
 type eigenPhysicsPackage;
 
-pop      10000000;
+pop      1000000;
 active   50;
-inactive 200;
+inactive 250;
 XSdata ce;
 dataType ce;
 
@@ -152,6 +150,9 @@ geometry {
     planeCRLowerBottom { id 135; type plane; coeffs (0.0 0.0 1.0 402.508); } // same as 109 on withdrawal
     planeCRUpperBottom { id 136; type plane; coeffs (0.0 0.0 1.0 504.108); } // out of core on withdrawal
 
+    plane322p1861 {id 137; type plane; coeffs (0 0 1 322.18609);}
+    plane220p586 {id 138; type plane; coeffs (0 0 1 220.5861);}
+    plane218p716 {id 139; type plane; coeffs (0 0 1 218.71609);}
 
   }
 
@@ -212,11 +213,16 @@ geometry {
     assem2224    {type simpleCell; id 2047; surfaces (-94); filltype uni; universe 2224;}
     assem2624    {type simpleCell; id 2048; surfaces (-94); filltype uni; universe 2624;}
     
+    // rodded assemblies in wrappers
+    assem1425   {type simpleCell; id 2049; surfaces (-94); filltype uni; universe 1425;}
+    assem1417   {type simpleCell; id 2050; surfaces (-94); filltype uni; universe 1417;}
+    
     // pin grids - thick at the top and bottom, thin in fuelled region
     thickGrid {type simpleCell; id 555; surfaces (90 ); filltype mat; material Inconel;}
     thinGrid {type simpleCell; id 556; surfaces (92 ); filltype mat; material Zircaloy;}
 
-    pressureVessel { type simpleCell; id 7; surfaces (-1 2); filltype mat; material CarbonSteel;}
+    // Don't need to bound PV by 1 since it is the bounding surface of the geometry.
+    pressureVessel { type simpleCell; id 7; surfaces (2); filltype mat; material CarbonSteel;}
     RPVLiner { type simpleCell; id 8; surfaces (-2 3); filltype mat; material SS304;}
     outerWater1 {type simpleCell; id 9; surfaces (-3 4 ); filltype mat; material Water;}
 
@@ -258,8 +264,10 @@ geometry {
     gridSSDPThick {type simpleCell; id 261; surfaces (-90); filltype uni; universe 1024;}
     // BP plenum in grid
     gridBPPThick {type simpleCell; id 262; surfaces (-90); filltype uni; universe 1012;}
-    // Rodded GT in grid
-    gridRGTThick {type simpleCell; id 263; surfaces (-90); filltype uni; universe 1014;}
+    // Lower rodded GT in grid
+    gridLRGTThick {type simpleCell; id 263; surfaces (-90); filltype uni; universe 1014;}
+    // Upper rodded GT in grid
+    gridURGTThick {type simpleCell; id 463; surfaces (-90); filltype uni; universe 1013;}
     
     // THIN GRID
     // 2.4% in grid
@@ -284,8 +292,10 @@ geometry {
     gridSSDPThin {type simpleCell; id 273; surfaces (-92); filltype uni; universe 1024;}
     // BP plenum in grid
     gridBPPThin {type simpleCell; id 274; surfaces (-92); filltype uni; universe 1012;}
-    // Rodded GT in grid (not used when rods fully withdrawn)
-    gridRGTThin {type simpleCell; id 275; surfaces (-92); filltype uni; universe 1014;}
+    // Lower rodded GT in grid (not used when rods fully withdrawn)
+    gridLRGTThin {type simpleCell; id 275; surfaces (-92); filltype uni; universe 1014;}
+    // Upper rodded GT in grid (not used when rods fully withdrawn)
+    gridURGTThin {type simpleCell; id 475; surfaces (-92); filltype uni; universe 1013;}
 
 
     // 3.1% enriched pins, axial layering
@@ -471,6 +481,34 @@ geometry {
     GT37   {type simpleCell; id 372; surfaces (-129 131); filltype uni; universe 1010;}
     GT35   {type simpleCell; id 373; surfaces (-131 132); filltype uni; universe 1005;}
     GT20   {type simpleCell; id 374; surfaces (-132);     filltype uni; universe 1001;}
+
+    //guide tube, partially inserted CR, axial layering
+    // Note: universe is basically a combo of fully and partially inserted rods
+    GP460  {type simpleCell; id 375; surfaces ( 101);     filltype uni; universe 1013;}
+    GP431  {type simpleCell; id 376; surfaces (-101 102); filltype uni; universe 1013;} 
+    GP423  {type simpleCell; id 377; surfaces (-102 106); filltype uni; universe 1013;}
+    GP415  {type simpleCell; id 378; surfaces (-106 107); filltype uni; universe 1133;}
+    GP411  {type simpleCell; id 379; surfaces (-107 111); filltype uni; universe 1013;}
+    GP364  {type simpleCell; id 380; surfaces (-111 112); filltype uni; universe 9233;}
+    GP359  {type simpleCell; id 381; surfaces (-112 137); filltype uni; universe 1013;}
+    GP322  {type simpleCell; id 382; surfaces (-137 113); filltype uni; universe 1014;}
+    GP312  {type simpleCell; id 383; surfaces (-113 114); filltype uni; universe 9232;}
+    GP306  {type simpleCell; id 384; surfaces (-114 115); filltype uni; universe 1014;}
+    GP260  {type simpleCell; id 385; surfaces (-115 116); filltype uni; universe 9232;}
+    GP254  {type simpleCell; id 386; surfaces (-116 138); filltype uni; universe 1014;}
+    GP220  {type simpleCell; id 387; surfaces (-138 139); filltype uni; universe 1023;}
+    GP219  {type simpleCell; id 388; surfaces (-139 117); filltype uni; universe 12000;}
+    GP208  {type simpleCell; id 389; surfaces (-117 118); filltype uni; universe 9112;}
+    GP202  {type simpleCell; id 390; surfaces (-118 119); filltype uni; universe 12000;}
+    GP155  {type simpleCell; id 391; surfaces (-119 120); filltype uni; universe 9112;}
+    GP150  {type simpleCell; id 392; surfaces (-120 122); filltype uni; universe 12000;}
+    GP103  {type simpleCell; id 393; surfaces (-122 123); filltype uni; universe 9112;}
+    GP98   {type simpleCell; id 394; surfaces (-123 126); filltype uni; universe 1010;}
+    GP4052 {type simpleCell; id 395; surfaces (-126 127); filltype uni; universe 12000;}
+    GP39   {type simpleCell; id 396; surfaces (-127 129); filltype uni; universe 1019;}
+    GP37   {type simpleCell; id 397; surfaces (-129 131); filltype uni; universe 1010;}
+    GP35   {type simpleCell; id 398; surfaces (-131 132); filltype uni; universe 1005;}
+    GP20   {type simpleCell; id 399; surfaces (-132);     filltype uni; universe 1001;}
 
     // control rod, axial layering 
     // Used (probably with some modification) only when fully inserted
@@ -688,6 +726,16 @@ geometry {
       id 1131; 
       type cellUniverse;  
       cells (255 555);}    
+    
+    LowerRodGTThick {
+      id 1132; 
+      type cellUniverse;  
+      cells (263 555);}  
+    
+    UpperRodGTThick {
+      id 1133; 
+      type cellUniverse;  
+      cells (463 555);}  
 
     BPThin {          // Is this necessary given 1110, BPaboveDPThin???
       id 9110; 
@@ -718,7 +766,17 @@ geometry {
       id 9231; 
       type cellUniverse;  
       cells (267 556);}    
-
+    
+    LowerRodGTThin {
+      id 9232; 
+      type cellUniverse;  
+      cells (275 556);}  
+    
+    UpperRodGTThin {
+      id 9233; 
+      type cellUniverse;  
+      cells (475 556);}  
+    
     // Axial stacks of universes to make up full pins 
 
     // 3.1 %
@@ -738,6 +796,12 @@ geometry {
       id 16; 
       type cellUniverse;  
       cells ( 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174);} 
+    
+    //burnable absorber 
+    BP {
+      id 10; 
+      type cellUniverse;  
+      cells (218 219 220 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252);}
 
     // guide tube, with CR
     GuideTubeRodded {
@@ -757,12 +821,14 @@ geometry {
       type cellUniverse;  
       cells (198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217);}
 
-    //burnable absorber 
-    BP {
-      id 10; 
-      type cellUniverse;  
-      cells (218 219 220 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252);}
 
+    // control rod, partially inserted
+    GuideTubePartial {
+      id 15;
+      type cellUniverse;
+      cells (375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399);
+
+    }
 
 
     
@@ -802,6 +868,7 @@ geometry {
               2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
               2016 2017 2018 2019 
       );}
+    
   
     A0E16 {
       id 1416;
@@ -837,7 +904,7 @@ geometry {
               2016 2017 2018 2020 
       );
     }
-
+    
     A0E31 {
       id 1431;
       type latUniverse;
@@ -1822,6 +1889,76 @@ geometry {
               2016 2017 2018 2048
       );
     }
+    
+    A0E24DBank {
+      id 1425;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 15 24 24 15 24 24 15 24 24 24 24 24 
+        24 24 24 15 24 24 24 24 24 24 24 24 24 15 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 15 24 24 15 24 24 15 24 24 15 24 24 15 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 15 24 24 15 24 24 14 24 24 15 24 24 15 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24
+        24 24 15 24 24 15 24 24 15 24 24 15 24 24 15 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 
+        24 24 24 15 24 24 24 24 24 24 24 24 24 15 24 24 24
+        24 24 24 24 24 15 24 24 15 24 24 15 24 24 24 24 24
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24  
+        24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 24 ); }
+      
+    // assembly with sleeves at different heights
+    A0E24SleeveDBank {
+      id 14250;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2049 
+      );}
+    
+    A0E16DBank {
+      id 1417;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0);
+      padMat Water;
+      map (
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 15 16 16 15 16 16 15 16 16 16 16 16 
+        16 16 16 15 16 16 16 16 16 16 16 16 16 15 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 15 16 16 15 16 16 15 16 16 15 16 16 15 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 15 16 16 15 16 16 14 16 16 15 16 16 15 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 15 16 16 15 16 16 15 16 16 15 16 16 15 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 15 16 16 16 16 16 16 16 16 16 15 16 16 16
+        16 16 16 16 16 15 16 16 15 16 16 15 16 16 16 16 16
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 
+        16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16); }
+    
+    A0E16SleeveDBank {
+      id 14170;
+      type cellUniverse;
+      cells ( 
+              2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015
+              2016 2017 2018 2050 
+      );
+    }
 
       
       leftBaffleUni {
@@ -1901,20 +2038,21 @@ geometry {
         1001 1001   1800   5224    5229    24310   7031120 24310  7031120 24310   7031120 24310   5228   5224    1700   1001    1001 
         1001 1800   5229   24310   14310   26310   14160   30310  14160   30310   14160   26310   14310  24310   5228   1700    1001 
         1001 5222   24310  2531110 26240   14160   26240   14160  26240   14160   26240   14160   26240  25311   24310  5223    1001
-        1800 5229   14310  26240   14240   26240   24160   22240  14160   22240   24160   26240   14240  26240   14310  5228    1700
+        1800 5229   14310  26240   14250   26240   24160   22240  14160   22240   24160   26240   14250  26240   14310  5228    1700
         5222 24310  26310  14160   26240   24160   22240   24160  22240   24160   22240   24160   26240  14160   26310  24310   5223 
         5222 703190 14160  26240   24160   22240   14160   22240  14160   22240   14160   22240   24160  26240   14160  703130  5223 
         5222 24310  30310  14160   22240   24160   22240   24160  26240   24160   22240   24160   22240  14160   30310  24310   5223 
-        5222 703190 14160  26240   14160   22240   14160   26240  14160   26240   14160   22240   14160  26240   14160  703130  5223 
+        5222 703190 14160  26240   14160   22240   14160   26240  14170   26240   14160   22240   14160  26240   14160  703130  5223 
         5222 24310  30310  14160   22240   24160   22240   24160  26240   24160   22240   24160   22240  14160   30310  24310   5223 
         5222 703190 14160  26240   24160   22240   14160   22240  14160   22240   14160   22240   24160  26240   14160  703130  5223 
         5222 24310  26310  14160   26240   24160   22240   24160  22240   24160   22240   24160   26240  14160   26310  24310   5223   
-        1600 5227   14310  26240   14240   26240   24160   22240  14160   22240   24160   26240   14240  26240   14310  5226    1500 
+        1600 5227   14310  26240   14250   26240   24160   22240  14160   22240   24160   26240   14250  26240   14310  5226    1500 
         1001 5222   24310  253170  26240   14160   26240   14160  26240   14160   26240   14160   26240  253150  24310  5223    1001 
         1001 1600   5227   24310   14310   26310   14160   30310  14160   30310   14160   26310   14310  24310   5226   1500    1001  
         1001 1001   1600   5225    5227    24310   703160  24310  703160  24310   703160  24310   5226   5225    1500   1001    1001  
         1001 1001   1001   1001    1600    5225    5225    5225   5225    5225    5225    5225    1500   1001    1001   1001    1001  ); }
    
+! Note partial rodded assemblies end with a 1, i.e., 14170 and 14250
    
       coreAndStructures {
       id 8888;
@@ -1930,12 +2068,21 @@ geometry {
 viz {
   bmpZ {
     type bmp;
-    output imgZ;
+    output imgXY;
+    what material;
+    centre (-17.13 240.69 167.74);
+    width (50 50);
+    axis z;
+    res (1000 1000);
+  }
+  bmpYZ {
+    type bmp;
+    output imgYZ;
     what material;
     centre (0.0 0.0 232.0);
-    //width (400.0 400.0);
-    axis z;
-    res (4000 4000);
+    width (100.0 200.0);
+    axis x;
+    res (1000 2000);
   }
 }
 

@@ -64,7 +64,7 @@ program scone
 
   call mpiFinalise()
 
-  call statusMsg('Total calculation time: ' // trim(secToChar(timerTime(timerIdx))))
-  call statusMsg('Have a good day and enjoy your result analysis!')
+  print *, 'Total calculation time: ', trim(secToChar(timerTime(timerIdx)))
+  print *, 'Have a good day and enjoy your results analysis!'
 
 end program scone

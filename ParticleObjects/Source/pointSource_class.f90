@@ -2,7 +2,8 @@ module pointSource_class
 
   use numPrecision
   use universalVariables,      only : OUTSIDE_MAT
-  use genericProcedures,       only : fatalError, numToChar
+  use genericProcedures,       only : numToChar, rotateVector
+  use errors_mod,              only : fatalError
   use particle_class,          only : particleState, P_NEUTRON, P_PHOTON
   use dictionary_class,        only : dictionary
   use configSource_inter,      only : configSource, kill_super => kill
@@ -118,7 +119,7 @@ contains
 
     ! Get position and check it's inside geometry
     call dict % get(temp, 'r')
-    if (size(self % r) /= 3) then
+    if (size(temp) /= 3) then
       call fatalError(Here, 'Source position must have three components')
     end if
     self % r = temp
@@ -219,14 +220,14 @@ contains
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
-    real(defReal)                       :: r, phi, theta
+    real(defReal)                       :: mu, phi
 
     if (self % isIsotropic) then
-      r = rand % get()
-      phi = TWO_PI * r
-      r = rand % get()
-      theta = acos(1 - TWO * r)
-      p % dir = [cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta)]
+
+      mu = TWO * rand % get() - ONE
+      phi = TWO_PI * rand % get()
+      p % dir = rotateVector([ONE, ZERO, ZERO], mu, phi)
+
     else
       p % dir = self % dir
     end if

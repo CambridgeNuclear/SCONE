@@ -25,7 +25,6 @@ module tallyAdmin_class
 
   !! Parameters
   integer(longInt), parameter :: NO_NORM = -17_longInt
-  real(defReal), parameter    :: TARGET_START_WGT = 1.0e4_defReal
 
   !!
   !! TallyAdmin is responsible for:
@@ -194,16 +193,16 @@ contains
     allocate(self % tallyClerks(size(names)))
 
     ! Load clerks into slots and clerk names into map
-    do i = 1,size(names)
+    do i = 1, size(names)
       call self % tallyClerks(i) % init(dict % getDictPtr(names(i)), names(i))
       call self % clerksNameMap % add(names(i),i)
 
     end do
 
     ! Register all clerks to recive their reports
-    do i = 1,size(self % tallyClerks)
+    do i = 1, size(self % tallyClerks)
       associate(reports => self % tallyClerks(i) % validReports())
-        do j = 1,size(reports)
+        do j = 1, size(reports)
           call self % addToReports(reports(j), i)
         end do
       end associate
@@ -214,7 +213,7 @@ contains
       call dict % get(names,'display')
 
       ! Register all clerks to display
-      do i = 1,size(names)
+      do i = 1, size(names)
         call self % displayList % add(self % clerksNameMap % get(names(i)))
       end do
 
@@ -229,18 +228,17 @@ contains
 
     ! Initialise score memory
     ! Calculate required size.
-    memSize = sum(self % tallyClerks % getSize()) + 1
+    memSize = sum(self % tallyClerks % getSize())
     call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
-    memLoc = 2
-    do i = 1,size(self % tallyClerks)
+    memLoc = 1
+    do i = 1, size(self % tallyClerks)
       call self % tallyClerks(i) % setMemAddress(memLoc)
       memLoc = memLoc + self % tallyClerks(i) % getSize()
-
     end do
 
-    ! Verify that final memLoc and memSize are consistant
+    ! Verify that final memLoc and memSize are consistent
     if (memLoc - 1 /= memSize) then
       call fatalError(Here, 'Memory addressing failed.')
     end if
@@ -251,9 +249,6 @@ contains
       call dict % get(self % normValue, 'normVal')
       i = self % clerksNameMap % get(self % normClerkName)
       self % normBinAddr = self % tallyClerks(i) % getMemAddress()
-    else
-      self % normBinAddr = 1
-      self % normValue = TARGET_START_WGT
     end if
 
   end subroutine init
@@ -265,14 +260,14 @@ contains
     class(tallyAdmin), intent(inout) :: self
 
     ! Kill attchment
-    if(associated(self % atch)) call self % atch % kill()
+    if (associated(self % atch)) call self % atch % kill()
 
     ! Return parameters to default
     self % normBinAddr = NO_NORM
     self % atch => null()
 
     ! Kill clerks slots
-    if(allocated(self % tallyClerks)) then
+    if (allocated(self % tallyClerks)) then
       call self % tallyClerks % kill()
       deallocate(self % tallyClerks)
     end if
@@ -448,7 +443,7 @@ contains
     call output % printValue(self % mem % getBatchSize(), name)
 
     ! Print Clerk results
-    do i = 1,size(self % tallyClerks)
+    do i = 1, size(self % tallyClerks)
       call self % tallyClerks(i) % print(output, self % mem)
     end do
 
@@ -484,7 +479,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % inCollClerks % getSize()
+    do i = 1, self % inCollClerks % getSize()
       idx = self % inCollClerks % get(i)
       call self % tallyClerks(idx) % reportInColl(p, xsData, self % mem, virtual)
 
@@ -524,7 +519,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % outCollClerks % getSize()
+    do i = 1, self % outCollClerks % getSize()
       idx = self % outCollClerks % get(i)
       call self % tallyClerks(idx) % reportOutColl(p, MT, muL, xsData, self % mem)
 
@@ -563,7 +558,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % pathClerks % getSize()
+    do i = 1, self % pathClerks % getSize()
       idx = self % pathClerks % get(i)
       call self % tallyClerks(idx) % reportPath(p, L, xsData, self % mem)
 
@@ -599,7 +594,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % transClerks % getSize()
+    do i = 1, self % transClerks % getSize()
       idx = self % transClerks % get(i)
       call self % tallyClerks(idx) % reportTrans(p, xsData, self % mem)
 
@@ -640,7 +635,7 @@ contains
     xsData => ndReg_get(pOld % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % spawnClerks % getSize()
+    do i = 1, self % spawnClerks % getSize()
       idx = self % spawnClerks % get(i)
       call self % tallyClerks(idx) % reportSpawn(MT, pOld, pNew, xsData, self % mem)
     end do
@@ -675,7 +670,7 @@ contains
     xsData => ndReg_get(p % getType(), where = Here)
 
     ! Go through all clerks that request the report
-    do i = 1,self % histClerks % getSize()
+    do i = 1, self % histClerks % getSize()
       idx = self % histClerks % get(i)
       call self % tallyClerks(idx) % reportHist(p, xsData, self % mem)
 
@@ -705,9 +700,6 @@ contains
     integer(shortInt), save            :: idx
     !$omp threadprivate(idx)
 
-    ! Add the particles in this cycle to starting population of the batch
-    call self % mem % score(start % popWeight(), 1_longInt)
-
     ! Call attachment
     if (associated(self % atch)) then
       call reportCycleStart(self % atch, start)
@@ -715,7 +707,7 @@ contains
 
     ! Go through all clerks that request the report
     !$omp parallel do
-    do i = 1,self % cycleStartClerks % getSize()
+    do i = 1, self % cycleStartClerks % getSize()
       idx = self % cycleStartClerks % get(i)
       call self % tallyClerks(idx) % reportCycleStart(start, self % mem)
     end do
@@ -755,7 +747,7 @@ contains
 
     ! Go through all clerks that request the reportCycleEnd
     !$omp parallel do
-    do i = 1,self % cycleEndClerks % getSize()
+    do i = 1, self % cycleEndClerks % getSize()
       idx = self % cycleEndClerks % get(i)
       call self % tallyClerks(idx) % reportCycleEnd(end, self % mem)
     end do
@@ -832,7 +824,7 @@ contains
   end subroutine getResult
 
   !!
-  !!
+  !! Sums up tally results from the MPI ranks into the Master rank
   !!
   recursive subroutine collectDistributed(self)
     class(tallyAdmin), intent(inout) :: self
