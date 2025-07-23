@@ -289,7 +289,7 @@ contains
     @assertEqual(15, dungeon % popSize())
 
     ! Normalise population with non reproducible algorithm and verify size
-    call dungeon % normSize_Repr(17, pRNG)
+    call dungeon % normSize_notRepr(17, pRNG)
     @assertEqual(17, dungeon % popSize())
 
     ! Clean memory
