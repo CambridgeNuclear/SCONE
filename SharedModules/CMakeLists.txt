@@ -1,6 +1,7 @@
 # Add Source Files to the global list
 add_sources( ./genericProcedures.f90
              ./numPrecision.f90
+             ./display_func.f90
              ./endfConstants.f90
              ./universalVariables.f90
              ./hashFunctions_func.f90
@@ -13,7 +14,8 @@ add_sources( ./genericProcedures.f90
              ./charLib_func.f90
              ./openmp_func.f90
              ./errors_mod.f90
-             ./colours_func.f90)
+             ./colours_func.f90
+             ./mpi_func.f90)
 
 add_unit_tests( ./Tests/grid_test.f90
                 ./Tests/energyGrid_test.f90

@@ -36,7 +36,6 @@ contains
 
     ! Upper frame
     write(error_unit, *) repeat('<>', MAX_COL / 2)
-
     write(error_unit, *) 'Fatal has occurred in:'
     write(error_unit, *) where, new_line('')
     write(error_unit, *) 'Because:'
@@ -63,6 +62,8 @@ contains
     write(error_unit, *) repeat('<>', MAX_COL / 2)
 
     ! Terminate with backtrace
+    ! NOTE: We assume MPI implementation will terminate all processes if one of them
+    ! returns with an error code.
     error stop
 
   end subroutine fatalError

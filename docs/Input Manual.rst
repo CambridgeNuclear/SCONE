@@ -1,7 +1,7 @@
-.. _user-manual:
+.. _input-manual:
 
-User Manual
-===========
+Input Manual
+============
 
 Generic information about how to use dictionaries in writing an input file can be found
 in :ref:`Dictionary Input <dictSyntax>`. Here, more specific information about the input
@@ -27,9 +27,15 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
+* reproducible (*optional*, default = 1): 1 for true; 0 for false; if running
+  with MPI, this ensures that the particle normalisation procedure used maintains
+  reproducibility when running with different numbers of MPI ranks. However, the 
+  (MPI) parallel scaling performance of this option is slightly worse than using the
+  alternative procedure, that doesn't ensure reproducibility
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
-  in the particleDungeon) to a text file
+  in the particleDungeon) to a text file. If running with MPI, this is done 
+  by each MPI rank separately
 
 Example: ::
 

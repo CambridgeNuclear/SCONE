@@ -3,8 +3,9 @@ module keffImplicitClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
-  use universalVariables
+  use universalVariables,         only : VOID_MAT, TRACKING_XS, MAX_COL
   use genericProcedures,          only : fatalError, charCmp
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle
   use particleDungeon_class,      only : particleDungeon
@@ -69,7 +70,7 @@ module keffImplicitClerk_class
     procedure :: reportInColl
     procedure :: reportOutColl
     procedure :: reportHist
-    procedure :: reportCycleEnd
+    procedure :: closeCycle
     procedure :: isConverged
 
     ! Output procedures
@@ -134,7 +135,7 @@ contains
     class(keffImplicitClerk),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE, outColl_CODE, cycleEnd_CODE, hist_CODE]
+    validCodes = [inColl_CODE, outColl_CODE, hist_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -268,7 +269,7 @@ contains
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
+  subroutine closeCycle(self, end, mem)
     class(keffImplicitClerk), intent(inout) :: self
     class(particleDungeon), intent(in)      :: end
     type(scoreMemory), intent(inout)        :: mem
@@ -276,6 +277,7 @@ contains
     real(defReal)                           :: nuFiss, absorb, leakage, scatterMul, k_est
 
     if (mem % lastCycle()) then
+
       addr = self % getMemAddress()
       nuFiss     = mem % getScore(addr + IMP_PROD)
       absorb     = mem % getScore(addr + IMP_ABS)
@@ -284,9 +286,10 @@ contains
 
       k_est = nuFiss / (absorb + leakage - scatterMul)
       call mem % accumulate(k_est, addr + K_EFF)
+
     end if
 
-  end subroutine reportCycleEnd
+  end subroutine closeCycle
 
   !!
   !! Perform convergence check in the Clerk
@@ -314,12 +317,14 @@ contains
     class(keffImplicitClerk), intent(in)  :: self
     type(scoreMemory), intent(in)         :: mem
     real(defReal)                         :: k, STD
+    character(MAX_COL)                    :: buffer
 
     ! Get current k-eff estimate
     call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
 
     ! Print to console
-    print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD
+    write (buffer, '(A,F8.5,A,F8.5)') 'k-eff (implicit): ', k, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 
