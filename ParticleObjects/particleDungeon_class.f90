@@ -96,7 +96,8 @@ module particleDungeon_class
     !! Misc Procedures
     procedure  :: isEmpty
     procedure  :: normWeight
-    procedure  :: normSize
+    procedure  :: normSize_Repr
+    procedure  :: normSize_notRepr
     procedure  :: cleanPop
     procedure  :: popSize
     procedure  :: popWeight
@@ -418,9 +419,12 @@ contains
   !!
   !! Normalise total number of particles in the dungeon to match the provided number
   !!
+  !! This procedure ensure reproducibility when using MPI - regardless of
+  !! the number of ranks used
+  !!
   !! Does not take weight of a particle into account!
   !!
-  subroutine normSize(self, totPop, rand)
+  subroutine normSize_Repr(self, totPop, rand)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: totPop
     class(RNG), intent(inout)             :: rand
@@ -593,7 +597,7 @@ contains
     if (nRanks > 1) call self % loadBalancing(totPop, nRanks, rank, popSizes)
 #endif
 
-  end subroutine normSize
+  end subroutine normSize_Repr
 
   !!
   !! Perform nearest neighbor load balancing
@@ -686,6 +690,82 @@ contains
 
   end subroutine loadBalancing
 #endif
+
+  !!
+  !! Normalise number of particles in the dungeon to match the provided number
+  !!
+  !! When using MPI, each rank normalises the population in its own dungeon, without
+  !! communication between ranks. This means that load balancing is not needed here.
+  !!
+  !! As a consequence, this procedure doesn't ensure reproducibility when using MPI - different
+  !! number of threads will give different results.
+  !!
+  !! Does not take weight of a particle into account!
+  !!
+  subroutine normSize_notRepr(self, N, rand)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: N
+    class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: excessP, n_copies, n_duplicates
+    integer(shortInt)                     :: i, idx, maxBroodID
+    integer(shortInt), dimension(:), allocatable :: duplicates
+    character(100), parameter :: Here =' normSize (particleDungeon_class.f90)'
+
+    ! Protect against invalid N
+    if (N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greater then max size: '//numToChar(size(self % prisoners)))
+    else if (N <= 0) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Determine the maximum brood ID and sort the dungeon
+    maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
+    call self % sortByBroodID(maxbroodID)
+
+    ! Calculate excess particles to be removed
+    excessP = self % pop - N
+
+    if (excessP > 0) then ! Reduce population with reservoir sampling
+      do i = N + 1, self % pop
+        ! Select new index. Copy data if it is in the safe zone (<= N).
+        idx = int(i * rand % get()) + 1
+        if (idx <= N) then
+          self % prisoners(idx) = self % prisoners(i)
+        end if
+      end do
+      self % pop = N
+
+    else if (excessP < 0) then ! Clone randomly selected particles
+      ! For a massive undersampling duplicate (or n-plicate) particles
+      excessP = -excessP
+      n_copies = excessP / self % pop
+      n_duplicates = modulo(excessP, self % pop)
+
+      ! Copy all particles the maximum possible number of times
+      do i = 1, n_copies
+        self % prisoners(self % pop * i + 1 : self % pop * (i + 1)) = self % prisoners(1:self % pop)
+      end do
+
+      ! Choose the remainder particles to duplicate without replacement
+      duplicates = [(i, i = 1, n_duplicates)]
+      do i = n_duplicates + 1, self % pop
+        idx = int(i * rand % get()) + 1
+        if (idx <= n_duplicates) then
+          duplicates(idx) = i
+        end if
+      end do
+      self % pop = self % pop * (n_copies + 1)
+
+      ! Copy the duplicated particles at the end
+      do i = 1, n_duplicates
+        self % prisoners(self % pop + i) = self % prisoners(duplicates(i))
+      end do
+      self % pop = N
+
+    end if
+
+  end subroutine normSize_notRepr
 
   !!
   !! Reorder the dungeon so the brood ID is in the ascending order

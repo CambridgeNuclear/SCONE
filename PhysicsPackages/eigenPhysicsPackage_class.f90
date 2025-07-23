@@ -104,6 +104,7 @@ module eigenPhysicsPackage_class
     real(defReal)      :: keff_0
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
+    logical(defBool)   :: reproducible = .true.
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -262,13 +263,18 @@ contains
       end if
 
       ! Normalise population
-      call self % nextCycle % normSize(self % totalPop, self % pRNG)
+      if (self % reproducible) then
+        call self % nextCycle % normSize_Repr(self % totalPop, self % pRNG)
+      else
+        call self % nextCycle % normSize_notRepr(self % pop, self % pRNG)
+      end if
 
       ! Update RNG after it was used to normalise particle population
       call self % pRNG % stride(1)
 
       if (self % printSource == 1) then
-        call self % nextCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+        call self % nextCycle % printToFile(trim(self % outputFile) // '_source' // numToChar(i) // &
+                                            '_rank' // numToChar(getMPIRank()))
       end if
 
       ! Flip cycle dungeons
@@ -432,8 +438,11 @@ contains
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
 
+    ! Check if the calculation has to be reproducible with MPI
+    call dict % getOrDefault(self % reproducible, 'reproducible', .true.)
+
     ! Parallel buffer size
-    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
+    call dict % getOrDefault(self % bufferSize, 'buffer', 1000)
 
     ! Process type of data
     select case(energy)

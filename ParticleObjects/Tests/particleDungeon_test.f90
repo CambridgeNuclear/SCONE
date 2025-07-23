@@ -239,14 +239,13 @@ contains
       call dungeon % detain(p)
     end do
 
-    ! Normalise population
-    call dungeon % normSize(5, pRNG)
+    ! Normalise population with non reproducible algorithm and verify size
+    call dungeon % normSize_notRepr(8, pRNG)
+    @assertEqual(8, dungeon % popSize())
 
-    ! Verify size
+    ! Normalise population with reproducible algorithm and verify size
+    call dungeon % normSize_Repr(5, pRNG)
     @assertEqual(5, dungeon % popSize())
-
-    ! Verify weight *** DISABLED
-    !@assertEqual(6.05_defReal, dungeon % popWeight(), TOL)
 
     ! Clean memory
     call dungeon % kill()
@@ -285,14 +284,13 @@ contains
       call dungeon % detain(p)
     end do
 
-    ! Normalise population
-    call dungeon % normSize(15, pRNG)
-
-    ! Verify size
+    ! Normalise population with reproducible algorithm and verify size
+    call dungeon % normSize_Repr(15, pRNG)
     @assertEqual(15, dungeon % popSize())
 
-    ! Verify weight *** DISABLED
-    !@assertEqual(18.15_defReal, dungeon % popWeight(), TOL)
+    ! Normalise population with non reproducible algorithm and verify size
+    call dungeon % normSize_Repr(17, pRNG)
+    @assertEqual(17, dungeon % popSize())
 
     ! Clean memory
     call dungeon % kill()
