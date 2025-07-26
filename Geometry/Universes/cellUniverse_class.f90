@@ -166,21 +166,21 @@ contains
     integer(longInt)                   :: keyVisit
 
     associate(cells => self % cells, idx => self % searchIdx)
-    N = size(cells)
-    do i = 2, n
-      keyIdx = idx(i)
-      keyVisit = cells(keyIdx) % visits
-      j = i - 1
+      N = size(cells)
+      do i = 2, n
+        keyIdx = idx(i)
+        keyVisit = cells(keyIdx) % visits
+        j = i - 1
 
-      ! Shift elements right until correct position found
-      do while (j >= 1 .and. cells(idx(j)) % visits < keyVisit)
-        idx(j + 1) = idx(j)
-        j = j - 1
+        ! Shift elements right until correct position found
+        do while (j >= 1 .and. cells(idx(j)) % visits < keyVisit)
+          idx(j + 1) = idx(j)
+          j = j - 1
+        end do
+
+        ! Insert element in correct position
+        idx(j + 1) = keyIdx
       end do
-
-      ! Insert element in correct position
-      idx(j + 1) = keyIdx
-    end do
     end associate
 
   end subroutine reorderCells
