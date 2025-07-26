@@ -22,7 +22,7 @@ module universalVariables
                                       surface_tol = 1.0e-12_defReal, & ! Tol. on closeness to surface
                                       SURF_TOL    = 1.0E-12_defReal, &
                                       INF         = 2.0_defReal**63, &
-                                      NUDGE       = 1.0e-9_defReal     ! Distance to poke neutrons across boundaries for surface tracking
+                                      NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Flags for different possible events in movement in geometry
   integer(shortINt), parameter, public :: COLL_EV = 1, &
