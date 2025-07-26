@@ -190,10 +190,10 @@ contains
 
       ! Terminate if there is an error in the geometry
       if (matIdx == UNDEF_MAT) then
-        print *, r
+        print *, 'Particle location: ', r
         call fatalError(Here, 'Particle position was sampled in an undefined material')
       elseif (matIdx == OVERLAP_MAT) then
-        print *, r
+        print *, 'Particle location: ', r
         call fatalError(Here, 'Particle position was sampled in an overlapping cell region')
       end if
 
