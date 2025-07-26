@@ -108,6 +108,7 @@ contains
           p % isDead = .true.
           return
 
+
         ! Check for void
         case(VOID_MAT)
           call tally % reportInColl(p, .true.)
