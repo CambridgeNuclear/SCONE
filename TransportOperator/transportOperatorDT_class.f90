@@ -85,7 +85,7 @@ contains
 
         ! Give error if the particle is in a region with overlapping cells
         case(OVERLAP_MAT)
-          print *, p % rGlobal()
+          print*, 'Particle location: ', p % rGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
 
         case default
