@@ -45,7 +45,7 @@ module collisionClerk_class
   !!
   !! myCollisionClerk {
   !!   type collisionClerk;
-  !!   # handleVirtual 1; #
+  !!   # handleVirtual 0; # default is 1   
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
   !!   response (resName1 #resName2 ... #)

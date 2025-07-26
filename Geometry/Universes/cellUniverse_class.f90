@@ -306,30 +306,30 @@ contains
 
     associate(neighb => self % cells(initID) % neighb)
 
-    ! Search neighbours if starting cell is given
-    if (neighb % getSize() > 0) then
-      do i = 1, neighb % getSize()
-        
-        localID = neighb % get(i)
-        
-        if (self % cells(localID) % ptr % inside(r, u)) then
-          cellIdx = self % cells(localID) % idx
-          foundNeighb = .true.
-          !$omp atomic
-          self % cells(localID) % visits = self % cells(localID) % visits + 1
-          if (mod(self % cells(localID) % visits, reorderFreq) == 0) then
-            !$omp critical
-            self % reordering = .true.
-            call self % reorderCells()
-            self % reordering = .false.
-            !$omp end critical
+      ! Search neighbours if starting cell is given
+      if (neighb % getSize() > 0) then
+        do i = 1, neighb % getSize()
+
+          localID = neighb % get(i)
+
+          if (self % cells(localID) % ptr % inside(r, u)) then
+            cellIdx = self % cells(localID) % idx
+            foundNeighb = .true.
+            !$omp atomic
+            self % cells(localID) % visits = self % cells(localID) % visits + 1
+            if (mod(self % cells(localID) % visits, reorderFreq) == 0) then
+              !$omp critical
+              self % reordering = .true.
+              call self % reorderCells()
+              self % reordering = .false.
+              !$omp end critical
+            end if
+            return
+
           end if
-          return
 
-        end if
-
-      end do
-    end if
+        end do
+      end if
 
     end associate
 
