@@ -115,10 +115,12 @@ contains
 
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
-          print *, p % rGlobal()
+          print *, "Particle location: ", p % rGlobal()
           call fatalError(Here, "Particle is in undefined material")
+
+        ! Give error if the particle somehow ended in an overlap material
         case(OVERLAP_MAT)
-          print *, p % rGlobal()
+          print *, "Particle location: ", p % rGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
 
         case default
@@ -158,26 +160,17 @@ contains
     STLoop: do
       
       ! Obtain the local cross-section, depending on the material
-      select case(p % matIdx())
-        case(VOID_MAT)
-          dist = INFINITY
+      if (p % matIdx() == VOID_MAT) then
+        dist = INFINITY
 
-        case(UNDEF_MAT)
-          print *, p % rGlobal()
-          call fatalError(Here, "Particle is in undefined material")
-      
-        case(OVERLAP_MAT)
-          print *, p % rGlobal()
-          call fatalError(Here, "Particle is in overlapping cells")
+      else
+        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
+        dist = -log( p % pRNG % get()) / sigmaT
 
-        case default
-          sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-          dist = -log( p % pRNG % get()) / sigmaT
+        ! Should never happen! Catches NaN distances
+        if (dist /= dist) call fatalError(Here, "Distance is NaN")
 
-          ! Should never happen! Catches NaN distances
-          if (dist /= dist) call fatalError(Here, "Distance is NaN")
-
-      end select
+      end if
 
       ! Save state before movement
       call p % savePrePath()
@@ -199,6 +192,8 @@ contains
         case(UNDEF_MAT)
           print *, p % rGlobal()
           call fatalError(Here, "Particle is in undefined material")
+
+        ! Give error if the particle ended in an overlap material
         case(OVERLAP_MAT)
           print *, p % rGlobal()
           call fatalError(Here, "Particle is in overlapping cells")

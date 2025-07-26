@@ -35,8 +35,7 @@ module cellUniverse_test
   
   character(*), parameter :: SURF2_DEF = &
   " surf1 { id 1; type sphere; origin (21.0 0.0 0.0); radius 4.5;}&
-  & surf2 { id 2; type sphere; origin (0.0 0.0 0.0); radius 24.1;}&
-  & surf3 { id 3; type sphere; origin (0.0 0.0 0.0); radius 28;}"
+  & surf2 { id 2; type sphere; origin (0.0 0.0 0.0); radius 24.1;}"
 
   character(*), parameter :: CELL2_DEF = &
   " cell1 {id 1; type simpleCell; surfaces (-1); filltype uni; universe 3;} &

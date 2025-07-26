@@ -17,8 +17,9 @@ module cellUniverse_class
   implicit none
   private
   
+  ! Determines how frequently to reorder the cell list
   integer(longInt), public, parameter :: reorderFreq = 10_longInt**6
-
+  
   !!
   !! Local helper class to group cell data
   !!
@@ -52,8 +53,6 @@ module cellUniverse_class
   !! search operations.
   !! Additionally, neighbour lists are built when the cross operation is invoked. These also
   !! accelerate cell searches.
-  !!
-  !! Can optionally check for overlaps.
   !!
   !! Sample Input Dictionary:
   !!   uni { type cellUniverse;

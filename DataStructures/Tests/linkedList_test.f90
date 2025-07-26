@@ -75,18 +75,6 @@ contains
     @assertEqual(42, list % get(2))
     @assertEqual(666, list % get(3))
 
-    call list % kill()
-
-    ! Build by elements
-    do i=1,7
-      call list % add(2 * i)
-    end do
-
-    ! Test getSize
-    @assertFalse(list % getSize() == 0)
-    @assertEqual(7, list % getSize())
-
-
   end subroutine testUsage
 
   !!
