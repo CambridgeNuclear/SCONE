@@ -87,6 +87,7 @@ contains
           call fatalError(Here, "Particle is in overlapping cells")
 
         case default
+          ! All is well        
 
       end select
 
