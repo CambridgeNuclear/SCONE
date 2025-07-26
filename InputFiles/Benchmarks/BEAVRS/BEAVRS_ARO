@@ -240,7 +240,7 @@ geometry {
     // Outer core
     coreBarrel { type simpleCell; id 22; surfaces (-6 7); filltype mat; material SS304;}
     core {type simpleCell; id 23; surfaces (-7); filltype uni; universe 9999;}
-    
+
     // Gridded pins
 
     // THICK GRID 
@@ -1938,7 +1938,7 @@ viz {
     type bmp;
     output imgZ;
     what material;
-    !centre (0.0 0.0 232.0);
+    centre (0.0 0.0 232.0);
     //width (400.0 400.0);
     axis z;
     res (4000 4000);

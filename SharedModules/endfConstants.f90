@@ -83,6 +83,11 @@ module endfConstants
                                   N_pd          = 115 ,&
                                   N_pt          = 116 ,&
                                   N_da          = 117 ,&
+                                  N_2N1         = 875 ,&
+                                  ! N_2Nl(:) = 875:890
+                                  ! (n,2n) scattering from levels 1-16 is defined at the end
+                                  N_2N16        = 890 ,&
+                                  N_2Ncont      = 891 ,&
                                   ! SCONE's fake MT for thermal inelastic scattering
                                   N_N_ThermEL     = 1002 ,&
                                   N_N_ThermINEL   = 1004 ,&

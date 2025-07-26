@@ -248,7 +248,6 @@ geometry {
     coreBarrel { type simpleCell; id 22; surfaces (-6 7); filltype mat; material SS304;}
     core {type simpleCell; id 23; surfaces (-7); filltype uni; universe 9999;}
 
-
     // Gridded pins
 
     // THICK GRID 
