@@ -201,13 +201,16 @@ contains
 
         ! Give error if the particle somehow ended in an undefined material
         case(UNDEF_MAT)
-          print *, p % rGlobal()
+          print*, 'Particle location: ', p % rGlobal()
           call fatalError(Here, "Particle is in undefined material")
+          
+        ! Give error if the particle is in a region with overlapping cells  
         case(OVERLAP_MAT)
-          print *, p % rGlobal()
+          print*, 'Particle location: ', p % rGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
       
         case default
+          ! All is well
 
       end select
 
