@@ -140,7 +140,15 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (baseMgNeutronDatabase_class.f90)'
 
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     xs = self % getTotalMatXS(p, matIdx)
 
   end function getTrackMatXS
@@ -159,6 +167,14 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTotalMatXS (baseMgNeutronDatabase_class.f90)'
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
 
     associate (matCache => materialCache(matIdx))
 
