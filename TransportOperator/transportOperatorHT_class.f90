@@ -85,7 +85,7 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
-    real(defReal)                             :: majorant_inv, sigmaT, distance
+    real(defReal)                             :: majorant_inv, sigmaT, distance, speed, time
     character(100), parameter :: Here = 'deltaTracking (transportOperatorHT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
@@ -96,10 +96,32 @@ contains
 
     DTLoop:do
       distance = -log( p % pRNG % get() ) * majorant_inv
+      
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO) then
+        speed = p % getSpeed()
+        time = distance / speed + p % time
+
+        ! Hit the time boundary: set max distance and age the particle
+        if (time > p % timeMax) then
+          distance = speed * (p % timeMax - p % time)
+          p % fate = AGED_FATE
+          
+        ! Advance particle in time
+        else
+          p % time = time
+        end if
+
+      end if
 
       ! Move particle in the geometry
       call self % geom % teleport(p % coords, distance)
 
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        return
+      end if
+      
       select case(p % matIdx())
 
         ! If particle has leaked exit
@@ -156,7 +178,7 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist
+    real(defReal)                             :: sigmaT, dist, speed, time
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
@@ -171,6 +193,23 @@ contains
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
+        
+        ! Set a max flight distance due to hitting the time-boundary
+        if (p % timeMax > ZERO) then
+          speed = p % getSpeed()
+          time = dist / speed + p % time
+
+          ! Hit the time boundary: set max distance and age the particle
+          if (time > p % timeMax) then
+            dist = speed * (p % timeMax - p % time)
+            p % fate = AGED_FATE
+          
+          ! Advance particle in time
+          else
+            p % time = time
+          end if
+
+        end if
 
       end if
 
@@ -206,7 +245,7 @@ contains
       end select
 
       ! Return if particle stoped at collision (not cell boundary)
-      if (event == COLL_EV .or. p % isDead) exit STLoop
+      if (event == COLL_EV .or. p % isDead .or. p % fate == AGED_FATE) exit STLoop
 
     end do STLoop
 
