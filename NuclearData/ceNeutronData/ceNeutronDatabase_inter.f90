@@ -2,7 +2,7 @@ module ceNeutronDatabase_inter
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use particle_class,    only : particle, P_NEUTRON, printType
   use charMap_class,     only : charMap
@@ -13,6 +13,9 @@ module ceNeutronDatabase_inter
   use materialHandle_inter,  only : materialHandle
   use reactionHandle_inter,  only : reactionHandle
   use nuclearDatabase_inter, only : nuclearDatabase
+  
+  ! Material Menu
+  use materialMenu_mod,      only : mm_nMat => nMat
 
   ! Cache
   use ceNeutronCache_mod,    only : materialCache, majorantCache, trackingCache
@@ -347,6 +350,13 @@ contains
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     ! Check Cache and update if needed
     if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
 
@@ -374,7 +384,14 @@ contains
     if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
-
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     ! Check Cache and update if needed
     if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
 
