@@ -1,11 +1,10 @@
 module multiMap_class
 
   use numPrecision
-  use universalVariables, only : INF
-  use genericProcedures,  only : fatalError
-  use dictionary_class,   only : dictionary
-  use outputFile_class,   only : outputFile
-  use particle_class,     only : particleState
+  use genericProcedures, only : fatalError
+  use dictionary_class,  only : dictionary
+  use outputFile_class,  only : outputFile
+  use particle_class,    only : particleState
 
   use tallyMap_inter,         only : tallyMap
   use tallyMap1D_inter,       only : tallyMap1D
@@ -53,7 +52,6 @@ module multiMap_class
     procedure :: dimensions
     procedure :: getAxisName
     procedure :: map
-    procedure :: distance
     procedure :: print
     procedure :: kill
   end type multiMap
@@ -173,27 +171,6 @@ contains
     end do
 
   end function map
-  
-  !!
-  !! Compute particle's distance to boundary
-  !!
-  !! See tallyMap for specification
-  !!
-  elemental function distance(self, state) result(d)
-    class(multiMap), intent(in)      :: self
-    class(particleState), intent(in) :: state
-    real(defReal)                    :: d
-    integer(shortInt)                :: i
-    real(defReal)                    :: d0
-
-    d = INF
-    
-    do i = 1, size(self % maps)
-      d0 = self % maps(i) % slot % distance(state)
-      d = min(d, d0)
-    end do
-
-  end function distance
 
   !!
   !! Add information about division axis to the output file

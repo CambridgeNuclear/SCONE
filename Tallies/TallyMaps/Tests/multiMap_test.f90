@@ -107,25 +107,6 @@ contains
 
   end subroutine testMapping
 
-  !!
-  !! Test distance calculation
-  !!
-  subroutine testDistance(this)
-    class(test_multiMap), intent(inout)  :: this
-    real(defReal),dimension(3),parameter :: POS = [1.3_defReal, 8.0_defReal, 0.1_defReal]
-    real(defReal),dimension(3),parameter :: MU  = [HALF, -ONE, -TWO]
-    real(defReal),parameter              :: RES = 1.4_defReal
-    real(defReal)                        :: d
-    type(particleState)                  :: state
-    real(defReal), parameter :: TOL = 1.0E-7
-
-    state % r = POS
-    state % dir = MU
-    d = this % map % distance(state)
-
-    @assertEqual(RES, d, TOL)
-      
-  end subroutine testDistance
 
 
 
