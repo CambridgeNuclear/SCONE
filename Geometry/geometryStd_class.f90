@@ -431,7 +431,7 @@ contains
       ! If surfIdx is positive, this is an actual surface
       if (surfIdx > 0) then
         surf => self % geom % surfs % getPtr(surfIdx)
-        n = surf % normal(coords % lvl(level) % r, coords % lvl(level) % dir)
+        n = surf % normal(coords % lvl(level-1) % r, coords % lvl(level-1) % dir)
       
       ! If negative, this is an implied surface from a structured universe, e.g., lattice
       else
