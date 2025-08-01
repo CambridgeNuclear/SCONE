@@ -1,0 +1,127 @@
+!!
+!! Stacy 30 fissile solution. 
+!! Should reproduce results from:
+!! "Development of a dynamic simulation mode in Serpent 2
+!!  Monte Carlo code"
+!! Prompt neutrons only, following the original calculation.
+!! Criticality can be adjusted by changing the height of the
+!! aqueous solution.
+!!
+
+type kineticPhysicsPackage;
+
+pop      10000;
+timeSteps   500;
+XSdata   ce;
+dataType ce;
+dt 6.0E-06;
+cycles 10;
+buffer 100;
+
+collisionOperator { neutronCE {type neutronCEstd; promptOnly 1; makePrec 0;}}
+
+transportOperator { type transportOperatorHT;
+                  }
+
+source {
+  type pointSource;
+  r (0.0 0.0 10.0);
+  particle neutron;
+  E 1.0E-6;
+}
+
+tally  {
+  flux_time { type collisionClerk;
+    map { type multiMap; maps (map1 map2);
+    map1 { type timeMap; grid lin; min 0.0; max 3E-3; N 500;}
+    map2 { type cellMap; cells (1); } 
+    }
+    response (pop); pop {type densityResponse;}
+  }
+  }
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+    s1 {type zPlane; id 1; z0 0;}
+    s2 {type zPlane; id 2; z0 46.83;} ! Critical
+    !s2 {type zPlane; id 2; z0 36.83;} ! Subcritical
+    !s2 {type zPlane; id 2; z0 56.83;} ! Supercritical
+    s3 {type zPlane; id 3; z0 150;}
+    s10 {type zCylinder; id 10; origin (0.0 0.0 0.0); radius 29.5;}
+    s20 {type zTruncCylinder; id 20; origin (0.0 0.0 75.25); radius 29.8; halfwidth 77.25;}
+    
+    } 
+
+    cells
+    {
+      cellOne { id 1; type simpleCell; surfaces (1 -2 -10); filltype mat; material m1;} 
+      cellTwo { id 2; type simpleCell; surfaces (2 -3 -10); filltype mat; material m3;}
+      cellThree { id 3; type simpleCell; surfaces (1 -3 10); filltype mat; material m2;}
+      cellFour { id 4; type simpleCell; surfaces (-1); filltype mat; material m2;}
+      cellFive { id 5; type simpleCell; surfaces (3); filltype mat; material m2;} 
+    }
+
+
+    universes
+    {
+      root{id 1; type rootUniverse; border 20; fill u<2>;}
+      geom { id 2; type cellUniverse; cells ( 1 2 3 4 5); checkOverlap 0;}
+    }
+}
+
+viz {
+
+}
+
+nuclearData {
+  handles {
+    !ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} 
+    ce { type aceNeutronDatabase; aceLibrary /home/pmc55/XSdata_endfb7/fullLib.xsfile; ures 1;}
+  }
+  materials {
+
+    m1 {
+      temp 12345;
+      moder {1001.03 (lwe7.00);}
+      composition {
+      1001.03     5.6707E-02;
+      7014.03     2.9406E-03;
+      8016.03     3.8084E-02;
+     92234.03     6.4430E-07;
+     92235.03     7.9954E-05;
+     92236.03     7.9854E-08;
+     92238.03     7.1216E-04;
+        }
+    }
+
+    m2 {
+      temp 12345;
+      composition {
+      6000.03 4.3736e-5;
+     14000.03 1.0627e-3;
+     25055.03 1.1561e-3;
+     15031.03 4.3170e-5;
+     16000.03 2.9782e-6;
+     28000.03 8.3403e-3;
+     24000.03 1.6775e-2;
+     26000.03 5.9421e-2;
+      }
+
+      }
+
+    m3 {
+      temp 12345;
+      composition {
+      7014.03 3.9016e-5;
+      8016.03 1.0409e-5;
+      }
+
+    }
+
+  }
+}
