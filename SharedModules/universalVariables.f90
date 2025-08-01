@@ -40,15 +40,16 @@ module universalVariables
   ! NOTE: All material indices MUST BE NON-NEGATIVE!
   integer(shortInt), parameter :: OUTSIDE_MAT = 0 ,&
                                   VOID_MAT    = huge(OUTSIDE_MAT), &
-                                  UNDEF_MAT   = VOID_MAT - 1
+                                  UNDEF_MAT   = VOID_MAT - 1, &
+                                  OVERLAP_MAT = VOID_MAT - 2
 
 
   ! Define integers for each fill type that a cell may have
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
-                                  latticeFill  = 3
-
+                                  latticeFill  = 3 
+                          
   ! Define integers for boundary condition types
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
