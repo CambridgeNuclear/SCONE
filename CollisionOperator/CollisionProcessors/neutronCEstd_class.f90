@@ -2,13 +2,13 @@ module neutronCEstd_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : REJECTED
+  use universalVariables,            only : REJECTED, INF
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -49,16 +49,18 @@ module neutronCEstd_class
   !!   -> Does not create secondary non-neutron projectiles
   !!
   !! Settings:
-  !!  minE    -> minimum energy cut-off [MeV] (default = 1.0E-11)
-  !!  maxE    -> maximum energy. Higher energies are set to maximum (not re-rolled) [MeV]
-  !!             (default = 20.0)
-  !!  threshE -> Energy threshold for explicit treatment of target nuclide movement [-].
-  !!             Target movement is sampled if neutron energy E < kT * threshE where
-  !!             kT is target material temperature in [MeV]. (default = 400.0)
-  !!  threshA -> Mass threshold for explicit treatment of target nuclide movement [Mn].
-  !!             Target movement is sampled if target mass A < threshA. (default = 1.0)
-  !!  DBRCeMin -> Minimum energy to which DBRC is applied
-  !!  DBRCeMax -> Maximum energy to which DBRC is applied
+  !!  minE       -> minimum energy cut-off [MeV] (default = 1.0E-11)
+  !!  maxE       -> maximum energy. Higher energies are set to maximum (not re-rolled) [MeV]
+  !!                (default = 20.0)
+  !!  threshE    -> Energy threshold for explicit treatment of target nuclide movement [-].
+  !!                Target movement is sampled if neutron energy E < kT * threshE where
+  !!                kT is target material temperature in [MeV]. (default = 400.0)
+  !!  threshA    -> Mass threshold for explicit treatment of target nuclide movement [Mn].
+  !!               Target movement is sampled if target mass A < threshA. (default = 1.0)
+  !!  DBRCeMin   -> Minimum energy to which DBRC is applied
+  !!  DBRCeMax   -> Maximum energy to which DBRC is applied
+  !!  makePrec   -> Produce precursor particles, used in dynamic calculations (default = false)
+  !!  promptOnly -> If true, prevents delayed neutrons or precursors from being produced
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -67,6 +69,8 @@ module neutronCEstd_class
   !!   #maxEnergy       <real>;#
   !!   #energyThreshold <real>;#
   !!   #massThreshold   <real>;#
+  !!   #makePrec        <bool>;#
+  !!   #promptOnly      <bool>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEstd
@@ -83,6 +87,8 @@ module neutronCEstd_class
     real(defReal) :: threshA
     real(defReal) :: DBRCeMin
     real(defReal) :: DBRCeMax
+    logical(defBool) :: makePrec = .false.
+    logical(defBool) :: promptOnly = .false.
 
   contains
     ! Initialisation procedure
@@ -125,6 +131,10 @@ contains
     ! Thermal scattering kernel thresholds
     call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)
     call dict % getOrDefault(self % threshA, 'massThreshold', 1.0_defReal)
+    
+    ! Precursor settings
+    call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
+    call dict % getOrDefault(self % promptOnly, 'promptOnly', .false.)
 
     ! Verify settings
     if (self % minE < ZERO) call fatalError(Here,'-ve minEnergy')
@@ -132,6 +142,8 @@ contains
     if (self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
     if (self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
     if (self % threshA < 0) call fatalError(Here,' -ve massThreshold')
+    if (self % makePrec .and. self % promptOnly) call fatalError(Here,&
+            'Incompatible options: cannot makePrecursors and have promptOnly neutrons!')
 
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
@@ -201,7 +213,7 @@ contains
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, lambda
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -226,18 +238,22 @@ contains
       ! Shortcut particle generation if no particles were sampled
       if (n < 1) return
 
-      ! Get fission Reaction
+      ! Get fission reaction
       fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
       ! Store new sites in the next cycle dungeon
-      wgt =  sign(w0, wgt)
+      wgt = sign(w0, wgt)
       r   = p % rGlobal()
 
-      do i = 1,n
-        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+      do i = 1, n
+        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
+        
+        ! Skip if a delayed particle is produced in prompt-only mode
+        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
-
+        
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -250,12 +266,20 @@ contains
         pTemp % wgt = wgt
         pTemp % collisionN = 0
 
+        ! If storing precursors, do so when a finite lambda occurs
+        if (self % makePrec .and. lambda < huge(lambda)) then
+          pTemp % lambda = lambda
+          pTemp % type = P_PRECURSOR
+
+        end if
+
         call nextCycle % detain(pTemp)
 
         ! Report birth of new particle
         call tally % reportSpawn(N_FISSION, p, pTemp)
 
       end do
+
     end if
 
   end subroutine implicit

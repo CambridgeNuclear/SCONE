@@ -25,7 +25,7 @@ module universalVariables
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Flags for different possible events in movement in geometry
-  integer(shortINt), parameter, public :: COLL_EV = 1, &
+  integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
                                           LOST_EV  = 4
@@ -84,7 +84,7 @@ module universalVariables
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e-8            ! Convert shakes to s
+                              shakesPerS   = 1.0e+8            ! Convert shakes to s
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'

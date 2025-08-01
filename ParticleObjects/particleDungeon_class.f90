@@ -52,6 +52,7 @@ module particleDungeon_class
   !!     normSize(N)       -> normalise dungeon population so it contains N particles
   !!                          does not take nonuniform weight of particles into account
   !!     setSize(n)        -> sizes dungeon to have n dummy particles for ease of overwriting
+  !!     setTime(t)        -> sets all particles to being at the same point in time
   !!     printToFile(name) -> prints population in ASCII format to file "name"
   !!
   !!   Build procedures:
@@ -86,12 +87,17 @@ module particleDungeon_class
     procedure  :: isEmpty
     procedure  :: normWeight
     procedure  :: normSize
+    procedure  :: combing
     procedure  :: cleanPop
+    procedure  :: setTime
     procedure  :: popSize
     procedure  :: popWeight
     procedure  :: setSize
     procedure  :: printToFile
     procedure  :: sortByBroodID
+
+    !! Precursor procedures
+    procedure  :: precursorCombing
 
     ! Private procedures
     procedure, private :: detain_particle
@@ -473,6 +479,150 @@ contains
   end subroutine normSize
 
   !!
+  !! Normalise the population using combing
+  !! Preserves total weight
+  !!
+  subroutine combing(self, N, rand)
+    class(particleDungeon), intent(inout) :: self
+    integer(shortInt), intent(in)         :: N
+    class(RNG), intent(inout)             :: rand
+    integer(shortInt)                     :: maxBroodID, i
+    integer(shortInt), save               :: j
+    real(defReal)                         :: tooth0, wAv
+    real(defReal), save                   :: nextTooth, curWeight
+    type(particleState), dimension(N)     :: newPrisoners
+    character(100), parameter :: Here =' combing (particleDungeon_class.f90)'
+    !$omp threadprivate(j, nextTooth, curWeight)
+
+    ! Protect against invalid N
+    if( N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greater then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Determine the maximum brood ID and sort the dungeon
+    maxBroodID = maxval(self % prisoners(1:self % pop) % broodID)
+    call self % sortByBroodID(maxbroodID)
+
+    ! Get new particle weight
+    wAv = self % popWeight() / N
+
+    ! Get the location of the first tooth
+    tooth0 = rand % get() * wAv
+
+    ! Scan for which particles to sample
+    !$omp parallel do
+    do i = 1, N
+      
+      j = 1                               ! Index to track
+      nextTooth = tooth0 + (i - 1) * wAv  ! Position of the next tooth
+      curWeight = ZERO                    ! Total weight of exceeded particles
+      
+      ! Iterate over current particles
+      ! until a tooth falls within bounds of particle weight
+      do while (curWeight + self % prisoners(j) % wgt < nextTooth)
+        curWeight = curWeight + self % prisoners(j) % wgt
+        j = j + 1
+      end do
+
+      ! When a particle has been found
+      newPrisoners(i) = self % prisoners(j)    ! Add to new array
+      newPrisoners(i) % wgt = wAv              ! Update weight
+    end do
+    !$omp end parallel do
+
+    ! Re-size the dungeon to new size
+    call self % setSize(N)
+
+    ! Replace the particle at each index with the new particles
+    !$omp parallel do
+    do i = 1, N
+      call self % replace(newPrisoners(i), i)
+    end do
+    !$omp end parallel do
+
+  end subroutine combing
+
+  !!
+  !! Normalises precursor population by importance-based combing.
+  !! Importance-based combing accounting for expected weight of delayed neutron 
+  !! upon Forced Precursor Decay.
+  !!
+  subroutine precursorCombing(self, N, rand, t1, t2)
+    class(particleDungeon), intent(inout)    :: self
+    integer(shortInt), intent(in)            :: N
+    class(RNG), intent(inout)                :: rand
+    real(defReal), intent(in)                :: t1
+    real(defReal), intent(in)                :: t2
+    type(particle), save                     :: p
+    integer(shortInt)                        :: i
+    integer(shortInt), save                  :: j
+    type(particleState), dimension(N)        :: newPrecursors
+    real(defReal), dimension(self % pop)     :: expDelayedWgts, expFactors
+    real(defReal)                            :: uAv, tooth0 
+    real(defReal), save                      :: nextTooth, curExpDelayedWgt
+    character(100), parameter :: Here =' precursorCombing (particleDungeon_class.f90)'
+    !$omp threadprivate(p, j, nextTooth, curExpDelayedWgt)
+
+    ! Protect against invalid N
+    if( N > size(self % prisoners)) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //&
+                           'is greather then max size: '//numToChar(size(self % prisoners)))
+    else if ( N <= 0 ) then
+      call fatalError(Here,'Requested size: '//numToChar(N) //' is not +ve')
+    end if
+
+    ! Get importance weight and importance factor of each precursor
+    !$omp parallel do
+    do i = 1, self % pop
+      call self % copy(p, i)
+      expDelayedWgts(i) = p % expectedDelayedWgt(t1, t2)
+      expFactors(i) = expDelayedWgts(i) / p % w
+    end do
+    !$omp end parallel do
+
+    ! Tooth distance
+    uAv = sum(expDelayedWgts) / N
+
+    ! First tooth location
+    tooth0 = rand % get() * uAv
+
+    ! Scan for which particles to sample
+    !$omp parallel do
+    do i = 1, N
+      
+      j = 1                               ! Index to track
+      nextTooth = tooth0 + (i - 1) * uAv  ! Position of the next tooth
+      curExpDelayedWgt = ZERO             ! Total weight of exceeded particles
+    
+      ! Iterate over current precursors
+      ! until a tooth falls within bounds of timed weight
+      do while (curExpDelayedWgt + expDelayedWgts(j) < nextTooth)
+        curExpDelayedWgt = curExpDelayedWgt + expDelayedWgts(j)
+        j = j + 1
+      end do
+
+      ! When a particle has been found...
+      newPrecursors(i) = self % prisoners(j)            ! Add to new array
+      newPrecursors(i) % wgt = uAv / expFactors(j) ! Update weight from timed weight
+    end do
+    !$omp end parallel do
+
+    ! Re-size the dungeon to new size
+    call self % setSize(N)
+
+    ! Replace the particle at each index with the new particles
+    !$omp parallel do
+    do i = 1, N
+      call self % replace_particleState(newPrecursors(i), i)
+    end do
+    !$omp end parallel do
+
+  end subroutine precursorCombing
+
+  !!
   !! Reorder the dungeon so the brood ID is in the ascending order
   !!
   !! Args:
@@ -486,6 +636,9 @@ contains
     integer(shortInt), dimension(:), allocatable :: perm
     type(particleState)                          :: tmp
     character(100), parameter :: Here = 'sortBybroodID (particleDungeon_class.f90)'
+
+    ! Escape in case the population hasn't been initialised
+    if (all(self % prisoners % broodID == 0)) return
 
     ! Count number of particles with each brood ID
     count = 0
@@ -533,6 +686,26 @@ contains
     end do
 
   end subroutine sortByBroodID
+
+  !!
+  !! Sets all particles to having the same time.
+  !! Useful for kinetic calculations.
+  !!
+  subroutine setTime(self, time)
+    class(particleDungeon), intent(inout) :: self
+    real(defReal), intent(in)             :: time
+    integer(shortInt)                     :: i
+    character(100), parameter :: Here = 'setTime (particleDungeon_class.f90)'
+
+    if (self % pop < 1) call fatalError(Here, 'There are no particles in the dungeon')
+
+    !$omp parallel do
+    do i = 1, self % pop
+      self % prisoners(i) % time = time
+    end do
+    !$omp end parallel do
+
+  end subroutine setTime
 
 
   !!

@@ -8,7 +8,7 @@ module neutronCEimp_class
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -73,6 +73,8 @@ module neutronCEimp_class
   !!  splitting -> splits particles above certain weight (on by default)
   !!  roulette  -> roulettes particles below certain weight (off by defautl)
   !!  weightWindows -> uses a weight windows field (off by default)
+  !!  makePrec   -> Produce precursor particles, used in dynamic calculations (default = false)
+  !!  promptOnly -> If true, prevents delayed neutrons or precursors from being produced
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -112,6 +114,8 @@ module neutronCEimp_class
     real(defReal) :: DBRCeMin
     real(defReal) :: DBRCeMax
     integer(shortInt) :: maxSplit
+    logical(defBool) :: makePrec = .false.
+    logical(defBool) :: promptOnly = .false.
 
     ! Variance reduction options
     logical(defBool)  :: weightWindows
@@ -192,6 +196,10 @@ contains
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
     call dict % getOrDefault(self % DBRCeMax,'DBRCeMax', (200E-6_defReal))
+    
+    ! Precursor settings
+    call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
+    call dict % getOrDefault(self % promptOnly, 'promptOnly', .false.)
 
     if (self % splitting) then
       if (self % maxWgt < 2 * self % minWgt) call fatalError(Here,&
@@ -204,6 +212,9 @@ contains
       if (.not.self % implicitSites) call fatalError(Here,&
          'Must generate fission sites implicitly when using implicit absorption')
     end if
+    
+    if (self % makePrec .and. self % promptOnly) call fatalError(Here,&
+            'Incompatible options: cannot makePrecursors and have promptOnly neutrons!')
 
     ! Sets up the uniform fission sites field
     if (self % uniFissSites) then
@@ -280,7 +291,7 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic
     logical(defBool)                     :: fiss_and_implicit
@@ -324,9 +335,13 @@ contains
       r   = p % rGlobal()
 
       do i = 1,n
-        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
+        
+        ! Skip if a delayed particle is produced in prompt-only mode
+        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
-
+        
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -338,6 +353,13 @@ contains
         pTemp % E   = E_out
         pTemp % wgt = wgt
         pTemp % collisionN = 0
+
+        ! If storing precursors, do so when a finite lambda occurs
+        if (self % makePrec .and. lambda < huge(lambda)) then
+          pTemp % lambda = lambda
+          pTemp % type = P_PRECURSOR
+
+        end if
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)
@@ -401,7 +423,7 @@ contains
     type(particleState)                  :: pTemp
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, rand1, E_out, mu, phi
+    real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_fiss, k_eff
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
@@ -441,9 +463,13 @@ contains
       r   = p % rGlobal()
 
       do i=1,n
-        call fiss % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+        call fiss % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
+        
+        ! Skip if a delayed particle is produced in prompt-only mode
+        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
-
+        
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -455,6 +481,13 @@ contains
         pTemp % E   = E_out
         pTemp % wgt = wgt
         pTemp % collisionN = 0
+
+        ! If storing precursors, do so when a finite lambda occurs
+        if (self % makePrec .and. lambda < huge(lambda)) then
+          pTemp % lambda = lambda
+          pTemp % type = P_PRECURSOR
+
+        end if
 
         call nextCycle % detain(pTemp)
         if (self % uniFissSites) call self % ufsField % storeFS(pTemp)

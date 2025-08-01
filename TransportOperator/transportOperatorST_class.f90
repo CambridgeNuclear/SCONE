@@ -52,10 +52,11 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist
+    real(defReal)                             :: sigmaT, dist, speed, time
     type(distCache)                           :: cache
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
+    
     STLoop: do
 
       ! Obtain the local cross-section
@@ -68,6 +69,23 @@ contains
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
+
+        ! Set a max flight distance due to hitting the time-boundary
+        if (p % timeMax > ZERO) then
+          speed = p % getSpeed()
+          time = dist / speed + p % time
+
+          ! Hit the time boundary: set max distance and age the particle
+          if (time > p % timeMax) then
+            dist = speed * (p % timeMax - p % time)
+            p % fate = AGED_FATE
+          
+          ! Advance particle in time
+          else
+            p % time = time
+          end if
+
+        end if
 
       end if
 
@@ -98,8 +116,8 @@ contains
         call fatalError(Here, "Particle is in undefined material")
       end if
 
-      ! Return if particle stoped at collision (not cell boundary)
-      if (event == COLL_EV .or. p % isDead) exit STLoop
+      ! Return if particle is stopped by collision, death, or aging
+      if (event == COLL_EV .or. p % isDead .or. p % fate == AGED_FATE) exit STLoop
 
     end do STLoop
 
