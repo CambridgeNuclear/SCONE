@@ -5,7 +5,7 @@ module cartesianField_class
   use genericProcedures,        only : fatalError, numToChar, swap
   use field_inter,              only : field
   use pieceConstantField_inter, only : pieceConstantField
-  use particle_class,           only : particle
+  use coord_class,              only : coordList
   use dictionary_class,         only : dictionary
   use box_class,                only : box
   use materialMenu_mod,         only : mm_matIdx => matIdx
@@ -200,13 +200,13 @@ contains
   !!
   !! See pieceConstantField for details
   !!
-  function at(self, p) result(val)
+  function at(self, coords) result(val)
     class(cartesianField), intent(in) :: self
-    class(particle), intent(in)       :: p
+    class(coordList), intent(in)      :: coords
     real(defReal)                     :: val
     integer(shortInt)                 :: idx, localID
     
-    localID = self % getLocalID(p % rGlobal(), p % dirGlobal())
+    localID = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
 
     if (localID == self % outLocalID) then
       val = self % val(self % N)
@@ -216,7 +216,7 @@ contains
 
     ! Compare against material idx
     if (self % matIdxs(1) /= ALL_MATS) then
-      idx = findloc(self % matIdxs, p % matIdx(), 1)
+      idx = findloc(self % matIdxs, coords % matIdx, 1)
       localID = localID + (idx - 1) * product(self % sizeN)
     end if
       
@@ -229,20 +229,20 @@ contains
   !!
   !! See pieceConstantField for details
   !!
-  function distance(self, p) result(d)
+  function distance(self, coords) result(d)
     class(cartesianField), intent(in) :: self
-    class(particle), intent(in)       :: p
+    class(coordList), intent(in)      :: coords
     real(defReal)                     :: d
     real(defReal)                     :: test_d
     integer(shortInt)                 :: localID, temp, base, ax, i
     integer(shortInt), dimension(3)   :: ijk
     real(defReal), dimension(3)       :: bounds, r_bar, u
 
-    localID = self % getLocalID(p % rGlobal(), p % dirGlobal())
+    localID = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
     
     ! Catch case if particle is outside the lattice
     if (localID == self % outLocalID) then
-      d = self % outline % distance(p % rGlobal(), p % dirGlobal())
+      d = self % outline % distance(coords % lvl(1) % r, coords % lvl(1) % dir)
       return
 
     end if
@@ -261,8 +261,8 @@ contains
 
     ! Find position wrt lattice cell centre
     ! Need to use localID to properly handle under and overshoots
-    u = p % dirGlobal()
-    r_bar = p % rGlobal() - self % corner
+    u = coords % lvl(1) % dir
+    r_bar = coords % lvl(1) % r - self % corner
     r_bar = r_bar - (ijk - HALF) * self % pitch
 
     ! Select surfaces in the direction of the particle

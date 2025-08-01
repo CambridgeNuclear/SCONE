@@ -54,32 +54,32 @@ contains
     ! Inside region x = 2, y = 1, z = 1
     call p % point([1.0_defReal, 0.0_defReal, 0.0_defReal])
     call p % teleport([1.0_defReal, 1.0_defReal, 0.4_defReal])
-    @assertEqual(8.0_defReal, fieldT % at(p), TOL)
+    @assertEqual(8.0_defReal, fieldT % at(p % coords), TOL)
     
     ! Inside region x = 1, y = 2, z = 3
     call p % point([1.0_defReal, 0.0_defReal, 0.0_defReal])
     call p % teleport([-0.4_defReal, 2.2_defReal, 1.3_defReal])
-    @assertEqual(1.0_defReal, fieldT % at(p), TOL)
+    @assertEqual(1.0_defReal, fieldT % at(p % coords), TOL)
     
     ! Outside the field
     call p % teleport([-8.5_defReal, 4.5_defReal, 0.9_defReal])
-    @assertEqual(-6.2_defReal, fieldT % at(p), TOL)
+    @assertEqual(-6.2_defReal, fieldT % at(p % coords), TOL)
 
     ! Check distances to the field
     ! Inside, pointing along x
     call p % point([1.0_defReal, 0.0_defReal, 0.0_defReal])
     call p % teleport([1.0_defReal, 3.5_defReal, 0.9_defReal])
-    @assertEqual(0.5_defReal, fieldT % distance(p), TOL)
+    @assertEqual(0.5_defReal, fieldT % distance(p % coords), TOL)
 
     ! Inside, at an angle
     call p % point([-sqrt(2.0_defReal)/2, sqrt(2.0_defReal)/2, 0.0_defReal])
     call p % teleport([0.9_defReal, 1.0_defReal, 0.4_defReal])
-    @assertEqual(0.4_defReal * sqrt(2.0_defReal), fieldT % distance(p), TOL)
+    @assertEqual(0.4_defReal * sqrt(2.0_defReal), fieldT % distance(p % coords), TOL)
 
     ! Outside, at an angle
     call p % point([-sqrt(2.0_defReal)/2, -sqrt(2.0_defReal)/2, 0.0_defReal])
     call p % teleport([2.0_defReal, 4.5_defReal, 1.0_defReal])
-    @assertEqual(1.0_defReal/sqrt(2.0_defReal), fieldT % distance(p), TOL)
+    @assertEqual(1.0_defReal/sqrt(2.0_defReal), fieldT % distance(p % coords), TOL)
 
     ! Kill
     call fieldT % kill()

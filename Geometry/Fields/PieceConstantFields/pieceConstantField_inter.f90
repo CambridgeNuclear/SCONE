@@ -3,7 +3,7 @@ module pieceConstantField_inter
   use numPrecision
   use genericProcedures, only : fatalError, numToChar
   use field_inter,       only : field
-  use particle_class,    only : particle
+  use coord_class,       only : coordList
   use dictionary_class,  only : dictionary
 
   implicit none
@@ -24,7 +24,7 @@ module pieceConstantField_inter
   !!
   !! Interface:
   !!   field interface
-  !!   at          -> Return scalar value given position coordinates and index of value
+  !!   at          -> Return scalar value given particle
   !!   distance    -> Return distance to next element of the field
   !!   setValue    -> Sets value of field at a given index
   !!   getMaxValue -> Returns the maximum field value
@@ -45,7 +45,7 @@ module pieceConstantField_inter
   abstract interface
 
     !!
-    !! Get value of the field at the co-ordinate point
+    !! Get value of the field at the given coordinates
     !!
     !! Args:
     !!   coords [in] -> Coordinates of the position in the geometry
@@ -53,15 +53,15 @@ module pieceConstantField_inter
     !! Result:
     !!   Value of the scalar field. Real number.
     !!
-    function at(self, p) result(val)
-      import :: pieceConstantField, particle, defReal
+    function at(self, coords) result(val)
+      import :: pieceConstantField, coordList, defReal
       class(pieceConstantField), intent(in) :: self
-      class(particle), intent(in)           :: p
+      class(coordList), intent(in)          :: coords
       real(defReal)                         :: val
     end function at
     
     !!
-    !! Get distance to the next element of the field at the co-ordinate point and direction
+    !! Get distance to the next element of the field at the given coordinates
     !!
     !! Args:
     !!   coords [in] -> Coordinates of the position in the geometry
@@ -69,10 +69,10 @@ module pieceConstantField_inter
     !! Result:
     !!   Distance to the next element of the field. Real number.
     !!
-    function distance(self, p) result(d)
-      import :: pieceConstantField, particle, defReal
+    function distance(self, coords) result(d)
+      import :: pieceConstantField, coordList, defReal
       class(pieceConstantField), intent(in) :: self
-      class(particle), intent(in)           :: p
+      class(coordList), intent(in)          :: coords
       real(defReal)                         :: d
     end function distance
     
