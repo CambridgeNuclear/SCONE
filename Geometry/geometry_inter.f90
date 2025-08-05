@@ -567,7 +567,7 @@ contains
       
       ! Flip ray and nudge it backwards to get it out of the opaque material
       ! This nudge may cause problems! Any better solutions?
-      dNudge = 1.0E-7
+      dNudge = 1.0E-10
       call ray % assignDirection(-ray % lvl(1) % dir)
       call self % moveNoBC(ray, dNudge, event, normal)
 
