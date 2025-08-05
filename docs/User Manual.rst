@@ -1145,7 +1145,8 @@ Example: ::
 * macroResponse: used to score macroscopic reaction rates
 
   - MT: MT number of the desired reaction. The options are: -1 total, -2 capture,
-    -6 fission, -7 nu*fission, -21 absorption
+    -6 fission, -7 nu*fission, -21 absorption, -1100 energy deposition mode zero.
+    Note: The energy deposition tally does not work with MG.
 
 Example: ::
 
@@ -1158,10 +1159,12 @@ Example: ::
 * microResponse: used to score microscopic reaction rates
 
   - MT: MT number of the desired reaction. The options are: 1 total, 2 elastic
-    scattering, 18 fission, 27 absorption, 102 capture
-  - material: material name where to score the reaction. The material must be
+    scattering, 18 fission, 27 absorption, 102 capture, 1100 energy deposition mode zero. 
+    Note: The energy deposition tally does not work with MG. 
+  - material: material name for which the reaction is scored for. The material must be
     defined to include only one nuclide; its density could be anything, it doesn't
-    affect the result
+    affect the result. The reaction is scored as if the material existed across the full system. 
+
 
 Example: ::
 

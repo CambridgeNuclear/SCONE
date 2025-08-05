@@ -129,6 +129,8 @@ contains
         self % MT = macroFission
       case(N_ABSORPTION)
         self % MT = macroAbsorbtion
+      case(N_ENERGYDEPO_ZERO)
+        self % MT = macroEnergyDepoZero
       case default
         call fatalError(Here,'Unrecognised MT number: '// numToChar(MT))
     end select
@@ -150,13 +152,17 @@ contains
     real(defReal)                         :: val
     class(neutronMaterial), pointer       :: mat
     type(neutronMacroXSs)                 :: xss
-    character(100), parameter :: Here = 'get ( microResponse_class.f90)'
+    character(100), parameter :: Here = 'get (microResponse_class.f90)'
 
     val = ZERO
 
     ! Return zero if particle is not neutron or if the particle is in void
     if (p % type /= P_NEUTRON) return
     if (p % matIdx() == VOID_MAT) return
+    if ((self % MT == macroEnergyDepoZero) .and. (p % isMG .eqv. .true.)) then
+      call fatalError(Here,'Selected tally does not work with MG')
+    end if
+
 
     ! Get pointer to active material data
     mat => neutronMaterial_CptrCast(xsData % getMaterial(self % matIdx))
@@ -166,6 +172,7 @@ contains
 
     ! Get the macroscopic cross section for the material
     call mat % getMacroXSs(xss, p)
+
 
     ! Normalise the macroscopic cross section with the atomic density
     val = xss % get(self % MT) / self % dens
