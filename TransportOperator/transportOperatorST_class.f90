@@ -63,6 +63,11 @@ contains
         dist = INFINITY
 
       else
+        
+        ! Get local conditions
+        p % T = self % geom % getTemperature(p % coords)
+        p % rho  = self % geom % getDensity(p % coords)
+
         sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 

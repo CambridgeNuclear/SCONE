@@ -37,18 +37,22 @@ module geometryStd_class
   !! Sample Dictionary Input:
   !!   geometry {
   !!     type geometryStd;
-  !!     <csg_class difinition>
+  !!     <csg_class definition>
   !!    }
   !!
   !! Public Members:
   !!   geom -> Representation of geometry by csg_class. Contains all surfaces, cells and universe
   !!     as well as geometry graph and info about root uni and boundary surface.
+  !!   temperatureField -> Field of temperatures overlaid on the geometry
+  !!   densityField     -> Field of densities overlaid on the geometry
   !!
   !! Interface:
   !!   Geometry Interface
   !!
   type, public, extends(geometry) :: geometryStd
     type(csg) :: geom
+    class(pieceConstField), allocatable :: temperatureField
+    class(pieceConstField), allocatable :: densityField
 
   contains
     ! Superclass procedures
@@ -62,6 +66,8 @@ module geometryStd_class
     procedure :: moveGlobal
     procedure :: teleport
     procedure :: activeMats
+    procedure :: getTemperature
+    procedure :: getDensity
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -81,9 +87,23 @@ contains
     class(dictionary), intent(in)          :: dict
     type(charMap), intent(in)              :: mats
     logical(defBool), optional, intent(in) :: silent
+    class(dictionary), pointer             :: tempDict
 
     ! Build the representation
     call self % geom % init(dict, mats, silent)
+
+    ! If present, build temperature and density fields
+    if (dict % isPresent('temperature')) then
+      tempDict => dict % getDictPtr('temperature')
+      allocate(self % temperatureField)
+      call self % temperatureField % init(tempDict)
+    end if
+
+    if (dict % isPresent('density')) then
+      tempDict => dict % getDictPtr('density')
+      allocate(self % densityField)
+      call self % densityField % init(tempDict)
+    end if
 
   end subroutine init
 
@@ -94,6 +114,14 @@ contains
     class(geometryStd), intent(inout) :: self
 
     call self % geom % kill()
+    if allocated(self % temperatureField) then
+      call self % temperatureField % kill()
+      deallocate(self % temperatureField)
+    end if      
+    if allocated(self % densityField) then
+      call self % densityField % kill()
+      deallocate(self % densityField)
+    end if      
 
   end subroutine kill
 
@@ -206,10 +234,19 @@ contains
     real(defReal)                  :: dist
     class(surface), pointer        :: surf
     class(universe), pointer       :: uni
-    character(100), parameter :: Here = 'move (geometryStd_class.f90)'
+    character(100), parameter :: Here = 'move_noCache (geometryStd_class.f90)'
 
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
+    end if
+    
+    ! Check fields
+    if (allocated(self % temperatureField)) then
+      maxDist = min(maxDist, self % temperatureField % distance(coords))
+    end if
+
+    if (allocated(self % densityField)) then
+      maxDist = min(maxDist, self % densityField % distance(coords))
     end if
 
     ! Find distance to the next surface
@@ -248,6 +285,7 @@ contains
 
     end if
 
+
   end subroutine move_noCache
 
   !!
@@ -271,6 +309,15 @@ contains
 
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
+    end if
+    
+    ! Check fields
+    if (allocated(self % temperatureField)) then
+      maxDist = min(maxDist, self % temperatureField % distance(coords))
+    end if
+
+    if (allocated(self % densityField)) then
+      maxDist = min(maxDist, self % densityField % distance(coords))
     end if
 
     ! Find distance to the next surface
@@ -582,6 +629,44 @@ contains
 
     end do
   end subroutine closestDist_cache
+
+  !!
+  !! Returns the local temperature, provided the temperatureField
+  !! has been allocated
+  !!
+  !! See geometry_inter for details
+  !!
+  function getTemperature(self, coords) result(T)
+    class(geometryStd), intent(in) :: self
+    type(coordList), intent(in)    :: coords
+    real(defReal)                  :: T
+  
+    if (allocated(self % temperatureField)) then
+      T = self % temperatureField % at(coords)
+    else
+      T = -INF
+    end if
+
+  end function getTemperature
+  
+  !!
+  !! Returns the local density, provided the densityField
+  !! has been allocated
+  !!
+  !! See geometry_inter for details
+  !!
+  function getDensity(self, coords) result(rho)
+    class(geometryStd), intent(in) :: self
+    type(coordList), intent(in)    :: coords
+    real(defReal)                  :: rho
+  
+    if (allocated(self % densityField)) then
+      rho = self % densityField % at(coords)
+    else
+      rho = -INF
+    end if
+
+  end function getDensity
 
   !!
   !! Cast geometry pointer to geometryStd class pointer

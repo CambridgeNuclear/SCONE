@@ -97,6 +97,10 @@ module particle_class
     real(defReal)              :: w         ! Particle Weight
     real(defReal)              :: time      ! Particle time point
 
+    ! Information passed from geometry
+    real(defReal)              :: T = -INF   ! Local temperature
+    real(defReal)              :: rho = -INF ! Local density scaling
+
     ! Particle flags
     real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
     logical(defBool)           :: isDead
@@ -727,6 +731,8 @@ contains
     self % uniqueID = -1
     self % collisionN = 0
     self % broodID    = 0
+    self % T          = -INF
+    self % rho        = -INF
 
   end subroutine kill_particleState
 

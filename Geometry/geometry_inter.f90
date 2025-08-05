@@ -43,6 +43,8 @@ module geometry_inter
     procedure(moveGlobal), deferred      :: moveGlobal
     procedure(teleport), deferred        :: teleport
     procedure(activeMats), deferred      :: activeMats
+    procedure(getTemperature), deferred  :: getTemperature
+    procedure(getDensity), deferred      :: getDensity
 
     ! Common procedures
     procedure :: slicePlot
@@ -261,6 +263,40 @@ module geometry_inter
       class(geometry), intent(in)                  :: self
       integer(shortInt), dimension(:), allocatable :: matList
     end function activeMats
+
+    !!
+    !! Returns the temperature at a position in space.
+    !!
+    !! Args:
+    !!   coords
+    !!
+    !! Result:
+    !!   Temperature at a given location. If this information has not been provided
+    !!   to the geometry then a default result should be returned.
+    !!
+    function getTemperature(self, coords) result(T)
+      import :: geometry, coordList, defReal
+      class(geometry), intent(in) :: self
+      type(coordList), intent(in) :: coords
+      real(defReal)               :: T
+    end function getTemperature
+    
+    !!
+    !! Returns the density at a position in space.
+    !!
+    !! Args:
+    !!   coords
+    !!
+    !! Result:
+    !!   Density at a given location. If this information has not been provided
+    !!   to the geometry then a default result should be returned.
+    !!
+    function getDensity(self, coords) result(rho)
+      import :: geometry, coordList, defReal
+      class(geometry), intent(in) :: self
+      type(coordList), intent(in) :: coords
+      real(defReal)               :: rho
+    end function getDensity
 
   end interface
 

@@ -67,7 +67,7 @@ module ceNeutronDatabase_inter
     procedure(updateTotalMatXS), deferred     :: updateTrackMatXS
     procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
     procedure(updateMacroXSs), deferred       :: updateMacroXSs
-    procedure(updateTotalXS), deferred        :: updateTotalNucXS
+    procedure(updateTotalNucXS), deferred     :: updateTotalNucXS
     procedure(updateMicroXSs), deferred       :: updateMicroXSs
     procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
     procedure(energyBounds), deferred         :: energyBounds
@@ -131,11 +131,13 @@ module ceNeutronDatabase_inter
     !!   matIdx [in]  -> material index that needs to be updated
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTotalMatXS(self, E, matIdx, rand)
+    subroutine updateTotalMatXS(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in)            :: temp
+      real(defReal), intent(in)            :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalMatXS
 
@@ -173,11 +175,13 @@ module ceNeutronDatabase_inter
     !!   matIdx [in]  -> material index that needs to be updated
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateMacroXSs(self, E, matIdx, rand)
+    subroutine updateMacroXSs(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in)            :: temp
+      real(defReal), intent(in)            :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMacroXSs
 
@@ -196,14 +200,14 @@ module ceNeutronDatabase_inter
     !!   kT [in]      -> thermal energy of material [MeV]
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTotalXS(self, E, nucIdx, kT, rand)
+    subroutine updateTotalNucXS(self, E, nucIdx, kT, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
       real(defReal), intent(in)            :: kT
       class(RNG), optional, intent(inout)  :: rand
-    end subroutine updateTotalXS
+    end subroutine updateTotalNucXS
 
     !!
     !! Make sure that the microscopic XSs for the nuclide with nucIdx are set
@@ -309,7 +313,9 @@ contains
       case (TRACKING_XS)
 
         ! READ ONLY - read from previously updated cache
-        if (p % E == trackingCache(1) % E) then
+        if (p % E == trackingCache(1) % E .and. &
+            p % T == trackingCache(1) % T .and. &
+            p % rho == trackingCache(1) % rho) then
           xs = trackingCache(1) % xs
           return
         else
@@ -322,8 +328,10 @@ contains
     end select
 
     ! Update Cache
-    trackingCache(1) % E  = p % E
-    trackingCache(1) % xs = xs
+    trackingCache(1) % E    = p % E
+    trackingCache(1) % T    = p % T
+    trackingCache(1) % rho  = p % rho
+    trackingCache(1) % xs   = xs
 
   end function getTrackingXS
 
@@ -358,7 +366,11 @@ contains
     end if
     
     ! Check Cache and update if needed
-    if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_track /= p % E .or. &
+        materialCache(matIdx) % T_track /= p % T .or. &
+        materialCache(matIdx) % rho_track /= p % rho) then
+      call self % updateTrackMatXS(p % E, matIdx, p % pRNG, p % T, p % rho)
+    end if
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % trackXS
@@ -393,7 +405,11 @@ contains
     end if
     
     ! Check Cache and update if needed
-    if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_tot /= p % E .or. &
+        materialCache(matIdx) % T_tot /= p % T .or. &
+        materialCache(matIdx) % rho_tot /= p % rho) then
+      call self % updateTotalMatXS(p % E, matIdx, p % pRNG, p % T, p % rho)
+    end if
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total

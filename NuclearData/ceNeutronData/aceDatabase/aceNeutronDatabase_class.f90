@@ -364,25 +364,29 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateTrackMatXS(self, E, matIdx, rand)
+  subroutine updateTrackMatXS(self, E, matIdx, rand, temp, rho)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), optional, intent(inout)   :: rand
+    real(defReal), optional, intent(in)   :: temp
+    real(defReal), optional, intent(in)   :: rho
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
 
-      ! Set new energy
+      ! Set new energy, temperature, and density factor
       matCache % E_track = E
+      if (present(temp)) then matCache % T_track = temp
+      if (present(rho)) then matCache % rho_track = rho
 
       if (mat % useTMS(E)) then
         ! The material tracking xs is the temperature majorant in the case of TMS
-        call self % updateTotalTempMajXS(E, matIdx)
+        call self % updateTotalTempMajXS(E, matIdx, temp, rho)
 
       else
         ! When TMS is not in use, the material tracking xs is equivalent to the total
-        call self % updateTotalMatXS(E, matIdx, rand)
+        call self % updateTotalMatXS(E, matIdx, temp, rho, rand)
         matCache % trackXS = matCache % xss % total
 
       end if
@@ -402,18 +406,27 @@ contains
   !!   E [in]         -> Incident neutron energy for which temperature majorant is found
   !!   matIdx [in]    -> Index of material for which the material temperature majorant is found
   !!
-  subroutine updateTotalTempMajXS(self, E, matIdx)
+  subroutine updateTotalTempMajXS(self, E, matIdx, temp, rho)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
+    real(defReal), intent(in)             :: temp
+    real(defReal), intent(in)             :: rho
     integer(shortInt)                     :: nucIdx, i
-    real(defReal)                         :: dens, corrFact, nucTempMaj
+    real(defReal)                         :: kT, dens, corrFact, nucTempMaj
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
 
       ! Clean current total XS
       matCache % trackXS = ZERO
+
+      ! Use imposed temperature if given
+      if (temp <= ZERO)
+        kT = mat % kT
+      else
+        kT = temp * kBoltzmannMeV
+      end if
 
       ! loop through all nuclides in material and find sum of majorants
       do i = 1, size(mat % nuclides)
@@ -422,7 +435,7 @@ contains
         nucIdx  = mat % nuclides(i)
         dens    = mat % dens(i)
 
-        call self % updateTotalTempNucXS(E, mat % kT, nucIdx)
+        call self % updateTotalTempNucXS(E, kT, nucIdx)
 
         ! Sum nuclide majorants to find material majorant
         corrFact   = cache_nuclideCache(nucIdx) % doppCorr
@@ -430,6 +443,14 @@ contains
         matCache % trackXS = matCache % trackXS + dens * nucTempMaj
 
       end do
+
+      ! Use imposed density scaling if given
+      if (rho <= ZERO) then
+        densityFactor = ONE
+      else
+        densityFactor = rho
+      end if
+      matCache % trackXS = matCache % trackXS * densityFactor
 
     end associate
 
@@ -441,13 +462,15 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateTotalMatXS(self, E, matIdx, rand)
+  subroutine updateTotalMatXS(self, E, matIdx, temp, rho, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
+    real(defReal), intent(in)             :: temp
+    real(defReal), intent(in)             :: rho
     class(RNG), optional, intent(inout)   :: rand
     integer(shortInt)                     :: i, nucIdx
-    real(defReal)                         :: dens
+    real(defReal)                         :: dens, kT, densityFactor
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
@@ -455,12 +478,28 @@ contains
       ! Set new energy and clean current total XS
       matCache % E_tot = E
       matCache % xss % total = ZERO
+      matCache % T = temp
+      matCache % rho = rho
+      
+      ! Use imposed temperature if given
+      if (temp <= ZERO)
+        kT = mat % kT
+      else
+        kT = temp * kBoltzmannMeV
+      end if
+        
+      ! Use imposed density scaling if given
+      if (rho <= ZERO) then
+        densityFactor = ONE
+      else
+        densityFactor = rho
+      end if
 
       if (mat % useTMS(E)) then
         ! When TMS is in use, the total xs is retrieved sampling the nuclides' relative
         ! energies given the temperature difference between material temperature and
         ! temperature of the nuclides' base cross sections
-        call self % updateRelEnMacroXSs(E, matIdx, rand)
+        call self % updateRelEnMacroXSs(E, matIdx, rand, kT, densityFactor)
 
       else
         ! Construct total macro XS
@@ -470,13 +509,15 @@ contains
 
           ! Update if needed
           if (cache_nuclideCache(nucIdx) % E_tot /= E) then
-            call self % updateTotalNucXS(E, nucIdx, mat % kT, rand)
+            call self % updateTotalNucXS(E, nucIdx, kT, rand)
           end if
 
           ! Add microscopic XSs
           matCache % xss % total = matCache % xss % total + &
                                    dens * cache_nuclideCache(nucIdx) % xss % total
         end do
+      
+        matCache % xss % total = matCache % xss % total * densityFactor
 
       end if
 
@@ -490,25 +531,41 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateMacroXSs(self, E, matIdx, rand)
+  subroutine updateMacroXSs(self, E, matIdx, temp, rho, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
+    real(defReal), intent(in)             :: temp
+    real(defReal), intent(in)             :: rho
     class(RNG), optional, intent(inout)   :: rand
     integer(shortInt)                     :: i, nucIdx
-    real(defReal)                         :: dens
+    real(defReal)                         :: dens, kT, densityFactor
 
     associate(mat      => self % materials(matIdx), &
               matCache => cache_materialCache(matIdx))
 
       ! Clean current xss
       call matCache % xss % clean()
+      
+      ! Use imposed temperature if given
+      if (temp <= ZERO)
+        kT = mat % kT
+      else
+        kT = temp * kBoltzmannMeV
+      end if
+        
+      ! Use imposed density scaling if given
+      if (rho <= ZERO) then
+        densityFactor = ONE
+      else
+        densityFactor = rho
+      end if
 
       if (mat % useTMS(E)) then
         ! When TMS is in use, the xss are retrieved sampling the nuclides' relative
         ! energies given the temperature difference between material temperature and
         ! temperature of the nuclides' base cross sections
-        call self % updateRelEnMacroXSs(E, matIdx, rand)
+        call self % updateRelEnMacroXSs(E, matIdx, rand, kT, densityFactor)
 
       else
 
@@ -523,11 +580,11 @@ contains
 
           ! Update if needed
           if (cache_nuclideCache(nucIdx) % E_tail /= E .or. cache_nuclideCache(nucIdx) % E_tot /= E) then
-            call self % updateMicroXSs(E, nucIdx, mat % kT, rand)
+            call self % updateMicroXSs(E, nucIdx, kT, rand)
           end if
 
           ! Add microscopic XSs
-          call matCache % xss % add(cache_nuclideCache(nucIdx) % xss, dens)
+          call matCache % xss % add(cache_nuclideCache(nucIdx) % xss, dens * densityFactor)
         end do
 
       end if
@@ -545,11 +602,13 @@ contains
   !!   E [in]         -> Incident neutron energy for which the relative energy xss are found
   !!   matIdx [in]    -> Index of material for which the relative energy xss are found
   !!
-  subroutine updateRelEnMacroXSs(self, E, matIdx, rand)
+  subroutine updateRelEnMacroXSs(self, E, matIdx, rand, kT, densityFactor)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
     class(RNG), optional, intent(inout)   :: rand
+    real(defReal), intent(in)             :: kT
+    real(defReal), intent(in)             :: densityFactor
     integer(shortInt)                     :: i, nucIdx
     real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, &
                                              eMax, doppCorr
@@ -572,7 +631,7 @@ contains
           nucIdx = mat % nuclides(i)
           nuckT  = self % nuclides(nucIdx) % getkT()
           A      = self % nuclides(nucIdx) % getMass()
-          deltakT = mat % kT - nuckT
+          deltakT = kT - nuckT
 
           eRel = relativeEnergy_constXS(E, A, deltakT, rand)
 
@@ -590,11 +649,11 @@ contains
 
             ! Update if needed
             if (nucCache % E_tail /= eRel .or. nucCache % E_tot /= eRel) then
-              call self % updateMicroXSs(eRel, nucIdx, mat % kT, rand)
+              call self % updateMicroXSs(eRel, nucIdx, kT, rand)
             end if
 
             ! Add microscopic XSs
-            call matCache % xssRel % add(nucCache % xss, dens * doppCorr)
+            call matCache % xssRel % add(nucCache % xss, dens * doppCorr * densityFactor)
 
           end associate
 
@@ -941,12 +1000,12 @@ contains
         ! is bounded by Sab temperatures
         if (mat % nuclides(j) % sabMix) then
           sabT = self % nuclides(nucIdxs(j)) % getSabTBounds()
-          kT = mat % T * kBoltzmann / joulesPerMeV
+          kT = mat % T * kBoltzmannMev
           if ((kT < sabT(1)) .or. (kT > sabT(2))) call fatalError(Here,&
                 'Material temperature must be bounded by the provided S(alpha,beta) data. '//&
-                'The material temperature is '//numToChar(kT * joulesPerMeV / kBoltzmann)//&
-                'K while the data bounds are '//numToChar(sabT(1) * joulesPerMeV / kBoltzmann)//&
-                'K and '//numToChar(sabT(2) * joulesPerMeV / kBoltzmann)//'K.')
+                'The material temperature is '//numToChar(kT * / kBoltzmannMeV)//&
+                'K while the data bounds are '//numToChar(sabT(1) * / kBoltzmannMeV)//&
+                'K and '//numToChar(sabT(2) / kBoltzmannMeV)//'K.')
         end if
 
       end do
