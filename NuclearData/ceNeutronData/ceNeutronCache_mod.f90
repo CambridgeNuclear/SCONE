@@ -41,14 +41,18 @@ module ceNeutronCache_mod
   !!
   type, public :: cacheMatDat
     real(defReal)         :: E_tot  = ZERO
+    real(defReal)         :: T_tot  = ZERO
+    real(defReal)         :: rho_tot = ZERO
     real(defReal)         :: E_tail = ZERO
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
 
     ! Tracking data
-    real(defReal)         :: E_track = ZERO
-    real(defReal)         :: trackXS = ZERO
+    real(defReal)         :: E_track   = ZERO
+    real(defReal)         :: trackXS   = ZERO
+    real(defReal)         :: T_track   = ZERO
+    real(defReal)         :: rho_track = ZERO
 
     ! TMS data
     real(defReal)         :: E_rel  = ZERO
@@ -97,8 +101,10 @@ module ceNeutronCache_mod
   !!   xs -> value of the cross section
   !!
   type, public :: cacheSingleXS
-    real(defReal) :: E  = ZERO
-    real(defReal) :: xs = ZERO
+    real(defReal) :: E   = ZERO
+    real(defReal) :: xs  = ZERO
+    real(defReal) :: T   = ZERO
+    real(defReal) :: rho = ZERO
   end type cacheSingleXS
 
   !!

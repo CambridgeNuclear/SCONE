@@ -731,8 +731,6 @@ contains
     self % uniqueID = -1
     self % collisionN = 0
     self % broodID    = 0
-    self % T          = -INF
-    self % rho        = -INF
 
   end subroutine kill_particleState
 

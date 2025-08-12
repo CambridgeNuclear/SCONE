@@ -109,11 +109,13 @@ module ceNeutronDatabase_inter
     !!   matIdx [in]  -> material index that needs to be updated
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTrackMatXS(self, E, matIdx, rand)
+    subroutine updateTrackMatXS(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in)            :: temp
+      real(defReal), intent(in)            :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTrackMatXS
 
@@ -369,7 +371,7 @@ contains
     if (materialCache(matIdx) % E_track /= p % E .or. &
         materialCache(matIdx) % T_track /= p % T .or. &
         materialCache(matIdx) % rho_track /= p % rho) then
-      call self % updateTrackMatXS(p % E, matIdx, p % pRNG, p % T, p % rho)
+      call self % updateTrackMatXS(p % E, matIdx, p % T, p % rho, p % pRNG)
     end if
 
     ! Return Cross-Section
@@ -408,7 +410,7 @@ contains
     if (materialCache(matIdx) % E_tot /= p % E .or. &
         materialCache(matIdx) % T_tot /= p % T .or. &
         materialCache(matIdx) % rho_tot /= p % rho) then
-      call self % updateTotalMatXS(p % E, matIdx, p % pRNG, p % T, p % rho)
+      call self % updateTotalMatXS(p % E, matIdx, p % T, p % rho, p % pRNG)
     end if
 
     ! Return Cross-Section

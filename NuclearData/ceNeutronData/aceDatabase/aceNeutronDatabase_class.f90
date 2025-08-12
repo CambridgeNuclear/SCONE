@@ -101,6 +101,7 @@ module aceNeutronDatabase_class
     procedure :: getReaction
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
 
     ! ceNeutronDatabase Procedures
     procedure :: energyBounds
@@ -116,7 +117,6 @@ module aceNeutronDatabase_class
     ! class Procedures
     procedure :: initUrr
     procedure :: initDBRC
-    procedure :: initMajorant
     procedure :: updateTotalTempMajXS
     procedure :: updateRelEnMacroXSs
     procedure :: makeNuclideName
@@ -364,13 +364,13 @@ contains
   !!
   !! See ceNeutronDatabase for more details
   !!
-  subroutine updateTrackMatXS(self, E, matIdx, rand, temp, rho)
+  subroutine updateTrackMatXS(self, E, matIdx, temp, rho, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
-    class(RNG), optional, intent(inout)   :: rand
     real(defReal), optional, intent(in)   :: temp
     real(defReal), optional, intent(in)   :: rho
+    class(RNG), optional, intent(inout)   :: rand
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
@@ -499,7 +499,7 @@ contains
         ! When TMS is in use, the total xs is retrieved sampling the nuclides' relative
         ! energies given the temperature difference between material temperature and
         ! temperature of the nuclides' base cross sections
-        call self % updateRelEnMacroXSs(E, matIdx, rand, kT, densityFactor)
+        call self % updateRelEnMacroXSs(E, matIdx, kT, densityFactor, rand)
 
       else
         ! Construct total macro XS
@@ -565,7 +565,7 @@ contains
         ! When TMS is in use, the xss are retrieved sampling the nuclides' relative
         ! energies given the temperature difference between material temperature and
         ! temperature of the nuclides' base cross sections
-        call self % updateRelEnMacroXSs(E, matIdx, rand, kT, densityFactor)
+        call self % updateRelEnMacroXSs(E, matIdx, kT, densityFactor, rand)
 
       else
 
@@ -602,13 +602,13 @@ contains
   !!   E [in]         -> Incident neutron energy for which the relative energy xss are found
   !!   matIdx [in]    -> Index of material for which the relative energy xss are found
   !!
-  subroutine updateRelEnMacroXSs(self, E, matIdx, rand, kT, densityFactor)
+  subroutine updateRelEnMacroXSs(self, E, matIdx, kT, densityFactor, rand)
     class(aceNeutronDatabase), intent(in) :: self
     real(defReal), intent(in)             :: E
     integer(shortInt), intent(in)         :: matIdx
-    class(RNG), optional, intent(inout)   :: rand
     real(defReal), intent(in)             :: kT
     real(defReal), intent(in)             :: densityFactor
+    class(RNG), optional, intent(inout)   :: rand
     integer(shortInt)                     :: i, nucIdx
     real(defReal)                         :: dens, nuckT, A, deltakT, eRel, eMin, &
                                              eMax, doppCorr
@@ -632,6 +632,10 @@ contains
           nuckT  = self % nuclides(nucIdx) % getkT()
           A      = self % nuclides(nucIdx) % getMass()
           deltakT = kT - nuckT
+      
+          ! Catch negative dkT - perhaps due to input field values
+          if (deltakT < ZERO) call fatalError(Here,&
+                  'Invalid input temperatureL '//numToChar(kT/kBoltzmannMeV))
 
           eRel = relativeEnergy_constXS(E, A, deltakT, rand)
 
@@ -775,6 +779,10 @@ contains
       nuckT   = nuc % getkT()
       A       = nuc % getMass()
       deltakT = kT - nuckT
+
+      ! Catch negative dkT - perhaps due to input field values
+      if (deltakT < ZERO) call fatalError(Here,&
+              'Invalid input temperatureL '//numToChar(kT/kBoltzmannMeV))
 
       ! Check if an update is required
       if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
@@ -1003,8 +1011,8 @@ contains
           kT = mat % T * kBoltzmannMev
           if ((kT < sabT(1)) .or. (kT > sabT(2))) call fatalError(Here,&
                 'Material temperature must be bounded by the provided S(alpha,beta) data. '//&
-                'The material temperature is '//numToChar(kT * / kBoltzmannMeV)//&
-                'K while the data bounds are '//numToChar(sabT(1) * / kBoltzmannMeV)//&
+                'The material temperature is '//numToChar(kT / kBoltzmannMeV)//&
+                'K while the data bounds are '//numToChar(sabT(1) / kBoltzmannMeV)//&
                 'K and '//numToChar(sabT(2) / kBoltzmannMeV)//'K.')
         end if
 
@@ -1253,19 +1261,31 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, loud)
+  subroutine initMajorant(self, loud, scaleDensity)
     class(aceNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)             :: loud
+    real(defReal), intent(in), optional      :: scaleDensity
     real(defReal), dimension(:), allocatable :: tmpGrid
     integer(shortInt)                        :: i, j, k, matIdx, nNuc, nucIdx, isDone, &
                                                 sizeGrid, eIdx, nucIdxLast, eIdxLast, &
                                                 urrIdx
     type(intMap)                             :: nucSet
     real(defReal)                            :: eRef, eNuc, E, maj, trackXS, dens, urrMaj, &
-                                                nucXS, f, eMax, eMin
+                                                nucXS, f, eMax, eMin, densityFactor
     class(RNG), allocatable                  :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
+
+    ! Check scaleDensity is present and sensible
+    if (present(scaleDensity)) then
+      if (scaleDensity < ONE) then
+        densityFactor = ONE
+      else
+        densityFactor = scaleDensity
+      end if
+    else
+      densityFactor = ONE
+    end if
 
     ! Find the size of the unionised energy grid (with duplicates)
     ! Initialise size
@@ -1467,7 +1487,7 @@ contains
 
         ! Loop over nuclides to check and correct for ures
         do k = 1, size(self % materials(matIdx) % nuclides)
-          dens     = self % materials(matIdx) % dens(k)
+          dens     = self % materials(matIdx) % dens(k) * densityFactor
           nucIdx   = self % materials(matIdx) % nuclides(k)
 
           associate (nuc => self % nuclides(nucIdx))

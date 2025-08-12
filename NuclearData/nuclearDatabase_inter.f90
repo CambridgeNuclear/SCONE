@@ -35,6 +35,7 @@ module nuclearDatabase_inter
   contains
     procedure(init), deferred          :: init
     procedure(activate), deferred      :: activate
+    procedure(initMajorant), deferred  :: initMajorant
     procedure(getTrackingXS), deferred :: getTrackingXS
     procedure(getTrackMatXS), deferred :: getTrackMatXS
     procedure(getTotalMatXS), deferred :: getTotalMatXS
@@ -84,6 +85,21 @@ module nuclearDatabase_inter
       integer(shortInt), dimension(:), intent(in) :: activeMat
       logical(defBool), optional, intent(in)      :: silent
     end subroutine activate
+
+    !!
+    !! Constructs the majorant cross section.
+    !! Can be called repeatedly to update the majorant subject
+    !! to changes in the geometry.
+    !!
+    !! Optionally can scale the density. scaleDensity should be
+    !! the relative (to input) density of the highest density material.
+    !!
+    subroutine initMajorant(self, loud, scaleDensity)
+      import :: nuclearDatabase, defBool, defReal
+      class(nuclearDatabase), intent(inout) :: self
+      logical(defBool), intent(in)          :: loud
+      real(defReal), optional, intent(in)   :: scaleDensity
+    end subroutine initMajorant
 
     !!
     !! Return value of tracking XS for a particle and a given request

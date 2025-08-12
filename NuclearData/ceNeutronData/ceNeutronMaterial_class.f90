@@ -114,7 +114,7 @@ contains
     character(100), parameter :: Here = 'getMacroXSs_byP (ceNeutronMaterial_class.f90)'
 
     if (.not.p % isMG) then
-      call self % getMacroXSs(xss, p % E, p % pRNG)
+      call self % getMacroXSs(xss, p % E, p % temp, p % rho, p % pRNG)
 
     else
       call fatalError(Here,'MG neutron given to CE data')
@@ -233,18 +233,23 @@ contains
   !! Errors:
   !!   fatalError if E is out-of-bounds for the stored data
   !!
-  subroutine getMacroXSs_byE(self, xss, E, rand)
+  subroutine getMacroXSs_byE(self, xss, E, temp, rho, rand)
     class(ceNeutronMaterial), intent(in) :: self
     type(neutronMacroXSs), intent(out)   :: xss
     real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: temp
+    real(defReal), intent(in)            :: rho
     class(RNG), intent(inout)            :: rand
 
-    ! Check Cache and update if needed
-    if (materialCache(self % matIdx) % E_tail /= E .or. materialCache(self % matIdx) % E_tot /= E) then
-      call self % data % updateMacroXSs(E, self % matIdx, rand)
-    end if
+    associate( cache => materialCache(self % matIdx))
+      ! Check Cache and update if needed
+      if (cache % E_tail /= E .or. cache % E_tot /= E .or.&
+          cache % T_tot /= temp .or. cache % rho_tot /= rho) then
+        call self % data % updateMacroXSs(E, self % matIdx, temp, rho, rand)
+      end if
 
-    xss = materialCache(self % matIdx) % xss
+      xss = cache % xss
+    end associate
 
   end subroutine getMacroXSs_byE
 
@@ -306,46 +311,67 @@ contains
   !!   fatalError if sampling fails for some reason (E.G. random number > 1)
   !!   fatalError if E is out-of-bounds of the present data
   !!
-  subroutine sampleNuclide(self, E, rand, nucIdx, eOut)
+  subroutine sampleNuclide(self, E, rand, nucIdx, eOut, temp, rho)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
     class(RNG), intent(inout)            :: rand
     integer(shortInt), intent(out)       :: nucIdx
     real(defReal), intent(out)           :: eOut
+    real(defReal), intent(in)            :: temp
+    real(defReal), intent(in)            :: rho
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: i
     real(defReal)                        :: P_acc, eMin, eMax, A, eRel, &
-                                            trackMatXS, totNucXS, dens
+                                            trackMatXS, totNucXS, dens, &
+                                            kT, densityFactor
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get material tracking XS
-    if (E /= materialCache(self % matIdx) % E_track) then
-      call self % data % updateTrackMatXS(E, self % matIdx, rand)
+    if (E /= materialCache(self % matIdx) % E_track .or. &
+       temp /= materialCache(self % matIdx) % T_track .or. &
+       rho  /= materialCache(self % matIdx) % rho_track) then
+      call self % data % updateTrackMatXS(E, self % matIdx, temp, rho, rand)
     end if
 
     trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
+      
+    ! Used imposed density scaling if given
+    if (rho <= ZERO) then
+      densityFactor = ONE
+    else
+      densityFactor = rho
+    end if
+        
+    ! Use imposed temperature if given
+    if (temp <= ZERO)
+      kT = self % kT
+    else
+      kT = temp * kBoltzmannMeV
+    end if
 
     ! Loop over nuclides
     do i = 1,size(self % nuclides)
 
       nucIdx = self % nuclides(i)
-      dens = self % dens(i)
+      dens = self % dens(i) * densityFactor
 
       associate (nucCache => nuclideCache(nucIdx))
-
+      
         ! Retrieve nuclide XS from cache
         if (self % useTMS(E)) then
 
           ! If the material is using TMS, the nuclide temperature majorant is needed
           ! The check for the right values stored in cache happens inside the subroutine
-          call self % data % updateTotalTempNucXS(E, self % kT, nucIdx)
+          call self % data % updateTotalTempNucXS(E, kT, nucIdx)
 
           totNucXS = nucCache % tempMajXS * nucCache % doppCorr
 
         else
 
           ! Update nuclide cache if needed
-          if (E /= nucCache % E_tot) call self % data % updateTotalNucXS(E, nucIdx, self % kT, rand)
+          if (E /= nucCache % E_tot .or. temp /= nucCache % T_tot) then
+            call self % data % updateTotalNucXS(E, nucIdx, kT, rand)
+          end if
           totNucXS = nucCache % xss % total
 
         end if
@@ -377,7 +403,7 @@ contains
             if (eMax < eRel) eRel = eMax
 
             ! Get relative energy nuclide cross section
-            call self % data % updateTotalNucXS(eRel, nucIdx, self % kT, rand)
+            call self % data % updateTotalNucXS(eRel, nucIdx, kT, rand)
 
             ! Calculate acceptance probability using ratio of relative energy xs to temperature majorant
             P_acc = nucCache % xss % total * nucCache % doppCorr / totNucXS
@@ -426,13 +452,15 @@ contains
   !!   fatalError if E is out-of-bounds of the present data
   !!   Returns nucIdx <= if material is not fissile
   !!
-  function sampleFission(self, E, rand) result(nucIdx)
+  function sampleFission(self, E, temp, rho, rand) result(nucIdx)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: temp
+    real(defReal), intent(in)            :: rho
     class(RNG), intent(inout)            :: rand
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: nucIdx, i
-    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT, kT, densityFactor
     character(100), parameter :: Here = 'sampleFission (ceNeutronMaterial_class.f90)'
 
     ! Short-cut for nonFissile material
@@ -441,11 +469,25 @@ contains
       return
     end if
 
+    ! Used imposed density scaling if given
+    if (rho <= ZERO) then
+      densityFactor = ONE
+    else
+      densityFactor = rho
+    end if
+    
+    ! Use imposed temperature if given
+    if (temp <= ZERO)
+      kT = self % kT
+    else
+      kT = temp * kBoltzmannMeV
+    end if
+    
     ! Calculate material macroscopic nuFission
     ! The cache is updated without checking the energy to get the correct results with TMS
     ! The relative energy flag cached is cleaned to make sure cross sections are updated
     materialCache(self % matIdx) % E_rel = ZERO
-    call self % data % updateMacroXSs(E, self % matIdx, rand)
+    call self % data % updateMacroXSs(E, self % matIdx, temp, rho, rand)
 
     xs = materialCache(self % matIdx) % xss % nuFission * rand % get()
 
@@ -462,7 +504,7 @@ contains
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()
-        deltakT = self % kT - nuckT
+        deltakT = kT - nuckT
         doppCorr = dopplerCorrectionFactor(E, A, deltakT)
 
       else
@@ -472,7 +514,7 @@ contains
       ! The nuclide cache should be at the right energy after updating the material
       ! In the case of TMS where the macro xss are at a relative energy, the nuclide
       ! xss to be used are at the relative energy just sampled
-      xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i) * doppCorr
+      xs = xs - nuclideCache(nucIdx) % xss % nuFission * self % dens(i) * doppCorr * densityFactor
 
       if (xs < ZERO) return
 
@@ -501,9 +543,11 @@ contains
   !!   fatalError if E is out-of-bounds of the present data
   !!   Returns nucIdx <= if material is a pure-absorber (with fission as absorbtion)
   !!
-  function sampleScatter(self, E, rand) result(nucIdx)
+  function sampleScatter(self, E, temp, rho, rand) result(nucIdx)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: temp
+    real(defReal), intent(in)            :: rho
     class(RNG), intent(inout)            :: rand
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: nucIdx, i
@@ -514,10 +558,24 @@ contains
     ! The cache is updated without checking the energy to get the correct results with TMS
     ! The relative energy flag cached is cleaned to make sure cross sections are updated
     materialCache(self % matIdx) % E_rel = ZERO
-    call self % data % updateMacroXSs(E, self % matIdx, rand)
+    call self % data % updateMacroXSs(E, self % matIdx, temp, rho, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
                          materialCache(self % matIdx) % xss % inelasticScatter)
+    
+    ! Used imposed density scaling if given
+    if (rho <= ZERO) then
+      densityFactor = ONE
+    else
+      densityFactor = rho
+    end if
+    
+    ! Use imposed temperature if given
+    if (temp <= ZERO)
+      kT = self % kT
+    else
+      kT = temp * kBoltzmannMeV
+    end if
 
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
@@ -533,7 +591,7 @@ contains
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()
-        deltakT = self % kT - nuckT
+        deltakT = kT - nuckT
         doppCorr = dopplerCorrectionFactor(E, A, deltakT)
 
       else
@@ -544,7 +602,8 @@ contains
       ! In the case of TMS where the macro xss are at a relative energy, the nuclide
       ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
-                 nuclideCache(nucIdx) % xss % inelasticScatter ) * self % dens(i) * doppCorr
+                 nuclideCache(nucIdx) % xss % inelasticScatter ) &
+                 * self % dens(i) * doppCorr * densityFactor
 
       if (xs < ZERO) return
 
@@ -573,25 +632,41 @@ contains
   !!   fatalError if E is out-of-bounds of the present data
   !!   Returns nucIdx <= if material is a pure-capture (with fission as scattering)
   !!
-  function sampleScatterWithFission(self, E, rand) result(nucIdx)
+  function sampleScatterWithFission(self, E, temp, rho, rand) result(nucIdx)
     class(ceNeutronMaterial), intent(in) :: self
     real(defReal), intent(in)            :: E
+    real(defReal), intent(in)            :: temp
+    real(defReal), intent(in)            :: rho
     class(RNG), intent(inout)            :: rand
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: nucIdx, i
-    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT, kT, densityFactor
     character(100), parameter :: Here = 'sampleScatterWithFission (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering and fission
     ! The cache is updated without checking the energy to get the correct results with TMS
     ! The relative energy flag cached is cleaned to make sure cross sections are updated
     materialCache(self % matIdx) % E_rel = ZERO
-    call self % data % updateMacroXSs(E, self % matIdx, rand)
+    call self % data % updateMacroXSs(E, self % matIdx, temp, rho, rand)
 
     xs = rand % get() * (materialCache(self % matIdx) % xss % elasticScatter + &
                          materialCache(self % matIdx) % xss % inelasticScatter + &
                          materialCache(self % matIdx) % xss % fission)
 
+    ! Used imposed density scaling if given
+    if (rho <= ZERO) then
+      densityFactor = ONE
+    else
+      densityFactor = rho
+    end if
+    
+    ! Use imposed temperature if given
+    if (temp <= ZERO)
+      kT = self % kT
+    else
+      kT = temp * kBoltzmannMeV
+    end if
+    
     ! Loop over all nuclides
     do i = 1,size(self % nuclides)
 
@@ -606,7 +681,7 @@ contains
 
         A     = nuc % getMass()
         nuckT = nuc % getkT()
-        deltakT = self % kT - nuckT
+        deltakT = kT - nuckT
         doppCorr = dopplerCorrectionFactor(E, A, deltakT)
 
       else
@@ -618,7 +693,8 @@ contains
       ! xss to be used are at the relative energy just sampled
       xs = xs - (nuclideCache(nucIdx) % xss % elasticScatter + &
                  nuclideCache(nucIdx) % xss % inelasticScatter + &
-                 nuclideCache(nucIdx) % xss % fission) * self % dens(i) * doppCorr
+                 nuclideCache(nucIdx) % xss % fission) * &
+                 self % dens(i) * doppCorr * densityFactor
 
       if (xs < ZERO) return
 

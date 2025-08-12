@@ -73,9 +73,9 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
 
     ! Local interface
-    procedure :: initMajorant
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -380,7 +380,7 @@ contains
     self % nG = self % mats(1) % nGroups()
     do i = 2,nMat
       if(self % nG /= self % mats(i) % nGroups()) then
-        call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
+        call fatalError(Here,'Inconsistent # of groups in materials in matIdx '//numToChar(i))
       end if
     end do
 
@@ -428,12 +428,24 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, loud)
+  subroutine initMajorant(self, loud, scaleDensity)
     class(baseMgNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)                :: loud
+    real(defReal), optional, intent(in)         :: scaleDensity
     integer(shortInt)                           :: g, i, idx
-    real(defReal)                               :: xs
+    real(defReal)                               :: xs, densityFactor
     integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    ! Scale density
+    if (present(scaleDensity)) then
+      if (scaleDensity < ONE) then
+        densityFactor = ONE
+      else
+        densityFactor = scaleDensity
+      end if
+    else
+      densityFactor = ONE
+    end if
 
     ! Allocate majorant
     allocate (self % majorant(self % nG))
@@ -445,7 +457,7 @@ contains
         idx = self % activeMats(i)
         xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
       end do
-      self % majorant(g) = xs
+      self % majorant(g) = xs * densityFactor
     end do
 
     if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
