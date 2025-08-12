@@ -36,7 +36,7 @@ module latUniverse_class
   !!
   !! Every lattice cell has an offset to its centre (so the centre of the nested universe
   !! is in the center of the lattice cell). Optionally an offset map can be provided, determining
-  !! whether to apply an offset in a given cell position. This can disables the local universe
+  !! whether to apply an offset in a given cell position. This can disable the local universe
   !! offset. Alternatively a single offset flag can be provided, disabling offset in all cells.
   !!
   !! Minimum lattice pitch is set to 10 * SURF_TOL
