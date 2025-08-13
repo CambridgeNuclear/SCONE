@@ -2,7 +2,7 @@ module cylindricalMap_class
 
   use numPrecision
   use universalVariables, only : valueOutsideArray, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, dotProduct, numToChar
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use grid_class,         only : grid
   use particle_class,     only : particleState
