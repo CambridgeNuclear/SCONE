@@ -64,7 +64,7 @@ module ceNeutronDatabase_inter
 
     ! Procedures implemented by a specific CE Neutron Database
     procedure(updateMajorantXS), deferred     :: updateMajorantXS
-    procedure(updateTotalMatXS), deferred     :: updateTrackMatXS
+    procedure(updateTrackMatXS), deferred     :: updateTrackMatXS
     procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
     procedure(updateMacroXSs), deferred       :: updateMacroXSs
     procedure(updateTotalNucXS), deferred     :: updateTotalNucXS
@@ -114,8 +114,8 @@ module ceNeutronDatabase_inter
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
-      real(defReal), intent(in)            :: temp
-      real(defReal), intent(in)            :: rho
+      real(defReal), intent(in), optional  :: temp
+      real(defReal), intent(in), optional  :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTrackMatXS
 
@@ -331,9 +331,10 @@ contains
 
     ! Update Cache
     trackingCache(1) % E    = p % E
-    trackingCache(1) % T    = p % T
-    trackingCache(1) % rho  = p % rho
     trackingCache(1) % xs   = xs
+    ! Update cache due to field changes
+    trackingCache(1) % T = p % T
+    trackingCache(1) % rho = p % rho
 
   end function getTrackingXS
 
@@ -355,6 +356,10 @@ contains
     real(defReal)                           :: xs
     character(100),parameter :: Here = 'getTrackMatXS (ceNeutronDatabase_inter.f90)'
 
+    ! Update tracking cache due to field changes
+    trackingCache(1) % T = p % T
+    trackingCache(1) % rho = p % rho
+    
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())

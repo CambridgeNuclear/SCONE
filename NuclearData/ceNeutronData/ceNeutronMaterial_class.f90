@@ -114,7 +114,7 @@ contains
     character(100), parameter :: Here = 'getMacroXSs_byP (ceNeutronMaterial_class.f90)'
 
     if (.not.p % isMG) then
-      call self % getMacroXSs(xss, p % E, p % temp, p % rho, p % pRNG)
+      call self % getMacroXSs(xss, p % E, p % T, p % rho, p % pRNG)
 
     else
       call fatalError(Here,'MG neutron given to CE data')
@@ -169,7 +169,7 @@ contains
   !! IT IS NOT THREAD SAFE!
   !!
   !! NOTE: eUpperSab and eLowerURR are fed by the aceNeutronDatabase, and they are the
-  !! strictest (respecitvely highest and lowest) energy limits among all nuclides
+  !! strictest (respectively highest and lowest) energy limits among all nuclides
   !! in the material composition.
   !!
   !! Args:
@@ -199,7 +199,7 @@ contains
     if (present(fissile))   self % fissile = fissile
     if (present(matIdx))    self % matIdx  = matIdx
     if (present(hasTMS))    self % hasTMS  = hasTMS
-    if (present(temp))      self % kT      = (kBoltzmann * temp) / joulesPerMeV
+    if (present(temp))      self % kT      = kBoltzmannMeV * temp
 
     if (present(eUpperSab)) then
       if (eUpperSab < ZERO) call fatalError (Here, 'Upper Sab energy limit of material '&
@@ -329,24 +329,24 @@ contains
     ! Get material tracking XS
     if (E /= materialCache(self % matIdx) % E_track .or. &
        temp /= materialCache(self % matIdx) % T_track .or. &
-       rho  /= materialCache(self % matIdx) % rho_track) then
+       rho /= materialCache(self % matIdx) % rho_track) then
       call self % data % updateTrackMatXS(E, self % matIdx, temp, rho, rand)
     end if
 
     trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
       
-    ! Used imposed density scaling if given
+    ! Use imposed temperature if given
+    if (temp <= ZERO) then
+      kT = self % kT
+    else
+      kT = temp * kBoltzmannMeV
+    end if
+    
+    ! Use imposed density if given
     if (rho <= ZERO) then
       densityFactor = ONE
     else
       densityFactor = rho
-    end if
-        
-    ! Use imposed temperature if given
-    if (temp <= ZERO)
-      kT = self % kT
-    else
-      kT = temp * kBoltzmannMeV
     end if
 
     ! Loop over nuclides
@@ -477,7 +477,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO)
+    if (temp <= ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV
@@ -551,7 +551,7 @@ contains
     class(RNG), intent(inout)            :: rand
     class(ceNeutronNuclide), pointer     :: nuc
     integer(shortInt)                    :: nucIdx, i
-    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT
+    real(defReal)                        :: xs, doppCorr, A, nuckT, deltakT, densityFactor, kT
     character(100), parameter :: Here = 'sampleScatter (ceNeutronMaterial_class.f90)'
 
     ! Calculate material macroscopic cross section of all scattering
@@ -571,7 +571,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO)
+    if (temp <= ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV
@@ -661,7 +661,7 @@ contains
     end if
     
     ! Use imposed temperature if given
-    if (temp <= ZERO)
+    if (temp <= ZERO) then
       kT = self % kT
     else
       kT = temp * kBoltzmannMeV

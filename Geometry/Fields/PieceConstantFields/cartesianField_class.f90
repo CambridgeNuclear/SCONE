@@ -190,9 +190,10 @@ contains
 
     end do
 
+
     ! Set default value when not in the field
     call dict % getOrDefault(self % val(self % N), 'default', -INF)
-
+    
   end subroutine init
 
   !!
@@ -215,9 +216,14 @@ contains
     end if
 
     ! Compare against material idx
-    if (self % matIdxs(1) /= ALL_MATS) then
+    ! Ensure material is present
+    if (any(self % matIdxs == coords % matIdx)) then
       idx = findloc(self % matIdxs, coords % matIdx, 1)
       localID = localID + (idx - 1) * product(self % sizeN)
+    else if (self % matIdxs(1) == ALL_MATS) then
+      localID = localID
+    else
+      localID = self % outLocalID
     end if
       
     val = self % val(localID)
@@ -245,6 +251,12 @@ contains
       d = self % outline % distance(coords % lvl(1) % r, coords % lvl(1) % dir)
       return
 
+    end if
+
+    ! Catch case if particle is in an excluded material
+    if ((.not. any(coords % matIdx == self % matIdxs)) .and. self % matIdxs(1) /= ALL_MATS) then
+      d = INF
+      return
     end if
     
     ! Compute ijk of localID

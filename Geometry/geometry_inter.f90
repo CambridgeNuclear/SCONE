@@ -45,6 +45,7 @@ module geometry_inter
     procedure(activeMats), deferred      :: activeMats
     procedure(getTemperature), deferred  :: getTemperature
     procedure(getDensity), deferred      :: getDensity
+    procedure(getMaxDensityFactor), deferred :: getMaxDensityFactor
 
     ! Common procedures
     procedure :: slicePlot
@@ -297,6 +298,22 @@ module geometry_inter
       type(coordList), intent(in) :: coords
       real(defReal)               :: rho
     end function getDensity
+    
+    !!
+    !! Returns the maximum density scaling factor across the system.
+    !! Used for updating the majorant, for example.
+    !!
+    !! Args:
+    !!
+    !! Result:
+    !!   Maximum density scaling factor. If there is no density
+    !!   scaling then the result is ONE
+    !!
+    function getMaxDensityFactor(self) result(rho)
+      import :: geometry, defReal
+      class(geometry), intent(in) :: self
+      real(defReal)               :: rho
+    end function getMaxDensityFactor
 
   end interface
 

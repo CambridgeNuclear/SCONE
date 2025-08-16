@@ -141,9 +141,9 @@ contains
   !!  If the values of the field are not allocated
   !!
   function getMaxValue(self) result(val)
-    class(pieceConstantField), intent(inout) :: self
-    real(defReal)                            :: val
-    character(100), parameter                :: Here = 'getMaxValue (pieceConstantField_class.f90)'
+    class(pieceConstantField), intent(in) :: self
+    real(defReal)                         :: val
+    character(100), parameter             :: Here = 'getMaxValue (pieceConstantField_class.f90)'
 
     if (.not. allocated(self % val)) call fatalError(Here,&
             'The values of the field have not been allocated')

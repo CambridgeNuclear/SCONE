@@ -224,7 +224,7 @@ contains
           end if
 
           ! Get Nuclide
-          nucIdx = matCE % sampleFission(self % E, rand)
+          nucIdx = matCE % sampleFission(self % E, -ONE, -ONE, rand)
 
           ! Get reaction object
           fissCE => fissionCE_TptrCast(nucData % getReaction(N_FISSION, nucIdx))

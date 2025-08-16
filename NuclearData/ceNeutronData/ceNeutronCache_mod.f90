@@ -78,6 +78,7 @@ module ceNeutronCache_mod
   type, public :: cacheNucDat
     real(defReal)         :: E_tot  = ZERO
     real(defReal)         :: E_tail = ZERO
+    real(defReal)         :: T_tot  = ZERO
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMicroXSs) :: xss

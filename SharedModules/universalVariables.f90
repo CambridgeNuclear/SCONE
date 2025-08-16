@@ -25,10 +25,11 @@ module universalVariables
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Flags for different possible events in movement in geometry
-  integer(shortINt), parameter, public :: COLL_EV = 1, &
+  integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
-                                          LOST_EV  = 4
+                                          LOST_EV  = 4, &
+                                          FIELD_EV = 5
 
   ! Create definitions for readability when dealing with positions relative to surfaces
   logical(defBool), parameter, public :: behind = .FALSE., &

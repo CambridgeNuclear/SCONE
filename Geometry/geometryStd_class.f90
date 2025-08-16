@@ -10,6 +10,9 @@ module geometryStd_class
   use csg_class,          only : csg
   use universe_inter,     only : universe
   use surface_inter,      only : surface
+  
+  use pieceConstantField_inter,       only : pieceConstantField
+  use pieceConstantFieldFactory_func, only : new_pieceConstantField
 
   ! Nuclear Data
   use materialMenu_mod,   only : nMat
@@ -51,8 +54,8 @@ module geometryStd_class
   !!
   type, public, extends(geometry) :: geometryStd
     type(csg) :: geom
-    class(pieceConstField), allocatable :: temperatureField
-    class(pieceConstField), allocatable :: densityField
+    class(pieceConstantField), allocatable :: temperatureField
+    class(pieceConstantField), allocatable :: densityField
 
   contains
     ! Superclass procedures
@@ -68,6 +71,7 @@ module geometryStd_class
     procedure :: activeMats
     procedure :: getTemperature
     procedure :: getDensity
+    procedure :: getMaxDensityFactor
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -95,14 +99,12 @@ contains
     ! If present, build temperature and density fields
     if (dict % isPresent('temperature')) then
       tempDict => dict % getDictPtr('temperature')
-      allocate(self % temperatureField)
-      call self % temperatureField % init(tempDict)
+      call new_pieceConstantField(self % temperatureField, tempDict)
     end if
 
     if (dict % isPresent('density')) then
       tempDict => dict % getDictPtr('density')
-      allocate(self % densityField)
-      call self % densityField % init(tempDict)
+      call new_pieceConstantField(self % densityField, tempDict)
     end if
 
   end subroutine init
@@ -114,11 +116,11 @@ contains
     class(geometryStd), intent(inout) :: self
 
     call self % geom % kill()
-    if allocated(self % temperatureField) then
+    if (allocated(self % temperatureField)) then
       call self % temperatureField % kill()
       deallocate(self % temperatureField)
     end if      
-    if allocated(self % densityField) then
+    if (allocated(self % densityField)) then
       call self % densityField % kill()
       deallocate(self % densityField)
     end if      
@@ -231,7 +233,7 @@ contains
     real(defReal), intent(inout)   :: maxDist
     integer(shortInt), intent(out) :: event
     integer(shortInt)              :: surfIdx, level
-    real(defReal)                  :: dist
+    real(defReal)                  :: dist, fieldDist
     class(surface), pointer        :: surf
     class(universe), pointer       :: uni
     character(100), parameter :: Here = 'move_noCache (geometryStd_class.f90)'
@@ -240,19 +242,20 @@ contains
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
     
+    ! Find distance to the next surface
+    call self % closestDist(dist, surfIdx, level, coords)
+    
     ! Check fields
+    fieldDist = INF
     if (allocated(self % temperatureField)) then
-      maxDist = min(maxDist, self % temperatureField % distance(coords))
+      fieldDist = min(fieldDist, self % temperatureField % distance(coords))
     end if
 
     if (allocated(self % densityField)) then
-      maxDist = min(maxDist, self % densityField % distance(coords))
+      fieldDist = min(fieldDist, self % densityField % distance(coords))
     end if
 
-    ! Find distance to the next surface
-    call self % closestDist(dist, surfIdx, level, coords)
-
-    if (maxDist < dist) then ! Moves within cell
+    if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
@@ -269,6 +272,10 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
+
+    else if (fieldDist < dist) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level)
+      event = FIELD_EV
 
     else ! Crosses to different local cell
       ! Move to boundary at hit level
@@ -302,7 +309,7 @@ contains
     integer(shortInt), intent(out) :: event
     type(distCache), intent(inout) :: cache
     integer(shortInt)              :: surfIdx, level
-    real(defReal)                  :: dist
+    real(defReal)                  :: dist, fieldDist
     class(surface), pointer        :: surf
     class(universe), pointer       :: uni
     character(100), parameter :: Here = 'move_withCache (geometryStd_class.f90)'
@@ -311,19 +318,20 @@ contains
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
     
+    ! Find distance to the next surface
+    call self % closestDist_cache(dist, surfIdx, level, coords, cache)
+    
     ! Check fields
+    fieldDist = INF
     if (allocated(self % temperatureField)) then
-      maxDist = min(maxDist, self % temperatureField % distance(coords))
+      fieldDist = min(fieldDist, self % temperatureField % distance(coords))
     end if
 
     if (allocated(self % densityField)) then
-      maxDist = min(maxDist, self % densityField % distance(coords))
+      fieldDist = min(fieldDist, self % densityField % distance(coords))
     end if
 
-    ! Find distance to the next surface
-    call self % closestDist_cache(dist, surfIdx, level, coords, cache)
-
-    if (maxDist < dist) then ! Moves within cell
+    if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
@@ -342,6 +350,10 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
+
+    else if (fieldDist < dist) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level)
+      event = FIELD_EV
 
     else ! Crosses to different local cell
       ! Move to boundary at hit level
@@ -667,6 +679,23 @@ contains
     end if
 
   end function getDensity
+  
+  !!
+  !! Returns the maximum density scaling factor across the geometry
+  !!
+  !! See geometry_inter for details
+  !!  
+  function getMaxDensityFactor(self) result(rho)
+    class(geometryStd), intent(in) :: self
+    real(defReal)                  :: rho
+
+    if (allocated(self % densityField)) then
+      rho = max(ONE, self % densityField % getMaxValue())
+    else
+      rho = ONE
+    end if
+    
+  end function getMaxDensityFactor
 
   !!
   !! Cast geometry pointer to geometryStd class pointer

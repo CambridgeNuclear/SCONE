@@ -336,7 +336,8 @@ contains
 
         maj % xs = self % majorant(idx+1) * f + (ONE - f) * self % majorant(idx)
 
-      else ! Compute majorant on the fly
+      ! Compute majorant on the fly - will fail if using a density map!
+      else
 
         maj % xs = ZERO
 
@@ -346,7 +347,7 @@ contains
 
           ! Update if needed
           if (cache_materialCache(matIdx) % E_track /= E) then
-            call self % updateTrackMatXS(E, matIdx, rand)
+            call self % updateTrackMatXS(E, matIdx, rand = rand)
           end if
 
           maj % xs = max(maj % xs, cache_materialCache(matIdx) % trackXS)
@@ -371,22 +372,34 @@ contains
     real(defReal), optional, intent(in)   :: temp
     real(defReal), optional, intent(in)   :: rho
     class(RNG), optional, intent(inout)   :: rand
+    real(defReal)                         :: T, densityFactor
 
     associate (matCache => cache_materialCache(matIdx), &
                mat      => self % materials(matIdx))
 
       ! Set new energy, temperature, and density factor
       matCache % E_track = E
-      if (present(temp)) then matCache % T_track = temp
-      if (present(rho)) then matCache % rho_track = rho
+      if (present(temp)) then
+        T = temp
+      else
+        T = -INF
+      end if
+      matCache % T_track = T
+
+      if (present(rho)) then
+        densityFactor = rho
+      else
+        densityFactor = -INF
+      end if
+      matCache % rho_track = densityFactor
 
       if (mat % useTMS(E)) then
         ! The material tracking xs is the temperature majorant in the case of TMS
-        call self % updateTotalTempMajXS(E, matIdx, temp, rho)
+        call self % updateTotalTempMajXS(E, matIdx, T, densityFactor)
 
       else
         ! When TMS is not in use, the material tracking xs is equivalent to the total
-        call self % updateTotalMatXS(E, matIdx, temp, rho, rand)
+        call self % updateTotalMatXS(E, matIdx, T, densityFactor, rand)
         matCache % trackXS = matCache % xss % total
 
       end if
@@ -422,11 +435,13 @@ contains
       matCache % trackXS = ZERO
 
       ! Use imposed temperature if given
-      if (temp <= ZERO)
+      if (temp <= ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
       end if
+      matCache % T_track = kT / kBoltzmannMeV
+      matCache % rho_track = rho
 
       ! loop through all nuclides in material and find sum of majorants
       do i = 1, size(mat % nuclides)
@@ -445,12 +460,9 @@ contains
       end do
 
       ! Use imposed density scaling if given
-      if (rho <= ZERO) then
-        densityFactor = ONE
-      else
-        densityFactor = rho
+      if (rho > ZERO) then
+        matCache % trackXS = matCache % trackXS * rho
       end if
-      matCache % trackXS = matCache % trackXS * densityFactor
 
     end associate
 
@@ -476,13 +488,13 @@ contains
                mat      => self % materials(matIdx))
 
       ! Set new energy and clean current total XS
-      matCache % E_tot = E
       matCache % xss % total = ZERO
-      matCache % T = temp
-      matCache % rho = rho
+      matCache % E_tot = E
+      matCache % rho_tot = rho
+      matCache % T_tot = temp
       
       ! Use imposed temperature if given
-      if (temp <= ZERO)
+      if (temp <= ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -508,7 +520,8 @@ contains
           nucIdx = mat % nuclides(i)
 
           ! Update if needed
-          if (cache_nuclideCache(nucIdx) % E_tot /= E) then
+          if (cache_nuclideCache(nucIdx) % E_tot /= E .or. &
+              cache_nuclideCache(nucIdx) % T_tot /= kT / kBoltzmannMeV) then
             call self % updateTotalNucXS(E, nucIdx, kT, rand)
           end if
 
@@ -546,9 +559,11 @@ contains
 
       ! Clean current xss
       call matCache % xss % clean()
+      matCache % T_tot = temp
+      matCache % rho_tot = rho
       
       ! Use imposed temperature if given
-      if (temp <= ZERO)
+      if (temp <= ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -579,7 +594,9 @@ contains
           nucIdx = mat % nuclides(i)
 
           ! Update if needed
-          if (cache_nuclideCache(nucIdx) % E_tail /= E .or. cache_nuclideCache(nucIdx) % E_tot /= E) then
+          if (cache_nuclideCache(nucIdx) % E_tail /= E .or. &
+              cache_nuclideCache(nucIdx) % E_tot /= E .or. &
+              cache_nuclideCache(nucIdx) % T_tot /= kT / kBoltzmannMev) then
             call self % updateMicroXSs(E, nucIdx, kT, rand)
           end if
 
@@ -631,11 +648,11 @@ contains
           nucIdx = mat % nuclides(i)
           nuckT  = self % nuclides(nucIdx) % getkT()
           A      = self % nuclides(nucIdx) % getMass()
-          deltakT = kT - nuckT
+          deltakT = mat % kT - nuckT
       
           ! Catch negative dkT - perhaps due to input field values
           if (deltakT < ZERO) call fatalError(Here,&
-                  'Invalid input temperatureL '//numToChar(kT/kBoltzmannMeV))
+                  'Invalid input temperature: '//numToChar(kT/kBoltzmannMeV))
 
           eRel = relativeEnergy_constXS(E, A, deltakT, rand)
 
@@ -690,6 +707,7 @@ contains
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
+      nucCache % T_tot  = kT / kBoltzmannMeV
       ! Check if the nuclide needs ures probability tables or S(a,b) at this energy
       if (nuc % needsUrr(E) .or. nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
         call self % updateMicroXSs(E, nucIdx, kT, rand)
@@ -779,6 +797,7 @@ contains
       nuckT   = nuc % getkT()
       A       = nuc % getMass()
       deltakT = kT - nuckT
+      nucCache % T_tot = kT / kBoltzmann
 
       ! Catch negative dkT - perhaps due to input field values
       if (deltakT < ZERO) call fatalError(Here,&
@@ -1454,6 +1473,7 @@ contains
     end if
 
     ! Allocate unionised majorant
+    if (allocated(self % majorant)) deallocate(self % majorant)
     allocate(self % majorant(size(self % eGridUnion)))
 
     ! Initialise RNG needed to call update XS routines. The initial seed doesn't
@@ -1482,7 +1502,7 @@ contains
         matIdx = self % activeMat(j)
 
         ! Get material tracking cross section
-        call self % updateTrackMatXS(E, matIdx, rand)
+        call self % updateTrackMatXS(E, matIdx, rand = rand)
         trackXS = cache_materialCache(matIdx) % trackXS
 
         ! Loop over nuclides to check and correct for ures
