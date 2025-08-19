@@ -232,7 +232,7 @@ contains
     type(coordList), intent(inout) :: coords
     real(defReal), intent(inout)   :: maxDist
     integer(shortInt), intent(out) :: event
-    integer(shortInt)              :: surfIdx, level
+    integer(shortInt)              :: surfIdx, level, level0
     real(defReal)                  :: dist, fieldDist
     class(surface), pointer        :: surf
     class(universe), pointer       :: uni
@@ -241,6 +241,8 @@ contains
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
+
+    level0 = coords % nesting
     
     ! Find distance to the next surface
     call self % closestDist(dist, surfIdx, level, coords)
@@ -259,7 +261,12 @@ contains
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
-
+    
+    else if (fieldDist < dist .and. abs(fieldDist - dist) > 10*NUDGE) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level0)
+      event = FIELD_EV
+      maxDist = fieldDist
+    
     else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
       ! Move global to the boundary
       call coords % moveGlobal(dist)
@@ -272,11 +279,7 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
-
-    else if (fieldDist < dist) then ! Stays within the same cell, but crosses field boundary
-      call coords % moveLocal(fieldDist, level)
-      event = FIELD_EV
-
+    
     else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
@@ -308,7 +311,7 @@ contains
     real(defReal), intent(inout)   :: maxDist
     integer(shortInt), intent(out) :: event
     type(distCache), intent(inout) :: cache
-    integer(shortInt)              :: surfIdx, level
+    integer(shortInt)              :: surfIdx, level, level0
     real(defReal)                  :: dist, fieldDist
     class(surface), pointer        :: surf
     class(universe), pointer       :: uni
@@ -317,6 +320,8 @@ contains
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
+
+    level0 = coords % nesting
     
     ! Find distance to the next surface
     call self % closestDist_cache(dist, surfIdx, level, coords, cache)
@@ -331,11 +336,19 @@ contains
       fieldDist = min(fieldDist, self % densityField % distance(coords))
     end if
 
+    !if (fieldDist < ZERO) fieldDist = INF
+
     if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
       cache % lvl = 0
+
+    else if (fieldDist < dist .and. abs(fieldDist - dist) > 10 * NUDGE) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level0)
+      event = FIELD_EV
+      maxDist = fieldDist
+      cache % dist(1:level0) = cache % dist(1:level0) - fieldDist
 
     else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
       ! Move global to the boundary
@@ -350,11 +363,7 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
-
-    else if (fieldDist < dist) then ! Stays within the same cell, but crosses field boundary
-      call coords % moveLocal(fieldDist, level)
-      event = FIELD_EV
-
+    
     else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)

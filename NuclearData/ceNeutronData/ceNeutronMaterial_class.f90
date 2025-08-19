@@ -327,11 +327,11 @@ contains
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get material tracking XS
-    if (E /= materialCache(self % matIdx) % E_track .or. &
-       temp /= materialCache(self % matIdx) % T_track .or. &
-       rho /= materialCache(self % matIdx) % rho_track) then
+    !if (E /= materialCache(self % matIdx) % E_track .or. &
+    !   temp /= materialCache(self % matIdx) % T_track .or. &
+    !   rho /= materialCache(self % matIdx) % rho_track) then
       call self % data % updateTrackMatXS(E, self % matIdx, temp, rho, rand)
-    end if
+    !end if
 
     trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
       
@@ -369,7 +369,7 @@ contains
         else
 
           ! Update nuclide cache if needed
-          if (E /= nucCache % E_tot .or. temp /= nucCache % T_tot) then
+          if (E /= nucCache % E_tot .or. temp /= materialCache(self % matIdx) % T_tot) then
             call self % data % updateTotalNucXS(E, nucIdx, kT, rand)
           end if
           totNucXS = nucCache % xss % total

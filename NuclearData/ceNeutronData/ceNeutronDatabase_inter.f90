@@ -121,7 +121,7 @@ module ceNeutronDatabase_inter
 
     !!
     !! Make sure that totalXS of material with matIdx is at energy E
-    !! in ceNeutronChache
+    !! in ceNeutronCache
     !!
     !! ANY CHANGE in ceNeutronChache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
@@ -315,9 +315,7 @@ contains
       case (TRACKING_XS)
 
         ! READ ONLY - read from previously updated cache
-        if (p % E == trackingCache(1) % E .and. &
-            p % T == trackingCache(1) % T .and. &
-            p % rho == trackingCache(1) % rho) then
+        if (p % E == trackingCache(1) % E) then
           xs = trackingCache(1) % xs
           return
         else
@@ -332,9 +330,6 @@ contains
     ! Update Cache
     trackingCache(1) % E    = p % E
     trackingCache(1) % xs   = xs
-    ! Update cache due to field changes
-    trackingCache(1) % T = p % T
-    trackingCache(1) % rho = p % rho
 
   end function getTrackingXS
 
@@ -356,13 +351,9 @@ contains
     real(defReal)                           :: xs
     character(100),parameter :: Here = 'getTrackMatXS (ceNeutronDatabase_inter.f90)'
 
-    ! Update tracking cache due to field changes
-    trackingCache(1) % T = p % T
-    trackingCache(1) % rho = p % rho
-    
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+      call fatalError(Here, 'Dynamic type of the particle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check that matIdx exists
@@ -381,7 +372,7 @@ contains
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % trackXS
-
+    
   end function getTrackMatXS
 
   !!
@@ -401,7 +392,7 @@ contains
 
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+      call fatalError(Here, 'Dynamic type of the particle is not CE Neutron but:'//p % typeToChar())
     end if
     
     ! Check that matIdx exists

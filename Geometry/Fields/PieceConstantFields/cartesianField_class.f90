@@ -190,7 +190,6 @@ contains
 
     end do
 
-
     ! Set default value when not in the field
     call dict % getOrDefault(self % val(self % N), 'default', -INF)
     
@@ -300,8 +299,7 @@ contains
     end do
 
     ! Cap distance value
-    d = max(ZERO, d)
-    d = min(INF, d)
+    if (d <= ZERO) d = INF
 
   end function distance
   

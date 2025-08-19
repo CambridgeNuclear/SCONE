@@ -382,14 +382,14 @@ contains
       if (present(temp)) then
         T = temp
       else
-        T = -INF
+        T = -ONE
       end if
       matCache % T_track = T
 
       if (present(rho)) then
         densityFactor = rho
       else
-        densityFactor = -INF
+        densityFactor = -ONE
       end if
       matCache % rho_track = densityFactor
 
@@ -440,8 +440,6 @@ contains
       else
         kT = temp * kBoltzmannMeV
       end if
-      matCache % T_track = kT / kBoltzmannMeV
-      matCache % rho_track = rho
 
       ! loop through all nuclides in material and find sum of majorants
       do i = 1, size(mat % nuclides)
@@ -491,7 +489,6 @@ contains
       matCache % xss % total = ZERO
       matCache % E_tot = E
       matCache % rho_tot = rho
-      matCache % T_tot = temp
       
       ! Use imposed temperature if given
       if (temp <= ZERO) then
@@ -520,8 +517,7 @@ contains
           nucIdx = mat % nuclides(i)
 
           ! Update if needed
-          if (cache_nuclideCache(nucIdx) % E_tot /= E .or. &
-              cache_nuclideCache(nucIdx) % T_tot /= kT / kBoltzmannMeV) then
+          if (cache_nuclideCache(nucIdx) % E_tot /= E .or. matCache % T_tot /= temp) then
             call self % updateTotalNucXS(E, nucIdx, kT, rand)
           end if
 
@@ -533,6 +529,8 @@ contains
         matCache % xss % total = matCache % xss % total * densityFactor
 
       end if
+    
+      matCache % T_tot = temp
 
     end associate
 
@@ -559,7 +557,6 @@ contains
 
       ! Clean current xss
       call matCache % xss % clean()
-      matCache % T_tot = temp
       matCache % rho_tot = rho
       
       ! Use imposed temperature if given
@@ -567,7 +564,7 @@ contains
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
-      end if
+      end if 
         
       ! Use imposed density scaling if given
       if (rho <= ZERO) then
@@ -596,7 +593,7 @@ contains
           ! Update if needed
           if (cache_nuclideCache(nucIdx) % E_tail /= E .or. &
               cache_nuclideCache(nucIdx) % E_tot /= E .or. &
-              cache_nuclideCache(nucIdx) % T_tot /= kT / kBoltzmannMev) then
+              matCache % T_tot /= temp) then
             call self % updateMicroXSs(E, nucIdx, kT, rand)
           end if
 
@@ -605,6 +602,8 @@ contains
         end do
 
       end if
+    
+      matCache % T_tot = temp
 
     end associate
 
@@ -648,7 +647,7 @@ contains
           nucIdx = mat % nuclides(i)
           nuckT  = self % nuclides(nucIdx) % getkT()
           A      = self % nuclides(nucIdx) % getMass()
-          deltakT = mat % kT - nuckT
+          deltakT = kT - nuckT
       
           ! Catch negative dkT - perhaps due to input field values
           if (deltakT < ZERO) call fatalError(Here,&
@@ -707,7 +706,6 @@ contains
     associate (nucCache => cache_nuclideCache(nucIdx), &
                nuc      => self % nuclides(nucIdx)     )
 
-      nucCache % T_tot  = kT / kBoltzmannMeV
       ! Check if the nuclide needs ures probability tables or S(a,b) at this energy
       if (nuc % needsUrr(E) .or. nuc % needsSabEl(E) .or. nuc % needsSabInel(E)) then
         call self % updateMicroXSs(E, nucIdx, kT, rand)
@@ -797,7 +795,6 @@ contains
       nuckT   = nuc % getkT()
       A       = nuc % getMass()
       deltakT = kT - nuckT
-      nucCache % T_tot = kT / kBoltzmann
 
       ! Catch negative dkT - perhaps due to input field values
       if (deltakT < ZERO) call fatalError(Here,&
