@@ -63,11 +63,21 @@ contains
         dist = INFINITY
 
       else
+        
+        ! Get local conditions
+        p % T = self % geom % getTemperature(p % coords)
+        p % rho  = self % geom % getDensity(p % coords)
+
         sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 
         ! Should never happen! Catches NaN distances
-        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+        if (dist /= dist) then
+          print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
+          print *, "Total XS: ", sigmaT
+          call fatalError(Here, "Distance is NaN")
+        end if
 
       end if
 

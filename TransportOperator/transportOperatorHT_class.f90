@@ -108,7 +108,6 @@ contains
           p % isDead = .true.
           return
 
-
         ! Check for void
         case(VOID_MAT)
           call tally % reportInColl(p, .true.)
@@ -129,6 +128,10 @@ contains
 
       end select
 
+      ! Get local conditions
+      p % T = self % geom % getTemperature(p % coords)
+      p % rho  = self % geom % getDensity(p % coords)
+      
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
@@ -166,6 +169,11 @@ contains
         dist = INFINITY
 
       else
+      
+        ! Get local conditions
+        p % T = self % geom % getTemperature(p % coords)
+        p % rho  = self % geom % getDensity(p % coords)
+
         sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
         dist = -log( p % pRNG % get()) / sigmaT
 
@@ -177,7 +185,7 @@ contains
       ! Save state before movement
       call p % savePrePath()
 
-      ! Move to the next stop. NOTE: "move" resets dist to distanced moved!
+      ! Move to the next stop. NOTE: "move" resets dist to distance moved!
       call self % geom % move(p % coords, dist, event)
 
       ! Send tally report for a path moved

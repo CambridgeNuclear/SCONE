@@ -29,26 +29,34 @@ module ceNeutronCache_mod
   !! Structure that contains cached data for each CE Neutron Material
   !!
   !! Public Members:
-  !!   E_tot  -> Energy of the total XS in xss
-  !!   E_tail -> Energy of all XSs in xss except total
-  !!   f      -> Interpolation factor for the nuclide at energy E_tot
-  !!   idx    -> Index on a nuclide grid for energy E_tot
-  !!   xss    -> Cached cross-section values
-  !!   E_track -> Energy of the tracking xs
-  !!   trackXS -> Cached tracking xs; this can be different to xss % total when using TMS
-  !!   E_rel  -> Base energy for which relative energy cross sections are found (for TMS)
-  !!   xssRel -> Cached effective cross-section values at energy relative to E_rel (for TMS)
+  !!   E_tot     -> Energy of the total XS in xss
+  !!   E_tail    -> Energy of all XSs in xss except total
+  !!   T_tot     -> Temperature at which total XS was evaluated
+  !!   rho_tot   -> Density scaling at which total XS was evaluated
+  !!   f         -> Interpolation factor for the nuclide at energy E_tot
+  !!   idx       -> Index on a nuclide grid for energy E_tot
+  !!   xss       -> Cached cross-section values
+  !!   E_track   -> Energy of the tracking xs
+  !!   T_track   -> Temperature at which tracking XS was evaluated
+  !!   rho_track -> Density scaling at which tracking XS was evaluated
+  !!   trackXS   -> Cached tracking xs; this can be different to xss % total when using TMS
+  !!   E_rel     -> Base energy for which relative energy cross sections are found (for TMS)
+  !!   xssRel    -> Cached effective cross-section values at energy relative to E_rel (for TMS)
   !!
   type, public :: cacheMatDat
     real(defReal)         :: E_tot  = ZERO
+    real(defReal)         :: T_tot  = -ONE
+    real(defReal)         :: rho_tot = -ONE
     real(defReal)         :: E_tail = ZERO
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
     type(neutronMacroXSs) :: xss
 
     ! Tracking data
-    real(defReal)         :: E_track = ZERO
-    real(defReal)         :: trackXS = ZERO
+    real(defReal)         :: E_track   = ZERO
+    real(defReal)         :: trackXS   = ZERO
+    real(defReal)         :: T_track   = -ONE
+    real(defReal)         :: rho_track = -ONE
 
     ! TMS data
     real(defReal)         :: E_rel  = ZERO
@@ -93,12 +101,14 @@ module ceNeutronCache_mod
   !! Structure that contains a cross section value
   !!
   !! Public Members:
-  !!   E  -> energy of the cross section
-  !!   xs -> value of the cross section
+  !!   E   -> energy of the cross section
+  !!   xs  -> value of the cross section
+  !!   T   -> temperature of the cross section
+  !!   rho -> density scaling of the cross section
   !!
   type, public :: cacheSingleXS
-    real(defReal) :: E  = ZERO
-    real(defReal) :: xs = ZERO
+    real(defReal) :: E   = ZERO
+    real(defReal) :: xs  = ZERO
   end type cacheSingleXS
 
   !!
