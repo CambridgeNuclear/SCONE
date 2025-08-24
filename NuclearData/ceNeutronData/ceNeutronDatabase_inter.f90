@@ -97,9 +97,9 @@ module ceNeutronDatabase_inter
 
     !!
     !! Make sure that trackXS of material with matIdx is at energy E = E_track
-    !! in ceNeutronChache
+    !! in ceNeutronCache
     !!
-    !! The tracking xs correspons to the material total cross section unless TMS
+    !! The tracking xs corresponds to the material total cross section unless TMS
     !! is used. In that case, this is the material temperature majorant xs.
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -107,6 +107,8 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
     subroutine updateTrackMatXS(self, E, matIdx, temp, rho, rand)
@@ -131,6 +133,8 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
     subroutine updateTotalMatXS(self, E, matIdx, temp, rho, rand)
@@ -147,7 +151,7 @@ module ceNeutronDatabase_inter
     !! Make sure that the majorant of ALL Active materials is at energy E
     !! in ceNeutronChache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -167,7 +171,7 @@ module ceNeutronDatabase_inter
     !! Make sure that the macroscopic XSs for the material with matIdx are set
     !! to energy E in ceNeutronCache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
     !!   E.G. Extra materials may be set to energy E as well
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -175,6 +179,8 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
     subroutine updateMacroXSs(self, E, matIdx, temp, rho, rand)
@@ -191,8 +197,8 @@ module ceNeutronDatabase_inter
     !! Make sure that totalXS of nuclide with nucIdx is at energy E
     !! in ceNeutronChache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
-    !!   E.G. All nuclid XSs may be updated to energy E
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
+    !!   E.G. All nuclide XSs may be updated to energy E
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
     !!
@@ -215,7 +221,7 @@ module ceNeutronDatabase_inter
     !! Make sure that the microscopic XSs for the nuclide with nucIdx are set
     !! to energy E in ceNeutronCache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
     !!   E.G. Extra nuclides may be set to energy E as well
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date

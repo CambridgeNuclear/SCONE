@@ -32,6 +32,8 @@ module geometryStd_class
   !! Typical geometry of a MC Neutron Transport code composed of multiple nested
   !! universes.
   !!
+  !! Supports super-imposed temperature and density fields.
+  !!
   !! Boundary conditions in diffrent movement models are handeled:
   !!   move       -> explicitBC
   !!   moveGlobal -> explicitBC
@@ -41,6 +43,8 @@ module geometryStd_class
   !!   geometry {
   !!     type geometryStd;
   !!     <csg_class definition>
+  !!     #temperature <pieceConstantField definition>#
+  !!     #density <pieceConstantField definition>#
   !!    }
   !!
   !! Public Members:
@@ -72,6 +76,7 @@ module geometryStd_class
     procedure :: getTemperature
     procedure :: getDensity
     procedure :: getMaxDensityFactor
+    procedure :: getMaxTemperature
 
     ! Private procedures
     procedure, private :: diveToMat
@@ -262,6 +267,7 @@ contains
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
     
+    ! This check is really awful - can we do something better?
     else if (fieldDist < dist .and. abs(fieldDist - dist) > 10*NUDGE) then ! Stays within the same cell, but crosses field boundary
       call coords % moveLocal(fieldDist, level0)
       event = FIELD_EV
@@ -336,14 +342,13 @@ contains
       fieldDist = min(fieldDist, self % densityField % distance(coords))
     end if
 
-    !if (fieldDist < ZERO) fieldDist = INF
-
     if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
       cache % lvl = 0
 
+    ! This check is really awful - can we do something better?
     else if (fieldDist < dist .and. abs(fieldDist - dist) > 10 * NUDGE) then ! Stays within the same cell, but crosses field boundary
       call coords % moveLocal(fieldDist, level0)
       event = FIELD_EV
@@ -705,6 +710,23 @@ contains
     end if
     
   end function getMaxDensityFactor
+  
+  !!
+  !! Returns the maximum temperature across the geometry
+  !!
+  !! See geometry_inter for details
+  !!  
+  function getMaxTemperature(self) result(temp)
+    class(geometryStd), intent(in) :: self
+    real(defReal)                  :: temp
+
+    if (allocated(self % temperatureField)) then
+      temp = self % temperatureField % getMaxValue()
+    else
+      temp = -ONE
+    end if
+    
+  end function getMaxTemperature
 
   !!
   !! Cast geometry pointer to geometryStd class pointer

@@ -228,6 +228,8 @@ contains
   !! Args:
   !!   xss [out]    -> Cross section package to store the data
   !!   E [in]       -> Requested energy [MeV]
+  !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+  !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
   !!   rand [inout] -> Random Number Generator
   !!
   !! Errors:
@@ -306,6 +308,8 @@ contains
   !!   rand [inout] -> random number generator
   !!   nucIdx [out] -> sampled nuclide index
   !!   eOut [out]   -> relative energy between neutron and target (may be /= E in case of TMS)
+  !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+  !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
   !!
   !! Errors:
   !!   fatalError if sampling fails for some reason (E.G. random number > 1)
@@ -327,11 +331,11 @@ contains
     character(100), parameter :: Here = 'sampleNuclide (ceNeutronMaterial_class.f90)'
 
     ! Get material tracking XS
-    !if (E /= materialCache(self % matIdx) % E_track .or. &
-    !   temp /= materialCache(self % matIdx) % T_track .or. &
-    !   rho /= materialCache(self % matIdx) % rho_track) then
+    if (E /= materialCache(self % matIdx) % E_track .or. &
+       temp /= materialCache(self % matIdx) % T_track .or. &
+       rho /= materialCache(self % matIdx) % rho_track) then
       call self % data % updateTrackMatXS(E, self % matIdx, temp, rho, rand)
-    !end if
+    end if
 
     trackMatXS = materialCache(self % matIdx) % trackXS * rand % get()
       
@@ -442,6 +446,8 @@ contains
   !!
   !! Args:
   !!   E [in]       -> incident energy [MeV]
+  !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+  !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
   !!   rand [inout] -> random number generator
   !!
   !! Result:
@@ -533,6 +539,8 @@ contains
   !!
   !! Args:
   !!   E [in]       -> incident energy [MeV]
+  !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+  !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
   !!   rand [inout] -> random number generator
   !!
   !! Result:
@@ -622,6 +630,8 @@ contains
   !!
   !! Args:
   !!   E [in]       -> incident energy [MeV]
+  !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+  !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
   !!   rand [inout] -> random number generator
   !!
   !! Result:

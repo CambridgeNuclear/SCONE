@@ -192,7 +192,7 @@ contains
 
     ! Set default value when not in the field
     call dict % getOrDefault(self % val(self % N), 'default', -INF)
-    
+
   end subroutine init
 
   !!

@@ -46,6 +46,7 @@ module geometry_inter
     procedure(getTemperature), deferred  :: getTemperature
     procedure(getDensity), deferred      :: getDensity
     procedure(getMaxDensityFactor), deferred :: getMaxDensityFactor
+    procedure(getMaxTemperature), deferred   :: getMaxTemperature
 
     ! Common procedures
     procedure :: slicePlot
@@ -306,7 +307,7 @@ module geometry_inter
     !! Args:
     !!
     !! Result:
-    !!   Maximum density scaling factor. If there is no density
+    !!   Maximum density scaling factor due to imposed field. If there is no density
     !!   scaling then the result is ONE
     !!
     function getMaxDensityFactor(self) result(rho)
@@ -314,6 +315,22 @@ module geometry_inter
       class(geometry), intent(in) :: self
       real(defReal)               :: rho
     end function getMaxDensityFactor
+    
+    !!
+    !! Returns the maximum temperature in kelvin across the system.
+    !! Used for updating the majorant, for example.
+    !!
+    !! Args:
+    !!
+    !! Result:
+    !!   Maximum temperature due to imposed field. If there is no temperature
+    !!   field then the result is -ONE
+    !!
+    function getMaxTemperature(self) result(temp)
+      import :: geometry, defReal
+      class(geometry), intent(in) :: self
+      real(defReal)               :: temp
+    end function getMaxTemperature
 
   end interface
 

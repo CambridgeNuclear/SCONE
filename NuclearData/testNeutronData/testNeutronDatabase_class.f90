@@ -167,9 +167,10 @@ contains
   !!
   !!
   !!
-  subroutine initMajorant(self, loud, scaleDensity)
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(testNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)              :: loud
+    real(defReal), intent(in), optional       :: maxTemp
     real(defReal), intent(in), optional       :: scaleDensity
 
     ! Do nothing

@@ -428,9 +428,10 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, loud, scaleDensity)
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(baseMgNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)                :: loud
+    real(defReal), optional, intent(in)         :: maxTemp
     real(defReal), optional, intent(in)         :: scaleDensity
     integer(shortInt)                           :: g, i, idx
     real(defReal)                               :: xs, densityFactor
@@ -446,6 +447,9 @@ contains
     else
       densityFactor = ONE
     end if
+
+    ! Currently ignores maxTemp input
+    ! TODO: Update should there be a temperature model developed for MG XSs
 
     ! Allocate majorant
     allocate (self % majorant(self % nG))

@@ -1277,9 +1277,10 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, loud, scaleDensity)
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(aceNeutronDatabase), intent(inout) :: self
     logical(defBool), intent(in)             :: loud
+    real(defReal), intent(in), optional      :: maxTemp
     real(defReal), intent(in), optional      :: scaleDensity
     real(defReal), dimension(:), allocatable :: tmpGrid
     integer(shortInt)                        :: i, j, k, matIdx, nNuc, nucIdx, isDone, &
@@ -1287,11 +1288,22 @@ contains
                                                 urrIdx
     type(intMap)                             :: nucSet
     real(defReal)                            :: eRef, eNuc, E, maj, trackXS, dens, urrMaj, &
-                                                nucXS, f, eMax, eMin, densityFactor
+                                                nucXS, f, eMax, eMin, densityFactor, broadenTemp
     class(RNG), allocatable                  :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
 
+    ! Check maxTemp is present and sensible
+    if (present(maxTemp)) then
+      if (maxTemp < ZERO) then
+        broadenTemp = -ONE
+      else
+        broadenTemp = maxTemp
+      end if
+    else
+      broadenTemp = -ONE
+    end if
+    
     ! Check scaleDensity is present and sensible
     if (present(scaleDensity)) then
       if (scaleDensity < ONE) then
@@ -1499,7 +1511,11 @@ contains
         matIdx = self % activeMat(j)
 
         ! Get material tracking cross section
-        call self % updateTrackMatXS(E, matIdx, rand = rand)
+        if (self % materials(matIdx) % hasTMS .and. broadenTemp > ZERO) then
+          call self % updateTrackMatXS(E, matIdx, temp = broadenTemp, rho = densityFactor, rand = rand)
+        else
+          call self % updateTrackMatXS(E, matIdx, rho = densityFactor, rand = rand)
+        end if
         trackXS = cache_materialCache(matIdx) % trackXS
 
         ! Loop over nuclides to check and correct for ures

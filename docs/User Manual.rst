@@ -406,6 +406,8 @@ A detailed description about the geometry modelling adopted in SCONE can be foun
       surfaces  { <Surfaces definition> }
       cells     { <Cells definition> }
       universes { <Universes definition> }
+      temperature { <PieceConstantField definition> }
+      density { <PieceConstantField definition> }
       }
 
 At the moment, the only **geometry** type available is ``geometryStd``. As for the boundary
@@ -440,6 +442,12 @@ Hence, an example of a geometry input could look like: ::
 
 For more details about the graph-like structure of the nested geometry see the relevant
 :ref:`section <DAG_GEOM>`.
+
+The geometry optionally allows the use of ``temperature`` and ``density`` fields. These
+are super-imposed fields which modify the temperature and densities given in nuclear data.
+The temperature field specifies local temperatures in kelvin while the density field
+specifies the local dimensionless factors by which material density should be scaled.
+Both of these follow the syntax of a ``PieceConstantField``.
 
 Surfaces
 ########
@@ -678,7 +686,7 @@ Example: ::
       1 2 3 // x: 1-3, y: 2, z: 2
       4 5 6 // x: 1-3, y: 1, z: 2
       7 8 9 // x: 1-3, y: 2, z: 1
-      10 11 12 ) } // x: 1-3, y: 1, z: 1
+      10 11 12 ); } // x: 1-3, y: 1, z: 1
 
 .. note::
    The order of the elements in the lattice is different from other MC codes, e.g.,
@@ -692,6 +700,49 @@ Example: ::
 Example: ::
 
       root { id 1000; type rootUniverse; border 10; fill u<1>; }
+
+PieceConstantFields
+###################
+
+These are fields which are piecewise constant and are endowed with a distance calculation to
+compute the distance until the value of the field changes. These can be used for imposing 
+density and temperature distributions across the system in a convenient manner.
+
+Currently there is only one available PieceConstantField:
+
+* cartesianField. This is similar to a latUniverse: the value of the field varies over a regular 
+  Cartesian lattice with a given shape and size. The field also allows specifying different values 
+  in different materials, or uniformly across all materials.
+  
+  - shape: (x y z) array of integers, stating the numbers of x, y and z
+    elements of the field. For a 2D field, one of the entries has to be 0
+  - pitch: (x y z) array with the x, y and z field pitches. In a 2D field,
+    the value entered in the third dimension is not used. [cm]
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the field. [cm]
+  - materials: list of material names, corresponding to materials in nuclearData.
+    Optionally, ``all`` can be used, applying the values of the field to all materials.
+  - names of each material: a map, named after every material present in the materials list. 
+    The entries of the map are the values that the field takes in that material in that
+    element of the field. The order is: increasing x, increasing y and then increasing z.
+  - default: the value taken by the field when a point is either outside of the field or
+    in a material which is not included in the field.
+
+Example: ::
+
+      temperature { type cartesianField; shape (3 2 2); pitch (1.0 1.0 1.5);
+      materials (uo2 water); 
+      uo2 (
+      901 902 903
+      904 905 906
+      907 908 909
+      910 911 912 ); 
+      water (
+      601 602 603
+      604 605 606 
+      607 608 609 
+      610 611 612);
+      default 302; }
 
 Visualiser
 ----------
