@@ -35,6 +35,7 @@ module tallyMap1DFactory_func
   use collNumMap_class,   only : collNumMap
   use radialMap_class,    only : radialMap
   use directionMap_class, only : directionMap
+  use timeMap_class,      only : timeMap
 
   implicit none
   private
@@ -54,6 +55,7 @@ module tallyMap1DFactory_func
                                                                                 'cellMap     ',&
                                                                                 'collNumMap  ',&
                                                                                 'radialMap   ',&
+                                                                                'timeMap     ',&
                                                                                 'directionMap',&
                                                                                 'testMap     ']
 
@@ -90,6 +92,9 @@ contains
 
       case('spaceMap')
         allocate(spaceMap :: new)
+
+      case('timeMap')
+        allocate(timeMap :: new)
 
       case('materialMap')
         allocate(materialMap :: new)
