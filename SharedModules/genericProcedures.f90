@@ -100,8 +100,12 @@ module genericProcedures
     module procedure concatenateArrays_Real
   end interface
 
-  contains
+  interface areEqual
+    module procedure areEqual_defReal
+    module procedure areEqual_defRealArray
+  end interface
 
+contains
 
   !!
   !! Binary search for the largest smaller-or-equal element in the array
@@ -605,6 +609,88 @@ module genericProcedures
   end function concatenateArrays_Real
 
   !!
+  !! Returns .true. if value and target are equal. 
+  !!
+  !! Due to floating point arithmetic and rounding-off errors being slightly different 
+  !! across different architectures (eg, Intel vs ARM), it is necessary to use some small 
+  !! tolerances to assert equality between two floating point numbers. These tolerances 
+  !! are specified in numPrecision.f90.
+  !!
+  elemental function areEqual_defReal(value, target) result(equal)
+    real(defReal), intent(in) :: value, target
+    logical(defBool)          :: equal
+    real(defReal)             :: absDiff
+
+    ! Initialise equal = .true. and check for perfect (to the bit) equality, since we can 
+    ! return early in this case.
+    equal = .true.
+    if (value == target) return
+
+    ! Compute the absolute value of the difference between the two floating point numbers.
+    ! Note that if value and target are both very large and of opposite signs this can 
+    ! cause overflow.
+    absDiff = abs(value - target)
+
+    ! Check if absDiff is less than some absolute very small tolerance first and return if yes.
+    if (absDiff < floatTol) return
+
+    ! Check if value and target are within some small relative tolerance of each other and 
+    ! return if yes. Note that if value and target are both very small numbers, then multiplying 
+    ! by a small tolerance can cause underflow. This is why we check absolute tolerance first.
+    if (absDiff < max(abs(value), abs(target)) * FP_REL_TOL) return
+
+    ! If reached here, value and target are not within absolute or relative tolerance of each 
+    ! other. Update equal = .false.
+    equal = .false.
+
+  end function areEqual_defReal
+
+  !!
+  !! Returns .true. if all elements of an array are equal to target. 
+  !!
+  !! Due to floating point arithmetic and rounding-off errors being slightly different 
+  !! across different architectures (eg, Intel vs ARM), it is necessary to use some small 
+  !! tolerances to assert equality between two floating point numbers. These tolerances 
+  !! are specified in numPrecision.f90.
+  !!
+  pure function areEqual_defRealArray(array, target) result(equal)
+    real(defReal), dimension(:), intent(in)     :: array
+    real(defReal), intent(in)                   :: target
+    logical(defBool)                            :: equal
+    integer(shortInt)                           :: i
+    real(defReal)                               :: value, absDiff
+
+    ! Initialise equal = .true. and loop over all element in the array.
+    equal = .true.
+    do i = 1, size(array)
+      ! Retrieve current element of the array and check for perfect (to the bit) equality. 
+      ! Cycle to the next element if yes.
+      value = array(i)
+      if (value == target) cycle
+
+      ! Compute the absolute value of the difference between the two floating point numbers.
+      ! Note that if value and target are both very large and of opposite signs this can 
+      ! cause overflow.
+      absDiff = abs(value - target)
+
+      ! Check if absDiff is less than some absolute very small tolerance first and cycle if yes.
+      if (absDiff < floatTol) cycle
+
+      ! Check if value and targer are within some small relative tolerance of each other and 
+      ! cycle if yes. Note that if value and target are both very small numbers, then multiplying 
+      ! by a small tolerance can cause underflow. This is why we check absolute tolerance first.
+      if (absDiff < max(abs(value), abs(target)) * FP_REL_TOL) cycle
+
+      ! If reached here, value and target are not within absolute or relative tolerance of each 
+      ! other. Update equal = .false. and return.
+      equal = .false.
+      return
+
+    end do
+
+  end function areEqual_defRealArray
+
+  !!
   !! Concatenate strings from an array into a single long character (tape). Asjusts left and trims
   !! elements of char Array. Adds a blank at the end of a line
   !!
@@ -756,12 +842,12 @@ module genericProcedures
   !!
   !! Compares strings for equality. Ignores leading blanks.
   !!
-  elemental function charCmp(char1, char2) result(areEqual)
+  elemental function charCmp(char1, char2) result(isEqual)
     character(*), intent(in)  :: char1
     character(*), intent(in)  :: char2
-    logical(defBool)          :: areEqual
+    logical(defBool)          :: isEqual
 
-    areEqual = (trim(adjustl(char1)) == trim(adjustl(char2)))
+    isEqual = (trim(adjustl(char1)) == trim(adjustl(char2)))
 
   end function charCmp
 
@@ -1131,17 +1217,6 @@ module genericProcedures
     matrix(3,3) = cos_t
 
   end subroutine rotationMatrix
-
-  !!
-  !! Dot product for 3D vector
-  !!
-  pure function dotProduct(a,b) result(x)
-    real(defReal),dimension(3), intent(in) :: a,b
-    real(defReal)                          :: x
-
-    x = a(1)*b(1) + a(2)*b(2) + a(3)*b(3)
-
-  end function dotProduct
 
   !!
   !! Cross product for 3D vectors
