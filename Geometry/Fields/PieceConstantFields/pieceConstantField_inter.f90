@@ -24,26 +24,50 @@ module pieceConstantField_inter
   !!
   !! Interface:
   !!   field interface
-  !!   at          -> Return scalar value given particle
-  !!   distance    -> Return distance to next element of the field
-  !!   setValue    -> Sets value of field at a given index
-  !!   getMaxValue -> Returns the maximum field value
+  !!   init         -> Initialise from dictionary, which may contain a path
+  !!   init_dict    -> Initialises from a dictionary containing full description
+  !!   init_file    -> Initialises from a path to a full description
+  !!   at           -> Return scalar value given coordlist
+  !!   map          -> Returns field index given coordList  
+  !!   map_particle -> Returns field index given particle
+  !!   distance     -> Return distance to next element of the field
+  !!   setValue     -> Sets value of field at a given index
+  !!   getMaxValue  -> Returns the maximum field value
+  !!   getSize      -> Returns the size of the field
   !!
   type, public, abstract, extends(field) :: pieceConstantField
     real(defReal), dimension(:), allocatable :: val
     integer(shortInt)                        :: N = 0
   contains
-    procedure(at), deferred       :: at
-    procedure(distance), deferred :: distance
+    procedure(init_dict), deferred :: init_dict
+    procedure(at), deferred        :: at
+    procedure(distance), deferred  :: distance
+    procedure(map), deferred       :: map
     
+    procedure :: init
+    procedure :: init_file
+    procedure :: map_particle
     procedure :: setValue
     procedure :: getMaxValue
+    procedure :: getSize
     
     procedure :: killSuper
   end type pieceConstantField
 
   abstract interface
 
+    !!
+    !! Initialise field from a dictionary
+    !!
+    !! Args:
+    !!   dict [in] -> Dictionary describing field
+    !!
+    subroutine init_dict(self, dict)
+      import :: pieceConstantField, dictionary
+      class(pieceConstantField), intent(in) :: self
+      class(dictionary), intent(in)         :: dict
+    end subroutine init_dict
+    
     !!
     !! Get value of the field at the given coordinates
     !!
@@ -76,9 +100,62 @@ module pieceConstantField_inter
       real(defReal)                         :: d
     end function distance
     
+    !!
+    !! Get index of the field at the given coordinates
+    !!
+    !! Args:
+    !!   coords [in] -> Coordinates of the position in the geometry
+    !!
+    !! Result:
+    !!   Index into the field. Integer
+    !!
+    function map(self, coords) result(idx)
+      import :: pieceConstantField, coordList, shortInt
+      class(pieceConstantField), intent(in) :: self
+      class(coordList), intent(in)          :: coords
+      integer(shortInt)                     :: idx
+    end function map
+    
   end interface
 
 contains
+
+  !!
+  !! Initialise field from a dictionary. This dictionary may contain
+  !! either the details of the field or a path to a further dictionary
+  !!
+  !! Args:
+  !!   dict [in] -> Dictionary describing contents of field
+  !!
+  subroutine init(self, dict)
+    class(pieceConstantField), intent(inout) :: self
+    class(dictionary), intent(in)            :: dict
+    character(pathLen)                       :: path
+
+    if (dict % isPresent('path')) then
+      call dict % get(path, 'path')
+      call self % init_file(path)
+    else
+      call self % init_dict(dict)
+    end if
+
+  end subroutine init_file
+  
+  !!
+  !! Initialise field from a file
+  !!
+  !! Args:
+  !!   file [in] -> Path to a file containing the field definition
+  !!
+  subroutine init_file(self, path)
+    class(pieceConstantField), intent(inout) :: self
+    character(pathLen), intent(in)           :: path
+    class(dictionary)                        :: dict
+
+    call fileToDict(dict, path)
+    call self % init(dict)
+
+  end subroutine init_file
 
   !!
   !! Cast field pointer to pieceConstantField pointer
@@ -132,6 +209,20 @@ contains
     self % val(idx) = val
 
   end subroutine setValue
+  
+  !!
+  !! Returns the index of the field given a particle state.
+  !!
+  function map_particle(self, p) result(idx)
+    class(pieceConstantField), intent(in) :: self
+    type(particle), intent(in)            :: p
+    integer(shortInt)                     :: idx
+    type(coordList)                       :: coords
+
+    coords = p % coords
+    idx = self % map(coords)
+
+  end function map_particle
 
   !!
   !! Returns the value of the maximum value of the field.
@@ -151,6 +242,17 @@ contains
     val = maxval(self % val)
 
   end function getMaxValue  
+  
+  !!
+  !! Returns the size of the field.
+  !!
+  function getSize(self) result(N)
+    class(pieceConstantField), intent(in) :: self
+    integer(shortInt)                     :: N
+
+    N = self % N
+
+  end function getSize
   
   !!
   !! Kills elements of the superclass
