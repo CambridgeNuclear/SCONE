@@ -706,7 +706,8 @@ PieceConstantFields
 
 These are fields which are piecewise constant and are endowed with a distance calculation to
 compute the distance until the value of the field changes. These can be used for imposing 
-density and temperature distributions across the system in a convenient manner.
+density and temperature distributions across the system in a convenient manner. Can be initialised
+either with an explicit definition or with a path to the field definition.
 
 Currently there is only one available PieceConstantField:
 
@@ -743,6 +744,8 @@ Example: ::
       607 608 609 
       610 611 612);
       default 302; }
+
+      density { file ./myDensityField; }
 
 Visualiser
 ----------
@@ -1374,6 +1377,14 @@ Examples: ::
 
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
+
+* fieldMap (1D map), map over superimposed fields. Limited currently to pieceConstantFields.
+
+  - field: field definition, corresponding to those in pieceConstantFields.
+
+Examples: ::
+
+      map1 { type fieldMap; field {file ./myField.txt } }
 
 * weightMap (1D map), divides weight into number of discrete bins
 
