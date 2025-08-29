@@ -14,7 +14,8 @@ temperature {
 }
 
 density {
-file ./densityField;
+type cartesianField;
+path ./IntegrationTestFiles/Geometry/densityField;
 }
 
 surfaces {

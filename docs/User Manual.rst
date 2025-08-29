@@ -745,7 +745,7 @@ Example: ::
       610 611 612);
       default 302; }
 
-      density { file ./myDensityField; }
+      density { type cartesianField; file ./myDensityField; }
 
 Visualiser
 ----------
