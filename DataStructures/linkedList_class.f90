@@ -147,7 +147,6 @@ contains
   !!
   subroutine kill_shortInt(self)
     class(linkedIntList), intent(inout) :: self
-    integer(shortInt)                   :: i
     class(intNode), pointer             :: resNode
 
     ! Traverse the list and nullify pointers
