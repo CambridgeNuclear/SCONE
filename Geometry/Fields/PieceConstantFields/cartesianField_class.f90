@@ -160,7 +160,7 @@ contains
     end if
 
     ! Size field value array
-    self % outLocalID = product(self % sizeN) + 1
+    self % outLocalID = product(self % sizeN)
     self % N = product(self % sizeN * self % nMat)
     allocate(self % val(self % N + 1))
 
@@ -192,7 +192,7 @@ contains
     end do
 
     ! Set default value when not in the field
-    call dict % getOrDefault(self % val(self % N), 'default', -INF)
+    call dict % getOrDefault(self % val(self % N + 1), 'default', -INF)
 
   end subroutine init_dict
 
@@ -208,7 +208,7 @@ contains
     integer(shortInt)                 :: localID
     
     localID = self % map (coords)
-    if (localID == 0) localID = self % outLocalID
+    if (localID == 0) localID = self % N + 1
     val = self % val(localID)
 
   end function at
@@ -218,7 +218,7 @@ contains
   !!
   !! See pieceConstantField for details
   !!
-  function map(self, coords) result(idx)
+  pure function map(self, coords) result(idx)
     class(cartesianField), intent(in) :: self
     class(coordList), intent(in)      :: coords
     integer(shortInt)                 :: idx
@@ -340,14 +340,14 @@ contains
   !!
   !! Find the local integer ID in the field given position and direction
   !!
-  function getLocalID(self, r, u) result(localID)
-    class(cartesianField), intent(in) :: self
-    real(defReal), dimension(3)       :: r
-    real(defReal), dimension(3)       :: u
-    integer(shortInt)                 :: localID
-    real(defReal), dimension(3)       :: r_bar
-    integer(shortInt), dimension(3)   :: ijk
-    integer(shortInt)                 :: i, inc
+  pure function getLocalID(self, r, u) result(localID)
+    class(cartesianField), intent(in)       :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt)                       :: localID
+    real(defReal), dimension(3)             :: r_bar
+    integer(shortInt), dimension(3)         :: ijk
+    integer(shortInt)                       :: i, inc
           
     ijk = floor((r - self % corner) / self % pitch) + 1
 

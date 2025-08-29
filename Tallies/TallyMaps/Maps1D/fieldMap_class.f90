@@ -4,17 +4,23 @@ module fieldMap_class
   use genericProcedures,       only : fatalError, numToChar
   use dictionary_class,        only : dictionary
   use particle_class,          only : particleState
+  use coord_class,             only : coordList
   use outputFile_class,        only : outputFile
   use tallyMap1D_inter,        only : tallyMap1D, kill_super => kill
 
-  ! Geometry
-  use geometryStd_class,       only : geometryStd, geometryStd_CptrCast
-  use geometry_inter,          only : geometry
-  use geometryReg_mod,         only : geomPtr, geomNum
-  use FIELDS
+  ! Field
+  use pieceConstantField_inter,       only : pieceConstantField
+  use pieceConstantFieldFactory_func, only : new_pieceConstantField
 
   implicit none
   private
+  
+  !!
+  !! Constructor
+  !!
+  interface fieldMap
+    module procedure fieldMap_fromDict
+  end interface
 
   !!
   !! Map that wraps fields to locate a particle. Performs the field mapping,
@@ -36,9 +42,9 @@ module fieldMap_class
   !!
   type, public,extends(tallyMap1D) :: fieldMap
     private
-    integer(shortInt)         :: default = 0
-    integer(shortInt)         :: Nbins   = 0
-    class(pieceConstantField) :: field
+    integer(shortInt)                      :: default = 0
+    integer(shortInt)                      :: Nbins   = 0
+    class(pieceConstantField), allocatable :: field
 
   contains
     ! Superclass interface implementaction
@@ -48,9 +54,6 @@ module fieldMap_class
     procedure :: getAxisName
     procedure :: print
     procedure :: kill
-
-    ! Class specific procedures
-    procedure :: build
 
   end type fieldMap
 
@@ -67,7 +70,7 @@ contains
     class(dictionary),pointer      :: tempDict
 
     tempDict => dict % getDictPtr('field')
-    call self % field % init(tempDict)
+    call new_pieceConstantField(self % field, tempDict)
     self % Nbins = self % field % getSize()
 
   end subroutine init
@@ -155,6 +158,25 @@ contains
     self % Nbins = 0
 
   end subroutine kill
+  
+  !!
+  !! Build new field Map from dictionary
+  !!
+  !! Args:
+  !!   dict[in] -> input dictionary for the map
+  !!
+  !! Result:
+  !!   Initialised fieldMap instance
+  !!
+  !! Errors:
+  !!   See init procedure.
+  !!
+  function fieldMap_fromDict(dict) result(new)
+    class(dictionary), intent(in) :: dict
+    type(fieldMap)                :: new
 
+    call new % init(dict)
+
+  end function fieldMap_fromDict
 
 end module fieldMap_class

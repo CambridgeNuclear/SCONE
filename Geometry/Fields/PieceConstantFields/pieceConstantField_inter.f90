@@ -5,6 +5,8 @@ module pieceConstantField_inter
   use field_inter,       only : field
   use coord_class,       only : coordList
   use dictionary_class,  only : dictionary
+  use particle_class,    only : particle
+  use dictParser_func,   only : fileToDict
 
   implicit none
   private
@@ -64,8 +66,8 @@ module pieceConstantField_inter
     !!
     subroutine init_dict(self, dict)
       import :: pieceConstantField, dictionary
-      class(pieceConstantField), intent(in) :: self
-      class(dictionary), intent(in)         :: dict
+      class(pieceConstantField), intent(inout) :: self
+      class(dictionary), intent(in)            :: dict
     end subroutine init_dict
     
     !!
@@ -109,7 +111,7 @@ module pieceConstantField_inter
     !! Result:
     !!   Index into the field. Integer
     !!
-    function map(self, coords) result(idx)
+    pure function map(self, coords) result(idx)
       import :: pieceConstantField, coordList, shortInt
       class(pieceConstantField), intent(in) :: self
       class(coordList), intent(in)          :: coords
@@ -139,7 +141,7 @@ contains
       call self % init_dict(dict)
     end if
 
-  end subroutine init_file
+  end subroutine init
   
   !!
   !! Initialise field from a file
@@ -150,7 +152,7 @@ contains
   subroutine init_file(self, path)
     class(pieceConstantField), intent(inout) :: self
     character(pathLen), intent(in)           :: path
-    class(dictionary)                        :: dict
+    type(dictionary)                         :: dict
 
     call fileToDict(dict, path)
     call self % init(dict)
@@ -211,7 +213,7 @@ contains
   end subroutine setValue
   
   !!
-  !! Returns the index of the field given a particle state.
+  !! Returns the index of the field given a particle.
   !!
   function map_particle(self, p) result(idx)
     class(pieceConstantField), intent(in) :: self
