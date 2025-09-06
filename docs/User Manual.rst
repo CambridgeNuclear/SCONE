@@ -570,10 +570,20 @@ Similarly to the surfaces, the **cells** in the geometry can be defined as: ::
       <nameN> { id <idNumberN>; type <cellType>; surfaces (<surfaces>); filltype <fillType>; *keywords* }
       }
 
-At the moment, in SCONE, the only ``cellType`` available is ``simpleCell``.
-In the surface definition, one should include the indexes of the corresponding
-surfaces with no sign to indicate a positive half-space, or minus sign to indicate
-a negative half-space. The space in between cells corresponds to an intersection.
+SCONE supports two ``cellTypes``: ``simpleCell`` and ``unionCell``.
+These types differ by the form and content of their surfaces.
+For ``simpleCell``, surfaces is a standard list of surfaces.
+This list should  include the indexes of the corresponding surfaces, with no sign 
+to indicate a positive half-space, or minus sign to indicate a negative half-space. 
+The space in between cells corresponds to an intersection.
+For ``unionCell``, surfaces is no longer a list, but a ``tokenArray``, i.e., an array
+delimited by ``[`` and ``]``, with entries separated by whitespace. This is to allow a
+mixture of numbers and symbols. Like ``simpleCell``, ``unionCell`` includes surfaces 
+and signs to indicate their halfspace. However, it is also endowed with additional
+operators to define the cell. As well as an implicit intersection operator, there is
+the union, ``:``, the complement, ``#``, and brackets to enforce an order of operations,
+``<`` and ``>``. This ``cellType`` encompasses ``simpleCell`` and can replace it without
+any problem.
 
 The possible ``fillTypes`` are:
 
@@ -591,7 +601,7 @@ Example: ::
 
 Example: ::
 
-      cellX { id 5; type simpleCell; surfaces (2 -3); filltype uni; universe 6; }
+      cellX { id 5; type unionCell; surfaces [2 : -3 # < 4 5 >]; filltype uni; universe 6; }
 
 * outside: if the cell is outside of the geometry
 
