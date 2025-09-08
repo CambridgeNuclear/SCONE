@@ -193,7 +193,7 @@ contains
   !! Errors:
   !!   None
   !!
-  subroutine add(self, key, val)
+  recursive subroutine add(self, key, val)
     class(charMap), intent(inout)  :: self
     character(nameLen), intent(in) :: key
     integer(shortInt), intent(in)  :: val

@@ -184,7 +184,7 @@ contains
   !! Errors:
   !!   None
   !!
-  subroutine add(self, key, val)
+  recursive subroutine add(self, key, val)
     class(intMap), intent(inout)  :: self
     integer(shortInt), intent(in) :: key
     integer(shortInt), intent(in) :: val

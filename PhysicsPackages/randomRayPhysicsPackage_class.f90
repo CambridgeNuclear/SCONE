@@ -84,9 +84,14 @@ module randomRayPhysicsPackage_class
   !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!     #rho 0;#              // Optional stabilisation for negative in-group scattering XSs
+  !!     #lin 0;#              // Optionally use linear (rather than flat) sources
+  !!     #2d 0;#               // Optional input to stablise linear sources in 2D problems
+  !!     #volPolicy 1;#        // Optional input to specify how volumes should be handled
+  !!     #missPolicy 1;#       // Optional input to specify how misses should be handled
   !!
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
+  !!     tally {<Tally definition>}
   !!   }
   !!
   !! Private Members
@@ -115,6 +120,8 @@ module randomRayPhysicsPackage_class
   !!
   !!   keff        -> Estimated value of keff
   !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
+  !!
+  !!   tally       -> Tally admin to output results
   !!
   !!   intersectionsTotal -> Total number of ray traces for the calculation
   !!
@@ -201,6 +208,7 @@ contains
     character(nameLen)                            :: geomName, graphType, nucData
     class(geometry), pointer                      :: geom
     type(outputFile)                              :: test_out
+    logical(defBool)                              :: set2D
     character(100), parameter :: Here = 'init (randomRayPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -231,6 +239,9 @@ contains
     
     ! Use linear sources?
     call dict % getOrDefault(self % lin, 'lin', .false.)
+
+    ! Is the problem 2D?
+    call dict % getOrDefault(set2D, '2d', .false.)
     
     ! Read outputfile path
     call dict % getOrDefault(self % outputFile,'outputFile','./output')
@@ -354,7 +365,7 @@ contains
     ! Initialise RR arrays and nuclear data
     call self % arrays % init(self % mgData, self % geom, &
             self % pop * (self % termination - self % dead), self % rho, self % lin, &
-            .false., self % loud, volPolicy = volP, missPolicy = missP)
+            .false., self % loud, volPolicy = volP, missPolicy = missP, set2D = set2D)
     
   end subroutine init
 
@@ -515,7 +526,7 @@ contains
     end do
 
     ! Finalise flux and keff scores
-    call arrayPtr % finaliseFluxScores(itAct, it)
+    call arrayPtr % finaliseFluxScores(itAct)
     if (itAct /= 1) then
       Nm1 = 1.0_defReal/(itAct - 1)
     else
@@ -568,6 +579,9 @@ contains
     
     name = 'Clock_Time'
     call out % printValue(timerTime(self % timerMain),name)
+    
+    name = 'Hit_rate'
+    call out % printValue(self % arrays % getAverageHitRate(),name)
 
     ! Print keff
     name = 'keff'

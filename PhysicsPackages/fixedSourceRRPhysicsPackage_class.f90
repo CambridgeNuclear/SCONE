@@ -86,8 +86,13 @@ module fixedSourceRRPhysicsPackage_class
   !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!     #rho 0;#              // Optional stabilisation for negative in-group scattering XSs
+  !!     #lin 0;#              // Optionally use linear (rather than flat) sources
+  !!     #2d 0;#               // Optional input to stablise linear sources in 2D problems
+  !!     #volPolicy 1;#        // Optional input to specify how volumes should be handled
+  !!     #missPolicy 1;#       // Optional input to specify how misses should be handled
   !!     #cadis 0;#            // Optionally generate adjoints for global variance reduction
   !!
+  !!     tally {<Tally Definition>}
   !!     geometry {<Geometry Definition>}
   !!     nuclearData {<Nuclear data definition>}
   !!   }
@@ -100,6 +105,7 @@ module fixedSourceRRPhysicsPackage_class
   !!   mgData      -> MG database. Calculation obviously cannot be run in CE.
   !!   nG          -> Number of energy groups, kept for convenience.
   !!   nCells      -> Number of unique cells in the geometry, kept for convenience.
+  !!   doCADIS     -> Logical to check whether to do adjoint calculations
   !!
   !!   termination -> Distance a ray can travel before it is terminated
   !!   dead        -> Distance a ray must travel before it becomes active
@@ -437,6 +443,7 @@ contains
     call timerStart(self % timerMain)
 
     arrayPtr => self % arrays
+    call arrayPtr % zeroPrevFlux()
 
     ! Stopping criterion is on number of convergence iterations.
     ! TODO: Make this on, e.g., entropy during inactive, followed by stochastic noise during active!
@@ -543,7 +550,7 @@ contains
     end do
 
     ! Finalise flux and keff scores
-    call arrayPtr % finaliseFluxScores(itAct, it)
+    call arrayPtr % finaliseFluxScores(itAct)
 
   end subroutine cycles
 
@@ -586,6 +593,9 @@ contains
     
     name = 'Clock_Time'
     call out % printValue(timerTime(self % timerMain),name)
+
+    name = 'Hit_rate'
+    call out % printValue(self % arrays % getAverageHitRate(),name)
 
     outPtr => out
 

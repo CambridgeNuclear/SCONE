@@ -3,7 +3,7 @@ module dataRR_class
   use numPrecision
   use universalVariables
   use rng_class,                      only : RNG
-  use genericProcedures,              only : fatalError
+  use genericProcedures,              only : fatalError, numToChar
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat => nMat, mm_matName => matName
@@ -55,6 +55,8 @@ module dataRR_class
     
     procedure :: init
     procedure :: setAdjointXS
+    procedure :: display
+    procedure :: materialName
     procedure :: kill
 
     ! TODO: add an XS update procedure, e.g., given multiphysics
@@ -100,9 +102,10 @@ contains
     logical(defBool), intent(in)                     :: loud
     integer(shortInt)                                :: g, g1, m, matP1, aniOrder
     type(RNG)                                        :: rand
-    logical(defBool)                                 :: fiss
+    logical(defBool)                                 :: fiss, negScat
     class(baseMgNeutronMaterial), pointer            :: mat
     class(materialHandle), pointer                   :: matPtr
+    real(defFlt)                                     :: sig
     character(100), parameter :: Here = 'init (dataRR_class.f90)'
 
     self % doKinetics = doKinetics
@@ -112,7 +115,7 @@ contains
     self % nG2 = self % nG * self % nG
 
     ! Initialise local nuclear data
-    ! Allocate nMat + 1 materials to catch any undefined materials
+    ! Allocate nMat + 1 materials to catch void and undefined materials
     ! TODO: clean nuclear database afterwards! It is no longer used
     !       and takes up memory.
     self % nMat = mm_nMat()
@@ -149,12 +152,32 @@ contains
         ! Include scattering multiplicity
         do g1 = 1, self % nG
           self % sigmaS(self % nG * self % nG * (m - 1) + self % nG * (g - 1) + g1)  = &
-                  real(mat % getScatterXS(g1, g, rand) * mat % scatter % prod(g1, g) , defFlt)
+                  real(mat % getScatterXS(g1, g, rand) * mat % scatter % prod(g, g1) , defFlt)
         end do
       end do
       self % fissile(m) = fiss
       self % names(m) = mm_matName(m)
     end do
+
+    ! Check whethere any sigmaT's are zero or negative.
+    ! Also check whether any negative scattering matrix diagonals occur.
+    print *,'Checking cross sections'
+    negScat = .false.
+    do m = 1, self % nMat
+      do g = 1, self % nG
+        sig = self % sigmaT(self % nG * (m - 1) + g)
+        if (sig <= 0.0_defFlt) then
+          call fatalError(Here, 'Dubious cross section in material '// self % names(m)//&
+                  ' in group '//numToChar(g)//': '//numToChar(real(sig,defReal)))
+        end if
+        sig = self % sigmaS(self % nG * self % nG * (m - 1) + self % nG * (g - 1) + g)
+        if (sig < 0.0_defFlt) negScat = .true.
+      end do
+    end do
+
+    if (negScat) then
+      print *,'Warning: some scattering cross sections are negative. Consider diagonal stabilisation'
+    end if
 
     ! Initialise data necessary for kinetic/noise calculations
     if (self % doKinetics) then
@@ -209,6 +232,44 @@ contains
   end subroutine setAdjointXS
 
   !!
+  !! Display contents of the class
+  !!
+  subroutine display(self)
+    class(dataRR), intent(in) :: self
+    
+    print *,'Number of group: '//numToChar(self % nG)
+    print *,'Number of materials: '//numToChar(self % nMat)
+    if (allocated(self % names)) then
+      print *,'Material names: '//self % names
+    else
+      print *,'Material names not allocated'
+    end if
+    if (allocated(self % sigmaT)) print *,'Total XS: '//numToChar(real(self % sigmaT,defReal))
+    if (allocated(self % nuSigmaF)) print *,'NuSigmaF XS: '//numToChar(real(self % nuSigmaF,defReal))
+    if (allocated(self % sigmaF)) print *,'SigmaF XS: '//numToChar(real(self % sigmaF,defReal))
+    if (allocated(self % sigmaS)) print *,'SigmaS XS: '//numToChar(real(self % sigmaS,defReal))
+    if (allocated(self % chi)) print *,'Chi: '//numToChar(real(self % chi,defReal))
+
+  end subroutine display
+
+  !!
+  !! Return the name of a given material
+  !!
+  function materialName(self, matIdx) result(matName)
+    class(dataRR), intent(in)     :: self
+    integer(shortInt), intent(in) :: matIdx
+    character(nameLen)            :: matName
+    character(100), parameter     :: Here = 'materialName (dataRR_class.f90)'
+
+    if ((matIdx > 0) .and. (matIdx <= self % nMat + 1)) then
+      matName = self % names(matIdx)
+    else
+      call fatalError(Here, 'Invalid material index: '//numToChar(matIdx))
+    end if 
+
+  end function materialName
+
+  !!
   !! Calculate the lower and upper indices for accessing the XS array
   !! (excluding scattering and kinetic data)
   !!
@@ -216,7 +277,7 @@ contains
     class(dataRR), intent(in)      :: self
     integer(shortInt), intent(in)  :: matIdx
     integer(shortInt), intent(out) :: idx1, idx2
-
+    
     idx1 = (matIdx - 1) * self % nG + 1
     idx2 = matIdx * self % nG 
 
@@ -229,7 +290,14 @@ contains
     class(dataRR), intent(in)      :: self
     integer(shortInt), intent(in)  :: matIdx
     integer(shortInt), intent(out) :: idx1, idx2
+    integer(shortInt)              :: mIdx
 
+    if (matIdx > self % nMat) then
+      mIdx = self % nMat + 1
+    else
+      mIdx = self % nMat
+    end if
+    
     idx1 = (matIdx - 1) * self % nG2 + 1
     idx2 = matIdx * self % nG2 
 

@@ -172,6 +172,9 @@ contains
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 
+      ! Update RNG after source generation
+      call self % pRNG % stride(self % pop)
+
       call tally % reportCycleStart(self % thisCycle)
 
       !$omp parallel do schedule(dynamic)

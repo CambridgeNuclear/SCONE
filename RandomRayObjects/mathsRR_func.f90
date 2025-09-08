@@ -16,7 +16,7 @@ module mathsRR_func
   implicit none
   private
   
-  public :: expF1, expG, expG2
+  public :: expF1, expF1Tau, expG, expG2
 
   ! Numerator coefficients in F1 rational approximation
   real(defFlt), parameter :: c1n = -1.0000013559236386308, c2n = 0.23151368626911062025,&
@@ -24,7 +24,7 @@ module mathsRR_func
           c6n = 0.00010360973791574984608, c7n = -0.000013276571933735820960
 
   ! Denominator coefficients in F1 rational approximation
-  real(defFlt), parameter :: c0d = ONE, c1d = -0.73151337729389001396, c2d = 0.26058381273536471371, &
+  real(defFlt), parameter :: c0d = 1.0_defFlt, c1d = -0.73151337729389001396, c2d = 0.26058381273536471371, &
           c3d = -0.059892419041316836940, c4d = 0.0099070188241094279067, c5d = -0.0012623388962473160860, &
           c6d = 0.00010361277635498731388, c7d = -0.000013276569500666698498
 
@@ -80,6 +80,38 @@ contains
     x = -num / den
 
   end function expF1
+  
+  !!
+  !! Computes x = [1 - exp(-tau)] = F1*tau for use in MoC calcs
+  !! Tau is the optical distance.
+  !! F1 is a common name in MoC literature
+  !!
+  elemental function expF1Tau(tau) result(x)
+    real(defFlt), intent(in)    :: tau
+    real(defFlt)                :: x
+    real(defFlt)                :: den, num
+
+    x = -tau
+    den = c7d
+    den = den * x + c6d
+    den = den * x + c5d
+    den = den * x + c4d
+    den = den * x + c3d
+    den = den * x + c2d
+    den = den * x + c1d
+    den = den * x + c0d
+
+    num = c7n
+    num = num * x + c6n
+    num = num * x + c5n
+    num = num * x + c4n
+    num = num * x + c3n
+    num = num * x + c2n
+    num = num * x + c1n
+    num = num * x
+    x = num / den
+
+  end function expF1Tau
 
   !!
   !! Computes y = 1/x-(1-exp(-x))/x**2 using a 5/6th order rational approximation.
