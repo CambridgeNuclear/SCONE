@@ -47,6 +47,10 @@ module geometry_inter
     procedure(activeMats), deferred        :: activeMats
     procedure(numberOfCells), deferred     :: numberOfCells
 
+    ! Common procedures
+    procedure :: slicePlot
+    procedure :: voxelPlot
+
   end type geometry
 
   abstract interface
@@ -321,5 +325,165 @@ module geometry_inter
   end interface
 
 contains
+
+  !!
+  !! Produce a 2D plot of the geometry
+  !!
+  !! Resolution is determined by a size of provided output matrix
+  !! By default plot plane is normal to z-axis, witch width determined by bounds of the
+  !! geometry.
+  !!
+  !! Args:
+  !!   img [out]   -> Rank 2 matrix. It is effectively a bitmap image
+  !!   centre [in] -> Location of the centre of the image
+  !!   dir [in]    -> Axis normal to plot plane. In {'x','y','z'}
+  !!   what [in]   -> What to plot 'material' or 'uniqueID'
+  !!   width [in]  -> Optional. Width of the plot in both directions. Direction lower in
+  !!     sequence {x,y,z} is given first.
+  !!
+  subroutine slicePlot(self, img, centre, dir, what, width)
+    class(geometry), intent(in)                       :: self
+    integer(shortInt), dimension(:,:), intent(out)    :: img
+    real(defReal), dimension(3), intent(in)           :: centre
+    character(1), intent(in)                          :: dir
+    character(*), intent(in)                          :: what
+    real(defReal), dimension(2), optional, intent(in) :: width
+    real(defReal), dimension(3)     :: low, top , step, point, corner
+    real(defReal), dimension(6)     :: aabb
+    integer(shortInt), dimension(2) :: plane
+    integer(shortInt)               :: ax, i, j, matIdx, uniqueID
+    logical(defBool)                :: printMat
+    character(100), parameter :: Here = 'slicePlot (geometry_inter.f90)'
+
+    ! Select plane of the plot
+    select case (dir)
+      case ('x')
+        ax = X_AXIS
+        plane = [Y_AXIS, Z_AXIS]
+
+      case ('y')
+        ax = Y_AXIS
+        plane = [X_AXIS, Z_AXIS]
+
+      case ('z')
+        ax = Z_AXIS
+        plane = [X_AXIS, Y_AXIS]
+
+      case default
+        call fatalError(Here, 'Unknown normal axis: '//dir)
+        ax = X_AXIS
+        plane = 0 ! Make compiler happy
+    end select
+
+    ! Find lower and upper corner of the plot
+    if (present(width)) then
+      low(plane) = centre(plane) - width * HALF
+      top(plane) = centre(plane) + width * HALF
+      low(ax) = centre(ax)
+      top(ax) = centre(ax)
+
+    else
+      aabb = self % bounds()
+      low = aabb(1:3)
+      top = aabb(4:6)
+      low(ax) = centre(ax)
+      top(ax) = centre(ax)
+
+    end if
+
+    ! Calculate step size in all directions
+    step(ax) = ZERO
+    step(plane) = (top(plane) - low(plane)) / shape(img)
+
+    ! Select what to print
+    select case (what)
+      case ('material')
+        printMat = .true.
+
+      case('uniqueID')
+        printMat = .false.
+
+      case default
+        call fatalError(Here, 'Target of plot must be material or uniqueID. Not: '//trim(what))
+        printMat = .false. ! Make compiler happy
+
+    end select
+
+    ! Print the image
+    corner = low - HALF * step
+    point(ax) = corner(ax)
+
+    !$omp parallel do firstprivate(point) private(matIdx, uniqueID)
+    do j = 1, size(img, 2)
+      point(plane(2)) = corner(plane(2)) + step(plane(2)) * j
+
+      do i = 1, size(img, 1)
+        point(plane(1)) = corner(plane(1)) + step(plane(1)) * i
+
+        ! Find material and paint image
+        call self % whatIsAt(matIdx, uniqueID, point)
+
+        ! Paint the pixel
+        if (printMat) then
+          img(i, j) = matIdx
+        else
+          img(i, j) = uniqueID
+        end if
+
+      end do
+    end do
+    !$omp end parallel do
+
+  end subroutine slicePlot
+
+  !!
+  !! Produce a 3D Voxel plot of the geometry
+  !!
+  !! Resolution is determined by a size of provided output matrix
+  !! By default, bounds of the plot correspond to the bounds of the geometry
+  !!
+  !! Args:
+  !!   img [out] -> Rank 3 matrix, It is effectively a 3D bitmap
+  !!   centre [in] -> Location of the centre of the image
+  !!   what [in]   -> What to plot 'material' or 'uniqueID'
+  !!   width [in]  -> Optional. Width of the plot in all directions.
+  !!
+  subroutine voxelPlot(self, img, centre, what, width)
+    class(geometry), intent(in)                       :: self
+    integer(shortInt), dimension(:,:,:), intent(out)  :: img
+    real(defReal), dimension(3), intent(in)           :: centre
+    character(*), intent(in)                          :: what
+    real(defReal), dimension(3), optional, intent(in) :: width
+    real(defReal), dimension(3)                       :: width_l, centre_l, point
+    real(defReal), dimension(6)                       :: aabb
+    real(defReal)                                     :: stepZ
+    integer(shortInt)                                 :: i
+
+    ! Get local value of width and centre
+    if (present(width)) then
+      width_l = width
+      centre_l = centre
+
+    else
+      aabb = self % bounds()
+      centre_l = (aabb(1:3) + aabb(4:6)) * HALF
+      width_l  = aabb(4:6) - aabb(1:3)
+
+    end if
+
+    ! Calculate step in z direction
+    stepZ = width_l(3) / size(img, 3)
+
+    ! Build voxel plot from multiple slice plots
+    point = centre_l
+    point(3) = centre_l(3) - width_l(3) * HALF - stepZ * HALF
+    do i = 1, size(img, 3)
+      point(3) = point(3) + stepZ
+      call self % slicePlot(img(:,:,i), point, 'z', what, width_l(1:2))
+
+    end do
+
+  end subroutine voxelPlot
+
 
 end module geometry_inter

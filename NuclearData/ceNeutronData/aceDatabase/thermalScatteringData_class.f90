@@ -34,14 +34,16 @@ module thermalScatteringData_class
   !!   elastic      -> tables for elastic scattering
   !!   hasElastic   -> flag that indicates if elastic scattering is on
   !!   isCoherent   -> flag that indicates if elastic scatter is coherent or incoherent
+  !!   kT           -> evaluation temperature in MeV
   !!
   !! Class Procedures:
-  !!   init         -> initialises scattering tables
-  !!   kill         -> returns to uninitialised state
-  !!   getEbounds   -> returns energy grid boundaries for a required reaction
-  !!   getInelXS    -> returns inelastic scattering xs
-  !!   getElXS      -> returns elastic scattering xs
-  !!   buildFromACE -> build data from ACE card
+  !!   init           -> initialises scattering tables
+  !!   kill           -> returns to uninitialised state
+  !!   getEbounds     -> returns energy grid boundaries for a required reaction
+  !!   getInelXS      -> returns inelastic scattering xs
+  !!   getElXS        -> returns elastic scattering xs
+  !!   getTemperature -> returns the evaluation temperature
+  !!   buildFromACE   -> build data from ACE card
   !!
   type, public :: thermalData
     class(uncorrelatedReactionCE), allocatable :: inelasticOut
@@ -50,6 +52,7 @@ module thermalScatteringData_class
     type(scatteringTable)  :: elastic
     logical(defBool)       :: hasElastic = .false.
     logical(defBool)       :: isCoherent = .false.
+    real(defReal)          :: kT = -ONE
 
   contains
 
@@ -58,6 +61,7 @@ module thermalScatteringData_class
     procedure :: getEbounds
     procedure :: getInelXS
     procedure :: getElXS
+    procedure :: getTemperature
     procedure :: buildFromACE
 
   end type thermalData
@@ -107,6 +111,7 @@ contains
 
     self % hasElastic = .false.
     self % isCoherent = .false.
+    self % kT = -ONE
 
     call self % inelasticOut % kill()
     call self % elasticOut % kill()
@@ -164,6 +169,18 @@ contains
     eBounds = [E1, E2]
 
   end function getEbounds
+
+  !!
+  !! Return the temperature of the evaluated S(a,b) data
+  !! Returns as kT - thermal energy in MeV
+  !!
+  pure function getTemperature(self) result(kT)
+    class(thermalData), intent(in) :: self
+    real(defReal)                  :: kT
+
+    kT = self % kT 
+
+  end function getTemperature
 
   !!
   !! Calculate inelastic cross section, returns cross section values
@@ -258,6 +275,9 @@ contains
     ! Get energy grids and cross sections
     self % inelastic % eGrid = ACE % ESZ_inelastic('energyGrid')
     self % inelastic % xs = ACE % ESZ_inelastic('inelasticXS')
+    
+    ! Read temperature
+    self % kT = ACE % TZ
 
     ! Check if elastic scattering data is present
     self % hasElastic = ACE % hasElastic()

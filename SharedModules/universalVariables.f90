@@ -40,15 +40,16 @@ module universalVariables
   ! NOTE: All material indices MUST BE NON-NEGATIVE!
   integer(shortInt), parameter :: OUTSIDE_MAT = 0 ,&
                                   VOID_MAT    = huge(OUTSIDE_MAT), &
-                                  UNDEF_MAT   = VOID_MAT - 1
+                                  UNDEF_MAT   = VOID_MAT - 1, &
+                                  OVERLAP_MAT = VOID_MAT - 2
 
 
   ! Define integers for each fill type that a cell may have
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
-                                  latticeFill  = 3
-
+                                  latticeFill  = 3 
+                          
   ! Define integers for boundary condition types
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
@@ -64,10 +65,11 @@ module universalVariables
                                   P_NEUTRON_MG = 2
 
   ! Search error codes
-  integer(shortInt), parameter :: valueOutsideArray = -1,&
-                                  tooManyIter       = -2,&
+  integer(shortInt), parameter :: valueOutsideArray = -1, &
+                                  tooManyIter       = -2, &
                                   targetNotFound    = -3, &
-                                  NOT_FOUND         = -3
+                                  NOT_FOUND         = -3, &
+                                  REJECTED          = -4
 
   ! Integer indexes for type of tracking cross section requested
   integer(shortInt), parameter :: MATERIAL_XS = 1, &
@@ -78,10 +80,12 @@ module universalVariables
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
   real(defReal), parameter :: neutronMass = 939.56542194_defReal,  & ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
+                              kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
                               energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13     ! Convert MeV to J
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
+                              shakesPerS   = 1.0e-8            ! Convert shakes to s
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'

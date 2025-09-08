@@ -9,7 +9,7 @@ module mgXsClerk_test
   use scoreMemory_class,         only : scoreMemory
   use testNeutronDatabase_class, only : testNeutronDatabase
   use outputFile_class,          only : outputFile
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -100,7 +100,6 @@ contains
 @Test
   subroutine testScoring_clerk1(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleState)                  :: pFiss
@@ -180,7 +179,6 @@ contains
 @Test
   subroutine testScoring_clerk2(this)
     class(test_mgXsClerk), intent(inout) :: this
-    character(:),allocatable             :: case
     type(scoreMemory)                    :: mem
     type(particle)                       :: p
     type(particleState)                  :: pFiss
@@ -230,7 +228,7 @@ contains
     @assertEqual([HALF, ZERO, HALF], chi(1,:), TOL, 'Chi' )
     @assertEqual([ZERO, ZERO, 4.0_defReal], transOS(1,:), TOL, 'Transport XS O.S.' )
     @assertEqual([ZERO, ZERO, 5.5_defReal], transFL(1,:), TOL, 'Transport XS F.L.' )
-      @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO], P0(1,:), TOL, 'P0' )
+    @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO], P0(1,:), TOL, 'P0' )
     @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, 1.5_defReal, ZERO], P1(1,:), TOL, 'P1' )
     @assertEqual([ONE, ONE, ONE, ONE, ONE, ONE, ONE, TWO, ONE], prod(1,:), TOL, 'prod' )
 

@@ -16,4 +16,5 @@
 ! Test S(alpha,beta) T = 323.6K
 
 h-h2o.49t;   1; ./IntegrationTestFiles/h-h2o.49t;
+h-h2o.50t;   1; ./IntegrationTestFiles/h-h2o.50t;
 grph30.46t;  1; ./IntegrationTestFiles/grph30.46t;

@@ -6,7 +6,7 @@ module randomRay_iTest
   use charMap_class,     only : charMap
   use dictParser_func,   only : fileToDict
   use randomRayPhysicsPackage_class, only : randomRayPhysicsPackage
-  use pFUnit_mod
+  use fUnit
 
   implicit none
 

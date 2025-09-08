@@ -26,20 +26,19 @@ module keffImplicitClerk_class
   private
 
 
-  !! Locations of diffrent bins wrt memory Address of the clerk
+  !! Locations of different bins wrt memory Address of the clerk
   integer(shortInt), parameter :: MEM_SIZE = 5
   integer(longInt), parameter  :: IMP_PROD     = 0 ,&  ! Implicit neutron production (from fission)
                                   SCATTER_PROD = 1 ,&  ! Analog Stattering production (N,XN)
                                   IMP_ABS      = 2 ,&  ! Implicit neutron absorbtion
                                   ANA_LEAK     = 3 ,&  ! Analog Leakage
                                   K_EFF        = 4     ! k-eff estimate
-
   !!
   !! A simple implicit k-eff estimator based on collison estimator of reaction rates,
-  !! and an analog estimators of (N,XN) reactions and leakage
+  !! and on analog estimators of (N,XN) reactions and leakage
   !!
   !! Private Members:
-  !!   targetSTD -> Target Standard Deviation for convergance check
+  !!   targetSTD -> Target Standard Deviation for convergence check
   !!
   !! Interface:
   !!   tallyClerk interface
@@ -57,7 +56,7 @@ module keffImplicitClerk_class
     private
     real(defReal)    :: targetSTD = ZERO
     ! Settings
-    logical(defBool) :: virtual = .false.
+    logical(defBool) :: handleVirtual = .true.
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -78,6 +77,7 @@ module keffImplicitClerk_class
     procedure :: display
     procedure :: print
     procedure :: getResult
+
   end type keffImplicitClerk
 
 contains
@@ -96,17 +96,17 @@ contains
     ! Set name
     call self % setName(name)
 
-    ! Configure convergance trigger
+    ! Configure convergence trigger
     call dict % getOrDefault(chr,'trigger','no')
 
-    ! Read convergance target
+    ! Read convergence target
     if( charCmp(chr,'yes')) then
       call dict % get(self % targetSTD,'SDtarget')
 
     end if
 
     ! Handle virtual collisions
-    call dict % getOrDefault(self % virtual,'handleVirtual', .false.)
+    call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
   end subroutine init
 
@@ -121,12 +121,12 @@ contains
 
     ! Kill self
     self % targetSTD = ZERO
-    self % virtual   = .false.
+    self % handleVirtual = .true.
 
   end subroutine kill
 
   !!
-  !! Returns array of codes that represent diffrent reports
+  !! Returns array of codes that represent different reports
   !!
   !! See tallyClerk_inter for details
   !!
@@ -169,16 +169,17 @@ contains
     character(100), parameter  :: Here = 'reportInColl (keffImplicitClerk_class.f90)'
 
     ! Return if collision is virtual but virtual collision handling is off
-    if (self % virtual) then
-      ! Retrieve tracking cross section from cache
-      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
-    else
-      if (virtual) return
-      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
-    end if
+    if ((.not. self % handleVirtual) .and. virtual) return
 
     ! Ensure we're not in void (could happen when scoring virtual collisions)
     if (p % matIdx() == VOID_MAT) return
+
+    ! Calculate flux with the right cross section according to virtual collision handling
+    if (self % handleVirtual) then
+      flux = p % w / xsData % getTrackingXS(p, p % matIdx(), TRACKING_XS)
+    else
+      flux = p % w / xsData % getTotalMatXS(p, p % matIdx())
+    end if
 
     ! Get material pointer
     mat => neutronMaterial_CptrCast(xsData % getMaterial(p % matIdx()))
@@ -218,13 +219,13 @@ contains
     ! Select analog score
     ! Assumes N_XNs are by implicit weight change
     select case(MT)
-      case(N_2N)
+      case(N_2N, N_2Nd, N_2Na, N_2N2a, N_2Np, N_2N1:N_2Ncont)
         score = 1.0_defReal * p % preCollision % wgt
-      case(N_3N)
+      case(N_3N, N_3Na, N_3Np)
         score = 2.0_defReal * p % preCollision % wgt
       case(N_4N)
         score = 3.0_defReal * p % preCollision % wgt
-      case(macroAllScatter) ! Catch weight change for MG scattering
+      case(macroAllScatter, macroIEScatter) ! Catch weight change for MG scattering
         score = max(p % w - p % preCollision % wgt, ZERO)
       case default
         score = ZERO
@@ -251,12 +252,12 @@ contains
     type(scoreMemory), intent(inout)        :: mem
     real(defReal)                           :: histWgt
 
-    if( p % fate == leak_FATE) then
+    if (p % fate == leak_FATE) then
       ! Obtain and score history weight
       histWgt = p % w
 
       ! Score analog leakage
-      call mem % score( histWgt, self % getMemAddress() + ANA_LEAK)
+      call mem % score(histWgt, self % getMemAddress() + ANA_LEAK)
 
     end if
 
@@ -274,21 +275,21 @@ contains
     integer(longInt)                        :: addr
     real(defReal)                           :: nuFiss, absorb, leakage, scatterMul, k_est
 
-    if( mem % lastCycle()) then
+    if (mem % lastCycle()) then
       addr = self % getMemAddress()
       nuFiss     = mem % getScore(addr + IMP_PROD)
       absorb     = mem % getScore(addr + IMP_ABS)
       leakage    = mem % getScore(addr + ANA_LEAK)
       scatterMul = mem % getScore(addr + SCATTER_PROD)
 
-      k_est = nuFiss / (absorb + leakage - scatterMul )
+      k_est = nuFiss / (absorb + leakage - scatterMul)
       call mem % accumulate(k_est, addr + K_EFF)
     end if
 
   end subroutine reportCycleEnd
 
   !!
-  !! Perform convergance check in the Clerk
+  !! Perform convergence check in the Clerk
   !!
   !! See tallyClerk_inter for details
   !!
@@ -305,7 +306,7 @@ contains
   end function isConverged
 
   !!
-  !! Display convergance progress on the console
+  !! Display convergence progress on the console
   !!
   !! See tallyClerk_inter for details
   !!
@@ -315,7 +316,7 @@ contains
     real(defReal)                         :: k, STD
 
     ! Get current k-eff estimate
-    call mem % getResult(k, STD, self % getMemAddress() + K_EFF )
+    call mem % getResult(k, STD, self % getMemAddress() + K_EFF)
 
     ! Print to console
     print '(A,F8.5,A,F8.5)', 'k-eff (implicit): ', k, ' +/- ', STD

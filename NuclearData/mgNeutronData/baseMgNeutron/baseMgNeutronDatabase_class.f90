@@ -65,6 +65,7 @@ module baseMgNeutronDatabase_class
     procedure :: getTrackingXS
 
     ! Local interface
+    procedure :: getTrackMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
     procedure :: matNamesMap
@@ -102,7 +103,7 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTotalMatXS(p, matIdx)
+        xs = self % getTrackMatXS(p, matIdx)
 
       case (MAJORANT_XS)
         xs = self % getMajorantXS(p)
@@ -112,6 +113,7 @@ contains
         ! READ ONLY - read from previously updated cache
         if (p % G == trackingCache(1) % G) then
           xs = trackingCache(1) % xs
+          return
         else
           call fatalError(Here, 'Tracking cache failed to update during tracking')
         end if
@@ -128,7 +130,31 @@ contains
   end function getTrackingXS
 
   !!
-  !! Get Total XS given a particle
+  !! Get tracking XS given a particle. In MG, it is always identical to the material
+  !! total XS.
+  !!
+  !! See nuclearDatabase documentation for details
+  !!
+  function getTrackMatXS(self, p, matIdx) result(xs)
+    class(baseMgNeutronDatabase), intent(inout) :: self
+    class(particle), intent(in)                 :: p
+    integer(shortInt), intent(in)               :: matIdx
+    real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (baseMgNeutronDatabase_class.f90)'
+
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
+    xs = self % getTotalMatXS(p, matIdx)
+
+  end function getTrackMatXS
+
+  !!
+  !! Get total XS given a particle
   !!
   !! See nuclearDatabase documentation for details
   !!
@@ -141,6 +167,14 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTotalMatXS (baseMgNeutronDatabase_class.f90)'
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
 
     associate (matCache => materialCache(matIdx))
 
@@ -162,7 +196,7 @@ contains
   end function getTotalMatXS
 
   !!
-  !! Get Majorant XS given a particle
+  !! Get majorant XS given a particle
   !!
   !! See nuclearDatabase documentation for details
   !!

@@ -164,11 +164,15 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do i=1,N_cycles
+    do i = 1,N_cycles
 
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
-      if(self % printSource == 1) then
+
+      ! Update RNG after source generation
+      call self % pRNG % stride(self % pop)
+
+      if (self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
       end if
 

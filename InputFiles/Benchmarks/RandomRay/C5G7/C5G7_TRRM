@@ -1,8 +1,8 @@
 type randomRayPhysicsPackage; 
 lin 0;
 pop      1750; 
-active   1200;  
-inactive 1000; 
+active   1000;  
+inactive 700; 
 dead     20;  
 termination 220;  
 plot 1;
@@ -11,15 +11,16 @@ XSdata   mg;
 dataType mg;
 outputFile C5G7_TRRM;
 
-fissionMap {type multiMap;
-            maps (xax yax);
-            xax { type spaceMap; axis x; grid lin; min -32.13; max 10.71; N 34;}
-            yax { type spaceMap; axis y; grid lin; min -10.71; max 32.13; N 34;}
-}
-fluxMap {type multiMap;
-            maps (xax yax);
-            xax { type spaceMap; axis x; grid lin; min -32.13; max 32.13; N 51;}
-            yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
+tally { 
+        fiss_flx { type rayClerk; response (fiss flx);
+               fiss {type macroResponse; MT -6;} 
+               flx  {type fluxResponse;}
+               map {type multiMap;
+                    maps (xax yax);
+                    xax { type spaceMap; axis x; grid lin; min -32.13; max 32.13; N 51;}
+                    yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
+                   }
+              }
 }
                    
 geometry { 
@@ -253,45 +254,45 @@ nuclearData {
       
     water { 
       temp 300;
-      xsFile ../XS_C5G7/moder;
+      xsFile ./XS_C5G7/moder;
       composition { } 
    }
 
     mox43 { 
        temp 300; 
-       xsFile ../XS_C5G7/MOX43;
+       xsFile ./XS_C5G7/MOX43;
        composition {  }
    }
 	  
     mox7 { 
        temp 300; 
-       xsFile ../XS_C5G7/MOX7;
+       xsFile ./XS_C5G7/MOX7;
        composition { }
     } 
 		
     mox87 { 
        temp 300; 
-       xsFile ../XS_C5G7/MOX87;
+       xsFile ./XS_C5G7/MOX87;
        composition { }
     } 
 		
     UO2 {
        temp 300; 
-       xsFile ../XS_C5G7/UO2;
+       xsFile ./XS_C5G7/UO2;
 	composition { }
     }
 
     // Fission chamber
     FC {
        temp 300; 
-       xsFile ../XS_C5G7/FC;
+       xsFile ./XS_C5G7/FC;
 	composition { }
     }
     
     // Guide tube
     GT {
        temp 300; 
-       xsFile ../XS_C5G7/GT;
+       xsFile ./XS_C5G7/GT;
 	composition { }
     }
 	   

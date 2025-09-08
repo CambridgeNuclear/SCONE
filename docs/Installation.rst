@@ -9,7 +9,7 @@ Requirements
 .. admonition:: Required
 
    Fortran Compiler
-     Currently SCONE requires gfortran (>=6.3). Support for other compilers is pending.
+     Currently SCONE requires gfortran (>=8.3). Support for other compilers is pending.
 
    CMake
      CMake cross-platform build system is used to run all configuration scripts. Version (>=3.10)
@@ -27,10 +27,10 @@ Requirements
 
 .. admonition:: Optional
 
-   pFUnit 3 test framework and Python interpreter
+   pFUnit 4 test framework and Python interpreter
      Both the unit and the integration tests in SCONE use pFUnit framework. To run it requires a
-     python interpreter. Not that we use version 3.0 despite, newer 4.0 being available. This is
-     to retain support for gfortran in versions older then 8.3 (required by pFUnit 4.0).
+     python interpreter. NOTE that version 4 (contrarily to the older 3.0) requires the use of
+     gfortran version 8.3 or newer. 
 
 Getting gfortran
 ''''''''''''''''
@@ -109,26 +109,24 @@ This is only required if the unit tests are to be build.
 
      python --version
 
-#. Create a folder for the local installation of pFUnit e.g. in your home
-   directory and download the pFUnit repository and enter the source code folder::
+#. Download the pFUnit repository and enter the source code folder::
 
-     mkdir pFUnit
+     git clone https://github.com/Goddard-Fortran-Ecosystem/pFUnit.git
      cd pFUnit
-     git clone git://git.code.sf.net/p/pfunit/code pfunit-code
-     cd pfunit-code
+
+#. Create a build folder and compile the code::
+
+     mkdir build
+     cd build
+     cmake ./..
+     make tests
+     make install
 
 #. Export environmental variables required by pFUnit::
 
      export F90=gfortran
      export F90_VENDOR=GNU
 
-#. Build and test pFUnit by typing::
-
-     make tests
-
-#. Install pFUnit in any directory you have access to e.g. ::
-
-     make install INSTALL_DIR=~/pFUnit
 
 LAPACK and BLAS
 '''''''''''''''
@@ -168,7 +166,7 @@ Compiling SCONE
    to directory in which pFUnit was installed. It may be worth adding the line
    to your ``.bashrc`` ::
 
-     export PFUNIT_INSTALL=~/pFUnit
+     export PFUNIT_DIR=~/pFUnit/build/
 
 #. If your LAPACK installation is not in default system directories use
    LAPACK_INSTALL enviromental variable to help CMAKE find the library. e.g. ::

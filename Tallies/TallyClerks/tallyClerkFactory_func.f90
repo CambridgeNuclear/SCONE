@@ -18,6 +18,7 @@ module tallyClerkFactory_func
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
   use mgXsClerk_class,                 only : mgXsClerk
+  use rayClerk_class,                  only : rayClerk
 
   implicit none
   private
@@ -37,6 +38,7 @@ module tallyClerkFactory_func
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
                                                                         'dancoffBellClerk         ',&
+                                                                        'rayClerk                 ',&
                                                                         'mgXsClerk                ']
 
 contains
@@ -86,6 +88,9 @@ contains
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
+
+     case('rayClerk')
+       allocate(rayClerk :: new)
 
      case('mgXsClerk')
        allocate(mgXsClerk :: new)

@@ -16,9 +16,12 @@ module arraysRR_class
   use geometryStd_class,              only : geometryStd
 
   ! Visualisation
-  use tallyMap_inter,                 only : tallyMap
   use visualiser_class,               only : visualiser
-  use particle_class,                 only : particleState
+  
+  ! Tallying
+  use tallyMap_inter,                 only : tallyMap
+  use particle_class,                 only : particle, particleState
+  use tallyAdmin_class,               only : tallyAdmin
   
   ! For locks
   use omp_lib
@@ -196,6 +199,9 @@ module arraysRR_class
     procedure :: finaliseFluxScores
     procedure :: calculateKeff
     procedure :: zeroPrevFlux
+
+    ! Tally results for use with MC tally machinery
+    procedure :: tallyResults
 
     ! Output procedures
     procedure :: outputMap
@@ -1952,7 +1958,7 @@ contains
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
-      flux = real(self % scalarFlux(idx),defReal)
+      flux = self % scalarFlux(idx)
       self % fluxScores(1, idx) = self % fluxScores(1, idx) + flux
       self % fluxScores(2, idx) = self % fluxScores(2, idx) + flux * flux
     end do
@@ -1972,22 +1978,73 @@ contains
 
     !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
-      flux = real(self % scalarFlux(idx),defReal)
+      flux = self % scalarFlux(idx)
       self % fluxScores(1, idx) = self % fluxScores(1, idx) + flux
       self % fluxScores(2, idx) = self % fluxScores(2, idx) + flux * flux
-      flux = real(self % scalarX(idx),defReal)
+      flux = self % scalarX(idx)
       self % xScores(1, idx) = self % xScores(1, idx) + flux
       self % xScores(2, idx) = self % xScores(2, idx) + flux * flux
-      flux = real(self % scalarY(idx),defReal)
+      flux = self % scalarY(idx)
       self % yScores(1, idx) = self % yScores(1, idx) + flux
       self % yScores(2, idx) = self % yScores(2, idx) + flux * flux
-      flux = real(self % scalarZ(idx),defReal)
+      flux = self % scalarZ(idx)
       self % zScores(1, idx) = self % zScores(1, idx) + flux
       self % zScores(2, idx) = self % zScores(2, idx) + flux * flux
     end do
     !$omp end parallel do
 
   end subroutine accumulateFluxScoresLinear
+
+  !!
+  !! Tallies flux-related results, using an input tallyAdmin.
+  !! Allows for use of MC tally machinery with RR, although limited
+  !! to relatively simple estimators.
+  !!
+  !! Loops over all phase space points, contributing each to tallies.
+  !!
+  !! Assumes the cycle will be ended afterwards.
+  !!
+  subroutine tallyResults(self, tally)
+    class(arraysRR), intent(in)                :: self
+    type(tallyAdmin), pointer, intent(inout)   :: tally
+    type(particle), save                       :: p
+    real(defReal), save                        :: vol
+    real(defReal), dimension(3), save          :: pos
+    integer(shortInt), save                    :: g, matIdx
+    real(defReal), dimension(:), pointer, save :: fluxVec
+    integer(shortInt)                          :: i
+    !$omp threadprivate(p, vol, pos, g, matIdx, fluxVec)
+
+    !$omp parallel
+    call p % build([-INF, -INF, -INF], [ONE, ZERO, ZERO], 1, ZERO, ZERO)
+    !$omp end parallel
+
+    !$omp parallel do
+    do i = 1, self % nCells
+
+      vol = self % getVolume(i)
+      pos = self % getCellPos(i)
+      call p % teleport(pos)
+
+      call self % getFluxPointer(i, fluxVec)
+      matIdx = self % geom % geom % graph % getMatFromUID(i) 
+      p % coords % matIdx = matIdx 
+
+      do g = 1, self % nG
+
+        ! The weight should be flux * V, which, for a single score in a tally
+        ! will produce SigmaX * flux * V or volume-integrated reaction rate.
+        p % w = fluxVec(g) * vol
+        p % G = g
+
+        call tally % reportInColl(p, .false.)
+
+      end do
+
+    end do
+    !$omp end parallel do
+
+  end subroutine tallyResults
   
   !!
   !! Finalise results

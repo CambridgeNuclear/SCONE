@@ -78,14 +78,13 @@ contains
     allocate(self % multi(size(mapNames)))
 
     ! Build maps
-    do i=1,size(self % maps)
-      call new_tallyMap1D( self % maps(i) % slot, dict % getDictPtr(mapNames(i)))
-
+    do i = 1, size(self % maps)
+      call new_tallyMap1D(self % maps(i) % slot, dict % getDictPtr(mapNames(i)))
     end do
 
     ! Calculate multipliers
     mul = 1
-    do i=1,size(self % maps)
+    do i = 1,size(self % maps)
       self % multi(i) = mul
       mul = mul * self % maps(i) % slot % bins(1)
     end do

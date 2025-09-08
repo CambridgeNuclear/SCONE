@@ -34,8 +34,7 @@ module randomRayPhysicsPackage_class
   use visualiser_class,               only : visualiser
 
   ! Tally map for fission rate
-  use tallyMap_inter,                 only : tallyMap
-  use tallyMapFactory_func,           only : new_tallyMap
+  use tallyAdmin_class,               only : tallyAdmin
 
   ! Random ray specific modules
   use dataRR_class,                   only : dataRR
@@ -44,6 +43,7 @@ module randomRayPhysicsPackage_class
 
   ! Random ray - or a standard particle
   use particle_class,                 only : ray => particle
+  use particleDungeon_class,          only : particleDungeon
 
   implicit none
   private
@@ -113,10 +113,7 @@ module randomRayPhysicsPackage_class
   !!   outputFormat-> Output file format
   !!   plotResults -> Plot results?
   !!   viz         -> Output visualiser
-  !!   mapFission  -> Output fission rates across a given map?
-  !!   fissionMap  -> The map across which to output fission rate results
-  !!   mapFlux     -> Output 1G flux across a given map?
-  !!   fluxMap     -> The map across which to output 1G flux results
+  !!   tally       -> Tally admin for outputting results
   !!
   !!   keff        -> Estimated value of keff
   !!   keffScore   -> Vector holding cumulative keff score and keff^2 score
@@ -132,13 +129,14 @@ module randomRayPhysicsPackage_class
     private
     ! Components
     class(geometryStd), pointer           :: geom
-    integer(shortInt)                     :: geomIdx     = 0
+    integer(shortInt)                     :: geomIdx  = 0
     type(RNG)                             :: rand
     type(arraysRR)                        :: arrays
     type(dataRR)                          :: XSData
-    class(baseMgNeutronDatabase), pointer :: mgData      => null()
-    integer(shortInt)                     :: nG          = 0
-    integer(shortInt)                     :: nCells      = 0
+    class(baseMgNeutronDatabase), pointer :: mgData   => null()
+    integer(shortInt)                     :: nG       = 0
+    integer(shortInt)                     :: nCells   = 0
+    type(tallyAdmin),pointer              :: tally    => null()
 
     ! Settings
     real(defReal)      :: termination = ZERO
@@ -156,10 +154,6 @@ module randomRayPhysicsPackage_class
     logical(defBool)   :: printVolume = .false.
     logical(defBool)   :: printCells  = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFission  = .false.
-    class(tallyMap), allocatable :: fissionMap
-    logical(defBool)   :: mapFlux     = .false.
-    class(tallyMap), allocatable :: fluxMap
 
     ! Results space
     ! keffScore is public for integration testing
@@ -259,26 +253,6 @@ contains
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
 
-    ! Check whether there is a map for outputting fission rates
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fissionMap')) then
-      self % mapFission = .true.
-      tempDict => dict % getDictPtr('fissionMap')
-      call new_tallyMap(self % fissionMap, tempDict)
-    else
-      self % mapFission = .false.
-    end if
-    
-    ! Check whether there is a map for outputting one-group fluxes
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fluxMap')) then
-      self % mapFlux = .true.
-      tempDict => dict % getDictPtr('fluxMap')
-      call new_tallyMap(self % fluxMap, tempDict)
-    else
-      self % mapFlux = .false.
-    end if
-
     ! Register timer
     self % timerMain = registerTimer('simulationTime')
     self % timerTransport = registerTimer('transportTime')
@@ -318,6 +292,13 @@ contains
     call graphDict % get(graphType,'type')
     if (graphType /= 'extended') call fatalError(Here,&
             'Geometry graph type must be "extended" for random ray calculations.')
+    
+    ! Initialise tally Admin
+    if (dict % isPresent('tally')) then
+      tempDict => dict % getDictPtr('tally')
+      allocate(self % tally)
+      call self % tally % init(tempDict)
+    end if
 
     ! Activatee nuclear data
     call ndReg_activate(P_NEUTRON_MG, nucData, self % geom % activeMats(), silent = .not. self % loud)
@@ -397,16 +378,17 @@ contains
   !!
   subroutine cycles(self)
     class(randomRayPhysicsPackage), target, intent(inout) :: self
-    type(ray), save                               :: r
-    type(RNG), target, save                       :: pRNG
-    real(defReal)                                 :: hitRate 
-    real(defReal)                                 :: ONE_KEFF, elapsed_T, end_T, T_toEnd, transport_T, &
-                                                     N1, Nm1
-    logical(defBool)                              :: keepRunning, isActive
-    integer(shortInt)                             :: i, itInac, itAct, it
-    integer(longInt), save                        :: ints
-    integer(longInt)                              :: intersections
-    class(arraysRR), pointer                      :: arrayPtr
+    type(ray), save            :: r
+    type(RNG), target, save    :: pRNG
+    real(defReal)              :: hitRate 
+    real(defReal)              :: ONE_KEFF, elapsed_T, end_T, T_toEnd, transport_T, &
+                                  N1, Nm1
+    logical(defBool)           :: keepRunning, isActive
+    integer(shortInt)          :: i, itInac, itAct, it
+    integer(longInt), save     :: ints
+    integer(longInt)           :: intersections
+    class(arraysRR), pointer   :: arrayPtr
+    type(particleDungeon)      :: dummyDungeon
     !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
@@ -476,8 +458,14 @@ contains
         self % keffScore(2) = self % keffScore(2) + self % keff * self % keff
       end if
 
-      ! Accumulate flux scores
-      if (isActive) call arrayPtr % accumulateFluxScores()
+      ! Accumulate flux scores and tally results
+      if (isActive) then
+        call arrayPtr % accumulateFluxScores()
+        if (associated(self % tally)) then
+          call arrayPtr % tallyResults(self % tally)
+          call self % tally % reportCycleEnd(dummyDungeon)
+        end if
+      end if
 
       ! Calculate proportion of cells that were hit
       hitRate = arrayPtr % getCellHitRate(it)
@@ -550,7 +538,6 @@ contains
     class(randomRayPhysicsPackage), target, intent(inout) :: self
     type(outputFile), target                              :: out
     character(nameLen)                                    :: name
-    class(outputFile), pointer                            :: outPtr
     class(visualiser), pointer                            :: vizPtr
 
     call out % init(self % outputFormat, filename = self % outputFile)
@@ -589,14 +576,14 @@ contains
     call out % printResult(self % keffScore(1), self % keffScore(2), name)
     call out % endBlock()
     
-    outPtr => out
-    ! Send fission rates to map output
-    if (self % mapFission) call self % arrays % outputMap(outPtr, self % fissionMap, .true.)
-
-    ! Send fluxes to map output
-    if (self % mapFlux) call self % arrays % outputMap(outPtr, self % fluxMap, .false.)
-    outPtr => null()
-
+    ! Print tally
+    if (associated(self % tally)) then
+      name = 'tally'
+      call out % startBlock(name)
+      call self % tally % print(out)
+      call out % endBlock()
+    end if
+    
     ! Send all fluxes and SDs to VTK
     vizPtr => self % viz
     if (self % plotResults) call self % arrays % outputToVTK(vizPtr)
@@ -657,20 +644,14 @@ contains
     self % active      = 0
     self % cache       = .false.
     self % lin         = .false.
-    self % mapFission  = .false.
-    self % mapFlux     = .false.
     self % plotResults = .false.
     self % keff        = ONE
     self % keffScore   = ZERO
     call self % arrays % kill()
     call self % XSData % kill()
-    if(allocated(self % fissionMap)) then
-      call self % fissionMap % kill()
-      deallocate(self % fissionMap)
-    end if
-    if(allocated(self % fluxMap)) then
-      call self % fluxMap % kill()
-      deallocate(self % fluxMap)
+    if (associated(self % tally)) then
+      call self % tally % kill()
+      self % tally => null()
     end if
 
   end subroutine kill

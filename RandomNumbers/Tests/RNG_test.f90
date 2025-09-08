@@ -2,7 +2,7 @@ module RNG_test
 
   use numPrecision
   use RNG_class, only : RNG
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -58,7 +58,7 @@ contains
     ! Skip 2nd generator forward
     call rand2 % skip(int(N, longInt))
     r2_end = rand2 % get()
-    
+
     ! Skip 2nd generator backwards. Must be 1 more becouse we drew a RN from generator
     call rand2 % skip(-int(N + 1, longInt))
     r2_start = rand2 % get()

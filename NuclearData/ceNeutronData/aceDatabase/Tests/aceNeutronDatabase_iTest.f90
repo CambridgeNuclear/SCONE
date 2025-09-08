@@ -18,19 +18,19 @@ module aceNeutronDatabase_iTest
   use aceNeutronNuclide_class,  only : aceNeutronNuclide, aceNeutronNuclide_TptrCast
   use neutronXSPackages_class,  only : neutronMicroXSs, neutronMacroXSs
   use materialMenu_mod,         only : mm_init => init, mm_kill => kill
-  use pFUnit_mod
+  use funit
 
   implicit none
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = &
-  & "water { temp 273;           &
+  & "water {                     &
   &       composition {          &
   &       1001.03 5.028E-02;     &
   &       8016.03 2.505E-02;     &
   &                   }          &
   &        }                     &
-  &  uo2  { temp 1;              &
+  &  uo2  {                      &
   &        composition {         &
   &        92233.03 2.286E-02;   &
   &        8016.03  4.572E-02;   &
@@ -91,7 +91,7 @@ contains
     @assertNotAssociated( ceNeutronMaterial_TptrCast( data % getMaterial(3)))
 
     ! Get water
-    mat => ceNeutronMaterial_TptrCast( data % getMaterial(1))
+    mat => ceNeutronMaterial_TptrCast(data % getMaterial(1))
     @assertAssociated(mat)
 
     ! Make sure densities are present
@@ -172,7 +172,6 @@ contains
     name = 'uo2'
     @assertTrue( 0 /= matNames % getOrDefault(name, 0))
 
-
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting nuclide XSs
      !
@@ -181,9 +180,9 @@ contains
 
     ! H-1
     nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(H1))
-    @assertEqual(ONE, 20.765855864000002_defReal/ nuc % getTotalXS(1.1E-6_defReal, p % pRNG), TOL)
+    @assertEqual(ONE, 20.765855864000002_defReal/ nuc % getTotalXS(1.1E-6_defReal, ONE, p % pRNG), TOL)
 
-    call nuc % getMicroXSs(microXSs, 5.6E-3_defReal, p % pRNG)
+    call nuc % getMicroXSs(microXSs, 5.6E-3_defReal, ONE, p % pRNG)
 
     ! Absent XSs
     @assertEqual(ZERO, microXSs % fission)

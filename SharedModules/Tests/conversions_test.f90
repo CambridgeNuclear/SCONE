@@ -1,7 +1,7 @@
 module conversions_test
   use numPrecision
   use genericProcedures, only : charToInt
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -40,5 +40,5 @@ contains
 
   end subroutine testCharToInt
 
-    
+
 end module conversions_test

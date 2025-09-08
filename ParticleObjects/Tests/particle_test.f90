@@ -2,7 +2,7 @@ module particle_test
   use numPrecision
   use universalVariables
   use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, verifyType
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -248,8 +248,8 @@ contains
     @assertEqual(3, cellIdx, 'Cell Index. Level 1.')
     @assertEqual(1, uniIdx, 'Universe Index. Level 1.')
 
-    ! Verify getting velocity
-    @assertEqual(lightSpeed, this % p_CE % getVelocity())
+    ! Verify getting speed
+    @assertEqual(lightSpeed, this % p_CE % getSpeed())
 
   end subroutine testMiscAccess
 

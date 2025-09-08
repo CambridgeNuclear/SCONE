@@ -5,7 +5,7 @@ module multipleEnergyLaws_test
   use energyLawENDF_inter,      only : energyLawENDF
   use multipleEnergyLaws_class, only : multipleEnergyLaws
   use testEnergyLaw_class,      only : testEnergyLaw
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -132,5 +132,5 @@ contains
     @assertGreaterThan(7.38_defReal, Chi)
 
   end subroutine testSampling
-    
+
 end module multipleEnergyLaws_test

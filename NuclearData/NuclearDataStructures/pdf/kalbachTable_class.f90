@@ -1,7 +1,8 @@
 module kalbachTable_class
 
   use numPrecision
-  use genericProcedures, only : fatalError, searchError, linearFloorIdxClosed_Real, interpolate,&
+  use errors_mod,        only : fatalError
+  use genericProcedures, only : searchError, linearSearchFloor, interpolate, &
                                 isSorted, numToChar
   use endfConstants
 
@@ -11,10 +12,6 @@ module kalbachTable_class
   integer(shortInt),parameter  :: histogram  = tabPdfHistogram, &
                                   linLin     = tabPdfLinLin
   real(defReal),parameter      :: tolerance = 1.0e-6
-
-  interface linearSearch
-    module procedure linearFloorIdxClosed_Real
-  end interface
 
   !!
   !! Probability table for kalbach-87 formalism
@@ -56,8 +53,8 @@ contains
     real(defReal)                    :: f, delta, ci, pi, ONEmf
     character(100),parameter         :: Here='sample (kalbachTable_class.f90)'
 
-    idx = linearSearch(self % cdf,rand)
-    call searchError(idx,Here)
+    idx = linearSearchFloor(self % cdf, rand)
+    call searchError(idx, Here)
 
     select case (self % flag)
       case (histogram)
@@ -124,7 +121,7 @@ contains
     integer(shortInt)               :: idx
     character(100),parameter        :: Here='init (kalbachTable_class.f90)'
 
-    idx = linearSearch(self % x, x)
+    idx = linearSearchFloor(self % x, x)
     call searchError(idx,Here)
 
     select case (self % flag)
@@ -292,5 +289,5 @@ contains
     end select
 
   end subroutine initCDF
-    
+
 end module kalbachTable_class

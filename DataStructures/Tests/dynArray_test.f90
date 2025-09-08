@@ -1,7 +1,7 @@
 module dynArray_test
   use numPrecision
   use dynArray_class, only : dynIntArray
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -22,7 +22,7 @@ contains
     @assertEqual(0, array % capacity(), 'Capacity of unallocated array')
     @assertTrue(array % isEmpty(),'isEmpty on unallocated array')
 
-    ! Make shure no SEG ERR happens
+    ! Make sure no SEG ERR happens
     call array % shrink()
 
   end subroutine testUnallocatedInt
@@ -40,7 +40,7 @@ contains
     @assertEqual(0, array % getSize(),'Size of empty array')
     @assertTrue(array % isEmpty(),'isEmpty on empty array')
 
-    ! Make shure no SEG ERR happens
+    ! Make sure no SEG ERR happens
     call array % shrink()
     @assertEqual(0, array % capacity(),'Capacity of shrunk empty array')
 
@@ -54,13 +54,13 @@ contains
     type(dynIntArray) :: array
 
     call array % resize(2)
-    @assertLessThanOrEqual(2, array % capacity(),'Resize to 2 from 0')
+    @assertLessThanOrEqual(2, array % capacity(), message='Resize to 2 from 0')
 
     call array % resize(5)
-    @assertLessThanOrEqual(5, array % capacity(),'Resize to 5 from 2')
+    @assertLessThanOrEqual(5, array % capacity(), message='Resize to 5 from 2')
 
     call array % resize(20)
-    @assertLessThanOrEqual(20, array % capacity(),'Resize to 20 from 5 ')
+    @assertLessThanOrEqual(20, array % capacity(), message='Resize to 20 from 5 ')
 
     call array % kill()
     @assertEqual(0, array % capacity(),'Capacity of a killed array')
@@ -101,7 +101,7 @@ contains
       @assertEqual(2*i, array % pop())
     end do
 
-   ! Test building by emelent and vector
+   ! Test building by element and vector
    call array % add(1)
    call array % add([8,3])
 

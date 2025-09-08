@@ -161,7 +161,7 @@ contains
 
     ! Check whethere any sigmaT's are zero or negative.
     ! Also check whether any negative scattering matrix diagonals occur.
-    print *,'Checking cross sections'
+    if (loud) print *,'Checking cross sections'
     negScat = .false.
     do m = 1, self % nMat
       do g = 1, self % nG
@@ -175,13 +175,13 @@ contains
       end do
     end do
 
-    if (negScat) then
+    if (negScat .and. loud) then
       print *,'Warning: some scattering cross sections are negative. Consider diagonal stabilisation'
     end if
 
     ! Initialise data necessary for kinetic/noise calculations
     if (self % doKinetics) then
-      print *,'Including kinetic data'
+      if (loud) print *,'Including kinetic data'
       call fatalError(Here,'Kinetic data not yet supported')
 
     end if
@@ -190,7 +190,7 @@ contains
     ! TODO: read anisotropy order from database
     aniOrder = 0
     if (aniOrder > 0) then
-      print *,'Including anisotropic scattering data'
+      if (loud) print *,'Including anisotropic scattering data'
       call fatalError(Here,'Anisotropy not yet supported')
 
     end if

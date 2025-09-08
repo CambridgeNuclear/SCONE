@@ -11,7 +11,7 @@ module keffImplicitClerk_test
   use dictionary_class,        only : dictionary
   use scoreMemory_class,       only : scoreMemory
   use outputFile_class,        only : outputFile
-  use pFUnit_mod
+  use funit
 
   use testNeutronDatabase_class, only : testNeutronDatabase
 
@@ -129,6 +129,7 @@ contains
         @assertTrue(.false.,'Result is not a keffResult')
 
     end select
+
   end subroutine test1CycleBatch
 
   !!

@@ -201,11 +201,15 @@ contains
     class(mgNeutronMaterial), intent(in) :: self
     type(neutronMacroXSs), intent(out)   :: xss
     class(particle), intent(in)          :: p
+    integer(shortInt)                    :: matIdx
     character(100), parameter :: Here = 'getMacroXSs_byP (mgNeutronMateerial_inter.f90)'
 
     if (.not. p % isMG) call fatalError(Here, 'CE particle was given to MG data')
 
-    associate (matCache => cache_materialCache(p % matIdx()))
+    ! Store p % matIdx() in a dedicated variable to avoid compilation errors with gfortran >= 13.2
+    matIdx = p % matIdx()
+
+    associate (matCache => cache_materialCache(matIdx))
 
       if (matCache % G_tail /= p % G) then
         ! Get cross sections

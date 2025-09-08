@@ -1,6 +1,6 @@
 module weightMap_test
   use numPrecision
-  use pFUnit_mod
+  use funit
   use particle_class,          only : particleState
   use dictionary_class,        only : dictionary
   use outputFile_class,        only : outputFile
@@ -194,7 +194,7 @@ contains
 
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'Unstructured map case')
-    call out % reset() 
+    call out % reset()
 
   end subroutine testPrint
 

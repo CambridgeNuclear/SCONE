@@ -11,6 +11,17 @@ XSdata   mg;
 dataType mg;
 outputFile C5G7_RoddedB_TRRM ;
 
+tally { 
+        fiss_flx { type rayClerk; response (fiss flx);
+               fiss {type macroResponse; MT -6;} 
+               flx  {type fluxResponse;}
+               map {type multiMap;
+                    maps (xax yax);
+                    xax { type spaceMap; axis x; grid lin; min -32.13; max 32.13; N 51;}
+                    yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
+                   }
+              }
+}
                    
 geometry { 
   type geometryStd; 

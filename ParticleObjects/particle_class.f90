@@ -70,6 +70,7 @@ module particle_class
 
     ! Private procedures
     procedure,private :: equal_particleState
+
   end type particleState
 
   !!
@@ -135,7 +136,7 @@ module particle_class
     procedure, non_overridable :: getType
 
     ! Enquiry about physical state
-    procedure :: getVelocity
+    procedure :: getSpeed
 
     ! Operations on coordinates
     procedure :: moveGlobal
@@ -426,38 +427,38 @@ contains
   end function getType
 
   !!
-  !! Return the particle velocity in [cm/s]
+  !! Return the particle speed in [cm/s]
   !! neutronMass: [MeV]
   !! lightSpeed:  [cm/s]
   !!
   !! NOTE:
-  !!   The velocities are computed from non-relativistic formula for massive particles.
+  !!   The speeds are computed from non-relativistic formula for massive particles.
   !!   A small error might appear in MeV range (e.g. for fusion applications)
   !!
   !! Args:
   !!   None
   !!
   !! Result:
-  !!   Particle velocity
+  !!   Particle speed
   !!
   !! Errors:
   !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
   !!   fatalError if the particle is MG
   !!
-  function getVelocity(self) result(velocity)
+  function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
-    real(defReal)               :: velocity
-    character(100), parameter   :: Here = 'getVelocity (particle_class.f90)'
+    real(defReal)               :: speed
+    character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
 
     ! Verify the particle is not MG
-    if (self % isMG) call fatalError(Here, 'Velocity cannot be calculated for MG particle')
+    if (self % isMG) call fatalError(Here, 'Speed cannot be calculated for MG particle')
 
     ! Calculates the velocity for the relevant particle [cm/s]
     if (self % type == P_NEUTRON) then
-      velocity = sqrt(TWO * self % E / neutronMass) * lightSpeed
+      speed = sqrt(TWO * self % E / neutronMass) * lightSpeed
 
     elseif (self % type == P_PHOTON) then
-      velocity = lightSpeed
+      speed = lightSpeed
 
     else
       call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
@@ -465,7 +466,7 @@ contains
 
     end if
 
-  end function getVelocity
+  end function getSpeed
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
@@ -658,7 +659,7 @@ contains
     LHS % uniqueID = RHS % coords % uniqueId
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
-    LHS % broodID = RHS % broodID
+    LHS % broodID    = RHS % broodID
 
   end subroutine particleState_fromParticle
 
@@ -682,7 +683,7 @@ contains
     isEqual = isEqual .and. LHS % cellIdx  == RHS % cellIdx
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
-    isEqual = isEqual .and. LHS % broodID == RHS % broodID
+    isEqual = isEqual .and. LHS % broodID    == RHS % broodID
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -725,7 +726,7 @@ contains
     self % cellIdx  = -1
     self % uniqueID = -1
     self % collisionN = 0
-    self % broodID = 0
+    self % broodID    = 0
 
   end subroutine kill_particleState
 

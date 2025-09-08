@@ -7,11 +7,11 @@ module dictionary_class
   implicit none
   private
   ! Implementation of the dictionary uses finalisation procedures that are implemented into gfortran
-  ! version 4.9 and higher. There is a bug in gfortran untill version 7.0 which causes false warning
+  ! version 4.9 and higher. There is a bug in gfortran until version 7.0 which causes false warning
   ! from -Wsurprising to appear with final procedure. This warning mey be suppressed with
   ! -Wno-surprising flag.
   !
-  ! Becouse of the finalisation local dictionary defined inside procedure will be properly
+  ! Because of the finalisation, any local dictionary defined inside a procedure will be properly
   ! deallocated. Thus:
   !
   !   subroutine memLeak(dictIn)
@@ -26,13 +26,13 @@ module dictionary_class
   ! Maximum size of keyword is equal to nameLen
   !
   ! For now the dictionary is limited to following enteries:
-  ! ->   scalar defReal                                       - real(defReal)      :: a
-  ! ->   1D array of defReal                                  - real(defReal)      :: a(:)
-  ! ->   scalar shortInt                                      - integer(shortInt)  :: i
-  ! ->   1D array of shortInt                                 - integer(shortInt)  :: i(:)
-  ! ->   scalar character of length "charLen" defined below   - character(charLen) :: c
-  ! ->   array of charcters of length "charLen" defined below - character(charLen) :: c(:)
-  ! ->   another dictionary                                   - type(dictionary)   :: dict
+  ! ->   scalar defReal                                        - real(defReal)      :: a
+  ! ->   1D array of defReal                                   - real(defReal)      :: a(:)
+  ! ->   scalar shortInt                                       - integer(shortInt)  :: i
+  ! ->   1D array of shortInt                                  - integer(shortInt)  :: i(:)
+  ! ->   scalar character of length "charLen" defined below    - character(charLen) :: c
+  ! ->   array of characters of length "charLen" defined below - character(charLen) :: c(:)
+  ! ->   another dictionary                                    - type(dictionary)   :: dict
   !
   ! To add additional structure <type> to store it is necessary to :
   ! 0) Define new type parameter for <type> type
@@ -66,7 +66,7 @@ module dictionary_class
   !      or if <type> is too short to fit trimmed content under keyword
   !
   !
-  ! When retreaving real or real Array it is possible to provide keyword associated with an integer
+  ! When retrieving real or real Array it is possible to provide keyword associated with an integer
   ! For following dictionary dict:
   ! integerKey 3;
   ! realKey    3.1;
@@ -86,8 +86,8 @@ module dictionary_class
   integer(shortInt),parameter        :: defStride = 20
 
   !!
-  !! Type to store a single entery in a dictionary
-  !! Uses a single allocatable variable for diffrent type of contant
+  !! Type to store a single entry in a dictionary
+  !! Uses a single allocatable variable for different type of contant
   !!
   type,public :: dictContent
     ! Allocatable space for all content types
@@ -98,8 +98,8 @@ module dictionary_class
     character(charLen)                          :: char0_alloc
     character(charLen),dimension(:),allocatable :: char1_alloc
     ! *** Note that dictionary is defined as pointer not allocatable
-    ! *** This is becouse gfortran < 7.0 does not supports circular derived types with
-    ! *** allocatable keyword. This line may change in a future
+    ! *** This is because gfortran < 7.0 does not supports circular derived types with
+    ! *** allocatable keyword. This line may change in the future
     type(dictionary), pointer                  :: dict0_alloc => null()
 
     ! dictContent type ID
@@ -121,6 +121,10 @@ module dictionary_class
     character(nameLen),dimension(:),allocatable  :: keywords
     type(dictContent),dimension(:), allocatable  :: entries
 
+    ! Meta data
+    ! TODO: public is bad! Get a getter!
+    character(:), allocatable, public :: address
+
     ! Dictionary state information
     integer(shortInt)                            :: maxSize = 0         ! Maximum size of a dictionary
     integer(shortInt)                            :: dictLen = 0         ! Current size of the dictionary
@@ -137,6 +141,8 @@ module dictionary_class
     procedure  :: isPresent
     procedure  :: getSize
     procedure  :: getDictPtr
+    procedure  :: updateAddress
+    procedure  :: errorMsgPrefix
     procedure  :: length => length_dictionary
 
     generic    :: get => getReal_new,&
@@ -228,7 +234,7 @@ contains
 
     end if
 
-    ! Check whether keywods contains characters
+    ! Check whether keyword contains characters
     if (adjustl(keyword) == adjustl('')) then
       call fatalError(Here,"Keyword contains only blanks : '' ")
     end if
@@ -307,8 +313,10 @@ contains
     allocate(self % keywords(maxSize))
     allocate(self % entries(maxSize))
 
+    ! Set initial address
+    self % address = "/"
 
-    ! Keywords can (perhaps?) allocate with some garbage inside. Make shure all enteries are blank.
+    ! Keywords can (perhaps?) allocate with some garbage inside. Make sure all entries are blank.
     self % keywords = ''
 
     if (present(stride)) self % stride = stride
@@ -330,11 +338,11 @@ contains
     entAllocated  = allocated(self % entries)
 
     if(keysAllocated .neqv. entAllocated) then
-      call fatalError(Here,'Immposible state. Keywors or entries is allocated without the other')
+      call fatalError(Here,'Impossible state. Keywords or entries are allocated without the other')
 
     elseif (keysAllocated .and. entAllocated) then
 
-      ! Expression below could extend only to self % dictLen but lets make double shure we
+      ! Expression below could extend only to self % dictLen but lets make double sure we
       ! kill all data. There is no need to optimise this and it is more robust this way.
       do i=1,self % maxSize
         call self % entries(i) % kill()
@@ -347,6 +355,8 @@ contains
       self % stride = defStride
 
     end if
+
+    if (allocated(self % address)) deallocate(self % address)
 
   end subroutine kill_dictionary
 
@@ -378,7 +388,7 @@ contains
     rhsSize = size( RHS % keywords)
     stride = RHS % stride
 
-    call LHS % init(rhsSize,stride)
+    call LHS % init(rhsSize, stride)
 
     ! Copy Keywords and entries
     LHS % keywords = RHS % keywords
@@ -391,6 +401,9 @@ contains
     LHS % dictLen = RHS % dictLen
     LHS % maxSize = RHS % maxSize
     LHS % stride  = RHS % stride
+
+    ! After a copy we set the current dictionary as a root
+    call LHS % updateAddress("", "")
 
   end subroutine copy_dictionary
 
@@ -421,7 +434,8 @@ contains
 
     idx = linFind(self % keywords, keyword)
     if (idx == targetNotFound) then
-      call fatalError(Here,'Target: '//trim(keyword)//' is not in dictionary')
+      call fatalError(Here, self % errorMsgPrefix() // &
+                            "Target: "//trim(keyword)//" is not present")
     end if
 
     S = self % entries(idx) % getSize()
@@ -461,7 +475,8 @@ contains
         value = real(self % entries(idx) % int0_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real or int')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real or int')
 
     end select
 
@@ -469,7 +484,7 @@ contains
 
   !!
   !! Loads a real rank 1 from dictionary into provided variable
-  !! If keyword is associated with an integer it converts it to real
+  !! If keyword is associated with an integer it converts it to real.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   subroutine getRealArray_alloc_new(self,value,keyword)
@@ -491,23 +506,24 @@ contains
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real array or int array')
 
     end select
 
   end subroutine getRealArray_alloc_new
 
   !!
-  !! Loads a real rank 1 from dictionary into provided variable
-  !! If keyword is associated with an integer it converts it to real
+  !! Loads a real rank 1 from dictionary into provided variable.
+  !! If keyword is associated with an integer it converts it to real.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   subroutine getRealArray_ptr_new(self,value,keyword)
-    class(dictionary), intent(in)                      :: self
-    real(defReal),dimension(:),pointer,intent(inout)   :: value
-    character(*),intent(in)                            :: keyword
-    integer(shortInt)                                  :: idx, N
-    character(100),parameter                           :: Here='getRealArray_ptr (dictionary_class.f90)'
+    class(dictionary), intent(in)                    :: self
+    real(defReal),dimension(:),pointer,intent(inout) :: value
+    character(*),intent(in)                          :: keyword
+    integer(shortInt)                                :: idx, N
+    character(100),parameter                         :: Here='getRealArray_ptr (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.true.)
 
@@ -526,14 +542,15 @@ contains
         value = real(self % entries(idx) % int1_alloc, defReal)
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a real array or int array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a real array or int array')
 
     end select
 
   end subroutine getRealArray_ptr_new
 
   !!
-  !! Loads a integer rank 0 from a dictionary
+  !! Loads an integer rank 0 from a dictionary.
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !!
   subroutine getInt_new(self,value,keyword)
@@ -550,15 +567,16 @@ contains
         value = self % entries(idx) % int0_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not an integer')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not an integer')
 
     end select
 
   end subroutine getInt_new
 
   !!
-  !! Loads a integer rank 1 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Loads an integer rank 1 from a dictionary.
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   subroutine getIntArray_alloc_new(self,value,keyword)
@@ -577,7 +595,8 @@ contains
         value = self % entries(idx) % int1_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not integer array')
 
     end select
 
@@ -585,15 +604,15 @@ contains
 
 
   !!
-  !! Loads a integer rank 1 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Loads an integer rank 1 from a dictionary.
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   subroutine getIntArray_ptr_new(self,value,keyword)
-    class(dictionary), intent(in)                            :: self
-    integer(shortInt),dimension(:),pointer,intent(inout)     :: value
-    character(*),intent(in)                                  :: keyword
-    integer(shortInt)                                        :: idx,N
+    class(dictionary), intent(in)                        :: self
+    integer(shortInt),dimension(:),pointer,intent(inout) :: value
+    character(*),intent(in)                              :: keyword
+    integer(shortInt)                                    :: idx,N
     character(100),parameter                   :: Here='getIntArray_ptr (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.true.)
@@ -607,7 +626,8 @@ contains
         value = self % entries(idx) % int1_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not integer array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not integer array')
 
     end select
 
@@ -629,27 +649,29 @@ contains
       case(word)
         ! Check if the content character fits into value
         if( len(value) < len_trim(self % entries(idx) % char0_alloc)) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         value = self % entries(idx) % char0_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character')
 
     end select
 
   end subroutine getChar_new
 
   !!
-  !! Reads a character rank 1 from a dictionary
+  !! Reads a character rank 1 from a dictionary.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   subroutine getCharArray_alloc_new(self,value,keyword)
-    class(dictionary), intent(in)                             :: self
-    character(*),dimension(:),allocatable,intent(inout)       :: value
-    character(*),intent(in)                                   :: keyword
-    integer(shortInt)                                         :: idx
+    class(dictionary), intent(in)                       :: self
+    character(*),dimension(:),allocatable,intent(inout) :: value
+    character(*),intent(in)                             :: keyword
+    integer(shortInt)                                   :: idx
     character(100),parameter                    :: Here='getCharArray_alloc (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.true.)
@@ -661,28 +683,30 @@ contains
         ! Check if the content character fits into value. Any is required becouse len_trim returns
         ! an array
         if( any(len(value) < len_trim(self % entries(idx) % char1_alloc))) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         value = self % entries(idx) % char1_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character array')
 
     end select
 
   end subroutine getCharArray_alloc_new
 
   !!
-  !! Reads a character rank 1 from a dictionary
+  !! Reads a character rank 1 from a dictionary.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   subroutine getCharArray_ptr_new(self,value,keyword)
-    class(dictionary), intent(in)                             :: self
-    character(*),dimension(:),pointer,intent(inout)           :: value
-    character(*),intent(in)                                   :: keyword
-    integer(shortInt)                                         :: idx
-    character(100),parameter                       :: Here='getCharArray_ptr (dictionary_class.f90)'
+    class(dictionary), intent(in)                   :: self
+    character(*),dimension(:),pointer,intent(inout) :: value
+    character(*),intent(in)                         :: keyword
+    integer(shortInt)                               :: idx
+    character(100),parameter                        :: Here='getCharArray_ptr (dictionary_class.f90)'
 
     idx = self % search(keyword, Here, fatal =.true.)
 
@@ -693,7 +717,8 @@ contains
         ! Check if the content character fits into value. Any is required becouse len_trim returns
         ! an array
         if( any( len(value) < len_trim(self % entries(idx) % char1_alloc)) ) then
-          call fatalError(Here,'value character is to short to store content. Increase its length')
+          call fatalError(Here, self % errorMsgPrefix() // &
+                               'value character is too short to store content. Increase its length')
         end if
 
         ! Use mold to approperiatly allocate the pointer
@@ -701,7 +726,8 @@ contains
         value = self % entries(idx) % char1_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a character array')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a character array')
 
     end select
 
@@ -724,7 +750,8 @@ contains
         value = self % entries(idx) % dict0_alloc
 
       case default
-        call fatalError(Here,'Entery under keyword ' // keyword // ' is not a dictionary')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a dictionary')
 
     end select
 
@@ -747,12 +774,62 @@ contains
         ptr => self % entries(idx) % dict0_alloc
 
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not a dictionary')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not a dictionary')
 
     end select
 
   end function getDictPtr
 
+  !!
+  !! Update the address of the dictionary and all dictionaries inside
+  !!
+  !! Args:
+  !!  parentAddress [in] -> Address of the dictionary owning the 'self' ("" if self is a root)
+  !!  keyword       [in] -> keyword under 'self' is stored ("" if self is a root)
+  !!
+  recursive subroutine updateAddress(self, parentAddress, keyword)
+    class(dictionary), intent(inout) :: self
+    character(*), intent(in)         :: parentAddress
+    character(*), intent(in)         :: keyword
+    integer(shortInt)                :: i
+
+    self % address = trim(parentAddress) // trim(keyword) // "/"
+
+    !! Propagate to all nested dictionaries
+    do i=1,self % dictLen
+      if (self % entries(i) % getType() == nestDict) then
+        call self % entries(i) % dict0_alloc % updateAddress(self % address, self % keywords(i))
+      end if
+    end do
+
+  end subroutine updateAddress
+
+  !!
+  !! Returns prefix for error messages with address of the dictionary
+  !!
+  function errorMsgPrefix(self) result(msg)
+    class(dictionary), intent(in) :: self
+    character(:), allocatable     :: msg
+    integer(shortInt)             :: i_end
+
+    ! Check invalid states
+    if (.not. allocated(self % address)) then
+      msg = "In dictionary [NOT ALLOCATED ADDRESS :-/ ] "
+      return
+    end if
+    if (len(self % address) == 0) then
+      msg = "In dictionary [EMPTY ADDRESS :-/] "
+      return
+    end if
+
+    ! We wish to trim the final '/' from the address
+    ! We assume that things were not corrupted and don't check that final
+    ! character is really a '/'
+    i_end = len(self % address) - 1
+    msg = "In dictionary [" // self % address(1:i_end) // "] "
+
+  end function errorMsgPrefix
 
   !!
   !! Loads a boolean from a dictionary
@@ -774,10 +851,12 @@ contains
         elseif (i == 0) then
           value = .false.
         else
-          call fatalError(Here,'Entry under keyword ' // keyword // ' is neither 0 nor 1')
+          call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                                keyword // ' is neither 0 nor 1')
         end if
       case default
-        call fatalError(Here,'Entry under keyword ' // keyword // ' is not an integer')
+        call fatalError(Here, self % errorMsgPrefix() // 'Entry under keyword ' // &
+                              keyword // ' is not an integer')
     end select
   end subroutine getBool_new
 
@@ -816,8 +895,8 @@ contains
   end subroutine getOrDefault_real
 
   !!
-  !! Loads a real rank 1 from dictionary into provided variable
-  !! If keyword is associated with an integer it converts it to real
+  !! Loads a real rank 1 from dictionary into provided variable.
+  !! If keyword is associated with an integer it converts it to real.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -842,8 +921,8 @@ contains
   end subroutine getOrDefault_realArray_alloc
 
   !!
-  !! Loads a real rank 1 from dictionary into provided variable
-  !! If keyword is associated with an integer it converts it to real
+  !! Loads a real rank 1 from dictionary into provided variable.
+  !! If keyword is associated with an integer it converts it to real.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -871,7 +950,7 @@ contains
   end subroutine getOrDefault_realArray_ptr
 
   !!
-  !! Loads a integer rank 0 from a dictionary
+  !! Loads a integer rank 0 from a dictionary.
   !! If keyword is associated with real integer (i.e. 1.0) it returns an error
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -894,8 +973,8 @@ contains
   end subroutine getOrDefault_int
 
   !!
-  !! Loads a integer rank 1 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Loads a integer rank 1 from a dictionary.
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -921,8 +1000,8 @@ contains
 
 
   !!
-  !! Loads a integer rank 1 from a dictionary
-  !! If keyword is associated with real integer (i.e. 1.0) it returns an error
+  !! Loads a integer rank 1 from a dictionary.
+  !! If keyword is associated with real integer (i.e. 1.0) it returns an error.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -972,7 +1051,7 @@ contains
   end subroutine getOrDefault_char
 
   !!
-  !! Reads a character rank 1 from a dictionary
+  !! Reads a character rank 1 from a dictionary.
   !! Variable needs to be allocatable. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -1000,7 +1079,7 @@ contains
   end subroutine getOrDefault_charArray_alloc
 
   !!
-  !! Reads a character rank 1 from a dictionary
+  !! Reads a character rank 1 from a dictionary.
   !! Variable needs to be pointer. It will be deallocated before assignment
   !!
   !! For further details refer to doc of getOrDefault_real
@@ -1049,11 +1128,11 @@ contains
   !! Returns an array of all keywords
   !!
   !! Arg:
-  !!   keysArr -> allocatable array of nameLen long characters to store keys
+  !!   keysArr -> allocatable array of nameLen long characters to store keys.
   !!              Will be reallocated if it was allocated
   !!   type    -> optional character to specify type of keys to be returned
   !!
-  !! Avalible types {'all','real','realArray','int','intArray','char','charArray','dict'}
+  !! Available types {'all','real','realArray','int','intArray','char','charArray','dict'}
   !! Case sensitive! TODO: make case insensitive
   !!
   !! Errors:
@@ -1076,7 +1155,7 @@ contains
     mask = .true.
 
     if(present(type)) then
-      ! Create approperiate mask. I'm sorry it is so dirty - MAK
+      ! Create appropriate mask. I'm sorry it is so dirty - MAK
       select case(trim(type))
         case('all')
           ! Do nothing
@@ -1095,11 +1174,11 @@ contains
         case('dict')
           mask = (self % entries(1:L) % getType() == nestDict)
         case default
-          call fatalError(Here,'Unrecognised type of content type: '//type )
+          call fatalError(Here, self % errorMsgPrefix() // 'Unrecognised type of content type: '//type )
       end select
     end if
 
-    ! Return approperiate keys
+    ! Return appropriate keys
     keysArr = pack(self % keywords(1:L), mask)
 
   end subroutine keys
@@ -1233,7 +1312,7 @@ contains
   !!
   !! Stores a dictionary rank 0 in dictionary
   !!
-  subroutine store_dict(self,keywordArgument,entry)
+  subroutine store_dict(self, keywordArgument, entry)
     class(dictionary), intent(inout)            :: self
     character(*), intent(in)                    :: keywordArgument
     class(dictionary), intent(in)               :: entry
@@ -1244,7 +1323,7 @@ contains
 
     idx = self % getEmptyIdx(keyword)
 
-    self % keywords(idx)  = keyword
+    self % keywords(idx) = keyword
 
     ! Load into dictionary content
     allocate(self % entries(idx) % dict0_alloc)
@@ -1252,15 +1331,18 @@ contains
     self % entries(idx) % dict0_alloc = entry
     self % entries(idx) % type = nestDict
 
+    ! Update address of the nested dictionary
+    call self % entries(idx) % dict0_alloc % updateAddress(self % address, keyword)
+
   end subroutine store_dict
 
   !!
-  !! Function to search for the bin associated with a keyword
-  !! Throws more redable error messages for failed searches
+  !! Function to search for the bin associated with a keyword.
+  !! Throws more readable error messages for failed searches
   !!
   !! Args:
   !!   keyword -> character with keyword to be found
-  !!   where -> character string with location of faliure for clearer Error masseges
+  !!   where -> character string with location of faliure for clearer Error messages
   !!   fatal -> logical to control error behaviour. Optional with default = .true.
   !!
   !! Returns:
@@ -1290,7 +1372,8 @@ contains
     idx = linFind(self % keywords, keyword)
 
     if(idx == targetNotFound .and. fatal_loc) then
-      call fatalError(Where,'Keyword: '// trim(keyword) //' was requested but is not in the dictionary')
+      call fatalError(Where, self % errorMsgPrefix() // &
+         "Keyword: '" // trim(keyword) // "' was requested but not found.")
     end if
 
   end function search
@@ -1308,10 +1391,9 @@ contains
     ! Copy dictContent type
     LHS % type = RHS % type
 
-    ! Copy individual enteries
+    ! Copy individual entries
     LHS % int0_alloc = RHS % int0_alloc
     if (allocated( RHS % int1_alloc)) LHS % int1_alloc = RHS % int1_alloc
-
 
     LHS % real0_alloc = RHS % real0_alloc
     if (allocated( RHS % real1_alloc)) LHS % real1_alloc = RHS % real1_alloc

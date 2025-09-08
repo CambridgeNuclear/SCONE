@@ -9,7 +9,7 @@ module collisionClerk_test
   use testNeutronDatabase_class,      only : testNeutronDatabase
   use outputFile_class,               only : outputFile
   use ceNeutronCache_mod,             only: cache_init => init, trackingCache
-  use pFUnit_mod
+  use funit
 
   implicit none
 
@@ -178,8 +178,9 @@ contains
     call res2Dict % store('value', 1.3_defReal)
 
     ! Configure dictionary for the clerk
-    call clerkDict % init(6)
+    call clerkDict % init(7)
     call clerkDict % store('type','collisionClerk')
+    call clerkDict % store('handleVirtual', 0)
     call clerkDict % store(res1Name, res1Dict)
     call clerkDict % store(res2Name, res2Dict)
 
@@ -297,7 +298,6 @@ contains
     ! Configure dictionary for the clerk
     call clerkDict % init(6)
     call clerkDict % store('type','collisionClerk')
-    call clerkDict % store('handleVirtual', 1)
     call clerkDict % store(res1Name, res1Dict)
     call clerkDict % store(res2Name, res2Dict)
 

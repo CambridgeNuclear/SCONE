@@ -11,25 +11,33 @@ module thermalScatteringData_iTest
   use neutronXSPackages_class,  only : neutronMicroXSs
   use materialMenu_mod,         only : mm_init => init
   use ceNeutronCache_mod,       only : nuclideCache
-  use pFUnit_mod
+  use funit
 
   implicit none
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR =        &
-  & "water { temp 1;                               &
-  &       moder {1001.03 h-h2o.49; }               &
+  & "water {                                       &
+  &       moder {1001.03 (h-h2o.49); }             &
   &       composition {                            &
   &       1001.03  2.0E-3;                         &
   &       8016.03  1.0E-3;                         &
   &                   }                            &
   &      }                                         &
-  &  graphite { temp 1;                                &
-  &          moder {6012.06  grph30.46;}               &
-  &          composition {                             &
-  &          6012.06 2.0E-3;                           &
-  &                       }                            &
-  &            }"
+  &  graphite {                                    &
+  &          moder {6012.06  (grph30.46);}         &
+  &          composition {                         &
+  &          6012.06 2.0E-3;                       &
+  &                       }                        &
+  &            }                                   &
+  & waterMix {                                     &
+  &       temp 500;                                &
+  &       moder {1001.03 (h-h2o.50 h-h2o.49); }    &
+  &       composition {                            &
+  &       1001.03  2.0E-3;                         &
+  &       8016.03  1.0E-3;                         &
+  &                   }                            &
+  &      }  "
 
   ! CE Neutron Database specification
   character(*),parameter :: ACE_INPUT_STR = &
@@ -46,14 +54,12 @@ contains
     class(nuclearDatabase), pointer   :: ptr
     type(dictionary)                  :: matDict
     type(dictionary)                  :: dataDict
-    class(aceNeutronNuclide), pointer :: H1, O16, C12
+    class(aceNeutronNuclide), pointer :: H1, O16, C12, H1_2
     real(defReal)                     :: val
-    real(defReal), dimension(2)       :: eBounds
+    real(defReal), dimension(2)       :: eBounds, kTBounds
     class(ceNeutronNuclide), pointer  :: nuc
     type(particle)                    :: p
     type(neutronMicroXSs)             :: microXSs
-    integer(shortInt)                 :: Nin
-    logical(defBool)                  :: gotIt
     real(defReal), parameter          :: TOL = 1.0E-6
 
     ! Prepare dictionaries
@@ -66,16 +72,17 @@ contains
     ! Initialise data
     ptr => data
     call data % init(dataDict, ptr, silent = .true.)
-    call data % activate(([1,2]), silent = .true.)
+    call data % activate(([1,2,3]), silent = .true.)
 
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     !! Perform tests
     !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
     ! Get nuclides
-    O16 => aceNeutronNuclide_CptrCast( data % getNuclide(1))
-    H1  => aceNeutronNuclide_CptrCast( data % getNuclide(2))
-    C12 => aceNeutronNuclide_CptrCast( data % getNuclide(3))
+    O16  => aceNeutronNuclide_CptrCast( data % getNuclide(1))
+    H1   => aceNeutronNuclide_CptrCast( data % getNuclide(2))
+    H1_2 => aceNeutronNuclide_CptrCast( data % getNuclide(3))
+    C12  => aceNeutronNuclide_CptrCast( data % getNuclide(4))
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test scattering tables
@@ -83,15 +90,23 @@ contains
     @assertTrue(H1 % hasThData)
     @assertFalse(O16 % hasThData)
 
-    @assertFalse(H1 % thData % hasElastic)
+    @assertFalse(H1 % thData(1) % hasElastic)
+    @assertFalse(H1 % stochasticMixing)
+    @assertEqual(size(H1 % thData), 1)
 
     @assertTrue(C12 % hasThData)
-    @assertTrue(C12 % thData % hasElastic)
-    @assertTrue(C12 % thData % isCoherent)
+    @assertTrue(C12 % thData(1) % hasElastic)
+    @assertTrue(C12 % thData(1) % isCoherent)
+    @assertFalse(C12 % stochasticMixing)
+
+    @assertTrue(H1_2 % hasThData)
+    @assertTrue(H1_2 % stochasticMixing)
+    @assertEqual(size(H1_2 % thData), 2)
+    @assertFalse(H1_2 % thData(2) % hasElastic)
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test energy bounds
-    eBounds = H1 % thData % getEbounds('inelastic')
+    eBounds = H1 % thData(1) % getEbounds('inelastic')
 
     @assertEqual(1.000E-11_defReal, eBounds(1), TOL)
     @assertEqual(1.000E-5_defReal,  eBounds(2), TOL)
@@ -99,20 +114,37 @@ contains
     @assertEqual(O16 % SabInel(1), ZERO)
     @assertEqual(O16 % SabInel(2), ZERO)
 
-    eBounds = C12 % thData % getEbounds('elastic')
+    eBounds = C12 % thData(1) % getEbounds('elastic')
 
     @assertEqual(1.000E-11_defReal, eBounds(1), TOL)
     @assertEqual(4.9000E-06,  eBounds(2), TOL)
 
     !<><><><><><><><><><><><><><><><><><><><><><><><>
+    ! Test temperature bounds of libraries
+
+    kTbounds = H1_2 % getSabTBounds()
+    @assertEqual(4.0812E-8, kTbounds(1), TOL)
+    @assertEqual(4.3087E-8, kTbounds(2), TOL)
+    
+    kTbounds = C12 % getSabTBounds()
+    @assertEqual(8.6173E-8, kTbounds(1), TOL)
+    @assertEqual(8.6173E-8, kTbounds(2), TOL)
+
+    !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test sampling from tables
 
-    val = H1 % thData % getInelXS(1.8E-6_defReal)
+    val = H1 % thData(1) % getInelXS(1.8E-6_defReal)
     @assertEqual(21.018654322_defReal, val, TOL)
 
-    val = H1 % thData % getElXS(1.8E-6_defReal)
+    val = H1 % thData(1) % getElXS(1.8E-6_defReal)
     @assertEqual(ZERO, val, TOL)
-
+    
+    val = H1_2 % thData(1) % getInelXS(1.8E-6_defReal)
+    @assertEqual(21.018654322_defReal, val, TOL)
+    
+    val = H1_2 % thData(2) % getInelXS(1.8E-6_defReal)
+    @assertEqual(21.024875613_defReal, val, TOL)
+    
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test Getting material XSs
     ! water
@@ -126,11 +158,10 @@ contains
     !<><><><><><><><><><><><><><><><><><><><><><><><>
     ! Test getting XSs
     ! H-1
-    nuc  => ceNeutronNuclide_CptrCast( data % getNuclide(2))
+    nuc  => ceNeutronNuclide_CptrCast(data % getNuclide(2))
     nuclideCache(2) % E_tot = ONE
-    nuclideCache(2) % needsSabInel = .true.
 
-    call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, p % pRNG)
+    call nuc % getMicroXSs(microXSs, 1.8E-6_defReal, ZERO, p % pRNG)
 
     @assertEqual(ONE, 21.05810233858_defReal/ microXSs % total,          TOL)
     @assertEqual(ONE, 21.01865432_defReal / microXSs % inelasticScatter, TOL)

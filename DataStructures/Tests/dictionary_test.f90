@@ -1,7 +1,7 @@
 module dictionary_test
   use numPrecision
   use dictionary_class, only : dictionary
-  use pFUnit_mod
+  use funit
   implicit none
 
 @TestCase
@@ -14,7 +14,7 @@ module dictionary_test
 
   !! Parameters
   real(defReal),parameter                  :: realVal     = 3.3_defReal
-  integer(shortInt),parameter              :: boolVal     = 1 
+  integer(shortInt),parameter              :: boolVal     = 1
   integer(shortInt), parameter             :: intVal      = 1_shortInt
   character(nameLen),parameter             :: charNameLen = 'GoFortran_DownWithCpp'
   character(pathLen), parameter            :: charPathLen ='/home/KyloRen/VaderFanFic'
@@ -548,5 +548,65 @@ contains
 
   end subroutine testGetSize
 
+
+@test
+  subroutine testAddressOfNodes(this)
+    class(test_dictionary), intent(inout) :: this
+    type(dictionary)          :: workDict, workDict2
+    type(dictionary), pointer :: dictPtr => null()
+    character(nameLen) :: keyword
+    character(:), allocatable :: tempString
+    integer(shortInt)  :: i
+
+    dictPtr => this % dict % getDictPtr('nestedDict')
+
+    ! ! Verify node address following normal construction
+    @assertEqual("/", this % dict % address)
+    @assertEqual("/nestedDict/", dictPtr % address)
+
+    ! We need to verify a case when we copy dictionary out
+    ! all dictionaries nested deeper must have their address updated correctly
+    ! Add more nesting
+    call workDict % init(1)
+    call workDict % store("anInt", 1)
+
+    call workDict2 % init(1)
+    call workDict2 % store("aReal", 1.0_defReal)
+
+    call workDict % store("subsubsubDict", workDict2)
+
+    call dictPtr % store("subsubDict", workDict)
+    call workDict % kill()
+    call workDict2 % kill()
+
+    ! Verify that after storing address is correct
+
+    ! Nested dictionary
+    dictPtr => this % dict % getDictPtr("nestedDict")
+    dictPtr => dictPtr % getDictPtr("subsubDict")
+    tempString = dictPtr % address
+    @assertEqual("/nestedDict/subsubDict/", tempString)
+
+    ! Double nested dictionary
+    dictPtr => dictPtr % getDictPtr("subsubsubDict")
+    tempString = dictPtr % address
+    @assertEqual("/nestedDict/subsubDict/subsubsubDict/", tempString)
+
+    ! Copy out a dictionary
+    call this % dict % get(workDict, "nestedDict")
+
+    @assertEqual("/", workDict % address)
+
+    ! Nested dictionary
+    dictPtr => workDict % getDictPtr("subsubDict")
+    tempString = dictPtr % address
+    @assertEqual("/subsubDict/", tempString)
+
+    ! Double nested dictionary
+    dictPtr => dictPtr % getDictPtr("subsubsubDict")
+    tempString = dictPtr % address
+    @assertEqual("/subsubDict/subsubsubDict/", tempString)
+
+  end subroutine testAddressOfNodes
 
 end module dictionary_test

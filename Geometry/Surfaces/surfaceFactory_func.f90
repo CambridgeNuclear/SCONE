@@ -12,6 +12,7 @@ module surfaceFactory_func
   use cylinder_class,       only : cylinder
   use plane_class,          only : plane
   use sphere_class,         only : sphere
+  use cone_class,           only : cone
   use box_class,            only : box
   use squareCylinder_class, only : squareCylinder
   use truncCylinder_class,  only : truncCylinder
@@ -28,6 +29,9 @@ module surfaceFactory_func
                                                                       'xCylinder      ',&
                                                                       'yCylinder      ',&
                                                                       'zCylinder      ',&
+                                                                      'xCone          ',&
+                                                                      'yCone          ',&
+                                                                      'zCone          ',&
                                                                       'sphere         ',&
                                                                       'box            ',&
                                                                       'xSquareCylinder',&
@@ -78,6 +82,9 @@ contains
 
       case ('xCylinder', 'yCylinder', 'zCylinder')
         allocate (cylinder :: new)
+
+      case ('xCone', 'yCone', 'zCone')
+        allocate (cone :: new)
 
       case ('box')
         allocate (box :: new)

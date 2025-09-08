@@ -2,11 +2,12 @@ module baseMgNeutronDatabase_iTest
 
   use numPrecision
   use endfConstants
-  use pFUnit_mod
   use universalVariables
+  use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use particle_class,     only : particle
+  use RNG_class,          only : RNG
 
   ! Nuclear Data Objects & Interfaces
   use baseMgNeutronDatabase_class, only : baseMgNeutronDatabase, baseMgNeutronDatabase_CptrCast, &
@@ -30,20 +31,20 @@ module baseMgNeutronDatabase_iTest
 
   ! Material definitions
   character(*),parameter :: MAT_INPUT_STR = "   &
-  mat1 { temp 273;                              &
-         composition {                          &
-         1001.03 5.028E-02;                     &
-         8016.03 2.505E-02;                     &
-         }                                      &
-         xsFile ./IntegrationTestFiles/mgMat1;  &
-       }                                        &
-  mat2  { temp 1;                               &
-          composition {                         &
-          92233.03 2.286E-02;                   &
-          8016.03  4.572E-02;                   &
-          }                                     &
-          xsFile ./IntegrationTestFiles/mgMat2; &
-        }"
+  &mat1 { temp 273;                              &
+  &       composition {                          &
+  &       1001.03 5.028E-02;                     &
+  &       8016.03 2.505E-02;                     &
+  &       }                                      &
+  &       xsFile ./IntegrationTestFiles/mgMat1;  &
+  &     }                                        &
+  &mat2  { temp 1;                               &
+  &        composition {                         &
+  &        92233.03 2.286E-02;                   &
+  &        8016.03  4.572E-02;                   &
+  &        }                                     &
+  &        xsFile ./IntegrationTestFiles/mgMat2; &
+  &      }"
 
 
 contains
@@ -59,11 +60,11 @@ contains
     type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
     type(neutronMacroXSs)                :: xss
+    type(RNG), target                    :: pRNG
     type(baseMgNeutronMaterial),pointer  :: mat
     class(baseMgNeutronMaterial),pointer :: matClass
     class(reactionHandle), pointer       :: reac
     real(defReal),parameter :: TOL = 1.0E-6_defReal
-
 
     data_ptr => database
 
@@ -81,6 +82,8 @@ contains
     @assertEqual(4, database % nGroups())
 
     ! Test getting Transport XS
+    ! Associate pointer to pass tests in debug mode
+    p % pRNG => pRNG
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
@@ -185,11 +188,11 @@ contains
     type(dictionary)                     :: matMenuDict
     type(particle)                       :: p
     type(neutronMacroXSs)                :: xss
+    type(RNG), target                    :: pRNG
     type(baseMgNeutronMaterial),pointer  :: mat
     class(baseMgNeutronMaterial),pointer :: matClass
     class(reactionHandle), pointer       :: reac
     real(defReal),parameter :: TOL = 1.0E-6_defReal
-
 
     data_ptr => database
 
@@ -207,6 +210,8 @@ contains
     @assertEqual(4, database % nGroups())
 
     ! Test getting Transport XS
+    ! Associate pointer to pass tests in debug mode
+    p % pRNG => pRNG
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 

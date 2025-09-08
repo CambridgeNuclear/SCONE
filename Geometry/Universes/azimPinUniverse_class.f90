@@ -521,7 +521,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  elemental subroutine kill(self)
+  subroutine kill(self)
     class(azimPinUniverse), intent(inout) :: self
 
     ! Superclass

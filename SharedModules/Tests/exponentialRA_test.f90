@@ -2,7 +2,7 @@ module exponentialRA_test
 
   use numPrecision
   use exponentialRA_func, only : exponential
-  use pfUnit_mod
+  use fUnit
 
   implicit none
 
@@ -19,32 +19,32 @@ contains
     real(defFlt), parameter     :: tol = 1E-5
 
     x = 0.5
-    res   = ONE - exp(-x)
+    res   = 1.0_defFlt - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
     x = 0.2_defFlt
-    res   = ONE - exp(-x)
+    res   = 1.0_defFlt - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
     x = 0.03_defFlt
-    res   = ONE - exp(-x)
+    res   = 1.0_defFlt - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
     x = 3.0_defFlt
-    res   = ONE - exp(-x)
+    res   = 1.0_defFlt - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)
 
 
     x = 0.0001_defFlt
-    res   = ONE - exp(-x)
+    res   = 1.0_defFlt - exp(-x)
     resRA = exponential(x) 
 
     @assertEqual(res, resRA, tol)

@@ -2,7 +2,7 @@ module universe_test
   use numPrecision
   use charMap_class,  only : charMap
   use universe_inter, only : charToFill
-  use pFUnit_mod
+  use funit
   implicit none
 
 

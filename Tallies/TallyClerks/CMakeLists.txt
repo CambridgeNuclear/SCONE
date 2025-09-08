@@ -1,4 +1,4 @@
-# Add Source Files to the global list 
+# Add Source Files to the global list
 add_sources(./tallyClerk_inter.f90
             ./tallyClerkFactory_func.f90
             ./tallyClerkSlot_class.f90
@@ -11,9 +11,10 @@ add_sources(./tallyClerk_inter.f90
             ./dancoffBellClerk_class.f90
             ./shannonEntropyClerk_class.f90
             ./centreOfMassClerk_class.f90
+            ./rayClerk_class.f90
             ./mgXsClerk_class.f90
              )
-             
+
 add_unit_tests(./Tests/collisionClerk_test.f90
                ./Tests/trackClerk_test.f90
                ./Tests/keffAnalogClerk_test.f90

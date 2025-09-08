@@ -46,16 +46,16 @@ module outputVTK_class
   !!   }
   !!
   type, public                                              :: outputVTK
-    logical(defBool), private                               :: legacy = .TRUE. 
-    integer(shortInt), dimension(2), private                :: version = [3,0] 
-    real(defReal), dimension(3), private                    :: corner 
-    real(defReal), dimension(3), private                    :: width  
-    integer(shortInt), dimension(3)                         :: nVox   
-    integer(shortInt), private                              :: nCells 
-    integer(shortInt), private                              :: nOutput
-    real(defReal), dimension(:,:,:,:), allocatable          :: values  
-    character(nameLen), dimension(:), allocatable, private  :: dataName
-    logical(defBool), dimension(:), allocatable, private    :: dataReal
+    logical(defBool), private                               :: legacy = .TRUE.
+    integer(shortInt), dimension(2), private                :: version = [3,0]
+    real(defReal), dimension(3)                             :: corner
+    real(defReal), dimension(3)                             :: width
+    integer(shortInt), dimension(3)                         :: nVox
+    integer(shortInt)                                       :: nCells
+    integer(shortInt)                                       :: nOutput
+    real(defReal), dimension(:,:,:,:), allocatable          :: values
+    character(nameLen), dimension(:), allocatable           :: dataName
+    logical(defBool), dimension(:), allocatable             :: dataReal
   contains
     procedure :: init
     generic   :: addData => addDataInt,&

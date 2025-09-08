@@ -33,9 +33,8 @@ module fixedSourceRRPhysicsPackage_class
   ! Visualisation
   use visualiser_class,               only : visualiser
 
-  ! Tally map for fission rate
-  use tallyMap_inter,                 only : tallyMap
-  use tallyMapFactory_func,           only : new_tallyMap
+  ! Tally
+  use tallyAdmin_class,               only : tallyAdmin
 
   ! Random ray specific modules
   use dataRR_class,                   only : dataRR
@@ -44,12 +43,14 @@ module fixedSourceRRPhysicsPackage_class
 
   ! Random ray - or a standard particle
   use particle_class,                 only : ray => particle
+  use particleDungeon_class,          only : particleDungeon
 
   implicit none
   private
 
   !!
-  !! Physics package to perform The Random Ray Method (TRRM) fixed source calculations
+  !! Physics package to perform The Random Ray Method (TRRM) fixed source calculations.
+  !! For now, sources are material sources, isotropic in a given material volume.
   !!
   !! TODO: introduce uncollided transport sweep
   !!
@@ -82,8 +83,6 @@ module fixedSourceRRPhysicsPackage_class
   !!     active 200;           // Number of scoring cycles 
   !!     #seed 86868;#         // Optional RNG seed
   !!     #cache 1;#            // Optionally use distance caching to accelerate ray tracing
-  !!     #fissionMap {<map>}#  // Optionally output fission rates according to a given map
-  !!     #fluxMap {<map>}#     // Optionally output one-group fluxes according to a given map
   !!     #plot 1;#             // Optionally make VTK viewable plot of fluxes and uncertainties
   !!     #rho 0;#              // Optional stabilisation for negative in-group scattering XSs
   !!     #lin 0;#              // Optionally use linear (rather than flat) sources
@@ -91,6 +90,11 @@ module fixedSourceRRPhysicsPackage_class
   !!     #volPolicy 1;#        // Optional input to specify how volumes should be handled
   !!     #missPolicy 1;#       // Optional input to specify how misses should be handled
   !!     #cadis 0;#            // Optionally generate adjoints for global variance reduction
+  !!
+  !!     source {
+  !!       sourceMaterialName1 (strengthG1 strengthG2 ... strengthGN);
+  !!       #sourceMaterialName2 (strengthG1 strengthG2 ... strengthGN);#
+  !!     }
   !!
   !!     tally {<Tally Definition>}
   !!     geometry {<Geometry Definition>}
@@ -115,10 +119,9 @@ module fixedSourceRRPhysicsPackage_class
   !!   cache       -> Logical check whether to use distance caching
   !!   outputFile  -> Output file name
   !!   outputFormat-> Output file format
-  !!   plotResults -> Plot results?
+  !!   plotResults -> Plot results with VTK?
   !!   viz         -> Output visualiser
-  !!   mapFlux     -> Output 1G flux across a given map?
-  !!   fluxMap     -> The map across which to output 1G flux results
+  !!   tally       -> Tally admin for outputting results
   !!
   !!   intersectionsTotal -> Total number of ray traces for the calculation
   !!
@@ -129,13 +132,14 @@ module fixedSourceRRPhysicsPackage_class
     private
     ! Components
     class(geometryStd), pointer           :: geom
-    integer(shortInt)                     :: geomIdx     = 0
+    integer(shortInt)                     :: geomIdx  = 0
     type(RNG)                             :: rand
     type(arraysRR)                        :: arrays
     type(dataRR)                          :: XSData
-    class(baseMgNeutronDatabase), pointer :: mgData      => null()
-    integer(shortInt)                     :: nG          = 0
-    integer(shortInt)                     :: nCells      = 0
+    class(baseMgNeutronDatabase), pointer :: mgData   => null()
+    integer(shortInt)                     :: nG       = 0
+    integer(shortInt)                     :: nCells   = 0
+    type(tallyAdmin),pointer              :: tally    => null()
 
     ! Settings
     real(defReal)      :: termination = ZERO
@@ -154,9 +158,6 @@ module fixedSourceRRPhysicsPackage_class
     logical(defBool)   :: printVolume = .false.
     logical(defBool)   :: printCells  = .false.
     type(visualiser)   :: viz
-    logical(defBool)   :: mapFlux     = .false.
-    class(tallyMap), allocatable :: fluxMap
-    character(nameLen),dimension(:), allocatable :: intMatNames
     real(defReal), dimension(:,:), allocatable   :: samplePoints
     character(nameLen),dimension(:), allocatable :: sampleNames
     logical(defBool)   :: doCADIS = .false.
@@ -206,7 +207,6 @@ contains
     character(nameLen)                                :: geomName, graphType, nucData
     class(geometry), pointer                          :: geom
     type(outputFile)                                  :: test_out
-    character(nameLen),dimension(:), allocatable      :: names
     character(100), parameter :: Here = 'init (fixedSourceRRPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -255,25 +255,6 @@ contains
     if (self % dead < ZERO) call fatalError(Here, 'Dead length must be positive.')
     if (self % termination <= self % dead) call fatalError(Here,&
             'Ray termination length must be greater than ray dead length')
-
-    ! Check whether there is a map for outputting one-group fluxes
-    ! If so, read and initialise the map to be used
-    if (dict % isPresent('fluxMap')) then
-      self % mapFlux = .true.
-      tempDict => dict % getDictPtr('fluxMap')
-      call new_tallyMap(self % fluxMap, tempDict)
-    else
-      self % mapFlux = .false.
-    end if
-
-    ! Check for materials to integrate over
-    if (dict % isPresent('integrate')) then
-      call dict % get(names,'integrate')
-
-      allocate(self % intMatNames(size(names)))
-      self % intMatNames = names
-
-    end if
 
     ! Return flux values at sample points?
     ! Store a set of points to return values at on concluding the simulation
@@ -332,6 +313,13 @@ contains
     call graphDict % get(graphType,'type')
     if (graphType /= 'extended') call fatalError(Here,&
             'Geometry graph type must be "extended" for random ray calculations.')
+    
+    ! Initialise tally Admin
+    if (dict % isPresent('tally')) then
+      tempDict => dict % getDictPtr('tally')
+      allocate(self % tally)
+      call self % tally % init(tempDict)
+    end if
 
     ! Activatee nuclear data
     call ndReg_activate(P_NEUTRON_MG, nucData, self % geom % activeMats(), silent = .not. self % loud)
@@ -401,7 +389,7 @@ contains
     call self % cycles()
     call self % printResults()
     if (self % doCadis) then
-      print *,'Performing adjoint calculation'
+      if (self % loud) print *,'Performing adjoint calculation'
       ! Reinitialise VTK
       !if (self % plotResults) call self % viz % initVTK()
       call self % arrays % initAdjoint()
@@ -436,6 +424,7 @@ contains
     integer(longInt), save                                    :: ints
     integer(longInt)                                          :: intersections
     class(arraysRR), pointer                                  :: arrayPtr
+    type(particleDungeon)                                     :: dummyDungeon
     !$omp threadprivate(pRNG, r, ints)
 
     ! Reset and start timer
@@ -501,8 +490,14 @@ contains
       ! Normalise flux estimate and combines with source
       call arrayPtr % normaliseFluxAndVolume(it)
 
-      ! Accumulate flux scores
-      if (isActive) call arrayPtr % accumulateFluxScores()
+      ! Accumulate flux scores and tally results
+      if (isActive) then
+        call arrayPtr % accumulateFluxScores()
+        if (associated(self % tally)) then
+          call arrayPtr % tallyResults(self % tally)
+          call self % tally % reportCycleEnd(dummyDungeon)
+        end if
+      end if
 
       ! Calculate proportion of cells that were hit
       hitRate = arrayPtr % getCellHitRate(it)
@@ -596,19 +591,21 @@ contains
 
     name = 'Hit_rate'
     call out % printValue(self % arrays % getAverageHitRate(),name)
-
-    outPtr => out
-
-    ! Send fluxes to map output
-    if (self % mapFlux) call self % arrays % outputMap(outPtr, self % fluxMap, .false.)
+    
+    ! Print tally
+    if (associated(self % tally)) then
+      name = 'tally'
+      call out % startBlock(name)
+      call self % tally % print(out)
+      call out % endBlock()
+    end if
 
     ! Output fluxes at a point
-    if (allocated(self % samplePoints)) call self % arrays % outputPointFluxes(outPtr, self % samplePoints, self % sampleNames)
-
-    ! Output material integral fluxes
-    if (allocated(self % intMatNames)) call self % arrays % outputMaterialIntegrals(outptr, self % intMatNames)
-
-    outPtr => null()
+    if (allocated(self % samplePoints)) then
+      outPtr => out
+      call self % arrays % outputPointFluxes(outPtr, self % samplePoints, self % sampleNames)
+      outPtr => null()
+    end if
 
     ! Send all fluxes and SDs to VTK
     vizPtr => self % viz
@@ -671,18 +668,16 @@ contains
     self % active      = 0
     self % cache       = .false.
     self % lin         = .false.
-    self % mapFlux     = .false.
     self % plotResults = .false.
     self % keff        = ONE
     call self % arrays % kill()
     call self % XSData % kill()
-    if(allocated(self % fluxMap)) then
-      call self % fluxMap % kill()
-      deallocate(self % fluxMap)
-    end if
     if(allocated(self % samplePoints)) deallocate(self % samplePoints)
     if(allocated(self % sampleNames)) deallocate(self % sampleNames)
-    if(allocated(self % intMatNames)) deallocate(self % intMatNames)
+    if(associated(self % tally)) then
+      call self % tally % kill()
+      self % tally => null()
+    end if
 
   end subroutine kill
 

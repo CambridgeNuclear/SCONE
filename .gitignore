@@ -3,6 +3,10 @@ __pycache__/
 cream.egg-info/
 *.pyc
 
+# Ignore build folder
+Build
+build
+
 # Ignore all hidden files (except gitignore)
 .*
 !/.gitignore

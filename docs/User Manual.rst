@@ -143,6 +143,134 @@ Example: ::
         geometry { <Geometry definition> }
         nuclearData { <Nuclear data definition. Requires material names only> }
 
+randomRayPhysicsPackage
+#######################
+
+randomRayPhysicsPackage, used for k-eigenvalue random ray calculations.
+Necessarily a multigroup calculation.
+
+* pop: number of rays used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dead: dead length of each ray [cm]
+* termination: total ray length [cm]
+* volPolicy (*optional*): determines how volumes are estimated in different parts of
+  the geometry. 1 corresponds to the simulation-average volume estimator.
+  2 corresponds to the naive/cycle-wise volume estimator. 3 corresponds to
+  the hybrid volume estimator, using 1 in all regions except those with
+  inhomogeneous sources. 3 is the default option.
+* missPolicy (*optional*): determines how misses are handled in different parts of the
+  geometry. 1 corresponds to setting the local flux equal to the source divided
+  by SigmaT. 2 corresponds to setting the local flux equal to the previous
+  iteration flux estimate. 3 is a hybrid, using the source/SigmaT treatment
+  in all regions except those with an inhomogeneous source. 3 is the default option.
+* rho (*optional*): a stabilisation factor for when diagonal elements of the scattering
+  matrix are negative. The larger the value of rho, the more stable, but
+  convergence may be slowed significantly. A value of 1 removes any possible
+  negative sources.
+* lin (*optional*): a logical flag to switch linear sources on. Off by default. Can allow
+  significant mesh coarsening for the same accuracy.
+* 2d (*optional*): a logical flag to tell the simulation that the calculation is 
+  essentially 2D. This can greatly stabilise linear source calculations in 2D systems.
+  Default is off, i.e., 3D.
+* plot (*optional*): provided there is a VTK output in the visualiser, outputs most 
+  information to be viewed in paraview. May add signficant runtime to the
+  finalisation of the calculation for large simulations. The VTK output
+  should have ``what`` set to ``uniqueID``.
+* cache (*optional*): flag to switch on distance caching. Can significantly accelerate
+  few group random ray calculations. Off by default.
+* keff (*optional*): initial guess value of keff.
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+
+Example: ::
+
+        type randomRayPhysicsPackage;
+        pop    4000;
+        active 800;
+        inactive 600;
+        dead 20;
+        termination 220;
+        rho 0.6;
+        lin 0;
+        XSdata   mgData;
+        seed     -244654;
+        outputFile C5G7;
+        outputFormat asciiJSON;
+
+        tally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+fixedSourceRRPhysicsPackage
+###########################
+
+fixedSourceRRPhysicsPackage, used for fixed/external source random ray calculations.
+Necessarily a multigroup calculation. Sources are isotropic material sources.
+There can be as many unique sources as materials in the calculation.
+
+* pop: number of rays used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dead: dead length of each ray [cm]
+* termination: total ray length [cm]
+* volPolicy (*optional*): determines how volumes are estimated in different parts of
+  the geometry. 1 corresponds to the simulation-average volume estimator.
+  2 corresponds to the naive/cycle-wise volume estimator. 3 corresponds to
+  the hybrid volume estimator, using 1 in all regions except those with
+  inhomogeneous sources. 3 is the default option.
+* missPolicy (*optional*): determines how misses are handled in different parts of the
+  geometry. 1 corresponds to setting the local flux equal to the source divided
+  by SigmaT. 2 corresponds to setting the local flux equal to the previous
+  iteration flux estimate. 3 is a hybrid, using the source/SigmaT treatment
+  in all regions except those with an inhomogeneous source. 3 is the default option.
+* rho (*optional*): a stabilisation factor for when diagonal elements of the scattering
+  matrix are negative. The larger the value of rho, the more stable, but
+  convergence may be slowed significantly. A value of 1 removes any possible
+  negative sources.
+* lin (*optional*): a logical flag to switch linear sources on. Off by default. Can allow
+  significant mesh coarsening for the same accuracy.
+* 2d (*optional*): a logical flag to tell the simulation that the calculation is 
+  essentially 2D. This can greatly stabilise linear source calculations in 2D systems.
+  Default is off, i.e., 3D.
+* plot (*optional*): provided there is a VTK output in the visualiser, outputs most 
+  information to be viewed in paraview. May add signficant runtime to the
+  finalisation of the calculation for large simulations. The VTK output
+  should have ``what`` set to ``uniqueID``.
+* cache (*optional*): flag to switch on distance caching. Can significantly accelerate
+  few group random ray calculations. Off by default.
+* keff (*optional*): Scaling factor for fission. Does not change during the calculation. Default 1.
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* source: a dictionary containing the name of each source material (corresponding to those in the
+  database) followed by a list of strengths in each energy group.
+
+Example: ::
+
+        type fixedSourceRRPhysicsPackage;
+        pop    4000;
+        active 800;
+        inactive 600;
+        dead 20;
+        termination 220;
+        rho 0.6;
+        lin 0;
+        XSdata   mgData;
+        seed     -244654;
+        outputFile dogLeg;
+        outputFormat asciiJSON;
+        source { mySourceMat (3.2 0.0 1.6);}
+
+        tally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
 vizPhysicsPackage
 #################
 
@@ -521,6 +649,26 @@ Example: ::
 
       billy { id 92; type xCylinder; origin (0.0 0.0 9.0); radius 4.8; }
 
+* cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
+  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
+  cone is determined by the sign of ``hMin`` and ``hMax``. ``hMin`` and ``hMax``
+  must have the same sign, i.e., there can only be a single cone, not a double
+  cone reflected about the vertex.
+
+  - vertex: (x y z) vector with the vertex absolute coordinates. [cm]
+  - angle: cone openining angle, i.e., the angle between the axis and the cone
+    surface. Must be positive and between 0-90. [degrees]
+  - hMin: the relative position of the lower truncated surface of the cone. 
+    The absolute position is given by hMin + the component of the vertex along the cone axis. 
+    Can be positive or negative but must be less than hMax and have the same sign. [cm]
+  - hMax: the relative position of the upper truncated surface of the cone. 
+    The absolute position is given by hMax + the component of the vertex along the cone axis. 
+    Can be positive or negative but must be greater than hMin and have the same sign. [cm]
+
+Example: ::
+
+      connor { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
+
 * sphere
 
   - origin: (x y z) vector with the origin position. [cm]
@@ -542,12 +690,22 @@ Similarly to the surfaces, the **cells** in the geometry can be defined as: ::
       <nameN> { id <idNumberN>; type <cellType>; surfaces (<surfaces>); filltype <fillType>; *keywords* }
       }
 
-At the moment, in SCONE, the only ``cellType`` available is ``simpleCell``.
-In the surface definition, one should include the indexes of the corresponding
-surfaces with no sign to indicate a positive half-space, or minus sign to indicate
-a negative half-space. The space in between cells corresponds to an intersection.
+SCONE supports two ``cellTypes``: ``simpleCell`` and ``unionCell``.
+These types differ by the form and content of their surfaces.
+For ``simpleCell``, surfaces is a standard list of surfaces.
+This list should  include the indexes of the corresponding surfaces, with no sign 
+to indicate a positive half-space, or minus sign to indicate a negative half-space. 
+The space in between cells corresponds to an intersection.
+For ``unionCell``, surfaces is no longer a list, but a ``tokenArray``, i.e., an array
+delimited by ``[`` and ``]``, with entries separated by whitespace. This is to allow a
+mixture of numbers and symbols. Like ``simpleCell``, ``unionCell`` includes surfaces 
+and signs to indicate their halfspace. However, it is also endowed with additional
+operators to define the cell. As well as an implicit intersection operator, there is
+the union, ``:``, the complement, ``#``, and brackets to enforce an order of operations,
+``<`` and ``>``. This ``cellType`` encompasses ``simpleCell`` and can replace it without
+any problem.
 
-The possible ``fillTypes`` are:
+The possible ``filltypes`` are:
 
 * mat: if the cells is filled with a homogeneous material
 
@@ -563,7 +721,7 @@ Example: ::
 
 Example: ::
 
-      cellX { id 5; type simpleCell; surfaces (2 -3); filltype uni; universe 6; }
+      cellX { id 5; type unionCell; surfaces [2 : -3 # < 4 5 >]; filltype uni; universe 6; }
 
 * outside: if the cell is outside of the geometry
 
@@ -586,13 +744,17 @@ Similarly to the surfaces and cells, the **universes** in the geometry can be de
 Several ``universeTypes`` are possible:
 
 * cellUniverse, composed of the union of different cells. Note that overlaps are
-  forbidden, but there is no check to find overlaps
+  forbidden, but there is no check to find overlaps by default. This can be enabled
+  at the cost of slower particle transport.
 
   - cells: array containing the ``cellIds`` as used in the cell definition
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin
     of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - checkOverlap (*optional*, default = 0): enables checking for overlaps between cells, useful
+    for debugging and plotting. However, this slows down particle transport by making exhaustive
+    cell searches mandatory.
 
 .. note::
    When creating a ``cellUniverse`` a user needs to take care to avoid leaving
@@ -602,13 +764,37 @@ Several ``universeTypes`` are possible:
 
 Example: ::
 
-      uni3 { id 3; type cellUniverse; cells (1 2 55); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); }
+      uni3 {id 3; type cellUniverse; cells (1 7); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); checkOverlap 0;}
 
 * pinUniverse, composed of infinite co-centred cylinders
 
   - radii: array containing the radii of the co-centred cylinders. There
     must be an entry equal to 0.0, which corresponds to the outermost
     layer, which is infinite. [cm]
+  - fills: array containing the names or ids of what is inside each cylindrical
+    shell. The order of the fills must correspond to the order of the corresponding
+    radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``,
+    where ``id`` is the id of a defined universe
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the universe. [cm]
+  - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    rotation angles in degrees applied to the universe. [°]
+
+Example: ::
+
+      uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
+
+* azimPinUniverse, composed of infinite co-centred cylinders, divided azimuthally.
+  Can have either all radial regions with the same number of azimuthal divisions or else
+  each with its own number of divisions. All azimuthal divisions must be a multiple of 4.
+  For now, all fills in the same radial region but different azimuthal regions must be identical.
+
+  - radii: array containing the radii of the co-centred cylinders. There
+    must be an entry equal to 0.0, which corresponds to the outermost
+    layer, which is infinite. [cm]
+  - naz: number of azimuthal divisions, imposed uniformly across all radial regions.
+  - nazR: number of azimuthal divisions varying by radial region. Given as a list. Mutually
+    exclusive with ``naz``.
   - fills: array containing the names or ids of what is inside each cylindrical
     shell. The order of the fills must correspond to the order of the corresponding
     radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``,
@@ -703,12 +889,16 @@ bmp
 
 Example: ::
 
-      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10); res (1000 200); output geomZ; what material; }
+      plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10);
+                res (1000 200); output geomZ; what material; }
 
 .. note::
    SCONE can be run to visualise geometry without actually doing transport, by
    including ``--plot`` when running the application. In this case the visualiser
    has to be included in the file.
+   Certain special materials use particular colours during plotting. Void regions
+   are plotted in black. Regions outside the geometry are plotted in white.
+   Undefined regions are plotted in light green. Overlap regions are plotted in red.
 
 Nuclear Data
 ------------
@@ -776,7 +966,7 @@ Materials definition
 The *materials* definition is structured as: ::
 
       materials {
-      <materialName1> { temp <temp1>;
+      <materialName1> { tms <0 or 1>; temp <temp1>;
       composition { <Composition definition> }
       *keywords* }
       <materialName2> { temp <temp2>;
@@ -784,15 +974,19 @@ The *materials* definition is structured as: ::
       *keywords* }
       }
 
-In this case, ``materialName`` can be any name chosen by the user; ``temp`` is the
-material temperature in [K].
+In this case, ``materialName`` can be any name chosen by the user; the keyword ``tms``
+(*optional*, default = 0) activates Target Motion Sampling (TMS) if set to 1; TMS uses 
+the material temperature defined under ``temp`` [K]. ``temp`` is *optional* unless TMS
+is used.
 
 .. note::
-  At the moment ``temp`` is not used in any way since SCONE has no way to treat
-  the temperature dependence of cross-sections. It is included for future use.
-  To change the temperature, a user needs to set appropriate suffix to each
-  individual nuclide in the composition definition.
+  When using TMS, the temperature specified by ``temp`` must be higher than the 
+  temperatures of the nuclides in the material composition.
 
+.. note::
+  *IMPORTANT*: When using TMS, all the tallies based on the collision estimator have to
+  allow scoring virtual collisions, otherwise the results will be biased. The tallies
+  based on the track length estimator will be biased too.
 
 The ``composition`` dictionary must always be included, but it can be empty in
 multi-group simulations. In continuous energy simulations, it should include a
@@ -807,8 +1001,11 @@ Other options are:
 * moder: dictionary that includes information on thermal scattering data. It has to
   include a list of ZAIDs for which S(a,b) has to be used, and the name of the file
   that contains the data. The file has to be included in the list of files in the *.aceXS*
-  input file. Note that this input is ignored if the nuclide or nuclides listed are not
-  included in the material. Only needed for continuous energy simulations.
+  input file. The file must be in an array, e.g., ``1001.03 (h-h2o49);``. Two files can be
+  included in this array, invoking stochastic interpolation to the provided ``temp``. If
+  the given temperature is not bracketed by the thermal scattering evaluation temperatures
+  an error will be produced. An error will be produced if the nuclide or nuclides listed in
+  the moder dictionary are not included in the material. Only needed for continuous energy simulations.
 
 * xsFile: needed for multi-group simulations. Must contain the path to the file where
   the multi-group cross sections are stored.
@@ -819,18 +1016,19 @@ Other options are:
 Example 1: ::
 
       materials {
-      fuel { temp 273;
+      fuel { temp 473;
+      tms 1;
       composition {
       92238.03   0.021;
       92235.03   0.004;
       8016.03    0.018535464; }
       }
-      water { temp 273;
+      water {
       rgb (0 0 200);
       composition {
       1001.03   0.0222222;
       8016.03   0.00535; }
-      moder { 1001.03 h-h2o.42; }
+      moder { 1001.03 (h-h2o.42); }
       }
       }
 
@@ -840,6 +1038,12 @@ Example 2: ::
       fuel { temp 573;
       composition { }
       xsFile ./xss/fuel.txt
+      }
+      water { temp 500;
+      composition {
+      1001.03   0.0222222;
+      8016.03   0.00535; }
+      moder { 1001.03 (h-h2o.50 h-h2o.49); }
       }
       }
 
@@ -928,8 +1132,12 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the collisionClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 * trackClerk
 
@@ -939,6 +1147,9 @@ The **tally clerks** determine which kind of estimator will be used. The options
     that defines the domains of integration of each tally
   - filter (*optional*): can filter out particles with certain properties,
     preventing them from scoring results
+
+.. note::
+  If TMS is on, the trackClerk is biased for results in the TMS materials
 
 Example: ::
 
@@ -955,14 +1166,18 @@ Example: ::
 
 * keffAnalogClerk, analog k_eff estimator
 * keffImplicitClerk, implicit k_eff estimator
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the keffImplicitClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
       tally {
       k_eff1 { type keffAnalogClerk; }
-      k_eff2 { type keffImplicitClerk; handleVirtual 1; }
+      k_eff2 { type keffImplicitClerk; handleVirtual 0; }
       }
 
 * centreOfMassClerk, geometrical 3D center of mass estimator
@@ -1009,8 +1224,12 @@ Example: ::
     tally map
   - PN (*optional*, default = 0): 1 for true; 0 for false; flag that indicates
     whether to calculate scattering matrices only up to P1 (``PN 0``) or P7 (``PN 1``)
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the mgXsClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
@@ -1039,14 +1258,30 @@ Example: ::
 
   - map: contains a dictionary with the ``tallyMap`` definition, that defines
     the bins of the matrix
-  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
-    are tallied with a collisionClerk as well as physical collisions
+  - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+.. note::
+  If TMS is on, the simpleFMClerk is biased for results in the TMS materials unless virtual 
+  collisions are scored (use <handleVirtual 1;>)
 
 Example: ::
 
       tally {
       fissionMat { type simpleFMClerk; map { <Map definition> } }
       }
+
+* rayClerk, for estimating fluxes and reaction rates using random ray. Has only been tested
+  with macroResponse and fluxResponse. Can map over space, energy group, and material. Uses
+  the centroid of cells obtained during random ray transport, so spatial maps should be used
+  with some caution.
+
+  - response: defines which response function has to be used for this tally. Note
+    that more than one response can be defined per each tally
+  - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
+    that defines the domains of integration of each tally
+  - filter (*optional*): can filter out particles with certain properties,
+    preventing them from scoring results. Filters have not been tested with rayClerk.
 
 Tally Responses
 ###############
@@ -1062,13 +1297,13 @@ Example: ::
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
       }
 
-* densityResponse: used to calculate the particle desnsity, i.e., the response function is 
-  the inverse of the particle velocity in [cm/s]
+* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the response function is 
+  the inverse of the particle speed in [cm/s]
 
 Example: ::
 
       tally {
-      collision_estimator { type collisionClerk; response (dens); dens { type densityResponse; } }
+      collision_estimator { type collisionClerk; response (is); is { type invSpeedResponse; } }
       }
 
 * macroResponse: used to score macroscopic reaction rates
@@ -1211,7 +1446,7 @@ Example: ::
 
       map { type materialMap; materials (fuel water cladding reflector fuelGd); undefBin T; }
 
-* radialMap, spherical or cylindrical radial map
+* radialMap (1D map), spherical or cylindrical radial map
 
   - axis (*optional*, default = ``xyz``): ``x``, ``y``, ``z``, is the normal of
     the cylindrical plane, or ``xyz`` to indicate spherical coordinates

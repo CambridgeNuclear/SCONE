@@ -155,7 +155,7 @@ contains
     call new % init(eGrid,T,U)
 
   end function new_maxwellSPectrum
-    
+
   !!
   !! Constructor
   !! Multiple interpolation regions & interpolation schemes

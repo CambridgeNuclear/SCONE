@@ -2,6 +2,7 @@ module fissionCE_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,           only : shakesPerS
   use genericProcedures,            only : fatalError, numToChar
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
@@ -369,7 +370,8 @@ contains
       call ACE % setToPrecursors()
       do i=1,size(self % delayed)
         ! Read delay constant
-        self % delayed(i) % lambda = ACE % readReal()
+        ! Convert from 1/shake to 1/s
+        self % delayed(i) % lambda = ACE % readReal() * shakesPerS
         nr = ACE % readInt()
 
         if(nr < 0) call fatalError(Here, 'NR < 0. WTF?')

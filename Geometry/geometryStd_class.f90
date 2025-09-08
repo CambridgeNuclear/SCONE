@@ -238,7 +238,7 @@ contains
       ! Place back in geometry
       call self % placeCoord(coords)
 
-    else ! Crosses to diffrent local cell
+    else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV
@@ -303,7 +303,7 @@ contains
       ! Place back in geometry
       call self % placeCoord(coords)
 
-    else ! Crosses to diffrent local cell
+    else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV
@@ -552,8 +552,13 @@ contains
       N = N - 1
       lastIdx = self % geom % graph % usedMats(N)
     end if
-    ! Check if the last entry of the list is an undefined material
+    ! Check if the last entry of the list is an actual material or an undefined material
     if (lastIdx == UNDEF_MAT) then
+      N = N - 1
+      lastIdx = self % geom % graph % usedMats(N)
+    end if
+    ! Check if the last entry of the list is an actual material or an overlap material
+    if (lastIdx == OVERLAP_MAT) then
       matList = self % geom % graph % usedMats(1:N-1)
     else
       matList = self % geom % graph % usedMats(1:N)
@@ -576,18 +581,18 @@ contains
   end function numberOfCells
 
   !!
-  !! Descend down the geometry structure untill material is reached
+  !! Descend down the geometry structure until material is reached
   !!
-  !! Requires strting level to be specified.
-  !! It is private procedure common to all movment types in geometry.
+  !! Requires starting level to be specified.
+  !! It is a private procedure common to all movement types in geometry.
   !!
   !! Args:
-  !!   coords [inout] -> CoordList of a particle. Assume thet coords are already valid for all
+  !!   coords [inout] -> CoordList of a particle. Assume that coords are already valid for all
   !!     levels above and including start
-  !!   start [in] -> Starting level for meterial search
+  !!   start [in] -> Starting level for material search
   !!
   !! Errors:
-  !!   fatalError if material cell is not found untill maximum nesting is reached
+  !!   fatalError if material cell is not found until maximum nesting is reached
   !!
   subroutine diveToMat(self, coords, start)
     class(geometryStd), intent(in) :: self
@@ -602,6 +607,7 @@ contains
       ! Find cell fill
       rootId = coords % lvl(i) % uniRootID
       localID = coords % lvl(i) % localID
+      
       call self % geom % graph % getFill(fill, id, rootID, localID)
 
       if (fill >= 0) then ! Found material cell

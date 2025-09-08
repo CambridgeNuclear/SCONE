@@ -78,5 +78,5 @@ contains
 
   end subroutine kill
 
-    
+
 end module tallyFilterSlot_class

@@ -1,6 +1,6 @@
 type fixedSourceRRPhysicsPackage; 
 
-pop      10000;
+pop      1000;
 active   2100;  
 inactive 0; 
 dead     120; 
@@ -11,8 +11,13 @@ XSdata   mg;
 dataType mg;
 outputFile dogleg_TRRM_absorb;
 
-integrate (sourceMat);
 source { sourceMat ( 1.0 ); }
+
+tally {
+ intFlux {type rayClerk; response (flx); flx {type fluxResponse;}
+          map {type materialMap; materials (sourceMat);}
+         }
+}
 
 samplePoints {
 A3_1   ( 5.0 5.0 5.0 );

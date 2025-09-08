@@ -10,7 +10,7 @@ module azimPinUniverse_test
   use cellShelf_class,       only : cellShelf
   use azimPinUniverse_class, only : azimPinUniverse, MOVING_IN, MOVING_OUT, MOVING_CLOCK, &
                                     MOVING_ANTI, MOVING_CLOCK_FORWARD, MOVING_CLOCK_BACK
-  use pfUnit_mod
+  use fUnit
   implicit none
 
   ! Parameters

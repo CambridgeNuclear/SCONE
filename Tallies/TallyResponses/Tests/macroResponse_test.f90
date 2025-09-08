@@ -6,7 +6,7 @@ module macroResponse_test
   use particle_class,                 only : particle, P_NEUTRON
   use dictionary_class,               only : dictionary
   use testNeutronDatabase_class,      only : testNeutronDatabase
-  use pFUnit_mod
+  use funit
 
   implicit none
 

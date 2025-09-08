@@ -2,7 +2,7 @@ module cellUniverse_test
 
   use numPrecision
   use genericProcedures
-  use universalVariables, only : UNDEF_MAT
+  use universalVariables, only : UNDEF_MAT, OVERLAP_MAT
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
   use charMap_class,      only : charMap
@@ -10,10 +10,10 @@ module cellUniverse_test
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
   use cellUniverse_class, only : cellUniverse
-  use pfUnit_mod
+  use funit
 
   implicit none
-
+  
   ! Parameters
   character(*), parameter :: SURF_DEF = &
   " surf1 { id 1; type sphere; origin (0.0 0.0 0.0); radius 2;}&
@@ -32,12 +32,24 @@ module cellUniverse_test
   !
   character(*), parameter :: UNI_DEF = &
   "id 1; type cellUniverse; origin (2.0 0.0 0.0); rotation (90.0 90.0 90.0); cells (1 2);"
+  
+  character(*), parameter :: SURF2_DEF = &
+  " surf1 { id 1; type sphere; origin (21.0 0.0 0.0); radius 4.5;}&
+  & surf2 { id 2; type sphere; origin (0.0 0.0 0.0); radius 24.1;}"
+
+  character(*), parameter :: CELL2_DEF = &
+  " cell1 {id 1; type simpleCell; surfaces (-1); filltype uni; universe 3;} &
+  & cell2 {id 2; type simpleCell; surfaces (1 -2); filltype uni; universe 4;}&
+  & cell3 {id 3; type simpleCell; surfaces (2); filltype uni; universe 5;}"
+  
+  character(*), parameter :: UNI2_DEF = &
+  "id 2; type cellUniverse; origin (0.0 0.0 0.0); checkOverlap 1; cells (1 2 3);"
 
   ! Variables
-  type(surfaceShelf) :: surfs
-  type(cellShelf)    :: cells
-  type(charMap)      :: mats
-  type(cellUniverse) :: uni
+  type(surfaceShelf) :: surfs, surfs2
+  type(cellShelf)    :: cells, cells2
+  type(charMap)      :: mats, mats2
+  type(cellUniverse) :: uni, uni2
 
 contains
 
@@ -46,7 +58,7 @@ contains
   !!
 @Before
   subroutine setUp()
-    integer(shortInt), dimension(:), allocatable :: fill
+    integer(shortInt), dimension(:), allocatable :: fill, fill2
     type(dictionary) :: dict
 
     ! Build surfaces and MATS
@@ -66,9 +78,27 @@ contains
 
     ! Set index
     call uni % setIdx(8)
+    
+    ! Build overlapping universe
+    call charToDict(dict, SURF2_DEF)
+    call surfs2 % init(dict)
+    call dict % kill()
+
+    call charToDict(dict, CELL2_DEF)
+    call cells2 % init(dict, surfs2, mats2)
+    call dict % kill()
+
+    ! Build universe
+    call charToDict(dict, UNI2_DEF)
+    call uni2 % init(fill2, dict, cells2, surfs2, mats2)
+    call dict % kill()
+
+    ! Set index
+    call uni2 % setIdx(9)
 
     ! Verify fill
-    @assertEqual([-3, -4, UNDEF_MAT], fill)
+    @assertEqual([-3, -4, UNDEF_MAT, OVERLAP_MAT], fill)
+    @assertEqual([-3, -4, -5, UNDEF_MAT, OVERLAP_MAT], fill2)
 
   end subroutine setUp
 
@@ -82,6 +112,11 @@ contains
     call cells % kill()
     call mats % kill()
     call uni % kill()
+    
+    call surfs2 % kill()
+    call cells2 % kill()
+    call mats2 % kill()
+    call uni2 % kill()
 
   end subroutine clean
 
@@ -90,7 +125,6 @@ contains
   !!
 @Test
   subroutine test_misc()
-    real(defReal), dimension(3,3) :: mat
 
     ! Get id
     @assertEqual(1, uni % id())
@@ -161,7 +195,6 @@ contains
     @assertEqual([ZERO, ZERO,  ONE], new % rotMat(1,:), TOL)
     @assertEqual([ZERO, -ONE, ZERO], new % rotMat(2,:), TOL)
     @assertEqual([ONE , ZERO, ZERO], new % rotMat(3,:), TOL)
-
 
   end subroutine test_enter
 
@@ -261,6 +294,60 @@ contains
 
   end subroutine test_cellOffset
 
+  !!
+  !! Test identifying overlapping cells
+  !!
+@Test
+  subroutine test_overlap()
+    type(coord) :: new
+    real(defReal), dimension(3) :: r_ref, u_ref, r, dir
+    real(defReal), parameter :: TOL = 1.0E-7_defReal
 
+    ! ** Enter into local cell 1
+    r = [22.0_defReal, 0.0_defReal, 0.0_defReal ]
+    dir = [ONE, ZERO, ZERO]
+
+    call uni2 % enter(new, r, dir)
+
+    ! Verify location
+    r_ref = [22.0_defReal, 0.0_defReal, 0.0_defReal]
+    u_ref = [ONE, ZERO, ZERO]
+    @assertEqual(r_ref, new % r, TOL )
+    @assertEqual(u_ref, new % dir, TOL)
+    @assertEqual(9, new % uniIdx)
+    @assertEqual(1, new % localID)
+    @assertEqual(cells2 % getIdx(1), new % cellIdx)
+
+    ! ** Enter into local cell 3
+    r = [0.0_defReal, 25.0_defReal, 0.0_defReal]
+    dir = [ONE, ZERO, ZERO]
+
+    call uni2 % enter(new, r, dir)
+
+    ! Verify location
+    r_ref = [0.0_defReal, 25.0_defReal, 0.0_defReal]
+    u_ref = [ONE, ZERO, ZERO]
+    @assertEqual(r_ref, new % r, TOL )
+    @assertEqual(u_ref, new % dir, TOL)
+    @assertEqual(9, new % uniIdx)
+    @assertEqual(3, new % localID)
+    @assertEqual(cells2 % getIdx(3), new % cellIdx)
+
+    ! ** Enter into the OVERLAP cell
+    r = [24.2_defReal, 0.0_defReal, 0.0_defReal]
+    dir = [ONE, ZERO, ZERO]
+
+    call uni2 % enter(new, r, dir)
+
+    ! Verify location
+    r_ref = [24.2_defReal, 0.0_defReal, 0.0_defReal]
+    u_ref = [ONE, ZERO, ZERO]
+    @assertEqual(r_ref, new % r, TOL )
+    @assertEqual(u_ref, new % dir, TOL)
+    @assertEqual(9, new % uniIdx)
+    @assertEqual(5, new % localID)
+    @assertEqual(0, new % cellIdx)
+
+  end subroutine test_overlap
 
 end module cellUniverse_test

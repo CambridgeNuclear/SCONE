@@ -83,7 +83,7 @@ contains
   end subroutine add_array_shortInt
 
   !!
-  !! Make shure that array will have memory to fit (newSize) of entries
+  !! Make sure that array will have memory to fit (newSize) of entries
   !! NOTE: does nothing if newSize <= current memory size
   !!
   pure subroutine resize_shortInt(self, newSize)
@@ -120,7 +120,7 @@ contains
     isIt = self % mySize == 0 .or. .not.allocated(self % array)
 
   end function isEmpty_shortInt
-    
+
   !!
   !! Return current memory capacity of the dynamicArray
   !!
@@ -166,13 +166,13 @@ contains
   end function expose_shortInt
 
   !!
-  !! Return the entire dynamic array as a static array
+  !! Return a value from the array at a given index
   !!
   function get_shortInt(self, idx) result(res)
     class(dynIntArray), intent(in)              :: self
     integer(shortInt), intent(in)               :: idx
     integer(shortInt)                           :: res
-    character(100), parameter :: Here = 'expose_shortInt (dynArray_Class.f90)'
+    character(100), parameter :: Here = 'get_shortInt (dynArray_Class.f90)'
 
     if (allocated(self % array)) then
       res = self % array(idx)
@@ -219,7 +219,7 @@ contains
     character(100),parameter :: Here = 'pop_shortInt (dynArray_class.f90)'
 
     if(self % isEmpty()) then
-      call fatalError(Here,'Poping from empty array')
+      call fatalError(Here,'Popping from empty array')
     end if
 
     res = self % array(self % mySize)
