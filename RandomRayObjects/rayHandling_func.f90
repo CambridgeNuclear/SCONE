@@ -198,9 +198,13 @@ contains
     ! Catch for regions with voids
     ! Assumes these are defined as 'void'
     ! TODO: Use a more robust criterion, as for branching later
-    if (matIdx <= XSData % getNMat() .and. all(total > 0)) then
+    if (matIdx <= XSData % getNMat()) then
       do g = 1, nG
-        angular(g) = arrays % getSource(cIdx,g) / total(g)
+        if (total(g) > 1.0E-6_defFlt) then
+          angular(g) = arrays % getSource(cIdx,g) / total(g)
+        else
+          angular(g) = real(arrays % getPrevFlux(cIdx, g), defFlt)
+        end if
       end do
     else
       do g = 1, nG
@@ -237,7 +241,7 @@ contains
       if (.not. arrays % wasFound(cIdx)) then
         call arrays % newFound(cIdx, r % rGlobal() - length * HALF * r % dirGlobal())
       end if
-
+      
       lenFlt = real(length,defFlt)
       call arrays % getSourcePointer(cIdx, source)
 
@@ -248,7 +252,7 @@ contains
       
         !$omp simd
         do g = 1, nG
-          !tau(g) = max(total(g) * lenFlt, 1.0e-8_defFlt) ! Not sure whether this does much for stability
+          !tau(g) = max(total(g) * lenFlt, 1.0e-6_defFlt) ! Not sure whether this does much for stability
           tau(g) = total(g) * lenFlt
         end do
 
@@ -269,8 +273,8 @@ contains
               scalar(g) = scalar(g) + delta(g)
             end do
             call arrays % incrementVolume(cIdx, length)
+            call arrays % hitCell(cIdx)
           call arrays % unsetLock(cIdx)
-          if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
         end if
 
@@ -293,8 +297,8 @@ contains
               scalar(g) = scalar(g) + inc(g)
             end do
             call arrays % incrementVolume(cIdx, length)
+            call arrays % hitCell(cIdx)
           call arrays % unsetLock(cIdx)
-          if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
         end if
 
@@ -336,11 +340,11 @@ contains
     real(defReal), dimension(matSize)       :: matScore
     logical(defBool)                        :: activeRay, hitVacuum
     type(distCache)                         :: cache
-    real(defFlt)                            :: lenFlt, lenFlt2_2
+    real(defFlt)                            :: lenFlt, lenFlt2_2, len_2
     real(defFlt), dimension(nDim)           :: muFlt, r0NormFlt, rNormFlt
     real(defFlt), dimension(nG)             :: delta, angular, tau, flatQ, gradQ, &
                                                F1, F2, angular0, G0, G1, G2, H, &
-                                               xInc, yInc, zInc
+                                               xInc, yInc, zInc, inc
     real(defFlt), pointer, dimension(:)     :: source, total, sourceX, sourceY, sourceZ
     real(defReal), pointer, dimension(:)    :: scalar, scalarX, scalarY, scalarZ
     character(100), parameter :: Here = 'transportSweepLinearIso (rayHandling_func.f90)'
@@ -414,7 +418,7 @@ contains
         rNormFlt = 0.0_defFlt
         r0NormFlt = -real(HALF * mu0 * length,defFlt)
       end if
-      
+
       call arrays % getSourcePointer(cIdx, source)
       call arrays % getSourceXYZPointers(cIdx, sourceX, sourceY, sourceZ)
 
@@ -543,16 +547,41 @@ contains
             call arrays % incrementVolume(cIdx, length)
             call arrays % incrementCentroid(cIdx, rC)
             call arrays % incrementMoments(cIdx, matScore)
-          
+            call arrays % hitCell(cIdx)
 
           call arrays % unsetLock(cIdx)
-          if (.not. arrays % wasHit(cIdx)) call arrays % hitCell(cIdx)
       
         end if
 
-      ! TODO: handle void cells
+      ! Handle void cells. Assume flat source.
+      ! Does not accumulate geometric info.
       else
-        call fatalError(Here,'Void treatment has not been implemented for linear isotopic')
+        
+        ! Accumulate to scalar flux
+        if (activeRay) then
+      
+          len_2 = lenFlt * one_two
+          !$omp simd
+          do g = 1, nG
+            inc(g) = lenFlt * (angular(g) + source(g) * len_2)
+          end do
+
+          call arrays % setLock(cIdx)
+            call arrays % getFluxPointer(cIdx, scalar)
+            !$omp simd
+            do g = 1, nG
+              scalar(g) = scalar(g) + inc(g)
+            end do
+            call arrays % incrementVolume(cIdx, length)
+            call arrays % hitCell(cIdx)
+          call arrays % unsetLock(cIdx)
+      
+        end if
+
+        !$omp simd
+        do g = 1, nG
+          angular(g) = angular(g) + source(g) * lenFlt
+        end do
 
       end if
 

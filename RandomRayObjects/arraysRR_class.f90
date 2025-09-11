@@ -61,9 +61,9 @@ module arraysRR_class
   !!   volumeTracks  -> Array of sum of track lengths for computing volumes [nCells]
   !!   volume        -> Array of dimensionless cell volumes [nCells]
   !!
-  !!   cellHit   -> Array of ints whether a cell was visited this iteration [nCells]
-  !!   cellFound -> Array of logicals whether a cell was ever visited [nCells]
-  !!   cellPos   -> Array of cell positions [3 * nCells]
+  !!   cellHit      -> Array of ints whether a cell was visited this iteration [nCells]
+  !!   cellTotalHit -> Array of total number of hits for a cell over all iterations [nCells]
+  !!   cellPos      -> Array of cell positions [3 * nCells]
   !!
   !!   scalarX   -> Array of x-spatial moments of scalar flux [nG * nCells]
   !!   scalarY   -> Array of y-spatial moments of scalar flux [nG * nCells]
@@ -112,6 +112,7 @@ module arraysRR_class
     real(defReal), dimension(:), allocatable     :: allVolumeTracks
     real(defReal), dimension(:), allocatable     :: volume
     integer(shortInt), dimension(:), allocatable :: cellHit
+    integer(longInt), dimension(:), allocatable  :: cellTotalHit
     logical(defBool), dimension(:), allocatable  :: cellFound
     real(defReal), dimension(:,:), allocatable   :: cellPos
 
@@ -206,7 +207,6 @@ module arraysRR_class
     ! Output procedures
     procedure :: outputMap
     procedure :: outputToVTK
-    procedure :: outputMaterialIntegrals
     procedure :: outputPointFluxes
     
     ! Private procedures
@@ -235,7 +235,6 @@ module arraysRR_class
     
     procedure, private :: calculateKeffKernel
     procedure, private :: invertMatrix
-    procedure, private :: materialIntegral
 
   end type arraysRR
 
@@ -317,7 +316,7 @@ contains
     allocate(self % allVolumeTracks(self % nCells))
     allocate(self % volume(self % nCells))
     allocate(self % cellHit(self % nCells))
-    allocate(self % cellFound(self % nCells))
+    allocate(self % cellTotalHit(self % nCells))
     allocate(self % cellPos(nDim, self % nCells))
     
     self % scalarFlux    = ZERO
@@ -328,7 +327,7 @@ contains
     self % allVolumeTracks = ZERO
     self % volume        = ZERO
     self % cellHit       = 0
-    self % cellFound     = .false.
+    self % cellTotalHit  = 0
     self % cellPos       = -INFINITY
 
     ! Initialise the fixed source if present
@@ -902,13 +901,15 @@ contains
   end function wasHit
   
   !!
-  !! Hit a cell 
+  !! Hit a cell.
+  !! Should only be called in a lock.
   !!
   subroutine hitCell(self, cIdx)
     class(arraysRR), intent(inout) :: self
     integer(shortInt), intent(in)  :: cIdx
     
     self % cellHit(cIdx) = 1
+    self % cellTotalHit(cIdx) = self % cellTotalHit(cIdx) + 1
   
   end subroutine hitCell
 
@@ -934,7 +935,7 @@ contains
 
     totalHit = sum(self % cellHit)
     if (it > 20) then 
-      realCells = count(self % cellFound)
+      realCells = count(self % cellTotalHit > 0)
     else
       realCells = self % nCells
     end if
@@ -974,7 +975,7 @@ contains
     integer(shortInt), intent(in) :: cIdx
     logical(defBool)              :: found
     
-    found = self % cellFound(cIdx)
+    found = (self % cellTotalHit(cIdx) > 0)
   
   end function wasFound
 
@@ -988,7 +989,6 @@ contains
 
     ! Remove critical if this is to go in the lock
     !$omp critical 
-    self % cellFound(cIdx) = .true.
     self % cellPos(:,cIdx) = r
     !$omp end critical
 
@@ -1079,13 +1079,13 @@ contains
     integer(shortInt), intent(in)             :: it
     real(defReal)                             :: norm, normIt
     real(defReal), save                       :: vol, volAve, volNaive, D
-    real(defFlt), save                        :: sigGG
+    real(defFlt), save                        :: sigGG, tot
     real(defFlt), dimension(:), pointer, save :: total
     integer(shortInt), save                   :: g, matIdx, idx
     integer(shortInt)                         :: cIdx
-    logical(defBool), save                    :: hit, isSrc
+    logical(defBool), save                    :: hit, isSrc, smallCell
     character(100), parameter :: Here = 'normaliseFluxAndVolumeFlatIso (arraysRR_class.f90)'
-    !$omp threadprivate(total, vol, idx, g, matIdx, sigGG, D, hit, isSrc, volAve, volNaive)
+    !$omp threadprivate(total, vol, idx, g, matIdx, sigGG, D, hit, isSrc, volAve, volNaive, tot, smallCell)
 
     norm = ONE / self % lengthPerIt
     normIt = ONE / (self % lengthPerIt * it)
@@ -1096,6 +1096,9 @@ contains
       
       hit = self % wasHit(cIdx)
       isSrc = self % hasFixedSource(cIdx)
+
+      ! Is the cell hit frequently?
+      smallCell = (real(self % cellTotalHit(cIdx) / it, defReal) < 1.5)
       
       !! Compute various volume types
       ! Actual integral volume
@@ -1121,6 +1124,8 @@ contains
         case default
           call fatalError(Here,'Unsupported volume handling requested')
       end select
+
+      if (smallCell) vol = volNaive
       
       ! Reset cycle-wise estimator
       self % volumeTracks(cIdx) = ZERO
@@ -1130,35 +1135,35 @@ contains
       groupLoop: do g = 1, self % nG
 
         idx = self % nG * (cIdx - 1) + g
+        tot = total(g)
 
         ! Route for non-void materials
-        if (matIdx <= self % XSData % getNMat() .and. total(g) > 0) then
+        if (matIdx <= self % XSData % getNMat() .and. tot > 0) then
           if (hit) then
      
             ! Can hit a cell but with a tiny volume, such that 
             ! things break a bit - would rather remove this arbitrary
             ! check in future
             if (vol < volume_tolerance) then
-              !self % scalarFlux(idx) = ZERO
-              self % scalarFlux(idx) = self % source(idx) / total(g)
+              self % scalarFlux(idx) = ZERO
               cycle groupLoop
             end if
 
 
             self % scalarFlux(idx) = self % scalarFlux(idx) * norm 
-            self % scalarFlux(idx) = self % scalarFlux(idx) / (vol * total(g))
+            self % scalarFlux(idx) = self % scalarFlux(idx) / (vol * tot)
 
             !scalar0 = self % scalarFlux(idx)
 
             ! Presumes non-zero total XS
             sigGG = self % XSData % getScatterXS(matIdx, g, g)
             if ((sigGG < 0) .and. (total(g) > 0)) then
-              D = -real(self % rho * sigGG / total(g), defReal)
+              D = -real(self % rho * sigGG / tot, defReal)
             else
               D = ZERO
             end if
 
-            self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx) / total(g) &
+            self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx) / tot &
                   + D * self % prevFlux(idx) ) / (1 + D)
 
             ! If scalar flux is negative, do it again with naive
@@ -1169,20 +1174,23 @@ contains
             !  !self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx) / total(g) &
             !  !    + D * self % prevFlux(idx) ) / (1 + D)
             !end if
+            !if (self % scalarFlux(idx) < ZERO .and. tot < 1.0E-7_defFlt) then
+            !  self % scalarFlux(idx) = self % prevFlux(idx)
+            !end if
 
           else
             
             ! Decide flux treatment to use on missing a cell
             select case(self % missPolicy)
               case(srcPolicy)
-                self % scalarFlux(idx) = self % source(idx) / total(g)
+                self % scalarFlux(idx) = self % source(idx) / tot
               case(prevPolicy)
                 self % scalarFlux(idx) = self % prevFlux(idx)
               case(hybrid)
                 if (isSrc) then
                   self % scalarFlux(idx) = self % prevFlux(idx)
                 else
-                  self % scalarFlux(idx) = self % source(idx) / total(g)
+                  self % scalarFlux(idx) = self % source(idx) / tot
                 end if
               case default
                 call fatalError(Here,'Unsupported miss handling requested')
@@ -1225,9 +1233,9 @@ contains
     real(defFlt), dimension(:), pointer, save :: total
     integer(shortInt)                         :: cIdx
     integer(shortInt), save                   :: g, matIdx, idx, dIdx, mIdx
-    logical(defBool), save                    :: hit, isSrc
+    logical(defBool), save                    :: hit, isSrc, smallCell
     character(100), parameter :: Here = 'normaliseFluxAndVolumeLinearIso (arraysRR_class.f90)'
-    !$omp threadprivate(total, vol, idx, mIdx, dIdx, g, matIdx, invVol, norm_V, D, sigGG, hit, isSrc, volNaive, volAve)
+    !$omp threadprivate(total, vol, idx, mIdx, dIdx, g, matIdx, invVol, norm_V, D, sigGG, hit, isSrc, volNaive, volAve, smallCell)
 
     norm = ONE / self % lengthPerIt
     normVol = ONE / (self % lengthPerIt * it)
@@ -1241,6 +1249,8 @@ contains
 
       hit = self % wasHit(cIdx)
       isSrc = self % hasFixedSource(cIdx)
+      ! Is the cell hit frequently?
+      smallCell = (real(self % cellTotalHit(cIdx) / it, defReal) < 1.5)
 
       ! Compute various volume types
       ! Actual integral volume
@@ -1270,6 +1280,11 @@ contains
         case default
           call fatalError(Here,'Unsupported volume handling requested')
       end select
+
+      if (smallCell) then
+        vol = volNaive
+        norm_V = ONE / self % volumeTracks(cIdx)
+      end if
       
       ! Reset cycle-wise estimator
       self % volumeTracks(cIdx) = ZERO
@@ -1332,6 +1347,7 @@ contains
            
             self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx)/total(g) &
                   + D * self % prevFlux(idx) ) / (1 + D)
+
           else
             ! Decide flux treatment to use
             associate(mat => self % momMat((mIdx + 1):(mIdx + matSize)))
@@ -1384,7 +1400,25 @@ contains
         else
 
           ! Apply void treatment
+          if (vol < volume_tolerance) then
+            self % scalarFlux(idx) = ZERO
+            self % scalarX(idx) = ZERO
+            self % scalarY(idx) = ZERO
+            self % scalarZ(idx) = ZERO
+            cycle groupLoop
+          end if
 
+          if (hit) then
+            self % scalarFlux(idx) = self % scalarFlux(idx) * norm / vol
+            self % scalarX(idx) = ZERO
+            self % scalarY(idx) = ZERO
+            self % scalarZ(idx) = ZERO
+          else
+            self % scalarFlux(idx) = self % prevFlux(idx)
+            self % scalarX(idx) = ZERO
+            self % scalarY(idx) = ZERO
+            self % scalarZ(idx) = ZERO
+          end if
 
         end if
         
@@ -2016,7 +2050,7 @@ contains
     !$omp threadprivate(p, vol, pos, g, matIdx, fluxVec)
 
     !$omp parallel
-    call p % build([-INF, -INF, -INF], [ONE, ZERO, ZERO], 1, ZERO, ZERO)
+    call p % build([-INFINITY, -INFINITY, -INFINITY], [ONE, ZERO, ZERO], 1, ZERO, ZERO)
     !$omp end parallel
 
     !$omp parallel do
@@ -2323,85 +2357,6 @@ contains
   end subroutine outputToVTK
 
   !!
-  !! Output integrals over given materials
-  !!
-  subroutine outputMaterialIntegrals(self, out, matNames)
-    class(arraysRR), intent(in)                  :: self
-    class(outputFile), intent(inout)             :: out
-    character(nameLen), dimension(:), intent(in) :: matNames
-    integer(shortInt)                            :: i, matIdx
-    character(nameLen)                           :: name
-    real(defReal)                                :: integral, intSD
-
-    name = 'integral'
-    call out % startBlock(name)
-
-    do i = 1, size(matNames)
-    
-      call out % startArray(matNames(i), [1])
-
-      ! Ensure name corresponds to a material present in the geometry
-      matIdx = self % XSData % getIdxFromName(matNames(i))
-
-      if (matIdx /= -1) then
-        call self % materialIntegral(matIdx, integral, intSD)
-      else
-        integral = ZERO
-        intSD    = ZERO
-        print *,'WARNING: Material '//matNames(i)//' not found during integration.'
-      end if
-
-      call out % addResult(integral, intSD)
-      call out % endArray()
-
-    end do
-    call out % endBlock()
-
-  end subroutine outputMaterialIntegrals
-
-  !!
-  !! Perform an integral over a given material for all energies
-  !!
-  subroutine materialIntegral(self, matIdx, integral, intSD)
-    class(arraysRR), intent(in)   :: self
-    integer(shortInt), intent(in) :: matIdx
-    real(defReal), intent(out)    :: integral, intSD
-    integer(shortInt)             :: cIdx
-    real(defReal), save           :: vol
-    integer(shortInt), save       :: mIdx, g
-    !$omp threadprivate(vol, mIdx, g)
-
-    integral = ZERO
-    intSD    = ZERO
-
-    !$omp parallel do reduction(+: integral, intSD)
-    do cIdx = 1, self % nCells
-
-      mIdx = self % geom % geom % graph % getMatFromUID(cIdx) 
-      if (mIdx /= matIdx) cycle
-
-      vol = self % volume(cIdx)
-      !if (vol < volume_tolerance) cycle
-      vol = vol * self % totalVolume
-      if (.not. self % wasFound(cIdx)) cycle
-
-      do g = 1, self % nG
-        integral = integral + self % getFluxScore(cIdx, g) * vol
-
-        ! Neglects uncertainty in the volume estimate
-        intSD = intSD + self % getFluxSD(cIdx, g)**2 * vol * vol
-      end do
-
-    end do
-    !$omp end parallel do
-
-    if (intSD >= ZERO) intSD = sqrt(intSD)
-    if (abs(integral) > ZERO) intSD = intSD / abs(integral)
-
-
-  end subroutine materialIntegral
-  
-  !!
   !! Output fluxes at given points
   !!
   subroutine outputPointFluxes(self, out, points, names)
@@ -2509,7 +2464,7 @@ contains
     if(allocated(self % volumeTracks)) deallocate(self % volumeTracks)
     if(allocated(self % volume)) deallocate(self % volume)
     if(allocated(self % cellHit)) deallocate(self % cellHit)
-    if(allocated(self % cellFound)) deallocate(self % cellFound)
+    if(allocated(self % cellTotalHit)) deallocate(self % cellTotalHit)
     if(allocated(self % cellPos)) deallocate(self % cellPos)
     
     ! Clean LS contents
