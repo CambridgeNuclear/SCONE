@@ -63,6 +63,8 @@ module baseMgNeutronDatabase_class
   contains
     ! Superclass Interface
     procedure :: getTrackingXS
+
+    ! Local interface
     procedure :: getTrackMatXS
     procedure :: getTotalMatXS
     procedure :: getMajorantXS
@@ -73,8 +75,6 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
-
-    ! Local interface
     procedure :: initMajorant
     procedure :: nGroups
 

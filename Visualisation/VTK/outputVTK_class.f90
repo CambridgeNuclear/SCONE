@@ -48,14 +48,14 @@ module outputVTK_class
   type, public                                              :: outputVTK
     logical(defBool), private                               :: legacy = .TRUE.
     integer(shortInt), dimension(2), private                :: version = [3,0]
-    real(defReal), dimension(3), private                    :: corner
-    real(defReal), dimension(3), private                    :: width
-    integer(shortInt), dimension(3), private                :: nVox
-    integer(shortInt), private                              :: nCells
-    integer(shortInt), private                              :: nOutput
-    real(defReal), dimension(:,:,:,:), allocatable, private :: values
-    character(nameLen), dimension(:), allocatable, private  :: dataName
-    logical(defBool), dimension(:), allocatable, private    :: dataReal
+    real(defReal), dimension(3)                             :: corner
+    real(defReal), dimension(3)                             :: width
+    integer(shortInt), dimension(3)                         :: nVox
+    integer(shortInt)                                       :: nCells
+    integer(shortInt)                                       :: nOutput
+    real(defReal), dimension(:,:,:,:), allocatable          :: values
+    character(nameLen), dimension(:), allocatable           :: dataName
+    logical(defBool), dimension(:), allocatable             :: dataReal
   contains
     procedure :: init
     generic   :: addData => addDataInt,&
@@ -278,7 +278,8 @@ contains
     write(file,'(A)') 'DATASET STRUCTURED_POINTS'
     write(file,'(A,I0,A,I0,A,I0)') 'DIMENSIONS ',self % nVox(1),' ',self % nVox(2),' ',self % nVox(3)
     write(file,'(A,F0.3,A,F0.3,A,F0.3)') 'ORIGIN ',self % corner(1),' ',self % corner(2),' ',self % corner(3)
-    write(file,'(A,F0.3,A,F0.3,A,F0.3)') 'SPACING ',self % width(1),' ',self % width(2),' ',self % width(3)
+    write(file,'(A,F0.3,A,F0.3,A,F0.3)') 'SPACING ',self % width(1)/self % nVox(1),' ',self % width(2)/self % nVox(2),&
+            ' ',self % width(3) / self % nVox(3)
     write(file,'(A,I0)') 'POINT_DATA ',self % nCells
 
     ! Output dataset attributes - begins with POINT_DATA or CELL_DATA followed by number of cells/points
@@ -294,7 +295,7 @@ contains
       write(file,'(A)') 'LOOKUP_TABLE default'
 
       if (self % dataReal(l)) then
-        write(file,'(F0.3)') self % values(l,:,:,:)
+        write(file,'(F0.6)') self % values(l,:,:,:)
       else
         write(file,'(I0)') int(self % values(l,:,:,:),shortInt)
       endif

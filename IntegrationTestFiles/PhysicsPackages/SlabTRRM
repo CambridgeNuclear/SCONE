@@ -1,0 +1,60 @@
+type randomRayPhysicsPackage;
+
+pop      10;
+active   10;
+inactive 50;
+termination 100;
+dead 1;
+XSdata   mg;
+dataType mg;
+
+geometry {
+    type geometryStd;
+    boundary (1 1 1 1 1 1);
+    graph {type extended;}
+
+    surfaces
+    {
+      squareBound { id 1; type box; origin ( 0.0  0.0  0.0); halfwidth (9.4959 10.0 10.0); }
+    }
+
+
+    cells
+    {
+    }
+
+    universes
+    {
+
+      root
+      {
+          id 1;
+          type rootUniverse;
+          border 1;
+          fill fuel;
+      }
+    }
+}
+
+nuclearData {
+
+  handles {
+     mg { type baseMgNeutronDatabase; PN P0;}
+  }
+
+
+materials {
+
+    fuel {
+      temp       273;
+      composition {
+      }
+      xsFile ./IntegrationTestFiles/PhysicsPackages/XS/Ua_1_0_XSS;
+    }
+
+}
+
+}
+
+
+

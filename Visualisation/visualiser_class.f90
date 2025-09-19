@@ -29,9 +29,12 @@ module visualiser_class
   !!   vizDict -> dictionary containing visualisations to be generated
   !!
   !! Interface:
-  !!   init    -> initialises visualiser
-  !!   makeViz -> constructs requested visualisations
-  !!   kill    -> cleans up visualiser
+  !!   init        -> initialises visualiser
+  !!   makeViz     -> constructs requested visualisations
+  !!   kill        -> cleans up visualiser
+  !!   initVTK     -> initialise a VTK file for later data addition
+  !!   addVTKData  -> Add a VTK field to a file
+  !!   finaliseVTK -> Conclude writing to a VTK and output
   !!
   !! Sample dictionary input:
   !!   viz{
@@ -46,12 +49,16 @@ module visualiser_class
     character(nameLen), private       :: name
     class(geometry), pointer, private :: geom => null()
     type(dictionary), private         :: vizDict
+    type(outputVTK), private          :: vtk
   contains
     procedure :: init
     procedure :: makeViz
     procedure :: kill
     procedure, private :: makeVTK
     procedure, private :: makeBmpImg
+    procedure :: initVTK
+    procedure :: addVTKData
+    procedure :: finaliseVTK
   end type
 
 contains
@@ -70,14 +77,19 @@ contains
   !! Result:
   !!   Initialised visualiser
   !!
-  subroutine init(self, geom, vizDict)
-    class(visualiser), intent(inout)        :: self
-    class(geometry), pointer, intent(inout) :: geom
-    class(dictionary), intent(in)           :: vizDict
-    character(:), allocatable               :: string
+  subroutine init(self, geom, vizDict, str)
+    class(visualiser), intent(inout)         :: self
+    class(geometry), pointer, intent(inout)  :: geom
+    class(dictionary), intent(in)            :: vizDict
+    character(nameLen), intent(in), optional :: str
+    character(:), allocatable                :: string
 
     ! Obtain file name
-    call getInputFile(string)
+    if (present(str)) then
+      string = str
+    else
+      call getInputFile(string)
+    end if
     self % name = string
 
     ! Point to geometry
@@ -173,8 +185,11 @@ contains
     ! Obtain geometry data
     call dict % get(corner, 'corner')
     call dict % get(width, 'width')
-    center = corner + width/TWO
     call dict % get(nVox, 'vox')
+
+    ! Avoid uninitialised warning
+    allocate(center(size(corner)))
+    center = corner + width/TWO
 
     if (size(corner) /= 3) then
       call fatalError(here,'Voxel plot requires corner to have 3 values')
@@ -197,6 +212,17 @@ contains
     call vtk % kill()
 
   end subroutine makeVTK
+
+  !!
+  !! Output an already constructed VTK and clean up
+  !!
+  subroutine finaliseVTK(self)
+    class(visualiser), intent(inout) :: self
+
+    call self % vtk % output(self % name)
+    !call self % vtk % kill()
+
+  end subroutine finaliseVTK
 
   !!
   !! Generate a BMP slice image of the geometry
@@ -394,6 +420,125 @@ contains
     colour = knuthHash(uniqueID, 24)
 
   end function uniqueIDColour
+
+  !!
+  !! Initialise a VTK output with data addition after
+  !!
+  !! Creates the VTK file corresponding to the contents of vizDict but does not
+  !! output it. Allows more complex fields to be plotted, e.g., based on results.
+  !! Accepts the first VTK dictionary it finds.
+  !!
+  !! VTK dictionary is the standard dictionary used above.
+  !!
+  !! TODO: VTK output is placed in a input filename appended by '.vtk' extension.
+  !!   This prevents multiple VTK visualistions (due to overriding). Might also become
+  !!   weird for input files with extension e.g. 'input.dat'.
+  !!   DEMAND USER TO GIVE OUTPUT NAME
+  !!
+  subroutine initVTK(self)
+    class(visualiser), intent(inout)                :: self
+    character(nameLen),dimension(:), allocatable    :: keysArr
+    integer(shortInt)                               :: i
+    character(nameLen)                              :: vizType
+    logical(defBool)                                :: vtkFound
+    class(dictionary), pointer                      :: dict
+    integer(shortInt), dimension(:,:,:), allocatable:: voxelMat
+    real(defReal), dimension(3)                     :: corner  ! corner of the mesh
+    real(defReal), dimension(3)                     :: center  ! center of the mesh
+    real(defReal), dimension(3)                     :: width   ! corner of the mesh
+    real(defReal), dimension(:), allocatable        :: temp    ! temporary vector
+    integer(shortInt), dimension(:), allocatable    :: nVox    ! number of mesh voxels
+    character(nameLen)                              :: what
+    character(nameLen) :: here ='initVTK (visualiser_class.f90)'
+    
+    ! Loop through each sub-dictionary and generate visualisation
+    ! (if the visualisation method is available)
+    call self % vizDict % keys(keysArr,'dict')
+    vtkFound = .FALSE.
+    do i=1,size(keysArr)
+      dict => self % vizDict % getDictPtr(keysArr(i))
+      call dict % get(vizType,'type')
+      if (vizType == 'vtk') then
+        vtkFound = .TRUE.
+        exit
+      end if
+    end do
+
+    if (.NOT. vtkFound) call fatalError(Here,'No VTK data provided in dictionary')
+
+    call self % vtk % init(dict)
+
+    ! Identify whether plotting 'material' or 'cellID'
+    call dict % getOrDefault(what, 'what', 'material')
+
+    ! Obtain geometry data
+    call dict % get(temp, 'corner')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'center' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    corner = temp
+
+    call dict % get(temp, 'width')
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'width' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    width  = temp
+
+    center = corner + width/TWO
+    call dict % get(nVox, 'vox')
+
+    if (size(corner) /= 3) then
+      call fatalError(here,'Voxel plot requires corner to have 3 values')
+    end if
+    if (size(width) /= 3) then
+      call fatalError(here,'Voxel plot requires width to have 3 values')
+    end if
+    if (size(nVox) /= 3) then
+      call fatalError(here,'Voxel plot requires vox to have 3 values')
+    end if
+    allocate(voxelMat(nVox(1), nVox(2), nVox(3)))
+
+    ! Have geometry obtain data
+    call self % geom % voxelPlot(voxelMat, center, what, width)
+
+    ! VTK data set will use 'what' variable as a name
+    call self % vtk % addData(voxelMat, what)
+
+  end subroutine initVTK
+  
+  !!
+  !! Add additional data to a VTK file based on an array of values.
+  !! The array index will correspond to either the material or uniqueID at
+  !! a given position in the geometry.
+  !!
+  !! Assumes the VTK has already been initialised and uses the first VTK
+  !! set of values, i.e., index 1, to check which values to add.
+  !!
+  subroutine addVTKData(self,dataArray, dataName)
+    class(visualiser), intent(inout)             :: self
+    real(defReal), dimension(:), intent(in)      :: dataArray
+    character(nameLen), intent(in)               :: dataName
+    integer(shortInt)                            :: i
+    integer(shortInt), save                      :: j, k
+    real(defReal), dimension(:,:,:), allocatable :: values
+    integer(shortInt), dimension(3)              :: nVox
+    !$omp threadprivate(j, k)
+
+    nVox = self % vtk % nVox
+    allocate(values(nVox(1),nVox(2),nVox(3)))
+    !$omp parallel do schedule(static)
+    do i = 1, self % vtk % nVox(1)
+      do j = 1, self % vtk % nVox(2)
+        do k = 1, self % vtk % nVox(3)
+          values(i,j,k) = dataArray(int(self % vtk % values(1,i,j,k)))
+        end do
+      end do
+    end do
+    !$omp end parallel do
+
+    call self % vtk % addDataReal(values, dataName)
+
+  end subroutine addVTKData
 
 
 end module visualiser_class

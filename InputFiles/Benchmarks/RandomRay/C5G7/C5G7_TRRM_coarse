@@ -1,0 +1,296 @@
+type randomRayPhysicsPackage; 
+
+lin 1;
+2d 1;
+pop      1750; 
+active   1200;  
+inactive 1000; 
+dead     20;  
+termination 220;  
+plot 1;
+cache 1;
+XSdata   mg; 
+dataType mg;
+outputFile C5G7_TRRM_coarse;
+
+tally { 
+        fiss_flx { type rayClerk; response (fiss flx); 
+               fiss {type macroResponse; MT -6;} 
+               flx  {type fluxResponse;}
+               map {type multiMap;
+                    maps (xax yax);
+                    xax { type spaceMap; axis x; grid lin; min -32.13; max 32.13; N 51;}
+                    yax { type spaceMap; axis y; grid lin; min -32.13; max 32.13; N 51;}
+                   }
+              }
+}
+                   
+geometry { 
+  type geometryStd; 
+  // ( -x, +x, -y, +y, -z, +z)
+  boundary ( 1 0 0 1 1 1); 
+  graph {type extended;}
+
+  surfaces { 
+             Domain { id 3; type box; origin (0.0 0.0 0.0); halfwidth (32.13 32.13 32.13);}  	
+  }
+  
+  cells {}
+  
+  universes { 
+    	root { id 1000; type rootUniverse; border 3; fill u<100>; }  
+    
+    // Pin universes 
+    pin1 { id 1; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (UO2 water);}
+    pin2 { id 2; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (GT water);}
+    pin3 { id 3; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (mox43 water);}
+    pin4 { id 4; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (mox7 water);}
+    pin5 { id 5; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (mox87 water);}
+    pin6 { id 6; type azimPinUniverse; nazR (4 8); radii (0.5400 0.0); rotation (0 0 0);  fills (FC water);}
+
+    // Infinite moderator
+    pin30 { id 30; type pinUniverse; radii (0.0); fills (water);}      
+
+// Lattices
+latUO2{
+      id 10; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 6 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 2 1 1 2 1 1 2 1 1 2 1 1 2 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 2 1 1 1 1 1 1 1 1 1 2 1 1 1 
+ 1 1 1 1 1 2 1 1 2 1 1 2 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+);
+}
+
+latMOX{
+      id 20; 
+      type latUniverse; 
+      origin (0.0 0.0 0.0); 
+      pitch (1.26 1.26 0.0);
+      shape (17 17 0); 
+      padMat water; 
+      map ( 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 6 5 5 2 5 5 2 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 4 5 5 5 5 5 5 5 5 5 5 5 4 4 3 
+ 3 4 2 5 5 2 5 5 2 5 5 2 5 5 2 4 3 
+ 3 4 4 4 5 5 5 5 5 5 5 5 5 4 4 4 3 
+ 3 4 4 2 4 5 5 5 5 5 5 5 4 2 4 4 3 
+ 3 4 4 4 4 2 4 4 2 4 4 2 4 4 4 4 3 
+ 3 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 3 
+ 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3   
+);
+}
+
+latFineModer
+{
+id 40;
+type latUniverse;
+origin (0.0 0.0 0.0);
+pitch (0.63 0.63 0.0);
+shape (2 2 0);
+padMat water;
+map (
+30 30
+30 30
+);
+}
+
+latModUp
+{
+id 50;
+type latUniverse;
+origin (0.0 0.0 0.0);
+pitch (1.26 1.26 0.0);
+shape (17 17 0);
+padMat water;
+map (
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 40 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30
+);
+}
+
+latModLeft
+{
+id 60;
+type latUniverse;
+origin (0.0 0.0 0.0);
+pitch (1.26 1.26 0.0);
+shape (17 17 0);
+padMat water;
+map (
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+);
+}
+
+latModCorner
+{
+id 70;
+type latUniverse;
+origin (0.0 0.0 0.0);
+pitch (1.26 1.26 0.0);
+shape (17 17 0);
+padMat water;
+map (
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+40 40 40 40 40 40 40 40 40 40 40 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 
+);
+}
+
+latCore
+{
+  id 100;
+  type latUniverse; 
+  origin (0.0 0.0 0.0); 
+  pitch (21.42 21.42 0.0);
+  shape (3 3 0); 
+  padMat water; 
+  map ( 
+10 20 60
+20 10 60
+50 50 70
+);
+}
+		
+} 
+
+}
+
+viz {
+  myVTK {
+    type vtk;
+    what uniqueID; 
+    corner (-32.13 -32.13 -1.0);
+    width (64.26 64.26 2.0);
+    vox (2000 2000 1);
+  }
+} 
+
+
+nuclearData {
+  handles { 
+    mg { type baseMgNeutronDatabase; PN P0;} 
+  } 
+  materials { 
+      
+    water { 
+      temp 300;
+      xsFile ./XS_C5G7/moder;
+      composition { } 
+   }
+
+    mox43 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX43;
+       composition {  }
+   }
+	  
+    mox7 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX7;
+       composition { }
+    } 
+		
+    mox87 { 
+       temp 300; 
+       xsFile ./XS_C5G7/MOX87;
+       composition { }
+    } 
+		
+    UO2 {
+       temp 300; 
+       xsFile ./XS_C5G7/UO2;
+	composition { }
+    }
+
+    // Fission chamber
+    FC {
+       temp 300; 
+       xsFile ./XS_C5G7/FC;
+	composition { }
+    }
+    
+    // Guide tube
+    GT {
+       temp 300; 
+       xsFile ./XS_C5G7/GT;
+	composition { }
+    }
+	   
+}
+}
+
+

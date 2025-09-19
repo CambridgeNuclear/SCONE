@@ -153,7 +153,7 @@ contains
     rejection : do
       ! Protect against infinite loop
       i = i +1
-      if ( i > 200) then
+      if ( i > 5000) then
         call fatalError(Here, 'Infinite loop in sampling source. Please check that'//&
                               ' defined volume contains source material.')
       end if

@@ -254,7 +254,7 @@ contains
     character(nameLen)            :: name
 
     if( idx <= 0 .or. nMat() < idx) then
-      name = ''
+      name = 'Unknown material!'
 
     else
       name = materialDefs(idx) % name

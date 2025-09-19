@@ -29,21 +29,22 @@ module surface_inter
   !!   surfId -> Surface ID for this surface
   !!
   !! Interface:
-  !!   setId       -> Set surface ID
-  !!   id          -> Return surface ID
-  !!   setTol      -> Set surface tolerance
-  !!   surfTol     -> Get value of surface tolerance
-  !!   setBC       -> Load boundary conditions in surface-specific order
-  !!   myType      -> Returns a string with surface type name
-  !!   init        -> Initialise surface from a dictionary
-  !!   boundingBox -> Return definition of axis-aligned bounding box over the surface
-  !!   kill        -> Return to unitinitialised state
-  !!   halfspace   -> Return halfspace ocupied by a particle
-  !!   evaluate    -> Return remainder of the surface equation c = F(r)
-  !!   distance    -> Return distance to the surface
-  !!   going       -> Determine to which halfspace particle is currently going
-  !!   explicitBC  -> Apply explicit BCs
-  !!   transformBC -> Apply transform BCs
+  !!   setId         -> Set surface ID
+  !!   id            -> Return surface ID
+  !!   setTol        -> Set surface tolerance
+  !!   surfTol       -> Get value of surface tolerance
+  !!   setBC         -> Load boundary conditions in surface-specific order
+  !!   myType        -> Returns a string with surface type name
+  !!   init          -> Initialise surface from a dictionary
+  !!   boundingBox   -> Return definition of axis-aligned bounding box over the surface
+  !!   kill          -> Return to unitinitialised state
+  !!   halfspace     -> Return halfspace ocupied by a particle
+  !!   evaluate      -> Return remainder of the surface equation c = F(r)
+  !!   distance      -> Return distance to the surface
+  !!   going         -> Determine to which halfspace particle is currently going
+  !!   explicitBC    -> Apply explicit BCs
+  !!   explicitRayBC -> Apply explicit BCs for ray problems
+  !!   transformBC   -> Apply transform BCs
   !!
   type, public, abstract :: surface
     private
@@ -68,6 +69,7 @@ module surface_inter
     procedure(distance), deferred :: distance
     procedure(going), deferred    :: going
     procedure                     :: explicitBC
+    procedure                     :: explicitRayBC
     procedure                     :: transformBC
   end type surface
 
@@ -374,6 +376,28 @@ contains
     ! Do nothing. Vacuum BC
 
   end subroutine explicitBC
+
+  !!
+  !! Apply explicit BCs, treating vacuums as reflective.
+  !! Used for ray problems
+  !!
+  !! FatalError by default. Override in a subclass to change it!
+  !!
+  !! Args:
+  !!  r [inout] -> Position pre and post BC. Assume that (F(r) ~= 0)
+  !!  u [inout] -> Direction pre and post BC. Assume that norm2(u) = 1.0
+  !!  hitVacuum [out] -> Was a vacuum boundary struck?
+  !!
+  subroutine explicitRayBC(self, r, u, hitVacuum)
+    class(surface), intent(in)                 :: self
+    real(defReal), dimension(3), intent(inout) :: r
+    real(defReal), dimension(3), intent(inout) :: u
+    logical(defBool), intent(out)              :: hitVacuum
+    character(100), parameter :: Here = 'explicitRayBC (surface_inter.f90)'
+
+    call fatalError(Here,'The boundary surface has not implemented ray handling!')
+
+  end subroutine explicitRayBC
 
   !!
   !! Apply co-ordinate transform BC

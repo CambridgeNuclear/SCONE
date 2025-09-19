@@ -143,6 +143,134 @@ Example: ::
         geometry { <Geometry definition> }
         nuclearData { <Nuclear data definition. Requires material names only> }
 
+randomRayPhysicsPackage
+#######################
+
+randomRayPhysicsPackage, used for k-eigenvalue random ray calculations.
+Necessarily a multigroup calculation.
+
+* pop: number of rays used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dead: dead length of each ray [cm]
+* termination: total ray length [cm]
+* volPolicy (*optional*): determines how volumes are estimated in different parts of
+  the geometry. 1 corresponds to the simulation-average volume estimator.
+  2 corresponds to the naive/cycle-wise volume estimator. 3 corresponds to
+  the hybrid volume estimator, using 1 in all regions except those with
+  inhomogeneous sources. 3 is the default option.
+* missPolicy (*optional*): determines how misses are handled in different parts of the
+  geometry. 1 corresponds to setting the local flux equal to the source divided
+  by SigmaT. 2 corresponds to setting the local flux equal to the previous
+  iteration flux estimate. 3 is a hybrid, using the source/SigmaT treatment
+  in all regions except those with an inhomogeneous source. 3 is the default option.
+* rho (*optional*): a stabilisation factor for when diagonal elements of the scattering
+  matrix are negative. The larger the value of rho, the more stable, but
+  convergence may be slowed significantly. A value of 1 removes any possible
+  negative sources.
+* lin (*optional*): a logical flag to switch linear sources on. Off by default. Can allow
+  significant mesh coarsening for the same accuracy.
+* 2d (*optional*): a logical flag to tell the simulation that the calculation is 
+  essentially 2D. This can greatly stabilise linear source calculations in 2D systems.
+  Default is off, i.e., 3D.
+* plot (*optional*): provided there is a VTK output in the visualiser, outputs most 
+  information to be viewed in paraview. May add signficant runtime to the
+  finalisation of the calculation for large simulations. The VTK output
+  should have ``what`` set to ``uniqueID``.
+* cache (*optional*): flag to switch on distance caching. Can significantly accelerate
+  few group random ray calculations. Off by default.
+* keff (*optional*): initial guess value of keff.
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+
+Example: ::
+
+        type randomRayPhysicsPackage;
+        pop    4000;
+        active 800;
+        inactive 600;
+        dead 20;
+        termination 220;
+        rho 0.6;
+        lin 0;
+        XSdata   mgData;
+        seed     -244654;
+        outputFile C5G7;
+        outputFormat asciiJSON;
+
+        tally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+fixedSourceRRPhysicsPackage
+###########################
+
+fixedSourceRRPhysicsPackage, used for fixed/external source random ray calculations.
+Necessarily a multigroup calculation. Sources are isotropic material sources.
+There can be as many unique sources as materials in the calculation.
+
+* pop: number of rays used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dead: dead length of each ray [cm]
+* termination: total ray length [cm]
+* volPolicy (*optional*): determines how volumes are estimated in different parts of
+  the geometry. 1 corresponds to the simulation-average volume estimator.
+  2 corresponds to the naive/cycle-wise volume estimator. 3 corresponds to
+  the hybrid volume estimator, using 1 in all regions except those with
+  inhomogeneous sources. 3 is the default option.
+* missPolicy (*optional*): determines how misses are handled in different parts of the
+  geometry. 1 corresponds to setting the local flux equal to the source divided
+  by SigmaT. 2 corresponds to setting the local flux equal to the previous
+  iteration flux estimate. 3 is a hybrid, using the source/SigmaT treatment
+  in all regions except those with an inhomogeneous source. 3 is the default option.
+* rho (*optional*): a stabilisation factor for when diagonal elements of the scattering
+  matrix are negative. The larger the value of rho, the more stable, but
+  convergence may be slowed significantly. A value of 1 removes any possible
+  negative sources.
+* lin (*optional*): a logical flag to switch linear sources on. Off by default. Can allow
+  significant mesh coarsening for the same accuracy.
+* 2d (*optional*): a logical flag to tell the simulation that the calculation is 
+  essentially 2D. This can greatly stabilise linear source calculations in 2D systems.
+  Default is off, i.e., 3D.
+* plot (*optional*): provided there is a VTK output in the visualiser, outputs most 
+  information to be viewed in paraview. May add signficant runtime to the
+  finalisation of the calculation for large simulations. The VTK output
+  should have ``what`` set to ``uniqueID``.
+* cache (*optional*): flag to switch on distance caching. Can significantly accelerate
+  few group random ray calculations. Off by default.
+* keff (*optional*): Scaling factor for fission. Does not change during the calculation. Default 1.
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* source: a dictionary containing the name of each source material (corresponding to those in the
+  database) followed by a list of strengths in each energy group.
+
+Example: ::
+
+        type fixedSourceRRPhysicsPackage;
+        pop    4000;
+        active 800;
+        inactive 600;
+        dead 20;
+        termination 220;
+        rho 0.6;
+        lin 0;
+        XSdata   mgData;
+        seed     -244654;
+        outputFile dogLeg;
+        outputFormat asciiJSON;
+        source { mySourceMat (3.2 0.0 1.6);}
+
+        tally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
 vizPhysicsPackage
 #################
 
@@ -656,6 +784,30 @@ Example: ::
 
       uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
 
+* azimPinUniverse, composed of infinite co-centred cylinders, divided azimuthally.
+  Can have either all radial regions with the same number of azimuthal divisions or else
+  each with its own number of divisions. All azimuthal divisions must be a multiple of 4.
+  For now, all fills in the same radial region but different azimuthal regions must be identical.
+
+  - radii: array containing the radii of the co-centred cylinders. There
+    must be an entry equal to 0.0, which corresponds to the outermost
+    layer, which is infinite. [cm]
+  - naz: number of azimuthal divisions, imposed uniformly across all radial regions.
+  - nazR: number of azimuthal divisions varying by radial region. Given as a list. Mutually
+    exclusive with ``naz``.
+  - fills: array containing the names or ids of what is inside each cylindrical
+    shell. The order of the fills must correspond to the order of the corresponding
+    radii. An entry can be a material name, the keyword ``void``, or a   ``u<id>``,
+    where ``id`` is the id of a defined universe
+  - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    origin of the universe. [cm]
+  - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
+    rotation angles in degrees applied to the universe. [°]
+
+Example: ::
+
+      uni3 { id 3; type pinUniverse; radii (0.2 1.0 1.1 1.3 0.0); fills (u<1> fuel void clad coolant); }
+
 * latUniverse, cartesian lattice of constant pitch
 
   - shape: (x y z) array of integers, stating the numbers of x, y and z
@@ -1118,6 +1270,18 @@ Example: ::
       tally {
       fissionMat { type simpleFMClerk; map { <Map definition> } }
       }
+
+* rayClerk, for estimating fluxes and reaction rates using random ray. Has only been tested
+  with macroResponse and fluxResponse. Can map over space, energy group, and material. Uses
+  the centroid of cells obtained during random ray transport, so spatial maps should be used
+  with some caution.
+
+  - response: defines which response function has to be used for this tally. Note
+    that more than one response can be defined per each tally
+  - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
+    that defines the domains of integration of each tally
+  - filter (*optional*): can filter out particles with certain properties,
+    preventing them from scoring results. Filters have not been tested with rayClerk.
 
 Tally Responses
 ###############

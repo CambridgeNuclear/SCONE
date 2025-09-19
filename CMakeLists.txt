@@ -115,6 +115,7 @@ add_subdirectory(SharedModules)
 add_subdirectory(Visualisation)
 add_subdirectory(ParticleObjects)
 add_subdirectory(NamedGrids)
+add_subdirectory(RandomRayObjects)
 
 add_subdirectory(NuclearData)
 add_subdirectory(Geometry)

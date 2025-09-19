@@ -3,8 +3,11 @@
 add_sources( ./physicsPackage_inter.f90
              ./physicsPackageFactory_func.f90
              ./eigenPhysicsPackage_class.f90
-	           ./fixedSourcePhysicsPackage_class.f90
+	     ./fixedSourcePhysicsPackage_class.f90
              ./vizPhysicsPackage_class.f90
              ./rayVolPhysicsPackage_class.f90
+	     ./randomRayPhysicsPackage_class.f90
+	     ./fixedSourceRRPhysicsPackage_class.f90
              )
-             #./dynamPhysicsPackage_class.f90)
+
+add_integration_tests(./Tests/randomRay_iTest.f90)

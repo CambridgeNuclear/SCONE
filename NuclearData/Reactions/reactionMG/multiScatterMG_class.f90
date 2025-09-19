@@ -346,6 +346,10 @@ contains
 
     ! Calculate P0 total scattering XSs
     ! Behold the GLORY of Fortran you lowly C++ slaves!
+    ! ...Sadly slightly diminished by a compiler bug which
+    ! sizes scatterXSs as 1 before it's allocated. But this
+    ! should work without the allocation, normally!
+    allocate(self % scatterXSs(nG))
     self % scatterXSs = sum(self % P0, 1)
 
   end subroutine buildFromDict
