@@ -208,8 +208,8 @@ contains
       end do
     else
       do g = 1, nG
-        angular(g) = real(arrays % getPrevFlux(cIdx, g), defFlt)
-        !angular(g) = 0.0_defFlt
+        !angular(g) = real(arrays % getPrevFlux(cIdx, g), defFlt)
+        angular(g) = 0.0_defFlt
       end do
     end if
 
@@ -252,7 +252,6 @@ contains
       
         !$omp simd
         do g = 1, nG
-          !tau(g) = max(total(g) * lenFlt, 1.0e-6_defFlt) ! Not sure whether this does much for stability
           tau(g) = total(g) * lenFlt
         end do
 
@@ -366,7 +365,7 @@ contains
       end do
     else
       do g = 1, nG
-        angular(g) = real(arrays % getPrevFlux(cIdx,g), defFlt)
+        angular(g) = 0.0_defFlt
       end do
     end if
       
@@ -446,7 +445,6 @@ contains
         ! Compute exponentials necessary for angular flux update
         !$omp simd
         do g = 1, nG
-          !tau(g) = max(total(g) * lenFlt, 1.0e-8_defFlt) ! This line worsens stability
           tau(g) = total(g) * lenFlt
         end do
       

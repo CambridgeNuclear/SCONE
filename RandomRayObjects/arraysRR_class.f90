@@ -205,7 +205,6 @@ module arraysRR_class
     procedure :: tallyResults
 
     ! Output procedures
-    procedure :: outputMap
     procedure :: outputToVTK
     procedure :: outputPointFluxes
     
@@ -833,7 +832,7 @@ contains
   !!
   !! Return the simulation type
   !!
-  elemental function getSimulationType(self) result(simType)
+  function getSimulationType(self) result(simType)
     class(arraysRR), intent(in) :: self
     integer(shortInt)           :: simType
 
@@ -1149,11 +1148,8 @@ contains
               cycle groupLoop
             end if
 
-
             self % scalarFlux(idx) = self % scalarFlux(idx) * norm 
             self % scalarFlux(idx) = self % scalarFlux(idx) / (vol * tot)
-
-            !scalar0 = self % scalarFlux(idx)
 
             ! Presumes non-zero total XS
             sigGG = self % XSData % getScatterXS(matIdx, g, g)
@@ -1165,18 +1161,6 @@ contains
 
             self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx) / tot &
                   + D * self % prevFlux(idx) ) / (1 + D)
-
-            ! If scalar flux is negative, do it again with naive
-            ! This can severely affect particle conservation.
-            !if (self % scalarFlux(idx) < ZERO) then
-            !  self % scalarFlux(idx) = ZERO
-            !  !self % scalarFlux(idx) = scalar0 * vol/volNaive
-            !  !self % scalarFlux(idx) =  (self % scalarFlux(idx) + self % source(idx) / total(g) &
-            !  !    + D * self % prevFlux(idx) ) / (1 + D)
-            !end if
-            !if (self % scalarFlux(idx) < ZERO .and. tot < 1.0E-7_defFlt) then
-            !  self % scalarFlux(idx) = self % prevFlux(idx)
-            !end if
 
           else
             
@@ -1497,8 +1481,8 @@ contains
     integer(shortInt), intent(in)            :: cIdx
     real(defFlt), intent(in)                 :: ONE_KEFF
     real(defFlt)                             :: scatter, fission
-    real(defFlt), dimension(:), pointer      :: nuFission, chi, scatterXS
-    real(defReal), dimension(:), pointer     :: fluxVec 
+    real(defFlt), dimension(self % nG)       :: fluxFlt
+    real(defFlt), dimension(:), pointer      :: nuFission, chi, scatterXS, scatterVec
     integer(shortInt)                        :: matIdx, g, gIn, baseIdx, idx, sIdx1, sIdx2
 
     ! Identify material
@@ -1521,13 +1505,13 @@ contains
     call self % XSData % getProdPointers(matIdx, nuFission, scatterXS, chi)
 
     baseIdx = self % nG * (cIdx - 1)
-    fluxVec => self % prevFlux((baseIdx + 1):(baseIdx + self % nG))
+    fluxFlt = real(self % prevFlux((baseIdx + 1):(baseIdx + self % nG)), defFlt)
 
     ! Calculate fission source
     fission = 0.0_defFlt
     !$omp simd reduction(+:fission)
     do gIn = 1, self % nG
-      fission = fission + real(fluxVec(gIn) * nuFission(gIn), defFlt)
+      fission = fission + fluxFlt(gIn) * nuFission(gIn)
     end do
     fission = fission * ONE_KEFF
 
@@ -1535,16 +1519,14 @@ contains
 
       sIdx1 = self % nG * (g - 1) + 1
       sIdx2 = self % nG * g
-      associate(scatterVec => scatterXS(sIdx1:sIdx2))
+      scatterVec => scatterXS(sIdx1:sIdx2)
 
-        ! Calculate scattering source
-        scatter = 0.0_defFlt
-        !$omp simd reduction(+:scatter)
-        do gIn = 1, self % nG
-          scatter = scatter + real(fluxVec(gIn) * scatterVec(gIn), defFlt)
-        end do
-
-      end associate
+      ! Calculate scattering source
+      scatter = 0.0_defFlt
+      !$omp simd reduction(+:scatter)
+      do gIn = 1, self % nG
+        scatter = scatter + fluxFlt(gIn) * scatterVec(gIn)
+      end do
 
       ! Output index
       idx = baseIdx + g
@@ -1570,9 +1552,9 @@ contains
                                                fission, xFission, yFission, zFission, &
                                                xSource, ySource, zSource
     real(defFlt), dimension(matSize)        :: invM
-    real(defFlt), dimension(:), pointer     :: nuFission, chi, scatterXS
+    real(defFlt), dimension(self % nG)      :: fluxFlt, xFlt, yFlt, zFlt
+    real(defFlt), dimension(:), pointer     :: nuFission, chi, scatterXS, scatterVec
     integer(shortInt)                       :: matIdx, g, gIn, baseIdx, idx, sIdx1, sIdx2
-    real(defReal), pointer, dimension(:)    :: fluxVec, xFluxVec, yFluxVec, zFluxVec
 
     ! Invert moment matrix
     invM = self % invertMatrix(cIdx)
@@ -1600,10 +1582,10 @@ contains
     call self % XSData % getProdPointers(matIdx, nuFission, scatterXS, chi)
 
     baseIdx = self % nG * (cIdx - 1)
-    fluxVec  => self % prevFlux((baseIdx + 1):(baseIdx + self % nG))
-    xFluxVec => self % prevX((baseIdx + 1):(baseIdx + self % nG))
-    yFluxVec => self % prevY((baseIdx + 1):(baseIdx + self % nG))
-    zFluxVec => self % prevZ((baseIdx + 1):(baseIdx + self % nG))
+    fluxFlt  = real(self % prevFlux((baseIdx + 1):(baseIdx + self % nG)), defFlt)
+    xFlt = real(self % prevX((baseIdx + 1):(baseIdx + self % nG)), defFlt)
+    yFlt = real(self % prevY((baseIdx + 1):(baseIdx + self % nG)), defFlt)
+    zFlt = real(self % prevZ((baseIdx + 1):(baseIdx + self % nG)), defFlt)
     
     ! Calculate fission source
     fission = 0.0_defFlt
@@ -1613,10 +1595,10 @@ contains
 
     !$omp simd reduction(+:fission, xFission, yFission, zFission)
     do gIn = 1, self % nG
-      fission = fission + real(fluxVec(gIn) * nuFission(gIn), defFlt)
-      xFission = xFission + real(xFluxVec(gIn) * nuFission(gIn), defFlt)
-      yFission = yFission + real(yFluxVec(gIn) * nuFission(gIn), defFlt)
-      zFission = zFission + real(zFluxVec(gIn) * nuFission(gIn), defFlt)
+      fission = fission + fluxFlt(gIn) * nuFission(gIn)
+      xFission = xFission + xFlt(gIn) * nuFission(gIn)
+      yFission = yFission + yFlt(gIn) * nuFission(gIn)
+      zFission = zFission + zFlt(gIn) * nuFission(gIn)
     end do
     fission = fission * ONE_KEFF
     xFission = xFission * ONE_KEFF
@@ -1628,22 +1610,20 @@ contains
 
       sIdx1 = self % nG * (g - 1) + 1
       sIdx2 = self % nG * g
-      associate(scatterVec => scatterXS(sIdx1:sIdx2))
+      scatterVec => scatterXS(sIdx1:sIdx2)
 
-        ! Calculate scattering source
-        scatter = 0.0_defFlt
-        xScatter = 0.0_defFlt
-        yScatter = 0.0_defFlt
-        zScatter = 0.0_defFlt
-        !$omp simd reduction(+:scatter, xScatter, yScatter, zScatter)
-        do gIn = 1, self % nG
-          scatter = scatter + real(fluxVec(gIn) * scatterVec(gIn), defFlt)
-          xScatter = xScatter + real(xFluxVec(gIn) * scatterVec(gIn), defFlt)
-          yScatter = yScatter + real(yFluxVec(gIn) * scatterVec(gIn), defFlt)
-          zScatter = zScatter + real(zFluxVec(gIn) * scatterVec(gIn), defFlt)
-        end do
-
-      end associate
+      ! Calculate scattering source
+      scatter = 0.0_defFlt
+      xScatter = 0.0_defFlt
+      yScatter = 0.0_defFlt
+      zScatter = 0.0_defFlt
+      !$omp simd reduction(+:scatter, xScatter, yScatter, zScatter)
+      do gIn = 1, self % nG
+        scatter = scatter + fluxFlt(gIn) * scatterVec(gIn)
+        xScatter = xScatter + xFlt(gIn) * scatterVec(gIn)
+        yScatter = yScatter + yFlt(gIn) * scatterVec(gIn)
+        zScatter = zScatter + zFlt(gIn) * scatterVec(gIn)
+      end do
 
       ! Output index
       idx = baseIdx + g
@@ -1895,7 +1875,7 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt)              :: idx
 
-    !$omp parallel do 
+    !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = ZERO
@@ -1912,14 +1892,29 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt)              :: idx
 
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = ZERO
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       self % prevX(idx) = self % scalarX(idx)
       self % scalarX(idx) = ZERO
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       self % prevY(idx) = self % scalarY(idx)
       self % scalarY(idx) = ZERO
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       self % prevZ(idx) = self % scalarZ(idx)
       self % scalarZ(idx) = ZERO
     end do
@@ -1936,7 +1931,7 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt)              :: idx
 
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = ZERO
@@ -1954,7 +1949,7 @@ contains
     class(arraysRR), intent(inout) :: self
     integer(shortInt)              :: idx
 
-    !$omp parallel do
+    !$omp parallel do schedule(static)
     do idx = 1, size(self % scalarFlux)
       self % prevFlux(idx) = self % scalarFlux(idx)
       self % scalarFlux(idx) = ZERO
@@ -2015,12 +2010,27 @@ contains
       flux = self % scalarFlux(idx)
       self % fluxScores(1, idx) = self % fluxScores(1, idx) + flux
       self % fluxScores(2, idx) = self % fluxScores(2, idx) + flux * flux
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       flux = self % scalarX(idx)
       self % xScores(1, idx) = self % xScores(1, idx) + flux
       self % xScores(2, idx) = self % xScores(2, idx) + flux * flux
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       flux = self % scalarY(idx)
       self % yScores(1, idx) = self % yScores(1, idx) + flux
       self % yScores(2, idx) = self % yScores(2, idx) + flux * flux
+    end do
+    !$omp end parallel do
+    
+    !$omp parallel do schedule(static)
+    do idx = 1, size(self % scalarFlux)
       flux = self % scalarZ(idx)
       self % zScores(1, idx) = self % zScores(1, idx) + flux
       self % zScores(2, idx) = self % zScores(2, idx) + flux * flux
@@ -2193,89 +2203,6 @@ contains
     !$omp end parallel do
 
   end subroutine finaliseFluxScoresLinear
-
-  !!
-  !! Outputs integral flux or fission rate when
-  !! given a tally map
-  !!
-  subroutine outputMap(self, out, map, doFission)
-    class(arraysRR), intent(in)                :: self
-    class(outputFile), intent(inout)           :: out
-    class(tallyMap), pointer, intent(in)       :: map
-    logical(defBool), intent(in)               :: doFission
-    character(nameLen)                         :: name
-    integer(shortInt)                          :: cIdx
-    integer(shortInt),dimension(:),allocatable :: resArrayShape
-    type(particleState), save                  :: s
-    real(defReal), save                        :: vol
-    real(defFlt), save                         :: sig
-    integer(shortInt), save                    :: i, matIdx, g
-    real(defReal), dimension(:), allocatable   :: res, resSD
-    !$omp threadprivate(s, vol, sig, i, matIdx, g)
-
-    resArrayShape = [map % binArrayShape()]
-    allocate(res(map % bins(0)))
-    allocate(resSD(map % bins(0)))
-    res   = ZERO
-    resSD = ZERO
-
-
-    ! Find whether cells are in map and sum their contributions
-    !$omp parallel do reduction(+: res, resSD)
-    do cIdx = 1, self % nCells
-        
-      vol = self % volume(cIdx)
-      !if (vol < volume_tolerance) cycle
-      vol = vol * self % totalVolume
-      if (.not. self % wasFound(cIdx)) cycle
-
-      ! Fudge a particle state to search tally map
-      s % r = self % cellPos(:,cIdx)
-      i = map % map(s)
-
-      if (i > 0) then
-        matIdx = self % geom % geom % graph % getMatFromUID(cIdx) 
-        do g = 1, self % nG
-          if (doFission) then
-            sig = self % XSData % getFissionXS(matIdx, g)
-          else
-            sig = 1.0_defFlt
-          end if
-          res(i) = res(i) + vol * self % getFluxScore(cIdx,g) * sig
-          ! Neglects uncertainty in volume - assumed small.
-          resSD(i) = resSD(i) + &
-                  self % getFluxSD(cIdx,g)**2 * vol * vol * sig * sig
-        end do
-      end if
-
-    end do
-    !$omp end parallel do
-
-    do i = 1,size(resSD)
-      resSD(i) = sqrt(resSD(i))
-      if (res(i) > 0) resSD(i) = resSD(i) / res(i)
-    end do
-
-    if (doFission) then
-      name = 'fiss1G'
-    else
-      name = 'flux1G'
-    end if
-    call out % startBlock(name)
-    call out % startArray(name, resArrayShape)
-    ! Add all map elements to results
-    do i = 1, map % bins(0)
-      call out % addResult(res(i), resSD(i))
-    end do
-    call out % endArray()
-    ! Output tally map
-    call map % print(out)
-    call out % endBlock()
-      
-    deallocate(res)
-    deallocate(resSD)
-
-  end subroutine outputMap
 
   !!
   !! Send all arrays of interest to VTK output
