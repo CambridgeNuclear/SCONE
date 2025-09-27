@@ -52,19 +52,30 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist
+    real(defReal)                             :: sigmaT, dist, invSigmaTrack
     type(distCache)                           :: cache
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
     STLoop: do
+        
+      invSigmaTrack = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
+      dist = -log( p % pRNG % get()) * invSigmaTrack
 
       ! Obtain the local cross-section, depending on the material
       if (p % matIdx() == VOID_MAT) then
-        dist = INFINITY
+        
+        ! Will occur if no maximum distance is set
+        if (dist /= dist) then
+          dist = INFINITY
+          invSigmaTrack = INFINITY
+        end if
+
+        sigmaT = ZERO
 
       else
-        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-        dist = -log( p % pRNG % get()) / sigmaT
+      
+        ! Obtain the local cross-section
+        sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
@@ -102,14 +113,23 @@ contains
         case(OVERLAP_MAT)
           print *, "Particle location: ", p % rGlobal()
           call fatalError(Here, "Particle is in overlapping cells")
-      
+        
         case default
           ! All is well
 
       end select
 
-      ! Return if particle stopped at collision (not cell boundary)
-      if (event == COLL_EV .or. p % isDead) exit STLoop
+      if (p % isDead) exit STLoop
+
+      ! Roll RNG to determine if the collision is real or virtual
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (event == COLL_EV) then
+        if (p % pRNG % get() < sigmaT*invSigmaTrack) then
+          exit STLoop
+        else
+          call tally % reportInColl(p, .true.)
+        end if
+      end if
 
     end do STLoop
 
