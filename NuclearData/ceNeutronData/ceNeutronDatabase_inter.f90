@@ -301,10 +301,14 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTrackMatXS(p, matIdx)
+        if (matIdx == VOID_MAT) then
+          xs = self % collisionXS
+        else
+          xs = max(self % getTrackMatXS(p, matIdx), self % collisionXS)
+        end if
 
       case (MAJORANT_XS)
-        xs = self % getMajorantXS(p)
+        xs = max(self % getMajorantXS(p), self % collisionXS)
 
       case (TRACKING_XS)
 
