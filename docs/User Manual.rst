@@ -768,7 +768,10 @@ The **handles** definition is structured as the following: ::
       }
 
 The name of a handle has to be the same as defined in a ``physicsPackage`` under the
-keyword ``XSdata``.
+keyword ``XSdata``. The nuclear database can also be used to optionally set the minimum average
+collision distance for particles. This may be desirable in order to induce virtual collisions
+when using surface tracking in low density materials, for example. This can be done by using
+the ``avgDist`` keyword, followed by specifying the minimum average distance as desired.
 
 Otherwise, the possible **nuclear database** types allowed are:
 
@@ -786,11 +789,14 @@ from ACE files.
   to be applied.
 * majorant (*optional*, default = 1): 1 for true; 0 for false; flag to activate the
   pre-construction of a unionised majorant cross section
+* avgDist (*optional*, default = infinity): the minimum average distance until a
+  collision, which may be virtual. Used to obtain better statistics for the
+  collision estimator in low density materials, especially when using surface tracking.
   
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
-      ures 1; DBRC (92238 94242)}
+      ures 1; DBRC (92238 94242); avgDist 32; }
 
 .. note::
    If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
@@ -803,6 +809,9 @@ baseMgNeutronDatabase, used for multi-group data. In this case, the data is read
 from files provided by the user.
 
 * PN: includes a flag for anisotropy treatment. Could be ``P0`` or ``P1``
+* avgDist (*optional*, default = infinity): the minimum average distance until a
+  collision, which may be virtual. Used to obtain better statistics for the
+  collision estimator in low density materials, especially when using surface tracking.
 
 Example: ::
 
