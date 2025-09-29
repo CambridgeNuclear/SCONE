@@ -152,6 +152,9 @@ contains
       print *,'Particle location: ', p % rGlobal()
       call fatalError(Here, 'Particle is in an undefined material with index: '&
               //numToChar(matIdx))
+    else if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
     end if
     
     xs = self % getTotalMatXS(p, matIdx)

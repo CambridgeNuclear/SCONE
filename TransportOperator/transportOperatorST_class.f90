@@ -52,27 +52,27 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist, invSigmaTrack
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack
     type(distCache)                           :: cache
+    real(defReal), parameter                  :: tol  = 1.0E-12
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
     STLoop: do
         
-      invSigmaTrack = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-      dist = -log( p % pRNG % get()) * invSigmaTrack
+      sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
       ! Obtain the local cross-section, depending on the material
-      if (p % matIdx() == VOID_MAT) then
+      ! This branch is called in the case of voids with no imposed XS
+      if (sigmaTrack < tol) then
         
-        ! Will occur if no maximum distance is set
-        if (dist /= dist) then
-          dist = INFINITY
-          invSigmaTrack = INFINITY
-        end if
-
+        dist = INFINITY
+        invSigmaTrack = INFINITY
         sigmaT = ZERO
 
       else
+      
+        invSigmaTrack = ONE / sigmaTrack
+        dist = -log( p % pRNG % get()) * invSigmaTrack
       
         ! Obtain the local cross-section
         sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
