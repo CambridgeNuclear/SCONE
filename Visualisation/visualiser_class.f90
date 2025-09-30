@@ -352,6 +352,7 @@ contains
   !!   OUTSIDE_MAT -> white (#ffffff)
   !!   VOID_MAT    -> black (#000000)
   !!   UNDEF_MAT   -> green (#00ff00)
+  !!   OVERLAP_MAT -> red   (#ff0000)
   !!
   !! Args:
   !!   matIdx [in] -> Value of the material index

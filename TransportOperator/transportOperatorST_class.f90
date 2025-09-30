@@ -58,7 +58,7 @@ contains
 
     STLoop: do
 
-      ! Obtain the local cross-section
+      ! Obtain the local cross-section, depending on the material
       if (p % matIdx() == VOID_MAT) then
         dist = INFINITY
 
@@ -86,19 +86,29 @@ contains
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
 
-      ! Kill particle if it has leaked
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % isDead = .true.
-        p % fate = LEAK_FATE
-      end if
+      select case(p % matIdx())
+      
+        ! Kill particle if it has leaked
+        case(OUTSIDE_FILL)
+          p % isDead = .true.
+          p % fate = LEAK_FATE
 
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
-      end if
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print *, "Particle location: ", p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+        
+        ! Give error if the particle is in a region with overlapping cells
+        case(OVERLAP_MAT)
+          print *, "Particle location: ", p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+      
+        case default
+          ! All is well
 
-      ! Return if particle stoped at collision (not cell boundary)
+      end select
+
+      ! Return if particle stopped at collision (not cell boundary)
       if (event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
