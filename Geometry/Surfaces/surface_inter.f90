@@ -152,7 +152,7 @@ module surface_inter
     !!   +ve distance to the next crossing. If there is no crossing
     !!   in +ve direction, returns INF
     !!
-    pure function distance(self, r, u) result(d)
+    function distance(self, r, u) result(d)
       import :: surface, defReal
       class(surface), intent(in)              :: self
       real(defReal), dimension(3), intent(in) :: r

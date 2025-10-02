@@ -4,7 +4,8 @@ module box_class
   use universalVariables
   use genericProcedures,  only : fatalError, numToChar, swap
   use dictionary_class,   only : dictionary
-  use surface_inter,      only : surface, kill_super => kill
+  use compSurface_inter,  only : compSurface
+  use surface_inter,      only : kill_super => kill
 
   implicit none
   private
@@ -14,7 +15,7 @@ module box_class
   !!
   !! F(r) = maxval(abs(r - o) - a)
   !!
-  !! Where: a -> halfwidth vector, o-> origin position
+  !! Where: a -> halfwidth vector, o -> origin position
   !!        maxval -> maximum element (L_inf norm)
   !!
   !! Surface Tolerance: SURF_TOL
@@ -34,7 +35,7 @@ module box_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(surface) :: box
+  type, public, extends(compSurface) :: box
     private
     real(defReal), dimension(3)     :: origin    = ZERO
     real(defReal), dimension(3)     :: halfwidth = ZERO

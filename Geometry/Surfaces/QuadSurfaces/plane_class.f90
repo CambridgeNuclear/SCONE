@@ -97,8 +97,6 @@ contains
     self % norm = coeffs(1:3)
     self % offset = coeffs(4)
 
-
-
   end subroutine init
 
   !!
@@ -115,7 +113,6 @@ contains
     aabb(1:3) = -INF
     aabb(4:6) = INF
 
-
   end function boundingBox
 
   !!
@@ -124,7 +121,7 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(plane), intent(in)               :: self
+    class(plane), intent(in)                :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
 
