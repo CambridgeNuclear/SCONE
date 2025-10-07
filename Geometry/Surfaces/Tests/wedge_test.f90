@@ -328,7 +328,7 @@ contains
     tolerance = this % surf % surfTol()
 
     ! Set axis and plane axis indices
-    a = this % axis
+    a  = this % axis
     p1 = this % plane(1)
     p2 = this % plane(2)
 
@@ -471,5 +471,155 @@ contains
     @assertEqual(INF, this % surf % distance(r, u))
 
   end subroutine testDistance
+
+  !!
+  !! Test boundary conditions
+  !!
+@Test(cases=[1, 2, 3])
+  subroutine testBC(this)
+    class(test_wedge), intent(inout) :: this
+    integer(shortInt)                :: a, p1, p2
+    real(defReal), dimension(3)      :: r, u, r_ref, u_ref
+    real(defReal)                    :: ref, tolerance
+    real(defReal), parameter :: TOL = 1.0E-6
+
+    ! Get surface tolerance
+    tolerance = this % surf % surfTol()
+
+    ! Set axis and plane axis indices
+    a  = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    ! Assign boundary conditions
+    call this % surf % setBC([VACUUM_BC, REFLECTIVE_BC, VACUUM_BC, &
+                      PERIODIC_BC, PERIODIC_BC])
+
+    ! ** Explicit BC
+    ! Vacuum surface - face 1
+    r(a)  = 6.0_defReal
+    r(p1) = ONE + sqrt(3.0_defReal) * HALF
+    r(p2) = HALF
+    u = [ONE, ZERO, ZERO]
+    r_ref = r
+    u_ref = u
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Vacuum surface - face 3
+    r(a)  = 6.0_defReal
+    r(p1) = 2.5_defReal
+    r(p2) = sqrt(27.0_defReal) * HALF
+    r_ref = r
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Reflective surface
+    r(p1) = ONE
+    r(p2) = TWO
+    u = ZERO
+    u(p1) = -ONE
+    r_ref = r
+    u_ref = -u
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Periodic surface
+    r(a)  = ONE
+    r(p1) = TWO
+    r(p2) = HALF
+    u(a)  = -ONE
+    u(p1) = ONE
+    u(p2) = ONE
+    u = u / norm2(u)
+    r_ref = r
+    r_ref(a) = 9.0_defReal
+    u_ref = u
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Assign boundary conditions
+    call this % surf % setBC([PERIODIC_BC, PERIODIC_BC, VACUUM_BC, &
+                      VACUUM_BC, VACUUM_BC])
+
+    ! Periodic surface - face 1
+    r(a)  = 6.0_defReal
+    r(p1) = ONE + sqrt(3.0_defReal) * HALF
+    r(p2) = HALF
+    u = ZERO
+    u(p1) = ONE
+    r_ref = r
+    r_ref(p1) = ONE
+    r_ref(p2) = ONE
+    u_ref = ZERO
+    u_ref(p1) = HALF
+    u_ref(p2) = HALF * sqrt(3.0_defReal)
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Periodic surface - face 2
+    r(p1) = ONE
+    r(p2) = TWO
+    u(p1) = -sqrt(3.0_defReal) * HALF
+    u(p2) = HALF
+    r_ref(p1) = ONE + sqrt(3.0_defReal)
+    r_ref(p2) = ONE
+    u_ref(p1) = ZERO
+    u_ref(p2) = ONE
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! ** Transform BC
+    !
+
+    ! Assign boundary conditions
+    call this % surf % setBC([PERIODIC_BC, PERIODIC_BC, VACUUM_BC, &
+                      REFLECTIVE_BC, REFLECTIVE_BC])
+
+    r(a)  = 20.0_defReal
+    r(p1) = ONE + HALF * sqrt(TWO)  ! -45 degree angle
+    r(p2) = -HALF * sqrt(TWO)
+    u = ONE
+    u = u / norm2(u)
+
+    r_ref(a)  = 4.0_defReal
+    r_ref(p1) = ONE + (sqrt(6.0_defReal) - sqrt(TWO)) / 4.0_defReal ! 75 degree angle
+    r_ref(p2) = (sqrt(6.0_defReal) + sqrt(TWO)) / 4.0_defReal
+    u_ref(a)  = ONE / sqrt(3.0_defReal)
+    u_ref(p1) = -(sqrt(6.0_defReal) + sqrt(TWO)) / 4.0_defReal * sqrt(TWO/3.0_defReal)
+    u_ref(p2) = (sqrt(6.0_defReal) - sqrt(TWO)) / 4.0_defReal * sqrt(TWO/3.0_defReal)
+
+    call this % surf % transformBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Assign boundary conditions
+    call this % surf % setBC([REFLECTIVE_BC, REFLECTIVE_BC, VACUUM_BC, &
+                      PERIODIC_BC, PERIODIC_BC])
+
+    r(a)  = 20.0_defReal
+    r(p1) = ONE + HALF * sqrt(TWO)  ! -45 degree angle
+    r(p2) = -HALF * sqrt(TWO)
+    u = ONE
+    u = u / norm2(u)
+
+    r_ref(a)  = 4.0_defReal
+    r_ref(p1) = ONE + (sqrt(6.0_defReal) - sqrt(TWO)) / 4.0_defReal ! 75 degree angle
+    r_ref(p2) = (sqrt(6.0_defReal) + sqrt(TWO)) / 4.0_defReal
+    u_ref(a)  = ONE / sqrt(3.0_defReal)
+    u_ref(p1) = -(sqrt(6.0_defReal) + sqrt(TWO)) / 4.0_defReal * sqrt(TWO/3.0_defReal)
+    u_ref(p2) = (sqrt(6.0_defReal) - sqrt(TWO)) / 4.0_defReal * sqrt(TWO/3.0_defReal)
+
+    call this % surf % transformBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+  end subroutine testBC
 
 end module wedge_test

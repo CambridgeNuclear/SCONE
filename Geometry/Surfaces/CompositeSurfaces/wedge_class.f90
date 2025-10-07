@@ -283,7 +283,7 @@ contains
   !! See surface_inter for details
   !!
   !!
-  function distance(self, r, u) result(dist)
+  pure function distance(self, r, u) result(dist)
     class(wedge), intent(in)                :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
@@ -435,7 +435,7 @@ contains
   !!   For parallel direction halfspace is asigned by the sign of `evaluate` result.
   !!
   pure function going(self, r, u) result(halfspace)
-    class(wedge), intent(in)              :: self
+    class(wedge), intent(in)                :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
@@ -510,7 +510,27 @@ contains
     integer(shortInt)                           :: i
     character(100),parameter :: Here = 'setBC (wedge_class.f90)'
 
+    if (size(BC) /= 5) call fatalError(Here,'Wrong size of BC string. Must be 5')
 
+    ! Load BC codes
+    self % BC = BC
+
+    ! Verify that all BC flags make sense
+    do i = 1, 5
+      select case(BC(i))
+        case (VACUUM_BC)
+          ! Do nothing, pass
+        case (REFLECTIVE_BC, PERIODIC_BC)
+          if (i == 3) call fatalError(Here,'Face opposite to wedge edge can only have vacuum BC')
+        case default
+          call fatalError(Here,'Unrecognised BC: '//numToChar(BC(i))//' in position: '//numToChar(i))
+      end select
+    end do
+
+    ! Verify periodic BCs
+    if (.not. all( (self % BC([1,4]) == PERIODIC_BC) .eqv. (self % BC([2,5]) == PERIODIC_BC) )) then
+      call fatalError(Here,'Periodic BC need to be applied to oposite surfaces')
+    end if
 
   end subroutine setBC
 
@@ -523,14 +543,82 @@ contains
   !!   - Go through all directions in order to account for corners
   !!
   subroutine explicitBC(self, r, u)
-    class(wedge), intent(in)                     :: self
+    class(wedge), intent(in)                   :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
-    integer(shortInt)                          :: ax, bc
-    real(defReal)                              :: r0
+    real(defReal), dimension(5,3)              :: norm
+    real(defReal), dimension(3)                :: diff, normAxis
+    real(defReal), dimension(5)                :: c
+    real(defReal)                              :: angle, u1, u2, proj
+    integer(shortInt)                          :: i, bc
     character(100), parameter :: Here = 'explicitBC (wedge_class.f90)'
 
+    ! Displacement from origin
+    diff = r - self % origin
 
+    ! Helpers to evaluate wedge
+    c    = ZERO
+    c(1) = dot_product(self % norm1, diff(self % plane))
+    c(2) = dot_product(self % norm2, diff(self % plane))
+    c(3) = dot_product(self % norm3, diff(self % plane)) - self % height
+    c(4) = diff(self % axis) + self % halfwidth
+    c(5) = diff(self % axis) - self % halfwidth
+
+    norm = ZERO
+    norm(1, self % plane) = self % norm1
+    norm(2, self % plane) = self % norm2
+    norm(3, self % plane) = self % norm3
+    norm(4, self % axis)  = -ONE
+    norm(5, self % axis)  = ONE
+
+    ! Loop over directions
+    axis : do i  = 1, 5
+
+      ! Skip if particle is well inside the domain
+      if (abs(c(i)) > self % surfTol()) cycle axis
+
+      ! Choose correct BC and normal
+      bc = self % BC(i)
+      normAxis = norm(i,:)
+
+      ! Apply BC
+      select case(bc)
+        case (VACUUM_BC)
+          ! Do nothing. Pass
+
+        case (REFLECTIVE_BC)
+          proj = dot_product(u, normAxis)
+          u = u - TWO * proj * normAxis
+
+        case (PERIODIC_BC)
+
+          if (i == 1 .or. i == 2) then
+
+            ! Pick the right rotation angle
+            if (i == 1) then
+              angle =  TWO * self % theta
+            else
+              angle = -TWO * self % theta
+            end if
+
+            r(self % plane(1)) = self % origin(self % plane(1)) + cos(angle) * diff(self % plane(1)) - &
+                                 sin(angle) * diff(self % plane(2))
+            r(self % plane(2)) = self % origin(self % plane(2)) + sin(angle) * diff(self % plane(1)) + &
+                                 cos(angle) * diff(self % plane(2))
+            u1 = u(self % plane(1))
+            u2 = u(self % plane(2))
+            u(self % plane(1)) = cos(angle) * u1 - sin(angle) * u2
+            u(self % plane(2)) = sin(angle) * u1 + cos(angle) * u2
+
+          elseif (i == 4 .or. i == 5) then
+            r(self % axis) = r(self % axis) - TWO * sign(self % halfwidth, diff(self % axis))
+          end if
+
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(bc))
+      end select
+
+    end do axis
 
   end subroutine explicitBC
 
@@ -544,16 +632,116 @@ contains
   !!   - Calculate distance (in # of transformations) for each direction and apply them
   !!
   subroutine transformBC(self, r, u)
-    class(wedge), intent(in)                     :: self
+    class(wedge), intent(in)                   :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
-    real(defReal), dimension(3)                :: a_bar
-    integer(shortInt), dimension(3)            :: Ri
-    integer(shortInt)                          :: ax, t, bc
-    real(defReal)                              :: a0, d, r0
+    real(defReal), dimension(2)                :: norm, diffPlane, proj
+    integer(shortInt)                          :: transNumAx, t, bc, transNumRot
+    real(defReal)                              :: a_bar, diff, diff1, diff2, angle, &
+                                                  rotAngle, rotSign, u1, u2
     character(100), parameter :: Here = 'transformBC (wedge_class.f90)'
 
+    ! Calculate halfwidth reduced by the surface_tolerance
+    ! Necessary to capture particles at the boundary
+    a_bar = self % halfwidth - self % surfTol()
 
+    ! Calculate distance (in # of transformations) in each direction
+    transNumAx = ceiling(abs(r(self % axis) - self % origin(self % axis)) / a_bar) / 2
+
+    ! Loop over directions & number of transformations
+    transAx : do t = 1, transNumAx
+      ! Find position wrt origin
+      diff = r(self % axis) - self % origin(self % axis)
+
+      ! Choose correct BC
+      if (diff < ZERO) then
+        bc = self % BC(4)
+      else
+        bc = self % BC(5)
+      end if
+
+      ! Apply BC
+      select case(bc)
+        case (VACUUM_BC)
+          ! Do nothing. Pass
+
+        case (REFLECTIVE_BC)
+          ! Calculate displacment and perform reflection
+          r(self % axis) = r(self % axis) - TWO * (diff - sign(self % halfwidth, diff))
+          u(self % axis) = -u(self % axis)
+
+        case (PERIODIC_BC)
+          ! Calculate displacement and perform translation
+          r(self % axis) = r(self % axis) - TWO * sign(self % halfwidth, diff)
+
+        case default
+          call fatalError(Here, 'Unrecognised axial BC: '// numToChar(bc))
+      end select
+
+    end do transAx
+
+    ! Rotations around the plane
+    diffPlane = r(self % plane) - self % origin(self % plane)
+
+    ! Compute angle relative to apex
+    angle = atan2(diffPlane(2), diffPlane(1)) - self % phi
+
+    ! Compute how many full 2θ rotations we’re away from the principal wedge
+    transNumRot = floor((angle + self % theta) / (TWO * self % theta))
+
+    ! Loop over number of rotations
+    rotLoop : do t = 1, abs(transNumRot)
+
+      diffPlane = r(self % plane) - self % origin(self % plane)
+      rotAngle = atan2(diffPlane(2), diffPlane(1)) + self % theta - self % phi
+
+      ! Decide which boundary we crossed based on sign
+      if (rotAngle > 0) then
+        bc = self % BC(2)   ! crossed face 2
+        norm    = self % norm2
+        rotSign = -ONE
+      else
+        bc = self % BC(1)   ! crossed face 1
+        norm    = self % norm1
+        rotSign = ONE
+      end if
+
+      select case (bc)
+        case (VACUUM_BC)
+          ! Do nothing (particle leaves domain)
+
+        case (PERIODIC_BC)
+          ! Rotate position and velocity back into domain
+          angle = rotSign * TWO * self % theta
+
+          ! Position
+          diff1 = r(self % plane(1)) - self % origin(self % plane(1))
+          diff2 = r(self % plane(2)) - self % origin(self % plane(2))
+          r(self % plane(1)) = self % origin(self % plane(1)) + cos(angle) * diff1 - &
+                               sin(angle) * diff2
+          r(self % plane(2)) = self % origin(self % plane(2)) + sin(angle) * diff1 + &
+                               cos(angle) * diff2
+
+          ! Velocity
+          u1 = u(self % plane(1))
+          u2 = u(self % plane(2))
+          u(self % plane(1)) = cos(angle) * u1 - sin(angle) * u2
+          u(self % plane(2)) = sin(angle) * u1 + cos(angle) * u2
+
+        case (REFLECTIVE_BC)
+          ! Reflect position (push back inside domain)
+          diffPlane = r(self % plane) - self % origin(self % plane)
+          r(self % plane) = r(self % plane) - TWO * dot_product(diffPlane, norm) * norm
+
+          ! Reflect velocity
+          proj = dot_product(u(self % plane), norm)
+          u(self % plane) = u(self % plane) - TWO * proj * norm
+
+        case default
+          call fatalError(Here, 'Unrecognised rotational BC: '//numToChar(bc))
+      end select
+
+    end do rotLoop
 
   end subroutine transformBC
 

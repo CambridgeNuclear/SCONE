@@ -319,7 +319,7 @@ contains
     end do
 
     ! Verify periodic BCs
-    if(.not.all( (self % BC([1,3,5] ) == PERIODIC_BC) .eqv. (self % BC([2,4,6]) == PERIODIC_BC))) then
+    if (.not. all( (self % BC([1,3,5]) == PERIODIC_BC) .eqv. (self % BC([2,4,6]) == PERIODIC_BC))) then
       call fatalError(Here,'Periodic BC need to be applied to oposite surfaces')
 
     end if
