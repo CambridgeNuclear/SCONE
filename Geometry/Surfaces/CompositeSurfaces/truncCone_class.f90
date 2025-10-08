@@ -4,8 +4,7 @@ module truncCone_class
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
   use genericProcedures,  only : fatalError, numToChar, dotProduct
   use dictionary_class,   only : dictionary
-  use compSurface_inter,  only : compSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -59,7 +58,7 @@ module truncCone_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(compSurface) :: truncCone
+  type, public, extends(surface) :: truncCone
     private
     integer(shortInt)               :: axis   = 0
     integer(shortInt), dimension(2) :: plane  = 0

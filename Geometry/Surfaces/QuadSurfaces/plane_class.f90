@@ -4,8 +4,7 @@ module plane_class
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
   use genericProcedures,  only : fatalError, dotProduct, numToChar
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
   implicit none
   private
 
@@ -26,7 +25,7 @@ module plane_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: plane
+  type, public, extends(surface) :: plane
     private
     real(defReal), dimension(3) :: norm = ZERO
     real(defReal)               :: offset = ZERO

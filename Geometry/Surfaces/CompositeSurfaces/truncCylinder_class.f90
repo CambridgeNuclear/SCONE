@@ -4,8 +4,7 @@ module truncCylinder_class
   use universalVariables
   use genericProcedures,  only : fatalError, numToChar, swap
   use dictionary_class,   only : dictionary
-  use compSurface_inter,  only : compSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -46,7 +45,7 @@ module truncCylinder_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(compSurface) :: truncCylinder
+  type, public, extends(surface) :: truncCylinder
     private
     real(defReal), dimension(3)     :: origin = ZERO
     real(defReal)                   :: a      = ZERO

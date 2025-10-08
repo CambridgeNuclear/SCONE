@@ -106,7 +106,7 @@ contains
     call dict % store('type', type)
     call dict % store('origin', origin)
     call dict % store('halfwidth', 4.0_defReal)
-    call dict % store('height', 3.0_defReal)
+    call dict % store('altitude', 3.0_defReal)
     call dict % store('opening', 30.0_defReal)
     call dict % store('rotation', 60.0_defReal)
     call tst % surf % init(dict)
@@ -172,39 +172,6 @@ contains
     @assertEqual(this % surf % surfTol(), SURF_TOL * 4.0_defReal, TOL)
 
   end subroutine testMisc
-
-  !!
-  !! Test boundary conditions
-  !!
-! @Test(cases=[1,2,3])
-!   subroutine testBC(this)
-!     class(test_wedge), intent(inout) :: this
-!     real(defReal), dimension(3)          :: r, u, r_pre, u_pre
-!
-!     ! Set boundary conditions
-!     ! Should ignore extra entries
-!     call this % surf % setBC([VACUUM_BC, REFLECTIVE_BC, REFLECTIVE_BC])
-!
-!     ! Apply BC
-!     r = [ONE, ONE, ONE]
-!     u = ZERO
-!     ! Moving out at the surface in one planar direction
-!     u(this % plane(1)) = ONE
-!
-!     r_pre = r
-!     u_pre = u
-!
-!     ! Explicit
-!     call this % surf % explicitBC(r, u)
-!     @assertEqual(r_pre, r)
-!     @assertEqual(u_pre, u)
-!
-!     ! Transform
-!     call this % surf % transformBC(r, u)
-!     @assertEqual(r_pre, r)
-!     @assertEqual(u_pre, u)
-!
-!   end subroutine testBC
 
   !!
   !! Test Halfspaces membership
@@ -279,7 +246,7 @@ contains
     u = u /norm2(u)
     @assertTrue(this % surf % halfspace(r - eps*u, u))
 
-    ! ! Choose point on one of the bases of the wedge, moving out
+    ! Choose point on one of the bases of the wedge, moving out
     r(a)       = 9.0_defReal
     r([p1,p2]) = TWO
     u(a)       = ONE

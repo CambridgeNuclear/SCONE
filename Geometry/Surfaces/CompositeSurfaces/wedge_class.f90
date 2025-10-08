@@ -4,8 +4,7 @@ module wedge_class
   use universalVariables
   use genericProcedures,  only : fatalError, numToChar, swap
   use dictionary_class,   only : dictionary
-  use compSurface_inter,  only : compSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -13,11 +12,25 @@ module wedge_class
   !!
   !! Axis Aligned wedge
   !!
+  !! Wedge with two isosceles triangular bases, parallel between each other, and aligned
+  !! with the x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``.
+  !! The wedge bases are characterised by a half opening angle (theta); the wedge can also
+  !! be arbitrarily rotated around its axis by phi.
+  !!
   !! F(r) = maxval( abs(r_ax - o_ax) - hw,
   !!                n1 \cdot (r_p - o_p),
   !!                n2 \cdot (r_p - o_p),
   !!                n3 \cdot (r_p - o_p) - h,
   !!              )
+  !!
+  !! The nomenclature for the 5 faces is:
+  !!
+  !!   - face1 and face2 are the two slanted faces defined by the opening angle:
+  !!     face1 is the face rotated by -opening compared to the triangle altitude and
+  !!     face2 is rotated by +opening.
+  !!   - face3 refers to the face in front of the axis of the wedge
+  !!   - -base is the lower base
+  !!   - base is the upper base
   !!
   !! Where: hw -> halfwidth vector, o -> origin position
   !!        h  -> triangle height,  n  -> normal vectors
@@ -26,26 +39,28 @@ module wedge_class
   !! Surface Tolerance: SURF_TOL
   !!
   !! Sample Dictionary Input:
-  !!   aab { type zWedge; id 92; origin (0.0 0.0 9.0); halfwidth 5.0; height 2.0;
+  !!   aab { type zWedge; id 92; origin (0.0 0.0 9.0); halfwidth 5.0; altitude 2.0;
   !!         opening 30.0; rotation 0.0; }
   !!
   !! Boundary Conditions:
-  !!   BC order: face1, face2, face3, ax_min, ax_max
+  !!   BC order: face1, face2, face3, -base, base
   !!   Each face can have diffrent BC. Any combination is supported with co-ordinate transform.
   !!
   !! Private Members:
-  !!   origin -> position of the middle of the wedge edge
-  !!   halfwidth -> Halfwidth (half-length) of the wedge in the direction of the axis (must be > 0.0)
-  !!   height -> Height of the triangular face of the wedge (must be > 0.0)
-  !!   theta  -> Half angle opening of the triangular face of the wedge (must be between 0.0 and 90.0 degrees excluded)
-  !!   phi    -> Rotation angle from the axis plane(1) to the height of the triangular face of the wedge
-  !!             (must be between 0.0 and 360.0 degrees excluded)
-  !!   BC     -> Boundary conditions flags for each face (ax_min, ax_max, face1, face2, face3)
+  !!   origin -> Position of the middle of the wedge edge (or axis)
+  !!   halfwidth -> Half-length of the wedge edge in the direction of the axis (must be > 0.0)
+  !!   height -> Altitude of the triangular face of the wedge (must be > 0.0)
+  !!   theta  -> Half-angle opening of the triangular face of the wedge (must be between
+  !!             0.0 and 90.0 degrees excluded)
+  !!   phi    -> Rotation angle around the edge of the wedge. The rotation angle is with respect
+  !!             to the axis: +y for a xWedge; +x for a yWedge and zWedge. It must be between
+  !!             0.0 and 360.0 degrees excluded
+  !!   BC     -> Boundary conditions flags for each face (face1, face2, face3, -base, base)
   !!
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(compSurface) :: wedge
+  type, public, extends(surface) :: wedge
     private
     real(defReal) :: halfwidth = ZERO
     real(defReal) :: height = ZERO
@@ -138,9 +153,9 @@ contains
     if (value <= ZERO) call fatalError(Here, 'halfwidth cannot be -ve.')
     self % halfwidth = value
 
-    ! Load triangular face height
-    call dict % get(value,'height')
-    if (value <= ZERO) call fatalError(Here, 'height cannot be -ve.')
+    ! Load triangular face altitude
+    call dict % get(value,'altitude')
+    if (value <= ZERO) call fatalError(Here, 'altitude cannot be -ve.')
     self % height = value
 
     ! Load type - defines orientation
@@ -319,9 +334,6 @@ contains
       end if
     end if
 
-    !print*, k, c
-    !print*, '1 ', near, far
-
     ! Face 2
     k = dot_product(u(self % plane), self % norm2)
     c = dot_product(diff(self % plane), self % norm2)
@@ -339,9 +351,6 @@ contains
         near = max(near, d1)
       end if
     end if
-
-    !print*, k, c
-    !print*, '2 ', near, far
 
     ! Face 3
     k = dot_product(u(self % plane), self % norm3)
@@ -361,9 +370,6 @@ contains
       end if
     end if
 
-    !print*, k, c
-    !print*, '3 ', near, far
-
     ! Calculate the distances from the bases of the wedge
     if (abs(u(self % axis)) > epsilon(ONE)) then    ! Normal intersection
 
@@ -374,7 +380,7 @@ contains
       test_near = min(d1, d2)
       test_far  = max(d1, d2)
 
-    else                                            ! Particle parallel to axis: check location
+    else  ! Particle parallel to axis: check location
 
       if (abs(diff(self % axis)) < self % halfwidth) then
         ! Inside the cone: base intersection segment lies between -INF:+INF
@@ -388,13 +394,9 @@ contains
 
     end if
 
-    !print*, '4 ', test_near, test_far
-
     ! Get intersection between sets of distances
     far  = min(far, test_far)
     near = max(near, test_near)
-
-    !print*, 'final ', near, far
 
     ! Choose correct distance
     if (far <= near * FP_MISS_TOL) then      ! There is no intersection
@@ -408,7 +410,7 @@ contains
         dist = near
       end if
 
-    elseif (self % evaluate(r) < ZERO) then     ! Normal hit. Pick far if p is inside the wedge and viceversa
+    elseif (self % evaluate(r) < ZERO) then     ! Normal hit. Pick far if p is inside the wedge and vice versa
       dist = far
 
     else
@@ -475,7 +477,7 @@ contains
     ! Parallel direction
     ! Need to use position to determine halfspace
     if (abs(proj) < epsilon(ONE)) then
-     halfspace = self % evaluate(r) >= ZERO
+      halfspace = self % evaluate(r) >= ZERO
     end if
 
   end function going
@@ -495,7 +497,12 @@ contains
     self % height    = ZERO
     self % theta     = ZERO
     self % phi       = ZERO
-    self % BC = VACUUM_BC
+    self % BC    = VACUUM_BC
+    self % norm1 = ZERO
+    self % norm2 = ZERO
+    self % norm3 = ZERO
+    self % axis  = 0
+    self % plane = 0
 
   end subroutine kill
 
