@@ -41,7 +41,9 @@ module surfaceFactory_func
                                                                       'xTruncCylinder ',&
                                                                       'yTruncCylinder ',&
                                                                       'zTruncCylinder ',&
-                                                                      'wedge          ' ]
+                                                                      'xWedge         ',&
+                                                                      'yWedge         ',&
+                                                                      'zWedge         ']
 
   ! Public interface
   public :: new_surface_ptr
@@ -97,7 +99,7 @@ contains
       case ('xTruncCone', 'yTruncCone', 'zTruncCone')
         allocate (truncCone :: new)
 
-      case ('wedge')
+      case ('xWedge', 'yWedge', 'zWedge')
         allocate (wedge :: new)
 
       case default

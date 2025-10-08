@@ -592,6 +592,9 @@ contains
 
         case (PERIODIC_BC)
 
+          ! Recalculate displacement from origin
+          diff = r - self % origin
+
           if (i == 1 .or. i == 2) then
 
             ! Pick the right rotation angle
@@ -638,7 +641,7 @@ contains
     real(defReal), dimension(2)                :: norm, diffPlane, proj
     integer(shortInt)                          :: transNumAx, t, bc, transNumRot
     real(defReal)                              :: a_bar, diff, diff1, diff2, angle, &
-                                                  rotAngle, rotSign, u1, u2
+                                                  rotSign, u1, u2
     character(100), parameter :: Here = 'transformBC (wedge_class.f90)'
 
     ! Calculate halfwidth reduced by the surface_tolerance
@@ -685,6 +688,7 @@ contains
 
     ! Compute angle relative to apex
     angle = atan2(diffPlane(2), diffPlane(1)) - self % phi
+    if (abs(angle) > PI) angle = angle - sign(TWO_PI, angle)
 
     ! Compute how many full 2θ rotations we’re away from the principal wedge
     transNumRot = floor((angle + self % theta) / (TWO * self % theta))
@@ -692,11 +696,13 @@ contains
     ! Loop over number of rotations
     rotLoop : do t = 1, abs(transNumRot)
 
+      ! Recalculate relative position and angle as they might have changed
       diffPlane = r(self % plane) - self % origin(self % plane)
-      rotAngle = atan2(diffPlane(2), diffPlane(1)) + self % theta - self % phi
+      angle = atan2(diffPlane(2), diffPlane(1)) - self % phi
+      if (abs(angle) > PI) angle = angle - sign(TWO_PI, angle)
 
       ! Decide which boundary we crossed based on sign
-      if (rotAngle > 0) then
+      if (angle > 0) then
         bc = self % BC(2)   ! crossed face 2
         norm    = self % norm2
         rotSign = -ONE
