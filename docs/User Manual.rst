@@ -550,16 +550,18 @@ Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
 
-* wedge: wedge with two triangular bases, parallel between each other, and aligned with 
-  x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``. The wedge
-  is determined by a half opening angle; it can also be arbitrarily rotated around an axis.
+* wedge: wedge with two isosceles triangular bases, parallel between each other, and aligned with the
+  x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``. The wedge bases
+  are characterised by a half opening angle; the wedge can also be arbitrarily rotated around its axis.
 
   - origin: (x y z) position of the midpoint of the edge (or axis) of the wedge. [cm]
-  - halfwidth: axial halfwidth. [cm]
+  - halfwidth: axial halfwidth in the x, y or z direction depending on the wedge type:
+    respectively, x for xWedge, y for yWedge and z for zWedge. [cm]
   - height: height of the triangular face of the wedge. [cm]
   - opening: half angle, determines the opening of the triangular face of the wedge. Must be positive 
     and between 0-90. [degrees]
-  - rotation: rotation angle around the edge of the wedge. Must be positive and between 0-360. [degrees]
+  - rotation: rotation angle around the edge of the wedge. The rotation angle is with respect to the axis:
+    +y for a xWedge; +x for a yWedge and zWedge. Must be positive and between 0-360. [degrees]
 
 Example: ::
 
@@ -569,7 +571,8 @@ Example: ::
 .. note::
     A wedge can be used as a bounding surface. In this case, this surface will accept 5 boundary
     condition values: (face1 face2 face3 -base +base). Note that face3 refers to the face in front of
-    of the axis of the wedge; face1 and face2 are the two slanted faces defined by the opening angle.
+    of the axis of the wedge; face1 and face2 are the two slanted faces defined by the opening angle:
+    face1 is the face rotated by -opening compared to the triangle height; face2 is rotated by +opening.
 
 Cells
 #####
