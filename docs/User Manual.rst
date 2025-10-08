@@ -521,8 +521,8 @@ Example: ::
 
       billy { id 92; type xCylinder; origin (0.0 0.0 9.0); radius 4.8; }
 
-* cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
-  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
+* truncCone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
+  The input type has to be ``xTruncCone``, ``yTruncCone`` or ``zTruncCone``. The gradient of the
   cone is determined by the sign of ``hMin`` and ``hMax``. ``hMin`` and ``hMax``
   must have the same sign, i.e., there can only be a single cone, not a double
   cone reflected about the vertex.
@@ -539,7 +539,7 @@ Example: ::
 
 Example: ::
 
-      connor { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
+      connor { id 92; type xTruncCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
 
 * sphere
 
@@ -549,6 +549,30 @@ Example: ::
 Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
+
+* wedge: wedge with two isosceles triangular bases, parallel between each other, and aligned with the
+  x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``. The wedge bases
+  are characterised by a half opening angle; the wedge can also be arbitrarily rotated around its axis.
+
+  - origin: (x y z) position of the midpoint of the edge (or axis) of the wedge. [cm]
+  - halfwidth: axial halfwidth in the x, y or z direction depending on the wedge type:
+    respectively, x for xWedge, y for yWedge and z for zWedge. [cm]
+  - altitude: altitude of the triangular face of the wedge. [cm]
+  - opening: half angle, determines the opening of the triangular face of the wedge. Must be positive 
+    and between 0-90. [degrees]
+  - rotation: rotation angle around the edge of the wedge. The rotation angle is with respect to the axis:
+    +y for a xWedge; +x for a yWedge and zWedge. Must be positive and between 0-360. [degrees]
+
+Example: ::
+
+      jack { id 2; type yWedge; origin (0.0 5.0 0.0); halfwidth 5.0; altitude 10.0; opening 30.0; 
+	     rotation 60.0; }
+
+.. note::
+    A wedge can be used as a bounding surface. In this case, this surface will accept 5 boundary
+    condition values: (face1 face2 face3 -base +base). Note that face3 refers to the face in front
+    of the axis of the wedge; face1 and face2 are the two slanted faces defined by the opening angle:
+    face1 is the face rotated by -opening compared to the triangle altitude; face2 is rotated by +opening.
 
 Cells
 #####
