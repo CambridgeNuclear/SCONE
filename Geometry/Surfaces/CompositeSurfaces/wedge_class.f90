@@ -40,7 +40,7 @@ module wedge_class
   !!
   !! Sample Dictionary Input:
   !!   aab { type zWedge; id 92; origin (0.0 0.0 9.0); halfwidth 5.0; altitude 2.0;
-  !!         opening 30.0; rotation 0.0; }
+  !!         opening 30.0; # rotation 0.0; # }
   !!
   !! Boundary Conditions:
   !!   BC order: face1, face2, face3, -base, base
@@ -54,7 +54,7 @@ module wedge_class
   !!             0.0 and 90.0 degrees excluded)
   !!   phi    -> Rotation angle around the edge of the wedge. The rotation angle is with respect
   !!             to the axis: +y for a xWedge; +x for a yWedge and zWedge. It must be between
-  !!             0.0 and 360.0 degrees excluded
+  !!             0.0 and 360.0 degrees
   !!   BC     -> Boundary conditions flags for each face (face1, face2, face3, -base, base)
   !!
   !! Interface:
@@ -162,10 +162,10 @@ contains
     call dict % get(type, 'type')
 
     ! Load triangle opening angle
-    call dict % get(theta,'opening')
+    call dict % get(theta, 'opening')
 
     ! Load rotation angle with respect to reference axis
-    call dict % getOrDefault(phi,'rotation',ZERO)
+    call dict % getOrDefault(phi, 'rotation', ZERO)
 
     ! Build wedge
     call self % build(type, theta, phi)
@@ -217,9 +217,9 @@ contains
    self % theta = theta * PI / 180.0_defReal
 
    ! Save rotation angle
-   if (phi <= ZERO .or. phi >= 360.0_defReal) then
-     call fatalError(Here, 'Rotation angle of wedge must be in the range 0-360 degrees '//&
-                           & '(extremes excluded). It is: '//numToChar(phi))
+   if (phi < ZERO .or. phi > 360.0_defReal) then
+     call fatalError(Here, 'Rotation angle of wedge must be in the range 0-360 degrees. '//&
+                           & 'It is: '//numToChar(phi))
    end if
    self % phi = phi * PI / 180.0_defReal
 
