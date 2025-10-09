@@ -23,7 +23,7 @@ module linkedList_class
   !! Linked list for shortIntegers
   !!
   !! Contains the start of the list and end (for faster additions).
-  !! Could be optimised by returning the node as an iterator. 
+  !! Could be optimised by returning the node as an iterator.
   !! The current implementation of traversal will start to become slow
   !! for searching long lists.
   !!
@@ -136,7 +136,7 @@ contains
     character(100), parameter :: Here = 'get_shortInt (linkedList_Class.f90)'
 
     if (self % getSize() == 0) call fatalError(Here,'Linked list is not allocated')
-    
+
     resNode => self % traverse(idx)
     res = resNode % data
 
@@ -147,7 +147,6 @@ contains
   !!
   subroutine kill_shortInt(self)
     class(linkedIntList), intent(inout) :: self
-    integer(shortInt)                   :: i
     class(intNode), pointer             :: resNode
 
     ! Traverse the list and nullify pointers
