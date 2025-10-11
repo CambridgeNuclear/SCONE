@@ -355,13 +355,13 @@ contains
     end if
 
     ! Check that matIdx exists
-    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
       call fatalError(Here, 'Particle is in an undefined material with index: '&
               //numToChar(matIdx))
-    elseif (matIdx == VOID_MAT) then
-      xs = ZERO
-      return
     end if
     
     ! Check Cache and update if needed

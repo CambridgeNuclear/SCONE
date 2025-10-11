@@ -148,13 +148,13 @@ contains
     character(100),parameter :: Here = 'getTrackMatXS (baseMgNeutronDatabase_class.f90)'
 
     ! Check that matIdx exists
-    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    else if (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
       call fatalError(Here, 'Particle is in an undefined material with index: '&
               //numToChar(matIdx))
-    else if (matIdx == VOID_MAT) then
-      xs = ZERO
-      return
     end if
     
     xs = self % getTotalMatXS(p, matIdx)
