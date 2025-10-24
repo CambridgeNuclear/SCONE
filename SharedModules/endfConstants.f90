@@ -89,15 +89,18 @@ module endfConstants
                                   nubar_tot     = 452 ,&
                                   nubar_del     = 455 ,&
                                   nubar_prompt  = 456 ,&
+                                  ! N_2Nl(:) 875-890
+                                  ! (n,2n) scattering from levels 1-16 is defined at the end
+                                  N_2Ncont      = 891 ,&
                                   ! SCONE's fake MT for thermal inelastic scattering
-                                  N_N_ThermEL     = 1002 ,&
-                                  N_N_ThermINEL   = 1004 ,&
+                                  N_N_ThermEL   = 1002 ,&
+                                  N_N_ThermINEL = 1004 ,&
                                   ! SCONE's fake MT for particle splitting event
-                                  N_N_SPLIT       = 1005
+                                  N_N_SPLIT     = 1005
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
-  integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
-  integer(shortInt),parameter  :: N_2Nl(16)     = [(874+i, i =1,16)]
+  integer(shortInt),parameter  :: N_Nl(40)      = [(50 + i, i = 1, 40)]
+  integer(shortInt),parameter  :: N_2Nl(16)     = [(874 + i, i = 1, 16)]
 
   ! Microscopic lumped reaction channels special MT numbers
   integer(shortInt),parameter  :: anyScatter    = -102, &
@@ -124,7 +127,7 @@ module endfConstants
                                        36, 37, 38, 41, 42, 44, 45, 91, 101, 102,    &
                                        103, 104, 105, 106, 107, 108, 109, 111, 112, &
                                        113, 114, 115, 116, 117, 203, 204, 205, 206, &
-                                       207, 452, N_Nl, N_2Nl]
+                                       207, 891, N_Nl, N_2Nl]
 
   integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
                                       [-1, -2, -3, -4, -6, -7, -21]

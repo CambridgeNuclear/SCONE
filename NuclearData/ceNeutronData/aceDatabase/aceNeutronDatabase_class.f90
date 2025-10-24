@@ -59,7 +59,8 @@ module aceNeutronDatabase_class
   !!   nuclearData {
   !!   handles {
   !!   ce { type aceNeutronDatabase; DBRC (92238 94242); ures < 1 or 0 >;
-  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} }
+  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} 
+  !!        #avgDist 3.141;# }
   !!
   !! Public Members:
   !!   nuclides    -> array of aceNeutronNuclides with data
@@ -805,7 +806,8 @@ contains
     character(nameLen),dimension(:),allocatable      :: nucDBRC
     real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
                                                         eLowURR, eLowUrrNuc, alpha, &
-                                                        deltakT, eUpper, eLower, kT
+                                                        deltakT, eUpper, eLower, kT, &
+                                                        temp
     real(defReal), dimension(2)                      :: sabT
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
@@ -838,6 +840,18 @@ contains
         call nucSet % add(name, IN_SET)
       end do
     end do
+
+    ! Check for a minimum average collision distance
+    if (dict % isPresent('avgDist')) then
+      call dict % get(temp, 'avgDist')
+
+      if (temp <= ZERO) then
+        call fatalError(Here, 'Must have a finite, positive minimum average collision distance')
+      end if
+
+      self % collisionXS = ONE / temp
+
+    end if
 
     ! Get path to ACE library
     call dict % get(aceLibPath,'aceLibrary')
