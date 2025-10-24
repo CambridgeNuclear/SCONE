@@ -81,7 +81,7 @@ contains
    class(particle), intent(in)            :: p
    real(defReal)                          :: xs
 
-   xs = ZERO
+   xs = abs(MT * ONE)
 
  end function getMTxs
 

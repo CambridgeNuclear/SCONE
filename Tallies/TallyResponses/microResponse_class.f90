@@ -65,7 +65,7 @@ module microResponse_class
 contains
 
   !!
-  !! Initialise Response from dictionary
+  !! Initialise response from dictionary
   !!
   !! See tallyResponse_inter for details
   !!
