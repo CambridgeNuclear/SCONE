@@ -270,23 +270,23 @@ contains
 
     select case(request)
       case('energyGrid')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1)
 
       case('totalXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + N
 
       case('absorptionXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 2*N
 
       case('elasticXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 3*N
 
       case('heatingNumber')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 4*N
 
       case default
@@ -320,23 +320,23 @@ contains
 
     select case(request)
       case('energyGrid')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1)
 
       case('totalXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + N
 
       case('absorptionXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 2*N
 
       case('elasticXS')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 3*N
 
       case('heatingNumber')
-        ! Set pointer to approperiate place in XSS
+        ! Set pointer to appropriate place in XSS
         ptr = self % JXS(1) + 4*N
 
       case default
