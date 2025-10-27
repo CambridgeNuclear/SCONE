@@ -113,6 +113,7 @@ module aceNeutronDatabase_class
     procedure :: updateMicroXSs
     procedure :: updateTotalTempNucXS
     procedure :: getScattMicroMajXS
+    procedure :: getMaterialMTxs
 
     ! class Procedures
     procedure :: initUrr
@@ -258,6 +259,52 @@ contains
   end function getReaction
 
   !!
+  !! Return energy bounds for data in the database
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  subroutine energyBounds(self, eMin, eMax)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(out)            :: eMin
+    real(defReal), intent(out)            :: eMax
+
+    eMin = self % eBounds(1)
+    eMax = self % eBounds(2)
+
+  end subroutine energyBounds
+
+  !!
+  !! Retrieves the material cross sections for an MT number
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  function getMaterialMTxs(self, E, matIdx, MT) result(xs)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    integer(shortInt), intent(in)         :: matIdx
+    integer(shortInt), intent(in)         :: MT
+    real(defReal)                         :: xs
+    integer(shortInt)                     :: i, nucIdx
+    real(defReal)                         :: dens
+
+    xs = ZERO
+
+    associate (mat => self % materials(matIdx))
+
+      ! Construct macro XS for the MT number requested
+      do i = 1, size(mat % nuclides)
+        dens   = mat % dens(i)
+        nucIdx = mat % nuclides(i)
+
+        xs = xs + self % nuclides(nucIdx) % xsOf(MT, E) * dens
+
+      end do
+
+    end associate
+
+  end function getMaterialMTxs
+
+  !!
   !! Returns the elastic scattering majorant cross section for a nuclide
   !!
   !! See ceNeutronDatabase for more details
@@ -288,21 +335,6 @@ contains
     maj = self % nuclides(nucIdx) % getMajXS(eLower, eUpper, N_N_ELASTIC)
 
   end function getScattMicroMajXS
-
-  !!
-  !! Return energy bounds for data in the database
-  !!
-  !! See ceNeutronDatabase for more details
-  !!
-  subroutine energyBounds(self, eMin, eMax)
-    class(aceNeutronDatabase), intent(in) :: self
-    real(defReal), intent(out)            :: eMin
-    real(defReal), intent(out)            :: eMax
-
-    eMin = self % eBounds(1)
-    eMax = self % eBounds(2)
-
-  end subroutine energyBounds
 
   !!
   !! Make sure that the majorant of ALL active materials is at energy E
@@ -945,13 +977,13 @@ contains
       ! Loop over nuclides
       do j = 1, size(mat % nuclides)
         name = self % makeNuclideName(mat % nuclides(j))
-        
+
         ! Find nuclide definition to see if fissile
         ! Also used for checking stochastic mixing bounds
         nucIdxs(j) = nucSet % get(name)
         isFissileMat = isFissileMat .or. self % nuclides(nucIdxs(j)) % isFissile()
-          
-        ! Check to ensure stochastic mixing temperature 
+
+        ! Check to ensure stochastic mixing temperature
         ! is bounded by Sab temperatures
         if (mat % nuclides(j) % sabMix) then
           sabT = self % nuclides(nucIdxs(j)) % getSabTBounds()
@@ -1044,7 +1076,7 @@ contains
   end subroutine init
 
   !!
-  !! Makes a nuclide's name 
+  !! Makes a nuclide's name
   !! Uniquely identifies nuclides with S(alpha,beta) data
   !! variants, including stochastic mixing
   !!
@@ -1053,25 +1085,25 @@ contains
     type(nuclideInfo), intent(in)         :: nuclide
     character(nameLen)                    :: name
     character(:), allocatable             :: file
-        
+
     name = trim(nuclide % toChar())
 
-    ! Name is extended if there is S(alpha,beta) to 
+    ! Name is extended if there is S(alpha,beta) to
     ! uniquely identify from data without thermal
     ! scattering
     if (nuclide % hasSab) then
- 
+
       file = trim(nuclide % file_Sab1)
       name = trim(name) // '+' // file
       deallocate(file)
-     
+
       ! Attach second Sab file for stochastic mixing
       if (nuclide % sabMix) then
         file = trim(nuclide % file_Sab2)
         name = trim(name) // '#' // file
         deallocate(file)
       end if
- 
+
     end if
 
   end function makeNuclideName

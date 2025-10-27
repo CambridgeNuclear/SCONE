@@ -72,6 +72,8 @@ module ceNeutronDatabase_inter
     procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
     procedure(energyBounds), deferred         :: energyBounds
     procedure(getScattMicroMajXS), deferred   :: getScattMicroMajXS
+    procedure(getMaterialMTxs), deferred      :: getMaterialMTxs
+
   end type ceNeutronDatabase
 
   abstract interface
@@ -278,6 +280,25 @@ module ceNeutronDatabase_inter
       real(defReal)                        :: maj
     end function getScattMicroMajXS
 
+    !!
+    !! Retrieves the material cross sections for an MT number
+    !!
+    !! That is, it sums up the contributions of the constituent nuclides for
+    !! that MT number
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   matIdx [in]  -> material index that needs to be updated
+    !!
+    function getMaterialMTxs(self, E, matIdx, MT) result(xs)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: matIdx
+      integer(shortInt), intent(in)        :: MT
+      real(defReal)                        :: xs
+    end function getMaterialMTxs
+
   end interface
 contains
 
@@ -355,13 +376,13 @@ contains
     end if
 
     ! Check that matIdx exists
-    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
       call fatalError(Here, 'Particle is in an undefined material with index: '&
               //numToChar(matIdx))
-    elseif (matIdx == VOID_MAT) then
-      xs = ZERO
-      return
     end if
     
     ! Check Cache and update if needed
