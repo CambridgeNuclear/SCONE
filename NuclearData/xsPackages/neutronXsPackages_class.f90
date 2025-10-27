@@ -147,6 +147,9 @@ contains
       case(macroIEscatter)
         xs = self % inelasticScatter
 
+      case(macroAllScatter)
+        xs = self % elasticScatter + self % inelasticScatter
+
       case(macroFission)
         xs = self % fission
 

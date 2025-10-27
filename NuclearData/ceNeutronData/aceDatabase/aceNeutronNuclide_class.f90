@@ -240,7 +240,7 @@ contains
     ! Find the index of MT reaction in nuclide
     idxMT = self % idxMT % getOrDefault(MT, 0)
 
-    ! Error message if not found
+    ! Returns zero if the MT number is not present for this nuclide
     if (idxMT == 0) then
       xs = ZERO
       return
@@ -847,15 +847,6 @@ contains
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
       self % MTdata(i) % xs       = ACE % xsMT(MT)
 
-      !!!!!!!!!!!!! DIRTY PERTURBATION TRICK !!!!!!!!!!!!!!!!
-      !if (MT == 16 .and. nucIdx == 95) then
-      !if (nucIdx == 108) then          ! Li7
-      !if (nucIdx == 100 .and. MT > 50 .and. MT < 82) then  ! Li6
-      !  print*, MT, '-10% modification!!!!'
-      !  self % MTdata(i) % xs = self % MTdata(i) % xs * 0.9_defReal
-      !end if
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       allocate(neutronScatter :: self % MTdata(i) % kinematics)
       call self % MTdata(i) % kinematics % init(ACE, MT)
     end do
@@ -867,13 +858,6 @@ contains
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
       self % MTdata(i) % xs       = ACE % xsMT(MT)
-
-      !!!!!!!!!!!!! DIRTY PERTURBATION TRICK !!!!!!!!!!!!!!!!
-      !if (nucIdx == 100 .and. MT == 105) then
-      !  print*, MT, '-10% modification!!!!'
-      !  self % MTdata(i) % xs = self % MTdata(i) % xs * 0.9_defReal
-      !end if
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       allocate(pureCapture :: self % MTdata(i) % kinematics)
       call self % MTdata(i) % kinematics % init(ACE, MT)

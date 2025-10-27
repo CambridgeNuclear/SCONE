@@ -93,8 +93,8 @@ contains
     ! Get pointer to the material
     mat => getMatPtr(self % matIdx)
 
-    if (size(mat % dens) > 1) call fatalError(Here, 'Material '//trim(mName)//' &
-                                              & has more than one nuclide' )
+    if (size(mat % dens) /= 1) call fatalError(Here, 'Material '//trim(mName)//' &
+                                              & needs to have exactly one nuclide' )
     self % dens = mat % dens(1)
 
     if (self % dens == ZERO) call fatalError(Here, 'Density of material &
@@ -130,6 +130,9 @@ contains
 
       case(N_N_ELASTIC)
         self % MT = macroEscatter
+
+      case(N_N_INELASTIC)
+        self % MT = macroIEscatter
 
       case(N_DISAP)
         self % MT = macroCapture

@@ -120,7 +120,7 @@ module endfConstants
                                   macroAbsorbtion = -21 ,&
                                   noInteraction   = -901
 
-  ! List of all available MT numbers
+  ! List of all the MT numbers allowed in the tallies
   integer(shortInt), dimension(*), parameter :: availableMicroMTs = &
                                       [1, 2, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22,  &
                                        23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,  &
@@ -130,7 +130,7 @@ module endfConstants
                                        207, 891, N_Nl, N_2Nl]
 
   integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
-                                      [-1, -2, -3, -4, -6, -7, -21]
+                                      [-1, -2, -3, -4, -6, -7, -20, -21]
 
 
 
