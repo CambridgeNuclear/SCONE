@@ -17,6 +17,7 @@ module tallyClerkFactory_func
   use dancoffBellClerk_class,          only : dancoffBellClerk
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
+  use eventClerk_class,                only : eventClerk
   use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
@@ -36,6 +37,7 @@ module tallyClerkFactory_func
                                                                         'simpleFMClerk            ',&
                                                                         'shannonEntropyClerk      ',&
                                                                         'centreOfMassClerk        ',&
+                                                                        'eventClerk               ',&
                                                                         'dancoffBellClerk         ',&
                                                                         'mgXsClerk                ']
 
@@ -80,6 +82,9 @@ contains
 
      case('dancoffBellClerk')
        allocate(dancoffBellClerk :: new)
+
+     case('eventClerk')
+       allocate(eventClerk :: new)
 
      case('shannonEntropyClerk')
        allocate(shannonEntropyClerk :: new)

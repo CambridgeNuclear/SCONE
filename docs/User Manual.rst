@@ -1102,6 +1102,32 @@ Example: ::
       collisionProb { type collisionProbabilityClerk; map { <Map definition> } }
       }
 
+* eventClerk, a non-standard clerk which records all events meeting certain criteria.
+  These events are sent to a file, reporting the position, direction, energy, time,
+  weight, and brood of a particle, as well as the energy it deposited and the reaction it
+  underwent. Maps are treated as filters, only returning events which fall into the map.
+  Events can be post-processed, e.g., for alpha calculations.
+
+  - file: path to the file which records events.
+  - maxScale (*optional*): a real scaling factor on the maximum number of events before 
+    recording ceases. By default, the maximum number of events is 10M. This is a scaling
+    factor rather than an integer due to constraints on the dictionary.
+  - freq (*optional*): an integer determining how often events are written to the file.
+    More often will incur more parallel overhead, less often will incur a larger memory
+    footprint. Set to 500k by default.
+  - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
+    that defines the set of events which are recorded
+  - filter (*optional*): can filter out particles with certain properties,
+    preventing them from recording events
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+Example: ::
+
+      tally {
+      events { type eventClerk; map { <Map definition> } file /home/myEvents.txt; freq 10000;}
+      }
+
 * dancoffBellClerk, calculates a single-term rational approximation for a lattice
 
   - fuelMat: list of fuel material names
