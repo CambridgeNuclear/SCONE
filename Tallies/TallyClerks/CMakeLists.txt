@@ -10,6 +10,7 @@ add_sources(./tallyClerk_inter.f90
             ./simpleFMClerk_class.f90
             ./dancoffBellClerk_class.f90
             ./shannonEntropyClerk_class.f90
+            ./eventClerk_class.f90
             ./centreOfMassClerk_class.f90
             ./mgXsClerk_class.f90
              )
