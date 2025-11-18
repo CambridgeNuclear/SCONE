@@ -80,8 +80,7 @@ viz {
 
 nuclearData {
   handles {
-    !ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} 
-    ce { type aceNeutronDatabase; aceLibrary /home/pmc55/XSdata_endfb7/fullLib.xsfile; ures 1;}
+    ce { type aceNeutronDatabase; aceLibrary $SCONE_ACE;} 
   }
   materials {
 

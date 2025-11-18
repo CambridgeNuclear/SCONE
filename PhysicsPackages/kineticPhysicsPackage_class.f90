@@ -74,6 +74,7 @@ module kineticPhysicsPackage_class
 
     ! Settings
     integer(shortInt)  :: pop
+    integer(shortInt)  :: precPop
     integer(shortInt)  :: N_cycles
     real(defReal)      :: k0
     character(pathLen) :: outputFile
@@ -186,8 +187,8 @@ contains
         if (self % thisPrecursors % popSize() > 0) then
 
           ! Perform population control on precursors
-          if (self % thisPrecursors % popSize() > self % pop) then
-            call self % thisPrecursors % precursorCombing(self % pop, self % pRNG, tPrev, tNext)
+          if (self % thisPrecursors % popSize() > self % precPop) then
+            call self % thisPrecursors % precursorCombing(self % precPop, self % pRNG, tPrev, tNext)
           end if
 
           ! Sample which delayed neutrons to simulate
@@ -265,6 +266,14 @@ contains
 
           bufferLoop: do
 
+            ! Check if particle is produced at a later time.
+            ! This can occur with sources distributed in time.
+            ! If so, put it in the dungeon and continue
+            if (p % time > tNext) then
+              call self % nextTime % detain(p)
+              exit bufferLoop
+            end if
+
             p % fate = no_FATE
             p % timeMax = tNext
           
@@ -312,7 +321,6 @@ contains
               ! for the final particle in the dungeon. The first thread would pop the particle while the
               ! second would try to pop from an empty dungeon.
               elseif (associated(self % commonBuffer)) then
-                p = p
                 p % isDead = .true.
                 !$omp critical
                 if (.not. self % commonBuffer % isEmpty()) then
@@ -323,7 +331,6 @@ contains
               else
                 exit bufferLoop
               end if
-
 
               ! Set RNG for the broodID?
 
@@ -475,9 +482,14 @@ contains
     call dict % get( energy, 'dataType')
     call dict % get( dt, 'dt')
     call dict % getOrDefault(self % k0, 'k0', ONE)
+    call dict % getOrDefault(self % precPop,'precPop', self % pop)
 
     if (self % pop < 1) then
       call fatalError(Here, 'Population must be greater than zero: '//numToChar(self % pop))
+    end if
+    if (self % precPop < 1) then
+      call fatalError(Here, 'Precursor population must be greater than zero: '&
+              //numToChar(self % precPop))
     end if
     if (self % N_cycles < 1) then
       call fatalError(Here, 'Number of cycles must be greater than zero: '//numToChar(self % N_cycles))
@@ -600,8 +612,8 @@ contains
     ! Size precursor dungeon
     allocate(self % thisPrecursors)
     allocate(self % nextPrecursors)
-    call self % thisPrecursors % init(3 * self % pop)
-    call self % nextPrecursors % init(3 * self % pop)
+    call self % thisPrecursors % init(2 * self % precPop)
+    call self % nextPrecursors % init(2 * self % precPop)
 
     call self % printSettings()
     

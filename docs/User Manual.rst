@@ -121,6 +121,8 @@ kineticPhysicsPackage, used for time-dependent calculations. One can change
 settings in the collisionProcessor to switch delayed neutrons on or off.
 
 * pop: number of particles used per batch
+* precPop (*optional*, default = pop): maximum number of precursors in memory
+  before applying population control.
 * cycles: number of batches
 * dt: length of time between applications of population control
 * timeSteps: number of time steps over which population control is applied.
