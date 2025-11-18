@@ -156,9 +156,12 @@ settings in the collisionProcessor to switch delayed neutrons on or off.
 
 Example: ::
 
-        type fixedSourcePhysicsPackage;
+        type kineticSourcePhysicsPackage;
         pop    100000;
         cycles 200;
+        dt 0.0001;
+        timeSteps 100;
+        forcedPrecursorDecay 0;
         dataType ce;
         XSdata   ceData;
         seed     2829741;
@@ -345,7 +348,7 @@ neutronCEstd, to perform analog collision processing
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
 * makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
   for time-dependent calculations.
-* promptOnly (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
   and precursors.
 
 Example: ::
@@ -385,7 +388,7 @@ neutronCEimp, to perform implicit collision processing
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
 * makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
   for time-dependent calculations.
-* promptOnly (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
   and precursors.
 
 Example: ::

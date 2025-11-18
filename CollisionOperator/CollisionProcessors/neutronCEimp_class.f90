@@ -74,7 +74,7 @@ module neutronCEimp_class
   !!  roulette  -> roulettes particles below certain weight (off by defautl)
   !!  weightWindows -> uses a weight windows field (off by default)
   !!  makePrec   -> Produce precursor particles, used in dynamic calculations (default = false)
-  !!  promptOnly -> If true, prevents delayed neutrons or precursors from being produced
+  !!  neglectDelayed -> If true, prevents delayed neutrons or precursors from being produced
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -115,7 +115,7 @@ module neutronCEimp_class
     real(defReal) :: DBRCeMax
     integer(shortInt) :: maxSplit
     logical(defBool) :: makePrec = .false.
-    logical(defBool) :: promptOnly = .false.
+    logical(defBool) :: neglectDelayed = .false.
 
     ! Variance reduction options
     logical(defBool)  :: weightWindows
@@ -199,7 +199,7 @@ contains
     
     ! Precursor settings
     call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
-    call dict % getOrDefault(self % promptOnly, 'promptOnly', .false.)
+    call dict % getOrDefault(self % neglectDelayed, 'neglectDelayed', .false.)
 
     if (self % splitting) then
       if (self % maxWgt < 2 * self % minWgt) call fatalError(Here,&
@@ -213,8 +213,8 @@ contains
          'Must generate fission sites implicitly when using implicit absorption')
     end if
     
-    if (self % makePrec .and. self % promptOnly) call fatalError(Here,&
-            'Incompatible options: cannot makePrecursors and have promptOnly neutrons!')
+    if (self % makePrec .and. self % neglectDelayed) call fatalError(Here,&
+            'Incompatible options: cannot makePrecursors and neglectDelayed neutrons!')
 
     ! Sets up the uniform fission sites field
     if (self % uniFissSites) then
@@ -338,7 +338,7 @@ contains
         call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
         
         ! Skip if a delayed particle is produced in prompt-only mode
-        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
@@ -466,7 +466,7 @@ contains
         call fiss % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
         
         ! Skip if a delayed particle is produced in prompt-only mode
-        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
         dir = rotateVector(p % dirGlobal(), mu, phi)
         

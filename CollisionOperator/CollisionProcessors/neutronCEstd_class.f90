@@ -60,7 +60,7 @@ module neutronCEstd_class
   !!  DBRCeMin   -> Minimum energy to which DBRC is applied
   !!  DBRCeMax   -> Maximum energy to which DBRC is applied
   !!  makePrec   -> Produce precursor particles, used in dynamic calculations (default = false)
-  !!  promptOnly -> If true, prevents delayed neutrons or precursors from being produced
+  !!  neglectDelayed -> If true, prevents delayed neutrons or precursors from being produced
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -70,7 +70,7 @@ module neutronCEstd_class
   !!   #energyThreshold <real>;#
   !!   #massThreshold   <real>;#
   !!   #makePrec        <bool>;#
-  !!   #promptOnly      <bool>;#
+  !!   #neglectDelayed  <bool>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEstd
@@ -88,7 +88,7 @@ module neutronCEstd_class
     real(defReal) :: DBRCeMin
     real(defReal) :: DBRCeMax
     logical(defBool) :: makePrec = .false.
-    logical(defBool) :: promptOnly = .false.
+    logical(defBool) :: neglectDelayed = .false.
 
   contains
     ! Initialisation procedure
@@ -134,7 +134,7 @@ contains
     
     ! Precursor settings
     call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
-    call dict % getOrDefault(self % promptOnly, 'promptOnly', .false.)
+    call dict % getOrDefault(self % neglectDelayed, 'neglectDelayed', .false.)
 
     ! Verify settings
     if (self % minE < ZERO) call fatalError(Here,'-ve minEnergy')
@@ -142,8 +142,8 @@ contains
     if (self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
     if (self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
     if (self % threshA < 0) call fatalError(Here,' -ve massThreshold')
-    if (self % makePrec .and. self % promptOnly) call fatalError(Here,&
-            'Incompatible options: cannot makePrecursors and have promptOnly neutrons!')
+    if (self % makePrec .and. self % neglectDelayed) call fatalError(Here,&
+            'Incompatible options: cannot makePrecursors and neglectDelayed neutrons!')
 
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
@@ -250,7 +250,7 @@ contains
         call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
         
         ! Skip if a delayed particle is produced in prompt-only mode
-        if (self % promptOnly .and. lambda < huge(lambda)) cycle
+        if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
