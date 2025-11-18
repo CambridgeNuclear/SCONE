@@ -15,6 +15,7 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
+  use kineticPhysicsPackage_class,     only : kineticPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -27,6 +28,7 @@ module physicsPackageFactory_func
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
                                                                              'vizPhysicsPackage        ',&
+                                                                             'kineticPhysicsPackage    ',&
                                                                              'rayVolPhysicsPackage     ']
 
   !!
@@ -56,6 +58,9 @@ contains
 
       case('fixedSourcePhysicsPackage')
         allocate( fixedSourcePhysicsPackage :: new)
+
+      case('kineticPhysicsPackage')
+        allocate( kineticPhysicsPackage :: new)
 
       case('vizPhysicsPackage')
         allocate( vizPhysicsPackage :: new)
