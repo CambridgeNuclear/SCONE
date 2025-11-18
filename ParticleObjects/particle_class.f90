@@ -447,7 +447,9 @@ contains
   !!
   !! NOTE:
   !!   The speeds are computed from non-relativistic formula for massive particles.
-  !!   A small error might appear in MeV range (e.g. for fusion applications)
+  !!   A small error might appear in MeV range (e.g. for fusion applications).
+  !!   Further there is currently no good solution for MG neutrons. Their speed
+  !!   is arbitrarily set to 1.
   !!
   !! Args:
   !!   None
@@ -457,7 +459,6 @@ contains
   !!
   !! Errors:
   !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
-  !!   fatalError if the particle is MG
   !!
   function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
@@ -469,9 +470,12 @@ contains
       speed = lightSpeed
 
     elseif (self % type == P_NEUTRON) then
-      ! Verify the particle is not MG
-      if (self % isMG) call fatalError(Here, 'Speed cannot be calculated for MG particle')
-      speed = sqrt(TWO * self % E / neutronMass) * lightSpeed
+      ! TODO: handle MG speed
+      if (self % isMG) then
+        speed = ONE
+      else
+        speed = sqrt(TWO * self % E / neutronMass) * lightSpeed
+      end if
 
     else
       call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &

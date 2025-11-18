@@ -4,8 +4,7 @@ module plane_class
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
   use genericProcedures,  only : fatalError, dotProduct, numToChar
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
   implicit none
   private
 
@@ -26,7 +25,7 @@ module plane_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: plane
+  type, public, extends(surface) :: plane
     private
     real(defReal), dimension(3) :: norm = ZERO
     real(defReal)               :: offset = ZERO
@@ -97,8 +96,6 @@ contains
     self % norm = coeffs(1:3)
     self % offset = coeffs(4)
 
-
-
   end subroutine init
 
   !!
@@ -115,7 +112,6 @@ contains
     aabb(1:3) = -INF
     aabb(4:6) = INF
 
-
   end function boundingBox
 
   !!
@@ -124,7 +120,7 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(plane), intent(in)               :: self
+    class(plane), intent(in)                :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
 

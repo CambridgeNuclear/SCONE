@@ -18,7 +18,7 @@ dt 6.0E-06;
 cycles 10;
 buffer 100;
 
-collisionOperator { neutronCE {type neutronCEstd; promptOnly 1; makePrec 0;}}
+collisionOperator { neutronCE {type neutronCEstd; neglectDelayed 1; makePrec 0;}}
 
 transportOperator { type transportOperatorHT;
                   }
@@ -36,7 +36,7 @@ tally  {
     map1 { type timeMap; grid lin; min 0.0; max 3E-3; N 500;}
     map2 { type cellMap; cells (1); } 
     }
-    response (pop); pop {type densityResponse;}
+    response (pop); pop {type invSpeedResponse;}
   }
   }
 

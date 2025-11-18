@@ -61,31 +61,19 @@ contains
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
+        
+      speed = p % getSpeed()
+      time = distance / speed + p % time
 
       ! Set a max flight distance due to hitting the time-boundary
-      if (p % timeMax > ZERO) then
-        speed = p % getSpeed()
-        time = distance / speed + p % time
-
-        ! Hit the time boundary: set max distance and age the particle
-        if (time > p % timeMax) then
-          distance = speed * (p % timeMax - p % time)
-          p % fate = AGED_FATE
-          
-        ! Advance particle in time
-        else
-          p % time = time
-        end if
-
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        distance = speed * (p % timeMax - p % time)
+        p % fate = AGED_FATE
       end if
 
-      ! Move particle in the geometry
+      ! Move particle in the geometry and time
       call self % geom % teleport(p % coords, distance)
-      
-      ! If particle has aged, exit
-      if (p % fate == AGED_FATE) then
-        return
-      end if
+      p % time = p % time + distance / speed
       
       select case(p % matIdx())
 
@@ -93,10 +81,11 @@ contains
         case(OUTSIDE_FILL)
           p % fate = LEAK_FATE
           p % isDead = .true.
-          return
+          exit DTLoop
 
         ! Check for void
         case(VOID_MAT)
+          if (p % fate == AGED_FATE) exit DTLoop
           call tally % reportInColl(p, .true.)
           cycle DTLoop
 
@@ -114,6 +103,11 @@ contains
           ! All is well        
 
       end select
+      
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        exit DTLoop
+      end if
 
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())

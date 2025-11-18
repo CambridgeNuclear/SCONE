@@ -167,8 +167,8 @@ contains
       ! Find material under position
       call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-      ! Reject if there is no material
-      if (matIdx == OUTSIDE_MAT) cycle rejection
+      ! Reject if there is no material or if the particle is in void
+      if (matIdx == OUTSIDE_MAT .or. matIdx == VOID_MAT) cycle rejection
 
       mat => neutronMaterial_CptrCast(nucData % getMaterial(matIdx))
       if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")
