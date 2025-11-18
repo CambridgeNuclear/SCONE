@@ -232,16 +232,6 @@ geometry {
     NS3 { type simpleCell; id 12; surfaces (-4 5 -10 11); filltype mat; material SS304;}
     NS4 { type simpleCell; id 13; surfaces (-4 5 10 -11); filltype mat; material SS304;}
     
-<<<<<<< HEAD
-    // Water in the arc between neutron shields
-    outerWaterSeg1 {type simpleCell; id 14; surfaces (-4 5  ); filltype mat; material Water;}
-    outerWater2 {type simpleCell; id 15; surfaces (-5 6 ); filltype mat; material Water;}
-
-    // Outer core
-    coreBarrel { type simpleCell; id 16; surfaces (-6 7); filltype mat; material SS304;}
-    core {type simpleCell; id 17; surfaces (-5); filltype uni; universe 9999;}
-
-=======
     // Water in the radial sliver between neutron shields and core
     waterSliver1 {type simpleCell; id 14; surfaces (6 -5 -8 9); filltype mat; material Water;}
     waterSliver2 {type simpleCell; id 15; surfaces (6 -5 8 -9); filltype mat; material Water;}
@@ -257,7 +247,6 @@ geometry {
     // Outer core
     coreBarrel { type simpleCell; id 22; surfaces (-6 7); filltype mat; material SS304;}
     core {type simpleCell; id 23; surfaces (-7); filltype uni; universe 9999;}
->>>>>>> 8531673e715792a098906c8d2f88bb4d7eab1bf3
 
     // Gridded pins
 
