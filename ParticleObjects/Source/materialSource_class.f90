@@ -2,7 +2,8 @@ module materialSource_class
 
   use numPrecision
   use universalVariables,      only : OUTSIDE_MAT, VOID_MAT, NOT_FOUND
-  use genericProcedures,       only : fatalError, rotateVector
+  use genericProcedures,       only : rotateVector
+  use errors_mod,              only : fatalError
   use dictionary_class,        only : dictionary
   use RNG_class,               only : RNG
   use charMap_class,           only : charMap
@@ -77,7 +78,7 @@ contains
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     character(nameLen)                       :: type
-    character(nameLen)                       :: matName 
+    character(nameLen)                       :: matName
     real(defReal), dimension(6)              :: bounds
     real(defReal), dimension(:), allocatable :: tempArray
     character(100), parameter :: Here = 'init (materialSource_class.f90)'
@@ -166,8 +167,8 @@ contains
       ! Find material under position
       call self % geom % whatIsAt(matIdx, uniqueID, r)
 
-      ! Reject if there is no material
-      if (matIdx == OUTSIDE_MAT) cycle rejection
+      ! Reject if there is no material or if the particle is in void
+      if (matIdx == OUTSIDE_MAT .or. matIdx == VOID_MAT) cycle rejection
 
       mat => neutronMaterial_CptrCast(nucData % getMaterial(matIdx))
       if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")
@@ -185,6 +186,7 @@ contains
 
       mu = TWO * rand % get() - ONE
       phi = TWO_PI * rand % get()
+      p % dir = rotateVector([ONE, ZERO, ZERO], mu, phi)
 
       ! Set energy
       select type (nucData)
@@ -192,13 +194,11 @@ contains
 
           p % E = self % E
           p % isMG = .false.
-          p % dir  = rotateVector([ONE, ZERO, ZERO], mu, phi)
 
         class is (mgNeutronDatabase)
 
           p % G = self % G
           p % isMG = .true.
-          p % dir = rotateVector([ONE, ZERO, ZERO], mu, phi)
 
         class default
           call fatalError(Here, "Unrecognised type of nuclearDatabase")

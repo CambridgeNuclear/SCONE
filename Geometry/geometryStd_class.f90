@@ -233,7 +233,7 @@ contains
       ! Place back in geometry
       call self % placeCoord(coords)
 
-    else ! Crosses to diffrent local cell
+    else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV
@@ -296,7 +296,7 @@ contains
       ! Place back in geometry
       call self % placeCoord(coords)
 
-    else ! Crosses to diffrent local cell
+    else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
       event = CROSS_EV
@@ -409,8 +409,13 @@ contains
       N = N - 1
       lastIdx = self % geom % graph % usedMats(N)
     end if
-    ! Check if the last entry of the list is an undefined material
+    ! Check if the last entry of the list is an actual material or an undefined material
     if (lastIdx == UNDEF_MAT) then
+      N = N - 1
+      lastIdx = self % geom % graph % usedMats(N)
+    end if
+    ! Check if the last entry of the list is an actual material or an overlap material
+    if (lastIdx == OVERLAP_MAT) then
       matList = self % geom % graph % usedMats(1:N-1)
     else
       matList = self % geom % graph % usedMats(1:N)
@@ -445,6 +450,7 @@ contains
       ! Find cell fill
       rootId = coords % lvl(i) % uniRootID
       localID = coords % lvl(i) % localID
+      
       call self % geom % graph % getFill(fill, id, rootID, localID)
 
       if (fill >= 0) then ! Found material cell

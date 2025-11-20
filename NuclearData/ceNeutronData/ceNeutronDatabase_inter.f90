@@ -2,7 +2,7 @@ module ceNeutronDatabase_inter
 
   use numPrecision
   use universalVariables
-  use genericProcedures, only : fatalError
+  use genericProcedures, only : fatalError, numToChar
   use RNG_class,         only : RNG
   use particle_class,    only : particle, P_NEUTRON, printType
   use charMap_class,     only : charMap
@@ -13,6 +13,9 @@ module ceNeutronDatabase_inter
   use materialHandle_inter,  only : materialHandle
   use reactionHandle_inter,  only : reactionHandle
   use nuclearDatabase_inter, only : nuclearDatabase
+  
+  ! Material Menu
+  use materialMenu_mod,      only : mm_nMat => nMat
 
   ! Cache
   use ceNeutronCache_mod,    only : materialCache, majorantCache, trackingCache
@@ -69,6 +72,8 @@ module ceNeutronDatabase_inter
     procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
     procedure(energyBounds), deferred         :: energyBounds
     procedure(getScattMicroMajXS), deferred   :: getScattMicroMajXS
+    procedure(getMaterialMTxs), deferred      :: getMaterialMTxs
+
   end type ceNeutronDatabase
 
   abstract interface
@@ -275,6 +280,25 @@ module ceNeutronDatabase_inter
       real(defReal)                        :: maj
     end function getScattMicroMajXS
 
+    !!
+    !! Retrieves the material cross sections for an MT number
+    !!
+    !! That is, it sums up the contributions of the constituent nuclides for
+    !! that MT number
+    !!
+    !! Args:
+    !!   E [in]       -> required energy [MeV]
+    !!   matIdx [in]  -> material index that needs to be updated
+    !!
+    function getMaterialMTxs(self, E, matIdx, MT) result(xs)
+      import :: ceNeutronDatabase, defReal, shortInt
+      class(ceNeutronDatabase), intent(in) :: self
+      real(defReal), intent(in)            :: E
+      integer(shortInt), intent(in)        :: matIdx
+      integer(shortInt), intent(in)        :: MT
+      real(defReal)                        :: xs
+    end function getMaterialMTxs
+
   end interface
 contains
 
@@ -298,10 +322,14 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTrackMatXS(p, matIdx)
+        if (matIdx == VOID_MAT) then
+          xs = self % collisionXS
+        else
+          xs = max(self % getTrackMatXS(p, matIdx), self % collisionXS)
+        end if
 
       case (MAJORANT_XS)
-        xs = self % getMajorantXS(p)
+        xs = max(self % getMajorantXS(p), self % collisionXS)
 
       case (TRACKING_XS)
 
@@ -347,6 +375,16 @@ contains
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
 
+    ! Check that matIdx exists
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     ! Check Cache and update if needed
     if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
 
@@ -374,7 +412,14 @@ contains
     if (p % isMG .or. p % type /= P_NEUTRON) then
       call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
     end if
-
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     ! Check Cache and update if needed
     if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
 
@@ -417,8 +462,8 @@ contains
   !!   source [in]    -> source pointer of class nuclearDatabase
   !!
   !! Result:
-  !!   Null is source is not of ceNuclearDatabase class
-  !!   Target points to source if source is ceNuclearDatabase class
+  !!   Null if source is not of ceNeutronDatabase class
+  !!   Target points to source if source is ceNeutronDatabase class
   !!
   pure function ceNeutronDatabase_CptrCast(source) result(ptr)
     class(nuclearDatabase), pointer, intent(in) :: source

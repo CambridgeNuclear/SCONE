@@ -4,21 +4,20 @@ module quadric_class
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
   use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
 
   !!
-  !! General quadratic surface
+  !! General quadratic surface - also known as a quadric
   !!
   !! F(x,y,z) = Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fzx + Gx + Hy + Iz + J
   !!
   !! Surface tolerance: 2 * max(coeffs) * SURF_TOL
   !!
   !! Sample dictionary input:
-  !!   quad { type quadratic; 
+  !!   quad { type quadric; 
   !!         id 3;
   !!         coeffs (1 -2.3 0.4 20 7.7777 0.004 6E9 -4.20 0 11);  
   !!         // correspond to(A B C D E F G H I J)
@@ -30,7 +29,7 @@ module quadric_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: quadric
+  type, public, extends(surface) :: quadric
     private
     real(defReal), dimension(10) :: coeffs = ZERO
   contains
@@ -92,7 +91,7 @@ contains
    
     ! Set surface tolerance - what should this be?
     ! Could choose alternatively to be equivalent to the
-    ! sphere case, i.e., 2 * coeffs(8) = 2*R
+    ! sphere case, i.e., 2 * coeffs(10) = 2*R
     call self % setTol( TWO * maxval(abs(coeffs)) * SURF_TOL)
 
   end subroutine init
@@ -105,6 +104,7 @@ contains
   !! finding critical points.
   !! I think this only matters if we wanted to use this as a boundary.
   !!
+  !! TODO: This
   !! See surface_inter for details
   !!
   pure function boundingBox(self) result(aabb)

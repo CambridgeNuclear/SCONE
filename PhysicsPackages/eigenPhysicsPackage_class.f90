@@ -305,13 +305,16 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-    call self % thisCycle % init(3 * self % pop)
-    call self % nextCycle % init(3 * self % pop)
+    call self % thisCycle % init(2 * self % pop)
+    call self % nextCycle % init(2 * self % pop)
 
     ! Generate initial source
     print *, "GENERATING INITIAL FISSION SOURCE"
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
     print *, "DONE!"
+
+    ! Update RNG after source generation
+    call self % pRNG % stride(self % pop)
 
   end subroutine generateInitialState
 

@@ -1,11 +1,10 @@
-module cone_class
+module truncCone_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
   use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -32,16 +31,16 @@ module cone_class
   !! range 0 - 90 degrees (extremes excluded)
   !!
   !! Three different types are available
-  !!   xCone -> aligned with X-axis
-  !!   yCone -> aligned with Y-axis
-  !!   zCone -> aligned with Z-axis
+  !!   xTruncCone -> aligned with X-axis
+  !!   yTruncCone -> aligned with Y-axis
+  !!   zTruncCone -> aligned with Z-axis
   !!
   !! Surface tolerance: SURF_TOL * meanRadius. meanRadius is the radius of the cone at
   !! mid height, between hMin and hMax. Ideally, the tolerance would be space dependent
   !! and vary with height.
   !!
   !! Sample dictionary input:
-  !!   cone { type xCone; // could be yCone or zCone as well
+  !!   cone { type xTruncCone; // could be yCone or zCone as well
   !!          id 3;
   !!          vertex (0.0 0.0 0.0);
   !!          angle 45;
@@ -59,7 +58,7 @@ module cone_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: cone
+  type, public, extends(surface) :: truncCone
     private
     integer(shortInt)               :: axis   = 0
     integer(shortInt), dimension(2) :: plane  = 0
@@ -80,7 +79,7 @@ module cone_class
     ! Local procedures
     procedure :: build
 
-  end type cone
+  end type truncCone
 
 contains
 
@@ -90,21 +89,21 @@ contains
   !! See surface_inter for more details
   !!
   pure function myType(self) result(str)
-    class(cone), intent(in)   :: self
-    character(:), allocatable :: str
+    class(truncCone), intent(in)   :: self
+    character(:), allocatable      :: str
 
     select case(self % axis)
       case(X_AXIS)
-        str = 'xCone'
+        str = 'xTruncCone'
 
       case(Y_AXIS)
-        str = 'yCone'
+        str = 'yTruncCone'
 
       case(Z_AXIS)
-        str = 'zCone'
+        str = 'zTruncCone'
 
       case default
-        str = 'unknown cone'
+        str = 'unknown truncated cone'
 
     end select
 
@@ -116,13 +115,13 @@ contains
   !! See surface_inter for more details
   !!
   subroutine init(self, dict)
-    class(cone), intent(inout)               :: self
+    class(truncCone), intent(inout)          :: self
     class(dictionary), intent(in)            :: dict
     integer(shortInt)                        :: id
     real(defReal), dimension(:), allocatable :: vertex
     character(nameLen)                       :: name
     real(defReal)                            :: angle, hMin, hMax
-    character(100), parameter :: Here = 'init (cone_class.f90)'
+    character(100), parameter :: Here = 'init (truncCone_class.f90)'
 
     ! Get from dictionary
     call dict % get(id, 'id')
@@ -145,7 +144,9 @@ contains
     end if
 
     if (hMin >= hMax) call fatalError(Here, 'hMin is greater than or equal to hMax.')
-    if (sign(hMin,hMax) /= hMin) call fatalError(Here, 'hMin and hMax have different signs.')
+    if ((sign(hMin,hMax) /= hMin) .and. hMin /= ZERO .and. hMax /= ZERO) then
+      call fatalError(Here, 'hMin and hMax have different signs.')
+    end if
 
     ! Load properties
     self % vertex = vertex
@@ -162,31 +163,31 @@ contains
   !!
   !! Args:
   !!   id [in]    -> Surface ID
-  !!   type [in]  -> Cone type {'xCone', 'yCone' or 'zCone'}
+  !!   type [in]  -> Cone type {'xTruncCone', 'yTruncCone' or 'zTruncCone'}
   !!   angle [in] -> Cone opening angle
   !!
   !! Errors:
   !!   fatalError if the cone type provided is not recognised
   !!
   subroutine build(self, id, type, angle)
-    class(cone), intent(inout)              :: self
+    class(truncCone), intent(inout)         :: self
     integer(shortInt), intent(in)           :: id
     character(*), intent(in)                :: type
     real(defReal), intent(in)               :: angle
     real(defReal)                           :: tangent, meanRadius
-    character(100), parameter :: Here = 'build (cylinder_class.f90)'
+    character(100), parameter :: Here = 'build (truncCone_class.f90)'
 
-   ! Select type of cylinder
+   ! Select type of cone
    select case(type)
-     case('xCone')
+   case('xTruncCone')
        self % axis = X_AXIS
        self % plane = [Y_AXIS, Z_AXIS]
 
-     case('yCone')
+     case('yTruncCone')
        self % axis = Y_AXIS
        self % plane = [X_AXIS, Z_AXIS]
 
-     case('zCone')
+     case('zTruncCone')
        self % axis = Z_AXIS
        self % plane = [X_AXIS, Y_AXIS]
 
@@ -213,9 +214,9 @@ contains
   !! See surface_inter for details
   !!
   pure function boundingBox(self) result(aabb)
-    class(cone), intent(in)     :: self
-    real(defReal), dimension(6) :: aabb
-    real(defReal)               :: maxRadius
+    class(truncCone), intent(in) :: self
+    real(defReal), dimension(6)  :: aabb
+    real(defReal)                :: maxRadius
 
     ! Along the axis
     aabb(self % axis) = self % vertex(self % axis) + self % hMin
@@ -234,7 +235,7 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(cone), intent(in)                 :: self
+    class(truncCone), intent(in)            :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c, cMin, cMax, cBase
     real(defReal), dimension(3)             :: diff
@@ -268,7 +269,7 @@ contains
   !!   a = u1^2 + u2^2 - t^2 * u3^2
   !!
   pure function distance(self, r, u) result(dist)
-    class(cone), intent(in)                 :: self
+    class(truncCone), intent(in)            :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: dist
@@ -378,9 +379,7 @@ contains
     end if
 
     ! Cap the distance
-    if (dist <= ZERO .or. dist > INF) then
-      dist = INF
-    end if
+    if (dist <= ZERO .or. dist > INF) dist = INF
 
   end function distance
 
@@ -390,7 +389,7 @@ contains
   !! See surface_inter for details
   !!
   pure function going(self, r, u) result(halfspace)
-    class(cone), intent(in)                 :: self
+    class(truncCone), intent(in)            :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
@@ -423,7 +422,7 @@ contains
 
     ! Parallel direction
     ! Need to use position to determine halfspace
-    if (proj == ZERO) then
+    if (abs(proj) < epsilon(ONE)) then
       halfspace = self % evaluate(r) >= ZERO
     end if
 
@@ -433,7 +432,7 @@ contains
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(cone), intent(inout) :: self
+    class(truncCone), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -448,4 +447,4 @@ contains
 
   end subroutine kill
 
-end module cone_class
+end module truncCone_class
