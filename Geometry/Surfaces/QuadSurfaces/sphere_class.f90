@@ -2,7 +2,7 @@ module sphere_class
 
   use numPrecision
   use universalVariables, only : INF, SURF_TOL
-  use genericProcedures,  only : fatalError, dotProduct, numToChar
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 
@@ -134,7 +134,7 @@ contains
 
     diff = r - self % origin
 
-    c = dotProduct(diff, diff) - self % r_sq
+    c = dot_product(diff, diff) - self % r_sq
 
   end function evaluate
 
@@ -157,7 +157,7 @@ contains
 
     ! Calculate quadratic components
     c = self % evaluate(r)
-    k = dotProduct(r - self % origin, u)
+    k = dot_product(r - self % origin, u)
     delta = k*k - c  ! Technically delta/4
 
     ! Calculate the distance
@@ -192,7 +192,7 @@ contains
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
 
-    halfspace = dotProduct(r - self % origin, u) >= ZERO
+    halfspace = dot_product(r - self % origin, u) >= ZERO
 
   end function going
 
