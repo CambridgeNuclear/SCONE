@@ -1083,24 +1083,40 @@ contains
   !! Prints the position of fission sites to a file
   !! Used initially for looking at clustering
   !!
-  subroutine printToFile(self, name)
-    class(particleDungeon), intent(in) :: self
-    character(*), intent(in)           :: name
-    character(256)                     :: filename
-    integer(shortInt)                  :: i
+  subroutine printToFile(self, name, writeBinary)
+    class(particleDungeon), intent(in)      :: self
+    character(*), intent(in)                :: name
+    logical(defBool), intent(in)  :: writeBinary
+    character(256)                          :: filename
+    integer(shortInt)                       :: i, id
 
-    filename = trim(name)//'.txt'
-    open(unit = 10, file = filename, status = 'new')
+    id = 10
+    ! Open the file in requested mode
+    if (writeBinary) then
+      filename = trim(name)//'.bin'
+      open(unit = id, file = filename, status = 'replace', access = 'stream', form = 'unformatted')
+      
+      ! Print out each particle co-ordinate
+      do i = 1, self % pop
+        write(id) self % prisoners(i) % r, self % prisoners(i) % dir, &
+                  self % prisoners(i) % E, real(self % prisoners(i) % G, defReal), &
+                  real(self % prisoners(i) % broodID, defReal)
+      end do
+    else
+      ! Print out each particle co-ordinate
+      filename = trim(name)//'.txt'
+      open(unit = id, file = filename, status = 'replace')
 
-    ! Print out each particle co-ordinate
-    do i = 1, self % pop
-      write(10, *) self % prisoners(i) % r, self % prisoners(i) % dir, &
-                   self % prisoners(i) % E, self % prisoners(i) % G, &
-                   self % prisoners(i) % broodID
-    end do
+      ! Print out each particle co-ordinate
+      do i = 1, self % pop
+        write(id,*) self % prisoners(i) % r, self % prisoners(i) % dir, &
+                    self % prisoners(i) % E, self % prisoners(i) % G, &
+                    self % prisoners(i) % broodID
+      end do
+    end if
 
     ! Close the file
-    close(10)
+    close(id)
 
   end subroutine printToFile
 

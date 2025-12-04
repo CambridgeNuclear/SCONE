@@ -12,6 +12,7 @@ module sourceFactory_func
   use fissionSource_class,  only : fissionSource
   use materialSource_class, only : materialSource
   use mixSource_class,      only : mixSource, mixSource_TptrCast
+  use externalSource_class, only : externalSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -28,7 +29,8 @@ module sourceFactory_func
   character(nameLen), dimension(*), parameter :: AVAILABLE_sources = [ 'pointSource   ',&
                                                                        'fissionSource ',&
                                                                        'materialSource',&
-                                                                       'mixSource     ']
+                                                                       'mixSource     ',&
+                                                                       'externalSource' ]
 
 contains
 
@@ -62,6 +64,9 @@ contains
 
       case('materialSource')
         allocate(materialSource :: new)
+      
+      case('externalSource')
+        allocate(externalSource :: new)
 
       case('mixSource')
         allocate(mixSource :: new)
