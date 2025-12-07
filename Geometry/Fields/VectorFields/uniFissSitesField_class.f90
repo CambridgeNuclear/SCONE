@@ -243,10 +243,9 @@ contains
     class(uniFissSitesField), intent(in) :: self
     class(coordList), intent(in)         :: coords
     real(defReal), dimension(3)          :: val
-    type(particleState)                  :: state
-    integer(shortInt)                    :: binIdx
     character(100), parameter :: Here = 'at (uniFissSitesField_class.f90)'
 
+    val = ZERO
     call fatalError(Here,'Not defined when providing coords - must provide particle.')
 
   end function at

@@ -6,6 +6,7 @@ module cartesianField_class
   use field_inter,              only : field
   use pieceConstantField_inter, only : pieceConstantField
   use coord_class,              only : coordList
+  use particle_class,           only : particle
   use dictionary_class,         only : dictionary
   use box_class,                only : box
   use materialMenu_mod,         only : mm_matIdx => matIdx
@@ -62,6 +63,7 @@ module cartesianField_class
     ! Superclass procedures
     procedure :: init
     procedure :: at
+    procedure :: atP
     procedure :: distance
     procedure :: kill
 
@@ -223,6 +225,20 @@ contains
     val = self % val(localID)
 
   end function at
+  
+  !!
+  !! Get value of the field at the particle's location
+  !!
+  !! See pieceConstantField for details
+  !!
+  function atP(self, p) result(val)
+    class(cartesianField), intent(in) :: self
+    class(particle), intent(in)       :: p
+    real(defReal)                     :: val
+
+    val = self % at(p % coords)
+
+  end function atP
     
   !!
   !! Get distance to the next element of the field at the co-ordinate point and direction

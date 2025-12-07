@@ -2,9 +2,11 @@ module pieceConstantField_inter
 
   use numPrecision
   use genericProcedures, only : fatalError, numToChar
-  use field_inter,       only : field
+  use scalarField_inter, only : scalarField
   use coord_class,       only : coordList
   use dictionary_class,  only : dictionary
+  use field_inter,       only : field
+  use scalarField_inter, only : scalarField
 
   implicit none
   private
@@ -24,16 +26,16 @@ module pieceConstantField_inter
   !!
   !! Interface:
   !!   field interface
-  !!   at          -> Return scalar value given particle
+  !!   at          -> Return scalar value given coordinates
+  !!   atP         -> Return scalar value given particle
   !!   distance    -> Return distance to next element of the field
   !!   setValue    -> Sets value of field at a given index
   !!   getMaxValue -> Returns the maximum field value
   !!
-  type, public, abstract, extends(field) :: pieceConstantField
-    real(defReal), dimension(:), allocatable :: val
-    integer(shortInt)                        :: N = 0
+  type, public, abstract, extends(scalarField) :: pieceConstantField
+    real(defReal), dimension(:), allocatable   :: val
+    integer(shortInt)                          :: N = 0
   contains
-    procedure(at), deferred       :: at
     procedure(distance), deferred :: distance
     
     procedure :: setValue
@@ -44,22 +46,6 @@ module pieceConstantField_inter
 
   abstract interface
 
-    !!
-    !! Get value of the field at the given coordinates
-    !!
-    !! Args:
-    !!   coords [in] -> Coordinates of the position in the geometry
-    !!
-    !! Result:
-    !!   Value of the scalar field. Real number.
-    !!
-    function at(self, coords) result(val)
-      import :: pieceConstantField, coordList, defReal
-      class(pieceConstantField), intent(in) :: self
-      class(coordList), intent(in)          :: coords
-      real(defReal)                         :: val
-    end function at
-    
     !!
     !! Get distance to the next element of the field at the given coordinates
     !!
