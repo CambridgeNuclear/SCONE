@@ -133,10 +133,9 @@ contains
     class(weightWindowsField), intent(in) :: self
     class(coordList), intent(in)          :: coords
     real(defReal), dimension(3)           :: val
-    type(particleState)                   :: state
-    integer(shortInt)                     :: binIdx
     character(100), parameter :: Here = 'at (weightWindowsField_class.f90)'
 
+    val = ZERO
     call fatalError(Here,'Invalid to access by coords only.')
 
   end function at
