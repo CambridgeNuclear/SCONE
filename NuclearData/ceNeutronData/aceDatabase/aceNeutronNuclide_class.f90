@@ -240,36 +240,34 @@ contains
     ! Find the index of MT reaction in nuclide
     idxMT = self % idxMT % getOrDefault(MT, 0)
 
-    ! Error message if not found
+    ! Returns zero if the MT number is not present for this nuclide
     if (idxMT == 0) then
-      call fatalError(Here, 'Requested MT: '//numToChar(MT)// &
-                             ' is not present in nuclide '//trim(self % ZAID))
+      xs = ZERO
+      return
     end if
 
     ! Obtain bin index and interpolation factor
     if (nuclideCache(self % getNucIdx()) % E_tot == E) then
       idx = nuclideCache(self % getNucIdx()) % idx
       f   = nuclideCache(self % getNucIdx()) % f
-
     else
       call self % search(idx, f, E)
-
     end if
 
     ! Obtain value
     if (idxMT > 0) then
-      idx = idx - self % MTdata(idxMT) % firstIdx
+      idx = idx - self % MTdata(idxMT) % firstIdx + 1
       if (idx < 0) then
         topXS = ZERO
         bottomXS = ZERO
       else
-        topXS    = self % MTdata(idxMT) % xs(idx+1)
+        topXS    = self % MTdata(idxMT) % xs(idx + 1)
         bottomXS = self % MTdata(idxMT) % xs(idx)
       end if
 
     else
       idxMT = -idxMT
-      topXS    = self % mainData(idxMT, idx+1)
+      topXS    = self % mainData(idxMT, idx + 1)
       bottomXS = self % mainData(idxMT, idx)
     end if
 
@@ -349,7 +347,7 @@ contains
     character(100), parameter :: Here = 'search (aceNeutronNuclide_class.f90)'
 
     idx = binarySearch(self % eGrid, E)
-    if(idx <= 0) then
+    if (idx <= 0) then
       call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
                            ' for nuclide '// trim(self % ZAID))
     end if
@@ -497,7 +495,7 @@ contains
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
       ! Default to low temperature without stochastic mixing.
       ! IMPORTANT
-      ! The choice of data should be stored somewhere for consistent handling of 
+      ! The choice of data should be stored somewhere for consistent handling of
       ! angular distributions, e.g., a cache
       call self % getSabPointer(kT, rand, sabPtr, sabIdx)
       nuclideCache(self % getNucIdx()) % sabIdx = sabIdx
@@ -894,6 +892,7 @@ contains
     ! Include main reaction (in mainData) as -ve entries
     call self % idxMT % add(N_TOTAL,-TOTAL_XS)
     call self % idxMT % add(N_N_ELASTIC, -ESCATTER_XS)
+    call self % idxMT % add(N_N_INELASTIC, -IESCATTER_XS)
     call self % idxMT % add(N_DISAP, -CAPTURE_XS)
 
     if (self % isFissile()) then
@@ -976,18 +975,18 @@ contains
     ! Initialise energy boundaries
     self % SabInel = self % thData(1) % getEBounds('inelastic')
     self % SabEl = self % thData(1) % getEBounds('elastic')
-    
+
     ! Add second S(a,b) file for stochastic mixing
     if (present(ACE2)) then
-      
+
       self % stochasticMixing = .true.
       call self % thData(2) % init(ACE2)
-      
+
       ! Ensure energy bounds are conservative
       EBounds = self % thData(2) % getEBounds('inelastic')
       if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
       if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
-      
+
       EBounds = self % thData(2) % getEbounds('elastic')
       if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
       if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
