@@ -316,7 +316,7 @@ contains
       ! Sample number of fission sites generated
       ! Support -ve weight particles
       if (self % uniFissSites) then
-        val = self % ufsField % at(p)
+        val = self % ufsField % atP(p)
         n = int(abs( (wgt * sig_nufiss) / (sig_tot * k_eff))*val(1)/val(2) + rand1, shortInt)
         wgt =  val(2)/val(1)
       else
@@ -444,7 +444,7 @@ contains
       ! Support -ve weight particles
       ! Note change of denominator (sig_fiss) wrt implicit generation
       if (self % uniFissSites) then
-        val = self % ufsField % at(p)
+        val = self % ufsField % atP(p)
         n = int(abs( (wgt * sig_nufiss) / (sig_fiss * k_eff))*val(1)/val(2) + rand1, shortInt)
         wgt =  val(2)/val(1)
       else
@@ -605,7 +605,7 @@ contains
 
     ! Weight Windows treatment
     elseif (self % weightWindows) then
-      val = self % weightWindowsMap % at(p)
+      val = self % weightWindowsMap % atP(p)
       minWgt = val(1)
       maxWgt = val(2)
       avWgt  = val(3)

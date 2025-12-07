@@ -2,6 +2,7 @@ module uniformScalarField_class
 
   use numPrecision
   use dictionary_class,  only : dictionary
+  use coord_class,       only : coordList
   use particle_class,    only : particle
   use field_inter,       only : field
   use scalarField_inter, only : scalarField
@@ -35,6 +36,7 @@ module uniformScalarField_class
     procedure :: init
     procedure :: kill
     procedure :: at
+    procedure :: atP
   end type uniformScalarField
 
 contains
@@ -68,14 +70,28 @@ contains
   !!
   !! See scalarField_inter for details
   !!
-  function at(self, p) result(val)
+  function at(self, coords) result(val)
     class(uniformScalarField), intent(in) :: self
-    class(particle), intent(inout)        :: p
+    class(coordList), intent(in)          :: coords
     real(defReal)                         :: val
 
     val = self % val
 
   end function at
+  
+  !!
+  !! Get value of the scalar field at particle phase space location
+  !!
+  !! See scalarField_inter for details
+  !!
+  function atP(self, p) result(val)
+    class(uniformScalarField), intent(in) :: self
+    class(particle), intent(in)           :: p
+    real(defReal)                         :: val
+
+    val = self % val
+
+  end function atP
 
   !!
   !! Cast field pointer to uniformScalarField pointer

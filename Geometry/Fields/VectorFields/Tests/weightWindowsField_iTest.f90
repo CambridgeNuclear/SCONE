@@ -67,7 +67,7 @@ contains
     p % coords % lvl(1) % r = [0.5, 7.0, 0.0]
     p % E = 10.0
 
-    bins = this % wwField % at(p)
+    bins = this % wwField % atP(p)
     EXPECTED_BINS = [0.4, 1.5, 0.8]
 
     @assertEqual(EXPECTED_BINS, bins, tolerance=1e-6)
@@ -76,7 +76,7 @@ contains
     p % coords % lvl(1) % r = [-0.5, 7.0, 0.0]
     p % E = 10.0
 
-    bins = this % wwField % at(p)
+    bins = this % wwField % atP(p)
     EXPECTED_BINS = ZERO
 
     @assertEqual(EXPECTED_BINS, bins, tolerance=1e-6)

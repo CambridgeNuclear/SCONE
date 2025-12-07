@@ -4,6 +4,7 @@ module weightWindowsField_class
   use genericProcedures, only : fatalError, numToChar
   use dictionary_class,  only : dictionary
   use dictParser_func,   only : fileToDict
+  use coord_class,       only : coordList
   use particle_class,    only : particle, particleState
   use field_inter,       only : field
   use vectorField_inter, only : vectorField
@@ -61,6 +62,7 @@ module weightWindowsField_class
     procedure :: init
     procedure :: kill
     procedure :: at
+    procedure :: atP
   end type weightWindowsField
 
 contains
@@ -120,15 +122,32 @@ contains
     self % constSurvival = ZERO
 
   end subroutine kill
+  
+  !!
+  !! Get value of the vector field by coordinate
+  !! Not defined for weight windows
+  !!
+  !! See vectorField_inter for details
+  !!
+  function at(self, coords) result(val)
+    class(weightWindowsField), intent(in) :: self
+    class(coordList), intent(in)          :: coords
+    real(defReal), dimension(3)           :: val
+    character(100), parameter :: Here = 'at (weightWindowsField_class.f90)'
+
+    val = ZERO
+    call fatalError(Here,'Invalid to access by coords only.')
+
+  end function at
 
   !!
   !! Get value of the vector field given the phase-space location of a particle
   !!
   !! See vectorField_inter for details
   !!
-  function at(self, p) result(val)
+  function atP(self, p) result(val)
     class(weightWindowsField), intent(in) :: self
-    class(particle), intent(inout)        :: p
+    class(particle), intent(in)           :: p
     real(defReal), dimension(3)           :: val
     type(particleState)                   :: state
     integer(shortInt)                     :: binIdx
@@ -149,7 +168,7 @@ contains
     val(2) = self % upperW(binIdx)
     val(3) = val(1) * self % constSurvival
 
-  end function at
+  end function atP
 
   !!
   !! Cast field pointer to weightWindowsField pointer
