@@ -20,6 +20,10 @@ module nuclearDatabase_inter
   !! So nuclear data objects for CE or MG neutron, photons or other particles are
   !! subclasses of this type.
   !!
+  !! Public Members:
+  !!   collisionXS -> XS determining the minimum average distance to collision (to be treated as virtual).
+  !!                  ZERO by default, i.e., flight distances can be infinite in void.
+  !!
   !! Interface:
   !!   getTrackingXS -> returns XS used to sample track length
   !!   getTrackMatXS -> returns material tracking xs, which could be different from the total (e.g., with TMS)
@@ -32,6 +36,7 @@ module nuclearDatabase_inter
   !!   kill          -> return to uninitialised state, clean memory
   !!
   type, public,abstract :: nuclearDatabase
+    real(defReal)                      :: collisionXS = ZERO
   contains
     procedure(init), deferred          :: init
     procedure(activate), deferred      :: activate

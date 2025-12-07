@@ -61,6 +61,10 @@ contains
     if (p % matIdx() == VOID_MAT) then
       sigmaT = ZERO
     else
+      ! Get local conditions
+      p % T = self % geom % getTemperature(p % coords)
+      p % rho  = self % geom % getDensity(p % coords)
+      
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
     end if
 
@@ -159,29 +163,39 @@ contains
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
     integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack
+    real(defReal), parameter                  :: tol  = 1.0E-12
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
       
+      ! Get local conditions
+      p % T = self % geom % getTemperature(p % coords)
+      p % rho  = self % geom % getDensity(p % coords)
+      
+      sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
+
       ! Obtain the local cross-section, depending on the material
-      if (p % matIdx() == VOID_MAT) then
+      ! This branch is called in the case of voids with no imposed XS
+      if (sigmaTrack < tol) then
+        
         dist = INFINITY
+        invSigmaTrack = INFINITY
+        sigmaT = ZERO
 
       else
       
-        ! Get local conditions
-        p % T = self % geom % getTemperature(p % coords)
-        p % rho  = self % geom % getDensity(p % coords)
-
-        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-        dist = -log( p % pRNG % get()) / sigmaT
+        invSigmaTrack = ONE / sigmaTrack
+        dist = -log( p % pRNG % get()) * invSigmaTrack
+        
+        ! Obtain the local cross-section
+        sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
 
       end if
-
+      
       ! Save state before movement
       call p % savePrePath()
 
@@ -212,9 +226,18 @@ contains
           ! All is well
 
       end select
+      
+      if (p % isDead) exit STLoop
 
-      ! Return if particle stoped at collision (not cell boundary)
-      if (event == COLL_EV .or. p % isDead) exit STLoop
+      ! Roll RNG to determine if the collision is real or virtual
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (event == COLL_EV) then
+        if (p % pRNG % get() < sigmaT*invSigmaTrack) then
+          exit STLoop
+        else
+          call tally % reportInColl(p, .true.)
+        end if
+      end if
 
     end do STLoop
 

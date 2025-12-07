@@ -234,26 +234,24 @@ contains
 
       ! Get energy indexes
       if (E_in > self % eIn(size(self % eIn))) then
-        l1 = size(self % eIn) - 1
+        l2 = size(self % eIn)
       else
-        l1 = binarySearch(self % eIn, E_in)
+        l2 = binarySearch(self % eIn, E_in)
       end if
 
-      l2 = l1 + 1
-
       ! Sample a Bragg edge at a smaller energy than E_in
-      prob = self % pValues(1:l2)
-      prob(1) = ZERO
-      r = rand % get() * prob(l2)
+      prob = [ZERO, self % pValues(1:l2)]
+      r = rand % get() * prob(l2 + 1)
       k = binarySearch(prob, r)
 
       E2 = self % eIn(k)
       ! Compute angle
-      mu = 1 - TWO * E2/E_in
+      mu = ONE - TWO * E2/E_in
 
       if (abs(mu) > ONE) then
         call fatalError(Here,'Failed to get angle'//numToChar(mu))
       end if
+
     end if
 
     ! Sample phi

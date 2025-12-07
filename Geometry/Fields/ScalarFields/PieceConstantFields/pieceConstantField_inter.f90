@@ -2,11 +2,13 @@ module pieceConstantField_inter
 
   use numPrecision
   use genericProcedures, only : fatalError, numToChar
-  use field_inter,       only : field
+  use scalarField_inter, only : scalarField
   use coord_class,       only : coordList
   use dictionary_class,  only : dictionary
   use particle_class,    only : particle
   use dictParser_func,   only : fileToDict
+  use field_inter,       only : field
+  use scalarField_inter, only : scalarField
 
   implicit none
   private
@@ -30,6 +32,7 @@ module pieceConstantField_inter
   !!   init_dict    -> Initialises from a dictionary containing full description
   !!   init_file    -> Initialises from a path to a full description
   !!   at           -> Return scalar value given coordlist
+  !!   atP          -> Return scalar value given particle
   !!   map          -> Returns field index given coordList  
   !!   map_particle -> Returns field index given particle
   !!   distance     -> Return distance to next element of the field
@@ -37,12 +40,11 @@ module pieceConstantField_inter
   !!   getMaxValue  -> Returns the maximum field value
   !!   getSize      -> Returns the size of the field
   !!
-  type, public, abstract, extends(field) :: pieceConstantField
-    real(defReal), dimension(:), allocatable :: val
-    integer(shortInt)                        :: N = 0
+  type, public, abstract, extends(scalarField) :: pieceConstantField
+    real(defReal), dimension(:), allocatable   :: val
+    integer(shortInt)                          :: N = 0
   contains
     procedure(init_dict), deferred :: init_dict
-    procedure(at), deferred        :: at
     procedure(distance), deferred  :: distance
     procedure(map), deferred       :: map
     
@@ -69,22 +71,6 @@ module pieceConstantField_inter
       class(pieceConstantField), intent(inout) :: self
       class(dictionary), intent(in)            :: dict
     end subroutine init_dict
-    
-    !!
-    !! Get value of the field at the given coordinates
-    !!
-    !! Args:
-    !!   coords [in] -> Coordinates of the position in the geometry
-    !!
-    !! Result:
-    !!   Value of the scalar field. Real number.
-    !!
-    function at(self, coords) result(val)
-      import :: pieceConstantField, coordList, defReal
-      class(pieceConstantField), intent(in) :: self
-      class(coordList), intent(in)          :: coords
-      real(defReal)                         :: val
-    end function at
     
     !!
     !! Get distance to the next element of the field at the given coordinates

@@ -1,8 +1,8 @@
-module cone_test
+module truncCone_test
   use numPrecision
   use universalVariables
   use dictionary_class,  only : dictionary
-  use cone_class,        only : cone
+  use truncCone_class,   only : truncCone
   use funit
 
   implicit none
@@ -22,13 +22,13 @@ module cone_test
   !! Cone Test case
   !!
   @TestCase(constructor=newTestCase)
-    type, extends(ParameterizedTestCase) :: test_cone
+    type, extends(ParameterizedTestCase) :: test_truncCone
       integer(shortInt)                  :: axis
       integer(shortInt), dimension(2)    :: plane
-      type(cone)                         :: surf
+      type(truncCone)                    :: surf
     contains
       procedure :: tearDown
-    end type test_cone
+    end type test_truncCone
 
 contains
 
@@ -52,11 +52,11 @@ contains
 
      select case(this % dir)
        case(X_AXIS)
-         string = 'xCone'
+         string = 'xTruncCone'
        case(Y_AXIS)
-         string = 'yCone'
+         string = 'yTruncCone'
        case(Z_AXIS)
-         string = 'zCone'
+         string = 'zTruncCone'
        case default
          string ="Unknown"
       end select
@@ -64,7 +64,7 @@ contains
   end function toString
 
   !!
-  !! Build new test_cone test case
+  !! Build new test_truncCone test case
   !! Given integer direction X_AXIS, Y_AXIS or Z_AXIS
   !!
   !! Vertex 1.0, 1.0, 1.0
@@ -73,7 +73,7 @@ contains
   !!
   function newTestCase(dir) result(tst)
     type(dirParam), intent(in) :: dir
-    type(test_cone)            :: tst
+    type(test_truncCone)       :: tst
     type(dictionary)           :: dict
     character(nameLen)         :: type
 
@@ -82,17 +82,17 @@ contains
       case(X_AXIS)
         tst % axis = X_AXIS
         tst % plane = [Y_AXIS, Z_AXIS]
-        type = 'xCone'
+        type = 'xTruncCone'
 
       case(Y_AXIS)
         tst % axis = Y_AXIS
         tst % plane = [X_AXIS, Z_AXIS]
-        type = 'yCone'
+        type = 'yTruncCone'
 
       case(Z_AXIS)
         tst % axis = Z_AXIS
         tst % plane = [X_AXIS, Y_AXIS]
-        type = 'zCone'
+        type = 'zTruncCone'
 
       case default
         print *, "Should not happen. Wrong direction in testCase constructor"
@@ -115,7 +115,7 @@ contains
   !! Deconstruct the test case
   !!
   subroutine tearDown(this)
-    class(test_cone), intent(inout) :: this
+    class(test_truncCone), intent(inout) :: this
 
     call this % surf % kill()
 
@@ -132,10 +132,10 @@ contains
   !!
 @Test(cases = [1, 2, 3])
   subroutine testMisc(this)
-    class(test_cone), intent(inout) :: this
-    real(defReal), dimension(6)     :: aabb, ref
-    character(nameLen)              :: name
-    real(defReal), parameter        :: TOL = 1.0E-6_defReal
+    class(test_truncCone), intent(inout) :: this
+    real(defReal), dimension(6)          :: aabb, ref
+    character(nameLen)                   :: name
+    real(defReal), parameter             :: TOL = 1.0E-6_defReal
 
     ! Test ID
     @assertEqual(52, this % surf % id())
@@ -147,11 +147,11 @@ contains
     ! Name
     select case(this % axis)
       case(X_AXIS)
-        name = 'xCone'
+        name = 'xTruncCone'
       case(Y_AXIS)
-        name = 'yCone'
+        name = 'yTruncCone'
       case(Z_AXIS)
-        name = 'zCone'
+        name = 'zTruncCone'
     end select
     @assertEqual(name, this % surf % myType())
 
@@ -173,8 +173,8 @@ contains
   !!
 @Test(cases=[1,2,3])
   subroutine testBC(this)
-    class(test_cone), intent(inout) :: this
-    real(defReal), dimension(3)     :: r, u, r_pre, u_pre
+    class(test_truncCone), intent(inout) :: this
+    real(defReal), dimension(3)          :: r, u, r_pre, u_pre
 
     ! Set boundary conditions
     ! Should ignore extra entries
@@ -206,10 +206,10 @@ contains
   !!
 @Test(cases=[1,2,3])
   subroutine testHalfspace(this)
-    class(test_cone), intent(inout) :: this
-    integer(shortInt)               :: a, p1, p2
-    real(defReal), dimension(3)     :: r, u
-    real(defReal)                   :: eps, tolerance
+    class(test_truncCone), intent(inout) :: this
+    integer(shortInt)                    :: a, p1, p2
+    real(defReal), dimension(3)          :: r, u
+    real(defReal)                        :: eps, tolerance
 
     ! Get surface tolerance
     tolerance = this % surf % surfTol()
@@ -294,10 +294,10 @@ contains
   !!
 @Test(cases=[1, 2, 3])
   subroutine testDistance(this)
-    class(test_cone), intent(inout) :: this
-    integer(shortInt)               :: a, p1, p2
-    real(defReal), dimension(3)     :: r, u
-    real(defReal)                   :: ref, tolerance
+    class(test_truncCone), intent(inout) :: this
+    integer(shortInt)                    :: a, p1, p2
+    real(defReal), dimension(3)          :: r, u
+    real(defReal)                        :: ref, tolerance
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! Get surface tolerance
@@ -478,4 +478,4 @@ contains
 
   end subroutine testDistance
 
-end module cone_test
+end module truncCone_test
