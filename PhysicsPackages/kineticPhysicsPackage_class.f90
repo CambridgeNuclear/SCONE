@@ -218,8 +218,6 @@ contains
           ! Analog precursor sampling
           else
 
-            call self % nextPrecursors % cleanPop()
-
             !$omp parallel do
             do n = 1, self % thisPrecursors % popSize()
               call self % thisPrecursors % copy(p, n)
@@ -231,19 +229,18 @@ contains
               p % time = tPrev - log(pRNG % get()) / p % lambda
 
               if (p % time < tNext) then
+                ! Emit this step
                 call p % emitDelayedNeutron()
                 call self % thisTime % detain(p)
               else
+                ! Save for future time steps
+                p % time = tNext
                 call self % nextPrecursors % detain(p)
               end if
 
             end do
             !$omp end parallel do
             
-            ! Flip precursor dungeons
-            self % tempPrecursors => self % nextPrecursors
-            self % nextPrecursors => self % thisPrecursors
-            self % thisPrecursors => self % tempPrecursors
 
           end if
             
@@ -360,8 +357,11 @@ contains
                   decayT = p % time - log(pRNG % get()) / p % lambda
 
                   ! Set the particle as dead, skipping the history loop.
+                  ! Note detention in nextPrecursors (unlike with forced decay).
+                  ! This is because forced decay only requires a single dungeon.
                   if (decayT >= tNext) then
-                    call self % thisPrecursors % detain(p)
+                    p % time = tNext
+                    call self % nextPrecursors % detain(p)
                     p % isDead = .true.
 
                   ! Precursor will decay in this step
@@ -387,6 +387,16 @@ contains
         self % tempTime => self % nextTime
         self % nextTime => self % thisTime
         self % thisTime => self % tempTime
+            
+        ! Flip precursor dungeons
+        ! Only if not using forced precursor decay - it only requires a single dungeon
+        if (.not. self % forcedPrecursorDecay) then
+          self % tempPrecursors => self % nextPrecursors
+          self % nextPrecursors => self % thisPrecursors
+          self % thisPrecursors => self % tempPrecursors
+            
+          call self % nextPrecursors % cleanPop()
+        end if
 
       end do time
         
@@ -655,6 +665,11 @@ contains
     print *, "/\/\ KINETIC CALCULATION /\/\"
     print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
     print *, "Initial Population:                 ", numToChar(self % pop)
+    if (self % forcedPrecursorDecay) then
+      print *, "Forced precursor decay is applied"
+    else
+      print *, "Analog precursor decay is applied"
+    end if
     print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
     print *
     print *, repeat("<>",50)

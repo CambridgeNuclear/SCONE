@@ -548,7 +548,7 @@ contains
   !!
   !! Normalises precursor population by importance-based combing.
   !! Importance-based combing accounting for expected weight of delayed neutron 
-  !! upon Forced Precursor Decay.
+  !! upon Forced Precursor Decay or when the population becomes large.
   !!
   subroutine precursorCombing(self, N, rand, t1, t2)
     class(particleDungeon), intent(inout)    :: self
