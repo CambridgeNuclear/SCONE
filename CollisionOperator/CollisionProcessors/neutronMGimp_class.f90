@@ -315,7 +315,7 @@ contains
 
     ! Weight Windows treatment
     elseif (self % weightWindows) then
-      val = self % weightWindowsMap % at(p)
+      val = self % weightWindowsMap % atP(p)
       minWgt = val(1)
       maxWgt = val(2)
       avWgt  = val(3)
