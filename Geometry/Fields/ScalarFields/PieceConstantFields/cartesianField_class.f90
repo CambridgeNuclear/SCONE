@@ -4,7 +4,7 @@ module cartesianField_class
   use universalVariables
   use genericProcedures,        only : fatalError, numToChar, swap
   use field_inter,              only : field
-  use pieceConstantField_inter, only : pieceConstantField
+  use pieceConstantField_inter, only : pieceConstantField, kill_super => kill
   use coord_class,              only : coordList
   use particle_class,           only : particle
   use dictionary_class,         only : dictionary
@@ -26,8 +26,10 @@ module cartesianField_class
   !! Values of the field are piecewise constant.
   !!
   !! Similar to a Cartesian lattice. Centre is placed at origin.
-  !! Can include materials. If applying the values uniformly to all materials, can use
-  !! the keyword 'all', i.e., materials (all);
+  !! Can include materials: values can be set on a coarse grid and differentiating
+  !! between materials within a given grid cell. 
+  !! If applying the values uniformly to all materials, can use the keyword 'all', 
+  !! i.e., materials (all);
   !!
   !! Example dictionary:
   !!
@@ -315,7 +317,8 @@ contains
   elemental subroutine kill(self)
     class(cartesianField), intent(inout) :: self
     
-    call self % killSuper()
+    ! Superclass
+    call kill_super(self)
 
     self % pitch = ZERO
     self % sizeN = 0

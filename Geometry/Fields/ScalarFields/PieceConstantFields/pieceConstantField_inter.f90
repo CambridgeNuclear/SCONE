@@ -12,22 +12,18 @@ module pieceConstantField_inter
   private
 
   !!
-  !! Public Pointer Cast
+  !! Public Pointer Cast and clean up
   !!
   public :: pieceConstantField_CptrCast
+  public :: kill
 
   !!
   !! Piecewise constant field. Values of the field are piecewise constant.
   !! Provides a distance calculation to neighbouring elements, allowing surface
   !! tracking to be used.
   !!
-  !! Access to field is via coordList to allow more fancy fields to be defined
-  !! (e.g. assign value to each uniqueID etc.)
-  !!
   !! Interface:
   !!   field interface
-  !!   at          -> Return scalar value given coordinates
-  !!   atP         -> Return scalar value given particle
   !!   distance    -> Return distance to next element of the field
   !!   setValue    -> Sets value of field at a given index
   !!   getMaxValue -> Returns the maximum field value
@@ -41,7 +37,7 @@ module pieceConstantField_inter
     procedure :: setValue
     procedure :: getMaxValue
     
-    procedure :: killSuper
+    procedure :: kill
   end type pieceConstantField
 
   abstract interface
@@ -141,12 +137,12 @@ contains
   !!
   !! Kills elements of the superclass
   !!
-  elemental subroutine killSuper(self)
+  elemental subroutine kill(self)
     class(pieceConstantField), intent(inout) :: self
 
     if (allocated(self % val)) deallocate(self % val)
     self % N = 0
 
-  end subroutine killSuper
+  end subroutine kill
 
 end module pieceConstantField_inter
