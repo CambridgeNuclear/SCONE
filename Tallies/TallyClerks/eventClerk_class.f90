@@ -28,9 +28,6 @@ module eventClerk_class
   implicit none
   private
 
-  ! Memory size of the event object
-  integer(shortInt), parameter :: eventSize = 12
-
   !!
   !! An object that records the state a particle was in during a
   !! particular collision.
@@ -73,14 +70,19 @@ module eventClerk_class
   !! The user can choose the write frequency and maximum number of events to write.
   !! This allows some control over computational expense and memory.
   !!
+  !! The user can also choose to output the file as a binary. It is a text file
+  !! by default.
+  !!
   !! TODO: allow filtering based on nuclide. May require interface change.
   !! TODO: allow maxEvents to be input directly (dictionary longInt restrictions)
+  !! TODO: write a python script to post-process the binary
   !!
   !! Private Members:
   !!   filter   -> Space to store tally Filter
   !!   map      -> Space to store tally Map
   !!   handleVirtual -> score on virtual collisions (probably not desirable)
   !!   outputFile -> path to the file where events are recorded
+  !!   binary    -> bool, decides whether to output a binary file. False by default.
   !!   maxEvents -> maximum number of events; scoring stops when reached. 10M by default
   !!   frequency -> how many events before there is a file write/update. 500k by default
   !!   scores    -> array of events, with thread-privacy to avoid critical statements
@@ -101,6 +103,7 @@ module eventClerk_class
   !!   # handleVirtual 0; # default is 0   
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
+  !!   # binary 0; # default is 0
   !! }
   !!
   type, public, extends(tallyClerk) :: eventClerk
@@ -113,11 +116,13 @@ module eventClerk_class
     character(pathLen) :: outputFile
     integer(longInt)   :: maxEvents = 100000000
     integer(shortInt)  :: frequency = 500000
+    logical(defBool)   :: binary = .false.
 
     ! Storage
-    type(event), dimension(:,:), allocatable     :: scores
-    integer(shortInt), dimension(:), allocatable :: lastEntry
-    integer(longInt)                             :: totalEvents = 0
+    ! Scores are made public for unit testing purposes
+    type(event), dimension(:,:), allocatable, public :: scores
+    integer(shortInt), dimension(:), allocatable     :: lastEntry
+    integer(longInt)                                 :: totalEvents = 0
 
     ! Settings
     logical(defBool)   :: handleVirtual = .false.
@@ -135,7 +140,8 @@ module eventClerk_class
     ! Output procedures
     procedure           :: display
     procedure           :: print
-    procedure, private  :: outputScores
+    procedure, private  :: outputScoresText
+    procedure, private  :: outputScoresBinary
 
   end type eventClerk
 
@@ -186,6 +192,9 @@ contains
     ! Handle virtual collisions
     call dict % getOrDefault(self % handleVirtual,'handleVirtual', .false.)
 
+    ! Binary output?
+    call dict % getOrDefault(self % binary, 'binary', .false.)
+
     ! Size the scores array based on number of threads
     nThreads = ompGetMaxThreads()
     allocate(self % scores(self % frequency, nThreads))
@@ -214,10 +223,14 @@ contains
       deallocate(self % map)
     end if
 
+    if (allocated(self % scores)) deallocate(self % scores)
+    if (allocated(self % lastEntry)) deallocate(self % lastEntry)
+
     self % handleVirtual = .false.
     self % outputFile = ''
     self % frequency = 5000000
     self % maxEvents = 100000000
+    self % binary = .false.
 
   end subroutine kill
 
@@ -300,7 +313,11 @@ contains
         self % lastEntry(id) = 0
       else
 
-        call self % outputScores(id)
+        if (self % binary) then
+          call self % outputScoresBinary(id)
+        else
+          call self % outputScoresText(id)
+        end if
       
         ! Increment the total number of events
         self % totalEvents = self % totalEvents + self % lastEntry(id)
@@ -341,7 +358,13 @@ contains
     ! Make sure that score arrays have been flushed already.
     ! If not, write the remainder to output.
     do i = 1, size(self % lastEntry)
-      if (self % lastEntry(i) > 0) call self % outputScores(i)
+      if (self % lastEntry(i) > 0) then
+        if (self % binary) then
+          call self % outputScoresBinary(i)
+        else
+          call self % outputScoresText(i)
+        end if
+      end if
     end do
 
     ! Write out any map that was used to the usual output file,
@@ -360,9 +383,9 @@ contains
   end subroutine print
 
   !!
-  !! Send events in a thread's bank to the output file
+  !! Send events in a thread's bank to a text output file
   !!
-  subroutine outputScores(self, id)
+  subroutine outputScoresText(self, id)
     class(eventClerk), intent(in) :: self
     integer(shortInt), intent(in) :: id
     integer(shortInt)             :: i, u, ios
@@ -385,7 +408,33 @@ contains
 
     end associate
 
-  end subroutine outputScores
+  end subroutine outputScoresText
+  
+  !!
+  !! Send events in a thread's bank to a binary output file
+  !!
+  subroutine outputScoresBinary(self, id)
+    class(eventClerk), intent(in) :: self
+    integer(shortInt), intent(in) :: id
+    integer(shortInt)             :: i, u, ios
+
+    associate(ev => self % scores(:,id))
+
+      ! Open the file and append the event info
+      open(newunit=u, file=trim(self % outputFile), status='unknown', &
+           access='stream', form='unformatted', position='append', &
+           action='write', iostat=ios)
+
+      do i = 1, self % lastEntry(id)
+        write(u) ev(i) % r, ev(i) % dir, ev(i) % Eincident, &
+                ev(i) % time, ev(i) % w, ev(i) % brood, ev(i) % Edeposit, &
+                ev(i) % MT
+      end do
+      close(u)
+
+    end associate
+
+  end subroutine outputScoresBinary
 
 !!
 !! Event procedures

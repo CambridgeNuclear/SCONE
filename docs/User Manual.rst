@@ -1191,7 +1191,8 @@ Example: ::
     factor rather than an integer due to constraints on the dictionary.
   - freq (*optional*): an integer determining how often events are written to the file.
     More often will incur more parallel overhead, less often will incur a larger memory
-    footprint. Set to 500k by default.
+    footprint. Set to 500k by default. For 40 threads, this corresponds to a memory footprint
+    of about 960 MB.
   - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
     that defines the set of events which are recorded
   - filter (*optional*): can filter out particles with certain properties,
