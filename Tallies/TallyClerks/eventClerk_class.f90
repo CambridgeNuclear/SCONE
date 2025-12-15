@@ -140,8 +140,7 @@ module eventClerk_class
     ! Output procedures
     procedure           :: display
     procedure           :: print
-    procedure, private  :: outputScoresText
-    procedure, private  :: outputScoresBinary
+    procedure, private  :: outputScores
 
   end type eventClerk
 
@@ -313,11 +312,7 @@ contains
         self % lastEntry(id) = 0
       else
 
-        if (self % binary) then
-          call self % outputScoresBinary(id)
-        else
-          call self % outputScoresText(id)
-        end if
+        call self % outputScores(id)
       
         ! Increment the total number of events
         self % totalEvents = self % totalEvents + self % lastEntry(id)
@@ -358,13 +353,7 @@ contains
     ! Make sure that score arrays have been flushed already.
     ! If not, write the remainder to output.
     do i = 1, size(self % lastEntry)
-      if (self % lastEntry(i) > 0) then
-        if (self % binary) then
-          call self % outputScoresBinary(i)
-        else
-          call self % outputScoresText(i)
-        end if
-      end if
+      if (self % lastEntry(i) > 0) call self % outputScores(i)
     end do
 
     ! Write out any map that was used to the usual output file,
@@ -385,57 +374,44 @@ contains
   !!
   !! Send events in a thread's bank to a text output file
   !!
-  subroutine outputScoresText(self, id)
+  subroutine outputScores(self, id)
     class(eventClerk), intent(in) :: self
     integer(shortInt), intent(in) :: id
     integer(shortInt)             :: i, u, ios
+    character(nameLen)            :: accessType, formType
 
     associate(ev => self % scores(:,id))
 
+      if (self % binary) then
+        accessType = 'stream'
+        formType = 'unformatted'
+      else
+        accessType = 'sequential'
+        formType = 'formatted'
+      end if
 
       ! Open the file and append the event info
       open(newunit=u, file=trim(self % outputFile), status='unknown', &
-           position='append', action='write', iostat=ios)
-
-      do i = 1, self % lastEntry(id)
-        ! Consider changing to a binary output in future
-        ! Would require a corresponding python script to translate
-        write(u,'(*(g0,1x))') ev(i) % r, ev(i) % dir, ev(i) % Eincident, &
-                ev(i) % time, ev(i) % w, ev(i) % brood, ev(i) % Edeposit, &
-                ev(i) % MT
-      end do
-      close(u)
-
-    end associate
-
-  end subroutine outputScoresText
-  
-  !!
-  !! Send events in a thread's bank to a binary output file
-  !!
-  subroutine outputScoresBinary(self, id)
-    class(eventClerk), intent(in) :: self
-    integer(shortInt), intent(in) :: id
-    integer(shortInt)             :: i, u, ios
-
-    associate(ev => self % scores(:,id))
-
-      ! Open the file and append the event info
-      open(newunit=u, file=trim(self % outputFile), status='unknown', &
-           access='stream', form='unformatted', position='append', &
+           access=accessType, form=formType, position='append', &
            action='write', iostat=ios)
 
       do i = 1, self % lastEntry(id)
-        write(u) ev(i) % r, ev(i) % dir, ev(i) % Eincident, &
+        if (self % binary) then
+          write(u) ev(i) % r, ev(i) % dir, ev(i) % Eincident, &
                 ev(i) % time, ev(i) % w, ev(i) % brood, ev(i) % Edeposit, &
                 ev(i) % MT
+        else
+          write(u,'(*(g0,1x))') ev(i) % r, ev(i) % dir, ev(i) % Eincident, &
+                ev(i) % time, ev(i) % w, ev(i) % brood, ev(i) % Edeposit, &
+                ev(i) % MT
+        end if
       end do
       close(u)
 
     end associate
 
-  end subroutine outputScoresBinary
-
+  end subroutine outputScores
+  
 !!
 !! Event procedures
 !!
