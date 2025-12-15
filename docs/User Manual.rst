@@ -114,6 +114,75 @@ Example: ::
 
         varianceReduction { <Weight windows definition> }
 
+kineticPhysicsPackage
+#########################
+
+kineticPhysicsPackage, used for time-dependent calculations. One can change
+settings in the collisionProcessor to switch delayed neutrons on or off.
+
+* pop: number of particles used per batch
+* precPop (*optional*, default = pop): maximum number of precursors in memory
+  before applying population control.
+* cycles: number of batches
+* dt: length of time between applications of population control
+* timeSteps: number of time steps over which population control is applied.
+  A batch concludes once all neutrons in pop have traversed all time steps.
+  The total simulated time is given by timeSteps * dt.
+* forcedPrecursorDecay: (*optional*, default = 1): 1 for true; 0 for false;
+  determines whether precursors are forced to decay each time step or whether
+  precursors decay in an analog manner.
+* k0: (*optional*, default = 1): fixed value for k to scale fission neutron
+  production
+* dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
+* buffer (*optional*, default = 50): size of the particle bank used by each
+  OpenMP thread to store secondary particles
+* commonBufferSize (*optional*): if not included, the common buffer is not
+  used; if included, after each particle history the particles in each
+  thread-private buffer (or bank, or dungeon) are moved to a buffer
+  common to all threads to better load balance threads.
+* bufferShift (*optional*, default = 10): threshold of particles to be
+  stored in a thread-private buffer, after which particles are shifted to
+  the common buffer.
+
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
+
+Example: ::
+
+        type kineticSourcePhysicsPackage;
+        pop    100000;
+        cycles 200;
+        dt 0.0001;
+        timeSteps 100;
+        forcedPrecursorDecay 0;
+        dataType ce;
+        XSdata   ceData;
+        seed     2829741;
+        outputFile shield_type11;
+
+        buffer 10000;
+        commonBufferSize 50000;
+
+        transportOperator { <Transport operator definition> }
+        collisionOperator { <Collision operator definition> }
+        tally { <Tally definition> }
+        source { <Source definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+*Optional entries* ::
+
+        varianceReduction { <Weight windows definition> }
+
 rayVolPhysicsPackage
 ####################
 
@@ -274,7 +343,7 @@ include: ::
 
       collisionOperator { neutronCE { type <ceCollisionOperatorType>; *keywords* } }
 
-if continuos energy nuclear data are used, or ::
+if continuous energy nuclear data are used, or ::
 
       collisionOperator { neutronMG { type <ceCollisionOperatorType>; } }
 
@@ -297,6 +366,10 @@ neutronCEstd, to perform analog collision processing
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -333,6 +406,10 @@ neutronCEimp, to perform implicit collision processing
   fission sites
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -1446,6 +1523,23 @@ Examples: ::
 Examples: ::
 
       map1 { type fieldMap; field {file ./myField.txt } }
+
+* timeMap (1D map), maps particles point in time
+
+  - grid: ``lin`` for linearly spaced bins
+
+    + min: lower time bound [s]
+    + max: upper time bounds [s]
+    + N: number of bins
+
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the bin boundaries to be used
+
+Examples: ::
+
+      map1 { type timeMap; grid lin; min 0.0; max 200.0; N 100; }
+      map2 { type timeMap; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
 * weightMap (1D map), divides weight into number of discrete bins
 

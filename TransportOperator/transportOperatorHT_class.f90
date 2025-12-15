@@ -19,7 +19,7 @@ module transportOperatorHT_class
   use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry
+  use geometry_inter,             only : geometry, distCache
 
   ! Nuclear data interfaces
   use nuclearDataReg_mod,         only : ndReg_get => get
@@ -32,7 +32,8 @@ module transportOperatorHT_class
   !! Transport operator that moves a particle with hybrid tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorHT
-    real(defReal) :: cutoff   ! Cutoff threshold between ST and DT
+    real(defReal)    :: cutoff   ! Cutoff threshold between ST and DT
+    logical(defBool) :: cache = .true.
 
   contains
     procedure :: transit => tracking_selection
@@ -89,7 +90,7 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
-    real(defReal)                             :: majorant_inv, sigmaT, distance
+    real(defReal)                             :: majorant_inv, sigmaT, distance, speed, time
     character(100), parameter :: Here = 'deltaTracking (transportOperatorHT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
@@ -100,20 +101,31 @@ contains
 
     DTLoop:do
       distance = -log( p % pRNG % get() ) * majorant_inv
+      
+      speed = p % getSpeed()
+      time = distance / speed + p % time
 
-      ! Move particle in the geometry
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        distance = speed * (p % timeMax - p % time)
+        p % fate = AGED_FATE
+      end if
+
+      ! Move particle in the geometry and time
       call self % geom % teleport(p % coords, distance)
-
+      p % time = p % time + distance / speed
+      
       select case(p % matIdx())
 
         ! If particle has leaked exit
         case(OUTSIDE_FILL)
           p % fate = LEAK_FATE
           p % isDead = .true.
-          return
+          exit DTLoop
 
         ! Check for void
         case(VOID_MAT)
+          if (p % fate == AGED_FATE) exit DTLoop
           call tally % reportInColl(p, .true.)
           cycle DTLoop
 
@@ -131,6 +143,11 @@ contains
           ! All is well
 
       end select
+      
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        exit DTLoop
+      end if
 
       ! Get local conditions
       p % T = self % geom % getTemperature(p % coords)
@@ -162,9 +179,11 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack
+    integer(shortInt)                         :: event, collFate
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack, &
+                                                 speed, time
     real(defReal), parameter                  :: tol  = 1.0E-12
+    type(distCache)                           :: cache
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
@@ -193,14 +212,40 @@ contains
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
-
+        
+      end if
+      
+      speed = p % getSpeed()
+      time = dist / speed + p % time
+      
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        dist = speed * (p % timeMax - p % time)
+        collFate = AGED_FATE
+      else
+        collFate = NO_FATE
       end if
       
       ! Save state before movement
       call p % savePrePath()
 
+<<<<<<< HEAD
       ! Move to the next stop. NOTE: "move" resets dist to distance moved!
       call self % geom % move(p % coords, dist, event)
+=======
+      ! Move to the next stop.
+      if (self % cache) then
+        call self % geom % move_withCache(p % coords, dist, event, cache)
+      else
+        call self % geom % move(p % coords, dist, event)
+      end if
+      
+      ! Advance in time
+      p % time = p % time + dist / speed
+
+      ! Set fate if a collision occurred
+      if (event == COLL_EV) p % fate = collFate
+>>>>>>> develop
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
@@ -227,8 +272,9 @@ contains
 
       end select
       
-      if (p % isDead) exit STLoop
-
+      ! Return if particle is stopped by death, or aging
+      if (p % isDead .or. p % fate == AGED_FATE) exit STLoop
+      
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
       if (event == COLL_EV) then
@@ -259,6 +305,10 @@ contains
 
     ! Retrieve DT-ST probability cutoff
     call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
+    
+    if (dict % isPresent('cache')) then
+      call dict % get(self % cache, 'cache')
+    end if
 
   end subroutine init
 

@@ -79,7 +79,7 @@ module universalVariables
   
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e-8            ! Convert shakes to s
+                              shakesPerS   = 1.0e+8            ! Convert shakes to s
 
   ! Physical constants
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
@@ -88,7 +88,6 @@ module universalVariables
                               kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
                               energyPerFission = 200.0_defReal, &    ! MeV
                               kBoltzmannMeV = kBoltzmann / joulesPerMeV
-
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'
