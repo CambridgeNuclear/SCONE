@@ -229,10 +229,6 @@ contains
       ! Save state before movement
       call p % savePrePath()
 
-<<<<<<< HEAD
-      ! Move to the next stop. NOTE: "move" resets dist to distance moved!
-      call self % geom % move(p % coords, dist, event)
-=======
       ! Move to the next stop.
       if (self % cache) then
         call self % geom % move_withCache(p % coords, dist, event, cache)
@@ -245,7 +241,6 @@ contains
 
       ! Set fate if a collision occurred
       if (event == COLL_EV) p % fate = collFate
->>>>>>> develop
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
