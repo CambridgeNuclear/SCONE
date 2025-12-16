@@ -100,6 +100,10 @@ module particle_class
     real(defReal)              :: w         ! Particle Weight
     real(defReal)              :: time      ! Particle time point
 
+    ! Information passed from geometry
+    real(defReal)              :: T = -INF   ! Local temperature
+    real(defReal)              :: rho = -INF ! Local density scaling
+
     ! Precursor particle data
     real(defReal)              :: lambda = INF     ! Precursor decay constant
     

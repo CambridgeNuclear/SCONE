@@ -238,7 +238,7 @@ contains
     !
     ! Water
     mat => ceNeutronMaterial_TptrCast( data % getMaterial(1))
-    call mat % getMacroXSs(macroXss, 3.6E-1_defReal, p % pRNG)
+    call mat % getMacroXSs(macroXss, 3.6E-1_defReal, p % T, p % rho, p % pRNG)
 
     ! Absent XSs
     @assertEqual(ZERO, macroXSs % fission)
@@ -250,7 +250,7 @@ contains
     @assertEqual(ONE, 2.198066842597500e-06_defReal/ macroXSs % capture, TOL)
 
     ! Water with some inelastic collisions
-    call mat % getMacroXSs(macroXss, 6.525_defReal, p % pRNG)
+    call mat % getMacroXSs(macroXss, 6.525_defReal, p % T, p % rho, p % pRNG)
 
     @assertEqual(ONE, macroXSs % inelasticScatter/1.903667536E-04_defReal, TOL)
 

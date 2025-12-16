@@ -61,6 +61,10 @@ contains
     
     STLoop: do
         
+      ! Get local conditions
+      p % T = self % geom % getTemperature(p % coords)
+      p % rho  = self % geom % getDensity(p % coords)
+      
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
       ! Obtain the local cross-section, depending on the material
@@ -72,7 +76,7 @@ contains
         sigmaT = ZERO
 
       else
-      
+        
         invSigmaTrack = ONE / sigmaTrack
         dist = -log( p % pRNG % get()) * invSigmaTrack
       
@@ -80,7 +84,12 @@ contains
         sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
-        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+        if (dist /= dist) then
+          print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
+          print *, "Total XS: ", sigmaT
+          call fatalError(Here, "Distance is NaN")
+        end if
 
       end if
 

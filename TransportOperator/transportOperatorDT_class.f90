@@ -109,6 +109,10 @@ contains
         exit DTLoop
       end if
 
+      ! Get local conditions
+      p % T = self % geom % getTemperature(p % coords)
+      p % rho  = self % geom % getDensity(p % coords)
+      
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
