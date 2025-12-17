@@ -44,12 +44,13 @@ module microResponse_class
   !!   The material <matName> must include only one nuclide. The final estimate
   !!   is independent of the nuclide atomic density, which can be any value but zero.
   !!
-  type, public,extends(tallyResponse) :: microResponse
+  type, public, extends(tallyResponse) :: microResponse
     private
     !! Response MT number
-    integer(shortInt)        :: MT
-    integer(shortInt),public :: matIdx
-    real(defReal)            :: dens
+    integer(shortInt)         :: MT
+    integer(shortInt), public :: matIdx
+    real(defReal)             :: dens
+    logical(defBool)          :: mainData = .true.
   contains
     ! Superclass Procedures
     procedure  :: init
@@ -64,7 +65,7 @@ module microResponse_class
 contains
 
   !!
-  !! Initialise Response from dictionary
+  !! Initialise response from dictionary
   !!
   !! See tallyResponse_inter for details
   !!
@@ -78,22 +79,22 @@ contains
     integer(shortInt)                   :: MT, i
     character(15)                       :: mName
     type(materialItem), pointer         :: mat
-    character(100), parameter :: Here = 'init ( microResponse_class.f90)'
+    character(100), parameter :: Here = 'init (microResponse_class.f90)'
 
     ! Load MT number and material name
     call dict % get(MT, 'MT')
     call dict % get(mName, 'material')
 
     ! Find corresponding material index
-    do i = 1,nMat()
+    do i = 1, nMat()
       if (mName == matName(i)) self % matIdx = i
     end do
 
     ! Get pointer to the material
     mat => getMatPtr(self % matIdx)
 
-    if (size(mat % dens) > 1) call fatalError(Here, 'Material '//trim(mName)//' &
-                                              & has more than one nuclide' )
+    if (size(mat % dens) /= 1) call fatalError(Here, 'Material '//trim(mName)//' &
+                                              & needs to have exactly one nuclide' )
     self % dens = mat % dens(1)
 
     if (self % dens == ZERO) call fatalError(Here, 'Density of material &
@@ -115,22 +116,37 @@ contains
   subroutine build(self, MT)
     class(microResponse), intent(inout) :: self
     integer(shortInt), intent(in)       :: MT
-    character(100), parameter :: Here = 'build ( microResponse_class.f90)'
+    character(100), parameter :: Here = 'build (microResponse_class.f90)'
+
+    ! Check that the MT number is an available choice
+    if (.not. any(availableMicroMTs == MT)) then
+      call fatalError(Here, 'Unrecognised MT number: '// numToChar(MT))
+    end if
 
     ! Check that MT number is valid and load MT
     select case(MT)
       case(N_TOTAL)
         self % MT = macroTotal
+
       case(N_N_ELASTIC)
-        self % MT = macroEScatter
-      case(N_GAMMA)
+        self % MT = macroEscatter
+
+      case(N_N_INELASTIC)
+        self % MT = macroIEscatter
+
+      case(N_DISAP)
         self % MT = macroCapture
+
       case(N_FISSION)
         self % MT = macroFission
+
       case(N_ABSORPTION)
         self % MT = macroAbsorbtion
+
       case default
-        call fatalError(Here,'Unrecognised MT number: '// numToChar(MT))
+        self % MT = MT
+        self % mainData = .false.
+
     end select
 
   end subroutine build
@@ -150,7 +166,6 @@ contains
     real(defReal)                         :: val
     class(neutronMaterial), pointer       :: mat
     type(neutronMacroXSs)                 :: xss
-    character(100), parameter :: Here = 'get ( microResponse_class.f90)'
 
     val = ZERO
 
@@ -164,11 +179,19 @@ contains
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
 
-    ! Get the macroscopic cross section for the material
-    call mat % getMacroXSs(xss, p)
+    ! Check where to get the xs
+    if (self % mainData) then
 
-    ! Normalise the macroscopic cross section with the atomic density
-    val = xss % get(self % MT) / self % dens
+      ! Get the macroscopic cross section for the material
+      call mat % getMacroXSs(xss, p)
+      ! Normalise the macroscopic cross section with the atomic density
+      val = xss % get(self % MT) / self % dens
+
+    else
+      if (p % isMG) return
+      val = mat % getMTxs(self % MT, p) / self % dens
+
+    end if
 
   end function get
 
@@ -179,6 +202,7 @@ contains
     class(microResponse), intent(inout) :: self
 
     self % MT = 0
+    self % mainData = .true.
 
   end subroutine kill
 

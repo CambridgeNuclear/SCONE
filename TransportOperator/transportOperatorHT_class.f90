@@ -19,7 +19,7 @@ module transportOperatorHT_class
   use transportOperator_inter,    only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry
+  use geometry_inter,             only : geometry, distCache
 
   ! Nuclear data interfaces
   use nuclearDataReg_mod,         only : ndReg_get => get
@@ -32,7 +32,8 @@ module transportOperatorHT_class
   !! Transport operator that moves a particle with hybrid tracking
   !!
   type, public, extends(transportOperator) :: transportOperatorHT
-    real(defReal) :: cutoff   ! Cutoff threshold between ST and DT
+    real(defReal)    :: cutoff   ! Cutoff threshold between ST and DT
+    logical(defBool) :: cache = .true.
 
   contains
     procedure :: transit => tracking_selection
@@ -52,7 +53,7 @@ contains
     class(particleDungeon), intent(inout)                  :: thisCycle
     class(particleDungeon), intent(inout)                  :: nextCycle
     real(defReal)                                          :: majorant_inv, sigmaT, ratio
-    character(100), parameter :: Here = 'hybridTracking (transportOIperatorHT_class.f90)'
+    character(100), parameter :: Here = 'hybridTracking (transportOperatorHT_class.f90)'
 
     ! Get majornat XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
@@ -85,7 +86,7 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
-    real(defReal)                             :: majorant_inv, sigmaT, distance
+    real(defReal)                             :: majorant_inv, sigmaT, distance, speed, time
     character(100), parameter :: Here = 'deltaTracking (transportOperatorHT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
@@ -96,27 +97,52 @@ contains
 
     DTLoop:do
       distance = -log( p % pRNG % get() ) * majorant_inv
+      
+      speed = p % getSpeed()
+      time = distance / speed + p % time
 
-      ! Move particle in the geometry
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        distance = speed * (p % timeMax - p % time)
+        p % fate = AGED_FATE
+      end if
+
+      ! Move particle in the geometry and time
       call self % geom % teleport(p % coords, distance)
+      p % time = p % time + distance / speed
+      
+      select case(p % matIdx())
 
-      ! If particle has leaked exit
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % fate = LEAK_FATE
-        p % isDead = .true.
-        return
-      end if
+        ! If particle has leaked exit
+        case(OUTSIDE_FILL)
+          p % fate = LEAK_FATE
+          p % isDead = .true.
+          exit DTLoop
 
-      ! Check for void
-      if (p % matIdx() == VOID_MAT) then
-        call tally % reportInColl(p, .true.)
-        cycle DTLoop
-      end if
+        ! Check for void
+        case(VOID_MAT)
+          if (p % fate == AGED_FATE) exit DTLoop
+          call tally % reportInColl(p, .true.)
+          cycle DTLoop
 
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print *, "Particle location: ", p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+
+        ! Give error if the particle somehow ended in an overlap material
+        case(OVERLAP_MAT)
+          print *, "Particle location: ", p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+
+        case default
+          ! All is well
+
+      end select
+      
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        exit DTLoop
       end if
 
       ! Obtain the local cross-section
@@ -145,48 +171,102 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist
+    integer(shortInt)                         :: event, collFate
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack, &
+                                                 speed, time
+    real(defReal), parameter                  :: tol  = 1.0E-12
+    type(distCache)                           :: cache
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
+      
+      sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
-      ! Obtain the local cross-section
-      if (p % matIdx() == VOID_MAT) then
+      ! Obtain the local cross-section, depending on the material
+      ! This branch is called in the case of voids with no imposed XS
+      if (sigmaTrack < tol) then
+        
         dist = INFINITY
+        invSigmaTrack = INFINITY
+        sigmaT = ZERO
 
       else
-        sigmaT = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
-        dist = -log( p % pRNG % get()) / sigmaT
+      
+        invSigmaTrack = ONE / sigmaTrack
+        dist = -log( p % pRNG % get()) * invSigmaTrack
+        
+        ! Obtain the local cross-section
+        sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
         if (dist /= dist) call fatalError(Here, "Distance is NaN")
-
+        
       end if
-
+      
+      speed = p % getSpeed()
+      time = dist / speed + p % time
+      
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        dist = speed * (p % timeMax - p % time)
+        collFate = AGED_FATE
+      else
+        collFate = NO_FATE
+      end if
+      
       ! Save state before movement
       call p % savePrePath()
 
-      ! Move to the next stop. NOTE: "move" resets dist to distanced moved!
-      call self % geom % move(p % coords, dist, event)
+      ! Move to the next stop.
+      if (self % cache) then
+        call self % geom % move_withCache(p % coords, dist, event, cache)
+      else
+        call self % geom % move(p % coords, dist, event)
+      end if
+      
+      ! Advance in time
+      p % time = p % time + dist / speed
+
+      ! Set fate if a collision occurred
+      if (event == COLL_EV) p % fate = collFate
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
+      
+      select case(p % matIdx())
+      
+        ! Kill particle if it has leaked
+        case(OUTSIDE_FILL)
+          p % isDead = .true.
+          p % fate = LEAK_FATE
 
-      ! Kill particle if it has leaked
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % isDead = .true.
-        p % fate = LEAK_FATE
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print*, 'Particle location: ', p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+
+        ! Give error if the particle ended in an overlap material
+        case(OVERLAP_MAT)
+          print*, 'Particle location: ', p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+      
+        case default
+          ! All is well
+
+      end select
+      
+      ! Return if particle is stopped by death, or aging
+      if (p % isDead .or. p % fate == AGED_FATE) exit STLoop
+      
+      ! Roll RNG to determine if the collision is real or virtual
+      ! Exit the loop if the collision is real, report collision if virtual
+      if (event == COLL_EV) then
+        if (p % pRNG % get() < sigmaT*invSigmaTrack) then
+          exit STLoop
+        else
+          call tally % reportInColl(p, .true.)
+        end if
       end if
-
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
-      end if
-
-      ! Return if particle stoped at collision (not cell boundary)
-      if (event == COLL_EV .or. p % isDead) exit STLoop
 
     end do STLoop
 
@@ -208,6 +288,10 @@ contains
 
     ! Retrieve DT-ST probability cutoff
     call dict % getOrDefault(self % cutoff,'cutoff',0.9_defReal)
+    
+    if (dict % isPresent('cache')) then
+      call dict % get(self % cache, 'cache')
+    end if
 
   end subroutine init
 

@@ -45,6 +45,7 @@ module baseMgNeutronDatabase_class
   !!   nucData {
   !!     type baseMgNeutronDatabase;
   !!     PN P0;                        // or P1
+  !!     #avgDist 2.718; #
   !!   }
   !!
   !! Public Members:
@@ -103,10 +104,14 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTrackMatXS(p, matIdx)
+        if (matIdx == VOID_MAT) then
+          xs = self % collisionXS
+        else
+          xs = max(self % getTrackMatXS(p, matIdx), self % collisionXS)
+        end if
 
       case (MAJORANT_XS)
-        xs = self % getMajorantXS(p)
+        xs = max(self % getMajorantXS(p), self % collisionXS)
 
       case (TRACKING_XS)
 
@@ -140,7 +145,18 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (baseMgNeutronDatabase_class.f90)'
 
+    ! Check that matIdx exists
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    else if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     xs = self % getTotalMatXS(p, matIdx)
 
   end function getTrackMatXS
@@ -159,6 +175,14 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTotalMatXS (baseMgNeutronDatabase_class.f90)'
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
 
     associate (matCache => materialCache(matIdx))
 
@@ -323,6 +347,7 @@ contains
     character(pathLen)                                 :: path
     character(nameLen)                                 :: scatterKey
     type(dictionary)                                   :: tempDict
+    real(defReal)                                      :: temp
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -333,6 +358,18 @@ contains
       loud = .not.silent
     else
       loud = .true.
+    end if
+    
+    ! Check for a minimum average collision distance
+    if (dict % isPresent('avgDist')) then
+      call dict % get(temp, 'avgDist')
+
+      if (temp <= ZERO) then
+        call fatalError(Here, 'Must have a finite, positive minimum average collision distance')
+      end if
+
+      self % collisionXS = ONE / temp
+
     end if
 
     ! Find number of materials and allocate space

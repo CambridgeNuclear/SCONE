@@ -64,10 +64,12 @@ module ceNeutronMaterial_class
     real(defReal)                                :: eLowerURR = ZERO
 
   contains
+
     ! Superclass procedures
     procedure :: kill
     generic   :: getMacroXSs => getMacroXSs_byE
     procedure :: getMacroXSs_byP
+    procedure :: getMTxs
 
     ! Local procedures
     procedure, non_overridable :: set
@@ -113,7 +115,7 @@ contains
     class(particle), intent(in)          :: p
     character(100), parameter :: Here = 'getMacroXSs_byP (ceNeutronMaterial_class.f90)'
 
-    if (.not.p % isMG) then
+    if (.not. p % isMG) then
       call self % getMacroXSs(xss, p % E, p % pRNG)
 
     else
@@ -122,6 +124,24 @@ contains
     end if
 
   end subroutine getMacroXSs_byP
+
+  !!
+  !! Return Macroscopic XS for the material given particle and an MT number
+  !!
+  !! See neutronMaterial_inter for details
+  !!
+  function getMTxs(self, MT, p) result(xs)
+    class(ceNeutronMaterial), intent(in) :: self
+    integer(shortInt), intent(in)        :: MT
+    class(particle), intent(in)          :: p
+    real(defReal)                        :: xs
+    character(100), parameter :: Here = 'getMTxs_byP (ceNeutronMaterial_class.f90)'
+
+    if (p % isMG) call fatalError(Here,'MG neutron given to CE data')
+
+    xs = self % data % getMaterialMTxs(p % E, self % matIdx, MT)
+
+  end function getMTxs
 
   !!
   !! Set composition of the material in terms of nucIdx and atomic density

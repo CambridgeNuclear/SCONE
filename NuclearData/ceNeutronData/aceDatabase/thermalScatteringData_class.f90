@@ -203,13 +203,13 @@ contains
       f = (E - E_low) / (E_top - E_low)
     end associate
 
-    val = self % inelastic % xs(idx + 1) * f + (ONE-f) * self % inelastic % xs(idx)
+    val = self % inelastic % xs(idx + 1) * f + (ONE - f) * self % inelastic % xs(idx)
 
   end function getInelXS
 
   !!
   !! Calculate elastic cross section, returns cross section values
-  !! It's called when S(a,b) tablea are switched on, even if there's no thermal
+  !! It's called when S(a,b) tables are switched on, even if there's no thermal
   !! elastic scattering
   !!
   !! Args:
@@ -255,7 +255,7 @@ contains
                   E_low  => self % elastic % eGrid(idx))
           f = (E - E_low) / (E_top - E_low)
         end associate
-        val = self % elastic % xs(idx + 1)*f + (ONE-f) * self % elastic % xs(idx)
+        val = self % elastic % xs(idx + 1) * f + (ONE - f) * self % elastic % xs(idx)
       end if
 
     end if

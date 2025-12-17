@@ -25,7 +25,7 @@ module universalVariables
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Flags for different possible events in movement in geometry
-  integer(shortINt), parameter, public :: COLL_EV = 1, &
+  integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
                                           LOST_EV  = 4
@@ -40,15 +40,16 @@ module universalVariables
   ! NOTE: All material indices MUST BE NON-NEGATIVE!
   integer(shortInt), parameter :: OUTSIDE_MAT = 0 ,&
                                   VOID_MAT    = huge(OUTSIDE_MAT), &
-                                  UNDEF_MAT   = VOID_MAT - 1
+                                  UNDEF_MAT   = VOID_MAT - 1, &
+                                  OVERLAP_MAT = VOID_MAT - 2
 
 
   ! Define integers for each fill type that a cell may have
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
-                                  latticeFill  = 3
-
+                                  latticeFill  = 3 
+                          
   ! Define integers for boundary condition types
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
@@ -84,7 +85,7 @@ module universalVariables
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e-8            ! Convert shakes to s
+                              shakesPerS   = 1.0e+8            ! Convert shakes to s
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'

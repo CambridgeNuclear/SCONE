@@ -50,38 +50,63 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
-    real(defReal)                             :: majorant_inv, sigmaT, distance
+    real(defReal)                             :: majorant_inv, sigmaT, distance, speed, time
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
     majorant_inv = ONE / self % xsData % getTrackingXS(p, p % matIdx(), MAJORANT_XS)
 
-   ! Should never happen! Prevents Inf distances
+    ! Should never happen! Prevents Inf distances
     if (abs(majorant_inv) > huge(majorant_inv)) call fatalError(Here, "Majorant is 0")
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
+        
+      speed = p % getSpeed()
+      time = distance / speed + p % time
 
-      ! Move partice in the geometry
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        distance = speed * (p % timeMax - p % time)
+        p % fate = AGED_FATE
+      end if
+
+      ! Move particle in the geometry and time
       call self % geom % teleport(p % coords, distance)
+      p % time = p % time + distance / speed
+      
+      select case(p % matIdx())
 
-      ! If particle has leaked, exit
-      if (p % matIdx() == OUTSIDE_FILL) then
-        p % fate = LEAK_FATE
-        p % isDead = .true.
-        return
-      end if
+        ! If particle has leaked exit
+        case(OUTSIDE_FILL)
+          p % fate = LEAK_FATE
+          p % isDead = .true.
+          exit DTLoop
 
-      ! Check for void
-      if (p % matIdx() == VOID_MAT) then
-        call tally % reportInColl(p, .true.)
-        cycle DTLoop
-      end if
+        ! Check for void
+        case(VOID_MAT)
+          if (p % fate == AGED_FATE) exit DTLoop
+          call tally % reportInColl(p, .true.)
+          cycle DTLoop
 
-      ! Give error if the particle somehow ended in an undefined material
-      if (p % matIdx() == UNDEF_MAT) then
-        print *, p % rGlobal()
-        call fatalError(Here, "Particle is in undefined material")
+        ! Give error if the particle somehow ended in an undefined material
+        case(UNDEF_MAT)
+          print*, 'Particle location: ', p % rGlobal()
+          call fatalError(Here, "Particle is in undefined material")
+
+        ! Give error if the particle is in a region with overlapping cells
+        case(OVERLAP_MAT)
+          print*, 'Particle location: ', p % rGlobal()
+          call fatalError(Here, "Particle is in overlapping cells")
+
+        case default
+          ! All is well        
+
+      end select
+      
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        exit DTLoop
       end if
 
       ! Obtain the local cross-section

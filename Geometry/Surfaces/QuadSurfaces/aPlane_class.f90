@@ -4,8 +4,7 @@ module aPlane_class
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
   use genericProcedures,  only : fatalError
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
   implicit none
   private
 
@@ -29,7 +28,7 @@ module aPlane_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: aPlane
+  type, public, extends(surface) :: aPlane
     private
     integer(shortInt) :: axis = -7
     real(defReal)     :: a0   = ZERO

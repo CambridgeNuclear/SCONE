@@ -76,10 +76,6 @@ contains
     call this % clerk % setMemAddress(1_longInt)
     call pit % init(4)
 
-
-    ! Configure particle
-    p % fate = leak_FATE
-
     !*** Start cycle 1
     ! Score implicit reaction rates
     p % w = 0.7_defReal
@@ -91,6 +87,7 @@ contains
 
     ! Score leakage
     p % w = 0.3_defReal
+    p % fate = leak_FATE
     call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle
@@ -111,6 +108,7 @@ contains
 
     ! Score leakage
     p % w = 0.3_defReal
+    p % fate = leak_FATE
     call this % clerk % reportHist(p, this % nucData, mem)
 
     ! End cycle

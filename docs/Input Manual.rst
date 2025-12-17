@@ -120,6 +120,75 @@ Example: ::
 
         varianceReduction { <Weight windows definition> }
 
+kineticPhysicsPackage
+#########################
+
+kineticPhysicsPackage, used for time-dependent calculations. One can change
+settings in the collisionProcessor to switch delayed neutrons on or off.
+
+* pop: number of particles used per batch
+* precPop (*optional*, default = pop): maximum number of precursors in memory
+  before applying population control.
+* cycles: number of batches
+* dt: length of time between applications of population control
+* timeSteps: number of time steps over which population control is applied.
+  A batch concludes once all neutrons in pop have traversed all time steps.
+  The total simulated time is given by timeSteps * dt.
+* forcedPrecursorDecay: (*optional*, default = 1): 1 for true; 0 for false;
+  determines whether precursors are forced to decay each time step or whether
+  precursors decay in an analog manner.
+* k0: (*optional*, default = 1): fixed value for k to scale fission neutron
+  production
+* dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
+* buffer (*optional*, default = 50): size of the particle bank used by each
+  OpenMP thread to store secondary particles
+* commonBufferSize (*optional*): if not included, the common buffer is not
+  used; if included, after each particle history the particles in each
+  thread-private buffer (or bank, or dungeon) are moved to a buffer
+  common to all threads to better load balance threads.
+* bufferShift (*optional*, default = 10): threshold of particles to be
+  stored in a thread-private buffer, after which particles are shifted to
+  the common buffer.
+
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
+
+Example: ::
+
+        type kineticSourcePhysicsPackage;
+        pop    100000;
+        cycles 200;
+        dt 0.0001;
+        timeSteps 100;
+        forcedPrecursorDecay 0;
+        dataType ce;
+        XSdata   ceData;
+        seed     2829741;
+        outputFile shield_type11;
+
+        buffer 10000;
+        commonBufferSize 50000;
+
+        transportOperator { <Transport operator definition> }
+        collisionOperator { <Collision operator definition> }
+        tally { <Tally definition> }
+        source { <Source definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+*Optional entries* ::
+
+        varianceReduction { <Weight windows definition> }
+
 rayVolPhysicsPackage
 ####################
 
@@ -231,6 +300,24 @@ energy provided by the user. The properties of a fission source are:
 * top (*optional*): Upper point determining axis-aligned bounding box where to sample points. If
   provided ``bottom`` must also be provided.
 
+mixSource
+#########
+
+A mixture of sources. Each source is sampled from given its user defined relative weight.
+
+* sources :: list of arbitrary source names
+* weights :: relative weights assigned to each source; they do not need to sum up to 1.
+  Each weight is assigned to a source according to the order they are written in, which
+  should match the corresponding source in the ``sources`` definition. This is followed 
+  by dictionaries that define each source individually.
+
+Hence, an input would look like: ::
+
+      source { type mixSource; sources (src1 src2); weights (2 1);
+      src1 {<Source definition>}
+      src2 {<Source definition>} 
+      }
+
 Transport Operator
 ------------------
 
@@ -262,7 +349,7 @@ include: ::
 
       collisionOperator { neutronCE { type <ceCollisionOperatorType>; *keywords* } }
 
-if continuos energy nuclear data are used, or ::
+if continuous energy nuclear data are used, or ::
 
       collisionOperator { neutronMG { type <ceCollisionOperatorType>; } }
 
@@ -285,6 +372,10 @@ neutronCEstd, to perform analog collision processing
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -321,6 +412,10 @@ neutronCEimp, to perform implicit collision processing
   fission sites
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -527,8 +622,8 @@ Example: ::
 
       billy { id 92; type xCylinder; origin (0.0 0.0 9.0); radius 4.8; }
 
-* cone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
-  The input type has to be ``xCone``, ``yCone`` or ``zCone``. The gradient of the
+* truncCone: cone aligned with x, y or z axis, and truncated arbitrarily on both sides. 
+  The input type has to be ``xTruncCone``, ``yTruncCone`` or ``zTruncCone``. The gradient of the
   cone is determined by the sign of ``hMin`` and ``hMax``. ``hMin`` and ``hMax``
   must have the same sign, i.e., there can only be a single cone, not a double
   cone reflected about the vertex.
@@ -545,7 +640,7 @@ Example: ::
 
 Example: ::
 
-      connor { id 92; type xCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
+      connor { id 92; type xTruncCone; vertex (1.1 4.0 2.98); angle 30; hMin 5.0; hMax 15.0; }
 
 * sphere
 
@@ -555,6 +650,32 @@ Example: ::
 Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
+
+* wedge: wedge with two isosceles triangular bases, parallel between each other, and aligned with the
+  x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``. The wedge bases
+  are characterised by a half opening angle; the wedge can also be arbitrarily rotated around its axis.
+
+  - origin: (x y z) position of the midpoint of the edge (or axis) of the wedge. [cm]
+  - halfwidth: axial halfwidth in the x, y or z direction depending on the wedge type:
+    respectively, x for xWedge, y for yWedge and z for zWedge. [cm]
+  - altitude: altitude of the triangular face of the wedge. [cm]
+  - opening: half angle, determines the opening of the triangular face of the wedge. Must be positive 
+    and between 0-90. [degrees]
+  - rotation (*optional*, default = 0.0): rotation angle around the edge of the wedge. The rotation 
+    angle is with respect to the axis: +y for a xWedge; +x for a yWedge and zWedge. Must be positive 
+    and between 0-360. [degrees]
+
+Example: ::
+
+      jack { id 2; type yWedge; origin (0.0 5.0 0.0); halfwidth 5.0; altitude 10.0; opening 30.0; 
+	     rotation 60.0; }
+
+.. note::
+    A wedge can be used as a bounding surface. In this case, this surface will accept 5 boundary
+    condition values: (face1 face2 face3 -base +base). Note that face3 refers to the face in front
+    of the axis of the wedge, and it only accepts vacuum boundary conditions; face1 and face2 are the 
+    two slanted faces defined by the opening angle: face1 is the face rotated by -opening compared to
+    the triangle altitude; face2 is rotated by +opening.
 
 Cells
 #####
@@ -622,13 +743,17 @@ Similarly to the surfaces and cells, the **universes** in the geometry can be de
 Several ``universeTypes`` are possible:
 
 * cellUniverse, composed of the union of different cells. Note that overlaps are
-  forbidden, but there is no check to find overlaps
+  forbidden, but there is no check to find overlaps by default. This can be enabled
+  at the cost of slower particle transport.
 
   - cells: array containing the ``cellIds`` as used in the cell definition
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the origin
     of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - checkOverlap (*optional*, default = 0): enables checking for overlaps between cells, useful
+    for debugging and plotting. However, this slows down particle transport by making exhaustive
+    cell searches mandatory.
 
 .. note::
    When creating a ``cellUniverse`` a user needs to take care to avoid leaving
@@ -638,7 +763,7 @@ Several ``universeTypes`` are possible:
 
 Example: ::
 
-      uni3 { id 3; type cellUniverse; cells (1 2 55); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); }
+      uni3 {id 3; type cellUniverse; cells (1 7); origin (1.0 0.0 0.0); rotation (0.0 90.0 180.0); checkOverlap 0;}
 
 * pinUniverse, composed of infinite co-centred cylinders
 
@@ -746,6 +871,9 @@ Example: ::
    SCONE can be run to visualise geometry without actually doing transport, by
    including ``--plot`` when running the application. In this case the visualiser
    has to be included in the file.
+   Certain special materials use particular colours during plotting. Void regions
+   are plotted in black. Regions outside the geometry are plotted in white.
+   Undefined regions are plotted in light green. Overlap regions are plotted in red.
 
 Nuclear Data
 ------------
@@ -767,7 +895,10 @@ The **handles** definition is structured as the following: ::
       }
 
 The name of a handle has to be the same as defined in a ``physicsPackage`` under the
-keyword ``XSdata``.
+keyword ``XSdata``. The nuclear database can also be used to optionally set the minimum average
+collision distance for particles. This may be desirable in order to induce virtual collisions
+when using surface tracking in low density materials, for example. This can be done by using
+the ``avgDist`` keyword, followed by specifying the minimum average distance as desired.
 
 Otherwise, the possible **nuclear database** types allowed are:
 
@@ -785,11 +916,14 @@ from ACE files.
   to be applied.
 * majorant (*optional*, default = 1): 1 for true; 0 for false; flag to activate the
   pre-construction of a unionised majorant cross section
+* avgDist (*optional*, default = infinity): the minimum average distance until a
+  collision, which may be virtual. Used to obtain better statistics for the
+  collision estimator in low density materials, especially when using surface tracking.
   
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
-      ures 1; DBRC (92238 94242)}
+      ures 1; DBRC (92238 94242); avgDist 32; }
 
 .. note::
    If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
@@ -802,6 +936,9 @@ baseMgNeutronDatabase, used for multi-group data. In this case, the data is read
 from files provided by the user.
 
 * PN: includes a flag for anisotropy treatment. Could be ``P0`` or ``P1``
+* avgDist (*optional*, default = infinity): the minimum average distance until a
+  collision, which may be virtual. Used to obtain better statistics for the
+  collision estimator in low density materials, especially when using surface tracking.
 
 Example: ::
 
@@ -1048,6 +1185,33 @@ Example: ::
       collisionProb { type collisionProbabilityClerk; map { <Map definition> } }
       }
 
+* eventClerk, a non-standard clerk which records all events meeting certain criteria.
+  These events are sent to a file, reporting the position, direction, energy, time,
+  weight, and brood of a particle, as well as the energy it deposited and the reaction it
+  underwent. Maps are treated as filters, only returning events which fall into the map.
+  Events can be post-processed, e.g., for alpha calculations.
+
+  - file: path to the file which records events.
+  - maxScale (*optional*): a real scaling factor on the maximum number of events before 
+    recording ceases. By default, the maximum number of events is 10M. This is a scaling
+    factor rather than an integer due to constraints on the dictionary.
+  - freq (*optional*): an integer determining how often events are written to the file.
+    More often will incur more parallel overhead, less often will incur a larger memory
+    footprint. Set to 500k by default. For 40 threads, this corresponds to a memory footprint
+    of about 960 MB.
+  - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
+    that defines the set of events which are recorded
+  - filter (*optional*): can filter out particles with certain properties,
+    preventing them from recording events
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+Example: ::
+
+      tally {
+      events { type eventClerk; map { <Map definition> } file /home/myEvents.txt; freq 10000;}
+      }
+
 * dancoffBellClerk, calculates a single-term rational approximation for a lattice
 
   - fuelMat: list of fuel material names
@@ -1143,8 +1307,10 @@ Example: ::
 
 * macroResponse: used to score macroscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: -1 total, -2 capture,
-    -6 fission, -7 nu*fission, -21 absorption
+  - MT: MT number of the desired reaction. The options are: -1 (total), -2 (disappearance),
+    -3 (elastic scattering), -4 (total inelastic scattering), -6 (fission), -7 nu*fission),
+    -20 (total scattering), -21 (absorption).
+    Additionally, all the MT numbers allowed by microResponse can be used here.
 
 Example: ::
 
@@ -1156,11 +1322,17 @@ Example: ::
 
 * microResponse: used to score microscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: 1 total, 2 elastic
-    scattering, 18 fission, 27 absorption, 102 capture
+  - MT: MT number of the desired reaction. The options are: 1, 2, 4, 5, 11, 16-25, 27-30,
+    32-38, 41, 42, 44, 45, 51-90, 91, 101-109, 111-117, 203-207, 875-890. These MT numbers
+    are defined in the conventional way, i.e., following the ENDF standard
   - material: material name where to score the reaction. The material must be
     defined to include only one nuclide; its density could be anything, it doesn't
     affect the result
+
+.. note::
+   In MG simulations, the only MT numbers that make sense are those corresponding to the MG
+   cross sections provided and derived quantities: 1 (total), 4 (inelastic scattering),
+   18 (fission), 27 (absorption), 101 (disappearance)
 
 Example: ::
 
@@ -1322,6 +1494,23 @@ Examples: ::
 
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
+
+* timeMap (1D map), maps particles point in time
+
+  - grid: ``lin`` for linearly spaced bins
+
+    + min: lower time bound [s]
+    + max: upper time bounds [s]
+    + N: number of bins
+
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the bin boundaries to be used
+
+Examples: ::
+
+      map1 { type timeMap; grid lin; min 0.0; max 200.0; N 100; }
+      map2 { type timeMap; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
 * weightMap (1D map), divides weight into number of discrete bins
 

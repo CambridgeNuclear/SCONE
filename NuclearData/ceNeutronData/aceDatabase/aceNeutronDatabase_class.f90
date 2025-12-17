@@ -60,7 +60,8 @@ module aceNeutronDatabase_class
   !!   nuclearData {
   !!   handles {
   !!   ce { type aceNeutronDatabase; DBRC (92238 94242); ures < 1 or 0 >;
-  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} }
+  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} 
+  !!        #avgDist 3.141;# }
   !!
   !! Public Members:
   !!   nuclides    -> array of aceNeutronNuclides with data
@@ -113,6 +114,7 @@ module aceNeutronDatabase_class
     procedure :: updateMicroXSs
     procedure :: updateTotalTempNucXS
     procedure :: getScattMicroMajXS
+    procedure :: getMaterialMTxs
 
     ! class Procedures
     procedure :: initUrr
@@ -258,6 +260,52 @@ contains
   end function getReaction
 
   !!
+  !! Return energy bounds for data in the database
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  subroutine energyBounds(self, eMin, eMax)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(out)            :: eMin
+    real(defReal), intent(out)            :: eMax
+
+    eMin = self % eBounds(1)
+    eMax = self % eBounds(2)
+
+  end subroutine energyBounds
+
+  !!
+  !! Retrieves the material cross sections for an MT number
+  !!
+  !! See ceNeutronDatabase for more details
+  !!
+  function getMaterialMTxs(self, E, matIdx, MT) result(xs)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    integer(shortInt), intent(in)         :: matIdx
+    integer(shortInt), intent(in)         :: MT
+    real(defReal)                         :: xs
+    integer(shortInt)                     :: i, nucIdx
+    real(defReal)                         :: dens
+
+    xs = ZERO
+
+    associate (mat => self % materials(matIdx))
+
+      ! Construct macro XS for the MT number requested
+      do i = 1, size(mat % nuclides)
+        dens   = mat % dens(i)
+        nucIdx = mat % nuclides(i)
+
+        xs = xs + self % nuclides(nucIdx) % xsOf(MT, E) * dens
+
+      end do
+
+    end associate
+
+  end function getMaterialMTxs
+
+  !!
   !! Returns the elastic scattering majorant cross section for a nuclide
   !!
   !! See ceNeutronDatabase for more details
@@ -288,21 +336,6 @@ contains
     maj = self % nuclides(nucIdx) % getMajXS(eLower, eUpper, N_N_ELASTIC)
 
   end function getScattMicroMajXS
-
-  !!
-  !! Return energy bounds for data in the database
-  !!
-  !! See ceNeutronDatabase for more details
-  !!
-  subroutine energyBounds(self, eMin, eMax)
-    class(aceNeutronDatabase), intent(in) :: self
-    real(defReal), intent(out)            :: eMin
-    real(defReal), intent(out)            :: eMax
-
-    eMin = self % eBounds(1)
-    eMax = self % eBounds(2)
-
-  end subroutine energyBounds
 
   !!
   !! Make sure that the majorant of ALL active materials is at energy E
@@ -774,7 +807,8 @@ contains
     character(nameLen),dimension(:),allocatable      :: nucDBRC
     real(defReal)                                    :: A, nuckT, eUpSab, eUpSabNuc, &
                                                         eLowURR, eLowUrrNuc, alpha, &
-                                                        deltakT, eUpper, eLower, kT
+                                                        deltakT, eUpper, eLower, kT, &
+                                                        temp
     real(defReal), dimension(2)                      :: sabT
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     character(100), parameter :: Here = 'init (aceNeutronDatabase_class.f90)'
@@ -807,6 +841,18 @@ contains
         call nucSet % add(name, IN_SET)
       end do
     end do
+
+    ! Check for a minimum average collision distance
+    if (dict % isPresent('avgDist')) then
+      call dict % get(temp, 'avgDist')
+
+      if (temp <= ZERO) then
+        call fatalError(Here, 'Must have a finite, positive minimum average collision distance')
+      end if
+
+      self % collisionXS = ONE / temp
+
+    end if
 
     ! Get path to ACE library
     call dict % get(aceLibPath,'aceLibrary')

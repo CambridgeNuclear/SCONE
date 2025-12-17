@@ -349,8 +349,8 @@ contains
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
     allocate(self % nextCycle)
-    call self % thisCycle % init(3 * self % pop)
-    call self % nextCycle % init(3 * self % pop)
+    call self % thisCycle % init(2 * self % pop)
+    call self % nextCycle % init(2 * self % pop)
 
     ! Generate initial source
     call statusMsg("GENERATING INITIAL FISSION SOURCE")

@@ -232,9 +232,6 @@ contains
     ! Sample Phi
     phi = TWO_PI * rand % get()
 
-    ! Sample E_out
-    E_out = self % eLawPrompt % sample(E_in, rand)
-
     ! Calculate delayed emission probability
     if(allocated(self % delayed)) then
       p_del = self % releaseDelayed(E_in) / self % release(E_in)
@@ -268,7 +265,7 @@ contains
 
     end if
   end subroutine sampleOut
-
+  
   !!
   !! Return probability density of emission at given angle and energy
   !!
