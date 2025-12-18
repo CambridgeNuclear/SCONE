@@ -200,7 +200,7 @@ contains
 
     end do
 
-    ! Register all clerks to recieve their reports
+    ! Register all clerks to receive their reports
     do i = 1, size(self % tallyClerks)
       associate(reports => self % tallyClerks(i) % validReports())
         do j = 1, size(reports)
