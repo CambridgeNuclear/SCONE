@@ -1,7 +1,7 @@
-.. _user-manual:
+.. _input-manual:
 
-User Manual
-===========
+Input Manual
+============
 
 Generic information about how to use dictionaries in writing an input file can be found
 in :ref:`Dictionary Input <dictSyntax>`. Here, more specific information about the input
@@ -27,9 +27,16 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
+* reproducible (*optional*, default = 1): 1 for true; 0 for false; if running
+  with MPI, this ensures that the particle normalisation procedure used maintains
+  reproducibility (given that the RNG seed is fixed, and mpiSync is on for tallies)
+  when running with different numbers of MPI ranks. However, the (MPI) parallel 
+  scaling performance of this option is slightly worse than using the alternative 
+  procedure, that doesn't ensure reproducibility
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
-  in the particleDungeon) to a text file
+  in the particleDungeon) to a text file. If running with MPI, this is done 
+  by each MPI rank separately
 
 Example: ::
 
@@ -115,7 +122,7 @@ Example: ::
         varianceReduction { <Weight windows definition> }
 
 kineticPhysicsPackage
-#########################
+#####################
 
 kineticPhysicsPackage, used for time-dependent calculations. One can change
 settings in the collisionProcessor to switch delayed neutrons on or off.
@@ -1097,6 +1104,38 @@ definition is the same for all cases: ::
 In this case, ``resName`` can be any name chosen by the user, and it is what will be
 reported in the output file.
 
+Tally Admin Keywords
+####################
+
+Generic tally keywords, such as for results **normalisation**, that could be included are:
+
+* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation
+  criterion. If the tally has multiple bins, (e.g. has a map), the bin with index 1
+  will be used for normalisation
+* normVal: value to normalise the tally ``resName`` to
+* display: its entry is the name of the tally, ``resName``, which will be displayed
+  each cycle. Only the tally clerks ``keffAnalogClerk`` and ``keffImplicitClerk``
+  support display at the moment
+* batchSize (*optional*, default = 1): the number of cycles that constitute a single
+  batch for the purpose of statistical estimation. For example, a value of 5 means
+  that a single estimate is obtained from a score accumulated over 5 cycles
+* mpiSync (*optional*, default = 0): if MPI parallelism is used and this flag is true,
+  the tally results are collected from all ranks at the end of each cycle; this ensures
+  reproducibility, given that the RNG seed is fixed and the correct particle normalisation
+  procedure is chosen (see PhysicsPackage definition). If mpiSync is false, the tally results 
+  are combined only at the end of the calculation and the results won't be reproducible
+  when using different numbers of ranks.
+
+Example: ::
+
+      tally  {
+      display (k-eff);
+      norm fissRate;
+      normVal 100.0;
+      k-eff { type keffAnalogClerk;}
+      fissRate { type collisionClerk; response (fission); fission {type macroResponse; MT -6;} }
+      }
+
 Tally Clerks
 ############
 
@@ -1586,29 +1625,3 @@ Example: ::
 
       CEfilter { type energyFilter; Emin 10.0; Emax 20.0; }
       MGfilter { type energyFilter; Gtop 1; Glow 5; }
-
-Other options
-#############
-
-Other keywords, such as for results **normalisation**, that could be included are:
-
-* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation
-  criterion. If the tally has multiple bins, (e.g. has a map), the bin with index 1
-  will be used for normalisation
-* normVal: value to normalise the tally ``resName`` to
-* display: its entry is the name of the tally, ``resName``, which will be displayed
-  each cycle. Only the tally clerks ``keffAnalogClerk`` and ``keffImplicitClerk``
-  support display at the moment
-* batchSize (*optional*, default = 1): the number of cycles that constitute a single
-  batch for the purpose of statistical estimation. For example, a value of 5 means
-  that a single estimate is obtained from a score accumulated over 5 cycles
-
-Example: ::
-
-      tally  {
-      display (k-eff);
-      norm fissRate;
-      normVal 100.0;
-      k-eff { type keffAnalogClerk;}
-      fissRate { type collisionClerk; response (fission); fission {type macroResponse; MT -6;} }
-      }

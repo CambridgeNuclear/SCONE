@@ -1,8 +1,9 @@
 program scone
 
   use numPrecision
-  use genericProcedures,          only : printStart
+  use display_func,               only : printStart, statusMsg
   use openmp_func,                only : ompSetNumThreads
+  use mpi_func,                   only : mpiInit, mpiFinalise
   use commandLineUI,              only : getInputFile, clOptionIsPresent, addClOption, getFromCL
   use dictionary_class,           only : dictionary
   use dictParser_func,            only : fileToDict
@@ -12,6 +13,7 @@ program scone
   use timer_mod                 , only : registerTimer, timerStart, timerStop, timerTime, secToChar
 
   implicit none
+
   type(dictionary)                  :: input
   class(physicsPackage),allocatable :: core
   character(:),allocatable          :: inputPath
@@ -28,6 +30,9 @@ program scone
 
   ! Get path to input file
   call getInputFile(inputPath)
+
+  ! Initialize MPI
+  call mpiInit()
 
   ! Set Number of threads
   if (clOptionIsPresent('--omp')) then
@@ -56,6 +61,10 @@ program scone
   call core % run()
 
   call timerStop(timerIdx)
-  print *, 'Total calculation time: ', trim(secToChar(timerTime(timerIdx)))
-  print *, 'Have a good day and enjoy your results analysis!'
+
+  call mpiFinalise()
+
+  call statusMsg("Total calculation time: " // trim(secToChar(timerTime(timerIdx))))
+  call statusMsg("Have a good day and enjoy your results analysis!")
+
 end program scone

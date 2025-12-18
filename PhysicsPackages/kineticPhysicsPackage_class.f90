@@ -3,7 +3,13 @@ module kineticPhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, printFishLineR, numToChar, rotateVector
+  use genericProcedures,              only : fatalError, numToChar, rotateVector
+  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
+                                             printSeparatorLine
+  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset
+#ifdef MPI
+  use mpi_func,                       only : mpi_bcast, MASTER_RANK, MPI_COMM_WORLD, MPI_SHORTINT
+#endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
@@ -54,6 +60,9 @@ module kineticPhysicsPackage_class
   use transportOperatorFactory_func,  only : new_transportOperator
   use sourceFactory_func,             only : new_source
 
+  ! Visualisation
+  use visualiser_class,               only : visualiser
+
   implicit none
   private
 
@@ -73,6 +82,7 @@ module kineticPhysicsPackage_class
     type(tallyAdmin),pointer               :: tallyAtch => null()
 
     ! Settings
+    integer(shortInt)  :: totalPop
     integer(shortInt)  :: pop
     integer(shortInt)  :: precPop
     integer(shortInt)  :: N_cycles
@@ -90,9 +100,9 @@ module kineticPhysicsPackage_class
     type(particleDungeon), pointer :: thisTime       => null()
     type(particleDungeon), pointer :: nextTime       => null()
     type(particleDungeon), pointer :: tempTime       => null()
-    type(particleDungeon), pointer :: thisPrecursors => null() 
-    type(particleDungeon), pointer :: nextPrecursors => null() 
-    type(particleDungeon), pointer :: tempPrecursors => null() 
+    type(particleDungeon), pointer :: thisPrecursors => null()
+    type(particleDungeon), pointer :: nextPrecursors => null()
+    type(particleDungeon), pointer :: tempPrecursors => null()
     type(particleDungeon), pointer :: commonBuffer   => null()
     class(source), allocatable     :: fixedSource
 
@@ -116,15 +126,23 @@ contains
   subroutine run(self)
     class(kineticPhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ KINETIC CALCULATION /\/\"
+    call printSeparatorLine()
+    call printSectionStart("KINETIC CALCULATION")
+
+    ! Skip RNG state forward based on the process rank
+    call self % pRNG % stride(getOffset(self % totalPop))
 
     call self % cycles()
-    call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF KINETIC CALCULATION \/\/"
-    print *
+    ! Collect results from other processes
+    call self % tally % collectDistributed()
+
+    if (isMPIMaster()) call self % collectResults()
+
+    call statusMsg("")
+    call printSectionEnd("END OF KINETIC CALCULATION")
+    call statusMsg("")
+
   end subroutine
 
   !!
@@ -161,16 +179,19 @@ contains
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
-    
+
     batch: do b = 1, self % N_cycles
 
-      ! Produce initial source    
+      ! Produce initial source
       call self % fixedSource % generate(self % thisTime, self % pop, self % pRNG)
-      
+
+      ! Update RNG after source generation
+      call self % pRNG % stride(self % totalPop)
+
       call self % tally % reportCycleStart(self % thisTime)
 
       time: do t = 1, size(self % timeBounds)
-    
+
         ! Set start-of-step and end-of-step time
         if (t == 1) then
           tPrev = ZERO
@@ -198,17 +219,17 @@ contains
             ! Force precursors to decay during the step
             !$omp parallel do
             do n = 1, self % thisPrecursors % popSize()
-        
+
               pRNG = self % pRNG
               call pRNG % stride(n)
-              
+
               call self % thisPrecursors % copy(p, n)
               dT = tNext - tPrev
               decayT = pRNG % get() * dT + tPrev
 
               ! Weight adjustment
               call p % forcedPrecursorDecay(decayT, dT, pNew)
-              
+
               ! Add particle to the cycle
               call self % thisTime % detain(pNew)
 
@@ -221,10 +242,10 @@ contains
             !$omp parallel do
             do n = 1, self % thisPrecursors % popSize()
               call self % thisPrecursors % copy(p, n)
-              
+
               pRNG = self % pRNG
               call pRNG % stride(n)
-          
+
               ! Sample time to decay
               p % time = tPrev - log(pRNG % get()) / p % lambda
 
@@ -240,10 +261,10 @@ contains
 
             end do
             !$omp end parallel do
-            
+
 
           end if
-            
+
           ! Update RNG
           call self % pRNG % stride(self % thisPrecursors % popSize() + 1)
 
@@ -254,9 +275,9 @@ contains
 
         !$omp parallel do schedule(dynamic)
         gen: do n = 1, self % pop
-          
+
           call self % thisTime % copy(p, n)
-          
+
           pRNG = self % pRNG
           p % pRNG => pRNG
           call p % pRNG % stride(n)
@@ -273,9 +294,9 @@ contains
 
             p % fate = no_FATE
             p % timeMax = tNext
-          
+
             call self % geom % placeCoord(p % coords)
-            
+
             call p % savePreHistory()
 
             ! Transport particle until its death
@@ -283,11 +304,11 @@ contains
 
               ! Catch for undecayed precursors
               if (p % isDead) exit history
-              
+
               call transOp % transport(p, self % tally, buffer, buffer)
               if(p % isDead) exit history
-         
-              ! Particle hit the time boundary     
+
+              ! Particle hit the time boundary
               if(p % fate == AGED_FATE) then
                 call self % nextTime % detain(p)
                 exit history
@@ -305,13 +326,13 @@ contains
                 call self % commonBuffer % detainCritical(p)
               end do
             end if
-          
+
             ! Clear out buffer
             if ((.not. buffer % isEmpty()) .or. associated(self % commonBuffer)) then
 
               if (.not. buffer % isEmpty()) then
                 call buffer % release(p)
-              
+
               ! Clear out common queue
               ! Note the apparently redundant critical sections (one here in PP, one in the dungeon).
               ! This is to prevent the situation where two threads both enter the conditional and compete
@@ -337,7 +358,7 @@ contains
                 ! If forced decay, obtain the particle weight and place the
                 ! remainder in the dungeon
                 if (self % forcedPrecursorDecay) then
-            
+
                   dT = tNext - p % time
                   decayT = pRNG % get() * dT + p % time
 
@@ -369,7 +390,7 @@ contains
                     call p % emitDelayedNeutron()
                   end if
 
-                end if 
+                end if
               end if
             else
               exit bufferLoop
@@ -381,31 +402,31 @@ contains
         !$omp end parallel do
 
         ! Update RNG
-        call self % pRNG % stride(self % pop + 1)
+        call self % pRNG % stride(self % totalPop + 1)
 
         call self % thisTime % cleanPop()
         self % tempTime => self % nextTime
         self % nextTime => self % thisTime
         self % thisTime => self % tempTime
-            
+
         ! Flip precursor dungeons
         ! Only if not using forced precursor decay - it only requires a single dungeon
         if (.not. self % forcedPrecursorDecay) then
           self % tempPrecursors => self % nextPrecursors
           self % nextPrecursors => self % thisPrecursors
           self % thisPrecursors => self % tempPrecursors
-            
+
           call self % nextPrecursors % cleanPop()
         end if
 
       end do time
-        
+
       call self % tally % reportCycleEnd(self % thisTime)
-      
+
       ! Clean for the next batch
       call self % thisTime % cleanPop()
       call self % thisPrecursors % cleanPop()
-      
+
       ! Calculate times
       call timerStop(self % timerMain)
       elapsed_T = timerTime(self % timerMain)
@@ -416,11 +437,11 @@ contains
 
       ! Display progress
       call printFishLineR(t)
-      print *
-      print *, 'Batch: ', numToChar(b), ' of ', numToChar(self % N_cycles)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      call statusMsg("")
+      call statusMsg("Batch: " // numToChar(b) // " of " // numToChar(self % N_cycles))
+      call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
+      call statusMsg("End time:     " // trim(secToChar(end_T)))
+      call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call self % tally % display()
 
     end do batch
@@ -480,12 +501,14 @@ contains
     character(:),allocatable                    :: string
     character(nameLen)                          :: nucData, energy, geomName
     type(outputFile)                            :: test_out
+    type(visualiser)                            :: viz
     character(100), parameter :: Here ='init (kineticPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
+    call dict % get( self % totalPop,'pop')
+    self % pop = getWorkshare(self % totalPop)
     call dict % get( self % N_cycles,'cycles')
     call dict % get( nSteps,'timeSteps')
     call dict % get( nucData, 'XSdata')
@@ -544,7 +567,7 @@ contains
 
     ! Whether to use analog or implicit precursors treatment (default = implicit)
     call dict % getOrDefault(self % forcedPrecursorDecay, 'forcedPrecursorDecay', .true.)
-    
+
     ! Is the common buffer turned on? Set the size if so
     if (dict % isPresent('commonBufferSize')) then
       call dict % get(commonBufferSize,'commonBufferSize')
@@ -568,14 +591,18 @@ contains
     !     so seeds are limited to 32 bits (can be -ve)
     if( dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
-
     else
       ! Obtain time string and hash it to obtain random seed
       call date_and_time(date, time)
       string = date // time
       call FNV_1(string,seed_temp)
-
     end if
+
+    ! Broadcast seed to all processes
+#ifdef MPI
+    call mpi_bcast(seed_temp, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD)
+#endif
+
     seed = seed_temp
     call self % pRNG % init(seed)
 
@@ -595,6 +622,16 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+
+    ! Call visualisation
+    if (dict % isPresent('viz') .and. isMPIMaster()) then
+      call statusMsg("Initialising visualiser")
+      tempDict => dict % getDictPtr('viz')
+      call viz % init(self % geom, tempDict)
+      call statusMsg("Constructing visualisation")
+      call viz % makeViz()
+      call viz % kill()
+    endif
 
     ! Read particle source definition
     tempDict => dict % getDictPtr('source')
@@ -626,7 +663,7 @@ contains
     call self % nextPrecursors % init(2 * self % precPop)
 
     call self % printSettings()
-    
+
     ! Initialise tally for useful diagnostics
     call locDict1 % init(2)
     call locDict2 % init(2)
@@ -661,18 +698,22 @@ contains
     TStart = ZERO
     Tstop = self % timeBounds(size(self % timeBounds))
     Tincrement = self % timeBounds(1)
-    print *, repeat("<>",50)
-    print *, "/\/\ KINETIC CALCULATION /\/\"
-    print *, "Time grid [start, stop, increment]: ", numToChar(TStart), numToChar(Tstop), numToChar(Tincrement)
-    print *, "Initial Population:                 ", numToChar(self % pop)
+
+    call printSeparatorLine()
+    call printSectionStart("KINETIC CALCULATION SETTINGS")
+    call statusMsg("Source batches:       " // numToChar(self % N_cycles))
+    call statusMsg("Time grid [start, stop, increment]: " // numToChar(TStart) // " , " &
+        // numToChar(Tstop) // " , " // numToChar(Tincrement))
+    call statusMsg("Initial Population:                 " // numToChar(self % pop))
     if (self % forcedPrecursorDecay) then
-      print *, "Forced precursor decay is applied"
+      call statusMsg("Forced precursor decay is applied")
     else
-      print *, "Analog precursor decay is applied"
+      call statusMsg("Analog precursor decay is applied")
     end if
-    print *, "Initial RNG Seed:                   ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    call statusMsg("Initial RNG Seed:     " // numToChar(self % pRNG % getSeed()))
+    call statusMsg("")
+    call printSeparatorLine()
+
   end subroutine printSettings
 
 end module kineticPhysicsPackage_class

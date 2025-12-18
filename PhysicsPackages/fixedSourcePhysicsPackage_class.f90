@@ -3,10 +3,17 @@ module fixedSourcePhysicsPackage_class
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : fatalError, printFishLineR, numToChar, rotateVector
+  use genericProcedures,              only : numToChar, rotateVector
+  use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
+                                             printSeparatorLine
+  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset
+#ifdef MPI
+  use mpi_func,                       only : mpi_bcast, MASTER_RANK, MPI_COMM_WORLD, MPI_SHORTINT
+#endif
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
+  use errors_mod,                     only : fatalError
 
   ! Timers
   use timer_mod,                      only : registerTimer, timerStart, timerStop, &
@@ -80,6 +87,7 @@ module fixedSourcePhysicsPackage_class
     ! Settings
     integer(shortInt)  :: N_cycles
     integer(shortInt)  :: pop
+    integer(shortInt)  :: totalPop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
@@ -112,15 +120,23 @@ contains
   subroutine run(self)
     class(fixedSourcePhysicsPackage), intent(inout) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
+    call printSeparatorLine()
+    call printSectionStart("FIXED SOURCE CALCULATION")
+
+    ! Skip RNG state forward based on the process rank
+    call self % pRNG % stride(getOffset(self % totalPop))
 
     call self % cycles(self % tally, self % N_cycles)
-    call self % collectResults()
 
-    print *
-    print *, "\/\/ END OF FIXED SOURCE CALCULATION \/\/"
-    print *
+    ! Collect results from other processes
+    call self % tally % collectDistributed()
+
+    if (isMPIMaster()) call self % collectResults()
+
+    call statusMsg("")
+    call printSectionEnd("END OF FIXED SOURCE CALCULATION")
+    call statusMsg("")
+
   end subroutine
 
   !!
@@ -160,13 +176,13 @@ contains
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
 
-    do i = 1,N_cycles
+    do i = 1, N_cycles
 
       ! Send start of cycle report
       call self % fixedSource % generate(self % thisCycle, nParticles, self % pRNG)
 
       ! Update RNG after source generation
-      call self % pRNG % stride(self % pop)
+      call self % pRNG % stride(self % totalPop)
 
       if (self % printSource == 1) then
         call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
@@ -192,14 +208,15 @@ contains
 
           ! Save state
           call p % savePreHistory()
+          call p % savePreCollision()
 
           ! Transport particle until its death
           history: do
             call transOp % transport(p, tally, buffer, buffer)
-            if(p % isDead) exit history
+            if (p % isDead) exit history
 
             call collOp % collide(p, tally, buffer, buffer)
-            if(p % isDead) exit history
+            if (p % isDead) exit history
           end do history
 
           ! If buffer is quite full, shift some particles to the commonBuffer
@@ -239,7 +256,7 @@ contains
       !$omp end parallel do
 
       ! Update RNG
-      call self % pRNG % stride(self % pop)
+      call self % pRNG % stride(self % totalPop)
 
       ! Send end of cycle report
       call tally % reportCycleEnd(self % thisCycle)
@@ -254,13 +271,14 @@ contains
 
       ! Display progress
       call printFishLineR(i)
-      print *
-      print *, 'Source batch: ', numToChar(i), ' of ', numToChar(N_cycles)
-      print *, 'Pop:          ', numToChar(self % pop)
-      print *, 'Elapsed time: ', trim(secToChar(elapsed_T))
-      print *, 'End time:     ', trim(secToChar(end_T))
-      print *, 'Time to end:  ', trim(secToChar(T_toEnd))
+      call statusMsg("")
+      call statusMsg("Source batch: " // numToChar(i) // " of " // numToChar(N_cycles))
+      call statusMsg("Pop:          " // numToChar(self % pop))
+      call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
+      call statusMsg("End time:     " // trim(secToChar(end_T)))
+      call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
+
     end do
 
   end subroutine cycles
@@ -276,20 +294,20 @@ contains
     call out % init(self % outputFormat, filename=self % outputFile)
 
     name = 'seed'
-    call out % printValue(self % pRNG % getSeed(),name)
+    call out % printValue(self % pRNG % getSeed(), name)
 
     name = 'pop'
-    call out % printValue(self % pop,name)
+    call out % printValue(self % totalPop, name)
 
     name = 'Source_batches'
-    call out % printValue(self % N_cycles,name)
+    call out % printValue(self % N_cycles, name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
+    call out % printValue((self % CPU_time_end - self % CPU_time_start), name)
 
     name = 'Transport_time'
-    call out % printValue(timerTime(self % timerMain),name)
+    call out % printValue(timerTime(self % timerMain), name)
 
     ! Print tally
     call self % tally % print(out)
@@ -317,7 +335,9 @@ contains
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get( self % pop,'pop')
+    call dict % get(self % totalPop,'pop')
+    self % pop = getWorkshare(self % totalPop)
+
     call dict % get( self % N_cycles,'cycles')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
@@ -351,16 +371,20 @@ contains
 
     ! *** It is a bit silly but dictionary cannot store longInt for now
     !     so seeds are limited to 32 bits (can be -ve)
-    if( dict % isPresent('seed')) then
+    if (dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
-
     else
       ! Obtain time string and hash it to obtain random seed
       call date_and_time(date, time)
       string = date // time
-      call FNV_1(string,seed_temp)
-
+      call FNV_1(string, seed_temp)
     end if
+
+    ! Broadcast seed to all processes
+#ifdef MPI
+    call mpi_bcast(seed_temp, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD)
+#endif
+
     seed = seed_temp
     call self % pRNG % init(seed)
 
@@ -382,14 +406,14 @@ contains
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
-    if (dict % isPresent('viz')) then
-      print *, "Initialising visualiser"
+    if (dict % isPresent('viz') .and. isMPIMaster()) then
+      call statusMsg("Initialising visualiser")
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      print *, "Constructing visualisation"
+      call statusMsg("Constructing visualisation")
       call viz % makeViz()
       call viz % kill()
-    endif
+    end if
 
     ! Read variance reduction option as a geometry field
     if (dict % isPresent('varianceReduction')) then
@@ -453,13 +477,14 @@ contains
   subroutine printSettings(self)
     class(fixedSourcePhysicsPackage), intent(in) :: self
 
-    print *, repeat("<>",50)
-    print *, "/\/\ FIXED SOURCE CALCULATION /\/\"
-    print *, "Source batches:       ", numToChar(self % N_cycles)
-    print *, "Population per batch: ", numToChar(self % pop)
-    print *, "Initial RNG Seed:     ", numToChar(self % pRNG % getSeed())
-    print *
-    print *, repeat("<>",50)
+    call printSeparatorLine()
+    call printSectionStart("FIXED SOURCE CALCULATION SETTINGS")
+    call statusMsg("Source batches:       " // numToChar(self % N_cycles))
+    call statusMsg("Population per batch: " // numToChar(self % pop))
+    call statusMsg("Initial RNG Seed:     " // numToChar(self % pRNG % getSeed()))
+    call statusMsg("")
+    call printSeparatorLine()
+
   end subroutine printSettings
 
 end module fixedSourcePhysicsPackage_class

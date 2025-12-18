@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:${{matrix.compiler}}_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -28,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -42,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -49,6 +52,20 @@ jobs:
           mkdir build
           cd build
           cmake -DOPENMP=OFF ..
+          make -j
+          ctest --output-on-faliure
+          cd -
+  build-and-test-no-mpi:
+    runs-on: ubuntu-latest
+    container:
+      image: mikolajkowalski/scone-test:gfortran12_pfu4
+    steps:
+      - uses: actions/checkout@v3
+      - name: CompileAndTest
+        run : |
+          mkdir build
+          cd build
+          cmake -DMPI=OFF ..
           make -j
           ctest --output-on-faliure
           cd -

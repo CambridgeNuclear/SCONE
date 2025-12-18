@@ -1,8 +1,12 @@
 module particleDungeon_test
   use numPrecision
+  use errors_mod,            only : fatalError
   use RNG_class,             only : RNG
   use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
+#ifdef MPI
+  use mpi_func,              only : mpiInitTypes, MPI_COMM_WORLD
+#endif
   use funit
 
   implicit none
@@ -194,6 +198,7 @@ contains
 
     ! Clean
     call dungeon % kill()
+
   end subroutine testWeightNorm
 
   !!
@@ -206,9 +211,22 @@ contains
     type(particleDungeon)    :: dungeon
     type(particle)           :: p
     type(RNG)                :: pRNG
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, worldSize, ierr
     real(defReal), parameter :: TOL = 1.0E-9
+    character(100),parameter :: Here = 'testNormPopDown (particleDungeon_test.f90)'
 
+#ifdef MPI
+    call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
+
+    if (worldSize > 1) &
+      call fatalError(Here, 'This test cannot be run with multiple MPI processes')
+
+    ! Initialise MPI types needed for this procedure
+    ! NOTE: This is necessary because the normalisation uses some mpi procedure
+    ! with data types manually defined inside mpiInitTypes. During the tests,
+    ! mpiInit and mpiInitTypes aren't called, so this is done manually here
+    call mpiInitTypes()
+#endif
 
     ! Initialise
     call dungeon % init(10)
@@ -217,18 +235,17 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
-      p % broodID = 1       ! Avoid triggering error on sort by broodID
+      p % broodID = i       ! Avoid triggering error on sort by broodID
       call dungeon % detain(p)
     end do
 
-    ! Normalise population
-    call dungeon % normSize(5, pRNG)
+    ! Normalise population with non reproducible algorithm and verify size
+    call dungeon % normSize_notRepr(8, pRNG)
+    @assertEqual(8, dungeon % popSize())
 
-    ! Verify size
+    ! Normalise population with reproducible algorithm and verify size
+    call dungeon % normSize_Repr(5, pRNG)
     @assertEqual(5, dungeon % popSize())
-
-    ! Verify weight *** DISABLED
-    !@assertEqual(6.05_defReal, dungeon % popWeight(), TOL)
 
     ! Clean memory
     call dungeon % kill()
@@ -245,8 +262,20 @@ contains
     type(particleDungeon)    :: dungeon
     type(particle)           :: p
     type(RNG)                :: pRNG
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, worldSize, ierr
     real(defReal), parameter :: TOL = 1.0E-9
+    character(100),parameter :: Here = 'testNormPopUp (particleDungeon_test.f90)'
+
+    ! Initialise to avoid warnings
+    worldSize = 1
+    ierr = 0
+
+#ifdef MPI
+    call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
+
+    if (worldSize > 1) &
+      call fatalError(Here, 'This test cannot be run with multiple MPI processes')
+#endif
 
     ! Initialise
     call dungeon % init(20)
@@ -255,18 +284,17 @@ contains
     ! Store some particles with non-uniform weight
     do i = 1,10
       p % w = 0.5_defReal + i * 0.1_defReal
-      p % broodID = 1       ! Avoid triggering error on sort by broodID
+      p % broodID = i       ! Avoid triggering error on sort by broodID
       call dungeon % detain(p)
     end do
 
-    ! Normalise population
-    call dungeon % normSize(15, pRNG)
-
-    ! Verify size
+    ! Normalise population with reproducible algorithm and verify size
+    call dungeon % normSize_Repr(15, pRNG)
     @assertEqual(15, dungeon % popSize())
 
-    ! Verify weight *** DISABLED
-    !@assertEqual(18.15_defReal, dungeon % popWeight(), TOL)
+    ! Normalise population with non reproducible algorithm and verify size
+    call dungeon % normSize_notRepr(17, pRNG)
+    @assertEqual(17, dungeon % popSize())
 
     ! Clean memory
     call dungeon % kill()
@@ -280,23 +308,24 @@ contains
   subroutine testSortingByBroodID()
     type(particleDungeon)    :: dungeon
     type(particleState)      :: p
-    integer(shortInt)        :: i
+    integer(shortInt)        :: i, N
     real(defReal), parameter :: TOL = 1.0E-9
 
     ! Initialise
-    call dungeon % init(10)
+    N = 10
+    call dungeon % init(N)
 
     ! Store some particles with brood ID in reverse order
-    do i = 1,10
-      p % broodID = 10 - i + 1
+    do i = 1, N
+      p % broodID = N - i + 1
       call dungeon % detain(p)
     end do
 
     ! Sort by brood ID
-    call dungeon % sortByBroodID(10)
+    call dungeon % sortByBroodID(N)
 
     ! Verify order
-    do i = 1,10
+    do i = 1, N
       p = dungeon % get(i)
       @assertEqual(i, p % broodID)
     end do
@@ -311,29 +340,30 @@ contains
   subroutine testSortingByBroodID_withDuplicates()
     type(particleDungeon)    :: dungeon
     type(particleState)      :: p
-    integer(shortInt)        :: i, j
+    integer(shortInt)        :: i, j, N
     integer(shortInt), parameter :: N_duplicates = 7
     real(defReal), parameter :: TOL = 1.0E-9
 
     ! Initialise
-    call dungeon % init(10 * N_duplicates)
+    N = 10
+    call dungeon % init(N * N_duplicates)
 
     ! Store some particles with brood ID in reverse order
     ! Use the group number to distinguish duplicates and make sure
     ! that the insertion order is preserved (for particles with the same brood ID)
     do j = 1, N_duplicates
-      do i = 1, 10
-        p % broodID = 10 - i + 1
+      do i = 1, N
+        p % broodID = N - i + 1
         p % G = j
         call dungeon % detain(p)
       end do
     end do
 
     ! Sort by brood ID
-    call dungeon % sortByBroodID(10)
+    call dungeon % sortByBroodID(N)
 
     ! Verify order
-    do i = 1,10
+    do i = 1, N
       do j = 1, N_duplicates
         p = dungeon % get(j + (i-1) * N_duplicates)
         @assertEqual(i, p % broodID)
