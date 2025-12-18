@@ -118,9 +118,7 @@ module particleDungeon_class
     procedure, private :: detainCritical_particleState
     procedure, private :: replace_particle
     procedure, private :: replace_particleState
-#ifdef MPI
     procedure, private :: loadBalancing
-#endif
 
   end type particleDungeon
 
@@ -425,7 +423,7 @@ contains
   !!
   !! Normalise total number of particles in the dungeon to match the provided number
   !!
-  !! This procedure ensure reproducibility when using MPI - regardless of
+  !! This procedure ensure reproducibility when using MPI regardless of
   !! the number of ranks used
   !!
   !! Does not take weight of a particle into account!
@@ -545,7 +543,7 @@ contains
 
       ! Loop through accepted sites to save them
       do i = 1, count
-        self % prisoners(i) = self % prisoners(keepers(i))
+        if (i /= keepers(i)) self % prisoners(i) = self % prisoners(keepers(i))
       end do
 
       ! Update population number
@@ -598,23 +596,24 @@ contains
     ! Check that normalisation worked
     if (sum(popSizes) /= totPop) call fatalError(Here, 'Normalisation failed!')
 
-#ifdef MPI
     ! Perform load balancing by redistributing particles across processes
     if (nRanks > 1) call self % loadBalancing(totPop, nRanks, rank, popSizes)
-#endif
 
   end subroutine normSize_Repr
 
   !!
   !! Perform nearest neighbor load balancing
   !!
-#ifdef MPI
   subroutine loadBalancing(self, totPop, nRanks, rank, popSizes)
     class(particleDungeon), intent(inout)        :: self
     integer(shortInt), intent(in)                :: totPop
     integer(shortInt), intent(in)                :: nRanks
     integer(shortInt), intent(in)                :: rank
     integer(shortInt), dimension(:), intent(in)  :: popSizes
+
+    ! It shouldn't be called when MPI is not defined
+
+#ifdef MPI
     integer(shortInt), dimension(:), allocatable :: rankOffsets
     integer(shortInt), dimension(2)              :: offset, targetOffset
     integer(shortInt)                            :: mpiOffset, excess, error, i
@@ -664,6 +663,7 @@ contains
     end if
 
     if (allocated(dataBuffer)) deallocate(dataBuffer)
+    if (allocated(stateBuffer)) deallocate(stateBuffer)
 
     ! If needed, send/receive particle states from/to the beginning of the dungeon
     excess = offset(1) - targetOffset(1)
@@ -693,9 +693,9 @@ contains
       self % pop = self % pop + excess
 
     end if
+#endif
 
   end subroutine loadBalancing
-#endif
 
   !!
   !! Normalise number of particles in the dungeon to match the provided number
@@ -703,8 +703,8 @@ contains
   !! When using MPI, each rank normalises the population in its own dungeon, without
   !! communication between ranks. This means that load balancing is not needed here.
   !!
-  !! As a consequence, this procedure doesn't ensure reproducibility when using MPI - different
-  !! number of threads will give different results.
+  !! As a consequence, this procedure doesn't ensure reproducibility when using MPI:
+  !! using different number of ranks will give different results.
   !!
   !! Does not take weight of a particle into account!
   !!
@@ -777,6 +777,9 @@ contains
   !! Normalise the population using combing
   !! Preserves total weight
   !!
+  !! Note that this does not ensure reproducibility when using different numbers
+  !! of MPI ranks
+  !!
   subroutine combing(self, N, rand)
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
@@ -845,6 +848,9 @@ contains
   !! Importance-based combing accounting for expected weight of delayed neutron
   !! upon Forced Precursor Decay or when the population becomes large.
   !!
+  !! Note that this does not ensure reproducibility when using different numbers
+  !! of MPI ranks
+  !!
   subroutine precursorCombing(self, N, rand, t1, t2)
     class(particleDungeon), intent(inout)    :: self
     integer(shortInt), intent(in)            :: N
@@ -862,7 +868,7 @@ contains
     !$omp threadprivate(p, j, nextTooth, curExpDelayedWgt)
 
     ! Protect against invalid N
-    if( N > size(self % prisoners)) then
+    if (N > size(self % prisoners)) then
       call fatalError(Here,'Requested size: '//numToChar(N) //&
                            'is greather then max size: '//numToChar(size(self % prisoners)))
     else if ( N <= 0 ) then

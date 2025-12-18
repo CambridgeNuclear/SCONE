@@ -58,7 +58,8 @@ module tallyAdmin_class
   !!   closeCycleClerks -> List of indices of all clerks that require closeCycle
   !!   displayList      -> List of indices of all clerks that are registered for display
   !!   mem              -> Score Memory for all defined clerks
-  !!   mpiSync          ->
+  !!   mpiSync          -> Flag that determines whether tallies are synchronised
+  !!                       between mpi ranks each cycle or not
   !!
   !! Interface:
   !!   init   -> Initialise from dictionary
@@ -199,7 +200,7 @@ contains
 
     end do
 
-    ! Register all clerks to recive their reports
+    ! Register all clerks to recieve their reports
     do i = 1, size(self % tallyClerks)
       associate(reports => self % tallyClerks(i) % validReports())
         do j = 1, size(reports)

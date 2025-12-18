@@ -266,6 +266,10 @@ contains
     real(defReal), parameter :: TOL = 1.0E-9
     character(100),parameter :: Here = 'testNormPopUp (particleDungeon_test.f90)'
 
+    ! Initialise to avoid warnings
+    worldSize = 1
+    ierr = 0
+
 #ifdef MPI
     call mpi_comm_size(MPI_COMM_WORLD, worldSize, ierr)
 

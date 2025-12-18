@@ -6,7 +6,7 @@ module fixedSourcePhysicsPackage_class
   use genericProcedures,              only : numToChar, rotateVector
   use display_func,                   only : printFishLineR, statusMsg, printSectionStart, printSectionEnd, &
                                              printSeparatorLine
-  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
+  use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset
 #ifdef MPI
   use mpi_func,                       only : mpi_bcast, MASTER_RANK, MPI_COMM_WORLD, MPI_SHORTINT
 #endif
@@ -278,6 +278,7 @@ contains
       call statusMsg("End time:     " // trim(secToChar(end_T)))
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
+
     end do
 
   end subroutine cycles
@@ -372,13 +373,11 @@ contains
     !     so seeds are limited to 32 bits (can be -ve)
     if (dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
-
     else
       ! Obtain time string and hash it to obtain random seed
       call date_and_time(date, time)
       string = date // time
       call FNV_1(string, seed_temp)
-
     end if
 
     ! Broadcast seed to all processes
@@ -414,7 +413,7 @@ contains
       call statusMsg("Constructing visualisation")
       call viz % makeViz()
       call viz % kill()
-    endif
+    end if
 
     ! Read variance reduction option as a geometry field
     if (dict % isPresent('varianceReduction')) then

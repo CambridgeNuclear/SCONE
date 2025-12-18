@@ -360,9 +360,6 @@ contains
     ! Update RNG after source generation
     call self % pRNG % stride(self % totalPop)
 
-    ! Update RNG after source generation
-    call self % pRNG % stride(self % pop)
-
   end subroutine generateInitialState
 
   !!
