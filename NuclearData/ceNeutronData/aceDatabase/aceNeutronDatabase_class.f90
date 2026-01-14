@@ -5,6 +5,7 @@ module aceNeutronDatabase_class
   use universalVariables
   use errors_mod,         only : fatalError
   use genericProcedures,  only : numToChar, removeDuplicatesSorted, binarySearch
+  use display_func,       only : statusMsg
   use dictionary_class,   only : dictionary
   use RNG_class,          only : RNG
   use charMap_class,      only : charMap
@@ -923,11 +924,11 @@ contains
       end if
 
       if(loud) then
-        print '(A)', "Building: "// trim(name)// " with index: " //numToChar(nucIdx)
-        if (idx1 /= 0 .and. idx2 == 0) &
-                print '(A)', "including S(alpha,beta) table with file: " //trim(name_file1)
-        if (idx1 /= 0 .and. idx2 /= 0) &
-                print '(A)', "including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2)
+        call statusMsg("Building: "// trim(name)// " with index: " //numToChar(nucIdx))
+        if (idx /= 0 .and. idx2 == 0) &
+            call statusMsg("including S(alpha,beta) tables with file: " //trim(name_file1))
+        if (idx /= 0 .and. idx2 /= 0) &
+            call statusMsg("including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2))
       end if
 
       call new_neutronACE(ACE, name)
@@ -1417,7 +1418,7 @@ contains
     self % eGridUnion = removeDuplicatesSorted(tmpGrid)
 
     if (loud) then
-      print '(A)', 'CE unionised energy grid has size: '//numToChar(size(self % eGridUnion))
+      call statusMsg("CE unionised energy grid has size: "//numToChar(size(self % eGridUnion)))
     end if
 
     ! Allocate unionised majorant
@@ -1493,7 +1494,7 @@ contains
 
     end do
 
-    if (loud) print '(A)', 'CE unionised majorant cross section calculation completed'
+    if (loud) call statusMsg("CE unionised majorant cross section calculation completed")
 
   end subroutine initMajorant
 
