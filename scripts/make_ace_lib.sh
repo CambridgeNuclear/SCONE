@@ -2,23 +2,24 @@
 
 HELP="Create a SCONE nuclear data library file from raw ACE Neutron CE files.
 
-make_ace_lib.sh <output> <MODE> <ace-file>+
+make_ace_lib.sh <output> <MODE> <suffix> <path-to-directory>
 
 Arguments:
-  <output>  Library file to create.
-  <MODE>    Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
-  <ace-files>  List of files to search for the ID pattern
+  <output> Library file to create.
+  <MODE>   Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
+  <suffix> Expected suffix in the extension of the ace files
+  <path-to-directory> List of files to search for the ID pattern
 
-The script searches each of the <ace-file> for a presence of an ID pattern (ZZAAA.TTc for CE;
-XXXXXX.TTt for SAB card) at a beginning of the line. By ACE definition this should match only
-a first line of a header of an ACE card. For each match the script prints a line of the SCONE
-nuclear data library file to <output> as:
+The script recursively searches inside <path-to-directory> for files with the given <suffix>;
+in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; XXXXXX.TTt for SAB card) 
+within the first line. By ACE definition this should match only in the first line of a header of an 
+ACE card. For each match the script prints a line of the SCONE nuclear data library file to <output> as:
   ZAID; LINE_NUMBER; FILE;
   ...
 "
 
 # Display help if number of arguments is wrong
-if [ $# -le 2 ]; then
+if [ $# -ne 4 ]; then
   echo "${HELP}"
   exit 1
 fi
@@ -26,7 +27,14 @@ fi
 # Pop first argument to be the library file
 OUTNAME=$1
 MODE=$2
-shift 2
+SUFFIX=$3
+SEARCH_DIR=$4
+
+# Check a path to directory is given correctly
+if [ ! -d "$SEARCH_DIR" ]; then
+  echo "Error: '$SEARCH_DIR' is not a directory"
+  exit 1
+fi
 
 # If file already exists ask for confirmation and remove it
 if [ -f $OUTNAME ]; then
@@ -38,19 +46,26 @@ if [ -f $OUTNAME ]; then
   rm $OUTNAME
 fi
 
+FILES=()
+while IFS= read -r -d '' f; do
+  FILES+=("$f")
+done < <(
+  find "$SEARCH_DIR" -type f -name "*.*${SUFFIX}" -print0
+)
+
+if [ "${#FILES[@]}" -eq 0 ]; then
+  echo "No files with extension '.*${SUFFIX}' found in ${SEARCH_DIR}"
+  exit 1
+fi
+
 # Process each ACE file with awk
-for var in $@
+for var in "${FILES[@]}"; 
 do
-  if [ ! -f $var ]; then
-    echo -e "File '${var}' does not exist \U0001F61E"
-    echo -e "Quitting \U0001F44B"
-    exit 1
-  fi
 
   # We need full path to put in the file
-  FULL_PATH=$(realpath $var)
+  FULL_PATH=$(realpath "$var")
+  echo "Processing file $var"
 
-  echo "Processing file ${var}"
   if [[ $MODE =~ ^CE$ ]]; then
     awk -v FILE=$FULL_PATH \
     '/^[[:space:]]*[[:digit:]][[:digit:]][[:digit:]][[:digit:]][[:digit:]]?.[[:digit:]][[:digit:]]c/\
