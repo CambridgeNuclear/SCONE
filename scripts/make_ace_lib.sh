@@ -8,7 +8,7 @@ Arguments:
   <output> Library file to create.
   <MODE>   Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
   <suffix> Expected suffix in the extension of the ace files
-  <path-to-directory> List of files to search for the ID pattern
+  <path-to-directory> Path of the base directory where to search in
 
 The script recursively searches inside <path-to-directory> for files with the given <suffix>;
 in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; XXXXXX.TTt for SAB card) 
