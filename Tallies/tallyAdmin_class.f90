@@ -2,6 +2,7 @@ module tallyAdmin_class
 
   use numPrecision
   use tallyCodes
+  use mpi_func,               only : isMPIMaster
   use genericProcedures,      only : fatalError, charCmp
   use dictionary_class,       only : dictionary
   use dynArray_class,         only : dynIntArray
@@ -54,8 +55,11 @@ module tallyAdmin_class
   !!   histClerks       -> List of indices of all clerks that require histReport
   !!   cycleStartClerks -> List of indices of all clerks that require cycleStartReport
   !!   cycleEndClerks   -> List of indices of all clerks that require cycleEndReport
+  !!   closeCycleClerks -> List of indices of all clerks that require closeCycle
   !!   displayList      -> List of indices of all clerks that are registered for display
   !!   mem              -> Score Memory for all defined clerks
+  !!   mpiSync          -> Flag that determines whether tallies are synchronised
+  !!                       between mpi ranks each cycle or not
   !!
   !! Interface:
   !!   init   -> Initialise from dictionary
@@ -83,6 +87,7 @@ module tallyAdmin_class
   !!   #norm    clerk3;          #       ! Clerk should be size 1 (first bin of clerk is normalised)
   !!   #normVal 13.0;            #       ! Must be present if "norm" is present
   !!   #batchSize   4;           #       ! Default value 1
+  !!   #mpiSync     1;           #       ! Default value 0
   !!   clerk1 { <clerk definition here> }
   !!   clerk2 { <clerk definition here> }
   !!   clerk3 { <clerk definition here> }
@@ -99,6 +104,9 @@ module tallyAdmin_class
     real(defReal)      :: normValue
     character(nameLen) :: normClerkName
 
+    ! Parallelisation settings
+    logical(defBool)   :: mpiSync
+
     ! Clerks and clerks name map
     type(tallyClerkSlot),dimension(:),allocatable :: tallyClerks
     type(charMap)                                 :: clerksNameMap
@@ -112,6 +120,7 @@ module tallyAdmin_class
     type(dynIntArray)  :: histClerks
     type(dynIntArray)  :: cycleStartClerks
     type(dynIntArray)  :: cycleEndClerks
+    type(dynIntArray)  :: closeCycleClerks
 
     ! List of clerks to display
     type(dynIntArray)  :: displayList
@@ -141,6 +150,7 @@ module tallyAdmin_class
 
     ! Interaction procedures
     procedure :: getResult
+    procedure :: collectDistributed
 
     ! Display procedures
     procedure :: display
@@ -192,10 +202,9 @@ contains
 
     ! Register all clerks to receive their reports
     do i = 1, size(self % tallyClerks)
-      associate( reports => self % tallyClerks(i) % validReports() )
+      associate(reports => self % tallyClerks(i) % validReports())
         do j = 1, size(reports)
           call self % addToReports(reports(j), i)
-
         end do
       end associate
     end do
@@ -206,24 +215,28 @@ contains
 
       ! Register all clerks to display
       do i = 1, size(names)
-        call self % displayList % add( self % clerksNameMap % get(names(i)))
+        call self % displayList % add(self % clerksNameMap % get(names(i)))
       end do
+
     end if
 
     ! Read batching size
-    call dict % getOrDefault(cyclesPerBatch,'batchSize',1)
+    call dict % getOrDefault(cyclesPerBatch,'batchSize', 1)
+
+    ! Check if the bins need to be synchronised across MPI processes
+    ! at the end of each batch
+    call dict % getOrDefault(self % mpiSync, 'mpiSync', .false.)
 
     ! Initialise score memory
     ! Calculate required size.
-    memSize = sum( self % tallyClerks % getSize() )
-    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch)
+    memSize = sum(self % tallyClerks % getSize())
+    call self % mem % init(memSize, 1, batchSize = cyclesPerBatch, reduced = self % mpiSync)
 
     ! Assign memory locations to the clerks
     memLoc = 1
     do i = 1, size(self % tallyClerks)
       call self % tallyClerks(i) % setMemAddress(memLoc)
       memLoc = memLoc + self % tallyClerks(i) % getSize()
-
     end do
 
     ! Verify that final memLoc and memSize are consistent
@@ -233,8 +246,8 @@ contains
 
     ! Read name of normalisation clerks if present
     if (dict % isPresent('norm')) then
-      call dict % get(self % normClerkName,'norm')
-      call dict % get(self % normValue,'normVal')
+      call dict % get(self % normClerkName, 'norm')
+      call dict % get(self % normValue, 'normVal')
       i = self % clerksNameMap % get(self % normClerkName)
       self % normBinAddr = self % tallyClerks(i) % getMemAddress()
     end if
@@ -271,6 +284,7 @@ contains
     call self % histClerks % kill()
     call self % cycleStartClerks % kill()
     call self % cycleEndClerks % kill()
+    call self % closeCycleClerks % kill()
 
     ! Kill score memory
     call self % mem % kill()
@@ -356,6 +370,7 @@ contains
       atch => self % atch
 
     end if
+
   end function getEnd
 
   !!
@@ -708,8 +723,8 @@ contains
   !!   All particles given in "reportCycleStart" have been already transported
   !!   It is called after "reportCycleStart"
   !!   No modification or normalisation was applied to "end" particle Dungeon
-  !!   "k_eff" member of end is set to criticality used to adjust fission source (implicit
-  !!     fission site generation)
+  !!   "k_eff" member of end is set to criticality used to adjust fission source
+  !!   (implicit fission site generation)
   !!
   !! Args:
   !!   end [in] -> Particle Dungeon at the end of a cycle (before any normalisations)
@@ -717,7 +732,7 @@ contains
   !! Errors:
   !!   None
   !!
-  recursive subroutine reportCycleEnd(self,end)
+  recursive subroutine reportCycleEnd(self, end)
     class(tallyAdmin), intent(inout)   :: self
     class(particleDungeon), intent(in) :: end
     integer(shortInt)                  :: i
@@ -731,7 +746,7 @@ contains
       call reportCycleEnd(self % atch, end)
     end if
 
-    ! Go through all clerks that request the report
+    ! Go through all clerks that request the reportCycleEnd
     !$omp parallel do
     do i = 1, self % cycleEndClerks % getSize()
       idx = self % cycleEndClerks % get(i)
@@ -739,21 +754,36 @@ contains
     end do
     !$omp end parallel do
 
-    ! Calculate normalisation factor
-    if (self % normBInAddr /= NO_NORM ) then
-      normScore  = self % mem % getScore(self % normBinAddr)
-      if (normScore == ZERO) then
-        call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+    ! Reduce the scores across the threads and processes
+    call self % mem % reduceBins()
 
+    if (isMPIMaster() .or. .not. self % mpiSync) then
+
+      ! Go through all clerks that request closeCycle
+      !$omp parallel do
+      do i = 1, self % closeCycleClerks % getSize()
+        idx = self % closeCycleClerks % get(i)
+        call self % tallyClerks(idx) % closeCycle(end, self % mem)
+      end do
+      !$omp end parallel do
+
+      ! Calculate normalisation factor
+      if (self % normBInAddr /= NO_NORM) then
+        normScore  = self % mem % getScore(self % normBinAddr)
+        if (normScore == ZERO) then
+          call fatalError(Here, 'Normalisation score from clerk:' // self % normClerkName // 'is 0')
+        end if
+
+        normFactor = self % normValue / normScore
+
+      else
+        normFactor = ONE
       end if
-      normFactor = self % normValue / normScore
 
-    else
-      normFactor = ONE
+      ! Close cycle multipling all scores by a multiplication factor
+      call self % mem % closeCycle(normFactor)
+
     end if
-
-    ! Close cycle multipling all scores by multiplication factor
-    call self % mem % closeCycle(normFactor)
 
   end subroutine reportCycleEnd
 
@@ -793,6 +823,23 @@ contains
     end if
 
   end subroutine getResult
+
+  !!
+  !! Sums up tally results from the MPI ranks into the Master rank
+  !!
+  recursive subroutine collectDistributed(self)
+    class(tallyAdmin), intent(inout) :: self
+
+    ! Call attachment
+    if (associated(self % atch)) then
+      call collectDistributed(self % atch)
+    end if
+
+    if (.not. self % mpiSync) then
+      call self % mem % collectDistributed()
+    end if
+
+  end subroutine collectDistributed
 
   !!
   !! Append sorting array identified with the code with tallyClerk idx
@@ -836,6 +883,9 @@ contains
 
       case(cycleEnd_CODE)
         call self % cycleEndClerks % add(idx)
+
+      case(closeCycle_CODE)
+        call self % closeCycleClerks % add(idx)
 
       case default
         call fatalError(Here, 'Undefined reportCode')
