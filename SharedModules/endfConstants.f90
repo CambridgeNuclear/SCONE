@@ -34,6 +34,7 @@ module endfConstants
 
   integer(shortInt), parameter :: N_TOTAL       = 1   ,&
                                   N_N_ELASTIC   = 2   ,&
+                                  N_NONELASTIC  = 3   ,&
                                   N_N_INELASTIC = 4   ,&
                                   N_ANYTHING    = 5   ,&
                                   N_2Nd         = 11  ,&
@@ -108,29 +109,30 @@ module endfConstants
                                   anyFission    = -118
 
   ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
-  integer(shortInt),parameter  :: macroTotal     = -1 ,&
-                                  macroCapture   = -2 ,&
-                                  macroEscatter  = -3 ,&
-                                  macroIEscatter = -4 ,&
-                                  macroFission   = -6 ,&
-                                  macroNuFission = -7
+  integer(shortInt),parameter  :: macroTotal         = -1 ,&
+                                  macroDisappearance = -2 ,&
+                                  macroEscatter      = -3 ,&
+                                  macroIEscatter     = -4 ,&
+                                  macroFission       = -6 ,&
+                                  macroNuFission     = -7
 
   ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
                                   macroAbsorbtion = -21 ,&
+                                  macroNonElastic = -22 ,&
                                   noInteraction   = -901
 
   ! List of all the MT numbers allowed in the tallies
   integer(shortInt), dimension(*), parameter :: availableMicroMTs = &
-                                      [1, 2, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22,  &
-                                       23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,  &
-                                       36, 37, 38, 41, 42, 44, 45, 91, 101, 102,    &
-                                       103, 104, 105, 106, 107, 108, 109, 111, 112, &
-                                       113, 114, 115, 116, 117, 203, 204, 205, 206, &
-                                       207, 891, N_Nl, N_2Nl]
+                                      [1, 2, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, &
+                                       23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,    &
+                                       36, 37, 38, 41, 42, 44, 45, 91, 101, 102, 103, &
+                                       104, 105, 106, 107, 108, 109, 111, 112, 113,   &
+                                       114, 115, 116, 117, 203, 204, 205, 206, 207,   &
+                                       891, N_Nl, N_2Nl]
 
   integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
-                                      [-1, -2, -3, -4, -6, -7, -20, -21]
+                                      [-1, -2, -3, -4, -6, -7, -20, -21, -22]
 
 
 

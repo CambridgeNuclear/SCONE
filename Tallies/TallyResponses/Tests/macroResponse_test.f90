@@ -50,7 +50,7 @@ contains
     ! Capture
     call tempDict % init(2)
     call tempDict % store('type','macroResponse')
-    call tempDict % store('MT', macroCapture)
+    call tempDict % store('MT', macroDisappearance)
     call this % response_capture % init(tempDict)
     call tempDict % kill()
 

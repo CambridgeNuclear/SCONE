@@ -48,8 +48,8 @@ module universalVariables
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
-                                  latticeFill  = 3 
-                          
+                                  latticeFill  = 3
+
   ! Define integers for boundary condition types
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
@@ -84,8 +84,8 @@ module universalVariables
                               energyPerFission = 200.0_defReal       ! MeV
 
   ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e+8            ! Convert shakes to s
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal  ,&   ! Convert MeV to J
+                              shakesPerS   = 1.0e8_defReal             ! Convert shakes to s
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'

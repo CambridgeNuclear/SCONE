@@ -207,7 +207,6 @@ contains
     p % E = 19.9_defReal
     @assertEqual(ONE, data % getTrackingXS(p, 1, MATERIAL_XS)/6.539039844E-02_defReal , TOL)
 
-
     ! Total XS of UO2
     p % E = 1.1E-6_defReal
     @assertEqual(ONE, data % getTotalMatXS(p , 2)/4.4149556129495560_defReal , TOL)
@@ -254,7 +253,6 @@ contains
 
     @assertEqual(ONE, macroXSs % inelasticScatter/1.903667536E-04_defReal, TOL)
 
-
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting energy bounds
     !
@@ -264,6 +262,7 @@ contains
 
     ! Clean everything
     call data % kill()
+
     call mm_kill()
 
   end subroutine test_aceNeutronDatabase

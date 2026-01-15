@@ -138,11 +138,14 @@ contains
       case(macroTotal)
         xs = self % total
 
-      case(macroCapture)
+      case(macroDisappearance)
         xs = self % capture
 
       case(macroEscatter)
         xs = self % elasticScatter
+
+      case(macroNonElastic)
+        xs = self % inelasticScatter + self % fission + self % capture
 
       case(macroIEscatter)
         xs = self % inelasticScatter
@@ -178,7 +181,7 @@ contains
   !!   One of the Macroscopic MT numbers
   !!     elasticScatter   = macroEscatter
   !!     inelasticScatter = macroIEscatter
-  !!     capture          = macroCapture
+  !!     capture          = macroDisappearance
   !!     fission          = macroFission
   !!
   !! Errors::
@@ -203,7 +206,7 @@ contains
 
     ! Capture
     xs = xs - self % capture
-    if(xs > ZERO) C = C + 1
+    if (xs > ZERO) C = C + 1
 
     ! Choose MT number
     select case(C)
@@ -214,7 +217,7 @@ contains
         MT = macroIEscatter
 
       case(3)
-        MT = macroCapture
+        MT = macroDisappearance
 
       case(4)
         MT = macroFission

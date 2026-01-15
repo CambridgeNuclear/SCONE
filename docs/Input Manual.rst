@@ -1329,8 +1329,8 @@ Example: ::
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
       }
 
-* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the response function is 
-  the inverse of the particle speed in [cm/s]
+* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the 
+  response function is the inverse of the particle speed in [cm/s]
 
 Example: ::
 
@@ -1342,7 +1342,7 @@ Example: ::
 
   - MT: MT number of the desired reaction. The options are: -1 (total), -2 (disappearance),
     -3 (elastic scattering), -4 (total inelastic scattering), -6 (fission), -7 nu*fission),
-    -20 (total scattering), -21 (absorption).
+    -20 (total scattering), -21 (absorption), -22 (total non elastic, i.e., absorption + inelastic).
     Additionally, all the MT numbers allowed by microResponse can be used here.
 
 Example: ::
@@ -1355,7 +1355,7 @@ Example: ::
 
 * microResponse: used to score microscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: 1, 2, 4, 5, 11, 16-25, 27-30,
+  - MT: MT number of the desired reaction. The options are: 1, 2, 3, 4, 5, 11, 16-25, 27-30,
     32-38, 41, 42, 44, 45, 51-90, 91, 101-109, 111-117, 203-207, 875-890. These MT numbers
     are defined in the conventional way, i.e., following the ENDF standard
   - material: material name where to score the reaction. The material must be
@@ -1364,8 +1364,8 @@ Example: ::
 
 .. note::
    In MG simulations, the only MT numbers that make sense are those corresponding to the MG
-   cross sections provided and derived quantities: 1 (total), 4 (inelastic scattering),
-   18 (fission), 27 (absorption), 101 (disappearance)
+   cross sections provided and derived quantities: 1 (total), 3 (total non elastic), 
+   4 (inelastic scattering), 18 (fission), 27 (absorption), 101 (disappearance)
 
 Example: ::
 
