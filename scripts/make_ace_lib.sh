@@ -7,13 +7,14 @@ make_ace_lib.sh <output> <MODE> <suffix> <path-to-directory>
 Arguments:
   <output> Library file to create.
   <MODE>   Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
-  <suffix> Expected suffix in the extension of the ace files
-  <path-to-directory> List of files to search for the ID pattern
+  <suffix> Expected ending in the extension of the ace files
+  <path-to-directory> Path of the base directory where to search in
 
-The script recursively searches inside <path-to-directory> for files with the given <suffix>;
-in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; XXXXXX.TTt for SAB card) 
-within the first line. By ACE definition this should match only in the first line of a header of an 
-ACE card. For each match the script prints a line of the SCONE nuclear data library file to <output> as:
+The script recursively searches inside <path-to-directory> for files with an extension that ends with 
+the given common <suffix>; in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; 
+XXXXXX.TTt for SAB card) within the first line. By ACE definition this should match only in the first 
+line of a header of an ACE card. For each match the script prints a line of the SCONE nuclear data library
+file to <output> as:
   ZAID; LINE_NUMBER; FILE;
   ...
 "
