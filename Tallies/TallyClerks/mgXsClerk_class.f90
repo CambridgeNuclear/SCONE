@@ -16,6 +16,7 @@ module mgXsClerk_class
   use neutronMaterial_inter,      only : neutronMaterial,neutronMaterial_CptrCast
 
   ! Tally Maps
+  use energyMap_class,            only : energyMap
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
@@ -55,7 +56,7 @@ module mgXsClerk_class
   !!   flux-limited approximation
   !!
   !! Private Members:
-  !!   energyMap -> tally map for energy group structure
+  !!   energyMap -> energy map for energy group structure
   !!   spacemap  -> tally map for material or spatial bins
   !!   energyN   -> number of energy groups
   !!   matN      -> number of materials or spatial bins
@@ -82,16 +83,17 @@ module mgXsClerk_class
     private
     ! Maps
     class(tallyMap), allocatable :: spaceMap
-    class(tallyMap), allocatable :: energyMap
+    type(energyMap)              :: energyMap
 
     ! Useful data
     integer(shortInt) :: energyN = 0
-    integer(shortInt) :: matN = 0
+    integer(shortInt) :: matN  = 0
     integer(shortInt) :: width = 0
-    logical(defBool)  :: PN = .false.
+    logical(defBool)  :: PN    = .false.
 
     ! Settings
     logical(defBool) :: handleVirtual = .true.
+    logical(defBool) :: hasEnergyMap  = .false.
 
   contains
     ! Procedures used during build
@@ -131,8 +133,9 @@ contains
 
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
-      call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
-      self % energyN = self % energyMap % bins(0)
+      call self % energyMap % init(dict % getDictPtr('energyMap'))
+      self % energyN      = self % energyMap % bins(0)
+      self % hasEnergyMap = .true.
     else
       self % energyN = 1
     end if
@@ -181,7 +184,8 @@ contains
     self % energyN = 0
     self % width   = 0
     self % PN      = .false.
-    self % handleVirtual = .false.
+    self % hasEnergyMap  = .false.
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -238,7 +242,7 @@ contains
 
     ! Find bin indexes
     ! Energy
-    if (allocated(self % energyMap)) then
+    if (self % hasEnergyMap) then
       enIdx = self % energyN + 1 - self % energyMap % map(state)
     else
       enIdx = 1
@@ -344,7 +348,7 @@ contains
 
         ! Find bin indexes
         ! Energy
-        if (allocated(self % energyMap)) then
+        if (self % hasEnergyMap) then
           enIdx = self % energyN + 1 - self % energyMap % map(preColl)
         else
           enIdx = 1
@@ -367,7 +371,7 @@ contains
         call mem % score(preColl % wgt, addr + SCATT_EV_idx)
 
         ! Get bin of outgoing energy
-        if (allocated(self % energyMap)) then
+        if (self % hasEnergyMap) then
           binEnOut = self % energyN + 1 - self % energyMap % map(postColl)
         else
           binEnOut = 1
@@ -449,7 +453,7 @@ contains
 
       ! Find bin indexes
       ! Energy
-      if (allocated(self % energyMap)) then
+      if (self % hasEnergyMap) then
         enIdx = self % energyN + 1 - self % energyMap % map(pNew)
       else
         enIdx = 1
@@ -769,7 +773,7 @@ contains
     end if
 
     ! Print energy map information
-    if (allocated(self % energyMap)) call self % energyMap % print(outFile)
+    call self % energyMap % printReverse(outFile)
     resArrayShape(1) = self % energyN
 
     ! If a space map print map information

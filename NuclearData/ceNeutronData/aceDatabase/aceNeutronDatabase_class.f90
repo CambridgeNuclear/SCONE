@@ -59,7 +59,7 @@ module aceNeutronDatabase_class
   !!   nuclearData {
   !!   handles {
   !!   ce { type aceNeutronDatabase; DBRC (92238 94242); ures < 1 or 0 >;
-  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;} 
+  !!        majorant < 1 or 0 >; aceLibrary <nuclear data path> ;}
   !!        #avgDist 3.141;# }
   !!
   !! Public Members:
@@ -135,19 +135,19 @@ contains
     class(aceNeutronDatabase), intent(inout) :: self
 
     ! Clean
-    if(associated(self % nuclides)) then
+    if (associated(self % nuclides)) then
       call self % nuclides % kill()
       deallocate(self % nuclides)
     end if
 
-    if(associated(self % materials)) then
+    if (associated(self % materials)) then
       call self % materials % kill()
       deallocate(self % materials)
     end if
 
     self % eBounds = ZERO
 
-    if(allocated(self % activeMat)) deallocate(self % activeMat)
+    if (allocated(self % activeMat)) deallocate(self % activeMat)
 
   end subroutine kill
 
