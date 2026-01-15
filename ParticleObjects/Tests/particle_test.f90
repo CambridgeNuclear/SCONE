@@ -1,7 +1,7 @@
 module particle_test
   use numPrecision
   use universalVariables
-  use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, verifyType
+  use particle_class, only : particle, particleState, P_NEUTRON, P_PHOTON, P_PRECURSOR, verifyType
   use funit
 
   implicit none
@@ -154,8 +154,12 @@ contains
     @assertFalse( this % p_MG % isDead, 'isDead flag MG particle')
 
     ! Test timeMax default value
-    @assertEqual(ZERO, this % p_CE % timeMax, 'timeMax initialises to 0 by default')
-    @assertEqual(ZERO, this % p_MG % timeMax, 'timeMax initialises to 0 by default')
+    @assertEqual(-INF, this % p_CE % timeMax, 'timeMax initialises to -INF by default')
+    @assertEqual(-INF, this % p_MG % timeMax, 'timeMax initialises to -INF by default')
+    
+    ! Test lambda default value
+    @assertEqual(INF, this % p_CE % lambda, 'lambda initialises to INF by default')
+    @assertEqual(INF, this % p_MG % lambda, 'lambda initialises to INF by default')
 
   end subroutine correctInitialisation
 
@@ -265,7 +269,6 @@ contains
     @assertEqual(3, this % p_CE % matIdx())
 
   end subroutine testSetMatIdx
-
 
   !!
   !! Test movement procedures
@@ -494,7 +497,41 @@ contains
 
     @assertTrue( verifyType(P_NEUTRON), 'Particle Neutron')
     @assertTrue( verifyType(P_PHOTON), 'Particle Photon')
+    @assertTrue( verifyType(P_PRECURSOR), 'Particle Precursor')
     @assertFalse( verifyType(-876864), 'Invalid particle type parameter')
 
   end subroutine testParticleTypeVerification
+
+  !!
+  !! Test precursor procedures
+  !!
+  subroutine testPrecursorProcedures(this)
+    class(test_particle), intent(inout) :: this
+    type(particle)                      :: that
+    real(defReal), parameter            :: TOL = 1.0E-6
+
+    ! Precursor type check
+    this % p_CE % type = P_NEUTRON
+    @assertFalse( this % p_CE % isPrecursor(), 'Particle Neutron')
+    this % p_CE % type = P_PRECURSOR
+    @assertTrue( this % p_CE % isPrecursor(), 'Particle Precursor')
+
+    ! Convert precursor to neutron
+    this % p_CE % lambda = ONE
+    call this % p_CE % emitDelayedNeutron()
+    @assertFalse( this % p_CE % isPrecursor(), 'Particle Neutron')
+    @assertEqual( this % p_CE % lambda, INF)
+
+    ! Test forced precursor decay
+    this % p_CE % lambda = ONE
+    this % p_CE % type = P_PRECURSOR
+    this % p_CE % w = ONE
+    this % p_CE % time = ONE
+    call this % p_CE % forcedPrecursorDecay(TWO, TWO, that)
+    @assertTrue( this % p_CE % isPrecursor(), 'Particle Precursor')
+    @assertFalse( that % isPrecursor(), 'Particle Neutron')
+    @assertEqual( that % w, 0.735758882_defReal, TOL)
+
+  end subroutine testPrecursorProcedures
+
 end module particle_test

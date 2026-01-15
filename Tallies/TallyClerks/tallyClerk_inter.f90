@@ -60,7 +60,8 @@ module tallyClerk_inter
   !!   reportSpawn      -> Process particle generation report
   !!   reportHist       -> Process history report
   !!   reportCycleStart -> Process beginning of a cycle report
-  !!   reportCycleEnd   -> Process end of a cycle report (e.g. Calculate functions of scores like k-eff)
+  !!   reportCycleEnd   -> Process end of a cycle report
+  !!   closeCycle       -> Performs operations, e.g., calculate functions of scores like k-eff
   !!   isConverged      -> Return .true. if convergence criterion has been reached
   !!   display          -> Display to the console current value of a Score
   !!   print            -> Print results to the output file
@@ -96,6 +97,7 @@ module tallyClerk_inter
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: closeCycle
     procedure :: isConverged
 
     ! Output procedures
@@ -123,6 +125,7 @@ module tallyClerk_inter
     !!     hist_CODE
     !!     cycleStart_CODE
     !!     cycleEnd_CODE
+    !!     closeCycle_CODE
     !!
     !! Errors:
     !!   None
@@ -416,6 +419,28 @@ contains
     call fatalError(Here,'Report was sent to an instance that does not support it.')
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Closes the cycle
+  !!
+  !! See tallyAdmin_class for implicit assumptionas about the report.
+  !!
+  !! Args:
+  !!   end [in]    -> Particle Dungeon with particles for NEXT cycle (before any normalisation)
+  !!   mem [inout] -> Score Memory
+  !!
+  !! Errors:
+  !!   Depends on specific Clerk
+  !!
+  subroutine closeCycle(self, end, mem)
+    class(tallyClerk), intent(inout)   :: self
+    class(particleDungeon), intent(in) :: end
+    type(scoreMemory), intent(inout)   :: mem
+    character(100),parameter  :: Here = 'closeCycle (tallyClerk_inter.f90)'
+
+    call fatalError(Here,'Report was sent to an instance that does not support it.')
+
+  end subroutine closeCycle
 
   !!
   !! Perform convergence check in the Clerk

@@ -49,6 +49,7 @@ module tallyClerkSlot_class
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: closeCycle
     procedure :: isConverged
 
     ! Output procedures
@@ -293,6 +294,21 @@ contains
     call self % slot % reportCycleEnd(end, mem)
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Close cycle
+  !!
+  !! See tallyClerk_inter for details
+  !!
+  subroutine closeCycle(self, end, mem)
+    class(tallyClerkSlot), intent(inout) :: self
+    class(particleDungeon), intent(in)   :: end
+    type(scoreMemory), intent(inout)     :: mem
+
+    ! Pass call to instance in the slot
+    call self % slot % closeCycle(end, mem)
+
+  end subroutine closeCycle
 
   !!
   !! Perform convergance check in the Clerk

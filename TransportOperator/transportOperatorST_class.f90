@@ -51,12 +51,14 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack
+    integer(shortInt)                         :: event, collFate
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack, &
+                                                 speed, time
     type(distCache)                           :: cache
     real(defReal), parameter                  :: tol  = 1.0E-12
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
+    
     STLoop: do
         
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
@@ -82,6 +84,17 @@ contains
 
       end if
 
+      speed = p % getSpeed()
+      time = dist / speed + p % time
+      
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        dist = speed * (p % timeMax - p % time)
+        collFate = AGED_FATE
+      else
+        collFate = NO_FATE
+      end if
+
       ! Save state before movement
       call p % savePrePath()
 
@@ -93,6 +106,12 @@ contains
         call self % geom % move(p % coords, dist, event)
 
       end if
+
+      ! Advance in time
+      p % time = p % time + dist / speed
+
+      ! Set fate if a collision occurred
+      if (event == COLL_EV) p % fate = collFate
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
@@ -119,7 +138,8 @@ contains
 
       end select
 
-      if (p % isDead) exit STLoop
+      ! Return if particle is stopped by death, or aging
+      if (p % isDead .or. p % fate == AGED_FATE) exit STLoop
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual
