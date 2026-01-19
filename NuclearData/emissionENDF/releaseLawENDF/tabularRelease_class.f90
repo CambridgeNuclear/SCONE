@@ -39,7 +39,7 @@ contains
   !!
   !! Release at energy E_in
   !!
-  function releaseAt(self,E_in) result(release)
+  function releaseAt(self, E_in) result(release)
     class(tabularRelease), intent(in)  :: self
     real(defReal), intent(in)          :: E_in
     real(defReal)                      :: release
@@ -69,12 +69,12 @@ contains
     character(100),parameter              :: Here='initSimple (tabularRelease_class.f90)'
 
     ! Check if there are any -ve values in energy grid
-    if ( any( eGrid < 0.0 ) ) then
+    if (any(eGrid < ZERO)) then
       call fatalError(Here,'In the provided energy Grid some values are -ve.')
     end if
 
     ! Check if there are any -ve values for release
-    if( any(releaseValues < 0.0 ) ) then
+    if (any(releaseValues < ZERO)) then
       call fatalError(Here,'In the provided Nu values some are -ve.')
     end if
 
@@ -95,17 +95,16 @@ contains
     character(100),parameter                  :: Here='initInter (tabularRelease_class.f90)'
 
     ! Check if there are any -ve values in energy grid
-    if ( any( eGrid < 0.0 )  ) then
+    if (any(eGrid < ZERO)) then
       call fatalError(Here,'In the provided energy Grid some values are -ve.')
     end if
 
     ! Check if there are any -ve values for release
-    if( any(releaseValues < 0.0 ) ) then
+    if (any(releaseValues < ZERO)) then
       call fatalError(Here,'In the provided Nu values some are -ve.')
     end if
 
     ! Initialise table
-
     call self % releaseTable % init(eGrid, releaseValues, bounds, interENDF)
 
   end subroutine initInter
@@ -134,7 +133,6 @@ contains
     type(tabularRelease),pointer              :: new
 
     allocate(new)
-
     call new % init(eGrid, releaseValues, bounds, interENDF)
 
   end function new_tabularRelease_inter
@@ -159,7 +157,7 @@ contains
     hasInterRegions = (NR /= 0)
 
     ! Read interpolation region data
-    if( hasInterRegions) then
+    if (hasInterRegions) then
       bounds    = ACE % readIntArray(NR)
       interENDF = ACE % readIntArray(NR)
     end if
@@ -170,13 +168,12 @@ contains
     release = ACE % readRealArray(N) ! Release values
 
     ! Initialise
-    if( hasInterRegions) then
+    if (hasInterRegions) then
       call new % init(eGrid, release, bounds, interENDF)
-
     else
       call new % init(eGrid, release)
-
     end if
+
   end function new_tabularRelease_fromACE
 
 end module tabularRelease_class

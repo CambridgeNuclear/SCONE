@@ -33,7 +33,7 @@ contains
     real(defReal), intent(in)             :: release
     character(100),parameter              :: Here='init (constantRelease_class.f90)'
 
-    if( release < 0) call fatalError(Here,'-ve value of release provided!')
+    if (release < 0) call fatalError(Here,'-ve value of release provided!')
     self % secondaryRelease = release
 
   end subroutine init
@@ -41,7 +41,7 @@ contains
   !!
   !! Release at energy E_in
   !!
-  function releaseAt(self,E_in) result(release)
+  function releaseAt(self, E_in) result(release)
     class(constantRelease), intent(in) :: self
     real(defReal), intent(in)          :: E_in
     real(defReal)                      :: release

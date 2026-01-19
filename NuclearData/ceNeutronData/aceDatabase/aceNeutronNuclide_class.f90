@@ -69,10 +69,6 @@ module aceNeutronNuclide_class
   !!
   !! CE Neutron Nuclide Implementation that follows directly from the specification of ACE data
   !!
-  !! NOTE:
-  !!   IGNORES MT=5 (N_ANYTHING) in its current implementation !
-  !!   IN JEF 3.1.1 It will Reduce accuracy of Tc99 collision processing
-  !!
   !! Public Members:
   !!   ZAID             -> ZZAAA.TTc ID of the ACE card of the nuclide
   !!   eGrid            -> Energy grid for the XSs
@@ -825,7 +821,7 @@ contains
     ! particles and pure absorption. Make sure MT=4 is not included
     associate (MTs => ACE % getScatterMTs())
       do i = 1, size(MTs)
-        if (MTs(i) == N_ANYTHING .or. MTs(i) == N_N_INELASTIC) cycle
+        if (MTs(i) == N_N_INELASTIC) cycle
         call scatterMT % push(MTs(i))
       end do
     end associate

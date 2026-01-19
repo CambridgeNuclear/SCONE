@@ -68,8 +68,8 @@ class AtomRelax:
 
     Note:
         All subset information is stored in _subshell dictionary. Please note
-        that in general it may be unsorted. Be carefull when looping over all
-        subshells, becouse .items() may yield random sequence of subshell
+        that in general it may be unsorted. Be careful when looping over all
+        subshells, because .items() may yield random sequence of subshell
         indices. Use ``sorted`` function to sort.
     """
 
@@ -103,7 +103,7 @@ class AtomRelax:
             EBI: Subshell binding energy [eV]
             ELN: Average number of electron in subshell for ground state
             SUB_T: Target subshell for any transition
-            SUB_T2: Subshell of electron emission for non-radiative transistion
+            SUB_T2: Subshell of electron emission for non-radiative transition
             ETR: Energy of transition [eV]
             FTR: Fractional probability of transition
 
