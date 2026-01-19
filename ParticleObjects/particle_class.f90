@@ -6,15 +6,17 @@ module particle_class
   use coord_class,       only : coordList
   use RNG_class,         only : RNG
   use errors_mod,        only : fatalError
+  use tallyCodes
 
   implicit none
   private
 
   !!
-  !! Particle types paramethers
+  !! Particle types parameters
   !!
-  integer(shortInt), parameter,public :: P_NEUTRON = 1, &
-                                         P_PHOTON  = 2
+  integer(shortInt), parameter,public :: P_NEUTRON   = 1, &
+                                         P_PHOTON    = 2, &
+                                         P_PRECURSOR = 3
 
   !!
   !! Public particle type procedures
@@ -24,6 +26,9 @@ module particle_class
 
   !!
   !! Particle compressed for storage
+  !!
+  !! particleStateData contains only the properties (useful for MPI); it is extended into
+  !! particleState which includes the procedures too and is used for tallying.
   !!
   !! Public Members:
   !!   wgt      -> Weight of the particle
@@ -42,12 +47,7 @@ module particle_class
   !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
   !!               with OpenMP
   !!
-  !! Interface:
-  !!   assignemnt(=)  -> Build particleState from particle
-  !!   operator(.eq.) -> Return True if particle are exactly the same
-  !!   display        -> Print debug information about the state to the console
-  !!
-  type, public :: particleState
+  type, public :: particleStateData
     real(defReal)              :: wgt  = ZERO       ! Particle weight
     real(defReal),dimension(3) :: r    = ZERO       ! Global position
     real(defReal),dimension(3) :: dir  = ZERO       ! Global direction
@@ -56,20 +56,34 @@ module particle_class
     logical(defBool)           :: isMG = .false.    ! Is neutron multi-group
     integer(shortInt)          :: type = P_NEUTRON  ! Particle physical type
     real(defReal)              :: time = ZERO       ! Particle time position
+    real(defReal)              :: lambda = INF      ! Precursor decay constant
     integer(shortInt)          :: matIdx   = -1     ! Material index where particle is
     integer(shortInt)          :: cellIdx  = -1     ! Cell idx at the lowest coord level
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
     integer(shortInt)          :: broodID = 0       ! ID of the source particle
+  end type particleStateData
+
+  !!
+  !! Extension of particleStateData, which includes procedure
+  !!
+  !! Interface:
+  !!   assignemnt(=)  -> Build particleState from particle
+  !!   operator(.eq.) -> Return True if particle are exactly the same
+  !!   display        -> Print debug information about the state to the console
+  !!
+  type, public, extends(particleStateData) :: particleState
   contains
     generic    :: assignment(=)  => fromParticle
+    generic    :: assignment(=)  => fromParticleStateData
     generic    :: operator(.eq.) => equal_particleState
     procedure  :: display        => display_particleState
-    procedure  :: fromParticle   => particleState_fromParticle
     procedure  :: kill           => kill_particleState
+    procedure  :: fromParticle   => particleState_fromParticle
+    procedure  :: fromParticleStateData => particleState_fromParticleStateData
 
     ! Private procedures
-    procedure,private :: equal_particleState
+    procedure, private :: equal_particleState
 
   end type particleState
 
@@ -97,12 +111,15 @@ module particle_class
     real(defReal)              :: w         ! Particle Weight
     real(defReal)              :: time      ! Particle time point
 
+    ! Precursor particle data
+    real(defReal)              :: lambda = INF     ! Precursor decay constant
+    
     ! Particle flags
     real(defReal)              :: w0             ! Particle initial weight (for implicit, variance reduction...)
     logical(defBool)           :: isDead
     logical(defBool)           :: isMG
-    real(defReal)              :: timeMax = ZERO ! Maximum neutron time before cut-off
-    integer(shortInt)          :: fate = 0       ! Neutron's fate after being subjected to an operator
+    real(defReal)              :: timeMax = -INF ! Maximum neutron time before cut-off
+    integer(shortInt)          :: fate = NO_FATE ! Neutron's fate after being subjected to an operator
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
     integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
@@ -137,6 +154,12 @@ module particle_class
 
     ! Enquiry about physical state
     procedure :: getSpeed
+
+    ! Precursor procedures
+    procedure :: isPrecursor
+    procedure :: emitDelayedNeutron
+    procedure :: forcedPrecursorDecay
+    procedure :: expectedDelayedWgt
 
     ! Operations on coordinates
     procedure :: moveGlobal
@@ -271,6 +294,8 @@ contains
     LHS % isMG                  = RHS % isMG
     LHS % type                  = RHS % type
     LHS % time                  = RHS % time
+    LHS % lambda                = RHS % lambda
+    LHS % fate                  = NO_FATE
     LHS % collisionN            = RHS % collisionN
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
     LHS % broodID               = RHS % broodID
@@ -433,7 +458,9 @@ contains
   !!
   !! NOTE:
   !!   The speeds are computed from non-relativistic formula for massive particles.
-  !!   A small error might appear in MeV range (e.g. for fusion applications)
+  !!   A small error might appear in MeV range (e.g. for fusion applications).
+  !!   Further there is currently no good solution for MG neutrons. Their speed
+  !!   is arbitrarily set to 1.
   !!
   !! Args:
   !!   None
@@ -443,22 +470,23 @@ contains
   !!
   !! Errors:
   !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
-  !!   fatalError if the particle is MG
   !!
   function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
     real(defReal)               :: speed
     character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
 
-    ! Verify the particle is not MG
-    if (self % isMG) call fatalError(Here, 'Speed cannot be calculated for MG particle')
-
     ! Calculates the velocity for the relevant particle [cm/s]
-    if (self % type == P_NEUTRON) then
-      speed = sqrt(TWO * self % E / neutronMass) * lightSpeed
-
-    elseif (self % type == P_PHOTON) then
+    if (self % type == P_PHOTON) then
       speed = lightSpeed
+
+    elseif (self % type == P_NEUTRON) then
+      ! TODO: handle MG speed
+      if (self % isMG) then
+        speed = ONE
+      else
+        speed = sqrt(TWO * self % E / neutronMass) * lightSpeed
+      end if
 
     else
       call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
@@ -467,6 +495,125 @@ contains
     end if
 
   end function getSpeed
+
+  !!
+  !! Produce a delayed neutron from a precursor.
+  !! Handles changes of type, removal of lambda.
+  !!
+  !! Errors:
+  !!   Fatal error if producing particle is not a precursor
+  !!
+  subroutine emitDelayedNeutron(self)
+    class(particle), intent(inout) :: self
+    character(100), parameter      :: Here = 'emitDelayedNeutron (particle_class.f90)'
+    
+    ! Ensure decaying particle is a precursor
+    if (self % type /= P_PRECURSOR) then
+      call fatalError(Here, 'Only precursors (3) can decay to neutrons. Particle type is '&
+              //numToChar(self % type))
+    end if
+    
+    self % type = P_NEUTRON
+    self % lambda = INF
+
+  end subroutine emitDelayedNeutron
+
+  !!
+  !! Produces a neutron of appropriate weight given a decay time.
+  !! Must be produced from a precursor.
+  !!
+  !! Args:
+  !!   t      -> time of forced decay
+  !!   deltaT -> time width across which forced decay occurs
+  !!
+  !! Result:
+  !!   Neutron with appropriate weight at time t
+  !!
+  !! Errors:
+  !!   Fatal error if decaying particle is not a precursor.
+  !!   Fatal error if decay time is less than precursor time
+  !!   Fatal error if time increment is negative
+  !!
+  subroutine forcedPrecursorDecay(self, t, deltaT, delayedN)
+    class(particle), intent(in) :: self
+    real(defReal), intent(in)   :: t
+    real(defReal), intent(in)   :: deltaT
+    type(particle), intent(out) :: delayedN
+    real(defReal)               :: wDelay
+    character(100), parameter   :: Here = 'forcedPrecursorDecay (particle_class.f90)'
+
+    ! Ensure decaying particle is a precursor
+    if (self % type /= P_PRECURSOR) then
+      call fatalError(Here, 'Can only perform decay on a precursor (3). Particle type is '&
+              //numToChar(self % type))
+    end if
+    if (t < self % time) then
+      call fatalError(Here, 'Decay time must come after the precursor production time. &
+             & Decay time is: '//numToChar(t)//' Production time is: '//numToChar(self % time))
+    end if
+    if (deltaT < ZERO) call fatalError(Here,'Time increment must be positive: '//numToChar(deltaT))
+
+    wDelay = self % w * deltaT * self % lambda * exp(-self % lambda * (t - self % time))
+
+    delayedN = self
+    call delayedN % emitDelayedNeutron()
+    delayedN % w = wDelay
+    delayedN % time = t
+
+  end subroutine forcedPrecursorDecay
+  
+  !!
+  !! Return expected weight of delayed neutron across
+  !! time interval [t1, t2]
+  !!
+  !! Args:
+  !!   t1  -> initial time (beginning of step)
+  !!   t2  -> end time (end of step)
+  !!
+  !! Result:
+  !!   Expected delayed neutron weight
+  !!
+  !! Errors:
+  !!   Return an error if the particle is not a precursor
+  !!
+  function expectedDelayedWgt(self, t1, t2) result(wgt)
+    class(particle), intent(in) :: self
+    real(defReal), intent(in)   :: t1
+    real(defReal), intent(in)   :: t2
+    real(defReal)               :: wgt
+    real(defReal)               :: lam, t0
+    character(100), parameter   :: Here = 'expectedDelayedWgt (particle_class.f90)'
+
+    ! Ensure decaying particle is a precursor
+    if (self % type /= P_PRECURSOR) then
+      call fatalError(Here, 'Can only estimate decay weight of a precursor (3). Particle type is '&
+              //numToChar(self % type))
+    end if
+
+    t0 = self % time
+    
+    ! Ensure sensible times used
+    if (t1 >= t2) call fatalError(Here, 't1 must be less than t2. t1: '//numToChar(t1)//&
+            ' t2: '//numToChar(t2))
+    if (t1 < t0) call fatalError(Here, 't1 must be greater than particle time. t1: '&
+            //numToChar(t1)//' Particle time: '//numToChar(t0))
+
+    lam = self % lambda
+
+    wgt = self % w * (exp(-lam * (t1 - t0)) - exp(-lam * (t2 - t0)))
+
+  end function expectedDelayedWgt
+
+  !!
+  !! Returns whether the particle is a precursor
+  !!
+  function isPrecursor(self) result(isPrec)
+    class(particle), intent(in) :: self
+    logical(defBool)            :: isPrec
+
+    isPrec = self % type == P_PRECURSOR
+
+  end function isPrecursor
 
 !!<><><><><><><>><><><><><><><><><><><>><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 !! Particle operations on coordinates procedures
@@ -653,6 +800,7 @@ contains
     LHS % isMG = RHS % isMG
     LHS % type = RHS % type
     LHS % time = RHS % time
+    LHS % lambda = RHS % lambda
 
     ! Save all indexes
     LHS % matIdx   = RHS % coords % matIdx
@@ -662,6 +810,31 @@ contains
     LHS % broodID    = RHS % broodID
 
   end subroutine particleState_fromParticle
+
+  !!
+  !! Copy particleStateData into phase coordinates
+  !!
+  subroutine particleState_fromParticleStateData(LHS,RHS)
+    class(particleState), intent(out)    :: LHS
+    class(particleStateData), intent(in) :: RHS
+
+    LHS % wgt  = RHS % wgt
+    LHS % r    = RHS % r
+    LHS % dir  = RHS % dir
+    LHS % E    = RHS % E
+    LHS % G    = RHS % G
+    LHS % isMG = RHS % isMG
+    LHS % type = RHS % type
+    LHS % time = RHS % time
+
+    ! Save all indexes
+    LHS % matIdx   = RHS % matIdx
+    LHS % uniqueID = RHS % uniqueId
+    LHS % cellIdx  = RHS % cellIdx
+    LHS % collisionN = RHS % collisionN
+    LHS % broodID    = RHS % broodID
+
+  end subroutine particleState_fromParticleStateData
 
   !!
   !! Define equal operation on phase coordinates
@@ -747,6 +920,7 @@ contains
     ! Check against particles types
     isValid = isValid .or. type == P_NEUTRON
     isValid = isValid .or. type == P_PHOTON
+    isValid = isValid .or. type == P_PRECURSOR
 
   end function verifyType
 

@@ -2,7 +2,8 @@ module rayVolPhysicsPackage_class
 
   use numPrecision
   use universalVariables
-  use genericProcedures,    only : fatalError, numToChar, rotateVector, printFishLineR
+  use genericProcedures,    only : fatalError, numToChar, rotateVector
+  use display_func,         only : printFishLineR
   use hashFunctions_func,   only : FNV_1
   use dictionary_class,     only : dictionary
   use rng_class,            only : RNG

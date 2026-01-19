@@ -2,11 +2,12 @@ module centreOfMassClerk_class
 
   use numPrecision
   use tallyCodes
-  use genericProcedures,          only : fatalError
+  use genericProcedures,          only : fatalError, numToChar
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
+  use mpi_func,                   only : getMPIWorldSize
 
   ! Basic tally modules
   use scoreMemory_class,          only : scoreMemory
@@ -27,15 +28,14 @@ module centreOfMassClerk_class
   !! Sample dictionary input:
   !!
   !!  clerkName {
-  !!      type comClerk;
+  !!      type centreOfMassClerk;
   !!      cycles 900;
   !!  }
   !!
   type, public, extends(tallyClerk) :: centreOfMassClerk
     private
-    real(defReal),dimension(:,:),allocatable :: value            !! cycle-wise COM value
-    integer(shortInt)                        :: maxCycles = 0    !! Number of tally cycles
-    integer(shortInt)                        :: currentCycle = 0 !! track current cycle
+    integer(shortInt) :: maxCycles = 0    !! Number of tally cycles
+    integer(shortInt) :: currentCycle = 0 !! track current cycle
 
   contains
     ! Procedures used during build
@@ -45,6 +45,7 @@ module centreOfMassClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportCycleEnd
+    procedure  :: closeCycle
 
     ! Output procedures
     procedure  :: display
@@ -52,6 +53,7 @@ module centreOfMassClerk_class
 
     ! Deconstructor
     procedure  :: kill
+
   end type centreOfMassClerk
 
 contains
@@ -63,6 +65,7 @@ contains
     class(centreOfMassClerk), intent(inout)   :: self
     class(dictionary), intent(in)             :: dict
     character(nameLen), intent(in)            :: name
+    character(100), parameter :: Here = 'init (centreOfMassClerk_class.f90)'
 
     ! Assign name
     call self % setName(name)
@@ -70,9 +73,10 @@ contains
     ! Read number of cycles for which to track COM
     call dict % get(self % maxCycles, 'cycles')
 
-    ! Allocate space for storing value
-    allocate(self % value(self % maxCycles, 3))
-    self % value = ZERO
+    ! Check on cycle number
+    if (self % maxCycles <= 0) then
+      call fatalError(Here, 'Number of cycles shuold be positive. It is: '//trim(numToChar(self % maxCycles)))
+    end if
 
   end subroutine init
 
@@ -83,7 +87,7 @@ contains
     class(centreOfMassClerk),intent(in)        :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [cycleEnd_Code]
+    validCodes = [cycleEnd_Code, closeCycle_CODE]
 
   end function validReports
 
@@ -94,7 +98,7 @@ contains
     class(centreOfMassClerk), intent(in)   :: self
     integer(shortInt)                      :: S
 
-    S = 3*self % maxCycles
+    S = 3 * self % maxCycles + 1
 
   end function getSize
 
@@ -105,25 +109,62 @@ contains
     class(centreOfMassClerk), intent(inout)   :: self
     class(particleDungeon), intent(in)        :: end
     type(scoreMemory), intent(inout)          :: mem
-    integer(shortInt)                         :: i, cc
+    integer(shortInt)                         :: i
+    integer(longInt)                          :: cc
+    real(defReal), dimension(3)               :: val
 
-    if ((self % currentCycle) < (self % maxCycles)) then
+    ! Increment cycle number
+    self % currentCycle = self % currentCycle + 1
 
-      self % currentCycle = self % currentCycle + 1
+    if ((self % currentCycle) <= (self % maxCycles)) then
+
       cc = self % currentCycle
 
       ! Loop through population, scoring probabilities
-      do i = 1,end % popSize()
-        associate( state => end % get(i) )
-          self % value(cc,:) = self % value(cc,:) + state % wgt * state % r
+      do i = 1, end % popSize()
+
+        associate(state => end % get(i))
+          val = state % wgt * state % r
+          call mem % score(val(1), self % getMemAddress() + 3*(cc - 1))
+          call mem % score(val(2), self % getMemAddress() + 3*(cc - 1) + 1)
+          call mem % score(val(3), self % getMemAddress() + 3*(cc - 1) + 2)
         end associate
+
       end do
 
-      self % value(cc,:) = self % value(cc,:) / end % popWeight()
+      ! Sample population weight for MPI
+      call mem % score(end % popWeight(), self % getMemAddress() + 3*self % maxCycles)
 
     end if
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Process cycle end
+  !!
+  subroutine closeCycle(self, end, mem)
+    class(centreOfMassClerk), intent(inout)   :: self
+    class(particleDungeon), intent(in)        :: end
+    type(scoreMemory), intent(inout)          :: mem
+    real(defReal)                             :: norm
+    integer(longInt)                          :: cc
+
+    if ((self % currentCycle) <= (self % maxCycles)) then
+
+      ! Retrieve population weight and use it to normalise scores
+      norm = mem % getScore(self % getMemAddress() + 3*self % maxCycles)
+      norm = ONE / norm
+
+      cc = self % currentCycle
+
+      ! Make sure results don't get normalised arbitrarily
+      call mem % closeBin(norm, self % getMemAddress() + 3*(cc - 1))
+      call mem % closeBin(norm, self % getMemAddress() + 3*(cc - 1) + 1)
+      call mem % closeBin(norm, self % getMemAddress() + 3*(cc - 1) + 2)
+
+    end if
+
+  end subroutine closeCycle
 
   !!
   !! Display convergance progress on the console
@@ -143,8 +184,17 @@ contains
     class(centreOfMassClerk), intent(in) :: self
     class(outputFile), intent(inout)     :: outFile
     type(scoreMemory), intent(in)        :: mem
-    integer(shortInt)                    :: i
+    integer(shortInt)                    :: i, batches
     character(nameLen)                   :: name
+    integer(longInt)                     :: ccIdx
+    real(defReal)                        :: val
+
+    ! Determine number of batches for normalisation with MPI
+    if (mem % reduced) then
+      batches = 1
+    else
+      batches = getMPIWorldSize()
+    end if
 
     ! Begin block
     call outFile % startBlock(self % getName())
@@ -152,22 +202,28 @@ contains
     ! Print COM
     name = 'CoMx'
     call outFile % startArray(name, [self % maxCycles])
-    do i=1,self % maxCycles
-      call outFile % addValue(self % value(i,1))
+    do i = 1, self % maxCycles
+      ccIdx = self % getMemAddress() + 3*(i - 1)
+      call mem % getResult(val, ccIdx, samples = batches)
+      call outFile % addValue(val)
     end do
     call outFile % endArray()
 
     name = 'CoMy'
     call outFile % startArray(name, [self % maxCycles])
-    do i=1,self % maxCycles
-      call outFile % addValue(self % value(i,2))
+    do i = 1, self % maxCycles
+      ccIdx = self % getMemAddress() + 3*(i - 1) + 1
+      call mem % getResult(val, ccIdx, samples = batches)
+      call outFile % addValue(val)
     end do
     call outFile % endArray()
 
     name = 'CoMz'
     call outFile % startArray(name, [self % maxCycles])
-    do i=1,self % maxCycles
-      call outFile % addValue(self % value(i,3))
+    do i = 1, self % maxCycles
+      ccIdx = self % getMemAddress() + 3*(i - 1) + 2
+      call mem % getResult(val, ccIdx, samples = batches)
+      call outFile % addValue(val)
     end do
     call outFile % endArray()
 
@@ -181,7 +237,6 @@ contains
   elemental subroutine kill(self)
     class(centreOfMassClerk), intent(inout) :: self
 
-    if(allocated(self % value)) deallocate(self % value)
     self % currentCycle = 0
     self % maxCycles = 0
 

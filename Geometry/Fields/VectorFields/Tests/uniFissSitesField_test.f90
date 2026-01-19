@@ -81,14 +81,14 @@ contains
     ! Test case in the map
     p % coords % lvl(1) % r = [0.5, 7.0, 50.0]
 
-    bins = this % ufsField % at(p)
     EXPECTED_BINS = [0.25, 0.25, 0.0]
+    bins = this % ufsField % atP(p)
     @assertEqual(EXPECTED_BINS, bins, tolerance=1.0e-6)
 
     ! Test case outside the map
     p % coords % lvl(1) % r = [0.5, 7.0, 100.0]
 
-    bins = this % ufsField % at(p)
+    bins = this % ufsField % atP(p)
     EXPECTED_BINS = [1.0, 1.0, 1.0]
     @assertEqual(EXPECTED_BINS,bins)
 
@@ -107,7 +107,7 @@ contains
     ! Test case in the updated map
     p % coords % lvl(1) % r = [0.5, 7.0, 18.1]
 
-    bins = this % ufsField % at(p)
+    bins = this % ufsField % atP(p)
     EXPECTED_BINS = [0.25, 0.06666666667, 0.0]
     @assertEqual(EXPECTED_BINS, bins, tolerance=1.0e-6)
 

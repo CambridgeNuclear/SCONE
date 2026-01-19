@@ -1,7 +1,7 @@
-.. _user-manual:
+.. _input-manual:
 
-User Manual
-===========
+Input Manual
+============
 
 Generic information about how to use dictionaries in writing an input file can be found
 in :ref:`Dictionary Input <dictSyntax>`. Here, more specific information about the input
@@ -27,9 +27,16 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
+* reproducible (*optional*, default = 1): 1 for true; 0 for false; if running
+  with MPI, this ensures that the particle normalisation procedure used maintains
+  reproducibility (given that the RNG seed is fixed, and mpiSync is on for tallies)
+  when running with different numbers of MPI ranks. However, the (MPI) parallel 
+  scaling performance of this option is slightly worse than using the alternative 
+  procedure, that doesn't ensure reproducibility
 * printSource (*optional*, default = 0): 1 for true; 0 for false; requests
   to print the particle source (location, direction, energy of each particle
-  in the particleDungeon) to a text file
+  in the particleDungeon) to a text file. If running with MPI, this is done 
+  by each MPI rank separately
 
 Example: ::
 
@@ -95,6 +102,75 @@ Example: ::
         type fixedSourcePhysicsPackage;
         pop    100000;
         cycles 200;
+        dataType ce;
+        XSdata   ceData;
+        seed     2829741;
+        outputFile shield_type11;
+
+        buffer 10000;
+        commonBufferSize 50000;
+
+        transportOperator { <Transport operator definition> }
+        collisionOperator { <Collision operator definition> }
+        tally { <Tally definition> }
+        source { <Source definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+*Optional entries* ::
+
+        varianceReduction { <Weight windows definition> }
+
+kineticPhysicsPackage
+#####################
+
+kineticPhysicsPackage, used for time-dependent calculations. One can change
+settings in the collisionProcessor to switch delayed neutrons on or off.
+
+* pop: number of particles used per batch
+* precPop (*optional*, default = pop): maximum number of precursors in memory
+  before applying population control.
+* cycles: number of batches
+* dt: length of time between applications of population control
+* timeSteps: number of time steps over which population control is applied.
+  A batch concludes once all neutrons in pop have traversed all time steps.
+  The total simulated time is given by timeSteps * dt.
+* forcedPrecursorDecay: (*optional*, default = 1): 1 for true; 0 for false;
+  determines whether precursors are forced to decay each time step or whether
+  precursors decay in an analog manner.
+* k0: (*optional*, default = 1): fixed value for k to scale fission neutron
+  production
+* dataType: determines type of nuclear data used. Can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file
+* buffer (*optional*, default = 50): size of the particle bank used by each
+  OpenMP thread to store secondary particles
+* commonBufferSize (*optional*): if not included, the common buffer is not
+  used; if included, after each particle history the particles in each
+  thread-private buffer (or bank, or dungeon) are moved to a buffer
+  common to all threads to better load balance threads.
+* bufferShift (*optional*, default = 10): threshold of particles to be
+  stored in a thread-private buffer, after which particles are shifted to
+  the common buffer.
+
+.. note::
+  If the common buffer is used, the calculation will not be reproducible if it
+  is performed in parallel. This issue may be addressed in the future.
+
+Example: ::
+
+        type kineticSourcePhysicsPackage;
+        pop    100000;
+        cycles 200;
+        dt 0.0001;
+        timeSteps 100;
+        forcedPrecursorDecay 0;
         dataType ce;
         XSdata   ceData;
         seed     2829741;
@@ -274,7 +350,7 @@ include: ::
 
       collisionOperator { neutronCE { type <ceCollisionOperatorType>; *keywords* } }
 
-if continuos energy nuclear data are used, or ::
+if continuous energy nuclear data are used, or ::
 
       collisionOperator { neutronMG { type <ceCollisionOperatorType>; } }
 
@@ -297,6 +373,10 @@ neutronCEstd, to perform analog collision processing
   target nuclide movement. Target movement is sampled if target mass A < massThreshold. [Mn]
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -333,6 +413,10 @@ neutronCEimp, to perform implicit collision processing
   fission sites
 * DBRCeMin (*optional*, default = 1.0e-08): minimum DBRC energy. [MeV]
 * DBRCeMax (*optional*, default = 2.0e-04): maximum DBRC energy. [MeV]
+* makePrec (*optional*, default = 0): produces precursors rather than delayed neutrons. Useful
+  for time-dependent calculations.
+* neglectDelayed (*optional*, default = 0): produces only prompt neutrons, neglecting delayed neutrons
+  and precursors.
 
 Example: ::
 
@@ -1020,6 +1104,38 @@ definition is the same for all cases: ::
 In this case, ``resName`` can be any name chosen by the user, and it is what will be
 reported in the output file.
 
+Tally Admin Keywords
+####################
+
+Generic tally keywords, such as for results **normalisation**, that could be included are:
+
+* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation
+  criterion. If the tally has multiple bins, (e.g. has a map), the bin with index 1
+  will be used for normalisation
+* normVal: value to normalise the tally ``resName`` to
+* display: its entry is the name of the tally, ``resName``, which will be displayed
+  each cycle. Only the tally clerks ``keffAnalogClerk`` and ``keffImplicitClerk``
+  support display at the moment
+* batchSize (*optional*, default = 1): the number of cycles that constitute a single
+  batch for the purpose of statistical estimation. For example, a value of 5 means
+  that a single estimate is obtained from a score accumulated over 5 cycles
+* mpiSync (*optional*, default = 0): if MPI parallelism is used and this flag is true,
+  the tally results are collected from all ranks at the end of each cycle; this ensures
+  reproducibility, given that the RNG seed is fixed and the correct particle normalisation
+  procedure is chosen (see PhysicsPackage definition). If mpiSync is false, the tally results 
+  are combined only at the end of the calculation and the results won't be reproducible
+  when using different numbers of ranks.
+
+Example: ::
+
+      tally  {
+      display (k-eff);
+      norm fissRate;
+      normVal 100.0;
+      k-eff { type keffAnalogClerk;}
+      fissRate { type collisionClerk; response (fission); fission {type macroResponse; MT -6;} }
+      }
+
 Tally Clerks
 ############
 
@@ -1100,6 +1216,33 @@ Example: ::
 
       tally {
       collisionProb { type collisionProbabilityClerk; map { <Map definition> } }
+      }
+
+* eventClerk, a non-standard clerk which records all events meeting certain criteria.
+  These events are sent to a file, reporting the position, direction, energy, time,
+  weight, and brood of a particle, as well as the energy it deposited and the reaction it
+  underwent. Maps are treated as filters, only returning events which fall into the map.
+  Events can be post-processed, e.g., for alpha calculations.
+
+  - file: path to the file which records events.
+  - maxScale (*optional*): a real scaling factor on the maximum number of events before 
+    recording ceases. By default, the maximum number of events is 10M. This is a scaling
+    factor rather than an integer due to constraints on the dictionary.
+  - freq (*optional*): an integer determining how often events are written to the file.
+    More often will incur more parallel overhead, less often will incur a larger memory
+    footprint. Set to 500k by default. For 40 threads, this corresponds to a memory footprint
+    of about 960 MB.
+  - map (*optional*): contains a dictionary with the ``tallyMap`` definition,
+    that defines the set of events which are recorded
+  - filter (*optional*): can filter out particles with certain properties,
+    preventing them from recording events
+  - handleVirtual (*optional*, default = 0): if set to 1, delta tracking virtual collisions
+    and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+
+Example: ::
+
+      tally {
+      events { type eventClerk; map { <Map definition> } file /home/myEvents.txt; freq 10000;}
       }
 
 * dancoffBellClerk, calculates a single-term rational approximation for a lattice
@@ -1186,8 +1329,8 @@ Example: ::
       collision_estimator { type collisionClerk; response (flux); flux { type fluxResponse; } }
       }
 
-* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the response function is 
-  the inverse of the particle speed in [cm/s]
+* invSpeedResponse: used to calculate flux-weighted inverse speed or the particle density, i.e., the 
+  response function is the inverse of the particle speed in [cm/s]
 
 Example: ::
 
@@ -1199,7 +1342,7 @@ Example: ::
 
   - MT: MT number of the desired reaction. The options are: -1 (total), -2 (disappearance),
     -3 (elastic scattering), -4 (total inelastic scattering), -6 (fission), -7 nu*fission),
-    -20 (total scattering), -21 (absorption).
+    -20 (total scattering), -21 (absorption), -22 (total non elastic, i.e., absorption + inelastic).
     Additionally, all the MT numbers allowed by microResponse can be used here.
 
 Example: ::
@@ -1212,7 +1355,7 @@ Example: ::
 
 * microResponse: used to score microscopic reaction rates
 
-  - MT: MT number of the desired reaction. The options are: 1, 2, 4, 5, 11, 16-25, 27-30,
+  - MT: MT number of the desired reaction. The options are: 1, 2, 3, 4, 5, 11, 16-25, 27-30,
     32-38, 41, 42, 44, 45, 51-90, 91, 101-109, 111-117, 203-207, 875-890. These MT numbers
     are defined in the conventional way, i.e., following the ENDF standard
   - material: material name where to score the reaction. The material must be
@@ -1221,8 +1364,8 @@ Example: ::
 
 .. note::
    In MG simulations, the only MT numbers that make sense are those corresponding to the MG
-   cross sections provided and derived quantities: 1 (total), 4 (inelastic scattering),
-   18 (fission), 27 (absorption), 101 (disappearance)
+   cross sections provided and derived quantities: 1 (total), 3 (total non elastic), 
+   4 (inelastic scattering), 18 (fission), 27 (absorption), 101 (disappearance)
 
 Example: ::
 
@@ -1385,6 +1528,23 @@ Examples: ::
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
 
+* timeMap (1D map), maps particles point in time
+
+  - grid: ``lin`` for linearly spaced bins
+
+    + min: lower time bound [s]
+    + max: upper time bounds [s]
+    + N: number of bins
+
+  - grid: ``unstruct`` for unstructured grids, to be manually defined
+
+    + bins: array with the explicit definition of the bin boundaries to be used
+
+Examples: ::
+
+      map1 { type timeMap; grid lin; min 0.0; max 200.0; N 100; }
+      map2 { type timeMap; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
+
 * weightMap (1D map), divides weight into number of discrete bins
 
   - grid: ``log`` for logarithmically spaced bins or ``lin`` for linearly spaced bins
@@ -1465,29 +1625,3 @@ Example: ::
 
       CEfilter { type energyFilter; Emin 10.0; Emax 20.0; }
       MGfilter { type energyFilter; Gtop 1; Glow 5; }
-
-Other options
-#############
-
-Other keywords, such as for results **normalisation**, that could be included are:
-
-* norm: its entry is the name of the tally, ``resName``, to be used as a normalisation
-  criterion. If the tally has multiple bins, (e.g. has a map), the bin with index 1
-  will be used for normalisation
-* normVal: value to normalise the tally ``resName`` to
-* display: its entry is the name of the tally, ``resName``, which will be displayed
-  each cycle. Only the tally clerks ``keffAnalogClerk`` and ``keffImplicitClerk``
-  support display at the moment
-* batchSize (*optional*, default = 1): the number of cycles that constitute a single
-  batch for the purpose of statistical estimation. For example, a value of 5 means
-  that a single estimate is obtained from a score accumulated over 5 cycles
-
-Example: ::
-
-      tally  {
-      display (k-eff);
-      norm fissRate;
-      normVal 100.0;
-      k-eff { type keffAnalogClerk;}
-      fissRate { type collisionClerk; response (fission); fission {type macroResponse; MT -6;} }
-      }
