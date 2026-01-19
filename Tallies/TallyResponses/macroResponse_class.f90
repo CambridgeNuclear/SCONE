@@ -93,11 +93,37 @@ contains
       call fatalError(Here, 'Unrecognised MT number: '// numToChar(MT))
     end if
 
-    ! Check if the MT number is positive or negative
-    if (MT > 0) self % mainData = .false.
+    ! Check if the MT number is positive or negative and load MT according to the case
+    if (MT > 0) then
 
-    ! Load MT
-    self % MT = MT
+      select case(MT)
+        case(N_TOTAL)
+          self % MT = macroTotal
+
+        case(N_N_ELASTIC)
+          self % MT = macroEscatter
+
+        case(N_NONELASTIC)
+          self % MT = macroNonElastic
+
+        case(N_DISAP)
+          self % MT = macroDisappearance
+
+        case(N_FISSION)
+          self % MT = macroFission
+
+        case(N_ABSORPTION)
+          self % MT = macroAbsorbtion
+
+        case default
+          self % mainData = .false.
+          self % MT = MT
+      end select
+
+    else
+      self % MT = MT
+
+    end if
 
   end subroutine build
 

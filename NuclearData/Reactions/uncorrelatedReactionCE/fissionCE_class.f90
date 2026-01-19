@@ -15,7 +15,7 @@ module fissionCE_class
   ! Data Structures
   use endfTable_class,              only : endfTable
 
-  ! Factiories
+  ! Factories
   use releaseLawENDFfactory_func,   only : new_totalNu, new_delayedNu
   use energyLawENDFfactory_func,    only : new_energyLawENDF
 
@@ -97,7 +97,7 @@ contains
     integer(shortInt), intent(in)   :: MT
     character(100),parameter :: Here ='init (fissionCE_class.f90)'
 
-    if( MT /= N_FISSION .and. MT /= N_f) then
+    if (MT /= N_FISSION .and. MT /= N_f) then
       call fatalError(Here,'fissionCE suports only MT=18,19. Was given: '//numToChar(MT))
     end if
 
@@ -120,26 +120,26 @@ contains
     class(fissionCE), intent(inout) :: self
     integer(shortInt)               :: i
 
-    if(allocated(self % nuBarTotal)) then
+    if (allocated(self % nuBarTotal)) then
       call self % nuBarTotal % kill()
       deallocate(self % nuBarTotal)
     end if
 
-    if(allocated(self % eLawPrompt)) then
+    if (allocated(self % eLawPrompt)) then
       call self % eLawPrompt % kill()
       deallocate(self % eLawPrompt)
     end if
 
-    if(allocated(self % nuBarDelayed)) then
+    if (allocated(self % nuBarDelayed)) then
       call self % nuBarDelayed % kill()
       deallocate(self % nuBarDelayed)
     end if
 
-    if(allocated(self % delayed)) then
-      do i=1,size(self % delayed)
+    if (allocated(self % delayed)) then
+      do i = 1, size(self % delayed)
         call self % delayed(i) % prob % kill()
 
-        if(allocated( self % delayed(i) % eLaw)) then
+        if (allocated( self % delayed(i) % eLaw)) then
           call self % delayed(i) % eLaw % kill()
           deallocate(self % delayed(i) % eLaw)
 
@@ -233,16 +233,16 @@ contains
     phi = TWO_PI * rand % get()
 
     ! Calculate delayed emission probability
-    if(allocated(self % delayed)) then
+    if (allocated(self % delayed)) then
       p_del = self % releaseDelayed(E_in) / self % release(E_in)
     else
       p_del = ZERO
     end if
 
     r1 = rand % get()
-    if( r1 > p_del ) then ! Prompt emission
+    if (r1 > p_del) then ! Prompt emission
       E_out = self % eLawPrompt % sample(E_in, rand)
-      if(present(lambda)) lambda = huge(lambda)
+      if (present(lambda)) lambda = huge(lambda)
 
     else ! Delayed emission
       r2 = rand % get()
@@ -250,9 +250,9 @@ contains
       ! Loop over precursor groups
       precursors: do i=1,size(self % delayed)
         r2 = r2 - self % delayed(i) % prob % at(E_in)
-        if( r2 < ZERO) then
+        if (r2 < ZERO) then
           E_out = self % delayed(i) % eLaw % sample(E_in, rand)
-          if(present(lambda)) lambda = self % delayed(i) % lambda
+          if (present(lambda)) lambda = self % delayed(i) % lambda
           return
 
         end if
@@ -261,11 +261,11 @@ contains
       ! Sampling failed -> Choose top precursor group
       N = size(self % delayed)
       E_out = self % delayed(N) % eLaw % sample(E_in, rand)
-      if(present(lambda)) lambda = self % delayed(N) % lambda
+      if (present(lambda)) lambda = self % delayed(N) % lambda
 
     end if
   end subroutine sampleOut
-  
+
   !!
   !! Return probability density of emission at given angle and energy
   !!
@@ -281,7 +281,7 @@ contains
     real(defReal)                            :: p_delayed
     integer(shortInt)                        :: i
 
-    if(abs(mu) <= ONE .and. E_out > ZERO .and. phi <= TWO_PI .and. phi >= ZERO) then
+    if (abs(mu) <= ONE .and. E_out > ZERO .and. phi <= TWO_PI .and. phi >= ZERO) then
 
       ! Set delayed robability
       if (allocated(self % delayed)) then
@@ -292,8 +292,8 @@ contains
 
       ! Delayed contribution
       prob = ZERO
-      if(allocated(self % delayed)) then
-        do i=1,size(self % delayed)
+      if (allocated(self % delayed)) then
+        do i = 1, size(self % delayed)
           prob = prob + p_delayed * self % delayed(i) % prob % at(E_in) *&
                         self % delayed(i) % eLaw % probabilityOf(E_out, E_in)
         end do
@@ -338,10 +338,10 @@ contains
     withDelayed = ACE % hasNuDelayed()
 
     ! Detect unexpected data
-    if(withDelayed .and. onlyOneNu) then
+    if (withDelayed .and. onlyOneNu) then
       call fatalError(Here, 'Prompt/Total Nu is given with delayed data. Which one is which? '//trim(ACE % ZAID))
 
-    else if ( .not.ACE % hasNuTotal() .and. withDelayed) then
+    else if (.not. ACE % hasNuTotal() .and. withDelayed) then
       call fatalError(Here, 'Has delayed neutron data but does not have total NuBar. WTF? '//trim(ACE % ZAID))
 
     end if
@@ -351,7 +351,7 @@ contains
     call new_energyLawENDF(self % eLawPrompt, ACE, MT)
 
     ! Read Delayed Data
-    if(withDelayed) then
+    if (withDelayed) then
       ! Read Table
       call new_delayedNu(self % nuBarDelayed, ACE)
 
@@ -365,17 +365,17 @@ contains
 
       ! Read Precursor data
       call ACE % setToPrecursors()
-      do i=1,size(self % delayed)
+      do i = 1, size(self % delayed)
         ! Read delay constant
         ! Convert from 1/shake to 1/s
         self % delayed(i) % lambda = ACE % readReal() * shakesPerS
         nr = ACE % readInt()
 
-        if(nr < 0) call fatalError(Here, 'NR < 0. WTF?')
+        if (nr < 0) call fatalError(Here, 'NR < 0. WTF?')
 
-        if(nr == 0) then ! Single interpolation region lin-lin
+        if (nr == 0) then ! Single interpolation region lin-lin
           N = ACE % readInt()
-          associate ( dat => ACE % readRealArray(2*N))
+          associate (dat => ACE % readRealArray(2*N))
             call self % delayed(i) % prob % init(dat(1:N), dat(N+1:2*N))
           end associate
 
@@ -390,7 +390,7 @@ contains
       end do
 
       ! Read Energy distributions
-      do i=1,size(self % delayed)
+      do i = 1, size(self % delayed)
         call new_energyLawENDF(self % delayed(i) % eLaw, ACE, i, delayed = .true.)
       end do
     end if
@@ -412,7 +412,7 @@ contains
     type(fissionCE), pointer                   :: ptr
 
     select type(source)
-      type is(fissionCE)
+      type is (fissionCE)
         ptr => source
 
       class default

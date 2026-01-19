@@ -122,6 +122,7 @@ module aceCard_class
     procedure :: LOCBforMT           ! Return LOCB for MT
     procedure :: setToAngleMT        ! Set head to beggining of angular for MT reaction
     procedure :: setToEnergyMT       ! Set head to energy for MT
+    procedure :: setToReleaseMT      ! Set head to release law for MT
     procedure :: LOCCforMT           ! Get Offset of energy law for MT
 
     ! Procedures releted to Elastic Scattering
@@ -502,7 +503,7 @@ contains
   !! TY = 19 indicates fission and NU data to be used
   !! TY > 100 indicates anothe NU like table for release (energy dependant yield)
   !!
-  function neutronReleaseMT(self,MT) result(N)
+  function neutronReleaseMT(self, MT) result(N)
     class(aceCard), intent(in)   :: self
     integer(shortInt),intent(in) :: MT
     integer(shortInt)            :: N
@@ -523,7 +524,7 @@ contains
   !!
   !! Returns .true. if the reaction under MT is capture
   !!
-  function isCaptureMT(self,MT) result(isIt)
+  function isCaptureMT(self, MT) result(isIt)
     class(aceCard),intent(in)    :: self
     integer(shortInt),intent(in) :: MT
     logical(defBool)             :: isIt
@@ -547,7 +548,7 @@ contains
   !!
   !! Resturns Q-value for reaction MT
   !!
-  function QforMT(self,MT) result(Q)
+  function QforMT(self, MT) result(Q)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     real(defReal)                 :: Q
@@ -569,7 +570,7 @@ contains
   !! Returns .true. is secondary neutron data for a MT reaction
   !! is in Center-of-Mass (CM) frame
   !!
-  function isCMframe(self,MT) result (isIt)
+  function isCMframe(self, MT) result (isIt)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     logical(defBool)              :: isIt
@@ -589,9 +590,9 @@ contains
 
   !!
   !! Returns raw LOCB parameter for MT reaction as defined in MCNP Manual
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  function LOCBforMT(self,MT) result(LOCB)
+  function LOCBforMT(self, MT) result(LOCB)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: LOCB
@@ -614,9 +615,9 @@ contains
 
   !!
   !! Sets read head to beginning of angular data for reaction MT
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  subroutine setToAngleMT(self,MT)
+  subroutine setToAngleMT(self, MT)
     class(aceCard), intent(inout) :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
@@ -630,7 +631,7 @@ contains
 
     idx = self % getMTidx(MT)
 
-    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Angle data &
+    if (self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Angle data &
                                                              & does not exist')
 
     self % head = self % MTdata(idx) % ANDp
@@ -639,9 +640,9 @@ contains
 
   !!
   !! Sets read head to beginning of energy data for reaction MT
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  subroutine setToEnergyMT(self,MT)
+  subroutine setToEnergyMT(self, MT)
     class(aceCard), intent(inout) :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
@@ -655,12 +656,34 @@ contains
 
     idx = self % getMTidx(MT)
 
-    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
+    if (self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
                                                              & does not exist')
 
     self % head = self % MTdata(idx) % LOCC + self % JXS(11) - 1
 
   end subroutine setToEnergyMT
+
+  !!
+  !! Sets read head to beginning of release data for reaction MT
+  !! Returns error if TY of the MT reaction is smaller than 101
+  !!
+  subroutine setToReleaseMT(self, MT)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here='setToReleaseMT (aceCard_class.f90)'
+
+    idx = self % getMTidx(MT)
+
+   ! Throw error if TY is smaller than 101
+    if (self % MTdata(idx) % TY < 101) then
+      call fatalError(Here,'TY number for MT reaction '//numToChar(MT)//' is smaller than 101.')
+      return
+    end if
+
+    self % head = self % JXS(11) + self % MTdata(idx) % TY - 101
+
+  end subroutine setToReleaseMT
 
   !!
   !! Returns LOCC paramter for energy law related to MT reaction
@@ -1326,7 +1349,7 @@ contains
       self % MTdata(i) % IE = real2Int(self % XSS( self % MTdata(i) % XSp-1), Here)
     end do
 
-    ! Move XS pointer to point to first entery with XS data
+    ! Move XS pointer to point to first entry with XS data
     self % MTdata(:) % XSp = self % MTdata(:) % XSp + 1
 
     ! Read LOCB data in LAND block
@@ -1418,7 +1441,7 @@ contains
     end if
 
     ! Read data related to deleyed neutron emissions
-    if(self % JXS(24) > 0 ) then ! Delayd NU data is present
+    if (self % JXS(24) > 0) then ! Delayd NU data is present
       self % delayNUp = self % JXS(24)
 
     end if
@@ -1543,14 +1566,14 @@ contains
   !!
   !! Returns index of a given MT reaction in MTdata table
   !!
-  function getMTidx(self,MT) result(idx)
+  function getMTidx(self, MT) result(idx)
     class(aceCard),intent(in)     :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
     character(100),parameter :: Here = 'getMTidx ( aceCard_class.f90)'
 
-    idx = linFind( self % MTdata(:) % MT, MT)
-    if(idx == targetNotFound) call fatalError(Here,'Given MT is not present in ACE card')
+    idx = linFind(self % MTdata(:) % MT, MT)
+    if (idx == targetNotFound) call fatalError(Here,'Given MT is not present in ACE card')
     call searchError(idx,Here)
 
   end function getMTidx
