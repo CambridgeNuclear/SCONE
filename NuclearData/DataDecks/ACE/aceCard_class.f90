@@ -1441,7 +1441,7 @@ contains
     end if
 
     ! Read data related to deleyed neutron emissions
-    if (self % JXS(24) > 0) then ! Delayd NU data is present
+    if (self % JXS(24) > 0) then ! Delayed NU data is present
       self % delayNUp = self % JXS(24)
 
     end if
