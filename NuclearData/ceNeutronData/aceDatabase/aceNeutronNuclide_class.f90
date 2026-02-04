@@ -253,7 +253,7 @@ contains
     ! Obtain value
     if (idxMT > 0) then
       idx = idx - self % MTdata(idxMT) % firstIdx + 1
-      if (idx < 0) then
+      if (idx <= 0) then
         topXS = ZERO
         bottomXS = ZERO
       else

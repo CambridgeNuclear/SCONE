@@ -923,11 +923,11 @@ contains
         name = nucSet % atKey(i)
       end if
 
-      if(loud) then
+      if (loud) then
         call statusMsg("Building: "// trim(name)// " with index: " //numToChar(nucIdx))
-        if (idx /= 0 .and. idx2 == 0) &
+        if (idx1 /= 0 .and. idx2 == 0) &
             call statusMsg("including S(alpha,beta) tables with file: " //trim(name_file1))
-        if (idx /= 0 .and. idx2 /= 0) &
+        if (idx1 /= 0 .and. idx2 /= 0) &
             call statusMsg("including S(alpha,beta) tables with files: " //trim(name_file1)//' '//trim(name_file2))
       end if
 
