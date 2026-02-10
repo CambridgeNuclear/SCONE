@@ -837,7 +837,7 @@ Currently there is only one available PieceConstantField:
   in different materials, or uniformly across all materials.
   
   - shape: (x y z) array of integers, stating the numbers of x, y and z
-    elements of the field. For a 2D field, one of the entries has to be 0
+    elements of the field. For a 2D field, the z entry has to be 0.
   - pitch: (x y z) array with the x, y and z field pitches. In a 2D field,
     the value entered in the third dimension is not used. [cm]
   - origin (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the

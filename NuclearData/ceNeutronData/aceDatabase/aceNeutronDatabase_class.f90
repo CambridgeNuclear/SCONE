@@ -1325,9 +1325,10 @@ contains
   !!
   subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(aceNeutronDatabase), intent(inout) :: self
-    logical(defBool), intent(in)             :: loud
+    logical(defBool), intent(in), optional   :: loud
     real(defReal), intent(in), optional      :: maxTemp
     real(defReal), intent(in), optional      :: scaleDensity
+    logical(defBool)                         :: isLoud
     real(defReal), dimension(:), allocatable :: tmpGrid
     integer(shortInt)                        :: i, j, k, matIdx, nNuc, nucIdx, isDone, &
                                                 sizeGrid, eIdx, nucIdxLast, eIdxLast, &
@@ -1338,6 +1339,12 @@ contains
     class(RNG), allocatable                  :: rand
     integer(shortInt), parameter :: IN_SET = 1, NOT_PRESENT = 0
     real(defReal), parameter     :: NUDGE = 1.0e-06_defReal
+
+    if (present(loud)) then
+      isLoud = loud
+    else
+      isLoud = .false.
+    end if
 
     ! Check maxTemp is present and sensible
     if (present(maxTemp)) then
@@ -1523,7 +1530,7 @@ contains
     ! Save final grid and remove duplicates
     self % eGridUnion = removeDuplicatesSorted(tmpGrid)
 
-    if (loud) then
+    if (isLoud) then
       print '(A)', 'CE unionised energy grid has size: '//numToChar(size(self % eGridUnion))
     end if
 
@@ -1605,7 +1612,7 @@ contains
 
     end do
 
-    if (loud) print '(A)', 'CE unionised majorant cross section calculation completed'
+    if (isLoud) print '(A)', 'CE unionised majorant cross section calculation completed'
 
   end subroutine initMajorant
 

@@ -451,12 +451,19 @@ contains
   !!
   subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(baseMgNeutronDatabase), intent(inout) :: self
-    logical(defBool), intent(in)                :: loud
+    logical(defBool), optional, intent(in)      :: loud
     real(defReal), optional, intent(in)         :: maxTemp
     real(defReal), optional, intent(in)         :: scaleDensity
+    logical(defBool)                            :: isLoud
     integer(shortInt)                           :: g, i, idx
     real(defReal)                               :: xs, densityFactor
     integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    if (present(loud)) then
+      isLoud = loud
+    else
+      isLoud = .false.
+    end if
 
     ! Scale density
     if (present(scaleDensity)) then
@@ -485,7 +492,7 @@ contains
       self % majorant(g) = xs * densityFactor
     end do
 
-    if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
+    if (isLoud) print '(A)', 'MG unionised majorant cross section calculation completed'
 
   end subroutine initMajorant
 

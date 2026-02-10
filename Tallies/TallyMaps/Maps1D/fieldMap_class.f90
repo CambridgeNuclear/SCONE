@@ -36,7 +36,7 @@ module fieldMap_class
   !! Sample Dictionary Input:
   !!   myMap {
   !!     type fieldMap;
-  !!     <piece constant field dictionary>
+  !!     field {pieceConstant field dictionary}
   !!
   !!   }
   !!

@@ -93,4 +93,8 @@ module universalVariables
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'
   character(nameLen), parameter :: nameWW   = 'WeightWindows'
 
+  ! Flags associated with fields
+  real(defReal), parameter :: NO_TEMPERATURE = -INF, &
+                              NO_DENSITY = -INF
+
 end module universalVariables
