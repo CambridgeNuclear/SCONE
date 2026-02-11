@@ -190,6 +190,69 @@ Example: ::
 
         varianceReduction { <Weight windows definition> }
 
+alphaPhysicsPackage
+###################
+
+alphaPhysicsPackage, used to estimate the alpha eigenvalue by the k-alpha algorithm.
+
+* pop: number of particles used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dataType: determines type of nuclear data used; can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used
+* keff_0: initial guess for the k factor. Can help stabilise calculations if
+  chosen well.
+* alpha_0: initial guess for the alpha eigenvalue. Vital to choose this with an
+  appropriate sign for stability: positive if supercritical, negative if subcritical.
+  In units of 1/s.
+* lambda: stabilisation factor for alpha calculations. Usually chosen as 1.
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* reproducible (*optional*, default = 1): 1 for true; 0 for false; if running
+  with MPI, this ensures that the particle normalisation procedure used maintains
+  reproducibility (given that the RNG seed is fixed, and mpiSync is on for tallies)
+  when running with different numbers of MPI ranks. However, the (MPI) parallel 
+  scaling performance of this option is slightly worse than using the alternative 
+  procedure, that doesn't ensure reproducibility
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file. If running with MPI, this is done 
+  by each MPI rank separately
+
+Example: ::
+
+        type alphaPhysicsPackage;
+        pop    100000;
+        active 100;
+        inactive 50;
+        dataType ce;
+        XSdata   ceData;
+        seed     -244654;
+        keff_0 1.2;
+        alpha_0 100000;
+        outputFile PuSphere;
+        outputFormat asciiJSON;
+
+        transportOperator { <Transport operator definition> }
+        collisionOperator { <Collision operator definition> }
+        inactiveTally { <Inactive tally definition> }
+        activeTally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+*Optional entries* ::
+
+        uniformFissionSites { <Uniform fission sites definition> }
+        varianceReduction { <Weight windows definition> }
+        source { <Source definition> }
+
+.. note::
+   Although a ``source`` definition is not required, it can be included to replace
+   the default uniform fission source guess used in the first cycle
+
+
 rayVolPhysicsPackage
 ####################
 
