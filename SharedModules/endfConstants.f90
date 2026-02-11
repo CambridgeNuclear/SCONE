@@ -97,7 +97,10 @@ module endfConstants
                                   N_N_ThermEL   = 1002 ,&
                                   N_N_ThermINEL = 1004 ,&
                                   ! SCONE's fake MT for particle splitting event
-                                  N_N_SPLIT     = 1005
+                                  N_N_SPLIT     = 1005 ,&
+                                  ! SCONE's fake MT for alpha eigenvalue events
+                                  N_TIME_ABS    = 1006 ,&
+                                  N_TIME_PROD   = 1007
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
   integer(shortInt),parameter  :: N_Nl(40)      = [(50 + i, i = 1, 40)]

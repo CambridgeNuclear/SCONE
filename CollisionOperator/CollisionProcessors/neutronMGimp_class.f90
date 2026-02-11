@@ -79,6 +79,7 @@ module neutronMGimp_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: alphaProd
 
     ! Variance reduction procedures
     procedure, private :: split
@@ -123,7 +124,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMacroXSs)                :: macroXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, denom, alphaXS, probAlpha
     character(100),parameter :: Here =' sampleCollision (neutronMGimp_class.f90)'
 
     ! Verify that particle is MG neutron
@@ -134,6 +135,24 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronMG()
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
+    
+    ! Avoid collision sampling if alpha absorption occurs
+    if (abs(p % alpha) > ZERO) then
+
+      denom = self % xsData % getTotalMatXS(p, p % matIdx())
+      alphaXS = p % lambdaAlpha * abs(p % alpha) / p % getSpeed()
+      probAlpha = alphaXS / denom
+ 
+      if (p % pRNG % get() < probAlpha) then
+        if (p % alpha >= 0) then
+          collDat % MT = N_TIME_ABS
+        else
+          collDat % MT = N_TIME_PROD
+        end if
+        return
+      end if
+
+    end if
 
     ! Get and verify material pointer
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
@@ -196,6 +215,8 @@ contains
       do i=1,n
         call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
         dir = rotateVector(p % dirGlobal(), mu, phi)
+        
+        ! TODO: Delayed neutron handling when supported by MG mode
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
         pTemp       = p
@@ -215,6 +236,44 @@ contains
     end if
 
   end subroutine implicit
+  
+  !!
+  !! Production of neutrons when alpha is negative
+  !! Amounts to particle duplication
+  !!
+  subroutine alphaProd(self, p, tally, collDat, thisCycle, nextCycle)
+    class(neutronMGimp), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+    integer(shortInt)                    :: n, i
+    real(defReal)                        :: wgt, w0, rand1, keff
+    type(particleState)                  :: pTemp
+
+    ! Obtain required data
+    wgt    = p % w                ! Current weight
+    w0     = p % preHistory % wgt ! Starting weight
+    rand1  = p % pRNG % get()     ! Random number to sample sites
+    keff   = p % k_eff
+
+    ! Produce 1/lambda new particles
+    ! The current particle remains in flight
+    n = int(abs( (wgt * ONE) / (w0 * p % lambdaAlpha * keff)) + rand1, shortInt)
+
+    ! Shortcut particle generation if no particles were sampled
+    if (n < 1) return
+
+    ! Store neutrons in the buffer
+    pTemp = p
+    pTemp % collisionN = 0
+    do i = 1,n
+      call thisCycle % detain(pTemp)
+      call tally % reportSpawn(N_TIME_PROD, p, pTemp)
+    end do
+
+  end subroutine alphaProd
 
   !!
   !! Elastic Scattering
