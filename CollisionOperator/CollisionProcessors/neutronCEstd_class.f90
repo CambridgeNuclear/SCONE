@@ -102,6 +102,7 @@ module neutronCEstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
+    procedure :: alphaProd
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -162,7 +163,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, denom, alphaXS, probAlpha
     character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
 
     ! Verify that particle is CE neutron
@@ -173,11 +174,29 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if (.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
+    
+    ! Avoid nuclide sampling if alpha absorption occurs
+    if (abs(p % alpha) > ZERO) then
+
+      denom = self % xsData % getTotalMatXS(p, p % matIdx())
+      alphaXS = p % lambdaAlpha * abs(p % alpha) / p % getSpeed()
+      probAlpha = alphaXS / denom
+ 
+      if (p % pRNG % get() < probAlpha) then
+        if (p % alpha >= 0) then
+          collDat % MT = N_TIME_ABS
+        else
+          collDat % MT = N_TIME_PROD
+        end if
+        return
+      end if
+
+    end if
 
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast(self % xsData % getMaterial(p % matIdx()))
     if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
-
+    
     ! Select collision nuclide
     call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E)
 
@@ -213,7 +232,7 @@ contains
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, lambda
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, lambda, wD
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -252,6 +271,12 @@ contains
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
+        ! If alpha, determine the weight of a delayed neutron
+        wD = ONE
+        if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + p % alpha)
+        end if
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
         if (E_out > self % maxE) E_out = self % maxE
@@ -263,7 +288,7 @@ contains
         pTemp % r   = r
         pTemp % dir = dir
         pTemp % E   = E_out
-        pTemp % wgt = wgt
+        pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
 
         ! If storing precursors, do so when a finite lambda occurs
@@ -298,6 +323,44 @@ contains
     p % isDead =.true.
 
   end subroutine capture
+  
+  !!
+  !! Production of neutrons when alpha is negative
+  !! Amounts to particle duplication
+  !!
+  subroutine alphaProd(self, p, tally, collDat, thisCycle, nextCycle)
+    class(neutronCEstd), intent(inout)   :: self
+    class(particle), intent(inout)       :: p
+    type(tallyAdmin), intent(inout)      :: tally
+    type(collisionData), intent(inout)   :: collDat
+    class(particleDungeon),intent(inout) :: thisCycle
+    class(particleDungeon),intent(inout) :: nextCycle
+    integer(shortInt)                    :: n, i
+    real(defReal)                        :: wgt, w0, rand1, keff
+    type(particleState)                  :: pTemp
+
+    ! Obtain required data
+    wgt    = p % w                ! Current weight
+    w0     = p % preHistory % wgt ! Starting weight
+    rand1  = p % pRNG % get()     ! Random number to sample sites
+    keff   = p % k_eff
+
+    ! Produce 1/(lambda*k) new particles
+    ! The current particle remains in flight
+    n = int(abs( (wgt * ONE ) / (w0 * p % lambdaAlpha * keff)) + rand1, shortInt)
+
+    ! Shortcut particle generation if no particles were sampled
+    if (n < 1) return
+
+    ! Store neutrons for next cycle
+    pTemp = p
+    pTemp % collisionN = 0
+    do i = 1,n
+      call nextCycle % detain(pTemp)
+      call tally % reportSpawn(N_TIME_PROD, p, pTemp)
+    end do
+    
+  end subroutine alphaProd
 
   !!
   !! Process fission reaction

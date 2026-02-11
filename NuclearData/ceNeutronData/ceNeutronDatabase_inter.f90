@@ -377,7 +377,7 @@ contains
 
     ! Check that matIdx exists
     if (matIdx == VOID_MAT) then
-      xs = ZERO
+      xs = ZERO + p % getAlphaAbsorption()
       return
     elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
@@ -390,6 +390,9 @@ contains
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % trackXS
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getTrackMatXS
 
@@ -425,6 +428,9 @@ contains
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getTotalMatXS
 
@@ -452,6 +458,9 @@ contains
 
     ! Return Cross-Section
     xs = majorantCache(1) % xs
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getMajorantXS
 

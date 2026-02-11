@@ -125,10 +125,12 @@ module particle_class
     integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
 
     ! Particle processing information
-    class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
-    real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
-    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
-    integer(shortInt)          :: splitCount = 0   ! Counter of number of splits
+    class(RNG), pointer        :: pRNG  => null()   ! Pointer to RNG associated with the particle
+    real(defReal)              :: k_eff             ! Value of default keff for implicit source generation
+    real(defReal)              :: alpha = ZERO      ! Value of alpha for time absorption/production
+    real(defReal)              :: lambdaAlpha = ONE ! Value for stabilising alpha iteration
+    integer(shortInt)          :: geomIdx           ! Index of the geometry used by the particle
+    integer(shortInt)          :: splitCount = 0    ! Counter of number of splits
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
@@ -154,6 +156,7 @@ module particle_class
 
     ! Enquiry about physical state
     procedure :: getSpeed
+    procedure :: getAlphaAbsorption
 
     ! Precursor procedures
     procedure :: isPrecursor
@@ -495,6 +498,21 @@ contains
     end if
 
   end function getSpeed
+  
+  !!
+  !! Return the alpha absorption cross section: XS = alpha/v
+  !! Also includes Zoia's stabilisation if alpha is negative
+  !!
+  function getAlphaAbsorption(self) result(xs)
+    class(particle), intent(in) :: self
+    real(defReal)               :: xs
+    
+    xs = ZERO
+    if (self % alpha /= ZERO) then
+      xs = self % lambdaAlpha * abs(self % alpha) / self % getSpeed()
+    end if
+
+  end function getAlphaAbsorption
 
   !!
   !! Produce a delayed neutron from a precursor.

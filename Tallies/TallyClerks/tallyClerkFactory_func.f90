@@ -18,6 +18,7 @@ module tallyClerkFactory_func
   use shannonEntropyClerk_class,       only : shannonEntropyClerk
   use centreOfMassClerk_class,         only : centreOfMassClerk
   use eventClerk_class,                only : eventClerk
+  use kAlphaAnalogClerk_class,         only : kAlphaAnalogClerk
   use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
@@ -39,6 +40,7 @@ module tallyClerkFactory_func
                                                                         'centreOfMassClerk        ',&
                                                                         'eventClerk               ',&
                                                                         'dancoffBellClerk         ',&
+                                                                        'kAlphaAnalogClerk        ',&
                                                                         'mgXsClerk                ']
 
 contains
@@ -91,6 +93,9 @@ contains
 
      case('centreOfMassClerk')
        allocate(centreOfMassClerk :: new)
+
+     case('kAlphaAnalogClerk')
+       allocate(kAlphaAnalogClerk :: new)
 
      case('mgXsClerk')
        allocate(mgXsClerk :: new)

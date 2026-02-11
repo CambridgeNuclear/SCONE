@@ -57,6 +57,7 @@ module collisionProcessor_inter
   !!   capture         -> defines behaviour for any capture reaction (e.g. gamma capture, photoelectric)
   !!   fission         -> defines bahaviour for any fission reaction
   !!   cutoffs         -> Any post collision implicit treatments i.e. energy cutoffs
+  !!   alphaProd       -> defines behaviour for time production reactions
   !!
   type, public, abstract :: collisionProcessor
     private
@@ -75,6 +76,7 @@ module collisionProcessor_inter
     procedure(collisionAction),deferred  :: capture
     procedure(collisionAction),deferred  :: fission
     procedure(collisionAction),deferred  :: cutoffs
+    procedure(collisionAction),deferred  :: alphaProd
 
   end type collisionProcessor
 
@@ -123,7 +125,7 @@ contains
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
     call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)
-
+    
     ! In case of a TMS rejection, set collision as virtual
     if (collDat % MT == noInteraction) then
       virtual = .true.
@@ -142,7 +144,10 @@ contains
     call p % savePreCollision()
 
     ! Perform implicit treatment
-    if (collDat % MT /= noInteraction) call self % implicit(p, tally, collDat, thisCycle, nextCycle)
+    if (collDat % MT /= noInteraction .and. collDat % MT /= N_TIME_ABS &
+            .and. collDat % MT /= N_TIME_PROD) then
+      call self % implicit(p, tally, collDat, thisCycle, nextCycle)
+    end if
 
     ! Select physics to be processed based on MT number
     select case(collDat % MT)
@@ -152,11 +157,14 @@ contains
       case(N_N_inelastic, macroIEScatter)
         call self % inelastic(p, tally, collDat, thisCycle, nextCycle)
 
-      case(N_DISAP, macroDisappearance)
+      case(N_DISAP, macroDisappearance, N_TIME_ABS)
         call self % capture(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_FISSION, macroFission)
         call self % fission(p, tally, collDat, thisCycle, nextCycle)
+
+      case(N_TIME_PROD)
+        call self % alphaProd(p, tally, collDat, thisCycle, nextCycle)
 
       case(noInteraction)
         ! Do nothing
