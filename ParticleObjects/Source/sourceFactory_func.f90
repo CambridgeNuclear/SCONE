@@ -12,7 +12,7 @@ module sourceFactory_func
   use fissionSource_class,  only : fissionSource
   use materialSource_class, only : materialSource
   use mixSource_class,      only : mixSource, mixSource_TptrCast
-  use externalSource_class, only : externalSource
+  use fileSource_class, only : fileSource
 
   ! geometry
   use geometry_inter,    only : geometry
@@ -30,7 +30,7 @@ module sourceFactory_func
                                                                        'fissionSource ',&
                                                                        'materialSource',&
                                                                        'mixSource     ',&
-                                                                       'externalSource' ]
+                                                                       'fileSource    ' ]
 
 contains
 
@@ -65,8 +65,8 @@ contains
       case('materialSource')
         allocate(materialSource :: new)
       
-      case('externalSource')
-        allocate(externalSource :: new)
+      case('fileSource')
+        allocate(fileSource :: new)
 
       case('mixSource')
         allocate(mixSource :: new)

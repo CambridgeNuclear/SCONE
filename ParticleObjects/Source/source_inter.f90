@@ -35,7 +35,6 @@ module source_inter
   type, public, abstract :: source
     private
     class(geometry), pointer, public       :: geom => null()
-    integer(shortInt), public              :: internalCounter = 1
   contains
     procedure, non_overridable             :: generate
     procedure(sampleParticle), deferred    :: sampleParticle
@@ -116,7 +115,6 @@ contains
         call dungeon % replace(self % sampleParticle(pRand), i)
       end do
       !$omp end parallel do
-      self % internalCounter = 1
 
     end subroutine generate
 

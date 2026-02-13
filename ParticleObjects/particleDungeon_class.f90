@@ -1086,13 +1086,13 @@ contains
   subroutine printToFile(self, name, writeBinary)
     class(particleDungeon), intent(in)      :: self
     character(*), intent(in)                :: name
-    logical(defBool), intent(in)  :: writeBinary
+    integer(shortInt), intent(in)           :: writeBinary
     character(256)                          :: filename
     integer(shortInt)                       :: i, id
 
     id = 10
     ! Open the file in requested mode
-    if (writeBinary) then
+    if (writeBinary == 2) then
       filename = trim(name)//'.bin'
       open(unit = id, file = filename, status = 'replace', access = 'stream', form = 'unformatted')
       
@@ -1100,7 +1100,7 @@ contains
       do i = 1, self % pop
         write(id) self % prisoners(i) % r, self % prisoners(i) % dir, &
                   self % prisoners(i) % E, real(self % prisoners(i) % G, defReal), &
-                  real(self % prisoners(i) % broodID, defReal)
+                  real(self % prisoners(i) % broodID, defReal), self % prisoners(i) % wgt
       end do
     else
       ! Print out each particle co-ordinate
@@ -1110,8 +1110,8 @@ contains
       ! Print out each particle co-ordinate
       do i = 1, self % pop
         write(id,*) self % prisoners(i) % r, self % prisoners(i) % dir, &
-                    self % prisoners(i) % E, self % prisoners(i) % G, &
-                    self % prisoners(i) % broodID
+                    self % prisoners(i) % E, real(self % prisoners(i) % G, defReal), &
+                    real(self % prisoners(i) % broodID, defReal), self % prisoners(i) % wgt
       end do
     end if
 

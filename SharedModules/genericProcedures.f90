@@ -1447,16 +1447,17 @@ module genericProcedures
   end function printParticleType
 
   !!
-  !! Read a line from the source file in ASCII format
+  !! Read a line from the source file in ASCII or binary format
+  !! EOF is a logical output that is set to true if end of file is reached and false otherwise
   !!
   subroutine read_defReal(unit, readBinary, output, EOF)
-    integer(shortInt), intent(in)          :: unit
-    logical(defBool), intent(in)           :: readBinary
-    real(defReal), intent(out)             :: output(:)
-    logical(defBool), intent(out)          :: EOF
-    real(defReal)                          :: temp(size(output))
-    integer(shortInt)                      :: errorCode
-    character(100), parameter              :: here = 'readASCII_defReal (genericProcedures.f90)'
+    integer(shortInt), intent(in)            :: unit
+    logical(defBool), intent(in)             :: readBinary
+    real(defReal), intent(out), dimension(:) :: output
+    logical(defBool), intent(out)            :: EOF
+    real(defReal)                            :: temp(size(output))
+    integer(shortInt)                        :: errorCode
+    character(100), parameter                :: here = 'readASCII_defReal (genericProcedures.f90)'
 
     if (readBinary) then
       read(unit, iostat=errorCode) temp    
@@ -1470,23 +1471,24 @@ module genericProcedures
         output = temp
       case (iostat_end)
         EOF = .true.
-        return
       case default
-        call fatalError(Here, 'Error reading file for external source.')
+        call fatalError(Here, 'Error reading file for file source.')
       end select
+
   end subroutine read_defReal
 
   !!
-  !! Read a line from the source file in ASCII format
+  !! Read a line from the source file in ASCII or binary format
+  !! EOF is a logical output that is set to true if end of file is reached and false otherwise
   !!
   subroutine read_shortInt(unit, readBinary, output, EOF)
-    integer(shortInt), intent(in)          :: unit
-    logical(defBool), intent(in)           :: readBinary
-    integer(shortInt), intent(out)         :: output(:)
-    logical(defBool), intent(out)          :: EOF
-    integer(shortInt)                      :: temp(size(output))
-    integer(shortInt)                      :: errorCode
-    character(100), parameter              :: here = 'readASCII_defReal (genericProcedures.f90)'
+    integer(shortInt), intent(in)                :: unit
+    logical(defBool), intent(in)                 :: readBinary
+    integer(shortInt), intent(out), dimension(:) :: output
+    logical(defBool), intent(out)                :: EOF
+    integer(shortInt)                            :: temp(size(output))
+    integer(shortInt)                            :: errorCode
+    character(100), parameter                    :: here = 'readASCII_shortInt (genericProcedures.f90)'
 
     if (readBinary) then
       read(unit, iostat=errorCode) temp    
@@ -1500,10 +1502,10 @@ module genericProcedures
         output = temp
       case (iostat_end)
         EOF = .true.
-        return
       case default
-        call fatalError(Here, 'Error reading file for external source.')
+        call fatalError(Here, 'Error reading file for file source.')
       end select
+
   end subroutine read_shortInt
 
 end module genericProcedures

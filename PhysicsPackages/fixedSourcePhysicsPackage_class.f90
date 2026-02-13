@@ -184,12 +184,9 @@ contains
       ! Update RNG after source generation
       call self % pRNG % stride(self % totalPop)
 
-      ! Print source in ASCII if requested
-      if (self % printSource == 1) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), .false.)
-      ! Print source in binary if requested
-      else if (self % printSource == 2) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), .true.)
+      ! Print source in ASCII or binary format if requested
+      if (self % printSource /= 0) then
+        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), self % printSource)
       end if
 
       call tally % reportCycleStart(self % thisCycle)

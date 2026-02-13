@@ -1,4 +1,4 @@
-module externalSource_class
+module fileSource_class
 
   use numPrecision
   use, intrinsic :: iso_fortran_env, only : iostat_end
@@ -10,6 +10,8 @@ module externalSource_class
   use dictionary_class,              only : dictionary
   use dictParser_func,               only : fileToDict
   use genericProcedures,             only : numToChar, readArray
+  use universalVariables,            only : OUTSIDE_MAT, UNDEF_MAT
+  use display_func,                  only : statusMsg
 
   use geometry_inter,          only : geometry
   use neutronMaterial_inter,   only : neutronMaterial, neutronMaterial_CptrCast
@@ -23,25 +25,25 @@ module externalSource_class
   implicit none
   private
 
-  type, public, extends(source) :: externalSource
+  type, public, extends(source) :: fileSource
     private
         integer(shortInt)                            :: numberNeutrons
         real(defReal), dimension(:,:), allocatable   :: r, dir
-        real(defReal), dimension(:), allocatable     :: E 
+        real(defReal), dimension(:), allocatable     :: E, w 
         integer(shortInt), dimension(:), allocatable :: G
         logical(defBool)                             :: isMG = .false.
         logical(defBool)                             :: readBinary = .false. ! Flag to read binary file
-    ! Add any data members specific to externalSource here
+    ! Add any data members specific to fileSource here
 
   contains
     procedure :: init
     procedure :: sampleParticle
     procedure :: kill
-  end type externalSource
+  end type fileSource
 
 contains
   !!
-  !! Initialise external source from dictionary and list of neutrons
+  !! Initialise file source from dictionary and list of neutrons
   !! Does not check if source file is consistent with specified input format
   !!
   !! See source_inter for interface details
@@ -52,7 +54,7 @@ contains
   !!   - failed to read source file
   !!
   subroutine init(self, dict, geom)
-    class(externalSource), intent(inout)     :: self
+    class(fileSource), intent(inout)     :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
     class(nuclearDatabase), pointer          :: nucData
@@ -60,8 +62,8 @@ contains
     character(nameLen)                       :: energy   
     integer(shortInt)                        :: i, id
     logical(defBool)                         :: EOF
-    real(defReal)                            :: dummy(9)
-    character(100),parameter :: Here = 'init (externalSource_class.f90)'
+    real(defReal)                            :: dummy(10)
+    character(100),parameter :: Here = 'init (fileSource_class.f90)'
 
     ! Provide geometry info to source
     self % geom => geom
@@ -85,28 +87,14 @@ contains
     end if
     if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
-    ! Select path to external source file
+    ! Select path to file  source file
     if (dict % isPresent('path')) then
         call dict % get(path, 'path')
     else
-        call fatalError(Here, 'path must be specified in the dictionary for externalSource')
+        call fatalError(Here, 'path must be specified in the dictionary for fileSource')
     end if
 
     call dict % getOrDefault(self % readBinary, 'binary', .false.)
-
-    ! Check consistency of energy type with nuclear database
-    select type (nucData)
-      class is (ceNeutronDatabase)
-        if (self % isMG) then
-          call fatalError(Here, "Inconsistent external source: ce database with mg data")
-        end if
-      class is (mgNeutronDatabase)
-        if (.not. self % isMG) then
-          call fatalError(Here, "Inconsistent external source: mg database with ce data")
-        end if
-      class default
-        call fatalError(Here, "Unrecognised type of nuclearDatabase")
-    end select
 
     ! Read source data from file, binary or ASCII
     self % numberNeutrons = 0
@@ -114,13 +102,13 @@ contains
     ! ASCII file reading
     if (.not. self % readBinary) then
       open(unit=id, file=trim(path), status='old', action='read')
-      print *, 'Reading external source from ASCII file: ', trim(path)
+      call statusMsg('Reading file source from ASCII file: '//trim(path))
     else if (self % readBinary) then
       ! Binary file reading
       open(unit=id, file=trim(path), status='old', access='stream', form='unformatted', action='read')
-      print *, 'Reading external source from binary file: ', trim(path)
+      call statusMsg('Reading file source from binary file: '//trim(path))
     else 
-      call fatalError(Here, 'Invalid external source file reading mode specified')
+      call fatalError(Here, 'Invalid file source file reading mode specified')
     end if
       ! Read number of neutrons from start of ASCII file
     do
@@ -131,8 +119,10 @@ contains
     ! Reset to start of file
     rewind(id)
     ! Allocate position and direction arrays
-    allocate(self % r(3, self % numberNeutrons))
-    allocate(self % dir(3, self % numberNeutrons))
+    allocate(self % r(3, self % numberNeutrons), self % dir(3, self % numberNeutrons))
+    
+    ! Allocate weight array
+    allocate(self % w(self % numberNeutrons))
 
     ! Allocate energy or group arrays
     if (self % isMG) then 
@@ -143,7 +133,6 @@ contains
 
     ! Read and store neutron data from source file
     ! Value for BroodID is ignored
-    print *, self % numberNeutrons, ' neutrons read from external source file'
     do i = 1, self % numberNeutrons
       call readArray(id, self % readBinary, dummy, EOF)
       if (EOF) exit
@@ -154,24 +143,24 @@ contains
       else
         self % E(i) = dummy(7)
       end if
+      self % w(i) = dummy(10)
     end do
 
     close(id)
   end subroutine init
 
   !!
-  !! Sample the particle's phase space co-ordinates from the external source
+  !! Sample the particle's phase space co-ordinates from the file source
   !!
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(externalSource), intent(inout)     :: self
+    class(fileSource), intent(inout)     :: self
     class(RNG), intent(inout)                :: rand
     type(particleState)                      :: p
     class(nuclearDatabase), pointer          :: nucData
-    class(neutronMaterial), pointer          :: mat
     integer(shortInt)                        :: matIdx, uniqueID, idx
-    character(100),parameter :: Here = 'sampleParticle (externalSource_class.f90)'
+    character(100),parameter :: Here = 'sampleParticle (fileSource_class.f90)'
 
     ! Get pointer to appropriate nuclear database
     if (self % isMG) then
@@ -184,21 +173,22 @@ contains
     ! Sample index of source neutron to be used
     idx = int(rand % get() * real(self % numberNeutrons, defReal)) + 1
 
-    ! Sample neutron from external source data, check we have not exceeded number of neutrons
+    ! Sample neutron from file source data, check we have not exceeded number of neutrons
     if (idx <= self % numberNeutrons) then
       ! Find material at neutron position
       call self % geom % whatIsAt(matIdx, uniqueID, self % r(:, idx))
       
-      ! Get pointer to neutron material, return fatal error if not found
-      mat => neutronMaterial_CptrCast(nucData % getMaterial(matIdx))
-      if (.not.associated(mat)) call fatalError(Here, "Nuclear data did not return neutron material.")
+      ! Check neutron is outside of geometry or in undefined region
+      if (matIdx == OUTSIDE_MAT .or. matIdx == UNDEF_MAT) then
+          call fatalError(Here, 'Neutron sampled from file source is outside of geometry or in undefined region.')
+      endif
       
       ! Assign basic phase space coordinates
       p % r = self % r(:, idx)
       p % dir = self % dir(:, idx)
       p % type = P_NEUTRON
       p % time = ZERO
-      p % wgt = ONE
+      p % wgt = self % w(idx)
       p % uniqueID = uniqueID
       p % matIdx = matIdx
 
@@ -211,14 +201,14 @@ contains
         p % isMG = .false.
       end if
     else
-        call fatalError(Here, 'Requested neutron is not in the external source file')
+        call fatalError(Here, 'Requested neutron is not in the file source file')
     end if
     
   end function sampleParticle
 
   elemental subroutine kill(self)
-    class(externalSource), intent(inout) :: self
-    character(100),parameter :: Here = 'kill (externalSource_class.f90)'
+    class(fileSource), intent(inout) :: self
+    character(100),parameter :: Here = 'kill (fileSource_class.f90)'
 
     call kill_super(self)
 
@@ -227,7 +217,8 @@ contains
     if (allocated(self % dir)) deallocate(self % dir)
     if (allocated(self % E)) deallocate(self % E)
     if (allocated(self % G)) deallocate(self % G)
+    if (allocated(self % w)) deallocate(self % w)
 
   end subroutine kill
 
-end module externalSource_class
+end module fileSource_class
