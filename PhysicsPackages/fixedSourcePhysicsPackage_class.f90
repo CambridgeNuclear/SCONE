@@ -184,8 +184,9 @@ contains
       ! Update RNG after source generation
       call self % pRNG % stride(self % totalPop)
 
-      if (self % printSource == 1) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i))
+      ! Print source in ASCII or binary format if requested
+      if (self % printSource /= 0) then
+        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), self % printSource)
       end if
 
       call tally % reportCycleStart(self % thisCycle)
@@ -388,7 +389,7 @@ contains
     seed = seed_temp
     call self % pRNG % init(seed)
 
-    ! Read whether to print particle source per cycle
+    ! Read whether to print particle source per cycle, 1 for ASCII, 2 for binary
     call dict % getOrDefault(self % printSource, 'printSource', 0)
 
     ! Build Nuclear Data
