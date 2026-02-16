@@ -185,6 +185,14 @@ if(BUILD_TESTS)
     ${MAX_PES_OPTION}
     )
 
+  # Write unit tests to a subfolder in modFiles, to avoid potential concurrent writing
+  set_target_properties(unitTests PROPERTIES
+	  Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/unitTests
+  )
+  
+  # Tells unit tests where to find SCONE files
+  target_include_directories(unitTests PRIVATE ${CMAKE_Fortran_MODULE_DIRECTORY})
+
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
   # We need to suppress this warning for clarity
@@ -206,6 +214,14 @@ if(BUILD_TESTS)
     LINK_LIBRARIES scone
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+  
+  # Write integration test files in a subfolder to avoid potential data race
+  set_target_properties(integrationTests PROPERTIES
+	  Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/integrationTests
+  )
+	
+  # Tells integration tests where to find SCONE files
+  target_include_directories(integrationTests PRIVATE ${CMAKE_Fortran_MODULE_DIRECTORY})
 
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
