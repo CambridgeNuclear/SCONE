@@ -34,7 +34,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 enable_language(Fortran)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
-
+file(MAKE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY})
 # Add compilers flags
 # The flags set below will be applied to all Fortran files
 #

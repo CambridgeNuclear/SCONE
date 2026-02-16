@@ -17,6 +17,11 @@ module particleDungeon_class
 #endif
 
   implicit none
+
+  !! Flag to indicate that the source file is in binary format. 
+  !! This is used in fileSource_class.f90 to determine how to read the source file.
+  integer(shortInt), parameter, public :: BINARY_FILE = 2
+
   private
 
   !!
@@ -1092,7 +1097,7 @@ contains
 
     id = 10
     ! Open the file in requested mode
-    if (writeBinary == 2) then
+    if (writeBinary == BINARY_FILE) then
       filename = trim(name)//'.bin'
       open(unit = id, file = filename, status = 'replace', access = 'stream', form = 'unformatted')
       

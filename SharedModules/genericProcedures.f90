@@ -1453,7 +1453,7 @@ module genericProcedures
   subroutine read_defReal(unit, readBinary, output, EOF)
     integer(shortInt), intent(in)            :: unit
     logical(defBool), intent(in)             :: readBinary
-    real(defReal), intent(out), dimension(:) :: output
+    real(defReal), dimension(:), intent(out) :: output
     logical(defBool), intent(out)            :: EOF
     real(defReal)                            :: temp(size(output))
     integer(shortInt)                        :: errorCode
