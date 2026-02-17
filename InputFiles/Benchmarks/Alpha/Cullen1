@@ -6,17 +6,17 @@
 type alphaPhysicsPackage;
 !type eigenPhysicsPackage;
 
-pop      10000;
-active   2000;
-inactive 5000;
+pop      30000;
+active   20000;
+inactive 10000;
 XSdata   ceData;
 dataType ce;
 alpha_0 -600000;
-lambda  1;
+eta  0.01;
 k_0 1.0;
 outputFile Cullen1 ;
 
-collisionOperator { neutronCE {type neutronCEstd;}
+collisionOperator { neutronCE {type neutronCEstd; neglectDelayed 1;}
                   }
 
 transportOperator { type transportOperatorDT;
@@ -25,8 +25,7 @@ transportOperator { type transportOperatorDT;
 inactiveTally {
               }
 
-activeTally  {
-        }
+activeTally  { kImp {type keffImplicitClerk; setting 2;} tau {type removalTimeClerk;} display (kImp tau);}
 
 geometry {
     type geometryStd;
@@ -35,7 +34,7 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
+      sphere { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
     }
 
 

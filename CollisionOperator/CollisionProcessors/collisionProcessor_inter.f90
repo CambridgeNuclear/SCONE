@@ -144,6 +144,7 @@ contains
     call p % savePreCollision()
 
     ! Perform implicit treatment
+    ! Don't include interactions which avoid sampling a nuclide
     if (collDat % MT /= noInteraction .and. collDat % MT /= N_TIME_ABS &
             .and. collDat % MT /= N_TIME_PROD) then
       call self % implicit(p, tally, collDat, thisCycle, nextCycle)

@@ -1,28 +1,26 @@
 !
-! The fifth problem posed by Cullen et al in
+! The fourth problem posed by Cullen et al in
 ! "Static and Dynamic Criticality: Are They Different?"
-! Should have alpha ~ -0.979us^-1 when using ENDF/B-7
-! Due to deep subcriticality, the result from this calculation
-! can be quite chaotic from one run to another. This phenomenon
-! is discussed in "Chaos in eigenvalue search methods" by Mancusi and Zoia.
+! Should have alpha ~ 0.65us^-1 when using ENDF/B-7
 !
 type alphaPhysicsPackage;
 !type eigenPhysicsPackage;
 
 pop      30000;
 active   20000;
-inactive 3000;
+inactive 10000;
 XSdata   ceData;
 dataType ce;
-alpha_0 -10000;
-eta 1;
-k_0 0.7;
-outputFile Cullen5 ;
+alpha_0 600000;
+eta  0.01;
+k_0 1.7;
+outputFile Cullen4 ;
 
 collisionOperator { neutronCE {type neutronCEstd; neglectDelayed 1;}
                   }
 
-transportOperator { type transportOperatorDT; }
+transportOperator { type transportOperatorDT;
+                  }
 
 inactiveTally {
               }
@@ -36,7 +34,7 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
+      sphere { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
     }
 
 
@@ -68,9 +66,11 @@ materials {
     fuel {
       temp       273;
       composition {
-        92235.03  0.0225692;
-        92238.03  0.00125286;
-        92234.03  0.000246754;
+        92235.03  0.005196933;
+        92238.03  0.00028849;
+        92234.03  5.68191E-5;
+         1001.03  1.108448422;
+         8016.03  0.554224211;
       }
     }
 

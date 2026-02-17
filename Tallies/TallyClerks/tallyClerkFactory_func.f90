@@ -19,6 +19,7 @@ module tallyClerkFactory_func
   use centreOfMassClerk_class,         only : centreOfMassClerk
   use eventClerk_class,                only : eventClerk
   use kAlphaAnalogClerk_class,         only : kAlphaAnalogClerk
+  use removalTimeClerk_class,          only : removalTimeClerk
   use mgXsClerk_class,                 only : mgXsClerk
 
   implicit none
@@ -41,6 +42,7 @@ module tallyClerkFactory_func
                                                                         'eventClerk               ',&
                                                                         'dancoffBellClerk         ',&
                                                                         'kAlphaAnalogClerk        ',&
+                                                                        'removalTimeClerk         ',&
                                                                         'mgXsClerk                ']
 
 contains
@@ -96,6 +98,9 @@ contains
 
      case('kAlphaAnalogClerk')
        allocate(kAlphaAnalogClerk :: new)
+
+     case('removalTimeClerk')
+       allocate(removalTimeClerk :: new)
 
      case('mgXsClerk')
        allocate(mgXsClerk :: new)

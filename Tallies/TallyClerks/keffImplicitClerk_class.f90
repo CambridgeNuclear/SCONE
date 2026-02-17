@@ -4,7 +4,7 @@ module keffImplicitClerk_class
   use tallyCodes
   use endfConstants
   use universalVariables,         only : VOID_MAT, TRACKING_XS, MAX_COL
-  use genericProcedures,          only : fatalError, charCmp
+  use genericProcedures,          only : fatalError, charCmp, numToChar
   use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle
@@ -34,9 +34,17 @@ module keffImplicitClerk_class
                                   IMP_ABS      = 2 ,&  ! Implicit neutron absorbtion
                                   ANA_LEAK     = 3 ,&  ! Analog Leakage
                                   K_EFF        = 4     ! k-eff estimate
+
+  !! Flags for total, prompt, and delayed fission
+  integer(shortInt), parameter :: TOTAL   = 1, & ! Total neutron production by fission
+                                  PROMPT  = 2, & ! Prompt neutron production by fission
+                                  DELAYED = 3    ! Delayed neutron production by fission
+
   !!
   !! A simple implicit k-eff estimator based on collison estimator of reaction rates,
   !! and on analog estimators of (N,XN) reactions and leakage
+  !!
+  !! Allows computing prompt/delayed keff only.
   !!
   !! Private Members:
   !!   targetSTD -> Target Standard Deviation for convergence check
@@ -50,14 +58,17 @@ module keffImplicitClerk_class
   !!   type keffImplicitClerk;
   !!   #trigger yes/no;
   !!   #SDtarget <value>;      ! Will be read only if trigger is present and "yes"
+  !!   #setting 1; #           ! Determines which neutron production to tally.
+  !!                           ! Numbers correspond to flags above. Default to 1.
   !!
   !! }
   !!
   type, public,extends(tallyClerk) :: keffImplicitClerk
     private
-    real(defReal)    :: targetSTD = ZERO
+    real(defReal)     :: targetSTD = ZERO
     ! Settings
-    logical(defBool) :: handleVirtual = .true.
+    logical(defBool)  :: handleVirtual = .true.
+    integer(shortInt) :: setting = TOTAL
   contains
     ! Duplicate interface of the tallyClerk
     ! Procedures used during build
@@ -93,6 +104,7 @@ contains
     class(dictionary), intent(in)           :: dict
     character(nameLen), intent(in)          :: name
     character(nameLen)                      :: chr
+    character(100), parameter  :: Here = 'init (keffImplicitClerk_class.f90)'
 
     ! Set name
     call self % setName(name)
@@ -109,6 +121,13 @@ contains
     ! Handle virtual collisions
     call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
+    ! Which fission production to tally? Total, prompt, or delayed?
+    call dict % getOrDefault(self % setting,'setting', 1)
+    if (self % setting < 1 .or. self % setting > 3) then
+      call fatalError(Here,'"setting" options are 1, 2, 3 for total, prompt, and delayed. '//&
+              'Input setting is: '//numToChar(self % setting))
+    end if
+  
   end subroutine init
 
   !!
@@ -123,6 +142,7 @@ contains
     ! Kill self
     self % targetSTD = ZERO
     self % handleVirtual = .true.
+    self % setting = TOTAL
 
   end subroutine kill
 
@@ -191,7 +211,21 @@ contains
     ! Obtain xss
     call mat % getMacroXSs(xss, p)
 
-    nuFissXS = xss % nuFission
+    select case(self % setting)
+      case(TOTAL)
+        nuFissXS = xss % nuFission
+
+      case(PROMPT)
+        nuFissXS = xss % promptNuFission
+
+      case(DELAYED)
+        nuFissXS = xss % nuFission - xss % promptNuFission
+
+      case default
+        nuFissXS = xss % nuFission
+
+    end select
+
     absXS    = xss % capture + xss % fission
 
     s1 = nuFissXS * flux
