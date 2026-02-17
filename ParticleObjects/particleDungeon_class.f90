@@ -17,11 +17,6 @@ module particleDungeon_class
 #endif
 
   implicit none
-
-  !! Flag to indicate that the source file is in binary format. 
-  !! This is used in fileSource_class.f90 to determine how to read the source file.
-  integer(shortInt), parameter, public :: BINARY_FILE = 2
-
   private
 
   !!
@@ -1091,13 +1086,13 @@ contains
   subroutine printToFile(self, name, writeBinary)
     class(particleDungeon), intent(in)      :: self
     character(*), intent(in)                :: name
-    integer(shortInt), intent(in)           :: writeBinary
+    logical(defBool), intent(in)            :: writeBinary
     character(256)                          :: filename
     integer(shortInt)                       :: i, id
 
     id = 10
     ! Open the file in requested mode
-    if (writeBinary == BINARY_FILE) then
+    if (writeBinary) then
       filename = trim(name)//'.bin'
       open(unit = id, file = filename, status = 'replace', access = 'stream', form = 'unformatted')
       

@@ -27,7 +27,7 @@ module fileSource_class
 
   type, public, extends(source) :: fileSource
     private
-        integer(shortInt)                            :: numberNeutrons
+        integer(longInt)                             :: numberNeutrons
         real(defReal), dimension(:,:), allocatable   :: r, dir
         real(defReal), dimension(:), allocatable     :: E, w 
         integer(shortInt), dimension(:), allocatable :: G
@@ -54,10 +54,9 @@ contains
   !!   - failed to read source file
   !!
   subroutine init(self, dict, geom)
-    class(fileSource), intent(inout)     :: self
+    class(fileSource), intent(inout)         :: self
     class(dictionary), intent(in)            :: dict
     class(geometry), pointer, intent(in)     :: geom
-    class(nuclearDatabase), pointer          :: nucData
     character(pathLen)                       :: path
     character(nameLen)                       :: energy   
     integer(shortInt)                        :: i, id
@@ -78,14 +77,6 @@ contains
       case default
         call fatalError(Here, 'Invalid source data type specified: must be ce or mg')
     end select
-    
-    ! Get pointer to appropriate nuclear database
-    if (self % isMG) then
-      nucData => ndReg_getNeutronMG()
-    else
-      nucData => ndReg_getNeutronCE()
-    end if
-    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
     ! Select path to file  source file
     if (dict % isPresent('path')) then
@@ -99,25 +90,33 @@ contains
     ! Read source data from file, binary or ASCII
     self % numberNeutrons = 0
     id = 10
-    ! ASCII file reading
+    
     if (.not. self % readBinary) then
+
+      ! ASCII file reading
       open(unit=id, file=trim(path), status='old', action='read')
       call statusMsg('Reading file source from ASCII file: '//trim(path))
+
     else if (self % readBinary) then
+
       ! Binary file reading
       open(unit=id, file=trim(path), status='old', access='stream', form='unformatted', action='read')
       call statusMsg('Reading file source from binary file: '//trim(path))
+
     else 
       call fatalError(Here, 'Invalid file source file reading mode specified')
     end if
+
       ! Read number of neutrons from start of ASCII file
     do
       call readArray(id, self % readBinary, dummy, EOF)
       if (EOF) exit
       self % numberNeutrons = self % numberNeutrons + 1
     end do
+
     ! Reset to start of file
     rewind(id)
+
     ! Allocate position and direction arrays
     allocate(self % r(3, self % numberNeutrons), self % dir(3, self % numberNeutrons))
     
@@ -134,6 +133,7 @@ contains
     ! Read and store neutron data from source file
     ! Value for BroodID is ignored
     do i = 1, self % numberNeutrons
+
       call readArray(id, self % readBinary, dummy, EOF)
       if (EOF) exit
       self % r(:, i) = dummy(1:3)
@@ -144,6 +144,7 @@ contains
         self % E(i) = dummy(7)
       end if
       self % w(i) = dummy(10)
+
     end do
 
     close(id)
@@ -158,17 +159,8 @@ contains
     class(fileSource), intent(inout)     :: self
     class(RNG), intent(inout)                :: rand
     type(particleState)                      :: p
-    class(nuclearDatabase), pointer          :: nucData
     integer(shortInt)                        :: matIdx, uniqueID, idx
     character(100),parameter :: Here = 'sampleParticle (fileSource_class.f90)'
-
-    ! Get pointer to appropriate nuclear database
-    if (self % isMG) then
-      nucData => ndReg_getNeutronMG()
-    else
-      nucData => ndReg_getNeutronCE()
-    end if
-    if(.not.associated(nucData)) call fatalError(Here, 'Failed to retrieve Nuclear Database')
 
     ! Sample index of source neutron to be used
     idx = int(rand % get() * real(self % numberNeutrons, defReal)) + 1

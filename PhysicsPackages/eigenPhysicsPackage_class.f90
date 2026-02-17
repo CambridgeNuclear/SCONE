@@ -275,7 +275,7 @@ contains
       ! Print source in ASCII or binary format if requested
       if (self % printSource /= 0) then
         call self % nextCycle % printToFile(trim(self % outputFile) // '_source' // numToChar(i) // &
-                                            '_rank' // numToChar(getMPIRank()), self % printSource)
+                                            '_rank' // numToChar(getMPIRank()), self % printSource == BINARY_FILE)
       end if
 
       ! Flip cycle dungeons
@@ -495,8 +495,8 @@ contains
 
     ! Read whether to print particle source per cycle, 1 for ASCII, 2 for binary
     call dict % getOrDefault(self % printSource, 'printSource', 0)
-    if (self % printSource < 0 .or. self % printSource > 2) then
-      call fatalError(Here, 'printSource must be 0 (no printing), 1 (ASCII) or 2 (binary)')
+    if (self % printSource < NO_PRINTING .or. self % printSource > BINARY_FILE) then
+      call fatalError(Here, 'printSource must be 0 (No printing), 1 (ASCII) or 2 (BINARY)')
     end if
 
     ! Build Nuclear Data

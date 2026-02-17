@@ -186,7 +186,7 @@ contains
 
       ! Print source in ASCII or binary format if requested
       if (self % printSource /= 0) then
-        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), self % printSource)
+        call self % thisCycle % printToFile(trim(self % outputFile)//'_source'//numToChar(i), self % printSource == BINARY_FILE)
       end if
 
       call tally % reportCycleStart(self % thisCycle)
@@ -391,6 +391,9 @@ contains
 
     ! Read whether to print particle source per cycle, 1 for ASCII, 2 for binary
     call dict % getOrDefault(self % printSource, 'printSource', 0)
+    if (self % printSource < NO_PRINTING .and. self % printSource > BINARY_FILE) then
+      call fatalError(Here, "printSource must be 0 (No printing), 1 (ASCII) or 2 (BINARY)")
+    end if
 
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
