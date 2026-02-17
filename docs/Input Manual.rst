@@ -33,10 +33,10 @@ eigenPhysicsPackage, used for criticality (or eigenvalue) calculations
   when running with different numbers of MPI ranks. However, the (MPI) parallel 
   scaling performance of this option is slightly worse than using the alternative 
   procedure, that doesn't ensure reproducibility
-* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
-  to print the particle source (location, direction, energy of each particle
-  in the particleDungeon) to a text file. If running with MPI, this is done 
-  by each MPI rank separately
+* printSource (*optional*, default = 0): 0 for no printing, 1 for ASCII; 2 for binary; 
+  requests to print the particle source (location, direction, energy, broodID and weight
+  of each particle in the particleDungeon) to a text/bin file. If running with MPI, 
+  this is done by each MPI rank separately
 
 Example: ::
 
@@ -80,9 +80,10 @@ fixedSourcePhysicsPackage, used for fixed source calculations
 * outputFile (*optional*, default = 'output'): name of the output file
 * outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
   Choices are ``asciiMATLAB`` and ``asciiJSON``
-* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
-  to print the particle source (location, direction, energy of each particle
-  in the particleDungeon) to a text file
+* printSource (*optional*, default = 0): 0 for no printing, 1 for ASCII; 2 for binary; 
+  requests to print the particle source (location, direction, energy, broodID and weight
+  of each particle in the particleDungeon) to a text/bin file. If running with MPI, 
+  this is done by each MPI rank separately
 * buffer (*optional*, default = 50): size of the particle bank used by each
   OpenMP thread to store secondary particles
 * commonBufferSize (*optional*): if not included, the common buffer is not
@@ -298,8 +299,8 @@ Example: ::
 Source
 ------
 
-For the moment, the only possible external **source** types in SCONE are point source
-and material source.
+For the moment, the possible external **source** types in SCONE are point source, material source, 
+and file source.
 
 pointSource
 ############
@@ -346,6 +347,23 @@ Hence, an input would look like: ::
       source { type materialSource; mat myMat; data ce; E 2.0;
       boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); 
       boundingTime (0 4); }
+
+fileSource
+##########
+
+A file source is a particle source that samples particles from a user-provided file. 
+The file must be in a specific format, which is described in the documentation of the file source module. 
+It is consistent with the format of the source writer in particleDungeon.
+It can be read in ASCII or binary format. For the moment, it is constrained to neutrons.
+The properties of a file source are:
+
+* file: path to the file containing the source particles
+* data (*optional*, default = 'ce'): data type for source particles. Can be ``ce`` or ``mg``.
+* binary (*optional*, default = .false.): whether the source file is in binary format or not
+
+Hence, an input would look like: ::
+
+      source { type fileSource; file path/to/sourceFile; data ce; binary 1; }
 
 fissionSource
 #############

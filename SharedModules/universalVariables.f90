@@ -91,4 +91,9 @@ module universalVariables
   character(nameLen), parameter :: nameUFS  = 'uniFissSites'
   character(nameLen), parameter :: nameWW   = 'WeightWindows'
 
+  ! Flag to indicate source file format
+  integer(shortInt), parameter, public :: NO_PRINTING = 0, &
+                                          ASCII_FILE  = 1, &
+                                          BINARY_FILE = 2
+
 end module universalVariables

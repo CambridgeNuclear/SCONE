@@ -272,9 +272,10 @@ contains
       ! Update RNG after it was used to normalise particle population
       call self % pRNG % stride(1)
 
-      if (self % printSource == 1) then
+      ! Print source in ASCII or binary format if requested
+      if (self % printSource /= 0) then
         call self % nextCycle % printToFile(trim(self % outputFile) // '_source' // numToChar(i) // &
-                                            '_rank' // numToChar(getMPIRank()))
+                                            '_rank' // numToChar(getMPIRank()), self % printSource == BINARY_FILE)
       end if
 
       ! Flip cycle dungeons
@@ -492,8 +493,11 @@ contains
     ! Initial k_effective guess
     call dict % getOrDefault(self % keff_0,'keff_0', ONE)
 
-    ! Read whether to print particle source per cycle
+    ! Read whether to print particle source per cycle, 1 for ASCII, 2 for binary
     call dict % getOrDefault(self % printSource, 'printSource', 0)
+    if (self % printSource < NO_PRINTING .or. self % printSource > BINARY_FILE) then
+      call fatalError(Here, 'printSource must be 0 (No printing), 1 (ASCII) or 2 (BINARY)')
+    end if
 
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
