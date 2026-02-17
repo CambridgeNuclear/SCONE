@@ -101,7 +101,7 @@ module alphaPhysicsPackage_class
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
     real(defReal)      :: alpha_0
-    real(defReal)      :: lambda
+    real(defReal)      :: eta
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
 
@@ -224,7 +224,7 @@ contains
           ! Set values for normalisation in the particle
           neutron % k_eff = k_new
           neutron % alpha = alpha_new
-          neutron % lambdaAlpha = self % lambda
+          neutron % eta = self % eta
 
           ! Save state
           call neutron % savePreHistory()
@@ -482,7 +482,7 @@ contains
     call dict % getOrDefault(self % alpha_0,'alpha_0', 0.1_defReal)
     
     ! Alpha stabilising factor
-    call dict % getOrDefault(self % lambda, 'lambda', ONE)
+    call dict % getOrDefault(self % eta, 'eta', ONE)
     
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)

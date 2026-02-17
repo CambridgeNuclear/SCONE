@@ -1,7 +1,7 @@
 !
-! The second problem posed by Cullen et al in
+! The third problem posed by Cullen et al in
 ! "Static and Dynamic Criticality: Are They Different?"
-! Should have alpha ~ -145us^-1 when using ENDF/B-7
+! Should have alpha ~ 146us^-1 when using ENDF/B-7
 !
 type alphaPhysicsPackage;
 
@@ -13,7 +13,7 @@ dataType ce;
 alpha_0 100000;
 lambda  10;
 k_0 1.582;
-outputFile Cullen2;
+outputFile Cullen3;
 
 collisionOperator { neutronCE {type neutronCEstd; neglectDelayed 1; }
                   }
@@ -33,12 +33,15 @@ geometry {
 
     surfaces
     {
-      sphere { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
+      innerSphere { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
+      outerSphere { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 38.7407; }
     }
 
 
     cells
     {
+      inner {id 1; type simpleCell; surfaces (-1); filltype mat; material fuel;}
+      outer {id 2; type simpleCell; surfaces (1); filltype mat; material water;}
     }
 
     universes
@@ -47,9 +50,11 @@ geometry {
       {
           id 1;
           type rootUniverse;
-          border 1;
-          fill fuel;
+          border 2;
+          fill u<2>;
       }
+
+      spheres { id 2; type cellUniverse; cells (1 2);}
     }
 }
 
@@ -68,6 +73,15 @@ materials {
         92235.03  0.089989;
         92238.03  0.004995;
         92234.03  0.000984;
+      }
+    }
+
+    ! No thermal scattering included - not specified explicitly.
+    water {
+      temp 273;
+      composition {
+        1001.03 0.06691;
+        8016.03 0.03346;
       }
     }
 

@@ -103,24 +103,20 @@ contains
     self % xsData => ndReg_getNeutronMG()
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
     
-    ! Avoid collision sampling if alpha absorption occurs
-    if (abs(p % alpha) > ZERO) then
-
-      denom = self % xsData % getTotalMatXS(p, p % matIdx())
-      alphaXS = p % lambdaAlpha * abs(p % alpha) / p % getSpeed()
-      probAlpha = alphaXS / denom
+    ! Avoid nuclide sampling if alpha absorption occurs
+    denom = self % xsData % getTrackMatXS(p, p % matIdx())
+    alphaXS = p % getAlphaAbsorption()
+    probAlpha = alphaXS / denom
  
-      if (p % pRNG % get() < probAlpha) then
-        if (p % alpha >= 0) then
-          collDat % MT = N_TIME_ABS
-        else
-          collDat % MT = N_TIME_PROD
-        end if
-        return
+    if (p % pRNG % get() < probAlpha) then
+      if (p % alpha >= 0) then
+        collDat % MT = N_TIME_ABS
+      else
+        collDat % MT = N_TIME_PROD
       end if
-
+      return
     end if
-
+    
     ! Get and verify material pointer
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
@@ -217,18 +213,18 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, keff
+    real(defReal)                        :: wgt, w0, rand1, k
     type(particleState)                  :: pTemp
 
     ! Obtain required data
-    wgt    = p % w                ! Current weight
-    w0     = p % preHistory % wgt ! Starting weight
-    rand1  = p % pRNG % get()     ! Random number to sample sites
-    keff   = p % k_eff
+    wgt   = p % w                ! Current weight
+    w0    = p % preHistory % wgt ! Starting weight
+    rand1 = p % pRNG % get()     ! Random number to sample sites
+    k     = p % k_eff
 
-    ! Produce 1/lambda new particles
+    ! Produce 1/k * (1 + 1/lambda ) new particles
     ! The current particle remains in flight
-    n = int(abs( (wgt * ONE) / (w0 * p % lambdaAlpha * keff)) + rand1, shortInt)
+    n = int(ONE / k +  ONE / (p % eta * k) + rand1, shortInt)
 
     ! Shortcut particle generation if no particles were sampled
     if (n < 1) return
@@ -240,6 +236,7 @@ contains
       call thisCycle % detain(pTemp)
       call tally % reportSpawn(N_TIME_PROD, p, pTemp)
     end do
+    p % isDead = .true.
 
   end subroutine alphaProd
 

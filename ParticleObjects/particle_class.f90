@@ -128,7 +128,7 @@ module particle_class
     class(RNG), pointer        :: pRNG  => null()   ! Pointer to RNG associated with the particle
     real(defReal)              :: k_eff             ! Value of default keff for implicit source generation
     real(defReal)              :: alpha = ZERO      ! Value of alpha for time absorption/production
-    real(defReal)              :: lambdaAlpha = ONE ! Value for stabilising alpha iteration
+    real(defReal)              :: eta = ONE         ! Value for stabilising alpha iteration
     integer(shortInt)          :: geomIdx           ! Index of the geometry used by the particle
     integer(shortInt)          :: splitCount = 0    ! Counter of number of splits
 
@@ -465,19 +465,18 @@ contains
   !!   Further there is currently no good solution for MG neutrons. Their speed
   !!   is arbitrarily set to 1.
   !!
+  !! Does not provide errors if a dubious particle type is used. This is to allow
+  !! the function and related functions to be pure.
+  !!
   !! Args:
   !!   None
   !!
   !! Result:
   !!   Particle speed
   !!
-  !! Errors:
-  !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
-  !!
-  function getSpeed(self) result(speed)
+  pure function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
     real(defReal)               :: speed
-    character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
 
     ! Calculates the velocity for the relevant particle [cm/s]
     if (self % type == P_PHOTON) then
@@ -492,8 +491,7 @@ contains
       end if
 
     else
-      call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
-                            & //numToChar(self % type))
+      speed = ONE
 
     end if
 
@@ -501,16 +499,17 @@ contains
   
   !!
   !! Return the alpha absorption cross section: XS = alpha/v
-  !! Also includes Zoia's stabilisation if alpha is negative
+  !! Also includes Zoia's stabilisation for negative alpha values.
   !!
-  function getAlphaAbsorption(self) result(xs)
+  pure function getAlphaAbsorption(self) result(xs)
     class(particle), intent(in) :: self
     real(defReal)               :: xs
+    real(defReal)               :: alpha, eta
     
     xs = ZERO
-    if (self % alpha /= ZERO) then
-      xs = self % lambdaAlpha * abs(self % alpha) / self % getSpeed()
-    end if
+    alpha = self % alpha
+    eta = self % eta
+    xs = (max(alpha, ZERO) + eta * max(-alpha, ZERO)) / self % getSpeed()
 
   end function getAlphaAbsorption
 

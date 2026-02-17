@@ -26,7 +26,7 @@ module endfConstants
   ! National Nuclear Data Center Brookhaven National Laboratory, Upton, NY, 2012, 11973–5000.
   !
   ! Dictionary:
-  ! N - neutron ; d - deutron; a - alpha particle ; f - fission; p - proton
+  ! N - neutron ; d - deutron; t - triton; a - alpha particle ; f - fission; p - proton
   !
   ! Syntax:
   ! Example:  N_2N -> (n,2n)
@@ -112,12 +112,14 @@ module endfConstants
                                   anyFission    = -118
 
   ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
-  integer(shortInt),parameter  :: macroTotal         = -1 ,&
-                                  macroDisappearance = -2 ,&
-                                  macroEscatter      = -3 ,&
-                                  macroIEscatter     = -4 ,&
-                                  macroFission       = -6 ,&
-                                  macroNuFission     = -7
+  integer(shortInt),parameter  :: macroTotal            = -1 ,&
+                                  macroDisappearance    = -2 ,&
+                                  macroEscatter         = -3 ,&
+                                  macroIEscatter        = -4 ,&
+                                  macroFission          = -6 ,&
+                                  macroNuFission        = -7 ,&
+                                  macroPromptNuFission  = -8 ,&
+                                  macroDelayedNuFission = -9
 
   ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
