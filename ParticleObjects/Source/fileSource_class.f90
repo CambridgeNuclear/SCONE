@@ -50,7 +50,8 @@ contains
     class(geometry), pointer, intent(in) :: geom
     character(pathLen)                   :: path
     character(nameLen)                   :: energy   
-    integer(shortInt)                    :: i, id
+    integer(shortInt)                    :: id
+    integer(longInt)                     :: i
     logical(defBool)                     :: EOF
     real(defReal)                        :: dummy(10)
     character(100), parameter :: Here = 'init (fileSource_class.f90)'
@@ -151,7 +152,8 @@ contains
     class(fileSource), intent(inout) :: self
     class(RNG), intent(inout)        :: rand
     type(particleState)              :: p
-    integer(shortInt)                :: matIdx, uniqueID, idx
+    integer(shortInt)                :: matIdx, uniqueID
+    integer(longInt)                 :: idx
     character(100), parameter :: Here = 'sampleParticle (fileSource_class.f90)'
 
     ! Sample index of source neutron to be used
