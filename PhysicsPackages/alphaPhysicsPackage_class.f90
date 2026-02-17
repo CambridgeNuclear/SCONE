@@ -266,9 +266,9 @@ contains
       ! Normalise population
       call self % nextCycle % combing(self % pop, self % pRNG)
 
-      if (self % printSource == 1) then
+      if (self % printSource /= 0) then
         call self % nextCycle % printToFile(trim(self % outputFile) // '_source' // numToChar(i) // &
-                                            '_rank' // numToChar(getMPIRank()))
+                                            '_rank' // numToChar(getMPIRank()), self % printSource == BINARY_FILE)
       end if
 
       ! Flip cycle dungeons
@@ -486,6 +486,9 @@ contains
     
     ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
+    if (self % printSource < NO_PRINTING .or. self % printSource > BINARY_FILE) then
+      call fatalError(Here, 'printSource must be 0 (No printing), 1 (ASCII) or 2 (BINARY)')
+    end if
 
     ! Build Nuclear Data
     call ndReg_init(dict % getDictPtr("nuclearData"))
