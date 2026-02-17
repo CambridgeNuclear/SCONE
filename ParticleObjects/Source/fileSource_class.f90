@@ -13,15 +13,6 @@ module fileSource_class
   use universalVariables,            only : OUTSIDE_MAT, UNDEF_MAT
   use display_func,                  only : statusMsg
 
-  use geometry_inter,          only : geometry
-  use neutronMaterial_inter,   only : neutronMaterial, neutronMaterial_CptrCast
-  use nuclearDataReg_mod,      only : ndReg_getNeutronCE => getNeutronCE, &
-                                      ndReg_getNeutronMG => getNeutronMG
-  use nuclearDatabase_inter,   only : nuclearDatabase
-  use ceNeutronDatabase_inter, only : ceNeutronDatabase
-  use mgNeutronDatabase_inter, only : mgNeutronDatabase
-  use materialMenu_mod,        only : mm_matIdx => matIdx
-
   implicit none
   private
 
@@ -54,15 +45,15 @@ contains
   !!   - failed to read source file
   !!
   subroutine init(self, dict, geom)
-    class(fileSource), intent(inout)         :: self
-    class(dictionary), intent(in)            :: dict
-    class(geometry), pointer, intent(in)     :: geom
-    character(pathLen)                       :: path
-    character(nameLen)                       :: energy   
-    integer(shortInt)                        :: i, id
-    logical(defBool)                         :: EOF
-    real(defReal)                            :: dummy(10)
-    character(100),parameter :: Here = 'init (fileSource_class.f90)'
+    class(fileSource), intent(inout)     :: self
+    class(dictionary), intent(in)        :: dict
+    class(geometry), pointer, intent(in) :: geom
+    character(pathLen)                   :: path
+    character(nameLen)                   :: energy   
+    integer(shortInt)                    :: i, id
+    logical(defBool)                     :: EOF
+    real(defReal)                        :: dummy(10)
+    character(100), parameter :: Here = 'init (fileSource_class.f90)'
 
     ! Provide geometry info to source
     self % geom => geom
@@ -148,6 +139,7 @@ contains
     end do
 
     close(id)
+
   end subroutine init
 
   !!
@@ -156,11 +148,11 @@ contains
   !! See source_inter for details
   !!
   function sampleParticle(self, rand) result(p)
-    class(fileSource), intent(inout)     :: self
-    class(RNG), intent(inout)                :: rand
-    type(particleState)                      :: p
-    integer(shortInt)                        :: matIdx, uniqueID, idx
-    character(100),parameter :: Here = 'sampleParticle (fileSource_class.f90)'
+    class(fileSource), intent(inout) :: self
+    class(RNG), intent(inout)        :: rand
+    type(particleState)              :: p
+    integer(shortInt)                :: matIdx, uniqueID, idx
+    character(100), parameter :: Here = 'sampleParticle (fileSource_class.f90)'
 
     ! Sample index of source neutron to be used
     idx = int(rand % get() * real(self % numberNeutrons, defReal)) + 1
@@ -176,13 +168,13 @@ contains
       endif
       
       ! Assign basic phase space coordinates
-      p % r = self % r(:, idx)
+      p % r   = self % r(:, idx)
       p % dir = self % dir(:, idx)
       p % type = P_NEUTRON
       p % time = ZERO
-      p % wgt = self % w(idx)
+      p % wgt  = self % w(idx)
       p % uniqueID = uniqueID
-      p % matIdx = matIdx
+      p % matIdx   = matIdx
 
       ! Set energy
       if (self % isMG) then
@@ -200,7 +192,7 @@ contains
 
   elemental subroutine kill(self)
     class(fileSource), intent(inout) :: self
-    character(100),parameter :: Here = 'kill (fileSource_class.f90)'
+    character(100), parameter :: Here = 'kill (fileSource_class.f90)'
 
     call kill_super(self)
 
