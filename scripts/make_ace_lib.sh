@@ -2,16 +2,16 @@
 
 HELP="Create a SCONE nuclear data library file from raw ACE Neutron CE files.
 
-make_ace_lib.sh <output> <MODE> <suffix> <path-to-directory>
+make_ace_lib.sh <output> <MODE> <search-word> <path-to-directory>
 
 Arguments:
-  <output> Library file to create.
-  <MODE>   Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
-  <suffix> Expected ending in the extension of the ace files
+  <output>      Library file to create.
+  <MODE>        Choose tosearch for CE Neutron cards (ZZAAA.TTc id). or SAB cards (XXXXXX.TTt)
+  <search-word> Keyword expected within the name of the ace files (e.g., ace, nc, t, ENDF, sssth)
   <path-to-directory> Path of the base directory where to search in
 
-The script recursively searches inside <path-to-directory> for files with an extension that ends with 
-the given common <suffix>; in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; 
+The script recursively searches inside <path-to-directory> for files with a name that includes the given
+common <search-word>; in each file, it searches for the presence of an ID pattern (ZZAAA.TTc for CE; 
 XXXXXX.TTt for SAB card) within the first line. By ACE definition this should match only in the first 
 line of a header of an ACE card. For each match the script prints a line of the SCONE nuclear data library
 file to <output> as:
@@ -28,7 +28,7 @@ fi
 # Pop first argument to be the library file
 OUTNAME=$1
 MODE=$2
-SUFFIX=$3
+WORD=$3
 SEARCH_DIR=$4
 
 # Check a path to directory is given correctly
@@ -51,11 +51,11 @@ FILES=()
 while IFS= read -r -d '' f; do
   FILES+=("$f")
 done < <(
-  find "$SEARCH_DIR" -type f -name "*.*${SUFFIX}" -print0
+  find "$SEARCH_DIR" -type f -name "*${WORD}*" -print0
 )
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-  echo "No files with extension '.*${SUFFIX}' found in ${SEARCH_DIR}"
+  echo "No files with format '*${WORD}*' found in ${SEARCH_DIR}"
   exit 1
 fi
 
