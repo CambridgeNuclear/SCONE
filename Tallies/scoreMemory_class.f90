@@ -1,6 +1,10 @@
 module scoreMemory_class
 
   use numPrecision
+#ifdef MPI
+  use mpi_func,           only : mpi_reduce, isMPIMaster, MPI_SUM, &
+                                 MPI_COMM_WORLD, MASTER_RANK, MPI_DEFREAL, MPI_SHORTINT
+#endif
   use universalVariables, only : array_pad
   use genericProcedures,  only : fatalError, numToChar
   use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
@@ -9,11 +13,12 @@ module scoreMemory_class
   private
 
   !! Parameters for indexes of per cycle SCORE, Cumulative Sum and Cumulative Sum of squares
-  integer(shortInt), parameter :: CSUM  = 1, &
-                                  CSUM2 = 2
+  integer(shortInt), parameter :: BIN = 1, &
+                                  CSUM  = 2, &
+                                  CSUM2 = 3
 
   !! Size of the 2nd Dimension of bins
-  integer(shortInt), parameter :: DIM2 = 2
+  integer(shortInt), parameter :: DIM2 = 3
 
 
   !!
@@ -59,6 +64,8 @@ module scoreMemory_class
   !!
   !!     getBatchSize(): Returns number of cycles that constitute a single batch.
   !!
+  !!     reduceBins(): Move the scores from parallelBins and different processes to bins.
+  !!
   !! Example use case:
   !!
   !!  do batches=1,20
@@ -79,18 +86,22 @@ module scoreMemory_class
   !!
   type, public :: scoreMemory
       !private
-      real(defReal),dimension(:,:),allocatable :: bins          !! Space for storing cumul data (2nd dim size is always 2!)
-      real(defReal),dimension(:,:),allocatable :: parallelBins  !! Space for scoring for different threads
-      integer(longInt)                         :: N = 0         !! Size of memory (number of bins)
-      integer(shortInt)                        :: nThreads = 0  !! Number of threads used for parallelBins
-      integer(shortInt)                        :: id            !! Id of the tally
-      integer(shortInt)                        :: batchN = 0    !! Number of Batches
-      integer(shortInt)                        :: cycles = 0    !! Cycles counter
-      integer(shortInt)                        :: batchSize = 1 !! Batch interval size (in cycles)
+      real(defReal),dimension(:,:),allocatable :: bins              !! Space for storing cumul data (2nd dim size is always 3!)
+      real(defReal),dimension(:,:),allocatable :: parallelBins      !! Space for scoring for different threads
+      integer(longInt)                         :: N = 0             !! Size of memory (number of bins)
+      integer(shortInt)                        :: nThreads = 0      !! Number of threads used for parallelBins
+      integer(shortInt)                        :: id                !! Id of the tally
+      integer(shortInt)                        :: batchN = 0        !! Number of Batches
+      integer(shortInt)                        :: cycles = 0        !! Cycles counter
+      integer(shortInt)                        :: batchSize = 1     !! Batch interval size (in cycles)
+      logical(defBool)                         :: reduced = .false. !! True if bins have been reduced
+
   contains
+
     ! Interface procedures
     procedure :: init
     procedure :: kill
+    procedure :: resetBin
     generic   :: score      => score_defReal, score_shortInt, score_longInt
     generic   :: accumulate => accumulate_defReal, accumulate_shortInt, accumulate_longInt
     generic   :: getResult  => getResult_withSTD, getResult_withoutSTD
@@ -99,6 +110,8 @@ module scoreMemory_class
     procedure :: closeBin
     procedure :: lastCycle
     procedure :: getBatchSize
+    procedure :: reduceBins
+    procedure :: collectDistributed
 
     ! Private procedures
     procedure, private :: score_defReal
@@ -118,21 +131,22 @@ contains
   !! Allocate space for the bins given number of bins N
   !! Optionaly change batchSize from 1 to any +ve number
   !!
-  subroutine init(self, N, id, batchSize )
+  subroutine init(self, N, id, batchSize, reduced)
     class(scoreMemory),intent(inout)      :: self
     integer(longInt),intent(in)           :: N
     integer(shortInt),intent(in)          :: id
     integer(shortInt),optional,intent(in) :: batchSize
+    logical(defBool),optional,intent(in)  :: reduced
     character(100), parameter :: Here= 'init (scoreMemory_class.f90)'
 
     ! Allocate space and zero all bins
-    allocate( self % bins(N, DIM2))
+    allocate(self % bins(N, DIM2))
     self % bins = ZERO
 
     self % nThreads = ompGetMaxThreads()
 
     ! Note the array padding to avoid false sharing
-    allocate( self % parallelBins(N + array_pad, self % nThreads))
+    allocate(self % parallelBins(N + array_pad, self % nThreads))
     self % parallelBins = ZERO
 
     ! Save size of memory
@@ -146,12 +160,16 @@ contains
     self % cycles    = 0
     self % batchSize = 1
 
-    if(present(batchSize)) then
-      if(batchSize > 0) then
+    if (present(batchSize)) then
+      if (batchSize > 0) then
         self % batchSize = batchSize
       else
         call fatalError(Here,'Batch Size of: '// numToChar(batchSize) //' is invalid')
       end if
+    end if
+
+    if (present(reduced)) then
+      self % reduced = reduced
     end if
 
   end subroutine init
@@ -169,6 +187,27 @@ contains
    self % batchN = 0
 
   end subroutine kill
+
+  !!
+  !! Reset the data of a given memory slot
+  !!
+  subroutine resetBin(self, idx)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt), intent(in)      :: idx
+    character(100),parameter :: Here = 'resetBin (scoreMemory_class.f90)'
+
+    ! Verify bounds for the index
+    if( idx < 0_longInt .or. idx > self % N) then
+      call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
+                            & memory with size '//numToChar(self % N))
+    end if
+
+    ! Reset scores
+    self % bins(idx, BIN)   = ZERO
+    self % bins(idx, CSUM)  = ZERO
+    self % bins(idx, CSUM2) = ZERO
+
+  end subroutine resetBin
 
   !!
   !! Score a result on a given single bin under idx
@@ -277,17 +316,16 @@ contains
     ! Increment Cycle Counter
     self % cycles = self % cycles + 1
 
-    if(mod(self % cycles, self % batchSize) == 0) then ! Close Batch
+    if (mod(self % cycles, self % batchSize) == 0) then ! Close Batch
 
       !$omp parallel do
       do i = 1, self % N
 
         ! Normalise scores
-        self % parallelBins(i,:) = self % parallelBins(i,:) * normFactor
-        res = sum(self % parallelBins(i,:))
+        res = self % bins(i, BIN) * normFactor
 
         ! Zero all score bins
-        self % parallelBins(i,:) = ZERO
+        self % bins(i, BIN) = ZERO
 
         ! Increment cumulative sums
         self % bins(i,CSUM)  = self % bins(i,CSUM) + res
@@ -315,21 +353,20 @@ contains
     character(100),parameter :: Here = 'closeBin (scoreMemory_class.f90)'
 
     ! Verify bounds for the index
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       call fatalError(Here,'Index '//numToChar(idx)//' is outside bounds of &
                             & memory with size '//numToChar(self % N))
     end if
 
     ! Normalise score
-    self % parallelBins(idx, :) = self % parallelBins(idx, :) * normFactor
+    res = self % bins(idx, BIN) * normFactor
 
     ! Increment cumulative sum
-    res = sum(self % parallelBins(idx,:))
     self % bins(idx,CSUM)  = self % bins(idx,CSUM) + res
     self % bins(idx,CSUM2) = self % bins(idx,CSUM2) + res * res
 
     ! Zero the score
-    self % parallelBins(idx,:) = ZERO
+    self % bins(idx, BIN) = ZERO
 
   end subroutine closeBin
 
@@ -357,28 +394,164 @@ contains
   end function getBatchSize
 
   !!
+  !! Combine the bins across threads and processes
+  !!
+  !! NOTE:
+  !!  Need to be called before reporting CycleEnd to the clerks or calling closeCycle.
+  !!  If it is not the case the results will be incorrect. This is not ideal design
+  !!  and probably should be improved in the future.
+  !!
+  subroutine reduceBins(self)
+    class(scoreMemory), intent(inout) :: self
+    integer(longInt)                  :: i
+    character(100),parameter :: Here = 'reduceBins (scoreMemory_class.f90)'
+
+    if (self % lastCycle()) then
+
+      !$omp parallel do
+      do i = 1, self % N
+        self % bins(i, BIN) = sum(self % parallelBins(i,:))
+        self % parallelBins(i,:) = ZERO
+      end do
+      !$omp end parallel do
+
+      ! Reduce across processes
+      ! We use the parallelBins array as a temporary storage
+#ifdef MPI
+      ! Since the number of bins is limited by 64bit signed integer and the
+      ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
+      ! to split the reduction operation into chunks
+      if (self % reduced) then
+        call reduceArray(self % bins(:,BIN), self % parallelBins(:,1))
+      end if
+#endif
+
+    end if
+
+  end subroutine reduceBins
+
+  !!
+  !! Reduce the accumulated results (csum and csum2) from different MPI processes
+  !!
+  !! If the bins are `reduced` (that is, scores are collected at the end of each cycle),
+  !! then this subroutine does nothing. Otherwise it collects the results from different
+  !! processes and stores them in the master process.
+  !!
+  !! The estimates from each process are treated as independent simulation, thus the
+  !! cumulative sums are added together and the batch count is summed.
+  !!
+  subroutine collectDistributed(self)
+    class(scoreMemory), intent(inout) :: self
+#ifdef MPI
+    integer(shortInt)                 :: error, buffer
+
+    if (.not. self % reduced) then
+      ! Reduce the batch count
+      ! Note we need to use size 1 arrays to fit the interface of mpi_reduce, which expects
+      ! to be given arrays
+      call mpi_reduce(self % batchN, buffer, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      if (isMPIMaster()) then
+        self % batchN = buffer
+      else
+        self % batchN = 0
+      end if
+
+      ! Reduce the cumulative sums
+      call reduceArray(self % bins(:,CSUM), self % parallelBins(:,1))
+
+      ! Reduce the cumulative sums of squares
+      call reduceArray(self % bins(:,CSUM2), self % parallelBins(:,1))
+    end if
+
+#endif
+  end subroutine collectDistributed
+
+  !!
+  !! Reduce the array across different processes
+  !!
+  !! Wrapper around MPI_Reduce to support arrays of defReal larger than 2^31
+  !! This function is only defined if MPI is enabled
+  !!
+  !! Args:
+  !!   data [inout] ->  Array with the date to be reduced
+  !!   buffer [inout] -> Buffer to store the reduced data (must be same size or larger than data)
+  !!
+  !! Result:
+  !!   The sum of the data across all processes in stored on master process `data`
+  !!   The buffer is set to ZERO on all processes (only 1:size(data) range)!
+  !!
+  !! Errors:
+  !!   fatalError if size of the buffer is insufficient
+  !!
+#ifdef MPI
+  subroutine reduceArray(data, buffer)
+    real(defReal), dimension(:), intent(inout) :: data
+    real(defReal), dimension(:), intent(inout) :: buffer
+    integer(longInt)                           :: N, chunk, start
+    integer(shortInt)                          :: error
+    character(100),parameter :: Here = 'reduceArray (scoreMemory_class.f90)'
+
+    ! We need to be careful to support sizes larger than 2^31
+    N = size(data, kind = longInt)
+
+    ! Check if the buffer is large enough
+    if (size(buffer, kind = longInt) < N) then
+      call fatalError(Here, 'Buffer is too small to store the reduced data')
+    end if
+
+    ! Since the number of bins is limited by 64bit signed integer and the
+    ! maximum `count` in mpi_reduce call is 32bit signed integer, we may need
+    ! to split the reduction operation into chunks
+    start = 1
+
+    do while (start <= N)
+
+      chunk = min(N - start + 1, int(huge(1_shortInt), longInt))
+      call mpi_reduce(data(start : start + chunk - 1), &
+                      buffer(start : start + chunk - 1), &
+                      int(chunk, shortInt), &
+                      MPI_DEFREAL, &
+                      MPI_SUM, &
+                      MASTER_RANK, &
+                      MPI_COMM_WORLD, &
+                      error)
+
+      start = start + chunk
+
+    end do
+
+    ! Copy the result back to data
+    data = buffer(1:N)
+
+    ! Clean buffer
+    buffer(1:N) = ZERO
+
+  end subroutine reduceArray
+#endif
+
+  !!
   !! Load mean result and Standard deviation into provided arguments
   !! Load from bin indicated by idx
   !! Returns 0 if index is invalid
   !!
   elemental subroutine getResult_withSTD(self, mean, STD, idx, samples)
-    class(scoreMemory), intent(in)         :: self
-    real(defReal), intent(out)             :: mean
-    real(defReal),intent(out)              :: STD
-    integer(longInt), intent(in)           :: idx
-    integer(shortInt), intent(in),optional :: samples
-    integer(shortInt)                      :: N
-    real(defReal)                          :: inv_N, inv_Nm1
+    class(scoreMemory), intent(in)          :: self
+    real(defReal), intent(out)              :: mean
+    real(defReal),intent(out)               :: STD
+    integer(longInt), intent(in)            :: idx
+    integer(shortInt), intent(in), optional :: samples
+    integer(shortInt)                       :: N
+    real(defReal)                           :: inv_N, inv_Nm1
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       STD = ZERO
       return
     end if
 
     ! Check if # of samples is provided
-    if( present(samples)) then
+    if (present(samples)) then
       N = samples
     else
       N = self % batchN
@@ -389,7 +562,7 @@ contains
 
     ! Calculate STD
     inv_N   = ONE / N
-    if( N /= 1) then
+    if (N /= 1) then
       inv_Nm1 = ONE / (N - 1)
     else
       inv_Nm1 = ONE
@@ -405,14 +578,14 @@ contains
   !! Returns 0 if index is invalid
   !!
   elemental subroutine getResult_withoutSTD(self, mean, idx, samples)
-    class(scoreMemory), intent(in)         :: self
-    real(defReal), intent(out)             :: mean
-    integer(longInt), intent(in)           :: idx
-    integer(shortInt), intent(in),optional :: samples
-    integer(shortInt)                      :: N
+    class(scoreMemory), intent(in)          :: self
+    real(defReal), intent(out)              :: mean
+    integer(longInt), intent(in)            :: idx
+    integer(shortInt), intent(in), optional :: samples
+    integer(shortInt)                       :: N
 
     !! Verify index. Return 0 if not present
-    if( idx < 0_longInt .or. idx > self % N) then
+    if (idx < 0_longInt .or. idx > self % N) then
       mean = ZERO
       return
     end if
@@ -438,10 +611,10 @@ contains
     integer(longInt), intent(in)   :: idx
     real(defReal)                  :: score
 
-    if(idx <= 0_longInt .or. idx > self % N) then
+    if (idx <= 0_longInt .or. idx > self % N) then
       score = ZERO
     else
-      score = sum(self % parallelBins(idx, :))
+      score = self % bins(idx, BIN)
     end if
 
   end function getScore

@@ -131,11 +131,11 @@ contains
       case(N_N_ELASTIC)
         self % MT = macroEscatter
 
-      case(N_N_INELASTIC)
-        self % MT = macroIEscatter
+      case(N_NONELASTIC)
+        self % MT = macroNonElastic
 
       case(N_DISAP)
-        self % MT = macroCapture
+        self % MT = macroDisappearance
 
       case(N_FISSION)
         self % MT = macroFission
