@@ -265,7 +265,7 @@ contains
     pTemp = p
     pTemp % collisionN = 0
     do i = 1,n
-      call thisCycle % detain(pTemp)
+      call nextCycle % detain(pTemp)
       call tally % reportSpawn(N_TIME_PROD, p, pTemp)
     end do
     p % isDead = .true.
