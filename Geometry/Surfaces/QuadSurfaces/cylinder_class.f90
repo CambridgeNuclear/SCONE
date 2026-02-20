@@ -2,7 +2,7 @@ module cylinder_class
 
   use numPrecision
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
-  use genericProcedures,  only : fatalError, numToChar, dotProduct
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
 

@@ -678,6 +678,17 @@ Example: ::
 
       surf6 { id 234; type sphere; origin (5.0 86.0 19.4); radius 18.3; }
 
+* quadric: a generic quadratic surface defined by
+  F(x,y,z) = Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Iz + J.
+  
+  - coeffs: (A B C D E F G H I J) vector, following the general equation.
+
+Example: ::
+
+      quad { id 12; type quadric; coeffs (1.0 1.0 1.0 0 0 0 0 0 0 -25); }
+
+This defines a sphere with a radius of 5 cm.
+
 * wedge: wedge with two isosceles triangular bases, parallel between each other, and aligned with the
   x, y or z axis. The input type has to be ``xWedge``, ``yWedge`` or ``zWedge``. The wedge bases
   are characterised by a half opening angle; the wedge can also be arbitrarily rotated around its axis.

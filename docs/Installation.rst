@@ -308,15 +308,28 @@ To generate the library file from the collection of raw ACE files one can use th
 
 .. code-block:: bash
 
-  ./scripts/make_ace_lib.sh /path/lib.xsfile CE ./path_to_ace_files/*.ace
+  ./scripts/make_ace_lib.sh <output> <MODE> <search_keyword> <path_to_base_folder>
 
-To get extra help run the script without any arguments. The ``CE`` letters allow to select between
-searching for continuous energy neutron data cards and thermal scattering S(α,β) cards (SAB mode).
+To get extra help run the script without any arguments. In the line above, <output> is the file that
+will be created; <MODE> can be either ``CE`` for continuous energy neutron data cards and ``SAB`` for
+thermal scattering S(α,β) cards; <search_keyword> will restrict the search to files that include this 
+keyword in their name; <path_to_base_folder> is the path to the folder than contains the ace files. 
+The script can search recursively inside folder structures too. 
+
+Some useful choices for the input <search_keyword> could be: ``ace``, ``nc`` (e.g., for ENDFB/VIII.0), 
+``t`` for thermal scattering data, ``sssth`` for the Serpent thermal scattering file, or ``'*'`` to 
+search all files available in the path specified. Some example calls are:
+
+.. code-block:: bash
+
+  ./scripts/make_ace_lib.sh ./endfb8.aceXS CE nc  ./Lib80x/
+  ./scripts/make_ace_lib.sh ./jeff40.aceXS CE '*' ./JEFF40/
+
 Sadly the script can search only for a single type of card in one pass. Thus to create a full
 library with thermal data we need to do the following:
 
 .. code-block:: bash
 
-  ./scripts/make_ace_lib.sh ./tempCE CE ./path_to_CE_ace_files/*.ace
-  ./scripts/make_ace_lib.sh ./tempSAB SAB ./path_to_SAB_ace_files/*.ace
+  ./scripts/make_ace_lib.sh ./tempCE  CE  ace ./path_to_CE_ace_files/
+  ./scripts/make_ace_lib.sh ./tempSAB SAB t   ./path_to_SAB_ace_files/
   cat tempCE tempSAB > fullLib.xsfile
