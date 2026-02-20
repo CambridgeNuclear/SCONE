@@ -122,6 +122,7 @@ module aceCard_class
     procedure :: LOCBforMT           ! Return LOCB for MT
     procedure :: setToAngleMT        ! Set head to beggining of angular for MT reaction
     procedure :: setToEnergyMT       ! Set head to energy for MT
+    procedure :: setToReleaseMT      ! Set head to release law for MT
     procedure :: LOCCforMT           ! Get Offset of energy law for MT
 
     ! Procedures releted to Elastic Scattering
@@ -354,7 +355,7 @@ contains
   !!
   function getMTs(self) result(MT)
     class(aceCard), intent(in)                        :: self
-    integer(shortInt),dimension(size(self % MTdata))  :: MT
+    integer(shortInt), dimension(size(self % MTdata)) :: MT
 
     MT = self % MTdata(:) % MT
 
@@ -364,11 +365,11 @@ contains
   !! Returns array of scattering MTs. (Secondary particles but not fission)
   !!
   function getScatterMTs(self) result(MT)
-    class(aceCard), intent(in)                      :: self
-    logical(defBool),dimension(size(self % MTdata)) :: mask
-    integer(shortInt),dimension(:),allocatable          :: MT
+    class(aceCard), intent(in)                       :: self
+    logical(defBool), dimension(size(self % MTdata)) :: mask
+    integer(shortInt), dimension(:), allocatable     :: MT
 
-    mask = (self % MTdata % TY /= 19) .and. (.not.self % MTdata % isCapture)
+    mask = (self % MTdata % TY /= 19) .and. (.not. self % MTdata % isCapture)
     MT = pack(self % MTdata % MT, mask)
 
   end function getScatterMTs
@@ -377,9 +378,9 @@ contains
   !! Returns array of capture MTs
   !!
   function getCaptureMTs(self) result(MT)
-    class(aceCard), intent(in)                      :: self
-    logical(defBool),dimension(size(self % MTdata)) :: mask
-    integer(shortInt),dimension(:),allocatable          :: MT
+    class(aceCard), intent(in)                       :: self
+    logical(defBool), dimension(size(self % MTdata)) :: mask
+    integer(shortInt), dimension(:), allocatable     :: MT
 
     mask = self % MTdata % isCapture
     MT = pack(self % MTdata % MT, mask)
@@ -390,9 +391,9 @@ contains
   !! Returns array of fission MTs
   !!
   function getFissionMTs(self) result(MT)
-    class(aceCard), intent(in)                      :: self
-    logical(defBool),dimension(size(self % MTdata)) :: mask
-    integer(shortInt),dimension(:),allocatable          :: MT
+    class(aceCard), intent(in)                       :: self
+    logical(defBool), dimension(size(self % MTdata)) :: mask
+    integer(shortInt), dimension(:), allocatable     :: MT
 
     mask = self % MTdata % TY == 19
     MT = pack(self % MTdata % MT, mask)
@@ -431,7 +432,7 @@ contains
     integer(shortInt)            :: idx
 
     ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       IE = 1
       return
     end if
@@ -454,7 +455,7 @@ contains
     integer(shortInt)            :: idx
 
     ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       N = self % NXS(3)
       return
     end if
@@ -477,7 +478,7 @@ contains
     integer(shortInt)                      :: idx, N_xs, ptr
 
     ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call self % ESZblock(xs,'elasticXS')
       return
     end if
@@ -502,14 +503,14 @@ contains
   !! TY = 19 indicates fission and NU data to be used
   !! TY > 100 indicates anothe NU like table for release (energy dependant yield)
   !!
-  function neutronReleaseMT(self,MT) result(N)
+  function neutronReleaseMT(self, MT) result(N)
     class(aceCard), intent(in)   :: self
     integer(shortInt),intent(in) :: MT
     integer(shortInt)            :: N
     integer(shortInt)            :: idx
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       N = ONE
       return
     end if
@@ -523,14 +524,14 @@ contains
   !!
   !! Returns .true. if the reaction under MT is capture
   !!
-  function isCaptureMT(self,MT) result(isIt)
+  function isCaptureMT(self, MT) result(isIt)
     class(aceCard),intent(in)    :: self
     integer(shortInt),intent(in) :: MT
     logical(defBool)             :: isIt
     integer(shortInt)            :: idx
 
     ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       isIt = .false.
       return
     end if
@@ -547,14 +548,14 @@ contains
   !!
   !! Resturns Q-value for reaction MT
   !!
-  function QforMT(self,MT) result(Q)
+  function QforMT(self, MT) result(Q)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     real(defReal)                 :: Q
     integer(shortInt)             :: idx
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       Q = ZERO
       return
     end if
@@ -569,14 +570,14 @@ contains
   !! Returns .true. is secondary neutron data for a MT reaction
   !! is in Center-of-Mass (CM) frame
   !!
-  function isCMframe(self,MT) result (isIt)
+  function isCMframe(self, MT) result (isIt)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     logical(defBool)              :: isIt
     integer(shortInt)             :: idx
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       isIt = .true.
       return
     end if
@@ -589,9 +590,9 @@ contains
 
   !!
   !! Returns raw LOCB parameter for MT reaction as defined in MCNP Manual
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  function LOCBforMT(self,MT) result(LOCB)
+  function LOCBforMT(self, MT) result(LOCB)
     class(aceCard), intent(in)    :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: LOCB
@@ -599,14 +600,14 @@ contains
     character(100), parameter :: Here='LOCBforMT (aceCard_class.f90)'
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       LOCB = self % LOCBforEscatter()
       return
     end if
 
     idx = self % getMTidx(MT)
 
-    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. No LOCB data.')
+    if (self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. No LOCB data.')
 
     LOCB = self % MTdata(idx) % LOCB
 
@@ -614,23 +615,23 @@ contains
 
   !!
   !! Sets read head to beginning of angular data for reaction MT
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  subroutine setToAngleMT(self,MT)
+  subroutine setToAngleMT(self, MT)
     class(aceCard), intent(inout) :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
     character(100), parameter :: Here='setToAngleMT (aceCard_class.f90)'
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call self % setToAngleEscatter()
       return
     end if
 
     idx = self % getMTidx(MT)
 
-    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Angle data &
+    if (self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Angle data &
                                                              & does not exist')
 
     self % head = self % MTdata(idx) % ANDp
@@ -639,28 +640,50 @@ contains
 
   !!
   !! Sets read head to beginning of energy data for reaction MT
-  !! Returns error is reaction is capture
+  !! Returns error if reaction is capture
   !!
-  subroutine setToEnergyMT(self,MT)
+  subroutine setToEnergyMT(self, MT)
     class(aceCard), intent(inout) :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
     character(100), parameter :: Here='setToEnergyMT (aceCard_class.f90)'
 
    ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call fatalError(Here,'Elastic scattering has no energy law')
       return
     end if
 
     idx = self % getMTidx(MT)
 
-    if(self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
+    if (self % MTdata(idx) % isCapture) call fatalError(Here,'MT reaction is capture. Energy data &
                                                              & does not exist')
 
     self % head = self % MTdata(idx) % LOCC + self % JXS(11) - 1
 
   end subroutine setToEnergyMT
+
+  !!
+  !! Sets read head to beginning of release data for reaction MT
+  !! Returns error if TY of the MT reaction is smaller than 101
+  !!
+  subroutine setToReleaseMT(self, MT)
+    class(aceCard), intent(inout) :: self
+    integer(shortInt), intent(in) :: MT
+    integer(shortInt)             :: idx
+    character(100), parameter :: Here='setToReleaseMT (aceCard_class.f90)'
+
+    idx = self % getMTidx(MT)
+
+   ! Throw error if TY is smaller than 101
+    if (self % MTdata(idx) % TY < 101) then
+      call fatalError(Here,'TY number for MT reaction '//numToChar(MT)//' is smaller than 101.')
+      return
+    end if
+
+    self % head = self % JXS(11) + self % MTdata(idx) % TY - 101
+
+  end subroutine setToReleaseMT
 
   !!
   !! Returns LOCC paramter for energy law related to MT reaction
@@ -681,7 +704,7 @@ contains
     character(100), parameter :: Here = 'LOCCforMT (aceCard_class.f90)'
 
        ! Special case for elastic scattering
-    if( MT == N_N_elastic) then
+    if (MT == N_N_elastic) then
       call fatalError(Here,'Elastic scattering has no energy law and LOCC')
       locc = 0 ! Avoid Compiler Warning
       return
@@ -704,7 +727,7 @@ contains
 
     ptr = self % JXS(8)
 
-    LOCB = real2Int( self % XSS(ptr),Here)
+    LOCB = real2Int(self % XSS(ptr), Here)
 
   end function LOCBforEscatter
 
@@ -727,7 +750,7 @@ contains
     integer(shortInt)          :: IE
     character(100), parameter  :: Here='firstIdxFiss (aceCard_class.f90)'
 
-    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    if (.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
     IE = self % fissIE
 
   end function firstIdxFiss
@@ -741,7 +764,7 @@ contains
     integer(shortInt)          :: N
     character(100), parameter  :: Here='numXsPointsFiss (aceCard_class.f90)'
 
-    if(.not.self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    if (.not.self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
     N = self % fissNE
 
   end function numXsPointsFiss
@@ -756,7 +779,7 @@ contains
     integer(shortInt)                      :: ptr, N
     character(100), parameter  :: Here='xsFiss(aceCard_class.f90)'
 
-    if(self % isFiss) then
+    if (self % isFiss) then
       ! Get number of XS points
       N = self % fissNE
 
@@ -823,7 +846,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    if (.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
     doesIt = (self % promptNUp /= unINIT)
 
   end function hasNuPrompt
@@ -838,7 +861,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    if (.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
     doesIt = (self % totalNUp /= unINIT)
 
   end function hasNuTotal
@@ -852,7 +875,7 @@ contains
     logical(defBool)           :: doesIt
     character(100), parameter  :: Here='hasNuPrompt(aceCard_class.f90)'
 
-    if(.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
+    if (.not. self % isFiss) call fatalError(Here,'Nuclide: ' // self % ZAID //' is not fissile')
     doesIt = (self % delayNUp /= unINIT)
 
   end function hasNuDelayed
@@ -867,7 +890,7 @@ contains
     class(aceCard), intent(inout) :: self
     character(100),parameter :: Here ='setToNuPromt (aceCard_class.f90)'
 
-    if(self % hasNuPrompt()) then
+    if (self % hasNuPrompt()) then
       self % head = self % promptNUp
 
     else
@@ -887,7 +910,7 @@ contains
     class(aceCard), intent(inout) :: self
     character(100),parameter :: Here ='setToNuTotal (aceCard_class.f90)'
 
-    if(self % hasNuTotal()) then
+    if (self % hasNuTotal()) then
       self % head = self % totalNUp
 
     else
@@ -906,7 +929,7 @@ contains
     class(aceCard), intent(inout) :: self
     character(100),parameter :: Here ='setToNuDelayed (aceCard_class.f90)'
 
-    if(self % hasNuDelayed()) then
+    if (self % hasNuDelayed()) then
       self % head = self % delayNUp
 
     else
@@ -927,7 +950,7 @@ contains
     class(aceCard), intent(inout) :: self
     character(100), parameter :: Here = 'setToPrecursors (aceCard_class.f90)'
 
-    if(self % JXS(25) /= 0) then
+    if (self % JXS(25) /= 0) then
       self % head = self % JXS(25)
 
     else
@@ -953,10 +976,10 @@ contains
     character(100),parameter :: Here = 'setToPrecursorEnergy (aceCard_class.f90)'
 
     ! Validate N
-    if( N < 1) then
+    if (N < 1) then
       call fatalError(Here,trim(self % ZAID) //' Precursor group index must be non-negative. &
                            & Was: '//numToChar(N))
-    else if( N > self % NXS(8)) then
+    else if (N > self % NXS(8)) then
       call fatalError(Here,trim(self % ZAID) // 'N is to large. Was given' // numToChar(N) // &
                            ' with only ' // numToChar(self % NXS(8)) // ' groups present')
     end if
@@ -985,7 +1008,7 @@ contains
     character(100), parameter :: Here = 'LOCCforPrecursor (aceCard_class.f90)'
 
     ! Check invalid N
-    if ( N < 1 .or. N > self % NXS(8)) then
+    if (N < 1 .or. N > self % NXS(8)) then
       call fatalError(Here, trim(self % ZAID)//' Invalid precursor group: '//numToChar(N))
       locc = 0
     end if
@@ -1062,7 +1085,7 @@ contains
     pos = root + offset - 1
 
     ! Validate position
-    if(pos < 1 .or. pos > self % NXS(1)) then
+    if (pos < 1 .or. pos > self % NXS(1)) then
       call fatalError(Here,trim(self % ZAID)//' position reached outside the bounds')
     end if
 
@@ -1080,7 +1103,7 @@ contains
     character(100),parameter :: Here ='readInt (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     i = real2Int(self % XSS(self % head),Here)
@@ -1099,7 +1122,7 @@ contains
     character(100),parameter :: Here ='readReal (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     r = self % XSS(self % head)
@@ -1121,7 +1144,7 @@ contains
     character(100),parameter :: Here ='readIntArray (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     ptr = self % head
@@ -1143,7 +1166,7 @@ contains
     character(100),parameter :: Here ='readRealArray (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     ptr = self % head
@@ -1163,7 +1186,7 @@ contains
     character(100),parameter   :: Here ='readIntNotAdvance (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     i = real2Int(self % XSS(self % head),Here)
@@ -1179,7 +1202,7 @@ contains
     character(100),parameter   :: Here ='readRealNotAdvance (aceCard_class.f90)'
 
     ! Check head status
-    if(self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
+    if (self % head <= 0) call fatalError(Here,'Reading with unset (not +ve) head')
 
     ! Read value
     r = self % XSS(self % head)
@@ -1271,7 +1294,7 @@ contains
 
     ! Clean Previous MT-related data
     ! Necessary to ensure that reloading is correct
-    if(allocated(self % MTdata)) deallocate(self % MTdata)
+    if (allocated(self % MTdata)) deallocate(self % MTdata)
 
     ! Get number of MT reaction
     NMT  = self % NXS(4)
@@ -1282,7 +1305,7 @@ contains
 
     ! Load all MT numbers
     ptr = self % JXS(3)
-    self % MTdata(:) % MT = real2Int( self % XSS(ptr : ptr+NMT-1),Here )
+    self % MTdata(:) % MT = real2Int(self % XSS(ptr : ptr+NMT-1), Here)
 
     ! Load all Q-values
     ptr = self % JXS(4)
@@ -1290,52 +1313,51 @@ contains
 
     ! Load all raw TY values
     ptr = self % JXS(5)
-    self % MTdata(:) % TY = real2Int( self % XSS(ptr : ptr+NMT-1),Here )
+    self % MTdata(:) % TY = real2Int(self % XSS(ptr : ptr+NMT-1), Here)
 
     ! Set coordinate frame for MT
     ! If raw TY is -ve, set CMframe to .true. and convert TY to +ve
-    do i=1,NMT
-      if( self % MTdata(i) % TY < 0 ) then
+    do i = 1, NMT
+      if (self % MTdata(i) % TY < 0) then
         self % MTdata(i) % TY        = abs(self % MTdata(i) % TY)
         self % MTdata(i) % CMframe   = .true.
         self % MTdata(i) % isCapture = .false.
 
-      else if(self % MTdata(i) % TY == 0) then
+      else if (self % MTdata(i) % TY == 0) then
         self % MTdata(i) % isCapture = .true.
 
       else
         self % MTdata(i) % CMframe   = .false.
         self % MTdata(i) % isCapture = .false.
-
       end if
     end do
 
     ! Load raw pointers to XS data (LOCA in MCNP Manual)
     ptr = self % JXS(6)
-    self % MTdata(:) % XSp = real2Int( self % XSS(ptr : ptr+NMT-1),Here )
+    self % MTdata(:) % XSp = real2Int(self % XSS(ptr : ptr+NMT-1), Here)
 
     ! Change relation if raw XS pointers to XSS table (from SIG block)
     self % MTdata(:) % XSp = self % MTdata(:) % XSp + self % JXS(7)
 
     ! Load number of xs points
-    do i=1,NMT
-      self % MTdata(i) % N_xs = real2Int( self % XSS( self % MTdata(i) % XSp),Here)
+    do i = 1, NMT
+      self % MTdata(i) % N_xs = real2Int(self % XSS( self % MTdata(i) % XSp), Here)
     end do
 
     ! Load first energy grid index for MT reactions
-    do i=1,NMT
-      self % MTdata(i) % IE = real2Int( self % XSS( self % MTdata(i) % XSp-1),Here)
+    do i = 1, NMT
+      self % MTdata(i) % IE = real2Int(self % XSS( self % MTdata(i) % XSp-1), Here)
     end do
 
-    ! Move XS pointer to point to first entery with XS data
+    ! Move XS pointer to point to first entry with XS data
     self % MTdata(:) % XSp = self % MTdata(:) % XSp + 1
 
     ! Read LOCB data in LAND block
     ptr = self % JXS(8) + 1
-    self % MTdata(1:NMTs) % LOCB = real2Int( self % XSS(ptr : ptr+NMTs-1),Here )
+    self % MTdata(1:NMTs) % LOCB = real2Int(self % XSS(ptr : ptr+NMTs-1), Here)
 
     ! Assign pointers to angular distribution data
-    do i=1,NMTs
+    do i = 1, NMTs
       ! Read LOCB
       LOCB = self % MTdata(i) % LOCB
 
@@ -1360,7 +1382,7 @@ contains
 
     ! Read raw LOCC parameters (locators of energy distibutions on DLW block - MCNP manual)
     ptr = self % JXS(10)
-    self % MTdata(1:NMTs) % LOCC = real2Int( self % XSS(ptr : ptr+NMTs-1),Here )
+    self % MTdata(1:NMTs) % LOCC = real2Int(self % XSS(ptr : ptr+NMTs-1), Here)
 
   end subroutine setMTdata
 
@@ -1419,7 +1441,7 @@ contains
     end if
 
     ! Read data related to deleyed neutron emissions
-    if(self % JXS(24) > 0 ) then ! Delayd NU data is present
+    if (self % JXS(24) > 0) then ! Delayed NU data is present
       self % delayNUp = self % JXS(24)
 
     end if
@@ -1544,14 +1566,14 @@ contains
   !!
   !! Returns index of a given MT reaction in MTdata table
   !!
-  function getMTidx(self,MT) result(idx)
+  function getMTidx(self, MT) result(idx)
     class(aceCard),intent(in)     :: self
     integer(shortInt), intent(in) :: MT
     integer(shortInt)             :: idx
     character(100),parameter :: Here = 'getMTidx ( aceCard_class.f90)'
 
-    idx = linFind( self % MTdata(:) % MT, MT)
-    if(idx == targetNotFound) call fatalError(Here,'Given MT is not present in ACE card')
+    idx = linFind(self % MTdata(:) % MT, MT)
+    if (idx == targetNotFound) call fatalError(Here,'Given MT is not present in ACE card')
     call searchError(idx,Here)
 
   end function getMTidx

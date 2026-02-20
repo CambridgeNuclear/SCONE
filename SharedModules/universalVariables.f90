@@ -49,8 +49,8 @@ module universalVariables
   integer(shortInt), parameter :: OUTSIDE_FILL = 0,  &
                                   materialFill = 1, &
                                   universeFill = 2, &
-                                  latticeFill  = 3 
-                          
+                                  latticeFill  = 3
+
   ! Define integers for boundary condition types
   integer(shortInt), parameter :: VACUUM_BC     = 0, &
                                   REFLECTIVE_BC = 1, &
@@ -78,8 +78,8 @@ module universalVariables
                                   TRACKING_XS = 3
   
   ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e+8            ! Convert shakes to s
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal ,& ! Convert MeV to J
+                              shakesPerS   = 1.0e+8_defReal         ! Convert shakes to s
 
   ! Physical constants
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
@@ -96,5 +96,10 @@ module universalVariables
   ! Flags associated with fields
   real(defReal), parameter :: NO_TEMPERATURE = -INF, &
                               NO_DENSITY = -INF
+  
+  ! Flag to indicate source file format
+  integer(shortInt), parameter, public :: NO_PRINTING = 0, &
+                                          ASCII_FILE  = 1, &
+                                          BINARY_FILE = 2
 
 end module universalVariables

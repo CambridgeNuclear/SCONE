@@ -104,12 +104,14 @@ contains
     ! If present, build temperature and density fields
     if (dict % isPresent('temperature')) then
       tempDict => dict % getDictPtr('temperature')
-      call new_pieceConstantField(self % temperatureField, tempDict)
+      !call new_pieceConstantField(self % temperatureField, tempDict)
+      call new_field(tempField, tempDict)
     end if
 
     if (dict % isPresent('density')) then
       tempDict => dict % getDictPtr('density')
-      call new_pieceConstantField(self % densityField, tempDict)
+      !call new_pieceConstantField(self % densityField, tempDict)
+      call new_field(self % densityField, tempDict)
     end if
 
   end subroutine init

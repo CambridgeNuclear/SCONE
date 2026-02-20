@@ -39,7 +39,6 @@ contains
     call mapDict % store('type','testMap')
     call mapDict % store('maxIdx',3)
 
-
     ! Build intput dictionary
     call dict % init(2)
     call dict % store('type','simpleFMClerk')
@@ -48,9 +47,9 @@ contains
     name = 'testClerk'
     call this % clerk % init(dict,name)
 
-
     call mapDict % kill()
     call dict % kill()
+
   end subroutine setUp
 
   !!
@@ -82,7 +81,6 @@ contains
     real(defReal)                            :: val
     class(tallyResult), allocatable          :: res
     real(defReal), parameter :: TOL = 1.0E-7
-
 
     ! Create score memory
     call mem % init(int(this % clerk % getSize(), longInt) , 1, batchSize = 1)
@@ -123,7 +121,8 @@ contains
     p % preHistory % matIdx = 1
     call this % clerk % reportInColl(p, xsData, mem, .false.)
 
-    call this % clerk % reportCycleEnd(pop, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pop, mem)
 
     ! Close cycle
     call mem % closeCycle(ONE)
@@ -131,24 +130,25 @@ contains
     ! Verify results
 
     ! Fission matrix
+    ! Result indexes start from 3_longInt
     ! 1 -> 1 Transition
-    call mem % getResult(val, 1_longInt)
+    call mem % getResult(val, 4_longInt)
     @assertEqual(1.818181818181_defReal ,val, TOL)
 
     ! 1 -> 2 Transition
-    call mem % getResult(val, 2_longInt)
+    call mem % getResult(val, 5_longInt)
     @assertEqual(ZERO, val, TOL)
 
     ! 1 -> 3 Transition
-    call mem % getResult(val, 3_longInt)
+    call mem % getResult(val, 6_longInt)
     @assertEqual(ZERO, val, TOL)
 
     ! 2 -> 1 Transition
-    call mem % getResult(val, 4_longInt)
+    call mem % getResult(val, 7_longInt)
     @assertEqual(2.0_defReal, val, TOL)
 
     ! 2 -> 2 Transition
-    call mem % getResult(val, 5_longInt)
+    call mem % getResult(val, 8_longInt)
     @assertEqual(1.27272727272727_defReal, val, TOL)
 
     ! Verify run-time result
@@ -185,7 +185,7 @@ contains
     select type(res)
       class is (FMresult)
         ! 1 -> 1 Transition
-        @assertEqual(1.818181818181_defReal ,res % FM(1,1,1) , TOL)
+        @assertEqual(1.818181818181_defReal, res % FM(1,1,1), TOL)
 
         ! Change size of matrix
         res % N = 2
@@ -193,6 +193,7 @@ contains
         allocate(res % FM(2,2,1))
 
     end select
+
     ! Get result yet again. This time with wrong size
     call this % clerk % getResult(res, mem)
 

@@ -152,7 +152,7 @@ contains
       case(N_N_inelastic, macroIEScatter)
         call self % inelastic(p, tally, collDat, thisCycle, nextCycle)
 
-      case(N_DISAP, macroCapture)
+      case(N_DISAP, macroDisappearance)
         call self % capture(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_FISSION, macroFission)

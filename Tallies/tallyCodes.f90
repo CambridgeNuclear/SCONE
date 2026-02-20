@@ -17,7 +17,8 @@ module tallyCodes
                                         spawn_CODE      = 1004 ,&
                                         hist_CODE       = 1005 ,&
                                         cycleStart_CODE = 1006 ,&
-                                        cycleEnd_CODE   = 1007
+                                        cycleEnd_CODE   = 1007 ,&
+                                        closeCycle_CODE = 1008
 
   ! List of codes for diffrent particle fates
   integer(shortInt),parameter,public :: no_FATE   = 5000 ,&
