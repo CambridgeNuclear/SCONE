@@ -63,8 +63,7 @@ contains
       sigmaT = ZERO
     else
       ! Get local conditions
-      p % T = self % geom % getTemperature(p % coords)
-      p % rho  = self % geom % getDensity(p % coords)
+      call self % localConditions(p)
       
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
     end if
@@ -150,8 +149,7 @@ contains
       end if
 
       ! Get local conditions
-      p % T = self % geom % getTemperature(p % coords)
-      p % rho  = self % geom % getDensity(p % coords)
+      call self % localConditions(p)
       
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
@@ -189,8 +187,7 @@ contains
     STLoop: do
       
       ! Get local conditions
-      p % T = self % geom % getTemperature(p % coords)
-      p % rho  = self % geom % getDensity(p % coords)
+      call self % localConditions(p)
       
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 

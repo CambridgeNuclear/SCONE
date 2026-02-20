@@ -57,7 +57,6 @@ module cartesianField_class
     real(defReal), dimension(3)     :: corner = ZERO
     real(defReal), dimension(3)     :: a_bar  = ZERO
     type(box)                       :: outline
-    integer(shortInt)               :: outLocalID = 0
     
     integer(shortInt)                            :: nMat = 0
     integer(shortInt), dimension(:), allocatable :: matIdxs
@@ -164,7 +163,6 @@ contains
     end if
 
     ! Size field value array
-    self % outLocalID = product(self % sizeN)
     self % N = product(self % sizeN * self % nMat)
     allocate(self % val(self % N + 1))
 
@@ -241,9 +239,7 @@ contains
     if (any(self % matIdxs == coords % matIdx)) then
       idx0 = findloc(self % matIdxs, coords % matIdx, 1)
       idx = idx + (idx0 - 1) * product(self % sizeN)
-    else if (self % matIdxs(1) == ALL_MATS) then
-      idx = idx
-    else
+    else if (self % matIdxs(1) /= ALL_MATS) then
       idx = 0
     end if
 
@@ -351,7 +347,6 @@ contains
     self % nMat = 0
     self % corner = ZERO
     self % a_bar  = ZERO
-    self % outLocalID = 0
     call self % outline % kill()
 
   end subroutine kill

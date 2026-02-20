@@ -10,7 +10,6 @@ module fieldMap_class
 
   ! Field
   use pieceConstantField_inter,       only : pieceConstantField
-  use pieceConstantFieldFactory_func, only : new_pieceConstantField
 
   implicit none
   private
@@ -69,9 +68,10 @@ contains
     class(dictionary), intent(in)  :: dict
     class(dictionary),pointer      :: tempDict
 
-    tempDict => dict % getDictPtr('field')
-    call new_pieceConstantField(self % field, tempDict)
-    self % Nbins = self % field % getSize()
+    ! UNDO ME
+    !tempDict => dict % getDictPtr('field')
+    !call new_pieceConstantField(self % field, tempDict)
+    !self % Nbins = self % field % getSize()
 
   end subroutine init
 

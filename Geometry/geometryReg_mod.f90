@@ -20,9 +20,10 @@
 !!   geomIdx  -> Get index of the geometry
 !!   geomPtr  -> Get pointer to a geometry with an index
 !!   addField -> Add new field
+!!   hasField -> Does the field with a given name exist?
 !!   fieldIdx -> Get index of a field
 !!   fieldPtr -> Get pointer to a field specified by index
-!!   display  -> Display info abou defined fields and geometries
+!!   display  -> Display info about defined fields and geometries
 !!   kill     -> Return to uninitialised state
 !!
 module geometryReg_mod
@@ -66,6 +67,7 @@ module geometryReg_mod
   public :: addField
   public :: fieldIdx
   public :: fieldPtr
+  public :: hasField
   public :: kill
 
   integer(shortInt), parameter :: START_SIZE = 5
@@ -230,6 +232,26 @@ contains
     call move_alloc(kentta, fields(idx) % kentta)
 
   end subroutine addField
+  
+  !!
+  !! Returns whether a field is present
+  !!
+  !! Args:
+  !!   name [in] -> Name of the field
+  !!
+  !! Result:
+  !!   Logical stating whether the field exists
+  !!
+  pure function hasField(name) result(exists)
+    character(nameLen), intent(in) :: name
+    logical(defBool)               :: exists
+    integer(shortInt), parameter   :: NOT_PRESENT = -8
+    integer(shortInt)              :: idx
+
+    idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
+    exists = (idx /= NOT_PRESENT)
+
+  end function hasField
 
   !!
   !! Get index of a field given its name

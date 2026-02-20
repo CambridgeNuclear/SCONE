@@ -43,10 +43,6 @@ module geometry_inter
     procedure(moveGlobal), deferred      :: moveGlobal
     procedure(teleport), deferred        :: teleport
     procedure(activeMats), deferred      :: activeMats
-    procedure(getTemperature), deferred  :: getTemperature
-    procedure(getDensity), deferred      :: getDensity
-    procedure(getMaxDensityFactor), deferred :: getMaxDensityFactor
-    procedure(getMaxTemperature), deferred   :: getMaxTemperature
 
     ! Common procedures
     procedure :: slicePlot
@@ -265,72 +261,6 @@ module geometry_inter
       class(geometry), intent(in)                  :: self
       integer(shortInt), dimension(:), allocatable :: matList
     end function activeMats
-
-    !!
-    !! Returns the temperature at a position in space.
-    !!
-    !! Args:
-    !!   coords
-    !!
-    !! Result:
-    !!   Temperature at a given location. If this information has not been provided
-    !!   to the geometry then a default result should be returned.
-    !!
-    function getTemperature(self, coords) result(T)
-      import :: geometry, coordList, defReal
-      class(geometry), intent(in) :: self
-      type(coordList), intent(in) :: coords
-      real(defReal)               :: T
-    end function getTemperature
-    
-    !!
-    !! Returns the density at a position in space.
-    !!
-    !! Args:
-    !!   coords
-    !!
-    !! Result:
-    !!   Density at a given location. If this information has not been provided
-    !!   to the geometry then a default result should be returned.
-    !!
-    function getDensity(self, coords) result(rho)
-      import :: geometry, coordList, defReal
-      class(geometry), intent(in) :: self
-      type(coordList), intent(in) :: coords
-      real(defReal)               :: rho
-    end function getDensity
-    
-    !!
-    !! Returns the maximum density scaling factor across the system.
-    !! Used for updating the majorant, for example.
-    !!
-    !! Args:
-    !!
-    !! Result:
-    !!   Maximum density scaling factor due to imposed field. If there is no density
-    !!   scaling then the result is ONE
-    !!
-    function getMaxDensityFactor(self) result(rho)
-      import :: geometry, defReal
-      class(geometry), intent(in) :: self
-      real(defReal)               :: rho
-    end function getMaxDensityFactor
-    
-    !!
-    !! Returns the maximum temperature in kelvin across the system.
-    !! Used for updating the majorant, for example.
-    !!
-    !! Args:
-    !!
-    !! Result:
-    !!   Maximum temperature due to imposed field. If there is no temperature
-    !!   field then the result is -ONE
-    !!
-    function getMaxTemperature(self) result(temp)
-      import :: geometry, defReal
-      class(geometry), intent(in) :: self
-      real(defReal)               :: temp
-    end function getMaxTemperature
 
   end interface
 

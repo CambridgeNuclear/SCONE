@@ -30,11 +30,14 @@ module fixedSourcePhysicsPackage_class
 
   ! Geometry
   use geometry_inter,                 only : geometry
-  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx
+  use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
   use geometryFactory_func,           only : new_geometry
 
   ! Fields
   use fieldFactory_func,              only : new_field
+  use field_inter,                    only : field
+  use pieceConstantField_inter,       only : pieceConstantField, pieceConstantField_CptrCast
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -331,6 +334,8 @@ contains
     character(nameLen)                              :: nucData, energy, geomName
     type(outputFile)                                :: test_out
     type(visualiser)                                :: viz
+    class(field), pointer                           :: field
+    class(pieceConstantField), pointer              :: pcField
     real(defReal)                                   :: maxTemperature, maxDensityScale
     character(100), parameter :: Here ='init (fixedSourcePhysicsPackage_class.f90)'
 
@@ -410,9 +415,29 @@ contains
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
     
+    ! If present, build temperature field
+    if (dict % isPresent('temperature')) then
+      tempDict => dict % getDictPtr('temperature')
+      call new_field(tempDict, nameTemperature)
+      field => gr_fieldPtr(gr_fieldIdx(nameTemperature))
+      pcField => pieceConstantField_CptrCast(field)
+      maxTemperature = pcField % getMaxValue()
+    else
+      maxTemperature = NO_TEMPERATURE
+    end if
+
+    ! If present, build density field
+    if (dict % isPresent('density')) then
+      tempDict => dict % getDictPtr('density')
+      call new_field(tempDict, nameDensity)
+      field => gr_fieldPtr(gr_fieldIdx(nameDensity))
+      pcField => pieceConstantField_CptrCast(field)
+      maxDensityScale = pcField % getMaxValue()
+    else
+      maxDensityScale = NO_DENSITY
+    end if
+    
     ! Update majorant in case of density and temperature fields
-    maxDensityScale = self % geom % getMaxDensityFactor()
-    maxTemperature = self % geom % getMaxTemperature()
     call self % nucData % initMajorant(.false., maxTemp = maxTemperature, scaleDensity = maxDensityScale)
 
     ! Call visualisation

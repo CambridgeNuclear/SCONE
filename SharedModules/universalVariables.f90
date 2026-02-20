@@ -90,8 +90,10 @@ module universalVariables
                               kBoltzmannMeV = kBoltzmann / joulesPerMeV
 
   ! Global name variables used to define specific geometry or field types
-  character(nameLen), parameter :: nameUFS  = 'uniFissSites'
-  character(nameLen), parameter :: nameWW   = 'WeightWindows'
+  character(nameLen), parameter :: nameUFS          = 'uniFissSites'
+  character(nameLen), parameter :: nameWW           = 'WeightWindows'
+  character(nameLen), parameter :: nameTemperature  = 'temperature'
+  character(nameLen), parameter :: nameDensity      = 'density'
 
   ! Flags associated with fields
   real(defReal), parameter :: NO_TEMPERATURE = -INF, &

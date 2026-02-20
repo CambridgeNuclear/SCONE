@@ -43,12 +43,11 @@ module pieceConstantField_inter
     real(defReal), dimension(:), allocatable   :: val
     integer(shortInt)                          :: N = 0
   contains
-    procedure(init_dict), deferred :: init_dict
-    procedure(distance), deferred  :: distance
-    procedure(map), deferred       :: map
+    procedure(init_dict), deferred, private :: init_dict
+    procedure(distance), deferred           :: distance
+    procedure(map), deferred                :: map
     
     procedure :: init
-    procedure :: init_file
     procedure :: map_particle
     procedure :: setValue
     procedure :: getMaxValue
@@ -118,32 +117,18 @@ contains
     class(pieceConstantField), intent(inout) :: self
     class(dictionary), intent(in)            :: dict
     character(pathLen)                       :: path
+    class(dictionary), pointer               :: tempDict
 
     if (dict % isPresent('path')) then
       call dict % get(path, 'path')
-      call self % init_file(path)
+      call fileToDict(tempDict, path)
+      call self % init_dict(tempDict)
     else
       call self % init_dict(dict)
     end if
 
   end subroutine init
   
-  !!
-  !! Initialise field from a file
-  !!
-  !! Args:
-  !!   file [in] -> Path to a file containing the field definition
-  !!
-  subroutine init_file(self, path)
-    class(pieceConstantField), intent(inout) :: self
-    character(pathLen), intent(in)           :: path
-    type(dictionary)                         :: dict
-
-    call fileToDict(dict, path)
-    call self % init(dict)
-
-  end subroutine init_file
-
   !!
   !! Cast field pointer to pieceConstantField pointer
   !!
