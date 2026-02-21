@@ -43,7 +43,7 @@ contains
   !!   name [in]   -> Name of the field for the geometry registry
   !!
   !! Errors:
-  !!   fatalError is type of field is unknown
+  !!   fatalError if type of field is unknown
   !!
   subroutine new_field(dict, name)
     class(dictionary), intent(in)  :: dict
@@ -86,6 +86,5 @@ contains
     call gr_addField(kentta, name)
 
   end subroutine new_field
-
-
+  
 end module fieldFactory_func

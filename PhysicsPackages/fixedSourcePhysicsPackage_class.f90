@@ -31,7 +31,8 @@ module fixedSourcePhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
-                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
+                                             gr_fieldPtrName => fieldPtrName
   use geometryFactory_func,           only : new_geometry
 
   ! Fields
@@ -419,7 +420,7 @@ contains
     if (dict % isPresent('temperature')) then
       tempDict => dict % getDictPtr('temperature')
       call new_field(tempDict, nameTemperature)
-      field => gr_fieldPtr(gr_fieldIdx(nameTemperature))
+      field => gr_fieldPtrName(nameTemperature)
       pcField => pieceConstantField_CptrCast(field)
       maxTemperature = pcField % getMaxValue()
     else
@@ -430,7 +431,7 @@ contains
     if (dict % isPresent('density')) then
       tempDict => dict % getDictPtr('density')
       call new_field(tempDict, nameDensity)
-      field => gr_fieldPtr(gr_fieldIdx(nameDensity))
+      field => gr_fieldPtrName(nameDensity)
       pcField => pieceConstantField_CptrCast(field)
       maxDensityScale = pcField % getMaxValue()
     else

@@ -13,7 +13,6 @@ add_sources(./tallyMap_inter.f90
             ./Maps1D/weightMap_class.f90
             ./Maps1D/cellMap_class.f90
 	    ./Maps1D/radialMap_class.f90
-	    ./Maps1D/fieldMap_class.f90
 	    ./Maps1D/timeMap_class.f90
             ./Maps1D/collNumMap_class.f90
             ./Maps1D/directionMap_class.f90
@@ -29,7 +28,6 @@ add_unit_tests(./Tests/multiMap_test.f90
                ./Maps1D/Tests/homogMatMap_test.f90
                ./Maps1D/Tests/radialMap_test.f90
                ./Maps1D/Tests/cellMap_test.f90
-               ./Maps1D/Tests/fieldMap_test.f90
                ./Maps1D/Tests/timeMap_test.f90
                ./Maps1D/Tests/collNumMap_test.f90
                ./Maps1D/Tests/directionMap_test.f90)

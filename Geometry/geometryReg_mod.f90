@@ -16,28 +16,30 @@
 !!   fieldNameMap    -> Map of field names to idx
 !!
 !! Interface:
-!!   addGeom  -> Add new geometry
-!!   geomIdx  -> Get index of the geometry
-!!   geomPtr  -> Get pointer to a geometry with an index
-!!   addField -> Add new field
-!!   hasField -> Does the field with a given name exist?
-!!   fieldIdx -> Get index of a field
-!!   fieldPtr -> Get pointer to a field specified by index
-!!   display  -> Display info about defined fields and geometries
-!!   kill     -> Return to uninitialised state
+!!   addGeom      -> Add new geometry
+!!   geomIdx      -> Get index of the geometry
+!!   geomPtr      -> Get pointer to a geometry with an index
+!!   addField     -> Add new field
+!!   hasField     -> Does the field with a given name exist?
+!!   fieldIdx     -> Get index of a field
+!!   fieldPtr     -> Get pointer to a field specified by index
+!!   fieldPtrName -> Get pointer to a field specified by name, for select names
+!!   display      -> Display info about defined fields and geometries
+!!   kill         -> Return to uninitialised state
 !!
 module geometryReg_mod
 
   use numPrecision
-  use genericProcedures, only : fatalError, numToChar
-  use dictionary_class,  only : dictionary
-  use charMap_class,     only : charMap
+  use genericProcedures,  only : fatalError, numToChar
+  use universalVariables, only : nameTemperature, nameDensity
+  use dictionary_class,   only : dictionary
+  use charMap_class,      only : charMap
 
   ! Geometry
-  use geometry_inter,    only : geometry
+  use geometry_inter,     only : geometry
 
   ! Fields
-  use field_inter,       only : field
+  use field_inter,        only : field
 
   implicit none
   private
@@ -67,6 +69,7 @@ module geometryReg_mod
   public :: addField
   public :: fieldIdx
   public :: fieldPtr
+  public :: fieldPtrName
   public :: hasField
   public :: kill
 
@@ -81,6 +84,10 @@ module geometryReg_mod
   type(fieldBox), dimension(:), allocatable, target :: fields
   integer(shortInt)                                 :: fieldTop = 0
   type(charMap)                                     :: fieldNameMap
+    
+  ! Save indices for speed. Avoids repeated calls to the character map
+  integer(shortInt)         :: temperatureIdx = -8
+  integer(shortInt)         :: densityIdx = -8
 
 contains
 
@@ -228,6 +235,13 @@ contains
     call fieldNameMap % add(name, idx)
     fields(idx) % name = name
 
+    ! Save density or temperature indices for speed
+    if (name == nameTemperature) then
+      temperatureIdx = idx
+    elseif (name == nameDensity) then
+      densityIdx = idx
+    end if
+
     ! Point field
     call move_alloc(kentta, fields(idx) % kentta)
 
@@ -248,7 +262,15 @@ contains
     integer(shortInt), parameter   :: NOT_PRESENT = -8
     integer(shortInt)              :: idx
 
-    idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
+    select case(name)
+      case(nameTemperature)
+        idx = temperatureIdx
+      case(nameDensity)
+        idx = densityIdx
+      case default 
+        idx = fieldNameMap % getOrDefault(name, NOT_PRESENT)
+    end select
+
     exists = (idx /= NOT_PRESENT)
 
   end function hasField
@@ -277,6 +299,46 @@ contains
     end if
 
   end function fieldIdx
+  
+  !!
+  !! Get pointer to a field given its name
+  !! Optimised for frequently accessed fields to avoid
+  !! the relatively slow character map
+  !!
+  !! Args:
+  !!   name [in] -> Name of the field
+  !!
+  !! Result:
+  !!   Pointer to the field with the name
+  !!
+  !! Errors:
+  !!   fatalError if name was not defined or
+  !!   an unrecognised name was given
+  !!
+  function fieldPtrName(name) result(ptr)
+    character(nameLen), intent(in) :: name
+    class(field), pointer          :: ptr
+    integer(shortInt)              :: idx
+    integer(shortInt), parameter   :: NOT_PRESENT = -8
+    character(*), parameter :: Here = 'fieldPtrName (geometryReg_mod.f90)'
+
+    select case(name)
+      case(nameTemperature)
+        idx = temperatureIdx
+      case(nameDensity)
+        idx = densityIdx
+      case default
+        idx = NOT_PRESENT
+    end select
+    
+    if (idx < 1 .or. idx > fieldTop) then
+      call fatalError(Here,'Index: '//numToChar(idx)//' does not correspond to valid field. &
+                           &Must be 1-'//numToChar(fieldTop))
+    end if
+    
+    ptr => fields(idx) % kentta
+
+  end function fieldPtrName
 
   !!
   !! Get pointer to a field by index

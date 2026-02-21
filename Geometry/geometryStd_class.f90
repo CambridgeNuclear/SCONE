@@ -15,8 +15,7 @@ module geometryStd_class
   use pieceConstantField_inter, only : pieceConstantField, pieceConstantField_CptrCast
   
   use geometryReg_mod,          only : gr_hasField => hasField, &
-                                       gr_fieldIdx => fieldIdx, &
-                                       gr_fieldPtr => fieldPtr
+                                       gr_fieldPtrName => fieldPtrName
 
   ! Nuclear Data
   use materialMenu_mod,   only : nMat
@@ -661,13 +660,13 @@ contains
     
     dist = INF
     if (gr_hasField(nameTemperature)) then
-      genericField => gr_fieldPtr(gr_fieldIdx(nameTemperature))
+      genericField => gr_fieldPtrName(nameTemperature)
       pcField => pieceConstantField_CptrCast(genericField)
       dist = min(dist, pcField % distance(coords))
     end if
 
     if (gr_hasField(nameDensity)) then
-      genericField => gr_fieldPtr(gr_fieldIdx(nameDensity))
+      genericField => gr_fieldPtrName(nameDensity)
       pcField => pieceConstantField_CptrCast(genericField)
       dist = min(dist, pcField % distance(coords))
     end if

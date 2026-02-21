@@ -12,8 +12,7 @@ module transportOperator_inter
   ! Geometry interfaces
   use geometryReg_mod,          only : gr_geomPtr => geomPtr, &
                                        gr_hasField => hasField, &
-                                       gr_fieldIdx => fieldIdx, &
-                                       gr_fieldPtr => fieldPtr
+                                       gr_fieldPtrName => fieldPtrName
   use geometry_inter,           only : geometry
   
   use field_inter,              only : field
@@ -142,14 +141,14 @@ contains
     
     ! Temperature check
     if (gr_hasField(nameTemperature)) then
-      genericField => gr_fieldPtr(gr_fieldIdx(nameTemperature))
+      genericField => gr_fieldPtrName(nameTemperature)
       pcField => pieceConstantField_CptrCast(genericField)
       p % T = pcField % at(p % coords)
     end if
 
     ! Density check
     if (gr_hasField(nameDensity)) then
-      genericField => gr_fieldPtr(gr_fieldIdx(nameDensity))
+      genericField => gr_fieldPtrName(nameDensity)
       pcField => pieceConstantField_CptrCast(genericField)
       p % rho = pcField % at(p % coords)
     end if
