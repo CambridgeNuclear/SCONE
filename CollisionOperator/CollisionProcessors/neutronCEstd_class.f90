@@ -102,7 +102,6 @@ module neutronCEstd_class
     procedure :: capture
     procedure :: fission
     procedure :: cutoffs
-    procedure :: alphaProd
 
     ! Local procedures
     procedure,private :: scatterFromFixed
@@ -270,7 +269,7 @@ contains
         
         ! If alpha, determine the weight of a delayed neutron
         wD = ONE
-        if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
+        if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
           wD = lambda/(lambda + p % alpha)
         end if
         
@@ -321,45 +320,6 @@ contains
 
   end subroutine capture
   
-  !!
-  !! Production of neutrons when alpha is negative
-  !! Amounts to particle duplication
-  !!
-  subroutine alphaProd(self, p, tally, collDat, thisCycle, nextCycle)
-    class(neutronCEstd), intent(inout)   :: self
-    class(particle), intent(inout)       :: p
-    type(tallyAdmin), intent(inout)      :: tally
-    type(collisionData), intent(inout)   :: collDat
-    class(particleDungeon),intent(inout) :: thisCycle
-    class(particleDungeon),intent(inout) :: nextCycle
-    integer(shortInt)                    :: n, i
-    real(defReal)                        :: wgt, w0, rand1, k
-    type(particleState)                  :: pTemp
-
-    ! Obtain required data
-    wgt   = p % w                ! Current weight
-    w0    = p % preHistory % wgt ! Starting weight
-    rand1 = p % pRNG % get()     ! Random number to sample sites
-    k     = p % k_eff
-
-    ! Produce 1/k * (1 + 1/lambda ) new particles
-    ! The current particle remains in flight
-    n = int(ONE / k +  ONE / (p % eta * k) + rand1, shortInt)
-
-    ! Shortcut particle generation if no particles were sampled
-    if (n < 1) return
-
-    ! Store neutrons for next cycle
-    pTemp = p
-    pTemp % collisionN = 0
-    do i = 1,n
-      call nextCycle % detain(pTemp)
-      call tally % reportSpawn(N_TIME_PROD, p, pTemp)
-    end do
-    p % isDead =.true.
-    
-  end subroutine alphaProd
-
   !!
   !! Process fission reaction
   !!

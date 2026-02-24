@@ -122,8 +122,8 @@ contains
     call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
     ! Which fission production to tally? Total, prompt, or delayed?
-    call dict % getOrDefault(self % setting,'setting', 1)
-    if (self % setting < 1 .or. self % setting > 3) then
+    call dict % getOrDefault(self % setting,'setting', TOTAL)
+    if (self % setting < TOTAL .or. self % setting > DELAYED) then
       call fatalError(Here,'"setting" options are 1, 2, 3 for total, prompt, and delayed. '//&
               'Input setting is: '//numToChar(self % setting))
     end if
@@ -226,7 +226,7 @@ contains
 
     end select
 
-    absXS    = xss % capture + xss % fission
+    absXS = xss % capture + xss % fission
 
     s1 = nuFissXS * flux
     s2 = absXS * flux
