@@ -465,9 +465,6 @@ contains
   !!   Further there is currently no good solution for MG neutrons. Their speed
   !!   is arbitrarily set to 1.
   !!
-  !! Does not provide errors if a dubious particle type is used. This is to allow
-  !! the function and related functions to be pure.
-  !!
   !! Args:
   !!   None
   !!
