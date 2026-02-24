@@ -854,6 +854,9 @@ contains
 
     end if
 
+    ! Obtain the energy per fission with which to scale fission heating
+    call dict % getOrDefault(self % H235, 'energyPerFission', 202.27_defReal)
+
     ! Get path to ACE library
     call dict % get(aceLibPath,'aceLibrary')
 

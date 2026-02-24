@@ -87,6 +87,7 @@ module endfConstants
                                   N_Xt          = 205 ,&
                                   N_X3He        = 206 ,&
                                   N_Xa          = 207 ,&
+                                  N_KAPPA       = 301 ,&
                                   nubar_tot     = 452 ,&
                                   nubar_del     = 455 ,&
                                   nubar_prompt  = 456 ,&
@@ -114,7 +115,8 @@ module endfConstants
                                   macroEscatter      = -3 ,&
                                   macroIEscatter     = -4 ,&
                                   macroFission       = -6 ,&
-                                  macroNuFission     = -7
+                                  macroNuFission     = -7 ,&
+                                  macroKappaFission  = -80
 
   ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
@@ -129,10 +131,10 @@ module endfConstants
                                        36, 37, 38, 41, 42, 44, 45, 91, 101, 102, 103, &
                                        104, 105, 106, 107, 108, 109, 111, 112, 113,   &
                                        114, 115, 116, 117, 203, 204, 205, 206, 207,   &
-                                       891, N_Nl, N_2Nl]
+                                       301, 891, N_Nl, N_2Nl]
 
   integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
-                                      [-1, -2, -3, -4, -6, -7, -20, -21, -22]
+                                      [-1, -2, -3, -4, -6, -7, -20, -21, -22, -80]
 
 
 

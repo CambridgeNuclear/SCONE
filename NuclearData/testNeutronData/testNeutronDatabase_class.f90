@@ -70,11 +70,12 @@ contains
   !!   captureXS [in]   -> Optional. Value of Capture XS
   !!   fissionXS [in]   -> Optional. Value of Fission XS
   !!   nuFissionXS [in] -> Optional Value of nuFission
+  !!   kappaXS [in]     -> Optional Value of kappa XS
   !!
   !! Errors:
   !!   None
   !!
-  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS)
+  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS, kappaXS)
     class(testNeutroNDatabase), intent(inout) :: self
     real(defReal), intent(in)                 :: xsVal
     real(defReal), intent(in),optional        :: eScatterXS
@@ -82,6 +83,7 @@ contains
     real(defReal), intent(in),optional        :: captureXS
     real(defReal), intent(in),optional        :: fissionXS
     real(defReal), intent(in),optional        :: nuFissionXS
+    real(defReal), intent(in),optional        :: kappaXS
 
     self % xsVal = xsVal
 
@@ -124,6 +126,13 @@ contains
       self % mat % xss % nuFission = nuFissionXS
     else
       self % mat % xss % nuFission = xsVal
+    end if
+    
+    ! kappa * fission
+    if(present(kappaXS)) then
+      self % mat % xss % kappaXS = kappaXS
+    else
+      self % mat % xss % kappaXS = xsVal
     end if
 
   end subroutine build

@@ -26,14 +26,17 @@ module fissionMG_class
   !! Fission spectrum is independent of the energy group
   !!
   !! Public members:
-  !!   data -> data for fissionMG [energyGroup, reaction (nu or chi)]
+  !!   data  -> data for fissionMG [energyGroup, reaction (nu or chi)]
+  !!   kappa -> Energy per fission. 200 MeV by default.
   !!
   !! Interface:
   !!   reactionMG interface
   !!   buildFromDict -> builds fissionMG from a SCONE dictionary
+  !!   getKappa      -> obtains the energy per fission in MeV
   !!
   type, public, extends(reactionMG) :: fissionMG
     real(defReal),dimension(:,:),allocatable :: data
+    real(defReal) :: kappa = 200.0_defReal
   contains
     ! Superclass procedures
     procedure :: init
@@ -46,6 +49,7 @@ module fissionMG_class
 
     ! Local procedures
     procedure :: buildFromDict
+    procedure :: getKappa
 
   end type fissionMG
 
@@ -216,6 +220,9 @@ contains
 
     ! Get number of groups
     call dict % get(nG, 'numberOfGroups')
+    
+    ! Get energy per fission
+    call dict % getOrDefault(self % kappa, 'kappa', 200.0_defReal)
 
     ! Allocate space
     allocate(self % data(nG, 2))
@@ -245,6 +252,18 @@ contains
     end if
 
   end subroutine buildFromDict
+
+  !!
+  !! Get the energy release from fission
+  !!
+  pure function getKappa(self) result(kappa)
+    class(fissionMG), intent(in) :: self
+    real(defReal)                :: kappa
+
+    kappa = self % kappa
+
+  end function getKappa
+
 
   !!
   !! Cast reactionHandle pointer to fissionMG pointer

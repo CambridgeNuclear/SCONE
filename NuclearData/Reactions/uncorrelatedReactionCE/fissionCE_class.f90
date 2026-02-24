@@ -54,6 +54,7 @@ module fissionCE_class
   !!   eLawPrompt   -> Energy Law for the prompt fission neutrons
   !!   nuBarDelayed -> Delayed release table for incindent energy [MeV]
   !!   delayed      -> Information about Delayed emission precursors
+  !!   Q            -> Q value for the reaction [MeV]
   !!
   !! Interface:
   !!   uncorrelatedReactionCE interface
@@ -65,6 +66,7 @@ module fissionCE_class
     class(energyLawENDF), allocatable        :: eLawPrompt
     class(releaseLawENDF),allocatable        :: nuBarDelayed
     type(precursor),dimension(:),allocatable :: delayed
+    real(defReal)                            :: Q = ZERO
 
   contains
     ! Superclass procedures
@@ -79,6 +81,7 @@ module fissionCE_class
 
     ! Type specific procedures
     procedure :: buildFromACE
+    procedure :: getQ
   end type fissionCE
 
 contains
@@ -148,7 +151,20 @@ contains
       deallocate(self % delayed)
     end if
 
+    self % Q = ZERO
+
   end subroutine kill
+
+  !!
+  !! Returns the Q-value
+  !!
+  pure function getQ(self) result(Q)
+    class(fissionCE), intent(in) :: self
+    real(defReal)                :: Q
+
+    Q = self % Q
+
+  end function getQ
 
   !!
   !! Returns true if reaction is in Centre-Of-Mass frame
@@ -349,6 +365,7 @@ contains
     ! Read basic data
     call new_totalNU(self % nuBarTotal, ACE)
     call new_energyLawENDF(self % eLawPrompt, ACE, MT)
+    self % Q = ACE % QforMT(MT)
 
     ! Read Delayed Data
     if (withDelayed) then

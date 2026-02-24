@@ -80,8 +80,7 @@ module universalVariables
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
   real(defReal), parameter :: neutronMass = 939.56542194_defReal,  & ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
-                              kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
-                              energyPerFission = 200.0_defReal       ! MeV
+                              kBoltzmann  = 1.380649e-23_defReal     ! Bolztmann constant in J/K
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal  ,&   ! Convert MeV to J

@@ -19,6 +19,7 @@ module microResponse_test
     type(microResponse)        :: response_capture
     type(microResponse)        :: response_fission
     type(microResponse)        :: response_absorbtion
+    type(microResponse)        :: response_kappa
     type(microResponse)        :: response_MT
     type(testNeutronDatabase)  :: xsData
   contains
@@ -38,8 +39,8 @@ contains
 
     ! Allocate and initialise test nuclearData
 
-    ! Cross-sections:         Total         eScattering  IeScatter  Capture     Fission       nuFission
-    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal)
+    ! Cross-sections:         Total         eScattering  IeScatter  Capture     Fission       nuFission    kappFission
+    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal, 9.0_defReal)
 
     ! Set dictionaries to initialise material
     call dictMat1 % init(1)
@@ -97,6 +98,14 @@ contains
     call this % response_absorbtion % init(tempDict)
     call tempDict % kill()
 
+    ! Energy deposition
+    call tempDict % init(3)
+    call tempDict % store('type', 'microResponse')
+    call tempDict % store('MT', N_KAPPA)
+    call tempDict % store('material', 'Xenon')
+    call this % response_kappa % init(tempDict)
+    call tempDict % kill()
+
     ! MT number
     call tempDict % init(2)
     call tempDict % store('type','microResponse')
@@ -140,6 +149,7 @@ contains
     @assertEqual(0.5_defReal, this % response_fission % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_eScatter % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_absorbtion % get(p, this % xsData), TOL)
+    @assertEqual(4.5_defReal, this % response_kappa % get(p, this % xsData), TOL)
     @assertEqual(8.0_defReal, this % response_MT % get(p, this % xsData), TOL)
 
     p % isMG = .true.
