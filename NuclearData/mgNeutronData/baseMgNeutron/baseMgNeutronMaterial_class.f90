@@ -129,9 +129,11 @@ contains
     if(self % isFissile()) then
       xss % fission        = self % data(FISSION_XS, G)
       xss % nuFission      = self % data(NU_FISSION, G)
+      xss % kappaXS        = xss % fission * self % fission % getKappa()
     else
       xss % fission        = ZERO
       xss % nuFission      = ZERO
+      xss % kappaXS        = ZERO
     end if
 
   end subroutine getMacroXSs_byG

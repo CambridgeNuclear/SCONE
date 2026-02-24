@@ -47,6 +47,7 @@ module aceNeutronNuclide_class
   integer(shortInt), parameter :: CAPTURE_XS    = 4
   integer(shortInt), parameter :: FISSION_XS    = 5
   integer(shortInt), parameter :: NU_FISSION    = 6
+  integer(shortInt), parameter :: KAPPA_XS      = 7
 
 
   !!
@@ -436,9 +437,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
       end if
     end associate
 
@@ -483,9 +486,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
       end if
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
@@ -555,9 +560,11 @@ contains
       if (self % isFissile()) then
         xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
       end if
 
       ! Check if flag for multiplication factor (IFF) is true, and apply it to elastic scattering,
@@ -587,6 +594,7 @@ contains
 
     if (self % isFissile()) then
       xss % nuFission = xss % nuFission/xss % fission * val(3)
+      xss % kappaXS   = xss % kappaXS / xss % fission * val(3)
       xss % fission   = val(3)
     end if
 
@@ -725,6 +733,7 @@ contains
                                                      top, firstIdxMT4
     real(defReal), dimension(:), allocatable      :: xsMT4
     type(stackInt)                                :: scatterMT, absMT
+    real(defReal)                                 :: H_Q
     character(100), parameter :: Here = "init (aceNeutronNuclide_class.f90)"
 
     ! Reset nuclide just in case
@@ -745,7 +754,7 @@ contains
 
     ! Allocate space for main XSs
     if (self % isFissile()) then
-      N = 6
+      N = 7
     else
       N = 4
     end if
@@ -807,10 +816,20 @@ contains
         call self % fission % init(ACE, N_f)
       end if
 
-      ! Calculate nuFission
+      ! Obtain Heating/Q scaling ratio
+      ! Check if database is associated in order to satisfy tests where it might not be!
+      if (associated(database)) then
+        H_Q = database % H235 / database % Q235
+      else
+        H_Q = ONE
+      end if
+
+      ! Calculate nuFission and kappaXS
       do i = bottom, Ngrid
         self % mainData(NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
                                         self % fission % release(self % eGrid(i))
+        self % mainData(KAPPA_XS,i)   = self % mainData(FISSION_XS,i) * &
+                                        self % fission % getQ() * H_Q
       end do
 
     end if
