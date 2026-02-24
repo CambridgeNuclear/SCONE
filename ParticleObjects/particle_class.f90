@@ -472,11 +472,15 @@ contains
   !!   None
   !!
   !! Result:
-  !!   Particle speed
+  !!   Particle speed [cm/s]
   !!
-  pure function getSpeed(self) result(speed)
+  !! Errors:
+  !!   Fatal error if particle is not a photon or neutron
+  !!
+  function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
     real(defReal)               :: speed
+    character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
 
     ! Calculates the velocity for the relevant particle [cm/s]
     if (self % type == P_PHOTON) then
@@ -491,7 +495,7 @@ contains
       end if
 
     else
-      speed = ONE
+      call fatalError(Here, 'Undefined particle type requesting speed')
 
     end if
 
@@ -501,7 +505,7 @@ contains
   !! Return the alpha absorption cross section: XS = alpha/v
   !! Also includes Zoia's stabilisation for negative alpha values.
   !!
-  pure function getAlphaAbsorption(self) result(xs)
+  function getAlphaAbsorption(self) result(xs)
     class(particle), intent(in) :: self
     real(defReal)               :: xs
     real(defReal)               :: alpha, eta

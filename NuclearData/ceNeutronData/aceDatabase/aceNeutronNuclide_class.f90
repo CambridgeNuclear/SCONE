@@ -111,7 +111,6 @@ module aceNeutronNuclide_class
     character(nameLen)                          :: ZAID    = ''
     real(defReal), dimension(:), allocatable    :: eGrid
     real(defReal), dimension(:,:), allocatable  :: mainData
-    real(defReal), dimension(:,:), allocatable  :: promptNuFiss
     type(reactionMT), dimension(:), allocatable :: MTdata
     integer(shortInt)                           :: nMTinelastic = 0
     type(intMap)                                :: idxMT
