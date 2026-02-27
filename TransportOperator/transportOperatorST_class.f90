@@ -5,23 +5,23 @@ module transportOperatorST_class
   use numPrecision
   use universalVariables
 
-  use errors_mod,                 only : fatalError
-  use particle_class,             only : particle
-  use particleDungeon_class,      only : particleDungeon
-  use dictionary_class,           only : dictionary
+  use errors_mod,               only : fatalError
+  use particle_class,           only : particle
+  use particleDungeon_class,    only : particleDungeon
+  use dictionary_class,         only : dictionary
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator, init_super => init
+  use transportOperator_inter,  only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry, distCache
+  use geometry_inter,           only : geometry, distCache
 
   ! Tally interface
   use tallyCodes
-  use tallyAdmin_class,           only : tallyAdmin
+  use tallyAdmin_class,         only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearDatabase_inter,      only : nuclearDatabase
+  use nuclearDatabase_inter,    only : nuclearDatabase
 
   implicit none
   private
@@ -61,6 +61,9 @@ contains
     
     STLoop: do
         
+      ! Get local conditions
+      call self % localConditions(p)
+      
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
       ! Obtain the local cross-section, depending on the material
@@ -72,7 +75,7 @@ contains
         sigmaT = ZERO
 
       else
-      
+        
         invSigmaTrack = ONE / sigmaTrack
         dist = -log( p % pRNG % get()) * invSigmaTrack
       
@@ -80,7 +83,12 @@ contains
         sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
-        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+        if (dist /= dist) then
+          print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
+          print *, "Total XS: ", sigmaT
+          call fatalError(Here, "Distance is NaN")
+        end if
 
       end if
 

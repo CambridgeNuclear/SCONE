@@ -7,6 +7,7 @@ module geometryStd_iTest
   use dictParser_func,   only : fileToDict
   use coord_class,       only : coordList
   use geometryStd_class, only : geometryStd
+  use materialMenu_mod,  only : mm_init => init
   use funit
 
   implicit none
@@ -293,6 +294,5 @@ contains
     @assertEqual(idxF, img3)
 
   end subroutine test_tilted_cylinder
-
 
 end module geometryStd_iTest

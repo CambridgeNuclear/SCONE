@@ -44,6 +44,7 @@ module testNeutronDatabase_class
     ! Superclass Interface
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
     procedure :: getTrackingXS
     procedure :: getTrackMatXS
     procedure :: getTotalMatXS
@@ -162,6 +163,19 @@ contains
     ! Do nothing
 
   end subroutine activate
+  
+  !!
+  !!
+  !!
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
+    class(testNeutronDatabase), intent(inout) :: self
+    logical(defBool), intent(in), optional    :: loud
+    real(defReal), intent(in), optional       :: maxTemp
+    real(defReal), intent(in), optional       :: scaleDensity
+
+    ! Do nothing
+
+  end subroutine initMajorant
 
   !!
   !! Return value of Tracking XS for a particle and a given request

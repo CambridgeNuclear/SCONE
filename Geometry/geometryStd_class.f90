@@ -10,6 +10,12 @@ module geometryStd_class
   use csg_class,          only : csg
   use universe_inter,     only : universe
   use surface_inter,      only : surface
+  
+  use field_inter,              only : field
+  use pieceConstantField_inter, only : pieceConstantField, pieceConstantField_CptrCast
+  
+  use geometryReg_mod,          only : gr_hasField => hasField, &
+                                       gr_fieldPtrName => fieldPtrName
 
   ! Nuclear Data
   use materialMenu_mod,   only : nMat
@@ -24,10 +30,17 @@ module geometryStd_class
   public :: geometryStd_CptrCast
 
   !!
+  !! Private distance to the nearest pieceConstant field crossing
+  !!
+  private :: getFieldDist
+
+  !!
   !! Standard Geometry Model
   !!
   !! Typical geometry of a MC Neutron Transport code composed of multiple nested
   !! universes.
+  !!
+  !! Supports super-imposed temperature and density fields.
   !!
   !! Boundary conditions in diffrent movement models are handeled:
   !!   move       -> explicitBC
@@ -37,7 +50,7 @@ module geometryStd_class
   !! Sample Dictionary Input:
   !!   geometry {
   !!     type geometryStd;
-  !!     <csg_class difinition>
+  !!     <csg_class definition>
   !!    }
   !!
   !! Public Members:
@@ -198,28 +211,38 @@ contains
   !! Uses explicit BC
   !!
   subroutine move_noCache(self, coords, maxDist, event)
-    class(geometryStd), intent(in) :: self
-    type(coordList), intent(inout) :: coords
-    real(defReal), intent(inout)   :: maxDist
-    integer(shortInt), intent(out) :: event
-    integer(shortInt)              :: surfIdx, level
-    real(defReal)                  :: dist
-    class(surface), pointer        :: surf
-    class(universe), pointer       :: uni
-    character(100), parameter :: Here = 'move (geometryStd_class.f90)'
+    class(geometryStd), intent(in)     :: self
+    type(coordList), intent(inout)     :: coords
+    real(defReal), intent(inout)       :: maxDist
+    integer(shortInt), intent(out)     :: event
+    integer(shortInt)                  :: surfIdx, level, level0
+    real(defReal)                      :: dist, fieldDist
+    class(surface), pointer            :: surf
+    class(universe), pointer           :: uni
+    character(100), parameter :: Here = 'move_noCache (geometryStd_class.f90)'
 
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
 
+    level0 = coords % nesting
+    
     ! Find distance to the next surface
     call self % closestDist(dist, surfIdx, level, coords)
+    
+    ! Check fields
+    fieldDist = getFieldDist(coords)
 
-    if (maxDist < dist) then ! Moves within cell
+    if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
-
+    
+    else if (maxDist < dist .and. maxDist >= fieldDist) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level0)
+      event = FIELD_EV
+      maxDist = fieldDist
+    
     else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
       ! Move global to the boundary
       call coords % moveGlobal(dist)
@@ -232,7 +255,7 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
-
+    
     else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
@@ -248,6 +271,7 @@ contains
 
     end if
 
+
   end subroutine move_noCache
 
   !!
@@ -258,29 +282,40 @@ contains
   !! Uses explicit BC
   !!
   subroutine move_withCache(self, coords, maxDist, event, cache)
-    class(geometryStd), intent(in) :: self
-    type(coordList), intent(inout) :: coords
-    real(defReal), intent(inout)   :: maxDist
-    integer(shortInt), intent(out) :: event
-    type(distCache), intent(inout) :: cache
-    integer(shortInt)              :: surfIdx, level
-    real(defReal)                  :: dist
-    class(surface), pointer        :: surf
-    class(universe), pointer       :: uni
+    class(geometryStd), intent(in)     :: self
+    type(coordList), intent(inout)     :: coords
+    real(defReal), intent(inout)       :: maxDist
+    integer(shortInt), intent(out)     :: event
+    type(distCache), intent(inout)     :: cache
+    integer(shortInt)                  :: surfIdx, level, level0
+    real(defReal)                      :: dist, fieldDist
+    class(surface), pointer            :: surf
+    class(universe), pointer           :: uni
     character(100), parameter :: Here = 'move_withCache (geometryStd_class.f90)'
 
     if (.not.coords % isPlaced()) then
       call fatalError(Here, 'Coordinate list is not placed in the geometry')
     end if
 
+    level0 = coords % nesting
+    
     ! Find distance to the next surface
     call self % closestDist_cache(dist, surfIdx, level, coords, cache)
+    
+    ! Check fields
+    fieldDist = getFieldDist(coords)
 
-    if (maxDist < dist) then ! Moves within cell
+    if (maxDist < dist .and. maxDist < fieldDist) then ! Moves within cell
       call coords % moveLocal(maxDist, coords % nesting)
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
       cache % lvl = 0
+
+    else if (maxDist < dist .and. maxDist >= fieldDist) then ! Stays within the same cell, but crosses field boundary
+      call coords % moveLocal(fieldDist, level0)
+      event = FIELD_EV
+      maxDist = fieldDist
+      cache % dist(1:level0) = cache % dist(1:level0) - fieldDist
 
     else if (surfIdx == self % geom % borderIdx .and. level == 1) then ! Hits domain boundary
       ! Move global to the boundary
@@ -295,7 +330,7 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
-
+    
     else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
@@ -606,5 +641,33 @@ contains
     end select
 
   end function geometryStd_CptrCast
+  
+  !!
+  !! Helper function.
+  !! Get the distance to the nearest pieceConstantField boundary
+  !!
+  !! Returns INF if neither density nor temperature fields exist
+  !!
+  function getFieldDist(coords) result(dist)
+    type(coordList), intent(in)        :: coords
+    real(defReal)                      :: dist
+    class(field), pointer              :: genericField
+    class(pieceConstantField), pointer :: pcField
+    
+    dist = INF
+    if (gr_hasField(nameTemperature)) then
+      genericField => gr_fieldPtrName(nameTemperature)
+      pcField => pieceConstantField_CptrCast(genericField)
+      dist = min(dist, pcField % distance(coords))
+    end if
+
+    if (gr_hasField(nameDensity)) then
+      genericField => gr_fieldPtrName(nameDensity)
+      pcField => pieceConstantField_CptrCast(genericField)
+      dist = min(dist, pcField % distance(coords))
+    end if
+
+  end function getFieldDist
+
 
 end module geometryStd_class

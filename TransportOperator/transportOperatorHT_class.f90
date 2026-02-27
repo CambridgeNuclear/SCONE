@@ -62,6 +62,9 @@ contains
     if (p % matIdx() == VOID_MAT) then
       sigmaT = ZERO
     else
+      ! Get local conditions
+      call self % localConditions(p)
+      
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
     end if
 
@@ -145,6 +148,9 @@ contains
         exit DTLoop
       end if
 
+      ! Get local conditions
+      call self % localConditions(p)
+      
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
@@ -179,6 +185,9 @@ contains
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorHT_class.f90)'
 
     STLoop: do
+      
+      ! Get local conditions
+      call self % localConditions(p)
       
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
