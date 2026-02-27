@@ -1,0 +1,93 @@
+!
+! The third problem posed by Cullen et al in
+! "Static and Dynamic Criticality: Are They Different?"
+! Should have alpha ~ 146us^-1 when using ENDF/B-7
+!
+type alphaPhysicsPackage;
+
+pop      10000;
+active   15000;
+inactive 1000;
+XSdata   ceData;
+dataType ce;
+alpha_0 100000;
+lambda  10;
+k_0 1.582;
+outputFile Cullen3;
+
+collisionOperator { neutronCE {type neutronCEstd; neglectDelayed 1; }
+                  }
+
+transportOperator { type transportOperatorDT; 
+                  }
+
+inactiveTally {
+              }
+
+activeTally  { kImp {type keffImplicitClerk;} tau {type removalTimeClerk;} display (kImp tau);}
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      innerSphere { id 1; type sphere; origin ( 0.0  0.0  0.0); radius 8.7407; }
+      outerSphere { id 2; type sphere; origin ( 0.0  0.0  0.0); radius 38.7407; }
+    }
+
+
+    cells
+    {
+      inner {id 1; type simpleCell; surfaces (-1); filltype mat; material fuel;}
+      outer {id 2; type simpleCell; surfaces (1); filltype mat; material water;}
+    }
+
+    universes
+    {
+      root
+      {
+          id 1;
+          type rootUniverse;
+          border 2;
+          fill u<2>;
+      }
+
+      spheres { id 2; type cellUniverse; cells (1 2);}
+    }
+}
+
+nuclearData {
+
+  handles {
+     ceData { type aceNeutronDatabase; aceLibrary $SCONE_ACE; ures 1;}
+  }
+
+
+materials {
+
+    fuel {
+      temp       273;
+      composition {
+        92235.03  0.089989;
+        92238.03  0.004995;
+        92234.03  0.000984;
+      }
+    }
+
+    ! No thermal scattering included - not specified explicitly.
+    water {
+      temp 273;
+      composition {
+        1001.03 0.06691;
+        8016.03 0.03346;
+      }
+    }
+
+}
+
+}
+
+
+

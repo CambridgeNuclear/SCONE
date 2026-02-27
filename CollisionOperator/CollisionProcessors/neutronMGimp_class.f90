@@ -123,7 +123,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMacroXSs)                :: macroXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, denom, alphaXS, probAlpha
     character(100),parameter :: Here =' sampleCollision (neutronMGimp_class.f90)'
 
     ! Verify that particle is MG neutron
@@ -134,7 +134,21 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronMG()
     if(.not.associated(self % xsData)) call fatalError(Here, "Failed to get active database for MG Neutron")
-
+    
+    ! Avoid nuclide sampling if alpha absorption occurs
+    denom = self % xsData % getTrackMatXS(p, p % matIdx())
+    alphaXS = p % getAlphaAbsorption()
+    probAlpha = alphaXS / denom
+ 
+    if (p % pRNG % get() < probAlpha) then
+      if (p % alpha >= 0) then
+        collDat % MT = N_TIME_ABS
+      else
+        collDat % MT = N_TIME_PROD
+      end if
+      return
+    end if
+    
     ! Get and verify material pointer
     self % mat => mgNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, "Failed to get MG Neutron Material")
@@ -196,6 +210,8 @@ contains
       do i=1,n
         call fission % sampleOut(mu, phi, G_out, p % G, p % pRNG)
         dir = rotateVector(p % dirGlobal(), mu, phi)
+        
+        ! TODO: Delayed neutron handling when supported by MG mode
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
         pTemp       = p
@@ -215,7 +231,7 @@ contains
     end if
 
   end subroutine implicit
-
+  
   !!
   !! Elastic Scattering
   !!

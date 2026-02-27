@@ -334,14 +334,10 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        if (matIdx == VOID_MAT) then
-          xs = self % collisionXS
-        else
-          xs = max(self % getTrackMatXS(p, matIdx), self % collisionXS)
-        end if
+        xs = self % getTrackMatXS(p, matIdx)
 
       case (MAJORANT_XS)
-        xs = max(self % getMajorantXS(p), self % collisionXS)
+        xs = self % getMajorantXS(p)
 
       case (TRACKING_XS)
 
@@ -354,9 +350,11 @@ contains
         end if
 
       case default
-        call fatalError(Here, 'Neither material xs nor majorant xs was asked')
+        call fatalError(Here, 'Neither material xs nor majorant xs was requested')
 
     end select
+
+    xs = max(xs, self % collisionXS)
 
     ! Update Cache
     trackingCache(1) % E    = p % E
@@ -389,7 +387,7 @@ contains
 
     ! Check that matIdx exists
     if (matIdx == VOID_MAT) then
-      xs = ZERO
+      xs = p % getAlphaAbsorption()
       return
     elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
@@ -407,6 +405,9 @@ contains
     ! Return Cross-Section
     xs = materialCache(matIdx) % trackXS
     
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
+
   end function getTrackMatXS
 
   !!
@@ -430,7 +431,10 @@ contains
     end if
     
     ! Check that matIdx exists
-    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+    if (matIdx == VOID_MAT) then
+      xs = p % getAlphaAbsorption()
+      return
+    elseif (matIdx < 1 .or. matIdx > mm_nMat()) then 
       print *,'Particle location: ', p % rGlobal()
       call fatalError(Here, 'Particle is in an undefined material with index: '&
               //numToChar(matIdx))
@@ -445,6 +449,9 @@ contains
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getTotalMatXS
 
@@ -472,6 +479,9 @@ contains
 
     ! Return Cross-Section
     xs = majorantCache(1) % xs
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getMajorantXS
 

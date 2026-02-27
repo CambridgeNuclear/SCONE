@@ -6,7 +6,7 @@ module baseMgNeutronDatabase_iTest
   use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
-  use particle_class,     only : particle
+  use particle_class,     only : particle, P_NEUTRON
   use RNG_class,          only : RNG
 
   ! Nuclear Data Objects & Interfaces
@@ -84,6 +84,7 @@ contains
     ! Test getting Transport XS
     ! Associate pointer to pass tests in debug mode
     p % pRNG => pRNG
+    p % type = P_NEUTRON
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
@@ -212,6 +213,7 @@ contains
     ! Test getting Transport XS
     ! Associate pointer to pass tests in debug mode
     p % pRNG => pRNG
+    p % type = P_NEUTRON
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 

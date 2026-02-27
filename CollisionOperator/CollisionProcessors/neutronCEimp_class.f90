@@ -241,7 +241,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
-    real(defReal)                        :: r, kT
+    real(defReal)                        :: r, kT, denom, alphaXS, probAlpha
     character(100),parameter :: Here = 'sampleCollision (neutronCEimp_class.f90)'
 
     ! Verify that particle is CE neutron
@@ -252,7 +252,22 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if(.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
-
+    
+    ! Avoid nuclide sampling if alpha absorption occurs
+    denom = self % xsData % getTrackMatXS(p, p % matIdx())
+    alphaXS = p % getAlphaAbsorption()
+    probAlpha = alphaXS / denom
+ 
+    if (p % pRNG % get() < probAlpha) then
+      collDat % E = p % E
+      if (p % alpha >= 0) then
+        collDat % MT = N_TIME_ABS
+      else
+        collDat % MT = N_TIME_PROD
+      end if
+      return
+    end if
+    
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast( self % xsData % getMaterial( p % matIdx()))
     if(.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
@@ -299,7 +314,7 @@ contains
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
     real(defReal)                        :: sig_nufiss, sig_tot, k_eff, &
                                             sig_scatter, totalElastic, kT
-    logical(defBool)                     :: fiss_and_implicit
+    logical(defBool)                     :: fiss_and_implicit, keepDel
     character(100),parameter             :: Here = 'implicit (neutronCEimp_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -349,6 +364,12 @@ contains
         
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
+        
+        ! If alpha, determine probability of keeping a delayed neutron
+        if (abs(p % alpha) > epsilon(p % alpha)) then
+          keepDel = p % pRNG % get() < lambda/(lambda + p % alpha)
+          if (.not. keepDel) cycle
+        end if
         
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
@@ -417,7 +438,7 @@ contains
     p % isDead =.true.
 
   end subroutine capture
-
+  
   !!
   !! Process fission reaction
   !!
@@ -434,7 +455,7 @@ contains
     real(defReal),dimension(3)           :: r, dir, val
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, rand1, E_out, mu, phi, lambda
-    real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT
+    real(defReal)                        :: sig_nufiss, sig_fiss, k_eff, kT, wD
     character(100),parameter             :: Here = 'fission (neutronCEimp_class.f90)'
 
     if (.not.self % implicitSites) then
@@ -483,6 +504,12 @@ contains
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
+        ! If alpha, determine the weight of a delayed neutron
+        wD = ONE
+        if (abs(p % alpha) > ZERO .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + p % alpha)
+        end if
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
         if (E_out > self % maxE) E_out = self % maxE
@@ -494,7 +521,7 @@ contains
         pTemp % r   = r
         pTemp % dir = dir
         pTemp % E   = E_out
-        pTemp % wgt = wgt
+        pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
 
         ! If storing precursors, do so when a finite lambda occurs
