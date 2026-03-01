@@ -784,13 +784,11 @@ contains
     class(particleDungeon), intent(inout) :: self
     integer(shortInt), intent(in)         :: N
     class(RNG), intent(inout)             :: rand
-    integer(shortInt)                     :: maxBroodID, i
-    integer(shortInt), save               :: j
+    integer(shortInt)                     :: maxBroodID, i, j
     real(defReal)                         :: tooth0, wAv
-    real(defReal), save                   :: nextTooth, curWeight
+    real(defReal)                         :: nextTooth, curWeight
     type(particleState), dimension(N)     :: newPrisoners
     character(100), parameter :: Here =' combing (particleDungeon_class.f90)'
-    !$omp threadprivate(j, nextTooth, curWeight)
 
     ! Protect against invalid N
     if( N > size(self % prisoners)) then
@@ -810,13 +808,11 @@ contains
     ! Get the location of the first tooth
     tooth0 = rand % get() * wAv
 
-    ! Scan for which particles to sample
-    !$omp parallel do
+    j = 1             ! Index to track
+    curWeight = ZERO  ! Total weight of exceeded particles
     do i = 1, N
 
-      j = 1                               ! Index to track
       nextTooth = tooth0 + (i - 1) * wAv  ! Position of the next tooth
-      curWeight = ZERO                    ! Total weight of exceeded particles
 
       ! Iterate over current particles
       ! until a tooth falls within bounds of particle weight
@@ -829,7 +825,6 @@ contains
       newPrisoners(i) = self % prisoners(j)    ! Add to new array
       newPrisoners(i) % wgt = wAv              ! Update weight
     end do
-    !$omp end parallel do
 
     ! Re-size the dungeon to new size
     call self % setSize(N)
@@ -858,14 +853,13 @@ contains
     real(defReal), intent(in)                :: t1
     real(defReal), intent(in)                :: t2
     type(particle), save                     :: p
-    integer(shortInt)                        :: i
-    integer(shortInt), save                  :: j
+    integer(shortInt)                        :: i, j
     type(particleState), dimension(N)        :: newPrecursors
     real(defReal), dimension(self % pop)     :: expDelayedWgts, expFactors
     real(defReal)                            :: uAv, tooth0
-    real(defReal), save                      :: nextTooth, curExpDelayedWgt
+    real(defReal)                            :: nextTooth, curExpDelayedWgt
     character(100), parameter :: Here =' precursorCombing (particleDungeon_class.f90)'
-    !$omp threadprivate(p, j, nextTooth, curExpDelayedWgt)
+    !$omp threadprivate(p)
 
     ! Protect against invalid N
     if (N > size(self % prisoners)) then
@@ -890,13 +884,11 @@ contains
     ! First tooth location
     tooth0 = rand % get() * uAv
 
-    ! Scan for which particles to sample
-    !$omp parallel do
+    j = 1                    ! Index to track
+    curExpDelayedWgt = ZERO  ! Total weight of exceeded particles
     do i = 1, N
 
-      j = 1                               ! Index to track
       nextTooth = tooth0 + (i - 1) * uAv  ! Position of the next tooth
-      curExpDelayedWgt = ZERO             ! Total weight of exceeded particles
 
       ! Iterate over current precursors
       ! until a tooth falls within bounds of timed weight
@@ -906,10 +898,9 @@ contains
       end do
 
       ! When a particle has been found...
-      newPrecursors(i) = self % prisoners(j)            ! Add to new array
+      newPrecursors(i) = self % prisoners(j)       ! Add to new array
       newPrecursors(i) % wgt = uAv / expFactors(j) ! Update weight from timed weight
     end do
-    !$omp end parallel do
 
     ! Re-size the dungeon to new size
     call self % setSize(N)

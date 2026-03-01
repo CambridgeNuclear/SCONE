@@ -191,6 +191,70 @@ Example: ::
 
         varianceReduction { <Weight windows definition> }
 
+alphaPhysicsPackage
+###################
+
+alphaPhysicsPackage, used to estimate the alpha eigenvalue by the k-alpha algorithm.
+
+* pop: number of particles used per cycle
+* active: number of active cycles
+* inactive: number of inactive cycles
+* dataType: determines type of nuclear data used; can be ``ce`` or ``mg``
+* XSdata: keyword to the name of the nuclearDataHandle used
+* keff_0: initial guess for the k factor. Can help stabilise calculations if
+  chosen well.
+* alpha_0: initial guess for the alpha eigenvalue. Vital to choose this with an
+  appropriate sign for stability: positive if supercritical, negative if subcritical.
+  In units of 1/s.
+* eta: stabilisation factor for alpha calculations. Usually chosen as 1. Only takes
+  effect in subcritical systems.
+* seed (*optional*): initial seed for the pseudo random number generator
+* outputFile (*optional*, default = 'output'): name of the output file
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``
+* reproducible (*optional*, default = 1): 1 for true; 0 for false; if running
+  with MPI, this ensures that the particle normalisation procedure used maintains
+  reproducibility (given that the RNG seed is fixed, and mpiSync is on for tallies)
+  when running with different numbers of MPI ranks. However, the (MPI) parallel 
+  scaling performance of this option is slightly worse than using the alternative 
+  procedure, that doesn't ensure reproducibility
+* printSource (*optional*, default = 0): 1 for true; 0 for false; requests
+  to print the particle source (location, direction, energy of each particle
+  in the particleDungeon) to a text file. If running with MPI, this is done 
+  by each MPI rank separately
+
+Example: ::
+
+        type alphaPhysicsPackage;
+        pop    100000;
+        active 100;
+        inactive 50;
+        dataType ce;
+        XSdata   ceData;
+        seed     -244654;
+        keff_0 1.2;
+        alpha_0 100000;
+        outputFile PuSphere;
+        outputFormat asciiJSON;
+
+        transportOperator { <Transport operator definition> }
+        collisionOperator { <Collision operator definition> }
+        inactiveTally { <Inactive tally definition> }
+        activeTally { <Active tally definition> }
+        geometry { <Geometry definition> }
+        nuclearData { <Nuclear data definition> }
+
+*Optional entries* ::
+
+        uniformFissionSites { <Uniform fission sites definition> }
+        varianceReduction { <Weight windows definition> }
+        source { <Source definition> }
+
+.. note::
+   Although a ``source`` definition is not required, it can be included to replace
+   the default uniform fission source guess used in the first cycle
+
+
 rayVolPhysicsPackage
 ####################
 
@@ -262,8 +326,8 @@ materialSource
 ##############
 
 A material source is a particle source which can only be produced in a given material.
-It is a type of volumetric source. For the moment it is constrained to neutrons.
-The properties of a material source are:
+It is a type of volumetric source. For the moment it is constrained to neutrons. Allows sampling
+particles uniformly in time. The properties of a material source are:
 
 * mat: the name of the material from which to sample (must be defined in materials).
 * data (*optional*, default = continuous energy): data type for source particles. Can be ``ce``
@@ -275,11 +339,14 @@ The properties of a material source are:
 * boundingBox (*optional*, default is the geometry bounding box):
   (x_min y_min z_min x_max y_max z_max) vector describing a bounding box to improve sampling
   efficiency or to localise material sampling to a particular region.
+* boundingTime (*optional*, default is 0, 0): time range over which to sample particles uniformly.
+  If not provided, particles are sampled at time t = 0
 
 Hence, an input would look like: ::
 
       source { type materialSource; mat myMat; data ce; E 2.0;
-      boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); }
+      boundingBox (-5.0 -3.0 2.0 5.0 4.0 3.0); 
+      boundingTime (0 4); }
 
 fileSource
 ##########
@@ -1268,6 +1335,8 @@ Example: ::
 * keffImplicitClerk, implicit k_eff estimator
   - handleVirtual (*optional*, default = 1): if set to 1, delta tracking virtual collisions
     and TMS rejected collisions are tallied with a collisionClerk as well as physical collisions
+  - setting (*optional*, default = 1): decides whether to score fission production of all neutrons
+    (option 1), prompt neutrons only (option 2), or delayed neutrons only (option 3).
 
 .. note::
   If TMS is on, the keffImplicitClerk is biased for results in the TMS materials unless virtual 
@@ -1396,6 +1465,14 @@ Example: ::
 
       tally {
       fissionMat { type simpleFMClerk; map { <Map definition> } }
+      }
+
+* removalTimeClerk, estimates the average lifetime of neutrons implicitly.
+
+Example: ::
+
+      tally {
+        tau { type removalTimeClerk; }
       }
 
 Tally Responses

@@ -198,6 +198,9 @@ contains
         xs = matCache % xss % total
 
       end if
+      
+      ! Include alpha
+      xs = xs + p % getAlphaAbsorption()
 
     end associate
 
@@ -226,6 +229,9 @@ contains
     end if
 
     xs = self % majorant(p % G)
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getMajorantXS
 

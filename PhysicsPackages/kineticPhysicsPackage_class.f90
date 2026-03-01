@@ -207,10 +207,6 @@ contains
         end if
         tNext = self % timeBounds(t)
 
-        ! Set all particles in the dungeon to having the start-of-step time
-        ! TODO: allow sources which are distributed in time
-        call self % thisTime % setTime(tPrev)
-
         ! Add delayed neutrons to the sampled particles
         if (self % thisPrecursors % popSize() > 0) then
 

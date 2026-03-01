@@ -28,6 +28,7 @@ module materialSource_class
   !!
   !! Places neutrons uniformly in regions with given material.
   !! Angular distribution is isotropic.
+  !! Samples in time with a uniform distribution.
   !!
   !! Can be fed a bounding box to increase sampling efficiency
   !!
@@ -38,6 +39,8 @@ module materialSource_class
   !!   E      -> Source site energy [MeV] (default = 1.0E-6)
   !!   G      -> Source site group (default = 1)
   !!   matIdx -> Index of chosen material in the nuclear database
+  !!   tLow   -> Lowest sample time
+  !!   tHigh  -> Highest sample time
   !!
   !! Interface:
   !!   source_inter interface
@@ -50,6 +53,7 @@ module materialSource_class
   !!     #E 15.0;  #
   !!     #G 7;     #
   !!     #boundingBox (-x -y -z +x +y +z); #
+  !!     #boundingTime (tLow tHigh); #
   !!   }
   !!
   type, public,extends(source) :: materialSource
@@ -60,6 +64,8 @@ module materialSource_class
     real(defReal)               :: E      = ZERO
     integer(shortInt)           :: G      = 0
     integer(shortInt)           :: matIdx = -1
+    real(defReal)               :: tLow   = ZERO
+    real(defReal)               :: tHigh  = ZERO
   contains
     procedure :: init
     procedure :: sampleParticle
@@ -123,6 +129,17 @@ contains
       self % top    = bounds(4:6)
     end if
 
+    if (dict % isPresent('boundingTime')) then
+      call dict % get(tempArray, 'boundingTime')
+      if (size(tempArray) /= 2) call fatalError(Here,&
+               'Bounding time must have 2 entries')
+
+      self % tLow = tempArray(1)
+      self % tHigh = tempArray(2)
+
+      if (self % tHigh < self % tLow) call fatalError(Here,'tHigh is less than tLow')
+    end if
+
   end subroutine init
 
   !!
@@ -137,7 +154,7 @@ contains
     class(nuclearDatabase), pointer      :: nucData
     class(neutronMaterial), pointer      :: mat
     real(defReal), dimension(3)          :: r, rand3
-    real(defReal)                        :: mu, phi
+    real(defReal)                        :: mu, phi, time
     integer(shortInt)                    :: matIdx, uniqueID, i
     character(100), parameter :: Here = 'sampleParticle (materialSource_class.f90)'
 
@@ -164,6 +181,8 @@ contains
       rand3(3) = rand % get()
       r = (self % top - self % bottom) * rand3 + self % bottom
 
+      time = self % tLow + rand % get() * (self % tHigh - self % tLow)
+
       ! Find material under position
       call self % geom % whatIsAt(matIdx, uniqueID, r)
 
@@ -180,7 +199,7 @@ contains
       p % matIdx   = matIdx
       p % uniqueID = uniqueID
       p % wgt      = ONE
-      p % time     = ZERO
+      p % time     = time
       p % type     = P_NEUTRON
       p % r        = r
 
@@ -225,6 +244,8 @@ contains
     self % E      = ZERO
     self % G      = 0
     self % matIdx = -1
+    self % tLow   = ZERO
+    self % tHigh  = ZERO
 
   end subroutine kill
 

@@ -5,7 +5,7 @@ module collisionProcessor_inter
   use genericProcedures,     only : fatalError, numToChar
   use dictionary_class,      only : dictionary
   use RNG_class,             only : RNG
-  use particle_class,        only : particle
+  use particle_class,        only : particle, particleState
   use particleDungeon_class, only : particleDungeon
 
   ! Tally interfaces
@@ -57,6 +57,7 @@ module collisionProcessor_inter
   !!   capture         -> defines behaviour for any capture reaction (e.g. gamma capture, photoelectric)
   !!   fission         -> defines bahaviour for any fission reaction
   !!   cutoffs         -> Any post collision implicit treatments i.e. energy cutoffs
+  !!   alphaProd       -> defines behaviour for time production reactions
   !!
   type, public, abstract :: collisionProcessor
     private
@@ -67,7 +68,7 @@ module collisionProcessor_inter
     ! Extendable initialisation procedure
     procedure :: init
 
-    ! Customisable deffered procedures
+    ! Customisable deferred procedures
     procedure(collisionAction),deferred  :: sampleCollision
     procedure(collisionAction),deferred  :: implicit
     procedure(collisionAction),deferred  :: elastic
@@ -75,6 +76,9 @@ module collisionProcessor_inter
     procedure(collisionAction),deferred  :: capture
     procedure(collisionAction),deferred  :: fission
     procedure(collisionAction),deferred  :: cutoffs
+
+    ! Procedures identical across processors
+    procedure, non_overridable :: alphaProd
 
   end type collisionProcessor
 
@@ -85,7 +89,7 @@ module collisionProcessor_inter
   abstract interface
     !!
     !! Procedure interface for all customisable actions associated with
-    !! processing of sollision event (scatter, fission etc.)
+    !! processing of collision event (scatter, fission etc.)
     !!
     subroutine collisionAction(self, p, tally, collDat, thisCycle, nextCycle)
       import :: collisionProcessor, &
@@ -123,7 +127,7 @@ contains
 
     ! Choose collision nuclide and general type (Scatter, Capture or Fission)
     call self % sampleCollision(p, tally, collDat, thisCycle, nextCycle)
-
+    
     ! In case of a TMS rejection, set collision as virtual
     if (collDat % MT == noInteraction) then
       virtual = .true.
@@ -142,7 +146,11 @@ contains
     call p % savePreCollision()
 
     ! Perform implicit treatment
-    if (collDat % MT /= noInteraction) call self % implicit(p, tally, collDat, thisCycle, nextCycle)
+    ! Don't include interactions which avoid sampling a nuclide
+    if (collDat % MT /= noInteraction .and. collDat % MT /= N_TIME_ABS &
+            .and. collDat % MT /= N_TIME_PROD) then
+      call self % implicit(p, tally, collDat, thisCycle, nextCycle)
+    end if
 
     ! Select physics to be processed based on MT number
     select case(collDat % MT)
@@ -152,11 +160,14 @@ contains
       case(N_N_inelastic, macroIEScatter)
         call self % inelastic(p, tally, collDat, thisCycle, nextCycle)
 
-      case(N_DISAP, macroDisappearance)
+      case(N_DISAP, macroDisappearance, N_TIME_ABS)
         call self % capture(p, tally, collDat, thisCycle, nextCycle)
 
       case(N_FISSION, macroFission)
         call self % fission(p, tally, collDat, thisCycle, nextCycle)
+
+      case(N_TIME_PROD)
+        call self % alphaProd(p, tally, collDat, thisCycle, nextCycle)
 
       case(noInteraction)
         ! Do nothing
@@ -193,5 +204,47 @@ contains
     ! For now does nothing
 
   end subroutine init
+  
+  !!
+  !! Production of neutrons when alpha is negative
+  !! Amounts to particle duplication
+  !!
+  subroutine alphaProd(self, p, tally, collDat, thisCycle, nextCycle)
+    class(collisionProcessor), intent(inout) :: self
+    class(particle), intent(inout)           :: p
+    type(tallyAdmin), intent(inout)          :: tally
+    type(collisionData), intent(inout)       :: collDat
+    class(particleDungeon),intent(inout)     :: thisCycle
+    class(particleDungeon),intent(inout)     :: nextCycle
+    integer(shortInt)                        :: n, i
+    real(defReal)                            :: wgt, w0, rand1, k
+    type(particleState)                      :: pTemp
+
+    ! Obtain required data
+    wgt   = p % w                ! Current weight
+    w0    = p % preHistory % wgt ! Starting weight
+    rand1 = p % pRNG % get()     ! Random number to sample sites
+    k     = p % k_eff
+
+    ! Produce 1/k * (1 + 1/eta ) new particles
+    ! The current particle is killed
+    n = int(ONE / k +  ONE / (p % eta * k) + rand1, shortInt)
+
+    ! Shortcut particle generation if no particles were sampled
+    if (n < 1) then
+      p % isDead = .true.
+      return
+    end if
+
+    ! Store neutrons for next cycle
+    pTemp = p
+    pTemp % collisionN = 0
+    do i = 1,n
+      call nextCycle % detain(pTemp)
+      call tally % reportSpawn(N_TIME_PROD, p, pTemp)
+    end do
+    p % isDead =.true.
+    
+  end subroutine alphaProd
 
 end module collisionProcessor_inter
