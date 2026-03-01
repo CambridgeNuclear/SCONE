@@ -300,7 +300,7 @@ contains
   end subroutine takeAboveGeom
 
   !!
-  !! Decrease nestting to level n
+  !! Decrease nesting to level n
   !!
   !! Args:
   !!   n [in] -> New nesting level
