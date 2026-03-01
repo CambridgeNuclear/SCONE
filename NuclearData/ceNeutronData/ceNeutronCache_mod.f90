@@ -103,8 +103,6 @@ module ceNeutronCache_mod
   !! Public Members:
   !!   E   -> energy of the cross section
   !!   xs  -> value of the cross section
-  !!   T   -> temperature of the cross section
-  !!   rho -> density scaling of the cross section
   !!
   type, public :: cacheSingleXS
     real(defReal) :: E   = ZERO
