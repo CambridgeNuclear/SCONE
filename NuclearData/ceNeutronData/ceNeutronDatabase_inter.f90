@@ -64,10 +64,10 @@ module ceNeutronDatabase_inter
 
     ! Procedures implemented by a specific CE Neutron Database
     procedure(updateMajorantXS), deferred     :: updateMajorantXS
-    procedure(updateTotalMatXS), deferred     :: updateTrackMatXS
+    procedure(updateTrackMatXS), deferred     :: updateTrackMatXS
     procedure(updateTotalMatXS), deferred     :: updateTotalMatXS
     procedure(updateMacroXSs), deferred       :: updateMacroXSs
-    procedure(updateTotalXS), deferred        :: updateTotalNucXS
+    procedure(updateTotalNucXS), deferred     :: updateTotalNucXS
     procedure(updateMicroXSs), deferred       :: updateMicroXSs
     procedure(updateTotalTempNucXS), deferred :: updateTotalTempNucXS
     procedure(energyBounds), deferred         :: energyBounds
@@ -99,9 +99,9 @@ module ceNeutronDatabase_inter
 
     !!
     !! Make sure that trackXS of material with matIdx is at energy E = E_track
-    !! in ceNeutronChache
+    !! in ceNeutronCache
     !!
-    !! The tracking xs correspons to the material total cross section unless TMS
+    !! The tracking xs corresponds to the material total cross section unless TMS
     !! is used. In that case, this is the material temperature majorant xs.
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -109,19 +109,23 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTrackMatXS(self, E, matIdx, rand)
+    subroutine updateTrackMatXS(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in), optional  :: temp
+      real(defReal), intent(in), optional  :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTrackMatXS
 
     !!
     !! Make sure that totalXS of material with matIdx is at energy E
-    !! in ceNeutronChache
+    !! in ceNeutronCache
     !!
     !! ANY CHANGE in ceNeutronChache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
@@ -131,13 +135,17 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTotalMatXS(self, E, matIdx, rand)
+    subroutine updateTotalMatXS(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in)            :: temp
+      real(defReal), intent(in)            :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateTotalMatXS
 
@@ -145,7 +153,7 @@ module ceNeutronDatabase_inter
     !! Make sure that the majorant of ALL Active materials is at energy E
     !! in ceNeutronChache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
     !!   E.G. All material XSs may be updated to energy E
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -165,7 +173,7 @@ module ceNeutronDatabase_inter
     !! Make sure that the macroscopic XSs for the material with matIdx are set
     !! to energy E in ceNeutronCache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
     !!   E.G. Extra materials may be set to energy E as well
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
@@ -173,13 +181,17 @@ module ceNeutronDatabase_inter
     !! Args:
     !!   E [in]       -> required energy [MeV]
     !!   matIdx [in]  -> material index that needs to be updated
+    !!   temp [in]    -> local temperature in kelvin. Negative values should be ignored.
+    !!   rho [in]     -> local density scaling factor. Negative values should be ignored.
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateMacroXSs(self, E, matIdx, rand)
+    subroutine updateMacroXSs(self, E, matIdx, temp, rho, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: matIdx
+      real(defReal), intent(in)            :: temp
+      real(defReal), intent(in)            :: rho
       class(RNG), optional, intent(inout)  :: rand
     end subroutine updateMacroXSs
 
@@ -187,8 +199,8 @@ module ceNeutronDatabase_inter
     !! Make sure that totalXS of nuclide with nucIdx is at energy E
     !! in ceNeutronChache
     !!
-    !! ANY CHANGE in ceNeutronChache is POSSIBLE
-    !!   E.G. All nuclid XSs may be updated to energy E
+    !! ANY CHANGE in ceNeutronCache is POSSIBLE
+    !!   E.G. All nuclide XSs may be updated to energy E
     !!
     !! Assume that call to this procedure implies that data is NOT up-to-date
     !!
@@ -198,14 +210,14 @@ module ceNeutronDatabase_inter
     !!   kT [in]      -> thermal energy of material [MeV]
     !!   rand [inout] -> random number generator
     !!
-    subroutine updateTotalXS(self, E, nucIdx, kT, rand)
+    subroutine updateTotalNucXS(self, E, nucIdx, kT, rand)
       import :: ceNeutronDatabase, defReal, shortInt, RNG
       class(ceNeutronDatabase), intent(in) :: self
       real(defReal), intent(in)            :: E
       integer(shortInt), intent(in)        :: nucIdx
       real(defReal), intent(in)            :: kT
       class(RNG), optional, intent(inout)  :: rand
-    end subroutine updateTotalXS
+    end subroutine updateTotalNucXS
 
     !!
     !! Make sure that the microscopic XSs for the nuclide with nucIdx are set
@@ -345,8 +357,8 @@ contains
     xs = max(xs, self % collisionXS)
 
     ! Update Cache
-    trackingCache(1) % E  = p % E
-    trackingCache(1) % xs = xs
+    trackingCache(1) % E    = p % E
+    trackingCache(1) % xs   = xs
 
   end function getTrackingXS
 
@@ -370,7 +382,7 @@ contains
 
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+      call fatalError(Here, 'Dynamic type of the particle is not CE Neutron but:'//p % typeToChar())
     end if
 
     ! Check that matIdx exists
@@ -384,7 +396,11 @@ contains
     end if
     
     ! Check Cache and update if needed
-    if (materialCache(matIdx) % E_track /= p % E) call self % updateTrackMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_track /= p % E .or. &
+        materialCache(matIdx) % T_track /= p % T .or. &
+        materialCache(matIdx) % rho_track /= p % rho) then
+      call self % updateTrackMatXS(p % E, matIdx, p % T, p % rho, p % pRNG)
+    end if
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % trackXS
@@ -411,7 +427,7 @@ contains
 
     ! Check dynamic type of the particle
     if (p % isMG .or. p % type /= P_NEUTRON) then
-      call fatalError(Here, 'Dynamic type of the partcle is not CE Neutron but:'//p % typeToChar())
+      call fatalError(Here, 'Dynamic type of the particle is not CE Neutron but:'//p % typeToChar())
     end if
     
     ! Check that matIdx exists
@@ -425,7 +441,11 @@ contains
     end if
     
     ! Check Cache and update if needed
-    if (materialCache(matIdx) % E_tot /= p % E) call self % updateTotalMatXS(p % E, matIdx, p % pRNG)
+    if (materialCache(matIdx) % E_tot /= p % E .or. &
+        materialCache(matIdx) % T_tot /= p % T .or. &
+        materialCache(matIdx) % rho_tot /= p % rho) then
+      call self % updateTotalMatXS(p % E, matIdx, p % T, p % rho, p % pRNG)
+    end if
 
     ! Return Cross-Section
     xs = materialCache(matIdx) % xss % total

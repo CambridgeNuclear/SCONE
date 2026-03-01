@@ -16,7 +16,7 @@ module collisionProcessor_inter
   private
 
   !!
-  !! Data package with all relevant data about the collision to move beetween customisable
+  !! Data package with all relevant data about the collision to move between customisable
   !! procedures
   !!
   type, public :: collisionData

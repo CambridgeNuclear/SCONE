@@ -13,6 +13,7 @@ module fieldFactory_func
   use uniformVectorField_class, only : uniformVectorField
   use uniFissSitesField_class,  only : uniFissSitesField
   use weightWindowsField_class, only : weightWindowsField
+  use cartesianField_class,     only : cartesianField
 
   ! Geometry
   use geometryReg_mod,          only : gr_addField => addField
@@ -25,7 +26,8 @@ module fieldFactory_func
   character(nameLen), dimension(*), parameter :: AVAILABLE_FIELDS = ['uniformScalarField',&
                                                                      'uniformVectorField',&
                                                                      'uniFissSitesField ',&
-                                                                     'weightWindowsField']
+                                                                     'weightWindowsField',&
+                                                                     'cartesianField    ']
 
    ! Public interface
    public :: new_field
@@ -41,7 +43,7 @@ contains
   !!   name [in]   -> Name of the field for the geometry registry
   !!
   !! Errors:
-  !!   fatalError is type of field is unknown
+  !!   fatalError if type of field is unknown
   !!
   subroutine new_field(dict, name)
     class(dictionary), intent(in)  :: dict
@@ -67,6 +69,9 @@ contains
       case ('weightWindowsField')
         allocate(weightWindowsField :: kentta)
 
+      case ('cartesianField')
+        allocate(cartesianField :: kentta)
+
       case default
         print '(A)', "AVAILABLE FIELDS:"
         print '(A)', AVAILABLE_FIELDS
@@ -81,6 +86,5 @@ contains
     call gr_addField(kentta, name)
 
   end subroutine new_field
-
-
+  
 end module fieldFactory_func
