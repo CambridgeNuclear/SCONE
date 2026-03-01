@@ -445,6 +445,12 @@ contains
     ! Parallel buffer size
     call dict % getOrDefault(self % bufferSize, 'buffer', 1000)
 
+    ! Check if the calculation is coupled
+    if (dict % isPresent('coupling')) then
+      tempDict => dict % getDictPtr('coupling')
+      call self % couplingInfo % init(tempDict)
+    end if
+
     ! Process type of data
     select case(energy)
       case('mg')
@@ -556,6 +562,7 @@ contains
     allocate(self % inactiveTally)
     call self % inactiveTally % init(tempDict)
 
+
     tempDict => dict % getDictPtr('activeTally')
     allocate(self % activeTally)
     call self % activeTally % init(tempDict)
@@ -609,7 +616,11 @@ contains
     ! Attach attachments to result tallies
     call self % inactiveTally % push(self % inactiveAtch)
     call self % activeTally % push(self % activeAtch)
+    
+    ! Attach a tally admin for coupling
+    if (self % couplingInfo % isCoupled()) then
 
+    end if
 
     call self % printSettings()
 
