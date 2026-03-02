@@ -1,18 +1,23 @@
 module couplingAdmin_class
 
   use numPrecision
-  use universalVariables only : nameDensity, nameTemperature
-  use dictionary_class,  only : dictionary
-  use dictParser_func,   only : fileToDict
-  use outputFile_class,  only : outputFile
-  use errors_mod,        only : fatalError
+  use universalVariables, only : nameDensity, nameTemperature
+  use dictionary_class,   only : dictionary
+  use dictParser_func,    only : fileToDict
+  use outputFile_class,   only : outputFile
+  use errors_mod,         only : fatalError
+  use genericProcedures,  only : numToChar
+  use timer_mod,          only : c_sleep
   
-  use geometryReg_mod,   only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use field_inter,        only : field
+  use tallyAdmin_class,   only : tallyAdmin
+  use geometryReg_mod,    only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
 
   implicit none
   private
 
-  character(nameLen), parameter, dimension(2) :: ALLOWABLE_FIELDS = ['temperature', 'density']
+  character(nameLen), parameter, dimension(2) :: ALLOWABLE_FIELDS = ['temperature',&
+                                                                     'density    ']
   character(nameLen), parameter :: END_SIGNAL = "SIGUSR2", &
                                    CONTINUE_SIGNAL = "SIGUSR1"
 
@@ -38,6 +43,7 @@ module couplingAdmin_class
   !! maxIt           -> maximum number of iterations before finishing coupling
   !! tally           -> Tally admin containing necessary tallies for the driver
   !! fieldPaths      -> paths to files which SCONE reads to update the given fields
+  !! fieldNames      -> names of fields which are updated by other physics
   !!
   !! Public interface:
   !! init          -> initialises the coupling setup from a dictionary
@@ -46,9 +52,11 @@ module couplingAdmin_class
   !! endCoupling   -> deactivates coupling
   !!
   !! doCoupling    -> returns a logical if coupling is happening
+  !! attachTally   -> attach coupling tallies to another tallyAdmin used by a physics package
+  !!
+  !! Private procedures:
   !! doUpdate      -> returns a logical if a physics update should be performed on a given iteration.
   !!
-  !! makeTallies   -> returns a tally admin used for coupling
   !! outputTallies -> outputs tally data to be read by other physics
   !! updateFields  -> updates the relevant physics fields before resuming a calculation
   !!
@@ -65,8 +73,9 @@ module couplingAdmin_class
     character(nameLen) :: outputFormat = ''
     integer(shortInt)  :: updateFreq = 0
     integer(shortInt)  :: maxIt = huge(shortInt)
-    type(tallyAdmin)   :: tally
+    type(tallyAdmin), pointer :: tally
     character(pathLen), dimension(:), allocatable :: fieldPaths
+    character(nameLen), dimension(:), allocatable :: fieldNames
   contains
     procedure :: init
     procedure :: kill
@@ -79,7 +88,7 @@ module couplingAdmin_class
     
     ! Results handling and manipulation
     procedure :: attachTally
-    procedure :: outputTallies
+    procedure, private :: outputTallies
     procedure, private :: updateFields
 
     ! Communication
@@ -97,9 +106,9 @@ contains
   subroutine init(self, dict)
     class(couplingAdmin), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
-    integer(shortInt)                   :: i, nFields
+    integer(shortInt)                   :: i, nFields, j
     logical(defBool)                    :: found, duplicate
-    class(dictionary), pointer          :: tempDict
+    class(dictionary), pointer          :: tallyDict
     type(outputFile)                    :: test_out
     character(100), parameter :: Here ='init (couplingAdmin_class.f90)'
 
@@ -119,6 +128,7 @@ contains
 
     ! Read tally info needed by other solvers
     tallyDict => dict % getDictPtr('tally')
+    allocate(self % tally)
     call self % tally % init(tallyDict)
 
     ! Read the output file name
@@ -142,11 +152,19 @@ contains
     nFields = size(self % fieldNames)
     do i = 1, nFields
 
-      found = any(trim(self % fieldNames(i)) == trim(ALLOWABLE_FIELDS))
-      if (.not. found) call fatalError(Here,'Field names must be one of: '//ALLOWABLE_FIELDS)
+      found = .false.
+      do j = 1, size(ALLOWABLE_FIELDS)
+        found = found .or. (trim(self % fieldNames(i)) == trim(ALLOWABLE_FIELDS(j)))
+      end do
+
+      if (.not. found) then
+        print '(A)', "ALLOWABLE FIELDS:"
+        print '(A)', ALLOWABLE_FIELDS
+        call fatalError(Here,'Field names is invalid. See list above.')
+      end if
 
       if (i < nFields) then
-        duplicate = any(trim(self % fieldNames(i)) == trim(self % fieldNames(i+1:nFields)))
+        duplicate = any(trim(self % fieldNames(i)) == [ (trim(self % fieldNames(j)), j=i+1,nFields) ])
         if (duplicate) call fatalError(Here,'Field names must be unique: '//trim(self % fieldNames(i)))
       end if
       
@@ -168,7 +186,8 @@ contains
     self % outputFormat  = ''
     self % maxIt = huge(shortInt)
     call self % tally % kill()
-    if (allocated(fieldPaths)) deallocate(fieldPaths)
+    if (allocated(self % fieldPaths)) deallocate(self % fieldPaths)
+    if (allocated(self % fieldNames)) deallocate(self % fieldNames)
 
   end subroutine kill
 
@@ -218,7 +237,7 @@ contains
     class(couplingAdmin), intent(inout) :: self
 
     if (self % isCoupled) then
-      self % doCoupling = .false.
+      self % isCoupled = .false.
       call self % signalCalculationOver()
     end if
 
@@ -243,7 +262,7 @@ contains
   subroutine updateFields(self)
     class(couplingAdmin), intent(in) :: self
     integer(shortInt)                :: i
-    class(dictionary)                :: dict
+    class(dictionary), allocatable   :: dict
     character(nameLen)               :: fieldName
     class(field), pointer            :: ptr
     character(100), parameter :: Here = 'updateFields (couplingAdmin_class.f90)'
@@ -304,10 +323,11 @@ contains
   !! of a signal file.
   !!
   subroutine waitForSignal(self)
-    class(couplingAdmin), intent(in) :: self
-    logical(defBool)                 :: exists
-    integer(shortInt)                :: unit
-    character(*)                     :: line
+    class(couplingAdmin), intent(inout) :: self
+    logical(defBool)                    :: exists
+    integer(shortInt)                   :: unit
+    character(nameLen)                  :: line
+    character(100), parameter :: Here ='waitForSignal (couplingAdmin_class.f90)'
 
     do
 
@@ -328,10 +348,10 @@ contains
         end if
 
         close(unit, status="delete")
-        exit
+        return
       end if
       
-      call sleep(1)
+      call c_sleep(1)
 
     end do
 
@@ -341,10 +361,10 @@ contains
   !! Attach coupling tallies to another tally
   !!
   subroutine attachTally(self, tallyPtr)
-    class(couplingAdmin), intent(in)          :: self
-    class(tallyAdmin), pointer, intent(inout) :: tallyPtr
+    class(couplingAdmin), intent(in)         :: self
+    type(tallyAdmin), pointer, intent(inout) :: tallyPtr
     
-    if (self % doCoupling())
+    if (self % doCoupling()) then
       call tallyPtr % push(self % tally)
     end if
 

@@ -65,6 +65,9 @@ module eigenPhysicsPackage_class
   use tallyResult_class,              only : tallyResult
   use keffAnalogClerk_class,          only : keffResult
 
+  ! Coupling
+  use couplingAdmin_class,            only : couplingAdmin
+
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
 
@@ -107,6 +110,9 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
     logical(defBool)   :: reproducible = .true.
+    
+    ! Coupling handler
+    type(couplingAdmin) :: couplingInfo
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -144,6 +150,10 @@ contains
     call self % generateInitialState()
 
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
+    
+    ! Deactivate coupling for active cycles
+    call self % couplingInfo % endCoupling()
+    
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
 
     ! Collect results from other processes
@@ -334,6 +344,9 @@ contains
       call statusMsg("End time:     " // trim(secToChar(end_T)))
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
+    
+      ! Perform coupling operations
+      call self % couplingInfo % couple(i)
 
     end do
 
@@ -591,7 +604,6 @@ contains
     allocate(self % inactiveTally)
     call self % inactiveTally % init(tempDict)
 
-
     tempDict => dict % getDictPtr('activeTally')
     allocate(self % activeTally)
     call self % activeTally % init(tempDict)
@@ -647,8 +659,8 @@ contains
     call self % activeTally % push(self % activeAtch)
     
     ! Attach a tally admin for coupling
-    if (self % couplingInfo % isCoupled()) then
-
+    if (self % couplingInfo % doCoupling()) then
+      call self % couplingInfo % attachTally(self % inactiveTally)
     end if
 
     call self % printSettings()
