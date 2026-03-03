@@ -22,6 +22,7 @@ module neutronXsPackages_class
   !!   fission          -> total Fission MT=18 Cross-section [1/cm]
   !!   nuFission        -> total average neutron production Cross-section [1/cm]
   !!   kappaXS          -> heating cross-section [MeV/cm]
+  !!   promptNuFission  -> prompt-only average neutron production Cross-section [1/cm]
   !!
   !!  Interface:
   !!    clean -> Set all XSs to 0.0
@@ -36,6 +37,7 @@ module neutronXsPackages_class
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
     real(defReal) :: kappaXS          = ZERO
+    real(defReal) :: promptNuFission  = ZERO
   contains
     procedure :: clean => clean_neutronMacroXSs
     procedure :: add   => add_neutronMacroXSs
@@ -56,6 +58,7 @@ module neutronXsPackages_class
   !!   fission          -> total Fission MT=18 Cross-section [barn]
   !!   nuFission        -> total average neutron production Cross-section [barn]
   !!   kappaXS          -> heating Cross-section [MeV*barn]
+  !!   promptNuFission  -> prompt-only average neutron production Cross-section [barn]
   !!
   type, public :: neutronMicroXSs
     real(defReal) :: total            = ZERO
@@ -65,6 +68,7 @@ module neutronXsPackages_class
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
     real(defReal) :: kappaXS          = ZERO
+    real(defReal) :: promptNuFission  = ZERO
   contains
     procedure :: invert => invert_microXSs
   end type neutronMicroXSs
@@ -92,6 +96,7 @@ contains
     self % fission          = ZERO
     self % nuFission        = ZERO
     self % kappaXS          = ZERO
+    self % promptNuFission  = ZERO
 
   end subroutine clean_neutronMacroXSs
 
@@ -119,6 +124,7 @@ contains
     self % fission          = self % fission          + dens * micro % fission
     self % nuFission        = self % nuFission        + dens * micro % nuFission
     self % kappaXS          = self % kappaXS          + dens * micro % kappaXS
+    self % promptNuFission  = self % promptNuFission  + dens * micro % promptNuFission
 
   end subroutine add_neutronMacroXSs
 
@@ -167,6 +173,12 @@ contains
       case(macroKappaFission)
         xs = self % kappaXS
 
+      case(macroPromptNuFission)
+        xs = self % promptNuFission
+      
+      case(macroDelayedNuFission)
+        xs = self % nuFission - self % promptNuFission
+      
       case(macroAbsorbtion)
         xs = self % fission + self % capture
 

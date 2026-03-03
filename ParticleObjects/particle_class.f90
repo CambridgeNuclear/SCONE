@@ -111,6 +111,10 @@ module particle_class
     real(defReal)              :: w         ! Particle Weight
     real(defReal)              :: time      ! Particle time point
 
+    ! Information passed from geometry
+    real(defReal)              :: T = NO_TEMPERATURE ! Local temperature
+    real(defReal)              :: rho = NO_DENSITY   ! Local density scaling
+
     ! Precursor particle data
     real(defReal)              :: lambda = INF     ! Precursor decay constant
     
@@ -125,10 +129,12 @@ module particle_class
     integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
 
     ! Particle processing information
-    class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
-    real(defReal)              :: k_eff            ! Value of default keff for implicit source generation
-    integer(shortInt)          :: geomIdx          ! Index of the geometry used by the particle
-    integer(shortInt)          :: splitCount = 0   ! Counter of number of splits
+    class(RNG), pointer        :: pRNG  => null()   ! Pointer to RNG associated with the particle
+    real(defReal)              :: k_eff             ! Value of default keff for implicit source generation
+    real(defReal)              :: alpha = ZERO      ! Value of alpha for time absorption/production
+    real(defReal)              :: eta = ONE         ! Value for stabilising alpha iteration
+    integer(shortInt)          :: geomIdx           ! Index of the geometry used by the particle
+    integer(shortInt)          :: splitCount = 0    ! Counter of number of splits
 
     ! Archived snapshots of previous states
     type(particleState)        :: preHistory
@@ -154,6 +160,7 @@ module particle_class
 
     ! Enquiry about physical state
     procedure :: getSpeed
+    procedure :: getAlphaAbsorption
 
     ! Precursor procedures
     procedure :: isPrecursor
@@ -466,10 +473,10 @@ contains
   !!   None
   !!
   !! Result:
-  !!   Particle speed
+  !!   Particle speed [cm/s]
   !!
   !! Errors:
-  !!   fatalError if the particle type is neither P_NEUTRON nor P_PHOTON
+  !!   Fatal error if particle is not a photon or neutron
   !!
   function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
@@ -489,12 +496,27 @@ contains
       end if
 
     else
-      call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
-                            & //numToChar(self % type))
+      call fatalError(Here, 'Undefined particle type requesting speed')
 
     end if
 
   end function getSpeed
+  
+  !!
+  !! Return the alpha absorption cross section: XS = alpha/v
+  !! Also includes Zoia's stabilisation for negative alpha values.
+  !!
+  function getAlphaAbsorption(self) result(xs)
+    class(particle), intent(in) :: self
+    real(defReal)               :: xs
+    real(defReal)               :: alpha, eta
+    
+    xs = ZERO
+    alpha = self % alpha
+    eta = self % eta
+    xs = (max(alpha, ZERO) + eta * max(-alpha, ZERO)) / self % getSpeed()
+
+  end function getAlphaAbsorption
 
   !!
   !! Produce a delayed neutron from a precursor.

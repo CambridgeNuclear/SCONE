@@ -57,16 +57,16 @@ module cartesianField_class
     real(defReal), dimension(3)     :: corner = ZERO
     real(defReal), dimension(3)     :: a_bar  = ZERO
     type(box)                       :: outline
-    integer(shortInt)               :: outLocalID = 0
     
     integer(shortInt)                            :: nMat = 0
     integer(shortInt), dimension(:), allocatable :: matIdxs
   contains
     ! Superclass procedures
-    procedure :: init
+    procedure :: init_dict
     procedure :: at
     procedure :: atP
     procedure :: distance
+    procedure :: map
     procedure :: kill
 
     procedure, private :: getLocalID
@@ -77,7 +77,7 @@ contains
   !!
   !! Initialisation
   !!
-  subroutine init(self, dict)
+  subroutine init_dict(self, dict)
     class(cartesianField), intent(inout)          :: self
     class(dictionary), intent(in)                 :: dict
     type(dictionary)                              :: tempDict
@@ -163,9 +163,8 @@ contains
     end if
 
     ! Size field value array
-    self % outLocalID = product(self % sizeN) + 1
-    self % N = product(self % sizeN * self % nMat) + 1
-    allocate(self % val(self % N))
+    self % N = product(self % sizeN * self % nMat)
+    allocate(self % val(self % N + 1))
 
     ! Read field values for each material
     idx0 = 0
@@ -195,9 +194,9 @@ contains
     end do
 
     ! Set default value when not in the field
-    call dict % getOrDefault(self % val(self % N), 'default', -INF)
+    call dict % getOrDefault(self % val(self % N + 1), 'default', -INF)
 
-  end subroutine init
+  end subroutine init_dict
 
   !!
   !! Get value of the field at the co-ordinate point
@@ -208,25 +207,43 @@ contains
     class(cartesianField), intent(in) :: self
     class(coordList), intent(in)      :: coords
     real(defReal)                     :: val
-    integer(shortInt)                 :: idx, localID
+    integer(shortInt)                 :: localID
     
-    localID = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
+    localID = self % map (coords)
+    if (localID == 0) localID = self % N + 1
+    val = self % val(localID)
 
-    if (localID == self % outLocalID) then
-      val = self % val(self % N)
+  end function at
+  
+  !!
+  !! Get index of the field at the co-ordinate point
+  !!
+  !! See pieceConstantField for details
+  !!
+  pure function map(self, coords) result(idx)
+    class(cartesianField), intent(in) :: self
+    class(coordList), intent(in)      :: coords
+    integer(shortInt)                 :: idx
+    integer(shortInt)                 :: idx0
+    
+    idx = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
+
+    ! Outside the field
+    if (idx == 0) then
       return
 
     end if
 
     ! Compare against material idx
-    if (self % matIdxs(1) /= ALL_MATS) then
-      idx = findloc(self % matIdxs, coords % matIdx, 1)
-      localID = localID + (idx - 1) * product(self % sizeN)
+    ! Ensure material is present
+    if (any(self % matIdxs == coords % matIdx)) then
+      idx0 = findloc(self % matIdxs, coords % matIdx, 1)
+      idx = idx + (idx0 - 1) * product(self % sizeN)
+    else if (self % matIdxs(1) /= ALL_MATS) then
+      idx = 0
     end if
-      
-    val = self % val(localID)
 
-  end function at
+  end function map
   
   !!
   !! Get value of the field at the particle's location
@@ -259,10 +276,16 @@ contains
     localID = self % getLocalID(coords % lvl(1) % r, coords % lvl(1) % dir)
     
     ! Catch case if particle is outside the lattice
-    if (localID == self % outLocalID) then
+    if (localID == 0) then
       d = self % outline % distance(coords % lvl(1) % r, coords % lvl(1) % dir)
       return
 
+    end if
+
+    ! Catch case if particle is in an excluded material
+    if ((.not. any(coords % matIdx == self % matIdxs)) .and. self % matIdxs(1) /= ALL_MATS) then
+      d = INF
+      return
     end if
     
     ! Compute ijk of localID
@@ -306,8 +329,7 @@ contains
     end do
 
     ! Cap distance value
-    d = max(ZERO, d)
-    d = min(INF, d)
+    if (d <= ZERO) d = INF
 
   end function distance
   
@@ -325,7 +347,6 @@ contains
     self % nMat = 0
     self % corner = ZERO
     self % a_bar  = ZERO
-    self % outLocalID = 0
     call self % outline % kill()
 
   end subroutine kill
@@ -333,14 +354,14 @@ contains
   !!
   !! Find the local integer ID in the field given position and direction
   !!
-  function getLocalID(self, r, u) result(localID)
-    class(cartesianField), intent(in) :: self
-    real(defReal), dimension(3)       :: r
-    real(defReal), dimension(3)       :: u
-    integer(shortInt)                 :: localID
-    real(defReal), dimension(3)       :: r_bar
-    integer(shortInt), dimension(3)   :: ijk
-    integer(shortInt)                 :: i, inc
+  pure function getLocalID(self, r, u) result(localID)
+    class(cartesianField), intent(in)       :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt)                       :: localID
+    real(defReal), dimension(3)             :: r_bar
+    integer(shortInt), dimension(3)         :: ijk
+    integer(shortInt)                       :: i, inc
           
     ijk = floor((r - self % corner) / self % pitch) + 1
 
@@ -364,7 +385,7 @@ contains
     end do
 
     if (any(ijk <= 0 .or. ijk > self % sizeN)) then ! Point is outside lattice
-      localID = self % outLocalID
+      localID = 0
 
     else
       localID = ijk(1) + self % sizeN(1) * (ijk(2)-1 + self % sizeN(2) * (ijk(3)-1))

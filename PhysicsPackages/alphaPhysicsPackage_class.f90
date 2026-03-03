@@ -1,9 +1,9 @@
-module eigenPhysicsPackage_class
+module alphaPhysicsPackage_class
 
   use numPrecision
   use universalVariables
   use endfConstants
-  use genericProcedures,              only : numToChar, rotateVector
+  use genericProcedures,              only : fatalError, numToChar, rotateVector
   use display_func,                   only : printFishLineR, statusMsg, printSectionStart, &
                                              printSectionEnd, printSeparatorLine
   use mpi_func,                       only : isMPIMaster, getWorkshare, getOffset, getMPIRank
@@ -14,7 +14,6 @@ module eigenPhysicsPackage_class
   use hashFunctions_func,             only : FNV_1
   use dictionary_class,               only : dictionary
   use outputFile_class,               only : outputFile
-  use errors_mod,                     only : fatalError
 
   ! Timers
   use timer_mod,                      only : registerTimer, timerStart, timerStop, &
@@ -31,13 +30,11 @@ module eigenPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
-                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
-                                             gr_fieldPtrName => fieldPtrName
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
   use geometryFactory_func,           only : new_geometry
 
   ! Fields
   use field_inter,                    only : field
-  use pieceConstantField_inter,       only : pieceConstantField, pieceConstantField_CptrCast
   use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
   use fieldFactory_func,              only : new_field
 
@@ -63,7 +60,7 @@ module eigenPhysicsPackage_class
   use tallyCodes
   use tallyAdmin_class,               only : tallyAdmin
   use tallyResult_class,              only : tallyResult
-  use keffAnalogClerk_class,          only : keffResult
+  use kAlphaAnalogClerk_class,        only : kAlphaResult
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -75,9 +72,9 @@ module eigenPhysicsPackage_class
   private
 
   !!
-  !! Physics Package for eigenvalue calculations
+  !! Physics Package for alpha eigenvalue calculations
   !!
-  type, public,extends(physicsPackage) :: eigenPhysicsPackage
+  type, public,extends(physicsPackage) :: alphaPhysicsPackage
     private
     ! Building blocks
     class(nuclearDatabase), pointer        :: nucData       => null()
@@ -98,15 +95,15 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: N_inactive
     integer(shortInt)  :: N_active
     integer(shortInt)  :: pop
-    integer(shortInt)  :: totalPop
     character(pathLen) :: outputFile
     character(nameLen) :: outputFormat
     integer(shortInt)  :: printSource = 0
     integer(shortInt)  :: particleType
     real(defReal)      :: keff_0
+    real(defReal)      :: alpha_0
+    real(defReal)      :: eta
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
-    logical(defBool)   :: reproducible = .true.
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -126,26 +123,27 @@ module eigenPhysicsPackage_class
     procedure :: generateInitialState
     procedure :: collectResults
     procedure :: run
+    procedure :: buildActiveAtch
     procedure :: kill
 
-  end type eigenPhysicsPackage
+  end type alphaPhysicsPackage
 
 contains
 
   subroutine run(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(alphaPhysicsPackage), intent(inout) :: self
 
     call printSeparatorLine()
-    call printSectionStart("EIGENVALUE CALCULATION")
+    call printSectionStart("ALPHA EIGENVALUE CALCULATION")
 
     ! Skip RNG state forward based on the process rank
-    call self % pRNG % stride(getOffset(self % totalPop))
+    call self % pRNG % stride(getOffset(self % pop))
 
     call self % generateInitialState()
-
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
+    call self % buildActiveAtch()
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
-
+    
     ! Collect results from other processes
     call self % inactiveTally % collectDistributed()
     call self % activeTally % collectDistributed()
@@ -153,32 +151,32 @@ contains
     if (isMpiMaster()) call self % collectResults()
 
     call statusMsg("")
-    call printSectionEnd("END OF EIGENVALUE CALCULATION")
+    call printSectionEnd("END OF ALPHA EIGENVALUE CALCULATION")
     call statusMsg("")
 
-  end subroutine
+  end subroutine run
 
   !!
   !!
   !!
   subroutine cycles(self, tally, tallyAtch, N_cycles)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(alphaPhysicsPackage), intent(inout) :: self
     type(tallyAdmin), pointer,intent(inout)   :: tally
     type(tallyAdmin), pointer,intent(inout)   :: tallyAtch
     integer(shortInt), intent(in)             :: N_cycles
     type(particleDungeon), save               :: buffer
-    integer(shortInt)                         :: i, n, nStart, nEnd, nParticles
+    integer(shortInt)                         :: i, n, Nend, nParticles
     class(tallyResult),allocatable            :: res
     type(collisionOperator), save             :: collOp
     class(transportOperator),allocatable,save :: transOp
     type(RNG), target, save                   :: pRNG
     type(particle), save                      :: neutron
-    real(defReal)                             :: k_old, k_new
+    real(defReal)                             :: k_new, alpha_new
     real(defReal)                             :: elapsed_T, end_T, T_toEnd
 #ifdef MPI
     integer(shortInt)                         :: error, nTemp
 #endif
-    character(100),parameter :: Here ='cycles (eigenPhysicsPackage_class.f90)'
+    character(100),parameter :: Here ='cycles (alphaPhysicsPackage_class.f90)'
     !$omp threadprivate(neutron, buffer, collOp, transOp, pRNG)
 
     !$omp parallel
@@ -193,8 +191,9 @@ contains
     transOp = self % transOp
     !$omp end parallel
 
-    ! Set initial k-eff
+    ! Set initial k-eff and alpha
     k_new = self % keff_0
+    alpha_new = self % alpha_0
 
     ! Reset and start timer
     call timerReset(self % timerMain)
@@ -203,7 +202,6 @@ contains
     do i = 1, N_cycles
 
       ! Send start of cycle report
-      nStart = self % thisCycle % popSize()
       call tally % reportCycleStart(self % thisCycle)
 
       nParticles = self % thisCycle % popSize()
@@ -223,20 +221,21 @@ contains
         bufferLoop: do
           call self % geom % placeCoord(neutron % coords)
 
-          ! Set k-eff for normalisation in the particle
+          ! Set values for normalisation in the particle
           neutron % k_eff = k_new
+          neutron % alpha = alpha_new
+          neutron % eta = self % eta
 
           ! Save state
           call neutron % savePreHistory()
-          call neutron % savePreCollision()
 
           ! Transport particle until its death
           history: do
             call transOp % transport(neutron, tally, buffer, self % nextCycle)
-            if (neutron % isDead) exit history
+            if(neutron % isDead) exit history
 
             call collOp % collide(neutron, tally, buffer, self % nextCycle)
-            if (neutron % isDead) exit history
+            if(neutron % isDead) exit history
           end do history
 
           ! Clear out buffer
@@ -254,10 +253,10 @@ contains
       call self % thisCycle % cleanPop()
 
       ! Update RNG
-      call self % pRNG % stride(self % totalPop + 1)
+      call self % pRNG % stride(self % pop + 1)
 
       ! Send end of cycle report
-      nEnd = self % nextCycle % popSize()
+      Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
 
       if (self % UFS) then
@@ -265,16 +264,8 @@ contains
       end if
 
       ! Normalise population
-      if (self % reproducible) then
-        call self % nextCycle % normSize_Repr(self % totalPop, self % pRNG)
-      else
-        call self % nextCycle % normSize_notRepr(self % pop, self % pRNG)
-      end if
+      call self % nextCycle % combing(self % pop, self % pRNG)
 
-      ! Update RNG after it was used to normalise particle population
-      call self % pRNG % stride(1)
-
-      ! Print source in ASCII or binary format if requested
       if (self % printSource /= 0) then
         call self % nextCycle % printToFile(trim(self % outputFile) // '_source' // numToChar(i) // &
                                             '_rank' // numToChar(getMPIRank()), self % printSource == BINARY_FILE)
@@ -286,11 +277,12 @@ contains
       self % thisCycle    => self % temp_dungeon
 
       ! Obtain estimate of k_eff
-      call tallyAtch % getResult(res,'keff')
+      call tallyAtch % getResult(res,'kAlpha')
 
       select type(res)
-        class is(keffResult)
-          k_new = res % keff(1)
+        class is(kAlphaResult)
+          k_new = res % k
+          alpha_new = res % alpha
 
         class default
           call fatalError(Here, 'Invalid result has been returned')
@@ -298,16 +290,17 @@ contains
       end select
 
 #ifdef MPI
-      ! Broadcast k_eff obtained in the master to all processes
-      call mpi_bcast(k_new, 1, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
+      ! Broadcast k_eff and alpha obtained in the master to all processes
+      call mpi_bcast([k_new, alpha_new], 2, MPI_DEFREAL, MASTER_RANK, MPI_COMM_WORLD)
 #endif
 
       ! Load new k-eff estimate into next cycle dungeon
-      k_old = self % nextCycle % k_eff
       self % nextCycle % k_eff = k_new
 
       ! Used to normalise fission source of the first active cycle
+      ! Should hopefully be ~1
       self % keff_0 = k_new
+      self % alpha_0 = alpha_new
 
       ! Calculate times
       call timerStop(self % timerMain)
@@ -319,8 +312,8 @@ contains
 
 #ifdef MPI
       ! Print the population numbers referred to all processes to screen
-      call mpi_reduce(nStart, nTemp, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
-      nStart = nTemp
+      call mpi_reduce(nParticles, nTemp, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
+      nParticles = nTemp
       call mpi_reduce(nEnd, nTemp, 1, MPI_SHORTINT, MPI_SUM, MASTER_RANK, MPI_COMM_WORLD, error)
       nEnd = nTemp
 #endif
@@ -329,7 +322,7 @@ contains
       call printFishLineR(i)
       call statusMsg("")
       call statusMsg("Cycle: " // numToChar(i) // " of " // numToChar(N_cycles))
-      call statusMsg("Pop: " // numToChar(nStart) // " -> " // numToChar(nEnd))
+      call statusMsg("Pop: " // numToChar(nParticles) // " -> " // numToChar(nEnd))
       call statusMsg("Elapsed time: " // trim(secToChar(elapsed_T)))
       call statusMsg("End time:     " // trim(secToChar(end_T)))
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
@@ -346,8 +339,8 @@ contains
   !!
   !!
   subroutine generateInitialState(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
-    character(100), parameter :: Here =' generateInitialState( eigenPhysicsPackage_class.f90)'
+    class(alphaPhysicsPackage), intent(inout) :: self
+    character(100), parameter :: Here =' generateInitialState (alphaPhysicsPackage_class.f90)'
 
     ! Allocate and initialise particle Dungeons
     allocate(self % thisCycle)
@@ -356,12 +349,12 @@ contains
     call self % nextCycle % init(2 * self % pop)
 
     ! Generate initial source
-    call statusMsg("GENERATING INITIAL FISSION SOURCE")
+    print *, "GENERATING INITIAL SOURCE"
     call self % initSource % generate(self % thisCycle, self % pop, self % pRNG)
-    call statusMsg("DONE!")
-
+    print *, "DONE!"
+    
     ! Update RNG after source generation
-    call self % pRNG % stride(self % totalPop)
+    call self % pRNG % stride(self % pop)
 
   end subroutine generateInitialState
 
@@ -369,37 +362,37 @@ contains
   !! Print calculation results to file
   !!
   subroutine collectResults(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(alphaPhysicsPackage), intent(inout) :: self
     type(outputFile)                          :: out
     character(nameLen)                        :: name
 
-    call out % init(self % outputFormat, filename = self % outputFile)
+    call out % init(self % outputFormat, filename=self % outputFile)
 
     name = 'seed'
-    call out % printValue(self % pRNG % getSeed(), name)
+    call out % printValue(self % pRNG % getSeed(),name)
 
     name = 'pop'
-    call out % printValue(self % totalPop, name)
+    call out % printValue(self % pop,name)
 
     name = 'Inactive_Cycles'
-    call out % printValue(self % N_inactive, name)
+    call out % printValue(self % N_inactive,name)
 
     name = 'Active_Cycles'
-    call out % printValue(self % N_active, name)
+    call out % printValue(self % N_active,name)
 
     call cpu_time(self % CPU_time_end)
     name = 'Total_CPU_Time'
-    call out % printValue((self % CPU_time_end - self % CPU_time_start), name)
+    call out % printValue((self % CPU_time_end - self % CPU_time_start),name)
 
     name = 'Total_Transport_Time'
-    call out % printValue(self % time_transport, name)
+    call out % printValue(self % time_transport,name)
 
     ! Print Inactive tally
     name = 'inactive'
     call out % startBlock(name)
     call self % inactiveTally % print(out)
     call out % endBlock()
-
+    
     ! Print Active attachment
     ! Is printed into the root block
     call self % activeAtch % print(out)
@@ -411,11 +404,12 @@ contains
 
   end subroutine collectResults
 
+
   !!
   !! Initialise from individual components and dictionaries for inactive and active tally
   !!
   subroutine init(self, dict)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(alphaPhysicsPackage), intent(inout) :: self
     class(dictionary), intent(inout)          :: dict
     class(dictionary),pointer                 :: tempDict
     type(dictionary)                          :: locDict1, locDict2
@@ -428,26 +422,19 @@ contains
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
-    class(pieceConstantField), pointer        :: pcField
-    real(defReal)                             :: maxDensityScale, maxTemperature
-    character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
+    character(100), parameter :: Here ='init (alphaPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
 
     ! Read calculation settings
-    call dict % get(self % totalPop, 'pop')
-    self % pop = getWorkshare(self % totalPop)
-
+    call dict % get( self % pop,'pop')
     call dict % get( self % N_inactive,'inactive')
     call dict % get( self % N_active,'active')
     call dict % get( nucData, 'XSdata')
     call dict % get( energy, 'dataType')
 
-    ! Check if the calculation has to be reproducible with MPI
-    call dict % getOrDefault(self % reproducible, 'reproducible', .true.)
-
     ! Parallel buffer size
-    call dict % getOrDefault(self % bufferSize, 'buffer', 1000)
+    call dict % getOrDefault( self % bufferSize, 'buffer', 1000)
 
     ! Process type of data
     select case(energy)
@@ -475,7 +462,7 @@ contains
 
     ! *** It is a bit silly but dictionary cannot store longInt for now
     !     so seeds are limited to 32 bits (can be -ve)
-    if (dict % isPresent('seed')) then
+    if( dict % isPresent('seed')) then
       call dict % get(seed_temp,'seed')
 
     else
@@ -485,19 +472,19 @@ contains
       call FNV_1(string,seed_temp)
 
     end if
-
-    ! Broadcast seed to all processes
-#ifdef MPI
-    call mpi_bcast(seed_temp, 1, MPI_SHORTINT, MASTER_RANK, MPI_COMM_WORLD)
-#endif
-
     seed = seed_temp
     call self % pRNG % init(seed)
 
     ! Initial k_effective guess
     call dict % getOrDefault(self % keff_0,'keff_0', ONE)
-
-    ! Read whether to print particle source per cycle, 1 for ASCII, 2 for binary
+    
+    ! Initial alpha guess
+    call dict % getOrDefault(self % alpha_0,'alpha_0', 0.1_defReal)
+    
+    ! Alpha stabilising factor
+    call dict % getOrDefault(self % eta, 'eta', ONE)
+    
+    ! Read whether to print particle source per cycle
     call dict % getOrDefault(self % printSource, 'printSource', 0)
     if (self % printSource < NO_PRINTING .or. self % printSource > BINARY_FILE) then
       call fatalError(Here, 'printSource must be 0 (No printing), 1 (ASCII) or 2 (BINARY)')
@@ -508,7 +495,7 @@ contains
 
     ! Build geometry
     tempDict => dict % getDictPtr('geometry')
-    geomName = 'eigenGeom'
+    geomName = 'alphaGeom'
     call new_geometry(tempDict, geomName)
     self % geomIdx = gr_geomIdx(geomName)
     self % geom    => gr_geomPtr(self % geomIdx)
@@ -518,41 +505,17 @@ contains
     self % nucData => ndReg_get(self % particleType)
 
     ! Call visualisation
-    if (dict % isPresent('viz') .and. isMPIMaster()) then
-      call statusMsg("Initialising visualiser")
+    if (dict % isPresent('viz')) then
+      print *, "Initialising visualiser"
       tempDict => dict % getDictPtr('viz')
       call viz % init(self % geom, tempDict)
-      call statusMsg("Constructing visualisation")
+      print *, "Constructing visualisation"
       call viz % makeViz()
       call viz % kill()
     endif
-    
-    ! If present, build temperature field
-    if (dict % isPresent('temperature')) then
-      tempDict => dict % getDictPtr('temperature')
-      call new_field(tempDict, nameTemperature)
-      field => gr_fieldPtrName(nameTemperature)
-      pcField => pieceConstantField_CptrCast(field)
-      maxTemperature = pcField % getMaxValue()
-    else
-      maxTemperature = NO_TEMPERATURE
-    end if
-
-    ! If present, build density field
-    if (dict % isPresent('density')) then
-      tempDict => dict % getDictPtr('density')
-      call new_field(tempDict, nameDensity)
-      field => gr_fieldPtrName(nameDensity)
-      pcField => pieceConstantField_CptrCast(field)
-      maxDensityScale = pcField % getMaxValue()
-    else
-      maxDensityScale = NO_DENSITY
-    end if
-    
-    ! Update majorant in case of density and temperature fields
-    call self % nucData % initMajorant(.false., maxTemp = maxTemperature, scaleDensity = maxDensityScale)
 
     ! Read uniform fission site option as a geometry field
+    ! WARNING: Not sure how this will behave in alpha mode
     if (dict % isPresent('uniformFissionSites')) then
       self % ufs = .true.
       ! Build and initialise
@@ -590,6 +553,7 @@ contains
     call self % activeTally % init(tempDict)
 
     ! Load Initial source
+    ! Requires source specification for non-multiplying systems
     if (dict % isPresent('source')) then ! Load definition from file
       call new_source(self % initSource, dict % getDictPtr('source'), self % geom)
 
@@ -604,13 +568,14 @@ contains
 
     ! Initialise active and inactive tally attachments
     ! Inactive tally attachment
-    ! Note: mpiSync ensures that k_eff is synchronised between all processes each cycle
-    call locDict1 % init(3)
-    call locDict2 % init(2)
+    ! Note: mpiSync ensures that alpha/k is synchronised between all processes each cycle
+    call locDict1 % init(2)
+    call locDict2 % init(4)
 
-    call locDict2 % store('type','keffAnalogClerk')
-    call locDict1 % store('keff', locDict2)
-    call locDict1 % store('display',['keff'])
+    call locDict2 % store('type','kAlphaAnalogClerk')
+    call locDict2 % store('alpha_0',self % alpha_0)
+    call locDict1 % store('kAlpha', locDict2)
+    call locDict1 % store('display',['kAlpha'])
     call locDict1 % store('mpiSync', 1)
 
     allocate(self % inactiveAtch)
@@ -619,14 +584,33 @@ contains
     call locDict2 % kill()
     call locDict1 % kill()
 
-    ! Active tally attachment
-    ! Note: mpiSync ensures that k_eff is synchronised between all processes each cycle
-    call locDict1 % init(3)
-    call locDict2 % init(2)
+    ! Attach attachment to result tallies
+    call self % inactiveTally % push(self % inactiveAtch)
 
-    call locDict2 % store('type','keffImplicitClerk')
-    call locDict1 % store('keff', locDict2)
-    call locDict1 % store('display',['keff'])
+    ! Don't create the active tally yet as the guess value
+    ! strongly affects the convergence rate and may bias
+    ! the active cycle estimate
+
+    call self % printSettings()
+
+  end subroutine init
+
+  !!
+  !! Build active attachment given better initial guess of alpha
+  !! to prevent biasing the active cycle estimate
+  !! Note: mpiSync ensures that alpha/k is synchronised between all processes each cycle
+  !!
+  subroutine buildActiveAtch(self)
+    class(alphaPhysicsPackage), intent(inout) :: self
+    type(dictionary)                          :: locDict1, locDict2
+
+    call locDict1 % init(2)
+    call locDict2 % init(4)
+
+    call locDict2 % store('type','kAlphaAnalogClerk')
+    call locDict2 % store('alpha_0',self % alpha_0)
+    call locDict1 % store('kAlpha', locDict2)
+    call locDict1 % store('display',['kAlpha'])
     call locDict1 % store('mpiSync', 1)
 
     allocate(self % activeAtch)
@@ -635,20 +619,15 @@ contains
     call locDict2 % kill()
     call locDict1 % kill()
 
-    ! Attach attachments to result tallies
-    call self % inactiveTally % push(self % inactiveAtch)
     call self % activeTally % push(self % activeAtch)
 
-
-    call self % printSettings()
-
-  end subroutine init
+  end subroutine buildActiveAtch
 
   !!
   !! Deallocate memory
   !!
   subroutine kill(self)
-    class(eigenPhysicsPackage), intent(inout) :: self
+    class(alphaPhysicsPackage), intent(inout) :: self
 
     ! TODO: This subroutine
 
@@ -658,10 +637,10 @@ contains
   !! Print settings of the physics package
   !!
   subroutine printSettings(self)
-    class(eigenPhysicsPackage), intent(in) :: self
+    class(alphaPhysicsPackage), intent(in) :: self
 
     call printSeparatorLine()
-    call printSectionStart("EIGENVALUE CALCULATION WITH POWER ITERATION METHOD")
+    call printSectionStart("ALPHA EIGENVALUE CALCULATION WITH K-ALPHA ITERATION METHOD")
     call statusMsg("Inactive Cycles:    " // numToChar(self % N_inactive))
     call statusMsg("Active Cycles:      " // numToChar(self % N_active))
     call statusMsg("Neutron Population: " // numToChar(self % pop))
@@ -671,5 +650,4 @@ contains
 
   end subroutine printSettings
 
-
-end module eigenPhysicsPackage_class
+end module alphaPhysicsPackage_class

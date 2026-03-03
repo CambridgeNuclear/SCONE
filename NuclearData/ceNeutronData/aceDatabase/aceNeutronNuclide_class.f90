@@ -48,7 +48,10 @@ module aceNeutronNuclide_class
   integer(shortInt), parameter :: FISSION_XS    = 5
   integer(shortInt), parameter :: NU_FISSION    = 6
   integer(shortInt), parameter :: KAPPA_XS      = 7
+  integer(shortInt), parameter :: PROMPT_NU_FISSION = 8
 
+  integer(shortInt), parameter :: NON_FISSILE_SIZE = 4, &
+                                  FISSILE_SIZE = 8
 
   !!
   !! Groups data related to an MT reaction
@@ -74,7 +77,7 @@ module aceNeutronNuclide_class
   !!   ZAID             -> ZZAAA.TTc ID of the ACE card of the nuclide
   !!   eGrid            -> Energy grid for the XSs
   !!   mainData         -> Array of XSs that are required in ceNeutronMicroXSs, that is
-  !!     (total, capture, escatter, iescatter, fission, nuFission)
+  !!     (total, capture, escatter, iescatter, fission, nuFission, promptNuFission)
   !!   MTdata           -> array of 'reactionMT's with data for all MT reactions in the nuclide
   !!     only reactions 1:nMTinelastic are active, that is can be sampled during tracking
   !!   nMTinelastic     -> number of active MT reactions that produce 2nd-ary neutrons
@@ -435,13 +438,15 @@ contains
       xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
-        xss % fission   = ZERO
-        xss % nuFission = ZERO
-        xss % kappaXS   = ZERO
+        xss % fission         = ZERO
+        xss % nuFission       = ZERO
+        xss % kappaXS         = ZERO
+        xss % promptNuFission = ZERO
       end if
     end associate
 
@@ -484,13 +489,15 @@ contains
       xss % capture = data(CAPTURE_XS, 2) * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
         xss % kappaXS   = ZERO
+        xss % promptNuFission = ZERO
       end if
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
@@ -558,13 +565,15 @@ contains
 
       ! Retrieve fission related cross sections as usual
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
-        xss % kappaXS   = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
         xss % kappaXS   = ZERO
+        xss % promptNuFission = ZERO
       end if
 
       ! Check if flag for multiplication factor (IFF) is true, and apply it to elastic scattering,
@@ -593,9 +602,10 @@ contains
     xss % capture          = val(2)
 
     if (self % isFissile()) then
-      xss % nuFission = xss % nuFission/xss % fission * val(3)
-      xss % kappaXS   = xss % kappaXS / xss % fission * val(3)
-      xss % fission   = val(3)
+      xss % nuFission       = xss % nuFission/xss % fission * val(3)
+      xss % kappaXS         = xss % kappaXS / xss % fission * val(3)
+      xss % promptNuFission = xss % promptNuFission/xss % fission * val(3)
+      xss % fission         = val(3)
     end if
 
     ! Calculate total cross section from the partial cross sections
@@ -754,9 +764,9 @@ contains
 
     ! Allocate space for main XSs
     if (self % isFissile()) then
-      N = 7
+      N = FISSILE_SIZE
     else
-      N = 4
+      N = NON_FISSILE_SIZE
     end if
 
     allocate(self % mainData(N, Ngrid))
@@ -830,6 +840,8 @@ contains
                                         self % fission % release(self % eGrid(i))
         self % mainData(KAPPA_XS,i)   = self % mainData(FISSION_XS,i) * &
                                         self % fission % getQ() * H_Q
+        self % mainData(PROMPT_NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
+                                               self % fission % releasePrompt(self % eGrid(i))
       end do
 
     end if

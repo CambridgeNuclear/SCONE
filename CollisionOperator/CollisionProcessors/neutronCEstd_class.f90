@@ -2,7 +2,7 @@ module neutronCEstd_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : REJECTED, INF
+  use universalVariables,            only : REJECTED, kBoltzmannMeV
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
@@ -162,7 +162,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, kT, denom, alphaXS, probAlpha
     character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
 
     ! Verify that particle is CE neutron
@@ -173,13 +173,29 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if (.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
+    
+    ! Avoid nuclide sampling if alpha absorption occurs
+    denom = self % xsData % getTrackMatXS(p, p % matIdx())
+    alphaXS = p % getAlphaAbsorption()
+    probAlpha = alphaXS / denom
+ 
+    if (p % pRNG % get() < probAlpha) then
+      collDat % E = p % E
+      if (p % alpha >= 0) then
+        collDat % MT = N_TIME_ABS
+      else
+        collDat % MT = N_TIME_PROD
+      end if
+      return
+    end if
 
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast(self % xsData % getMaterial(p % matIdx()))
-    if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
+    if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial: '&
+            //numToChar(p % matIdx()))
 
     ! Select collision nuclide
-    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E)
+    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E, p % T, p % rho)
 
     ! If nuclide was rejected in TMS loop return to tracking
     if (collDat % nucIdx == REJECTED) then
@@ -191,7 +207,12 @@ contains
     if (.not.associated(self % nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, collDat % E, self % mat % kT, p % pRNG)
+    if (p % T <= ZERO) then
+      kT = self % mat % kT
+    else
+      kT = p % T * kBoltzmannMeV
+    end if
+    call self % nuc % getMicroXSs(microXss, collDat % E, kT, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -213,7 +234,7 @@ contains
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, lambda
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, kT, lambda, wD
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -226,7 +247,12 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
+      if (p % T <= ZERO) then
+        kT = self % mat % kT
+      else
+        kT = p % T * kBoltzmannMeV
+      end if
+      call self % nuc % getMicroXSs(microXSs, collDat % E, kT, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
@@ -252,6 +278,12 @@ contains
         ! Skip if a delayed particle is produced in prompt-only mode
         if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
         
+        ! If alpha, determine the weight of a delayed neutron
+        wD = ONE
+        if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + p % alpha)
+        end if
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
         
         if (E_out > self % maxE) E_out = self % maxE
@@ -263,7 +295,7 @@ contains
         pTemp % r   = r
         pTemp % dir = dir
         pTemp % E   = E_out
-        pTemp % wgt = wgt
+        pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
 
         ! If storing precursors, do so when a finite lambda occurs
@@ -298,7 +330,7 @@ contains
     p % isDead =.true.
 
   end subroutine capture
-
+  
   !!
   !! Process fission reaction
   !!
@@ -346,6 +378,7 @@ contains
     else
       collDat % kT = self % nuc % getkT()
     end if
+    if (p % T > ZERO) collDat % kT = p % T * kBoltzmannMeV
 
     ! Check is DBRC is on
     hasDBRC = self % nuc % hasDBRC()
