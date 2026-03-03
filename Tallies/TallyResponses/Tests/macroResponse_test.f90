@@ -37,7 +37,7 @@ contains
     type(dictionary)                         :: tempDict
 
     ! Allocate and initialise test nuclearData
-    ! Cross-sections:         Total         eScattering  IeScatter Capture      Fission      nuFission      kappFission
+    ! Cross-sections:         Total         eScattering  IeScatter Capture      Fission      nuFission      kappaFission
     call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal, 9.0_defReal)
 
     ! Set up responses

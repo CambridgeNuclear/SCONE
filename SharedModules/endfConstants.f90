@@ -120,7 +120,7 @@ module endfConstants
                                   macroFission          = -6 ,&
                                   macroNuFission        = -7 ,&
                                   macroPromptNuFission  = -8 ,&
-                                  macroDelayedNuFission = -9
+                                  macroDelayedNuFission = -9 ,&
                                   macroKappaFission     = -80
 
   ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)

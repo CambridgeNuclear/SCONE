@@ -18,6 +18,8 @@ module fissionMG_class
   !!
   public :: fissionMG_TptrCast
 
+  real(defReal), private, parameter :: KAPPA_DEFAULT = 202.27 ! [MeV]
+
   !!
   !! A special type of MG reaction that contains data related to fission
   !!
@@ -36,7 +38,7 @@ module fissionMG_class
   !!
   type, public, extends(reactionMG) :: fissionMG
     real(defReal),dimension(:,:),allocatable :: data
-    real(defReal) :: kappa = 200.0_defReal
+    real(defReal) :: kappa = KAPPA_DEFAULT
   contains
     ! Superclass procedures
     procedure :: init
@@ -222,7 +224,7 @@ contains
     call dict % get(nG, 'numberOfGroups')
     
     ! Get energy per fission
-    call dict % getOrDefault(self % kappa, 'kappa', 200.0_defReal)
+    call dict % getOrDefault(self % kappa, 'kappa', KAPPA_DEFAULT)
 
     ! Allocate space
     allocate(self % data(nG, 2))
