@@ -41,14 +41,17 @@ module aceNeutronNuclide_class
 
 
   ! Grid location parameters
-  integer(shortInt), parameter :: TOTAL_XS          = 1
-  integer(shortInt), parameter :: ESCATTER_XS       = 2
-  integer(shortInt), parameter :: IESCATTER_XS      = 3
-  integer(shortInt), parameter :: CAPTURE_XS        = 4
-  integer(shortInt), parameter :: FISSION_XS        = 5
-  integer(shortInt), parameter :: NU_FISSION        = 6
-  integer(shortInt), parameter :: PROMPT_NU_FISSION = 7
+  integer(shortInt), parameter :: TOTAL_XS      = 1
+  integer(shortInt), parameter :: ESCATTER_XS   = 2
+  integer(shortInt), parameter :: IESCATTER_XS  = 3
+  integer(shortInt), parameter :: CAPTURE_XS    = 4
+  integer(shortInt), parameter :: FISSION_XS    = 5
+  integer(shortInt), parameter :: NU_FISSION    = 6
+  integer(shortInt), parameter :: KAPPA_XS      = 7
+  integer(shortInt), parameter :: PROMPT_NU_FISSION = 8
 
+  integer(shortInt), parameter :: NON_FISSILE_SIZE = 4, &
+                                  FISSILE_SIZE = 8
 
   !!
   !! Groups data related to an MT reaction
@@ -437,10 +440,12 @@ contains
       if (self % isFissile()) then
         xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
         xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
         xss % fission         = ZERO
         xss % nuFission       = ZERO
+        xss % kappaXS         = ZERO
         xss % promptNuFission = ZERO
       end if
     end associate
@@ -486,10 +491,12 @@ contains
       if (self % isFissile()) then
         xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
         xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
-        xss % fission         = ZERO
-        xss % nuFission       = ZERO
+        xss % fission   = ZERO
+        xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
         xss % promptNuFission = ZERO
       end if
 
@@ -560,10 +567,12 @@ contains
       if (self % isFissile()) then
         xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
         xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
         xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
-        xss % fission         = ZERO
-        xss % nuFission       = ZERO
+        xss % fission   = ZERO
+        xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
         xss % promptNuFission = ZERO
       end if
 
@@ -594,6 +603,7 @@ contains
 
     if (self % isFissile()) then
       xss % nuFission       = xss % nuFission/xss % fission * val(3)
+      xss % kappaXS         = xss % kappaXS / xss % fission * val(3)
       xss % promptNuFission = xss % promptNuFission/xss % fission * val(3)
       xss % fission         = val(3)
     end if
@@ -733,6 +743,7 @@ contains
                                                      top, firstIdxMT4
     real(defReal), dimension(:), allocatable      :: xsMT4
     type(stackInt)                                :: scatterMT, absMT
+    real(defReal)                                 :: H_Q
     character(100), parameter :: Here = "init (aceNeutronNuclide_class.f90)"
 
     ! Reset nuclide just in case
@@ -753,9 +764,9 @@ contains
 
     ! Allocate space for main XSs
     if (self % isFissile()) then
-      N = 7
+      N = FISSILE_SIZE
     else
-      N = 4
+      N = NON_FISSILE_SIZE
     end if
 
     allocate(self % mainData(N, Ngrid))
@@ -815,10 +826,20 @@ contains
         call self % fission % init(ACE, N_f)
       end if
 
-      ! Calculate nuFission
+      ! Obtain Heating/Q scaling ratio
+      ! Check if database is associated in order to satisfy tests where it might not be!
+      if (associated(database)) then
+        H_Q = database % H235 / database % Q235
+      else
+        H_Q = ONE
+      end if
+
+      ! Calculate nuFission and kappaXS
       do i = bottom, Ngrid
-        self % mainData(NU_FISSION,i)        = self % mainData(FISSION_XS,i) * &
-                                               self % fission % release(self % eGrid(i))
+        self % mainData(NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
+                                        self % fission % release(self % eGrid(i))
+        self % mainData(KAPPA_XS,i)   = self % mainData(FISSION_XS,i) * &
+                                        self % fission % getQ() * H_Q
         self % mainData(PROMPT_NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
                                                self % fission % releasePrompt(self % eGrid(i))
       end do

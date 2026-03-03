@@ -74,7 +74,7 @@ contains
 
     ! Build test neutronDatabase
     call this % nucData % build(ONE, captureXS = 2.0_defReal, &
-                                fissionXS = 1.5_defReal, nuFissionXS = 3.0_defReal)
+                                fissionXS = 1.5_defReal, nuFissionXS = 3.0_defReal, kappaXS = 300.0_defReal)
 
   end subroutine setUp
 
@@ -105,8 +105,8 @@ contains
     type(particleState)                  :: pFiss
     type(outputFile)                     :: out
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
-                                                  nu, chi, P0, P1, P2, P3, P4,  &
-                                                  P5, P6, P7, prod
+                                                  nu, chi, kappa, P0, P1, P2, P3, &
+                                                  P4, P5, P6, P7, prod
     real(defReal), parameter :: TOL = 1.0E-9
 
     ! Configure memory
@@ -143,7 +143,7 @@ contains
     call mem % closeCycle(ONE)
 
     ! Process and get results
-    call this % clerk_test1 % processRes(mem, capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    call this % clerk_test1 % processRes(mem, capt, fiss, transFL, transOS, nu, chi, kappa, P0, P1, prod)
     call this % clerk_test1 % processPN(mem, P2, P3, P4, P5, P6, P7)
 
     ! Verify results of scoring
@@ -151,6 +151,7 @@ contains
     @assertEqual([ZERO, ZERO, 1.5_defReal, ZERO], fiss(1,:), TOL, 'Fission XS' )
     @assertEqual([ZERO, ZERO, TWO, ZERO], nu(1,:), TOL, 'NuFission XS' )
     @assertEqual([ZERO, ZERO, HALF, HALF], chi(1,:), TOL, 'Chi' )
+    @assertEqual([ZERO, ZERO, 300.0_defReal, ZERO], kappa(1,:), TOL, 'Kappa XS' )
     @assertEqual([ZERO, ZERO, 4.0_defReal, ZERO], transOS(1,:), TOL, 'Transport XS O.S.' )
     @assertEqual([ZERO, ZERO, 5.5_defReal, ZERO], transFL(1,:), TOL, 'Transport XS F.L.' )
     @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO, ZERO], P0(1,:), TOL, 'P0' )
@@ -165,7 +166,7 @@ contains
     @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, -0.0683670044_defReal, ZERO, ZERO], P7(1,:), TOL, 'P7' )
 
     ! Test getting size
-    @assertEqual(100, this % clerk_test1 % getSize(),'Test getSize():')
+    @assertEqual(104, this % clerk_test1 % getSize(),'Test getSize():')
 
     ! Test correctness of output calls
     call out % init('dummyPrinter', fatalErrors = .false.)
@@ -185,7 +186,7 @@ contains
     type(particleState)                  :: pFiss
     type(outputFile)                     :: out
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
-                                                  nu, chi, P0, P1, prod
+                                                  nu, chi, kappa, P0, P1, prod
     real(defReal), parameter :: TOL = 1.0E-9
 
     ! Configure memory
@@ -221,13 +222,14 @@ contains
     call mem % closeCycle(ONE)
 
     ! Process and get results
-    call this % clerk_test2 % processRes(mem, capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    call this % clerk_test2 % processRes(mem, capt, fiss, transFL, transOS, nu, chi, kappa, P0, P1, prod)
 
     ! Verify results of scoring
     @assertEqual([ZERO, ZERO, TWO], capt(1,:), TOL, 'Capture XS' )
     @assertEqual([ZERO, ZERO, 1.5_defReal], fiss(1,:), TOL, 'Fission XS' )
     @assertEqual([ZERO, ZERO, TWO], nu(1,:), TOL, 'NuFission XS' )
     @assertEqual([HALF, ZERO, HALF], chi(1,:), TOL, 'Chi' )
+    @assertEqual([ZERO, ZERO, 300.0_defReal], kappa(1,:), TOL, 'Kappa XS' )
     @assertEqual([ZERO, ZERO, 4.0_defReal], transOS(1,:), TOL, 'Transport XS O.S.' )
     @assertEqual([ZERO, ZERO, 5.5_defReal], transFL(1,:), TOL, 'Transport XS F.L.' )
     @assertEqual([ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, TWO, ZERO], P0(1,:), TOL, 'P0' )
@@ -235,7 +237,7 @@ contains
     @assertEqual([ONE, ONE, ONE, ONE, ONE, ONE, ONE, TWO, ONE], prod(1,:), TOL, 'prod' )
 
     ! Test getting size
-    @assertEqual(48, this % clerk_test2 % getSize(),'Test getSize():')
+    @assertEqual(51, this % clerk_test2 % getSize(),'Test getSize():')
 
     ! Test correctness of output calls
     call out % init('dummyPrinter', fatalErrors = .false.)
