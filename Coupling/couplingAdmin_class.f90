@@ -1,24 +1,28 @@
 module couplingAdmin_class
 
   use numPrecision
-  use universalVariables, only : nameDensity, nameTemperature
+  use universalVariables, only : nameDensity, nameTemperature, NO_TEMPERATURE
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : fileToDict
   use outputFile_class,   only : outputFile
   use errors_mod,         only : fatalError
+  use display_func,       only : statusMsg
   use genericProcedures,  only : numToChar
   use timer_mod,          only : c_sleep
   
-  use field_inter,        only : field
-  use tallyAdmin_class,   only : tallyAdmin
-  use geometryReg_mod,    only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+  use field_inter,              only : field
+  use fieldFactory_func,        only : new_field
+  use pieceConstantField_inter, only : pieceConstantField, pieceConstantField_CptrCast
+  use tallyAdmin_class,         only : tallyAdmin
+  use geometryReg_mod,          only : gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
+                                       gr_hasField => hasField
 
   implicit none
   private
 
   character(nameLen), parameter, dimension(2) :: ALLOWABLE_FIELDS = ['temperature',&
                                                                      'density    ']
-  character(nameLen), parameter :: END_SIGNAL = "SIGUSR2", &
+  character(nameLen), parameter :: END_SIGNAL = "SIGTERM", &
                                    CONTINUE_SIGNAL = "SIGUSR1"
 
   !!
@@ -33,6 +37,7 @@ module couplingAdmin_class
   !! - create any tallies necessary for coupling (such as power tallies)
   !! - output the results of those tallies to an appropriate location
   !! - know the location of fields provided by other physics and update them in SCONE
+  !! - possibly provide checks on validity of information fed back to SCONE
   !! 
   !! Private members:
   !! isCoupled       -> flag for whether coupling is being performed
@@ -41,6 +46,7 @@ module couplingAdmin_class
   !! outputFile      -> path to the file which SCONE outputs containing results to be used by the driver
   !! updateFreq      -> frequency with which SCONE pauses to exchange data with the driver
   !! maxIt           -> maximum number of iterations before finishing coupling
+  !! maxTemperature  -> Assumed maximum temperature present in the problem
   !! tally           -> Tally admin containing necessary tallies for the driver
   !! fieldPaths      -> paths to files which SCONE reads to update the given fields
   !! fieldNames      -> names of fields which are updated by other physics
@@ -51,11 +57,12 @@ module couplingAdmin_class
   !! couple        -> performs the main coupling logic
   !! endCoupling   -> deactivates coupling
   !!
-  !! doCoupling    -> returns a logical if coupling is happening
-  !! attachTally   -> attach coupling tallies to another tallyAdmin used by a physics package
+  !! doCoupling          -> returns a logical if coupling is happening
+  !! attachTally         -> attach coupling tallies to another tallyAdmin used by a physics package
   !!
   !! Private procedures:
-  !! doUpdate      -> returns a logical if a physics update should be performed on a given iteration.
+  !! doUpdate            -> returns a logical if a physics update should be performed on a given iteration.
+  !! maxTemperatureCheck -> checks whether the maximum field temperature is lower than that assumed initially
   !!
   !! outputTallies -> outputs tally data to be read by other physics
   !! updateFields  -> updates the relevant physics fields before resuming a calculation
@@ -73,6 +80,7 @@ module couplingAdmin_class
     character(nameLen) :: outputFormat = ''
     integer(shortInt)  :: updateFreq = 0
     integer(shortInt)  :: maxIt = huge(shortInt)
+    real(defReal)      :: maxTemperature = NO_TEMPERATURE
     type(tallyAdmin), pointer :: tally
     character(pathLen), dimension(:), allocatable :: fieldPaths
     character(nameLen), dimension(:), allocatable :: fieldNames
@@ -84,6 +92,7 @@ module couplingAdmin_class
 
     ! Status checks
     procedure :: doCoupling
+    procedure, private :: checkMaxTemperature
     procedure, private :: doUpdate
     
     ! Results handling and manipulation
@@ -112,6 +121,8 @@ contains
     type(outputFile)                    :: test_out
     character(100), parameter :: Here ='init (couplingAdmin_class.f90)'
 
+    self % isCoupled = .true.
+
     ! Read communication details
     call dict % get(self % commFileIn, 'receiveFile')
     call dict % get(self % commFileOut, 'sendFile')
@@ -127,9 +138,13 @@ contains
             'Maximum iteration number is silly: '//numToChar(self % maxIt))
 
     ! Read tally info needed by other solvers
+    ! Should this be modified to ensure MPI sync?
     tallyDict => dict % getDictPtr('tally')
     allocate(self % tally)
     call self % tally % init(tallyDict)
+
+    ! Read maximum temperature that may occur
+    call dict % getOrDefault(self % maxTemperature, 'maxTemp', NO_TEMPERATURE)
 
     ! Read the output file name
     call dict % get(self % outputFile, 'outputFile')
@@ -160,7 +175,7 @@ contains
       if (.not. found) then
         print '(A)', "ALLOWABLE FIELDS:"
         print '(A)', ALLOWABLE_FIELDS
-        call fatalError(Here,'Field names is invalid. See list above.')
+        call fatalError(Here,'Field name is invalid. See list above.')
       end if
 
       if (i < nFields) then
@@ -185,6 +200,7 @@ contains
     self % outputFile  = ''
     self % outputFormat  = ''
     self % maxIt = huge(shortInt)
+    self % maxTemperature = NO_TEMPERATURE
     call self % tally % kill()
     if (allocated(self % fieldPaths)) deallocate(self % fieldPaths)
     if (allocated(self % fieldNames)) deallocate(self % fieldNames)
@@ -218,6 +234,25 @@ contains
     end if
 
   end subroutine couple
+
+  !!
+  !! Compares the maximum temperature field value with the assumed maximum
+  !! temperature given in the input. If this is exceeded, emits a warning
+  !! concerning the validity of the majorant and the resulting simulation
+  !! outputs.
+  !!
+  subroutine checkMaxTemperature(self, temp)
+    class(couplingAdmin), intent(in) :: self
+    real(defReal), intent(in)        :: temp
+
+    if (temp > self % maxTemperature) then
+      call statusMsg('WARNING: Coupled field temperature exceeds the assumed maximum temperature '&
+              //'for the simulation. If using delta tracking, results may be incorrect! '&
+              //'Assumed maximum: '//numToChar(self % maxTemperature)//'K. '&
+              //'Actual maximum: '//numToChar(temp)//'K.')
+    end if
+
+  end subroutine checkMaxTemperature
 
   !!
   !! Returns whether coupling should be occurring or not
@@ -260,11 +295,13 @@ contains
   !! Update the fields from the paths to the new field info
   !!
   subroutine updateFields(self)
-    class(couplingAdmin), intent(in) :: self
-    integer(shortInt)                :: i
-    class(dictionary), allocatable   :: dict
-    character(nameLen)               :: fieldName
-    class(field), pointer            :: ptr
+    class(couplingAdmin), intent(in)   :: self
+    integer(shortInt)                  :: i
+    type(dictionary)                   :: dict
+    character(nameLen)                 :: fieldName
+    class(field), pointer              :: ptr
+    class(pieceConstantField), pointer :: piecePtr
+    real(defReal)                      :: maxTemp
     character(100), parameter :: Here = 'updateFields (couplingAdmin_class.f90)'
 
     do i = 1, size(self % fieldPaths)
@@ -283,10 +320,23 @@ contains
           call fatalError(Here, 'Unrecognised field type requested')
       end select
 
+      if (.not. gr_hasField(fieldName)) then
+        call new_field(dict, fieldName)
+      end if
+
       ptr => gr_fieldPtr(gr_fieldIdx(fieldName))
 
       call ptr % kill()
       call ptr % init(dict)
+
+      ! Ensure assumed maximum temperature is not violated
+      ! For now: down cast to pieceConstantField
+      ! TODO: implement getMaxValue for all fields
+      if (fieldName == nameTemperature) then
+        piecePtr => pieceConstantField_CptrCast(ptr)
+        maxTemp = piecePtr % getMaxValue()
+        call self % checkMaxTemperature(maxTemp)
+      end if
 
     end do
 

@@ -123,6 +123,7 @@ module aceNeutronDatabase_class
     procedure :: updateTotalTempMajXS
     procedure :: updateRelEnMacroXSs
     procedure :: makeNuclideName
+    procedure :: computeMaxTrackXS
 
   end type aceNeutronDatabase
 
@@ -416,14 +417,14 @@ contains
       if (present(temp)) then
         T = temp
       else
-        T = -ONE
+        T = NO_TEMPERATURE
       end if
       matCache % T_track = T
 
       if (present(rho)) then
         densityFactor = rho
       else
-        densityFactor = -ONE
+        densityFactor = NO_DENSITY
       end if
       matCache % rho_track = densityFactor
 
@@ -452,6 +453,8 @@ contains
   !! Args:
   !!   E [in]         -> Incident neutron energy for which temperature majorant is found
   !!   matIdx [in]    -> Index of material for which the material temperature majorant is found
+  !!   temp [in]      -> Temperature, in Kelvin, locally
+  !!   rho [in]       -> Density scaling factor (dimensionless) locally
   !!
   subroutine updateTotalTempMajXS(self, E, matIdx, temp, rho)
     class(aceNeutronDatabase), intent(in) :: self
@@ -469,7 +472,7 @@ contains
       matCache % trackXS = ZERO
 
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -499,6 +502,52 @@ contains
     end associate
 
   end subroutine updateTotalTempMajXS
+  
+  !!
+  !! This subroutine exists to simplify the construction of the majorant in the presence
+  !! of a temperature field. It updates the materialCache to have the largest cross section
+  !! of two if evaluated at two different temperatures: an imposed temperature and the input
+  !! material temperature.
+  !!
+  !! The majorant cross section at a given energy point may be given by either the higher
+  !! or lower of the possible temperatures. If a temperature field is imposed (where the
+  !! temperature will vary spatially across a given material) then the majorant should
+  !! be chosen appropriately/conservatively.
+  !!
+  subroutine computeMaxTrackXS(self, E, matIdx, maxTemp, rho)
+    class(aceNeutronDatabase), intent(in) :: self
+    real(defReal), intent(in)             :: E
+    integer(shortInt), intent(in)         :: matIdx
+    real(defReal), intent(in)             :: maxTemp
+    real(defReal), intent(in)             :: rho
+    real(defReal)                         :: xs1, xs2
+
+    associate (matCache => cache_materialCache(matIdx))
+
+      ! Clean current total XS
+      matCache % trackXS = ZERO
+
+      ! If no temperature is given then the usual majorant from the material
+      ! temperature is fine and we needn't go further
+      if (maxTemp < ZERO) then
+        call self % updateTotalTempMajXS(E, matIdx, maxTemp, rho)
+      
+      ! Otherwise, compute the xs for both the material temperature and the given
+      ! max temperature
+      else
+        call self % updateTotalTempMajXS(E, matIdx, NO_TEMPERATURE, rho)
+        xs1 = matCache % trackXS
+        
+        call self % updateTotalTempMajXS(E, matIdx, maxTemp, rho)
+        xs2 = matCache % trackXS
+
+        matCache % trackXS = max(xs1, xs2)
+
+      end if
+
+    end associate
+
+  end subroutine computeMaxTrackXS
 
   !!
   !! Make sure that totalXS of material with matIdx is at energy E
@@ -525,7 +574,7 @@ contains
       matCache % rho_tot = rho
       
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -563,7 +612,6 @@ contains
         matCache % xss % total = matCache % xss % total * densityFactor
 
       end if
-    
       matCache % T_tot = temp
 
     end associate
@@ -594,7 +642,7 @@ contains
       matCache % rho_tot = rho
       
       ! Use imposed temperature if given
-      if (temp <= ZERO) then
+      if (temp < ZERO) then
         kT = mat % kT
       else
         kT = temp * kBoltzmannMeV
@@ -832,7 +880,7 @@ contains
 
       ! Catch negative dkT - perhaps due to input field values
       if (deltakT < ZERO) call fatalError(Here,&
-              'Invalid input temperatureL '//numToChar(kT/kBoltzmannMeV))
+              'Invalid input temperature: '//numToChar(kT/kBoltzmannMeV))
 
       ! Check if an update is required
       if (nucCache % E_maj /= E .or. nucCache % deltakT /= deltakT) then
@@ -1353,12 +1401,12 @@ contains
     ! Check maxTemp is present and sensible
     if (present(maxTemp)) then
       if (maxTemp < ZERO) then
-        broadenTemp = -ONE
+        broadenTemp = NO_TEMPERATURE
       else
         broadenTemp = maxTemp
       end if
     else
-      broadenTemp = -ONE
+      broadenTemp = NO_TEMPERATURE
     end if
     
     ! Check scaleDensity is present and sensible
@@ -1568,8 +1616,9 @@ contains
         matIdx = self % activeMat(j)
 
         ! Get material tracking cross section
-        if (self % materials(matIdx) % hasTMS .and. broadenTemp > ZERO) then
-          call self % updateTrackMatXS(E, matIdx, temp = broadenTemp, rho = densityFactor, rand = rand)
+        if (self % materials(matIdx) % useTMS(E) .and. broadenTemp > ZERO) then
+          call self % computeMaxTrackXS(E, matIdx, maxTemp = broadenTemp, rho = densityFactor)
+          !call self % updateTrackMatXS(E, matIdx, temp = broadenTemp, rho = densityFactor, rand = rand)
         else
           call self % updateTrackMatXS(E, matIdx, rho = densityFactor, rand = rand)
         end if
@@ -1597,8 +1646,8 @@ contains
                 nucXS = urrMaj
               end if
 
-            ! Update total material cross section
-            trackXS = trackXS + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
+              ! Update total material cross section
+              trackXS = trackXS + dens * (nucXS - cache_nuclideCache(nucIdx) % xss % total)
 
             end if
 

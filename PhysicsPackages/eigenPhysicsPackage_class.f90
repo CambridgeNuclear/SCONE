@@ -442,7 +442,7 @@ contains
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
     class(pieceConstantField), pointer        :: pcField
-    real(defReal)                             :: maxDensityScale, maxTemperature
+    real(defReal)                             :: maxDensityScale, maxTemperature, maxCouplingTemp
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -463,9 +463,15 @@ contains
     call dict % getOrDefault(self % bufferSize, 'buffer', 1000)
 
     ! Check if the calculation is coupled
+    maxCouplingTemp = NO_TEMPERATURE
     if (dict % isPresent('coupling')) then
       tempDict => dict % getDictPtr('coupling')
       call self % couplingInfo % init(tempDict)
+      call tempDict % getOrDefault(maxCouplingTemp, 'maxTemp', NO_TEMPERATURE)
+      if (.not. tempDict % isPresent('maxTemp')) then
+        call statusMsg('If coupling with temperature fields, it is advisable to include a maximum '&
+                //'possible temperature (maxTemp) in order to correctly precompute the majorant.')
+      end if
     end if
 
     ! Process type of data
@@ -556,6 +562,7 @@ contains
     else
       maxTemperature = NO_TEMPERATURE
     end if
+    maxTemperature = max(maxTemperature, maxCouplingTemp)
 
     ! If present, build density field
     if (dict % isPresent('density')) then

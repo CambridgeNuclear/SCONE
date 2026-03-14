@@ -109,7 +109,7 @@ nuclearData {
       temp 12345;
       composition {
       }
-      xsFile ./XS/abs;
+      xsFile ./XS/air;
     }
 
 
