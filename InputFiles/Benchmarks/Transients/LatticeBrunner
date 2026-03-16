@@ -8,12 +8,12 @@
 
 type kineticPhysicsPackage;
 
-pop      5000000;
+pop      500000;
 timeSteps   1;
 XSdata   mg;
 dataType mg;
 dt 7.0;
-cycles 750;
+cycles 250;
 buffer 100;
 
 collisionOperator { neutronMG {type neutronMGstd;}}
