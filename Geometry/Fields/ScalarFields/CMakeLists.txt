@@ -1,3 +1,4 @@
+add_subdirectory(PieceConstantFields)
 
 add_sources( ./scalarField_inter.f90
              ./uniformScalarField_class.f90)

@@ -11,9 +11,10 @@ jobs:
     strategy:
       matrix:
         compiler: [gfortran10, gfortran11, gfortran12]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:${{matrix.compiler}}_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -25,9 +26,10 @@ jobs:
           ctest --output-on-faliure
           cd -
   build-and-test-debug:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
     steps:
       - uses: actions/checkout@v3
       - name: CompileAndTest
@@ -39,7 +41,22 @@ jobs:
           ctest --output-on-faliure
           cd -
   build-and-test-no-openmp:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container:
+      image: mikolajkowalski/scone-test:gfortran12_pfu4
+      options: --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+    steps:
+      - uses: actions/checkout@v3
+      - name: CompileAndTest
+        run : |
+          mkdir build
+          cd build
+          cmake -DOPENMP=OFF ..
+          make -j
+          ctest --output-on-faliure
+          cd -
+  build-and-test-no-mpi:
+    runs-on: ubuntu-latest
     container:
       image: mikolajkowalski/scone-test:gfortran12_pfu4
     steps:
@@ -48,7 +65,7 @@ jobs:
         run : |
           mkdir build
           cd build
-          cmake -DOPENMP=OFF ..
+          cmake -DMPI=OFF ..
           make -j
           ctest --output-on-faliure
           cd -

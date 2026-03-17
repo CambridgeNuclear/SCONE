@@ -26,7 +26,7 @@ module endfConstants
   ! National Nuclear Data Center Brookhaven National Laboratory, Upton, NY, 2012, 11973–5000.
   !
   ! Dictionary:
-  ! N - neutron ; d - deutron; a - alpha particle ; f - fission; p - proton
+  ! N - neutron ; d - deutron; t - triton; a - alpha particle ; f - fission; p - proton
   !
   ! Syntax:
   ! Example:  N_2N -> (n,2n)
@@ -34,6 +34,7 @@ module endfConstants
 
   integer(shortInt), parameter :: N_TOTAL       = 1   ,&
                                   N_N_ELASTIC   = 2   ,&
+                                  N_NONELASTIC  = 3   ,&
                                   N_N_INELASTIC = 4   ,&
                                   N_ANYTHING    = 5   ,&
                                   N_2Nd         = 11  ,&
@@ -62,12 +63,10 @@ module endfConstants
                                   N_3Np         = 42  ,&
                                   N_N2p         = 44  ,&
                                   N_Npa         = 45  ,&
-                                  N_Nl1         = 51  ,&
                                  !N_Nl(:) 51-90
                                  !Inelastic scattering from levels 1-40 is defined at the end
-                                  N_Nl40        = 90  ,&
                                   N_Ncont       = 91  ,&
-                                  N_disap       = 101 ,&
+                                  N_DISAP       = 101 ,&
                                   N_GAMMA       = 102 ,&
                                   N_p           = 103 ,&
                                   N_d           = 104 ,&
@@ -83,15 +82,29 @@ module endfConstants
                                   N_pd          = 115 ,&
                                   N_pt          = 116 ,&
                                   N_da          = 117 ,&
+                                  N_Xp          = 203 ,&
+                                  N_Xd          = 204 ,&
+                                  N_Xt          = 205 ,&
+                                  N_X3He        = 206 ,&
+                                  N_Xa          = 207 ,&
+                                  nubar_tot     = 452 ,&
+                                  nubar_del     = 455 ,&
+                                  nubar_prompt  = 456 ,&
+                                  ! N_2Nl(:) 875-890
+                                  ! (n,2n) scattering from levels 1-16 is defined at the end
+                                  N_2Ncont      = 891 ,&
                                   ! SCONE's fake MT for thermal inelastic scattering
-                                  N_N_ThermEL     = 1002 ,&
-                                  N_N_ThermINEL   = 1004 ,&
+                                  N_N_ThermEL   = 1002 ,&
+                                  N_N_ThermINEL = 1004 ,&
                                   ! SCONE's fake MT for particle splitting event
-                                  N_N_SPLIT       = 1005
+                                  N_N_SPLIT     = 1005 ,&
+                                  ! SCONE's fake MT for alpha eigenvalue events
+                                  N_TIME_ABS    = 1006 ,&
+                                  N_TIME_PROD   = 1007
 
   integer(shortInt),private    :: i  ! Local, private integer to use array constructor
-  integer(shortInt),parameter  :: N_Nl(40)      = [(50+i, i =1,40)]
-  integer(shortInt),parameter  :: N_2Nl(16)     = [(874+i, i =1,16)]
+  integer(shortInt),parameter  :: N_Nl(40)      = [(50 + i, i = 1, 40)]
+  integer(shortInt),parameter  :: N_2Nl(16)     = [(874 + i, i = 1, 16)]
 
   ! Microscopic lumped reaction channels special MT numbers
   integer(shortInt),parameter  :: anyScatter    = -102, &
@@ -99,20 +112,32 @@ module endfConstants
                                   anyFission    = -118
 
   ! List of Fake MT numbers for macroscopic XSs. Stolen from Serpent
-  integer(shortInt),parameter  :: macroTotal     = -1 ,&
-                                  macroCapture   = -2 ,&
-                                  macroEscatter  = -3 ,&
-                                  macroIEscatter = -4 ,&
-                                  macroFission   = -6 ,&
-                                  macroNuFission = -7
+  integer(shortInt),parameter  :: macroTotal            = -1 ,&
+                                  macroDisappearance    = -2 ,&
+                                  macroEscatter         = -3 ,&
+                                  macroIEscatter        = -4 ,&
+                                  macroFission          = -6 ,&
+                                  macroNuFission        = -7 ,&
+                                  macroPromptNuFission  = -8 ,&
+                                  macroDelayedNuFission = -9
 
   ! List of Macro MT numbers for macroscopic XSs. Unique to SCONE (not from Serpent)
   integer(shortInt), parameter :: macroAllScatter = -20 ,&
                                   macroAbsorbtion = -21 ,&
+                                  macroNonElastic = -22 ,&
                                   noInteraction   = -901
 
+  ! List of all the MT numbers allowed in the tallies
+  integer(shortInt), dimension(*), parameter :: availableMicroMTs = &
+                                      [1, 2, 3, 4, 5, 11, 16, 17, 18, 19, 20, 21, 22, &
+                                       23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,    &
+                                       36, 37, 38, 41, 42, 44, 45, 91, 101, 102, 103, &
+                                       104, 105, 106, 107, 108, 109, 111, 112, 113,   &
+                                       114, 115, 116, 117, 203, 204, 205, 206, 207,   &
+                                       891, N_Nl, N_2Nl]
 
-
+  integer(shortInt), dimension(*), parameter :: availableMacroMTs = &
+                                      [-1, -2, -3, -4, -6, -7, -20, -21, -22]
 
 
 

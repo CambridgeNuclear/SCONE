@@ -25,10 +25,11 @@ module universalVariables
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
   ! Flags for different possible events in movement in geometry
-  integer(shortINt), parameter, public :: COLL_EV = 1, &
+  integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
-                                          LOST_EV  = 4
+                                          LOST_EV  = 4, &
+                                          FIELD_EV = 5
 
   ! Create definitions for readability when dealing with positions relative to surfaces
   logical(defBool), parameter, public :: behind = .FALSE., &
@@ -40,7 +41,8 @@ module universalVariables
   ! NOTE: All material indices MUST BE NON-NEGATIVE!
   integer(shortInt), parameter :: OUTSIDE_MAT = 0 ,&
                                   VOID_MAT    = huge(OUTSIDE_MAT), &
-                                  UNDEF_MAT   = VOID_MAT - 1
+                                  UNDEF_MAT   = VOID_MAT - 1, &
+                                  OVERLAP_MAT = VOID_MAT - 2
 
 
   ! Define integers for each fill type that a cell may have
@@ -74,20 +76,32 @@ module universalVariables
   integer(shortInt), parameter :: MATERIAL_XS = 1, &
                                   MAJORANT_XS = 2, &
                                   TRACKING_XS = 3
+  
+  ! Unit conversion
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal ,& ! Convert MeV to J
+                              shakesPerS   = 1.0e+8_defReal         ! Convert shakes to s
 
   ! Physical constants
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
   real(defReal), parameter :: neutronMass = 939.56542194_defReal,  & ! Neutron mass in MeV (m*c^2)
                               lightSpeed  = 2.99792458e10_defReal, & ! Light speed in cm/s
                               kBoltzmann  = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
-                              energyPerFission = 200.0_defReal       ! MeV
-
-  ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e-8            ! Convert shakes to s
+                              energyPerFission = 200.0_defReal, &    ! MeV
+                              kBoltzmannMeV = kBoltzmann / joulesPerMeV
 
   ! Global name variables used to define specific geometry or field types
-  character(nameLen), parameter :: nameUFS  = 'uniFissSites'
-  character(nameLen), parameter :: nameWW   = 'WeightWindows'
+  character(nameLen), parameter :: nameUFS          = 'uniFissSites'
+  character(nameLen), parameter :: nameWW           = 'WeightWindows'
+  character(nameLen), parameter :: nameTemperature  = 'temperature'
+  character(nameLen), parameter :: nameDensity      = 'density'
+
+  ! Flags associated with fields
+  real(defReal), parameter :: NO_TEMPERATURE = -INF, &
+                              NO_DENSITY = -INF
+  
+  ! Flag to indicate source file format
+  integer(shortInt), parameter, public :: NO_PRINTING = 0, &
+                                          ASCII_FILE  = 1, &
+                                          BINARY_FILE = 2
 
 end module universalVariables

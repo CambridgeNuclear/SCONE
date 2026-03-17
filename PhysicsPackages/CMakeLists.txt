@@ -5,7 +5,8 @@ add_sources( ./physicsPackage_inter.f90
              ./eigenPhysicsPackage_class.f90
              ./fixedSourcePhysicsPackage_class.f90
              ./vizPhysicsPackage_class.f90
+             ./kineticPhysicsPackage_class.f90
+             ./alphaPhysicsPackage_class.f90
              ./rayVolPhysicsPackage_class.f90
-             ./pointVolPhysicsPackage_class.f90
              )
              #./dynamPhysicsPackage_class.f90)

@@ -29,7 +29,7 @@ module cell_inter
   !!
   !! Abstract interface for all cells
   !!
-  !! Cell is intendet to represent a volume of space. It is not intended to be
+  !! Cell is intended to represent a volume of space. It is not intended to be
   !! a independent entity, but rather to be used as a component of universes.
   !!
   !! Private Members:
@@ -40,9 +40,9 @@ module cell_inter
   !!   inside   -> Return true is a given position is cntained inside the cell
   !!   distance -> Assuming the point is inside the cell, calculate distance to the boundary
   !!     and give surfIdx for the surface that will be crossed
-  !!  setId     -> Set ID of a cell
-  !!  id        -> Return id of a cell
-  !!  kill      -> Return to uninitialised state
+  !!   setId    -> Set ID of a cell
+  !!   id       -> Return id of a cell
+  !!   kill     -> Return to uninitialised state
   !!
   type, public, abstract :: cell
     private

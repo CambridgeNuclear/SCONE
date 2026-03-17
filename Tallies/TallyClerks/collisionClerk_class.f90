@@ -4,6 +4,7 @@ module collisionClerk_class
   use tallyCodes
   use universalVariables
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use outputFile_class,           only : outputFile
@@ -36,6 +37,7 @@ module collisionClerk_class
   !!   map      -> Space to store tally Map
   !!   response -> Array of responses
   !!   width    -> Number of responses (# of result bins for each map position)
+  !!   handleVirtual -> score on virtual collisions (due to TMS or delta tracking)
   !!
   !! Interface
   !!   tallyClerk Interface
@@ -44,6 +46,7 @@ module collisionClerk_class
   !!
   !! myCollisionClerk {
   !!   type collisionClerk;
+  !!   # handleVirtual 0; # default is 1   
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
   !!   response (resName1 #resName2 ... #)
@@ -247,7 +250,7 @@ contains
     class(collisionClerk), intent(in)  :: self
     type(scoreMemory), intent(in)      :: mem
 
-    print *, 'collisionClerk does not support display yet'
+    call statusMsg('collisionClerk does not support display yet')
 
   end subroutine display
 

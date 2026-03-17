@@ -19,6 +19,8 @@ option(LTO         "Enables link-time optimisation"     ON)
 option(COVERAGE    "Collect Coverage Info"              OFF)
 option(DEBUG       "Enable extra run-time checks"       OFF)
 option(OPENMP      "Enable parallelism with OpenMP"     ON)
+option(MPI         "Enable parallelism with MPI"        ON)
+
 
 # Include local cmake modules. TODO: Test on WINDOWS!!!
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
@@ -32,7 +34,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 enable_language(Fortran)
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/modFiles)
-
+file(MAKE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY})
 # Add compilers flags
 # The flags set below will be applied to all Fortran files
 #
@@ -77,6 +79,12 @@ if(OPENMP)
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${OpenMP_Fortran_FLAGS}")
 endif()
 
+# Set up MPI
+if(MPI)
+  find_package(MPI COMPONENTS Fortran REQUIRED)
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -DMPI")
+endif()
+
 
 ####################################################################################################
 # CHECK FOR DEPENDENCIES
@@ -84,7 +92,7 @@ endif()
 # Add environmental variable to default search directories
 list(APPEND CMAKE_PREFIX_PATH $ENV{LAPACK_INSTALL})
 
-find_package(LAPACK REQUIRED )
+find_package(LAPACK REQUIRED)
 message(STATUS ${LAPACK_LIBRARIES})
 
 # Dependencies for BUILD_TESTS
@@ -136,8 +144,12 @@ get_property(SRCS GLOBAL PROPERTY SRCS_LIST)
 
 # Compile library
 add_library(scone STATIC ${SRCS})
-target_compile_options(scone PRIVATE ${scone_extra_flags} )
-target_link_libraries(scone  ${LAPACK_LIBRARIES} )
+target_compile_options(scone PRIVATE ${scone_extra_flags})
+target_link_libraries(scone PUBLIC ${LAPACK_LIBRARIES})
+if(MPI)
+  add_compile_definitions(MPI)
+  target_link_libraries(scone PUBLIC MPI::MPI_Fortran)
+endif()
 
 if(LTO)
   set_property(TARGET scone PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -145,8 +157,8 @@ endif()
 
 ####################################################################################################
 # COMPILE SOLVERS
-add_executable(scone.out ./Apps/scone.f90 )
-target_link_libraries(scone.out scone )
+add_executable(scone.out ./Apps/scone.f90)
+target_link_libraries(scone.out scone)
 
 ####################################################################################################
 # COMPILE UNIT TESTS
@@ -161,15 +173,30 @@ if(BUILD_TESTS)
     list(APPEND UNIT_TESTS_RELATIVE ${_testPath})
   endforeach()
 
+  if(MPI)
+    set(MAX_PES_OPTION MAX_PES 1)
+  else()
+    set(MAX_PES_OPTION "")
+  endif()
+
   add_pfunit_ctest(unitTests
     TEST_SOURCES ${UNIT_TESTS_RELATIVE}
-    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    LINK_LIBRARIES scone
+    ${MAX_PES_OPTION}
     )
+
+  # Write unit tests to a subfolder in modFiles, to avoid potential concurrent writing
+  set_target_properties(unitTests PROPERTIES
+	  Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/unitTests
+  )
+  
+  # Tells unit tests where to find SCONE files
+  target_include_directories(unitTests PRIVATE ${CMAKE_Fortran_MODULE_DIRECTORY})
 
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
   # We need to suppress this warning for clarity
-  target_compile_options(unitTests PRIVATE "-Wno-unused-variable" )
+  target_compile_options(unitTests PRIVATE "-Wno-unused-variable")
 
 ####################################################################################################
 # COMPILE INTEGRATION TESTS
@@ -184,14 +211,22 @@ if(BUILD_TESTS)
 
   add_pfunit_ctest(integrationTests
     TEST_SOURCES ${INTEGRATION_TESTS_RELATIVE}
-    LINK_LIBRARIES scone ${LAPACK_LIBRARIES}
+    LINK_LIBRARIES scone
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+  
+  # Write integration test files in a subfolder to avoid potential data race
+  set_target_properties(integrationTests PROPERTIES
+	  Fortran_MODULE_DIRECTORY ${CMAKE_Fortran_MODULE_DIRECTORY}/integrationTests
+  )
+	
+  # Tells integration tests where to find SCONE files
+  target_include_directories(integrationTests PRIVATE ${CMAKE_Fortran_MODULE_DIRECTORY})
 
   # pFUnit may have a bug which causes a unused variable `class(Test), allocatable :: t` be
   # present if the suite contains only a TestCase and its methods
   # We need to suppress this warning for clarity
-  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable" )
+  target_compile_options(integrationTests PRIVATE "-Wno-unused-variable")
 
 endif()
 
@@ -206,6 +241,7 @@ message(STATUS "  Link-time optimisation:     " ${LTO})
 message(STATUS "  Code coverage logging:      " ${COVERAGE})
 message(STATUS "  Extra runtime debug checks: " ${DEBUG})
 message(STATUS "  OpenMP parallelism:         " ${OPENMP})
+message(STATUS "  MPI parallelism:            " ${MPI})
 message(STATUS "  Fortran compiler:     " ${CMAKE_Fortran_COMPILER})
 message(STATUS "  Compiler version:     " ${CMAKE_Fortran_COMPILER_VERSION})
 message(STATUS "  OpenMP version:       " ${OpenMP_CXX_VERSION})

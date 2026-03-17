@@ -218,7 +218,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  elemental subroutine kill(self)
+  subroutine kill(self)
     class(rootUniverse), intent(inout) :: self
 
     ! Superclass

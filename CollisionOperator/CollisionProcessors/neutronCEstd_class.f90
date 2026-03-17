@@ -2,13 +2,13 @@ module neutronCEstd_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : REJECTED
+  use universalVariables,            only : REJECTED, kBoltzmannMeV
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
 
   ! Particle types
-  use particle_class,                only : particle, particleState, printType, P_NEUTRON
+  use particle_class,                only : particle, particleState, printType, P_NEUTRON, P_PRECURSOR
   use particleDungeon_class,         only : particleDungeon
 
   ! Abstarct interface
@@ -49,16 +49,18 @@ module neutronCEstd_class
   !!   -> Does not create secondary non-neutron projectiles
   !!
   !! Settings:
-  !!  minE    -> minimum energy cut-off [MeV] (default = 1.0E-11)
-  !!  maxE    -> maximum energy. Higher energies are set to maximum (not re-rolled) [MeV]
-  !!             (default = 20.0)
-  !!  threshE -> Energy threshold for explicit treatment of target nuclide movement [-].
-  !!             Target movement is sampled if neutron energy E < kT * threshE where
-  !!             kT is target material temperature in [MeV]. (default = 400.0)
-  !!  threshA -> Mass threshold for explicit treatment of target nuclide movement [Mn].
-  !!             Target movement is sampled if target mass A < threshA. (default = 1.0)
-  !!  DBRCeMin -> Minimum energy to which DBRC is applied
-  !!  DBRCeMax -> Maximum energy to which DBRC is applied
+  !!  minE       -> minimum energy cut-off [MeV] (default = 1.0E-11)
+  !!  maxE       -> maximum energy. Higher energies are set to maximum (not re-rolled) [MeV]
+  !!                (default = 20.0)
+  !!  threshE    -> Energy threshold for explicit treatment of target nuclide movement [-].
+  !!                Target movement is sampled if neutron energy E < kT * threshE where
+  !!                kT is target material temperature in [MeV]. (default = 400.0)
+  !!  threshA    -> Mass threshold for explicit treatment of target nuclide movement [Mn].
+  !!               Target movement is sampled if target mass A < threshA. (default = 1.0)
+  !!  DBRCeMin   -> Minimum energy to which DBRC is applied
+  !!  DBRCeMax   -> Maximum energy to which DBRC is applied
+  !!  makePrec   -> Produce precursor particles, used in dynamic calculations (default = false)
+  !!  neglectDelayed -> If true, prevents delayed neutrons or precursors from being produced
   !!
   !! Sample dictionary input:
   !!   collProcName {
@@ -67,6 +69,8 @@ module neutronCEstd_class
   !!   #maxEnergy       <real>;#
   !!   #energyThreshold <real>;#
   !!   #massThreshold   <real>;#
+  !!   #makePrec        <bool>;#
+  !!   #neglectDelayed  <bool>;#
   !!   }
   !!
   type, public, extends(collisionProcessor) :: neutronCEstd
@@ -83,6 +87,8 @@ module neutronCEstd_class
     real(defReal) :: threshA
     real(defReal) :: DBRCeMin
     real(defReal) :: DBRCeMax
+    logical(defBool) :: makePrec = .false.
+    logical(defBool) :: neglectDelayed = .false.
 
   contains
     ! Initialisation procedure
@@ -125,6 +131,10 @@ contains
     ! Thermal scattering kernel thresholds
     call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)
     call dict % getOrDefault(self % threshA, 'massThreshold', 1.0_defReal)
+    
+    ! Precursor settings
+    call dict % getOrDefault(self % makePrec, 'makePrec', .false.)
+    call dict % getOrDefault(self % neglectDelayed, 'neglectDelayed', .false.)
 
     ! Verify settings
     if (self % minE < ZERO) call fatalError(Here,'-ve minEnergy')
@@ -132,6 +142,8 @@ contains
     if (self % minE >= self % maxE) call fatalError(Here,'minEnergy >= maxEnergy')
     if (self % threshE < 0) call fatalError(Here,' -ve energyThreshold')
     if (self % threshA < 0) call fatalError(Here,' -ve massThreshold')
+    if (self % makePrec .and. self % neglectDelayed) call fatalError(Here,&
+            'Incompatible options: cannot makePrecursors and neglectDelayed neutrons!')
 
     ! DBRC energy limits
     call dict % getOrDefault(self % DBRCeMin,'DBRCeMin', (1.0E-8_defReal))
@@ -150,7 +162,7 @@ contains
     class(particleDungeon),intent(inout) :: thisCycle
     class(particleDungeon),intent(inout) :: nextCycle
     type(neutronMicroXSs)                :: microXSs
-    real(defReal)                        :: r
+    real(defReal)                        :: r, kT, denom, alphaXS, probAlpha
     character(100),parameter :: Here = 'sampleCollision (neutronCEstd_class.f90)'
 
     ! Verify that particle is CE neutron
@@ -161,13 +173,29 @@ contains
     ! Verify and load nuclear data pointer
     self % xsData => ndReg_getNeutronCE()
     if (.not.associated(self % xsData)) call fatalError(Here, 'There is no active Neutron CE data!')
+    
+    ! Avoid nuclide sampling if alpha absorption occurs
+    denom = self % xsData % getTrackMatXS(p, p % matIdx())
+    alphaXS = p % getAlphaAbsorption()
+    probAlpha = alphaXS / denom
+ 
+    if (p % pRNG % get() < probAlpha) then
+      collDat % E = p % E
+      if (p % alpha >= 0) then
+        collDat % MT = N_TIME_ABS
+      else
+        collDat % MT = N_TIME_PROD
+      end if
+      return
+    end if
 
     ! Verify and load material pointer
     self % mat => ceNeutronMaterial_CptrCast(self % xsData % getMaterial(p % matIdx()))
-    if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial')
+    if (.not.associated(self % mat)) call fatalError(Here, 'Material is not ceNeutronMaterial: '&
+            //numToChar(p % matIdx()))
 
     ! Select collision nuclide
-    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E)
+    call self % mat % sampleNuclide(p % E, p % pRNG, collDat % nucIdx, collDat % E, p % T, p % rho)
 
     ! If nuclide was rejected in TMS loop return to tracking
     if (collDat % nucIdx == REJECTED) then
@@ -179,7 +207,12 @@ contains
     if (.not.associated(self % nuc)) call fatalError(Here, 'Failed to retrieve CE Neutron Nuclide')
 
     ! Select Main reaction channel
-    call self % nuc % getMicroXSs(microXss, collDat % E, self % mat % kT, p % pRNG)
+    if (p % T <= ZERO) then
+      kT = self % mat % kT
+    else
+      kT = p % T * kBoltzmannMeV
+    end if
+    call self % nuc % getMicroXSs(microXss, collDat % E, kT, p % pRNG)
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
@@ -201,7 +234,7 @@ contains
     real(defReal),dimension(3)           :: r, dir
     integer(shortInt)                    :: n, i
     real(defReal)                        :: wgt, w0, rand1, E_out, mu, phi
-    real(defReal)                        :: sig_nufiss, sig_tot, k_eff
+    real(defReal)                        :: sig_nufiss, sig_tot, k_eff, kT, lambda, wD
     character(100),parameter             :: Here = 'implicit (neutronCEstd_class.f90)'
 
     ! Generate fission sites if nuclide is fissile
@@ -214,7 +247,12 @@ contains
       rand1 = p % pRNG % get()     ! Random number to sample sites
 
       ! Retrieve cross section at the energy used for reaction sampling
-      call self % nuc % getMicroXSs(microXSs, collDat % E, self % mat % kT, p % pRNG)
+      if (p % T <= ZERO) then
+        kT = self % mat % kT
+      else
+        kT = p % T * kBoltzmannMeV
+      end if
+      call self % nuc % getMicroXSs(microXSs, collDat % E, kT, p % pRNG)
 
       sig_nufiss = microXSs % nuFission
       sig_tot    = microXSs % total
@@ -226,18 +264,28 @@ contains
       ! Shortcut particle generation if no particles were sampled
       if (n < 1) return
 
-      ! Get fission Reaction
+      ! Get fission reaction
       fission => fissionCE_TptrCast(self % xsData % getReaction(N_FISSION, collDat % nucIdx))
       if(.not.associated(fission)) call fatalError(Here, "Failed to get fissionCE")
 
       ! Store new sites in the next cycle dungeon
-      wgt =  sign(w0, wgt)
+      wgt = sign(w0, wgt)
       r   = p % rGlobal()
 
-      do i = 1,n
-        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG)
+      do i = 1, n
+        call fission % sampleOut(mu, phi, E_out, p % E, p % pRNG, lambda)
+        
+        ! Skip if a delayed particle is produced in prompt-only mode
+        if (self % neglectDelayed .and. lambda < huge(lambda)) cycle
+        
+        ! If alpha, determine the weight of a delayed neutron
+        wD = ONE
+        if (abs(p % alpha) > epsilon(p % alpha) .and. lambda < huge(lambda)) then
+          wD = lambda/(lambda + p % alpha)
+        end if
+        
         dir = rotateVector(p % dirGlobal(), mu, phi)
-
+        
         if (E_out > self % maxE) E_out = self % maxE
 
         ! Copy extra detail from parent particle (i.e. time, flags ect.)
@@ -247,8 +295,15 @@ contains
         pTemp % r   = r
         pTemp % dir = dir
         pTemp % E   = E_out
-        pTemp % wgt = wgt
+        pTemp % wgt = wgt * wD
         pTemp % collisionN = 0
+
+        ! If storing precursors, do so when a finite lambda occurs
+        if (self % makePrec .and. lambda < huge(lambda)) then
+          pTemp % lambda = lambda
+          pTemp % type = P_PRECURSOR
+
+        end if
 
         call nextCycle % detain(pTemp)
 
@@ -256,6 +311,7 @@ contains
         call tally % reportSpawn(N_FISSION, p, pTemp)
 
       end do
+
     end if
 
   end subroutine implicit
@@ -274,7 +330,7 @@ contains
     p % isDead =.true.
 
   end subroutine capture
-
+  
   !!
   !! Process fission reaction
   !!
@@ -322,6 +378,7 @@ contains
     else
       collDat % kT = self % nuc % getkT()
     end if
+    if (p % T > ZERO) collDat % kT = p % T * kBoltzmannMeV
 
     ! Check is DBRC is on
     hasDBRC = self % nuc % hasDBRC()

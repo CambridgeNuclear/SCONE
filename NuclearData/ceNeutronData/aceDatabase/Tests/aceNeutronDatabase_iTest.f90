@@ -207,7 +207,6 @@ contains
     p % E = 19.9_defReal
     @assertEqual(ONE, data % getTrackingXS(p, 1, MATERIAL_XS)/6.539039844E-02_defReal , TOL)
 
-
     ! Total XS of UO2
     p % E = 1.1E-6_defReal
     @assertEqual(ONE, data % getTotalMatXS(p , 2)/4.4149556129495560_defReal , TOL)
@@ -238,7 +237,7 @@ contains
     !
     ! Water
     mat => ceNeutronMaterial_TptrCast( data % getMaterial(1))
-    call mat % getMacroXSs(macroXss, 3.6E-1_defReal, p % pRNG)
+    call mat % getMacroXSs(macroXss, 3.6E-1_defReal, p % T, p % rho, p % pRNG)
 
     ! Absent XSs
     @assertEqual(ZERO, macroXSs % fission)
@@ -250,10 +249,9 @@ contains
     @assertEqual(ONE, 2.198066842597500e-06_defReal/ macroXSs % capture, TOL)
 
     ! Water with some inelastic collisions
-    call mat % getMacroXSs(macroXss, 6.525_defReal, p % pRNG)
+    call mat % getMacroXSs(macroXss, 6.525_defReal, p % T, p % rho, p % pRNG)
 
     @assertEqual(ONE, macroXSs % inelasticScatter/1.903667536E-04_defReal, TOL)
-
 
     !<><><><><><><><><><><><><><><><><><><><>
     ! Test getting energy bounds
@@ -264,6 +262,7 @@ contains
 
     ! Clean everything
     call data % kill()
+
     call mm_kill()
 
   end subroutine test_aceNeutronDatabase

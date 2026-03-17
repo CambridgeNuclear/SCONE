@@ -4,8 +4,7 @@ module cylinder_class
   use universalVariables, only : SURF_TOL, INF, X_AXIS, Y_AXIS, Z_AXIS
   use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
-  use quadSurface_inter,  only : quadSurface
-  use surface_inter,      only : kill_super => kill
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -40,7 +39,7 @@ module cylinder_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: cylinder
+  type, public, extends(surface) :: cylinder
     private
     integer(shortInt)               :: axis   = 0
     integer(shortInt), dimension(2) :: plane  = 0

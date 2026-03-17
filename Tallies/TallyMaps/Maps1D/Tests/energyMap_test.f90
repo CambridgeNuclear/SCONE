@@ -241,7 +241,7 @@ contains
 
   !!
   !! Test correctness of print subroutine
-  !! Does not checks that values are correct, but that calls sequance is without errors
+  !! Does not checks that values are correct, but that calls sequence is without errors
   !!
 @Test
   subroutine testPrint(this)
@@ -264,6 +264,22 @@ contains
 
     call this % map_unstruct % print(out)
     @assertTrue(out % isValid(),'Unstructured map case')
+    call out % reset()
+
+    call this % map_lin % printReverse(out)
+    @assertTrue(out % isValid(),'Linear map case printing fast to thermal')
+    call out % reset()
+
+    call this % map_log % printReverse(out)
+    @assertTrue(out % isValid(),'Logarithmic map case printing fast to thermal')
+    call out % reset()
+
+    call this % map_predef % printReverse(out)
+    @assertTrue(out % isValid(),'Predefined map case printing fast to thermal')
+    call out % reset()
+
+    call this % map_unstruct % printReverse(out)
+    @assertTrue(out % isValid(),'Unstructured map case printing fast to thermal')
     call out % reset()
 
   end subroutine testPrint

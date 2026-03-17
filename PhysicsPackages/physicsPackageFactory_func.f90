@@ -15,7 +15,8 @@ module physicsPackageFactory_func
   use fixedSourcePhysicsPackage_class, only : fixedSourcePhysicsPackage
   use vizPhysicsPackage_class,         only : vizPhysicsPackage
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
-  use pointVolPhysicsPackage_class,    only : pointVolPhysicsPackage
+  use kineticPhysicsPackage_class,     only : kineticPhysicsPackage
+  use alphaPhysicsPackage_class,       only : alphaPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -28,8 +29,9 @@ module physicsPackageFactory_func
   character(nameLen),dimension(*),parameter :: AVAILABLE_physicsPackages = [ 'eigenPhysicsPackage      ',&
                                                                              'fixedSourcePhysicsPackage',&
                                                                              'vizPhysicsPackage        ',&
-                                                                             'rayVolPhysicsPackage     ',&
-                                                                             'pointVolPhysicsPackage   ']
+                                                                             'kineticPhysicsPackage    ',&
+                                                                             'alphaPhysicsPackage      ',&
+                                                                             'rayVolPhysicsPackage     ']
 
   !!
   !! Public interface
@@ -59,15 +61,18 @@ contains
       case('fixedSourcePhysicsPackage')
         allocate( fixedSourcePhysicsPackage :: new)
 
+      case('kineticPhysicsPackage')
+        allocate( kineticPhysicsPackage :: new)
+
+      case('alphaPhysicsPackage')
+        allocate( alphaPhysicsPackage :: new)
+
       case('vizPhysicsPackage')
         allocate( vizPhysicsPackage :: new)
 
       case('rayVolPhysicsPackage')
         allocate( rayVolPhysicsPackage :: new)
       
-      case('pointVolPhysicsPackage')
-        allocate( pointVolPhysicsPackage :: new)
-
       case default
         print *, AVAILABLE_physicsPackages
         call fatalError(Here, 'Unrecognised type of Physics Package : ' // trim(type))

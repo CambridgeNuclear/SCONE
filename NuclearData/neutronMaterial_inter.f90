@@ -32,6 +32,8 @@ module neutronMaterial_inter
     generic                              :: getMacroXSs => getMacroXSs_byP
     procedure(isFissile),       deferred :: isFissile
     procedure(getMacroXSs_byP), deferred :: getMacroXSs_byP
+    procedure(getMTxs), deferred         :: getMTxs
+
   end type neutronMaterial
 
   abstract interface
@@ -67,6 +69,28 @@ module neutronMaterial_inter
       type(neutronMacroXSs), intent(out) :: xss
       class(particle), intent(in)        :: p
     end subroutine getMacroXSs_byP
+
+    !!
+    !! Return Macroscopic XS for the material given particle and an MT number
+    !!
+    !! Args:
+    !!   MT [in]  -> MT number
+    !!   p [in]   -> Particle that provides energy or energy group
+    !!
+    !! Errors:
+    !!   fatalError if energy value is outside bounds
+    !!   fatalError if MG particle is given to CE data
+    !!
+    !! NOTE: despite being in the interface, this function only makes sense
+    !!       for CE. The MG extension returns a fatalError if called
+    !!
+    function getMTxs(self, MT, p) result(xs)
+      import :: neutronMaterial, particle, shortInt, defReal
+      class(neutronMaterial), intent(in) :: self
+      integer(shortInt), intent(in)      :: MT
+      class(particle), intent(in)        :: p
+      real(defReal)                      :: xs
+    end function getMTxs
 
   end interface
 

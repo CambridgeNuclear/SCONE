@@ -1,0 +1,11 @@
+numberOfGroups 1; 
+
+capture (0.0);
+ 
+scatteringMultiplicity ( 
+1.0 
+); 
+
+P0 ( 
+1.0 ); 
+

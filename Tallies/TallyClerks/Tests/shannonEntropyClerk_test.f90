@@ -49,6 +49,7 @@ contains
 
     call mapDict % kill()
     call dict % kill()
+
   end subroutine setUp
 
   !!
@@ -65,7 +66,6 @@ contains
 !! PROPER TESTS BEGIN HERE
 !!<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
-
   !!
   !! Test correctness in a simple use case
   !!
@@ -75,10 +75,12 @@ contains
     type(scoreMemory)                              :: mem
     type(particleState)                            :: phase
     type(particleDungeon)                          :: pop
+    real(defReal)                                  :: val
+    integer(longInt)                               :: idx
     real(defReal), parameter :: TOL = 1.0E-7
 
     ! Create score memory
-    call mem % init(int(this % clerk % getSize(), longInt) , 1, batchSize = 1)
+    call mem % init(int(this % clerk % getSize(), longInt), 1, batchSize = 1)
     call this % clerk % setMemAddress(1_longInt)
 
     ! Crate dungeon of original events
@@ -94,12 +96,16 @@ contains
     call pop % detain(phase)
 
     call this % clerk % reportCycleEnd(pop, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pop, mem)
 
     ! Close cycle
     call mem % closeCycle(ONE)
 
     ! Verify results for uniform distribution
-    @assertEqual(ONE, this % clerk % value(1), TOL)
+    idx = this % clerk % getMemAddress() + 3
+    call mem % getResult(val, idx, samples = 1)
+    @assertEqual(ONE, val, TOL)
 
     ! Move particles to the same bin
     call pop % kill()
@@ -107,19 +113,22 @@ contains
     call pop % detain(phase)
     call pop % detain(phase)
 
-    call this % clerk % reportCycleEnd(pop,  mem)
+    call this % clerk % reportCycleEnd(pop, mem)
+    call mem % reduceBins()
+    call this % clerk % closeCycle(pop, mem)
 
     ! Close cycle
     call mem % closeCycle(ONE)
 
-    ! Verify results for all particles in one bine
-    @assertEqual(ZERO, this % clerk % value(2), TOL)
+    ! Verify results for all particles in one bin
+    idx = this % clerk % getMemAddress() + 4
+    call mem % getResult(val, idx, samples = 1)
+    @assertEqual(ZERO, val, TOL)
 
     ! Clean
     call pop % kill()
+
   end subroutine testSimpleUseCase
-
-
 
   !!
   !! Test correctness of the printing calls
@@ -141,5 +150,6 @@ contains
     @assertTrue(outF % isValid())
 
   end subroutine testPrintingCorrectness
+
 
 end module shannonEntropyClerk_test

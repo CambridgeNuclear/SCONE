@@ -76,6 +76,8 @@ module energyMap_class
     procedure, private :: build_fromGrid
     procedure, private :: build_structured
     procedure, private :: build_predef
+    procedure          :: printReverse
+
   end type energyMap
 
 contains
@@ -279,7 +281,7 @@ contains
     integer(shortInt)                :: idx
 
     ! Catch MG particle
-    if( state % isMG) then
+    if (state % isMG) then
       idx = 0
       return
     end if
@@ -308,7 +310,7 @@ contains
   !!
   !! See tallyMap for specification
   !!
-  subroutine print(self,out)
+  subroutine print(self, out)
     class(energyMap), intent(in)     :: self
     class(outputFile), intent(inout) :: out
     character(nameLen)               :: name
@@ -318,12 +320,12 @@ contains
     name = trim(self % getAxisName()) //'Bounds'
 
     call out % startArray(name,[self % N,2])
-    do i=1,self % N
+    do i = 1,self % N
       ! Print lower bin boundary
       call out % addValue(self % binBounds % bin(i))
     end do
 
-    do i=1,self % N
+    do i = 1,self % N
       ! Print upper bin boundar
       call out % addValue(self % binBounds % bin(i+1))
     end do
@@ -331,6 +333,38 @@ contains
     call out % endArray()
 
   end subroutine print
+
+  !!
+  !! Add information about division axis to the output file
+  !!
+  !! Prints the map in the opposite order: from fast to thermal
+  !!
+  subroutine printReverse(self, out)
+    class(energyMap), intent(in)     :: self
+    class(outputFile), intent(inout) :: out
+    character(nameLen)               :: name
+    integer(shortInt)                :: i
+
+    ! Protect from trying to print in an uninitialised state
+    if (self % N == 0) return
+
+    ! Name the array
+    name = trim(self % getAxisName()) //'Bounds'
+
+    call out % startArray(name,[self % N,2])
+    do i = 1, self % N
+      ! Print lower bin boundary
+      call out % addValue(self % binBounds % bin(self % N - i + 1))
+    end do
+
+    do i = 1, self % N
+      ! Print upper bin boundar
+      call out % addValue(self % binBounds % bin(self % N - i + 2))
+    end do
+
+    call out % endArray()
+
+  end subroutine printReverse
 
   !!
   !! Return instance of energyMap from dictionary

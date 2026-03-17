@@ -1,0 +1,117 @@
+!!
+!! Taken from:
+!! Brunner (2002). "Forms of Approximate Radiation Transport"
+!! A lattice of scattering and absorbing materials with a central
+!! source.
+!! A multigroup problem, assuming that MG particle speed = 1cm/s
+!!
+
+type kineticPhysicsPackage;
+
+pop      5000000;
+timeSteps   1;
+XSdata   mg;
+dataType mg;
+dt 7.0;
+cycles 750;
+buffer 100;
+
+collisionOperator { neutronMG {type neutronMGstd;}}
+transportOperator { type transportOperatorHT; }
+
+source {
+  type materialSource;
+  mat src;
+  particle neutron;
+  G 1;
+  boundingBox (-1 -1 -1 1 1 1);
+  boundingTime (0 7); 
+  data mg;
+}
+
+tally  {
+  flux_time { type collisionClerk; handleVirtual 1;
+    map { type multiMap; maps (time x y);
+    time { type timeMap; grid lin; min 0.0; max 7; N 70;}
+    x { type spaceMap; axis x; grid lin; min -3.5; max 3.5; N 140;} 
+    y { type spaceMap; axis y; grid lin; min -3.5; max 3.5; N 140;} 
+    }
+    response (flx); flx {type fluxResponse;}
+  }
+}
+
+geometry {
+    type geometryStd;
+    boundary (0 0 0 0 0 0);
+    graph {type shrunk;}
+
+    surfaces
+    {
+    s20 {type zSquareCylinder; id 20; origin (0.0 0.0 0.0); halfwidth (3.5 3.5 0);}
+    } 
+
+    cells
+    {
+    }
+
+
+    universes
+    {
+      root{id 1; type rootUniverse; border 20; fill u<2>;}
+      lattice { id 2; type latUniverse; pitch (1 1 0); shape (7 7 0); padMat air; 
+      map (
+      3 3 3 3 3 3 3
+      3 4 3 3 3 4 3
+      3 3 4 3 4 3 3
+      3 4 3 5 3 4 3
+      3 3 4 3 4 3 3
+      3 4 3 4 3 4 3
+      3 3 3 3 3 3 3
+      );
+      }
+
+      air {id 3; type pinUniverse; radii (0); fills (air);}
+      abs {id 4; type pinUniverse; radii (0); fills (abs);}
+      src {id 5; type pinUniverse; radii (0); fills (src);}
+    }
+}
+
+viz {
+  bmp1 { 
+    type bmp; 
+    output brunner; 
+    what material; 
+    centre (0.0 0.0 0.0); 
+    axis z; 
+    res (1000 1000);  }
+
+}
+
+nuclearData {
+  handles {
+    mg { type baseMgNeutronDatabase; PN P0; avgDist 0.1; } 
+  }
+  materials {
+
+    air {
+      temp 12345;
+      composition {
+      }
+      xsFile ./XS/air;
+    }
+    abs {
+      temp 12345;
+      composition {
+      }
+      xsFile ./XS/abs;
+    }
+    src {
+      temp 12345;
+      composition {
+      }
+      xsFile ./XS/abs;
+    }
+
+
+  }
+}

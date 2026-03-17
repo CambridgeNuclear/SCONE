@@ -37,8 +37,8 @@ module surface_inter
   !!   myType      -> Returns a string with surface type name
   !!   init        -> Initialise surface from a dictionary
   !!   boundingBox -> Return definition of axis-aligned bounding box over the surface
-  !!   kill        -> Return to unitinitialised state
-  !!   halfspace   -> Return halfspace ocupied by a particle
+  !!   kill        -> Return to uninitialised state
+  !!   halfspace   -> Return halfspace occupied by a particle
   !!   evaluate    -> Return remainder of the surface equation c = F(r)
   !!   distance    -> Return distance to the surface
   !!   going       -> Determine to which halfspace particle is currently going
@@ -143,12 +143,12 @@ module surface_inter
     !!
     !! Respects surface transparency.
     !! If position r is such that |F(r)| = |c| < SURF_TOL,
-    !! ignore closest crossing in terms of absulute distance |d|
+    !! ignore closest crossing in terms of absolute distance |d|
     !! (so for d1 = -eps and d2 = 2*eps d1 would be ignored)
     !!
     !! Args:
     !!  r [in] -> Position of the particle
-    !!  u [in] -> DIrection of the particle. Assume norm2(u) = 1.0
+    !!  u [in] -> Direction of the particle. Assume norm2(u) = 1.0
     !!
     !! Result:
     !!   +ve distance to the next crossing. If there is no crossing
@@ -173,7 +173,7 @@ module surface_inter
     !!
     !! Result:
     !!   If particle is moving into +ve halfspace (F(r+eps*u0 > 0)) return true
-    !!   If particle is moving into -ve halfspace retunr false
+    !!   If particle is moving into -ve halfspace return false
     !!
     pure function going(self, r, u) result(halfspace)
       import :: surface, defReal, defBool
@@ -256,8 +256,8 @@ contains
   !! Set surface tolerance
   !!
   !! Surface tolerance must be a property of the surface
-  !! so the SURF_TOL parameter may represent approximetly a width of
-  !! ambigous range
+  !! so the SURF_TOL parameter may represent approximately a width of
+  !! ambiguous range
   !!
   !! By default is equal to SURF_TOL parameter
   !!
@@ -265,7 +265,7 @@ contains
   !!   tol [in] -> +ve value of the surface tolaerance
   !!
   !! Errors:
-  !!   fatalError is tolaerance is not +ve
+  !!   fatalError is tolerance is not +ve
   !!
   subroutine setTol(self, tol)
     class(surface), intent(inout) :: self
@@ -308,7 +308,7 @@ contains
   !!   BC(1) -> entire surface (only vacuum)
   !!
   !! Args:
-  !!   BC [in] -> Integer array with BC flags for diffrent faces. Order is determined
+  !!   BC [in] -> Integer array with BC flags for different faces. Order is determined
   !!     by a surface subclass. Length is arbitrary
   !!
   !! Errors:

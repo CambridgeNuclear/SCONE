@@ -4,8 +4,7 @@ module sphere_class
   use universalVariables, only : INF, SURF_TOL
   use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
-  use surface_inter,      only : kill_super => kill
-  use quadSurface_inter,  only : quadSurface
+  use surface_inter,      only : surface, kill_super => kill
 
   implicit none
   private
@@ -35,7 +34,7 @@ module sphere_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(quadSurface) :: sphere
+  type, public, extends(surface) :: sphere
     private
     real(defReal), dimension(3) :: origin = ZERO
     real(defReal)               :: r      = ZERO
