@@ -1203,6 +1203,10 @@ structure of such cross section files is the following: they must include
 * chi (*optional*): vector of size N with the material-wise fission spectrum. The order
   of the elements corresponds to groups from fast (group 1) to thermal (group N).
   Must be included only if the materials is fissile
+* kappa (*optional*): vector of size N with the material-wise energy release per fission
+  in MeV. The order of the elements corresponds to groups from fast (group 1) to thermal 
+  (group N). Can be included only if the materials is fissile. If not included, kappa
+  is assumed to be 202.27 MeV.
 * P0: P0 scattering matrix, of size NxN. In the case of a 3x3 matrix, the elements are
   ordered as: ::
 

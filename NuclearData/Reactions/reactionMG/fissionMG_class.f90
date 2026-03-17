@@ -18,18 +18,16 @@ module fissionMG_class
   !!
   public :: fissionMG_TptrCast
 
-  real(defReal), private, parameter :: KAPPA_DEFAULT = 202.27 ! [MeV]
-
   !!
   !! A special type of MG reaction that contains data related to fission
   !!
   !! At the moment it has no information about delayed emissions, shall be introduced
-  !! at a latter date.
+  !! at a later date.
   !! Fission spectrum is independent of the energy group
   !!
   !! Public members:
-  !!   data  -> data for fissionMG [energyGroup, reaction (nu or chi)]
-  !!   kappa -> Energy per fission. 200 MeV by default.
+  !!   data     -> data for fissionMG [energyGroup, reaction (nu, chi, or optionally kappa)]
+  !!   hasKappa -> flag for whether there is energy per fission data
   !!
   !! Interface:
   !!   reactionMG interface
@@ -38,7 +36,7 @@ module fissionMG_class
   !!
   type, public, extends(reactionMG) :: fissionMG
     real(defReal),dimension(:,:),allocatable :: data
-    real(defReal) :: kappa = KAPPA_DEFAULT
+    logical(defBool)                         :: hasKappa = .false.
   contains
     ! Superclass procedures
     procedure :: init
@@ -58,7 +56,12 @@ module fissionMG_class
   !!
   !! Reaction indices
   !!
-  integer(shortInt),parameter :: NU_DAT = 1, CHI_DAT = 2
+  integer(shortInt),parameter :: NU_DAT = 1, CHI_DAT = 2, KAPPA_DAT = 3
+  
+  !!
+  !! Default value of kappa used if no data is provided
+  !!
+  real(defReal), private, parameter :: KAPPA_DEFAULT = 202.27 ! [MeV]
 
 contains
 
@@ -223,11 +226,26 @@ contains
     ! Get number of groups
     call dict % get(nG, 'numberOfGroups')
     
-    ! Get energy per fission
-    call dict % getOrDefault(self % kappa, 'kappa', KAPPA_DEFAULT)
+    ! Check if energy per fission is present and allocate space appropriately
+    if (dict % isPresent('kappa')) then
+      
+      self % hasKappa = .true.
+      allocate(self % data(nG, 3))
+    
+      ! Get kappa
+      call dict % get(temp, 'kappa')
+      if(size(temp) /= ng) then
+        call fatalError(Here, 'Invalid number of values of kappa. Given: '// numToChar(size(temp)) // &
+                              ' Expected: ' // numToChar(nG))
+      end if
+      self % data(:,KAPPA_DAT) = temp
 
-    ! Allocate space
-    allocate(self % data(nG, 2))
+    else
+      
+      self % hasKappa = .false.
+      allocate(self % data(nG, 2))
+
+    end if
 
     ! Get nu
     call dict % get(temp, 'nu')
@@ -258,14 +276,18 @@ contains
   !!
   !! Get the energy release from fission
   !!
-  pure function getKappa(self) result(kappa)
-    class(fissionMG), intent(in) :: self
-    real(defReal)                :: kappa
+  pure function getKappa(self, G) result(kappa)
+    class(fissionMG), intent(in)  :: self
+    integer(shortInt), intent(in) :: G
+    real(defReal)                 :: kappa
 
-    kappa = self % kappa
+    if (self % hasKappa) then
+      kappa = self % data(G, KAPPA_DAT)
+    else
+      kappa = KAPPA_DEFAULT
+    end if
 
   end function getKappa
-
 
   !!
   !! Cast reactionHandle pointer to fissionMG pointer
@@ -290,6 +312,5 @@ contains
     end select
 
   end function fissionMG_TptrCast
-
 
 end module fissionMG_class
