@@ -134,7 +134,7 @@ contains
       ! Select minimum distance
       if (test_d < d) then
         d = test_d
-        surfIdx = i
+        surfIdx = abs(self % surfaces(i) % surfIdx)
       end if
     end do
 
@@ -165,6 +165,7 @@ contains
     end do
 
     ! Matching surface wasn't found
+    print *, size(self% surfaces)
     call fatalError(Here,'Provided surfIdx is not a member of the cell: '//numToChar(surfIdx))
 
   end function getNormal

@@ -84,7 +84,7 @@ module geometry_inter
     !! Finds unique cell and material as well as location at all intermediate levels
     !!
     !! Args:
-    !!   coords [inout] -> Initialised coordinate list. This means that location in tope level must
+    !!   coords [inout] -> Initialised coordinate list. This means that location in top level must
     !!     be valid and direction normalised to 1.0.
     !!
     !! Errors:
@@ -467,7 +467,17 @@ contains
   !! Generates images by ray tracing using Phong's approximation, as described in
   !! Gavin Ridley's SNA 2024 paper.
   !!
-  subroutine rayPlot(self, brightness, matIDs, camera, light, M, mats, fov, diffuse)
+  !! Args:
+  !!   brightness [inout] -> 2D array of pixel brightness
+  !!   matIDs [inout]     -> 2D array of materials which have been struck by the rays at each pixel
+  !!   camera [in]        -> Position from which the camera is viewing the scene
+  !!   light [in]         -> Position from which the scene is being lit
+  !!   M [in]             -> Matrix which orients the rays with respect to the camera
+  !!   mats [in]          -> List of materials which are transparent to rays
+  !!   fov [in]           -> Field-of-view in the horizontal axis in radians
+  !!   ambient [in]       -> Fraction of illumination which is ambient, rather than from the light
+  !!
+  subroutine rayPlot(self, brightness, matIDs, camera, light, M, mats, fov, ambient)
     class(geometry), intent(in)                       :: self
     real(defReal), dimension(:,:), intent(inout)      :: brightness
     integer(shortInt), dimension(:,:), intent(inout)  :: matIDs
@@ -476,7 +486,7 @@ contains
     real(defReal), dimension(3,3), intent(in)         :: M
     integer(shortInt), dimension(:), intent(in)       :: mats
     real(defReal), intent(in)                         :: fov
-    real(defReal), intent(in)                         :: diffuse
+    real(defReal), intent(in)                         :: ambient
     integer(shortInt)                                 :: iv, nh, nv
     integer(shortInt), save                           :: ih, matIdx
     real(defReal), save                               :: bright
@@ -505,7 +515,7 @@ contains
         call ray % init(camera, matmul(M,vec))
 
         ! Get local material and its illumination
-        call self % phongTrace(ray, matIdx, bright, mats, diffuse, light)
+        call self % phongTrace(ray, matIdx, bright, mats, ambient, light)
         matIDs(ih, iv) = matIdx
         brightness(ih, iv) = bright
 
@@ -513,20 +523,19 @@ contains
     end do
     !$omp end parallel do
 
-
   end subroutine rayPlot
 
   !!
   !! Procedure for tracing from a camera until an opaque object is hit. 
   !! Then calculates the luminous contribution from a light source.
   !!
-  subroutine phongTrace(self, ray, matIdx, bright, mats, diffuse, light)
+  subroutine phongTrace(self, ray, matIdx, bright, mats, ambient, light)
     class(geometry), intent(in)                 :: self
     type(coordlist), intent(inout)              :: ray
     integer(shortInt), intent(out)              :: matIdx
     real(defReal), intent(out)                  :: bright
     integer(shortInt), dimension(:), intent(in) :: mats
-    real(defReal), intent(in)                   :: diffuse
+    real(defReal), intent(in)                   :: ambient
     real(defReal), dimension(3), intent(in)     :: light
     logical(defBool)                            :: lightTrace
     real(defReal)                               :: dist, dotP, dNudge
@@ -567,9 +576,8 @@ contains
       
       ! Flip ray and nudge it backwards to get it out of the opaque material
       ! This nudge may cause problems! Any better solutions?
-      dNudge = 1.0E-10
-      call ray % assignDirection(-ray % lvl(1) % dir)
-      call self % moveNoBC(ray, dNudge, event, normal)
+      dNudge = 1.0E-6
+      ray % lvl(1) % r = ray % lvl(1) % r + normal0 * dNudge
 
       ! Reorient ray towards light
       dir = light - ray % lvl(1) % r
@@ -592,14 +600,15 @@ contains
 
         ! The ray flew straight to the light
         if (event == COLL_EV) then
-          bright = (ONE - diffuse) * dotP
+          bright = (ONE - ambient) * dotP
+
           exit
         end if
       
       end do
 
-      ! Add diffuse/ambient contribution
-      bright = bright + diffuse
+      ! Add ambient contribution
+      bright = bright + ambient
    
     end if
 

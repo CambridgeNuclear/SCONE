@@ -83,7 +83,7 @@ module coord_class
   !!   cell              -> Return cellIdx at the lowest level
   !!   assignPosition    -> Set position and take ABOVE GEOMETRY
   !!   assignDirection   -> Set direction and do not change coordList state
-  !!   assignDirectionBottom -> Set direction in the lowest universe level and do not change coordList state
+  !!   assignDirectionLevel -> Set direction in a given universe level and propagates upwards
   !!
   type, public :: coordList
     integer(shortInt)                          :: nesting = 0
@@ -305,7 +305,7 @@ contains
   end subroutine takeAboveGeom
 
   !!
-  !! Decrease nestting to level n
+  !! Decrease nesting to level n
   !!
   !! Args:
   !!   n [in] -> New nesting level
@@ -396,7 +396,7 @@ contains
       if (self % lvl(i) % isRotated) then
         ! Note that rotation must be performed with the matrix
         ! Deflections by mu & phi depend on coordinates
-        ! Deflection by the same my & phi may be diffrent at diffrent, rotated levels!
+        ! Deflection by the same mu & phi may be different at different, rotated levels!
         self % lvl(i) % dir = matmul(self % lvl(i) % rotMat, self % lvl(i-1) % dir)
 
       else

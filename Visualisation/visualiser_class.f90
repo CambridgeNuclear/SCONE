@@ -357,7 +357,7 @@ contains
   !!     res (300 300);          // Resolution of the image
   !!     #light  (0.0 0.0 0.0);# // Coordinates of the light source, defaults to camera position
   !!     #up (0.0 0.0 1.0);#     // Which way is 'up'? Determines the rotation of the camera
-  !!     #diffuse 0.3;#          // Fraction of light which is diffuse rather than direct
+  !!     #ambient 0.3;#          // Fraction of light which is ambient rather than direct
   !!     #fov 70;#               // Field-of-view in the horizontal axis in degrees
   !!     #offset 978; #          // Parameter to 'randomize' the colour map
   !!     #transparent (mat1, mat2, ... );# // Names of transparent materials
@@ -367,7 +367,7 @@ contains
   subroutine makeRayPlot(self, dict)
     class(visualiser), intent(inout) :: self
     class(dictionary), intent(in)    :: dict
-    real(defReal)                    :: fov, diffuse
+    real(defReal)                    :: fov, ambient
     real(defReal), dimension(3) :: centre, up, camera, light, cv, ch, d
     real(defReal), dimension(:), allocatable       :: temp
     integer(shortInt), dimension(:), allocatable   :: tempInt
@@ -440,8 +440,8 @@ contains
     fov = fov * PI / 180
 
     ! Optional fraction of diffuse light
-    call dict % getOrDefault(diffuse, 'diffuse', 0.3_defReal)
-    if ((diffuse > 1) .or. (diffuse < 0)) call fatalError(Here,'The fraction of diffuse light must be between 0 and 1')
+    call dict % getOrDefault(ambient, 'ambient', 0.3_defReal)
+    if ((ambient > 1) .or. (ambient < 0)) call fatalError(Here,'The fraction of diffuse light must be between 0 and 1')
 
     ! Create governing vectors for the plot
     d = (centre - camera)
@@ -501,7 +501,7 @@ contains
     end if
 
     ! Img contains luminosity values, matIDs identifies which materials were hit
-    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, diffuse)
+    call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient)
 
     ! Translate to an image.
     ! Obtain material colours and scale by luminosity

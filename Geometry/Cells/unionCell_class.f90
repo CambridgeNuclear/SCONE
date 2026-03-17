@@ -455,7 +455,7 @@ contains
       ! Select minimum distance
       if (test_d < d) then
         d = test_d
-        surfIdx = i
+        surfIdx = abs(self % surfaces(i) % surfIdx)
       end if
     end do
 
