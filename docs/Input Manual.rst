@@ -1070,11 +1070,13 @@ from ACE files.
 * avgDist (*optional*, default = infinity): the minimum average distance until a
   collision, which may be virtual. Used to obtain better statistics for the
   collision estimator in low density materials, especially when using surface tracking.
+* energyPerFission (*optional*, default = 202.27 MeV): the energy per fission of U-235
+  in MeV.
   
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
-      ures 1; DBRC (92238 94242); avgDist 32; }
+      ures 1; DBRC (92238 94242); avgDist 32; energyPerFission 200.0;}
 
 .. note::
    If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
