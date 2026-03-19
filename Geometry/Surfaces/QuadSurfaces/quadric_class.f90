@@ -40,6 +40,7 @@ module quadric_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
 
   end type quadric
@@ -207,14 +208,29 @@ contains
     logical(defBool)                        :: halfspace
     real(defReal), dimension(3)             :: grad
 
-    associate(a => self % coeffs)
-      grad(1) = TWO * a(1) * r(1) + a(4) * r(2) + a(5) * r(3)
-      grad(2) = TWO * a(2) * r(2) + a(4) * r(1) + a(6) * r(3)
-      grad(3) = TWO * a(3) * r(3) + a(5) * r(1) + a(6) * r(2)
-    end associate
+    grad = self % normal(r, u)
     halfspace = dot_product(grad, u) >= ZERO
 
   end function going
+  
+  !!
+  !! Return the normal corresponding to the sphere surface
+  !!
+  pure function normal(self, r, u) result(n)
+    class(quadric), intent(in)              :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+
+    associate(a => self % coeffs)
+      n(1) = TWO * a(1) * r(1) + a(4) * r(2) + a(6) * r(3) + a(7)
+      n(2) = TWO * a(2) * r(2) + a(4) * r(1) + a(5) * r(3) + a(8)
+      n(3) = TWO * a(3) * r(3) + a(5) * r(2) + a(6) * r(1) + a(9)
+    end associate
+    n = n / norm2(n)
+
+  end function normal
+
 
   !!
   !! Return to uninitialised state

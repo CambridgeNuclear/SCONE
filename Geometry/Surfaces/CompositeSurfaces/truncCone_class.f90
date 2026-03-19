@@ -74,6 +74,7 @@ module truncCone_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
 
     ! Local procedures
@@ -393,40 +394,55 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal), dimension(3)             :: diff, norm
+    real(defReal), dimension(3)             :: n
     real(defReal)                           :: proj
 
-    diff = r - self % vertex
-
-    ! Check the location of the particle, i.e., base or cone surface, to calculate
-    ! the normal
-    if (abs(diff(self % axis) - self % hMin) < self % surfTol()) then
-      norm(self % axis)  = -ONE
-      norm(self % plane) = ZERO
-
-    elseif (abs(diff(self % axis) - self % hMax) < self % surfTol()) then
-      norm(self % axis)  = ONE
-      norm(self % plane) = ZERO
-
-    else
-      norm(self % plane) = diff(self % plane)
-      norm(self % axis)  = - self % tanSquare * diff(self % axis)
-
-    end if
-
-    norm = norm/norm2(norm)
-    proj = dot_product(norm,u)
+    n = self % normal(r, u)
+    
+    proj = dot_product(n,u)
 
     ! Determine halfspace
     halfspace = proj > ZERO
 
     ! Parallel direction
     ! Need to use position to determine halfspace
-    if (abs(proj) < epsilon(ONE)) then
+    if (proj == ZERO) then
       halfspace = self % evaluate(r) >= ZERO
     end if
 
   end function going
+  
+  !!
+  !! Produces the normal vector
+  !!
+  pure function normal(self, r, u) result(n)
+    class(truncCone), intent(in)            :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(3)             :: diff
+
+    diff = r - self % vertex
+
+    ! Check the location of the particle, i.e., base or cone surface, to calculate
+    ! the normal
+    if (abs(diff(self % axis) - self % hMin) < self % surfTol()) then
+      n(self % axis)  = -ONE
+      n(self % plane) = ZERO
+
+    elseif (abs(diff(self % axis) - self % hMax) < self % surfTol()) then
+      n(self % axis)  = ONE
+      n(self % plane) = ZERO
+
+    else
+      n(self % plane) = diff(self % plane)
+      n(self % axis)  = - self % tanSquare * diff(self % axis)
+
+    end if
+
+    n = n / norm2(n)
+
+  end function normal
 
   !!
   !! Return to uninitialised state

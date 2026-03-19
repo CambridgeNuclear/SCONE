@@ -37,6 +37,7 @@ module plane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
   end type plane
 
@@ -103,7 +104,7 @@ contains
   !!
   !! See surface_inter for details
   !!
-  !! Always returns infinate box (even when aligned with some axis)
+  !! Always returns infinite box (even when aligned with some axis)
   !!
   pure function boundingBox(self) result(aabb)
     class(plane), intent(in)   :: self
@@ -186,6 +187,19 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Return the surface normal, already computed
+  !!
+  pure function normal(self, r, u) result(n)
+    class(plane), intent(in)              :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+
+    n = self % norm
+
+  end function normal
 
   !!
   !! Return to uninitialised state

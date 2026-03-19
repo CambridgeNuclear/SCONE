@@ -1,7 +1,7 @@
 module coord_class
 
   use numPrecision
-  use universalVariables, only : HARDCODED_MAX_NEST, FP_REL_TOL
+  use universalVariables, only : HARDCODED_MAX_NEST, FP_REL_TOL, UNDEF_MAT
   use genericProcedures,  only : rotateVector, fatalError, numToChar
 
   implicit none
@@ -18,6 +18,7 @@ module coord_class
   !!   r -> Position
   !!   dir -> Direction
   !!   isRotated -> Is rotated wrt previous (higher by 1) level
+  !!   isGlobal  -> Is the coordinate reverted to level 1?
   !!   rotMat    -> Rotation matrix wrt previous level
   !!   uniIdx    -> Index of the occupied universe
   !!   uniRootID -> Location of the occupied universe in geometry graph
@@ -33,6 +34,7 @@ module coord_class
     real(defReal), dimension(3)   :: r         = ZERO
     real(defReal), dimension(3)   :: dir       = ZERO
     logical(defBool)              :: isRotated = .false.
+    logical(defBool)              :: isGlobal  = .false.
     real(defReal), dimension(3,3) :: rotMat    = ZERO
     integer(shortInt)             :: uniIdx    = 0
     integer(shortInt)             :: uniRootID = 0
@@ -45,7 +47,7 @@ module coord_class
   end type coord
 
   !!
-  !! List of co-ordinates at diffrent level of a geometry
+  !! List of co-ordinates at different level of a geometry
   !!
   !! Specifies the position of a particle in space
   !!
@@ -81,11 +83,12 @@ module coord_class
   !!   cell              -> Return cellIdx at the lowest level
   !!   assignPosition    -> Set position and take ABOVE GEOMETRY
   !!   assignDirection   -> Set direction and do not change coordList state
+  !!   assignDirectionLevel -> Set direction in a given universe level and propagates upwards
   !!
   type, public :: coordList
     integer(shortInt)                          :: nesting = 0
     type(coord), dimension(HARDCODED_MAX_NEST) :: lvl
-    integer(shortInt)                          :: matIdx   = -3
+    integer(shortInt)                          :: matIdx   = UNDEF_MAT
     integer(shortInt)                          :: uniqueId = -3
   contains
     ! Build procedures
@@ -107,6 +110,7 @@ module coord_class
     procedure :: cell
     procedure :: assignPosition
     procedure :: assignDirection
+    procedure :: assignDirectionLevel
 
   end type coordList
 
@@ -160,6 +164,7 @@ contains
     self % r         = ZERO
     self % dir       = ZERO
     self % isRotated = .false.
+    self % isGlobal  = .false.
     self % rotMat    = ZERO
     self % uniIdx    = 0
     self % uniRootID = 0
@@ -205,7 +210,7 @@ contains
     class(coordList), intent(inout) :: self
 
     self % nesting  = 0
-    self % matIdx   = -3
+    self % matIdx   = UNDEF_MAT
     self % uniqueID = -3
 
     ! Kill coordinates
@@ -243,7 +248,7 @@ contains
     class(coordList), intent(in) :: self
     logical(defBool)             :: isIt
 
-    isIt = (self % matIdx < 0) .and. (self % uniqueID < 0) .and. (self % nesting == 1)
+    isIt = (self % matIdx == UNDEF_MAT) .and. (self % uniqueID < 0) .and. (self % nesting == 1)
 
   end function isAbove
 
@@ -294,7 +299,7 @@ contains
     class(coordList), intent(inout) :: self
 
     self % nesting  = 1
-    self % matIdx   = -3
+    self % matIdx   = UNDEF_MAT
     self % uniqueID = -3
 
   end subroutine takeAboveGeom
@@ -391,7 +396,7 @@ contains
       if (self % lvl(i) % isRotated) then
         ! Note that rotation must be performed with the matrix
         ! Deflections by mu & phi depend on coordinates
-        ! Deflection by the same my & phi may be diffrent at diffrent, rotated levels!
+        ! Deflection by the same mu & phi may be different at different, rotated levels!
         self % lvl(i) % dir = matmul(self % lvl(i) % rotMat, self % lvl(i-1) % dir)
 
       else
@@ -465,5 +470,41 @@ contains
     end do
 
   end subroutine assignDirection
+
+  !!
+  !! Assign new direction at given universe level, propagating changes to the top.
+  !! Sets the level of the coordList to that provided
+  !!
+  !! Args:
+  !!   u [in]     -> New normalised direction at given level
+  !!   level [in] -> Level at which the direction is set
+  !!
+  !! NOTE:
+  !!   Does not check if u is normalised!
+  !!
+  subroutine assignDirectionLevel(self, u, level)
+    class(coordList), intent(inout)         :: self
+    real(defReal), dimension(3), intent(in) :: u
+    integer(shortInt), intent(in)           :: level
+    integer(shortInt)                       :: i
+    character(100),parameter :: Here = 'assignDirectionLevel (coord_class.f90)'
+
+    if (level > self % nesting) call fatalError(Here,'Input level exceeded current nesting')
+
+    ! Assign new direction in lowest level
+    self % lvl(level) % dir = u
+
+    ! Propage the change to higher levels
+    do i = level - 1, 1, -1
+      if(self % lvl(i+1) % isRotated) then
+        self % lvl(i) % dir = matmul(transpose(self % lvl(i+1) % rotMat), self % lvl(i+1) % dir)
+      else
+        self % lvl(i) % dir = self % lvl(i+1) % dir
+      end if
+    end do
+
+    self % nesting = level
+
+  end subroutine assignDirectionLevel
 
 end module coord_class

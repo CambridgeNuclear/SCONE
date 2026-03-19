@@ -9,7 +9,7 @@ module latUniverse_test
   use coord_class,        only : coord
   use surfaceShelf_class, only : surfaceShelf
   use cellShelf_class,    only : cellShelf
-  use latUniverse_class,  only : latUniverse
+  use latUniverse_class
   use funit
 
   implicit none
@@ -18,11 +18,15 @@ module latUniverse_test
   character(*), parameter :: UNI1_DEF = &
   "id 1; type latUniverse; origin (0.0 0.0 0.0); rotation (0.0 0.0 0.0); &
   &pitch (1.0 2.0 3.0); shape (3 2 2); padMat void; &
-  &map ( 3 4 5 &
+  & map ( 3 4 5 &
   &      7 4 8 &
   &            &
   &      1 2 3 &
   &      4 5 6); "
+  !& offsetMap ( 1 1 1   &
+  !&            0 1 1    &
+  !&            1 1 1    &
+  !&            1 1 1 ); &
 
   character(*), parameter :: UNI2_DEF = &
   "id 2; type latUniverse; pitch (1.0 2.0 0.0); shape (2 1 0); padMat u<1>; &
@@ -389,6 +393,17 @@ contains
 
     ref = [0.0_defReal, 1.0_defReal, 1.5_defReal]
     @assertEqual(ref, uni1 % cellOffset(pos), TOL)
+    
+    !! Inside but at the position without an offset
+    !pos % r = [-1.5_defReal, 1.0_defReal, -0.5_defReal]
+    !pos % dir = [-ONE, ONE, -ONE]
+    !pos % dir = pos % dir / norm2(pos % dir)
+    !pos % uniIdx  = 8
+    !pos % cellIdx = 0
+    !pos % localId = 4
+
+    !ref = [0.0_defReal, 0.0_defReal, 0.0_defReal]
+    !@assertEqual(ref, uni1 % cellOffset(pos), TOL)
 
     ! Outside
     pos % r = [-7.0_defReal, 0.0_defReal, 0.5_defReal]
@@ -420,6 +435,43 @@ contains
     @assertEqual(ref, uni2 % cellOffset(pos), TOL)
 
   end subroutine test_cellOffset
+
+  !!
+  !! Test getting a normal
+  !!
+@Test
+  subroutine test_normal()
+    type(coord)       :: pos
+    real(defReal), dimension(3) :: n
+
+    ! Get normals at each edge
+    pos % r = [-1.0_defReal, 0.0_defReal, -0.5_defReal]
+    pos % dir = [-ONE, ONE, -ONE]
+    pos % dir = pos % dir / norm2(pos % dir)
+
+    n = uni1 % getNormal(X_MIN, pos)
+    @assertEqual([-1, 0, 0], n)
+    
+    n = uni1 % getNormal(X_MAX, pos)
+    @assertEqual([1, 0, 0], n)
+    
+    n = uni1 % getNormal(Y_MIN, pos)
+    @assertEqual([0, -1, 0], n)
+
+    n = uni1 % getNormal(Y_MAX, pos)
+    @assertEqual([0, 1, 0], n)
+
+    n = uni1 % getNormal(Z_MIN, pos)
+    @assertEqual([0, 0, -1], n)
+
+    n = uni1 % getNormal(Z_MAX, pos)
+    @assertEqual([0, 0, 1], n)
+    
+    pos % r = [3.0_defReal, 0.0_defReal, 0.0_defReal]
+    n = uni1 % getNormal(OUTLINE_SURF, pos)
+    @assertEqual([1, 0, 0], n)
+
+  end subroutine test_normal
 
 
 end module latUniverse_test

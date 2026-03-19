@@ -1,0 +1,201 @@
+!!
+!! 2D model of the CROCUS reactor
+!! Composition and geometry taken from IRPhE
+!!
+type eigenPhysicsPackage;
+
+pop      100000;
+active   500;
+inactive 100;
+XSdata ce;
+dataType ce;
+outputFile CROCUS_2D;
+
+// Specify output format default asciiMATLAB
+//outputFormat asciiJSON;
+
+collisionOperator { neutronCE {type neutronCEstd;} }
+
+transportOperator {// type transportOperatorST;
+                    cache 1;
+                    type transportOperatorHT;
+                   }
+
+inactiveTally {}
+
+activeTally {
+  fluxRadial  { type collisionClerk; response (flx); flx { type fluxResponse;}
+                map {type multiMap; maps (xax yax emap);
+                  xax {type spaceMap;  axis x;  grid lin; N 240; min -60.0; max 60.0; }
+                  yax {type spaceMap;  axis y;  grid lin; N 240; min -60.0; max 60.0; }
+                  emap {type energyMap; grid unstruct; bins (1.0E-11 0.625E-6 20); }
+                }
+              } 
+}
+
+geometry {
+  type geometryStd;
+  boundary ( 0 0 0 0 1 1);
+  graph {type shrunk;}
+
+  surfaces {
+    boundary { id 1; type zTruncCylinder; origin (0.0 0.0 0.0); radius 60; halfwidth 60;}
+  }
+
+  cells {
+   // in  {id 1; surfaces ( -1); filltype uni; universe 401;}
+   // out {id 2; surfaces (1); filltype outside; }
+  }
+
+  universes {
+    root { id 1; type rootUniverse; border 1; fill u<10>; }
+
+    // Pin universes
+    pinUO2 { id 2; type pinUniverse; radii (0.526 0.545 0.63 0.0 ); fills (uo2 void clad water);}
+    pinUMet {id 3; type pinUniverse; radii (0.85 0.8675 0.965 0.0 ); fills (umet void  clad  water);}
+    water {id 4; type pinUniverse; radii (0.0 ); fills (water);}
+
+    // Lattices
+    inner {
+      id 5;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (1.837 1.837 0.0);
+      shape (22 22 0);
+      padMat water;
+      map (
+
+      4 4 4 4 4 4 4 4 2 2 2 2 2 2 4 4 4 4 4 4 4 4
+      4 4 4 4 4 4 4 4 2 2 2 2 2 2 4 4 4 4 4 4 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      4 4 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 4 4 4 2 2 2 2 2 2 2 2 2 2 2 2 4 4 4 4 4
+      4 4 4 4 4 4 4 4 2 2 2 2 2 2 4 4 4 4 4 4 4 4
+      4 4 4 4 4 4 4 4 2 2 2 2 2 2 4 4 4 4 4 4 4 4
+      ); 
+    }
+    
+    outer {
+      id 10;
+      type latUniverse;
+      origin (0.0 0.0 0.0);
+      pitch (2.917 2.917 0.0);
+      shape (20 20 0);
+      padMat water;
+      map (
+      4 4 4 4 4 4 4 3 3 3 3 3 3 4 4 4 4 4 4 4
+      4 4 4 4 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4
+      4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4
+      4 4 3 3 3 3 3 3 5 5 5 5 3 3 3 3 3 3 4 4
+      4 3 3 3 3 3 5 5 5 5 5 5 5 5 3 3 3 3 4 4
+      4 3 3 3 3 3 5 5 5 5 5 5 5 5 3 3 3 3 3 4
+      3 3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3 4
+      3 3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3 3
+      3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3
+      3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3
+      3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3
+      3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3
+      3 3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3 3
+      4 3 3 3 5 5 5 5 5 5 5 5 5 5 5 5 3 3 3 3
+      4 3 3 3 3 3 5 5 5 5 5 5 5 5 3 3 3 3 3 4
+      4 4 3 3 3 3 5 5 5 5 5 5 5 5 3 3 3 3 3 4
+      4 4 3 3 3 3 3 3 5 5 5 5 3 3 3 3 3 3 4 4
+      4 4 4 3 3 3 3 3 3 3 3 3 3 3 3 3 3 4 4 4
+      4 4 4 4 4 3 3 3 3 3 3 3 3 3 3 3 4 4 4 4
+      4 4 4 4 4 4 4 3 3 3 3 3 3 4 4 4 4 4 4 4
+      );
+      offsetMap (
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+      1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+      1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1
+      1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1
+      1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1
+      1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1
+      1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1
+      1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1
+      1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1
+      1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1
+      1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+      1 1 1 1 1 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+      ); 
+    }
+  }
+
+}
+
+
+viz {
+  bmp {
+    type bmp;
+    output img;
+    what material;
+    centre (0.0 0.0 0.0);
+    !width (80.0 80.0);
+    axis z;
+    offset -17;
+    res (1500 1500);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE;}
+  }
+  materials {
+
+    water {
+      temp 300;
+      rgb (0 0 139);
+      moder { 1001.03 (lwj3.00); }
+      composition {
+      1001.03    6.67578E-2;
+      8016.03    3.33789E-2; }
+      }
+
+     clad {
+       temp 300;
+       composition {
+       13027.03  6.02611E-2;}
+       }
+
+    uo2 {
+      temp 300;
+       composition {
+      92235.03  4.30565E-4;
+      92238.03  2.31145E-2;
+       8016.03  4.70902E-2; }
+      }
+    
+     umet {
+      temp 300;
+      composition {
+      92235.03  4.5316E-4;
+      92238.03  4.68003E-2;}
+     }
+
+}
+}

@@ -66,9 +66,9 @@ module wedge_class
     real(defReal) :: height = ZERO
     real(defReal) :: theta  = ZERO
     real(defReal) :: phi    = ZERO
-    real(defReal), dimension(2)     :: norm1   = ZERO
-    real(defReal), dimension(2)     :: norm2   = ZERO
-    real(defReal), dimension(2)     :: norm3   = ZERO
+    real(defReal), dimension(2)     :: normal1   = ZERO
+    real(defReal), dimension(2)     :: normal2   = ZERO
+    real(defReal), dimension(2)     :: normal3   = ZERO
     real(defReal), dimension(3)     :: origin  = ZERO
     integer(shortInt)               :: axis    = 0
     integer(shortInt), dimension(2) :: plane   = 0
@@ -82,6 +82,7 @@ module wedge_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
@@ -224,9 +225,9 @@ contains
    self % phi = phi * PI / 180.0_defReal
 
    ! Compute normals of the three triangle faces
-   self % norm1 = [sin(self % phi - self % theta), -cos(self % phi - self % theta)]
-   self % norm2 = [-sin(self % phi + self % theta), cos(self % phi + self % theta)]
-   self % norm3 = [cos(self % phi), sin(self % phi)]
+   self % normal1 = [sin(self % phi - self % theta), -cos(self % phi - self % theta)]
+   self % normal2 = [-sin(self % phi + self % theta), cos(self % phi + self % theta)]
+   self % normal3 = [cos(self % phi), sin(self % phi)]
 
    ! Load data
    call self % setTol(SURF_TOL * self % halfwidth)
@@ -248,8 +249,8 @@ contains
     aabb(self % axis + 3) = self % origin(self % axis) + self % halfwidth
 
     ! Calculate triangle points
-    tg1 = [-self % norm1(2), self % norm1(1)]
-    tg2 = [self % norm2(2), -self % norm2(1)]
+    tg1 = [-self % normal1(2), self % normal1(1)]
+    tg2 = [self % normal2(2), -self % normal2(1)]
     p0 = self % origin(self % plane)
     p1 = p0 + self % height * tg1 / cos(self % theta)
     p2 = p0 + self % height * tg2 / cos(self % theta)
@@ -281,11 +282,11 @@ contains
     cAxis = abs(diff(self % axis)) - self % halfwidth
 
     ! Side functions
-    cSide1 = dot_product(self % norm1, diff(self % plane))
-    cSide2 = dot_product(self % norm2, diff(self % plane))
+    cSide1 = dot_product(self % normal1, diff(self % plane))
+    cSide2 = dot_product(self % normal2, diff(self % plane))
 
     ! Base function
-    cBase = dot_product(self % norm3, diff(self % plane)) - self % height
+    cBase = dot_product(self % normal3, diff(self % plane)) - self % height
 
     ! Overall implicit function: negative inside
     c = max(cAxis, cBase, cSide1, cSide2)
@@ -317,8 +318,8 @@ contains
     ! Calculate distance from the three faces individually
     ! Face 1
 
-    k = dot_product(u(self % plane), self % norm1)
-    c = dot_product(diff(self % plane), self % norm1)
+    k = dot_product(u(self % plane), self % normal1)
+    c = dot_product(diff(self % plane), self % normal1)
 
     if (abs(k) < epsilon(ONE)) then
       if (c > ZERO) then
@@ -335,8 +336,8 @@ contains
     end if
 
     ! Face 2
-    k = dot_product(u(self % plane), self % norm2)
-    c = dot_product(diff(self % plane), self % norm2)
+    k = dot_product(u(self % plane), self % normal2)
+    c = dot_product(diff(self % plane), self % normal2)
 
     if (abs(k) < epsilon(ONE)) then
       if (c > ZERO) then
@@ -353,8 +354,8 @@ contains
     end if
 
     ! Face 3
-    k = dot_product(u(self % plane), self % norm3)
-    c = dot_product(diff(self % plane), self % norm3)
+    k = dot_product(u(self % plane), self % normal3)
+    c = dot_product(diff(self % plane), self % normal3)
 
     if (abs(k) < epsilon(ONE)) then
       if (c > self % height) then
@@ -429,7 +430,7 @@ contains
   !! See surface_inter for details
   !!
   !! Works by:
-  !!  1) Determine a plane in which direction is the closest
+  !!  1) Determine a plane in which position is the closest
   !!  2) Use normal for this plane and project distance
   !!  3) Determinie halfspace based on sign of the projection
   !!
@@ -441,34 +442,11 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal), dimension(3)             :: diff, norm
-    real(defReal)                           :: cSide1, cSide2, cBase, proj
+    real(defReal), dimension(3)             :: norm
+    real(defReal)                           :: proj
 
-    ! Displacement from origin
-    diff = r - self % origin
-
-    ! Helpers to evaluate wedge
-    cSide1 = dot_product(self % norm1, diff(self % plane))
-    cSide2 = dot_product(self % norm2, diff(self % plane))
-    cBase = dot_product(self % norm3, diff(self % plane)) - self % height
-
-    ! Initialise surface normal
-    norm = ZERO
-
-    ! Identify surface
-    if (abs(diff(self % axis) - self % halfwidth) < self % surfTol()) then
-      norm(self % axis)  = ONE
-    elseif (abs(diff(self % axis) + self % halfwidth) < self % surfTol()) then
-      norm(self % axis)  = -ONE
-    elseif (abs(cSide1) < self % surfTol()) then
-      norm(self % plane) = self % norm1
-    elseif (abs(cSide2) < self % surfTol()) then
-      norm(self % plane) = self % norm2
-    else
-      norm(self % plane) = self % norm3
-    end if
-
-    norm = norm/norm2(norm)
+    norm = self % normal(r, u)
+    
     proj = dot_product(norm, u)
 
     ! Determine halfspace
@@ -481,6 +459,48 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Produces the normal vector
+  !!
+  !! Determine the plane to which position is the closest and use the
+  !! corresponding normal
+  !!
+  pure function normal(self, r, u) result(n)
+    class(wedge), intent(in)                :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(3)             :: diff
+    real(defReal)                           :: cSide1, cSide2, cBase
+    
+    ! Displacement from origin
+    diff = r - self % origin
+
+    ! Helpers to evaluate wedge
+    cSide1 = dot_product(self % normal1, diff(self % plane))
+    cSide2 = dot_product(self % normal2, diff(self % plane))
+    cBase = dot_product(self % normal3, diff(self % plane)) - self % height
+
+    ! Initialise surface normal
+    n = ZERO
+
+    ! Identify surface
+    if (abs(diff(self % axis) - self % halfwidth) < self % surfTol()) then
+      n(self % axis)  = ONE
+    elseif (abs(diff(self % axis) + self % halfwidth) < self % surfTol()) then
+      n(self % axis)  = -ONE
+    elseif (abs(cSide1) < self % surfTol()) then
+      n(self % plane) = self % normal1
+    elseif (abs(cSide2) < self % surfTol()) then
+      n(self % plane) = self % normal2
+    else
+      n(self % plane) = self % normal3
+    end if
+
+    n = n/norm2(n)
+
+  end function normal
 
   !!
   !! Return to uninitialised state
@@ -498,9 +518,9 @@ contains
     self % theta     = ZERO
     self % phi       = ZERO
     self % BC    = VACUUM_BC
-    self % norm1 = ZERO
-    self % norm2 = ZERO
-    self % norm3 = ZERO
+    self % normal1 = ZERO
+    self % normal2 = ZERO
+    self % normal3 = ZERO
     self % axis  = 0
     self % plane = 0
 
@@ -565,16 +585,16 @@ contains
 
     ! Helpers to evaluate wedge
     c    = ZERO
-    c(1) = dot_product(self % norm1, diff(self % plane))
-    c(2) = dot_product(self % norm2, diff(self % plane))
-    c(3) = dot_product(self % norm3, diff(self % plane)) - self % height
+    c(1) = dot_product(self % normal1, diff(self % plane))
+    c(2) = dot_product(self % normal2, diff(self % plane))
+    c(3) = dot_product(self % normal3, diff(self % plane)) - self % height
     c(4) = diff(self % axis) + self % halfwidth
     c(5) = diff(self % axis) - self % halfwidth
 
     norm = ZERO
-    norm(1, self % plane) = self % norm1
-    norm(2, self % plane) = self % norm2
-    norm(3, self % plane) = self % norm3
+    norm(1, self % plane) = self % normal1
+    norm(2, self % plane) = self % normal2
+    norm(3, self % plane) = self % normal3
     norm(4, self % axis)  = -ONE
     norm(5, self % axis)  = ONE
 
@@ -711,11 +731,11 @@ contains
       ! Decide which boundary we crossed based on sign
       if (angle > 0) then
         bc = self % BC(2)   ! crossed face 2
-        norm    = self % norm2
+        norm    = self % normal2
         rotSign = -ONE
       else
         bc = self % BC(1)   ! crossed face 1
-        norm    = self % norm1
+        norm    = self % normal1
         rotSign = ONE
       end if
 
