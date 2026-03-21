@@ -1140,6 +1140,25 @@ module genericProcedures
   end subroutine rotationMatrix
 
   !!
+  !! Perform a rotation of vector dir about a given axis over angle (in RADIANS)
+  !! to produce newDir. Useful for camera rotations
+  !!
+  function rotateAroundAxis(dir, axis, angle) result(newDir)
+    real(defReal), dimension(3), intent(in) :: dir
+    real(defReal), dimension(3), intent(in) :: axis
+    real(defReal), intent(in)               :: angle
+    real(defReal), dimension(3)             :: newDir
+    real(defReal)                           :: c, s
+    real(defReal), dimension(3)             :: k
+
+    k = axis / norm2(axis)
+    c = cos(angle)
+    s = sin(angle)
+
+    newDir = dir * c + crossProduct(k, dir) * s + k * dot_product(k, dir)*(ONE - c)
+
+  end function rotateAroundAxis
+  !!
   !! Dot product for 3D vector
   !!
   pure function dotProduct(a,b) result(x)

@@ -14,6 +14,11 @@ module visualiser_class
   implicit none
   private
 
+  public :: materialColour
+  public :: brightnessScale
+  public :: getRayPlotInfo
+  public :: getRayPlotTransformation
+
   !!
   !! Object responsible for controlling visualisation
   !!
@@ -368,139 +373,22 @@ contains
     class(visualiser), intent(inout) :: self
     class(dictionary), intent(in)    :: dict
     real(defReal)                    :: fov, ambient
-    real(defReal), dimension(3) :: centre, up, camera, light, cv, ch, d
-    real(defReal), dimension(:), allocatable       :: temp
-    integer(shortInt), dimension(:), allocatable   :: tempInt
-    character(nameLen), dimension(:), allocatable  :: matNames
+    real(defReal), dimension(3) :: centre, camera, light, up
+    integer(shortInt), dimension(2)                :: res
     integer(shortInt), dimension(:), allocatable   :: mats
     integer(shortInt), dimension(:,:), allocatable :: img, matIDs
     real(defReal), dimension(:,:), allocatable     :: lum
     real(defReal), dimension(3,3)                  :: M
-    integer(shortInt)                              :: i, offset
-    character(10)                                  :: time
-    character(8)                                   :: date
+    integer(shortInt)                              :: offset
     character(nameLen)                             :: outputFile
-    character(100), parameter :: Here = 'makeRayPlot (visualiser_class.f90)'
     
-    ! Get name of the output file
-    call dict % get(outputFile, 'output')
-    outputFile = trim(outputFile) // '.bmp'
-
-    ! Central/target point
-    call dict % get(temp, 'centre')
-
-    if (size(temp) /= 3) then
-      call fatalError(Here, "'centre' must have size 3. Has: "//numToChar(size(temp)))
-    end if
-
-    centre = temp
-    deallocate(temp)
-
-    ! Camera origin
-    call dict % get(temp, 'camera')
-
-    if (size(temp) /= 3) then
-      call fatalError(Here, "'camera' must have size 3. Has: "//numToChar(size(temp)))
-    end if
-    camera = temp
-    deallocate(temp)
+    call getRayPlotInfo(dict, outputFile, centre, camera, light, up, M, fov, ambient, &
+                        res, mats, offset)
     
-    ! Get light location or default to camera location
-    if (dict % isPresent('light')) then
-      call dict % get(temp, 'light')
-    
-      if (size(temp) /= 3) then
-        call fatalError(Here, "'light' must have size 3. Has: "//numToChar(size(temp)))
-      end if
-      light = temp
-      deallocate(temp)
+    allocate(matIDs(res(1), res(2)))
+    allocate(lum(res(1), res(2)))
 
-    else
-      light = camera
-    end if
-    
-    ! The up direction, which sets the camera rotation
-    if (dict % isPresent('up')) then
-      call dict % get(temp, 'up')
-
-      if (size(temp) /= 3) then
-        call fatalError(Here, "'up' must have size 3. Has: "//numToChar(size(temp)))
-      end if
-      up = temp
-      up = up / norm2(up)
-      deallocate(temp)
-
-    else
-      up = [0, 0, 1]
-    end if
-
-    ! Optional field of view in degrees
-    ! Convert to radians
-    call dict % getOrDefault(fov, 'fov', 70.0_defReal)
-    fov = fov * PI / 180
-
-    ! Optional fraction of diffuse light
-    call dict % getOrDefault(ambient, 'ambient', 0.3_defReal)
-    if ((ambient > 1) .or. (ambient < 0)) call fatalError(Here,'The fraction of diffuse light must be between 0 and 1')
-
-    ! Create governing vectors for the plot
-    d = (centre - camera)
-    d = d/norm2(d)
-    
-    ! Ensure that up is not colinear with the view direction
-    if (all(abs(crossProduct(up, d)) < 1E-6)) call fatalError(Here,"View direction is co-linear with 'up'.")
-    
-    cv = crossProduct(d, up)
-    cv = cv / norm2(cv)
-    
-    ch = crossProduct(cv, d)
-    ch = ch / norm2(ch)
-
-    ! Create coordinate matrix
-    M(:,1) = d
-    M(:,2) = cv
-    M(:,3) = ch
-
-    ! Resolution
-    call dict % get(tempInt, 'res')
-
-    if (size(tempInt) /= 2) then
-      call fatalError(Here, "'res' must have size 2. Has: "//numToChar(size(tempInt)))
-    else if (any(tempInt <= 0)) then
-      call fatalError(Here, "Resolution must be +ve. There is 0 or -ve entry!")
-    end if
-
-    allocate(matIDs(tempInt(1), tempInt(2)))
-    allocate(lum(tempInt(1), tempInt(2)))
-
-    ! Transparent materials
-    ! Defaults to an array containing only VOID and OUTSIDE
-    if (dict % isPresent('transparent')) then
-      call dict % get(matNames, 'transparent')
-      allocate(mats(size(matNames) + 2))
-      do i = 1, size(matNames)
-        mats(i) = mm_nameMap % get(matNames(i))
-      end do
-      mats(i)   = OUTSIDE_MAT
-      mats(i+1) = VOID_MAT
-    else
-      allocate(mats(2))
-      mats(1) = OUTSIDE_MAT
-      mats(2) = VOID_MAT
-    end if
-    
-    ! Colourmap offset
-    ! If not given select randomly
-    if (dict % isPresent('offset')) then
-      call dict % get(offset, 'offset')
-
-    else
-      call date_and_time(date, time)
-      call FNV_1(date // time, offset)
-
-    end if
-
-    ! Img contains luminosity values, matIDs identifies which materials were hit
+    ! lum contains luminosity values, matIDs identifies which materials were hit
     call self % geom % rayPlot(lum, matIDs, camera, light, M, mats, fov, ambient)
 
     ! Translate to an image.
@@ -607,5 +495,165 @@ contains
     img = ior(ior(ishft(r, 16), ishft(g, 8)), b)
 
   end function brightnessScale
+
+  !!
+  !! Helper function to extract input for the ray plot for use by
+  !! the live renderer
+  !!
+  subroutine getRayPlotInfo(dict, outputFile, centre, camera, light, up, M, fov, ambient, &
+                  res, mats, offset)
+    class(dictionary), intent(in)                             :: dict
+    character(nameLen), intent(out)                           :: outputFile
+    real(defReal), dimension(3), intent(out)                  :: centre
+    real(defReal), dimension(3), intent(out)                  :: camera
+    real(defReal), dimension(3), intent(out)                  :: light
+    real(defReal), dimension(3)                               :: up
+    real(defReal), dimension(3, 3), intent(out)               :: M
+    real(defReal), intent(out)                                :: fov
+    real(defReal), intent(out)                                :: ambient
+    integer(shortInt), dimension(2), intent(out)              :: res
+    integer(shortInt), dimension(:), allocatable, intent(out) :: mats
+    integer(shortInt), intent(out)                            :: offset
+    real(defReal), dimension(:), allocatable                  :: temp
+    integer(shortInt), dimension(:), allocatable              :: tempInt
+    character(nameLen), dimension(:), allocatable             :: matNames
+    character(10)                                             :: time
+    character(8)                                              :: date
+    integer(shortInt)                                         :: i
+    character(100), parameter :: Here = 'getRayPlotInfo (visualiser_class.f90)'
+    
+    ! Get name of the output file
+    call dict % get(outputFile, 'output')
+    outputFile = trim(outputFile) // '.bmp'
+
+    ! Central/target point
+    call dict % get(temp, 'centre')
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'centre' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+
+    centre = temp
+    deallocate(temp)
+
+    ! Camera origin
+    call dict % get(temp, 'camera')
+
+    if (size(temp) /= 3) then
+      call fatalError(Here, "'camera' must have size 3. Has: "//numToChar(size(temp)))
+    end if
+    camera = temp
+    deallocate(temp)
+    
+    ! Get light location or default to camera location
+    if (dict % isPresent('light')) then
+      call dict % get(temp, 'light')
+    
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'light' must have size 3. Has: "//numToChar(size(temp)))
+      end if
+      light = temp
+      deallocate(temp)
+
+    else
+      light = camera
+    end if
+    
+    ! The up direction, which sets the camera rotation
+    if (dict % isPresent('up')) then
+      call dict % get(temp, 'up')
+
+      if (size(temp) /= 3) then
+        call fatalError(Here, "'up' must have size 3. Has: "//numToChar(size(temp)))
+      end if
+      up = temp
+      up = up / norm2(up)
+      deallocate(temp)
+
+    else
+      up = [0, 0, 1]
+    end if
+
+    ! Optional field of view in degrees
+    ! Convert to radians
+    call dict % getOrDefault(fov, 'fov', 70.0_defReal)
+    fov = fov * PI / 180
+
+    ! Optional fraction of diffuse light
+    call dict % getOrDefault(ambient, 'ambient', 0.3_defReal)
+    if ((ambient > 1) .or. (ambient < 0)) call fatalError(Here,'The fraction of diffuse light must be between 0 and 1')
+
+    M = getRayPlotTransformation(camera, centre, up)
+
+    ! Resolution
+    call dict % get(tempInt, 'res')
+
+    if (size(tempInt) /= 2) then
+      call fatalError(Here, "'res' must have size 2. Has: "//numToChar(size(tempInt)))
+    else if (any(tempInt <= 0)) then
+      call fatalError(Here, "Resolution must be +ve. There is 0 or -ve entry!")
+    end if
+
+    res = tempInt
+    
+    ! Transparent materials
+    ! Defaults to an array containing only VOID and OUTSIDE
+    if (dict % isPresent('transparent')) then
+      call dict % get(matNames, 'transparent')
+      allocate(mats(size(matNames) + 2))
+      do i = 1, size(matNames)
+        mats(i) = mm_nameMap % get(matNames(i))
+      end do
+      mats(i)   = OUTSIDE_MAT
+      mats(i+1) = VOID_MAT
+    else
+      allocate(mats(2))
+      mats(1) = OUTSIDE_MAT
+      mats(2) = VOID_MAT
+    end if
+    
+    ! Colourmap offset
+    ! If not given select randomly
+    if (dict % isPresent('offset')) then
+      call dict % get(offset, 'offset')
+
+    else
+      call date_and_time(date, time)
+      call FNV_1(date // time, offset)
+
+    end if
+
+  end subroutine getRayPlotInfo
+
+  !!
+  !!
+  !!
+  function getRayPlotTransformation(camera, centre, up) result(M)
+    real(defReal), dimension(3), intent(in) :: camera
+    real(defReal), dimension(3), intent(in) :: centre
+    real(defReal), dimension(3), intent(in) :: up
+    real(defReal), dimension(3,3)           :: M
+    real(defReal), dimension(3)             :: d, cv, ch
+    character(100), parameter :: Here = 'getRayPlotTransformation (visualiser_class.f90)'
+    
+    ! Create governing vectors for the plot
+    d = (centre - camera)
+    d = d/norm2(d)
+    
+    ! Ensure that up is not colinear with the view direction
+    if (all(abs(crossProduct(up, d)) < 1E-6)) call fatalError(Here,"View direction is co-linear with 'up'.")
+    
+    cv = crossProduct(d, up)
+    cv = cv / norm2(cv)
+    
+    ch = crossProduct(cv, d)
+    ch = ch / norm2(ch)
+
+    ! Create coordinate matrix
+    M(:,1) = d
+    M(:,2) = cv
+    M(:,3) = ch
+
+  end function getRayPlotTransformation
 
 end module visualiser_class

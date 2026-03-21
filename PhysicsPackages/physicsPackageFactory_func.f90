@@ -17,6 +17,7 @@ module physicsPackageFactory_func
   use rayVolPhysicsPackage_class,      only : rayVolPhysicsPackage
   use kineticPhysicsPackage_class,     only : kineticPhysicsPackage
   use alphaPhysicsPackage_class,       only : alphaPhysicsPackage
+  use renderPhysicsPackage_class,      only : renderPhysicsPackage
 !  use dynamPhysicsPackage_class, only : dynamPhysicsPackage
 
   implicit none
@@ -31,6 +32,7 @@ module physicsPackageFactory_func
                                                                              'vizPhysicsPackage        ',&
                                                                              'kineticPhysicsPackage    ',&
                                                                              'alphaPhysicsPackage      ',&
+                                                                             'renderPhysicsPackage     ',&
                                                                              'rayVolPhysicsPackage     ']
 
   !!
@@ -72,6 +74,9 @@ contains
 
       case('rayVolPhysicsPackage')
         allocate( rayVolPhysicsPackage :: new)
+      
+      case('renderPhysicsPackage')
+        allocate( renderPhysicsPackage :: new)
       
       case default
         print *, AVAILABLE_physicsPackages

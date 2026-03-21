@@ -296,6 +296,28 @@ Example: ::
         geometry { <Geometry definition> }
         viz { <Visualiser definition> }
 
+.. note::
+   SCONE can be run to visualise geometry without requiring an explicit vizPhysicsPackage by
+   including ``--plot`` when running the application.
+
+renderPhysicsPackage
+#################
+
+renderPhysicsPackage, used for performing ray plots which can be modified
+directly from the command line. Looks for a visualiser dictionary which contains 
+a ray plot.
+
+Example: ::
+
+        type renderPhysicsPackage;
+
+        geometry { <Geometry definition> }
+        viz { <Visualiser definition> }
+
+.. note::
+   SCONE can be run to begin a live render without requiring an explicit renderPhysicsPackage by
+   including ``--render`` when running the application.
+
 Source
 ------
 
