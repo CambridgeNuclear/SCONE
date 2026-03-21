@@ -65,6 +65,9 @@ module eigenPhysicsPackage_class
   use tallyResult_class,              only : tallyResult
   use keffAnalogClerk_class,          only : keffResult
 
+  ! Coupling
+  use couplingAdmin_class,            only : couplingAdmin
+
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
 
@@ -107,6 +110,9 @@ module eigenPhysicsPackage_class
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
     logical(defBool)   :: reproducible = .true.
+    
+    ! Coupling handler
+    type(couplingAdmin) :: couplingInfo
 
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
@@ -144,6 +150,10 @@ contains
     call self % generateInitialState()
 
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
+    
+    ! Deactivate coupling for active cycles
+    call self % couplingInfo % endCoupling()
+    
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
 
     ! Collect results from other processes
@@ -334,6 +344,9 @@ contains
       call statusMsg("End time:     " // trim(secToChar(end_T)))
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
+    
+      ! Perform coupling operations
+      call self % couplingInfo % couple(i)
 
     end do
 
@@ -429,7 +442,7 @@ contains
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
     class(pieceConstantField), pointer        :: pcField
-    real(defReal)                             :: maxDensityScale, maxTemperature
+    real(defReal)                             :: maxDensityScale, maxTemperature, maxCouplingTemp
     character(100), parameter :: Here ='init (eigenPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -448,6 +461,18 @@ contains
 
     ! Parallel buffer size
     call dict % getOrDefault(self % bufferSize, 'buffer', 1000)
+
+    ! Check if the calculation is coupled
+    maxCouplingTemp = NO_TEMPERATURE
+    if (dict % isPresent('coupling')) then
+      tempDict => dict % getDictPtr('coupling')
+      call self % couplingInfo % init(tempDict)
+      call tempDict % getOrDefault(maxCouplingTemp, 'maxTemp', NO_TEMPERATURE)
+      if (.not. tempDict % isPresent('maxTemp')) then
+        call statusMsg('If coupling with temperature fields, it is advisable to include a maximum '&
+                //'possible temperature (maxTemp) in order to correctly precompute the majorant.')
+      end if
+    end if
 
     ! Process type of data
     select case(energy)
@@ -537,6 +562,7 @@ contains
     else
       maxTemperature = NO_TEMPERATURE
     end if
+    maxTemperature = max(maxTemperature, maxCouplingTemp)
 
     ! If present, build density field
     if (dict % isPresent('density')) then
@@ -638,7 +664,11 @@ contains
     ! Attach attachments to result tallies
     call self % inactiveTally % push(self % inactiveAtch)
     call self % activeTally % push(self % activeAtch)
-
+    
+    ! Attach a tally admin for coupling
+    if (self % couplingInfo % doCoupling()) then
+      call self % couplingInfo % attachTally(self % inactiveTally)
+    end if
 
     call self % printSettings()
 

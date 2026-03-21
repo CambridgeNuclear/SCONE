@@ -62,6 +62,9 @@ Example: ::
         uniformFissionSites { <Uniform fission sites definition> }
         varianceReduction { <Weight windows definition> }
         source { <Source definition> }
+        coupling { <couplingAdmin definition> }
+        temperature { <pieceConstantField definition> }
+        density { <pieceConstantField definition> }
 
 .. note::
    Although a ``source`` definition is not required, it can be included to replace
@@ -121,6 +124,8 @@ Example: ::
 *Optional entries* ::
 
         varianceReduction { <Weight windows definition> }
+        temperature { <pieceConstantField definition> }
+        density { <pieceConstantField definition> }
 
 kineticPhysicsPackage
 #####################
@@ -190,6 +195,8 @@ Example: ::
 *Optional entries* ::
 
         varianceReduction { <Weight windows definition> }
+        temperature { <pieceConstantField definition> }
+        density { <pieceConstantField definition> }
 
 alphaPhysicsPackage
 ###################
@@ -249,6 +256,8 @@ Example: ::
         uniformFissionSites { <Uniform fission sites definition> }
         varianceReduction { <Weight windows definition> }
         source { <Source definition> }
+        temperature { <pieceConstantField definition> }
+        density { <pieceConstantField definition> }
 
 .. note::
    Although a ``source`` definition is not required, it can be included to replace
@@ -970,6 +979,54 @@ Example: ::
       default 302; }
 
       density { type cartesianField; file ./myDensityField; }
+
+Coupling
+--------
+
+To performed coupled physics simulations (currently limited to k and alpha eigenvalue calculations), the keyword
+``coupling`` must be present in the input file with an appropriately defined dictionary. The entries
+in this dictionary are:
+* tally: a tallyAdmin definition, used to produce tallies and normalisation required for coupling, e.g., power.
+* receiveFile: tex file that SCONE can expect to receive from external codes. This will be read to signal either that
+  coupling is continuing (containing 'SIGUSR1') or that coupling is finished (containing 'SIGTERM'). 
+  The latter could be based on some convergence criteria being met by the external solver.
+* sendFile: text file that SCONE should write to send signals to other codes. This will signal whether coupling should
+  continue (containing 'SIGUSR1') or that coupling has finished (containing 'SIGTERM').
+* updateFreq: sets how often SCONE exchanges data with coupled codes. More frequently may mean faster convergence
+  of the coupled system, but results sent to other codes will be noisier due to poorer statistics.
+* outputFile: name of the file containing tallies that SCONE will produce.
+* outputFormat (*optional*, default = ``asciiMATLAB``): type of output file.
+  Choices are ``asciiMATLAB`` and ``asciiJSON``.
+* fieldPaths: array of paths to files that SCONE will read which contain field definitions, produced by external solvers.
+  There must be as many paths as fields, and their ordering must match.
+* fields: array of names of fields that SCONE will update during coupling. Can be ``temperature`` and/or ``density``.
+* maxTemp: (*optional*, defaults to the highest material temperature initially present in the geometry):
+  the maximum temperature expected to be produced during coupling. This is important to correctly initialise the
+  majorant if using delta tracking. If this temperature is exceeded during coupling, a warning will be produced
+  regarding the validity of the results.
+* maxIt: (*optional*, defaults to infinity) the maximum number of MC cycles that will take place before SCONE
+  terminates the coupling. SCONE will continue to run, but it will signal to the external solver that coupling
+  has finished and fields will no longer be updated.
+
+An example of a coupling dictionary is: ::
+
+      coupling {
+      tally {norm power; normVal 100; 
+             power {type collisionClerk; response (kappa) kappa {type macroResponse; MT -80;}}
+             powerLocal {type collisionClerk; response (kappa) kappa {type macroResponse; MT -80;}
+                         map {type spaceMap; axis z; grid lin; min -200; min 200; N 40;}
+             }
+      }
+      receiveFile /path/toSCONE;
+      sendFile /path/fromSCONE;
+      updateFreq 5;
+      outputFile /path/tallies_from_SCONE;
+      outputFormat asciiMATLAB;
+      fieldPaths (/path1/tempField /path2/densityField);
+      fields (temperature density);
+      maxTemp 2000;
+      maxIt 100;
+      }
 
 Visualiser
 ----------
@@ -1694,14 +1751,6 @@ Examples: ::
 
       map1 { type spaceMap; axis x; grid lin; min -50.0; max 50.0; N 100; }
       map2 { type spaceMap; axis z; grid unstruct; bins (0.0 0.2 0.3 0.5 0.7 0.8 1.0); }
-
-* fieldMap (1D map), map over superimposed fields. Limited currently to pieceConstantFields.
-
-  - field: field definition, corresponding to those in pieceConstantFields.
-
-Examples: ::
-
-      map1 { type fieldMap; field {file ./myField.txt } }
 
 * timeMap (1D map), maps particles point in time
 

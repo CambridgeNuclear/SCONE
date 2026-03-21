@@ -1,0 +1,7 @@
+type cartesianField;
+materials (cool);
+origin (0 0 0);
+shape (1 1 0);
+pitch (1.26 1.26 0);
+default -1;
+cool ( 0.9 );

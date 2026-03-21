@@ -130,7 +130,7 @@ contains
     ! Check for invalid pitch
     if (any(self % pitch < 10 * SURF_TOL)) then
      call fatalError(Here, 'Pitch size must be larger than: '//numToChar( 10 * SURF_TOL))
-   end if
+    end if
 
     ! Calculate halfwidth and corner
     self % a_bar = self % pitch * HALF - SURF_TOL
@@ -347,6 +347,7 @@ contains
     self % nMat = 0
     self % corner = ZERO
     self % a_bar  = ZERO
+    if (allocated(self % matIdxs)) deallocate(self % matIdxs)
     call self % outline % kill()
 
   end subroutine kill
