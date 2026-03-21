@@ -34,6 +34,7 @@ module baseMgNeutronMaterial_class
   integer(shortInt), parameter, public :: CAPTURE_XS    = 3
   integer(shortInt), parameter, public :: FISSION_XS    = 4
   integer(shortInt), parameter, public :: NU_FISSION    = 5
+  integer(shortInt), parameter, public :: KAPPA_FISSION = 6
 
   !!
   !! Basic type of MG material data
@@ -65,6 +66,7 @@ module baseMgNeutronMaterial_class
   !!     -> fission [nGx1]
   !!     -> nu [nGx1]
   !!     -> chi [nGx1]
+  !!     -> kappa [nGx1]
   !!     -> P# [nGxnG]
   !!
   type, public, extends(mgNeutronMaterial) :: baseMgNeutronMaterial
@@ -129,7 +131,7 @@ contains
     if(self % isFissile()) then
       xss % fission        = self % data(FISSION_XS, G)
       xss % nuFission      = self % data(NU_FISSION, G)
-      xss % kappaXS        = xss % fission * self % fission % getKappa()
+      xss % kappaXS        = self % data(KAPPA_FISSION, G)
     else
       xss % fission        = ZERO
       xss % nuFission      = ZERO
@@ -188,6 +190,7 @@ contains
     integer(shortInt)                           :: nG, N, i
     real(defReal), dimension(:), allocatable    :: temp
     type(dictDeck)                              :: deck
+    real(defReal)                               :: kappa0
     character(100), parameter :: Here = 'init (baseMgNeutronMaterial_class.f90)'
 
 
@@ -224,7 +227,7 @@ contains
 
     ! Allocate space for data
     if(self % isFissile()) then
-      N = 5
+      N = 6
     else
       N = 3
     end if
@@ -263,6 +266,19 @@ contains
                             // numToChar(nG)//' is '//numToChar(size(temp)))
       end if
       self % data(NU_FISSION,:) = temp * self % data(FISSION_XS,:)
+
+      ! Calculate kappaFission
+      if (dict % isPresent('kappa')) then
+        call dict % get(temp, 'kappa')
+        if(size(temp) /= nG) then
+          call fatalError(Here,'Kappa vector has wong size. Must be: ' &
+                              // numToChar(nG)//' is '//numToChar(size(temp)))
+        end if
+      else
+        kappa0 = self % fission % getKappa(1)
+        temp = kappa0
+      end if
+      self % data(KAPPA_FISSION,:) = temp * self % data(FISSION_XS,:)
     end if
 
     ! Calculate total XS

@@ -1127,11 +1127,13 @@ from ACE files.
 * avgDist (*optional*, default = infinity): the minimum average distance until a
   collision, which may be virtual. Used to obtain better statistics for the
   collision estimator in low density materials, especially when using surface tracking.
+* energyPerFission (*optional*, default = 202.27 MeV): the energy per fission of U-235
+  in MeV.
   
 Example: ::
 
       ceData { type aceNuclearDatabase; aceLibrary ./myFolder/ACElib/JEF311.aceXS;
-      ures 1; DBRC (92238 94242); avgDist 32; }
+      ures 1; DBRC (92238 94242); avgDist 32; energyPerFission 200.0;}
 
 .. note::
    If DBRC is applied, the 0K cross section ace files of the relevant nuclides must
@@ -1260,6 +1262,10 @@ structure of such cross section files is the following: they must include
 * chi (*optional*): vector of size N with the material-wise fission spectrum. The order
   of the elements corresponds to groups from fast (group 1) to thermal (group N).
   Must be included only if the materials is fissile
+* kappa (*optional*): vector of size N with the material-wise energy release per fission
+  in MeV. The order of the elements corresponds to groups from fast (group 1) to thermal 
+  (group N). Can be included only if the materials is fissile. If not included, kappa
+  is assumed to be 202.27 MeV.
 * P0: P0 scattering matrix, of size NxN. In the case of a 3x3 matrix, the elements are
   ordered as: ::
 
