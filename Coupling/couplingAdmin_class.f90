@@ -116,7 +116,7 @@ contains
     class(couplingAdmin), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
     integer(shortInt)                   :: i, nFields, j
-    logical(defBool)                    :: found, duplicate
+    logical(defBool)                    :: found
     class(dictionary), pointer          :: tallyDict
     type(outputFile)                    :: test_out
     character(100), parameter :: Here ='init (couplingAdmin_class.f90)'
@@ -178,10 +178,11 @@ contains
         call fatalError(Here,'Field name is invalid. See list above.')
       end if
 
-      if (i < nFields) then
-        duplicate = any(trim(self % fieldNames(i)) == [ (trim(self % fieldNames(j)), j=i+1,nFields) ])
-        if (duplicate) call fatalError(Here,'Field names must be unique: '//trim(self % fieldNames(i)))
-      end if
+      do j = i+1, nFields
+        if (trim(self % fieldNames(i)) == trim(self % fieldNames(j))) then
+          call fatalError(Here,'Field names must be unique: '//trim(self % fieldNames(i)))
+        end if
+      end do
       
     end do
   
