@@ -18,8 +18,6 @@ module fissionMG_class
   !!
   public :: fissionMG_TptrCast
 
-  real(defReal), private, parameter :: KAPPA_DEFAULT = 202.27 ! [MeV]
-
   !!
   !! A special type of MG reaction that contains data related to fission
   !!
