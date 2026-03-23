@@ -12,6 +12,7 @@ module releaseLawENDF_inter
     private
   contains
     procedure(releaseAt),deferred :: releaseAt
+    procedure(hasEnergy),deferred :: hasEnergy
     procedure(kill),deferred      :: kill
   end type releaseLawENDF
 
@@ -27,6 +28,18 @@ module releaseLawENDF_inter
       real(defReal), intent(in)          :: E_in
       real(defReal)                      :: release
     end function releaseAt
+
+    !!
+    !! Return whether a given energy is available with the law
+    !!
+    function hasEnergy(self, E_in) result(has)
+      import :: defReal, &
+                defBool, &
+                releaseLawENDF
+      class(releaseLawENDF), intent(in)  :: self
+      real(defReal), intent(in)          :: E_in
+      logical(defBool)                   :: has
+    end function hasEnergy
 
     !!
     !! Return to uninitialised state
