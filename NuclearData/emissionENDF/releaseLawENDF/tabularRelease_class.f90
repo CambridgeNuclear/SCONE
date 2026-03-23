@@ -28,6 +28,7 @@ module tabularRelease_class
   contains
     generic   :: init => initSimple, initInter
     procedure :: releaseAt
+    procedure :: hasEnergy
     procedure :: kill
 
     procedure,private :: initSimple
@@ -47,6 +48,18 @@ contains
     release = self % releaseTable % at(E_in)
 
   end function releaseAt
+
+  !!
+  !! Returns whether an energy, E_in, is within the table
+  !!
+  function hasEnergy(self, E_in) result(has)
+    class(tabularRelease), intent(in)  :: self
+    real(defReal), intent(in)          :: E_in
+    logical(defBool)                   :: has
+
+    has = self % releaseTable % hasX(E_in)
+
+  end function hasEnergy
 
   !!
   !! Return to uninitialised state
