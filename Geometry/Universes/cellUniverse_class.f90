@@ -21,6 +21,7 @@ module cellUniverse_class
   
   ! Determines how frequently to reorder the cell list
   integer(longInt), public, parameter :: reorderFreq = 10_longInt**6
+  integer(shortInt), parameter :: padding = 16
   
   !!
   !! Local helper class to group cell data
@@ -135,7 +136,7 @@ contains
       ! Convert cell ID to IDX
       self % cells(i) % idx = cells % getIdx(self % cells(i) % idx)
       self % cells(i) % ptr => cells % getPtr(self % cells(i) % idx)
-      allocate(self % cells(i) % visits(nThread))
+      allocate(self % cells(i) % visits(nThread * padding))
       self % cells(i) % visits = 0
     end do
 
@@ -221,7 +222,7 @@ contains
     end if
 
     ! Search all cells
-    tIdx = ompGetThreadNum() + 1
+    tIdx = ompGetThreadNum() * padding + 1
     do i = 1, size(self % cells)
       localID = array(i)
       if (self % cells(localID) % ptr % inside(r, u)) then
@@ -268,7 +269,7 @@ contains
     cellsFound = 0
 
     ! Search all cells
-    tIdx = ompGetThreadNum() + 1
+    tIdx = ompGetThreadNum() * padding + 1
     do i = 1, size(self % cells)
       localID = i
       if (self % cells(localID) % ptr % inside(r, u)) then
@@ -318,7 +319,7 @@ contains
 
       ! Search neighbours if starting cell is given
       if (neighb % getSize() > 0) then
-        tIdx = ompGetThreadNum() + 1
+        tIdx = ompGetThreadNum() * padding + 1
         do i = 1, neighb % getSize()
 
           localID = neighb % get(i)
@@ -328,7 +329,7 @@ contains
             foundNeighb = .true.
             
             self % cells(localID) % visits(tIdx) = self % cells(localID) % visits(tIdx) + 1
-            if (mod(sum(self % cells(localID) % visits), reorderFreq) == 0) then
+            if (mod(self % cells(localID) % visits(tIdx), reorderFreq) == 0) then
               !$omp critical
               self % reordering = .true.
               call self % reorderCells()
