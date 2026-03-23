@@ -143,6 +143,9 @@ contains
       case(N_ABSORPTION)
         self % MT = macroAbsorbtion
 
+      case(N_KAPPA)
+        self % MT = macroKappaFission
+
       case default
         self % MT = MT
         self % mainData = .false.

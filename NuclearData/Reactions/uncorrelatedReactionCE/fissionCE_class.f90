@@ -54,6 +54,7 @@ module fissionCE_class
   !!   eLawPrompt   -> Energy Law for the prompt fission neutrons
   !!   nuBarDelayed -> Delayed release table for incindent energy [MeV]
   !!   delayed      -> Information about Delayed emission precursors
+  !!   Q            -> Q value for the reaction [MeV]
   !!
   !! Interface:
   !!   uncorrelatedReactionCE interface
@@ -65,6 +66,7 @@ module fissionCE_class
     class(energyLawENDF), allocatable        :: eLawPrompt
     class(releaseLawENDF),allocatable        :: nuBarDelayed
     type(precursor),dimension(:),allocatable :: delayed
+    real(defReal)                            :: Q = ZERO
 
   contains
     ! Superclass procedures
@@ -79,6 +81,7 @@ module fissionCE_class
 
     ! Type specific procedures
     procedure :: buildFromACE
+    procedure :: getQ
   end type fissionCE
 
 contains
@@ -148,7 +151,20 @@ contains
       deallocate(self % delayed)
     end if
 
+    self % Q = ZERO
+
   end subroutine kill
+
+  !!
+  !! Returns the Q-value
+  !!
+  pure function getQ(self) result(Q)
+    class(fissionCE), intent(in) :: self
+    real(defReal)                :: Q
+
+    Q = self % Q
+
+  end function getQ
 
   !!
   !! Returns true if reaction is in Centre-Of-Mass frame
@@ -194,6 +210,9 @@ contains
   !!
   !! Returns number of particles produced on average by the reaction with delay
   !!
+  !! Has a check on energy because some nuclides in some libraries (e.g., U236 in ENDFB7)
+  !! have inconsistent energy grids for prompt and delayed emission!!
+  !!
   !! See uncorrelatedReactionCE for details
   !!
   function releaseDelayed(self, E) result(N)
@@ -201,11 +220,17 @@ contains
     real(defReal), intent(in)    :: E
     real(defReal)                :: N
 
-    if(allocated(self % nuBarDelayed)) then
-      N = self % nuBarDelayed % releaseAt(E)
-    else
+    if (.not. allocated(self % nuBarDelayed)) then
       N = ZERO
+      return
     end if
+
+    if (.not. self % nuBarDelayed % hasEnergy(E)) then
+      N = ZERO
+      return
+    end if
+
+    N = self % nuBarDelayed % releaseAt(E)
 
   end function releaseDelayed
 
@@ -349,6 +374,7 @@ contains
     ! Read basic data
     call new_totalNU(self % nuBarTotal, ACE)
     call new_energyLawENDF(self % eLawPrompt, ACE, MT)
+    self % Q = ACE % QforMT(MT)
 
     ! Read Delayed Data
     if (withDelayed) then

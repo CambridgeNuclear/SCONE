@@ -39,6 +39,8 @@ module ceNeutronDatabase_inter
   !!
   !! Public Members:
   !!   mapDBRCnuc -> map to link indexes of DBRC nuclides with their corresponding 0K
+  !!   H235       -> heating fission of U235, used for scaling fission energy
+  !!   Q235       -> Q-value of U235 fission, used for scaling fission energy
   !!
   !! Interface:
   !!   nuclearDatabase Interface
@@ -53,6 +55,10 @@ module ceNeutronDatabase_inter
   !!
   type, public, abstract, extends(nuclearDatabase) :: ceNeutronDatabase
     type(intMap) :: mapDBRCnuc
+    
+    ! Default fission scaling [MeV]
+    real(defReal)                                :: H235 = 202.27_defReal
+    real(defReal)                                :: Q235 = 193.406_defReal
 
   contains
 

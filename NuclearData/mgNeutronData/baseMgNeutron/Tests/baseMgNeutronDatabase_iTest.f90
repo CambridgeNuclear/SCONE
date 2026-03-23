@@ -114,6 +114,7 @@ contains
     @assertEqual(1.0_defReal, xss % capture, TOL)
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
+    @assertEqual(202.0_defReal, xss % kappaXS, TOL)
 
     matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
@@ -127,6 +128,7 @@ contains
     @assertEqual(4.0_defReal, xss % capture, TOL)
     @assertEqual(0.0_defReal, xss % fission, TOL)
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
+    @assertEqual(0.0_defReal, xss % kappaXS, TOL)
 
     ! Get some invalid Materials
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))
@@ -243,6 +245,7 @@ contains
     @assertEqual(1.0_defReal, xss % capture, TOL)
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
+    @assertEqual(202.0_defReal, xss % kappaXS, TOL)
 
     matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
@@ -256,6 +259,7 @@ contains
     @assertEqual(4.0_defReal, xss % capture, TOL)
     @assertEqual(0.0_defReal, xss % fission, TOL)
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
+    @assertEqual(0.0_defReal, xss % kappaXS, TOL)
 
     ! Get some invalid Materials
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))
