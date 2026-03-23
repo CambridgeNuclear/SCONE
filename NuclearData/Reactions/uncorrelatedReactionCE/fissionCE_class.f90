@@ -210,6 +210,9 @@ contains
   !!
   !! Returns number of particles produced on average by the reaction with delay
   !!
+  !! Has a check on energy because some nuclides in some libraries (e.g., U236 in ENDFB7)
+  !! have inconsistent energy grids for prompt and delayed emission!!
+  !!
   !! See uncorrelatedReactionCE for details
   !!
   function releaseDelayed(self, E) result(N)
@@ -217,11 +220,17 @@ contains
     real(defReal), intent(in)    :: E
     real(defReal)                :: N
 
-    if(allocated(self % nuBarDelayed)) then
-      N = self % nuBarDelayed % releaseAt(E)
-    else
+    if (.not. allocated(self % nuBarDelayed)) then
       N = ZERO
+      return
     end if
+
+    if (.not. self % nuBarDelayed % hasEnergy(E)) then
+      N = ZERO
+      return
+    end if
+
+    N = self % nuBarDelayed % releaseAt(E)
 
   end function releaseDelayed
 
