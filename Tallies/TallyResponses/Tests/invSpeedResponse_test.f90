@@ -1,41 +1,41 @@
-module densityResponse_test
+module invSpeedResponse_test
 
   use numPrecision
-  use universalVariables,    only : neutronMass, lightSpeed
-  use densityResponse_class, only : densityResponse
-  use particle_class,        only : particle, P_NEUTRON, P_PHOTON
-  use dictionary_class,      only : dictionary
-  use nuclearDatabase_inter, only : nuclearDatabase
+  use universalVariables,     only : neutronMass, lightSpeed
+  use invSpeedResponse_class, only : invSpeedResponse
+  use particle_class,         only : particle, P_NEUTRON, P_PHOTON
+  use dictionary_class,       only : dictionary
+  use nuclearDatabase_inter,  only : nuclearDatabase
   use funit
 
   implicit none
 
 @testCase
-  type, extends(TestCase) :: test_densityResponse
+  type, extends(TestCase) :: test_invSpeedResponse
     private
-    type(densityResponse) :: response
+    type(invSpeedResponse) :: response
   contains
     procedure :: setUp
     procedure :: tearDown
-  end type test_densityResponse
+  end type test_invSpeedResponse
 
 
 contains
 
   !!
-  !! Sets up test_densityResponse object we can use in a number of tests
+  !! Sets up test_invSpeedResponse object we can use in a number of tests
   !!
   subroutine setUp(this)
-    class(test_densityResponse), intent(inout) :: this
-    type(dictionary)                           :: tempDict
+    class(test_invSpeedResponse), intent(inout) :: this
+    type(dictionary)                            :: tempDict
 
   end subroutine setUp
 
   !!
-  !! Kills test_densityResponse object we can use in a number of tests
+  !! Kills test_invSpeedResponse object we can use in a number of tests
   !!
   subroutine tearDown(this)
-    class(test_densityResponse), intent(inout) :: this
+    class(test_invSpeedResponse), intent(inout) :: this
 
   end subroutine tearDown
 
@@ -47,8 +47,8 @@ contains
   !! Test correct behaviour of the response
   !!
 @Test
-  subroutine densityResponseing(this)
-    class(test_densityResponse), intent(inout) :: this
+  subroutine invSpeedResponseing(this)
+    class(test_invSpeedResponse), intent(inout) :: this
     type(particle)                             :: p
     class(nuclearDatabase),pointer             :: xsData
     real(defReal)                              :: res
@@ -69,6 +69,6 @@ contains
     res   = ONE/lightSpeed
     @assertEqual(res, this % response % get(p, xsData), res*1.0E-9_defReal)
 
-  end subroutine densityResponseing
+  end subroutine invSpeedResponseing
 
-end module densityResponse_test
+end module invSpeedResponse_test

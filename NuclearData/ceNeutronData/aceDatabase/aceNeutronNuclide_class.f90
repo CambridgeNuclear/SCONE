@@ -47,7 +47,11 @@ module aceNeutronNuclide_class
   integer(shortInt), parameter :: CAPTURE_XS    = 4
   integer(shortInt), parameter :: FISSION_XS    = 5
   integer(shortInt), parameter :: NU_FISSION    = 6
+  integer(shortInt), parameter :: KAPPA_XS      = 7
+  integer(shortInt), parameter :: PROMPT_NU_FISSION = 8
 
+  integer(shortInt), parameter :: NON_FISSILE_SIZE = 4, &
+                                  FISSILE_SIZE = 8
 
   !!
   !! Groups data related to an MT reaction
@@ -60,27 +64,23 @@ module aceNeutronNuclide_class
   !!     particle distributions
   !!
   type, public :: reactionMT
-    integer(shortInt)                         :: MT       = 0
-    integer(shortInt)                         :: firstIdx = 0
-    real(defReal),dimension(:),allocatable    :: xs
-    class(uncorrelatedReactionCE),allocatable :: kinematics
+    integer(shortInt)                          :: MT       = 0
+    integer(shortInt)                          :: firstIdx = 0
+    real(defReal),dimension(:), allocatable    :: xs
+    class(uncorrelatedReactionCE), allocatable :: kinematics
   end type reactionMT
 
   !!
   !! CE Neutron Nuclide Implementation that follows directly from the specification of ACE data
   !!
-  !! NOTE:
-  !!   IGNORES MT=5 (N_ANYTHING) in its current implementation !
-  !!   IN JEF 3.1.1 It will Reduce accuracy of Tc99 collision processing
-  !!
   !! Public Members:
   !!   ZAID             -> ZZAAA.TTc ID of the ACE card of the nuclide
   !!   eGrid            -> Energy grid for the XSs
   !!   mainData         -> Array of XSs that are required in ceNeutronMicroXSs, that is
-  !!     (total, capture, escatter, iescatter, fission, nuFission)
+  !!     (total, capture, escatter, iescatter, fission, nuFission, promptNuFission)
   !!   MTdata           -> array of 'reactionMT's with data for all MT reactions in the nuclide
-  !!     only reactions 1:nMT are active, that is can be sampled during tracking
-  !!   nMT              -> number of active MT reactions that produce 2nd-ary neutrons
+  !!     only reactions 1:nMTinelastic are active, that is can be sampled during tracking
+  !!   nMTinelastic     -> number of active MT reactions that produce 2nd-ary neutrons
   !!   idxMT            -> intMap that maps MT -> index in MTdata array
   !!   elasticScatter   -> reactionHandle with data for elastic scattering
   !!   fission          -> reactionHandle with fission data (may be uninitialised)
@@ -115,7 +115,7 @@ module aceNeutronNuclide_class
     real(defReal), dimension(:), allocatable    :: eGrid
     real(defReal), dimension(:,:), allocatable  :: mainData
     type(reactionMT), dimension(:), allocatable :: MTdata
-    integer(shortInt)                           :: nMT     = 0
+    integer(shortInt)                           :: nMTinelastic = 0
     type(intMap)                                :: idxMT
 
     type(elasticNeutronScatter) :: elasticScatter
@@ -196,7 +196,7 @@ contains
 
     ! Invert
     XS = XS * rand % get()
-    do i = 1,self % nMT
+    do i = 1, self % nMTinelastic
       ! Get index in MT reaction grid
       idxT = idx - self % MTdata(i) % firstIdx + 1
       if ( idxT < 1 ) cycle
@@ -240,36 +240,34 @@ contains
     ! Find the index of MT reaction in nuclide
     idxMT = self % idxMT % getOrDefault(MT, 0)
 
-    ! Error message if not found
+    ! Returns zero if the MT number is not present for this nuclide
     if (idxMT == 0) then
-      call fatalError(Here, 'Requested MT: '//numToChar(MT)// &
-                             ' is not present in nuclide '//trim(self % ZAID))
+      xs = ZERO
+      return
     end if
 
     ! Obtain bin index and interpolation factor
     if (nuclideCache(self % getNucIdx()) % E_tot == E) then
       idx = nuclideCache(self % getNucIdx()) % idx
       f   = nuclideCache(self % getNucIdx()) % f
-
     else
       call self % search(idx, f, E)
-
     end if
 
     ! Obtain value
     if (idxMT > 0) then
-      idx = idx - self % MTdata(idxMT) % firstIdx
-      if (idx < 0) then
+      idx = idx - self % MTdata(idxMT) % firstIdx + 1
+      if (idx <= 0) then
         topXS = ZERO
         bottomXS = ZERO
       else
-        topXS    = self % MTdata(idxMT) % xs(idx+1)
+        topXS    = self % MTdata(idxMT) % xs(idx + 1)
         bottomXS = self % MTdata(idxMT) % xs(idx)
       end if
 
     else
       idxMT = -idxMT
-      topXS    = self % mainData(idxMT, idx+1)
+      topXS    = self % mainData(idxMT, idx + 1)
       bottomXS = self % mainData(idxMT, idx)
     end if
 
@@ -310,18 +308,18 @@ contains
     call self % elasticScatter % kill()
     call self % fission % kill()
 
-    if(allocated(self % MTdata)) then
-      do i=1,size(self % MTdata)
-        call self % MTdata(i) % kinematics % kill()
+    if (allocated(self % MTdata)) then
+      do i = 1, size(self % MTdata)
+        if (allocated(self % MTdata(i) % kinematics)) call self % MTdata(i) % kinematics % kill()
       end do
     end if
 
     ! Local killing
     self % ZAID = ''
-    self % nMT  = 0
-    if(allocated(self % MTdata))   deallocate(self % MTdata)
-    if(allocated(self % mainData)) deallocate(self % mainData)
-    if(allocated(self % eGrid))    deallocate(self % eGrid)
+    self % nMTinelastic = 0
+    if (allocated(self % MTdata))   deallocate(self % MTdata)
+    if (allocated(self % mainData)) deallocate(self % mainData)
+    if (allocated(self % eGrid))    deallocate(self % eGrid)
     call self % idxMT % kill()
 
   end subroutine kill
@@ -349,7 +347,7 @@ contains
     character(100), parameter :: Here = 'search (aceNeutronNuclide_class.f90)'
 
     idx = binarySearch(self % eGrid, E)
-    if(idx <= 0) then
+    if (idx <= 0) then
       call fatalError(Here,'Failed to find energy: '//numToChar(E)//&
                            ' for nuclide '// trim(self % ZAID))
     end if
@@ -440,11 +438,15 @@ contains
       xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
-        xss % fission   = ZERO
-        xss % nuFission = ZERO
+        xss % fission         = ZERO
+        xss % nuFission       = ZERO
+        xss % kappaXS         = ZERO
+        xss % promptNuFission = ZERO
       end if
     end associate
 
@@ -487,17 +489,21 @@ contains
       xss % capture = data(CAPTURE_XS, 2) * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
+        xss % promptNuFission = ZERO
       end if
 
       ! Read S(a,b) tables for elastic scatter: return zero if elastic scatter is off.
       ! Default to low temperature without stochastic mixing.
       ! IMPORTANT
-      ! The choice of data should be stored somewhere for consistent handling of 
+      ! The choice of data should be stored somewhere for consistent handling of
       ! angular distributions, e.g., a cache
       call self % getSabPointer(kT, rand, sabPtr, sabIdx)
       nuclideCache(self % getNucIdx()) % sabIdx = sabIdx
@@ -559,11 +565,15 @@ contains
 
       ! Retrieve fission related cross sections as usual
       if (self % isFissile()) then
-        xss % fission   = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
-        xss % nuFission = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % fission         = data(FISSION_XS, 2) * f + (ONE-f) * data(FISSION_XS, 1)
+        xss % nuFission       = data(NU_FISSION, 2) * f + (ONE-f) * data(NU_FISSION, 1)
+        xss % kappaXS         = data(KAPPA_XS, 2) * f + (ONE-f) * data(KAPPA_XS, 1)
+        xss % promptNuFission = data(PROMPT_NU_FISSION, 2) * f + (ONE-f) * data(PROMPT_NU_FISSION, 1)
       else
         xss % fission   = ZERO
         xss % nuFission = ZERO
+        xss % kappaXS   = ZERO
+        xss % promptNuFission = ZERO
       end if
 
       ! Check if flag for multiplication factor (IFF) is true, and apply it to elastic scattering,
@@ -591,9 +601,11 @@ contains
     xss % elasticScatter   = val(1)
     xss % capture          = val(2)
 
-    if(self % isFissile()) then
-      xss % nuFission = xss % nuFission/xss % fission * val(3)
-      xss % fission   = val(3)
+    if (self % isFissile()) then
+      xss % nuFission       = xss % nuFission/xss % fission * val(3)
+      xss % kappaXS         = xss % kappaXS / xss % fission * val(3)
+      xss % promptNuFission = xss % promptNuFission/xss % fission * val(3)
+      xss % fission         = val(3)
     end if
 
     ! Calculate total cross section from the partial cross sections
@@ -727,8 +739,11 @@ contains
     class(aceCard), intent(inout)                 :: ACE
     integer(shortInt), intent(in)                 :: nucIdx
     class(ceNeutronDatabase), pointer, intent(in) :: database
-    integer(shortInt)                             :: Ngrid, N, K, i, j, MT, bottom, top
+    integer(shortInt)                             :: Ngrid, N, K, i, j, MT, bottom, &
+                                                     top, firstIdxMT4
+    real(defReal), dimension(:), allocatable      :: xsMT4
     type(stackInt)                                :: scatterMT, absMT
+    real(defReal)                                 :: H_Q
     character(100), parameter :: Here = "init (aceNeutronNuclide_class.f90)"
 
     ! Reset nuclide just in case
@@ -748,13 +763,13 @@ contains
     Ngrid = ACE % gridSize()
 
     ! Allocate space for main XSs
-    if(self % isFissile()) then
-      N = 6
+    if (self % isFissile()) then
+      N = FISSILE_SIZE
     else
-      N = 4
+      N = NON_FISSILE_SIZE
     end if
-    allocate(self % mainData(N, Ngrid))
 
+    allocate(self % mainData(N, Ngrid))
     self % mainData = ZERO
 
     ! Load Main XSs
@@ -811,10 +826,22 @@ contains
         call self % fission % init(ACE, N_f)
       end if
 
-      ! Calculate nuFission
+      ! Obtain Heating/Q scaling ratio
+      ! Check if database is associated in order to satisfy tests where it might not be!
+      if (associated(database)) then
+        H_Q = database % H235 / database % Q235
+      else
+        H_Q = ONE
+      end if
+
+      ! Calculate nuFission and kappaXS
       do i = bottom, Ngrid
         self % mainData(NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
                                         self % fission % release(self % eGrid(i))
+        self % mainData(KAPPA_XS,i)   = self % mainData(FISSION_XS,i) * &
+                                        self % fission % getQ() * H_Q
+        self % mainData(PROMPT_NU_FISSION,i) = self % mainData(FISSION_XS,i) * &
+                                               self % fission % releasePrompt(self % eGrid(i))
       end do
 
     end if
@@ -822,28 +849,32 @@ contains
     ! Read data for MT reaction
 
     ! Create a stack of MT reactions, divide them into ones that produce 2nd-ary
-    ! particles and pure absorption
+    ! particles and pure absorption. Make sure MT=4 is not included
     associate (MTs => ACE % getScatterMTs())
-      do i = 1,size(MTs)
-        if (MTs(i) == N_ANYTHING) cycle
+      do i = 1, size(MTs)
+        if (MTs(i) == N_N_INELASTIC) cycle
         call scatterMT % push(MTs(i))
       end do
     end associate
 
     associate (MTs => [ACE % getFissionMTs(), ACE % getCaptureMTs()])
-      do i = 1,size(MTs)
-        if(MTs(i) == N_FISSION) cycle ! MT=18 is already included with FIS block
+      do i = 1, size(MTs)
+        ! MT=18 is already included with FIS block
+        if (MTs(i) == N_FISSION .or. MTs(i) == N_N_INELASTIC) cycle
         call absMT % push(MTs(i))
       end do
     end associate
 
-    ! Allocate space
-    allocate(self % MTdata(scatterMT % size() + absMT % size()))
+    ! Allocate space: scattering + absorption + MT = 4, which is manually constructed
+    allocate(self % MTdata(scatterMT % size() + absMT % size() + 1), xsMT4(Ngrid))
+    xsMT4       = ZERO
+    firstIdxMT4 = Ngrid
 
     ! Load scattering reactions
+    ! At the same time, build MT = 4 and total inelastic cross section
     N = scatterMT % size()
-    self % nMT = N
-    do i = 1,N
+    self % nMTinelastic = N
+    do i = 1, N
       call scatterMT % pop(MT)
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
@@ -851,11 +882,34 @@ contains
 
       allocate(neutronScatter :: self % MTdata(i) % kinematics)
       call self % MTdata(i) % kinematics % init(ACE, MT)
+
+      ! Find bottom and top of the MT cross section energy grid
+      bottom = self % MTdata(i) % firstIdx
+      top    = bottom + size(self % MTdata(i) % xs)
+      if (MT >= 50 .and. MT <= 91) firstIdxMT4 = min(firstIdxMT4, bottom)
+
+      ! Build total inelastic cross sections and MT4 from partials
+      do j = 1, Ngrid
+        if (j >= bottom .and. j <= top) then
+          self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
+          self % MTdata(i) % xs(j-bottom + 1)
+
+          if (MT >= 50 .and. MT <= 91) then
+            xsMT4(j) = xsMT4(j) + self % MTdata(i) % xs(j-bottom + 1)
+          end if
+        end if
+      end do
+
     end do
+
+    ! Load MT4 reaction
+    self % MTdata(N + 1) % MT       = 4
+    self % MTdata(N + 1) % firstIdx = firstIdxMT4
+    self % MTdata(N + 1) % xs       = xsMT4(firstIdxMT4 : Ngrid)
 
     ! Load capture reactions
     K = absMT % size()
-    do i = N+1,N+K
+    do i = N + 2, N + K + 1
       call absMT % pop(MT)
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
@@ -865,33 +919,21 @@ contains
       call self % MTdata(i) % kinematics % init(ACE, MT)
     end do
 
-    ! Calculate Inelastic scattering XS
-    do i = 1,self % nMT
-      do j = 1,size(self % mainData, 2)
-        ! Find bottom and Top of the grid
-        bottom = self % MTdata(i) % firstIdx
-        top    = size(self % MTdata(i) % xs)
-        if (j>= bottom .and. j <= top + bottom) then
-          self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
-                                             self % MTdata(i) % xs(j-bottom + 1)
-        end if
-      end do
-    end do
-
     ! Recalculate totalXS
     if (self % isFissile()) then
       K = FISSION_XS
     else
       K = CAPTURE_XS
     end if
-    self % mainData(TOTAL_XS, :) = sum(self % mainData(ESCATTER_XS:K,:),1)
+    self % mainData(TOTAL_XS, :) = sum(self % mainData(ESCATTER_XS:K,:), 1)
 
     ! Load Map of MT -> local index of a reaction
-    do i = 1,size(self % MTdata)
+    do i = 1, size(self % MTdata)
       call self % idxMT % add(self % MTdata(i) % MT, i)
     end do
 
-    ! Include main reaction (in mainData) as -ve entries
+    ! Include main reactions (in mainData) as -ve entries
+    ! Only the ones that have a corresponsing MT number are included
     call self % idxMT % add(N_TOTAL,-TOTAL_XS)
     call self % idxMT % add(N_N_ELASTIC, -ESCATTER_XS)
     call self % idxMT % add(N_DISAP, -CAPTURE_XS)
@@ -976,18 +1018,18 @@ contains
     ! Initialise energy boundaries
     self % SabInel = self % thData(1) % getEBounds('inelastic')
     self % SabEl = self % thData(1) % getEBounds('elastic')
-    
+
     ! Add second S(a,b) file for stochastic mixing
     if (present(ACE2)) then
-      
+
       self % stochasticMixing = .true.
       call self % thData(2) % init(ACE2)
-      
+
       ! Ensure energy bounds are conservative
       EBounds = self % thData(2) % getEBounds('inelastic')
       if (EBounds(1) > self % SabInel(1)) self % SabInel(1) = EBounds(1)
       if (EBounds(2) < self % SabInel(2)) self % SabInel(2) = EBounds(2)
-      
+
       EBounds = self % thData(2) % getEbounds('elastic')
       if (EBounds(1) > self % SabEl(1)) self % SabEl(1) = EBounds(1)
       if (EBounds(2) < self % SabEl(2)) self % SabEl(2) = EBounds(2)
@@ -1103,7 +1145,7 @@ contains
                   numToChar(E_min)//" to "// numToChar(E_max) // " [MeV] "
 
     ! Print MT information
-    sMT = self % nMT
+    sMT = self % nMTinelastic
     allMT = size(self % MTdata)
     print '(A)', "Active MTs: "  // numToChar(self % MTdata(1:sMT) % MT)
     print '(A)', "Inactive MTs: "// numToChar(self % MTdata(sMT+1:allMT) % MT)

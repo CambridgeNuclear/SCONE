@@ -45,6 +45,7 @@ module baseMgNeutronDatabase_class
   !!   nucData {
   !!     type baseMgNeutronDatabase;
   !!     PN P0;                        // or P1
+  !!     #avgDist 2.718; #
   !!   }
   !!
   !! Public Members:
@@ -73,9 +74,9 @@ module baseMgNeutronDatabase_class
     procedure :: kill
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
 
     ! Local interface
-    procedure :: initMajorant
     procedure :: nGroups
 
   end type baseMgNeutronDatabase
@@ -103,10 +104,14 @@ contains
     select case(what)
 
       case (MATERIAL_XS)
-        xs = self % getTrackMatXS(p, matIdx)
+        if (matIdx == VOID_MAT) then
+          xs = self % collisionXS
+        else
+          xs = max(self % getTrackMatXS(p, matIdx), self % collisionXS)
+        end if
 
       case (MAJORANT_XS)
-        xs = self % getMajorantXS(p)
+        xs = max(self % getMajorantXS(p), self % collisionXS)
 
       case (TRACKING_XS)
 
@@ -140,7 +145,18 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTrackMatXS (baseMgNeutronDatabase_class.f90)'
 
+    ! Check that matIdx exists
+    if (matIdx == VOID_MAT) then
+      xs = ZERO
+      return
+    else if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
+    
     xs = self % getTotalMatXS(p, matIdx)
 
   end function getTrackMatXS
@@ -159,6 +175,14 @@ contains
     class(particle), intent(in)                 :: p
     integer(shortInt), intent(in)               :: matIdx
     real(defReal)                               :: xs
+    character(100),parameter :: Here = 'getTotalMatXS (baseMgNeutronDatabase_class.f90)'
+    
+    ! Check that matIdx exists
+    if (matIdx < 1 .or. matIdx > mm_nMat()) then 
+      print *,'Particle location: ', p % rGlobal()
+      call fatalError(Here, 'Particle is in an undefined material with index: '&
+              //numToChar(matIdx))
+    end if
 
     associate (matCache => materialCache(matIdx))
 
@@ -174,6 +198,9 @@ contains
         xs = matCache % xss % total
 
       end if
+      
+      ! Include alpha
+      xs = xs + p % getAlphaAbsorption()
 
     end associate
 
@@ -202,6 +229,9 @@ contains
     end if
 
     xs = self % majorant(p % G)
+    
+    ! Include alpha
+    xs = xs + p % getAlphaAbsorption()
 
   end function getMajorantXS
 
@@ -323,6 +353,7 @@ contains
     character(pathLen)                                 :: path
     character(nameLen)                                 :: scatterKey
     type(dictionary)                                   :: tempDict
+    real(defReal)                                      :: temp
     character(100), parameter :: Here = 'init (baseMgNeutronDatabase_class.f90)'
 
     ! Prevent reallocations
@@ -333,6 +364,18 @@ contains
       loud = .not.silent
     else
       loud = .true.
+    end if
+    
+    ! Check for a minimum average collision distance
+    if (dict % isPresent('avgDist')) then
+      call dict % get(temp, 'avgDist')
+
+      if (temp <= ZERO) then
+        call fatalError(Here, 'Must have a finite, positive minimum average collision distance')
+      end if
+
+      self % collisionXS = ONE / temp
+
     end if
 
     ! Find number of materials and allocate space
@@ -364,7 +407,7 @@ contains
     self % nG = self % mats(1) % nGroups()
     do i = 2,nMat
       if(self % nG /= self % mats(i) % nGroups()) then
-        call fatalError(Here,'Inconsistant # of groups in materials in matIdx'//numToChar(i))
+        call fatalError(Here,'Inconsistent # of groups in materials in matIdx '//numToChar(i))
       end if
     end do
 
@@ -412,12 +455,35 @@ contains
   !!
   !! See nuclearDatabase documentation for details
   !!
-  subroutine initMajorant(self, loud)
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
     class(baseMgNeutronDatabase), intent(inout) :: self
-    logical(defBool), intent(in)                :: loud
+    logical(defBool), optional, intent(in)      :: loud
+    real(defReal), optional, intent(in)         :: maxTemp
+    real(defReal), optional, intent(in)         :: scaleDensity
+    logical(defBool)                            :: isLoud
     integer(shortInt)                           :: g, i, idx
-    real(defReal)                               :: xs
+    real(defReal)                               :: xs, densityFactor
     integer(shortInt), parameter                :: TOTAL_XS = 1
+
+    if (present(loud)) then
+      isLoud = loud
+    else
+      isLoud = .false.
+    end if
+
+    ! Scale density
+    if (present(scaleDensity)) then
+      if (scaleDensity < ONE) then
+        densityFactor = ONE
+      else
+        densityFactor = scaleDensity
+      end if
+    else
+      densityFactor = ONE
+    end if
+
+    ! Currently ignores maxTemp input
+    ! TODO: Update should there be a temperature model developed for MG XSs
 
     ! Allocate majorant
     allocate (self % majorant(self % nG))
@@ -429,10 +495,10 @@ contains
         idx = self % activeMats(i)
         xs = max(xs, self % mats(idx) % data(TOTAL_XS, g))
       end do
-      self % majorant(g) = xs
+      self % majorant(g) = xs * densityFactor
     end do
 
-    if (loud) print '(A)', 'MG unionised majorant cross section calculation completed'
+    if (isLoud) print '(A)', 'MG unionised majorant cross section calculation completed'
 
   end subroutine initMajorant
 

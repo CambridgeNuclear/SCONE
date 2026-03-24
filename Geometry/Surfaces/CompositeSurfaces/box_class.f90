@@ -14,7 +14,7 @@ module box_class
   !!
   !! F(r) = maxval(abs(r - o) - a)
   !!
-  !! Where: a -> halfwidth vector, o-> origin position
+  !! Where: a -> halfwidth vector, o -> origin position
   !!        maxval -> maximum element (L_inf norm)
   !!
   !! Surface Tolerance: SURF_TOL
@@ -318,7 +318,7 @@ contains
     end do
 
     ! Verify periodic BCs
-    if(.not.all( (self % BC([1,3,5] ) == PERIODIC_BC) .eqv. (self % BC([2,4,6]) == PERIODIC_BC))) then
+    if (.not. all( (self % BC([1,3,5]) == PERIODIC_BC) .eqv. (self % BC([2,4,6]) == PERIODIC_BC))) then
       call fatalError(Here,'Periodic BC need to be applied to oposite surfaces')
 
     end if

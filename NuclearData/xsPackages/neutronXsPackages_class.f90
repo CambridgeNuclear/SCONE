@@ -2,7 +2,6 @@
 !! This module brakes standard rules
 !! It contains a library of XS Packages for Neutron particle type
 !!
-!!
 module neutronXsPackages_class
 
   use numPrecision
@@ -22,6 +21,8 @@ module neutronXsPackages_class
   !!   capture          -> sum of all reactions without secendary neutrons excluding fission [1/cm]
   !!   fission          -> total Fission MT=18 Cross-section [1/cm]
   !!   nuFission        -> total average neutron production Cross-section [1/cm]
+  !!   kappaXS          -> heating cross-section [MeV/cm]
+  !!   promptNuFission  -> prompt-only average neutron production Cross-section [1/cm]
   !!
   !!  Interface:
   !!    clean -> Set all XSs to 0.0
@@ -35,6 +36,8 @@ module neutronXsPackages_class
     real(defReal) :: capture          = ZERO
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
+    real(defReal) :: kappaXS          = ZERO
+    real(defReal) :: promptNuFission  = ZERO
   contains
     procedure :: clean => clean_neutronMacroXSs
     procedure :: add   => add_neutronMacroXSs
@@ -54,6 +57,8 @@ module neutronXsPackages_class
   !!   capture          -> all reactions without secendary neutrons excluding fission [barn]
   !!   fission          -> total Fission MT=18 Cross-section [barn]
   !!   nuFission        -> total average neutron production Cross-section [barn]
+  !!   kappaXS          -> heating Cross-section [MeV*barn]
+  !!   promptNuFission  -> prompt-only average neutron production Cross-section [barn]
   !!
   type, public :: neutronMicroXSs
     real(defReal) :: total            = ZERO
@@ -62,6 +67,8 @@ module neutronXsPackages_class
     real(defReal) :: capture          = ZERO
     real(defReal) :: fission          = ZERO
     real(defReal) :: nuFission        = ZERO
+    real(defReal) :: kappaXS          = ZERO
+    real(defReal) :: promptNuFission  = ZERO
   contains
     procedure :: invert => invert_microXSs
   end type neutronMicroXSs
@@ -88,6 +95,8 @@ contains
     self % capture          = ZERO
     self % fission          = ZERO
     self % nuFission        = ZERO
+    self % kappaXS          = ZERO
+    self % promptNuFission  = ZERO
 
   end subroutine clean_neutronMacroXSs
 
@@ -114,6 +123,8 @@ contains
     self % capture          = self % capture          + dens * micro % capture
     self % fission          = self % fission          + dens * micro % fission
     self % nuFission        = self % nuFission        + dens * micro % nuFission
+    self % kappaXS          = self % kappaXS          + dens * micro % kappaXS
+    self % promptNuFission  = self % promptNuFission  + dens * micro % promptNuFission
 
   end subroutine add_neutronMacroXSs
 
@@ -138,11 +149,20 @@ contains
       case(macroTotal)
         xs = self % total
 
-      case(macroCapture)
+      case(macroDisappearance)
         xs = self % capture
 
       case(macroEscatter)
         xs = self % elasticScatter
+
+      case(macroNonElastic)
+        xs = self % inelasticScatter + self % fission + self % capture
+
+      case(macroIEscatter)
+        xs = self % inelasticScatter
+
+      case(macroAllScatter)
+        xs = self % elasticScatter + self % inelasticScatter
 
       case(macroFission)
         xs = self % fission
@@ -150,6 +170,15 @@ contains
       case(macroNuFission)
         xs = self % nuFission
 
+      case(macroKappaFission)
+        xs = self % kappaXS
+
+      case(macroPromptNuFission)
+        xs = self % promptNuFission
+      
+      case(macroDelayedNuFission)
+        xs = self % nuFission - self % promptNuFission
+      
       case(macroAbsorbtion)
         xs = self % fission + self % capture
 
@@ -172,7 +201,7 @@ contains
   !!   One of the Macroscopic MT numbers
   !!     elasticScatter   = macroEscatter
   !!     inelasticScatter = macroIEscatter
-  !!     capture          = macroCapture
+  !!     capture          = macroDisappearance
   !!     fission          = macroFission
   !!
   !! Errors::
@@ -197,7 +226,7 @@ contains
 
     ! Capture
     xs = xs - self % capture
-    if(xs > ZERO) C = C + 1
+    if (xs > ZERO) C = C + 1
 
     ! Choose MT number
     select case(C)
@@ -208,7 +237,7 @@ contains
         MT = macroIEscatter
 
       case(3)
-        MT = macroCapture
+        MT = macroDisappearance
 
       case(4)
         MT = macroFission
@@ -224,7 +253,7 @@ contains
   !!
   !! Use a real r in <0;1> to sample reaction from Microscopic XSs
   !!
-  !! This function involves a bit of code so is written for conviniance
+  !! This function involves a bit of code so is written for convenience
   !!
   !! Args:
   !!   r [in] -> Real number in <0;1>

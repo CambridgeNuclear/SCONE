@@ -18,6 +18,8 @@ module macroResponse_test
     type(macroResponse)        :: response_fission
     type(macroResponse)        :: response_nuFission
     type(macroResponse)        :: response_absorbtion
+    type(macroResponse)        :: response_kappa
+    type(macroResponse)        :: response_MT
     type(testNeutronDatabase)  :: xsData
   contains
     procedure :: setUp
@@ -35,9 +37,8 @@ contains
     type(dictionary)                         :: tempDict
 
     ! Allocate and initialise test nuclearData
-
-    ! Cross-sections:         Total        eScatering   IeScatter  Capture     Fission       nuFission
-    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal)
+    ! Cross-sections:         Total         eScattering  IeScatter Capture      Fission      nuFission      kappaFission
+    call this % xsData % build(6.0_defReal, 3.0_defReal, ZERO,     2.0_defReal, 1.0_defReal, 1.5_defReal, 9.0_defReal)
 
     ! Set up responses
     ! Total
@@ -50,7 +51,7 @@ contains
     ! Capture
     call tempDict % init(2)
     call tempDict % store('type','macroResponse')
-    call tempDict % store('MT', macroCapture)
+    call tempDict % store('MT', macroDisappearance)
     call this % response_capture % init(tempDict)
     call tempDict % kill()
 
@@ -73,6 +74,20 @@ contains
     call tempDict % store('type','macroResponse')
     call tempDict % store('MT', macroAbsorbtion)
     call this % response_absorbtion % init(tempDict)
+    call tempDict % kill()
+
+    ! Energy deposition
+    call tempDict % init(2)
+    call tempDict % store('type','macroResponse')
+    call tempDict % store('MT', macroKappaFission)
+    call this % response_kappa % init(tempDict)
+    call tempDict % kill()
+
+    ! MT number
+    call tempDict % init(2)
+    call tempDict % store('type','macroResponse')
+    call tempDict % store('MT', 105)
+    call this % response_MT % init(tempDict)
     call tempDict % kill()
 
   end subroutine setUp
@@ -102,6 +117,7 @@ contains
     real(defReal), parameter :: TOL = 1.0E-9
 
     p % type = P_NEUTRON
+    p % isMG = .false.
 
     ! Test response values
     @assertEqual(6.0_defReal, this % response_total % get(p, this % xsData), TOL)
@@ -109,6 +125,11 @@ contains
     @assertEqual(1.0_defReal, this % response_fission % get(p, this % xsData), TOL)
     @assertEqual(1.5_defReal, this % response_nuFission % get(p, this % xsData), TOL)
     @assertEqual(3.0_defReal, this % response_absorbtion % get(p, this % xsData), TOL)
+    @assertEqual(9.0_defReal, this % response_kappa % get(p, this % xsData), TOL)
+    @assertEqual(105.0_defReal, this % response_MT % get(p, this % xsData), TOL)
+
+    p % isMG = .true.
+    @assertEqual(ZERO, this % response_MT % get(p, this % xsData), TOL)
 
   end subroutine testGettingResponse
 

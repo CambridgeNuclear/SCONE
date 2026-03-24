@@ -131,7 +131,7 @@ contains
         call self % build(bins, axis)
 
       case default
-        call fatalError(Here,"'grid' keyword must be: lin or usntruct")
+        call fatalError(Here,"'grid' keyword must be: lin or unstruct")
 
     end select
 

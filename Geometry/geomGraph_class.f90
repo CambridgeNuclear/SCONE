@@ -54,7 +54,7 @@ module geomGraph_class
   !!
   !! Interface:
   !!   init -> Build fron uniFills and dictionary definition
-  !!   getFill -> Get filling invormation at location given by uniRootIr & localID
+  !!   getFill -> Get filling information at location given by uniRootIr & localID
   !!   kill -> Return to uninitialised state
   !!
   type, public :: geomGraph

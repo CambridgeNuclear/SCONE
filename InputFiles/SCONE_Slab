@@ -12,7 +12,6 @@ collisionOperator { neutronCE {type neutronCEstd;}
 
 transportOperator { type transportOperatorDT;
                   }
-
 inactiveTally {
               }
 

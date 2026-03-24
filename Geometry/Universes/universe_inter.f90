@@ -398,7 +398,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  elemental subroutine kill(self)
+  subroutine kill(self)
     class(universe), intent(inout) :: self
 
     self % uniIdx = 0

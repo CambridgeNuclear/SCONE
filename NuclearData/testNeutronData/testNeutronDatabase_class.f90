@@ -44,6 +44,7 @@ module testNeutronDatabase_class
     ! Superclass Interface
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
     procedure :: getTrackingXS
     procedure :: getTrackMatXS
     procedure :: getTotalMatXS
@@ -70,11 +71,12 @@ contains
   !!   captureXS [in]   -> Optional. Value of Capture XS
   !!   fissionXS [in]   -> Optional. Value of Fission XS
   !!   nuFissionXS [in] -> Optional Value of nuFission
+  !!   kappaXS [in]     -> Optional Value of kappa XS
   !!
   !! Errors:
   !!   None
   !!
-  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS)
+  subroutine build(self, xsVal, eScatterXS, ieScatterXS ,captureXS, fissionXS, nuFissionXS, kappaXS)
     class(testNeutroNDatabase), intent(inout) :: self
     real(defReal), intent(in)                 :: xsVal
     real(defReal), intent(in),optional        :: eScatterXS
@@ -82,6 +84,7 @@ contains
     real(defReal), intent(in),optional        :: captureXS
     real(defReal), intent(in),optional        :: fissionXS
     real(defReal), intent(in),optional        :: nuFissionXS
+    real(defReal), intent(in),optional        :: kappaXS
 
     self % xsVal = xsVal
 
@@ -125,6 +128,13 @@ contains
     else
       self % mat % xss % nuFission = xsVal
     end if
+    
+    ! kappa * fission
+    if(present(kappaXS)) then
+      self % mat % xss % kappaXS = kappaXS
+    else
+      self % mat % xss % kappaXS = xsVal
+    end if
 
   end subroutine build
 
@@ -162,6 +172,19 @@ contains
     ! Do nothing
 
   end subroutine activate
+  
+  !!
+  !!
+  !!
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
+    class(testNeutronDatabase), intent(inout) :: self
+    logical(defBool), intent(in), optional    :: loud
+    real(defReal), intent(in), optional       :: maxTemp
+    real(defReal), intent(in), optional       :: scaleDensity
+
+    ! Do nothing
+
+  end subroutine initMajorant
 
   !!
   !! Return value of Tracking XS for a particle and a given request

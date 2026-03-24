@@ -34,10 +34,11 @@ module macroResponse_class
   !!     MT   <int>;
   !!  }
   !!
-  type, public,extends(tallyResponse) :: macroResponse
+  type, public, extends(tallyResponse) :: macroResponse
     private
     !! Response MT number
     integer(shortInt) :: MT = 0
+    logical(defBool)  :: mainData = .true.
   contains
     ! Superclass Procedures
     procedure  :: init
@@ -63,7 +64,7 @@ contains
     class(macroResponse), intent(inout) :: self
     class(dictionary), intent(in)       :: dict
     integer(shortInt)                   :: MT
-    character(100), parameter :: Here = 'init ( macroResponse_class.f90)'
+    character(100), parameter :: Here = 'init (macroResponse_class.f90)'
 
     ! Load MT number
     call dict % get(MT, 'MT')
@@ -85,22 +86,47 @@ contains
   subroutine build(self, MT)
     class(macroResponse), intent(inout) :: self
     integer(shortInt), intent(in)       :: MT
-    character(100), parameter :: Here = 'build ( macroResponse_class.f90)'
+    character(100), parameter :: Here = 'build (macroResponse_class.f90)'
 
-    ! Check that MT number is valid
-    select case(MT)
-      case(macroTotal, macroCapture, macroFission, macroNuFission, macroAbsorbtion)
-        ! Do nothing. MT is Valid
+    ! Check that the MT number is an available choice
+    if ((.not. any(availableMacroMTs == MT)) .and. (.not. any(availableMicroMTs == MT))) then
+      call fatalError(Here, 'Unrecognised MT number: '// numToChar(MT))
+    end if
 
-      case(macroEscatter)
-        call fatalError(Here,'Macroscopic Elastic scattering is not implemented yet')
+    ! Check if the MT number is positive or negative and load MT according to the case
+    if (MT > 0) then
 
-      case default
-        call fatalError(Here,'Unrecognised MT number: '// numToChar(self % MT))
-    end select
+      select case(MT)
+        case(N_TOTAL)
+          self % MT = macroTotal
 
-    ! Load MT
-    self % MT = MT
+        case(N_N_ELASTIC)
+          self % MT = macroEscatter
+
+        case(N_NONELASTIC)
+          self % MT = macroNonElastic
+
+        case(N_DISAP)
+          self % MT = macroDisappearance
+
+        case(N_FISSION)
+          self % MT = macroFission
+
+        case(N_ABSORPTION)
+          self % MT = macroAbsorbtion
+
+        case(N_KAPPA)
+          self % MT = macroKappaFission
+
+        case default
+          self % mainData = .false.
+          self % MT = MT
+      end select
+
+    else
+      self % MT = MT
+
+    end if
 
   end subroutine build
 
@@ -132,8 +158,16 @@ contains
     ! Return if material is not a neutronMaterial
     if (.not.associated(mat)) return
 
-    call mat % getMacroXSs(xss, p)
-    val = xss % get(self % MT)
+    ! Check where to get the xs
+    if (self % mainData) then
+      call mat % getMacroXSs(xss, p)
+      val = xss % get(self % MT)
+
+    else
+      if (p % isMG) return
+      val = mat % getMTxs(self % MT, p)
+
+    end if
 
   end function get
 
@@ -144,6 +178,7 @@ contains
     class(macroResponse), intent(inout) :: self
 
     self % MT = 0
+    self % mainData = .true.
 
   end subroutine kill
 

@@ -20,6 +20,7 @@ module constantRelease_class
     contains
       procedure :: init
       procedure :: releaseAt
+      procedure :: hasEnergy
       procedure :: kill
   end type constantRelease
 
@@ -33,7 +34,7 @@ contains
     real(defReal), intent(in)             :: release
     character(100),parameter              :: Here='init (constantRelease_class.f90)'
 
-    if( release < 0) call fatalError(Here,'-ve value of release provided!')
+    if (release < 0) call fatalError(Here,'-ve value of release provided!')
     self % secondaryRelease = release
 
   end subroutine init
@@ -41,7 +42,7 @@ contains
   !!
   !! Release at energy E_in
   !!
-  function releaseAt(self,E_in) result(release)
+  function releaseAt(self, E_in) result(release)
     class(constantRelease), intent(in) :: self
     real(defReal), intent(in)          :: E_in
     real(defReal)                      :: release
@@ -49,6 +50,19 @@ contains
     release = self % secondaryRelease
 
   end function releaseAt
+    
+  !!
+  !! Return whether a given energy is available with the law.
+  !! Always true
+  !!
+  function hasEnergy(self, E_in) result(has)
+    class(constantRelease), intent(in)  :: self
+    real(defReal), intent(in)          :: E_in
+    logical(defBool)                   :: has
+  
+    has = .true.
+
+  end function hasEnergy
 
   !!
   !! Return to uninitialised state

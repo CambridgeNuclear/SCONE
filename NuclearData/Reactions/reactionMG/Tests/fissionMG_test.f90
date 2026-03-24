@@ -17,8 +17,7 @@ module fissionMG_test
   !!
   real(defReal),dimension(*),parameter :: nu = [2.3_defReal, 2.0_defReal, 1.3_defReal]
   real(defReal),dimension(*),parameter :: chi = [0.333333_defReal, 0.333333_defReal, 0.333334_defReal]
-
-
+  real(defReal),dimension(*),parameter :: kappa = [200.0_defReal, 203.0_defReal, 201.0_defReal]
 
 contains
 
@@ -63,6 +62,7 @@ contains
     ! Test Misc functionality
     @assertEqual(ZERO, reaction % releaseDelayed(1), TOL)
     @assertEqual(ZERO, reaction % sampleDelayRate(2, rand),TOL )
+    @assertEqual(202.27_defReal, reaction % getKappa(7),1E-5)
 
     ! Test Release
     @assertEqual(ZERO, reaction % releasePrompt(-2), TOL)
@@ -74,6 +74,19 @@ contains
     call dictT % kill()
     call reaction % kill()
 
+    ! Restart and test with kappa data included
+    call dictT % init(3)
+    call dictT % store('numberOfGroups',3)
+    call dictT % store('chi', chi)
+    call dictT % store('nu',nu)
+    call dictT % store('kappa', kappa)
+    
+    ! Build data Deck and initialise
+    data % dict => dictT
+    call reaction % init(data, macroFission)
+    @assertEqual(203.0_defReal, reaction % getKappa(2), 1E-5)
+
   end subroutine fissionMG_Build_And_Functionality
+
 
 end module fissionMG_test

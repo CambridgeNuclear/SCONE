@@ -27,6 +27,7 @@ module configSource_inter
   !!   samplePosition    -> samples the particle's position in the geometry
   !!   sampleEnergy      -> samples the particle's energy
   !!   sampleEnergyAngle -> samples the particle's energy and angle from corresponding distr.
+  !!   sampleTime        -> samples the particle's time
   !!
   type, public, abstract, extends(source) :: configSource
 
@@ -36,6 +37,7 @@ module configSource_inter
     procedure(samplePosition), deferred    :: samplePosition
     procedure(sampleEnergy), deferred      :: sampleEnergy
     procedure(sampleEnergyAngle), deferred :: sampleEnergyAngle
+    procedure                              :: sampleTime
   end type configSource
 
   abstract interface
@@ -83,7 +85,7 @@ module configSource_inter
     !! Also sets 'isMG' flag to .true. or .false.
     !!
     !! Inputs:
-    !!   p [inout] -> particleState to be given a position
+    !!   p [inout] -> particleState to be given an energy/group
     !!   rand [in] -> random number generator
     !!
     subroutine sampleEnergy(self, p, rand)
@@ -103,7 +105,7 @@ module configSource_inter
     !! Is called after `sampleEnergy`, to overwrite value provided by that subroutine
     !!
     !! Inputs:
-    !!   p [inout] -> particleState to be given a position
+    !!   p [inout] -> particleState to be given a energy/angle
     !!   rand [in] -> random number generator
     !!
     subroutine sampleEnergyAngle(self, p, rand)
@@ -114,7 +116,7 @@ module configSource_inter
       class(particleState), intent(inout) :: p
       class(RNG), intent(inout)           :: rand
     end subroutine sampleEnergyAngle
-
+  
   end interface
 
 contains
@@ -137,6 +139,24 @@ contains
     p % wgt  = ONE
 
   end function sampleParticle
+    
+  !!
+  !! Sample particle time
+  !!
+  !! Can be overwritten
+  !!
+  !! Inputs:
+  !!   p [inout] -> particleState to be given a time
+  !!   rand [in] -> random number generator
+  !!
+  subroutine sampleTime(self, p, rand)
+    class(configSource), intent(inout)  :: self
+    class(particleState), intent(inout) :: p
+    class(RNG), intent(inout)           :: rand
+
+    p % time = ZERO
+
+  end subroutine sampleTime
 
   !!
   !! Return to uninitialised state

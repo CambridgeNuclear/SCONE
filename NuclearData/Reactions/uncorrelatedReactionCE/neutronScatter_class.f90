@@ -12,11 +12,13 @@ module neutronScatter_class
   use uncorrelatedReactionCE_inter, only : uncorrelatedReactionCE
 
   ! ENDF Data Interfaces
+  use releaseLawENDF_inter,          only : releaseLawENDF
   use angleLawENDF_inter,            only : angleLawENDF
   use energyLawENDF_inter,           only : energyLawENDF
   use correlatedLawENDF_inter,       only : correlatedLawENDF
 
   ! Factories
+  use releaseLawENDFfactory_func,    only : new_releaseLawENDF
   use angleLawENDFfactory_func,      only : new_angleLawENDF
   use energyLawENDFfactory_func,     only : new_energyLawENDF
   use correlatedLawENDFfactory_func, only : new_correlatedLawENDF
@@ -56,9 +58,9 @@ module neutronScatter_class
     ! Reference frame and emission type flags
     logical(defBool)   :: cmFrame    = .true.
     logical(defBool)   :: correlated = .false.
-    real(defReal)      :: N_out      = ZERO
 
     ! Emission laws
+    class(releaseLawENDF),allocatable    :: releaseLaw
     class(angleLawENDF),allocatable      :: muLaw
     class(energyLawENDF),allocatable     :: eLaw
     class(correlatedLawENDF),allocatable :: corrLaw
@@ -116,17 +118,18 @@ contains
     ! Reset constants
     self % cmFrame    = .true.
     self % correlated = .false.
-    self % N_out      = ZERO
 
     ! Kill ENDF distributions
-    if(allocated(self % muLaw))   call self % muLaw % kill()
-    if(allocated(self % eLaw))    call self % eLaw % kill()
-    if(allocated(self % corrLaw)) call self % corrLaw % kill()
+    if (allocated(self % releaseLaw)) call self % releaseLaw % kill()
+    if (allocated(self % muLaw))      call self % muLaw % kill()
+    if (allocated(self % eLaw))       call self % eLaw % kill()
+    if (allocated(self % corrLaw))    call self % corrLaw % kill()
 
     ! Deallocate ENDF distributions
-    if(allocated(self % muLaw))   deallocate(self % muLaw)
-    if(allocated(self % eLaw))    deallocate(self % eLaw)
-    if(allocated(self % corrLaw)) deallocate(self % corrLaw)
+    if (allocated(self % releaseLaw)) deallocate(self % releaseLaw)
+    if (allocated(self % muLaw))      deallocate(self % muLaw)
+    if (allocated(self % eLaw))       deallocate(self % eLaw)
+    if (allocated(self % corrLaw))    deallocate(self % corrLaw)
 
   end subroutine kill
 
@@ -148,12 +151,12 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  pure function release(self, E) result(N)
+  function release(self, E) result(N)
     class(neutronScatter), intent(in) :: self
     real(defReal), intent(in)                :: E
     real(defReal)                            :: N
 
-    N = self % N_out
+    N = self % releaseLaw % releaseAt(E)
 
   end function release
 
@@ -162,12 +165,12 @@ contains
   !!
   !! See uncorrelatedReactionCE for details
   !!
-  pure function releasePrompt(self, E) result(N)
+  function releasePrompt(self, E) result(N)
     class(neutronScatter), intent(in) :: self
     real(defReal), intent(in)                :: E
     real(defReal)                            :: N
 
-    N = self % N_out
+    N = self % releaseLaw % releaseAt(E)
 
   end function releasePrompt
 
@@ -200,7 +203,7 @@ contains
     real(defReal), intent(out), optional     :: lambda
 
     ! Sample energy an angle
-    if( self % correlated) then
+    if (self % correlated) then
       call self % corrLaw % sample(mu, E_out, E_in, rand)
 
     else
@@ -213,7 +216,7 @@ contains
     phi = rand % get() * TWO_PI
 
     ! Only prompt particles. Set delay
-    if(present(lambda)) lambda = huge(lambda)
+    if (present(lambda)) lambda = huge(lambda)
 
   end subroutine sampleOut
 
@@ -232,7 +235,7 @@ contains
 
     ! Check range
     if (abs(mu) <= ONE .and. E_out > ZERO) then
-      if(self % correlated) then
+      if (self % correlated) then
         prob = self % corrLaw % probabilityOf(mu, E_out, E_in)
       else
         prob = self % muLaw % probabilityOf(mu, E_in)
@@ -269,7 +272,7 @@ contains
     integer(shortInt)                    :: LOCB, TY
     character(100),parameter :: Here ='buildFromACE (neutronScatter_class.f90)'
 
-    if( ACE % isCaptureMT(MT)) then
+    if (ACE % isCaptureMT(MT)) then
       call fatalError(Here, 'Requested reaction with MT: '//numToChar(MT)//&
                              ' does not produce 2nd-ary neutrons')
     end if
@@ -282,15 +285,13 @@ contains
 
     ! Read number of 2nd-ary particles
     TY = ACE % neutronReleaseMT(MT)
-    if(TY == 19 .or. TY > 100) then
-      call fatalError(Here,'Reaction with MT: '// numToChar(MT)//&
-                           ' has energy dependent neutron yield. It is not supported')
-    elseif(TY < 0) then
+    if (TY == 19) then
+      call fatalError(Here,'Reaction with MT: '// numToChar(MT)//' is fission.')
+    elseif (TY < 0) then
       call fatalError(Here,'-ve Neutron Release WTF?')
-
     end if
 
-    self % N_out = real(TY, defReal)
+    call new_releaseLawENDF(self % releaseLaw, ACE, MT)
 
     ! Build as correlated or uncorrelated depending on LOCB
     select case(LOCB)

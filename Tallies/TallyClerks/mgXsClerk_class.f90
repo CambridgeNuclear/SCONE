@@ -5,6 +5,7 @@ module mgXsClerk_class
   use endfConstants
   use universalVariables
   use genericProcedures,          only : fatalError
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -16,6 +17,7 @@ module mgXsClerk_class
   use neutronMaterial_inter,      only : neutronMaterial,neutronMaterial_CptrCast
 
   ! Tally Maps
+  use energyMap_class,            only : energyMap
   use tallyMap_inter,             only : tallyMap
   use tallyMapFactory_func,       only : new_tallyMap
 
@@ -27,7 +29,7 @@ module mgXsClerk_class
   private
 
   !! Size of clerk memory
-  integer(shortInt), parameter  :: ARRAY_SCORE_SIZE   = 7 ,&  ! Size of data to store as 1D arrays
+  integer(shortInt), parameter  :: ARRAY_SCORE_SIZE   = 8 ,&  ! Size of data to store as 1D arrays
                                    MATRIX_SCORE_SMALL = 3 ,&  ! Size of data to store as 2D arrays when scoring up to P1
                                    MATRIX_SCORE_FULL  = 9     ! Size of data to store as 2D arrays when scoring up to P7
 
@@ -38,14 +40,16 @@ module mgXsClerk_class
                                    FISS_idx      = 4 ,&  ! Fission macroscopic reaction rate
                                    NUBAR_idx     = 5 ,&  ! NuBar
                                    CHI_idx       = 6 ,&  ! Fission neutron spectrum
-                                   SCATT_EV_idx  = 7     ! Analog: number of scattering events
+                                   KAPPAFISS_idx = 7 ,&  ! Fission heating macroscopic reaction rate
+                                   SCATT_EV_idx  = 8     ! Analog: number of scattering events
 
   !!
   !! Multi-group macroscopic cross section calculation
   !!
   !! It prints out:
-  !! capture xs, fission xs, transport xs, nu, chi, the P0 and P1 scattering matrices,
-  !! the P0 scattering production matrix. On request, also the P2 -> P7 scattering matrices.
+  !! capture xs, fission xs, transport xs, nu, chi, kappa * fission xs, the P0 and P1 scattering 
+  !! matrices, the P0 scattering production matrix. On request, also the P2 -> P7 scattering 
+  !! matrices.
   !!
   !! NOTE:
   !! - the cross sections are tallied with a collision estimator;
@@ -55,7 +59,7 @@ module mgXsClerk_class
   !!   flux-limited approximation
   !!
   !! Private Members:
-  !!   energyMap -> tally map for energy group structure
+  !!   energyMap -> energy map for energy group structure
   !!   spacemap  -> tally map for material or spatial bins
   !!   energyN   -> number of energy groups
   !!   matN      -> number of materials or spatial bins
@@ -82,16 +86,17 @@ module mgXsClerk_class
     private
     ! Maps
     class(tallyMap), allocatable :: spaceMap
-    class(tallyMap), allocatable :: energyMap
+    type(energyMap)              :: energyMap
 
     ! Useful data
     integer(shortInt) :: energyN = 0
-    integer(shortInt) :: matN = 0
+    integer(shortInt) :: matN  = 0
     integer(shortInt) :: width = 0
-    logical(defBool)  :: PN = .false.
+    logical(defBool)  :: PN    = .false.
 
     ! Settings
     logical(defBool) :: handleVirtual = .true.
+    logical(defBool) :: hasEnergyMap  = .false.
 
   contains
     ! Procedures used during build
@@ -131,8 +136,9 @@ contains
 
     ! Load energy map and bin number
     if (dict % isPresent('energyMap')) then
-      call new_tallyMap(self % energyMap, dict % getDictPtr('energyMap'))
-      self % energyN = self % energyMap % bins(0)
+      call self % energyMap % init(dict % getDictPtr('energyMap'))
+      self % energyN      = self % energyMap % bins(0)
+      self % hasEnergyMap = .true.
     else
       self % energyN = 1
     end if
@@ -181,7 +187,8 @@ contains
     self % energyN = 0
     self % width   = 0
     self % PN      = .false.
-    self % handleVirtual = .false.
+    self % hasEnergyMap  = .false.
+    self % handleVirtual = .true.
 
   end subroutine kill
 
@@ -225,7 +232,7 @@ contains
     type(particleState)                   :: state
     type(neutronMacroXSs)                 :: xss
     class(neutronMaterial), pointer       :: mat
-    real(defReal)                         :: nuFissXS, captXS, fissXS, scattXS, flux
+    real(defReal)                         :: nuFissXS, captXS, fissXS, scattXS, kappaXS, flux
     integer(shortInt)                     :: enIdx, locIdx, binIdx
     integer(longInt)                      :: addr
     character(100), parameter :: Here =' reportInColl (mgXsClerk_class.f90)'
@@ -238,7 +245,7 @@ contains
 
     ! Find bin indexes
     ! Energy
-    if (allocated(self % energyMap)) then
+    if (self % hasEnergyMap) then
       enIdx = self % energyN + 1 - self % energyMap % map(state)
     else
       enIdx = 1
@@ -283,6 +290,7 @@ contains
       captXS   = xss % capture * flux
       fissXS   = xss % fission * flux
       scattXS  = (xss % elasticScatter + xss % inelasticScatter) * flux
+      kappaXS  = xss % kappaXS * flux
 
     else
 
@@ -291,6 +299,7 @@ contains
       captXS   = ZERO
       fissXS   = ZERO
       scattXS  = ZERO
+      kappaXS  = ZERO
 
     end if
 
@@ -300,6 +309,7 @@ contains
     call mem % score(captXS,   addr + CAPT_idx)
     call mem % score(fissXS,   addr + FISS_idx)
     call mem % score(scattXS,  addr + SCATT_idx)
+    call mem % score(kappaXS,  addr + KAPPAFISS_idx)
 
   end subroutine reportInColl
 
@@ -344,7 +354,7 @@ contains
 
         ! Find bin indexes
         ! Energy
-        if (allocated(self % energyMap)) then
+        if (self % hasEnergyMap) then
           enIdx = self % energyN + 1 - self % energyMap % map(preColl)
         else
           enIdx = 1
@@ -367,7 +377,7 @@ contains
         call mem % score(preColl % wgt, addr + SCATT_EV_idx)
 
         ! Get bin of outgoing energy
-        if (allocated(self % energyMap)) then
+        if (self % hasEnergyMap) then
           binEnOut = self % energyN + 1 - self % energyMap % map(postColl)
         else
           binEnOut = 1
@@ -449,7 +459,7 @@ contains
 
       ! Find bin indexes
       ! Energy
-      if (allocated(self % energyMap)) then
+      if (self % hasEnergyMap) then
         enIdx = self % energyN + 1 - self % energyMap % map(pNew)
       else
         enIdx = 1
@@ -495,7 +505,7 @@ contains
   !!   none
   !!
   pure subroutine processRes(self, mem, capt_res, fiss_res, transFL_res, transOS_res, &
-                             nu_res, chi_res, P0_res, P1_res, prod_res)
+                             nu_res, chi_res, kappa_res, P0_res, P1_res, prod_res)
     class(mgXsClerk), intent(in)    :: self
     type(scoreMemory), intent(in)   :: mem
     real(defReal), dimension(:,:), allocatable, intent(out) :: capt_res
@@ -504,6 +514,7 @@ contains
     real(defReal), dimension(:,:), allocatable, intent(out) :: transOS_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: nu_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: chi_res
+    real(defReal), dimension(:,:), allocatable, intent(out) :: kappa_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: P0_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: P1_res
     real(defReal), dimension(:,:), allocatable, intent(out) :: prod_res
@@ -513,7 +524,7 @@ contains
     integer(shortInt) :: N, M, i, j, k, g1, gEnd, idx
     real(defReal)     :: capt, fiss, scatt, nu, chi, P0, P1, prod, sumChi, flux, scattProb, &
                          captStd, fissStd, scattStd, nuStd, chiStd, P0std, P1std, prodStd,  &
-                         fluxStd, scattProbStd, scattXS, scattXSstd
+                         fluxStd, scattProbStd, scattXS, scattXSstd, kappa, kappaStd
 
     ! Get number of bins
     N = self % energyN
@@ -521,9 +532,9 @@ contains
 
     ! Allocate arrays for MG xss
     allocate( capt_res(2,N*M), fiss_res(2,N*M), transFL_res(2,N*M), transOS_res(2,N*M), &
-              nu_res(2,N*M), chi_res(2,N*M), P0_res(2,N*N*M), P1_res(2,N*N*M),          &
-              prod_res(2,N*N*M), tot(N*M), fluxG(N*M), delta(M, N), totStd(N*M),        &
-              fluxGstd(N*M), deltaStd(M, N) )
+              nu_res(2,N*M), chi_res(2,N*M), kappa_res(2,N*M), P0_res(2,N*N*M), &
+              P1_res(2,N*N*M), prod_res(2,N*N*M), tot(N*M), fluxG(N*M), delta(M, N), &
+              totStd(N*M), fluxGstd(N*M), deltaStd(M, N) )
 
     ! Initialise values
     sumChi = 0    ! to normalise chi
@@ -543,6 +554,7 @@ contains
       call mem % getResult(nu,    nuStd,    addr + NUBAR_idx)
       call mem % getResult(chi,   chiStd,   addr + CHI_idx)
       call mem % getResult(scattProb, scattProbStd, addr + SCATT_EV_idx)
+      call mem % getResult(kappa, kappaStd, addr + KAPPAFISS_idx)
 
       ! Calculate MG constants, being careful to avoid division by zero
       ! If flux is zero all cross sections must be set to zero
@@ -559,13 +571,16 @@ contains
 
       ! Calculate fission production term and uncertainties
       if (fiss == ZERO) then
-        fiss_res(1:2,i) = ZERO
-        nu_res(1:2,i)   = ZERO
+        fiss_res(1:2,i)  = ZERO
+        nu_res(1:2,i)    = ZERO
+        kappa_res(1:2,i) = ZERO
       else
         fiss_res(1,i) = fiss/flux
         fiss_res(2,i) = fiss_res(1,i) * sqrt((fissStd/fiss)**2 + (fluxStd/flux)**2)
         nu_res(1,i)   = nu/fiss
         nu_res(2,i)   = nu_res(1,i) * sqrt((nuStd/nu)**2 + (fissStd/fiss)**2)
+        kappa_res(1,i) = kappa/flux
+        kappa_res(2,i) = kappa_res(1,i) * sqrt((kappaStd/kappa)**2 + (fluxStd/flux)**2)
       end if
 
       ! Store fission spectrum
@@ -753,8 +768,8 @@ contains
     type(scoreMemory), intent(in)              :: mem
     integer(shortInt),dimension(:),allocatable :: resArrayShape
     real(defReal), dimension(:,:), allocatable :: fiss, capt, transFL, transOS, &
-                                                  nu, chi, P0, P1, P2, P3, P4,  &
-                                                  P5, P6, P7, prod
+                                                  nu, chi, kappa, P0, P1, P2, P3, &
+                                                  P4, P5, P6, P7, prod
     character(nameLen)                         :: name
     integer(shortInt)                          :: i
 
@@ -769,7 +784,7 @@ contains
     end if
 
     ! Print energy map information
-    if (allocated(self % energyMap)) call self % energyMap % print(outFile)
+    call self % energyMap % printReverse(outFile)
     resArrayShape(1) = self % energyN
 
     ! If a space map print map information
@@ -779,7 +794,7 @@ contains
     end if
 
     ! Process and get results
-    call self % processRes(mem, capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    call self % processRes(mem, capt, fiss, transFL, transOS, nu, chi, kappa, P0, P1, prod)
 
     ! Print results
     name = 'capture'
@@ -793,6 +808,13 @@ contains
     call outFile % startArray(name, resArrayShape)
     do i=1,product(resArrayShape)
       call outFile % addResult(fiss(1,i),fiss(2,i))
+    end do
+    call outFile % endArray()
+
+    name = 'kappaFission'
+    call outFile % startArray(name, resArrayShape)
+    do i=1,product(resArrayShape)
+      call outFile % addResult(kappa(1,i),kappa(2,i))
     end do
     call outFile % endArray()
 
@@ -848,7 +870,7 @@ contains
     call outFile % endArray()
 
     ! Deallocate to limit memory consumption when writing to the output file
-    deallocate(capt, fiss, transFL, transOS, nu, chi, P0, P1, prod)
+    deallocate(capt, fiss, transFL, transOS, nu, chi, kappa, P0, P1, prod)
 
     ! If high order scattering is requested, print the other matrices
     if (self % PN) then
@@ -915,7 +937,7 @@ contains
     class(mgXsClerk), intent(in)  :: self
     type(scoreMemory), intent(in) :: mem
 
-    print *, 'mgXsClerk does not support display yet'
+    call statusMsg('mgXsClerk does not support display yet')
 
   end subroutine display
 

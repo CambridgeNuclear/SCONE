@@ -1,4 +1,4 @@
-module densityResponse_class
+module invSpeedResponse_class
 
   use numPrecision
   use universalVariables,  only : neutronMass, lightSpeed
@@ -13,25 +13,25 @@ module densityResponse_class
   private
 
   !!
-  !! tallyResponse to score particle density contribution
+  !! tallyResponse which returns the inverse of the particle speed in [cm/s]
   !!
-  !! Returns the inverse of the particle speed in [cm/s]
+  !! Can be also used to estimate particle density
   !!
   !! NOTE:
   !!  The speeds are computed from non-relativistic formula for massive particles.
-  !!  The small error might appear in MeV range (e.g. for fusion applications)
+  !!  A small error might appear in MeV range (e.g. for fusion applications)
   !!
   !! Interface:
   !!   tallyResponse Interface
   !!
-  type, public,extends(tallyResponse) :: densityResponse
+  type, public,extends(tallyResponse) :: invSpeedResponse
     private
   contains
     procedure :: init
     procedure :: get
     procedure :: kill
 
-  end type densityResponse
+  end type invSpeedResponse
 
 contains
 
@@ -41,7 +41,7 @@ contains
   !! See tallyResponse_inter for details
   !!
   subroutine init(self, dict)
-    class(densityResponse), intent(inout) :: self
+    class(invSpeedResponse), intent(inout) :: self
     class(dictionary), intent(in)         :: dict
 
     ! Do nothing
@@ -49,12 +49,12 @@ contains
   end subroutine init
 
   !!
-  !! Returns the inverse of the particle speed (response to score particle density)
+  !! Returns the inverse of the particle speed
   !!
   !! See tallyResponse_inter for details
   !!
   function get(self, p, xsData) result(val)
-    class(densityResponse), intent(in)    :: self
+    class(invSpeedResponse), intent(in)    :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     real(defReal)                         :: val
@@ -68,10 +68,10 @@ contains
   !! Return to uninitialised State
   !!
   elemental subroutine kill(self)
-    class(densityResponse), intent(inout) :: self
+    class(invSpeedResponse), intent(inout) :: self
 
     ! Do nothing for nothing can be done
 
   end subroutine kill
 
-end module densityResponse_class
+end module invSpeedResponse_class

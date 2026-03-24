@@ -3,7 +3,9 @@ module dancoffBellClerk_class
   use numPrecision
   use tallyCodes
   use endfConstants
+  use universalVariables,         only : MAX_COL
   use genericProcedures,          only : fatalError, hasDuplicates
+  use display_func,               only : statusMsg
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -75,7 +77,7 @@ module dancoffBellClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportTrans
-    procedure  :: reportCycleEnd
+    procedure  :: closeCycle
 
     ! Output procedures
     procedure  :: display
@@ -156,7 +158,7 @@ contains
     class(dancoffBellClerk),intent(in)         :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [trans_CODE, cycleEnd_CODE]
+    validCodes = [trans_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -187,33 +189,32 @@ contains
     integer(shortInt)                      :: T_end, T_start
     real(defReal)                          :: w_end
     type(particleState)                    :: state
-
     character(100),parameter :: Here = 'reportTrans (dancoffBellClerk_class.f90)'
 
     ! Find start material type; Exit if not fuel
     T_start = self % materialSet % getOrDefault(p % preTransition % matIdx, OUTSIDE)
-    if( T_start /= FUEL) return
+    if (T_start /= FUEL) return
 
     ! Exit if outside energy range
     state = p
-    if(.not.self % filter % isPass(state)) return
+    if (.not.self % filter % isPass(state)) return
 
     ! Find end material type; Exit if not fuel or moderator
     T_end = self % materialSet % getOrDefault(p % matIdx(), OUTSIDE)
-    if(T_end == OUTSIDE) return
+    if (T_end == OUTSIDE) return
 
     ! Obtain starting and ending weights
     w_end   = p % w
 
     ! Add to approperiate bins
-    select case(T_end)
-      case(MODERATOR)
+    select case (T_end)
+      case (MODERATOR)
         ! Get XS
         SigmaTot = xsData % getTotalMatXS(p, p % preTransition % matIdx)
 
         call mem % score(w_end * SigmaTot, self % getMemAddress() + ESC_PROB_TOTXS)
 
-      case(FUEL)
+      case (FUEL)
         call mem % score(w_end, self % getMemAddress() + STAY_PROB)
 
       case default
@@ -224,24 +225,23 @@ contains
   end subroutine reportTrans
 
   !!
-  !! Process end of the cycle
+  !! Close cycle
   !!
   !! See tallyClerk_inter for details
   !!
-  subroutine reportCycleEnd(self, end, mem)
+  subroutine closeCycle(self, end, mem)
     class(dancoffBellClerk), intent(inout)  :: self
     class(particleDungeon), intent(in)      :: end
     type(scoreMemory), intent(inout)        :: mem
     real(defReal)                           :: escSigmaT, fuelWgt
 
-    if( mem % lastCycle() ) then
+    if (mem % lastCycle()) then
       escSigmaT = mem % getScore(self % getMemAddress() + ESC_PROB_TOTXS)
       fuelWgt   = mem % getScore(self % getMemAddress() + STAY_PROB)
-      print *, escSigmaT, fuelWgt
-      call mem % accumulate( escSigmaT / fuelWgt, self % getMemAddress() + D_EFF)
+      call mem % accumulate(escSigmaT / fuelWgt, self % getMemAddress() + D_EFF)
     end if
 
-  end subroutine reportCycleEnd
+  end subroutine closeCycle
 
   !!
   !! Display convergance progress on the console
@@ -252,11 +252,13 @@ contains
     class(dancoffBellClerk), intent(in) :: self
     type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: mean, STD
+    character(MAX_COL)                  :: buffer
 
     call mem % getResult(mean, STD, self % getMemAddress() + D_EFF)
 
     ! Print to console
-    print '(A,ES15.5,A,ES15.5)', 'Dancoff-Bell: ', mean, ' +/- ', STD
+    write (buffer, '(A,ES15.5,A,ES15.5)') 'Dancoff-Bell: ', mean, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 

@@ -345,7 +345,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  elemental subroutine kill(self)
+  subroutine kill(self)
     class(latUniverse), intent(inout) :: self
 
     ! Superclass

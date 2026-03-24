@@ -4,6 +4,7 @@ module uniFissSitesField_class
   use genericProcedures,     only : fatalError, numToChar
   use universalVariables,    only : OUTSIDE_MAT, VOID_MAT, P_NEUTRON_CE
   use dictionary_class,      only : dictionary
+  use coord_class,           only : coordList
   use particle_class,        only : particle, particleState
   use field_inter,           only : field
   use vectorField_inter,     only : vectorField
@@ -77,6 +78,7 @@ module uniFissSitesField_class
     procedure :: kill
     procedure :: estimateVol
     procedure :: at
+    procedure :: atP
     procedure :: storeFS
     procedure :: updateMap
   end type uniFissSitesField
@@ -230,15 +232,32 @@ contains
     end if
 
   end subroutine estimateVol
+  
+  !!
+  !! Get value of the vector field given coordinates
+  !! Not defined for UFS field
+  !!
+  !! See vectorField_inter for details
+  !!
+  function at(self, coords) result(val)
+    class(uniFissSitesField), intent(in) :: self
+    class(coordList), intent(in)         :: coords
+    real(defReal), dimension(3)          :: val
+    character(100), parameter :: Here = 'at (uniFissSitesField_class.f90)'
+
+    val = ZERO
+    call fatalError(Here,'Not defined when providing coords - must provide particle.')
+
+  end function at
 
   !!
   !! Get value of the vector field given the phase-space location of a particle
   !!
   !! See vectorField_inter for details
   !!
-  function at(self, p) result(val)
+  function atP(self, p) result(val)
     class(uniFissSitesField), intent(in) :: self
-    class(particle), intent(inout)       :: p
+    class(particle), intent(in)          :: p
     real(defReal), dimension(3)          :: val
     type(particleState)                  :: state
     integer(shortInt)                    :: binIdx
@@ -259,7 +278,7 @@ contains
     val(2) = self % sourceFraction(binIdx)
     val(3) = ZERO
 
-  end function at
+  end function atP
 
   !!
   !! Store the fission sites generated in a vector

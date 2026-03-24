@@ -269,7 +269,7 @@ contains
   !!
   !! Return to uninitialised state
   !!
-  elemental subroutine kill(self)
+  subroutine kill(self)
     class(pinUniverse), intent(inout) :: self
 
     ! Superclass

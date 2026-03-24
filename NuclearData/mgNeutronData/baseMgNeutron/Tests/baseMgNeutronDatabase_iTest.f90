@@ -6,7 +6,7 @@ module baseMgNeutronDatabase_iTest
   use funit
   use dictionary_class,   only : dictionary
   use dictParser_func,    only : charToDict
-  use particle_class,     only : particle
+  use particle_class,     only : particle, P_NEUTRON
   use RNG_class,          only : RNG
 
   ! Nuclear Data Objects & Interfaces
@@ -84,6 +84,7 @@ contains
     ! Test getting Transport XS
     ! Associate pointer to pass tests in debug mode
     p % pRNG => pRNG
+    p % type = P_NEUTRON
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
@@ -113,6 +114,7 @@ contains
     @assertEqual(1.0_defReal, xss % capture, TOL)
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
+    @assertEqual(202.0_defReal, xss % kappaXS, TOL)
 
     matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
@@ -126,6 +128,7 @@ contains
     @assertEqual(4.0_defReal, xss % capture, TOL)
     @assertEqual(0.0_defReal, xss % fission, TOL)
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
+    @assertEqual(0.0_defReal, xss % kappaXS, TOL)
 
     ! Get some invalid Materials
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))
@@ -212,6 +215,7 @@ contains
     ! Test getting Transport XS
     ! Associate pointer to pass tests in debug mode
     p % pRNG => pRNG
+    p % type = P_NEUTRON
     p % G = 1
     @assertEqual(2.1_defReal, database % getTrackingXS(p, 1, MATERIAL_XS), TOL)
 
@@ -241,6 +245,7 @@ contains
     @assertEqual(1.0_defReal, xss % capture, TOL)
     @assertEqual(1.0_defReal, xss % fission, TOL)
     @assertEqual(2.3_defReal, xss % nuFission, TOL)
+    @assertEqual(202.0_defReal, xss % kappaXS, TOL)
 
     matClass => baseMgNeutronMaterial_CptrCast(database % getMaterial(1))
     @assertTrue(associated(matClass), "Type Ptr Cast has failed")
@@ -254,6 +259,7 @@ contains
     @assertEqual(4.0_defReal, xss % capture, TOL)
     @assertEqual(0.0_defReal, xss % fission, TOL)
     @assertEqual(0.0_defReal, xss % nuFission, TOL)
+    @assertEqual(0.0_defReal, xss % kappaXS, TOL)
 
     ! Get some invalid Materials
     mat => baseMgNeutronMaterial_TptrCast(database % getMaterial(0))

@@ -213,6 +213,7 @@ contains
     p % w = 1.3_defReal
     call clerk % reportPath(p, L, nucData, mem)
 
+    call mem % reduceBins()
     call mem % closeCycle(ONE)
 
     ! Verify results of scoring

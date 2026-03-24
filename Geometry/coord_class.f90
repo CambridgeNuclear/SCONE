@@ -147,7 +147,7 @@ contains
     print *, "R: ", self % r
     print *, "U: ", self % dir
     print *, "UniIdx: ", numToChar(self % uniIDx), " LocalID: ", numToChar(self % localID), &
-             "UniRootId", numToChar(self % uniRootID)
+             " UniRootId: ", numToChar(self % uniRootID)
 
   end subroutine display_coord
 
@@ -300,7 +300,7 @@ contains
   end subroutine takeAboveGeom
 
   !!
-  !! Decrease nestting to level n
+  !! Decrease nesting to level n
   !!
   !! Args:
   !!   n [in] -> New nesting level

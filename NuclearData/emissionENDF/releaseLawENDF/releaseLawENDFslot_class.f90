@@ -13,6 +13,7 @@ module releaseLawENDFslot_class
   contains
     ! Superclass interface
     procedure :: releaseAt
+    procedure :: hasEnergy
     procedure :: kill
 
     ! Define assignment
@@ -35,6 +36,18 @@ contains
     release = self % slot % releaseAt(E_in)
 
   end function releaseAt
+  
+  !!
+  !! Returns whether an energy, E_in, is within the table
+  !!
+  function hasEnergy(self, E_in) result(has)
+    class(releaseLawENDFslot), intent(in) :: self
+    real(defReal), intent(in)             :: E_in
+    logical(defBool)                      :: has
+
+    has = self % slot % hasEnergy(E_in)
+
+  end function hasEnergy
 
   !!
   !! Return to uninitialised state

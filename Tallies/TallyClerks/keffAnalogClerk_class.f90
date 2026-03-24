@@ -2,8 +2,10 @@ module keffAnalogClerk_class
 
   use numPrecision
   use tallyCodes
+  use universalVariables,    only : MAX_COL
   use dictionary_class,      only : dictionary
   use genericProcedures,     only : fatalError
+  use display_func,          only : statusMsg
   use particle_class,        only : particle
   use particleDungeon_class, only : particleDungeon
   use outputFile_class,      only : outputFile
@@ -14,6 +16,12 @@ module keffAnalogClerk_class
 
   implicit none
   private
+
+  !! Locations of diffrent bins wrt memory address of the clerk
+  integer(shortInt), parameter :: MEM_SIZE = 3
+  integer(longInt), parameter  :: START_POP = 0 ,&  ! Population tally at the start of the cycle
+                                  END_POP   = 1 ,&  ! Population tally at the end of the cycle
+                                  K_EST     = 2     ! k-eff estimate
 
   !!
   !! Simplest possible analog k-eff estimator that determines
@@ -31,9 +39,6 @@ module keffAnalogClerk_class
   !! }
   !!
   type, public,extends(tallyClerk) :: keffAnalogClerk
-    private
-    real(defReal) :: startPopWgt = ZERO
-    real(defReal) :: endPopWgt   = ZERO
   contains
     ! Procedures used during build
     procedure :: init
@@ -44,11 +49,13 @@ module keffAnalogClerk_class
     ! File reports and check status -> run-time procedures
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: closeCycle
 
     ! Output procedures
     procedure  :: display
     procedure  :: print
     procedure  :: getResult
+
   end type keffAnalogClerk
 
   !!
@@ -57,7 +64,7 @@ module keffAnalogClerk_class
   !! Public Members:
   !!   keff -> Result, keff(1) is criticality, keff(2) is STD
   !!
-  type,public, extends(tallyResult) :: keffResult
+  type, public, extends(tallyResult) :: keffResult
     real(defReal), dimension(2) :: keff = [ONE, ZERO]
   end type keffResult
 
@@ -78,10 +85,6 @@ contains
     ! Needs no settings, just load name
     call self % setName(name)
 
-    ! Ensure correct initialisation to default values
-    self % startPopWgt = ZERO
-    self % endPopWgt   = ZERO
-
   end subroutine init
 
   !!
@@ -92,9 +95,6 @@ contains
 
     ! Superclass
     call kill_super(self)
-
-    self % startPopWgt = ZERO
-    self % endPopWgt = ZERO
 
   end subroutine kill
 
@@ -107,7 +107,7 @@ contains
     class(keffAnalogClerk),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [ cycleStart_CODE, cycleEnd_CODE ]
+    validCodes = [cycleStart_CODE, cycleEnd_CODE, closeCycle_CODE]
 
   end function validReports
 
@@ -120,7 +120,7 @@ contains
     class(keffAnalogClerk), intent(in) :: self
     integer(shortInt)                  :: S
 
-    S = 1
+    S = MEM_SIZE
 
   end function getSize
 
@@ -134,9 +134,8 @@ contains
     class(particleDungeon), intent(in)    :: start
     type(scoreMemory), intent(inout)      :: mem
 
-    ! Update start population weight
-    self % startPopWgt = self % startPopWgt + start % popWeight()
-
+    ! Add score to counter
+    call mem % score(start % popWeight(), self % getMemAddress() + START_POP)
 
   end subroutine reportCycleStart
 
@@ -149,24 +148,37 @@ contains
     class(keffAnalogClerk), intent(inout) :: self
     class(particleDungeon), intent(in)    :: end
     type(scoreMemory), intent(inout)      :: mem
-    real(defReal)                         :: k_norm, k_eff
 
-    ! Update end population weight
-    self % endPopWgt = self % endPopWgt + end % popWeight()
-
-    ! Close batch
-    if( mem % lastCycle() ) then
-      k_norm = end % k_eff
-
-      ! Calculate and score analog estimate of k-eff
-      k_eff =  self % endPopWgt / self % startPopWgt * k_norm
-      call mem % accumulate(k_eff, self % getMemAddress() )
-
-      self % startPopWgt = ZERO
-      self % endPopWgt   = ZERO
-    end if
+    ! Add score to counter
+    call mem % score(end % popWeight(), self % getMemAddress() + END_POP)
 
   end subroutine reportCycleEnd
+
+  !!
+  !! Close the cycle
+  !!
+  !! See tallyClerk_inter for details
+  !!
+  subroutine closeCycle(self, end, mem)
+    class(keffAnalogClerk), intent(inout) :: self
+    class(particleDungeon), intent(in)    :: end
+    type(scoreMemory), intent(inout)      :: mem
+    real(defReal)                         :: k_norm, k_eff, startPopWgt, endPopWgt
+
+    ! Close batch
+    if (mem % lastCycle()) then
+      k_norm = end % k_eff
+
+      startPopWgt = mem % getScore(self % getMemAddress() + START_POP)
+      endPopWgt   = mem % getScore(self % getMemAddress() + END_POP)
+
+      ! Calculate and score analog estimate of k-eff
+      k_eff =  endPopWgt / startPopWgt * k_norm
+      call mem % accumulate(k_eff, self % getMemAddress() + K_EST)
+
+    end if
+
+  end subroutine closeCycle
 
   !!
   !! Display convergance progress on the console
@@ -177,11 +189,13 @@ contains
     class(keffAnalogClerk), intent(in)  :: self
     type(scoreMemory), intent(in)       :: mem
     real(defReal)                       :: k, STD
+    character(MAX_COL)                  :: buffer
 
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult(k, STD, self % getMemAddress() + K_EST)
 
     ! Print estimates to a console
-    print '(A,F8.5,A,F8.5)', 'k-eff (analog): ',  k, ' +/- ', STD
+    write(buffer, '(A,F8.5,A,F8.5)') 'k-eff (analog): ',  k, ' +/- ', STD
+    call statusMsg(buffer)
 
   end subroutine display
 
@@ -198,10 +212,10 @@ contains
     character(nameLen)                 :: name
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult(k, STD, self % getMemAddress() + K_EST)
 
     ! Print to output file
-    call outFile % startBlock(self % getName() )
+    call outFile % startBlock(self % getName())
     name = 'k_analog'
     call outFile % printResult(k, STD, name)
     call outFile % endBlock()
@@ -221,10 +235,11 @@ contains
     real(defReal)                                   :: k, STD
 
     ! Get result value
-    call mem % getResult(k, STD, self % getMemAddress())
+    call mem % getResult(k, STD, self % getMemAddress() + K_EST)
 
     allocate(res, source = keffResult([k, STD]))
 
   end subroutine getResult
+
 
 end module keffAnalogClerk_class
