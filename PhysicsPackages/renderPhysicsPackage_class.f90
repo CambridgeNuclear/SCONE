@@ -14,7 +14,7 @@ module renderPhysicsPackage_class
   use geometryFactory_func,           only : new_geometry
 
   ! Nuclear Data
-  use materialMenu_mod,               only : mm_nMat => nMat, mm_matIdx => matIdx
+  use materialMenu_mod,               only : mm_nMat => nMat, mm_matIdx => matIdx, mm_matName => matName
   use nuclearDataReg_mod,             only : ndReg_init        => init ,&
                                              ndReg_getMatNames => getMatNames
   use nuclearDatabase_inter,          only : nuclearDatabase
@@ -63,7 +63,7 @@ contains
     integer(shortInt), dimension(:,:), allocatable :: img, matIDs
     real(defReal), dimension(:,:), allocatable     :: lum
     real(defReal), dimension(3,3)                  :: M
-    integer(shortInt)                              :: offset, ios, matIdx, pos, n
+    integer(shortInt)                              :: offset, ios, matIdx, pos, n, i
     character(nameLen)                             :: outputFile, outputLive
     real(defReal)                                  :: a, b, c
     real(defReal), dimension(3)                    :: dir, dirV, dirH, centre, camera,&
@@ -98,6 +98,7 @@ contains
     print *, 'Set ambient light: amb <strength between 0 and 1>'
     print *, 'Make a material opaque: opaq <material name>'
     print *, 'Make a material transparent: transp <material name>'
+    print *, 'Provide list of material names: mats'
     print *, 'Quit: q'
       
     ! lum contains luminosity values, matIDs identifies which materials were hit
@@ -252,6 +253,13 @@ contains
         end if
 
         mats = pack(mats, mats /= matIdx)
+      
+      case("mats")
+        print *,'MATERIAL NAMES:'
+        do i = 1, mm_nMat()
+          print *,trim(mm_matName(i))
+        end do
+        cycle
 
       case ("q")
         exit
