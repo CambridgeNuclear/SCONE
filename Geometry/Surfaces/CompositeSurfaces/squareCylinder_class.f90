@@ -220,7 +220,7 @@ contains
     rl = r(self % plane)
     ul = u(self % plane)
 
-    ! Transfrom to frame centered at the slab and choose
+    ! Transform to frame centered at the slab and choose
     ! nearest and furthest squareCylinder vertex
     rb = rl - self % origin
     a_far = sign(self % halfwidth, ul)

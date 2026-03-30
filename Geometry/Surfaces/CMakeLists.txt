@@ -24,5 +24,6 @@ add_unit_tests( ./Tests/sphere_test.f90
                 ./Tests/truncCylinder_test.f90
                 ./Tests/truncCone_test.f90
                 ./Tests/wedge_test.f90
+                ./Tests/hexagon_test.f90
                 ./Tests/surfaceShelf_test.f90
               )

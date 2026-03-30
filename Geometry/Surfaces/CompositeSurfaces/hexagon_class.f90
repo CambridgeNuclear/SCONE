@@ -11,15 +11,17 @@ module hexagon_class
 
   integer(shortInt), parameter :: pointType = 1, flatType = 2
 
+  real(defReal), parameter :: THREE = 3.0_defReal, SQRT3 = sqrt(3.0_defReal), &
+                              TWO_SQRT3 = TWO / sqrt(3.0_defReal), THREE_TWO = 1.5_defReal
   !!
   !! Hexagon aligned with x, y or z axis.
   !! The hexagon can also be oriented either to have the point or flat
   !! aligning with the first of the remaining two axis.
   !!
   !! Three different axis types are avaliable
-  !!   xHexagon -> aligned with X-axis
-  !!   yHexagon -> aligned with Y-axis
-  !!   zHexagon -> aligned with Z-axis
+  !!   xHexagon -> parallel with X-axis
+  !!   yHexagon -> parallel with Y-axis
+  !!   zHexagon -> parallel with Z-axis
   !!
   !! One can then specify the orientation to be type 1 or 2.
   !! Type 1 has the flat surface perpendicular to the first of the two axis in the plane
@@ -31,13 +33,14 @@ module hexagon_class
   !!   x { type xHexagon; id 92; orientation 1; origin (0.0 0.0 9.0); halfwidth 7;}
   !!   y { type yHexagon; id 94; orientation 2; origin (0.0 0.0 9.0); halfwidth 3;}
   !!
-  !!  Origin entry in axis along the cylinder direction is ignored.
-  !!  Halfwidth is the flat-to-flat distance.
+  !! Origin entry in axis along the cylinder direction is ignored.
+  !! Halfwidth is the flat-to-flat distance.
   !!
   !! Boundary Conditions:
   !!   Only a single BC value.
   !!
   !!   For now, each face must have the same BC. Supports either periodic or vacuum BCs.
+  !!   TODO: add reflective transform BCs.
   !!
   !! Private Members:
   !!   origin      -> position of the middle of the hexagon
@@ -48,6 +51,7 @@ module hexagon_class
   !!   axis        -> Index of the axis of the plane
   !!   flatAxis    -> Index into plane, deciding which plane axis has the flat of the hexagon
   !!   pointAxis   -> Index into plane, deciding which plane axis has the point of the hexagon
+  !!   verts       -> Vertices of the hexagon
   !!
   !! Interface:
   !!   surface interface
@@ -71,6 +75,7 @@ module hexagon_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
     procedure :: setBC
     procedure :: explicitBC
@@ -167,17 +172,16 @@ contains
     end if
 
     if (orient == pointType) then
-      self % flatAxis = 2
-      self % pointAxis = 1
-      angles = [(i, i = 0,5)] * PI/3 + PI/6
-    else
       self % flatAxis = 1
       self % pointAxis = 2
+      angles = [(i, i = 0,5)] * PI/3 + PI/6
+    else
+      self % flatAxis = 2
+      self % pointAxis = 1
       angles = [(i, i = 0,5)] * PI/3
     end if
-    self % verts(:,1) = TWO_SQRT3 * self % halfwidth * cos(angles) + self % origin(1)
-    self % verts(:,2) = TWO_SQRT3 * self % halfwidth * sin(angles) + self % origin(2)
-
+    self % verts(:,1) = TWO_SQRT3 * self % halfwidth * cos(angles)
+    self % verts(:,2) = TWO_SQRT3 * self % halfwidth * sin(angles)
     
   end subroutine init
 
@@ -220,7 +224,7 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
     real(defReal), dimension(2)             :: rb
-    real(defReal)                           :: p, q, h
+    real(defReal)                           :: p, q
 
     ! Move to origin-frame and evaluate
     rb = abs(r(self % plane) - self % origin)
@@ -228,9 +232,8 @@ contains
     p = rb(self % flatAxis)
     q = rb(self % pointAxis)
 
-    h = self % halfwidth * TWO_SQRT3
-
-    c = maxval([q - h * HALF, q + sqrt(3.0_defReal) * p - h])
+    c = maxval([p - self % halfwidth, &
+               (p + SQRT3 * q) * HALF - self % halfwidth])
 
   end function evaluate
 
@@ -244,39 +247,79 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: d
-    real(defReal), dimension(2)             :: rl, ul, a1, a2, e, w
-    real(defReal)                           :: d0, invDet
-    integer(shortInt)                       :: i, iNext
+    real(defReal), dimension(2)             :: rl, ul, a1, a2, e, n
+    real(defReal)                           :: far, near, uProj, rProj, &
+                                               a_near, a_far, test_near, test_far
+    integer(shortInt)                       :: i
+    real(defReal), parameter :: FP_MISS_TOL = ONE + 10.0_defReal * epsilon(ONE)
 
     ! Get position and direction in the plane and centre
     rl = r(self % plane) - self % origin
     ul = u(self % plane)
 
-    d = INF
+    ! Initialise intersection set
+    far  = huge(far)
+    near = -huge(near)
 
-    do i = 1, 6
-
-      iNext = mod(i, 6) + 1
-      
-      ! Create the plane being intersected
-      a1 = self % verts(i,:)
-      a2 = self % verts(iNext,:)
+    ! Loop over the 3 sets of parallel planes
+    do i = 1, 3
+      ! Get the normal for this pair of planes
+      a1 = self % verts(i, :)
+      a2 = self % verts(i + 1, :)
       e = a2 - a1
+      n = [e(2), -e(1)]
+      n = n / norm2(n)
 
-      ! Ensure particle isn't running parallel
-      invDet = ONE / (ul(1) * e(2) - ul(2) * e(1))
-      if (abs(invDet) < 1E-10) cycle
+      ! Project onto the normal
+      uProj = dot_product(ul,n)
+      rProj = dot_product(rl,n)
 
-      ! Invert the linear system
-      w = rl - a1
-      d0 = invDet * (e(2) * w(1) - e(1) * w(2))
-      
-      ! Ensure intersection is in front of ray
-      if (d0 < ZERO .or. d0 > d) cycle
+      a_far = sign(self % halfwidth, uProj)
+      a_near = -a_far
+    
+      if (uProj /= ZERO ) then
+        test_near = (a_near - rProj) / uProj
+        test_far = (a_far - rProj) / uProj
 
-      d = d0
+      else ! Line is either fully inside or fully outside
+        test_near = sign(INF, (a_near - rProj))
+        test_far  = sign(INF, (a_far - rProj))
+
+        ! If direction is -0.0 (intead of just 0.0) Order may be
+        ! wrong and it is necesary to swap
+        if (test_near > test_far) call swap(test_near, test_far)
+
+      end if
+      far = min(far, test_far)
+      near = max(near, test_near)
 
     end do
+
+    ! Choose correct distance for different cases
+    if (far <= near * FP_MISS_TOL) then ! There is no intersection
+      d = INF
+
+    else if ( abs(self % evaluate(r)) < self % surfTol()) then ! Point at the surface
+      ! Choose distance with largest absolute value
+      if (abs(far) >= abs(near)) then
+        d = far
+      else
+        d = near
+      end if
+
+    else ! Normal hit. Closest distance
+      if (near <= ZERO) then
+        d = far
+      else
+        d = near
+      end if
+
+    end if
+
+    ! Cap the distance
+    if (d <= ZERO .or. d > INF) then
+      d = INF
+    end if
 
   end function distance
 
@@ -298,44 +341,36 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
-    real(defReal), dimension(2)             :: rl, ul, a1, a2, e, n, w
-    real(defReal)                           :: invDet, d, d0, proj
-    integer(shortInt)                       :: i, iNext
+    real(defReal), dimension(2)             :: rl, ul, e, n, nTrial
+    real(defReal)                           :: d, dist, proj
+    integer(shortInt)                       :: i
 
     ! Get position in the plane & direction
     rl = r(self % plane) - self % origin
     ul = u(self % plane)
 
-    d = INF
-    do i = 1, 6
-      
-    iNext = mod(i, 6) + 1
-      
-      ! Create the plane being intersected
-      a1 = self % verts(i,:)
-      a2 = self % verts(iNext,:)
-      e = a2 - a1
+    ! Which set of planes is being crossed?
+    d = -ONE
+    do i = 1,3
+    
+      ! Get plane normal
+      e = self % verts(i+1, :) - self % verts(i, :)
+      nTrial = [e(2), -e(1)]
+      nTrial = nTrial /norm2(nTrial)
+      dist = abs(dot_product(rl,nTrial))
 
-      ! Ensure particle isn't running parallel
-      invDet = ONE / (ul(1) * e(2) - ul(2) * e(1))
-      if (abs(invDet) < 1E-10) cycle
-
-      ! Invert the linear system
-      w = rl - a1
-      d0 = invDet * (e(2) * w(1) - e(1) * w(2))
-      
-      ! Ensure intersection is in front of ray
-      if (d0 < ZERO .or. d0 > d) cycle
-
-      d = d0
-
-      ! Projection of direction on the plane normal
-      n = [-e(2), e(1)]
-      n = n / norm2(n)
-      proj = dot_product(ul, n)
-      halfspace = proj > ZERO
+      if (dist > d) then
+        d = dist
+        n = nTrial
+      end if
 
     end do
+
+    n = n * sign(ONE, rl*n)
+      
+    proj = dot_product(ul, n)
+
+    halfspace = proj > ZERO
 
     ! Parallel direction
     ! Need to use position to determine halfspace
@@ -344,6 +379,50 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Return normal of the surface closest to the particle
+  !!
+  !! See surface_inter for details
+  !!
+  pure function normal(self, r, u) result(n)
+    class(hexagon), intent(in)              :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+    real(defReal), dimension(2)             :: rl, e, nTrial, nBest
+    real(defReal)                           :: d, dist
+    integer(shortInt)                       :: i
+    
+    ! Get position in the plane & direction
+    rl = r(self % plane) - self % origin
+
+    ! Which set of planes is being crossed?
+    d = -ONE
+    do i = 1,3
+    
+      ! Get plane normal
+      e = self % verts(i+1, :) - self % verts(i, :)
+      nTrial = [e(2), -e(1)]
+      nTrial = nTrial /norm2(nTrial)
+      dist = abs(dot_product(rl,nTrial))
+
+      if (dist > d) then
+        d = dist
+        nBest = nTrial
+
+      ! Catch corners
+      elseif (dist == d) then
+        nBest = nBest + nTrial
+        nBest = nBest / norm2(nBest)
+      end if
+
+    end do
+
+    n(self % plane) = nBest * sign(ONE, rl * nBest)
+    n(self % axis) = ZERO
+
+  end function normal
 
   !!
   !! Return to uninitialised state
@@ -373,7 +452,6 @@ contains
   subroutine setBC(self, BC)
     class(hexagon), intent(inout)               :: self
     integer(shortInt), dimension(:), intent(in) :: BC
-    integer(shortInt)                           :: i
     character(100),parameter                    :: Here = 'setBC (hexagon_class.f90)'
 
     if(size(BC) < 6) call fatalError(Here, 'Wrong size of BC string. Must be at least 6')
@@ -387,9 +465,10 @@ contains
       case (VACUUM_BC, PERIODIC_BC)
           ! Do nothing, pass
 
+      ! Reflective not fully supported
+      ! TODO: Implement transform reflective BCs
       case (REFLECTIVE_BC)
-        call fatalError(Here,'Reflective BCs not supported')
-
+        call fatalError(Here,'Reflective boundaries not supported.')
       case default
         call fatalError(Here,'Unrecognised BC: '//numToChar(BC))
 
@@ -404,64 +483,70 @@ contains
   !!
   !! Note:
   !!   - Go through all directions in order to account for corners
+  !!   - The periodic shift in a corner is decided by the particle direction
   !!
   subroutine explicitBC(self, r, u)
     class(hexagon), intent(in)                 :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
-    integer(shortInt)                          :: bc, i, iHit, iNext
-    real(defReal)                              :: r0, d, d0
-    real(defReal), dimension(2)                :: rl, ul, e, b, proj, n
+    integer(shortInt)                          :: i, iPlane
+    real(defReal)                              :: dist, proj, maxProj
+    real(defReal), dimension(2)                :: rl, e, v1, v2, n, nBest
     character(100), parameter :: Here = 'explicitBC (hexagon_class.f90)'
 
-    ! Apply BC
-    select case(self % BC)
-      case (VACUUM_BC)
-        ! Do nothing. Pass
-    
-      case (PERIODIC_BC)
-        ! Need to find which edge is closest
-        ! Get position in the plane & direction
-        rl = r(self % plane) - self % origin
-        ul = u(self % plane)
+    ! Get position in the plane & direction
+    rl = r(self % plane) - self % origin
 
-        iHit = -1
-        d = INF
+    maxProj = -INF
+    iPlane = 0
 
-        do i = 1, 6
-      
-          iNext = mod(i,6) + 1
-    
-          e = self % verts(iNext,:) - self % verts(i,:)
-          b = rl - self % verts(iHit,:)
+    ! Identify which face is being crossed by the particle, including direction
+    ! This tie-break is necessary when crossing corners.
+    ! Otherwise, shifting would occur based on loop-ordering.
+    ! For a particle pointing in between the two normals, the shift
+    ! will indeed be determined by loop-ordering.
+    do i = 1, 3
+      v1 = self % verts(i, :)
+      v2 = self % verts(i + 1, :)
+      e = v2 - v1
+      n = [e(2), -e(1)]
+      n = n / norm2(n)
 
-          d0 = dot_product(e, b) / dot_product(e, e)
-          d0 = max(ZERO, min(ONE, d0))
+      dist = dot_product(rl, n)
 
-          proj = self % verts(i,:) + d0 * e
-          d0 = norm2(rl - proj)
+      ! Are we on the plane?
+      if (abs(dist) >= self % halfwidth - self % surfTol()) then
+        
+        n = n * sign(ONE, dist)
+        proj = dot_product(u(self % plane), n)
+        
+        ! The face with the largest positive projection is the true exit face
+        if (proj > maxProj) then
+          maxProj = proj
+          iPlane = i
+          nBest = n
+        end if
+      end if
+    end do
 
-          if (d0 < d) then
-            d = d0
-            iHit = i
-          end if
+    ! Apply the BC only once, using the physically correct face
+    if (iPlane > 0) then
+      select case(self % BC)
+        case (PERIODIC_BC)
+          r(self % plane) = r(self % plane) - TWO * self % halfwidth * nBest
 
-        end do
+        ! This should never be called at present!
+        ! Need to implement transform BCs!
+        case (REFLECTIVE_BC)
+          u(self % plane) = u(self % plane) - TWO * dot_product(nBest, u(self % plane)) * nBest
 
-        ! Find normal of the hit plane
-        iNext = mod(iHit,6) + 1
-        e = self % verts(iNext,:) - self % verts(iHit,:)
-        n(1) = -e(2)
-        n(2) = e(1)
-        n = n / norm2(e)
+        case (VACUUM_BC)
+          ! Do nothing
 
-        ! Calculate displacement and perform translation
-        r(self % plane) = r(self % plane) - TWO * self % halfwidth * n
-
-      case default
-        call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC))
-
-    end select
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC))
+      end select
+    end if
 
   end subroutine explicitBC
 
@@ -478,10 +563,11 @@ contains
     class(hexagon), intent(in)                 :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
-    real(defReal), dimension(2)                :: rl, a1, a2, c
-    integer(shortInt), dimension(2)            :: iShift
-    real(defReal), dimension(2,2)              :: A, Ainv
+    real(defReal), dimension(2)                :: rl
+    integer(shortInt), dimension(2)            :: latShift
+    real(defReal), dimension(2,2)              :: Ainv
     real(defReal)                              :: invDet
+    real(defReal), dimension(2)                :: latCoord, a1, a2
     character(100), parameter :: Here = 'transformBC (hexagon_class.f90)'
 
     ! Apply BC
@@ -492,33 +578,37 @@ contains
       case (PERIODIC_BC)
 
         rl = r(self % plane) - self % origin
-
-        ! Define hexagonal array vectors
-        ! I THINK THESE VECTORS ARE FUCKING STUPID
+        ! Define the lattice basis vectors 
+        ! For a flat-to-flat distance of 2H, the distance between centers 
+        ! of adjacent hexagons is SQRT(3) * H along the flat-axis.
         if (self % flatAxis == 1) then
-          a1 = self % halfwidth * [ 3 * HALF, sqrt(3.0_defReal) * HALF]
-          a2 = self % halfwidth * [ ZERO, sqrt(3.0_defReal)]
+          a1 = [ TWO * self % halfwidth, ZERO ]
+          a2 = [ self % halfwidth, SQRT3 * self % halfwidth ]
         else
-          a1 = self % halfwidth * [sqrt(3.0_defReal), ZERO]
-          a2 = self % halfwidth * [sqrt(3.0_defReal) * HALF, 3 * HALF]
+          a1 = [ SQRT3 * self % halfwidth, self % halfwidth ]
+          a2 = [ ZERO, TWO * self % halfwidth ]
         end if
-
+        
         ! No check on determinant: magnitude of vectors can be small
-        ! but it should be hard to become singular!
+        ! but it should be hard to become singular provided halfwidth is positive!
         invDet = ONE / (a1(1) * a2(2) - a1(2) * a2(1))
 
         Ainv(1,1) = a2(2) * invDet
-        Ainv(1,2) = -a1(2) * invDet
-        Ainv(2,1) = -a2(1) * invDet
+        Ainv(1,2) = -a2(1) * invDet
+        Ainv(2,1) = -a1(2) * invDet
         Ainv(2,2) = a1(1) * invDet
 
-        ! Convert position to fractional lattice coords and round
-        ! to nearest lattice shifts
-        c = matmul(Ainv, rl)
-        A(:,1) = a1
-        A(:,2) = a2
-        r(self % plane) = rl - matmul(A,nint(c))
+        ! Convert to lattice coordinates
+        latCoord = matmul(Ainv, rl)
+        latShift = nint(latCoord)
 
+        rl = rl - (real(latShift(1), defReal) * a1 + real(latShift(2), defReal) * a2)
+
+        r(self % plane) = rl + self % origin
+      
+      ! This should never be called at present!
+      case (REFLECTIVE_BC)
+        call fatalError(Here, 'Reflective boundary conditions not supported.')
       case default
         call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC))
     end select
