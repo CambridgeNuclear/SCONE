@@ -160,7 +160,7 @@ contains
   !!  (again to the bit) in one of the planes
   !!
   !!  The reason for this is that a ray contained EXACTLY in one of the boundary planes
-  !!  may be assigned with an empty section (instead of infinate length).
+  !!  may be assigned with an empty section (instead of infinite length).
   !!
   pure function distance(self, r, u) result(d)
     class(box), intent(in)              :: self
