@@ -435,7 +435,7 @@ contains
     rl = r(self % plane) - self % origin(self % plane)
 
     ! Which set of planes is being crossed?
-    d = INF
+    d = -INF
     do i = 1,3
     
       ! Get plane normal
@@ -444,7 +444,7 @@ contains
       nTrial = nTrial /norm2(nTrial)
       dist = abs(dot_product(rl,nTrial)) - self % halfwidth
 
-      if (dist < d) then
+      if (dist > d) then
         d = dist
         nBest = nTrial
 
@@ -461,7 +461,7 @@ contains
 
     ! Also check axial planes
     rz = r(self % axis) - self % origin(self % axis)
-    if ((abs(rz) - self % halfheight) < d) then
+    if ((abs(rz) - self % halfheight) > d) then
       n = ZERO
       n(self % axis) = sign(ONE, rz)
     elseif (abs(rz) - self % halfheight == d) then
