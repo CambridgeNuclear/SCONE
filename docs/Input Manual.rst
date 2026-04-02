@@ -795,6 +795,16 @@ Example: ::
   - orientation: can be ``1`` or ``2``. Determines whether the first (1) or second (2) axis is perpendicular
     to the flat plane.
 
+* truncHexagon: hexagon oriented parallel to a given axis, truncated along that axis. Identical to the hexagon
+  except it also takes a ``halfheight`` to set its finite extent in the dimension perpendicular to the hexagonal
+  plane.
+
+  - origin: (x y z) position of the centre of the hexagon. [cm]
+  - halfwidth: centre-to-flat distance of the hexagon. [cm]
+  - halfheight: centre-to-top distance along the x, y, or z axis. [cm]
+  - orientation: can be ``1`` or ``2``. Determines whether the first (1) or second (2) axis is perpendicular
+    to the flat plane.
+
 
 Cells
 #####
