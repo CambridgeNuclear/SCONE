@@ -432,7 +432,7 @@ contains
     real(defReal), dimension(3)             :: n0
     
     ! Get position in the plane & direction
-    rl = r(self % plane) - self % origin(self % plane)
+    rl = (r(self % plane) - self % origin(self % plane)) / self % halfwidth
 
     ! Which set of planes is being crossed?
     d = -INF
@@ -441,36 +441,41 @@ contains
       ! Get plane normal
       e = self % verts(i+1, :) - self % verts(i, :)
       nTrial = [e(2), -e(1)]
-      nTrial = nTrial /norm2(nTrial)
-      dist = abs(dot_product(rl,nTrial)) - self % halfwidth
+      nTrial = nTrial / norm2(nTrial)
+      dist = abs(dot_product(rl, nTrial)) - ONE
 
-      if (dist > d) then
+      ! Select normal from the face which is most violated
+      if (dist > d + self % surfTol()) then
         d = dist
-        nBest = nTrial
-
+        !nBest = nTrial * sign(ONE, rl * nTrial)
+        nBest = nTrial * dot_product(rl, nTrial)
+      
       ! Catch corners
-      elseif (dist == d) then
-        nBest = nBest + nTrial
-        nBest = nBest / norm2(nBest)
+      else if (abs(dist - d) < self % surfTol()) then
+        !nBest = nBest + nTrial * sign(ONE, rl * nTrial)
+        nBest = nBest + nTrial * dot_product(rl, nTrial)
       end if
 
     end do
 
-    n(self % plane) = nBest * sign(ONE, rl * nBest)
+    n(self % plane) = nBest 
     n(self % axis) = ZERO
 
     ! Also check axial planes
-    rz = r(self % axis) - self % origin(self % axis)
-    if ((abs(rz) - self % halfheight) > d) then
+    rz = (r(self % axis) - self % origin(self % axis)) / self % halfheight
+    if (abs(rz) - ONE > d + self % surfTol()) then
       n = ZERO
       n(self % axis) = sign(ONE, rz)
-    elseif (abs(rz) - self % halfheight == d) then
-      ! Catch corners
+
+    ! Catch corners
+    else if (abs(abs(rz) - ONE - d) < self % surfTol()) then
       n0 = ZERO
       n0(self % axis) = sign(ONE, rz)
       n = n + n0
-      n = n /norm2(n)
     end if
+
+    ! Normalise at the end to allow for accumulating from several corners
+    n = n/norm2(n)
 
   end function normal
 

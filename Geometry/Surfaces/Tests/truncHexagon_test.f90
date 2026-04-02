@@ -642,4 +642,99 @@ contains
 
   end subroutine testDistance
 
+  !!
+  !! Test normal calculation
+  !!
+@Test(cases = [11, 12, 21, 22, 31, 32])
+  subroutine testNormal(this)
+    class(test_truncHexagon), intent(inout) :: this
+    integer(shortInt)                       :: ax, p1, p2
+    real(defReal), dimension(3)             :: r, u, n
+    real(defReal), parameter :: TOL = 1.0E-7
+    
+    ! Get axis and different planar directions
+    ax = this % axis
+    p1 = this % plane(1)
+    p2 = this % plane(2)
+
+    u = [8.0_defReal, -42.0_defReal, 13.1_defReal]
+
+    ! Test on different hex faces
+    r(p1) = -TWO
+    r(p2) = TWO
+    r(ax) = TWO
+
+    n = this % surf % normal(r, u)
+    @assertEqual(-ONE, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+    
+    r(p1) = 4.0_defReal
+    r(p2) = TWO
+    r(ax) = TWO
+
+    n = this % surf % normal(r, u)
+    @assertEqual(ONE, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    r(p1) = TWO
+    r(p2) = TWO + 5.0_defReal/sqrt(3.0_defReal)
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(HALF, n(p1), TOL)
+    @assertEqual(sqrt(3.0_defReal)*HALF, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    r(p1) = ZERO
+    r(p2) = TWO - 5.0_defReal/sqrt(3.0_defReal)
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(-HALF, n(p1), TOL)
+    @assertEqual(-sqrt(3.0_defReal)*HALF, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    ! Put on corners
+    r(p1) = ONE
+    r(p2) = TWO + TWO * sqrt(3.0_defReal)
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ONE, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+    
+    r(p1) = ONE
+    r(p2) = TWO - TWO * sqrt(3.0_defReal)
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(-ONE, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+
+    r(p1) = -TWO
+    r(p2) = TWO - sqrt(3.0_defReal)
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(-sqrt(3.0_defReal) * HALF, n(p1), TOL)
+    @assertEqual(-HALF, n(p2), TOL)
+    @assertEqual(ZERO, n(ax), TOL)
+    
+    ! Put on the top and bottom planes
+    r(p1) = ONE
+    r(p2) = TWO
+    r(ax) = 7.0_defReal
+    
+    n = this % surf % normal(r, u)
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(ONE, n(ax), TOL)
+    
+    r(ax) = -3.0_defReal
+    n = this % surf % normal(r, u)
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(-ONE, n(ax), TOL)
+    
+  end subroutine testNormal
+
 end module truncHexagon_test
