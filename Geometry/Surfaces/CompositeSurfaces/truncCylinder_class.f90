@@ -16,7 +16,7 @@ module truncCylinder_class
   !!
   !! r -> position; o -> origin; R -> radius; a-> halfwidth
   !! 1,2 -> planar axis, 3-> cylinder axis
-  !! Denominator 2*R is required for consistant surface tolerance thickness
+  !! Denominator 2*R is required for consistent surface tolerance thickness
   !!
   !! Three diffrent types are avaliable
   !!   xTruncCylinder -> aligned with X-axis

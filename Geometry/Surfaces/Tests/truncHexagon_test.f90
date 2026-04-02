@@ -1,8 +1,8 @@
-module hexagon_test
+module truncHexagon_test
   use numPrecision
   use universalVariables
-  use dictionary_class,  only : dictionary
-  use hexagon_class,     only : hexagon
+  use dictionary_class,   only : dictionary
+  use truncHexagon_class, only : truncHexagon
   use funit
 
   implicit none
@@ -19,17 +19,17 @@ module hexagon_test
   end type hexParam
 
   !!
-  !! Hexagon Test case
+  !! Truncated Hexagon Test case
   !!
   @TestCase(constructor=newTestCase)
-    type, extends(ParameterizedTestCase) :: test_hexagon
+    type, extends(ParameterizedTestCase) :: test_truncHexagon
       integer(shortInt)               :: axis
       integer(shortInt), dimension(2) :: plane
       integer(shortInt)               :: orient
-      type(hexagon)                   :: surf
+      type(truncHexagon)              :: surf
     contains
       procedure :: tearDown
-    end type test_hexagon
+    end type test_truncHexagon
 
 contains
 
@@ -54,11 +54,11 @@ contains
 
      select case(this % dir)
        case(X_AXIS)
-         string = 'xHexagon'
+         string = 'xTruncHexagon'
        case(Y_AXIS)
-         string = 'yHexagon'
+         string = 'yTruncHexagon'
        case(Z_AXIS)
-         string = 'zHexagon'
+         string = 'zTruncHexagon'
        case default
          string ="Unknown"
       end select
@@ -71,16 +71,17 @@ contains
   !!            axis p1   p2
   !! Origin     2.0, 1.0, 2.0
   !! Halfwidth            3
+  !! Halfheight 5.0
   !! Orientation          1
   !! ID 75
   !!
   function newTestCase(param) result(tst)
     type(hexParam), intent(in)  :: param
-    type(test_hexagon)          :: tst
+    type(test_truncHexagon)     :: tst
     type(dictionary)            :: dict
     character(nameLen)          :: type
     real(defReal), dimension(3) :: origin
-    real(defReal)               :: hw
+    real(defReal)               :: hw, hh
     integer(shortInt)           :: orient
 
     ! Select type of squareCylinder and axis
@@ -93,7 +94,7 @@ contains
         else
           tst % plane = [Z_AXIS, Y_AXIS]
         end if
-        type = 'xHexagon'
+        type = 'xTruncHexagon'
 
       case(Y_AXIS)
         tst % axis = Y_AXIS
@@ -102,7 +103,7 @@ contains
         else
           tst % plane = [Z_AXIS, X_AXIS]
         end if
-        type = 'yHexagon'
+        type = 'yTruncHexagon'
 
       case(Z_AXIS)
         tst % axis = Z_AXIS
@@ -111,7 +112,7 @@ contains
         else
           tst % plane = [Y_AXIS, X_AXIS]
         end if
-        type = 'zHexagon'
+        type = 'zTruncHexagon'
 
       case default
         print *, "Should not happen. Wrong direction in testcase constructor"
@@ -120,18 +121,20 @@ contains
     end select
 
     ! Set origin, halfwidth and orientation
-    origin = TWO
     origin(tst % plane(1)) = ONE
     origin(tst % plane(2)) = TWO
+    origin(tst % axis) = TWO
 
     hw = 3.0_defReal
+    hh = 5.0_defReal
 
     ! Build surface
-    call dict % init(5)
+    call dict % init(6)
     call dict % store('id', 75)
     call dict % store('type', type)
     call dict % store('origin', origin)
     call dict % store('halfwidth', hw)
+    call dict % store('halfheight', hh)
     call dict % store('orientation', orient)
     call tst % surf % init(dict)
 
@@ -141,7 +144,7 @@ contains
   !! Deconstruct the test case
   !!
   subroutine tearDown(this)
-    class(test_hexagon), intent(inout) :: this
+    class(test_truncHexagon), intent(inout) :: this
 
     call this % surf % kill()
 
@@ -174,10 +177,10 @@ contains
   !!
 @Test(cases = [11, 12, 21, 22, 31, 32])
   subroutine testMisc(this)
-    class(test_hexagon), intent(inout) :: this
-    real(defReal), dimension(6) :: aabb, ref
-    character(nameLen)          :: name
-    real(defReal), parameter    :: TOL = 1.0E-6_defReal
+    class(test_truncHexagon), intent(inout) :: this
+    real(defReal), dimension(6)             :: aabb, ref
+    character(nameLen)                      :: name
+    real(defReal), parameter                :: TOL = 1.0E-6_defReal
 
     ! Test ID
     @assertEqual(75, this % surf % id())
@@ -189,11 +192,11 @@ contains
     ! Name
     select case(this % axis)
       case(X_AXIS)
-        name = 'xHexagon'
+        name = 'xTruncHexagon'
       case(Y_AXIS)
-        name = 'yHexagon'
+        name = 'yTruncHexagon'
       case(Z_AXIS)
-        name = 'zHexagon'
+        name = 'zTruncHexagon'
     end select
     @assertEqual(name, this % surf % myType())
 
@@ -201,10 +204,12 @@ contains
     ! For orientation 1, span along x is 2 * halfwidth.
     ! Span along y is 2/sqrt(3) * halfwidth
     ref = [ZERO, ZERO, ZERO, 4.0_defReal, 4.0_defReal, 4.0_defReal]
-    ref(this % plane) = [-2.0_defReal, TWO - TWO/sqrt(3.0_defReal) * 3.0_defReal]
-    ref(this % plane+3) = [4.0_defReal, TWO + TWO/sqrt(3.0_defReal) * 3.0_defReal]
-    ref(this % axis) = -INF
-    ref(this % axis+3) = INF
+    ref(this % plane(1)) = -2.0_defReal
+    ref(this % plane(2)) = TWO - TWO/sqrt(3.0_defReal) * 3.0_defReal
+    ref(this % plane(1)+3) = 4.0_defReal
+    ref(this % plane(2)+3) = TWO + TWO/sqrt(3.0_defReal) * 3.0_defReal
+    ref(this % axis) = -3.0_defReal
+    ref(this % axis+3) = 7.0_defReal
 
     aabb = this % surf % boundingBox()
     @assertEqual(ref, aabb, TOL)
@@ -216,11 +221,11 @@ contains
   !!
 @Test(cases = [11, 12, 21, 22, 31, 32])
   subroutine testBC(this)
-    class(test_hexagon), intent(inout) :: this
-    integer(shortInt), dimension(6)  :: BC
-    integer(shortInt)                :: ax, p1, p2
-    real(defReal), dimension(3)      :: r, u, r_ref, u_ref, n, periodicShift
-    real(defReal), parameter :: TOL = 1.0E-6
+    class(test_truncHexagon), intent(inout) :: this
+    integer(shortInt), dimension(6)         :: BC
+    integer(shortInt)                       :: ax, p1, p2
+    real(defReal), dimension(3)             :: r, u, r_ref, u_ref, n, periodicShift
+    real(defReal), parameter                :: TOL = 1.0E-6
 
     ! Get axis and diffrent planar directions
     ax = this % axis
@@ -256,6 +261,28 @@ contains
     u([ax, p1, p2]) = [ZERO, ONE/TWO, sqrt(3.0_defReal)/TWO]
     r_ref = r
     u_ref = u
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Travelling out the bottom
+    r([ax, p1, p2]) = [-3.0_defReal, 2.0_defReal, 2.0_defReal]
+    u([ax, p1, p2]) = [-ONE, ZERO, ZERO]
+    r_ref = r
+    u_ref = u
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
+    ! Axial reflection test
+    BC(ax) = REFLECTIVE_BC
+    BC(ax + 3) = REFLECTIVE_BC
+    call this % surf % setBC(BC)
+   
+    r([ax, p1, p2]) = [-3.0_defReal, 2.0_defReal, 2.0_defReal]
+    u([ax, p1, p2]) = [-ONE, ZERO, ZERO]
+    r_ref = r
+    u_ref([ax, p1, p2]) = [ONE, ZERO, ZERO]
     call this % surf % explicitBC(r, u)
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)
@@ -315,6 +342,15 @@ contains
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)
 
+    ! Top plane
+    r([ax, p1, p2]) = [7.0_defReal, 2.0_defReal, 2.0_defReal]
+    u([ax, p1, p2]) = [ONE, ZERO, ZERO]
+    r_ref([ax, p1, p2]) = [-3.0_defReal, 2.0_defReal, 2.0_defReal]
+    u_ref([ax, p1, p2]) = [ONE, ZERO, ZERO]
+    call this % surf % explicitBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
     ! Transform BCs
 
     ! Periodic
@@ -332,7 +368,7 @@ contains
 
     ! Try the corner
     ! Shift to the lattice above the point
-    r([ax, p1, p2]) = [ZERO, ONE, TWO + sqrt(3.0_defReal) * 6.0_defReal]
+    r([ax, p1, p2]) = [10.0_defReal, ONE, TWO + sqrt(3.0_defReal) * 6.0_defReal]
     u([ax, p1, p2]) = [ZERO, ONE, -ONE]
     u = u/norm2(u)
 
@@ -345,6 +381,24 @@ contains
     @assertEqual(u_ref, u, TOL)
 
     ! Reflective
+    ! Axial only
+    BC = VACUUM_BC
+    BC(ax) = REFLECTIVE_BC
+    BC(ax + 3) = REFLECTIVE_BC
+    call this % surf % setBC(BC)
+
+    r([ax, p1, p2]) = [-4.0_defReal, TWO, TWO]
+    u([ax, p1, p2]) = [-ONE, ONE, ZERO]
+    u = u/norm2(u)
+
+    r_ref([ax, p1, p2]) = [-TWO, TWO, TWO]
+    u_ref([ax, p1, p2]) = [ONE, ONE, ZERO]
+    u_ref = u_ref/norm2(u_ref)
+
+    call this % surf % transformBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+
     !BC = REFLECTIVE_BC
     !call this % surf % setBC(BC)
 
@@ -397,10 +451,10 @@ contains
   !!
 @Test(cases = [11, 12, 21, 22, 31, 32])
   subroutine testHalfspace(this)
-    class(test_hexagon), intent(inout) :: this
-    integer(shortInt)                         :: ax, p1, p2
-    real(defReal), dimension(3)               :: r, u, u2
-    real(defReal)                             :: eps
+    class(test_truncHexagon), intent(inout) :: this
+    integer(shortInt)                       :: ax, p1, p2
+    real(defReal), dimension(3)             :: r, u, u2
+    real(defReal)                           :: eps
 
     ! Get axis and diffrent planar directions
     ax = this % axis
@@ -422,9 +476,22 @@ contains
     r([p1, p2]) = [-4.0_defReal, 2.0_defReal]
     @assertTrue(this % surf % halfspace(r, u))
 
-    ! Different Quadrant
+    ! Diffrent Quadrant
     r([p1, p2]) = [5.0_defReal, -3.0_defReal]
     @assertTrue(this % surf % halfspace(r, u))
+
+    ! Above the hexagon
+    r([p1, p2]) = [TWO, TWO]
+    r(ax) = 12.0_defReal
+    @assertTrue(this % surf % halfspace(r, u))
+
+    ! Below
+    r(ax) = -10.0_defReal
+    @assertTrue(this % surf % halfspace(r, u))
+
+    ! Back in
+    r(ax) = 2.0_defReal
+    @assertFalse(this % surf % halfspace(r, u))
 
     ! ** Proximity of the surface
     r([p1, p2]) = [-TWO, TWO]
@@ -432,12 +499,11 @@ contains
     u(p1) = -ONE
     @assertTrue(this % surf % halfspace(r, u))
     @assertFalse(this % surf % halfspace(r, -u))
-
+    
     ! Inside within Surface Tolerance
     eps = -HALF * SURF_TOL
     @assertTrue(this % surf % halfspace(r + eps*u, u))
-    @assertFalse(this % surf % halfspace(r + eps*u, -u))
-
+    
     ! A bit above Surface Tolerance
     eps = -1.0001_defReal * SURF_TOL
     @assertFalse(this % surf % halfspace(r + eps*u, u))
@@ -451,6 +517,21 @@ contains
 
     @assertTrue(this % surf % halfspace(r + eps*u, u2))
     @assertTrue(this % surf % halfspace(r - eps*u, u2))
+    
+    ! Crossing the top surface
+    r([ax, p1, p2]) = [7.0_defReal, TWO, TWO]
+    u = ZERO
+    u(ax) = -ONE
+    @assertFalse(this % surf % halfspace(r, u))
+    @assertTrue(this % surf % halfspace(r, -u))
+
+    ! Within surface surface tolerance
+    eps = -HALF * SURF_TOL
+    @assertTrue(this % surf % halfspace(r + eps*u, -u))
+
+    ! A bit above Surface Tolerance
+    eps = 1.00001_defReal * SURF_TOL
+    @assertFalse(this % surf % halfspace(r + eps*u, -u))
 
   end subroutine testHalfspace
 
@@ -459,13 +540,13 @@ contains
   !!
 @Test(cases = [11, 12, 21, 22, 31, 32])
   subroutine testDistance(this)
-    class(test_hexagon), intent(inout) :: this
-    integer(shortInt)                  :: ax, p1, p2
-    real(defReal), dimension(3)        :: r, u
-    real(defReal)                      :: ref
+    class(test_truncHexagon), intent(inout) :: this
+    integer(shortInt)                       :: ax, p1, p2
+    real(defReal), dimension(3)             :: r, u
+    real(defReal)                           :: ref
     real(defReal), parameter :: TOL = 1.0E-7
 
-    ! Get axis and diffrent planar directions
+    ! Get axis and different planar directions
     ax = this % axis
     p1 = this % plane(1)
     p2 = this % plane(2)
@@ -483,6 +564,11 @@ contains
 
     ! Moving away
     @assertEqual(INF, this % surf % distance(r, -u))
+
+    ! Moving straight up
+    u = ZERO
+    u(ax) = ONE
+    @assertEqual(INF, this % surf % distance(r, u))
 
     ! Oblique Hit
     u([ax, p1, p2]) = [ONE, ONE, ONE]
@@ -505,6 +591,12 @@ contains
     u([ax, p1, p2])  = [ZERO, ONE, ZERO]
     u = u/norm2(u)
     @assertEqual(ONE, this % surf % distance(r, u), TOL)
+
+    ! Below, hitting the bottom
+    r([ax, p1, p2]) = [-6.0_defReal, TWO, TWO]
+    u = ZERO
+    u(ax) = ONE
+    @assertEqual(3.0_defReal, this % surf % distance(r, u), TOL)
 
     ! Parallel
     ! Should hit the bottom right slanted surface
@@ -543,6 +635,11 @@ contains
     ref = 0.4_defReal
     @assertEqual(ref, this % surf % distance(r, -u), ref * TOL)
 
+    ! Hitting the top
+    u([ax, p1, p2]) = [ONE, ZERO, ZERO]
+    @assertEqual(7.0_defReal, this % surf % distance(r, u), ref * TOL)
+    @assertEqual(3.0_defReal, this % surf % distance(r, -u), ref * TOL)
+
   end subroutine testDistance
 
-end module hexagon_test
+end module truncHexagon_test

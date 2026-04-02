@@ -1,4 +1,4 @@
-module hexagon_class
+module truncHexagon_class
 
   use numPrecision
   use universalVariables
@@ -14,14 +14,14 @@ module hexagon_class
   real(defReal), parameter :: THREE = 3.0_defReal, SQRT3 = sqrt(3.0_defReal), &
                               TWO_SQRT3 = TWO / sqrt(3.0_defReal), THREE_TWO = 1.5_defReal
   !!
-  !! Hexagon aligned with x, y or z axis.
+  !! Finite-height hexagon aligned with x, y or z axis.
   !! The hexagon can also be oriented either to have the point or flat
   !! aligning with the first of the remaining two axis.
   !!
   !! Three different axis types are avaliable
-  !!   xHexagon -> parallel with X-axis
-  !!   yHexagon -> parallel with Y-axis
-  !!   zHexagon -> parallel with Z-axis
+  !!   xTruncHexagon -> parallel with X-axis
+  !!   yTruncHexagon -> parallel with Y-axis
+  !!   zTruncHexagon -> parallel with Z-axis
   !!
   !! One can then specify the orientation to be type 1 or 2.
   !! Type 1 has the flat surface perpendicular to the first of the two axis in the plane
@@ -30,24 +30,27 @@ module hexagon_class
   !! Surface Tolerance: SURF_TOL
   !!
   !! Sample Dictionary Input:
-  !!   x { type xHexagon; id 92; orientation 1; origin (0.0 0.0 9.0); halfwidth 7;}
-  !!   y { type yHexagon; id 94; orientation 2; origin (0.0 0.0 9.0); halfwidth 3;}
+  !!   x { type xTruncHexagon; id 92; orientation 1; origin (0.0 0.0 9.0); halfwidth 7; halfheight 7;}
+  !!   y { type yTruncHexagon; id 94; orientation 2; origin (0.0 0.0 9.0); halfwidth 3; halfheight 5;}
   !!
   !! Origin entry in axis along the cylinder direction is ignored.
-  !! Halfwidth is the flat-to-flat distance.
+  !! Halfwidth is half the flat-to-flat distance.
+  !! Halfheight is half the top-to-bottom distance.
   !!
   !! Boundary Conditions:
-  !!   Only a single BC value.
+  !!   Only a single BC value within the hexagon plane.
+  !!   Any BC can be used along the axial direction.
   !!
-  !!   For now, each face must have the same BC. Supports either periodic or vacuum BCs.
+  !!   For now, each radial face must have the same BC. Supports either periodic or vacuum BCs.
   !!   TODO: add reflective transform BCs.
   !!
   !! Private Members:
   !!   origin      -> position of the middle of the hexagon
   !!   halfwidth   -> Halfwidth of the hexagon from one flat to the opposite. Same in all directions
-  !!   BC          -> Boundary conditions flag for all faces in the plane
+  !!   halfheight  -> Halfheight of the hexagon from the top to the bottom.
+  !!   BC          -> Boundary conditions flag for all faces in the plane and on the top and bottom.
   !!   plane       -> Indices of the axis, which are the plane of the cylinder
-  !!                  (e.g. for xHexagon, y-z)
+  !!                  (e.g. for xTruncHexagon, y-z)
   !!   axis        -> Index of the axis of the plane
   !!   flatAxis    -> Index into plane, deciding which plane axis has the flat of the hexagon
   !!   pointAxis   -> Index into plane, deciding which plane axis has the point of the hexagon
@@ -56,11 +59,12 @@ module hexagon_class
   !! Interface:
   !!   surface interface
   !!
-  type, public, extends(surface) :: hexagon
+  type, public, extends(surface) :: truncHexagon
     private
-    real(defReal), dimension(2)     :: origin    = ZERO
-    real(defReal)                   :: halfwidth = ZERO
-    integer(shortInt)               :: BC = VACUUM_BC
+    real(defReal), dimension(3)     :: origin     = ZERO
+    real(defReal)                   :: halfwidth  = ZERO
+    real(defReal)                   :: halfheight = ZERO
+    integer(shortInt), dimension(3) :: BC = VACUUM_BC
     integer(shortInt), dimension(2) :: plane = 0
     integer(shortInt)               :: axis  = 0
     integer(shortInt)               :: flatAxis = 0
@@ -80,7 +84,7 @@ module hexagon_class
     procedure :: setBC
     procedure :: explicitBC
     procedure :: transformBC
-  end type hexagon
+  end type truncHexagon
 
 
 contains
@@ -91,29 +95,29 @@ contains
   !! See surface_inter for more details
   !!
   pure function myType(self) result(str)
-    class(hexagon), intent(in) :: self
-    character(:), allocatable  :: str
-    character(100), parameter  :: Here = 'myType (hexagon_class.f90)'
+    class(truncHexagon), intent(in) :: self
+    character(:), allocatable       :: str
+    character(100), parameter       :: Here = 'myType (truncHexagon_class.f90)'
 
     select case (self % axis)
       case (X_AXIS)
-        str = 'xHexagon'
+        str = 'xTruncHexagon'
 
       case (Y_AXIS)
-        str = 'yHexagon'
+        str = 'yTruncHexagon'
 
       case (Z_AXIS)
-        str = 'zHexagon'
+        str = 'zTruncHexagon'
 
       case default
-        str = 'Unknown hexagon'
+        str = 'Unknown truncated hexagon'
 
     end select
 
   end function myType
 
   !!
-  !! Initialise hexagon from a dictionary
+  !! Initialise truncated hexagon from a dictionary
   !!
   !! See surface_inter for more details
   !!
@@ -122,13 +126,13 @@ contains
   !!  fatalError for unrecognised oritnetation
   !!
   subroutine init(self, dict)
-    class(hexagon), intent(inout)            :: self
+    class(truncHexagon), intent(inout)       :: self
     class(dictionary), intent(in)            :: dict
     integer(shortInt)                        :: id, N, i, orient
     real(defReal), dimension(:), allocatable :: temp
     character(nameLen)                       :: type
     real(defReal), dimension(6)              :: angles
-    character(100), parameter :: Here = 'init (hexagon_class.f90)'
+    character(100), parameter :: Here = 'init (truncHexagon_class.f90)'
 
     ! Load id
     call dict % get(id,'id')
@@ -138,20 +142,20 @@ contains
     ! Select type
     call dict % get(type,'type')
     select case(type)
-      case('xHexagon')
+      case('xTruncHexagon')
         self % axis = X_AXIS
         self % plane = [Y_AXIS, Z_AXIS]
 
-      case('yHexagon')
+      case('yTruncHexagon')
         self % axis = Y_AXIS
         self % plane = [X_AXIS, Z_AXIS]
 
-      case('zHexagon')
+      case('zTruncHexagon')
         self % axis = Z_AXIS
         self % plane = [X_AXIS, Y_AXIS]
 
       case default
-        call fatalError(Here, 'Unknown type of hexagon: '//type)
+        call fatalError(Here, 'Unknown type of truncated hexagon: '//type)
 
     end select
     
@@ -159,11 +163,15 @@ contains
     call dict % get(temp,'origin')
     N = size(temp)
     if (N /= 3) call fatalError(Here,'origin must have size 3. Has: '//numToChar(N))
-    self % origin = temp(self % plane)
+    self % origin = temp
 
     ! Load halfwidth
     call dict % get(self % halfwidth,'halfwidth')
     if (self % halfwidth <= ZERO) call fatalError(Here, 'halfwidth cannot have a zero/-ve value.')
+
+    ! Load halfheight
+    call dict % get(self % halfheight,'halfheight')
+    if (self % halfheight <= ZERO) call fatalError(Here, 'halfheight cannot have a zero/-ve value.')
 
     ! Get orientation
     call dict % get(orient, 'orientation')
@@ -182,25 +190,26 @@ contains
     end if
     self % verts(:,1) = TWO_SQRT3 * self % halfwidth * cos(angles)
     self % verts(:,2) = TWO_SQRT3 * self % halfwidth * sin(angles)
-    
+
   end subroutine init
 
   !!
-  !! Return axis-aligned bounding squareCylinder for the surface
+  !! Return axis-aligned bounding box for the surface
   !!
   !! See surface_inter for details
   !!
   pure function boundingBox(self) result(aabb)
-    class(hexagon), intent(in)  :: self
-    real(defReal), dimension(6) :: aabb
-    real(defReal)               :: originF, originP
-    integer(shortInt)           :: f, p
+    class(truncHexagon), intent(in)  :: self
+    real(defReal), dimension(6)      :: aabb
+    real(defReal)                    :: originF, originP, originA
+    integer(shortInt)                :: f, p
 
     ! Two of the planes will be parallel to either the first or second axis in the plane
     f = self % plane(self % flatAxis)
     p = self % plane(self % pointAxis)
-    originF = self % origin(self % flatAxis)
-    originP = self % origin(self % pointAxis)
+    originF = self % origin(f)
+    originP = self % origin(p)
+    originA = self % origin(self % axis)
 
     aabb(f)     = originF - self % halfwidth
     aabb(f + 3) = originF + self % halfwidth
@@ -209,8 +218,8 @@ contains
     aabb(p)     = originP - self % halfwidth * TWO_SQRT3
     aabb(p + 3) = originP + self % halfwidth * TWO_SQRT3
 
-    aabb(self % axis)      = -INF
-    aabb(self % axis + 3)  = INF
+    aabb(self % axis)      = originA - self % halfheight
+    aabb(self % axis + 3)  = originA + self % halfheight
 
   end function boundingBox
 
@@ -220,20 +229,22 @@ contains
   !! See surface_inter for details
   !!
   pure function evaluate(self, r) result(c)
-    class(hexagon), intent(in)              :: self
+    class(truncHexagon), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
-    real(defReal), dimension(2)             :: rb
-    real(defReal)                           :: p, q
+    real(defReal), dimension(3)             :: rb
+    real(defReal)                           :: p, q, z
 
     ! Move to origin-frame and evaluate
-    rb = abs(r(self % plane) - self % origin)
+    rb = abs(r - self % origin)
     
-    p = rb(self % flatAxis)
-    q = rb(self % pointAxis)
+    p = rb(self % plane(self % flatAxis))
+    q = rb(self % plane(self % pointAxis))
+    z = rb(self % axis)
 
     c = max(p - self % halfwidth, &
-            (p + SQRT3 * q) * HALF - self % halfwidth)
+            (p + SQRT3 * q) * HALF - self % halfwidth, &
+            z - self % halfheight)
 
   end function evaluate
 
@@ -243,18 +254,18 @@ contains
   !! See surface_inter for details
   !!
   pure function distance(self, r, u) result(d)
-    class(hexagon), intent(in)              :: self
+    class(truncHexagon), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal)                           :: d
     real(defReal), dimension(2)             :: rl, ul, a1, a2, e, n
-    real(defReal)                           :: far, near, uProj, rProj, &
+    real(defReal)                           :: far, near, uProj, rProj, rz, &
                                                a_near, a_far, test_near, test_far
     integer(shortInt)                       :: i
     real(defReal), parameter :: FP_MISS_TOL = ONE + 10.0_defReal * epsilon(ONE)
 
     ! Get position and direction in the plane and centre
-    rl = r(self % plane) - self % origin
+    rl = r(self % plane) - self % origin(self % plane)
     ul = u(self % plane)
 
     ! Initialise intersection set
@@ -294,6 +305,25 @@ contains
       near = max(near, test_near)
 
     end do
+
+    ! Also check axial distances
+    rz = r(self % axis) - self % origin(self % axis)
+    if (u(self % axis) /= ZERO) then
+      test_near = (-self % halfheight - rz) / u(self % axis)
+      test_far = (self % halfheight - rz) / u(self % axis)
+
+    else
+      test_near = sign(INF, (-self % halfheight - rz))
+      test_far = sign(INF, (self % halfheight - rz))
+
+    end if
+    
+    ! Ensure correct order for any orientation
+    if (test_far < test_near) call swap(test_far, test_near)
+
+    ! Get intersection
+    far = min(far, test_far)
+    near = max(near, test_near)
 
     ! Choose correct distance for different cases
     if (far <= near * FP_MISS_TOL) then ! There is no intersection
@@ -337,16 +367,16 @@ contains
   !!   For parallel direction halfspace is assigned by the sign of `evaluate` result.
   !!
   pure function going(self, r, u) result(halfspace)
-    class(hexagon), intent(in)              :: self
+    class(truncHexagon), intent(in)              :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     logical(defBool)                        :: halfspace
     real(defReal), dimension(2)             :: rl, ul, e, n, nTrial
-    real(defReal)                           :: d, dist, proj
+    real(defReal)                           :: d, dist, proj, rz
     integer(shortInt)                       :: i
 
     ! Get position in the plane & direction
-    rl = r(self % plane) - self % origin
+    rl = r(self % plane) - self % origin(self % plane)
     ul = u(self % plane)
 
     ! Which set of planes is being crossed?
@@ -357,7 +387,7 @@ contains
       e = self % verts(i+1, :) - self % verts(i, :)
       nTrial = [e(2), -e(1)]
       nTrial = nTrial /norm2(nTrial)
-      dist = abs(dot_product(rl,nTrial))
+      dist = abs(dot_product(rl,nTrial)) - self % halfwidth
 
       if (dist > d) then
         d = dist
@@ -368,6 +398,13 @@ contains
 
     n = n * sign(ONE, rl*n)
     proj = dot_product(ul, n)
+
+    ! Also check axial direction
+    rz = abs(r(self % axis) - self % origin(self % axis))
+    dist = rz - self % halfheight
+    if (dist > d) then
+      proj = rz * u(self % axis)
+    end if
 
     halfspace = proj > ZERO
 
@@ -385,28 +422,29 @@ contains
   !! See surface_inter for details
   !!
   pure function normal(self, r, u) result(n)
-    class(hexagon), intent(in)              :: self
+    class(truncHexagon), intent(in)         :: self
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
     real(defReal), dimension(3)             :: n
     real(defReal), dimension(2)             :: rl, e, nTrial, nBest
-    real(defReal)                           :: d, dist
+    real(defReal)                           :: d, dist, rz
     integer(shortInt)                       :: i
+    real(defReal), dimension(3)             :: n0
     
     ! Get position in the plane & direction
-    rl = r(self % plane) - self % origin
+    rl = r(self % plane) - self % origin(self % plane)
 
     ! Which set of planes is being crossed?
-    d = -ONE
+    d = INF
     do i = 1,3
     
       ! Get plane normal
       e = self % verts(i+1, :) - self % verts(i, :)
       nTrial = [e(2), -e(1)]
       nTrial = nTrial /norm2(nTrial)
-      dist = abs(dot_product(rl,nTrial))
+      dist = abs(dot_product(rl,nTrial)) - self % halfwidth
 
-      if (dist > d) then
+      if (dist < d) then
         d = dist
         nBest = nTrial
 
@@ -421,13 +459,26 @@ contains
     n(self % plane) = nBest * sign(ONE, rl * nBest)
     n(self % axis) = ZERO
 
+    ! Also check axial planes
+    rz = r(self % axis) - self % origin(self % axis)
+    if ((abs(rz) - self % halfheight) < d) then
+      n = ZERO
+      n(self % axis) = sign(ONE, rz)
+    elseif (abs(rz) - self % halfheight == d) then
+      ! Catch corners
+      n0 = ZERO
+      n0(self % axis) = sign(ONE, rz)
+      n = n + n0
+      n = n /norm2(n)
+    end if
+
   end function normal
 
   !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(hexagon), intent(inout) :: self
+    class(truncHexagon), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -435,10 +486,12 @@ contains
     ! Local
     self % origin      = ZERO
     self % halfwidth   = ZERO
+    self % halfheight  = ZERO
     self % BC          = VACUUM_BC
     self % plane       = 0
     self % flatAxis    = 0
     self % pointAxis   = 0
+    self % axis        = 0
     self % verts       = ZERO
 
   end subroutine kill
@@ -449,29 +502,47 @@ contains
   !! See surface_inter for details
   !!
   subroutine setBC(self, BC)
-    class(hexagon), intent(inout)               :: self
+    class(truncHexagon), intent(inout)          :: self
     integer(shortInt), dimension(:), intent(in) :: BC
+    integer(shortInt)                           :: i
     character(100),parameter                    :: Here = 'setBC (hexagon_class.f90)'
 
-    if(size(BC) /= 6) call fatalError(Here, 'Wrong size of BC string. Must be 6')
-    if(all(BC /= BC(1))) call fatalError(Here, 'All BCs must be identical')
+    if(size(BC) /= 6) call fatalError(Here, 'Wrong size of BC string. Must be 6.')
+    if(any(BC(self % plane) /= BC(self % plane + 3))) call fatalError(Here, 'BCs in the plane must be the same.')
+    if((BC(self % axis) == PERIODIC_BC .and. BC(self % axis + 3) /= PERIODIC_BC) .or. &
+       (BC(self % axis) /= PERIODIC_BC .and. BC(self % axis + 3) == PERIODIC_BC)) then
+      call fatalError(Here,'Must have matching periodic boundary conditions in the axial direction')
+    end if
 
     ! Load BC codes
-    self % BC = BC(1)
+    self % BC(1) = BC(self % plane(1))
+    self % BC(2) = BC(self % axis)
+    self % BC(3) = BC(self % axis+3)
 
     ! Verify that all BC flags make sense
-    select case(self % BC)
+    select case(self % BC(1))
       case (VACUUM_BC, PERIODIC_BC)
           ! Do nothing, pass
 
       ! Reflective not fully supported
       ! TODO: Implement transform reflective BCs
       case (REFLECTIVE_BC)
-        call fatalError(Here,'Reflective boundaries not supported.')
+        call fatalError(Here,'Reflective boundaries not supported in the plane.')
       case default
         call fatalError(Here,'Unrecognised BC: '//numToChar(BC))
 
     end select
+    
+    do i = 2,3
+      select case(self % BC(i))
+        case (VACUUM_BC, PERIODIC_BC, REFLECTIVE_BC)
+            ! Do nothing, pass
+
+        case default
+          call fatalError(Here,'Unrecognised BC: '//numToChar(BC))
+
+      end select
+    end do
 
   end subroutine setBC
 
@@ -485,16 +556,16 @@ contains
   !!   - The periodic shift in a corner is decided by the particle direction
   !!
   subroutine explicitBC(self, r, u)
-    class(hexagon), intent(in)                 :: self
+    class(truncHexagon), intent(in)            :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
-    integer(shortInt)                          :: i, iPlane
-    real(defReal)                              :: dist, proj, maxProj
+    integer(shortInt)                          :: i, iPlane, bc
+    real(defReal)                              :: dist, proj, maxProj, rz
     real(defReal), dimension(2)                :: rl, e, v1, v2, n, nBest
-    character(100), parameter :: Here = 'explicitBC (hexagon_class.f90)'
+    character(100), parameter :: Here = 'explicitBC (truncHexagon_class.f90)'
 
     ! Get position in the plane & direction
-    rl = r(self % plane) - self % origin
+    rl = r(self % plane) - self % origin(self % plane)
 
     maxProj = -INF
     iPlane = 0
@@ -528,9 +599,22 @@ contains
       end if
     end do
 
+    ! Check the other axis
+    rz = r(self % axis) - self % origin(self % axis)
+    if (abs(rz) >= self % halfheight - self % surfTol()) then
+
+      proj = u(self % axis) * sign(ONE, rz)
+
+      if (proj > maxProj) then
+        maxProj = proj
+        iPlane = -1
+      end if
+    end if
+
     ! Apply the BC only once, using the physically correct face
+    ! Hits the hexagon planes
     if (iPlane > 0) then
-      select case(self % BC)
+      select case(self % BC(1))
         case (PERIODIC_BC)
           r(self % plane) = r(self % plane) - TWO * self % halfwidth * nBest
 
@@ -543,9 +627,35 @@ contains
           ! Do nothing
 
         case default
-          call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC))
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC(1)))
       end select
+
+    ! Hits the top/bottom planes
+    elseif (iPlane == -1) then
+      ! Top or bottom?
+      if (rz > 0) then
+        bc = self % BC(3)
+      else
+        bc = self % BC(2)
+      end if
+
+      select case(bc)
+        case (PERIODIC_BC)
+          r(self % axis) = r(self % axis) - TWO * self % halfheight * sign(ONE, rz)
+
+        case (REFLECTIVE_BC)
+          u(self % axis) = u(self % axis) - TWO * u(self % axis)
+
+        case (VACUUM_BC)
+          ! Do nothing
+
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(bc))
+      end select
+
     end if
+
+    ! Otherwise, no surface was hit and BCs are not applied
 
   end subroutine explicitBC
 
@@ -559,24 +669,25 @@ contains
   !!   - Calculate distance (in # of transformations) for each direction and apply them
   !!
   subroutine transformBC(self, r, u)
-    class(hexagon), intent(in)                 :: self
+    class(truncHexagon), intent(in)            :: self
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     real(defReal), dimension(2)                :: rl
     integer(shortInt), dimension(2)            :: latShift
     real(defReal), dimension(2,2)              :: Ainv
-    real(defReal)                              :: invDet
+    real(defReal)                              :: invDet, a_bar, a0, d, r0
     real(defReal), dimension(2)                :: latCoord, a1, a2
-    character(100), parameter :: Here = 'transformBC (hexagon_class.f90)'
+    integer(shortInt)                          :: Ri, t, bc, ax
+    character(100), parameter :: Here = 'transformBC (truncHexagon_class.f90)'
 
-    ! Apply BC
-    select case(self % BC)
+    ! Apply BC in the hexagon plane
+    select case(self % BC(1))
       case (VACUUM_BC)
         ! Do nothing. Pass
 
       case (PERIODIC_BC)
 
-        rl = r(self % plane) - self % origin
+        rl = r(self % plane) - self % origin(self % plane)
         ! Define the lattice basis vectors 
         ! For a flat-to-flat distance of 2H, the distance between centers 
         ! of adjacent hexagons is SQRT(3) * H along the flat-axis.
@@ -603,7 +714,7 @@ contains
 
         rl = rl - (real(latShift(1), defReal) * a1 + real(latShift(2), defReal) * a2)
 
-        r(self % plane) = rl + self % origin
+        r(self % plane) = rl + self % origin(self % plane)
       
       ! This should never be called at present!
       case (REFLECTIVE_BC)
@@ -611,7 +722,51 @@ contains
       case default
         call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC))
     end select
+
+    ! Apply BC in the axial direction
+    ! Calculate halfwidth reduced by the surface_tolerance
+    ! Necessary to capture particles at the boundary
+    a_bar = self % halfheight - self % surfTol()
+
+    ! Calculate distance (in # of transformations) in axial direction
+    ax = self % axis
+    Ri = ceiling(abs(r(self % axis) - self % origin(ax)) / a_bar) / 2
+
+    trans : do t = 1, Ri
+      ! Find position wrt origin
+      r0 = r(ax) - self % origin(ax)
+
+      ! Choose correct BC
+      if (r0 < ZERO) then
+        bc = self % BC(2)
+      else
+        bc = self % BC(3)
+      end if
+
+      ! Apply BC
+      select case(bc)
+        case (VACUUM_BC)
+          ! Do nothing. Pass
+
+        case (REFLECTIVE_BC)
+          ! Find position of the plane
+          a0 = sign(self % halfheight, r0) + self % origin(ax)
+
+          ! Calculate displacment and perform reflection
+          d = r(ax) - a0
+          r(ax) = r(ax) - TWO * d
+          u(ax) = -u(ax)
+
+        case (PERIODIC_BC)
+          ! Calculate displacement and perform translation
+          d = sign(self % halfheight, r0)
+          r(ax) = r(ax) - TWO * d
+
+        case default
+          call fatalError(Here, 'Unrecognised BC: '// numToChar(bc))
+      end select
+    end do trans
     
   end subroutine transformBC
 
-end module hexagon_class
+end module truncHexagon_class
