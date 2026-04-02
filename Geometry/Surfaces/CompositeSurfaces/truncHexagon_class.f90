@@ -447,12 +447,10 @@ contains
       ! Select normal from the face which is most violated
       if (dist > d + self % surfTol()) then
         d = dist
-        !nBest = nTrial * sign(ONE, rl * nTrial)
         nBest = nTrial * dot_product(rl, nTrial)
       
       ! Catch corners
       else if (abs(dist - d) < self % surfTol()) then
-        !nBest = nBest + nTrial * sign(ONE, rl * nTrial)
         nBest = nBest + nTrial * dot_product(rl, nTrial)
       end if
 

@@ -598,6 +598,10 @@ contains
     u(ax) = ONE
     @assertEqual(3.0_defReal, this % surf % distance(r, u), TOL)
 
+    ! And missing the bottom
+    u(ax) = -ONE
+    @assertEqual(INF, this % surf % distance(r, u), TOL)
+
     ! Parallel
     ! Should hit the bottom right slanted surface
     r([ax, p1, p2]) = [ZERO, -TWO, TWO - HALF * sqrt(3.0_defReal)]
@@ -730,6 +734,13 @@ contains
     @assertEqual(ONE, n(ax), TOL)
     
     r(ax) = -3.0_defReal
+    n = this % surf % normal(r, u)
+    @assertEqual(ZERO, n(p1), TOL)
+    @assertEqual(ZERO, n(p2), TOL)
+    @assertEqual(-ONE, n(ax), TOL)
+
+    ! And way below the bottom plane
+    r(ax) = -30.0_defReal
     n = this % surf % normal(r, u)
     @assertEqual(ZERO, n(p1), TOL)
     @assertEqual(ZERO, n(p2), TOL)
