@@ -563,10 +563,11 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     real(defReal), dimension(2)                :: rl
-    integer(shortInt), dimension(2)            :: latShift
+    integer(shortInt), dimension(2)            :: baseShift, latShift
     real(defReal), dimension(2,2)              :: Ainv
-    real(defReal)                              :: invDet
-    real(defReal), dimension(2)                :: latCoord, a1, a2
+    real(defReal)                              :: invDet, dist2, minDist2
+    real(defReal), dimension(2)                :: latCoord, a1, a2, centre
+    integer(shortInt)                          :: i, j
     character(100), parameter :: Here = 'transformBC (hexagon_class.f90)'
 
     ! Apply BC
@@ -599,9 +600,31 @@ contains
 
         ! Convert to lattice coordinates
         latCoord = matmul(Ainv, rl)
-        latShift = nint(latCoord)
+        baseShift = nint(latCoord)
 
-        rl = rl - (real(latShift(1), defReal) * a1 + real(latShift(2), defReal) * a2)
+        ! We check a 3x3 local grid of lattice points around our guess
+        ! to see which center is strictly closest in Cartesian space.
+        minDist2 = INF
+        latShift = baseShift
+
+        do i = baseShift(1) - 1, baseShift(1) + 1
+          do j = baseShift(2) - 1, baseShift(2) + 1
+
+            ! Calculate Cartesian position of this neighboring lattice center
+            centre = i * a1 + j * a2
+
+            ! Squared distance from particle to this lattice center
+            dist2 = sum((rl - centre)**2)
+
+            if (dist2 < minDist2) then
+              minDist2 = dist2
+              latShift = [i, j]
+            end if
+
+          end do
+        end do
+
+        rl = rl - latShift(1) * a1 - latShift(2) * a2
 
         r(self % plane) = rl + self % origin
       

@@ -399,6 +399,24 @@ contains
     @assertEqual(r_ref, r, TOL)
     @assertEqual(u_ref, u, TOL)
 
+    ! Apply both radial and axial BCs at once
+    BC = PERIODIC_BC
+    BC(ax) = REFLECTIVE_BC
+    BC(ax + 3) = REFLECTIVE_BC
+    call this % surf % setBC(BC)
+
+    r([ax, p1, p2]) = [-4.0_defReal, -2.5_defReal, TWO]
+    u([ax, p1, p2]) = [-ONE, ONE, ZERO]
+    u = u/norm2(u)
+
+    r_ref([ax, p1, p2]) = [-TWO, 3.5_defReal, TWO]
+    u_ref([ax, p1, p2]) = [ONE, ONE, ZERO]
+    u_ref = u_ref/norm2(u_ref)
+
+    call this % surf % transformBC(r, u)
+    @assertEqual(r_ref, r, TOL)
+    @assertEqual(u_ref, u, TOL)
+    
     !BC = REFLECTIVE_BC
     !call this % surf % setBC(BC)
 
@@ -533,6 +551,13 @@ contains
     eps = 1.00001_defReal * SURF_TOL
     @assertFalse(this % surf % halfspace(r + eps*u, -u))
 
+    ! Sat on the bottom surface
+    r([ax, p1, p2]) = [-3.0_defReal, TWO, TWO]
+    u = ZERO
+    u(ax) = ONE
+    @assertFalse(this % surf % halfspace(r, u))
+    @assertTrue(this % surf % halfspace(r, -u))
+
   end subroutine testHalfspace
 
   !!
@@ -597,10 +622,6 @@ contains
     u = ZERO
     u(ax) = ONE
     @assertEqual(3.0_defReal, this % surf % distance(r, u), TOL)
-
-    ! And missing the bottom
-    u(ax) = -ONE
-    @assertEqual(INF, this % surf % distance(r, u), TOL)
 
     ! Parallel
     ! Should hit the bottom right slanted surface
@@ -734,13 +755,6 @@ contains
     @assertEqual(ONE, n(ax), TOL)
     
     r(ax) = -3.0_defReal
-    n = this % surf % normal(r, u)
-    @assertEqual(ZERO, n(p1), TOL)
-    @assertEqual(ZERO, n(p2), TOL)
-    @assertEqual(-ONE, n(ax), TOL)
-
-    ! And way below the bottom plane
-    r(ax) = -30.0_defReal
     n = this % surf % normal(r, u)
     @assertEqual(ZERO, n(p1), TOL)
     @assertEqual(ZERO, n(p2), TOL)

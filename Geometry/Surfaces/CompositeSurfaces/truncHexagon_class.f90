@@ -403,7 +403,7 @@ contains
     rz = abs(r(self % axis) - self % origin(self % axis))
     dist = rz - self % halfheight
     if (dist > d) then
-      proj = rz * u(self % axis)
+      proj = (r(self % axis) - self % origin(self % axis)) * u(self % axis)
     end if
 
     halfspace = proj > ZERO
@@ -447,10 +447,12 @@ contains
       ! Select normal from the face which is most violated
       if (dist > d + self % surfTol()) then
         d = dist
+        !nBest = nTrial * sign(ONE, rl * nTrial)
         nBest = nTrial * dot_product(rl, nTrial)
       
       ! Catch corners
       else if (abs(dist - d) < self % surfTol()) then
+        !nBest = nBest + nTrial * sign(ONE, rl * nTrial)
         nBest = nBest + nTrial * dot_product(rl, nTrial)
       end if
 
@@ -601,19 +603,7 @@ contains
         end if
       end if
     end do
-
-    ! Check the other axis
-    rz = r(self % axis) - self % origin(self % axis)
-    if (abs(rz) >= self % halfheight - self % surfTol()) then
-
-      proj = u(self % axis) * sign(ONE, rz)
-
-      if (proj > maxProj) then
-        maxProj = proj
-        iPlane = -1
-      end if
-    end if
-
+    
     ! Apply the BC only once, using the physically correct face
     ! Hits the hexagon planes
     if (iPlane > 0) then
@@ -632,9 +622,12 @@ contains
         case default
           call fatalError(Here, 'Unrecognised BC: '// numToChar(self % BC(1)))
       end select
+    end if
 
-    ! Hits the top/bottom planes
-    elseif (iPlane == -1) then
+    ! Check the other axis
+    rz = r(self % axis) - self % origin(self % axis)
+    if (abs(rz) >= self % halfheight - self % surfTol()) then
+
       ! Top or bottom?
       if (rz > 0) then
         bc = self % BC(3)
@@ -647,7 +640,7 @@ contains
           r(self % axis) = r(self % axis) - TWO * self % halfheight * sign(ONE, rz)
 
         case (REFLECTIVE_BC)
-          u(self % axis) = u(self % axis) - TWO * u(self % axis)
+          u(self % axis) = -u(self % axis)
 
         case (VACUUM_BC)
           ! Do nothing
@@ -676,11 +669,12 @@ contains
     real(defReal), dimension(3), intent(inout) :: r
     real(defReal), dimension(3), intent(inout) :: u
     real(defReal), dimension(2)                :: rl
-    integer(shortInt), dimension(2)            :: latShift
+    integer(shortInt), dimension(2)            :: baseShift, latShift
     real(defReal), dimension(2,2)              :: Ainv
-    real(defReal)                              :: invDet, a_bar, a0, d, r0
-    real(defReal), dimension(2)                :: latCoord, a1, a2
-    integer(shortInt)                          :: Ri, t, bc, ax
+    real(defReal)                              :: invDet, dist2, minDist2, &
+                                                  a_bar, a0, d, r0
+    real(defReal), dimension(2)                :: latCoord, a1, a2, centre
+    integer(shortInt)                          :: i, j, Ri, t, bc, ax
     character(100), parameter :: Here = 'transformBC (truncHexagon_class.f90)'
 
     ! Apply BC in the hexagon plane
@@ -713,7 +707,29 @@ contains
 
         ! Convert to lattice coordinates
         latCoord = matmul(Ainv, rl)
-        latShift = nint(latCoord)
+        baseShift = nint(latCoord)
+
+        ! We check a 3x3 local grid of lattice points around our guess
+        ! to see which center is strictly closest in Cartesian space.
+        minDist2 = INF
+        latShift = baseShift
+
+        do i = baseShift(1) - 1, baseShift(1) + 1
+          do j = baseShift(2) - 1, baseShift(2) + 1
+
+            ! Calculate Cartesian position of this neighboring lattice center
+            centre = i * a1 + j * a2
+
+            ! Squared distance from particle to this lattice center
+            dist2 = sum((rl - centre)**2)
+
+            if (dist2 < minDist2) then
+              minDist2 = dist2
+              latShift = [i, j]
+            end if
+
+          end do
+        end do
 
         rl = rl - (real(latShift(1), defReal) * a1 + real(latShift(2), defReal) * a2)
 
