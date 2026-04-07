@@ -1,0 +1,1395 @@
+type eigenPhysicsPackage;
+
+pop      2000000;
+active   100;
+inactive 100;
+XSdata ce;
+dataType ce;
+outputFile LDR50;
+
+collisionOperator { neutronCE {type neutronCEstd;}}
+
+transportOperator {  
+                     !type transportOperatorDT;
+                     type transportOperatorHT; cache 1;
+                   }
+
+inactiveTally {
+  shannon {
+	    type shannonEntropyClerk;
+            map {type multiMap;
+            maps (xax yax zax);
+            xax { type spaceMap; grid lin; min -75.26; max 75.26; N 15; axis x;}
+            yax { type spaceMap; grid lin; min -75.26; max 75.26; N 15; axis y;}
+            zax { type spaceMap; grid lin; min 11.748; max 111.748; N 15; axis z;}
+                }
+           cycles 250;
+          }
+
+}
+
+activeTally {
+                k_eff { type keffAnalogClerk;}
+  pinFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax);
+                      xax {type spaceMap;  axis x;  grid lin; N 119; min -75.26274; max 75.26274; }
+                      yax {type spaceMap;  axis y;  grid lin; N 119; min -75.26274; max 75.26274; }
+                   }
+                 } 
+  assemblyFissRadial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                   map {type multiMap; maps (xax yax);
+                      xax {type spaceMap;  axis x;  grid lin; N 7; min -75.26274; max 75.26274; }
+                      yax {type spaceMap;  axis y;  grid lin; N 7; min -75.26274; max 75.26274; }
+                   }
+                 } 
+  fissionAxial  { type collisionClerk; response (fission); fission { type macroResponse; MT -6;}
+                  map {type spaceMap; axis z; grid unstruct; bins (11.748 17.463 22.998625 28.53425 34.069875 39.6055 45.141125 50.67675 56.212375 61.748 67.463 72.998625 78.53425 84.069875 89.6055 95.141125 100.67675 106.212375 111.748);}
+                }
+}
+
+geometry {
+  type geometryStd;
+  boundary ( 0 0 0 0 0 0);
+  graph {type shrunk;}
+
+  surfaces { 
+
+  // Boundary surface
+  boundary {id 1; type zTruncCylinder; origin (0 0 50.9855); radius 135; halfwidth 67.7335; }
+  core {id 100; type zCylinder; origin (0 0 0); radius 91;}
+
+  // Grid for lower and middle spacers
+  gridZr {id 2; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.61049 0.61049 0.0);}
+  outerGridZr {id 3; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.62992 0.62992 0.0);}
+  
+  // Grid for upper spacer
+  gridInc {id 4; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (0.61015 0.61015 0.0);}
+  
+  // Spacer grid height
+  SG3_top {id 10; type zPlane; z0 103.358;}
+  SG3_bottom {id 11; type zPlane; z0 100;}
+  
+  SG2_top {id 12; type zPlane; z0 55.715;}
+  SG2_bottom {id 13; type zPlane; z0 50.0;}
+  
+  SG1_top {id 14; type zPlane; z0 5.715;}
+  SG1_bottom {id 15; type zPlane; z0 0.0;}
+
+  // Assembly wrappers
+  wrapInner {id 16; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.70864 10.70864 0.0);}
+  wrapOuter {id 17; type zSquareCylinder; origin (0.0 0.0 0.0); halfwidth (10.74798 10.74798 0.0);}
+
+  // All rods in 
+  !R2_Plane1 {id 40; type zPlane; z0 100.0; }
+  !R2_Plane2 {id 41; type zPlane; z0 60.0; }
+  !R2_Plane3 {id 42; type zPlane; z0 0.0; }
+  !safeRodPlane1 {id 43; type zPlane; z0 100.0; }
+  !safeRodPlane2 {id 44; type zPlane; z0 5.0; }
+  !safeRodPlane3 {id 45; type zPlane; z0 0.0; }
+  !R3_Plane1 {id 46; type zPlane; z0 100.0; }
+  !R3_Plane2 {id 47; type zPlane; z0 60.0; }
+  !R3_Plane3 {id 48; type zPlane; z0 0.0; }
+  !R5_Plane1 {id 49; type zPlane; z0 100.0; }
+  !R5_Plane2 {id 50; type zPlane; z0 60.0; }
+  !R5_Plane3 {id 51; type zPlane; z0 0.0; }
+  !R6_Plane1 {id 52; type zPlane; z0 100.0; }
+  !R6_Plane2 {id 53; type zPlane; z0 60.0; }
+  !R6_Plane3 {id 54; type zPlane; z0 0.0; }
+  
+  // All rods out
+  R2_Plane1 {id 40; type zPlane; z0 200.0; }
+  R2_Plane2 {id 41; type zPlane; z0 160.0; }
+  R2_Plane3 {id 42; type zPlane; z0 100.0; }
+  safeRodPlane1 {id 43; type zPlane; z0 200.0; }
+  safeRodPlane2 {id 44; type zPlane; z0 105.0; }
+  safeRodPlane3 {id 45; type zPlane; z0 100.0; }
+  R3_Plane1 {id 46; type zPlane; z0 200.0; }
+  R3_Plane2 {id 47; type zPlane; z0 160.0; }
+  R3_Plane3 {id 48; type zPlane; z0 100.0; }
+  R5_Plane1 {id 49; type zPlane; z0 200.0; }
+  R5_Plane2 {id 50; type zPlane; z0 160.0; }
+  R5_Plane3 {id 51; type zPlane; z0 100.0; }
+  R6_Plane1 {id 52; type zPlane; z0 200.0; }
+  R6_Plane2 {id 53; type zPlane; z0 160.0; }
+  R6_Plane3 {id 54; type zPlane; z0 100.0; }
+
+  // Critical rodded
+  // Rod height
+  // R2 at 70% insertion - so added 30cm
+  // Plane between steel and upper absorber
+  !R2_Plane1 {id 40; type zPlane; z0 130.0; }
+  !R2_Plane2 {id 41; type zPlane; z0 90.0; }
+  !R2_Plane3 {id 42; type zPlane; z0 30.0; }
+  
+  
+  // Safety rods
+  // Untouched from ARO
+  // Added 100cm to fully remove from assembly
+  // Plane between steel and upper absorber
+  !safeRodPlane1 {id 43; type zPlane; z0 200.0; }
+  !safeRodPlane2 {id 44; type zPlane; z0 105.0; }
+  !safeRodPlane3 {id 45; type zPlane; z0 100.0; }
+  
+  // R3
+  // 100% insertion so add 0cm
+  // Plane between steel and upper absorber
+  !R3_Plane1 {id 46; type zPlane; z0 100.0; }
+  !R3_Plane2 {id 47; type zPlane; z0 60.0; }
+  !R3_Plane3 {id 48; type zPlane; z0 0.0; }
+  
+  
+  // R5
+  // 98% insertion so add 2cm
+  // Plane between steel and upper absorber
+  !R5_Plane1 {id 49; type zPlane; z0 102.0; }
+  !R5_Plane2 {id 50; type zPlane; z0 62.0; }
+  !R5_Plane3 {id 51; type zPlane; z0 2.0; }
+  
+  // R6
+  // 98% insertion so add 2cm
+  !R6_Plane1 {id 52; type zPlane; z0 102.0; }
+  !R6_Plane2 {id 53; type zPlane; z0 62.0; }
+  !R6_Plane3 {id 54; type zPlane; z0 2.0; }
+  
+  
+  // Others planes across the core
+  upperNozzleTop { id 20; type zPlane; z0 118.719;}
+  upperNozzleBottom { id 21; type zPlane; z0 109.892;}
+  fuelTop {id 22; type zPlane; z0 106.547;}
+  plenumTop {id 23; type zPlane; z0 104.007;}
+  activeFuelTop {id 24; type zPlane; z0 100.0;}
+  activeFuelBottom {id 25; type zPlane; z0 0.0;}
+  plugsBottom {id 26; type zPlane; z0 -1.748;}
+  lowerSupportPlateBottom {id 28; type zPlane; z0 -16.748;}
+
+  }
+
+  cells {
+
+    // Cell for lower grid
+    gridZrLow {id 2; type simpleCell; surfaces (2 15 -14); filltype mat; material Zircaloy;}
+    gridZrMid {id 3; type simpleCell; surfaces (2 13 -12); filltype mat; material Zircaloy;}
+    // Cell for upper grid
+    gridInc {id 4; type simpleCell; surfaces (4 11 -10); filltype mat; material Inconel;}
+
+    // Cells for water surrounding grid
+    waterBelow {id 5; type simpleCell; surfaces (-15); filltype mat; material Water;}
+    waterAtGrid1 {id 6; type simpleCell; surfaces (-2 15 -14); filltype mat; material Water;}
+    waterBetween1 {id 7; type simpleCell; surfaces (14 -13); filltype mat; material Water;}
+    waterAtGrid2 {id 8; type simpleCell; surfaces (-2 13 -12); filltype mat; material Water;}
+    waterBetween2 {id 9; type simpleCell; surfaces (12 -11); filltype mat; material Water;}
+    waterAtGrid3 {id 10; type simpleCell; surfaces (-4 11 -10); filltype mat; material Water;}
+    waterAbove {id 11; type simpleCell; surfaces (10); filltype mat; material Water;}
+
+    // Cells for wrappers
+    wrapperLow {id 12; type simpleCell; surfaces (16 -17 15 -14); filltype mat; material Zircaloy;}
+    wrapperMid {id 13; type simpleCell; surfaces (16 -17 13 -12); filltype mat; material Zircaloy;}
+    wrapperHig {id 14; type simpleCell; surfaces (16 -17 11 -10); filltype mat; material SS304;}
+    // Cells for not-wrappers
+    belowWrapper {id 15; type simpleCell; surfaces (-15); filltype mat; material Water;}
+    insideWrapper1 {id 16; type simpleCell; surfaces (-16 15 -14); filltype mat; material Water;}
+    outsideWrapper1 {id 17; type simpleCell; surfaces (17 15 -14); filltype mat; material Water;}
+    betweenWrappers1 {id 18; type simpleCell; surfaces (14 -13); filltype mat; material Water;}
+    insideWrapper2 {id 19; type simpleCell; surfaces (-16 13 -12); filltype mat; material Water;}
+    outsideWrapper2 {id 20; type simpleCell; surfaces (17 13 -12); filltype mat; material Water;}
+    betweenWrappers2 {id 21; type simpleCell; surfaces (12 -11); filltype mat; material Water;}
+    insideWrapper3 {id 22; type simpleCell; surfaces (-16 11 -10); filltype mat; material Water;}
+    outsideWrapper3 {id 23; type simpleCell; surfaces (17 11 -10); filltype mat; material Water;}
+    aboveWrapper {id 24; type simpleCell; surfaces (10); filltype mat; material Water;}
+
+    // Cell for rods - different cells for each bank to allow different heights
+    rodSteelS1 {id 500; type simpleCell; surfaces (43); filltype uni; universe 60;}
+    rodUpperS1 {id 501; type simpleCell; surfaces (-43 44); filltype uni; universe 62;}
+    rodLowerS1 {id 502; type simpleCell; surfaces (-44 45); filltype uni; universe 61;}
+    rodBeneathS1 {id 503; type simpleCell; surfaces (-45); filltype mat; material Water;}
+    
+    rodSteelR2 {id 510; type simpleCell; surfaces (40); filltype uni; universe 60;}
+    rodUpperR2 {id 511; type simpleCell; surfaces (-40 41); filltype uni; universe 62;}
+    rodLowerR2 {id 512; type simpleCell; surfaces (-41 42); filltype uni; universe 61;}
+    rodBeneathR2 {id 513; type simpleCell; surfaces (-42); filltype mat; material Water;}
+    
+    rodSteelR3 {id 520; type simpleCell; surfaces (46); filltype uni; universe 60;}
+    rodUpperR3 {id 521; type simpleCell; surfaces (-46 47); filltype uni; universe 62;}
+    rodLowerR3 {id 522; type simpleCell; surfaces (-47 48); filltype uni; universe 61;}
+    rodBeneathR3 {id 523; type simpleCell; surfaces (-48); filltype mat; material Water;}
+    
+    rodSteelS4 {id 530; type simpleCell; surfaces (43); filltype uni; universe 60;}
+    rodUpperS4 {id 531; type simpleCell; surfaces (-43 44); filltype uni; universe 62;}
+    rodLowerS4 {id 532; type simpleCell; surfaces (-44 45); filltype uni; universe 61;}
+    rodBeneathS4 {id 533; type simpleCell; surfaces (-45); filltype mat; material Water;}
+    
+    rodSteelR5 {id 540; type simpleCell; surfaces (49); filltype uni; universe 60;}
+    rodUpperR5 {id 541; type simpleCell; surfaces (-49 50); filltype uni; universe 62;}
+    rodLowerR5 {id 542; type simpleCell; surfaces (-50 51); filltype uni; universe 61;}
+    rodBeneathR5 {id 543; type simpleCell; surfaces (-51); filltype mat; material Water;}
+    
+    rodSteelR6 {id 550; type simpleCell; surfaces (52); filltype uni; universe 60;}
+    rodUpperR6 {id 551; type simpleCell; surfaces (-52 53); filltype uni; universe 62;}
+    rodLowerR6 {id 552; type simpleCell; surfaces (-53 54); filltype uni; universe 61;}
+    rodBeneathR6 {id 553; type simpleCell; surfaces (-54); filltype mat; material Water;}
+    
+    rodSteelS7 {id 560; type simpleCell; surfaces (43); filltype uni; universe 60;}
+    rodUpperS7 {id 561; type simpleCell; surfaces (-43 44); filltype uni; universe 62;}
+    rodLowerS7 {id 562; type simpleCell; surfaces (-44 45); filltype uni; universe 61;}
+    rodBeneathS7 {id 563; type simpleCell; surfaces (-45); filltype mat; material Water;}
+    
+    rodSteelS8 {id 570; type simpleCell; surfaces (43); filltype uni; universe 60;}
+    rodUpperS8 {id 571; type simpleCell; surfaces (-43 44); filltype uni; universe 62;}
+    rodLowerS8 {id 572; type simpleCell; surfaces (-44 45); filltype uni; universe 61;}
+    rodBeneathS8 {id 573; type simpleCell; surfaces (-45); filltype mat; material Water;}
+
+    // Cells for assembly stacks
+    // These ones are generic to all assemblies
+    topNozzle {id 120; type simpleCell; surfaces (21); filltype mat; material Water_Steel_Mix;}
+    aboveAssembly {id 121; type simpleCell; surfaces (-21 22 ); filltype uni; universe 320;}
+    topPlugs {id 122; type simpleCell; surfaces (-22 23 ); filltype uni; universe 300;}
+    plenum {id 123; type simpleCell; surfaces (-23 24 ); filltype uni; universe 310;}
+    bottomPlugs {id 124; type simpleCell; surfaces (-25 26); filltype uni; universe 300;}
+    supportPlate {id 125; type simpleCell; surfaces (-26); filltype mat; material Water_Steel_Mix;}
+
+    // These ones are specific to different assemblies
+    assembly1 {id 126; type simpleCell; surfaces (-24 25); filltype uni; universe 440;}
+    assembly2 {id 127; type simpleCell; surfaces (-24 25); filltype uni; universe 400;}
+    assembly3 {id 128; type simpleCell; surfaces (-24 25); filltype uni; universe 450;}
+    assembly4 {id 129; type simpleCell; surfaces (-24 25); filltype uni; universe 460;}
+    assembly5 {id 130; type simpleCell; surfaces (-24 25); filltype uni; universe 470;}
+    assembly6 {id 131; type simpleCell; surfaces (-24 25); filltype uni; universe 420;}
+
+    core {id 100; type simpleCell; surfaces (-100); filltype uni; universe 888;}
+    everythingElse {id 101; type simpleCell; surfaces (100); filltype mat; material Water;}
+  }
+
+  universes {
+
+    // Pin universes
+    // Each fuel pin
+    pin14 { id 140; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-14 Air Zircaloy u<99>);}
+    pin15 { id 150; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-15 Air Zircaloy u<99>);}
+    pin18 { id 180; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-18 Air Zircaloy u<99>);}
+    pin24 { id 240; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-24 Air Zircaloy u<99>);}
+    pin15_6 { id 156; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-15-Gd-6 Air Zircaloy u<99>);}
+    pin18_6 { id 186; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-18-Gd-6 Air Zircaloy u<99>);}
+    pin24_5 { id 245; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-24-Gd-5 Air Zircaloy u<99>);}
+    pin24_9 { id 249; type pinUniverse; radii (0.4095 0.41790 0.47500 0.0); fills (UO2-24-Gd-9 Air Zircaloy u<99>);}
+
+    // Zr plug
+    zrPlug { id 20; type pinUniverse; radii (0.475 0.0); fills (Zircaloy u<99>);}
+
+    // Rod plenum
+    plenum { id 30; type pinUniverse; radii (0.06459 0.4179 0.475 0); fills (SS304 Air Zircaloy u<99>);}
+
+    // Guide tube
+    guideTube { id 40; type pinUniverse; radii (0.48387 0.50419 0.54610 0.0); fills (u<777> Water Zircaloy u<99>);}
+    
+    // Instrumentation tube
+    instTube { id 90; type pinUniverse; radii (0.50419 0.54610 0.0); fills (Water Zircaloy u<99>);}
+
+    // CR upper part with steel
+    CRSteelUpper {id 60; type pinUniverse; radii (0.0); fills (SS304);}
+
+    // CR lower absorber part with Inconel
+    lowerCR {id 61; type pinUniverse; radii (0.0); fills (Inconel);}
+    
+    // CR upper absorber part with B4C
+    upperCR {id 62; type pinUniverse; radii (0.43310 0.43688 0.0); fills (B4C Air SS304);}
+
+    // Coolant channel with grids
+    channel {id 99; type cellUniverse; cells (2 3 4 5 6 7 8 9 10 11); }
+
+    // wrapper
+    wrapper {id 98; type cellUniverse; cells (12 13 14 15 16 17 18 19 20 21 22 23 24);}
+
+    // Assemblies, at various heights
+    // Include an extra pin layer for the sleeve
+    zrPlugs {
+      id 300;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 20 20 40 20 20 40 20 20 40 20 20 20 20 20 98
+      98 20 20 20 40 20 20 20 20 20 20 20 20 20 40 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 40 20 20 40 20 20 40 20 20 40 20 20 40 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 40 20 20 40 20 20 90 20 20 40 20 20 40 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 40 20 20 40 20 20 40 20 20 40 20 20 40 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 40 20 20 20 20 20 20 20 20 20 40 20 20 20 98
+      98 20 20 20 20 20 40 20 20 40 20 20 40 20 20 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    fuelPlenum {
+      id 310;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 30 30 40 30 30 40 30 30 40 30 30 30 30 30 98
+      98 30 30 30 40 30 30 30 30 30 30 30 30 30 40 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 40 30 30 40 30 30 40 30 30 40 30 30 40 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 40 30 30 40 30 30 90 30 30 40 30 30 40 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 40 30 30 40 30 30 40 30 30 40 30 30 40 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 40 30 30 30 30 30 30 30 30 30 40 30 30 30 98
+      98 30 30 30 30 30 40 30 30 40 30 30 40 30 30 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    spaceBelowNozzles {
+      id 320;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 40 98 98 40 98 98 40 98 98 98 98 98 98
+      98 98 98 98 40 98 98 98 98 98 98 98 98 98 40 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 40 98 98 40 98 98 40 98 98 40 98 98 40 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 40 98 98 40 98 98 90 98 98 40 98 98 40 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 40 98 98 40 98 98 40 98 98 40 98 98 40 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 40 98 98 98 98 98 98 98 98 98 40 98 98 98 98
+      98 98 98 98 98 98 40 98 98 40 98 98 40 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+
+    // Fuel assemblies
+    // 1.4% enriched
+    fuel2 {
+      id 400;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140 140 140  40 140 140  40 140 140  40 140 140 140 140 140  98
+      98 140 140 140  40 140 140 140 140 140 140 140 140 140  40 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140  40 140 140  40 140 140  40 140 140  40 140 140  40 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140  40 140 140  40 140 140  90 140 140  40 140 140  40 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140  40 140 140  40 140 140  40 140 140  40 140 140  40 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140  40 140 140 140 140 140 140 140 140 140  40 140 140 140  98
+      98 140 140 140 140 140  40 140 140  40 140 140  40 140 140 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140 140  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+    
+    // 1.8% enriched
+    fuel6 {
+      id 420;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180  40 180 180  40 180 180  40 180 180 180 180 180  98
+      98 180 180 180  40 180 180 180 180 180 180 180 180 180  40 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  40 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  90 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  40 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180  40 180 180 180 180 180 180 180 180 180  40 180 180 180  98
+      98 180 180 180 180 180  40 180 180  40 180 180  40 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+    
+    // 1.5% enriched + 6% Gd
+    fuel1 {
+      id 440;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98 150 150 150 150 150  40 150 150  40 150 150  40 150 150 150 150 150  98
+      98 150 150 150  40 150 150 150 150 150 150 150 150 150  40 150 150 150  98
+      98 150 150 150 150 150 150 156 150 150 150 156 150 150 150 150 150 150  98
+      98 150 150  40 150 150  40 150 150  40 150 150  40 150 150  40 150 150  98
+      98 150 150 150 150 156 150 150 150 150 150 150 150 156 150 150 150 150  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98 150 150  40 150 150  40 150 150  90 150 150  40 150 150  40 150 150  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98 150 150 150 150 156 150 150 150 150 150 150 150 156 150 150 150 150  98
+      98 150 150  40 150 150  40 150 150  40 150 150  40 150 150  40 150 150  98
+      98 150 150 150 150 150 150 156 150 150 150 156 150 150 150 150 150 150  98
+      98 150 150 150  40 150 150 150 150 150 150 150 150 150  40 150 150 150  98
+      98 150 150 150 150 150  40 150 150  40 150 150  40 150 150 150 150 150  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150 150  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+    
+    // 1.8% enriched + 6% Gd
+    fuel3 {
+      id 450;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180  40 180 180  40 180 180  40 180 180 180 180 180  98
+      98 180 180 180  40 180 180 180 180 180 180 180 180 180  40 180 180 180  98
+      98 180 180 180 180 186 180 180 180 180 180 180 180 186 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  40 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  90 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180  40 180 180  40 180 180  40 180 180  40 180 180  40 180 180  98
+      98 180 180 180 180 186 180 180 180 180 180 180 180 186 180 180 180 180  98
+      98 180 180 180  40 180 180 180 180 180 180 180 180 180  40 180 180 180  98
+      98 180 180 180 180 180  40 180 180  40 180 180  40 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+    
+    // 2.4% enriched + 5% Gd
+    fuel4 {
+      id 460;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240  40 240 240  40 240 240  40 240 240 240 240 240  98
+      98 240 240 240  40 240 240 240 240 240 240 240 240 240  40 240 240 240  98
+      98 240 240 240 240 240 240 245 240 240 240 245 240 240 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  40 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 245 240 240 240 240 240 240 240 245 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  90 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 245 240 240 240 240 240 240 240 245 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  40 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 240 240 245 240 240 240 245 240 240 240 240 240 240  98
+      98 240 240 240  40 240 240 240 240 240 240 240 240 240  40 240 240 240  98
+      98 240 240 240 240 240  40 240 240  40 240 240  40 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+    
+    // 2.4% enriched + 9% Gd
+    fuel5 {
+      id 470;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (19 19 0);
+      offsetMap (
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+      );
+      map (
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240  40 240 240  40 240 240  40 240 240 240 240 240  98
+      98 240 240 240  40 240 240 240 240 240 240 240 240 240  40 240 240 240  98
+      98 240 240 240 240 240 240 249 240 240 240 249 240 240 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  40 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 249 240 240 240 240 240 240 240 249 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  90 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 249 240 240 240 240 240 240 240 249 240 240 240 240  98
+      98 240 240  40 240 240  40 240 240  40 240 240  40 240 240  40 240 240  98
+      98 240 240 240 240 240 240 249 240 240 240 249 240 240 240 240 240 240  98
+      98 240 240 240  40 240 240 240 240 240 240 240 240 240  40 240 240 240  98
+      98 240 240 240 240 240  40 240 240  40 240 240  40 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240 240  98
+      98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
+      );
+    }
+
+    // Make each fuel assembly stack
+    assembly1 {id 111; type cellUniverse; cells (120 121 122 123 124 125 126 );}
+    assembly2 {id 222; type cellUniverse; cells (120 121 122 123 124 125 127 );}
+    assembly3 {id 333; type cellUniverse; cells (120 121 122 123 124 125 128 );}
+    assembly4 {id 444; type cellUniverse; cells (120 121 122 123 124 125 129 );}
+    assembly5 {id 555; type cellUniverse; cells (120 121 122 123 124 125 130 );}
+    assembly6 {id 666; type cellUniverse; cells (120 121 122 123 124 125 131 );}
+    reflector {id 999; type pinUniverse; radii (0.0); fills (SS304);}
+    water {id 998; type pinUniverse; radii (0.0); fills (Water);}
+
+    // Core lattice
+    lattice {
+      id 888;
+      type latUniverse;
+      shape (9 9 0);
+      pitch (21.50364 21.50364 0);
+      padMat Water;
+      map (
+      999 999 999 999 999 999 999 999 999
+      999 999 999 444 666 444 999 999 999
+      999 999 555 333 222 333 555 999 999
+      999 444 333 222 222 222 333 444 999
+      999 666 222 222 111 222 222 666 999
+      999 444 333 222 222 222 333 444 999
+      999 999 555 333 222 333 555 999 999
+      999 999 999 444 666 444 999 999 999
+      999 999 999 999 999 999 999 999 999
+      );
+    }
+
+    // Make individual rods
+    rodS1 {id 81; type cellUniverse; cells (500 501 502 503);}
+    rodR2 {id 82; type cellUniverse; cells (510 511 512 513);}
+    rodR3 {id 83; type cellUniverse; cells (520 521 522 523);}
+    rodS4 {id 84; type cellUniverse; cells (530 531 532 533);}
+    rodR5 {id 85; type cellUniverse; cells (540 541 542 543);}
+    rodR6 {id 86; type cellUniverse; cells (550 551 552 553);}
+    rodS7 {id 87; type cellUniverse; cells (560 561 562 563);}
+    rodS8 {id 88; type cellUniverse; cells (570 571 572 573);}
+
+    // Place rods into assemblies
+    S1 {
+      id 509;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 81 98 98 81 98 98 81 98 98 98 98 98
+        98 98 98 81 98 98 98 98 98 98 98 98 98 81 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 81 98 98 81 98 98 81 98 98 81 98 98 81 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 81 98 98 81 98 98 98 98 98 81 98 98 81 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 81 98 98 81 98 98 81 98 98 81 98 98 81 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 81 98 98 98 98 98 98 98 98 98 81 98 98 98
+        98 98 98 98 98 81 98 98 81 98 98 81 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+
+    R2 {
+      id 519;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 82 98 98 82 98 98 82 98 98 98 98 98
+        98 98 98 82 98 98 98 98 98 98 98 98 98 82 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 82 98 98 82 98 98 82 98 98 82 98 98 82 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 82 98 98 82 98 98 98 98 98 82 98 98 82 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 82 98 98 82 98 98 82 98 98 82 98 98 82 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 82 98 98 98 98 98 98 98 98 98 82 98 98 98
+        98 98 98 98 98 82 98 98 82 98 98 82 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    R3 {
+      id 529;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 83 98 98 83 98 98 83 98 98 98 98 98
+        98 98 98 83 98 98 98 98 98 98 98 98 98 83 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 83 98 98 83 98 98 83 98 98 83 98 98 83 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 83 98 98 83 98 98 98 98 98 83 98 98 83 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 83 98 98 83 98 98 83 98 98 83 98 98 83 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 83 98 98 98 98 98 98 98 98 98 83 98 98 98
+        98 98 98 98 98 83 98 98 83 98 98 83 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    S4 {
+      id 539;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 84 98 98 84 98 98 84 98 98 98 98 98
+        98 98 98 84 98 98 98 98 98 98 98 98 98 84 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 84 98 98 84 98 98 84 98 98 84 98 98 84 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 84 98 98 84 98 98 98 98 98 84 98 98 84 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 84 98 98 84 98 98 84 98 98 84 98 98 84 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 84 98 98 98 98 98 98 98 98 98 84 98 98 98
+        98 98 98 98 98 84 98 98 84 98 98 84 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+ 
+    R5 {
+      id 549;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 85 98 98 85 98 98 85 98 98 98 98 98
+        98 98 98 85 98 98 98 98 98 98 98 98 98 85 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 85 98 98 85 98 98 85 98 98 85 98 98 85 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 85 98 98 85 98 98 98 98 98 85 98 98 85 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 85 98 98 85 98 98 85 98 98 85 98 98 85 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 85 98 98 98 98 98 98 98 98 98 85 98 98 98
+        98 98 98 98 98 85 98 98 85 98 98 85 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    R6 {
+      id 559;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 86 98 98 86 98 98 86 98 98 98 98 98
+        98 98 98 86 98 98 98 98 98 98 98 98 98 86 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 86 98 98 86 98 98 86 98 98 86 98 98 86 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 86 98 98 86 98 98 98 98 98 86 98 98 86 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 86 98 98 86 98 98 86 98 98 86 98 98 86 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 86 98 98 98 98 98 98 98 98 98 86 98 98 98
+        98 98 98 98 98 86 98 98 86 98 98 86 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    S7 {
+      id 569;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 87 98 98 87 98 98 87 98 98 98 98 98
+        98 98 98 87 98 98 98 98 98 98 98 98 98 87 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 87 98 98 87 98 98 87 98 98 87 98 98 87 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 87 98 98 87 98 98 98 98 98 87 98 98 87 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 87 98 98 87 98 98 87 98 98 87 98 98 87 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 87 98 98 98 98 98 98 98 98 98 87 98 98 98
+        98 98 98 98 98 87 98 98 87 98 98 87 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+    
+    S8 {
+      id 579;
+      type latUniverse;
+      pitch (1.25984 1.25984 0);
+      padMat Water;
+      shape (17 17 0);
+      map (
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 88 98 98 88 98 98 88 98 98 98 98 98
+        98 98 98 88 98 98 98 98 98 98 98 98 98 88 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 88 98 98 88 98 98 88 98 98 88 98 98 88 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 88 98 98 88 98 98 98 98 98 88 98 98 88 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 88 98 98 88 98 98 88 98 98 88 98 98 88 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 88 98 98 98 98 98 98 98 98 98 88 98 98 98
+        98 98 98 98 98 88 98 98 88 98 98 88 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+        98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98 98
+      );
+    }
+
+    // Control rod layout
+    rodBanks {
+      id 777;
+      type latUniverse;
+      shape (7 7 0);
+      pitch (21.50364 21.50364 0);
+      padMat Water;
+      global 1;
+      map (
+     998 998 569 539 569 998 998
+     998 579 559 529 559 579 998
+     569 559 549 519 549 559 569
+     539 529 519 509 519 529 539
+     569 559 549 519 549 559 569
+     998 579 559 529 559 579 998
+     998 998 569 539 569 998 998
+      );
+    }
+    
+    
+    coreAndStructures {
+     id 8888;
+     type cellUniverse;  
+     cells (100 101);}
+     !cells (100 101 102);}
+
+    root { id 1; type rootUniverse; border 1; fill u<8888>; }
+
+
+  }
+}
+
+
+viz {
+  bmpZ {
+    type bmp;
+    output imgXY;
+    what material;
+    centre (0.0 0.0 106.0);
+    width (30 30);
+    axis z;
+    res (4000 4000);
+  }
+  bmpX {
+    type bmp;
+    output imgYZ;
+    what material;
+    centre (0.0 0.0 50.9855);
+    width (40 135.467);
+    axis x;
+    res (2500 6000);
+  }
+  plugs {
+    type bmp;
+    output plugs;
+    what material;
+    centre (0.0 0.0 101.0);
+    width (22 22);
+    axis z;
+    res (2000 2000);
+  }
+}
+
+
+nuclearData {
+  handles {
+    ce {type aceNeutronDatabase; aceLibrary $SCONE_ACE; ures 0; }
+  }
+
+  materials {
+
+    // Note that commented nuclide densities are included in the specification
+    // but are not available in the JEFF-3.11 data library
+
+    Air {
+      temp 300;
+      rgb (255 255 255);
+      composition {
+      // Should be C-nat!
+      6012.03  6.8296E-09;
+      8016.03  5.2864E-06;
+      8017.03  2.0137E-09;
+      7014.03  1.9681E-05;
+      7015.03  7.1900E-08;
+      18036.03 7.9414E-10;
+      18038.03 1.4915E-10;
+      18040.03 2.3506E-07;
+      }
+      }
+    
+    Zircaloy {
+      temp 300;
+      rgb (200 200 200);
+      composition {
+      8016.03  3.0743E-04;
+      8017.03  1.1711E-07;
+      24050.03 3.2962E-06;
+      24052.03 6.3564E-05;
+      24053.03 7.2076E-06;
+      24054.03 1.7941E-06;
+      26054.03 8.6699E-06;
+      26056.03 1.3610E-04;
+      26057.03 3.1431E-06;
+      26058.03 4.1829E-07;
+      40090.03 2.1827E-02;
+      40091.03 4.7600E-03;
+      40092.03 7.2758E-03;
+      40094.03 7.3734E-03;
+      40096.03 1.1879E-03; 
+      50112.03 4.6735E-06;
+      50114.03 3.1799E-06;
+      50115.03 1.6381E-06;
+      50116.03 7.0055E-05;
+      50117.03 3.7003E-05;
+      50118.03 1.1669E-04;
+      50119.03 4.1387E-05;
+      50120.03 1.5697E-04;
+      50122.03 2.2308E-05;
+      50124.03 2.7897E-05;
+      }
+    }
+
+    SS304 {
+      temp 300;
+      rgb (150 150 150);
+      composition {
+      // Should be C-nat!
+      6012.03 1.60571E-4;
+      14028.03 7.90951E-04;
+      14029.03 4.01809E-05;
+      14030.03 2.65192E-05; 
+      15031.03 3.57736E-05; 
+      16032.03 2.14077E-05; 
+      16033.03 1.69026E-07; 
+      16034.03 9.57813E-07; 
+      16036.03 2.25368E-09; 
+      24050.03 7.64894E-04;
+      24052.03 1.47502E-02;
+      24053.03 1.67256E-03;
+      24054.03 4.16335E-04;
+      25055.03 8.76912E-04;
+      26054.03 3.53833E-03;
+      26056.03 5.55443E-02;
+      26057.03 1.28276E-03;
+      26058.03 1.70711E-04;
+      28058.03 5.16868E-03;
+      28060.03 1.99098E-03;
+      28061.03 8.65460E-05;
+      28062.03 2.75949E-04;
+      28064.03 7.02755E-05;
+      }
+    }
+    
+    Inconel {
+      temp 300;
+      rgb (125 100 100);
+      composition {
+      6012.03 3.00006E-4;
+      5010.03 4.53924E-6;
+      5011.03 1.82711E-5;
+      13027.03 9.13968E-4;
+      14028.03 5.14997E-04;
+      14029.03 2.61622E-05;
+      14030.03 1.72669E-05; 
+      15031.03 2.22926E-05; 
+      16032.03 2.04552E-05; 
+      16033.03 1.61506E-07; 
+      16034.03 9.15200E-07; 
+      16036.03 2.15341E-09; 
+      22046.03 7.65049E-5;
+      22047.03 6.89942E-5;
+      22048.03 6.83630E-4;
+      22049.03 5.01687E-5;
+      22050.03 4.80359E-5;
+      24050.03 7.83068E-04;
+      24052.03 1.51007E-02;
+      24053.03 1.7123E-03;
+      24054.03 4.26227E-04;
+      25055.03 2.85484E-04;
+      26054.03 8.77557E-04;
+      26056.03 1.37758E-02;
+      26057.03 3.18143E-04;
+      26058.03 4.23389E-05;
+      27059.03 7.61569E-04;
+      28058.03 3.00327E-02;
+      28060.03 1.15686E-02;
+      28061.03 5.02878E-04;
+      28062.03 1.60341E-03;
+      28064.03 4.08338E-04;
+      29063.03 1.46519E-04;
+      29065.03 6.53667E-05;
+      41093.03 2.72076E-03;
+      42092.03 2.31589E-04;
+      42094.03 1.44724E-04;
+      42095.03 2.49308E-04;
+      42096.03 2.61538E-04;
+      42097.03 1.49898E-04;
+      42098.03 3.79293E-04;
+      42100.03 1.51623E-04;
+      }
+    }
+    
+    B4C {
+      rgb (140 35 70);
+      temp 300;
+      composition {
+      5010.03 1.06751E-01;
+      5011.03 1.07878E-02;
+      // Should be C-nat
+      6012.03 2.74893E-02;
+      }
+    }
+    
+    Water {
+      temp 300;
+      rgb (200 200 255);
+      moder {1001.03 (lwj3.00); }
+      composition {
+      1001.03 6.66172E-02; 
+      1002.03 7.66186E-06;
+      8016.03 3.32315E-02;
+      8017.03 1.26587E-05;
+      //8018.03 6.82905E-05; 
+      }
+    }
+    
+    Water_Steel_Mix {
+      rgb (160 150 160);
+      moder {1001.03 (lwj3.00); }
+      temp 300;
+      composition {
+      1001.03 5.51590E-02;
+      1002.03 6.34402E-06;
+      // Should be C-nat!
+      6012.03 2.76183E-05;
+      8016.03 2.75157E-02;
+      8017.03 1.04814E-05;
+      //8018.03 5.65445E-05; 
+      14028.03 1.36044E-04;
+      14029.03 6.91111E-06;
+      14030.03 4.56130E-06; 
+      15031.03 6.15307E-06; 
+      16032.03 3.68212E-06; 
+      16033.03 2.90724E-08; 
+      16034.03 1.64744E-07; 
+      16036.03 3.87633E-10; 
+      24050.03 1.31562E-04;
+      24052.03 2.53704E-03;
+      24053.03 2.87680E-04;
+      24054.03 7.16096E-05;
+      25055.03 1.50829E-04;
+      26054.03 6.08593E-04;
+      26056.03 9.55362E-03;
+      26057.03 2.20635E-04;
+      26058.03 2.93624E-05;
+      28058.03 8.89012E-04;
+      28060.03 3.42448E-04;
+      28061.03 1.48859E-05;
+      28062.03 4.74633E-05;
+      28064.03 1.20874E-05;
+      }
+    }
+
+    UO2-14 {
+      temp 300;
+      rgb (17 35 237);
+      composition {
+      8016.03   4.59248E-02;
+      92234.03  2.61533E-05;
+      92235.03  3.25521E-04;
+      92238.03  2.26107E-02;
+      }
+    }
+    
+    UO2-15 {
+      rgb (255 150 150);
+      temp 300;
+      composition {
+      8016.03   4.59253E-02;
+      92234.03  2.80214E-05;
+      92235.03  3.48772E-04;
+      92238.03  2.25859E-02;}
+    }
+    
+    UO2-18 {
+      temp 300;
+      rgb (245 144 235);
+      composition {
+      8016.03   4.59271E-02;
+      92234.03  3.36255E-05;
+      92235.03  4.18525E-04;
+      92238.03  2.25114E-02;}
+    }
+    
+    UO2-24 {
+      temp 300;
+      rgb (255 255 125);
+      composition {
+      8016.03   4.59305E-02;
+      92234.03  4.48335E-05;
+      92235.03  5.58027E-04;
+      92238.03  2.23624E-02;}
+    }
+    
+    UO2-15-Gd-6 {
+      temp 300;
+      rgb (13 120 54);
+      composition {
+      92234.03  2.63401E-05;
+      92235.03  3.27846E-04;
+      92238.03  2.12307E-02;
+      8016.03   4.62484E-02;
+      64152.03  4.10474E-06;
+      64154.03  4.47417E-05;
+      64155.03  3.03751E-04;
+      64156.03  4.20121E-04;
+      64157.03  3.21196E-04;
+      64158.03  5.09808E-04;
+      64160.03  4.48650E-04;
+      }
+    }
+    
+    UO2-18-Gd-6 {
+      temp 300;
+      rgb (13 120 54);
+      composition {
+      92234.03  3.16079E-05;
+      92235.03  3.93413E-04;
+      92238.03  2.11607E-02;
+      8016.03   4.62500E-02;
+      64152.03  4.10474E-06;
+      64154.03  4.47417E-05;
+      64155.03  3.03751E-04;
+      64156.03  4.20121E-04;
+      64157.03  3.21196E-04;
+      64158.03  5.09808E-04;
+      64160.03  4.48650E-04;
+      }
+    }
+    UO2-24-Gd-5 {
+      temp 300;
+      rgb (13 120 54);
+      composition {
+      92234.03  4.25918E-05;
+      92235.03  5.30126E-04;
+      92238.03  2.12443E-02;
+      8016.03   4.61995E-02;
+      64152.03  3.42062E-06;
+      64154.03  3.72847E-05;
+      64155.03  2.53126E-04;
+      64156.03  3.50101E-04;
+      64157.03  2.67664E-04;
+      64158.03  4.24840E-04;
+      64160.03  3.73875E-04;
+      }
+    }
+    
+    UO2-24-Gd-9 {
+      temp 300;
+      rgb (13 120 54);
+      composition {
+      92234.03  4.07985E-05;
+      92235.03  5.07805E-04;
+      92238.03  2.03498E-02;
+      8016.03   4.64146E-02;
+      64152.03  6.15711E-06;
+      64154.03  6.71125E-05;
+      64155.03  4.55627E-04;
+      64156.03  6.30182E-04;
+      64157.03  4.81795E-04;
+      64158.03  7.64712E-04;
+      64160.03  6.72974E-04;
+      }
+    }
+    
+
+}
+}

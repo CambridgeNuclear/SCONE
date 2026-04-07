@@ -258,7 +258,7 @@ Example: ::
 rayVolPhysicsPackage
 ####################
 
-rayVolPhysicsPackage, used to perform ray-tracing based volume calculation
+rayVolPhysicsPackage, used to perform ray-tracing based volume calculations.
 
 * pop: number of rays used per cycle
 * cycles: number of cycles
@@ -845,6 +845,10 @@ Similarly to the surfaces and cells, the **universes** in the geometry can be de
       <nameN> { id <idNumberN>; type <universeType>; *keywords* }
       }
 
+One can disable the translation of a given universe, should it be nested in others, by the use
+of the keyword ``global 1;``. This evaluates a particle's position in the universe using the
+global frame of reference.
+
 Several ``universeTypes`` are possible:
 
 * cellUniverse, composed of the union of different cells. Note that overlaps are
@@ -903,6 +907,13 @@ Example: ::
     origin of the universe. [cm]
   - rotation (*optional*, default = (0.0 0.0 0.0)): (x y z) array with the
     rotation angles in degrees applied to the universe. [°]
+  - offsetMap (*optional*, default = all elements offset): map that specifies which elements
+    of the lattice are offset with respect to the lattice origin. Elements with 1 are offset,
+    while elements with a 0 are not. Must have the same size as the map. Allows creating, e.g.,
+    BWR assemblies with water rods covering multiple lattice elements.
+  - offset (*optional*, default = true): enables/disables the offset of all entries in
+    the latUniverse. Has relatively specialised use cases, e.g., imposing a discretisation
+    by placing another universe inside the lattice.
 
 Example: ::
 
@@ -986,6 +997,8 @@ The possible types of files that the geometry is plotted in are:
 vtk
 ###
 
+This produces a VTK output of the 3D geometry.
+
 * corner: (x y z) array with the corner of the geometry [cm]
 * width: (x y z) array with the width of the mesh in each direction [cm]
 * vox: (x y z) array with the number of voxels requested in each direction
@@ -999,6 +1012,8 @@ Example: ::
 
 bmp
 ###
+
+This produces a 2D slice plot of the geometry.
 
 * centre: (x y z) array with the coordinates of the center of the plot [cm]
 * axis: ``x``, ``y`` or ``z``, it's the axis normal to the 2D plot
@@ -1017,6 +1032,39 @@ Example: ::
 
       plotBMP { type bmp; axis z; centre (0.0 0.0 0.0); width (50 10);
                 res (1000 200); output geomZ; what material; }
+
+ray
+###
+
+This produce a ray-traced plot of the geometry, coloured by material, with lighting.
+
+* centre: (x y z) array with the coordinates of the center of the plot [cm]
+* camera: (x y z) array with the coordinates of the camera, which points towards centre [cm]
+* res: (x y) array with the resolution of the plot in each direction
+* output: name of the output file, with extension ``.bmp``
+* light (*optional*, default = camera): (x y z) array with the coordinates of the light source [cm]. 
+  Defaults to the position of the camera.
+* up (*optional*, default = (0 0 1)): (x y z) array which defines which direction is up [-]. Used
+  to change the orientation of the camera.
+* ambient (*optional*, default = 0.3): real value between 0 and 1 which defines the fraction of light
+  contributed by ambient sources, rather than directly from the light source [-]. 
+* fov (*optional*, default = 70): real value between 0 and 180 which defines the horizontal field of view
+  of the camera. [degrees] 
+* offset (*optional*, default = random): An integer (positive or negative) that
+  shifts the sequence of colours assigned to materials. Allows to change colours
+  from the default sequence in a parametric way.
+* transparent (*optional*, default = void): A list of material names which are transparent to the rays.
+  It is advisable to include a few materials here to have an interesting plot. Void is always included as
+  a transparent material.
+
+Example: ::
+
+
+     ray_plot {
+       type ray; output myRayPlot; centre (0.0 0.0 0.0); camera (-10.0 0.0 20.0);
+       res (300 300); light  (10.0 0.0 20.0); up (0.0 0.0 1.0); diffuse 0.2;
+       fov 70; offset 978; transparent (coolant, air, outerSteel );
+     }
 
 .. note::
    SCONE can be run to visualise geometry without actually doing transport, by
