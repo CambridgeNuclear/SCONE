@@ -6,7 +6,7 @@ Geometry
 Overview
 ''''''''
 
-A number of terms is going to be introduced in this section (e.g. *surface tolerance*,
+A number of terms are going to be introduced in this section (e.g. *surface tolerance*,
 *surface transparency*). These names are specific to SCONE. However, very similar concepts
 can be found in other codes albeit under different names.
 
@@ -20,14 +20,14 @@ thus only a brief overview will be given here.
 In principle, a surface can be represented by an equation :math:`0 = F(r)`. Thus, for any point in
 a geometry it is possible to evaluate :math:`F(r) = c`. Now *halfspaces* can be defined using the
 sign of the *remainder* (:math:`c`) of the surface expression. Positive (+ve) halfspace corresponds
-to :math:`c > 0` and is considered an *outside* of the surface. Similarly, negative (-ve) halfspace
-is associated with :math:`c < 0` and is considered an *inside* of the surface. Clearly each surface
+to :math:`c > 0` and is considered *outside* of the surface. Similarly, negative (-ve) halfspace
+is associated with :math:`c < 0` and is considered *inside* of the surface. Clearly each surface
 subdivides the entire space into two halfpaces. Ideally there would be no need to consider a case
 of :math:`c = 0`, as the probability of finding a randomly placed point exactly at the surface is
 zero. However, in Monte Carlo transport simulations the movement of the particles is often explicitly
-resolved, which means that they need to be temporally stopped at the material interface in order
+resolved, which means that they need to be temporarily stopped at the material interface in order
 to resample their flight distance. As a result, significant care must be taken to ensure
-a correct behaviour of the geometry implementation in the vicinity of surfaces (small :math:`c`).
+correct behaviour of the geometry implementation in the vicinity of surfaces (small :math:`c`).
 
 The binary subdivision of a whole space is rarely sufficient. More practical volumes can be defined
 with set expressions on the halfspaces. In other words, an almost arbitrary volume can be
