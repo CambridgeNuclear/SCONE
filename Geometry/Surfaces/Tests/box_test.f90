@@ -321,7 +321,6 @@ contains
     !
     eps =  5.0_defReal * epsilon(eps)
     r = [2.0_defReal-eps, eps, 4.0_defReal-eps]
-    !u = [HALF, ZERO, -ONE]
     u = [ONE/sqrt(3.0), ONE/sqrt(3.0), ONE/sqrt(3.0)]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
@@ -358,7 +357,7 @@ contains
     u = [-ONE, ZERO, HALF]
     u = u/norm2(u)
     hs = surf % halfspace(r, u)
-    if (.not.hs) then ! Perform small movment
+    if (.not.hs) then ! Perform small movement
       d = surf % distance(r, u)
       @assertTrue( abs(d) < 1.0E-6)
       @assertTrue(surf % halfspace(r + d*u, u))

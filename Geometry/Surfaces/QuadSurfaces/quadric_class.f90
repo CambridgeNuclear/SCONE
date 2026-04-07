@@ -214,7 +214,7 @@ contains
   end function going
   
   !!
-  !! Return the normal corresponding to the sphere surface
+  !! Return the normal corresponding to the surface
   !!
   pure function normal(self, r, u) result(n)
     class(quadric), intent(in)              :: self

@@ -142,12 +142,12 @@ module geometry_inter
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
     !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDict [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -176,12 +176,12 @@ module geometry_inter
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
     !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDist [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -212,7 +212,7 @@ module geometry_inter
     !! Args:
     !!   coords [inout] -> Initialised (but not necesserly placed) coordList for a particle to be
     !!     moved. Will become placed on exit.
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDist [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -231,7 +231,7 @@ module geometry_inter
     !!
     !! Given coordinates placed in the geometry move point through the geometry
     !!
-    !! Move by up to maxDis stopping at domain boundary or until matIdx or uniqueID changes
+    !! Move by up to maxDist stopping at domain boundary or until matIdx or uniqueID changes
     !! When particle hits boundary, boundary conditions are NOT applied before returning.
     !! Also supplies the normal of the surface struck. Normal is not defined if a surface is
     !! not struck, i.e., event is not either BOUNDARY_EV or CROSS_EV
@@ -239,12 +239,12 @@ module geometry_inter
     !! Following events can be returned:
     !!   COLL_EV      -> Particle moved by entire maxDist. Collision happens
     !!   BOUNDARY_EV  -> Particle hit domain boundary
-    !!   CROSS_EV     -> Partilce crossed to a region with different matIdx or uniqueID
+    !!   CROSS_EV     -> Particle crossed to a region with different matIdx or uniqueID
     !!   LOST_EV      -> Something gone wrong in tracking and particle is lost
     !!
     !! Args:
     !!   coords [inout]  -> Coordinate list of the particle to be moved through the geometry
-    !!   maxDict [inout] -> Maximum distance to move the position. If movment is stopped
+    !!   maxDist [inout] -> Maximum distance to move the position. If movement is stopped
     !!     prematurely (e.g. hitting boundary), maxDist is set to the distance the particle has
     !!     moved by.
     !!   event [out] -> Event flag that specifies what finished the movement.
@@ -487,28 +487,29 @@ contains
     integer(shortInt), dimension(:), intent(in)       :: mats
     real(defReal), intent(in)                         :: fov
     real(defReal), intent(in)                         :: ambient
-    integer(shortInt)                                 :: iv, nh, nv
-    integer(shortInt), save                           :: ih, matIdx
+    integer(shortInt)                                 :: iVert, nHoriz, nVert
+    integer(shortInt), save                           :: iHoriz, matIdx
     real(defReal), save                               :: bright
     real(defReal)                                     :: focalDist, dx, dy
     real(defReal), dimension(3), save                 :: vec
     type(coordlist), save                             :: ray
-    !$omp threadprivate(vec, ih, ray, matIdx, bright)
+    !$omp threadprivate(vec, iHoriz, ray, matIdx, bright)
 
-    ! The results is apparently insensitive to this value, as recommended by Ridley
+    ! The results are apparently insensitive to this value, as recommended by Ridley
     focalDist = 10
 
-    nh = size(brightness, 1)
-    nv = size(brightness, 2)
+    nHoriz = size(brightness, 1)
+    nVert = size(brightness, 2)
     dx = 2 * focalDist * tan(HALF * fov)
-    dy = real(nv, defReal) * dx / nh
+    dy = real(nVert, defReal) * dx / nHoriz
 
     ! Loop over vertical pixels
     !$omp parallel do
-    do iv = 1, nv
-      do ih = 1, nh
+    do iVert = 1, nVert
+      do iHoriz = 1, nHoriz
 
-        vec = [focalDist, -dx * HALF + dx * real((ih - 1), defReal) / nh, -dy * HALF + dy * real((iv - 1), defReal) / nv]
+        vec = [focalDist, -dx * HALF + dx * real((iHoriz - 1), defReal) / nHoriz, &
+                -dy * HALF + dy * real((iVert - 1), defReal) / nVert]
         vec = vec / norm2(vec)
 
         ! Place the ray in the right position and direction
@@ -516,8 +517,8 @@ contains
 
         ! Get local material and its illumination
         call self % phongTrace(ray, matIdx, bright, mats, ambient, light)
-        matIDs(ih, iv) = matIdx
-        brightness(ih, iv) = bright
+        matIDs(iHoriz, iVert) = matIdx
+        brightness(iHoriz, iVert) = bright
 
       end do
     end do
@@ -556,7 +557,7 @@ contains
 
       matIdx = ray % matIdx
 
-      ! If distance is infinite or particle collided, not pointing towards anything.
+      ! If distance is infinite or particle collided, not pointing towards anything opaque.
       ! Hence, short circuit the trace
       if ((dist == INFINITY) .or. (event == COLL_EV)) then
         lightTrace = .false.

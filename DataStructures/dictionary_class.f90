@@ -356,6 +356,9 @@ contains
       ! kill all data. There is no need to optimise this and it is more robust this way.
       do i=1,self % maxSize
         call self % entries(i) % kill()
+        ! This shouldn't be necessary but Fortran sometimes does not correctly wipe
+        ! the keywords during deallocation!
+        self % keywords(i) = ''
       end do
       deallocate(self % keywords)
       deallocate(self % entries)
