@@ -782,6 +782,30 @@ Example: ::
     two slanted faces defined by the opening angle: face1 is the face rotated by -opening compared to
     the triangle altitude; face2 is rotated by +opening.
 
+
+* hexagon: hexagon oriented parallel to a given axis. The orientation is chosen by specifying 
+  ``xHexagon``, ``yHexagon`` or ``zHexagon``. The hexagon can be either pointy-topped or flat-topped.
+  This orientation in the plane is determined by specifying either ``orientation 1;`` or ``orientation 2;``.
+  Choosing ``1`` is pointy: the hexagon points towards the second of the two axis in the plane (yZ, xZ, or
+  xY for the three types, respectively) while the first axis is perpendicular to the flat surfaces. Likewise,
+  choosing ``2`` is flat-topped. Can have periodic and vacuum boundaries, but not reflective.
+
+  - origin: (x y z) position of the centre of the hexagon. [cm]
+  - halfwidth: centre-to-flat distance of the hexagon. [cm]
+  - orientation: can be ``1`` or ``2``. Determines whether the first (1) or second (2) axis is perpendicular
+    to the flat plane.
+
+* truncHexagon: hexagon oriented parallel to a given axis, truncated along that axis. Identical to the hexagon
+  except it also takes a ``halfheight`` to set its finite extent in the dimension perpendicular to the hexagonal
+  plane.
+
+  - origin: (x y z) position of the centre of the hexagon. [cm]
+  - halfwidth: centre-to-flat distance of the hexagon. [cm]
+  - halfheight: centre-to-top distance along the x, y, or z axis. [cm]
+  - orientation: can be ``1`` or ``2``. Determines whether the first (1) or second (2) axis is perpendicular
+    to the flat plane.
+
+
 Cells
 #####
 

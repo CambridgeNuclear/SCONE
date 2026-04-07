@@ -45,7 +45,7 @@ module geometryStd_class
   !! Boundary conditions in diffrent movement models are handeled:
   !!   move       -> explicitBC
   !!   moveGlobal -> explicitBC
-  !!   teleport   -> Co-ordinate transfrom
+  !!   teleport   -> Co-ordinate transform
   !!
   !! Sample Dictionary Input:
   !!   geometry {
@@ -255,7 +255,7 @@ contains
 
       ! Place back in geometry
       call self % placeCoord(coords)
-    
+      
     else ! Crosses to different local cell
       ! Move to boundary at hit level
       call coords % moveLocal(dist, level)
