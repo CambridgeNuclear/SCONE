@@ -19,6 +19,7 @@
 module ceNeutronCache_mod
 
   use numPrecision
+  use universalVariables,      only : NO_TEMPERATURE, NO_DENSITY
   use genericProcedures,       only : fatalError, numToChar
   use neutronXsPackages_class, only : neutronMicroXSs, neutronMacroXSs
 
@@ -37,16 +38,16 @@ module ceNeutronCache_mod
   !!   idx       -> Index on a nuclide grid for energy E_tot
   !!   xss       -> Cached cross-section values
   !!   E_track   -> Energy of the tracking xs
+  !!   trackXS   -> Cached tracking xs; this can be different to xss % total when using TMS
   !!   T_track   -> Temperature at which tracking XS was evaluated
   !!   rho_track -> Density scaling at which tracking XS was evaluated
-  !!   trackXS   -> Cached tracking xs; this can be different to xss % total when using TMS
   !!   E_rel     -> Base energy for which relative energy cross sections are found (for TMS)
   !!   xssRel    -> Cached effective cross-section values at energy relative to E_rel (for TMS)
   !!
   type, public :: cacheMatDat
     real(defReal)         :: E_tot  = ZERO
-    real(defReal)         :: T_tot  = -ONE
-    real(defReal)         :: rho_tot = -ONE
+    real(defReal)         :: T_tot  = NO_TEMPERATURE
+    real(defReal)         :: rho_tot = NO_DENSITY
     real(defReal)         :: E_tail = ZERO
     real(defReal)         :: f      = ZERO
     integer(shortInt)     :: idx    = 0
@@ -55,8 +56,8 @@ module ceNeutronCache_mod
     ! Tracking data
     real(defReal)         :: E_track   = ZERO
     real(defReal)         :: trackXS   = ZERO
-    real(defReal)         :: T_track   = -ONE
-    real(defReal)         :: rho_track = -ONE
+    real(defReal)         :: T_track   = NO_TEMPERATURE
+    real(defReal)         :: rho_track = NO_DENSITY
 
     ! TMS data
     real(defReal)         :: E_rel  = ZERO

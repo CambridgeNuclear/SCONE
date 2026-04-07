@@ -30,13 +30,15 @@ module alphaPhysicsPackage_class
   ! Geometry
   use geometry_inter,                 only : geometry
   use geometryReg_mod,                only : gr_geomPtr  => geomPtr, gr_geomIdx  => geomIdx, &
-                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr
+                                             gr_fieldIdx => fieldIdx, gr_fieldPtr => fieldPtr, &
+                                             gr_fieldPtrName => fieldPtrName
   use geometryFactory_func,           only : new_geometry
 
   ! Fields
   use field_inter,                    only : field
   use uniFissSitesField_class,        only : uniFissSitesField, uniFissSitesField_TptrCast
   use fieldFactory_func,              only : new_field
+  use pieceConstantField_inter,       only : pieceConstantField, pieceConstantField_CptrCast
 
   ! Nuclear Data
   use materialMenu_mod,               only : mm_nMat           => nMat
@@ -61,6 +63,9 @@ module alphaPhysicsPackage_class
   use tallyAdmin_class,               only : tallyAdmin
   use tallyResult_class,              only : tallyResult
   use kAlphaAnalogClerk_class,        only : kAlphaResult
+
+  ! Coupling
+  use couplingAdmin_class,            only : couplingAdmin
 
   ! Factories
   use transportOperatorFactory_func,  only : new_transportOperator
@@ -105,6 +110,9 @@ module alphaPhysicsPackage_class
     integer(shortInt)  :: bufferSize
     logical(defBool)   :: UFS = .false.
 
+    ! Coupling handler
+    type(couplingAdmin) :: couplingInfo
+
     ! Calculation components
     type(particleDungeon), pointer :: thisCycle    => null()
     type(particleDungeon), pointer :: nextCycle    => null()
@@ -142,6 +150,7 @@ contains
     call self % generateInitialState()
     call self % cycles(self % inactiveTally, self % inactiveAtch, self % N_inactive)
     call self % buildActiveAtch()
+    call self % couplingInfo % endCoupling()
     call self % cycles(self % activeTally, self % activeAtch, self % N_active)
     
     ! Collect results from other processes
@@ -328,6 +337,9 @@ contains
       call statusMsg("Time to end:  " // trim(secToChar(T_toEnd)))
       call tally % display()
 
+      ! Perform coupling operations
+      call self % couplingInfo % couple(i)
+
     end do
 
     ! Load elapsed time
@@ -422,6 +434,8 @@ contains
     type(outputFile)                          :: test_out
     type(visualiser)                          :: viz
     class(field), pointer                     :: field
+    class(pieceConstantField), pointer        :: pcField
+    real(defReal)                             :: maxTemperature, maxDensityScale
     character(100), parameter :: Here ='init (alphaPhysicsPackage_class.f90)'
 
     call cpu_time(self % CPU_time_start)
@@ -503,6 +517,31 @@ contains
     ! Activate Nuclear Data *** All materials are active
     call ndReg_activate(self % particleType, nucData, self % geom % activeMats())
     self % nucData => ndReg_get(self % particleType)
+    
+    ! If present, build temperature field
+    if (dict % isPresent('temperature')) then
+      tempDict => dict % getDictPtr('temperature')
+      call new_field(tempDict, nameTemperature)
+      field => gr_fieldPtrName(nameTemperature)
+      pcField => pieceConstantField_CptrCast(field)
+      maxTemperature = pcField % getMaxValue()
+    else
+      maxTemperature = NO_TEMPERATURE
+    end if
+
+    ! If present, build density field
+    if (dict % isPresent('density')) then
+      tempDict => dict % getDictPtr('density')
+      call new_field(tempDict, nameDensity)
+      field => gr_fieldPtrName(nameDensity)
+      pcField => pieceConstantField_CptrCast(field)
+      maxDensityScale = pcField % getMaxValue()
+    else
+      maxDensityScale = NO_DENSITY
+    end if
+    
+    ! Update majorant in case of density and temperature fields
+    call self % nucData % initMajorant(.false., maxTemp = maxTemperature, scaleDensity = maxDensityScale)
 
     ! Call visualisation
     if (dict % isPresent('viz')) then
@@ -590,6 +629,11 @@ contains
     ! Don't create the active tally yet as the guess value
     ! strongly affects the convergence rate and may bias
     ! the active cycle estimate
+    
+    ! Attach a tally admin for coupling
+    if (self % couplingInfo % doCoupling()) then
+      call self % couplingInfo % attachTally(self % inactiveTally)
+    end if
 
     call self % printSettings()
 

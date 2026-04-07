@@ -1,0 +1,19 @@
+tally {
+    norm totalPow;
+    normVal 70000;
+    totalPow  { type collisionClerk; response (fission); fission { type macroResponse; MT -80;}}
+    axialPow {type collisionClerk;
+              map {type spaceMap; axis z; grid lin; min -200; max 200.0; N 40;}
+              response (fission); fission { type macroResponse; MT -80;}
+             }
+}
+
+maxTemp 1100.0;
+receiveFile ./IntegrationTestFiles/Coupling/toSCONE.dat;
+sendFile ./IntegrationTestFiles/Coupling/toDriver.dat;
+outputFile ./IntegrationTestFiles/Coupling/sconeOut;
+updateFreq 5;
+maxIt 10;
+outputFormat asciiMATLAB;
+fieldPaths (./IntegrationTestFiles/temp ./IntegrationTestFiles/dens);
+fieldNames (temperature density);

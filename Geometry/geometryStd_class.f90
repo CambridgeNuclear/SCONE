@@ -238,7 +238,7 @@ contains
       event = COLL_EV
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
     
-    else if (maxDist < dist .and. maxDist >= fieldDist) then ! Stays within the same cell, but crosses field boundary
+    else if (fieldDist < dist - NUDGE) then ! Stays within the same cell, but crosses field boundary
       call coords % moveLocal(fieldDist, level0)
       event = FIELD_EV
       maxDist = fieldDist
@@ -311,7 +311,7 @@ contains
       maxDist = maxDist ! Left for explicitness. Compiler will not stand it anyway
       cache % lvl = 0
 
-    else if (maxDist < dist .and. maxDist >= fieldDist) then ! Stays within the same cell, but crosses field boundary
+    else if (fieldDist < dist - NUDGE) then ! Stays within the same cell, but crosses field boundary
       call coords % moveLocal(fieldDist, level0)
       event = FIELD_EV
       maxDist = fieldDist
