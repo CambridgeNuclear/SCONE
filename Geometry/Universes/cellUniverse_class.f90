@@ -14,11 +14,14 @@ module cellUniverse_class
   use omp_lib,            only : omp_test_lock, omp_unset_lock, &
                                  omp_init_lock, omp_destroy_lock, &
                                  omp_lock_kind
+  use openmp_func,        only : ompGetMaxThreads, ompGetThreadNum
+  
   implicit none
   private
   
   ! Determines how frequently to reorder the cell list
   integer(longInt), public, parameter :: reorderFreq = 10_longInt**6
+  integer(shortInt), parameter :: padding = 16
   
   !!
   !! Local helper class to group cell data
@@ -26,14 +29,15 @@ module cellUniverse_class
   !! Public Members:
   !!   idx    -> cellIdx of the cell in cellShelf
   !!   ptr    -> Pointer to the cell
-  !!   visits -> Number of times the cell has been found
   !!   neighb -> Neighbour list of adjacent cells
+  !!   visits -> Number of times the cell has been found.
+  !!             Score per thread to prevent atomics.
   !!
   type, private :: localCell
     integer(shortInt)    :: idx = 0
     class(cell), pointer :: ptr => null()
-    integer(longInt)     :: visits = 0
     type(linkedIntList)  :: neighb
+    integer(longInt), dimension(:), allocatable :: visits
   end type localCell
 
   !!
@@ -111,7 +115,7 @@ contains
     type(surfaceShelf), intent(inout)                         :: surfs
     type(charMap), intent(in)                                 :: mats
     integer(shortInt), dimension(:), allocatable  :: cellTemp
-    integer(shortInt)                             :: N, i
+    integer(shortInt)                             :: N, i, nThread
     character(100), parameter :: Here = 'init (cellUniverse_class.f90)'
 
     ! Setup the base class
@@ -126,10 +130,14 @@ contains
     self % cells % idx = cellTemp
 
     ! Load pointers and convert cell ID to IDX
+    ! Also allocate cell visits
+    nThread = ompGetMaxThreads()
     do i = 1, N
       ! Convert cell ID to IDX
       self % cells(i) % idx = cells % getIdx(self % cells(i) % idx)
       self % cells(i) % ptr => cells % getPtr(self % cells(i) % idx)
+      allocate(self % cells(i) % visits(nThread * padding))
+      self % cells(i) % visits = 0
     end do
 
     ! Create fill array
@@ -163,17 +171,18 @@ contains
   subroutine reorderCells(self)
     class(cellUniverse), intent(inout) :: self
     integer(shortInt)                  :: i, j, N, keyIdx
-    integer(longInt)                   :: keyVisit
+    integer(longInt)                   :: keyVisit, jVisits
 
     associate(cells => self % cells, idx => self % searchIdx)
       N = size(cells)
       do i = 2, n
         keyIdx = idx(i)
-        keyVisit = cells(keyIdx) % visits
+        keyVisit = sum(cells(keyIdx) % visits)
         j = i - 1
 
         ! Shift elements right until correct position found
-        do while (j >= 1 .and. cells(idx(j)) % visits < keyVisit)
+        jVisits = sum(cells(idx(j)) % visits)
+        do while (j >= 1 .and. jVisits < keyVisit)
           idx(j + 1) = idx(j)
           j = j - 1
         end do
@@ -196,7 +205,7 @@ contains
     integer(shortInt), intent(out)          :: cellIdx
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
-    integer(shortInt)                       :: i
+    integer(shortInt)                       :: i, tIdx
     integer(shortInt), dimension(:), allocatable :: array
 
     ! If being careful, only do exhaustive searches to check for overlap
@@ -213,14 +222,15 @@ contains
     end if
 
     ! Search all cells
+    tIdx = ompGetThreadNum() * padding + 1
     do i = 1, size(self % cells)
       localID = array(i)
       if (self % cells(localID) % ptr % inside(r, u)) then
         cellIdx = self % cells(localID) % idx
-        !$omp atomic
-        self % cells(localID) % visits = self % cells(localID) % visits + 1
         
-        if (mod(self % cells(localID) % visits, reorderFreq) == 0) then
+        self % cells(localID) % visits(tIdx) = self % cells(localID) % visits(tIdx) + 1
+
+        if (mod(self % cells(localID) % visits(tIdx), reorderFreq) == 0) then
           !$omp critical
           self % reordering = .true.
           call self % reorderCells()
@@ -253,20 +263,21 @@ contains
     integer(shortInt), intent(out)          :: cellIdx
     real(defReal), dimension(3), intent(in) :: r
     real(defReal), dimension(3), intent(in) :: u
-    integer(shortInt)                       :: i, foundID, cellsFound
+    integer(shortInt)                       :: i, foundID, cellsFound, tIdx
     character(100), parameter :: Here = 'findCellOverlap (cellUniverse_class.f90)'
 
     cellsFound = 0
 
     ! Search all cells
+    tIdx = ompGetThreadNum() * padding + 1
     do i = 1, size(self % cells)
       localID = i
       if (self % cells(localID) % ptr % inside(r, u)) then
         foundID = localID
         cellIdx = self % cells(localID) % idx
         cellsFound = cellsFound + 1
-        !$omp atomic
-        self % cells(localID) % visits = self % cells(localID) % visits + 1
+
+        self % cells(localID) % visits(tIdx) = self % cells(localID) % visits(tIdx) + 1
         
       end if
     end do
@@ -296,7 +307,7 @@ contains
     real(defReal), dimension(3), intent(in) :: u
     integer(shortInt), intent(in)           :: initID
     logical(defBool), intent(out)           :: foundNeighb
-    integer(shortInt)                       :: i
+    integer(shortInt)                       :: i, tIdx
 
     ! If not found return undefined cell
     cellIdx = 0
@@ -308,6 +319,7 @@ contains
 
       ! Search neighbours if starting cell is given
       if (neighb % getSize() > 0) then
+        tIdx = ompGetThreadNum() * padding + 1
         do i = 1, neighb % getSize()
 
           localID = neighb % get(i)
@@ -315,9 +327,9 @@ contains
           if (self % cells(localID) % ptr % inside(r, u)) then
             cellIdx = self % cells(localID) % idx
             foundNeighb = .true.
-            !$omp atomic
-            self % cells(localID) % visits = self % cells(localID) % visits + 1
-            if (mod(self % cells(localID) % visits, reorderFreq) == 0) then
+            
+            self % cells(localID) % visits(tIdx) = self % cells(localID) % visits(tIdx) + 1
+            if (mod(self % cells(localID) % visits(tIdx), reorderFreq) == 0) then
               !$omp critical
               self % reordering = .true.
               call self % reorderCells()
@@ -446,6 +458,7 @@ contains
     if(allocated(self % cells)) then
       do i = 1, size(self % cells)
         call self % cells(i) % neighb % kill()
+        if (allocated(self % cells(i) % visits)) deallocate(self % cells(i) % visits)
       end do
       deallocate(self % cells)
     end if
