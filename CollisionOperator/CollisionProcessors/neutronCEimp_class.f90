@@ -2,7 +2,8 @@ module neutronCEimp_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : nameUFS, nameWW, REJECTED, kBoltzmannMev
+  use universalVariables,            only : nameUFS, nameWW, REJECTED, kBoltzmannMev, MINIMUM_ENERGY, &
+                                            MAXIMUM_ENERGY
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
