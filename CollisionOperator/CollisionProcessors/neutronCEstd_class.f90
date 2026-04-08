@@ -125,8 +125,8 @@ contains
 
     ! Read settings for neutronCEstd
     ! Maximum and minimum energy
-    call dict % getOrDefault(self % minE,'minEnergy',1.0E-11_defReal)
-    call dict % getOrDefault(self % maxE,'maxEnergy',20.0_defReal)
+    call dict % getOrDefault(self % minE,'minEnergy',MINIMUM_ENERGY)
+    call dict % getOrDefault(self % maxE,'maxEnergy',MAXIMUM_ENERGY)
 
     ! Thermal scattering kernel thresholds
     call dict % getOrDefault(self % threshE, 'energyThreshold', 400.0_defReal)

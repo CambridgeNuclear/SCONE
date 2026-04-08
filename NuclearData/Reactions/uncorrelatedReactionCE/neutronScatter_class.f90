@@ -2,6 +2,7 @@ module neutronScatter_class
 
   use numPrecision
   use endfConstants
+  use universalVariables,           only : MINIMUM_ENERGY
   use genericProcedures,            only : fatalError, numToChar
   use RNG_class,                    only : RNG
   use dataDeck_inter,               only : dataDeck
@@ -211,6 +212,10 @@ contains
       E_out = self % eLaw  % sample(E_in,rand)
 
     end if
+
+    ! Prevent sampling energies below the common lower grid bound.
+    ! Can occur, e.g., with MT 5
+    E_out = max(E_out, MINIMUM_ENERGY)
 
     ! Sample phi
     phi = rand % get() * TWO_PI
