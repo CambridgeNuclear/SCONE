@@ -2,7 +2,7 @@ module neutronCEstd_class
 
   use numPrecision
   use endfConstants
-  use universalVariables,            only : REJECTED, kBoltzmannMeV
+  use universalVariables,            only : REJECTED, kBoltzmannMeV, MINIMUM_ENERGY, MAXIMUM_ENERGY
   use genericProcedures,             only : fatalError, rotateVector, numToChar
   use dictionary_class,              only : dictionary
   use RNG_class,                     only : RNG
