@@ -23,7 +23,7 @@ Requirements
    GNU/Linux operating system
      In principle any UNIX-like operating system should support SCONE. However people have
      experienced some significant run-time bugs when running on MacOS. Since we do not have
-     an access to a Mackintosh we were not able to identify the problem yet.
+     an access to a Macintosh we were not able to identify the problem yet.
 
 .. admonition:: Optional
 
@@ -290,7 +290,7 @@ Obtaining Nuclear Data
 ''''''''''''''''''''''
 
 SCONE requires ACE-formatted nuclear data. The JEFF-3.3 evaluation can be download from the
-OACD NEA `website <https://www.oecd-nea.org/dbdata/jeff/jeff33/>`__. In addition SCONE requires
+OECD NEA `website <https://www.oecd-nea.org/dbdata/jeff/jeff33/>`__. In addition SCONE requires
 its own library file. An example of it is given in *IntegrationTestFiles/testLib*. Its format is::
 
   ! This is a comment line
@@ -333,3 +333,12 @@ library with thermal data we need to do the following:
   ./scripts/make_ace_lib.sh ./tempCE  CE  ace ./path_to_CE_ace_files/
   ./scripts/make_ace_lib.sh ./tempSAB SAB t   ./path_to_SAB_ace_files/
   cat tempCE tempSAB > fullLib.xsfile
+
+Having made this file, one can optionally define the environmental variable ``SCONE_ACE``, e.g.,
+in the .basrhc file and refer to it in input files which use the aceNeutronDatabase. To do so, in 
+the .bashrc file include:
+
+.. code-block:: bash
+
+  export SCONE_ACE=/path/to/fullLib.xsfile
+
