@@ -24,6 +24,10 @@ module universalVariables
                                       INF         = 2.0_defReal**63, &
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
+  ! Energy variables
+  real(defReal), parameter, public :: MINIMUM_ENERGY = 1.0E-11_defReal, &
+                                      MAXIMUM_ENERGY = 20.0_defReal
+  
   ! Flags for different possible events in movement in geometry
   integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
